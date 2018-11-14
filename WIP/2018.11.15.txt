@@ -1,15 +1,15 @@
-repo Initial Construction Instructions:
+ï»¿repo Initial Construction Instructions:
 
 The project was set up for 3 target
 
 	1. To help cmgameengine a completely new renderer
-	2. In order to need to learn OpenGL Core/ES friends to provide a follow-up learning process 
+	2. In order to need to learn OpenGL Core/ES friends to provide a follow-up learning process
 	3. Provide a least dependent renderer for friends who simply need to learn game making
 
-²Ö¿â³õ½¨ËµÃ÷£º
+ä»“åº“åˆå»ºè¯´æ˜ï¼š
 
-	ÉèÁ¢Õâ¸öÏîÄ¿ÓĞ3¸öÄ¿µÄ
+	è®¾ç«‹è¿™ä¸ªé¡¹ç›®æœ‰3ä¸ªç›®çš„
 
-	1.ÎªÁË°ïÖúCMGameEngineÖØĞÂÒ»¸öÈ«ĞÂµÄäÖÈ¾Æ÷
-	2.ÎªÁËĞèÒªÑ§Ï°OpenGL Core/ESµÄÅóÓÑÌá¹©Ò»¸ö¸úËæÑ§Ï°µÄ¹ı³Ì
-	3.Îª½ö½öĞèÒªÑ§Ï°ÓÎÏ·ÖÆ×÷µÄÅóÓÑÌá¹©Ò»¸ö×îÉÙÒÀÀµµÄäÖÈ¾Æ÷
+	1.ä¸ºäº†å¸®åŠ©CMGameEngineé‡æ–°ä¸€ä¸ªå…¨æ–°çš„æ¸²æŸ“å™¨
+	2.ä¸ºäº†éœ€è¦å­¦ä¹ OpenGL Core/ESçš„æœ‹å‹æä¾›ä¸€ä¸ªè·Ÿéšå­¦ä¹ çš„è¿‡ç¨‹
+	3.ä¸ºä»…ä»…éœ€è¦å­¦ä¹ æ¸¸æˆåˆ¶ä½œçš„æœ‹å‹æä¾›ä¸€ä¸ªæœ€å°‘ä¾èµ–çš„æ¸²æŸ“å™¨
