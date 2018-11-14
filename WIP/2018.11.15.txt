@@ -1,0 +1,15 @@
+repo Initial Construction Instructions:
+
+The project was set up for 3 target
+
+	1. To help cmgameengine a completely new renderer
+	2. In order to need to learn OpenGL Core/ES friends to provide a follow-up learning process 
+	3. Provide a least dependent renderer for friends who simply need to learn game making
+
+仓库初建说明：
+
+	设立这个项目有3个目的
+
+	1.为了帮助CMGameEngine重新一个全新的渲染器
+	2.为了需要学习OpenGL Core/ES的朋友提供一个跟随学习的过程
+	3.为仅仅需要学习游戏制作的朋友提供一个最少依赖的渲染器
