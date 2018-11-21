@@ -1,0 +1,12 @@
+[简体中文]
+
+1.ULRE是CMGameEngine的渲染器试验原型项目，所以它们是有关系的
+2.两者的代码是互相借鉴的
+3.ULRE仅用于试验渲染技术，所以它不会在渲染以外的地方使用任何技巧，也不考虑任何实际使用情况。
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+[English - Google automatic translation]
+
+1.ULRE is a renderer prototype project for CMGameEngine, so they are related
+2.The code of the two is borrowed from each other.
+3.ULRE is only used to experiment with rendering techniques, so it doesn't use any tricks outside of rendering, nor does it take into account any actual usage.
