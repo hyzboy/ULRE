@@ -1,0 +1,11 @@
+﻿分支: devel_1
+目标: 建立一个所有平台都可以初始化出来的窗口
+
+技术实现:
+
+        Windows     GLFW    Core/ES3
+        Mac         GLFW    Core/ES3
+        Linux       GLFW    Core/ES3
+        Web         GLFW    WebGL 2
+        Android     EGL     ES3
+        iOS         EGL     ES3
