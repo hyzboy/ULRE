@@ -73,6 +73,40 @@ namespace hgl
 
             return m;
         }
+
+        void SetGLFWWindowHint(const RenderSetup *gs)
+        {
+            glfwWindowHint(GLFW_SAMPLES,                gs->msaa);
+
+//             glfwWindowHint(GLFW_CLIENT_API,             gs->es?GLFW_OPENGL_ES_API:GLFW_OPENGL_API);
+//
+//             glfwWindowHint(GLFW_CONTEXT_CREATION_API,   gs->egl?GLFW_EGL_CONTEXT_API:GLFW_NATIVE_CONTEXT_API);
+
+//             if(gs->es)
+//             {
+//             }
+//             else
+            {
+                glfwWindowHint(GLFW_OPENGL_PROFILE,         GLFW_OPENGL_CORE_PROFILE);        //核心模式
+                glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT,  true);                            //向前兼容模式(无旧特性)
+            }
+
+//             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT,       gs->debug);                       //调试模式
+//             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,      gs->major);
+//             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,      gs->minor);
+
+            glfwWindowHint(GLFW_VISIBLE,                    true);                            //是否显示
+
+            if(gs->no_use_stencil )glfwWindowHint(GLFW_STENCIL_BITS,  0             ); else
+            if(gs->stencil      >0)glfwWindowHint(GLFW_STENCIL_BITS,  gs->stencil   );
+            if(gs->alpha        >0)glfwWindowHint(GLFW_ALPHA_BITS,    gs->alpha     );
+            if(gs->depth        >0)glfwWindowHint(GLFW_DEPTH_BITS,    gs->depth     );
+
+            if(gs->accum.red    >0)glfwWindowHint(GLFW_ACCUM_RED_BITS,     gs->accum.red    );
+            if(gs->accum.green  >0)glfwWindowHint(GLFW_ACCUM_GREEN_BITS,   gs->accum.green  );
+            if(gs->accum.blue   >0)glfwWindowHint(GLFW_ACCUM_BLUE_BITS,    gs->accum.blue   );
+            if(gs->accum.alpha  >0)glfwWindowHint(GLFW_ACCUM_ALPHA_BITS,   gs->accum.alpha  );
+        }
     }
 
     class RenderDeviceGLFW:public RenderDevice
@@ -120,14 +154,42 @@ namespace hgl
 
     public:
 
-        RenderWindow *Create(int,int,const WindowSetup *,const RenderSetup *) override
+        RenderWindow *Create(int width,int height,const WindowSetup *ws,const RenderSetup *rs) override
         {
-            return(nullptr);
+            SetGLFWWindowHint(rs);
+
+            glfwWindowHint(GLFW_MAXIMIZED,ws->Maximize);
+            glfwWindowHint(GLFW_RESIZABLE,ws->Resize);
+
+            GLFWwindow *win=glfwCreateWindow(   width,
+                                                height,
+                                                ws->Name,
+                                                nullptr,
+                                                nullptr);
+
+            if(!win)return(nullptr);
+
+            return(new WindowGLFW(win,false));
         }
 
-        RenderWindow *Create(const Display *,const VideoMode *,const RenderSetup *) override
+        RenderWindow *Create(const Display *disp,const VideoMode *vm,const RenderSetup *rs) override
         {
-            return(nullptr);
+            SetGLFWWindowHint(rs);
+
+            glfwWindowHint(GLFW_RED_BITS,       vm->red);
+            glfwWindowHint(GLFW_GREEN_BITS,     vm->green);
+            glfwWindowHint(GLFW_BLUE_BITS,      vm->blue);
+            glfwWindowHint(GLFW_REFRESH_RATE,   vm->freq);
+
+            GLFWwindow *win=glfwCreateWindow(   vm->width,
+                                                vm->height,
+                                                "ULRE",
+                                                disp?((DisplayGLFW *)disp)->glfw_monitor:nullptr,
+                                                nullptr);
+
+            if(!win)return(nullptr);
+
+            return(new WindowGLFW(win,true));
         }
     };//class RenderDevice
 
