@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+﻿cmake_minimum_required(VERSION 3.0)
 
 PROJECT(ULRE)
 
@@ -14,4 +14,9 @@ check_system_version()
 set_compiler_param()
 set_output_directory()
 
+include_directories(3rdpty/MathGeoLib/src)
+include_directories(inc)
+
 add_subdirectory(3rdpty/MathGeoLib)
+
+add_subdirectory(example)
