@@ -1,4 +1,4 @@
-﻿#include<hgl/render/device/RenderDevice.h>
+﻿#include<hgl/render/RenderDevice.h>
 #include<GLFW/glfw3.h>
 #include<iostream>
 
