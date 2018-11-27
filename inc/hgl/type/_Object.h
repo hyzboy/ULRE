@@ -1,8 +1,6 @@
 ﻿#ifndef HGL__OBJECT_INCLUDE
 #define HGL__OBJECT_INCLUDE
 
-#include<hgl/type/BaseString.h>
-
 namespace hgl
 {
 	/**
@@ -13,10 +11,6 @@ namespace hgl
 	public:
 
 		virtual ~_Object()=default;																		///<本类析构函数
-
-    public: //调试用
-
-        virtual UTF8String ToDebugString(){}                                                            ///<输出调试用字符串
 	};//class _Object
 
 	typedef void (_Object::*ObjectMemberFunc)();

@@ -19,4 +19,6 @@ include_directories(inc)
 
 add_subdirectory(3rdpty/MathGeoLib)
 
+add_subdirectory(src)
+
 add_subdirectory(example)
