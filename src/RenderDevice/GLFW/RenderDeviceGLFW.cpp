@@ -78,22 +78,22 @@ namespace hgl
         {
             glfwWindowHint(GLFW_SAMPLES,                gs->msaa);
 
-//             glfwWindowHint(GLFW_CLIENT_API,             gs->es?GLFW_OPENGL_ES_API:GLFW_OPENGL_API);
-//
-//             glfwWindowHint(GLFW_CONTEXT_CREATION_API,   gs->egl?GLFW_EGL_CONTEXT_API:GLFW_NATIVE_CONTEXT_API);
+            glfwWindowHint(GLFW_CLIENT_API,             gs->opengl.es?GLFW_OPENGL_ES_API:GLFW_OPENGL_API);
 
-//             if(gs->es)
-//             {
-//             }
-//             else
+            glfwWindowHint(GLFW_CONTEXT_CREATION_API,   gs->opengl.egl?GLFW_EGL_CONTEXT_API:GLFW_NATIVE_CONTEXT_API);
+
+            if(gs->opengl.es)
+            {
+            }
+            else
             {
                 glfwWindowHint(GLFW_OPENGL_PROFILE,         GLFW_OPENGL_CORE_PROFILE);        //核心模式
                 glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT,  true);                            //向前兼容模式(无旧特性)
             }
 
-//             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT,       gs->debug);                       //调试模式
-//             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,      gs->major);
-//             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,      gs->minor);
+            glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT,       gs->opengl.debug);                //调试模式
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,      gs->opengl.major);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,      gs->opengl.minor);
 
             glfwWindowHint(GLFW_VISIBLE,                    true);                            //是否显示
 

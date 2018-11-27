@@ -90,17 +90,17 @@ namespace hgl
             float lod_bias;                                                                     ///<默认纹理LOD Bias(默认0)
             float max_anistropy;                                                                ///<纹理最大各向异性过滤值比例(使用0.0-1.0，默认1)
         }texture;
-    };
 
-    struct OpenGLRenderSetup:public RenderSetup
-    {
-        bool debug=true;
+        struct
+        {
+            bool debug=true;
 
-        bool es=false;
-        bool egl=false;
+            bool es=false;
+            bool egl=false;
 
-        uint major=3;
-        uint minor=3;
+            uint major=3;
+            uint minor=3;
+        }opengl;
     };
 
     class RenderWindow;
