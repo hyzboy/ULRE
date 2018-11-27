@@ -31,16 +31,16 @@ int main(void)
 
     win->Show();
 
-    glClearColor(0,0,0,1);
+    glClearColor(0,0,0,1);              //设置清屏颜色
 
     while(win->IsOpen())
     {
-        win->MakeToCurrent();
+        win->MakeToCurrent();           //切换当前窗口到前台
 
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT);   //清屏
 
-        win->SwapBuffer();
-        win->PollEvent();
+        win->SwapBuffer();              //交换前后台显示缓冲区
+        win->PollEvent();               //处理窗口事件
     }
 
     delete win;
