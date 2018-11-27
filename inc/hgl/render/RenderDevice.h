@@ -39,21 +39,21 @@ namespace hgl
 
     struct WindowSetup
     {
-        UTF8String Name;                                                                        ///<窗口标题
+        UTF8String Name;                                                                            ///<窗口标题
 
-//         OSString IconFilename;                                                                  ///<图标文件名称
-//         OSString CursorFilename;                                                                ///<光标文件名称
-        bool Edge;                                                                              ///<是否显示边框
+//         OSString IconFilename;                                                                   ///<图标文件名称
+//         OSString CursorFilename;                                                                 ///<光标文件名称
+        bool Edge       =true;                                                                      ///<是否显示边框
 
-        bool SysMenu;                                                                           ///<是否显示系统菜单
-        bool Right;                                                                             ///<窗口是否使用靠右风格
+        bool SysMenu    =true;                                                                      ///<是否显示系统菜单
+        bool Right      =false;                                                                     ///<窗口是否使用靠右风格
 
-        bool Resize;                                                                            ///<窗口大小是否可调整
-        bool Minimize;                                                                          ///<窗口是否可以最小化
-        bool Maximize;                                                                          ///<窗口是否可以最大化
+        bool Resize     =false;                                                                     ///<窗口大小是否可调整
+        bool Minimize   =false;                                                                     ///<窗口是否可以最小化
+        bool Maximize   =false;                                                                     ///<窗口是否可以最大化
 
-        bool TopMost;                                                                           ///<永远在最上面
-        bool AppTaskBar;                                                                        ///<程序项在任务栏显示
+        bool TopMost    =false;                                                                     ///<永远在最上面
+        bool AppTaskBar =true;                                                                      ///<程序项在任务栏显示
     };
 
     /**
