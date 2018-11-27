@@ -33,8 +33,8 @@ namespace hgl
 
     public:
 
-        virtual const VideoMode *GetCurVideoMode()=0;
-        virtual const ObjectList<VideoMode> &GetVideoModeList()=0;
+        virtual const VideoMode *GetCurVideoMode()const=0;
+        virtual const ObjectList<VideoMode> &GetVideoModeList()const=0;
     };
 
     struct WindowSetup
@@ -108,7 +108,7 @@ namespace hgl
 
         virtual const UTF8String                GetName()=0;                                        ///<取得设备名称
 
-        virtual const void                      GetDisplayList(List<Display *> &);                  ///<取得显示屏列表
+        virtual const void                      GetDisplayList(List<Display *> &)=0;                ///<取得显示屏列表
         virtual const Display *                 GetDefaultDisplay()=0;                              ///<取得默认显示屏
 
     public:
