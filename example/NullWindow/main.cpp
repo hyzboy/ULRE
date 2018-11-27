@@ -1,5 +1,6 @@
 ﻿#include<hgl/render/device/RenderDevice.h>
 #include<iostream>
+#include<math.h>
 
 using namespace hgl;
 
@@ -10,7 +11,9 @@ void put(const struct VideoMode *vm)
 
 void put(const struct Display *disp)
 {
-    std::cout<<"["<<disp->name.c_str()<<"]["<<disp->width<<"x"<<disp->height<<"]["<<disp->x<<","<<disp->y<<"]"<<std::endl;
+    const int inch=sqrt((disp->width*disp->width)+(disp->height*disp->height))*0.03937008;
+
+    std::cout<<"["<<disp->name.c_str()<<"]["<<disp->width<<"x"<<disp->height<<" mm,"<<inch<<" inch][offset "<<disp->x<<","<<disp->y<<"]"<<std::endl;
 
     std::cout<<"\tcurrent video mode: ";
     put(disp->GetCurVideoMode());
