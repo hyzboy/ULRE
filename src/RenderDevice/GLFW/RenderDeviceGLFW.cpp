@@ -22,13 +22,13 @@ namespace hgl
 
         public:
 
-            const VideoMode *GetCurVideoMode()override{return cur_video_mode;}
-            const ObjectList<VideoMode> &GetVideoModeList()override{return video_mode_list;}
+            const VideoMode *GetCurVideoMode()const override{return cur_video_mode;}
+            const ObjectList<VideoMode> &GetVideoModeList()const override{return video_mode_list;}
         };
 
         VideoMode *ConvertVideoMode(const GLFWvidmode *mode)
         {
-            if(mode)
+            if(!mode)
                 return nullptr;
 
             VideoMode *vm=new VideoMode;
@@ -95,12 +95,12 @@ namespace hgl
         const bool Init()override{return true;}
         const void Close()override{};
 
-        const UTF8String                GetName()override                                           ///<取得设备名称
+        const UTF8String GetName()override
         {
-            return UTF8String("GLFW")+UTF8String(glfwGetVersionString());
+            return UTF8String("GLFW ")+UTF8String(glfwGetVersionString());
         }
 
-        const void GetDisplayList(List<Display *> &disp_list)                                        ///<取得显示屏列表
+        const void GetDisplayList(List<Display *> &disp_list) override
         {
             int count=0;
 
@@ -110,7 +110,7 @@ namespace hgl
                 disp_list+=GetDisplayAttrib(ml[i]);
         }
 
-        const Display *                 GetDefaultDisplay()
+        const Display *                 GetDefaultDisplay() override
         {
             if(!default_display)
                 default_display=GetDisplayAttrib(glfwGetPrimaryMonitor());

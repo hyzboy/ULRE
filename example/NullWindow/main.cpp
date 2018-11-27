@@ -1,38 +1,68 @@
-﻿#include<GLFW/glfw3.h>
+﻿#include<hgl/render/device/RenderDevice.h>
+#include<iostream>
+
+using namespace hgl;
+
+void put(const struct VideoMode *vm)
+{
+    std::cout<<"\t"<<vm->width<<"x"<<vm->height<<","<<vm->bit<<"bits,"<<vm->freq<<"hz";
+}
+
+void put(const struct Display *disp)
+{
+    std::cout<<"["<<disp->name.c_str()<<"]["<<disp->width<<"x"<<disp->height<<"]["<<disp->x<<","<<disp->y<<"]"<<std::endl;
+
+    std::cout<<"\tcurrent video mode: ";
+    put(disp->GetCurVideoMode());
+    std::cout<<std::endl;
+
+    const ObjectList<VideoMode> &vml=disp->GetVideoModeList();
+
+    for(int i=0;i<vml.GetCount();i++)
+    {
+        std::cout<<"\t"<<i<<" : ";
+        put(vml[i]);
+        std::cout<<std::endl;
+    }
+}
 
 int main(void)
 {
-    GLFWwindow* window;
+    RenderDevice *device=CreateRenderDeviceGLFW();
 
-    /* Initialize the library */
-    if (!glfwInit())
-        return -1;
-
-    /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
-
-    if (!window)
+    if(!device)
     {
-        glfwTerminate();
+        std::cerr<<"Create RenderDevice(GLFW) failed."<<std::endl;
         return -1;
     }
 
-    /* Make the window's context current */
-    glfwMakeContextCurrent(window);
-
-    /* Loop until the user closes the window */
-    while (!glfwWindowShouldClose(window))
+    if(!device->Init())
     {
-        /* Render here */
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        /* Swap front and back buffers */
-        glfwSwapBuffers(window);
-
-        /* Poll for and process events */
-        glfwPollEvents();
+        std::cerr<<"Init RenderDevice(GLFW) failed."<<std::endl;
+        return -2;
     }
 
-    glfwTerminate();
+    {
+        const UTF8String device_name=device->GetName();
+
+        std::cout<<"RenderDevice: "<<device_name.c_str()<<std::endl;
+    }
+
+    List<Display *> disp_list;
+
+    device->GetDisplayList(disp_list);
+
+    const int count=disp_list.GetCount();
+
+    std::cout<<"Device have "<<count<<" display."<<std::endl;
+
+    for(int i=0;i<count;i++)
+    {
+        std::cout<<"Display "<<i<<" ";
+        put(GetObject(disp_list,i));
+
+        std::cout<<std::endl;
+    }
+
     return 0;
 }
