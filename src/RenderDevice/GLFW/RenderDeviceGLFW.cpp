@@ -4,6 +4,8 @@
 
 namespace hgl
 {
+    RenderWindow *CreateRenderWindowGLFW(GLFWwindow *,bool is_fullscreen);
+
     namespace
     {
         static RenderDevice *render_device_glfw=nullptr;
@@ -169,7 +171,7 @@ namespace hgl
 
             if(!win)return(nullptr);
 
-            return(new WindowGLFW(win,false));
+            return(CreateRenderWindowGLFW(win,false));
         }
 
         RenderWindow *Create(const Display *disp,const VideoMode *vm,const RenderSetup *rs) override
@@ -189,7 +191,7 @@ namespace hgl
 
             if(!win)return(nullptr);
 
-            return(new WindowGLFW(win,true));
+            return(CreateRenderWindowGLFW(win,true));
         }
     };//class RenderDevice
 
