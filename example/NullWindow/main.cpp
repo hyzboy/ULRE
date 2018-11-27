@@ -27,7 +27,7 @@ int main(void)
 
     RenderSetup rs;
 
-    RenderWindow *win=device->Create(1280,720,&ws,&rs);
+    RenderWindow *win=device->CreateWindow(1280,720,&ws,&rs);
 
     win->Show();
 

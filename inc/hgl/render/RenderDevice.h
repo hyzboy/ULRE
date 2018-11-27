@@ -126,8 +126,8 @@ namespace hgl
 
     public:
 
-        virtual RenderWindow *Create(int,int,const WindowSetup *,const RenderSetup *)=0;            ///<创建一个窗口渲染设备
-        virtual RenderWindow *Create(const Display *,const VideoMode *,const RenderSetup *)=0;      ///<创建一个全屏渲染设备
+        virtual RenderWindow *CreateWindow(int,int,const WindowSetup *,const RenderSetup *)=0;            ///<创建一个窗口渲染设备
+        virtual RenderWindow *CreateFullscreen(const Display *,const VideoMode *,const RenderSetup *)=0;  ///<创建一个全屏渲染设备
     };//class RenderDevice
 
     RenderDevice *CreateRenderDeviceGLFW();     ///<创建一个基于GLFW的渲染设备
