@@ -2,7 +2,6 @@
 #define HGL_SMART_INCLUDE
 
 #include<hgl/TypeFunc.h>
-#include<hgl/Macro.h>
 #include<hgl/thread/Atomic.h>
 namespace hgl
 {

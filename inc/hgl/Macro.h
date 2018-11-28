@@ -1,4 +1,4 @@
-﻿#ifndef HGL_MACRO_INCLUDE
+#ifndef HGL_MACRO_INCLUDE
 #define HGL_MACRO_INCLUDE
 
 namespace hgl
@@ -50,7 +50,7 @@ namespace hgl
 													if(name[free_object_array_number])	\
 														delete name[free_object_array_number];	\
 												\
-												cm_free(name);	\
+												hgl_free(name);	\
 												name=nullptr;	\
 											}	\
 										}
@@ -62,7 +62,7 @@ namespace hgl
 
 	#define SAFE_FREE(name)				{	\
                                             if(name)	\
-                                                cm_free(name);	\
+                                                hgl_free(name);	\
                                         }
 
 	#define SAFE_RECREATE(name,code)	{	\

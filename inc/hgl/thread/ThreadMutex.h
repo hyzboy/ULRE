@@ -1,4 +1,4 @@
-#ifndef HGL_THREAD_MUTEX_INCLUDE
+﻿#ifndef HGL_THREAD_MUTEX_INCLUDE
 #define HGL_THREAD_MUTEX_INCLUDE
 
 #include<hgl/platform/Platform.h>
@@ -11,14 +11,14 @@ namespace hgl
 	*/
 	class ThreadMutex                                                                               ///排斥访问类(仅当前进程)
 	{
-		cm_thread_mutex ptr;
+		hgl_thread_mutex ptr;
 
 	public:
 
 		ThreadMutex();                                                                              ///<本类构造函数
 		virtual ~ThreadMutex();                                                                     ///<本类析构函数
 
-		cm_thread_mutex *GetThreadMutex(){return &ptr;}
+		hgl_thread_mutex *GetThreadMutex(){return &ptr;}
 
 		virtual void	Lock();																		///<取得的控制权(如果对象处于排斥状态，则等待)
 		virtual bool	TryLock();																	///<尝试取得控制权
