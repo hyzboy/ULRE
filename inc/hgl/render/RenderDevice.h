@@ -95,6 +95,7 @@ namespace hgl
         {
             bool debug=true;
 
+            bool core=true;
             bool es=false;
             bool egl=false;
 

@@ -86,16 +86,23 @@ namespace hgl
 
             if(gs->opengl.es)
             {
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,      gs->opengl.major);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,      gs->opengl.minor);
             }
-            else
+            else if(gs->opengl.core)
             {
                 glfwWindowHint(GLFW_OPENGL_PROFILE,         GLFW_OPENGL_CORE_PROFILE);        //核心模式
                 glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT,  true);                            //向前兼容模式(无旧特性)
+
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,      gs->opengl.major);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,      gs->opengl.minor);
+            }
+            else
+            {
+                //glfwWindowHint(GLFW_OPENGL_PROFILE,         GLFW_OPENGL_COMPAT_PROFILE);        //兼容模式
             }
 
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT,       gs->opengl.debug);                //调试模式
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,      gs->opengl.major);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,      gs->opengl.minor);
 
             glfwWindowHint(GLFW_VISIBLE,                    true);                            //是否显示
 
