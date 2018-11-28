@@ -2,6 +2,7 @@
 #define HGL_LIST_CPP
 
 #include<string.h>
+#include<hgl/LogInfo.h>
 //--------------------------------------------------------------------------------------------------
 // 代码中的部分memcpy可替换为memmove,但这样会引起CodeGuard/Valgrind之类的内存调试器报错
 //--------------------------------------------------------------------------------------------------
@@ -11,7 +12,10 @@ namespace hgl
 	bool List<T>::Get(int index,T &ti)const
 	{
 		if(!items||index<0||index>=count)
+		{
+            LOG_ERROR(OS_TEXT("List<>::Get(index=")+OSString(index)+OS_TEXT(") error,DataCount=")+OSString(count));
 			return(false);
+		}
 
 		memcpy(&ti,items+index,sizeof(T));
 		return(true);
@@ -48,14 +52,34 @@ namespace hgl
 	}
 
 	template<typename T>
-	bool List<T>::Set(int index,const T &val)
+	T &List<T>::operator[](int index)const															///<操作符重载取得指定索引处的数据
 	{
-        if(!items||index<0||index>=count)
-            return(false);
+		if(!items||index<0||index>=count)
+		{
+			static T *null_ptr=nullptr;
 
-        memcpy(items+index,&val,sizeof(T));//items[index]=val;
+            LOG_ERROR(OS_TEXT("List<>::operator(index=")+OSString(index)+OS_TEXT(") error,DataCount=")+OSString(count));
 
-        return(true);
+			return(*null_ptr);
+		}
+
+		return items[index];
+	}
+
+	template<typename T>
+	void List<T>::Set(int index,const T &val)
+	{
+		#ifdef _DEBUG
+			if(!items||index<0||index>=count)
+			{
+                LOG_ERROR(OS_TEXT("List<>::Set(index=")+OSString(index)+OS_TEXT(",T &) error,DataCount=")+OSString(count));
+			}
+			else
+				memcpy(items+index,&val,sizeof(T));//items[index]=val;
+		#else
+			if(index>=0&&index<count)
+				memcpy(items+index,&val,sizeof(T));//items[index]=val;
+		#endif//_DEBUG
 	}
 
 	/**
@@ -206,18 +230,18 @@ namespace hgl
 	template<typename T>
 	void List<T>::DeleteClear()
 	{
-		if(count<=0)
-            return;
+		if(count)
+		{
+			T *p=items;
 
-        T *p=items;
+			while(count--)
+			{
+				delete *p;
+				++p;
+			}
 
-        while(count--)
-        {
-            delete *p;
-            ++p;
-        }
-
-        count=0;
+			count=0;
+		}
 	}
 
 	/**
@@ -246,15 +270,17 @@ namespace hgl
 	template<typename T>
 	bool List<T>::Delete(int index)
 	{
-        if(!items||count<=0||index<0||index>=count)
-            return(false);
+		if(count>0&&index>=0&&index<count)
+		{
+			--count;
 
-        --count;
+			if(index<count)
+				memcpy(items+index,items+count,sizeof(T));		//将最后一个数据移到当前位置
 
-        if(index<count)
-            memcpy(items+index,items+count,sizeof(T));		//将最后一个数据移到当前位置
-
-        return(true);
+			return(true);
+		}
+		else
+			return(false);
 	}
 
 	/**
@@ -265,15 +291,17 @@ namespace hgl
 	template<typename T>
 	bool List<T>::DeleteMove(int index)
 	{
-        if(!items||count<=0||index<0||index>=count)
-            return(false);
+		if(count>0&&index>=0&&index<count)
+		{
+			--count;
 
-        --count;
+			if(index<count)
+				memmove(items+index,items+index+1,(count-index)*sizeof(T));
 
-        if(index<count)
-            memmove(items+index,items+index+1,(count-index)*sizeof(T));
-
-        return(true);
+			return(true);
+		}
+		else
+			return(false);
 	}
 
 	/**
@@ -314,13 +342,15 @@ namespace hgl
 	template<typename T>
 	bool List<T>::DeleteByValue(const T &dat)
 	{
-		const int index=Find(dat);
+		int index=Find(dat);
 
-		if(index==-1)
-            return(false);
-
-        Delete(index);
-        return(true);
+		if(index!=-1)
+		{
+			Delete(index);
+			return(true);
+		}
+		else
+			return(false);
 	}
 
 	/**

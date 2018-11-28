@@ -1,2 +1,3 @@
-﻿add_library(ULRE.RenderDriver STATIC GLCore/)
+﻿add_library(ULRE.RenderDriver STATIC    GLSL.cpp
+                                        Shader.cpp)
 

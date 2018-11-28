@@ -1,6 +1,7 @@
 ﻿#ifndef HGL_LIST_INCLUDE
 #define HGL_LIST_INCLUDE
 
+#include<hgl/LogInfo.h>
 #include<stdlib.h>
 #include<initializer_list>
 
@@ -63,12 +64,13 @@ namespace hgl
 
 		virtual void operator += (const T &obj){Add(obj);}											///<操作符重载添加一个数据
 		virtual void operator << (const T &obj){Add(obj);}											///<操作符重载添加一个数据
-		virtual void operator -= (const T &obj){DeleteByValue(obj);}								///<操作符重载删除一个数据
+		virtual void operator -= (const T &obj){DeleteByValue(obj);}									///<操作符重载删除一个数据
 
 				bool Get(int,T &)const;																///<取得指定索引处的数据
-				bool Set(int,const T &);															///<设置指定索引处的数据
+				void Set(int,const T &);															///<设置指定索引处的数据
 				bool Rand(T &)const;																///<随机取得一个数据
 
+		virtual T &operator[](int n)const;															///<操作符重载取得指定索引处的数据
 		virtual bool Begin(T &)const;																///<取第一个数据
 		virtual bool End(T &)const;																	///<取最后一个数据
 
