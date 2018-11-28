@@ -1,6 +1,7 @@
 ﻿#include<hgl/render/RenderDevice.h>
 #include<hgl/render/RenderWindow.h>
 #include<iostream>
+#include<string.h>
 #include<GLFW/glfw3.h>
 #include<GL/glext.h>
 
@@ -33,7 +34,7 @@ void output_ogl_info()
         std::cout<<"            "<<i<<" : "<<glGetStringi(GL_EXTENSIONS,i)<<std::endl;
 }
 
-int main(void)
+int main(int argc,char **argv)
 {
     RenderDevice *device=CreateRenderDeviceGLFW();
 
@@ -54,6 +55,16 @@ int main(void)
     ws.Name=U8_TEXT("Draw Triangle");
 
     RenderSetup rs;
+
+    if(argc>1)
+    {
+        if(stricmp(argv[1],"core")==0)
+            rs.opengl.core=true;
+        else
+            rs.opengl.core=false;
+    }
+    else
+        rs.opengl.core=false;
 
     RenderWindow *win=device->CreateWindow(1280,720,&ws,&rs);
 
