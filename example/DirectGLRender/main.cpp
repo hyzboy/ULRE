@@ -1,17 +1,24 @@
 ﻿#include<hgl/render/RenderDevice.h>
 #include<hgl/render/RenderWindow.h>
 #include<iostream>
-#include<GLFW/glfw3.h>
-#include<GL/glext.h>
+#include<GLEWCore/glew.h>
 
 using namespace hgl;
 
+constexpr GLfloat clear_color[4]=
+{
+    77.f/255.f,
+    78.f/255.f,
+    83.f/255.f,
+    1.f
+};
 
+constexpr GLfloat clear_depth=1.0f;
 
 void draw()
 {
-    glClearColor(0,0,0,1);          //设置清屏颜色
-    glClear(GL_COLOR_BUFFER_BIT);   //清屏
+    glClearBufferfv(GL_COLOR,0,clear_color);
+    glClearBufferfv(GL_DEPTH,0,&clear_depth);
 }
 
 int main(void)
@@ -32,7 +39,7 @@ int main(void)
 
     WindowSetup ws;
 
-    ws.Name=U8_TEXT("Direct OpenGL Render");
+    ws.Name=U8_TEXT("Direct use \"OpenGL Core API\" Render");
 
     RenderSetup rs;
 

@@ -2,8 +2,7 @@
 #include<hgl/render/RenderWindow.h>
 #include<iostream>
 #include<string.h>
-#include<GLFW/glfw3.h>
-#include<GL/glcorearb.h>
+#include<GLEWCore/glew.h>
 
 using namespace hgl;
 
@@ -18,8 +17,6 @@ void output_ogl_info()
     std::cout<<"Vendor:     "<<glGetString(GL_VENDOR)<<std::endl;
     std::cout<<"Renderer:   "<<glGetString(GL_RENDERER)<<std::endl;
     std::cout<<"Version:    "<<glGetString(GL_VERSION)<<std::endl;
-
-    PFNGLGETSTRINGIPROC glGetStringi = (PFNGLGETSTRINGIPROC)glfwGetProcAddress("glGetStringi");
 
     if(!glGetStringi)
         return;
@@ -77,5 +74,3 @@ int main(int argc,char **argv)
 
     return 0;
 }
-
-

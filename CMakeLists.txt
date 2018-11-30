@@ -15,14 +15,17 @@ set_compiler_param()
 set_output_directory()
 
 include_directories(3rdpty/MathGeoLib/src)
+include_directories(3rdpty/GLEWCore/inc)
 include_directories(inc)
 
 add_subdirectory(3rdpty/MathGeoLib)
+add_subdirectory(3rdpty/GLEWCore)
 add_subdirectory(src)
 
 SET(ULRE    ULRE.RenderDevice
             ULRE.RenderDriver
             MathGeoLib
+            GLEWCore
             glfw
             GL)
 
