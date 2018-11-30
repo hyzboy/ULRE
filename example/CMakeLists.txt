@@ -1,4 +1,5 @@
 ﻿add_subdirectory(EnumRenderDevice)
 add_subdirectory(OutputGLInfo)
 add_subdirectory(NullWindow)
-add_subdirectory(DrawTriangle)
+add_subdirectory(DirectGLRender)
+# add_subdirectory(DrawTriangle)
