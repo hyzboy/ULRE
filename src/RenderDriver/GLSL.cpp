@@ -1,7 +1,8 @@
 ﻿#include<hgl/render/Shader.h>
-#include<hgl/LogInfo.h>
+//#include<hgl/LogInfo.h>
 #include<hgl/type/Smart.h>
 #include<malloc.h>
+#include<GL/glext.h>
 
 namespace hgl
 {
@@ -62,7 +63,7 @@ namespace hgl
 
             glGetShaderInfoLog(shader,log_length,&char_writen,log);
 
-            LOG_HINT(UTF8String(name)+U8_TEXT(" shader compile error\n\n")+ UTF8String(log));
+//            LOG_HINT(UTF8String(name)+U8_TEXT(" shader compile error\n\n")+ UTF8String(log));
 
             delete[] log;
 
@@ -145,7 +146,7 @@ namespace hgl
 
         glGetProgramInfoLog(program,log_length,&char_written,log);
 
-        LOG_ERROR(u8"Shader program link error\n\n"+UTF8String(log));
+//        LOG_ERROR(u8"Shader program link error\n\n"+UTF8String(log));
 
         delete[] log;
 
@@ -172,7 +173,7 @@ namespace hgl
     {
         if(!program)
         {
-            LOG_ERROR(u8"GetAttribLocation("+UTF8String(name)+u8"),program=0");
+//            LOG_ERROR(u8"GetAttribLocation("+UTF8String(name)+u8"),program=0");
             return(-1);
         }
 
@@ -209,7 +210,7 @@ namespace hgl
     {
         if(!program)
         {
-            LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program=0");
+//            LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program=0");
             return(-1);
         }
 
@@ -219,7 +220,7 @@ namespace hgl
         {
             const int gl_error=glGetError();
 
-            LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program="+UTF8String(program)+u8",result=-1,gl_error="+UTF8String(gl_error));
+//             LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program="+UTF8String(program)+u8",result=-1,gl_error="+UTF8String(gl_error));
         }
 
         return(result);
@@ -227,13 +228,13 @@ namespace hgl
 
     #define HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(func)    if(!program)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");    */\
                                                             return(false);    \
                                                         }    \
                                                         \
                                                         if(location<0)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));*/    \
                                                             return(false);    \
                                                         }
 
@@ -278,19 +279,19 @@ namespace hgl
                                                     {    \
                                                         if(!program)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");*/    \
                                                             return(false);    \
                                                         }    \
                                                     \
                                                         if(location<0)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));*/    \
                                                             return(false);    \
                                                         }    \
                                                     \
                                                         if(!value)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniform" #func ",value=nullptr");    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniform" #func ",value=nullptr");*/    \
                                                             return(false);    \
                                                         }    \
                                                     \
@@ -319,19 +320,19 @@ namespace hgl
                                                     {    \
                                                         if(!program)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",program=0");    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",program=0");   */ \
                                                             return(false);    \
                                                         }    \
                                                     \
                                                         if(location<0)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",location="+UTF8String(location));    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",location="+UTF8String(location));   */ \
                                                             return(false);    \
                                                         }    \
                                                     \
                                                         if(!mat)    \
                                                         {    \
-                                                            LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",mat=nullptr");    \
+                                                            /*LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",mat=nullptr");  */  \
                                                             return(false);    \
                                                         }    \
                                                     \
@@ -352,41 +353,41 @@ namespace hgl
 
     #undef HGL_GLSL_SetUniformMatrixPointer
 
-    int Shader::_GetUniformBlockIndex(const char *uniform_block_name)
-    {
-        if(!program)
-        {
-            LOG_ERROR(u8"Shader::_GetUniformBlockIndex("+UTF8String(uniform_block_name)+") program=0");
-            return(-1);
-        }
-
-        const int index=glGetUniformBlockIndex(program,uniform_block_name);
-
-        if(index<0)
-        {
-            LOG_ERROR(u8"Shader::_GetUniformBlockIndex("+UTF8String(uniform_block_name)+") block_index error");
-            return(-1);
-        }
-
-        return index;
-    }
-
-    int Shader::_GetShaderStorageIndex(const char *ssbo_name)
-    {
-        if(!program)
-        {
-            LOG_ERROR(u8"Shader::_GetShaderStorageIndex("+UTF8String(ssbo_name)+") program=0");
-            return(-1);
-        }
-
-        const int index=glGetProgramResourceIndex(program,GL_SHADER_STORAGE_BLOCK,ssbo_name);
-
-        if(index<0)
-        {
-            LOG_ERROR(u8"Shader::_GetShaderStorageIndex("+UTF8String(ssbo_name)+") block_index error");
-            return(-1);
-        }
-
-        return index;
-    }
+//     int Shader::_GetUniformBlockIndex(const char *uniform_block_name)
+//     {
+//         if(!program)
+//         {
+// //             LOG_ERROR(u8"Shader::_GetUniformBlockIndex("+UTF8String(uniform_block_name)+") program=0");
+//             return(-1);
+//         }
+//
+//         const int index=glGetUniformBlockIndex(program,uniform_block_name);
+//
+//         if(index<0)
+//         {
+// //             LOG_ERROR(u8"Shader::_GetUniformBlockIndex("+UTF8String(uniform_block_name)+") block_index error");
+//             return(-1);
+//         }
+//
+//         return index;
+//     }
+//
+//     int Shader::_GetShaderStorageIndex(const char *ssbo_name)
+//     {
+//         if(!program)
+//         {
+// //             LOG_ERROR(u8"Shader::_GetShaderStorageIndex("+UTF8String(ssbo_name)+") program=0");
+//             return(-1);
+//         }
+//
+//         const int index=glGetProgramResourceIndex(program,GL_SHADER_STORAGE_BLOCK,ssbo_name);
+//
+//         if(index<0)
+//         {
+// //             LOG_ERROR(u8"Shader::_GetShaderStorageIndex("+UTF8String(ssbo_name)+") block_index error");
+//             return(-1);
+//         }
+//
+//         return index;
+//     }
 }//namespace hgl

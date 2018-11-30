@@ -47,49 +47,49 @@ namespace hgl
         return result;
     }
 
-    /**
-    * 取得一个Shader只读数据区索引
-    * @param name 数据区名称
-    * @return 数据区索引
-    * @return -1 出错
-    */
-    int Shader::GetUniformBlockIndex(const char *name)
-    {
-        if(!name||!(*name))return(-1);
-
-        int result;
-
-        if(!uniform_block_index.Get(name,result))
-        {
-            result=_GetUniformBlockIndex(name);
-
-            uniform_block_index.Add(name,result);
-        }
-
-        return result;
-    }
-
-    /**
-    * 取得一个Shader数据存储区索引
-    * @param name 数据存储区名称
-    * @return 数据存储区索引
-    * @return -1 出错
-    */
-    int Shader::GetShaderStorageIndex(const char *name)
-    {
-        if(!name||!(*name))return(-1);
-
-        int result;
-
-        if(!ssbo_index.Get(name,result))
-        {
-            result=_GetShaderStorageIndex(name);
-
-            ssbo_index.Add(name,result);
-        }
-
-        return result;
-    }
+//     /**
+//     * 取得一个Shader只读数据区索引
+//     * @param name 数据区名称
+//     * @return 数据区索引
+//     * @return -1 出错
+//     */
+//     int Shader::GetUniformBlockIndex(const char *name)
+//     {
+//         if(!name||!(*name))return(-1);
+//
+//         int result;
+//
+//         if(!uniform_block_index.Get(name,result))
+//         {
+//             result=_GetUniformBlockIndex(name);
+//
+//             uniform_block_index.Add(name,result);
+//         }
+//
+//         return result;
+//     }
+//
+//     /**
+//     * 取得一个Shader数据存储区索引
+//     * @param name 数据存储区名称
+//     * @return 数据存储区索引
+//     * @return -1 出错
+//     */
+//     int Shader::GetShaderStorageIndex(const char *name)
+//     {
+//         if(!name||!(*name))return(-1);
+//
+//         int result;
+//
+//         if(!ssbo_index.Get(name,result))
+//         {
+//             result=_GetShaderStorageIndex(name);
+//
+//             ssbo_index.Add(name,result);
+//         }
+//
+//         return result;
+//     }
 
     #define HGL_GLSL_SetUniform1234(func,type)    bool Shader::SetUniform1##func(const char *uniform_name,type v0)    \
                                                 {    \

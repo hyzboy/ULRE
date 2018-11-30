@@ -1,7 +1,6 @@
 ﻿#ifndef HGL_LIST_INCLUDE
 #define HGL_LIST_INCLUDE
 
-#include<hgl/LogInfo.h>
 #include<stdlib.h>
 #include<initializer_list>
 
