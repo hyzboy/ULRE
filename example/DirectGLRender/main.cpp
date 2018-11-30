@@ -1,8 +1,8 @@
-﻿#include<hgl/render/RenderDevice.h>
-#include<hgl/render/RenderWindow.h>
+﻿#include<hgl/graph/RenderDevice.h>
+#include<hgl/graph/RenderWindow.h>
 #include<iostream>
 #include<GLEWCore/glew.h>
-#include<hgl/render/Shader.h>
+#include<hgl/graph/Shader.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
@@ -17,7 +17,6 @@ void InitMatrix()
     ortho_2d_matrix=ortho2d(screen_width,screen_height,     //2D画面宽高
                             false);                         //Y轴使用底为0顶为1
 }
-
 
 constexpr char vertex_shader[]=R"(
 #version 330 core
