@@ -18,7 +18,12 @@ include_directories(3rdpty/MathGeoLib/src)
 include_directories(inc)
 
 add_subdirectory(3rdpty/MathGeoLib)
-
 add_subdirectory(src)
+
+SET(ULRE    ULRE.RenderDevice
+            ULRE.RenderDriver
+            MathGeoLib
+            glfw
+            GL)
 
 add_subdirectory(example)

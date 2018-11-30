@@ -8,7 +8,6 @@ namespace hgl
 
         void SetCurStatus(const RenderStatus &rs) override
         {
-            if(rs.color
         }
 
         void ClearColorBuffer() override

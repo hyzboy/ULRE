@@ -2,7 +2,7 @@
 #include<hgl/render/RenderWindow.h>
 #include<iostream>
 #include<GLFW/glfw3.h>
-#include<GL/glext.h>
+#include<GL/glcorearb.h>
 
 using namespace hgl;
 

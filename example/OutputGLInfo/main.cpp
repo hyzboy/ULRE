@@ -3,7 +3,7 @@
 #include<iostream>
 #include<string.h>
 #include<GLFW/glfw3.h>
-#include<GL/glext.h>
+#include<GL/glcorearb.h>
 
 using namespace hgl;
 
