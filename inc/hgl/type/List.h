@@ -3,6 +3,7 @@
 
 #include<stdlib.h>
 #include<initializer_list>
+#include<hgl/type/DataType.h>
 
 namespace hgl
 {
