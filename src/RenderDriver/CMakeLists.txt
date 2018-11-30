@@ -3,5 +3,6 @@
                                         Shader.cpp
                                         VertexArray.cpp
                                         VertexBuffer.cpp
-                                        VertexBufferControlDSA.cpp)
+                                        VertexBufferControlDSA.cpp
+                                        VertexBufferControlBind.cpp)
 
