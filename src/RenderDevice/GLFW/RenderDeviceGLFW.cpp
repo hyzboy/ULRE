@@ -178,7 +178,7 @@ namespace hgl
 
     public:
 
-        RenderWindow *CreateWindow(int width,int height,const WindowSetup *ws,const RenderSetup *rs) override
+        RenderWindow *Create(int width,int height,const WindowSetup *ws,const RenderSetup *rs) override
         {
             SetGLFWWindowHint(rs);
 
@@ -199,7 +199,7 @@ namespace hgl
             return(CreateRenderWindowGLFW(win,false));
         }
 
-        RenderWindow *CreateFullscreen(const Display *disp,const VideoMode *vm,const RenderSetup *rs) override
+        RenderWindow *Create(const Display *disp,const VideoMode *vm,const RenderSetup *rs) override
         {
             SetGLFWWindowHint(rs);
 

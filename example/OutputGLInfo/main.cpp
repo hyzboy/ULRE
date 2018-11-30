@@ -63,7 +63,7 @@ int main(int argc,char **argv)
     else
         rs.opengl.core=false;
 
-    RenderWindow *win=device->CreateWindow(1280,720,&ws,&rs);
+    RenderWindow *win=device->Create(1280,720,&ws,&rs);
 
     win->MakeToCurrent();           //切换当前窗口到前台
 

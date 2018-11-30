@@ -12,7 +12,7 @@ namespace hgl
     {
     protected:
 
-        OSString caption;
+        UTF8String caption;
         bool full_screen;
 
         int width,height;
@@ -34,8 +34,8 @@ namespace hgl
         virtual void Show()=0;																		///<显示窗口
         virtual void Hide()=0;																		///<隐藏窗口
 
-        virtual const OSString &GetCaption()const{return caption;}
-        virtual void SetCaption(const OSString &)=0;
+        virtual const UTF8String &GetCaption()const{return caption;}
+        virtual void SetCaption(const UTF8String &)=0;
 
     public:	//被实际操作系统接口层所调用的函数，在不了解的情况下请不要使用
 

@@ -111,7 +111,7 @@ int main(void)
 
     RenderSetup rs;
 
-    RenderWindow *win=device->CreateWindow(screen_width,screen_height,&ws,&rs);
+    RenderWindow *win=device->Create(screen_width,screen_height,&ws,&rs);
 
     win->MakeToCurrent();               //切换当前窗口到前台
 
