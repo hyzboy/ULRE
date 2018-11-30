@@ -6,6 +6,7 @@
 #include<hgl/math/Math.h>
 
 using namespace hgl;
+using namespace hgl::graph;
 
 constexpr uint screen_width=1280;
 constexpr uint screen_height=720;
