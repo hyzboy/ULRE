@@ -1,4 +1,4 @@
-#include"VertexBufferControl.h"
+﻿#include"VertexBufferControl.h"
 #include<GLEWCore/glew.h>
 
 namespace hgl

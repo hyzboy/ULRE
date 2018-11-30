@@ -33,6 +33,38 @@ namespace hgl
             return(index);
         }
 
+        bool VertexArray::SetElementBuffer(VertexBufferBase *vb)
+        {
+            if(!vb)return(false);
+            element_buffer=vb;
+            return(true);
+        }
+
+        bool VertexArray::SetVertexBuffer(VertexBufferBase *vb)
+        {
+            if(!vb)return(false);
+
+            if(!AddVertexAttribBuffer(vb)<0)
+                return(false);
+
+            vertex_compoment=vb->GetComponent();
+            vertex_buffer=vb;
+            return(true);
+        }
+
+        bool VertexArray::SetColorBuffer(VertexBufferBase *vb,PixelCompoment cf)
+        {
+            if(!vb)return(false);
+            if(cf<=HGL_PC_NONE||cf>=HGL_PC_END)return(false);
+
+            if(AddVertexAttribBuffer(vb)<0)
+                return(false);
+
+            color_compoment=cf;
+            color_buffer=vb;
+            return(true);
+        }
+
         /**
         * 取得可绘制数据数量
         * @return 可绘制数量数量
