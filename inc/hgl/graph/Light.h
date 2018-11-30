@@ -16,7 +16,6 @@ namespace hgl
             lmEnd
         };//enum LightMode
 
-
         /**
          * 光源类型
          */

@@ -45,6 +45,15 @@ namespace hgl
 //
 //             Axis		up_axis;																    ///<高度图向上轴
 
+//             struct
+//             {
+//                 Color4f		Emission;																///<散射光
+//                 Color4f		Ambient;																///<环境光
+//                 Color4f		Diffuse;																///<漫反射
+//                 Color4f		Specular;																///<镜面光
+//                 float		Shininess;																///<镜面指数
+//             }front,back;
+
         public:
         };//class Material
     }//namespace graph
