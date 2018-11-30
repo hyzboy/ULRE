@@ -3,7 +3,7 @@
 
 #include<hgl/type/BaseString.h>
 #include<hgl/type/Map.h>
-#include<hgl/algorithm/Math.h>
+#include<hgl/math/Math.h>
 // #include<hgl/graph/UBO.h>
 // #include<hgl/graph/SSBO.h>
 namespace hgl

@@ -2,7 +2,7 @@
 //#include<hgl/LogInfo.h>
 #include<hgl/type/Smart.h>
 #include<malloc.h>
-#include<GL/glext.h>
+#include<GLEWCore/glew.h>
 
 namespace hgl
 {
@@ -67,7 +67,7 @@ namespace hgl
 
             delete[] log;
 
-            LOG_ERROR(shader_source);
+            //LOG_ERROR(shader_source);
 
             glDeleteShader(shader);
 
@@ -105,7 +105,7 @@ namespace hgl
         if(!shader_codes
             ||!(*shader_codes))return(false);
 
-        shader_index[shader_type]=CompileShader(OpenGLShaderType[shader_type],ShaderName[shader_type],shader_codes);
+        shader_index[shader_type]=CompileShader(OpenGLShaderType[shader_type],ShaderTypeName[shader_type],shader_codes);
 
         if(!shader_index[shader_type])
             return(false);
