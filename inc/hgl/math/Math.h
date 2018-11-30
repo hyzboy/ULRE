@@ -1,4 +1,4 @@
-#ifndef HGL_ALGORITHM_VECTOR_MATH_INCLUDE
+﻿#ifndef HGL_ALGORITHM_VECTOR_MATH_INCLUDE
 #define HGL_ALGORITHM_VECTOR_MATH_INCLUDE
 
 #include<hgl/type/DataType.h>
@@ -6,11 +6,11 @@
 //注：GLM/CML(OpenGLMode)是列矩阵,计算坐标matrix*pos
 //   而MGL是行矩阵，需要反过来pos*matrix
 
-#include<hgl/algorithm/MathMGL.h>        // Game Math and Geometry Library
+#include<hgl/math/MathMGL.h>        // Game Math and Geometry Library
 
 namespace hgl
 {
-    namespace algorithm
+    namespace math
     {
         double Lsin(int angle);                                     ///<低精度sin计算,注意传入的参数为角度而非弧度
         double Lcos(int angle);                                     ///<低精度cos计算,注意传入的参数为角度而非弧度
@@ -150,6 +150,6 @@ namespace hgl
             result.x = center.x + ((source.x - center.x)*ac - (source.y - center.y)*as);
             result.y = center.y + ((source.x - center.x)*as + (source.y - center.y)*ac);
         }
-    }//namespace algorithm
+    }//namespace math
 }//namespace hgl
 #endif//HGL_ALGORITHM_VECTOR_MATH_INCLUDE

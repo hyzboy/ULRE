@@ -1,4 +1,4 @@
-#ifndef HGL_ALGORITHM_VECTOR_MATH_MGL_INCLUDE
+﻿#ifndef HGL_ALGORITHM_VECTOR_MATH_MGL_INCLUDE
 #define HGL_ALGORITHM_VECTOR_MATH_MGL_INCLUDE
 
 #ifdef _MSC_VER
@@ -119,11 +119,21 @@ namespace hgl
         return m.Inverted();
     }
 
-    inline Matrix4f ortho2d(float width,float height,float znear=0,float zfar=1)
+    /**
+     * 生成一个2D正角视图矩阵
+     * @param width 宽
+     * @param height 高
+     * @param top_to_bottom 从上到下(是否最顶部y轴为0，默认否)
+     * @param znear 近平面z值
+     * @param zfar 远平台z值
+     */
+    inline Matrix4f ortho2d(float width,float height,bool top_to_bottom=false,float znear=0,float zfar=1)
     {
         //MathGeoLib生成的2D正交矩阵中心是0,0，所以需要偏移
 
-        return Matrix4f::OpenGLOrthoProjRH(znear,zfar,width,height)*Matrix4f::Scale(1,-1,1)*Matrix4f::Translate(-(width/2.0f),-(height/2.0f),0);
+        return Matrix4f::OpenGLOrthoProjRH(znear,zfar,width,height)
+              *Matrix4f::Scale(1,top_to_bottom?-1:1,1)
+              *Matrix4f::Translate(-(width/2.0f),-(height/2.0f),0);
     }
 
     inline Matrix4f translate(const Vector3f &v)

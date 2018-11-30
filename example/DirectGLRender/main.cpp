@@ -2,8 +2,76 @@
 #include<hgl/render/RenderWindow.h>
 #include<iostream>
 #include<GLEWCore/glew.h>
+#include<hgl/render/Shader.h>
+#include<hgl/math/Math.h>
 
 using namespace hgl;
+
+constexpr uint screen_width=1280;
+constexpr uint screen_height=720;
+
+Matrix4f ortho_2d_matrix;
+
+void InitMatrix()
+{
+    ortho_2d_matrix=ortho2d(screen_width,screen_height,     //2D画面宽高
+                            false);                         //Y轴使用底为0顶为1
+}
+
+
+constexpr char vertex_shader[]=R"(
+#version 330 core
+
+uniform mat4 ModelViewProjectionMatrix;
+
+in vec2 Vertex;
+in vec3 Color;
+
+out vec4 FragmentColor;
+
+void main()
+{
+    vec4 Position;
+
+    FragmentColor=vec4(Color,1.0);
+
+    Position=vec4(Vertex,0.0,1.0);
+
+    gl_Position=Position*ModelViewProjectionMatrix;
+})";
+
+constexpr char fragment_shader[]=R"(
+#version 330 core
+
+in vec4 FragmentColor;
+out vec4 FragColor;
+
+void main()
+{
+    FragColor=vec4(FragmentColor.rgb,1);
+})";
+
+Shader shader;
+
+bool InitShader()
+{
+    if(!shader.AddVertexShader(vertex_shader))
+        return(false);
+
+    if(!shader.AddFragmentShader(fragment_shader))
+        return(false);
+
+    if(!shader.Build())
+        return(false);
+
+    if(!shader.Use())
+        return(false);
+
+    if(!shader.SetUniformMatrix4fv("ModelViewProjectionMatrix",ortho_2d_matrix))
+        return(false);
+
+    return(true);
+}
 
 constexpr GLfloat clear_color[4]=
 {
@@ -43,9 +111,17 @@ int main(void)
 
     RenderSetup rs;
 
-    RenderWindow *win=device->CreateWindow(1280,720,&ws,&rs);
+    RenderWindow *win=device->CreateWindow(screen_width,screen_height,&ws,&rs);
 
-    win->MakeToCurrent();           //切换当前窗口到前台
+    win->MakeToCurrent();               //切换当前窗口到前台
+
+    InitMatrix();
+    if(!InitShader())
+    {
+        std::cerr<<"init shader failed."<<std::endl;
+        return -3;
+    }
+
     win->Show();
 
     while(win->IsOpen())
