@@ -1,0 +1,8 @@
+﻿IF(WIN32)
+    SET(CODEPAGE_SOURCE Win/CodePage.cpp)
+ELSE()
+    SET(CODEPAGE_SOURCE UNIX/CodePage.cpp)
+ENDIF()
+
+add_library(ULRE.Platform STATIC ${CODEPAGE_SOURCE})
+

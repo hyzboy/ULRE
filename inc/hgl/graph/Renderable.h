@@ -2,6 +2,7 @@
 #define HGL_GRAPH_RENDERABLE_INCLUDE
 
 #include<hgl/graph/Shader.h>
+
 namespace hgl
 {
     namespace graph

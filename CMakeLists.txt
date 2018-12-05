@@ -17,7 +17,7 @@ set_output_directory()
 IF(WIN32)
 	add_subdirectory(3rdpty/glfw)
 	include_directories(3rdpty/glfw/include)
-	
+
 	SET(OPENGL_LIB	opengl32)
 ELSE()
 	SET(OPENGL_LIB	GL)
@@ -31,8 +31,10 @@ add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/GLEWCore)
 add_subdirectory(src)
 
-SET(ULRE    ULRE.RenderDevice
+SET(ULRE    ULRE.Base
+            ULRE.RenderDevice
             ULRE.RenderDriver
+            ULRE.Platform
             MathGeoLib
             GLEWCore
             glfw
