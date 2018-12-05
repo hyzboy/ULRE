@@ -4,6 +4,7 @@
 #include<GLEWCore/glew.h>
 #include<hgl/graph/Shader.h>
 #include<hgl/math/Math.h>
+#include<hgl/graph/VertexArray.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -16,11 +17,7 @@ Matrix4f ortho_2d_matrix;
 void InitMatrix()
 {
     ortho_2d_matrix=ortho2d(screen_width,screen_height,     //2D画面宽高
-                            false);                         //Y轴使用底为0顶为1
-}
-
-void InitVertex()
-{
+                            true);                          //使用top为0,bottom为height的方式
 }
 
 constexpr char vertex_shader[]=R"(
@@ -77,6 +74,29 @@ bool InitShader()
     return(true);
 }
 
+VB2i *vb_vertex=nullptr;
+VB3f *vb_color=nullptr;
+VertexArray *va=nullptr;
+
+constexpr int vertex_data[]={100,100,   200,100,    200,200 };
+constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
+
+void InitVertexBuffer()
+{
+    vb_vertex=new VB2i(4,vertex_data);
+    vb_color=new VB3f(4,color_data);
+
+    va=new VertexArray(GL_TRIANGLES,        //画三角形
+                       2);                  //两个属性
+
+    const int vertex_location=shader.GetAttribLocation("Vertex");               ///<取得顶点流数据输入流对应的shader地址
+    const int color_localtion=shader.GetAttribLocation("Color");                ///<取得颜色流数据输入流对应的shader地址
+
+    int binding_index=0;                    //绑定点
+
+    glVertexArrayAttribBinding(va->Get
+}
+
 constexpr GLfloat clear_color[4]=
 {
     77.f/255.f,
@@ -120,12 +140,13 @@ int main(void)
     win->MakeToCurrent();               //切换当前窗口到前台
 
     InitMatrix();
-    InitVertex();
     if(!InitShader())
     {
         std::cerr<<"init shader failed."<<std::endl;
         return -3;
     }
+
+    InitVertexBuffer();
 
     win->Show();
 

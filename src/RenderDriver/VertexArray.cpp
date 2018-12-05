@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/VertexArray.h>
+#include<GLEWCore/glew.h>
 
 namespace hgl
 {
@@ -14,6 +15,15 @@ namespace hgl
             color_compoment=HGL_PC_NONE;
 
             element_buffer=nullptr;
+
+            glCreateVertexArrays(1,&vao);
+            shader_location=new int[max_vertex_attrib];
+        }
+
+        VertexArray::~VertexArray()
+        {
+            delete[] shader_location;
+            glDeleteVertexArrays(1,&vao);
         }
 
         /**
