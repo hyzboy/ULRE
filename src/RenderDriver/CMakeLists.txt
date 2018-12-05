@@ -4,5 +4,6 @@
                                         VertexArray.cpp
                                         VertexBuffer.cpp
                                         VertexBufferControlDSA.cpp
-                                        VertexBufferControlBind.cpp)
+                                        VertexBufferControlBind.cpp
+                                        OpenGLDebug.cpp)
 

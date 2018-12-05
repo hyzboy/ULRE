@@ -19,6 +19,10 @@ void InitMatrix()
                             false);                         //Y轴使用底为0顶为1
 }
 
+void InitVertex()
+{
+}
+
 constexpr char vertex_shader[]=R"(
 #version 330 core
 
@@ -116,6 +120,7 @@ int main(void)
     win->MakeToCurrent();               //切换当前窗口到前台
 
     InitMatrix();
+    InitVertex();
     if(!InitShader())
     {
         std::cerr<<"init shader failed."<<std::endl;

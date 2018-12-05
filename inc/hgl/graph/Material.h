@@ -5,6 +5,7 @@
 #include<hgl/graph/Shader.h>
 #include<hgl/graph/Axis.h>
 #include<hgl/graph/BlendMode.h>
+
 namespace hgl
 {
     namespace graph
