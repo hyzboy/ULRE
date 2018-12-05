@@ -15,9 +15,13 @@ namespace hgl
         {
         protected:
 
+            int vao;
+
             uint primitive;                                                                                             ///<绘制的图元类型
 
             ObjectList<VertexBufferBase> vertex_buffer_list;                                                            ///<顶点数据缓冲区
+
+            int *shader_location;
 
             int vertex_compoment;                                                                                       ///<顶点属性格式
             PixelCompoment color_compoment;                                                                             ///<颜色属性格式
@@ -34,7 +38,7 @@ namespace hgl
         public:
 
             VertexArray(uint prim,uint max_vertex_attrib);
-            ~VertexArray()=default;
+            ~VertexArray();
 
             uint                GetPrimitive        ()const{return primitive;}                                          ///<取得要绘制的图元类型
 
