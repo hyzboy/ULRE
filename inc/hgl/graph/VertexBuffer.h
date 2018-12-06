@@ -15,8 +15,8 @@ namespace hgl
         class VertexBufferControl;
 
         /**
-        * 顶点属性数据实际模板
-        */
+         * 顶点属性数据实际模板
+         */
         template<typename T,int C> class VertexBuffer:public VertexBufferBase
         {
         protected:
@@ -61,15 +61,15 @@ namespace hgl
             }
 
             /**
-            * 取得数据区地址
-            * @param offset 从第几个数据开始访问
-            * @return 访问地址
-            */
+             * 取得数据区地址
+             * @param offset 从第几个数据开始访问
+             * @return 访问地址
+             */
             T *Get(int offset=0)
             {
                 if(!mem_type||offset>=count)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer::Get() out,offset:")+OSString(offset));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer::Get() out,offset:")+OSString(offset));
                     return(nullptr);
                 }
 
@@ -77,15 +77,15 @@ namespace hgl
             }
 
             /**
-            * 开始访问数据区
-            * @param offset 从第几个数据开始访问
-            * @return 访问地址
-            */
+             * 开始访问数据区
+             * @param offset 从第几个数据开始访问
+             * @return 访问地址
+             */
             void *Begin(int offset=0)
             {
                 if(access)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer::Begin() access!=0,offset:")+OSString(offset));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer::Begin() access!=0,offset:")+OSString(offset));
                     return(nullptr);
                 }
 
@@ -98,8 +98,8 @@ namespace hgl
             }
 
             /**
-            * 结束访问
-            */
+             * 结束访问
+             */
             void End()
             {
                 ChangeVertexBuffer(	((char *)start )-((char *)mem_type),
@@ -111,15 +111,15 @@ namespace hgl
             }
 
             /**
-            * 写入指定数量的数据
-            * @param vp 数据指针
-            * @param number 数据数量
-            */
+             * 写入指定数量的数据
+             * @param vp 数据指针
+             * @param number 数据数量
+             */
             bool WriteData(const T *vp,const int number)
             {
                 if(!this->access||this->access+C*number>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer::Write(const T *,number) out,number:")+OSString(number));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer::Write(const T *,number) out,number:")+OSString(number));
                     return(false);
                 }
 
@@ -132,8 +132,8 @@ namespace hgl
         };//class VertexBuffer
 
         /**
-        * 一元数据缓冲区
-        */
+         * 一元数据缓冲区
+         */
         template<typename T> class VertexBuffer1:public VertexBuffer<T,1>
         {
         public:
@@ -147,7 +147,7 @@ namespace hgl
             {
                 if(!this->access||this->access+1>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T) out"));
                     return(false);
                 }
 
@@ -164,7 +164,7 @@ namespace hgl
             {
                 if(!this->access||this->access+count>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T,")+OSString(count)+OS_TEXT(") out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T,")+OSString(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -175,8 +175,8 @@ namespace hgl
         };//class VertexBuffer1
 
         /**
-        * 二元数据缓冲区
-        */
+         * 二元数据缓冲区
+         */
         template<typename T> class VertexBuffer2:public VertexBuffer<T,2>
         {
         public:
@@ -190,7 +190,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer2::Write(const T ,const T) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer2::Write(const T ,const T) out"));
                     return(false);
                 }
 
@@ -204,7 +204,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer2::Write(T *) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer2::Write(T *) out"));
                     return(false);
                 }
 
@@ -218,7 +218,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer2::Write(vec2 &) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer2::Write(vec2 &) out"));
                     return(false);
                 }
 
@@ -237,7 +237,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<1)>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer1::Write(const Vector2f &,")+OSString(count)+OS_TEXT(") out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer1::Write(const Vector2f &,")+OSString(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -254,7 +254,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteLine(T,T,T,T) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteLine(T,T,T,T) out"));
                     return(false);
                 }
 
@@ -270,7 +270,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteLine(vec2,vec2) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteLine(vec2,vec2) out"));
                     return(false);
                 }
 
@@ -283,13 +283,13 @@ namespace hgl
             }
 
             /**
-            * 写入2D三角形
-            */
+             * 写入2D三角形
+             */
             bool WriteTriangle(const Vector2f &v1,const Vector2f &v2,const Vector2f &v3)
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteTriangle(vec2,vec2,vec2) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteTriangle(vec2,vec2,vec2) out"));
                     return(false);
                 }
 
@@ -306,13 +306,13 @@ namespace hgl
             }
 
             /**
-            * 写入2D三角形
-            */
+             * 写入2D三角形
+             */
             bool WriteTriangle(const Vector2f *v)
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteTriangle(vec2 *) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteTriangle(vec2 *) out"));
                     return(false);
                 }
 
@@ -331,21 +331,21 @@ namespace hgl
             }
 
             /**
-            * 写入2D四边形坐标数据
-            */
+             * 写入2D四边形坐标数据
+             */
             bool WriteQuad(const Vector2f &lt,const Vector2f &rt,const Vector2f &rb,const Vector2f &lb)
             {
                 if(WriteTriangle(lt,lb,rb))
-                if(WriteTriangle(lt,rb,rt))
-                    return(true);
+                    if(WriteTriangle(lt,rb,rt))
+                        return(true);
 
-//                 LOG_HINT(OS_TEXT("VertexBuffer2::WriteQuad(vec2 &,vec2 &,vec2 &,vec2 &) error"));
-                return(false);
+                    //                 LOG_HINT(OS_TEXT("VertexBuffer2::WriteQuad(vec2 &,vec2 &,vec2 &,vec2 &) error"));
+                    return(false);
             }
 
             /**
-            * 写入2D矩形（两个三角形）坐标数据
-            */
+             * 写入2D矩形（两个三角形）坐标数据
+             */
             bool WriteRect(const T left,const T top,const T width,const T height)
             {
                 const Vector2f lt(left		,top);
@@ -358,8 +358,8 @@ namespace hgl
         };//class VertexBuffer2
 
         /**
-        * 三元数据缓冲区
-        */
+         * 三元数据缓冲区
+         */
         template<typename T> class VertexBuffer3:public VertexBuffer<T,3>
         {
         public:
@@ -370,10 +370,10 @@ namespace hgl
             uint	GetDataType()const;
 
             /**
-            * 计算绑定盒
-            * @param min_vertex 最小值坐标
-            * @param max_vertex 最大值坐标
-            */
+             * 计算绑定盒
+             * @param min_vertex 最小值坐标
+             * @param max_vertex 最大值坐标
+             */
             template<typename V>
             void GetBoundingBox(V &min_vertex,V &max_vertex)
             {
@@ -406,7 +406,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(T,T,T) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(T,T,T) out"));
                     return(false);
                 }
 
@@ -421,7 +421,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(T *) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(T *) out"));
                     return(false);
                 }
 
@@ -436,7 +436,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(vec3 &) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(vec3 &) out"));
                     return(false);
                 }
 
@@ -451,7 +451,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(vec4 &) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(vec4 &) out"));
                     return(false);
                 }
 
@@ -471,7 +471,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString(count)+OS_TEXT(") out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -489,7 +489,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(color3f &) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(color3f &) out"));
                     return(false);
                 }
 
@@ -504,7 +504,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteLine(T,T,T,T,T,T) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
                 }
 
@@ -522,7 +522,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteLine(vec3,vec3) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteLine(vec3,vec3) out"));
                     return(false);
                 }
 
@@ -537,13 +537,13 @@ namespace hgl
             }
 
             /**
-            * 写入3D三角形
-            */
+             * 写入3D三角形
+             */
             bool WriteTriangle(const Vector3f &v1,const Vector3f &v2,const Vector3f &v3)
             {
                 if(!this->access||this->access+9>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteTriangle(vec3,vec3,vec3) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
                 }
 
@@ -563,13 +563,13 @@ namespace hgl
             }
 
             /**
-            * 写入3D三角形
-            */
+             * 写入3D三角形
+             */
             bool WriteTriangle(const Vector3f *v)
             {
                 if(!this->access||this->access+9>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteTriangle(vec3 *) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer3::WriteTriangle(vec3 *) out"));
                     return(false);
                 }
 
@@ -591,22 +591,22 @@ namespace hgl
             }
 
             /**
-            * 写入3D四边形坐标数据
-            */
+             * 写入3D四边形坐标数据
+             */
             bool WriteQuad(const Vector3f &lt,const Vector3f &rt,const Vector3f &rb,const Vector3f &lb)
             {
                 if(WriteTriangle(lt,lb,rb))
-                if(WriteTriangle(lt,rb,rt))
-                    return(true);
+                    if(WriteTriangle(lt,rb,rt))
+                        return(true);
 
-//                 LOG_HINT(OS_TEXT("VertexBuffer3::WriteQuad(vec3 &,vec3 &,vec3 &,vec3 &) error"));
-                return(false);
+                    //                 LOG_HINT(OS_TEXT("VertexBuffer3::WriteQuad(vec3 &,vec3 &,vec3 &,vec3 &) error"));
+                    return(false);
             }
         };//class VertexBuffer3
 
         /**
-        * 四元数据缓冲区
-        */
+         * 四元数据缓冲区
+         */
         template<typename T> class VertexBuffer4:public VertexBuffer<T,4>
         {
         public:
@@ -616,11 +616,11 @@ namespace hgl
 
             uint	GetDataType()const;
 
-			/**
-            * 计算绑定盒
-            * @param min_vertex 最小值坐标
-            * @param max_vertex 最大值坐标
-            */
+            /**
+             * 计算绑定盒
+             * @param min_vertex 最小值坐标
+             * @param max_vertex 最大值坐标
+             */
             template<typename V>
             void GetBoundingBox(V &min_vertex,V &max_vertex)
             {
@@ -653,7 +653,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(T,T,T,T) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(T,T,T,T) out"));
                     return(false);
                 }
 
@@ -669,7 +669,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(T *) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(T *) out"));
                     return(false);
                 }
 
@@ -685,7 +685,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(color4 &) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(color4 &) out"));
                     return(false);
                 }
 
@@ -701,7 +701,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(color4 &) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(color4 &) out"));
                     return(false);
                 }
 
@@ -722,7 +722,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString(count)+OS_TEXT(") out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -741,7 +741,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteLine(T,T,T,T,T,T) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
                 }
 
@@ -761,7 +761,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteLine(vec3,vec3) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteLine(vec3,vec3) out"));
                     return(false);
                 }
 
@@ -778,13 +778,13 @@ namespace hgl
             }
 
             /**
-            * 写入3D三角形
-            */
+             * 写入3D三角形
+             */
             bool WriteTriangle(const Vector3f &v1,const Vector3f &v2,const Vector3f &v3)
             {
                 if(!this->access||this->access+12>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteTriangle(vec3,vec3,vec3) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
                 }
 
@@ -807,13 +807,13 @@ namespace hgl
             }
 
             /**
-            * 写入3D三角形
-            */
+             * 写入3D三角形
+             */
             bool WriteTriangle(const Vector3f *v)
             {
                 if(!this->access||this->access+12>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteTriangle(vec3 *) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteTriangle(vec3 *) out"));
                     return(false);
                 }
 
@@ -837,15 +837,15 @@ namespace hgl
                 return(true);
             }
 
-			/**
-			* 写入2D矩形,注:这个函数会依次写入Left,Top,Width,Height四个值
-			*/
-			template<typename V>
-			bool WriteRectangle2D(const RectScope2<V> &rect)
-			{
+            /**
+             * 写入2D矩形,注:这个函数会依次写入Left,Top,Width,Height四个值
+             */
+            template<typename V>
+            bool WriteRectangle2D(const RectScope2<V> &rect)
+            {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteRectangle2D(RectScope2 ) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteRectangle2D(RectScope2 ) out"));
                     return(false);
                 }
 
@@ -854,67 +854,70 @@ namespace hgl
                 *this->access++=rect.Width;
                 *this->access++=rect.Height;
 
-				return(true);
-			}
+                return(true);
+            }
 
-			/**
-			* 写入2D矩形,注:这个函数会依次写入Left,Top,Width,Height四个值
-			*/
-			template<typename V>
-			bool WriteRectangle2D(const RectScope2<V> *rect,const int count)
-			{
+            /**
+             * 写入2D矩形,注:这个函数会依次写入Left,Top,Width,Height四个值
+             */
+            template<typename V>
+            bool WriteRectangle2D(const RectScope2<V> *rect,const int count)
+            {
                 if(!this->access||this->access+(4*count)>this->mem_end)
                 {
-//                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteRectangle2D(RectScope2 *,count) out"));
+                    //                     LOG_HINT(OS_TEXT("VertexBuffer4::WriteRectangle2D(RectScope2 *,count) out"));
                     return(false);
                 }
 
-				for(int i=0;i<count;i++)
-				{
-					*this->access++=rect->Left;
-					*this->access++=rect->Top;
-					*this->access++=rect->Width;
-					*this->access++=rect->Height;
+                for(int i=0;i<count;i++)
+                {
+                    *this->access++=rect->Left;
+                    *this->access++=rect->Top;
+                    *this->access++=rect->Width;
+                    *this->access++=rect->Height;
 
-					++rect;
-				}
+                    ++rect;
+                }
 
-				return(true);
-			}
+                return(true);
+            }
         };//class VertexBuffer4
 
         //缓冲区具体数据类型定义
- 		typedef VertexBuffer1<int8	>	VB1i8	,VB1b;	template<> inline uint VertexBuffer1<int8	>::GetDataType()const{return GL_BYTE;			}
+        typedef VertexBuffer1<int8	>	VB1i8	,VB1b;	template<> inline uint VertexBuffer1<int8	>::GetDataType()const{return GL_BYTE;			}
         typedef VertexBuffer1<int16	>	VB1i16	,VB1s;	template<> inline uint VertexBuffer1<int16	>::GetDataType()const{return GL_SHORT;			}
         typedef VertexBuffer1<int32	>	VB1i32	,VB1i;	template<> inline uint VertexBuffer1<int32	>::GetDataType()const{return GL_INT;			}
- 		typedef VertexBuffer1<uint8	>	VB1u8	,VB1ub;	template<> inline uint VertexBuffer1<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
+        typedef VertexBuffer1<uint8	>	VB1u8	,VB1ub;	template<> inline uint VertexBuffer1<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
         typedef VertexBuffer1<uint16>	VB1u16	,VB1us;	template<> inline uint VertexBuffer1<uint16	>::GetDataType()const{return GL_UNSIGNED_SHORT;}
         typedef VertexBuffer1<uint32>	VB1u32	,VB1ui;	template<> inline uint VertexBuffer1<uint32	>::GetDataType()const{return GL_UNSIGNED_INT;	}
         typedef VertexBuffer1<float	>	VB1f;			template<> inline uint VertexBuffer1<float	>::GetDataType()const{return GL_FLOAT;			}
         typedef VertexBuffer1<double>	VB1d;			template<> inline uint VertexBuffer1<double	>::GetDataType()const{return GL_DOUBLE;		}
 
-		typedef VertexBuffer2<int8	>	VB2i8	,VB2b;	template<> inline uint VertexBuffer2<int8	>::GetDataType()const{return GL_BYTE;			}
+        using EB16=VB1u16;
+        using EB32=VB1u32;
+
+        typedef VertexBuffer2<int8	>	VB2i8	,VB2b;	template<> inline uint VertexBuffer2<int8	>::GetDataType()const{return GL_BYTE;			}
         typedef VertexBuffer2<int16	>	VB2i16	,VB2s;	template<> inline uint VertexBuffer2<int16	>::GetDataType()const{return GL_SHORT;			}
         typedef VertexBuffer2<int32	>	VB2i32	,VB2i;	template<> inline uint VertexBuffer2<int32	>::GetDataType()const{return GL_INT;			}
-		typedef VertexBuffer2<uint8	>	VB2u8	,VB2ub;	template<> inline uint VertexBuffer2<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
+        typedef VertexBuffer2<uint8	>	VB2u8	,VB2ub;	template<> inline uint VertexBuffer2<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
         typedef VertexBuffer2<uint16>	VB2u16	,VB2us;	template<> inline uint VertexBuffer2<uint16	>::GetDataType()const{return GL_UNSIGNED_SHORT;}
         typedef VertexBuffer2<uint32>	VB2u32	,VB2ui;	template<> inline uint VertexBuffer2<uint32	>::GetDataType()const{return GL_UNSIGNED_INT;	}
         typedef VertexBuffer2<float	>	VB2f;			template<> inline uint VertexBuffer2<float	>::GetDataType()const{return GL_FLOAT;			}
         typedef VertexBuffer2<double>	VB2d;			template<> inline uint VertexBuffer2<double	>::GetDataType()const{return GL_DOUBLE;		}
 
-		typedef VertexBuffer3<int8	>	VB3i8	,VB3b;	template<> inline uint VertexBuffer3<int8	>::GetDataType()const{return GL_BYTE;			}
+        typedef VertexBuffer3<int8	>	VB3i8	,VB3b;	template<> inline uint VertexBuffer3<int8	>::GetDataType()const{return GL_BYTE;			}
         typedef VertexBuffer3<int16	>	VB3i16	,VB3s;	template<> inline uint VertexBuffer3<int16	>::GetDataType()const{return GL_SHORT;			}
         typedef VertexBuffer3<int32	>	VB3i32	,VB3i;	template<> inline uint VertexBuffer3<int32	>::GetDataType()const{return GL_INT;			}
-		typedef VertexBuffer3<uint8	>	VB3u8	,VB3ub;	template<> inline uint VertexBuffer3<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
+        typedef VertexBuffer3<uint8	>	VB3u8	,VB3ub;	template<> inline uint VertexBuffer3<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
         typedef VertexBuffer3<uint16>	VB3u16	,VB3us;	template<> inline uint VertexBuffer3<uint16	>::GetDataType()const{return GL_UNSIGNED_SHORT;}
         typedef VertexBuffer3<uint32>	VB3u32	,VB3ui;	template<> inline uint VertexBuffer3<uint32	>::GetDataType()const{return GL_UNSIGNED_INT;	}
         typedef VertexBuffer3<float	>	VB3f;			template<> inline uint VertexBuffer3<float	>::GetDataType()const{return GL_FLOAT;			}
         typedef VertexBuffer3<double>	VB3d;			template<> inline uint VertexBuffer3<double	>::GetDataType()const{return GL_DOUBLE;		}
 
-	    typedef VertexBuffer4<int8	>	VB4i8	,VB4b;	template<> inline uint VertexBuffer4<int8	>::GetDataType()const{return GL_BYTE;			}
+        typedef VertexBuffer4<int8	>	VB4i8	,VB4b;	template<> inline uint VertexBuffer4<int8	>::GetDataType()const{return GL_BYTE;			}
         typedef VertexBuffer4<int16	>	VB4i16	,VB4s;	template<> inline uint VertexBuffer4<int16	>::GetDataType()const{return GL_SHORT;			}
         typedef VertexBuffer4<int32	>	VB4i32	,VB4i;	template<> inline uint VertexBuffer4<int32	>::GetDataType()const{return GL_INT;			}
-		typedef VertexBuffer4<uint8	>	VB4u8	,VB4ub;	template<> inline uint VertexBuffer4<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
+        typedef VertexBuffer4<uint8	>	VB4u8	,VB4ub;	template<> inline uint VertexBuffer4<uint8	>::GetDataType()const{return GL_UNSIGNED_BYTE;	}
         typedef VertexBuffer4<uint16>	VB4u16	,VB4us;	template<> inline uint VertexBuffer4<uint16	>::GetDataType()const{return GL_UNSIGNED_SHORT;}
         typedef VertexBuffer4<uint32>	VB4u32	,VB4ui;	template<> inline uint VertexBuffer4<uint32	>::GetDataType()const{return GL_UNSIGNED_INT;	}
         typedef VertexBuffer4<float	>	VB4f;			template<> inline uint VertexBuffer4<float	>::GetDataType()const{return GL_FLOAT;			}
