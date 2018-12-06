@@ -7,16 +7,6 @@ namespace hgl
 {
     namespace graph
     {
-        int HGL_MAX_VERTEX_ATTRIBS;        ///<最大顶点属性数量
-
-        void InitVertexBuffer()
-        {
-            glGetIntegerv(GL_MAX_VERTEX_ATTRIBS,&HGL_MAX_VERTEX_ATTRIBS);
-        }
-    }//namespace graph
-
-    namespace graph
-    {
         VertexBufferControl *CreateVertexBufferControlDSA(uint);
         VertexBufferControl *CreateVertexBufferControlBind(uint);
 
