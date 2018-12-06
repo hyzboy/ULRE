@@ -42,6 +42,7 @@ namespace hgl
                     int		GetCount()const		{	return count;	}									///<取得数据数量
                     int     GetStride()const    {   return dc_num*GetDataBytes();}                      ///<取得每一组数据字节数
                     void *	GetData()const		{	return mem_data;}									///<取得数据指针
+                    void *  GetData(const uint offset){return ((char *)mem_data)+GetDataBytes()*offset;}///<取得数据指针
                     int		GetBytes()const		{	return bytes;	}									///<取得数据字节数
 
         public:		//以下函数在各渲染器内部实现
@@ -49,7 +50,7 @@ namespace hgl
                     bool	CreateVertexBuffer(uint type);
                     void	ChangeVertexBuffer(int,int,void *);
                     //void	BindVertexBuffer();
-                    int     GetBufferIndex()const;                                                  ///<取得缓冲区索引
+                    int     GetBufferIndex()const;                                                      ///<取得缓冲区索引
                     void	CloseVertexBuffer();
         };//class VertexBufferBase
     }//namespace graph
