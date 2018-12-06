@@ -5,8 +5,24 @@ namespace hgl
 {
     namespace graph
     {
+        namespace
+        {
+            static int HGL_MAX_VERTEX_ATTRIBS=0;
+        }
+
+        int VertexArray::GetMaxVertexAttrib()
+        {
+            if(HGL_MAX_VERTEX_ATTRIBS<=0)
+                glGetIntegerv(GL_MAX_VERTEX_ATTRIBS,&HGL_MAX_VERTEX_ATTRIBS);
+
+            return HGL_MAX_VERTEX_ATTRIBS;
+        }
+
         VertexArray::VertexArray(uint prim,uint max_vertex_attrib)
         {
+            if(max_vertex_attrib>GetMaxVertexAttrib())
+                max_vertex_attrib=HGL_MAX_VERTEX_ATTRIBS;
+
             primitive=prim;
 
             vertex_buffer_list.PreMalloc(max_vertex_attrib);
@@ -89,6 +105,19 @@ namespace hgl
                 return vertex_buffer->GetCount();
 
             return(-1);
+        }
+
+        bool VertexArray::Draw()
+        {
+            if(element_buffer)
+                glDrawElements(primitive,0,element_buffer->GetCount(),element_buffer->GetDataType(),nullptr);
+            else
+            if(vertex_buffer)
+                glDrawArrays(primitive,0,vertex_buffer->GetCount());
+            else
+                return(false);
+
+            return(true);
         }
     }//namespace graph
 }//namespace hgl

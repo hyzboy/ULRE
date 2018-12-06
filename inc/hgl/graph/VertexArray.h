@@ -15,7 +15,7 @@ namespace hgl
         {
         protected:
 
-            int vao;
+            GLuint vao;
 
             uint primitive;                                                                                             ///<绘制的图元类型
 
@@ -40,6 +40,8 @@ namespace hgl
             VertexArray(uint prim,uint max_vertex_attrib);
             ~VertexArray();
 
+            static int          GetMaxVertexAttrib();
+
             uint                GetPrimitive        ()const{return primitive;}                                          ///<取得要绘制的图元类型
 
         public: //通用顶点缓冲区设置
@@ -61,6 +63,7 @@ namespace hgl
         public:
 
             int                 GetDrawCount    ();                                                                     ///<取得可绘制的数据总数量
+            bool                Draw();                                                                                 ///<绘制
         };//class VertexArray
     }//namespace graph
 }//namespace hgl
