@@ -110,7 +110,7 @@ namespace hgl
         bool VertexArray::Draw()
         {
             if(element_buffer)
-                glDrawElements(primitive,0,element_buffer->GetCount(),element_buffer->GetDataType(),nullptr);
+                glDrawElements(primitive,element_buffer->GetCount(),element_buffer->GetDataType(),nullptr);
             else
             if(vertex_buffer)
                 glDrawArrays(primitive,0,vertex_buffer->GetCount());
