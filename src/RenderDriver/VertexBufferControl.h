@@ -26,8 +26,8 @@ namespace hgl
                 Clear();
             }
 
-            virtual void Set(int, void *,uint)=0;
-            virtual void Change(int, int, void *)=0;
+            virtual void Set(GLsizei, void *,GLenum)=0;
+            virtual void Change(GLintptr,GLsizei, void *)=0;
             void Clear()
             {
                 if(!type||!index)return;

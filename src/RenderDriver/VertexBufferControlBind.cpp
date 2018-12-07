@@ -29,14 +29,18 @@ namespace hgl
         public:
 
             using VertexBufferControl::VertexBufferControl;
-
-            void Set(int size, void *data, uint data_level)
+            ~VertexBufferControlBind()
             {
-                glBindBuffer(this->type,this->index);
-                glBufferData(this->type, size, data, data_level);
+                glDeleteBuffers(1,&(this->index));
             }
 
-            void Change(int start, int size, void *data)
+            void Set(GLsizei size, void *data, GLenum data_usage)
+            {
+                glBindBuffer(this->type,this->index);
+                glBufferData(this->type, size, data, data_usage);
+            }
+
+            void Change(GLintptr start, GLsizei size, void *data)
             {
                 glBindBuffer(this->type, this->index);
                 glBufferSubData(this->type, start, size, data);
@@ -49,11 +53,6 @@ namespace hgl
 
             glGenBuffers(1, &index);
             return(new VertexBufferControlBind(type, index));
-        }
-
-        void DeleteVertexBufferControlBind(VertexBufferControl *vbc)
-        {
-            SAFE_CLEAR(vbc);
         }
     }//namespace graph
 }//namespace hgl
