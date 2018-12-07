@@ -1,4 +1,5 @@
-﻿#include<hgl/render/RenderDevice.h>
+#include<hgl/graph/RenderDevice.h>
+#include<GLEWCore/glew.h>
 #include<GLFW/glfw3.h>
 #include<iostream>
 
@@ -8,7 +9,20 @@ namespace hgl
 
     namespace
     {
+        static bool init_glew=false;
         static RenderDevice *render_device_glfw=nullptr;
+
+        void InitGLEWCore()
+        {
+            if(!init_glew)
+                init_glew=glewInit();
+        }
+
+        void CloseGLEWCore()
+        {
+            glewTerminate();
+            init_glew=false;
+        }
 
         void glfw_error_callback(int err,const char *desc)
         {
@@ -131,6 +145,7 @@ namespace hgl
 
         ~RenderDeviceGLFW()
         {
+            CloseGLEWCore();
             glfwTerminate();
             render_device_glfw=nullptr;
         }
@@ -163,7 +178,7 @@ namespace hgl
 
     public:
 
-        RenderWindow *CreateWindow(int width,int height,const WindowSetup *ws,const RenderSetup *rs) override
+        RenderWindow *Create(int width,int height,const WindowSetup *ws,const RenderSetup *rs) override
         {
             SetGLFWWindowHint(rs);
 
@@ -178,10 +193,13 @@ namespace hgl
 
             if(!win)return(nullptr);
 
+            glfwMakeContextCurrent(win);
+            InitGLEWCore();
+
             return(CreateRenderWindowGLFW(win,false));
         }
 
-        RenderWindow *CreateFullscreen(const Display *disp,const VideoMode *vm,const RenderSetup *rs) override
+        RenderWindow *Create(const Display *disp,const VideoMode *vm,const RenderSetup *rs) override
         {
             SetGLFWWindowHint(rs);
 
@@ -197,6 +215,9 @@ namespace hgl
                                                 nullptr);
 
             if(!win)return(nullptr);
+
+            glfwMakeContextCurrent(win);
+            InitGLEWCore();
 
             return(CreateRenderWindowGLFW(win,true));
         }

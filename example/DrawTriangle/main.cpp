@@ -1,8 +1,8 @@
-﻿#include<hgl/render/RenderDevice.h>
-#include<hgl/render/RenderWindow.h>
+#include<hgl/graph/RenderDevice.h>
+#include<hgl/graph/RenderWindow.h>
 #include<iostream>
 #include<GLFW/glfw3.h>
-#include<GL/glext.h>
+#include<GL/glcorearb.h>
 
 using namespace hgl;
 

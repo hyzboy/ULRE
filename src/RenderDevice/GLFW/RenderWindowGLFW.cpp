@@ -1,4 +1,4 @@
-﻿#include<hgl/render/RenderWindow.h>
+#include<hgl/graph/RenderWindow.h>
 #include<GLFW/glfw3.h>
 
 namespace hgl
@@ -28,13 +28,9 @@ namespace hgl
         void Show()override{glfwShowWindow(glfw_win);}
         void Hide()override{glfwHideWindow(glfw_win);}
 
-        void SetCaption(const OSString &name) override
+        void SetCaption(const UTF8String &name) override
         {
-#if HGL_OS == HGL_OS_Windows
-            glfwSetWindowTitle(glfw_win,to_u8(name));
-#else
-            glfwSetWindowTitle(glfw_win,name);
-#endif//
+            glfwSetWindowTitle(glfw_win,name.c_str());
             this->caption=name;
         }
 

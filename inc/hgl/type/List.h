@@ -1,13 +1,9 @@
 ﻿#ifndef HGL_LIST_INCLUDE
 #define HGL_LIST_INCLUDE
 
-#include<hgl/LogInfo.h>
 #include<stdlib.h>
 #include<initializer_list>
-
-#if defined(__BORLANDC__)||defined(__TURBOC__)||defined(__CODEGEARC__)
-#pragma warn -8022						//使hides vitual function警告无效
-#endif//
+#include<hgl/type/DataType.h>
 
 namespace hgl
 {
@@ -64,7 +60,7 @@ namespace hgl
 
 		virtual void operator += (const T &obj){Add(obj);}											///<操作符重载添加一个数据
 		virtual void operator << (const T &obj){Add(obj);}											///<操作符重载添加一个数据
-		virtual void operator -= (const T &obj){DeleteByValue(obj);}									///<操作符重载删除一个数据
+		virtual void operator -= (const T &obj){DeleteByValue(obj);}								///<操作符重载删除一个数据
 
 				bool Get(int,T &)const;																///<取得指定索引处的数据
 				void Set(int,const T &);															///<设置指定索引处的数据

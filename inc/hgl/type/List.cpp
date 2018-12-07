@@ -1,8 +1,6 @@
 ﻿#ifndef HGL_LIST_CPP
 #define HGL_LIST_CPP
 
-#include<string.h>
-#include<hgl/LogInfo.h>
 //--------------------------------------------------------------------------------------------------
 // 代码中的部分memcpy可替换为memmove,但这样会引起CodeGuard/Valgrind之类的内存调试器报错
 //--------------------------------------------------------------------------------------------------
@@ -12,10 +10,7 @@ namespace hgl
 	bool List<T>::Get(int index,T &ti)const
 	{
 		if(!items||index<0||index>=count)
-		{
-            LOG_ERROR(OS_TEXT("List<>::Get(index=")+OSString(index)+OS_TEXT(") error,DataCount=")+OSString(count));
 			return(false);
-		}
 
 		memcpy(&ti,items+index,sizeof(T));
 		return(true);

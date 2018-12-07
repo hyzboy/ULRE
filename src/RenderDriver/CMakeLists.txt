@@ -1,3 +1,9 @@
-﻿add_library(ULRE.RenderDriver STATIC    GLSL.cpp
-                                        Shader.cpp)
+﻿add_library(ULRE.RenderDriver STATIC    GLCore/RenderDriverGLCore.cpp
+                                        GLSL.cpp
+                                        Shader.cpp
+                                        VertexArray.cpp
+                                        VertexBuffer.cpp
+                                        VertexBufferControlDSA.cpp
+                                        VertexBufferControlBind.cpp
+                                        OpenGLDebug.cpp)
 

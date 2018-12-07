@@ -1,5 +1,5 @@
-﻿#include<hgl/render/RenderDevice.h>
-#include<hgl/render/RenderWindow.h>
+#include<hgl/graph/RenderDevice.h>
+#include<hgl/graph/RenderWindow.h>
 #include<iostream>
 #include<GLFW/glfw3.h>
 
@@ -27,7 +27,7 @@ int main(void)
 
     RenderSetup rs;
 
-    RenderWindow *win=device->CreateWindow(1280,720,&ws,&rs);
+    RenderWindow *win=device->Create(1280,720,&ws,&rs);
 
     win->Show();
 

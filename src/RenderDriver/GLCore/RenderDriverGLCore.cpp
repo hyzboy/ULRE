@@ -1,22 +1,24 @@
-﻿#include<hgl/render/RenderDriver.h>
+﻿#include<hgl/graph/RenderDriver.h>
 
 namespace hgl
 {
-    class RenderDriverGLCore:public RenderDriver
+    namespace graph
     {
-    public:
-
-        void SetCurStatus(const RenderStatus &rs) override
+        class RenderDriverGLCore:public RenderDriver
         {
-            if(rs.color
-        }
+        public:
 
-        void ClearColorBuffer() override
-        {
-        }
+            void SetCurStatus(const RenderStatus &rs) override
+            {
+            }
 
-        void ClearDepthBuffer() override
-        {
-        }
-    };//class RenderDriverGLCore:public RenderDriver
+            void ClearColorBuffer() override
+            {
+            }
+
+            void ClearDepthBuffer() override
+            {
+            }
+        };//class RenderDriverGLCore:public RenderDriver
+    }//namespace graph
 }//namespace hgl
