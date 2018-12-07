@@ -51,18 +51,16 @@ namespace hgl
         int VertexArray::AddVertexAttribBuffer(VertexBufferBase *vb)
         {
             if(!vb)return(false);
+            if(vb->GetBufferType()!=GL_ARRAY_BUFFER)return(false);
 
-            const int index=vertex_buffer_list.Add(vb);
-
-            _SetVertexBuffer(vb);       //各种真实渲染器处理
-
-            return(index);
+            return vertex_buffer_list.Add(vb);
         }
 
-        bool VertexArray::SetElementBuffer(VertexBufferBase *vb)
+        bool VertexArray::SetElementBuffer(VertexBufferBase *eb)
         {
-            if(!vb)return(false);
-            element_buffer=vb;
+            if(!eb)return(false);
+            if(eb->GetBufferType()!=GL_ELEMENT_ARRAY_BUFFER)return(false);
+            element_buffer=eb;
             return(true);
         }
 

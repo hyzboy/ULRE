@@ -30,11 +30,6 @@ namespace hgl
             VertexBufferBase *vertex_buffer;
             VertexBufferBase *color_buffer;
 
-        private:
-
-            bool                _SetVertexBuffer    (VertexBufferBase *);                                               ///<真实设置顶点缓冲区数据
-            bool                _SetElementBuffer   ();                                                                 ///<真实设置索引缓冲区数据
-
         public:
 
             VertexArray(uint prim,uint max_vertex_attrib);
@@ -53,7 +48,7 @@ namespace hgl
 
         public: //特殊缓冲区独立设置函数
 
-            bool                SetElementBuffer    (VertexBufferBase *vb);                                             ///<设置索引缓冲区数据
+            bool                SetElementBuffer    (VertexBufferBase *eb);                                             ///<设置索引缓冲区数据
             bool                SetVertexBuffer     (VertexBufferBase *vb);                                             ///<设置顶点缓冲区数据
             bool                SetColorBuffer      (VertexBufferBase *vb,PixelCompoment cf);                           ///<设置颜色缓冲区数据
 
