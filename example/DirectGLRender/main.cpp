@@ -70,13 +70,13 @@ void BindVBO2VAO(const int vao,const int binding_index,const int shader_location
     glVertexArrayAttribBinding(vao,shader_location,binding_index);
     glVertexArrayAttribFormat(vao,shader_location,vb->GetComponent(),vb->GetDataType(),GL_FALSE,0);
     glEnableVertexArrayAttrib(vao,shader_location);
-    glVertexArrayVertexBuffer(vao,shader_location,vb->GetBufferIndex(),0,vb->GetStride());
+    glVertexArrayVertexBuffer(vao,binding_index,vb->GetBufferIndex(),0,vb->GetStride());
 }
 
 void InitVertexBuffer()
 {
-    vb_vertex=new VB2f(4,vertex_data);
-    vb_color=new VB3f(4,color_data);
+    vb_vertex=new VB2f(3,vertex_data);
+    vb_color=new VB3f(3,color_data);
 
     va=new VertexArray(GL_TRIANGLES,        //画三角形
                        2);                  //两个属性
