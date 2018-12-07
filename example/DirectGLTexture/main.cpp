@@ -10,8 +10,18 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint screen_width=1280;
+constexpr uint screen_width=720;
 constexpr uint screen_height=720;
+
+uint texture_id=0;
+
+namespace hgl
+{
+    namespace graph
+    {
+        bool LoadTGATexture(const std::string &filename,uint &tex_id);
+    }
+}
 
 constexpr char vertex_shader[]=R"(
 #version 330 core
@@ -31,14 +41,14 @@ void main()
 constexpr char fragment_shader[]=R"(
 #version 330 core
 
-sampler2D Texture0;
+uniform sampler2D TextureLuna;
 
-in vec4 FragmentTexCoord;
+in vec2 FragmentTexCoord;
 out vec4 FragColor;
 
 void main()
 {
-    FragColor=vec4(FragmentColor.rgb,1);
+    FragColor=texture(TextureLuna,FragmentTexCoord);
 })";
 
 Shader shader;
@@ -89,8 +99,8 @@ void InitVertexBuffer()
     vb_vertex=new VB2f(4,vertex_data);
     vb_texcoord=new VB2f(4,texcoord_data);
 
-    va=new VertexArray(GL_TRIANGLES,        //画三角形
-                        2);                  //两个属性
+    va=new VertexArray(GL_TRIANGLE_STRIP,       //画三角形条
+                        2);                     //两个属性
 
     const int vertex_location=shader.GetAttribLocation("Vertex");              ///<取得顶点数据输入流对应的shader地址
     const int texcoord_location=shader.GetAttribLocation("TexCoord");             ///<取得纹理坐标数据输入流对应的shader地址
@@ -105,6 +115,20 @@ void InitVertexBuffer()
     BindVBO2VAO(vao,binding_index,vertex_location,vb_vertex);
     ++binding_index;
     BindVBO2VAO(vao,binding_index,texcoord_location,vb_texcoord);
+}
+
+bool InitTexture()
+{
+    if(!LoadTGATexture("luna.tga",texture_id))
+        return(false);
+
+    int texture_location=shader.GetUniformLocation("TextureLuna");
+
+    glBindTextureUnit(0,texture_id);
+
+    shader.SetUniform1i(texture_location,0);
+
+    return(true);
 }
 
 constexpr GLfloat clear_color[4]=
@@ -160,6 +184,9 @@ int main(void)
     }
 
     InitVertexBuffer();
+
+    if(!InitTexture())
+        return -4;
 
     win->Show();
 
