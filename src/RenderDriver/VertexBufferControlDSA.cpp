@@ -11,12 +11,12 @@ namespace hgl
 
             using VertexBufferControl::VertexBufferControl;
 
-            void Set(int size, void *data,uint data_level)
+            void Set(GLsizei size, void *data,GLenum data_usage)
             {
-                glNamedBufferData(this->index, size, data, data_level);
+                glNamedBufferData(this->index, size, data, data_usage);
             }
 
-            void Change(int start, int size, void *data)
+            void Change(GLintptr start, GLsizei size, void *data)
             {
                 glNamedBufferSubData(this->index, start, size, data);
             }

@@ -10,45 +10,24 @@ namespace hgl
         VertexBufferControl *CreateVertexBufferControlDSA(uint);
         VertexBufferControl *CreateVertexBufferControlBind(uint);
 
-        VertexBufferControl *(*CreateVertexBufferControl)(uint)=nullptr;
-
-        void DeleteVertexBufferControlDSA(VertexBufferControl *);
-        void DeleteVertexBufferControlBind(VertexBufferControl *);
-
-        void (*DeleteVertexBufferControl)(VertexBufferControl *)=nullptr;
-
-        void InitVertexBufferDSA()
+        namespace
         {
-            CreateVertexBufferControl=CreateVertexBufferControlDSA;
-            DeleteVertexBufferControl=DeleteVertexBufferControlDSA;
-        }
+            static VertexBufferControl *(*CreateVertexBufferControl)(uint)=nullptr;
 
-        void InitVertexBufferBind()
-        {
-            CreateVertexBufferControl=CreateVertexBufferControlBind;
-            DeleteVertexBufferControl=DeleteVertexBufferControlBind;
-        }
-
-        bool InitVertexBufferAPI()
-        {
-            if (GLEW_ARB_direct_state_access)            //4.5
+            void InitVertexBufferAPI()
             {
-                InitVertexBufferDSA();
-                return(true);
+                if(GLEW_VERSION_4_5||GLEW_ARB_direct_state_access)
+                    CreateVertexBufferControl=CreateVertexBufferControlDSA;
+                else
+                    CreateVertexBufferControl=CreateVertexBufferControlBind;
             }
+        }//namespace
 
-            InitVertexBufferBind();
-            return(true);
-        }
-    }//namespace graph
-
-    namespace graph
-    {
         void VertexBufferBase::SetDataSize(int size)
         {
-            if (bytes == size)return;
+            if (total_bytes == size)return;
 
-            bytes = size;
+            total_bytes = size;
 
             if (mem_data)
                 mem_data = hgl_realloc(mem_data, size);
@@ -58,55 +37,46 @@ namespace hgl
             mem_end = ((char *)mem_data) + size;
         }
 
-        VertexBufferBase::VertexBufferBase(uint level, uint size)
+        VertexBufferBase::VertexBufferBase(uint type,uint dt,uint dbyte,uint dcm,uint size,uint usage)
         {
-            dc_num = 0;
+            vb_type     =type;
+            data_type   =dt;
+            data_bytes  =dbyte;
 
-            bytes = size;
+            dc_num      =dcm;
+            count       =size;
+            total_bytes =dcm*size*dbyte;
 
-            mem_data = hgl_malloc(size);            //在很多情况下，hgl_malloc分配的内存是对齐的，这样有效率上的提升
-            mem_end = ((char *)mem_data) + size;
+            mem_data    =hgl_malloc(total_bytes);            //在很多情况下，hgl_malloc分配的内存是对齐的，这样有效率上的提升
+            mem_end     =((char *)mem_data)+total_bytes;
 
-            data_level = level;
+            data_usage  =usage;
 
-            vbc=nullptr;
+            if(!CreateVertexBufferControl)
+                InitVertexBufferAPI();
+
+            vbc=CreateVertexBufferControl(type);
         }
 
         VertexBufferBase::~VertexBufferBase()
         {
-            CloseVertexBuffer();
-
             hgl_free(mem_data);
 
-			if(vbc)
-				DeleteVertexBufferControl(vbc);
+            SAFE_CLEAR(vbc);
         }
 
-        void VertexBufferBase::CloseVertexBuffer()
+        void VertexBufferBase::Update()
         {
-			if(!vbc)return;
+            if(!vbc)return;
 
-            DeleteVertexBufferControl(vbc);
-			vbc = nullptr;
+            vbc->Set(total_bytes,mem_data,data_usage);
         }
 
-        void VertexBufferBase::ChangeVertexBuffer(int start, int size, void *data)
+        void VertexBufferBase::Change(int start, int size, void *data)
         {
             if (!vbc)return;
 
             vbc->Change(start,size,data);
-        }
-
-        bool VertexBufferBase::CreateVertexBuffer(uint type)
-        {
-            DeleteVertexBufferControl(vbc);
-
-            vbc=CreateVertexBufferControl(type);
-
-            if(vbc)
-                vbc->Set(bytes,mem_data,data_level);
-
-            return vbc;
         }
 
         //         void VertexBufferBase::BindVertexBuffer()
@@ -119,29 +89,6 @@ namespace hgl
         int VertexBufferBase::GetBufferIndex()const
         {
             return vbc?vbc->GetIndex():-1;
-        }
-    }//namespace graph
-
-    namespace graph
-    {
-        /**
-        * 设置顶点缓冲区数据
-        * @param vbt 顶点缓冲区类型
-        * @param vb 数据缓冲区
-        * @return 是否设置成功
-        */
-        bool VertexArray::_SetVertexBuffer(VertexBufferBase *vb)
-        {
-            vb->CreateVertexBuffer(GL_ARRAY_BUFFER);
-
-            return(true);
-        }
-
-        bool VertexArray::_SetElementBuffer()
-        {
-            element_buffer->CreateVertexBuffer(GL_ELEMENT_ARRAY_BUFFER);
-
-            return(true);
         }
     }//namespace graph
 }//namespace hgl
