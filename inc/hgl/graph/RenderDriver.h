@@ -23,6 +23,8 @@ namespace hgl
             virtual void ClearColorBuffer()=0;
             virtual void ClearDepthBuffer()=0;
         };//class RenderDriver
+
+        void InitOpenGLDebug();
     }//namespace graph
 }//namespace hgl
 #endif//HGL_RENDER_DRIVER_INCLUDE

@@ -33,12 +33,10 @@ namespace hgl
             element_buffer=nullptr;
 
             glCreateVertexArrays(1,&vao);
-            shader_location=new int[max_vertex_attrib];
         }
 
         VertexArray::~VertexArray()
         {
-            delete[] shader_location;
             glDeleteVertexArrays(1,&vao);
         }
 
@@ -107,6 +105,8 @@ namespace hgl
 
         bool VertexArray::Draw()
         {
+            glBindVertexArray(vao);
+
             if(element_buffer)
                 glDrawElements(primitive,element_buffer->GetCount(),element_buffer->GetDataType(),nullptr);
             else
