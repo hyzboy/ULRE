@@ -41,14 +41,14 @@ void main()
 constexpr char fragment_shader[]=R"(
 #version 330 core
 
-uniform sampler2D TextureLuna;
+uniform sampler2D TextureLena;
 
 in vec2 FragmentTexCoord;
 out vec4 FragColor;
 
 void main()
 {
-    FragColor=texture(TextureLuna,FragmentTexCoord);
+    FragColor=texture(TextureLena,FragmentTexCoord);
 })";
 
 Shader shader;
@@ -119,10 +119,10 @@ void InitVertexBuffer()
 
 bool InitTexture()
 {
-    if(!LoadTGATexture("luna.tga",texture_id))
+    if(!LoadTGATexture("lena.tga",texture_id))
         return(false);
 
-    int texture_location=shader.GetUniformLocation("TextureLuna");
+    int texture_location=shader.GetUniformLocation("TextureLena");
 
     glBindTextureUnit(0,texture_id);
 

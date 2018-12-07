@@ -52,7 +52,7 @@ namespace hgl
 
             if(!file.is_open())
             {
-                std::cerr<<"[ERROR] open file<"<<filename<<"> failed."<<std::endl;
+                std::cerr<<"[ERROR] open file<"<<filename.c_str()<<"> failed."<<std::endl;
                 return(false);
             }
 
@@ -90,7 +90,7 @@ namespace hgl
             }
             else
             {
-                std::cerr<<"[ERROR] Image format error,filename: "<<filename<<std::endl;
+                std::cerr<<"[ERROR] Image format error,filename: "<<filename.c_str()<<std::endl;
                 delete[] data;
                 return(false);
             }
@@ -105,7 +105,7 @@ namespace hgl
             glTextureParameteri(tex_id,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
             glTextureParameteri(tex_id,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
 
-            std::cout<<"load image file<"<<filename<<">:<"<<header->width<<"x"<<header->height<<"> to texture ok"<<std::endl;
+            std::cout<<"load image file<"<<filename.c_str()<<">:<"<<header->width<<"x"<<header->height<<"> to texture ok"<<std::endl;
 
             delete[] data;
             return(true);
