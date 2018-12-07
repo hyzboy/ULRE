@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/RenderDevice.h>
+#include<hgl/graph/RenderDriver.h>
 #include<hgl/graph/RenderWindow.h>
 #include<iostream>
 #include<GLEWCore/glew.h>
@@ -12,18 +13,8 @@ using namespace hgl::graph;
 constexpr uint screen_width=1280;
 constexpr uint screen_height=720;
 
-Matrix4f ortho_2d_matrix;
-
-void InitMatrix()
-{
-    ortho_2d_matrix=ortho2d(screen_width,screen_height,     //2D画面宽高
-                            true);                          //使用top为0,bottom为height的方式
-}
-
 constexpr char vertex_shader[]=R"(
 #version 330 core
-
-uniform mat4 ModelViewProjectionMatrix;
 
 in vec2 Vertex;
 in vec3 Color;
@@ -32,13 +23,9 @@ out vec4 FragmentColor;
 
 void main()
 {
-    vec4 Position;
-
     FragmentColor=vec4(Color,1.0);
 
-    Position=vec4(Vertex,0.0,1.0);
-
-    gl_Position=Position*ModelViewProjectionMatrix;
+    gl_Position=vec4(Vertex,0.0,1.0);
 })";
 
 constexpr char fragment_shader[]=R"(
@@ -68,33 +55,45 @@ bool InitShader()
     if(!shader.Use())
         return(false);
 
-    if(!shader.SetUniformMatrix4fv("ModelViewProjectionMatrix",ortho_2d_matrix))
-        return(false);
-
     return(true);
 }
 
-VB2i *vb_vertex=nullptr;
+VB2f *vb_vertex=nullptr;
 VB3f *vb_color=nullptr;
 VertexArray *va=nullptr;
 
-constexpr int vertex_data[]={100,100,   200,100,    200,200 };
+constexpr float vertex_data[]={0.0f,0.5f,   -0.5f,-0.5f,    0.5f,-0.5f };
 constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
+
+void BindVBO2VAO(const int vao,const int binding_index,const int shader_location,VertexBufferBase *vb)
+{
+    glVertexArrayAttribBinding(vao,shader_location,binding_index);
+    glVertexArrayAttribFormat(vao,shader_location,vb->GetComponent(),vb->GetDataType(),GL_FALSE,0);
+    glEnableVertexArrayAttrib(vao,shader_location);
+    glVertexArrayVertexBuffer(vao,shader_location,vb->GetBufferIndex(),0,vb->GetStride());
+}
 
 void InitVertexBuffer()
 {
-    vb_vertex=new VB2i(4,vertex_data);
+    vb_vertex=new VB2f(4,vertex_data);
     vb_color=new VB3f(4,color_data);
 
     va=new VertexArray(GL_TRIANGLES,        //画三角形
                        2);                  //两个属性
 
     const int vertex_location=shader.GetAttribLocation("Vertex");               ///<取得顶点流数据输入流对应的shader地址
-    const int color_localtion=shader.GetAttribLocation("Color");                ///<取得颜色流数据输入流对应的shader地址
+    const int color_location=shader.GetAttribLocation("Color");                ///<取得颜色流数据输入流对应的shader地址
 
     int binding_index=0;                    //绑定点
 
-    glVertexArrayAttribBinding(va->Get
+    const int vao=va->GetVAO();
+
+    va->SetVertexBuffer(vb_vertex);
+    va->SetColorBuffer(vb_color,HGL_PC_RGB);
+
+    BindVBO2VAO(vao,binding_index,vertex_location,vb_vertex);
+    ++binding_index;
+    BindVBO2VAO(vao,binding_index,color_location,vb_color);
 }
 
 constexpr GLfloat clear_color[4]=
@@ -111,6 +110,8 @@ void draw()
 {
     glClearBufferfv(GL_COLOR,0,clear_color);
     glClearBufferfv(GL_DEPTH,0,&clear_depth);
+
+    va->Draw();
 }
 
 int main(void)
@@ -139,7 +140,8 @@ int main(void)
 
     win->MakeToCurrent();               //切换当前窗口到前台
 
-    InitMatrix();
+    InitOpenGLDebug();                  //初始化OpenGL调试输出
+
     if(!InitShader())
     {
         std::cerr<<"init shader failed."<<std::endl;

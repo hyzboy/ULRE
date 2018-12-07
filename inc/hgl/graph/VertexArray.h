@@ -21,8 +21,6 @@ namespace hgl
 
             ObjectList<VertexBufferBase> vertex_buffer_list;                                                            ///<顶点数据缓冲区
 
-            int *shader_location;
-
             int vertex_compoment;                                                                                       ///<顶点属性格式
             PixelCompoment color_compoment;                                                                             ///<颜色属性格式
 
@@ -37,7 +35,8 @@ namespace hgl
 
             static int          GetMaxVertexAttrib();
 
-            uint                GetPrimitive        ()const{return primitive;}                                          ///<取得要绘制的图元类型
+            const uint          GetPrimitive        ()const{return primitive;}                                          ///<取得要绘制的图元类型
+            const GLuint        GetVAO              ()const{return vao;}                                                ///<取得VAO对象
 
         public: //通用顶点缓冲区设置
 

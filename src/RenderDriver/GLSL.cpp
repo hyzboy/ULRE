@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/Shader.h>
-//#include<hgl/LogInfo.h>
+#include<hgl/LogInfo.h>
 #include<hgl/type/Smart.h>
 #include<malloc.h>
 #include<GLEWCore/glew.h>
@@ -65,11 +65,11 @@ namespace hgl
 
                 glGetShaderInfoLog(shader,log_length,&char_writen,log);
 
-    //            LOG_HINT(UTF8String(name)+U8_TEXT(" shader compile error\n\n")+ UTF8String(log));
+                LOG_HINT(UTF8String(name)+U8_TEXT(" shader compile error\n\n")+ UTF8String(log));
 
                 delete[] log;
 
-                //LOG_ERROR(shader_source);
+                LOG_ERROR(shader_source);
 
                 glDeleteShader(shader);
 
@@ -148,7 +148,7 @@ namespace hgl
 
             glGetProgramInfoLog(program,log_length,&char_written,log);
 
-    //        LOG_ERROR(u8"Shader program link error\n\n"+UTF8String(log));
+           LOG_ERROR(u8"Shader program link error\n\n"+UTF8String(log));
 
             delete[] log;
 
@@ -175,7 +175,7 @@ namespace hgl
         {
             if(!program)
             {
-    //            LOG_ERROR(u8"GetAttribLocation("+UTF8String(name)+u8"),program=0");
+               LOG_ERROR(u8"GetAttribLocation("+UTF8String(name)+u8"),program=0");
                 return(-1);
             }
 
@@ -212,7 +212,7 @@ namespace hgl
         {
             if(!program)
             {
-    //            LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program=0");
+               LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program=0");
                 return(-1);
             }
 
@@ -222,7 +222,7 @@ namespace hgl
             {
                 const int gl_error=glGetError();
 
-    //             LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program="+UTF8String(program)+u8",result=-1,gl_error="+UTF8String(gl_error));
+                LOG_ERROR(u8"GetUniformLocation("+UTF8String(name)+u8"),program="+UTF8String(program)+u8",result=-1,gl_error="+UTF8String(gl_error));
             }
 
             return(result);
@@ -230,13 +230,13 @@ namespace hgl
 
         #define HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(func)    if(!program)    \
                                                             {    \
-                                                                /*LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");    */\
+                                                                LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");    \
                                                                 return(false);    \
                                                             }    \
                                                             \
                                                             if(location<0)    \
                                                             {    \
-                                                                /*LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));*/    \
+                                                                LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));    \
                                                                 return(false);    \
                                                             }
 
@@ -287,13 +287,13 @@ namespace hgl
                                                         \
                                                             if(location<0)    \
                                                             {    \
-                                                                /*LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));*/    \
+                                                                LOG_ERROR(u8"Shader::SetUniform" #func ",location="+UTF8String(location));    \
                                                                 return(false);    \
                                                             }    \
                                                         \
                                                             if(!value)    \
                                                             {    \
-                                                                /*LOG_ERROR(u8"Shader::SetUniform" #func ",value=nullptr");*/    \
+                                                                LOG_ERROR(u8"Shader::SetUniform" #func ",value=nullptr");    \
                                                                 return(false);    \
                                                             }    \
                                                         \
@@ -322,19 +322,19 @@ namespace hgl
                                                         {    \
                                                             if(!program)    \
                                                             {    \
-                                                                /*LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",program=0");   */ \
+                                                                LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",program=0");    \
                                                                 return(false);    \
                                                             }    \
                                                         \
                                                             if(location<0)    \
                                                             {    \
-                                                                /*LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",location="+UTF8String(location));   */ \
+                                                                LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",location="+UTF8String(location));    \
                                                                 return(false);    \
                                                             }    \
                                                         \
                                                             if(!mat)    \
                                                             {    \
-                                                                /*LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",mat=nullptr");  */  \
+                                                                LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",mat=nullptr");    \
                                                                 return(false);    \
                                                             }    \
                                                         \
