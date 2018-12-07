@@ -81,8 +81,8 @@ void InitVertexBuffer()
     va=new VertexArray(GL_TRIANGLES,        //画三角形
                        2);                  //两个属性
 
-    const int vertex_location=shader.GetAttribLocation("Vertex");               ///<取得顶点流数据输入流对应的shader地址
-    const int color_location=shader.GetAttribLocation("Color");                ///<取得颜色流数据输入流对应的shader地址
+    const int vertex_location=shader.GetAttribLocation("Vertex");              ///<取得顶点数据输入流对应的shader地址
+    const int color_location=shader.GetAttribLocation("Color");                ///<取得颜色数据输入流对应的shader地址
 
     int binding_index=0;                    //绑定点
 
