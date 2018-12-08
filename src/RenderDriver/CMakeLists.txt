@@ -5,5 +5,10 @@
                                         VertexBuffer.cpp
                                         VertexBufferControlDSA.cpp
                                         VertexBufferControlBind.cpp
-                                        OpenGLDebug.cpp)
+                                        OpenGLDebug.cpp
+                                        TextureFormat.cpp
+                                        Texture1D.cpp
+                                        Texture1DDSA.cpp
+                                        Texture2D.cpp
+                                        Texture2DDSA.cpp)
 

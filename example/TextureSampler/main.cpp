@@ -85,8 +85,8 @@ constexpr float vertex_data[]={ -0.75f, 0.75f,
 constexpr float texcoord_data[]={   -0.25,-0.25,
                                     -0.25, 1.25,
                                      1.25,-0.25,
-                                     1.25, 1.25   };
-
+                                     1.25, 1.25
+};
 
 void BindVBO2VAO(const int vao,const int binding_index,const int shader_location,VertexBufferBase *vb)
 {
