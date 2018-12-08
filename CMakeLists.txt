@@ -23,6 +23,10 @@ ELSE()
 	SET(OPENGL_LIB	GL)
 ENDIF()
 
+add_definitions(-DMATH_USE_OPENGL)
+add_definitions(-DMATH_RIGHTHANDED_CAMERA)
+add_definitions(-DMATH_AVX)
+
 include_directories(3rdpty/MathGeoLib/src)
 include_directories(3rdpty/GLEWCore/inc)
 include_directories(inc)
