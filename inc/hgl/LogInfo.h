@@ -3,6 +3,15 @@
 
 #include<iostream>
 #include<hgl/CodePage.h>
+
+#if (HGL_COMPILER == HGL_COMPILER_GNU)||(HGL_COMPILER == HGL_COMPILER_LLVM)
+    #define __HGL_FUNC__    __PRETTY_FUNCTION__
+#elif HGL_COMPILER == HGL_COMPILER_Microsoft
+    #define __HGL_FUNC__    __FUNCSIG__
+#else
+    #define __HGL_FUNC__    __FUNCTION__
+#endif//
+
 namespace hgl
 {
     namespace logger
