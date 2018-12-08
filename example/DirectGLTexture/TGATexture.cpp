@@ -69,6 +69,7 @@ namespace hgl
 
             uint videomemory_format;
             uint source_format;
+            uint line_size=0;
 
             if(header->image_type==2)
             {
@@ -76,17 +77,20 @@ namespace hgl
                 {
                     videomemory_format=GL_RGB8;
                     source_format=GL_BGR;
+                    line_size=header->width*3;
                 }
                 else if(header->bit==32)
                 {
                     videomemory_format=GL_RGBA8;
                     source_format=GL_BGRA;
+                    line_size=header->width*4;
                 }
             }
             else if(header->image_type==3&&header->bit==8)
             {
                 videomemory_format=GL_R8;
                 source_format=GL_RED;
+                line_size=header->width;
             }
             else
             {
@@ -98,7 +102,29 @@ namespace hgl
             glCreateTextures(GL_TEXTURE_2D,1,&tex_id);
 
             glTextureStorage2D(tex_id,1,videomemory_format,header->width,header->height);
-            glTextureSubImage2D(tex_id,0,0,0,header->width,header->height,source_format,GL_UNSIGNED_BYTE,data+sizeof(TGAHeader));
+
+            TGAImageDesc img_desc;
+
+            img_desc.image_desc=header->image_desc;
+
+            if(img_desc.direction==1)
+                glTextureSubImage2D(tex_id,0,0,0,header->width,header->height,source_format,GL_UNSIGNED_BYTE,data+sizeof(TGAHeader));
+            else
+            {
+                char *new_img=new char[line_size*header->height];
+                char *sp=data+sizeof(TGAHeader)+line_size*(header->height-1);
+                char *tp=new_img;
+
+                for(int i=0;i<header->height;i++)
+                {
+                    memcpy(tp,sp,line_size);
+                    tp+=line_size;
+                    sp-=line_size;
+                }
+
+                glTextureSubImage2D(tex_id,0,0,0,header->width,header->height,source_format,GL_UNSIGNED_BYTE,new_img);
+                delete[] new_img;
+            }
 
             glTextureParameteri(tex_id,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
             glTextureParameteri(tex_id,GL_TEXTURE_MAG_FILTER,GL_LINEAR);

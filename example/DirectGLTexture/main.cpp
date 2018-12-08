@@ -74,10 +74,10 @@ VB2f *vb_vertex=nullptr;
 VB2f *vb_texcoord=nullptr;
 VertexArray *va=nullptr;
 
-constexpr float vertex_data[]={ -0.5f, 0.5f,
-                                -0.5f,-0.5f,
-                                 0.5f, 0.5f,
-                                 0.5f,-0.5f
+constexpr float vertex_data[]={ -0.75f, 0.75f,
+                                -0.75f,-0.75f,
+                                 0.75f, 0.75f,
+                                 0.75f,-0.75f
 };
 
 constexpr float texcoord_data[]={   0,0,
