@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/Texture1D.h>
 #include<hgl/LogInfo.h>
+#include<hgl/graph/RenderDriver.h>
 
 namespace hgl
 {
@@ -63,7 +64,7 @@ namespace hgl
 
         Texture1D *CreateTexture1D()
         {
-//             if(GLEW_VERSION_4_5||GLEW_ARB_direct_state_access||GL_EXT_direct_state_access)
+//            if(IsSupportDSA())
                 return CreateTexture1DDSA();
 //             else
 //                 return CreateTexture1DBind();

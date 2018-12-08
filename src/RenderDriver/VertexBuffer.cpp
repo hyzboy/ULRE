@@ -2,6 +2,7 @@
 #include<hgl/graph/VertexArray.h>
 #include<GLEWCore/glew.h>
 #include"VertexBufferControl.h"
+#include<hgl/graph/RenderDriver.h>
 
 namespace hgl
 {
@@ -16,7 +17,7 @@ namespace hgl
 
             void InitVertexBufferAPI()
             {
-                if(GLEW_VERSION_4_5||GLEW_ARB_direct_state_access)
+                if(IsSupportDSA())
                     CreateVertexBufferControl=CreateVertexBufferControlDSA;
                 else
                     CreateVertexBufferControl=CreateVertexBufferControlBind;
