@@ -11,6 +11,57 @@ namespace hgl
     namespace graph
     {
         /**
+         *  假设
+         *  scene
+         *  {
+         *      mesh
+         *      {
+         *          Vertex
+         *          TexCoordColor
+         *          TexCoordNormal
+         *      }
+         *
+         *      texture
+         *      {
+         *          Color
+         *          Normal
+         *      }
+         *  };
+         *
+         *  有多种材质
+         *
+         *  material depth_render           //只渲染深度，用于shadow maps或oq等
+         *  {
+         *      in_vertex_attrib
+         *      {
+         *          Vertex
+         *      }
+         *
+         *      in_uniform
+         *      {
+         *          mvp
+         *      }
+         *  }
+         *
+         *  material normal_render
+         *  {
+         *      in_vertex_attrib
+         *      {
+         *          Vertex,
+         *          TexCoordColor,
+         *          TexCoordNormal,
+         *      }
+         *
+         *      in_uniform
+         *      {
+         *          mvp
+         *          light
+         *      }
+         *  }
+         */
+
+
+        /**
          * 渲染材质
          */
         class Material
