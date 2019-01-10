@@ -74,14 +74,6 @@ namespace hgl
 
 //             Color4f		Color;																		///<颜色
 //
-//             uint		draw_face;																	///<绘制的面
-//             uint		fill_mode;																	///<填充方式
-//
-//             uint		cull_face;																	///<裁剪面,0:不裁(双面材质),FACE_FRONT:正面,FACE_BACK:背面
-//
-//             bool		depth_test;																	///<深度测试
-//             uint		depth_func;																	///<深度处理方式
-//             bool		depth_mask;																	///<深度遮罩
 //
 //             float		alpha_test;																	///<alpha测试值,0:全部不显示,1:全部显示
 //
