@@ -148,7 +148,7 @@ namespace hgl
 
             glGetProgramInfoLog(program,log_length,&char_written,log);
 
-           LOG_ERROR(u8"Shader program link error\n\n"+UTF8String(log));
+            LOG_ERROR(u8"Shader program link error\n\n"+UTF8String(log));
 
             delete[] log;
 
@@ -228,7 +228,7 @@ namespace hgl
             return(result);
         }
 
-        #define HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(func)    if(!program)    \
+        #define HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(func)   if(!program)    \
                                                             {    \
                                                                 LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");    \
                                                                 return(false);    \
@@ -240,45 +240,46 @@ namespace hgl
                                                                 return(false);    \
                                                             }
 
-        #define HGL_GLSL_SetUniform1234(func,type)    bool Shader::SetUniform1##func(int location,type v0)    \
-                                                    {    \
+        #define HGL_GLSL_SetUniform1234(func,type)  bool Shader::SetUniform1##func(int location,type v0)    \
+                                                    {   \
                                                         HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(1##func)    \
                                                     \
                                                         glProgramUniform1##func(program,location,v0);    \
                                                         return(true);    \
-                                                    }    \
+                                                    }   \
                                                     \
                                                     bool Shader::SetUniform2##func(int location,type v0,type v1)    \
-                                                    {    \
+                                                    {   \
                                                         HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(2##func)    \
                                                     \
                                                         glProgramUniform2##func(program,location,v0,v1);    \
                                                         return(true);    \
-                                                    }    \
+                                                    }   \
                                                     \
                                                     bool Shader::SetUniform3##func(int location,type v0,type v1,type v2)    \
-                                                    {    \
+                                                    {   \
                                                         HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(3##func)    \
                                                     \
                                                         glProgramUniform3##func(program,location,v0,v1,v2);    \
                                                         return(true);    \
-                                                    }    \
+                                                    }   \
                                                     \
                                                     bool Shader::SetUniform4##func(int location,type v0,type v1,type v2,type v3)    \
-                                                    {    \
+                                                    {   \
                                                         HGL_GLSL_CHECK_PROGRAM_AND_LOCATION(4##func)    \
                                                     \
                                                         glProgramUniform4##func(program,location,v0,v1,v2,v3);    \
                                                         return(true);    \
                                                     }
+
         HGL_GLSL_SetUniform1234(f,float);
         HGL_GLSL_SetUniform1234(i,int);
         HGL_GLSL_SetUniform1234(ui,unsigned int);
 
         #undef HGL_GLSL_SetUniform1234
 
-        #define HGL_GLSL_SetUniformPointer(func,type)    bool Shader::SetUniform##func(int location,const type *value)    \
-                                                        {    \
+        #define HGL_GLSL_SetUniformPointer(func,type)   bool Shader::SetUniform##func(int location,int count,const type *value)    \
+                                                        {   \
                                                             if(!program)    \
                                                             {    \
                                                                 /*LOG_ERROR(u8"Shader::SetUniform" #func ",program=0");*/    \
@@ -297,7 +298,7 @@ namespace hgl
                                                                 return(false);    \
                                                             }    \
                                                         \
-                                                            glProgramUniform##func(program,location,1,value);    \
+                                                            glProgramUniform##func(program,location,count,value);    \
                                                             return(true);    \
                                                         }
 
@@ -318,8 +319,8 @@ namespace hgl
 
         #undef HGL_GLSL_SetUniformPointer
 
-        #define HGL_GLSL_SetUniformMatrixPointer(func)    bool Shader::SetUniformMatrix##func(int location,const float *mat)    \
-                                                        {    \
+        #define HGL_GLSL_SetUniformMatrixPointer(func)  bool Shader::SetUniformMatrix##func(int location,const float *mat)    \
+                                                        {   \
                                                             if(!program)    \
                                                             {    \
                                                                 LOG_ERROR(u8"Shader::SetUniformMatrix" #func ",program=0");    \
