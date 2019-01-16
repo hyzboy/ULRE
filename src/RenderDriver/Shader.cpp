@@ -93,8 +93,10 @@ namespace hgl
     //         return result;
     //     }
 
-        #define HGL_GLSL_SetUniform1234(func,type)    bool Shader::SetUniform1##func(const char *uniform_name,type v0)    \
-                                                    {    \
+        #define HGL_GLSL_SetUniform1234(func,type)  bool Shader::SetUniform1##func(const char *uniform_name,type v0)    \
+                                                    {   \
+                                                        if(!uniform_name||!*uniform_name)return(false); \
+                                                        \
                                                         const int location=GetUniformLocation(uniform_name);    \
                                                         \
                                                         if(location==-1)return(false);    \
@@ -103,7 +105,9 @@ namespace hgl
                                                     }    \
                                                     \
                                                     bool Shader::SetUniform2##func(const char *uniform_name,type v0,type v1)    \
-                                                    {    \
+                                                    {   \
+                                                        if(!uniform_name||!*uniform_name)return(false); \
+                                                        \
                                                         const int location=GetUniformLocation(uniform_name);    \
                                                         \
                                                         if(location==-1)return(false);    \
@@ -112,7 +116,9 @@ namespace hgl
                                                     }    \
                                                     \
                                                     bool Shader::SetUniform3##func(const char *uniform_name,type v0,type v1,type v2)    \
-                                                    {    \
+                                                    {   \
+                                                        if(!uniform_name||!*uniform_name)return(false); \
+                                                        \
                                                         const int location=GetUniformLocation(uniform_name);    \
                                                         \
                                                         if(location==-1)return(false);    \
@@ -121,7 +127,9 @@ namespace hgl
                                                     }    \
                                                     \
                                                     bool Shader::SetUniform4##func(const char *uniform_name,type v0,type v1,type v2,type v3)    \
-                                                    {    \
+                                                    {   \
+                                                        if(!uniform_name||!*uniform_name)return(false); \
+                                                        \
                                                         const int location=GetUniformLocation(uniform_name);    \
                                                         \
                                                         if(location==-1)return(false);    \
@@ -134,13 +142,15 @@ namespace hgl
 
         #undef HGL_GLSL_SetUniform1234
 
-        #define HGL_GLSL_SetUniformPointer(func,type)    bool Shader::SetUniform##func(const char *uniform_name,const type *value)    \
-                                                        {    \
+        #define HGL_GLSL_SetUniformPointer(func,type)   bool Shader::SetUniform##func(const char *uniform_name,int count,const type *value)    \
+                                                        {   \
+                                                            if(!uniform_name||!*uniform_name||count<=0||!value)return(false);   \
+                                                            \
                                                             const int location=GetUniformLocation(uniform_name);    \
                                                             \
                                                             if(location==-1)return(false);    \
                                                             \
-                                                            return SetUniform##func(location,value);    \
+                                                            return SetUniform##func(location,count,value);    \
                                                         }
 
         HGL_GLSL_SetUniformPointer(1fv,float);
@@ -160,8 +170,10 @@ namespace hgl
 
         #undef HGL_GLSL_SetUniformPointer
 
-        #define HGL_GLSL_SetUniformMatrixPointer(func)    bool Shader::SetUniformMatrix##func(const char *uniform_name,const float *mat)    \
-                                                        {    \
+        #define HGL_GLSL_SetUniformMatrixPointer(func)  bool Shader::SetUniformMatrix##func(const char *uniform_name,const float *mat)    \
+                                                        {   \
+                                                            if(!uniform_name||!*uniform_name||*mat)return(false);   \
+                                                            \
                                                             const int location=GetUniformLocation(uniform_name);    \
                                                             \
                                                             if(location==-1)return(false);    \

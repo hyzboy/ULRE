@@ -108,24 +108,24 @@ namespace hgl
             bool SetUniform3ui(int,unsigned int,unsigned int,unsigned int);
             bool SetUniform4ui(int,unsigned int,unsigned int,unsigned int,unsigned int);
 
-            bool SetUniform1fv(int,const float *);
-            bool SetUniform2fv(int,const float *);
-            bool SetUniform3fv(int,const float *);
-            bool SetUniform4fv(int,const float *);
+            bool SetUniform1fv(int,int count,const float *);
+            bool SetUniform2fv(int,int count,const float *);
+            bool SetUniform3fv(int,int count,const float *);
+            bool SetUniform4fv(int,int count,const float *);
 
-            bool SetUniform2fv(int index,const Vector2f &v){return SetUniform2fv(index,(const float *)&v);}
-            bool SetUniform3fv(int index,const Vector3f &v){return SetUniform3fv(index,(const float *)&v);}
-            bool SetUniform4fv(int index,const Vector4f &v){return SetUniform4fv(index,(const float *)&v);}
+            bool SetUniform2fv(int index,const Vector2f &v){return SetUniform2fv(index,1,(const float *)&v);}
+            bool SetUniform3fv(int index,const Vector3f &v){return SetUniform3fv(index,1,(const float *)&v);}
+            bool SetUniform4fv(int index,const Vector4f &v){return SetUniform4fv(index,1,(const float *)&v);}
 
-            bool SetUniform1iv(int,const int *);
-            bool SetUniform2iv(int,const int *);
-            bool SetUniform3iv(int,const int *);
-            bool SetUniform4iv(int,const int *);
+            bool SetUniform1iv(int,int count,const int *);
+            bool SetUniform2iv(int,int count,const int *);
+            bool SetUniform3iv(int,int count,const int *);
+            bool SetUniform4iv(int,int count,const int *);
 
-            bool SetUniform1uiv(int,const unsigned int *);
-            bool SetUniform2uiv(int,const unsigned int *);
-            bool SetUniform3uiv(int,const unsigned int *);
-            bool SetUniform4uiv(int,const unsigned int *);
+            bool SetUniform1uiv(int,int count,const unsigned int *);
+            bool SetUniform2uiv(int,int count,const unsigned int *);
+            bool SetUniform3uiv(int,int count,const unsigned int *);
+            bool SetUniform4uiv(int,int count,const unsigned int *);
 
             bool SetUniformMatrix2fv(int,const float *);
             bool SetUniformMatrix3fv(int,const float *);
@@ -155,24 +155,24 @@ namespace hgl
             bool SetUniform3ui(const char *,unsigned int,unsigned int,unsigned int);
             bool SetUniform4ui(const char *,unsigned int,unsigned int,unsigned int,unsigned int);
 
-            bool SetUniform1fv(const char *,const float *);
-            bool SetUniform2fv(const char *,const float *);
-            bool SetUniform3fv(const char *,const float *);
-            bool SetUniform4fv(const char *,const float *);
+            bool SetUniform1fv(const char *,int count,const float *);
+            bool SetUniform2fv(const char *,int count,const float *);
+            bool SetUniform3fv(const char *,int count,const float *);
+            bool SetUniform4fv(const char *,int count,const float *);
 
-            bool SetUniform2fv(const char *name,const Vector2f &v){return SetUniform2fv(name,(const float *)&v);}
-            bool SetUniform3fv(const char *name,const Vector3f &v){return SetUniform3fv(name,(const float *)&v);}
-            bool SetUniform4fv(const char *name,const Vector4f &v){return SetUniform4fv(name,(const float *)&v);}
+            bool SetUniform2fv(const char *name,const Vector2f &v){return SetUniform2fv(name,1,(const float *)&v);}
+            bool SetUniform3fv(const char *name,const Vector3f &v){return SetUniform3fv(name,1,(const float *)&v);}
+            bool SetUniform4fv(const char *name,const Vector4f &v){return SetUniform4fv(name,1,(const float *)&v);}
 
-            bool SetUniform1iv(const char *,const int *);
-            bool SetUniform2iv(const char *,const int *);
-            bool SetUniform3iv(const char *,const int *);
-            bool SetUniform4iv(const char *,const int *);
+            bool SetUniform1iv(const char *,int count,const int *);
+            bool SetUniform2iv(const char *,int count,const int *);
+            bool SetUniform3iv(const char *,int count,const int *);
+            bool SetUniform4iv(const char *,int count,const int *);
 
-            bool SetUniform1uiv(const char *,const unsigned int *);
-            bool SetUniform2uiv(const char *,const unsigned int *);
-            bool SetUniform3uiv(const char *,const unsigned int *);
-            bool SetUniform4uiv(const char *,const unsigned int *);
+            bool SetUniform1uiv(const char *,int count,const unsigned int *);
+            bool SetUniform2uiv(const char *,int count,const unsigned int *);
+            bool SetUniform3uiv(const char *,int count,const unsigned int *);
+            bool SetUniform4uiv(const char *,int count,const unsigned int *);
 
             bool SetUniformMatrix2fv(const char *,const float *);
             bool SetUniformMatrix3fv(const char *,const float *);
