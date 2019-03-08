@@ -31,6 +31,29 @@ void output_ogl_info()
         std::cout<<"            "<<i<<" : "<<glGetStringi(GL_EXTENSIONS,i)<<std::endl;
 }
 
+void output_ogl_value(const char *name,const GLenum gl_caps)
+{
+    GLint params;
+
+    glGetIntegerv(gl_caps, &params);
+
+    std::cout << name << ": " << params << std::endl;
+}
+
+#define OUTPUT_OGL_VALUE(name) output_ogl_value("GL_" #name,GL_##name)
+
+void output_ogl_values()
+{
+    OUTPUT_OGL_VALUE(MAX_TEXTURE_COORDS);
+    OUTPUT_OGL_VALUE(MAX_TEXTURE_IMAGE_UNITS);
+    OUTPUT_OGL_VALUE(MAX_SAMPLES);
+    OUTPUT_OGL_VALUE(MAX_COLOR_ATTACHMENTS);
+    OUTPUT_OGL_VALUE(MAX_ARRAY_TEXTURE_LAYERS);
+    OUTPUT_OGL_VALUE(MAX_TEXTURE_BUFFER_SIZE);
+    OUTPUT_OGL_VALUE(MAX_UNIFORM_BLOCK_SIZE);
+    OUTPUT_OGL_VALUE(MAX_SHADER_STORAGE_BLOCK_SIZE);
+}
+
 int main(int argc,char **argv)
 {
     RenderDevice *device=CreateRenderDeviceGLFW();
@@ -68,6 +91,7 @@ int main(int argc,char **argv)
     win->MakeToCurrent();           //切换当前窗口到前台
 
     output_ogl_info();
+    output_ogl_values();
 
     delete win;
     delete device;
