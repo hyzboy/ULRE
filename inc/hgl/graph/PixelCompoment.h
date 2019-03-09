@@ -26,6 +26,8 @@ namespace hgl
 
             //4通道
             HGL_PC_RGBA,
+
+            //4通道 3+1模式
             HGL_PC_RGB_SPECULAR,
             HGL_PC_RGB_DEPTH,
             HGL_PC_NORMAL_HEIGHT,

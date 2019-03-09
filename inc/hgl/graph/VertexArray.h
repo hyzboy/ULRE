@@ -40,7 +40,7 @@ namespace hgl
 
         public: //通用顶点缓冲区设置
 
-            int                 AddVertexAttribBuffer     (VertexBufferBase *);                                         ///<设置顶点缓冲区数据
+            int                 AddVertexAttribBuffer     (int shader_location,VertexBufferBase *);                     ///<设置顶点缓冲区数据
             VertexBufferBase *  GetVertexAttribBuffer     (int index){return vertex_buffer_list[index];}                ///<取得顶点缓冲区数据
             bool                ClearVertexAttribBuffer   (int index){return vertex_buffer_list.Delete(index);}         ///<清除顶点缓冲区数据
             void                ClearVertexAttribBuffers  (){vertex_buffer_list.Clear();}                               ///<清除所有顶点缓冲区数据
@@ -48,8 +48,8 @@ namespace hgl
         public: //特殊缓冲区独立设置函数
 
             bool                SetElementBuffer    (VertexBufferBase *eb);                                             ///<设置索引缓冲区数据
-            bool                SetVertexBuffer     (VertexBufferBase *vb);                                             ///<设置顶点缓冲区数据
-            bool                SetColorBuffer      (VertexBufferBase *vb,PixelCompoment cf);                           ///<设置颜色缓冲区数据
+            bool                SetVertexBuffer     (int shader_location,VertexBufferBase *vb);                         ///<设置顶点缓冲区数据
+            bool                SetColorBuffer      (int shader_location,VertexBufferBase *vb,PixelCompoment cf);       ///<设置颜色缓冲区数据
 
             int                 GetVertexCompoment  ()const{return vertex_compoment;}                                   ///<取得顶点数据成分数量
             PixelCompoment      GetColorCompoment   ()const{return color_compoment;}                                    ///<取得顶点颜色格式
