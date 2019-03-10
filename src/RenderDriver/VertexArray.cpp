@@ -42,6 +42,7 @@ namespace hgl
 
         /**
         * 添加一个顶点数据缓冲区
+        * @param shader_location 这个缓冲区对应的SHADER地址
         * @param vb 数据缓冲区
         * @return 绑定点索引
         * @return -1 失败
@@ -67,6 +68,9 @@ namespace hgl
             return binding_index;
         }
 
+        /**
+         * 设置索引缓冲区
+         */
         bool VertexArray::SetElementBuffer(VertexBufferBase *eb)
         {
             if(!eb)return(false);
@@ -77,6 +81,11 @@ namespace hgl
             return(true);
         }
 
+        /**
+         * 设置一个顶点缓冲区
+         * @param shader_location 这个缓冲区对应的SHADER地址
+         * @param vb 数据缓冲区
+         */
         bool VertexArray::SetVertexBuffer(int shader_location, VertexBufferBase *vb)
         {
             if(!vb)return(false);
@@ -89,6 +98,12 @@ namespace hgl
             return(true);
         }
 
+        /**
+         * 设置一个颜色缓冲区
+         * @param shader_location 这个缓冲区对应的SHADER地址
+         * @param vb 数据缓冲区
+         * @param cf 颜色象素格式
+         */
         bool VertexArray::SetColorBuffer(int shader_location, VertexBufferBase *vb,PixelCompoment cf)
         {
             if(!vb)return(false);
