@@ -1,5 +1,5 @@
-﻿#ifndef HGL_RENDER_STATUS_INCLUDE
-#define HGL_RENDER_STATUS_INCLUDE
+﻿#ifndef HGL_RENDER_STATE_INCLUDE
+#define HGL_RENDER_STATE_INCLUDE
 
 #include<hgl/type/Color4f.h>
 #include<hgl/CompOperator.h>
@@ -36,7 +36,7 @@ namespace hgl
     /**
      * 渲染状态
      */
-    struct RenderStatus
+    struct RenderState
     {
         bool    color_mask[4];
         Color4f clear_color;
@@ -50,6 +50,6 @@ namespace hgl
         //             bool		depth_test;																	///<深度测试
         //             uint		depth_func;																	///<深度处理方式
         //             bool		depth_mask;																	///<深度遮罩
-    };//class RenderStatus
+    };//class RenderState
 }//namespace hgl
-#endif//HGL_RENDER_STATUS_INCLUDE
+#endif//HGL_RENDER_STATE_INCLUDE
