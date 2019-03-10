@@ -88,14 +88,6 @@ constexpr float texcoord_data[]={   -0.25,-0.25,
                                      1.25, 1.25
 };
 
-void BindVBO2VAO(const int vao,const int binding_index,const int shader_location,VertexBufferBase *vb)
-{
-    glVertexArrayAttribBinding(vao,shader_location,binding_index);
-    glVertexArrayAttribFormat(vao,shader_location,vb->GetComponent(),vb->GetDataType(),GL_FALSE,0);
-    glEnableVertexArrayAttrib(vao,shader_location);
-    glVertexArrayVertexBuffer(vao,binding_index,vb->GetBufferIndex(),0,vb->GetStride());
-}
-
 void InitVertexBuffer()
 {
     vb_vertex=new VB2f(4,vertex_data);
@@ -107,16 +99,8 @@ void InitVertexBuffer()
     const int vertex_location=shader.GetAttribLocation("Vertex");              ///<取得顶点数据输入流对应的shader地址
     const int texcoord_location=shader.GetAttribLocation("TexCoord");             ///<取得纹理坐标数据输入流对应的shader地址
 
-    int binding_index=0;                    //绑定点
-
-    const int vao=va->GetVAO();
-
-    va->SetVertexBuffer(vb_vertex);
-    va->AddVertexAttribBuffer(vb_texcoord);
-
-    BindVBO2VAO(vao,binding_index,vertex_location,vb_vertex);
-    ++binding_index;
-    BindVBO2VAO(vao,binding_index,texcoord_location,vb_texcoord);
+    va->SetVertexBuffer(vertex_location,vb_vertex);
+    va->AddVertexAttribBuffer(texcoord_location,vb_texcoord);
 }
 
 bool InitTexture()
