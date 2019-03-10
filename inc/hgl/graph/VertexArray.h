@@ -59,6 +59,10 @@ namespace hgl
             int                 GetDrawCount    ();                                                                     ///<取得可绘制的数据总数量
             bool                Draw();                                                                                 ///<绘制
         };//class VertexArray
+
+        新设计内容，如碰到此处编译失败请在GIT上退回到上一版本
+        1.ColorBuffer可能存在多个，所以上面的SetColorBuffer可能要考虑多个的情况
+        2.将VertexArray类拆分成独立的VAO类和VAOCreater类，所有创建VAO相关的全部放到VAOCreater类中，创建完删除自身并返回VAO对象
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ARRAY_INCLUDE
