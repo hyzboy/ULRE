@@ -886,7 +886,23 @@ namespace hgl
         using EB16=ElementBuffer<uint16,GL_UNSIGNED_SHORT   >;
         using EB32=ElementBuffer<uint32,GL_UNSIGNED_INT     >;
 
-#define USING_VB1234(type,gl_type,short_name)   using VB1##short_name=VertexBuffer1<type,gl_type>;  \
+        template<typename BASE>
+        class ColorBufferBase:public BASE
+        {
+        protected:
+
+            PixelCompoment color_compoment;
+
+        public:
+
+            const PixelCompoment GetColorCompoment()const{return color_compoment;}
+
+        public:
+
+            ColorBuferBase(const PixelCompoment &pc):color_compoment(pc){}
+        };//
+
+#define USING_VB1234(type,gl_type,short_name)   using VB1##short_name=VertexBuffer1<type,gl_type>;using CB1##short_name=ColorBufferBase<VB1##short_name>;  \
                                                 using VB2##short_name=VertexBuffer2<type,gl_type>;  \
                                                 using VB3##short_name=VertexBuffer3<type,gl_type>;  \
                                                 using VB4##short_name=VertexBuffer4<type,gl_type>;
@@ -898,15 +914,19 @@ namespace hgl
         USING_VB1234(int32, GL_INT,     i32)
         USING_VB1234(int32, GL_INT,     i)
 
-        USING_VB1234(int8,  GL_UNSIGNED_BYTE,   u8)
-        USING_VB1234(int8,  GL_UNSIGNED_BYTE,   ub)
-        USING_VB1234(int16, GL_UNSIGNED_SHORT,  u16)
-        USING_VB1234(int16, GL_UNSIGNED_SHORT,  us)
-        USING_VB1234(int32, GL_UNSIGNED_INT,    u32)
-        USING_VB1234(int32, GL_UNSIGNED_INT,    ui)
+        USING_VB1234(uint8, GL_UNSIGNED_BYTE,   u8)
+        USING_VB1234(uint8, GL_UNSIGNED_BYTE,   ub)
+        USING_VB1234(uint16,GL_UNSIGNED_SHORT,  u16)
+        USING_VB1234(uint16,GL_UNSIGNED_SHORT,  us)
+        USING_VB1234(uint32,GL_UNSIGNED_INT,    u32)
+        USING_VB1234(uint32,GL_UNSIGNED_INT,    ui)
 
-        USING_VB1234(float, GL_FLOAT,   f)
-        USING_VB1234(double,GL_DOUBLE,  d)
+        USING_VB1234(uint16,GL_HALF_FLOAT,  hf)
+        USING_VB1234(uint16,GL_HALF_FLOAT,  f16)
+        USING_VB1234(float, GL_FLOAT,       f)
+        USING_VB1234(float, GL_FLOAT,       f32)
+        USING_VB1234(double,GL_DOUBLE,      d)
+        USING_VB1234(double,GL_DOUBLE,      f64)
 
 #undef USING_VB1234
 

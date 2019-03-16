@@ -21,11 +21,13 @@ namespace hgl
 
             ObjectList<VertexBufferBase> vertex_buffer_list;                                                            ///<顶点数据缓冲区
 
-            int vertex_compoment;                                                                                       ///<顶点属性格式
-            PixelCompoment color_compoment;                                                                             ///<颜色属性格式
-
             VertexBufferBase *element_buffer;
-            VertexBufferBase *vertex_buffer;
+
+            VertexBufferBase *position_buffer;
+            int position_compoment;                                                                                     ///<位置属性格式
+
+            List<Pair<VertexBufferBase *,PixelCompoment>> color_buffer;
+            PixelCompoment color_compoment;                                                                             ///<颜色属性格式
             VertexBufferBase *color_buffer;
 
         public:
@@ -48,11 +50,12 @@ namespace hgl
         public: //特殊缓冲区独立设置函数
 
             bool                SetElementBuffer    (VertexBufferBase *eb);                                             ///<设置索引缓冲区数据
-            bool                SetVertexBuffer     (int shader_location,VertexBufferBase *vb);                         ///<设置顶点缓冲区数据
-            bool                SetColorBuffer      (int shader_location,VertexBufferBase *vb,PixelCompoment cf);       ///<设置颜色缓冲区数据
+            bool                SetPositionBuffer   (int shader_location,VertexBufferBase *vb);                         ///<设置位置缓冲区数据
 
-            int                 GetVertexCompoment  ()const{return vertex_compoment;}                                   ///<取得顶点数据成分数量
-            PixelCompoment      GetColorCompoment   ()const{return color_compoment;}                                    ///<取得顶点颜色格式
+            bool                AddColorBuffer      (int shader_location,VertexBufferBase *vb,PixelCompoment cf);       ///<设置颜色缓冲区数据
+
+            int                 GetPositionCompoment()const{return position_compoment;}                                 ///<取得位置数据成分数量
+            PixelCompoment      GetColorCompoment   ()const{return color_compoment;}                                    ///<取得颜色数据成份格式
 
         public:
 
@@ -60,9 +63,9 @@ namespace hgl
             bool                Draw();                                                                                 ///<绘制
         };//class VertexArray
 
-        新设计内容，如碰到此处编译失败请在GIT上退回到上一版本
-        1.ColorBuffer可能存在多个，所以上面的SetColorBuffer可能要考虑多个的情况
-        2.将VertexArray类拆分成独立的VAO类和VAOCreater类，所有创建VAO相关的全部放到VAOCreater类中，创建完删除自身并返回VAO对象
+        //新设计内容，如碰到此处编译失败请在GIT上退回到上一版本
+        //1.ColorBuffer可能存在多个，所以上面的SetColorBuffer可能要考虑多个的情况
+        //2.将VertexArray类拆分成独立的VAO类和VAOCreater类，所有创建VAO相关的全部放到VAOCreater类中，创建完删除自身并返回VAO对象
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ARRAY_INCLUDE
