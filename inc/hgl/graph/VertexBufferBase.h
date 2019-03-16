@@ -66,6 +66,9 @@ namespace hgl
             //void  BindVertexBuffer();
             int     GetBufferIndex()const;                                                          ///<取得缓冲区索引
         };//class VertexBufferBase
+
+        using VBB=VertexBufferBase;
+        using VBBPointer=VBB *;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_VERTEX_BUFFER_BASE_INCLUDE
