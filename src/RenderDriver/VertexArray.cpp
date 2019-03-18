@@ -27,7 +27,7 @@ namespace hgl
 
             vertex_buffer_list.PreMalloc(max_vertex_attrib);
 
-            vertex_compoment=-1;
+            position_compoment=-1;
             color_compoment=HGL_PC_NONE;
 
             element_buffer=nullptr;
@@ -86,25 +86,25 @@ namespace hgl
          * @param shader_location 这个缓冲区对应的SHADER地址
          * @param vb 数据缓冲区
          */
-        bool VertexArray::SetVertexBuffer(int shader_location, VertexBufferBase *vb)
+        bool VertexArray::SetPositionBuffer(int shader_location, VertexBufferBase *vb)
         {
             if(!vb)return(false);
 
             if(!AddVertexAttribBuffer(shader_location,vb)<0)
                 return(false);
 
-            vertex_compoment=vb->GetComponent();
-            vertex_buffer=vb;
+            position_compoment=vb->GetComponent();
+            position_buffer=vb;
             return(true);
         }
 
         /**
-         * 设置一个颜色缓冲区
+         * 添加一个颜色缓冲区
          * @param shader_location 这个缓冲区对应的SHADER地址
          * @param vb 数据缓冲区
          * @param cf 颜色象素格式
          */
-        bool VertexArray::SetColorBuffer(int shader_location, VertexBufferBase *vb,PixelCompoment cf)
+        bool VertexArray::AddColorBuffer(int shader_location, VertexBufferBase *vb,PixelCompoment cf)
         {
             if(!vb)return(false);
             if(cf<=HGL_PC_NONE||cf>=HGL_PC_END)return(false);
@@ -127,8 +127,8 @@ namespace hgl
             if(element_buffer)
                 return element_buffer->GetCount();
 
-            if(vertex_buffer)
-                return vertex_buffer->GetCount();
+            if(position_buffer)
+                return position_buffer->GetCount();
 
             return(-1);
         }
@@ -140,8 +140,8 @@ namespace hgl
             if (element_buffer)
                 glDrawElements(primitive, element_buffer->GetCount(), element_buffer->GetDataType(), nullptr);
             else
-            if(vertex_buffer)
-                glDrawArrays(primitive,0,vertex_buffer->GetCount());
+            if(position_buffer)
+                glDrawArrays(primitive,0,position_buffer->GetCount());
             else
                 return(false);
 

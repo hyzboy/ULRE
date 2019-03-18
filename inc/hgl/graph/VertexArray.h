@@ -52,7 +52,7 @@ namespace hgl
             bool                SetElementBuffer    (VertexBufferBase *eb);                                             ///<设置索引缓冲区数据
             bool                SetPositionBuffer   (int shader_location,VertexBufferBase *vb);                         ///<设置位置缓冲区数据
 
-            bool                AddColorBuffer      (int shader_location,VertexBufferBase *vb,PixelCompoment cf);       ///<设置颜色缓冲区数据
+            bool                AddColorBuffer      (int shader_location,VertexBufferBase *vb,PixelCompoment cf);       ///<添加一个颜色缓冲区数据
 
             int                 GetPositionCompoment()const{return position_compoment;}                                 ///<取得位置数据成分数量
             PixelCompoment      GetColorCompoment   ()const{return color_compoment;}                                    ///<取得颜色数据成份格式

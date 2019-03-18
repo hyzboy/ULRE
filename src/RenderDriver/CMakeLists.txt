@@ -4,8 +4,7 @@
                                         Shader.cpp
                                         VertexArray.cpp
                                         VertexBuffer.cpp
-                                        VertexBufferControlDSA.cpp
-                                        VertexBufferControlBind.cpp
+                                        VertexBufferObject.cpp
                                         TextureFormat.cpp
                                         Texture1D.cpp
                                         Texture1DDSA.cpp
