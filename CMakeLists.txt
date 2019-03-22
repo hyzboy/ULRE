@@ -27,9 +27,11 @@ add_definitions(-DMATH_USE_OPENGL)
 add_definitions(-DMATH_RIGHTHANDED_CAMERA)
 add_definitions(-DMATH_AVX)
 
-include_directories(3rdpty/MathGeoLib/src)
-include_directories(3rdpty/GLEWCore/inc)
-include_directories(inc)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/GLEWCore/inc)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
+
+SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/GLEWCore)
