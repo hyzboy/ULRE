@@ -3,6 +3,8 @@ SET(GRAPH_SRC_FILES OpenGLDebug.cpp
                     OpenGLExt.cpp
                     GLSL.cpp
                     Shader.cpp
+                    BufferData.cpp
+                    BufferObject.cpp
                     VertexArray.cpp
                     VertexBuffer.cpp
                     VertexBufferObject.cpp
@@ -11,7 +13,7 @@ SET(GRAPH_SRC_FILES OpenGLDebug.cpp
                     Texture1DDSA.cpp
                     Texture2D.cpp
                     Texture2DDSA.cpp)
-                        
+
 source_group("Headers" FILES ${GRAPH_INC_FILES})
 source_group("Sources" FILES ${GRAPH_SRC_FILES})
 
