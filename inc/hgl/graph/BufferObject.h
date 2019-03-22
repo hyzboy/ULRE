@@ -23,18 +23,6 @@ namespace hgl
 
         protected:
 
-            BufferObject(GLenum type)
-            {
-                buffer_index=
-                buffer_type=type;
-            }
-
-            BufferObject(GLenum type,GLenum up)
-            {
-                buffer_type=type;
-                user_pattern=up;
-            }
-
             BufferObject(GLuint index,GLenum type,GLenum up)
             {
                 buffer_index=index;
@@ -42,7 +30,7 @@ namespace hgl
                 user_pattern=up;
             }
 
-            BufferObject(GLenum type,GLenum up,void *data,GLsizeiptr size,bool data_self_alloc)
+            BufferObject(GLuint index,GLenum type,GLenum up,void *data,GLsizeiptr size,bool data_self_alloc)
             {
                 buffer_index=index;
                 buffer_type=type;
@@ -70,6 +58,13 @@ namespace hgl
             void *      GetData         ()                  {return data;}                          ///<取得数据指针
             void *      GetData         (const uint pos)    {return ((char *)data)+data_bytes*pos;} ///<取得数据指针
         };//class BufferObject
+
+        BufferObject *CreateBuffer(GLenum type)
+        {
+            隐藏BufferObject创建方法，并且必须在外部创建好buffer index再创建buffer object。
+                并将buffer object本身与内存镜像数据部分分离，这样保证buffer object的单纯性，
+                其它无需操作数据的模块，也没有可直接操作数据的API可用。
+        }
 
     }//namespace graph
 }//namespace hgl
