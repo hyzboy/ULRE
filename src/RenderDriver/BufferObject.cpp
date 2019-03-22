@@ -22,7 +22,7 @@ namespace hgl
                 if(!data||size<=0)return(false);
 
                 user_pattern=up;
-                glBindBuffer(buffer_bytes,buffer_index);
+                glBindBuffer(buffer_type,buffer_index);
                 glBufferData(buffer_type,size,data,user_pattern);
 
                 return(true);
@@ -32,7 +32,7 @@ namespace hgl
             {
                 if(!data||start<0||size<=0)return(false);
 
-                glBindBuffer(buffer_bytes,buffer_index);
+                glBindBuffer(buffer_type,buffer_index);
                 glBufferSubData(buffer_type,start,size,data);
 
                 return(true);
