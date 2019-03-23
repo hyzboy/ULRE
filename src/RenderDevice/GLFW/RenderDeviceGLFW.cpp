@@ -5,6 +5,14 @@
 
 namespace hgl
 {
+    namespace graph
+    {
+        namespace gl
+        {
+            void InitOpenGLExt();
+        }
+    }
+
     RenderWindow *CreateRenderWindowGLFW(GLFWwindow *,bool is_fullscreen);
 
     namespace
@@ -195,6 +203,7 @@ namespace hgl
 
             glfwMakeContextCurrent(win);
             InitGLEWCore();
+            graph::gl::InitOpenGLExt();
 
             return(CreateRenderWindowGLFW(win,false));
         }
@@ -218,6 +227,7 @@ namespace hgl
 
             glfwMakeContextCurrent(win);
             InitGLEWCore();
+            graph::gl::InitOpenGLExt();
 
             return(CreateRenderWindowGLFW(win,true));
         }

@@ -124,8 +124,8 @@ namespace hgl
             if(!buf_data)return(false);
             buffer_data=buf_data;
 
-            const void *        data=buf_data->GetData();
-            const GLsizeiptr    size=buf_data->GetTotalBytes();
+            void *        data=buf_data->GetData();
+            GLsizeiptr    size=buf_data->GetTotalBytes();
 
             if(!data||size<=0)return(false);
 
