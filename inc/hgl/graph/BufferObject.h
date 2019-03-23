@@ -23,7 +23,9 @@ namespace hgl
 
         protected:
 
-            friend BufferObject *CreateBuffer(GLenum type,GLenum user_pattern,BufferData *buf);
+            friend BufferObject *CreateBufferObject(GLenum,GLenum,BufferData *buf);
+            friend BufferObject *CreateBufferObject(const GLenum &,const GLenum &,const GLsizeiptr &);
+            friend BufferObject *CreateBufferObject(const GLenum &,const GLenum &,const GLsizeiptr &,void *);
 
             BufferObject(GLuint index,GLenum type);
 
