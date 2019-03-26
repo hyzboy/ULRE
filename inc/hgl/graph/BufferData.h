@@ -27,7 +27,6 @@ namespace hgl
 
         protected:
 
-            friend BufferData *CreateBufferData(const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count);
             friend BufferData *CreateBufferData(void *data,const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count);
 
             BufferData(const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count,char *data)

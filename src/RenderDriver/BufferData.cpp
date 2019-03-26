@@ -6,6 +6,7 @@ namespace hgl
     {
         class BufferDataSelfAlloc:public BufferData
         {
+            friend BufferData *CreateBufferData(const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count);
         public:
 
             using BufferData::BufferData;
