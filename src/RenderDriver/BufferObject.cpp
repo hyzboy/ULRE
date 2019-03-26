@@ -12,6 +12,11 @@ namespace hgl
                     glCreateBuffers(1,index);
                 }
 
+                void BufferAlloc(GLenum type,GLuint index,GLsizeiptr size)
+                {
+                    glNamedBufferStorage(type,size,nullptr,GL_MAP_WRITE_BIT);
+                }
+
                 void BufferData(GLenum type,GLuint index,void *data,GLsizeiptr size,GLenum user_pattern)
                 {
                     glNamedBufferData(index,size,data,user_pattern);
@@ -25,6 +30,11 @@ namespace hgl
 
             namespace dsa_ext
             {
+                void BufferAlloc(GLenum type,GLuint index,GLsizeiptr size)
+                {
+                    glNamedBufferStorageEXT(type,size,nullptr,GL_MAP_WRITE_BIT_EXT);
+                }
+
                 void BufferData(GLenum type,GLuint index,void *data,GLsizeiptr size,GLenum user_pattern)
                 {
                     glNamedBufferDataEXT(index,size,data,user_pattern);
@@ -35,6 +45,11 @@ namespace hgl
                     glNamedBufferSubDataEXT(index,start,size,data);
                 }
             }//namespace dsa
+
+            namespace bind_storage
+            {
+
+            }
 
             namespace bind
             {
@@ -175,7 +190,6 @@ namespace hgl
             if(total_bytes<=0)return(nullptr);
 
             GLuint index;
-            BufferObject *obj;
 
             gl::CreateBuffer(1,&index);
 
@@ -203,7 +217,6 @@ namespace hgl
             if(!data)return(nullptr);
 
             GLuint index;
-            BufferObject *obj;
 
             gl::CreateBuffer(1,&index);
 
