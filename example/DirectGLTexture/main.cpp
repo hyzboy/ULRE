@@ -2,10 +2,7 @@
 #include<hgl/graph/RenderDriver.h>
 #include<hgl/graph/RenderWindow.h>
 #include<iostream>
-#include<GLEWCore/glew.h>
-#include<hgl/graph/Shader.h>
-#include<hgl/math/Math.h>
-#include<hgl/graph/VertexArray.h>
+#include<hgl/graph/Renderable.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -70,9 +67,10 @@ bool InitShader()
     return(true);
 }
 
-VB2f *vb_vertex=nullptr;
-VB2f *vb_texcoord=nullptr;
+ArrayBuffer *vb_vertex=nullptr;
+ArrayBuffer *vb_texcoord=nullptr;
 VertexArray *va=nullptr;
+Renderable *render_obj=nullptr;
 
 constexpr float vertex_data[]={ -0.75f, 0.75f,
                                 -0.75f,-0.75f,
@@ -87,17 +85,18 @@ constexpr float texcoord_data[]={   0,0,
 
 void InitVertexBuffer()
 {
-    vb_vertex=new VB2f(4,vertex_data);
-    vb_texcoord=new VB2f(4,texcoord_data);
+    vb_vertex=CreateVBO(VB2f(4,vertex_data));
+    vb_texcoord=CreateVBO(VB2f(4,texcoord_data));
 
-    va=new VertexArray(GL_TRIANGLE_STRIP,       //画三角形条
-                        2);                     //两个属性
+    va=new VertexArray();
 
     const int vertex_location=shader.GetAttribLocation("Vertex");              ///<取得顶点数据输入流对应的shader地址
     const int texcoord_location=shader.GetAttribLocation("TexCoord");             ///<取得纹理坐标数据输入流对应的shader地址
 
-    va->SetVertexBuffer(vertex_location,vb_vertex);
-    va->AddVertexAttribBuffer(texcoord_location,vb_texcoord);
+    va->SetPosition(vertex_location,vb_vertex);
+    va->AddBuffer(texcoord_location,vb_texcoord);
+
+    render_obj=new Renderable(GL_TRIANGLE_STRIP,va);
 }
 
 bool InitTexture()
@@ -129,7 +128,7 @@ void draw()
     glClearBufferfv(GL_COLOR,0,clear_color);
     glClearBufferfv(GL_DEPTH,0,&clear_depth);
 
-    va->Draw();
+    render_obj->Draw();
 }
 
 int main(void)
@@ -180,6 +179,11 @@ int main(void)
         win->SwapBuffer();              //交换前后台显示缓冲区
         win->PollEvent();               //处理窗口事件
     }
+
+    delete render_obj;
+    delete va;
+    delete vb_texcoord;
+    delete vb_vertex;
 
     delete win;
     delete device;
