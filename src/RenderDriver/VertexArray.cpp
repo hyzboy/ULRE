@@ -18,12 +18,9 @@ namespace hgl
             return HGL_MAX_VERTEX_ATTRIBS;
         }
 
-        VertexArray::VertexArray(GLint max_vertex_attrib)
+        VertexArray::VertexArray()
         {
-            if(max_vertex_attrib>GetMaxVertexAttrib())
-                max_vertex_attrib=HGL_MAX_VERTEX_ATTRIBS;
-
-            vbo_list.PreMalloc(max_vertex_attrib);
+            vbo_list.PreMalloc(HGL_MAX_VERTEX_ATTRIBS);
             
             element_buffer=nullptr;
 

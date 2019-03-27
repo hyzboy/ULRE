@@ -26,7 +26,7 @@ namespace hgl
 
         public:
 
-            VertexArray(GLint max_vertex_attrib);
+            VertexArray();
             ~VertexArray();
 
             static int      GetMaxVertexAttrib();
