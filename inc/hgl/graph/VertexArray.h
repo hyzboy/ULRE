@@ -17,16 +17,16 @@ namespace hgl
 
             GLuint vao;
 
-            ObjectList<VertexBufferObject> vbo_list;                                                ///<顶点数据缓冲区
+            List<ArrayBuffer *> vbo_list;                                                           ///<顶点数据缓冲区
 
-            ElementBufferObject *element_buffer;
+            ElementBuffer *element_buffer;
 
-            VertexBufferObject *position_buffer;
+            ArrayBuffer *position_buffer;
             int position_compoment;                                                                 ///<位置属性格式
 
         public:
 
-            VertexArray(uint max_vertex_attrib);
+            VertexArray(GLint max_vertex_attrib);
             ~VertexArray();
 
             static int      GetMaxVertexAttrib();
@@ -35,18 +35,18 @@ namespace hgl
 
         public: //通用顶点缓冲区设置
 
-            int                 AddBuffer   (int shader_location,VertexBufferObject *);             ///<设置顶点缓冲区对象
-            VertexBufferObject *GetBuffer   (int index){return vbo_list[index];}                    ///<取得顶点缓冲区对象
-            bool                ClearBuffer (int index){return vbo_list.Delete(index);}             ///<清除顶点缓冲区对象
-            void                ClearBuffers(){ vbo_list.Clear();}                                  ///<清除所有顶点缓冲区对象
+            int             AddBuffer   (int shader_location,ArrayBuffer *);                        ///<设置顶点缓冲区对象
+            ArrayBuffer *   GetBuffer   (int index){return GetObject(vbo_list,index);}              ///<取得顶点缓冲区对象
+            bool            ClearBuffer (int index){return vbo_list.Delete(index);}                 ///<清除顶点缓冲区对象
+            void            ClearBuffers(){ vbo_list.Clear();}                                      ///<清除所有顶点缓冲区对象
 
         public: //特殊缓冲区独立设置函数
 
-            bool                    SetElement  (ElementBufferObject *eb);                          ///<设置索引缓冲区对象
-            bool                    SetPosition (int shader_location,VertexBufferObject *vb);       ///<设置位置缓冲区对象
+            bool            SetElement  (ElementBuffer *eb);                                        ///<设置索引缓冲区对象
+            bool            SetPosition (int shader_location,ArrayBuffer *vb);                      ///<设置位置缓冲区对象
 
-            ElementBufferObject *   GetElement  (){return element_buffer;}                          ///<获取索引缓冲区对象
-            VertexBufferObject *    GetPosition (){return position_buffer;}                         ///<获取位置缓冲区对象
+            ElementBuffer * GetElement  (){return element_buffer;}                                  ///<获取索引缓冲区对象
+            ArrayBuffer *   GetPosition (){return position_buffer;}                                 ///<获取位置缓冲区对象
         };//class VertexArray
     }//namespace graph
 }//namespace hgl

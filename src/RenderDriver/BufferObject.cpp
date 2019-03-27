@@ -148,12 +148,13 @@ namespace hgl
         bool BufferObject::Submit(const BufferData *buf_data,GLenum up)
         {
             if(!buf_data)return(false);
-            buffer_data=buf_data;
 
             void *        data=buf_data->GetData();
             GLsizeiptr    size=buf_data->GetTotalBytes();
 
             if(!data||size<=0)return(false);
+
+            buffer_data=buf_data;
 
             return Submit(data,size,up);
         }
@@ -166,82 +167,5 @@ namespace hgl
 
             return(true);
         }
-    }//namespace graph
-
-    namespace graph
-    {
-
-        /**
-         * 创建一个缓冲区对象
-         * @param buf_type 缓冲区类型(GL_ARRAY_BUFFER,GL_ELEMENT_ARRAY_BUFFER等)
-         * @param user_pattern 数据存储区使用模式(GL_STATIC_DRAW,GL_DYNAMIC_DRAW等)
-         * @param buf 数据缓冲区
-         */
-        template<typename BO,typename BD>
-        BO *_CreateBufferObject(const GLenum &buf_type,const GLenum &user_pattern,BD *buf)
-        {
-            BO *obj=new BO(buf_type);
-
-            if(buf)
-                obj->Submit(buf,user_pattern);
-
-            return(obj);
-        }
-
-        /**
-         * 创建一个缓冲区对象
-         * @param buf_type 缓冲区类型(GL_ARRAY_BUFFER,GL_ELEMENT_ARRAY_BUFFER等)
-         * @param user_pattern 数据存储区使用模式(GL_STATIC_DRAW,GL_DYNAMIC_DRAW等)
-         * @param total_bytes 数据总字节数
-         */
-        template<typename BO>
-        BO *_CreateBufferObject(const GLenum &buf_type,
-                                const GLenum &user_pattern,
-                                const GLsizeiptr &total_bytes)
-        {
-            if(total_bytes<=0)return(nullptr);
-
-            BO *buf=new BO(buf_type);
-
-            //if(buf->Create(total_bytes,user_pattern))
-            //    return buf;
-
-            delete buf;
-            return(nullptr);
-        }
-
-        /**
-         * 创建一个缓冲区对象
-         * @param buf_type 缓冲区类型(GL_ARRAY_BUFFER,GL_ELEMENT_ARRAY_BUFFER等)
-         * @param user_pattern 数据存储区使用模式(GL_STATIC_DRAW,GL_DYNAMIC_DRAW等)
-         * @param total_bytes 数据总字节数
-         * @param data 数据指针
-         */
-        template<typename BO>
-        inline BO *_CreateBufferObject( const GLenum &buf_type,
-                                        const GLenum &user_pattern,
-                                        const GLsizeiptr &total_bytes,void *data)
-        {
-            if(total_bytes<=0)return(nullptr);
-            if(!data)return(nullptr);
-
-            BO *buf=new BO(buf_type);
-
-            //if(buf->Create(total_bytes,user_pattern))
-            //    return buf;
-
-            if(buf->Submit(data,total_bytes,user_pattern))
-                return buf;
-
-            delete buf;
-            return(nullptr);
-        }
-
-        BufferObject *CreateBufferObject(const GLenum &type,const GLenum &up,BufferData *buf) { return _CreateBufferObject<BufferObject,BufferData>(type,up,buf); }
-        BufferObject *CreateBufferObject(const GLenum &type,const GLenum &up,const GLsizeiptr &size) { return _CreateBufferObject<BufferObject>(type,up,size); }
-        BufferObject *CreateBufferObject(const GLenum &type,const GLenum &up,const GLsizeiptr &size,void *data) { return _CreateBufferObject<BufferObject>(type,up,size,data); }
-        VertexBufferObject *CreateVertexBufferObject(const GLenum &type,const GLenum &up,VertexBufferData *buf) { return _CreateBufferObject<VertexBufferObject,VertexBufferData>(type,up,buf); }
-        VertexBufferObject *CreateVertexBufferObject(const GLenum &type,const GLenum &up,const GLsizeiptr &size) { return _CreateBufferObject<VertexBufferObject>(type,up,size); }
-        VertexBufferObject *CreateVertexBufferObject(const GLenum &type,const GLenum &up,const GLsizeiptr &size,void *data) { return _CreateBufferObject<VertexBufferObject>(type,up,size,data); }
     }//namespace graph
 }//namespace hgl

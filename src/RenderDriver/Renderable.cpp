@@ -10,35 +10,37 @@ namespace hgl
         */
         uint Renderable::GetDrawCount()
         {
-            ElementBufferObject *obj=vao->GetElement();
+            ElementBuffer *eb=vao->GetElement();
 
-            if(!obj)
-                obj=vao->GetPosition();
+            if(eb)
+                return eb->GetCount();
 
-            if(!obj)
+            ArrayBuffer *pb=vao->GetPosition();
+
+            if(!pb)
                 return 0;
 
-            return obj->GetCount();
+            return pb->GetCount();
         }
 
         bool Renderable::Draw()
         {
             glBindVertexArray(vao->GetVAO());
 
-            ElementBufferObject *element_buffer=vao->GetElement();
+            ElementBuffer *eb=vao->GetElement();
 
-            if(!element_buffer)
+            if(!eb)
             {
-                VertexBufferObject *position_buffer=vao->GetPosition();
+                ArrayBuffer *pb=vao->GetPosition();
 
-                if(!position_buffer)
+                if(!pb)
                     return(false);
 
-                glDrawArrays(primitive,0,position_buffer->GetCount());
+                glDrawArrays(primitive,0,pb->GetCount());
             }
             else
             {
-                glDrawElements(primitive,element_buffer->GetCount(),element_buffer->GetDataType(),nullptr);
+                glDrawElements(primitive,eb->GetCount(),eb->GetDataType(),nullptr);
             }
 
             return(true);
