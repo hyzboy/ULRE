@@ -3,6 +3,7 @@
 #include<hgl/graph/RenderWindow.h>
 #include<iostream>
 #include<hgl/graph/Renderable.h>
+#include<hgl/graph/RenderState.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -59,9 +60,38 @@ ArrayBuffer *vb_vertex=nullptr;
 ArrayBuffer *vb_color=nullptr;
 VertexArray *va=nullptr;
 Renderable *render_obj=nullptr;
+RenderState render_state;
 
 constexpr float vertex_data[]={0.0f,0.5f,   -0.5f,-0.5f,    0.5f,-0.5f };
 constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
+
+constexpr GLfloat clear_color[4]=
+{
+    77.f/255.f,
+    78.f/255.f,
+    83.f/255.f,
+    1.f
+};
+
+void InitRenderState()
+{
+    DepthState *ds=new DepthState();
+
+    ds->clear_depth=true;           //要求清除depth缓冲区
+    ds->clear_depth_value=1.0f;     //depth清除所用值
+
+    ds->depth_mask=false;           //关闭depth mask
+    ds->depth_test=false;           //关闭depth test
+
+    render_state.Add(ds);
+
+    ColorState *cs=new ColorState();
+
+    cs->clear_color=true;
+    memcpy(cs->clear_color_value,clear_color,sizeof(GLfloat)*4);
+
+    render_state.Add(cs);
+}
 
 void InitVertexBuffer()
 {
@@ -79,21 +109,9 @@ void InitVertexBuffer()
     render_obj=new Renderable(GL_TRIANGLES,va);
 }
 
-constexpr GLfloat clear_color[4]=
-{
-    77.f/255.f,
-    78.f/255.f,
-    83.f/255.f,
-    1.f
-};
-
-constexpr GLfloat clear_depth=1.0f;
-
 void draw()
 {
-    glClearBufferfv(GL_COLOR,0,clear_color);
-    glClearBufferfv(GL_DEPTH,0,&clear_depth);
-
+    render_state.Apply();
     render_obj->Draw();
 }
 
@@ -131,6 +149,7 @@ int main(void)
         return -3;
     }
 
+    InitRenderState();
     InitVertexBuffer();
 
     win->Show();

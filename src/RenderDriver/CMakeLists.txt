@@ -7,6 +7,7 @@ SET(GRAPH_SRC_FILES OpenGLDebug.cpp
                     BufferObject.cpp
                     VertexArray.cpp
                     Renderable.cpp
+                    RenderState.cpp
                     TextureFormat.cpp
                     Texture1D.cpp
                     Texture1DDSA.cpp
