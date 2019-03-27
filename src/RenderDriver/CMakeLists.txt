@@ -5,9 +5,8 @@ SET(GRAPH_SRC_FILES OpenGLDebug.cpp
                     Shader.cpp
                     BufferData.cpp
                     BufferObject.cpp
-#                     VertexArray.cpp
-#                     VertexBuffer.cpp
-#                     VertexBufferObject.cpp
+                    VertexArray.cpp
+                    Renderable.cpp
                     TextureFormat.cpp
                     Texture1D.cpp
                     Texture1DDSA.cpp
