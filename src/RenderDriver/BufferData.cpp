@@ -6,7 +6,8 @@ namespace hgl
     {
         class BufferDataSelfAlloc:public BufferData
         {
-            friend BufferData *CreateBufferData(const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count);
+            friend BufferData *CreateBufferData(const GLsizeiptr &count);
+
         public:
 
             using BufferData::BufferData;
@@ -16,7 +17,46 @@ namespace hgl
             }
         };//class BufferDataSelfAlloc:public BufferData
 
-        BufferData *CreateBufferData(const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count)
+        BufferData *CreateBufferData(const GLsizeiptr &total_bytes)
+        {
+            if(total_bytes<=0)
+                return(nullptr);
+
+            char *data=new char[total_bytes];
+
+            if(!data)
+                return(nullptr);
+
+            return(new BufferDataSelfAlloc(data,total_bytes));
+        }
+
+        BufferData *CreateBufferData(void *data,const GLsizeiptr &count)
+        {
+            if(!data)
+                return(nullptr);
+
+            if(count<=0)
+                return(nullptr);
+
+            return(new BufferData((char *)data,count));
+        }
+    }
+    namespace graph
+    {
+        class VertexBufferDataSelfAlloc:public VertexBufferData
+        {
+            friend VertexBufferData *CreateVertexBufferData(const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count);
+
+        public:
+
+            using VertexBufferData::VertexBufferData;
+            ~VertexBufferDataSelfAlloc()
+            {
+                delete[] buffer_data;
+            }
+        };//class BufferDataSelfAlloc:public VertexBufferData
+
+        VertexBufferData *CreateVertexBufferData(const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count)
         {
             if(dbytes<=0||dcm<=0||dcm>=5||count<=0)
                 return(nullptr);
@@ -28,10 +68,10 @@ namespace hgl
             if(!data)
                 return(nullptr);
 
-            return(new BufferDataSelfAlloc(dt,dbytes,dcm,count,data));
+            return(new VertexBufferDataSelfAlloc(dt,dbytes,dcm,count,data));
         }
 
-        BufferData *CreateBufferData(void *data,const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count)
+        VertexBufferData *CreateVertexBufferData(void *data,const GLenum &dt,const uint &dbytes,const uint &dcm,const GLsizeiptr &count)
         {
             if(!data)
                 return(nullptr);
@@ -39,7 +79,7 @@ namespace hgl
             if(dbytes<=0||dcm<=0||dcm>=5||count<=0)
                 return(nullptr);
 
-            return(new BufferData(dt,dbytes,dcm,count,(char *)data));
+            return(new VertexBufferData(dt,dbytes,dcm,count,(char *)data));
         }
     }//namespace graph
 }//namespace hgl
