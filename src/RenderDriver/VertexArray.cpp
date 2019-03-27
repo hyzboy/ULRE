@@ -18,7 +18,7 @@ namespace hgl
             return HGL_MAX_VERTEX_ATTRIBS;
         }
 
-        VertexArray::VertexArray(uint max_vertex_attrib)
+        VertexArray::VertexArray(GLint max_vertex_attrib)
         {
             if(max_vertex_attrib>GetMaxVertexAttrib())
                 max_vertex_attrib=HGL_MAX_VERTEX_ATTRIBS;
@@ -42,7 +42,7 @@ namespace hgl
         * @return 绑定点索引
         * @return -1 失败
         */
-        int VertexArray::AddBuffer(int shader_location,VertexBufferObject *vb)
+        int VertexArray::AddBuffer(int shader_location,ArrayBuffer *vb)
         {
             if(!vb)return(false);
             if(vb->GetBufferType()!=GL_ARRAY_BUFFER)return(false);
@@ -66,7 +66,7 @@ namespace hgl
         /**
          * 设置索引缓冲区
          */
-        bool VertexArray::SetElement(ElementBufferObject *eb)
+        bool VertexArray::SetElement(ElementBuffer *eb)
         {
             if(!eb)return(false);
             if(eb->GetBufferType()!=GL_ELEMENT_ARRAY_BUFFER)return(false);
@@ -81,7 +81,7 @@ namespace hgl
          * @param shader_location 这个缓冲区对应的SHADER地址
          * @param vb 数据缓冲区
          */
-        bool VertexArray::SetPosition(int shader_location,VertexBufferObject *vb)
+        bool VertexArray::SetPosition(int shader_location,ArrayBuffer *vb)
         {
             if(!vb)return(false);
 

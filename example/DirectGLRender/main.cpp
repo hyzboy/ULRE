@@ -2,10 +2,7 @@
 #include<hgl/graph/RenderDriver.h>
 #include<hgl/graph/RenderWindow.h>
 #include<iostream>
-#include<GLEWCore/glew.h>
-#include<hgl/graph/Shader.h>
-#include<hgl/math/Math.h>
-#include<hgl/graph/VertexArray.h>
+#include<hgl/graph/Renderable.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -58,26 +55,28 @@ bool InitShader()
     return(true);
 }
 
-VB2f *vb_vertex=nullptr;
-VB3f *vb_color=nullptr;
+ArrayBuffer *vb_vertex=nullptr;
+ArrayBuffer *vb_color=nullptr;
 VertexArray *va=nullptr;
+Renderable *render_obj=nullptr;
 
 constexpr float vertex_data[]={0.0f,0.5f,   -0.5f,-0.5f,    0.5f,-0.5f };
 constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
 
 void InitVertexBuffer()
 {
-    vb_vertex=new VB2f(3,vertex_data);
-    vb_color=new VB3f(3,color_data);
+    vb_vertex=CreateVBO(VB2f(3,vertex_data));
+    vb_color=CreateVBO(VB3f(3,color_data));
 
-    va=new VertexArray(GL_TRIANGLES,        //画三角形
-                       2);                  //两个属性
+    va=new VertexArray(2);                  //两个属性
 
     const int vertex_location=shader.GetAttribLocation("Vertex");              ///<取得顶点数据输入流对应的shader地址
     const int color_location=shader.GetAttribLocation("Color");                ///<取得颜色数据输入流对应的shader地址
 
-    va->SetVertexBuffer(vertex_location,vb_vertex);
-    va->SetColorBuffer(color_location,vb_color,HGL_PC_RGB);
+    va->SetPosition(vertex_location,vb_vertex);
+    va->AddBuffer(color_location,vb_color);
+
+    render_obj=new Renderable(GL_TRIANGLES,va);
 }
 
 constexpr GLfloat clear_color[4]=
@@ -95,7 +94,7 @@ void draw()
     glClearBufferfv(GL_COLOR,0,clear_color);
     glClearBufferfv(GL_DEPTH,0,&clear_depth);
 
-    va->Draw();
+    render_obj->Draw();
 }
 
 int main(void)
@@ -143,6 +142,11 @@ int main(void)
         win->SwapBuffer();              //交换前后台显示缓冲区
         win->PollEvent();               //处理窗口事件
     }
+
+    delete render_obj;
+    delete va;
+    delete vb_color;
+    delete vb_vertex;
 
     delete win;
     delete device;

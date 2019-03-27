@@ -2,6 +2,7 @@
 #define HGL_GRAPH_RENDERABLE_INCLUDE
 
 #include<hgl/graph/VertexArray.h>
+#include<hgl/graph/Shader.h>
 
 namespace hgl
 {
