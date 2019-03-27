@@ -68,10 +68,10 @@ void InitVertexBuffer()
     vb_vertex=CreateVBO(VB2f(3,vertex_data));
     vb_color=CreateVBO(VB3f(3,color_data));
 
-    va=new VertexArray(2);                  //两个属性
+    va=new VertexArray();                                                       ///<创建VAO
 
-    const int vertex_location=shader.GetAttribLocation("Vertex");              ///<取得顶点数据输入流对应的shader地址
-    const int color_location=shader.GetAttribLocation("Color");                ///<取得颜色数据输入流对应的shader地址
+    const int vertex_location=shader.GetAttribLocation("Vertex");               ///<取得顶点数据输入流对应的shader地址
+    const int color_location=shader.GetAttribLocation("Color");                 ///<取得颜色数据输入流对应的shader地址
 
     va->SetPosition(vertex_location,vb_vertex);
     va->AddBuffer(color_location,vb_color);
