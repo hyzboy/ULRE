@@ -61,7 +61,7 @@ namespace hgl
 
             const   VertexBufferData *GetVertexBufferData()const { return vertex_buffer_data; }
 
-        #define VBD_FUNC_COPY(type,name)    type Get##name()const{vertex_buffer_data?vertex_buffer_data->Get##name():0;}
+        #define VBD_FUNC_COPY(type,name)    type Get##name()const{return vertex_buffer_data?vertex_buffer_data->Get##name():0;}
 
             VBD_FUNC_COPY(GLenum,DataType)
             VBD_FUNC_COPY(uint,Component)
@@ -74,6 +74,8 @@ namespace hgl
         VertexBufferObject *CreateVertexBufferObject(const GLenum &type,const GLenum &user_pattern=0,VertexBufferData *buf=nullptr);                    ///<创建一个顶点缓冲区对象
         VertexBufferObject *CreateVertexBufferObject(const GLenum &buf_type,const GLenum &user_pattern,const GLsizeiptr &total_bytes);                  ///<创建一个顶点缓冲区对象
         VertexBufferObject *CreateVertexBufferObject(const GLenum &buf_type,const GLenum &user_pattern,const GLsizeiptr &total_bytes,void *data);       ///<创建一个顶点缓冲区对象
+
+        using ElementBufferObject=VertexBufferObject;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_BUFFER_OBJECT_INCLUDE
