@@ -11,11 +11,29 @@ namespace hgl
     {
         struct RenderStateBlock
         {
+            /**
+             * 应用当前状态
+             */
             virtual void Apply()=0;
-        };
 
-        struct ColorState:public RenderStateBlock
-        {
+            /**
+             * 创建一个自身状态的复制品
+             */
+            virtual RenderStateBlock *CreateCopy()const=0;
+        };//struct RenderStateBlock
+
+        #define RSB_OBJECT_BEGIN(rs_name)   struct rs_name:public RenderStateBlock   \
+                                            {   \
+                                                rs_name()=default;  \
+                                                rs_name(const rs_name *obj){if(!obj)memcpy(this,obj,sizeof(rs_name));}  \
+                                                void Apply() override;  \
+                                                RenderStateBlock *CreateCopy()const override{return(new rs_name(this));}  \
+                                                \
+                                            public:
+
+        #define RSB_OBJECT_END              };
+
+        RSB_OBJECT_BEGIN(ColorState)
             bool red    =true;
             bool green  =true;
             bool blue   =true;
@@ -23,11 +41,7 @@ namespace hgl
 
             bool clear_color=false;
             GLfloat clear_color_value[4]={0,0,0,0};
-
-        public:
-
-            void Apply();
-        };//struct ColorState:public RenderStateBlock
+        RSB_OBJECT_END
 
         enum class DEPTH_TEST
         {
@@ -41,8 +55,7 @@ namespace hgl
             ALWAYS       =GL_ALWAYS,
         };//enum class DEPTH_TEST_FUNC
 
-        struct DepthState:public RenderStateBlock
-        {
+        RSB_OBJECT_BEGIN(DepthState)
             GLfloat     near_depth=0,
                         far_depth=1;
 
@@ -52,47 +65,31 @@ namespace hgl
 
             DEPTH_TEST  depth_func=DEPTH_TEST::LESS;
             bool        depth_test;
+        RSB_OBJECT_END
 
-        public:
-
-            void Apply();
-
-            //CompOperatorMemcmp(struct DepthState &);
-        };//struct DepthState
-        
         enum class FACE
         {
             FRONT             =GL_FRONT,
             BACK              =GL_BACK,
             FRONT_AND_BACK    =GL_FRONT_AND_BACK,
         };//enum class CULL_FACE_MODE
-        
-        struct CullFaceState:public RenderStateBlock
-        {
-            bool    enabled =true;
-            
-            FACE    mode    =FACE::BACK;
-        public:
 
-            void Apply();
-        };//struct CullFaceState
-        
+        RSB_OBJECT_BEGIN(CullFaceState)
+            bool    enabled =true;
+            FACE    mode    =FACE::BACK;
+        RSB_OBJECT_END
+
         enum class FILL_MODE
         {
             POINT  =GL_POINT,
             LINE   =GL_LINE,
-            FACE   =GL_FILL,            
+            FACE   =GL_FILL,
         };//enum class FILL_MODE
-        
-        struct PolygonModeState:public RenderStateBlock
-        {
+
+        RSB_OBJECT_BEGIN(PolygonModeState)
             FACE        face=FACE::FRONT_AND_BACK;
             FILL_MODE   mode=FILL_MODE::FACE;
-
-        public:
-
-            void Apply();
-        };//struct FillModeState
+        RSB_OBJECT_END
 
         /**
          * 具体渲染状态数据
@@ -102,6 +99,17 @@ namespace hgl
             Set<RenderStateBlock *> state_list;
 
         public:
+
+            RenderStateData()=default;
+            RenderStateData(const RenderStateData *obj)
+            {
+                operator = (obj);
+            }
+
+            RenderStateData(const RenderStateData &obj)
+            {
+                operator = (&obj);
+            }
 
             void Add(RenderStateBlock *rsb)
             {
@@ -126,6 +134,26 @@ namespace hgl
                     ++rsb;
                 }
             }
+
+            RenderStateBlock *CreateCopy() const override
+            {
+                return(new RenderStateData(this));
+            }
+
+            void operator = (const RenderStateData *obj)
+            {
+                const int count=obj->state_list.GetCount();
+
+                if(count<=0)return;
+
+                RenderStateBlock **rsb=obj->state_list.GetData();
+
+                for(int i=0;i<count;i++)
+                {
+                    state_list.Add((*rsb)->CreateCopy());
+                    ++rsb;
+                }
+            }
         };//class RenderStateData:public RenderStateBlock
 
         /**
@@ -134,15 +162,15 @@ namespace hgl
         class RenderState
         {
             RenderStateData state_data;
-            
+
         public:
-            
+
             RenderState()=default;
-            RenderState(const RenderStateData &rsd){state_data=rsd;}
+            RenderState(const RenderStateData &rsd):state_data(rsd){}
             virtual ~RenderState()=default;
 
             virtual void Add(RenderStateBlock *rsb) { state_data.Add(rsb); }
-            
+
             virtual void Apply()
             {
                 state_data.Apply();
