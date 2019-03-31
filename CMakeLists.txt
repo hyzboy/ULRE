@@ -1,5 +1,4 @@
 ﻿cmake_minimum_required(VERSION 3.0)
-SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
 
 PROJECT(ULRE)
 
