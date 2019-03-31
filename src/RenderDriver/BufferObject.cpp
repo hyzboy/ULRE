@@ -18,7 +18,7 @@ namespace hgl
 
                 void BufferAlloc(GLenum type,GLuint index,GLsizeiptr size)
                 {
-                    glNamedBufferStorage(type,size,nullptr,GL_MAP_WRITE_BIT);
+                    glNamedBufferStorage(index,size,nullptr,GL_MAP_WRITE_BIT);
                 }
 
                 void BufferData(GLenum type,GLuint index,void *data,GLsizeiptr size,GLenum user_pattern)
@@ -66,6 +66,12 @@ namespace hgl
                     return index;
                 }
 
+                void BufferAlloc(GLenum type,GLuint index,GLsizeiptr size)
+                {
+                    glBindBuffer(type,index);
+                    glBufferStorage(type,size,nullptr,GL_MAP_WRITE_BIT);
+                }
+
                 void BufferData(GLenum type,GLuint index,void *data,GLsizeiptr size,GLenum user_pattern)
                 {
                     glBindBuffer(type,index);
@@ -80,6 +86,7 @@ namespace hgl
             }
 
             static GLuint(*CreateBuffer)();
+            static void(*BufferAlloc)(GLenum type,GLuint index,GLsizeiptr size);
             static void(*BufferData)(GLenum type,GLuint index,void *data,GLsizeiptr size,GLenum user_pattern);
             static void(*BufferSubData)(GLenum type,GLuint index,void *data,GLsizeiptr start,GLsizeiptr size);
 
@@ -90,6 +97,7 @@ namespace hgl
                    ||glNamedBufferSubData)       //dsa
                 {
                     hgl::graph::gl::CreateBuffer=dsa::CreateBuffer;
+                    hgl::graph::gl::BufferAlloc=dsa::BufferAlloc;
                     hgl::graph::gl::BufferData=dsa::BufferData;
                     hgl::graph::gl::BufferSubData=dsa::BufferSubData;
                 }
@@ -98,12 +106,14 @@ namespace hgl
                        ||glNamedBufferSubDataEXT)
                     {
                         hgl::graph::gl::CreateBuffer=bind::CreateBuffer;
+                        hgl::graph::gl::BufferAlloc=dsa_ext::BufferAlloc;
                         hgl::graph::gl::BufferData=dsa_ext::BufferData;
                         hgl::graph::gl::BufferSubData=dsa_ext::BufferSubData;
                     }
                     else
                     {
                         hgl::graph::gl::CreateBuffer=bind::CreateBuffer;
+                        hgl::graph::gl::BufferAlloc=bind::BufferAlloc;
                         hgl::graph::gl::BufferData=bind::BufferData;
                         hgl::graph::gl::BufferSubData=bind::BufferSubData;
                     }
@@ -127,12 +137,14 @@ namespace hgl
             glDeleteBuffers(1,&buffer_index);
         }
 
-        //bool BufferObject::Create(GLsizeiptr size,GLenum up)
-        //{
-        //    if(size<=0)return(false);
+        bool BufferObject::Create(GLsizeiptr size)
+        {
+            if(size<=0)return(false);
 
-        //    return true;
-        //}
+            gl::BufferAlloc(buffer_type,buffer_index,size);
+
+            return true;
+        }
 
         bool BufferObject::Submit(void *data,GLsizeiptr size,GLenum up)
         {
