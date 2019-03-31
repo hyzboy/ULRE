@@ -37,7 +37,7 @@ namespace hgl
 
         public:
 
-//                    bool        Create          (GLsizeiptr,GLenum up);                           ///<创建数据区
+                    bool        Create          (GLsizeiptr);                                       ///<创建数据区
                     bool        Submit          (void *,GLsizeiptr,GLenum up=GL_STATIC_DRAW);       ///<提交数据
                     bool        Submit          (const BufferData *,GLenum up=GL_STATIC_DRAW);      ///<提交数据
                     bool        Change          (void *,GLsizeiptr,GLsizeiptr);                     ///<修改数据
@@ -71,7 +71,7 @@ namespace hgl
          * @param user_pattern 数据存储区使用模式(GL_STATIC_DRAW,GL_DYNAMIC_DRAW等)
          * @param buf 数据缓冲区
          */
-        template<typename BO,typename BD> 
+        template<typename BO,typename BD>
         inline BO *_CreateBufferObject(BD *buf=nullptr,const GLenum &user_pattern=GL_STATIC_DRAW)
         {
             BO *obj=new BO();
@@ -151,7 +151,7 @@ namespace hgl
             return _CreateBufferObject<buffer_class_name>(data,size,user_pattern); \
         }
 
-        //ps.在这里用宏了再用模板本是多此一举，但使用模板函数易于调试器中进行逐行调试，同时因为INLINE编译编译器也会自动展开代码，不用担心效率 
+        //ps.在这里用宏了再用模板本是多此一举，但使用模板函数易于调试器中进行逐行调试，同时因为INLINE编译编译器也会自动展开代码，不用担心效率
 
         VBCLASS_DEF(GL_ARRAY_BUFFER,            ArrayBuffer,        VertexBufferObject, VertexBufferData,   VBO)
         VBCLASS_DEF(GL_ELEMENT_ARRAY_BUFFER,    ElementBuffer,      VertexBufferObject, VertexBufferData,   EBO)
