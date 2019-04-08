@@ -101,6 +101,8 @@ namespace hgl
 	*/
 	template<typename T> class CusObjectList:public List<T *>										///对象列表处理类
 	{
+    public:
+
 		virtual void	SetCount(int);
 
 //		virtual T *		CreateObject()=0;															///<创建一个数据，但不加入列表
