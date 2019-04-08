@@ -2,10 +2,9 @@
 #define HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
 
 #include<hgl/type/BaseString.h>
-#include<vulkan/vulkan.h>
-
-#define VK_NAMESPACE_BEGIN  namespace hgl{namespace graph{namespace vulkan{
-#define VK_NAMESPACE_END    }}}
+#include<hgl/type/List.h>
+#include"VK.h"
+#include"VKPhysicalDevice.h"
 
 VK_NAMESPACE_BEGIN
     class Instance
@@ -14,6 +13,8 @@ VK_NAMESPACE_BEGIN
         VkInstanceCreateInfo inst_info;
 
         VkInstance inst;
+
+        ObjectList<PhysicalDevice> physical_devices;
 
     private:
 
@@ -25,6 +26,8 @@ VK_NAMESPACE_BEGIN
         virtual ~Instance();
 
         virtual bool Init();
+
+        const ObjectList<PhysicalDevice> & GetDeviceList()const{return physical_devices;}
     };//class Instance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
