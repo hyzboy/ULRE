@@ -29,6 +29,8 @@ Instance::Instance(const UTF8String &an)
 
 Instance::~Instance()
 {
+    physical_devices.Clear();
+
     if(inst)
         vkDestroyInstance(inst,nullptr);
 }
@@ -44,6 +46,23 @@ bool Instance::Init()
     {
         inst=nullptr;
         return(false);
+    }
+
+    {
+        uint32_t gpu_count = 1;
+        res = vkEnumeratePhysicalDevices(inst, &gpu_count, nullptr);
+
+        if(res!=VK_SUCCESS)
+            return(false);
+
+        VkPhysicalDevice *pd_list=new VkPhysicalDevice[gpu_count];
+        physical_devices.SetCount(gpu_count);
+        vkEnumeratePhysicalDevices(inst, &gpu_count, pd_list);
+
+        for(uint32_t i=0;i<gpu_count;i++)
+            physical_devices.Add(new PhysicalDevice(pd_list[i]));
+
+        delete[] pd_list;
     }
 
     return(true);
