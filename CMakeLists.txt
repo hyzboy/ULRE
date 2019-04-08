@@ -19,8 +19,12 @@ IF(WIN32)
 	include_directories(3rdpty/glfw/include)
 
 	SET(OPENGL_LIB	opengl32)
+
+    SET(VULKAN_LIB  vulkan-1)
 ELSE()
 	SET(OPENGL_LIB	GL)
+
+    SET(VULKAN_LIB  vulkan)
 ENDIF()
 
 add_definitions(-DMATH_USE_OPENGL)
