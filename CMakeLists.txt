@@ -8,6 +8,7 @@ include(system_bit)
 include(version)
 include(compiler)
 include(output_path)
+include(FindVulkan)
 
 check_system_bits()
 check_system_version()
@@ -18,14 +19,14 @@ IF(WIN32)
 	add_subdirectory(3rdpty/glfw)
 	include_directories(3rdpty/glfw/include)
 
-	SET(OPENGL_LIB	opengl32)
+    include_directories(${Vulkan_INCLUDE_DIRS})
 
-    SET(VULKAN_LIB  vulkan-1)
+	SET(OPENGL_LIB	opengl32)
 ELSE()
 	SET(OPENGL_LIB	GL)
-
-    SET(VULKAN_LIB  vulkan)
 ENDIF()
+
+SET(VULKAN_LIB  ${Vulkan_LIBRARIES})
 
 add_definitions(-DMATH_USE_OPENGL)
 add_definitions(-DMATH_RIGHTHANDED_CAMERA)
@@ -34,6 +35,7 @@ add_definitions(-DMATH_AVX)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/GLEWCore/inc)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
+
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
