@@ -3,8 +3,9 @@
 
 VK_NAMESPACE_BEGIN
 
-Instance::Instance(const UTF8String &an)
+Instance::Instance(const UTF8String &an,Window *w)
 {
+    win=w;
     app_name=an;
 
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -15,12 +16,15 @@ Instance::Instance(const UTF8String &an)
     app_info.engineVersion = 1;
     app_info.apiVersion = VK_API_VERSION_1_0;
 
+    ext_list.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+    ext_list.Add(win->GetVulkanSurfaceExtname());
+
     inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     inst_info.pNext = nullptr;
     inst_info.flags = 0;
     inst_info.pApplicationInfo = &app_info;
-    inst_info.enabledExtensionCount = 0;
-    inst_info.ppEnabledExtensionNames = nullptr;
+    inst_info.enabledExtensionCount = ext_list.GetCount();
+    inst_info.ppEnabledExtensionNames = ext_list.GetData();
     inst_info.enabledLayerCount = 0;
     inst_info.ppEnabledLayerNames = nullptr;
 
