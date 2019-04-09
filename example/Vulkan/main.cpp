@@ -11,6 +11,8 @@ int main(int,char **)
 {
     Window *win=CreateRenderWindow(OS_TEXT("VulkanTest"));
 
+    win->CreateWindow(1280,720);
+
     vulkan::Instance inst(U8_TEXT("VulkanTest"),win);
 
     if(!inst.Init())
