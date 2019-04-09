@@ -3,12 +3,17 @@
 
 #include<hgl/type/BaseString.h>
 #include<hgl/type/List.h>
+#include"Window.h"
 #include"VK.h"
 #include"VKPhysicalDevice.h"
 
 VK_NAMESPACE_BEGIN
     class Instance
     {
+        Window *win;
+
+        List<const char *> ext_list;
+
         VkApplicationInfo app_info;
         VkInstanceCreateInfo inst_info;
 
@@ -22,7 +27,7 @@ VK_NAMESPACE_BEGIN
 
     public:
 
-        Instance(const UTF8String &an);
+        Instance(const UTF8String &,Window *);
         virtual ~Instance();
 
         virtual bool Init();

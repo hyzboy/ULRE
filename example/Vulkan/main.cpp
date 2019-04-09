@@ -2,16 +2,22 @@
 #include"VKInstance.h"
 #include"VKDevice.h"
 #include"VKCommandBuffer.h"
+#include"Window.h"
+
+using namespace hgl;
+using namespace hgl::graph;
 
 int main(int,char **)
 {
-    using namespace hgl;
-    using namespace hgl::graph;
+    Window *win=CreateRenderWindow(OS_TEXT("VulkanTest"));
 
-    vulkan::Instance inst("Test");
+    vulkan::Instance inst(U8_TEXT("VulkanTest"),win);
 
     if(!inst.Init())
+    {
+        delete win;
         return(-1);
+    }
 
     const ObjectList<vulkan::PhysicalDevice> &device_list=inst.GetDeviceList();
 
@@ -23,6 +29,7 @@ int main(int,char **)
 
     delete cmd_buf;
     delete dev;
+    delete win;
 
     return 0;
 }
