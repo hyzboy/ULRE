@@ -1,7 +1,6 @@
 ﻿#include"Window.h"
+#include"VK.h"
 #include<Windows.h>
-#include<vulkan/vk_sdk_platform.h>
-#include<vulkan/vulkan.h>
 #include<vulkan/vulkan_win32.h>
 
 namespace hgl
@@ -168,23 +167,8 @@ namespace hgl
 				UpdateWindow(win_hwnd);
 			}
 
-			VkSurfaceKHR CreateSurface(VkInstance vk_inst)const override
-			{
-				VkWin32SurfaceCreateInfoKHR createInfo = {};
-				createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-				createInfo.pNext = nullptr;
-				createInfo.hinstance = hInstance;
-				createInfo.hwnd = win_hwnd;
-
-				VkSurfaceKHR surface;
-
-				VkResult res = vkCreateWin32SurfaceKHR(vk_inst, &createInfo, nullptr, &surface);
-
-				if (res != VK_SUCCESS)
-					return(nullptr);
-
-				return(surface);
-			}
+            HINSTANCE GetHInstance(){return hInstance;}
+            HWND GetHWnd(){return win_hwnd;}
 		};//class WinWindow :public Window
 
 		Window* CreateRenderWindow(const WideString& win_name)
@@ -193,3 +177,25 @@ namespace hgl
 		}
 	}//namespace graph
 }//namespace hgl
+
+VK_NAMESPACE_BEGIN
+VkSurfaceKHR CreateSurface(VkInstance vk_inst,Window *win)
+{
+    WinWindow *ww=(WinWindow *)win;
+
+    VkWin32SurfaceCreateInfoKHR createInfo={};
+    createInfo.sType=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.pNext=nullptr;
+    createInfo.hinstance=ww->GetHInstance();
+    createInfo.hwnd=ww->GetHWnd();
+
+    VkSurfaceKHR surface;
+
+    VkResult res=vkCreateWin32SurfaceKHR(vk_inst,&createInfo,nullptr,&surface);
+
+    if(res!=VK_SUCCESS)
+        return(nullptr);
+
+    return(surface);
+}
+VK_NAMESPACE_END
