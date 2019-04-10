@@ -110,6 +110,24 @@ namespace hgl
 
             void Show()override{}
             void Hide()override{}
+
+			vulkan::Surface* CreateVulkanSurface(VkInstance vk_inst)const override
+			{                
+                VkXcbSurfaceCreateInfoKHR createInfo = {};
+                createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+                createInfo.pNext = nullptr;
+                createInfo.connection = connection;
+                createInfo.window = window;
+        
+    			VkSurfaceKHR surface;
+
+                VkResult res = vkCreateXcbSurfaceKHR(info.inst, &createInfo, nullptr, &info.surface);
+
+				if (res != VK_SUCCESS)
+					return(nullptr);
+
+				return(new vulkan::Surface(vk_inst,surface));
+			}
         };//class XCBWindow:public Window
 
         Window *CreateRenderWindow(const UTF8String &win_name)
