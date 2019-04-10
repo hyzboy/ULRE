@@ -53,7 +53,7 @@ namespace hgl
                 return VK_KHR_XCB_SURFACE_EXTENSION_NAME;
             }
 
-            bool CreateWindow(uint w,uint h) override
+            bool Create(uint w,uint h) override
             {
                 if(w<=0||h<=0)return(false);
                 if(!InitConnection())return(false);
@@ -101,8 +101,8 @@ namespace hgl
                 }
             }
 
-            bool CreateFullscreen(uint,uint,uint)override{}
-            void CloseWindow()override
+            bool Create(uint,uint,uint)override{}
+            void Close()override
             {
                 xcb_destroy_window(connection, window);
                 xcb_disconnect(connection);
