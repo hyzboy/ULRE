@@ -1,5 +1,6 @@
 ﻿#include"VK.h"
 #include"VKInstance.h"
+#include"VKSurface.h"
 #include"VKDevice.h"
 #include"VKCommandBuffer.h"
 #include"Window.h"
@@ -21,6 +22,8 @@ int main(int,char **)
         return(-1);
     }
 
+	vulkan::Surface *surface = inst.CreateSurface();
+
     const ObjectList<vulkan::PhysicalDevice> &device_list=inst.GetDeviceList();
 
     vulkan::PhysicalDevice *pd=device_list[0];
@@ -29,6 +32,7 @@ int main(int,char **)
 
     vulkan::CommandBuffer *cmd_buf=dev->CreateCommandBuffer();
 
+	delete surface;
     delete cmd_buf;
     delete dev;
     delete win;

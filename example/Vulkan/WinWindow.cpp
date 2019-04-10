@@ -34,6 +34,7 @@ namespace hgl
 		 */
 		class WinWindow :public Window
 		{
+			HINSTANCE hInstance = nullptr;
 			HWND win_hwnd=nullptr;
 			HDC win_dc = nullptr;
 
@@ -50,7 +51,7 @@ namespace hgl
 				win_class.lpfnWndProc = WndProc;
 				win_class.cbClsExtra = 0;
 				win_class.cbWndExtra = 0;
-				win_class.hInstance = GetModuleHandle(nullptr);
+				win_class.hInstance = hInstance;
 				win_class.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
 				win_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
 				win_class.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
@@ -102,12 +103,12 @@ namespace hgl
 					win_height,					// height
 					nullptr,					// handle to parent
 					nullptr,					// handle to menu
-					GetModuleHandleW(nullptr),  // hInstance
+					hInstance,					// hInstance
 					nullptr);					// no extra parameters
 
 				if (!win_hwnd)
 				{
-					UnregisterClassW(WIN_CLASS_NAME, GetModuleHandleW(nullptr));
+					UnregisterClassW(WIN_CLASS_NAME, hInstance);
 					return(false);
 				}
 
@@ -134,6 +135,8 @@ namespace hgl
 				width = w;
 				height = h;
 
+				hInstance = GetModuleHandleW(nullptr);
+
 				if (!Registry())
 					return(false);
 
@@ -149,7 +152,7 @@ namespace hgl
 			{
 				ReleaseDC(win_hwnd, win_dc);
 				DestroyWindow(win_hwnd);
-				UnregisterClassW(WIN_CLASS_NAME, GetModuleHandleW(nullptr));
+				UnregisterClassW(WIN_CLASS_NAME,hInstance);
 
 				win_dc = nullptr;
 				win_hwnd = nullptr;
@@ -168,6 +171,24 @@ namespace hgl
 			{
 				ShowWindow(win_hwnd, SW_HIDE);
 				UpdateWindow(win_hwnd);
+			}
+
+			vulkan::Surface* CreateVulkanSurface(VkInstance vk_inst)const override
+			{
+				VkWin32SurfaceCreateInfoKHR createInfo = {};
+				createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+				createInfo.pNext = nullptr;
+				createInfo.hinstance = hInstance;
+				createInfo.hwnd = win_hwnd;
+
+				VkSurfaceKHR surface;
+
+				VkResult res = vkCreateWin32SurfaceKHR(vk_inst, &createInfo, nullptr, &surface);
+
+				if (res != VK_SUCCESS)
+					return(nullptr);
+
+				return(new vulkan::Surface(vk_inst,surface));
 			}
 		};//class WinWindow :public Window
 

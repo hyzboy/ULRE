@@ -8,6 +8,7 @@ ENDIF()
 add_executable(VulkanTest   main.cpp
                             ${RENDER_WINDOW_SOURCE}
                             VKInstance.cpp
+							VKSurface.cpp
                             VKPhysicalDevice.cpp
                             VKDevice.cpp
                             VKCommandBuffer.cpp)
