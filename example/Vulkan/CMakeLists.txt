@@ -1,13 +1,9 @@
 ﻿IF(UNIX)
     SET(RENDER_WINDOW_SOURCE  XCBWindow.cpp)
-    SET(RENDER_WINDOW_LIBRARY   xcb)
+    SET(RENDER_WINDOW_LIBRARY xcb)
+ELSEIF(WIN32)
+    SET(RENDER_WINDOW_SOURCE  WinWindow.cpp)
 ENDIF()
-if(WIN32)
-    SET(RENDER_WINDOW_SOURCE  Win32Window.cpp)
-ENDIF()
-if(APPLE)
-ENDIF()
-
 
 add_executable(VulkanTest   main.cpp
                             ${RENDER_WINDOW_SOURCE}

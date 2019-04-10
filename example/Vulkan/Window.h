@@ -30,9 +30,9 @@ namespace hgl
 
             virtual const char *GetVulkanSurfaceExtname()const=0;
 
-            virtual bool CreateWindow(uint,uint)=0;
-            virtual bool CreateFullscreen(uint,uint,uint)=0;
-            virtual void CloseWindow()=0;
+            virtual bool Create(uint,uint)=0;
+            virtual bool Create(uint,uint,uint)=0;
+            virtual void Close()=0;
 
             virtual void Show()=0;
             virtual void Hide()=0;
