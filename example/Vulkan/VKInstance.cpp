@@ -59,22 +59,21 @@ bool Instance::Init()
         if(res!=VK_SUCCESS)
             return(false);
 
-        VkPhysicalDevice *pd_list=new VkPhysicalDevice[gpu_count];
         physical_devices.SetCount(gpu_count);
-        vkEnumeratePhysicalDevices(inst, &gpu_count, pd_list);
-
-        for(uint32_t i=0;i<gpu_count;i++)
-            physical_devices.Add(new PhysicalDevice(pd_list[i]));
-
-        delete[] pd_list;
+        vkEnumeratePhysicalDevices(inst, &gpu_count,physical_devices.GetData());
     }
 
     return(true);
 }
 
-Surface* Instance::CreateSurface()
+RenderSurface *Instance::CreateRenderSurface(int pd_index)
 {
-	return win->CreateVulkanSurface(inst);
+    VkPhysicalDevice pd;
+
+    if(!physical_devices.Get(pd_index,pd))
+        return(false);
+
+    return(new RenderSurface(win,inst,pd));
 }
 
 VK_NAMESPACE_END
