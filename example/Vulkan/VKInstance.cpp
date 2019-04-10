@@ -71,7 +71,7 @@ RenderSurface *Instance::CreateRenderSurface(int pd_index)
     VkPhysicalDevice pd;
 
     if(!physical_devices.Get(pd_index,pd))
-        return(false);
+        return(nullptr);
 
     return(new RenderSurface(win,inst,pd));
 }
