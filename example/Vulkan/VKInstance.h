@@ -5,6 +5,7 @@
 #include<hgl/type/List.h>
 #include"Window.h"
 #include"VK.h"
+#include"VKSurface.h"
 #include"VKPhysicalDevice.h"
 
 VK_NAMESPACE_BEGIN
@@ -33,6 +34,8 @@ VK_NAMESPACE_BEGIN
         virtual bool Init();
 
         const ObjectList<PhysicalDevice> & GetDeviceList()const{return physical_devices;}
+
+		virtual Surface *CreateSurface();
     };//class Instance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE

@@ -72,4 +72,9 @@ bool Instance::Init()
     return(true);
 }
 
+Surface* Instance::CreateSurface()
+{
+	return win->CreateVulkanSurface(inst);
+}
+
 VK_NAMESPACE_END
