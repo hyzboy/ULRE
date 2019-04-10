@@ -7,10 +7,8 @@ ENDIF()
 
 add_executable(VulkanTest   main.cpp
                             ${RENDER_WINDOW_SOURCE}
-                            VKInstance.cpp
-							VKSurface.cpp
-                            VKPhysicalDevice.cpp
-                            VKDevice.cpp
-                            VKCommandBuffer.cpp)
+                            VKInstance.cpp		
+                            VKCommandBuffer.cpp
+							RenderSurface.cpp)
 
 target_link_libraries(VulkanTest PRIVATE ${ULRE} ${VULKAN_LIB} ${RENDER_WINDOW_LIBRARY})

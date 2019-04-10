@@ -173,7 +173,7 @@ namespace hgl
 				UpdateWindow(win_hwnd);
 			}
 
-			vulkan::Surface* CreateVulkanSurface(VkInstance vk_inst)const override
+			VkSurfaceKHR CreateSurface(VkInstance vk_inst)const override
 			{
 				VkWin32SurfaceCreateInfoKHR createInfo = {};
 				createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
@@ -188,7 +188,7 @@ namespace hgl
 				if (res != VK_SUCCESS)
 					return(nullptr);
 
-				return(new vulkan::Surface(vk_inst,surface));
+				return(surface);
 			}
 		};//class WinWindow :public Window
 

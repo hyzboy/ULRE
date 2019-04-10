@@ -2,7 +2,7 @@
 #define HGL_GRAPH_WINDOW_INCLUDE
 
 #include<hgl/type/BaseString.h>
-#include"VKSurface.h"
+#include"VK.h"
 namespace hgl
 {
     namespace graph
@@ -38,7 +38,7 @@ namespace hgl
             virtual void Show()=0;
             virtual void Hide()=0;
 
-			virtual vulkan::Surface *CreateVulkanSurface(VkInstance)const = 0;
+			virtual VkSurfaceKHR CreateSurface(VkInstance)const = 0;
         };//class Window
 
         Window *CreateRenderWindow(const OSString &win_name);

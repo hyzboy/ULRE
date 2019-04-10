@@ -4,9 +4,7 @@
 #include<hgl/type/BaseString.h>
 #include<hgl/type/List.h>
 #include"Window.h"
-#include"VK.h"
-#include"VKSurface.h"
-#include"VKPhysicalDevice.h"
+#include"RenderSurface.h"
 
 VK_NAMESPACE_BEGIN
     class Instance
@@ -20,7 +18,7 @@ VK_NAMESPACE_BEGIN
 
         VkInstance inst;
 
-        ObjectList<PhysicalDevice> physical_devices;
+        List<VkPhysicalDevice> physical_devices;
 
     private:
 
@@ -33,9 +31,9 @@ VK_NAMESPACE_BEGIN
 
         virtual bool Init();
 
-        const ObjectList<PhysicalDevice> & GetDeviceList()const{return physical_devices;}
+        const List<VkPhysicalDevice> & GetDeviceList()const{return physical_devices;}
 
-		virtual Surface *CreateSurface();
+		RenderSurface *CreateRenderSurface(int pd_index=0);
     };//class Instance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE

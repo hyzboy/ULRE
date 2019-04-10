@@ -1,9 +1,5 @@
-﻿#include"VK.h"
+﻿#include"Window.h"
 #include"VKInstance.h"
-#include"VKSurface.h"
-#include"VKDevice.h"
-#include"VKCommandBuffer.h"
-#include"Window.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -22,19 +18,13 @@ int main(int,char **)
         return(-1);
     }
 
-	vulkan::Surface *surface = inst.CreateSurface();
+    vulkan::RenderSurface *render=inst.CreateRenderSurface();
+    vulkan::CommandBuffer *cmd_buf=render->CreateCommandBuffer();
 
-    const ObjectList<vulkan::PhysicalDevice> &device_list=inst.GetDeviceList();
 
-    vulkan::PhysicalDevice *pd=device_list[0];
 
-    vulkan::Device *dev=pd->CreateGraphicsDevice();
-
-    vulkan::CommandBuffer *cmd_buf=dev->CreateCommandBuffer();
-
-	delete surface;
     delete cmd_buf;
-    delete dev;
+    delete render;
     delete win;
 
     return 0;
