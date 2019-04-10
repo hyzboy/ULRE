@@ -1,4 +1,4 @@
-#include"RenderSurface.h"
+﻿#include"RenderSurface.h"
 
 VK_NAMESPACE_BEGIN
 RenderSurface::RenderSurface(Window *w,VkInstance inst,VkPhysicalDevice pd)
@@ -18,7 +18,7 @@ RenderSurface::RenderSurface(Window *w,VkInstance inst,VkPhysicalDevice pd)
 
     {
         uint32_t family_count;
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,nullptr);    
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,nullptr);
         family_properties.SetCount(family_count);
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,family_properties.GetData());
 
@@ -66,7 +66,7 @@ RenderSurface::RenderSurface(Window *w,VkInstance inst,VkPhysicalDevice pd)
             if(swapchain_extent.width<surface_caps.minImageExtent.width)swapchain_extent.width=surface_caps.minImageExtent.width;else
             if(swapchain_extent.width>surface_caps.maxImageExtent.width)swapchain_extent.width=surface_caps.maxImageExtent.width;
 
-            if(swapchain_extent.height<surface_caps.minImageExtent.height)swapchain_extent.height=surface_caps.minImageExtent.height;else 
+            if(swapchain_extent.height<surface_caps.minImageExtent.height)swapchain_extent.height=surface_caps.minImageExtent.height;else
             if(swapchain_extent.height>surface_caps.maxImageExtent.height)swapchain_extent.height=surface_caps.maxImageExtent.height;
         }
         else
@@ -150,7 +150,7 @@ CommandBuffer *RenderSurface::CreateCommandBuffer()
     return(new CommandBuffer(device,cmd_pool,cmd_buf));
 }
 
-bool RenderSurface::CreateDevice() 
+bool RenderSurface::CreateDevice()
 {
     family_index=QueueFamilyProperties(VK_QUEUE_GRAPHICS_BIT);
 
@@ -179,8 +179,9 @@ bool RenderSurface::CreateDevice()
     create_info.pEnabledFeatures=nullptr;
 
     VkResult res=vkCreateDevice(physical_device,&create_info,nullptr,&device);
+
     if(res!=VK_SUCCESS)
-        return(nullptr);
+        return(false);
 
     CreateCommandPool();
     return(true);
