@@ -1,6 +1,7 @@
 ﻿#include"Window.h"
 #include<xcb/xcb.h>
 #include<xcb/xcb_atom.h>
+#include"VK.h"
 #include<vulkan/vk_sdk_platform.h>
 #include<vulkan/vulkan.h>
 #include<vulkan/vulkan_xcb.h>
@@ -46,11 +47,6 @@ namespace hgl
 
             ~XCBWindow()
             {
-            }
-
-            const char *GetVulkanSurfaceExtname()const
-            {
-                return VK_KHR_XCB_SURFACE_EXTENSION_NAME;
             }
 
             bool Create(uint w,uint h) override
@@ -111,23 +107,11 @@ namespace hgl
             void Show()override{}
             void Hide()override{}
 
-            VkSurfaceKHR CreateSurface(VkInstance vk_inst)const override
-            {
-                VkXcbSurfaceCreateInfoKHR createInfo = {};
-                createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-                createInfo.pNext = nullptr;
-                createInfo.connection = connection;
-                createInfo.window = window;
+        public:
 
-                VkSurfaceKHR surface;
+            xcb_connection_t *GetConnection(){return connection;}
+            xcb_window_t GetWindow(){return window;}
 
-                VkResult res = vkCreateXcbSurfaceKHR(vk_inst, &createInfo, nullptr, &surface);
-
-                if (res != VK_SUCCESS)
-                    return(nullptr);
-
-                return(surface);
-            }
         };//class XCBWindow:public Window
 
         Window *CreateRenderWindow(const UTF8String &win_name)
@@ -136,3 +120,25 @@ namespace hgl
         }
     }//namespace graph
 }//namespace hgl
+
+VK_NAMESPACE_BEGIN
+VkSurfaceKHR CreateSurface(VkInstance vk_inst,Window *win)
+{
+    XCBWindow *xcb_win=(XCBWindow *)win;
+
+    VkXcbSurfaceCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+    createInfo.pNext = nullptr;
+    createInfo.connection = xcb_win->GetConnection();
+    createInfo.window = xcb_win->GetWindow();
+
+    VkSurfaceKHR surface;
+
+    VkResult res = vkCreateXcbSurfaceKHR(vk_inst, &createInfo, nullptr, &surface);
+
+    if (res != VK_SUCCESS)
+        return(nullptr);
+
+    return(surface);
+}
+VK_NAMESPACE_END

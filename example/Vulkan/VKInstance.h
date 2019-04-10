@@ -4,36 +4,40 @@
 #include<hgl/type/BaseString.h>
 #include<hgl/type/List.h>
 #include"Window.h"
+#include"VK.h"
 #include"RenderSurface.h"
 
 VK_NAMESPACE_BEGIN
     class Instance
     {
-        Window *win;
-
-        List<const char *> ext_list;
-
-        VkApplicationInfo app_info;
-        VkInstanceCreateInfo inst_info;
-
         VkInstance inst;
+
+        CharPointerList ext_list;
 
         List<VkPhysicalDevice> physical_devices;
 
     private:
 
-        UTF8String app_name;
+        friend Instance *CreateInstance(const UTF8String &app_name);
+
+        Instance(VkInstance,CharPointerList &);
 
     public:
 
-        Instance(const UTF8String &,Window *);
         virtual ~Instance();
 
-        virtual bool Init();
+                VkInstance              GetVkInstance   ()      {return inst;}
 
-        const List<VkPhysicalDevice> & GetDeviceList()const{return physical_devices;}
+        const   CharPointerList &       GetExtList      ()const {return ext_list;}
+        const   List<VkPhysicalDevice> &GetDeviceList   ()const {return physical_devices;}
+                VkPhysicalDevice        GetDevice       (int index)
+                {
+                    return GetObject(physical_devices,index);
+                }
 
-		RenderSurface *CreateRenderSurface(int pd_index=0);
+                RenderSurface *         CreateSurface   (Window *,int pd_index=0);
     };//class Instance
+
+    Instance *CreateInstance(const UTF8String &);                                                   ///<创建一个Vulkan实例
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
