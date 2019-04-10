@@ -2,7 +2,6 @@
 #define HGL_GRAPH_WINDOW_INCLUDE
 
 #include<hgl/type/BaseString.h>
-#include"VK.h"
 namespace hgl
 {
     namespace graph
@@ -29,16 +28,12 @@ namespace hgl
             }
             virtual ~Window()=default;
 
-            virtual const char *GetVulkanSurfaceExtname()const=0;
-
             virtual bool Create(uint,uint)=0;
             virtual bool Create(uint,uint,uint)=0;
             virtual void Close()=0;
 
             virtual void Show()=0;
             virtual void Hide()=0;
-
-			virtual VkSurfaceKHR CreateSurface(VkInstance)const = 0;
         };//class Window
 
         Window *CreateRenderWindow(const OSString &win_name);

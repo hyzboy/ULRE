@@ -12,11 +12,11 @@ namespace hgl
 		{
 			constexpr wchar_t WIN_CLASS_NAME[] = L"CMGameEngine/ULRE Window Class";
 
-			LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
+			LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			{
 				Window *win=(Window *)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
 
-				switch (uMsg) 
+				switch (uMsg)
 				{
 					case WM_CLOSE:
 						PostQuitMessage(0);
@@ -125,11 +125,6 @@ namespace hgl
 				Close();
 			}
 
-			const char* GetVulkanSurfaceExtname()const
-			{
-				return VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
-			}
-
 			bool Create(uint w, uint h) override
 			{
 				width = w;
@@ -143,7 +138,7 @@ namespace hgl
 				return Create();
 			}
 
-			bool Create(uint, uint, uint)override 
+			bool Create(uint, uint, uint)override
 			{
 				return(false);
 			}
@@ -158,7 +153,7 @@ namespace hgl
 				win_hwnd = nullptr;
 			}
 
-			void Show()override 
+			void Show()override
 			{
 				ShowWindow(win_hwnd, SW_SHOW);
 				SetForegroundWindow(win_hwnd);
@@ -167,7 +162,7 @@ namespace hgl
 				UpdateWindow(win_hwnd);
 			}
 
-			void Hide()override 
+			void Hide()override
 			{
 				ShowWindow(win_hwnd, SW_HIDE);
 				UpdateWindow(win_hwnd);

@@ -4,49 +4,36 @@
 #include<hgl/type/List.h>
 #include"VK.h"
 #include"Window.h"
+#include"RenderSurfaceAttribute.h"
 #include"VKCommandBuffer.h"
 
 VK_NAMESPACE_BEGIN
+
+using RefRenderSurfaceAttribute=SharedPtr<RenderSurfaceAttribute>;
+
 class RenderSurface
 {
-	Window *win;
-	VkInstance instance;
-	VkPhysicalDevice physical_device;
-	VkSurfaceKHR surface;
+    RefRenderSurfaceAttribute rsa;
 
-    VkPhysicalDeviceFeatures features;
-    VkPhysicalDeviceProperties properties;
-    VkPhysicalDeviceMemoryProperties memory_properties;
+private:
 
-    List<VkQueueFamilyProperties> family_properties;
-    List<VkBool32> supports_present;
+    friend RenderSurface *CreateRenderSuface(VkInstance,VkPhysicalDevice,Window *);
 
-	List<VkSurfaceFormatKHR> surface_formts;
-	VkSurfaceCapabilitiesKHR surface_caps;
-	List<VkPresentModeKHR> present_modes;
-
-    uint32_t family_index;
-    VkDevice device;
-    VkCommandPool cmd_pool;                                                 ///<命令池，用于创建命令缓冲区。由于不知道创建多个是否有好处，所以暂时设计为一个设备只有一个。
-
-protected:
-
-    int QueueFamilyProperties(VkQueueFlags) const;
-
-    bool CreateDevice();
-    bool CreateCommandPool();
+    RenderSurface(RefRenderSurfaceAttribute &ref_rsa)
+    {
+        rsa=ref_rsa;
+    }
 
 public:
 
-    RenderSurface(Window *,VkInstance,VkPhysicalDevice);
-    virtual ~RenderSurface();
+    virtual ~RenderSurface()=default;
 
-    VkPhysicalDevice GetPhysicalDevice() { return physical_device; }
-    VkSurfaceKHR GetSurface() { return surface; }
+    VkPhysicalDevice    GetPhysicalDevice   () { return rsa->physical_device; }
+    VkSurfaceKHR        GetSurface          () { return rsa->surface; }
 
 public:
 
-    CommandBuffer *CreateCommandBuffer();
+    CommandBuffer *     CreateCommandBuffer ();
 };//class RenderSurface
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE

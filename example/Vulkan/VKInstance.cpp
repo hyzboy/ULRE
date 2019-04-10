@@ -1,12 +1,15 @@
 ﻿#include"VKInstance.h"
+#include"VKSurfaceExtensionName.h"
 #include<hgl/type/DataType.h>
 
 VK_NAMESPACE_BEGIN
+RenderSurface *CreateRenderSuface(VkInstance,VkPhysicalDevice,Window *);
 
-Instance::Instance(const UTF8String &an,Window *w)
+Instance *CreateInstance(const UTF8String &app_name)
 {
-    win=w;
-    app_name=an;
+    VkApplicationInfo app_info;
+    VkInstanceCreateInfo inst_info;
+    CharPointerList ext_list;
 
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     app_info.pNext = nullptr;
@@ -17,7 +20,7 @@ Instance::Instance(const UTF8String &an,Window *w)
     app_info.apiVersion = VK_API_VERSION_1_0;
 
     ext_list.Add(VK_KHR_SURFACE_EXTENSION_NAME);
-    ext_list.Add(win->GetVulkanSurfaceExtname());
+    ext_list.Add(HGL_VK_SURFACE_EXTENSION_NAME);            //此宏在CMAKE中定义
 
     inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     inst_info.pNext = nullptr;
@@ -28,52 +31,45 @@ Instance::Instance(const UTF8String &an,Window *w)
     inst_info.enabledLayerCount = 0;
     inst_info.ppEnabledLayerNames = nullptr;
 
-    inst=nullptr;
+    VkInstance inst;
+
+    if(vkCreateInstance(&inst_info,nullptr,&inst)==VK_SUCCESS)
+        return(new Instance(inst,ext_list));
+
+    return(nullptr);
+}
+
+Instance::Instance(VkInstance i,CharPointerList &el)
+{
+    inst=i;
+    ext_list=el;
+
+    uint32_t gpu_count = 1;
+
+    if(vkEnumeratePhysicalDevices(inst, &gpu_count, nullptr)==VK_SUCCESS)
+    {
+        physical_devices.SetCount(gpu_count);
+        vkEnumeratePhysicalDevices(inst, &gpu_count,physical_devices.GetData());
+    }
 }
 
 Instance::~Instance()
 {
     physical_devices.Clear();
 
-    if(inst)
-        vkDestroyInstance(inst,nullptr);
+    vkDestroyInstance(inst,nullptr);
 }
 
-bool Instance::Init()
+RenderSurface *Instance::CreateSurface(Window *win,int pd_index)
 {
-    if(inst)
-        return(false);
-
-    VkResult res=vkCreateInstance(&inst_info,nullptr,&inst);
-
-    if(res)
-    {
-        inst=nullptr;
-        return(false);
-    }
-
-    {
-        uint32_t gpu_count = 1;
-        res = vkEnumeratePhysicalDevices(inst, &gpu_count, nullptr);
-
-        if(res!=VK_SUCCESS)
-            return(false);
-
-        physical_devices.SetCount(gpu_count);
-        vkEnumeratePhysicalDevices(inst, &gpu_count,physical_devices.GetData());
-    }
-
-    return(true);
-}
-
-RenderSurface *Instance::CreateRenderSurface(int pd_index)
-{
-    VkPhysicalDevice pd;
-
-    if(!physical_devices.Get(pd_index,pd))
+    if(!win)
         return(nullptr);
 
-    return(new RenderSurface(win,inst,pd));
-}
+    VkPhysicalDevice pd=GetDevice(pd_index);
 
+    if(!pd)
+        return(nullptr);
+
+    return CreateRenderSuface(inst,pd,win);
+}
 VK_NAMESPACE_END
