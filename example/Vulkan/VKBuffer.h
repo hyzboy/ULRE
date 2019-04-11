@@ -26,7 +26,7 @@ public:
 
     virtual ~Buffer();
 
-    uint8_t *Map();
+    uint8_t *Map(uint32_t start=0,uint32_t size=0);
     void Unmap();
 };//class Buffer
 VK_NAMESPACE_END
