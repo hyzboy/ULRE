@@ -8,20 +8,22 @@ VkSurfaceKHR CreateSurface(VkInstance,Window *);
 
 namespace
 {
-    VkExtent2D GetSwapchainExtent(VkSurfaceCapabilitiesKHR &surface_caps,int width,int height)
+    template<typename T> T Clamp(const T &cur,const T &min_value,const T &max_value)
+    {
+        if(cur<min_value)return min_value;
+        if(cur>max_value)return max_value;
+
+        return cur;
+    }
+
+    VkExtent2D GetSwapchainExtent(VkSurfaceCapabilitiesKHR &surface_caps,uint32_t width,uint32_t height)
     {
         if(surface_caps.currentExtent.width==0xFFFFFFFF)
         {
             VkExtent2D swapchain_extent;
 
-            swapchain_extent.width=width;
-            swapchain_extent.height=height;
-
-            if(swapchain_extent.width<surface_caps.minImageExtent.width)swapchain_extent.width=surface_caps.minImageExtent.width;else
-                if(swapchain_extent.width>surface_caps.maxImageExtent.width)swapchain_extent.width=surface_caps.maxImageExtent.width;
-
-                if(swapchain_extent.height<surface_caps.minImageExtent.height)swapchain_extent.height=surface_caps.minImageExtent.height;else
-                    if(swapchain_extent.height>surface_caps.maxImageExtent.height)swapchain_extent.height=surface_caps.maxImageExtent.height;
+            swapchain_extent.width=Clamp(width,surface_caps.minImageExtent.width,surface_caps.maxImageExtent.width);
+            swapchain_extent.height=Clamp(height,surface_caps.minImageExtent.height,surface_caps.maxImageExtent.height);
 
             return swapchain_extent;
         }
