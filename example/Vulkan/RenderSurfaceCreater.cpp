@@ -33,12 +33,12 @@ namespace
         }
     }
 
-    VkDevice CreateDevice(VkInstance instance,VkPhysicalDevice physical_device,int family_index)
+    VkDevice CreateDevice(VkInstance instance,VkPhysicalDevice physical_device,uint32_t graphics_family)
     {
         float queue_priorities[1]={0.0};
 
         VkDeviceQueueCreateInfo queue_info;
-        queue_info.queueFamilyIndex=family_index;
+        queue_info.queueFamilyIndex=graphics_family;
         queue_info.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queue_info.pNext=nullptr;
         queue_info.queueCount=1;
@@ -64,19 +64,61 @@ namespace
         return nullptr;
     }
 
-    VkCommandPool CreateCommandPool(VkDevice device,int family_index)
+    VkCommandPool CreateCommandPool(VkDevice device,uint32_t graphics_family)
     {
         VkCommandPoolCreateInfo cmd_pool_info={};
 
         cmd_pool_info.sType=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cmd_pool_info.pNext=nullptr;
-        cmd_pool_info.queueFamilyIndex=family_index;
+        cmd_pool_info.queueFamilyIndex=graphics_family;
         cmd_pool_info.flags=0;
 
         VkCommandPool cmd_pool;
 
         if(vkCreateCommandPool(device,&cmd_pool_info,nullptr,&cmd_pool)==VK_SUCCESS)
             return cmd_pool;
+
+        return(nullptr);
+    }
+
+    VkSwapchainKHR CreateSwapChain(RenderSurfaceAttribute *rsa)
+    {
+        VkSwapchainCreateInfoKHR swapchain_ci={};
+
+        swapchain_ci.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        swapchain_ci.pNext=nullptr;
+        swapchain_ci.surface=rsa->surface;
+        swapchain_ci.minImageCount=rsa->surface_caps.minImageCount;
+        swapchain_ci.imageFormat=rsa->format;
+        swapchain_ci.imageExtent=rsa->swapchain_extent;
+        swapchain_ci.preTransform=rsa->preTransform;
+        swapchain_ci.compositeAlpha=rsa->compositeAlpha;
+        swapchain_ci.imageArrayLayers=1;
+        swapchain_ci.presentMode=VK_PRESENT_MODE_FIFO_KHR;
+        swapchain_ci.oldSwapchain=VK_NULL_HANDLE;
+        swapchain_ci.clipped=true;
+        swapchain_ci.imageColorSpace=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+        swapchain_ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        swapchain_ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+        swapchain_ci.queueFamilyIndexCount=0;
+        swapchain_ci.pQueueFamilyIndices=nullptr;
+
+        uint32_t queueFamilyIndices[2]={(uint32_t)rsa->graphics_family, (uint32_t)rsa->present_family};
+        if(rsa->graphics_family!=rsa->present_family)
+        {
+            // If the graphics and present queues are from different queue families,
+            // we either have to explicitly transfer ownership of images between
+            // the queues, or we have to create the swapchain with imageSharingMode
+            // as VK_SHARING_MODE_CONCURRENT
+            swapchain_ci.imageSharingMode=VK_SHARING_MODE_CONCURRENT;
+            swapchain_ci.queueFamilyIndexCount=2;
+            swapchain_ci.pQueueFamilyIndices=queueFamilyIndices;
+        }
+
+        VkSwapchainKHR swap_chain;
+
+        if(vkCreateSwapchainKHR(rsa->device,&swapchain_ci,nullptr,&swap_chain)==VK_SUCCESS)
+            return(swap_chain);
 
         return(nullptr);
     }
@@ -93,17 +135,22 @@ RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_devi
 
     rsa->swapchain_extent=GetSwapchainExtent(rsa->surface_caps,win->GetWidth(),win->GetHeight());
 
-    if(rsa->family_index==-1)
+    if(rsa->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    rsa->device=CreateDevice(inst,physical_device,rsa->family_index);
+    rsa->device=CreateDevice(inst,physical_device,rsa->graphics_family);
 
     if(!rsa->device)
         return(nullptr);
 
-    rsa->cmd_pool=CreateCommandPool(rsa->device,rsa->family_index);
+    rsa->cmd_pool=CreateCommandPool(rsa->device,rsa->graphics_family);
 
     if(!rsa->cmd_pool)
+        return(nullptr);
+
+    rsa->swap_chain=CreateSwapChain(rsa);
+
+    if(!rsa->swap_chain)
         return(nullptr);
 
     return(new RenderSurface(rsa));
