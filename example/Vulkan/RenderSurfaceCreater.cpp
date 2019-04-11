@@ -123,7 +123,45 @@ namespace
         return(nullptr);
     }
 
-    bool CreateImageView(RenderSurfaceAttribute *rsa)
+    VkImageView CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img=nullptr)
+    {
+        VkImageViewCreateInfo iv_createinfo={};
+
+        iv_createinfo.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        iv_createinfo.pNext=nullptr;
+        iv_createinfo.flags=0;
+        iv_createinfo.image=img;
+        iv_createinfo.format=format;
+        iv_createinfo.viewType=type;
+        iv_createinfo.components.r=VK_COMPONENT_SWIZZLE_R;
+        iv_createinfo.components.g=VK_COMPONENT_SWIZZLE_G;
+        iv_createinfo.components.b=VK_COMPONENT_SWIZZLE_B;
+        iv_createinfo.components.a=VK_COMPONENT_SWIZZLE_A;
+        iv_createinfo.subresourceRange.aspectMask=aspectMask;
+        iv_createinfo.subresourceRange.baseMipLevel=0;
+        iv_createinfo.subresourceRange.levelCount=1;
+        iv_createinfo.subresourceRange.baseArrayLayer=0;
+        iv_createinfo.subresourceRange.layerCount=1;
+
+        VkImageView iv;
+
+        if(vkCreateImageView(device,&iv_createinfo,nullptr,&iv)!=VK_SUCCESS)
+            return(nullptr);
+
+        return iv;
+    }
+
+    VkImageView Create2DImageView(VkDevice device,VkFormat format,VkImage img=nullptr)
+    {
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,VK_IMAGE_ASPECT_COLOR_BIT,img);
+    }
+
+    VkImageView CreateDepthImageView(VkDevice device,VkFormat format,VkImage img=nullptr)
+    {
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,VK_IMAGE_ASPECT_DEPTH_BIT,img);
+    }
+
+    bool CreateSwapchainImageView(RenderSurfaceAttribute *rsa)
     {
         uint32_t count;
 
@@ -144,25 +182,9 @@ namespace
         VkImageView *vp=rsa->sc_image_views.GetData();
         for(uint32_t i=0; i<count; i++)
         {
-            VkImageViewCreateInfo color_image_view={};
+            *vp=Create2DImageView(rsa->device,rsa->format,*ip);
 
-            color_image_view.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            color_image_view.pNext=nullptr;
-            color_image_view.flags=0;
-            color_image_view.image=*ip;
-            color_image_view.viewType=VK_IMAGE_VIEW_TYPE_2D;
-            color_image_view.format=rsa->format;
-            color_image_view.components.r=VK_COMPONENT_SWIZZLE_R;
-            color_image_view.components.g=VK_COMPONENT_SWIZZLE_G;
-            color_image_view.components.b=VK_COMPONENT_SWIZZLE_B;
-            color_image_view.components.a=VK_COMPONENT_SWIZZLE_A;
-            color_image_view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_COLOR_BIT;
-            color_image_view.subresourceRange.baseMipLevel=0;
-            color_image_view.subresourceRange.levelCount=1;
-            color_image_view.subresourceRange.baseArrayLayer=0;
-            color_image_view.subresourceRange.layerCount=1;
-
-            if(vkCreateImageView(rsa->device,&color_image_view,nullptr,vp)!=VK_SUCCESS)
+            if(*vp==nullptr)
                 return(false);
 
             ++ip;
@@ -206,23 +228,6 @@ namespace
         image_info.sharingMode=VK_SHARING_MODE_EXCLUSIVE;
         image_info.flags=0;
 
-        VkImageViewCreateInfo view_info={};
-        view_info.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        view_info.pNext=nullptr;
-        view_info.image=VK_NULL_HANDLE;
-        view_info.format=depth_format;
-        view_info.components.r=VK_COMPONENT_SWIZZLE_R;
-        view_info.components.g=VK_COMPONENT_SWIZZLE_G;
-        view_info.components.b=VK_COMPONENT_SWIZZLE_B;
-        view_info.components.a=VK_COMPONENT_SWIZZLE_A;
-        view_info.subresourceRange.aspectMask=VK_IMAGE_ASPECT_DEPTH_BIT;
-        view_info.subresourceRange.baseMipLevel=0;
-        view_info.subresourceRange.levelCount=1;
-        view_info.subresourceRange.baseArrayLayer=0;
-        view_info.subresourceRange.layerCount=1;
-        view_info.viewType=VK_IMAGE_VIEW_TYPE_2D;
-        view_info.flags=0;
-
         rsa->depth.format=depth_format;
 
         if(vkCreateImage(rsa->device,&image_info,nullptr,&rsa->depth.image)!=VK_SUCCESS)
@@ -247,8 +252,9 @@ namespace
         if(vkBindImageMemory(rsa->device,rsa->depth.image,rsa->depth.mem,0)!=VK_SUCCESS)
             return(false);
 
-        view_info.image=rsa->depth.image;
-        if(vkCreateImageView(rsa->device,&view_info,nullptr,&rsa->depth.view)!=VK_SUCCESS)
+        rsa->depth.view=CreateDepthImageView(rsa->device,depth_format,rsa->depth.image);
+
+        if(rsa->depth.view==nullptr)
             return(false);
 
         return(true);
@@ -284,7 +290,7 @@ RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_devi
     if(!rsa->swap_chain)
         return(nullptr);
 
-    if(!CreateImageView(rsa))
+    if(!CreateSwapchainImageView(rsa))
         return(nullptr);
 
     if(!CreateDepthBuffer(rsa))
