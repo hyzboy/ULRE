@@ -51,5 +51,7 @@ public:
 
     RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice pd,VkSurfaceKHR s);
     ~RenderSurfaceAttribute();
+
+    bool CheckMemoryType(uint32_t,VkFlags,uint32_t *);
 };//class RenderSurfaceAttribute
 VK_NAMESPACE_END
