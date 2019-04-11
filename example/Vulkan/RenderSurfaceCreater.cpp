@@ -122,6 +122,55 @@ namespace
 
         return(nullptr);
     }
+
+    bool CreateImageView(RenderSurfaceAttribute *rsa)
+    {
+        uint32_t count;
+
+        if(vkGetSwapchainImagesKHR(rsa->device,rsa->swap_chain,&count,nullptr)!=VK_SUCCESS)
+            return(false);
+
+        rsa->sc_images.SetCount(count);
+
+        if(vkGetSwapchainImagesKHR(rsa->device,rsa->swap_chain,&count,rsa->sc_images.GetData())!=VK_SUCCESS)
+        {
+            rsa->sc_images.Clear();
+            return(false);
+        }
+
+        rsa->sc_image_views.SetCount(count);
+
+        VkImage *ip=rsa->sc_images.GetData();
+        VkImageView *vp=rsa->sc_image_views.GetData();
+        for(uint32_t i=0; i<count; i++)
+        {
+            VkImageViewCreateInfo color_image_view={};
+
+            color_image_view.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            color_image_view.pNext=nullptr;
+            color_image_view.flags=0;
+            color_image_view.image=*ip;
+            color_image_view.viewType=VK_IMAGE_VIEW_TYPE_2D;
+            color_image_view.format=rsa->format;
+            color_image_view.components.r=VK_COMPONENT_SWIZZLE_R;
+            color_image_view.components.g=VK_COMPONENT_SWIZZLE_G;
+            color_image_view.components.b=VK_COMPONENT_SWIZZLE_B;
+            color_image_view.components.a=VK_COMPONENT_SWIZZLE_A;
+            color_image_view.subresourceRange.aspectMask=VK_IMAGE_ASPECT_COLOR_BIT;
+            color_image_view.subresourceRange.baseMipLevel=0;
+            color_image_view.subresourceRange.levelCount=1;
+            color_image_view.subresourceRange.baseArrayLayer=0;
+            color_image_view.subresourceRange.layerCount=1;
+
+            if(vkCreateImageView(rsa->device,&color_image_view,nullptr,vp)!=VK_SUCCESS)
+                return(false);
+
+            ++ip;
+            ++vp;
+        }
+
+        return(true);
+    }
 }//namespace
 
 RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_device,Window *win)
@@ -151,6 +200,9 @@ RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_devi
     rsa->swap_chain=CreateSwapChain(rsa);
 
     if(!rsa->swap_chain)
+        return(nullptr);
+
+    if(!CreateImageView(rsa))
         return(nullptr);
 
     return(new RenderSurface(rsa));
