@@ -130,16 +130,27 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
 
 RenderSurfaceAttribute::~RenderSurfaceAttribute()
 {
-    const uint32_t iv_count=sc_image_views.GetCount();
+    if(depth.view)
+        vkDestroyImageView(device,depth.view,nullptr);
 
-    if(iv_count>0)
+    if(depth.image)
+        vkDestroyImage(device,depth.image,nullptr);
+
+    if(depth.mem)
+        vkFreeMemory(device,depth.mem,nullptr);
+
     {
-        VkImageView *iv=sc_image_views.GetData();
+        const uint32_t iv_count=sc_image_views.GetCount();
 
-        for(uint32_t i=0;i<iv_count;i++)
+        if(iv_count>0)
         {
-            vkDestroyImageView(device,*iv,nullptr);
-            ++iv;
+            VkImageView *iv=sc_image_views.GetData();
+
+            for(uint32_t i=0;i<iv_count;i++)
+            {
+                vkDestroyImageView(device,*iv,nullptr);
+                ++iv;
+            }
         }
     }
 

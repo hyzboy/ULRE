@@ -38,6 +38,15 @@ struct RenderSurfaceAttribute
     List<VkImage>                       sc_images;
     List<VkImageView>                   sc_image_views;
 
+    struct
+    {
+        VkFormat        format;
+
+        VkImage         image   =nullptr;
+        VkDeviceMemory  mem     =nullptr;
+        VkImageView     view    =nullptr;
+    }depth;
+
 public:
 
     RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice pd,VkSurfaceKHR s);
