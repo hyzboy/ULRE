@@ -130,6 +130,19 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
 
 RenderSurfaceAttribute::~RenderSurfaceAttribute()
 {
+    const uint32_t iv_count=sc_image_views.GetCount();
+
+    if(iv_count>0)
+    {
+        VkImageView *iv=sc_image_views.GetData();
+
+        for(uint32_t i=0;i<iv_count;i++)
+        {
+            vkDestroyImageView(device,*iv,nullptr);
+            ++iv;
+        }
+    }
+
     if(swap_chain)
         vkDestroySwapchainKHR(device,swap_chain,nullptr);
 
