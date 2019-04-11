@@ -35,6 +35,9 @@ struct RenderSurfaceAttribute
     VkCommandPool                       cmd_pool        =nullptr;
     VkSwapchainKHR                      swap_chain      =nullptr;
 
+    List<VkImage>                       sc_images;
+    List<VkImageView>                   sc_image_views;
+
 public:
 
     RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice pd,VkSurfaceKHR s);
