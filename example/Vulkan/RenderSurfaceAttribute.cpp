@@ -14,13 +14,52 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
     vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
 
     {
+        if(surface_caps.supportedTransforms&VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+        {
+            preTransform=VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+        }
+        else
+        {
+            preTransform=surface_caps.currentTransform;
+        }
+    }
+
+    {
+        constexpr VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4]={VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+                                                                      VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+                                                                      VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+                                                                      VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR};
+
+        for(uint32_t i=0; i<sizeof(compositeAlphaFlags); i++)
+        {
+            if(surface_caps.supportedCompositeAlpha&compositeAlphaFlags[i])
+            {
+                compositeAlpha=compositeAlphaFlags[i];
+                break;
+            }
+        }
+    }
+
+    {
         uint32_t format_count;
         if(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,surface,&format_count,nullptr)==VK_SUCCESS)
         {
             surface_formts.SetCount(format_count);
 
             if(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,surface,&format_count,surface_formts.GetData())!=VK_SUCCESS)
+            {
                 surface_formts.Clear();
+                format=VK_FORMAT_B8G8R8A8_UNORM;
+            }
+            else
+            {
+                VkSurfaceFormatKHR *sf=surface_formts.GetData();
+
+                if(format_count==1&&sf->format==VK_FORMAT_UNDEFINED)
+                    format=VK_FORMAT_B8G8R8A8_UNORM;
+                else
+                    format=sf->format;
+            }
         }
     }
 
@@ -40,28 +79,60 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
         family_properties.SetCount(family_count);
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,family_properties.GetData());
 
-        VkQueueFamilyProperties *fp=family_properties.GetData();
-
-        supports_present.SetCount(family_count);
-        VkBool32 *sp=supports_present.GetData();
-        for(uint32_t i=0; i<family_count; i++)
         {
-            vkGetPhysicalDeviceSurfaceSupportKHR(physical_device,i,surface,sp);
-
-            if(family_index==-1)
+            supports_present.SetCount(family_count);
+            VkBool32 *sp=supports_present.GetData();
+            for(uint32_t i=0; i<family_count; i++)
             {
-                if(*sp&&(fp->queueFlags&VK_QUEUE_GRAPHICS_BIT))
-                    family_index=i;
+                vkGetPhysicalDeviceSurfaceSupportKHR(physical_device,i,surface,sp);
+                ++sp;
             }
+        }
 
-            ++fp;
-            ++sp;
+        {
+            VkQueueFamilyProperties *fp=family_properties.GetData();
+            VkBool32 *sp=supports_present.GetData();
+            for(uint32_t i=0; i<family_count; i++)
+            {
+                if(fp->queueFlags&VK_QUEUE_GRAPHICS_BIT)
+                {
+                    if(graphics_family==ERROR_FAMILY_INDEX)
+                        graphics_family=i;
+
+                    if(*sp)
+                    {
+                        graphics_family=i;
+                        present_family=i;
+                        break;
+                    }
+                }
+
+                ++fp;
+                ++sp;
+            }
+        }
+
+        if(present_family==ERROR_FAMILY_INDEX)
+        {
+            VkBool32 *sp=supports_present.GetData();
+            for(uint32_t i=0; i<family_count; i++)
+            {
+                if(*sp)
+                {
+                    present_family=i;
+                    break;
+                }
+                ++sp;
+            }
         }
     }
 }
 
 RenderSurfaceAttribute::~RenderSurfaceAttribute()
 {
+    if(swap_chain)
+        vkDestroySwapchainKHR(device,swap_chain,nullptr);
+
     if(cmd_pool)
         vkDestroyCommandPool(device,cmd_pool,nullptr);
 
