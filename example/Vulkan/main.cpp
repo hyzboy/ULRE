@@ -22,6 +22,17 @@ int main(int,char **)
     vulkan::RenderSurface *render=inst->CreateSurface(win);
     vulkan::CommandBuffer *cmd_buf=render->CreateCommandBuffer();
 
+    vulkan::Buffer *ubo=render->CreateUBO(1024);
+
+    uint8_t *p=ubo->Map();
+
+    if(p)
+    {
+        memset(p,0,1024);
+        ubo->Unmap();
+    }
+
+    delete ubo;
 
     delete cmd_buf;
     delete render;
