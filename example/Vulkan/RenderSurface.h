@@ -5,6 +5,7 @@
 #include"VK.h"
 #include"Window.h"
 #include"RenderSurfaceAttribute.h"
+#include"VKBuffer.h"
 #include"VKCommandBuffer.h"
 
 VK_NAMESPACE_BEGIN
@@ -32,6 +33,13 @@ public:
     VkSurfaceKHR        GetSurface          () { return rsa->surface; }
 
 public:
+
+    Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+
+    Buffer *            CreateUBO(VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE)
+    {
+        return CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,size,sharing_mode);
+    }
 
     CommandBuffer *     CreateCommandBuffer ();
 };//class RenderSurface
