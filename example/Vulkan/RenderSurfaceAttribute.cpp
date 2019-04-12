@@ -130,6 +130,9 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
 
 RenderSurfaceAttribute::~RenderSurfaceAttribute()
 {
+    if(desc_pool)
+        vkDestroyDescriptorPool(device,desc_pool,nullptr);
+
     if(depth.view)
         vkDestroyImageView(device,depth.view,nullptr);
 

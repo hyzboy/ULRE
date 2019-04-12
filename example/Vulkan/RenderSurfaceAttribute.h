@@ -47,6 +47,8 @@ struct RenderSurfaceAttribute
         VkImageView     view    =nullptr;
     }depth;
 
+    VkDescriptorPool                    desc_pool       =nullptr;
+
 public:
 
     RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice pd,VkSurfaceKHR s);
