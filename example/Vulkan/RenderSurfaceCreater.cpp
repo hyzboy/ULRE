@@ -259,6 +259,33 @@ namespace
 
         return(true);
     }
+
+    VkDescriptorPool CreateDescriptorPool(VkDevice device,int sets_count)
+    {
+        constexpr size_t DESC_POOL_COUNT=1;
+
+        VkDescriptorPoolSize pool_size[DESC_POOL_COUNT];
+
+        for(size_t i=0;i<DESC_POOL_COUNT;i++)
+        {
+            pool_size[i].type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            pool_size[i].descriptorCount=1;
+        }
+
+        VkDescriptorPoolCreateInfo dp_create_info={};
+        dp_create_info.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        dp_create_info.pNext=NULL;
+        dp_create_info.maxSets=sets_count;
+        dp_create_info.poolSizeCount=DESC_POOL_COUNT;
+        dp_create_info.pPoolSizes=pool_size;
+
+        VkDescriptorPool desc_pool;
+
+        if(!vkCreateDescriptorPool(device,&dp_create_info,nullptr,&desc_pool))
+            return(nullptr);
+
+        return desc_pool;
+    }
 }//namespace
 
 RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_device,Window *win)
@@ -294,6 +321,11 @@ RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_devi
         return(nullptr);
 
     if(!CreateDepthBuffer(rsa))
+        return(nullptr);
+
+    rsa->desc_pool=CreateDescriptorPool(rsa->device,1);
+
+    if(!rsa->desc_pool)
         return(nullptr);
 
     return(new RenderSurface(rsa));
