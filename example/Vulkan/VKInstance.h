@@ -12,6 +12,11 @@ VK_NAMESPACE_BEGIN
     {
         VkInstance inst;
 
+        List<VkLayerProperties> layer_properties;
+
+        VkDebugUtilsMessengerEXT debug_messenger;
+        VkDebugReportCallbackEXT debug_report_callback;
+
         CharPointerList ext_list;
 
         List<VkPhysicalDevice> physical_devices;
@@ -26,16 +31,15 @@ VK_NAMESPACE_BEGIN
 
         virtual ~Instance();
 
-                VkInstance              GetVkInstance   ()      {return inst;}
+                VkInstance                  GetVkInstance       ()      {return inst;}
 
-        const   CharPointerList &       GetExtList      ()const {return ext_list;}
-        const   List<VkPhysicalDevice> &GetDeviceList   ()const {return physical_devices;}
-                VkPhysicalDevice        GetDevice       (int index)
-                {
-                    return GetObject(physical_devices,index);
-                }
+        const   List<VkLayerProperties> &   GetLayerProperties  ()const{return layer_properties;}
+        const   bool                        CheckLayerSupport   (const UTF8String &)const;
+        const   CharPointerList &           GetExtList          ()const {return ext_list;}
+        const   List<VkPhysicalDevice> &    GetDeviceList       ()const {return physical_devices;}
+                VkPhysicalDevice            GetDevice           (int index){return GetObject(physical_devices,index);}
 
-                RenderSurface *         CreateSurface   (Window *,int pd_index=0);
+                RenderSurface *             CreateSurface   (Window *,int pd_index=0);
     };//class Instance
 
     Instance *CreateInstance(const UTF8String &);                                                   ///<创建一个Vulkan实例
