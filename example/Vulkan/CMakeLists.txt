@@ -5,14 +5,18 @@ ELSEIF(WIN32)
     SET(RENDER_WINDOW_SOURCE  WinWindow.cpp)
 ENDIF()
 
-SET(VULKAN_TEST_SOURCE_FILES main.cpp
-                             ${RENDER_WINDOW_SOURCE}
-                             VKInstance.cpp
-                             VKCommandBuffer.cpp
-                             RenderSurfaceAttribute.cpp
-                             RenderSurfaceCreater.cpp
-							 RenderSurface.cpp
-							 VKBuffer.cpp)
+SET(VULKAN_TEST_SOURCE_FILES	main.cpp
+								${RENDER_WINDOW_SOURCE}
+								VKInstance.cpp
+								VKCommandBuffer.cpp
+								RenderSurfaceAttribute.cpp
+								RenderSurfaceCreater.cpp
+								RenderSurface.cpp
+								VKBuffer.cpp
+#							 VKPipelineLayout.cpp
+#							 VKDescriptorSet.cpp
+								VKRenderPass.cpp
+							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKInstance.h
@@ -20,6 +24,9 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								RenderSurfaceAttribute.h
 								RenderSurface.h
 								VKBuffer.h
+#								VKPipelineLayout.h
+#								VKDescriptorSet.h
+								VKRenderPass.h
 								Window.h)
 
 SET(SHADER_FILES	shader_compile.bat

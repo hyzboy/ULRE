@@ -7,6 +7,8 @@
 #include"RenderSurfaceAttribute.h"
 #include"VKBuffer.h"
 #include"VKCommandBuffer.h"
+//#include"VKDescriptorSet.h"
+#include"VKRenderPass.h"
 
 VK_NAMESPACE_BEGIN
 
@@ -47,6 +49,10 @@ public:
 #undef CREATE_BUFFER_OBJECT
 
     CommandBuffer *     CreateCommandBuffer ();
+
+//    DescriptorSet *     CreateDescSet(int);
+
+    RenderPass *CreateRenderPass();
 };//class RenderSurface
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
