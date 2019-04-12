@@ -48,6 +48,7 @@ int main(int,char **)
 
     delete cmd_buf;
     delete render;
+    delete inst;
     delete win;
 
     return 0;
