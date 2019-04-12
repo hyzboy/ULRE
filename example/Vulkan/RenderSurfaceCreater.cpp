@@ -281,7 +281,7 @@ namespace
 
         VkDescriptorPool desc_pool;
 
-        if(!vkCreateDescriptorPool(device,&dp_create_info,nullptr,&desc_pool))
+        if(vkCreateDescriptorPool(device,&dp_create_info,nullptr,&desc_pool)!=VK_SUCCESS)
             return(nullptr);
 
         return desc_pool;
