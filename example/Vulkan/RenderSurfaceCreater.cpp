@@ -18,7 +18,7 @@ namespace
 
     VkExtent2D GetSwapchainExtent(VkSurfaceCapabilitiesKHR &surface_caps,uint32_t width,uint32_t height)
     {
-        if(surface_caps.currentExtent.width==0xFFFFFFFF)
+        if(surface_caps.currentExtent.width==UINT32_MAX)
         {
             VkExtent2D swapchain_extent;
 

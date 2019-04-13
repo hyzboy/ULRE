@@ -34,7 +34,7 @@ VK_NAMESPACE_BEGIN
 
                 VkInstance                  GetVkInstance       ()      {return inst;}
 
-        const   List<VkLayerProperties> &   GetLayerProperties  ()const{return layer_properties;}
+        const   List<VkLayerProperties> &   GetLayerProperties  ()const {return layer_properties;}
         const   bool                        CheckLayerSupport   (const UTF8String &)const;
         const   CharPointerList &           GetExtList          ()const {return ext_list;}
         const   ObjectList<PhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
