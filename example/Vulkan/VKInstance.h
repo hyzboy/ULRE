@@ -13,6 +13,7 @@ VK_NAMESPACE_BEGIN
         VkInstance inst;
 
         List<VkLayerProperties> layer_properties;
+        List<VkExtensionProperties> extension_properties;
 
         VkDebugUtilsMessengerEXT debug_messenger;
         VkDebugReportCallbackEXT debug_report_callback;

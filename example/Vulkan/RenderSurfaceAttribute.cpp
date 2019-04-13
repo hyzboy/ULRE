@@ -1,4 +1,5 @@
 ﻿#include"RenderSurfaceAttribute.h"
+#include<iostream>
 
 VK_NAMESPACE_BEGIN
 RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice pd,VkSurfaceKHR s)
@@ -12,6 +13,28 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
     vkGetPhysicalDeviceFeatures(physical_device,&features);
     vkGetPhysicalDeviceProperties(physical_device,&properties);
     vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
+
+    {
+        uint32_t property_count;
+
+        vkEnumerateDeviceLayerProperties(physical_device,&property_count,nullptr);
+
+        layer_properties.SetCount(property_count);
+        vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
+
+        debug_out(layer_properties);
+    }
+
+    {
+        uint32_t exten_count;
+
+        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
+
+        extension_properties.SetCount(exten_count);
+        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
+
+        debug_out(extension_properties);
+    }
 
     {
         if(surface_caps.supportedTransforms&VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)

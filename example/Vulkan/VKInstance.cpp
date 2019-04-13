@@ -159,6 +159,18 @@ Instance::Instance(VkInstance i,CharPointerList &el)
 
         layer_properties.SetCount(layerCount);
         vkEnumerateInstanceLayerProperties(&layerCount,layer_properties.GetData());
+
+        debug_out(layer_properties);
+    }
+
+    {
+        uint32_t prop_count;
+        vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,nullptr);
+
+        extension_properties.SetCount(prop_count);
+        vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,extension_properties.GetData());
+
+        debug_out(extension_properties);
     }
 
     debug_report_callback=nullptr;
