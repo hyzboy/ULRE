@@ -43,6 +43,7 @@ namespace
         queue_info.pNext=nullptr;
         queue_info.queueCount=1;
         queue_info.pQueuePriorities=queue_priorities;
+        queue_info.flags=VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT;
 
         VkDeviceCreateInfo create_info={};
         const char *ext_list[1]={VK_KHR_SWAPCHAIN_EXTENSION_NAME};
