@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include"VK.h"
+#include"VKPhysicalDevice.h"
 
 VK_NAMESPACE_BEGIN
 
@@ -9,7 +10,8 @@ constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 struct RenderSurfaceAttribute
 {
     VkInstance                          instance        =nullptr;
-    VkPhysicalDevice                    physical_device =nullptr;
+    const PhysicalDevice *              physical_device =nullptr;
+
     VkSurfaceKHR                        surface         =nullptr;
     VkSurfaceCapabilitiesKHR            surface_caps;
     VkExtent2D                          swapchain_extent;
@@ -19,12 +21,6 @@ struct RenderSurfaceAttribute
 
     List<VkQueueFamilyProperties>       family_properties;
     List<VkBool32>                      supports_present;
-
-    VkPhysicalDeviceFeatures            features;
-    VkPhysicalDeviceProperties          properties;
-    VkPhysicalDeviceMemoryProperties    memory_properties;
-    List<VkLayerProperties>             layer_properties;
-    List<VkExtensionProperties>         extension_properties;
 
     List<VkSurfaceFormatKHR>            surface_formts;
     VkFormat                            format;
@@ -53,9 +49,12 @@ struct RenderSurfaceAttribute
 
 public:
 
-    RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice pd,VkSurfaceKHR s);
+    RenderSurfaceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s);
     ~RenderSurfaceAttribute();
 
-    bool CheckMemoryType(uint32_t,VkFlags,uint32_t *);
+    bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex)
+    {
+        return physical_device->CheckMemoryType(typeBits,requirements_mask,typeIndex);
+    }
 };//class RenderSurfaceAttribute
 VK_NAMESPACE_END

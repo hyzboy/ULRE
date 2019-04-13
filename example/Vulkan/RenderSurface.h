@@ -20,7 +20,7 @@ class RenderSurface
 
 private:
 
-    friend RenderSurface *CreateRenderSuface(VkInstance,VkPhysicalDevice,Window *);
+    friend RenderSurface *CreateRenderSuface(VkInstance,const PhysicalDevice *,Window *);
 
     RenderSurface(RefRenderSurfaceAttribute &ref_rsa)
     {
@@ -31,8 +31,8 @@ public:
 
     virtual ~RenderSurface()=default;
 
-    VkPhysicalDevice    GetPhysicalDevice   () { return rsa->physical_device; }
-    VkSurfaceKHR        GetSurface          () { return rsa->surface; }
+            VkSurfaceKHR    GetSurface          ()      {return rsa->surface;}
+    const   PhysicalDevice *GetPhysicalDevice   ()const {return rsa->physical_device;}
 
 public:
 

@@ -20,7 +20,7 @@ VK_NAMESPACE_BEGIN
 
         CharPointerList ext_list;
 
-        List<VkPhysicalDevice> physical_devices;
+        ObjectList<PhysicalDevice> physical_devices;
 
     private:
 
@@ -37,10 +37,10 @@ VK_NAMESPACE_BEGIN
         const   List<VkLayerProperties> &   GetLayerProperties  ()const{return layer_properties;}
         const   bool                        CheckLayerSupport   (const UTF8String &)const;
         const   CharPointerList &           GetExtList          ()const {return ext_list;}
-        const   List<VkPhysicalDevice> &    GetDeviceList       ()const {return physical_devices;}
-                VkPhysicalDevice            GetDevice           (int index){return GetObject(physical_devices,index);}
+        const   ObjectList<PhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
+        const   PhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
 
-                RenderSurface *             CreateSurface   (Window *,int pd_index=0);
+                RenderSurface *             CreateSurface       (Window *,const PhysicalDevice *pd=nullptr);
     };//class Instance
 
     Instance *CreateInstance(const UTF8String &);                                                   ///<创建一个Vulkan实例
