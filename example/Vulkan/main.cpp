@@ -28,6 +28,12 @@ int main(int,char **)
         return(-2);
     }
 
+    {
+        const vulkan::PhysicalDevice *render_device=render->GetPhysicalDevice();
+
+        std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
+    }
+
     vulkan::CommandBuffer *cmd_buf=render->CreateCommandBuffer();
 
     vulkan::Buffer *ubo=render->CreateUBO(1024);

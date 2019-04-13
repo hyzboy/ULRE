@@ -4,7 +4,7 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-RenderSurface *CreateRenderSuface(VkInstance,VkPhysicalDevice,Window *);
+RenderSurface *CreateRenderSuface(VkInstance,const PhysicalDevice *,Window *);
 
 namespace
 {
@@ -201,8 +201,11 @@ Instance::Instance(VkInstance i,CharPointerList &el)
 
     if(vkEnumeratePhysicalDevices(inst, &gpu_count, nullptr)==VK_SUCCESS)
     {
-        physical_devices.SetCount(gpu_count);
-        vkEnumeratePhysicalDevices(inst, &gpu_count,physical_devices.GetData());
+        VkPhysicalDevice *pd_list=new VkPhysicalDevice[gpu_count];
+        vkEnumeratePhysicalDevices(inst, &gpu_count,pd_list);
+
+        for(uint32_t i=0;i<gpu_count;i++)
+            physical_devices.Add(new PhysicalDevice(inst,pd_list[i]));
     }
 }
 
@@ -235,16 +238,34 @@ const bool Instance::CheckLayerSupport(const UTF8String &layer_name)const
     return(false);
 }
 
-RenderSurface *Instance::CreateSurface(Window *win,int pd_index)
+const PhysicalDevice *Instance::GetDevice(VkPhysicalDeviceType type)const
+{
+    const uint32_t count=physical_devices.GetCount();
+    PhysicalDevice **pd=physical_devices.GetData();
+
+    for(uint32_t i=0;i<count;i++)
+    {
+        if((*pd)->GetDeviceType()==type)
+            return(*pd);
+
+        ++pd;
+    }
+
+    return(nullptr);
+}
+
+RenderSurface *Instance::CreateSurface(Window *win,const PhysicalDevice *pd)
 {
     if(!win)
         return(nullptr);
 
-    VkPhysicalDevice pd=GetDevice(pd_index);
+    if(!pd)pd=GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
+    if(!pd)pd=GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
+    if(!pd)pd=GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
 
     if(!pd)
         return(nullptr);
-
+    
     return CreateRenderSuface(inst,pd,win);
 }
 VK_NAMESPACE_END

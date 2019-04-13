@@ -8,6 +8,7 @@ ENDIF()
 SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								${RENDER_WINDOW_SOURCE}
 								VKInstance.cpp
+								VKPhysicalDevice.cpp
 								VKCommandBuffer.cpp
 								RenderSurfaceAttribute.cpp
 								RenderSurfaceCreater.cpp
@@ -20,6 +21,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKInstance.h
+								VKPhysicalDevice.h
 								VKSurfaceExtensionName.h
 								RenderSurfaceAttribute.h
 								RenderSurface.h

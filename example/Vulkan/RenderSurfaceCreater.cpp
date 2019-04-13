@@ -201,7 +201,7 @@ namespace
         const VkFormat depth_format=VK_FORMAT_D16_UNORM;
         VkFormatProperties props;
 
-        vkGetPhysicalDeviceFormatProperties(rsa->physical_device,depth_format,&props);
+        vkGetPhysicalDeviceFormatProperties(rsa->physical_device->physical_device,depth_format,&props);
 
         if(props.linearTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
             image_info.tiling=VK_IMAGE_TILING_LINEAR;
@@ -288,7 +288,7 @@ namespace
     }
 }//namespace
 
-RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_device,Window *win)
+RenderSurface *CreateRenderSuface(VkInstance inst,const PhysicalDevice *physical_device,Window *win)
 {
     VkSurfaceKHR surface=CreateSurface(inst,win);
 
@@ -302,7 +302,7 @@ RenderSurface *CreateRenderSuface(VkInstance inst,VkPhysicalDevice physical_devi
     if(rsa->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    rsa->device=CreateDevice(inst,physical_device,rsa->graphics_family);
+    rsa->device=CreateDevice(inst,physical_device->physical_device,rsa->graphics_family);
 
     if(!rsa->device)
         return(nullptr);

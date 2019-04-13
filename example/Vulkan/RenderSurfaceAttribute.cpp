@@ -2,39 +2,16 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice pd,VkSurfaceKHR s)
+
+RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s)
 {
     instance=inst;
     physical_device=pd;
     surface=s;
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device,surface,&surface_caps);
+    VkPhysicalDevice pdevice=physical_device->physical_device;
 
-    vkGetPhysicalDeviceFeatures(physical_device,&features);
-    vkGetPhysicalDeviceProperties(physical_device,&properties);
-    vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
-
-    {
-        uint32_t property_count;
-
-        vkEnumerateDeviceLayerProperties(physical_device,&property_count,nullptr);
-
-        layer_properties.SetCount(property_count);
-        vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
-
-        debug_out(layer_properties);
-    }
-
-    {
-        uint32_t exten_count;
-
-        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
-
-        extension_properties.SetCount(exten_count);
-        vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
-
-        debug_out(extension_properties);
-    }
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice,surface,&surface_caps);
 
     {
         if(surface_caps.supportedTransforms&VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
@@ -65,11 +42,11 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
 
     {
         uint32_t format_count;
-        if(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,surface,&format_count,nullptr)==VK_SUCCESS)
+        if(vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice,surface,&format_count,nullptr)==VK_SUCCESS)
         {
             surface_formts.SetCount(format_count);
 
-            if(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device,surface,&format_count,surface_formts.GetData())!=VK_SUCCESS)
+            if(vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice,surface,&format_count,surface_formts.GetData())!=VK_SUCCESS)
             {
                 surface_formts.Clear();
                 format=VK_FORMAT_B8G8R8A8_UNORM;
@@ -88,26 +65,26 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,VkPhysicalDevice 
 
     {
         uint32_t mode_count;
-        if(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device,surface,&mode_count,nullptr)==VK_SUCCESS)
+        if(vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice,surface,&mode_count,nullptr)==VK_SUCCESS)
         {
             present_modes.SetCount(mode_count);
-            if(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device,surface,&mode_count,present_modes.GetData())!=VK_SUCCESS)
+            if(vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice,surface,&mode_count,present_modes.GetData())!=VK_SUCCESS)
                 present_modes.Clear();
         }
     }
 
     {
         uint32_t family_count;
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(pdevice,&family_count,nullptr);
         family_properties.SetCount(family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,family_properties.GetData());
+        vkGetPhysicalDeviceQueueFamilyProperties(pdevice,&family_count,family_properties.GetData());
 
         {
             supports_present.SetCount(family_count);
             VkBool32 *sp=supports_present.GetData();
             for(uint32_t i=0; i<family_count; i++)
             {
-                vkGetPhysicalDeviceSurfaceSupportKHR(physical_device,i,surface,sp);
+                vkGetPhysicalDeviceSurfaceSupportKHR(pdevice,i,surface,sp);
                 ++sp;
             }
         }
@@ -191,25 +168,5 @@ RenderSurfaceAttribute::~RenderSurfaceAttribute()
 
     if(surface)
         vkDestroySurfaceKHR(instance,surface,nullptr);
-}
-
-bool RenderSurfaceAttribute::CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex)
-{
-    // Search memtypes to find first index with those properties
-    for(uint32_t i=0; i<memory_properties.memoryTypeCount; i++)
-    {
-        if((typeBits&1)==1)
-        {
-            // Type is available, does it match user properties?
-            if((memory_properties.memoryTypes[i].propertyFlags&requirements_mask)==requirements_mask)
-            {
-                *typeIndex=i;
-                return true;
-            }
-        }
-        typeBits>>=1;
-    }
-    // No memory types matched, return failure
-    return false;
 }
 VK_NAMESPACE_END
