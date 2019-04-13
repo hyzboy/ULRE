@@ -23,6 +23,8 @@ struct RenderSurfaceAttribute
     VkPhysicalDeviceFeatures            features;
     VkPhysicalDeviceProperties          properties;
     VkPhysicalDeviceMemoryProperties    memory_properties;
+    List<VkLayerProperties>             layer_properties;
+    List<VkExtensionProperties>         extension_properties;
 
     List<VkSurfaceFormatKHR>            surface_formts;
     VkFormat                            format;
