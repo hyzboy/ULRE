@@ -32,6 +32,7 @@ public:
     virtual ~RenderSurface()=default;
 
             VkSurfaceKHR    GetSurface          ()      {return rsa->surface;}
+            VkDevice        GetDevice           ()      {return rsa->device;}
     const   PhysicalDevice *GetPhysicalDevice   ()const {return rsa->physical_device;}
 
 public:
