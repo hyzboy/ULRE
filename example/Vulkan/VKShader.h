@@ -2,20 +2,52 @@
 #include"VK.h"
 
 VK_NAMESPACE_BEGIN
-class Shader
+/**
+ * Shader ´´½¨Æ÷
+ */
+class ShaderCreater
 {
-    
+    VkDevice device;
+
+    List<VkPipelineShaderStageCreateInfo> shader_stage_list;
+
 public:
 
+    ShaderCreater(VkDevice dev):device(dev){}
+    ~ShaderCreater();
 
-};//class Shader
+    bool Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
 
-VkShaderModule CreateShaderModule(VkDevice device,const uint32_t *spv_data,const uint32_t spv_size,const VkShaderStageFlagBits shader_stage_bit);
+#define ADD_SHADER_FUNC(sn,vk_name)   bool Add##sn##Shader(const void *spv_data,const uint32_t spv_size){return Add(VK_SHADER_STAGE_##vk_name##_BIT,spv_data,spv_size);}
+    ADD_SHADER_FUNC(Vertex,     VERTEX)
+    ADD_SHADER_FUNC(Fragment,   FRAGMENT)
+    ADD_SHADER_FUNC(Geometry,   GEOMETRY)
+    ADD_SHADER_FUNC(TessCtrl,   TESSELLATION_CONTROL)
+    ADD_SHADER_FUNC(TessEval,   TESSELLATION_EVALUATION)
+    ADD_SHADER_FUNC(Compute,    COMPUTE)
+#undef ADD_SHADER_FUNC
 
-inline VkShaderModule CreateVertexShader    (VkDevice device,const uint32_t *spv_data,const uint32_t spv_size) { return CreateShaderModule(device,spv_data,spv_size,VK_SHADER_STAGE_VERTEX_BIT); }
-inline VkShaderModule CreateFragmentShader  (VkDevice device,const uint32_t *spv_data,const uint32_t spv_size) { return CreateShaderModule(device,spv_data,spv_size,VK_SHADER_STAGE_FRAGMENT_BIT); }
-inline VkShaderModule CreateGeometryShader  (VkDevice device,const uint32_t *spv_data,const uint32_t spv_size) { return CreateShaderModule(device,spv_data,spv_size,VK_SHADER_STAGE_GEOMETRY_BIT); }
-inline VkShaderModule CreateTessCtrlShader  (VkDevice device,const uint32_t *spv_data,const uint32_t spv_size) { return CreateShaderModule(device,spv_data,spv_size,VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT); }
-inline VkShaderModule CreateTessEvalShader  (VkDevice device,const uint32_t *spv_data,const uint32_t spv_size) { return CreateShaderModule(device,spv_data,spv_size,VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT); }
-inline VkShaderModule CreateComputeShader   (VkDevice device,const uint32_t *spv_data,const uint32_t spv_size) { return CreateShaderModule(device,spv_data,spv_size,VK_SHADER_STAGE_COMPUTE_BIT); }
+#define ADD_NV_SHADER_FUNC(sn,vk_name)   bool Add##sn##Shader(const void *spv_data,const uint32_t spv_size) { return Add(VK_SHADER_STAGE_##vk_name##_BIT_NV,spv_data,spv_size); }
+    ADD_NV_SHADER_FUNC(Raygen,      RAYGEN);
+    ADD_NV_SHADER_FUNC(AnyHit,      ANY_HIT);
+    ADD_NV_SHADER_FUNC(ClosestHit,  CLOSEST_HIT);
+    ADD_NV_SHADER_FUNC(MissBit,     MISS);
+    ADD_NV_SHADER_FUNC(Intersection,INTERSECTION);
+    ADD_NV_SHADER_FUNC(Callable,    CALLABLE);
+    ADD_NV_SHADER_FUNC(Task,        TASK);
+    ADD_NV_SHADER_FUNC(Mesh,        MESH);
+#undef ADD_NV_SHADER_FUNC
+
+    void Clear()
+    {
+        shader_stage_list.Clear();
+    }
+
+    bool Finish(List<VkPipelineShaderStageCreateInfo> &pss_list)
+    {
+        pss_list=shader_stage_list;
+
+        Clear();
+    }
+};//class ShaderCreater
 VK_NAMESPACE_END

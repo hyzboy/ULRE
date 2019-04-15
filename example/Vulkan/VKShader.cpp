@@ -2,8 +2,23 @@
 
 VK_NAMESPACE_BEGIN
 
-VkShaderModule CreateShaderModule(VkDevice device,const uint32_t *spv_data,const uint32_t spv_size,const VkShaderStageFlagBits shader_stage_bit)
+ShaderCreater::~ShaderCreater()
 {
+    const int count=shader_stage_list.GetCount();
+
+    if(count>0)
+    {
+        VkPipelineShaderStageCreateInfo *ss=shader_stage_list.GetData();
+        for(int i=0;i<count;i++)
+        {
+            vkDestroyShaderModule(device,ss->module,nullptr);
+            ++ss;
+        }
+    }
+}
+
+bool ShaderCreater::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
+{   
     VkPipelineShaderStageCreateInfo shader_stage;
     shader_stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shader_stage.pNext=nullptr;
@@ -17,14 +32,13 @@ VkShaderModule CreateShaderModule(VkDevice device,const uint32_t *spv_data,const
     moduleCreateInfo.pNext=nullptr;
     moduleCreateInfo.flags=0;
     moduleCreateInfo.codeSize=spv_size;
-    moduleCreateInfo.pCode=spv_data;
+    moduleCreateInfo.pCode=(const uint32_t *)spv_data;
 
-    VkShaderModule shader_module;
+    if(vkCreateShaderModule(device,&moduleCreateInfo,nullptr,&shader_stage.module)!=VK_SUCCESS)
+        return(false);
 
-    if(vkCreateShaderModule(device,&moduleCreateInfo,nullptr,&shader_module)==VK_SUCCESS)
-        return shader_module;
+    shader_stage_list.Add(shader_stage);
 
-    return nullptr;
+    return(true);
 }
-
 VK_NAMESPACE_END
