@@ -15,14 +15,16 @@ VkShaderModule fs=nullptr;
 
 char *LoadFile(const char *filename,uint32_t &file_length)
 {
-    int fp=_open(filename,O_RDONLY);
+    int fp=_open(filename,O_RDONLY|O_BINARY);
 
     if(fp==-1)return(nullptr);
 
     file_length=_filelength(fp);
     char *data=new char[file_length];
 
-    if(_read(fp,data,file_length)!=file_length)
+    const int result=_read(fp,data,file_length);
+    
+    if(result!=file_length)
     {
         delete[] data;
         return(nullptr);
@@ -32,8 +34,32 @@ char *LoadFile(const char *filename,uint32_t &file_length)
     return data;
 }
 
+bool LoadShader(vulkan::ShaderCreater *sc,const char *filename,VkShaderStageFlagBits shader_flag)
+{
+    uint32_t size;
+    char *data=LoadFile(filename,size);
+
+    if(!data)
+        return(false);
+
+    if(!sc->Add(shader_flag,data,size))
+        return(false);
+
+    delete[] data;
+    return(true);
+}
+
 bool LoadShader(VkDevice device)
 {
+    vulkan::ShaderCreater sc(device);
+
+    if(!LoadShader(&sc,"FlatColor.vert.spv",VK_SHADER_STAGE_VERTEX_BIT))
+        return(false);
+
+    if(!LoadShader(&sc,"FlatColor.frag.spv",VK_SHADER_STAGE_FRAGMENT_BIT))
+        return(false);
+
+    return(true);
 }
 
 int main(int,char **)
