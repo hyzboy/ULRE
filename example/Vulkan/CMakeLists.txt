@@ -18,11 +18,13 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 #							 VKDescriptorSet.cpp
 								VKRenderPass.cpp
 								VKShader.cpp
+								VKVertexInput.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKInstance.h
 								VKPhysicalDevice.h
+								VKCommandBuffer.h
 								VKSurfaceExtensionName.h
 								RenderSurfaceAttribute.h
 								RenderSurface.h
@@ -31,6 +33,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 #								VKDescriptorSet.h
 								VKRenderPass.h
 								VKShader.h
+								VKVertexInput.h
 								Window.h)
 
 SET(SHADER_FILES	shader_compile.bat
