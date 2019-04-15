@@ -52,7 +52,7 @@ public:
     RenderSurfaceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s);
     ~RenderSurfaceAttribute();
 
-    bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex)
+    bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const
     {
         return physical_device->CheckMemoryType(typeBits,requirements_mask,typeIndex);
     }
