@@ -1,9 +1,40 @@
 ﻿#include"Window.h"
 #include"VKInstance.h"
 #include"RenderSurface.h"
+#include"VKShader.h"
+
+#include<io.h>
+#include<fcntl.h>
+#include<stdlib.h>
 
 using namespace hgl;
 using namespace hgl::graph;
+
+VkShaderModule vs=nullptr;
+VkShaderModule fs=nullptr;
+
+char *LoadFile(const char *filename,uint32_t &file_length)
+{
+    int fp=_open(filename,O_RDONLY);
+
+    if(fp==-1)return(nullptr);
+
+    file_length=_filelength(fp);
+    char *data=new char[file_length];
+
+    if(_read(fp,data,file_length)!=file_length)
+    {
+        delete[] data;
+        return(nullptr);
+    }
+
+    _close(fp);
+    return data;
+}
+
+bool LoadShader(VkDevice device)
+{
+}
 
 int main(int,char **)
 {
@@ -33,6 +64,9 @@ int main(int,char **)
 
         std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
     }
+
+    if(!LoadShader(render->GetDevice()))
+        return(-3);
 
     vulkan::CommandBuffer *cmd_buf=render->CreateCommandBuffer();
 
