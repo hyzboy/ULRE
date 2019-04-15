@@ -17,6 +17,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 #							 VKPipelineLayout.cpp
 #							 VKDescriptorSet.cpp
 								VKRenderPass.cpp
+								VKShader.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
@@ -29,6 +30,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 #								VKPipelineLayout.h
 #								VKDescriptorSet.h
 								VKRenderPass.h
+								VKShader.h
 								Window.h)
 
 SET(SHADER_FILES	shader_compile.bat
