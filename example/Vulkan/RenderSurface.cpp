@@ -1,56 +1,79 @@
 ﻿#include"RenderSurface.h"
+#include<hgl/type/Pair.h>
 
 VK_NAMESPACE_BEGIN
 
-Buffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
+namespace
 {
-    VkBufferCreateInfo buf_info={};
-    buf_info.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buf_info.pNext=nullptr;
-    buf_info.usage=buf_usage;
-    buf_info.size=size;
-    buf_info.queueFamilyIndexCount=0;
-    buf_info.pQueueFamilyIndices=nullptr;
-    buf_info.sharingMode=sharing_mode;
-    buf_info.flags=0;
+    bool CreateVulkanBuffer(VulkanBuffer &vb,const RenderSurfaceAttribute *rsa,VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
+    {
+        VkBufferCreateInfo buf_info={};
+        buf_info.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buf_info.pNext=nullptr;
+        buf_info.usage=buf_usage;
+        buf_info.size=size;
+        buf_info.queueFamilyIndexCount=0;
+        buf_info.pQueueFamilyIndices=nullptr;
+        buf_info.sharingMode=sharing_mode;
+        buf_info.flags=0;
 
-    VkBuffer buf;
+        if(vkCreateBuffer(rsa->device,&buf_info,nullptr,&vb.buffer)!=VK_SUCCESS)
+            return(false);
 
-    if(vkCreateBuffer(rsa->device,&buf_info,nullptr,&buf)!=VK_SUCCESS)
+        VkMemoryRequirements mem_reqs;
+        vkGetBufferMemoryRequirements(rsa->device,vb.buffer,&mem_reqs);
+
+        VkMemoryAllocateInfo alloc_info={};
+        alloc_info.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        alloc_info.pNext=nullptr;
+        alloc_info.memoryTypeIndex=0;
+        alloc_info.allocationSize=mem_reqs.size;
+
+        if(rsa->CheckMemoryType(mem_reqs.memoryTypeBits,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,&alloc_info.memoryTypeIndex))
+        {
+            VkDeviceMemory mem;
+
+            if(vkAllocateMemory(rsa->device,&alloc_info,nullptr,&mem)==VK_SUCCESS)
+            {
+                if(vkBindBufferMemory(rsa->device,vb.buffer,mem,0)==VK_SUCCESS)
+                {
+                    vb.info.buffer=vb.buffer;
+                    vb.info.offset=0;
+                    vb.info.range=size;
+
+                    return(true);
+                }
+
+                vkFreeMemory(rsa->device,mem,nullptr);
+            }
+        }
+
+        vkDestroyBuffer(rsa->device,vb.buffer,nullptr);
+        return(false);
+    }
+}//namespace
+
+VertexBuffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode)
+{
+    VulkanBuffer vb;
+
+    const uint32_t stride=GetStrideForFormat(format);
+    const VkDeviceSize size=stride*count;
+
+    if(!CreateVulkanBuffer(vb,rsa,buf_usage,size,sharing_mode))
         return(nullptr);
 
-    VkMemoryRequirements mem_reqs;
-    vkGetBufferMemoryRequirements(rsa->device,buf,&mem_reqs);
+    return(new VertexBuffer(rsa->device,vb,format,stride,count));
+}
 
-    VkMemoryAllocateInfo alloc_info={};
-    alloc_info.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.pNext=nullptr;
-    alloc_info.memoryTypeIndex=0;
-    alloc_info.allocationSize=mem_reqs.size;
+Buffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
+{
+    VulkanBuffer vb;
 
-    if(rsa->CheckMemoryType(mem_reqs.memoryTypeBits,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,&alloc_info.memoryTypeIndex))
-    {
-        VkDeviceMemory mem;
+    if(!CreateVulkanBuffer(vb,rsa,buf_usage,size,sharing_mode))
+        return(nullptr);
 
-        if(vkAllocateMemory(rsa->device,&alloc_info,nullptr,&mem)==VK_SUCCESS)
-        {
-            if(vkBindBufferMemory(rsa->device,buf,mem,0)==VK_SUCCESS)
-            {
-                VkDescriptorBufferInfo buf_info;
-
-                buf_info.buffer=buf;
-                buf_info.offset=0;
-                buf_info.range=size;
-
-                return(new Buffer(rsa->device,buf,mem,buf_info));
-            }
-
-            vkFreeMemory(rsa->device,mem,nullptr);
-        }
-    }
-
-    vkDestroyBuffer(rsa->device,buf,nullptr);
-    return(nullptr);
+    return(new Buffer(rsa->device,vb));
 }
 
 CommandBuffer *RenderSurface::CreateCommandBuffer()
