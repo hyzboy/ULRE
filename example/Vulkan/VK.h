@@ -11,7 +11,7 @@
 VK_NAMESPACE_BEGIN  
 using CharPointerList=hgl::List<const char *>;
 
-uint32_t GetStrideForFormat(const VkFormat &);
+uint32_t GetStrideByFormat(const VkFormat &);
 
 inline void debug_out(const hgl::List<VkLayerProperties> &layer_properties)
 {
