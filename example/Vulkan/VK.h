@@ -8,7 +8,10 @@
 #define VK_NAMESPACE_BEGIN  namespace hgl{namespace graph{namespace vulkan{
 #define VK_NAMESPACE_END    }}}
 
+VK_NAMESPACE_BEGIN  
 using CharPointerList=hgl::List<const char *>;
+
+uint32_t GetStrideForFormat(const VkFormat &);
 
 inline void debug_out(const hgl::List<VkLayerProperties> &layer_properties)
 {
@@ -38,5 +41,5 @@ inline void debug_out(const hgl::List<VkExtensionProperties> &extension_properti
         ++ep;
     }
 }
-
+VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INCLUDE
