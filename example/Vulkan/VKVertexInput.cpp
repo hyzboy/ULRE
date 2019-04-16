@@ -11,19 +11,19 @@ VK_NAMESPACE_BEGIN
 //    Buffer *buf;
 //};
 
-bool VertexInput::Add(VertexBuffer *buf)
+bool VertexInput::Add(VertexBuffer *buf,bool instance)
 {
     if(!buf)
         return(false);
 
-    const int binding_index=vib_list.GetCount();      //参考opengl vab,binding_index必须从0开始，紧密排列，但是否必须这样，待以后测试
+    const int binding_index=vib_list.GetCount();        //参考opengl vab,binding_index必须从0开始，紧密排列。对应在vkCmdBindVertexBuffer中的缓冲区索引
 
     VkVertexInputBindingDescription binding;
     VkVertexInputAttributeDescription attrib;
 
     binding.binding=binding_index;
     binding.stride=buf->GetStride();
-    binding.inputRate=VK_VERTEX_INPUT_RATE_VERTEX;      //还有一种是INSTANCE，暂时未知
+    binding.inputRate=instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX; 
 
     attrib.binding=binding_index;
     attrib.location=0;
