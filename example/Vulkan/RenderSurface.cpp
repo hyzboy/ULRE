@@ -31,11 +31,9 @@ namespace
 
         if(rsa->CheckMemoryType(mem_reqs.memoryTypeBits,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,&alloc_info.memoryTypeIndex))
         {
-            VkDeviceMemory mem;
-
-            if(vkAllocateMemory(rsa->device,&alloc_info,nullptr,&mem)==VK_SUCCESS)
+            if(vkAllocateMemory(rsa->device,&alloc_info,nullptr,&vb.memory)==VK_SUCCESS)
             {
-                if(vkBindBufferMemory(rsa->device,vb.buffer,mem,0)==VK_SUCCESS)
+                if(vkBindBufferMemory(rsa->device,vb.buffer,vb.memory,0)==VK_SUCCESS)
                 {
                     vb.info.buffer=vb.buffer;
                     vb.info.offset=0;
@@ -44,7 +42,7 @@ namespace
                     return(true);
                 }
 
-                vkFreeMemory(rsa->device,mem,nullptr);
+                vkFreeMemory(rsa->device,vb.memory,nullptr);
             }
         }
 
