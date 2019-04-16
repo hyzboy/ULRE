@@ -33,6 +33,9 @@ class VertexInput
 
 public:
 
+    VertexInput()=default;
+    virtual ~VertexInput()=default;
+
     bool Add(VertexBuffer *,bool instance=false);
 
 public:
