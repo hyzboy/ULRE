@@ -7,6 +7,7 @@ ENDIF()
 
 SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								${RENDER_WINDOW_SOURCE}
+								VkFormat.cpp
 								VKInstance.cpp
 								VKPhysicalDevice.cpp
 								VKCommandBuffer.cpp

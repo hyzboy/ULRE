@@ -57,7 +57,7 @@ VertexBuffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat 
 {
     VulkanBuffer vb;
 
-    const uint32_t stride=GetStrideForFormat(format);
+    const uint32_t stride=GetStrideByFormat(format);
     const VkDeviceSize size=stride*count;
 
     if(!CreateVulkanBuffer(vb,rsa,buf_usage,size,sharing_mode))
