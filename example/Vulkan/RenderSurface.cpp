@@ -55,10 +55,17 @@ namespace
 
 VertexBuffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode)
 {
-    VulkanBuffer vb;
-
     const uint32_t stride=GetStrideByFormat(format);
+
+    if(stride==0)
+    {
+        std::cerr<<"format["<<format<<"] stride length is 0,please use \"RenderSurface::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
+        return(nullptr);
+    }
+
     const VkDeviceSize size=stride*count;
+
+    VulkanBuffer vb;
 
     if(!CreateVulkanBuffer(vb,rsa,buf_usage,size,sharing_mode))
         return(nullptr);

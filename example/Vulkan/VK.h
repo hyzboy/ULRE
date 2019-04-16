@@ -12,10 +12,10 @@ VK_NAMESPACE_BEGIN
 using CharPointerList=hgl::List<const char *>;
 
 #ifdef _DEBUG
-bool CheckStrideBytesByFormat();
+bool CheckStrideBytesByFormat();                ///<检验所有数据类型长度数组是否符合规则
 #endif//_DEBUG
 
-uint32_t GetStrideByFormat(const VkFormat &);
+uint32_t GetStrideByFormat(const VkFormat &);   ///<根据数据类型获取访类型单个数据长度字节数
 
 inline void debug_out(const hgl::List<VkLayerProperties> &layer_properties)
 {
