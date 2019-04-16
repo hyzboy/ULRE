@@ -37,7 +37,7 @@ public:
 
 public:
 
-    List<VkBuffer> &GetBufferList(){return buf_list;}
+    const List<VkBuffer> &GetBufferList()const{return buf_list;}
 };//class VertexInput
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_VERTEX_INPUT_INCLUDE

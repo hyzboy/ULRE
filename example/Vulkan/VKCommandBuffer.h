@@ -5,6 +5,7 @@
 #include"VKVertexInput.h"
 
 VK_NAMESPACE_BEGIN
+
     class CommandBuffer
     {
         VkDevice device;
@@ -16,13 +17,21 @@ VK_NAMESPACE_BEGIN
         CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb){device=dev;pool=cp;buf=cb;}
         ~CommandBuffer();
 
-        void Bind(VertexInput *vi)
+        bool Bind(VertexInput *vi)
         {
-            auto &buf_list=vi->GetBufferList();
+            if(!vi)
+                return(false);
 
-            constexpr VkDeviceSize offsets[1]={0};
+            const List<VkBuffer> &buf_list=vi->GetBufferList();
 
-            vkCmdBindVertexBuffers(buf,0,buf_list.GetCount(),buf_list.GetData(),offsets);
+            if(buf_list.GetCount()<=0)
+                return(false);
+
+            constexpr VkDeviceSize zero_offsets[1]={0};
+
+            vkCmdBindVertexBuffers(buf,0,buf_list.GetCount(),buf_list.GetData(),zero_offsets);
+
+            return(true);
         }
     };//class CommandBuffer
 VK_NAMESPACE_END
