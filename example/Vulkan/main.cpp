@@ -62,8 +62,19 @@ bool LoadShader(VkDevice device)
     return(true);
 }
 
+#ifdef _DEBUG
+VK_NAMESPACE_BEGIN
+bool CheckStrideBytesByFormat();
+VK_NAMESPACE_END
+#endif//
+
 int main(int,char **)
 {
+    #ifdef _DEBUG
+    if(!vulkan::CheckStrideBytesByFormat())
+        return 0xff;
+    #endif//
+
     Window *win=CreateRenderWindow(OS_TEXT("VulkanTest"));
 
     win->Create(1280,720);
