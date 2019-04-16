@@ -33,7 +33,7 @@ class VertexInput
 
 public:
 
-    bool Add(VertexBuffer *);
+    bool Add(VertexBuffer *,bool instance=false);
 
 public:
 
