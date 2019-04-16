@@ -3,8 +3,8 @@
 VK_NAMESPACE_BEGIN
 Buffer::~Buffer()
 {
-    vkDestroyBuffer(device,buf.buffer,nullptr);
     vkFreeMemory(device,buf.memory,nullptr);
+    vkDestroyBuffer(device,buf.buffer,nullptr);
 }
 
 uint8_t *Buffer::Map(uint32_t start,uint32_t size)
