@@ -1,9 +1,9 @@
-﻿#include"RenderSurfaceAttribute.h"
+﻿#include"VKDeviceAttribute.h"
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
 
-RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s)
+DeviceAttribute::DeviceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s)
 {
     instance=inst;
     physical_device=pd;
@@ -128,7 +128,7 @@ RenderSurfaceAttribute::RenderSurfaceAttribute(VkInstance inst,const PhysicalDev
     }
 }
 
-RenderSurfaceAttribute::~RenderSurfaceAttribute()
+DeviceAttribute::~DeviceAttribute()
 {
     if(desc_pool)
         vkDestroyDescriptorPool(device,desc_pool,nullptr);

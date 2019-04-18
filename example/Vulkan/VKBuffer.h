@@ -20,7 +20,7 @@ protected:
 
 private:
 
-    friend class RenderSurface;
+    friend class Device;
     friend class VertexBuffer;
 
     Buffer(VkDevice d,const VulkanBuffer &vb)
@@ -47,7 +47,7 @@ class VertexBuffer:public Buffer
 
 private:
 
-    friend class RenderSurface;
+    friend class Device;
 
     VertexBuffer(VkDevice d,const VulkanBuffer &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):Buffer(d,vb)
     {

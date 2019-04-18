@@ -4,7 +4,7 @@
 #include<hgl/type/List.h>
 #include"VK.h"
 #include"Window.h"
-#include"RenderSurfaceAttribute.h"
+#include"VKDeviceAttribute.h"
 #include"VKBuffer.h"
 #include"VKCommandBuffer.h"
 //#include"VKDescriptorSet.h"
@@ -12,24 +12,24 @@
 
 VK_NAMESPACE_BEGIN
 
-using RefRenderSurfaceAttribute=SharedPtr<RenderSurfaceAttribute>;
+using RefDeviceAttribute=SharedPtr<DeviceAttribute>;
 
-class RenderSurface
+class Device
 {
-    RefRenderSurfaceAttribute rsa;
+    RefDeviceAttribute rsa;
 
 private:
 
-    friend RenderSurface *CreateRenderSuface(VkInstance,const PhysicalDevice *,Window *);
+    friend Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
 
-    RenderSurface(RefRenderSurfaceAttribute &ref_rsa)
+    Device(RefDeviceAttribute &ref_rsa)
     {
         rsa=ref_rsa;
     }
 
 public:
 
-    virtual ~RenderSurface()=default;
+    virtual ~Device()=default;
 
             VkSurfaceKHR    GetSurface          ()      {return rsa->surface;}
             VkDevice        GetDevice           ()      {return rsa->device;}
@@ -58,6 +58,6 @@ public:
 //    DescriptorSet *     CreateDescSet(int);
 
     RenderPass *CreateRenderPass();
-};//class RenderSurface
+};//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE

@@ -1,10 +1,10 @@
-﻿#include"RenderSurface.h"
+﻿#include"VKDevice.h"
 #include"VKInstance.h"
 #include<hgl/type/Smart.h>
 
 VK_NAMESPACE_BEGIN
 
-VkSurfaceKHR CreateSurface(VkInstance,Window *);
+VkSurfaceKHR CreateRenderDevice(VkInstance,Window *);
 
 namespace
 {
@@ -82,7 +82,7 @@ namespace
         return(nullptr);
     }
 
-    VkSwapchainKHR CreateSwapChain(RenderSurfaceAttribute *rsa)
+    VkSwapchainKHR CreateSwapChain(DeviceAttribute *rsa)
     {
         VkSwapchainCreateInfoKHR swapchain_ci={};
 
@@ -162,7 +162,7 @@ namespace
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,VK_IMAGE_ASPECT_DEPTH_BIT,img);
     }
 
-    bool CreateSwapchainImageView(RenderSurfaceAttribute *rsa)
+    bool CreateSwapchainImageView(DeviceAttribute *rsa)
     {
         uint32_t count;
 
@@ -195,7 +195,7 @@ namespace
         return(true);
     }
     
-    bool CreateDepthBuffer(RenderSurfaceAttribute *rsa)
+    bool CreateDepthBuffer(DeviceAttribute *rsa)
     {
         VkImageCreateInfo image_info={};
 
@@ -289,14 +289,14 @@ namespace
     }
 }//namespace
 
-RenderSurface *CreateRenderSuface(VkInstance inst,const PhysicalDevice *physical_device,Window *win)
+Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,Window *win)
 {
-    VkSurfaceKHR surface=CreateSurface(inst,win);
+    VkSurfaceKHR surface=CreateRenderDevice(inst,win);
 
     if(!surface)
         return(nullptr);
 
-    RefRenderSurfaceAttribute rsa=new RenderSurfaceAttribute(inst,physical_device,surface);
+    RefDeviceAttribute rsa=new DeviceAttribute(inst,physical_device,surface);
 
     rsa->swapchain_extent=GetSwapchainExtent(rsa->surface_caps,win->GetWidth(),win->GetHeight());
 
@@ -329,6 +329,6 @@ RenderSurface *CreateRenderSuface(VkInstance inst,const PhysicalDevice *physical
     if(!rsa->desc_pool)
         return(nullptr);
 
-    return(new RenderSurface(rsa));
+    return(new Device(rsa));
 }
 VK_NAMESPACE_END
