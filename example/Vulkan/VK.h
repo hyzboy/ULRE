@@ -5,6 +5,7 @@
 #include<vulkan/vulkan.h>
 #include<iostream>
 
+#define VK_NAMESPACE hgl::graph::vulkan
 #define VK_NAMESPACE_BEGIN  namespace hgl{namespace graph{namespace vulkan{
 #define VK_NAMESPACE_END    }}}
 

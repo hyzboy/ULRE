@@ -4,7 +4,7 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-RenderSurface *CreateRenderSuface(VkInstance,const PhysicalDevice *,Window *);
+Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
 
 namespace
 {
@@ -254,7 +254,7 @@ const PhysicalDevice *Instance::GetDevice(VkPhysicalDeviceType type)const
     return(nullptr);
 }
 
-RenderSurface *Instance::CreateSurface(Window *win,const PhysicalDevice *pd)
+Device *Instance::CreateRenderDevice(Window *win,const PhysicalDevice *pd)
 {
     if(!win)
         return(nullptr);
@@ -266,6 +266,6 @@ RenderSurface *Instance::CreateSurface(Window *win,const PhysicalDevice *pd)
     if(!pd)
         return(nullptr);
     
-    return CreateRenderSuface(inst,pd,win);
+    return VK_NAMESPACE::CreateRenderDevice(inst,pd,win);
 }
 VK_NAMESPACE_END

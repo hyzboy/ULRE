@@ -11,9 +11,9 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKInstance.cpp
 								VKPhysicalDevice.cpp
 								VKCommandBuffer.cpp
-								RenderSurfaceAttribute.cpp
-								RenderSurfaceCreater.cpp
-								RenderSurface.cpp
+								VKDeviceAttribute.cpp
+								VKDeviceCreater.cpp
+								VKDevice.cpp
 								VKBuffer.cpp
 								VKDescriptorSet.cpp
 								VKDescriptorSetLayout.cpp
@@ -29,8 +29,8 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKPhysicalDevice.h
 								VKCommandBuffer.h
 								VKSurfaceExtensionName.h
-								RenderSurfaceAttribute.h
-								RenderSurface.h
+								VKDeviceAttribute.h
+								VKDevice.h
 								VKBuffer.h
 								VKDescriptorSetLayout.h
 								VKDescriptorSet.h

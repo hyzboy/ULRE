@@ -7,7 +7,7 @@ VK_NAMESPACE_BEGIN
 
 constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
-struct RenderSurfaceAttribute
+struct DeviceAttribute
 {
     VkInstance                          instance        =nullptr;
     const PhysicalDevice *              physical_device =nullptr;
@@ -49,12 +49,12 @@ struct RenderSurfaceAttribute
 
 public:
 
-    RenderSurfaceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s);
-    ~RenderSurfaceAttribute();
+    DeviceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s);
+    ~DeviceAttribute();
 
     bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const
     {
         return physical_device->CheckMemoryType(typeBits,requirements_mask,typeIndex);
     }
-};//class RenderSurfaceAttribute
+};//class DeviceAttribute
 VK_NAMESPACE_END

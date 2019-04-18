@@ -1,11 +1,11 @@
-﻿#include"RenderSurface.h"
+﻿#include"VKDevice.h"
 #include<hgl/type/Pair.h>
 
 VK_NAMESPACE_BEGIN
 
 namespace
 {
-    bool CreateVulkanBuffer(VulkanBuffer &vb,const RenderSurfaceAttribute *rsa,VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
+    bool CreateVulkanBuffer(VulkanBuffer &vb,const DeviceAttribute *rsa,VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
     {
         VkBufferCreateInfo buf_info={};
         buf_info.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -51,13 +51,13 @@ namespace
     }
 }//namespace
 
-VertexBuffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode)
+VertexBuffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
 
     if(stride==0)
     {
-        std::cerr<<"format["<<format<<"] stride length is 0,please use \"RenderSurface::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
+        std::cerr<<"format["<<format<<"] stride length is 0,please use \"Device::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
         return(nullptr);
     }
 
@@ -71,7 +71,7 @@ VertexBuffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat 
     return(new VertexBuffer(rsa->device,vb,format,stride,count));
 }
 
-Buffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
+Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
 {
     VulkanBuffer vb;
 
@@ -81,7 +81,7 @@ Buffer *RenderSurface::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize si
     return(new Buffer(rsa->device,vb));
 }
 
-CommandBuffer *RenderSurface::CreateCommandBuffer()
+CommandBuffer *Device::CreateCommandBuffer()
 {
     if(!rsa->cmd_pool)
         return(nullptr);
@@ -103,7 +103,7 @@ CommandBuffer *RenderSurface::CreateCommandBuffer()
     return(new CommandBuffer(rsa->device,rsa->cmd_pool,cmd_buf));
 }
 
-//DescriptorSet *RenderSurface::CreateDescSet(int count)
+//DescriptorSet *Device::CreateDescSet(int count)
 //{
 //    VkDescriptorSetAllocateInfo alloc_info[1];
 //    alloc_info[0].sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -118,7 +118,7 @@ CommandBuffer *RenderSurface::CreateCommandBuffer()
 //    res=vkAllocateDescriptorSets(info.device,alloc_info,info.desc_set.data());
 //}
 
-RenderPass *RenderSurface::CreateRenderPass()
+RenderPass *Device::CreateRenderPass()
 {
     VkAttachmentDescription attachments[2];
     attachments[0].format=rsa->format;

@@ -5,7 +5,7 @@
 #include<hgl/type/List.h>
 #include"Window.h"
 #include"VK.h"
-#include"RenderSurface.h"
+#include"VKDevice.h"
 
 VK_NAMESPACE_BEGIN
     class Instance
@@ -40,7 +40,7 @@ VK_NAMESPACE_BEGIN
         const   ObjectList<PhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
         const   PhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
 
-                RenderSurface *             CreateSurface       (Window *,const PhysicalDevice *pd=nullptr);
+                Device *                    CreateRenderDevice  (Window *,const PhysicalDevice *pd=nullptr);
     };//class Instance
 
     Instance *CreateInstance(const UTF8String &);                                                   ///<创建一个Vulkan实例

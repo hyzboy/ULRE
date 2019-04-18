@@ -1,6 +1,6 @@
 ﻿#include"Window.h"
 #include"VKInstance.h"
-#include"RenderSurface.h"
+#include"VKDevice.h"
 #include"VKShader.h"
 
 #include<io.h>
@@ -81,9 +81,9 @@ int main(int,char **)
         return(-1);
     }
 
-    vulkan::RenderSurface *render=inst->CreateSurface(win);
+    vulkan::Device *device=inst->CreateRenderDevice(win);
 
-    if(!render)
+    if(!device)
     {
         delete inst;
         delete win;
@@ -91,17 +91,17 @@ int main(int,char **)
     }
 
     {
-        const vulkan::PhysicalDevice *render_device=render->GetPhysicalDevice();
+        const vulkan::PhysicalDevice *render_device=device->GetPhysicalDevice();
 
         std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
     }
 
-    if(!LoadShader(render->GetDevice()))
+    if(!LoadShader(device->GetDevice()))
         return(-3);
 
-    vulkan::CommandBuffer *cmd_buf=render->CreateCommandBuffer();
+    vulkan::CommandBuffer *cmd_buf=device->CreateCommandBuffer();
 
-    vulkan::Buffer *ubo=render->CreateUBO(1024);
+    vulkan::Buffer *ubo=device->CreateUBO(1024);
 
     uint8_t *p=ubo->Map();
 
@@ -111,14 +111,14 @@ int main(int,char **)
         ubo->Unmap();
     }
 
-    vulkan::RenderPass *rp=render->CreateRenderPass();
+    vulkan::RenderPass *rp=device->CreateRenderPass();
 
     delete rp;
 
     delete ubo;
 
     delete cmd_buf;
-    delete render;
+    delete device;
     delete inst;
     delete win;
 
