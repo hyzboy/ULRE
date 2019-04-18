@@ -41,9 +41,9 @@ public:
 
 class VertexBuffer:public Buffer
 {
-    VkFormat format;            ///<数据格式
-    uint32_t stride;              ///<单个数据字节数
-    uint32_t count;               ///<数据数量
+    VkFormat format;                    ///<数据格式
+    uint32_t stride;                    ///<单个数据字节数
+    uint32_t count;                     ///<数据数量
 
 private:
 

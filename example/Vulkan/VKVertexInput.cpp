@@ -1,16 +1,6 @@
 ﻿#include"VKVertexInput.h"
 
 VK_NAMESPACE_BEGIN
-
-//struct VertexInputBuffer
-//{
-//    //按API，可以一个binding绑多个attrib，但我们仅支持1v1
-//
-//    VkVertexInputBindingDescription binding;
-//    VkVertexInputAttributeDescription attrib;
-//    Buffer *buf;
-//};
-
 bool VertexInput::Add(VertexBuffer *buf,bool instance)
 {
     if(!buf)
