@@ -3,21 +3,25 @@
 VK_NAMESPACE_BEGIN
 PipelineLayout::~PipelineLayout()
 {
-    if(!layout)return;
+    if(layout)
+        vkDestroyPipelineLayout(device,layout,nullptr);
+}
 
-    const int count=desc_set_layout.GetCount();
+PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout &dsl)
+{
+    VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
+    pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pPipelineLayoutCreateInfo.pNext = nullptr;
+    pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pPipelineLayoutCreateInfo.setLayoutCount = dsl.GetCount();
+    pPipelineLayoutCreateInfo.pSetLayouts = dsl.GetData();
 
-    if(count>0)
-    {
-        VkDescriptorSetLayout *dsl=desc_set_layout.GetData();
+    VkPipelineLayout pipeline_layout;
 
-        for(int i=0;i<count;i++)
-        {
-            vkDestroyDescriptorSetLayout(device,*dsl,nullptr);
-            ++dsl;
-        }
-    }
+    if(vkCreatePipelineLayout(dev, &pPipelineLayoutCreateInfo, nullptr, &pipeline_layout)!=VK_SUCCESS)
+        return(nullptr);
 
-    vkDestroyPipelineLayout(device,layout,nullptr);
+    return(new PipelineLayout(dev,pipeline_layout));
 }
 VK_NAMESPACE_END

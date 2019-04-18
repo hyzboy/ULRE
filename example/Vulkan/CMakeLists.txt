@@ -15,8 +15,9 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								RenderSurfaceCreater.cpp
 								RenderSurface.cpp
 								VKBuffer.cpp
-#							 VKPipelineLayout.cpp
-#							 VKDescriptorSet.cpp
+								VKDescriptorSet.cpp
+								VKDescriptorSetLayout.cpp
+								VKPipelineLayout.cpp
 								VKRenderPass.cpp
 								VKShader.cpp
 								VKVertexInput.cpp
@@ -31,8 +32,9 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								RenderSurfaceAttribute.h
 								RenderSurface.h
 								VKBuffer.h
-#								VKPipelineLayout.h
-#								VKDescriptorSet.h
+								VKDescriptorSetLayout.h
+								VKDescriptorSet.h
+								VKPipelineLayout.h								
 								VKRenderPass.h
 								VKShader.h
 								VKVertexInput.h
