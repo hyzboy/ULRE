@@ -34,6 +34,7 @@ public:
             VkSurfaceKHR    GetSurface          ()      {return rsa->surface;}
             VkDevice        GetDevice           ()      {return rsa->device;}
     const   PhysicalDevice *GetPhysicalDevice   ()const {return rsa->physical_device;}
+    const   VkExtent2D &    GetExtent           ()const {return rsa->swapchain_extent;}
 
 public:
 

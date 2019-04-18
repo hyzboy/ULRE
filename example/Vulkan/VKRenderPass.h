@@ -16,6 +16,8 @@ public:
         render_pass=rp;
     }
     virtual ~RenderPass();
+
+    operator VkRenderPass(){return render_pass;}
 };//class RenderPass
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE

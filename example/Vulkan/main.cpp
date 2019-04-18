@@ -2,6 +2,10 @@
 #include"VKInstance.h"
 #include"VKDevice.h"
 #include"VKShader.h"
+#include"VKVertexInput.h"
+#include"VKDescriptorSetLayout.h"
+#include"VKPipelineLayout.h"
+#include"VKPipeline.h"
 
 #include<io.h>
 #include<fcntl.h>
@@ -49,17 +53,16 @@ bool LoadShader(vulkan::Shader *sc,const char *filename,VkShaderStageFlagBits sh
     return(true);
 }
 
-bool LoadShader(VkDevice device)
+vulkan::Shader *LoadShader(VkDevice device)
 {
-    vulkan::Shader sc(device);
+    vulkan::Shader *sc=new vulkan::Shader(device);
 
-    if(!LoadShader(&sc,"FlatColor.vert.spv",VK_SHADER_STAGE_VERTEX_BIT))
-        return(false);
+    if(LoadShader(sc,"FlatColor.vert.spv",VK_SHADER_STAGE_VERTEX_BIT))
+    if(LoadShader(sc,"FlatColor.frag.spv",VK_SHADER_STAGE_FRAGMENT_BIT))
+        return sc;
 
-    if(!LoadShader(&sc,"FlatColor.frag.spv",VK_SHADER_STAGE_FRAGMENT_BIT))
-        return(false);
-
-    return(true);
+    delete sc;
+    return(nullptr);
 }
 
 int main(int,char **)
@@ -96,9 +99,6 @@ int main(int,char **)
         std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
     }
 
-    if(!LoadShader(device->GetDevice()))
-        return(-3);
-
     vulkan::CommandBuffer *cmd_buf=device->CreateCommandBuffer();
 
     vulkan::Buffer *ubo=device->CreateUBO(1024);
@@ -111,7 +111,31 @@ int main(int,char **)
         ubo->Unmap();
     }
 
+    vulkan::Shader *shader=LoadShader(device->GetDevice());
+
+    if(!shader)
+        return -3;
+
+    vulkan::VertexInput vi;
+    vulkan::PipelineCreater pc(device);
     vulkan::RenderPass *rp=device->CreateRenderPass();
+
+    vulkan::DescriptorSetLayoutCreater dslc(device->GetDevice());
+    vulkan::DescriptorSetLayout *dsl=dslc.Create();
+    vulkan::PipelineLayout *pl=CreatePipelineLayout(device->GetDevice(),dsl);
+
+    pc.Set(shader);
+    pc.Set(&vi);
+    pc.Set(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pc.Set(*pl);
+    pc.Set(*rp);
+
+    vulkan::Pipeline *pipeline=pc.Create();
+
+    if(pipeline)
+    {
+        delete pipeline;
+    }
 
     delete rp;
 
