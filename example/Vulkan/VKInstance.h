@@ -5,9 +5,11 @@
 #include<hgl/type/List.h>
 #include"Window.h"
 #include"VK.h"
-#include"VKDevice.h"
 
 VK_NAMESPACE_BEGIN
+struct PhysicalDevice;
+class Device;
+
     class Instance
     {
         VkInstance inst;

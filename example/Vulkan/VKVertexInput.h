@@ -2,8 +2,9 @@
 #define HGL_GRAPH_VULKAN_VERTEX_INPUT_INCLUDE
 
 #include"VK.h"
-#include"VKBuffer.h"
 VK_NAMESPACE_BEGIN
+class VertexBuffer;
+
 /**
  * 顶点输入配置，类似于OpenGL的VAB<br>
  * 注：本引擎不支持一个BUFFER中包括多种数据

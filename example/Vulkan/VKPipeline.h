@@ -2,9 +2,9 @@
 #define HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
 
 #include"VK.h"
-#include"VKDevice.h"
 
 VK_NAMESPACE_BEGIN
+class Device;
 class RenderPass;
 
 class Pipeline

@@ -2,37 +2,30 @@
 #define HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
 
 #include"VK.h"
-#include"VKVertexInput.h"
-
 VK_NAMESPACE_BEGIN
+class RenderPass;
+class Framebuffer;
+class Pipeline;
+class VertexInput;
 
-    class CommandBuffer
-    {
-        VkDevice device;
-        VkCommandPool pool;
-        VkCommandBuffer buf;
+class CommandBuffer
+{
+    VkDevice device;
+    VkCommandPool pool;
+    VkCommandBuffer cmd_buf;
 
-    public:
+    VkClearValue clear_values[2];
+    VkRect2D render_area;
 
-        CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb){device=dev;pool=cp;buf=cb;}
-        ~CommandBuffer();
+public:
 
-        bool Bind(VertexInput *vi)
-        {
-            if(!vi)
-                return(false);
+    CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb);
+    ~CommandBuffer();
 
-            const List<VkBuffer> &buf_list=vi->GetBufferList();
+    void SetRenderArea(const VkRect2D &ra){render_area=ra;}
 
-            if(buf_list.GetCount()<=0)
-                return(false);
-
-            constexpr VkDeviceSize zero_offsets[1]={0};
-
-            vkCmdBindVertexBuffers(buf,0,buf_list.GetCount(),buf_list.GetData(),zero_offsets);
-
-            return(true);
-        }
-    };//class CommandBuffer
+    bool Bind(RenderPass *rp,Framebuffer *fb,Pipeline *p);
+    bool Bind(VertexInput *vi);
+};//class CommandBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE

@@ -1,5 +1,6 @@
 ﻿#include"VKDevice.h"
 #include"VKInstance.h"
+#include"VKPhysicalDevice.h"
 #include<hgl/type/Smart.h>
 
 VK_NAMESPACE_BEGIN

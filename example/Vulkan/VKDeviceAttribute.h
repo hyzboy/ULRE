@@ -1,11 +1,12 @@
 ﻿#pragma once
 
 #include"VK.h"
-#include"VKPhysicalDevice.h"
 
 VK_NAMESPACE_BEGIN
 
 constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
+
+struct PhysicalDevice;
 
 struct DeviceAttribute
 {
@@ -52,9 +53,6 @@ public:
     DeviceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s);
     ~DeviceAttribute();
 
-    bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const
-    {
-        return physical_device->CheckMemoryType(typeBits,requirements_mask,typeIndex);
-    }
+    bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const;
 };//class DeviceAttribute
 VK_NAMESPACE_END

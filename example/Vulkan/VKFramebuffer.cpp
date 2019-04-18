@@ -1,4 +1,6 @@
 #include"VKFramebuffer.h"
+#include"VKDevice.h"
+#include"VKRenderPass.h"
 VK_NAMESPACE_BEGIN
 Framebuffer::~Framebuffer()
 {

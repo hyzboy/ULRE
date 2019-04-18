@@ -2,8 +2,8 @@
 #define HGL_GRAPH_VULKAN_PIPELINE_LAYOUT_INCLUDE
 
 #include"VK.h"
-#include"VKDescriptorSetLayout.h"
 VK_NAMESPACE_BEGIN
+class DescriptorSetLayout;
 class PipelineLayout
 {
     VkDevice device;

@@ -1,4 +1,5 @@
 ﻿#include"VKVertexInput.h"
+#include"VKBuffer.h"
 
 VK_NAMESPACE_BEGIN
 bool VertexInput::Add(VertexBuffer *buf,bool instance)

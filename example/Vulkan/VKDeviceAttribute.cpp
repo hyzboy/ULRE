@@ -1,4 +1,5 @@
 ﻿#include"VKDeviceAttribute.h"
+#include"VKPhysicalDevice.h"
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -168,5 +169,10 @@ DeviceAttribute::~DeviceAttribute()
 
     if(surface)
         vkDestroySurfaceKHR(instance,surface,nullptr);
+}
+
+bool DeviceAttribute::CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const
+{
+    return physical_device->CheckMemoryType(typeBits,requirements_mask,typeIndex);
 }
 VK_NAMESPACE_END
