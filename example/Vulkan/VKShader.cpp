@@ -1,8 +1,7 @@
 #include"VKShader.h"
 
 VK_NAMESPACE_BEGIN
-
-ShaderCreater::~ShaderCreater()
+Shader::~Shader()
 {
     const int count=shader_stage_list.GetCount();
 
@@ -17,7 +16,7 @@ ShaderCreater::~ShaderCreater()
     }
 }
 
-bool ShaderCreater::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
+bool Shader::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
 {   
     VkPipelineShaderStageCreateInfo shader_stage;
     shader_stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
