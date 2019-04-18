@@ -20,6 +20,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKRenderPass.cpp
 								VKShader.cpp
 								VKVertexInput.cpp
+								VKSemaphore.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
@@ -35,6 +36,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKRenderPass.h
 								VKShader.h
 								VKVertexInput.h
+								VKSemaphore.h
 								Window.h)
 
 SET(SHADER_FILES	shader_compile.bat
