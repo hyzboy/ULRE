@@ -6,11 +6,12 @@
 VK_NAMESPACE_BEGIN
 class Pipeline
 {
+    VkDevice device;
     VkPipeline pipeline;
 
 public:
 
-    Pipeline(VkPipeline p){pipeline=p;}
+    Pipeline(VkDevice dev,VkPipeline p){device=dev;pipeline=p;}
     virtual ~Pipeline();
 };//class GraphicsPipeline
 
@@ -19,9 +20,16 @@ class VertexInput;
 
 class PipelineCreater
 {
+    VkDevice device;
+    uint width,height;
     VkGraphicsPipelineCreateInfo pipelineInfo;
 
     VkPipelineVertexInputStateCreateInfo vis_create_info;
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly;
+
+    VkViewport viewport;
+    VkRect2D scissor;
+    VkPipelineViewportStateCreateInfo viewportState;
 
 private:
 
@@ -30,14 +38,12 @@ private:
 
 public:
 
-    PipelineCreater()
-    {
-        pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    }
+    PipelineCreater(VkDevice dev,uint w,uint h);
     ~PipelineCreater();
 
     bool Set(const Shader *);
     bool Set(const VertexInput *);
+    bool Set(const VkPrimitiveTopology,bool=false);
 
     Pipeline *Create();
 };//class PipelineCreater

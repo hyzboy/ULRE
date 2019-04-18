@@ -43,6 +43,7 @@ public:
 
 public:
 
+    const uint GetCount()const{return buf_list.GetCount();}
     const List<VkBuffer> &GetBufferList()const{return buf_list;}
 
     const VkPipelineVertexInputStateCreateInfo GetPipelineVertexInputStateCreateInfo()const;
