@@ -1,5 +1,5 @@
 #include"VKPipelineLayout.h"
-#include"VKDescriptorSetLayout.h"
+#include"VKDescriptorSets.h"
 
 VK_NAMESPACE_BEGIN
 PipelineLayout::~PipelineLayout()
@@ -14,6 +14,11 @@ PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl
 
     if(dsl->GetCount()<=0)return(nullptr);
 
+    DescriptorSets *desc_sets=dsl->CreateSets();
+
+    if(!desc_sets)
+        return(nullptr);
+
     VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
     pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pPipelineLayoutCreateInfo.pNext = nullptr;
@@ -25,8 +30,11 @@ PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl
     VkPipelineLayout pipeline_layout;
 
     if(vkCreatePipelineLayout(dev, &pPipelineLayoutCreateInfo, nullptr, &pipeline_layout)!=VK_SUCCESS)
+    {
+        delete desc_sets;
         return(nullptr);
+    }
 
-    return(new PipelineLayout(dev,pipeline_layout));
+    return(new PipelineLayout(dev,pipeline_layout,desc_sets));
 }
 VK_NAMESPACE_END

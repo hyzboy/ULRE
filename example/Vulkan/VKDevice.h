@@ -35,6 +35,8 @@ public:
     const   PhysicalDevice *GetPhysicalDevice   ()const {return attr->physical_device;}
     const   VkExtent2D &    GetExtent           ()const {return attr->swapchain_extent;}
 
+    VkDescriptorPool        GetDescriptorPool   ()      {return attr->desc_pool;}
+
 public:
 
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);

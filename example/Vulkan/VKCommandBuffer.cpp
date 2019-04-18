@@ -2,7 +2,9 @@
 #include"VKRenderPass.h"
 #include"VKFramebuffer.h"
 #include"VKPipeline.h"
+#include"VKPipelineLayout.h"
 #include"VKVertexInput.h"
+#include"VKDescriptorSets.h"
 
 VK_NAMESPACE_BEGIN
 CommandBuffer::CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb)
@@ -25,7 +27,7 @@ CommandBuffer::~CommandBuffer()
     vkFreeCommandBuffers(device, pool, 1, cmd_bufs);
 }
 
-bool CommandBuffer::Bind(RenderPass *rp,Framebuffer *fb,Pipeline *p)
+bool CommandBuffer::Begin(RenderPass *rp,Framebuffer *fb)
 {
     VkRenderPassBeginInfo rp_begin;
 
@@ -38,12 +40,27 @@ bool CommandBuffer::Bind(RenderPass *rp,Framebuffer *fb,Pipeline *p)
     rp_begin.pClearValues = clear_values;
 
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, *p);
 
     return(true);
 }
 
-bool CommandBuffer::Bind(VertexInput *vi)
+bool CommandBuffer::Bind(Pipeline *p)
+{
+    if(!p)return(false);
+
+    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, *p);
+    return(true);
+}
+
+bool CommandBuffer::Bind(PipelineLayout *pl)
+{
+    if(!pl)return(false);
+
+    vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, *pl, 0, pl->GetDescriptorSetCount(),pl->GetDescriptorSets(), 0, nullptr);
+    return(true);
+}
+
+bool CommandBuffer::Bind(VertexInput *vi,const VkDeviceSize offset)
 {
     if(!vi)
         return(false);
@@ -53,10 +70,24 @@ bool CommandBuffer::Bind(VertexInput *vi)
     if(buf_list.GetCount()<=0)
         return(false);
 
-    constexpr VkDeviceSize zero_offsets[1]={0};
+    VkDeviceSize zero_offsets[1]={offset};
 
     vkCmdBindVertexBuffers(cmd_buf,0,buf_list.GetCount(),buf_list.GetData(),zero_offsets);
-
     return(true);
+}
+
+void CommandBuffer::Draw(const uint32_t vertex_count)
+{
+    vkCmdDraw(cmd_buf,vertex_count,1,0,0);
+}
+
+void CommandBuffer::Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex,const uint32_t first_instance)
+{
+    vkCmdDraw(cmd_buf,vertex_count,instance_count,first_vertex,first_instance);
+}
+
+void CommandBuffer::End()
+{
+    vkCmdEndRenderPass(cmd_buf);
 }
 VK_NAMESPACE_END

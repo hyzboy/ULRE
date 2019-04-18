@@ -15,8 +15,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKDeviceCreater.cpp
 								VKDevice.cpp
 								VKBuffer.cpp
-								VKDescriptorSet.cpp
-								VKDescriptorSetLayout.cpp
+								VKDescriptorSets.cpp
 								VKPipelineLayout.cpp
 								VKRenderPass.cpp
 								VKShader.cpp
@@ -34,8 +33,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKDeviceAttribute.h
 								VKDevice.h
 								VKBuffer.h
-								VKDescriptorSetLayout.h
-								VKDescriptorSet.h
+								VKDescriptorSets.h
 								VKPipelineLayout.h								
 								VKRenderPass.h
 								VKShader.h
