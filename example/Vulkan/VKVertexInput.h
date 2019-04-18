@@ -31,6 +31,9 @@ class VertexInput
     ObjectList<VertexInputBuffer> vib_list;
     List<VkBuffer> buf_list;
 
+    List<VkVertexInputBindingDescription> binding_list;
+    List<VkVertexInputAttributeDescription> attribute_list;
+
 public:
 
     VertexInput()=default;
@@ -41,6 +44,8 @@ public:
 public:
 
     const List<VkBuffer> &GetBufferList()const{return buf_list;}
+
+    const VkPipelineVertexInputStateCreateInfo GetPipelineVertexInputStateCreateInfo()const;
 };//class VertexInput
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_VERTEX_INPUT_INCLUDE

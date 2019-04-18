@@ -23,6 +23,23 @@ bool VertexInput::Add(VertexBuffer *buf,bool instance)
     vib_list.Add(new VertexInputBuffer(binding,attrib,buf));
     buf_list.Add(buf->GetBuffer());
 
+    binding_list.Add(binding);
+    attribute_list.Add(attrib);
+
     return(true);
+}
+
+const VkPipelineVertexInputStateCreateInfo VertexInput::GetPipelineVertexInputStateCreateInfo()const
+{
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    vertexInputInfo.vertexBindingDescriptionCount = binding_list.GetCount();
+    vertexInputInfo.pVertexBindingDescriptions = binding_list.GetData();
+
+    vertexInputInfo.vertexAttributeDescriptionCount = attribute_list.GetCount();
+    vertexInputInfo.pVertexAttributeDescriptions = attribute_list.GetData();
+
+    return vertexInputInfo;
 }
 VK_NAMESPACE_END
