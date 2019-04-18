@@ -34,7 +34,7 @@ char *LoadFile(const char *filename,uint32_t &file_length)
     return data;
 }
 
-bool LoadShader(vulkan::ShaderCreater *sc,const char *filename,VkShaderStageFlagBits shader_flag)
+bool LoadShader(vulkan::Shader *sc,const char *filename,VkShaderStageFlagBits shader_flag)
 {
     uint32_t size;
     char *data=LoadFile(filename,size);
@@ -51,7 +51,7 @@ bool LoadShader(vulkan::ShaderCreater *sc,const char *filename,VkShaderStageFlag
 
 bool LoadShader(VkDevice device)
 {
-    vulkan::ShaderCreater sc(device);
+    vulkan::Shader sc(device);
 
     if(!LoadShader(&sc,"FlatColor.vert.spv",VK_SHADER_STAGE_VERTEX_BIT))
         return(false);

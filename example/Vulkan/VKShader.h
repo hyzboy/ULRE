@@ -5,7 +5,7 @@ VK_NAMESPACE_BEGIN
 /**
  * Shader ´´½¨Æ÷
  */
-class ShaderCreater
+class Shader
 {
     VkDevice device;
 
@@ -13,8 +13,8 @@ class ShaderCreater
 
 public:
 
-    ShaderCreater(VkDevice dev):device(dev){}
-    ~ShaderCreater();
+    Shader(VkDevice dev):device(dev){}
+    ~Shader();
 
     bool Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
 
@@ -43,11 +43,7 @@ public:
         shader_stage_list.Clear();
     }
 
-    bool Finish(List<VkPipelineShaderStageCreateInfo> &pss_list)
-    {
-        pss_list=shader_stage_list;
-
-        Clear();
-    }
+    const uint32_t                          GetCount        ()const{return shader_stage_list.GetCount();}
+    const VkPipelineShaderStageCreateInfo * GetShaderStages ()const{return shader_stage_list.GetData();}
 };//class ShaderCreater
 VK_NAMESPACE_END
