@@ -1,16 +1,31 @@
-﻿#ifndef HGL_GRAPH_VULKAN_DESCRIPTOR_SET_LAYOUT_INCLUDE
-#define HGL_GRAPH_VULKAN_DESCRIPTOR_SET_LAYOUT_INCLUDE
+﻿#ifndef HGL_GRAPH_VULKAN_DESCRIPTOR_SETS_LAYOUT_INCLUDE
+#define HGL_GRAPH_VULKAN_DESCRIPTOR_SETS_LAYOUT_INCLUDE
 
 #include"VK.h"
 VK_NAMESPACE_BEGIN
+class Device;
+class DescriptorSets
+{
+    Device *device;
+    List<VkDescriptorSet> desc_sets;
+
+public:
+
+    DescriptorSets(Device *dev,List<VkDescriptorSet> &ds):device(dev),desc_sets(ds){}
+    ~DescriptorSets();
+
+    const uint32_t          GetCount()const{return desc_sets.GetCount();}
+    const VkDescriptorSet * GetData()const{return desc_sets.GetData();}
+};//class DescriptorSets
+
 class DescriptorSetLayout
 {
-    VkDevice device;
+    Device *device;
     List<VkDescriptorSetLayout> desc_set_layout_list;
 
 public:
 
-    DescriptorSetLayout(VkDevice dev,const List<VkDescriptorSetLayout> &dsl_list)
+    DescriptorSetLayout(Device *dev,const List<VkDescriptorSetLayout> &dsl_list)
     {
         device=dev;
         desc_set_layout_list=dsl_list;
@@ -20,6 +35,8 @@ public:
 
     const uint32_t                  GetCount()const{return desc_set_layout_list.GetCount();}
     const VkDescriptorSetLayout *   GetData ()const{return desc_set_layout_list.GetData();}
+
+    DescriptorSets *CreateSets()const;
 };//class DescriptorSetLayout
 
 /**
@@ -27,14 +44,14 @@ public:
 */
 class DescriptorSetLayoutCreater
 {
-    VkDevice device;
+    Device *device;
     VkDescriptorSet desc_set;
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
 
 public:
 
-    DescriptorSetLayoutCreater(VkDevice dev):device(dev){}
+    DescriptorSetLayoutCreater(Device *dev):device(dev){}
     ~DescriptorSetLayoutCreater()=default;
 
     void Bind(const int binding,VkDescriptorType,VkShaderStageFlagBits);
@@ -62,4 +79,4 @@ public:
     DescriptorSetLayout *Create();
 };//class DescriptorSet
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_DESCRIPTOR_SET_LAYOUT_INCLUDE
+#endif//HGL_GRAPH_VULKAN_DESCRIPTOR_SETS_LAYOUT_INCLUDE
