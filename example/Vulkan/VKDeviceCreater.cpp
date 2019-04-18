@@ -1,10 +1,8 @@
 ﻿#include"VKDevice.h"
 #include"VKInstance.h"
 #include"VKPhysicalDevice.h"
-#include<hgl/type/Smart.h>
 
 VK_NAMESPACE_BEGIN
-
 VkSurfaceKHR CreateRenderDevice(VkInstance,Window *);
 
 namespace
@@ -288,6 +286,26 @@ namespace
 
         return desc_pool;
     }
+
+    struct RenderDeviceCreater
+    {
+        DeviceAttribute *attr;
+
+    public:
+
+        RenderDeviceCreater(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR sur)
+        {
+            attr=new DeviceAttribute(inst,pd,sur);
+        }
+
+        ~RenderDeviceCreater()
+        {
+            if(attr)
+                delete attr;
+        }
+
+        DeviceAttribute *operator -> (){return attr;}
+    };//struct RenderDeviceCreater
 }//namespace
 
 Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,Window *win)
@@ -297,39 +315,42 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     if(!surface)
         return(nullptr);
 
-    RefDeviceAttribute rsa=new DeviceAttribute(inst,physical_device,surface);
+    RenderDeviceCreater rdc(inst,physical_device,surface);
 
-    rsa->swapchain_extent=GetSwapchainExtent(rsa->surface_caps,win->GetWidth(),win->GetHeight());
+    rdc->swapchain_extent=GetSwapchainExtent(rdc->surface_caps,win->GetWidth(),win->GetHeight());
 
-    if(rsa->graphics_family==ERROR_FAMILY_INDEX)
+    if(rdc->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    rsa->device=CreateDevice(inst,physical_device->physical_device,rsa->graphics_family);
+    rdc->device=CreateDevice(inst,physical_device->physical_device,rdc->graphics_family);
 
-    if(!rsa->device)
+    if(!rdc->device)
         return(nullptr);
 
-    rsa->cmd_pool=CreateCommandPool(rsa->device,rsa->graphics_family);
+    rdc->cmd_pool=CreateCommandPool(rdc->device,rdc->graphics_family);
 
-    if(!rsa->cmd_pool)
+    if(!rdc->cmd_pool)
         return(nullptr);
 
-    rsa->swap_chain=CreateSwapChain(rsa);
+    rdc->swap_chain=CreateSwapChain(rdc.attr);
 
-    if(!rsa->swap_chain)
+    if(!rdc->swap_chain)
         return(nullptr);
 
-    if(!CreateSwapchainImageView(rsa))
+    if(!CreateSwapchainImageView(rdc.attr))
         return(nullptr);
 
-    if(!CreateDepthBuffer(rsa))
+    if(!CreateDepthBuffer(rdc.attr))
         return(nullptr);
 
-    rsa->desc_pool=CreateDescriptorPool(rsa->device,1);
+    rdc->desc_pool=CreateDescriptorPool(rdc->device,1);
 
-    if(!rsa->desc_pool)
+    if(!rdc->desc_pool)
         return(nullptr);
 
-    return(new Device(rsa));
+    Device *dev=new Device(rdc.attr);
+    rdc.attr=nullptr;
+
+    return dev;
 }
 VK_NAMESPACE_END

@@ -13,29 +13,27 @@ class VertexBuffer;
 class CommandBuffer;
 class RenderPass;
 
-using RefDeviceAttribute=SharedPtr<DeviceAttribute>;
-
 class Device
 {
-    RefDeviceAttribute rsa;
+    DeviceAttribute *attr;
 
 private:
 
     friend Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
 
-    Device(RefDeviceAttribute &ref_rsa)
+    Device(DeviceAttribute *da)
     {
-        rsa=ref_rsa;
+        attr=da;
     }
 
 public:
 
-    virtual ~Device()=default;
+    virtual ~Device();
 
-            VkSurfaceKHR    GetSurface          ()      {return rsa->surface;}
-            VkDevice        GetDevice           ()      {return rsa->device;}
-    const   PhysicalDevice *GetPhysicalDevice   ()const {return rsa->physical_device;}
-    const   VkExtent2D &    GetExtent           ()const {return rsa->swapchain_extent;}
+            VkSurfaceKHR    GetSurface          ()      {return attr->surface;}
+            VkDevice        GetDevice           ()      {return attr->device;}
+    const   PhysicalDevice *GetPhysicalDevice   ()const {return attr->physical_device;}
+    const   VkExtent2D &    GetExtent           ()const {return attr->swapchain_extent;}
 
 public:
 

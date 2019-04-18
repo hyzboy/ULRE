@@ -55,6 +55,11 @@ namespace
     }
 }//namespace
 
+Device::~Device()
+{
+    delete attr;
+}
+
 VertexBuffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
@@ -69,42 +74,42 @@ VertexBuffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,
 
     VulkanBuffer vb;
 
-    if(!CreateVulkanBuffer(vb,rsa,buf_usage,size,sharing_mode))
+    if(!CreateVulkanBuffer(vb,attr,buf_usage,size,sharing_mode))
         return(nullptr);
 
-    return(new VertexBuffer(rsa->device,vb,format,stride,count));
+    return(new VertexBuffer(attr->device,vb,format,stride,count));
 }
 
 Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
 {
     VulkanBuffer vb;
 
-    if(!CreateVulkanBuffer(vb,rsa,buf_usage,size,sharing_mode))
+    if(!CreateVulkanBuffer(vb,attr,buf_usage,size,sharing_mode))
         return(nullptr);
 
-    return(new Buffer(rsa->device,vb));
+    return(new Buffer(attr->device,vb));
 }
 
 CommandBuffer *Device::CreateCommandBuffer()
 {
-    if(!rsa->cmd_pool)
+    if(!attr->cmd_pool)
         return(nullptr);
 
     VkCommandBufferAllocateInfo cmd={};
     cmd.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     cmd.pNext=nullptr;
-    cmd.commandPool=rsa->cmd_pool;
+    cmd.commandPool=attr->cmd_pool;
     cmd.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmd.commandBufferCount=1;
 
     VkCommandBuffer cmd_buf;
 
-    VkResult res=vkAllocateCommandBuffers(rsa->device,&cmd,&cmd_buf);
+    VkResult res=vkAllocateCommandBuffers(attr->device,&cmd,&cmd_buf);
 
     if(res!=VK_SUCCESS)
         return(nullptr);
 
-    return(new CommandBuffer(rsa->device,rsa->cmd_pool,cmd_buf));
+    return(new CommandBuffer(attr->device,attr->cmd_pool,cmd_buf));
 }
 
 //DescriptorSet *Device::CreateDescSet(int count)
@@ -125,7 +130,7 @@ CommandBuffer *Device::CreateCommandBuffer()
 RenderPass *Device::CreateRenderPass()
 {
     VkAttachmentDescription attachments[2];
-    attachments[0].format=rsa->format;
+    attachments[0].format=attr->format;
     attachments[0].samples=VK_SAMPLE_COUNT_1_BIT;
     attachments[0].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[0].storeOp=VK_ATTACHMENT_STORE_OP_STORE;
@@ -135,7 +140,7 @@ RenderPass *Device::CreateRenderPass()
     attachments[0].finalLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     attachments[0].flags=0;
 
-    attachments[1].format=rsa->depth.format;
+    attachments[1].format=attr->depth.format;
     attachments[1].samples=VK_SAMPLE_COUNT_1_BIT;
     attachments[1].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[1].storeOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -172,9 +177,9 @@ RenderPass *Device::CreateRenderPass()
 
     VkRenderPass render_pass;
 
-    if(vkCreateRenderPass(rsa->device,&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
+    if(vkCreateRenderPass(attr->device,&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(rsa->device,render_pass));
+    return(new RenderPass(attr->device,render_pass));
 }
 VK_NAMESPACE_END
