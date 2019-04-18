@@ -43,7 +43,7 @@ public:
         shader_stage_list.Clear();
     }
 
-    const uint32_t                          GetCount        ()const{return shader_stage_list.GetCount();}
-    const VkPipelineShaderStageCreateInfo * GetShaderStages ()const{return shader_stage_list.GetData();}
+    const uint32_t                          GetCount    ()const{return shader_stage_list.GetCount();}
+    const VkPipelineShaderStageCreateInfo * GetStages   ()const{return shader_stage_list.GetData();}
 };//class ShaderCreater
 VK_NAMESPACE_END
