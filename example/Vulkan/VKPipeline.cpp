@@ -1,4 +1,5 @@
 ﻿#include"VKPipeline.h"
+#include"VKDevice.h"
 #include"VKShader.h"
 #include"VKVertexInput.h"
 #include"VKRenderPass.h"

@@ -1,5 +1,9 @@
 ﻿#include"VKDevice.h"
 #include<hgl/type/Pair.h>
+#include"VKBuffer.h"
+#include"VKCommandBuffer.h"
+//#include"VKDescriptorSet.h"
+#include"VKRenderPass.h"
 
 VK_NAMESPACE_BEGIN
 

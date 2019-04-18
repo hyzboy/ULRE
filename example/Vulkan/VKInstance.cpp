@@ -1,6 +1,6 @@
 ﻿#include"VKInstance.h"
 #include"VKSurfaceExtensionName.h"
-#include<hgl/type/DataType.h>
+#include"VKPhysicalDevice.h"
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
