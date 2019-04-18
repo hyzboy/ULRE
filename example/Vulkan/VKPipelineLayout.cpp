@@ -7,15 +7,19 @@ PipelineLayout::~PipelineLayout()
         vkDestroyPipelineLayout(device,layout,nullptr);
 }
 
-PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout &dsl)
+PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl)
 {
+    if(!dsl)return(nullptr);
+
+    if(dsl->GetCount()<=0)return(nullptr);
+
     VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
     pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pPipelineLayoutCreateInfo.pNext = nullptr;
     pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-    pPipelineLayoutCreateInfo.setLayoutCount = dsl.GetCount();
-    pPipelineLayoutCreateInfo.pSetLayouts = dsl.GetData();
+    pPipelineLayoutCreateInfo.setLayoutCount = dsl->GetCount();
+    pPipelineLayoutCreateInfo.pSetLayouts = dsl->GetData();
 
     VkPipelineLayout pipeline_layout;
 

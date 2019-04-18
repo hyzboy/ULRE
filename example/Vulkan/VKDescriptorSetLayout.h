@@ -59,7 +59,7 @@ public:
 
 #undef DESC_SET_BIND_FUNC
 
-    DescriptorSetLayout *Creater();
+    DescriptorSetLayout *Create();
 };//class DescriptorSet
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DESCRIPTOR_SET_LAYOUT_INCLUDE

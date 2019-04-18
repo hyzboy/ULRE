@@ -29,7 +29,7 @@ void DescriptorSetLayoutCreater::Bind(const int binding,VkDescriptorType desc_ty
     layout_binding_list.Add(layout_binding);
 }
 
-DescriptorSetLayout *DescriptorSetLayoutCreater::Creater()
+DescriptorSetLayout *DescriptorSetLayoutCreater::Create()
 {
     VkDescriptorSetLayoutCreateInfo descriptor_layout = {};
     descriptor_layout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

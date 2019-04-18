@@ -1,6 +1,7 @@
 ﻿#include"VKPipeline.h"
 #include"VKShader.h"
 #include"VKVertexInput.h"
+#include"VKRenderPass.h"
 
 VK_NAMESPACE_BEGIN
 Pipeline::~Pipeline()
@@ -8,24 +9,23 @@ Pipeline::~Pipeline()
     vkDestroyPipeline(device,pipeline,nullptr);
 }
 
-PipelineCreater::PipelineCreater(VkDevice dev,uint w,uint h)
+PipelineCreater::PipelineCreater(Device *dev)
 {
-    device=dev;
-    width=w;
-    height=h;
+    device=dev->GetDevice();
+    extent=dev->GetExtent();
+
     hgl_zero(pipelineInfo);
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = width;
-    viewport.height = height;
+    viewport.width = extent.width;
+    viewport.height = extent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     scissor.offset = {0, 0};
-    scissor.extent.width=width;
-    scissor.extent.height=height;
+    scissor.extent = extent;
 
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
@@ -34,6 +34,40 @@ PipelineCreater::PipelineCreater(VkDevice dev,uint w,uint h)
     viewportState.pScissors = &scissor;
 
     pipelineInfo.pViewportState = &viewportState;
+
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+
+    pipelineInfo.pRasterizationState = &rasterizer;
+
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    pipelineInfo.pMultisampleState = &multisampling;
+
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f;
+    colorBlending.blendConstants[1] = 0.0f;
+    colorBlending.blendConstants[2] = 0.0f;
+    colorBlending.blendConstants[3] = 0.0f;
+    
+    pipelineInfo.pColorBlendState = &colorBlending;
+
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 }
 
 bool PipelineCreater::Set(const Shader *s)
@@ -75,16 +109,26 @@ bool PipelineCreater::Set(const VkPrimitiveTopology topology,bool restart)
     return(true);
 }
 
+bool PipelineCreater::Set(VkPipelineLayout pl)
+{
+    if(!pl)return(false);
+
+    pipelineInfo.layout = pl;
+    return(true);
+}
+
+bool PipelineCreater::Set(VkRenderPass rp,uint32_t subpass)
+{
+    if(!rp)return(false);
+
+    pipelineInfo.renderPass = rp;
+    pipelineInfo.subpass = subpass;
+
+    return(true);
+}
+
 Pipeline *PipelineCreater::Create()
 {
-    //pipelineInfo.pRasterizationState = &rasterizer;
-    //pipelineInfo.pMultisampleState = &multisampling;
-    //pipelineInfo.pColorBlendState = &colorBlending;
-    //pipelineInfo.layout = pipelineLayout;
-    //pipelineInfo.renderPass = renderPass;
-    //pipelineInfo.subpass = 0;
-    //pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-
     VkPipeline graphicsPipeline;
 
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) 
