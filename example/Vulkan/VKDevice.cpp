@@ -141,13 +141,8 @@ RenderPass *Device::CreateRenderPass()
     attachments[1].finalLayout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     attachments[1].flags=0;
 
-    VkAttachmentReference color_reference={};
-    color_reference.attachment=0;
-    color_reference.layout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference depth_reference={};
-    depth_reference.attachment=1;
-    depth_reference.layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference color_reference={0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference depth_reference={1,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
     VkSubpassDescription subpass={};
     subpass.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS;
