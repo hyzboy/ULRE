@@ -7,7 +7,7 @@ ENDIF()
 
 SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								${RENDER_WINDOW_SOURCE}
-								VkFormat.cpp
+								VKFormat.cpp
 								VKInstance.cpp
 								VKPhysicalDevice.cpp
 								VKCommandBuffer.cpp
@@ -27,6 +27,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
+                                VKFormat.h
 								VKPrimivate.h
 								VKInstance.h
 								VKPhysicalDevice.h
@@ -36,7 +37,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKDevice.h
 								VKBuffer.h
 								VKDescriptorSets.h
-								VKPipelineLayout.h								
+								VKPipelineLayout.h
 								VKRenderPass.h
 								VKShader.h
 								VKVertexInput.h
@@ -47,7 +48,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								Window.h)
 
 SET(SHADER_FILES	shader_compile.bat
-					FlatColor.vert 
+					FlatColor.vert
 					FlatColor.frag)
 
 SOURCE_GROUP("Header Files" FILES ${VULKAN_TEST_HEADER_FILES})
