@@ -296,6 +296,23 @@ namespace
 
         return desc_pool;
     }
+
+    VkPipelineCache CreatePipelineCache(VkDevice device)
+    {
+        VkPipelineCacheCreateInfo pipelineCache;
+        pipelineCache.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+        pipelineCache.pNext = nullptr;
+        pipelineCache.initialDataSize = 0;
+        pipelineCache.pInitialData = nullptr;
+        pipelineCache.flags = 0;
+        
+        VkPipelineCache cache;
+
+        if(!vkCreatePipelineCache(device, &pipelineCache, nullptr, &cache)!=VK_SUCCESS)
+            return(nullptr);
+
+        return cache;
+    }
 }//namespace
 
 Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,Window *win)
@@ -340,6 +357,11 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     attr->desc_pool=CreateDescriptorPool(attr->device,1);
 
     if(!attr->desc_pool)
+        return(nullptr);
+
+    attr->pipeline_cache=CreatePipelineCache(attr->device);
+
+    if(!attr->pipeline_cache)
         return(nullptr);
 
     auto_delete.Clear();
