@@ -55,7 +55,7 @@ public:
 #define CREATE_BUFFER_OBJECT(LargeName,type)  Buffer *Create##LargeName(VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,sharing_mode);}
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)
-    CREATE_BUFFER_OBJECT(SBO,STORAGE)
+    CREATE_BUFFER_OBJECT(SSBO,STORAGE)
     CREATE_BUFFER_OBJECT(INBO,INDIRECT)
 
 #undef CREATE_BUFFER_OBJECT
