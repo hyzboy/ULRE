@@ -4,6 +4,7 @@
 #include"VKCommandBuffer.h"
 //#include"VKDescriptorSet.h"
 #include"VKRenderPass.h"
+#include"VKFence.h"
 
 VK_NAMESPACE_BEGIN
 
@@ -181,5 +182,20 @@ RenderPass *Device::CreateRenderPass()
         return(nullptr);
 
     return(new RenderPass(attr->device,render_pass));
+}
+
+Fence *Device::CreateFence()
+{
+    VkFenceCreateInfo fenceInfo;
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.pNext = nullptr;
+    fenceInfo.flags = 0;
+
+    VkFence drawFence;
+
+    if(vkCreateFence(attr->device, &fenceInfo, nullptr, &drawFence)!=VK_SUCCESS)
+        return(nullptr);
+
+    return(new Fence(attr->device,drawFence));
 }
 VK_NAMESPACE_END

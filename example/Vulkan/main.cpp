@@ -10,6 +10,7 @@
 #include"VKPipelineLayout.h"
 #include"VKPipeline.h"
 #include"VKCommandBuffer.h"
+#include"VKFence.h"
 
 #include<io.h>
 #include<fcntl.h>
@@ -120,6 +121,8 @@ int main(int,char **)
     if(!shader)
         return -3;
 
+    vulkan::Fence *fence=device->CreateFence();
+
     vulkan::VertexInput vi;
     vulkan::PipelineCreater pc(device);
     vulkan::RenderPass *rp=device->CreateRenderPass();
@@ -141,6 +144,7 @@ int main(int,char **)
         delete pipeline;
     }
 
+    delete fence;
     delete rp;
 
     delete ubo;
