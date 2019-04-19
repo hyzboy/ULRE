@@ -5,6 +5,7 @@
 //#include"VKDescriptorSet.h"
 #include"VKRenderPass.h"
 #include"VKFence.h"
+#include"VKSemaphore.h"
 
 VK_NAMESPACE_BEGIN
 
@@ -197,5 +198,19 @@ Fence *Device::CreateFence()
         return(nullptr);
 
     return(new Fence(attr->device,drawFence));
+}
+
+Semaphore *Device::CreateSem()
+{
+    VkSemaphoreCreateInfo SemaphoreCreateInfo;
+    SemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    SemaphoreCreateInfo.pNext = nullptr;
+    SemaphoreCreateInfo.flags = 0;
+
+    VkSemaphore sem;
+    if(vkCreateSemaphore(attr->device, &SemaphoreCreateInfo, nullptr, &sem)!=VK_SUCCESS)
+        return(nullptr);
+
+    return(new Semaphore(attr->device,sem));
 }
 VK_NAMESPACE_END

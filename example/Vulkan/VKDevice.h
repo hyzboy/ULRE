@@ -13,6 +13,7 @@ class VertexBuffer;
 class CommandBuffer;
 class RenderPass;
 class Fence;
+class Semaphore;
 
 class Device
 {
@@ -63,6 +64,8 @@ public:
     RenderPass *CreateRenderPass();
 
     Fence *CreateFence();
+
+    Semaphore *CreateSem();
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
