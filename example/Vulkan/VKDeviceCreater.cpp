@@ -308,7 +308,7 @@ namespace
         
         VkPipelineCache cache;
 
-        if(!vkCreatePipelineCache(device, &pipelineCache, nullptr, &cache)!=VK_SUCCESS)
+        if(vkCreatePipelineCache(device, &pipelineCache, nullptr, &cache)!=VK_SUCCESS)
             return(nullptr);
 
         return cache;

@@ -27,6 +27,7 @@ class PipelineCreater
 {
     VkDevice device;
     VkExtent2D extent;
+    VkPipelineCache cache;
     VkGraphicsPipelineCreateInfo pipelineInfo;
 
     VkPipelineVertexInputStateCreateInfo vis_create_info;
