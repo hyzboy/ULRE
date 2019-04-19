@@ -2,7 +2,7 @@
 #include"VKBuffer.h"
 
 VK_NAMESPACE_BEGIN
-bool VertexInput::Add(VertexBuffer *buf,bool instance)
+bool VertexInput::Add(uint32_t location,VertexBuffer *buf,bool instance)
 {
     if(!buf)
         return(false);
@@ -17,7 +17,7 @@ bool VertexInput::Add(VertexBuffer *buf,bool instance)
     binding.inputRate=instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX; 
 
     attrib.binding=binding_index;
-    attrib.location=0;
+    attrib.location=location;
     attrib.format=buf->GetFormat();
     attrib.offset=0;
 

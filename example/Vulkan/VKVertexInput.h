@@ -40,7 +40,7 @@ public:
     VertexInput()=default;
     virtual ~VertexInput()=default;
 
-    bool Add(VertexBuffer *,bool instance=false);
+    bool Add(uint32_t location,VertexBuffer *,bool instance=false);
 
 public:
 
