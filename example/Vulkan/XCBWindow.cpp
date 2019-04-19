@@ -122,7 +122,7 @@ namespace hgl
 }//namespace hgl
 
 VK_NAMESPACE_BEGIN
-VkSurfaceKHR CreateSurface(VkInstance vk_inst,Window *win)
+VkSurfaceKHR CreateRenderDevice(VkInstance vk_inst,Window *win)
 {
     XCBWindow *xcb_win=(XCBWindow *)win;
 
