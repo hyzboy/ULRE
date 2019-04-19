@@ -28,6 +28,6 @@ public:
     operator VkFramebuffer(){return frame_buffer;}
 };//class Framebuffer
 
-Framebuffer *CreateFramebuffer(Device *,RenderPass *,VkImageView color,VkImageView depth);
+Framebuffer *CreateFramebuffer(Device *,RenderPass *,VkImageView color,VkImageView depth=nullptr);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE

@@ -1,4 +1,4 @@
-#include"VKFramebuffer.h"
+﻿#include"VKFramebuffer.h"
 #include"VKDevice.h"
 #include"VKRenderPass.h"
 VK_NAMESPACE_BEGIN
@@ -9,23 +9,39 @@ Framebuffer::~Framebuffer()
 
 Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,VkImageView color,VkImageView depth)
 {
-    if(!dev||!rp||!color||!depth)return(nullptr);
+    if(!dev||!rp)return(nullptr);
+
+    if(!color&&!depth)return(nullptr);
 
     const VkExtent2D extent=dev->GetExtent();
     VkImageView attachments[2];
-
-    attachments[0]=color;
-    attachments[1]=depth;
 
     VkFramebufferCreateInfo fb_info = {};
     fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     fb_info.pNext = nullptr;
     fb_info.renderPass = *rp;
-    fb_info.attachmentCount = 2;
-    fb_info.pAttachments = attachments;
     fb_info.width = extent.width;
     fb_info.height = extent.height;
     fb_info.layers = 1;
+    fb_info.pAttachments = attachments;
+
+    if(color)
+    {
+        attachments[0]=color;
+
+        if(depth)
+        {
+            attachments[1]=depth;
+            fb_info.attachmentCount = 2;
+        }
+        else
+            fb_info.attachmentCount = 1;
+    }
+    else
+    {
+        attachments[0]=depth;
+        fb_info.attachmentCount = 1;
+    }
 
     VkFramebuffer fb;
 
