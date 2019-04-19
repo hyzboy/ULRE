@@ -64,6 +64,16 @@ namespace
         return nullptr;
     }
 
+    void GetDeviceQueue(DeviceAttribute *attr)
+    {
+        vkGetDeviceQueue(attr->device,attr->graphics_family,0,&attr->graphics_queue);
+
+        if(attr->graphics_family==attr->present_family)
+            attr->present_queue=attr->graphics_queue;
+        else
+            vkGetDeviceQueue(attr->device,attr->present_family,0,&attr->present_queue);
+    }
+
     VkCommandPool CreateCommandPool(VkDevice device,uint32_t graphics_family)
     {
         VkCommandPoolCreateInfo cmd_pool_info={};
@@ -326,6 +336,8 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
 
     if(!rdc->device)
         return(nullptr);
+
+    GetDeviceQueue(rdc.attr);
 
     rdc->cmd_pool=CreateCommandPool(rdc->device,rdc->graphics_family);
 
