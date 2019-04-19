@@ -57,8 +57,15 @@ namespace
     }
 }//namespace
 
+Device::Device(DeviceAttribute *da)
+{
+    attr=da;
+    current_framebuffer=0;
+    image_acquired_semaphore=this->CreateSem();
+}
 Device::~Device()
 {
+    delete image_acquired_semaphore;
     delete attr;
 }
 
@@ -212,5 +219,10 @@ Semaphore *Device::CreateSem()
         return(nullptr);
 
     return(new Semaphore(attr->device,sem));
+}
+
+bool Device::AcquireNextImage()
+{
+    return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*image_acquired_semaphore,VK_NULL_HANDLE,&current_framebuffer)==VK_SUCCESS);
 }
 VK_NAMESPACE_END
