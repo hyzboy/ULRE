@@ -44,6 +44,11 @@ public:
 
 public:
 
+    VkImageView             GetColorImageView   (int index=-1)  {return GetObject(attr->sc_image_views,index==-1?current_framebuffer:index);}
+    VkImageView             GetDepthImageView   ()              {return attr->depth.view;}
+
+public:
+
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
     VertexBuffer *      CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
 

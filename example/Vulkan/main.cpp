@@ -13,6 +13,7 @@
 #include"VKFence.h"
 #include"VKSemaphore.h"
 #include"VKFormat.h"
+#include"VKFramebuffer.h"
 
 #include<fstream>
 
@@ -104,6 +105,16 @@ vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev)
     return vi;
 }
 
+void wait_seconds(int seconds) {
+#ifdef WIN32
+    Sleep(seconds * 1000);
+#elif defined(__ANDROID__)
+    sleep(seconds);
+#else
+    sleep(seconds);
+#endif
+}
+
 int main(int,char **)
 {
     #ifdef _DEBUG
@@ -140,15 +151,15 @@ int main(int,char **)
 
     vulkan::CommandBuffer *cmd_buf=device->CreateCommandBuffer();
 
-    vulkan::Buffer *ubo=device->CreateUBO(1024);
+    //vulkan::Buffer *ubo=device->CreateUBO(1024);
 
-    uint8_t *p=ubo->Map();
+    //uint8_t *p=ubo->Map();
 
-    if(p)
-    {
-        memset(p,0,1024);
-        ubo->Unmap();
-    }
+    //if(p)
+    //{
+    //    memset(p,0,1024);
+    //    ubo->Unmap();
+    //}
 
     vulkan::Shader *shader=LoadShader(device->GetDevice());
 
@@ -178,6 +189,23 @@ int main(int,char **)
     if(!pipeline)
         return(-4);
 
+    device->AcquireNextImage();     //这样才会得到current_framebuffer的值，下面的device->GetColorImageView()才会正确
+
+    vulkan::Framebuffer *fb=vulkan::CreateFramebuffer(device,rp,device->GetColorImageView(),device->GetDepthImageView());
+
+    cmd_buf->Begin(rp,fb);
+    cmd_buf->Bind(pipeline);
+    cmd_buf->Bind(pl);
+    cmd_buf->Bind(vi);
+    cmd_buf->Draw(3);
+    cmd_buf->End();
+
+    device->QueueSubmit(cmd_buf,fence);
+    device->Wait(fence);
+    device->QueuePresent();
+
+    wait_seconds(3);
+
     delete pipeline;
 
     delete sem;
@@ -185,7 +213,7 @@ int main(int,char **)
     delete rp;
 
     delete vi;
-    delete ubo;
+//    delete ubo;
 
     delete cmd_buf;
     delete device;

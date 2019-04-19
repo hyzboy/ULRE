@@ -20,7 +20,7 @@ class CommandBuffer
 
 public:
 
-    CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb);
+    CommandBuffer(VkDevice dev,const VkExtent2D &extent,VkCommandPool cp,VkCommandBuffer cb);
     ~CommandBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
@@ -46,7 +46,7 @@ public:
     bool Bind(VertexInput *vi,const VkDeviceSize offset=0);
     void Draw(const uint32_t vertex_count);
     void Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex=0,const uint32_t first_instance=0);
-    void End();
+    bool End();
 };//class CommandBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE

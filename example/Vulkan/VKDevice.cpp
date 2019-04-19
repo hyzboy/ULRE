@@ -126,7 +126,7 @@ CommandBuffer *Device::CreateCommandBuffer()
     if(res!=VK_SUCCESS)
         return(nullptr);
 
-    return(new CommandBuffer(attr->device,attr->cmd_pool,cmd_buf));
+    return(new CommandBuffer(attr->device,attr->swapchain_extent,attr->cmd_pool,cmd_buf));
 }
 
 RenderPass *Device::CreateRenderPass()

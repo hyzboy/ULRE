@@ -7,7 +7,7 @@
 #include"VKDescriptorSets.h"
 
 VK_NAMESPACE_BEGIN
-CommandBuffer::CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb)
+CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,VkCommandPool cp,VkCommandBuffer cb)
 {
     device=dev;
     pool=cp;
@@ -19,6 +19,10 @@ CommandBuffer::CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb)
     clear_values[0].color.float32[3] = 0.2f;
     clear_values[1].depthStencil.depth = 1.0f;
     clear_values[1].depthStencil.stencil = 0;
+
+    render_area.offset.x=0;
+    render_area.offset.y=0;
+    render_area.extent=extent;
 }
 
 CommandBuffer::~CommandBuffer()
@@ -29,6 +33,15 @@ CommandBuffer::~CommandBuffer()
 
 bool CommandBuffer::Begin(RenderPass *rp,Framebuffer *fb)
 {
+    VkCommandBufferBeginInfo cmd_buf_info = {};
+    cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmd_buf_info.pNext = nullptr;
+    cmd_buf_info.flags = 0;
+    cmd_buf_info.pInheritanceInfo = nullptr;
+
+    if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)
+        return(false);
+
     VkRenderPassBeginInfo rp_begin;
 
     rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -40,7 +53,6 @@ bool CommandBuffer::Begin(RenderPass *rp,Framebuffer *fb)
     rp_begin.pClearValues = clear_values;
 
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
-
     return(true);
 }
 
@@ -55,8 +67,8 @@ bool CommandBuffer::Bind(Pipeline *p)
 bool CommandBuffer::Bind(PipelineLayout *pl)
 {
     if(!pl)return(false);
-
-    vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, *pl, 0, pl->GetDescriptorSetCount(),pl->GetDescriptorSets(), 0, nullptr);
+    if(pl->GetDescriptorSetCount()>0)
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, *pl, 0, pl->GetDescriptorSetCount(),pl->GetDescriptorSets(), 0, nullptr);
     return(true);
 }
 
@@ -70,9 +82,7 @@ bool CommandBuffer::Bind(VertexInput *vi,const VkDeviceSize offset)
     if(buf_list.GetCount()<=0)
         return(false);
 
-    VkDeviceSize zero_offsets[1]={offset};
-
-    vkCmdBindVertexBuffers(cmd_buf,0,buf_list.GetCount(),buf_list.GetData(),zero_offsets);
+    vkCmdBindVertexBuffers(cmd_buf,0,buf_list.GetCount(),buf_list.GetData(),&offset);
     return(true);
 }
 
@@ -86,8 +96,9 @@ void CommandBuffer::Draw(const uint32_t vertex_count,const uint32_t instance_cou
     vkCmdDraw(cmd_buf,vertex_count,instance_count,first_vertex,first_instance);
 }
 
-void CommandBuffer::End()
+bool CommandBuffer::End()
 {
     vkCmdEndRenderPass(cmd_buf);
+    return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);
 }
 VK_NAMESPACE_END
