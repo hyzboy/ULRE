@@ -296,26 +296,6 @@ namespace
 
         return desc_pool;
     }
-
-    struct RenderDeviceCreater
-    {
-        DeviceAttribute *attr;
-
-    public:
-
-        RenderDeviceCreater(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR sur)
-        {
-            attr=new DeviceAttribute(inst,pd,sur);
-        }
-
-        ~RenderDeviceCreater()
-        {
-            if(attr)
-                delete attr;
-        }
-
-        DeviceAttribute *operator -> (){return attr;}
-    };//struct RenderDeviceCreater
 }//namespace
 
 Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,Window *win)
@@ -325,44 +305,45 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     if(!surface)
         return(nullptr);
 
-    RenderDeviceCreater rdc(inst,physical_device,surface);
+    DeviceAttribute *attr=new DeviceAttribute(inst,physical_device,surface);
 
-    rdc->swapchain_extent=GetSwapchainExtent(rdc->surface_caps,win->GetWidth(),win->GetHeight());
+    AutoDelete<DeviceAttribute> auto_delete(attr);
+    
+    attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,win->GetWidth(),win->GetHeight());
 
-    if(rdc->graphics_family==ERROR_FAMILY_INDEX)
+    if(attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    rdc->device=CreateDevice(inst,physical_device->physical_device,rdc->graphics_family);
+    attr->device=CreateDevice(inst,physical_device->physical_device,attr->graphics_family);
 
-    if(!rdc->device)
+    if(!attr->device)
         return(nullptr);
 
-    GetDeviceQueue(rdc.attr);
+    GetDeviceQueue(attr);
 
-    rdc->cmd_pool=CreateCommandPool(rdc->device,rdc->graphics_family);
+    attr->cmd_pool=CreateCommandPool(attr->device,attr->graphics_family);
 
-    if(!rdc->cmd_pool)
+    if(!attr->cmd_pool)
         return(nullptr);
 
-    rdc->swap_chain=CreateSwapChain(rdc.attr);
+    attr->swap_chain=CreateSwapChain(attr);
 
-    if(!rdc->swap_chain)
+    if(!attr->swap_chain)
         return(nullptr);
 
-    if(!CreateSwapchainImageView(rdc.attr))
+    if(!CreateSwapchainImageView(attr))
         return(nullptr);
 
-    if(!CreateDepthBuffer(rdc.attr))
+    if(!CreateDepthBuffer(attr))
         return(nullptr);
 
-    rdc->desc_pool=CreateDescriptorPool(rdc->device,1);
+    attr->desc_pool=CreateDescriptorPool(attr->device,1);
 
-    if(!rdc->desc_pool)
+    if(!attr->desc_pool)
         return(nullptr);
 
-    Device *dev=new Device(rdc.attr);
-    rdc.attr=nullptr;
+    auto_delete.Clear();
 
-    return dev;
+    return(new Device(attr));
 }
 VK_NAMESPACE_END
