@@ -20,6 +20,9 @@ struct DeviceAttribute
     uint32_t                            graphics_family =ERROR_FAMILY_INDEX;
     uint32_t                            present_family  =ERROR_FAMILY_INDEX;
 
+    VkQueue                             graphics_queue  =nullptr;
+    VkQueue                             present_queue   =nullptr;
+
     List<VkQueueFamilyProperties>       family_properties;
     List<VkBool32>                      supports_present;
 
