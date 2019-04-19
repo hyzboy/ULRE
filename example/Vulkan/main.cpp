@@ -5,7 +5,7 @@
 #include"VKBuffer.h"
 #include"VKShader.h"
 #include"VKVertexInput.h"
-#include"VKDescriptorSetLayout.h"
+#include"VKDescriptorSets.h"
 #include"VKRenderPass.h"
 #include"VKPipelineLayout.h"
 #include"VKPipeline.h"
@@ -124,13 +124,13 @@ int main(int,char **)
     vulkan::PipelineCreater pc(device);
     vulkan::RenderPass *rp=device->CreateRenderPass();
 
-    vulkan::DescriptorSetLayoutCreater dslc(device->GetDevice());
+    vulkan::DescriptorSetLayoutCreater dslc(device);
     vulkan::DescriptorSetLayout *dsl=dslc.Create();
     vulkan::PipelineLayout *pl=CreatePipelineLayout(device->GetDevice(),dsl);
 
     pc.Set(shader);
     pc.Set(&vi);
-    pc.Set(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pc.Set(PRIM_TRIANGLES);
     pc.Set(*pl);
     pc.Set(*rp);
 
