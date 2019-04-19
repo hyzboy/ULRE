@@ -131,6 +131,9 @@ DeviceAttribute::DeviceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurf
 
 DeviceAttribute::~DeviceAttribute()
 {
+    if(pipeline_cache)
+        vkDestroyPipelineCache(device,pipeline_cache,nullptr);
+
     if(desc_pool)
         vkDestroyDescriptorPool(device,desc_pool,nullptr);
 
