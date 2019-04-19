@@ -206,6 +206,8 @@ Instance::Instance(VkInstance i,CharPointerList &el)
 
         for(uint32_t i=0;i<gpu_count;i++)
             physical_devices.Add(new PhysicalDevice(inst,pd_list[i]));
+
+        delete[] pd_list;
     }
 }
 
