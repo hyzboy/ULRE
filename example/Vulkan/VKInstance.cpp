@@ -121,23 +121,23 @@ Instance *CreateInstance(const UTF8String &app_name)
     ext_list.Add(HGL_VK_SURFACE_EXTENSION_NAME);            //此宏在VKSurfaceExtensionName.h中定义
     ext_list.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     ext_list.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    
+
     const char *validation_layers[]=
     {
 //        "VK_LAYER_LUNARG_api_dump",
-        "VK_LAYER_LUNARG_assistant_layer",
+//        "VK_LAYER_LUNARG_assistant_layer",
         "VK_LAYER_LUNARG_core_validation",
-        "VK_LAYER_LUNARG_device_simulation",
-        "VK_LAYER_LUNARG_monitor",
+//        "VK_LAYER_LUNARG_device_simulation",
+//        "VK_LAYER_LUNARG_monitor",
         "VK_LAYER_LUNARG_object_tracker",
         "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_LUNARG_parameter_validation",
 //        "VK_LAYER_LUNARG_vktrace",
 
-        "VK_LAYER_KHRONOS_validation",
+//        "VK_LAYER_KHRONOS_validation",
 
-//        "VK_LAYER_GOOGLE_unique_objects",
-//        "VK_LAYER_GOOGLE_threading"
+        "VK_LAYER_GOOGLE_unique_objects",
+        "VK_LAYER_GOOGLE_threading"
     };
 
     inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -276,7 +276,7 @@ Device *Instance::CreateRenderDevice(Window *win,const PhysicalDevice *pd)
 
     if(!pd)
         return(nullptr);
-    
+
     return VK_NAMESPACE::CreateRenderDevice(inst,pd,win);
 }
 VK_NAMESPACE_END
