@@ -62,6 +62,14 @@ Device::Device(DeviceAttribute *da)
     attr=da;
     current_framebuffer=0;
     image_acquired_semaphore=this->CreateSem();
+
+    present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present.pNext = nullptr;
+    present.swapchainCount = 1;
+    present.pSwapchains = &attr->swap_chain;
+    present.pWaitSemaphores = nullptr;
+    present.waitSemaphoreCount = 0;
+    present.pResults = nullptr;
 }
 Device::~Device()
 {
@@ -224,5 +232,48 @@ Semaphore *Device::CreateSem()
 bool Device::AcquireNextImage()
 {
     return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*image_acquired_semaphore,VK_NULL_HANDLE,&current_framebuffer)==VK_SUCCESS);
+}
+
+bool Device::QueueSubmit(CommandBuffer *buf,Fence *fence)
+{
+    if(!buf||!fence)
+        return(false);
+
+    VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo submit_info[1] = {};
+
+    VkSemaphore sem=*image_acquired_semaphore;
+    VkCommandBuffer cmd_bufs=*buf;
+
+    submit_info[0].pNext = nullptr;
+    submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info[0].waitSemaphoreCount = 1;
+    submit_info[0].pWaitSemaphores = &sem;
+    submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
+    submit_info[0].commandBufferCount = 1;
+    submit_info[0].pCommandBuffers = &cmd_bufs;
+    submit_info[0].signalSemaphoreCount = 0;
+    submit_info[0].pSignalSemaphores = nullptr;
+
+    return(vkQueueSubmit(attr->graphics_queue, 1, submit_info, *fence)==VK_SUCCESS);
+}
+
+bool Device::Wait(Fence *f,bool wait_all,uint64_t time_out)
+{
+    VkResult res;
+    VkFence fence=*f;
+
+    do {
+        res = vkWaitForFences(attr->device, 1, &fence, wait_all, time_out);
+    } while (res == VK_TIMEOUT);
+
+    return(true);
+}
+
+bool Device::QueuePresent()
+{
+    present.pImageIndices = &current_framebuffer;
+
+    return(vkQueuePresentKHR(attr->present_queue, &present)==VK_SUCCESS);
 }
 VK_NAMESPACE_END
