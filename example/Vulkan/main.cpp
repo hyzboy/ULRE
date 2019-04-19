@@ -12,6 +12,7 @@
 #include"VKCommandBuffer.h"
 #include"VKFence.h"
 #include"VKSemaphore.h"
+#include"VKFormat.h"
 
 #include<io.h>
 #include<fcntl.h>
@@ -71,6 +72,41 @@ vulkan::Shader *LoadShader(VkDevice device)
     return(nullptr);
 }
 
+constexpr float vertex_data[]={0.0f,0.5f,   -0.5f,-0.5f,    0.5f,-0.5f };
+constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
+
+vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev)
+{
+    vulkan::VertexBuffer *vb=dev->CreateVBO(FMT_RG32F,6*sizeof(float));
+    vulkan::VertexBuffer *cb=dev->CreateVBO(FMT_RGB32F,9*sizeof(float));
+
+    {
+        float *p=(float *)vb->Map();
+
+        memcpy(p,vertex_data,6*sizeof(float));
+
+        vb->Unmap();
+    }
+
+    {
+        float *p=(float *)cb->Map();
+
+        memcpy(p,color_data,9*sizeof(float));
+
+        cb->Unmap();
+    }
+
+    vulkan::VertexInput *vi=new vulkan::VertexInput();
+
+    constexpr uint32_t position_shader_location=0;          //对应shader中的layout(locaiton=0，暂时这样写
+    constexpr uint32_t color_shader_location=1;
+
+    vi->Add(position_shader_location,   vb);
+    vi->Add(color_shader_location,      cb);
+
+    return vi;
+}
+
 int main(int,char **)
 {
     #ifdef _DEBUG
@@ -125,7 +161,8 @@ int main(int,char **)
     vulkan::Fence *fence=device->CreateFence();
     vulkan::Semaphore *sem=device->CreateSem();
 
-    vulkan::VertexInput vi;
+    vulkan::VertexInput *vi=CreateVertexBuffer(device);
+
     vulkan::PipelineCreater pc(device);
     vulkan::RenderPass *rp=device->CreateRenderPass();
 
@@ -134,22 +171,23 @@ int main(int,char **)
     vulkan::PipelineLayout *pl=CreatePipelineLayout(device->GetDevice(),dsl);
 
     pc.Set(shader);
-    pc.Set(&vi);
+    pc.Set(vi);
     pc.Set(PRIM_TRIANGLES);
     pc.Set(*pl);
     pc.Set(*rp);
 
     vulkan::Pipeline *pipeline=pc.Create();
 
-    if(pipeline)
-    {
-        delete pipeline;
-    }
+    if(!pipeline)
+        return(-4);
+    
+    delete pipeline;
 
     delete sem;
     delete fence;
     delete rp;
 
+    delete vi;
     delete ubo;
 
     delete cmd_buf;
