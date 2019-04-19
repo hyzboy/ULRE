@@ -129,21 +129,6 @@ CommandBuffer *Device::CreateCommandBuffer()
     return(new CommandBuffer(attr->device,attr->cmd_pool,cmd_buf));
 }
 
-//DescriptorSet *Device::CreateDescSet(int count)
-//{
-//    VkDescriptorSetAllocateInfo alloc_info[1];
-//    alloc_info[0].sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-//    alloc_info[0].pNext=nullptr;
-//    alloc_info[0].descriptorPool=rsa->desc_pool;
-//    alloc_info[0].descriptorSetCount=count;
-//    alloc_info[0].pSetLayouts=desc_layout.data();
-//
-//    VkDescriptorSet desc_set;
-//    
-//    desc_set.resize(count);
-//    res=vkAllocateDescriptorSets(info.device,alloc_info,info.desc_set.data());
-//}
-
 RenderPass *Device::CreateRenderPass()
 {
     VkAttachmentDescription attachments[2];

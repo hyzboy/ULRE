@@ -60,23 +60,15 @@ public:
 
 #undef CREATE_BUFFER_OBJECT
 
-    CommandBuffer *     CreateCommandBuffer ();
+    CommandBuffer * CreateCommandBuffer();
+    RenderPass *    CreateRenderPass();
+    Fence *         CreateFence();
+    Semaphore *     CreateSem();
 
-//    DescriptorSet *     CreateDescSet(int);
-
-    RenderPass *CreateRenderPass();
-
-    Fence *CreateFence();
-
-    Semaphore *CreateSem();
-
-    bool AcquireNextImage();
-
-    bool QueueSubmit(CommandBuffer *,Fence *);
-
-    bool Wait(Fence *,bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
-
-    bool QueuePresent();
+    bool AcquireNextImage   ();
+    bool QueueSubmit        (CommandBuffer *,Fence *);
+    bool Wait               (Fence *,bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
+    bool QueuePresent       ();
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
