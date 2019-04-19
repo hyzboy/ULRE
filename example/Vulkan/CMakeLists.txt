@@ -26,6 +26,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
+								VKPrimivate.h
 								VKInstance.h
 								VKPhysicalDevice.h
 								VKCommandBuffer.h

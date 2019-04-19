@@ -100,10 +100,11 @@ bool PipelineCreater::Set(const VertexInput *vi)
 
 bool PipelineCreater::Set(const VkPrimitiveTopology topology,bool restart)
 {
-    if(topology<VK_PRIMITIVE_TOPOLOGY_BEGIN_RANGE||topology>VK_PRIMITIVE_TOPOLOGY_END_RANGE)return(false);
+    if(topology<VK_PRIMITIVE_TOPOLOGY_BEGIN_RANGE||topology>VK_PRIMITIVE_TOPOLOGY_END_RANGE)
+        if(topology!=PRIM_RECTANGLE)return(false);
 
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = topology;
+    inputAssembly.topology = (topology==PRIM_RECTANGLE?VK_PRIMITIVE_TOPOLOGY_POINT_LIST:topology);
     inputAssembly.primitiveRestartEnable = restart;
 
     pipelineInfo.pInputAssemblyState = &inputAssembly;
