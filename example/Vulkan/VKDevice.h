@@ -12,6 +12,7 @@ class Buffer;
 class VertexBuffer;
 class CommandBuffer;
 class RenderPass;
+class Fence;
 
 class Device
 {
@@ -60,6 +61,8 @@ public:
 //    DescriptorSet *     CreateDescSet(int);
 
     RenderPass *CreateRenderPass();
+
+    Fence *CreateFence();
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
