@@ -36,6 +36,7 @@ class PipelineCreater
     VkViewport viewport;
     VkRect2D scissor;
     VkPipelineViewportStateCreateInfo viewportState;
+    VkPipelineDepthStencilStateCreateInfo depthStencilState;
 
     VkPipelineRasterizationStateCreateInfo rasterizer;
 
@@ -43,6 +44,9 @@ class PipelineCreater
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment;
     VkPipelineColorBlendStateCreateInfo colorBlending;
+
+    VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
+    VkPipelineDynamicStateCreateInfo dynamicState;
 
 private:
 
