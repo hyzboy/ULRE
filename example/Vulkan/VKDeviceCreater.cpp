@@ -37,12 +37,12 @@ namespace
         float queue_priorities[1]={0.0};
 
         VkDeviceQueueCreateInfo queue_info;
-        queue_info.queueFamilyIndex=graphics_family;
         queue_info.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queue_info.pNext=nullptr;
+        queue_info.queueFamilyIndex=graphics_family;
         queue_info.queueCount=1;
         queue_info.pQueuePriorities=queue_priorities;
-        queue_info.flags=VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT;
+        queue_info.flags=0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
 
         VkDeviceCreateInfo create_info={};
         const char *ext_list[1]={VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -284,7 +284,7 @@ namespace
 
         VkDescriptorPoolCreateInfo dp_create_info={};
         dp_create_info.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        dp_create_info.pNext=NULL;
+        dp_create_info.pNext=nullptr;
         dp_create_info.maxSets=sets_count;
         dp_create_info.poolSizeCount=DESC_POOL_COUNT;
         dp_create_info.pPoolSizes=pool_size;
