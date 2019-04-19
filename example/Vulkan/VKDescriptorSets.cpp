@@ -7,7 +7,7 @@ DescriptorSets::~DescriptorSets()
     // 这里注释掉是因为从来不见那里的范便有FREE过，但又有vkFreeDescriptorSets这个函数。如发现此注释，请使用工具查是否有资源泄露
     {
         //const int count=desc_sets.GetCount();
-    
+
         //if(count>0)
         //    vkFreeDescriptorSets(device->GetDevice(),device->GetDescriptorPool(),count,desc_sets.GetData());
     }
@@ -82,7 +82,7 @@ DescriptorSetLayout *DescriptorSetLayoutCreater::Create()
 
     dsl_list.SetCount(count);
     if(vkCreateDescriptorSetLayout(device->GetDevice(),&descriptor_layout, nullptr, dsl_list.GetData())!=VK_SUCCESS)
-        return(false);
+        return(nullptr);
 
     return(new DescriptorSetLayout(device,dsl_list));
 }
