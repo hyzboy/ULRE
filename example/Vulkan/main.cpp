@@ -14,9 +14,7 @@
 #include"VKSemaphore.h"
 #include"VKFormat.h"
 
-#include<io.h>
-#include<fcntl.h>
-#include<stdlib.h>
+#include<fstream>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -26,22 +24,21 @@ VkShaderModule fs=nullptr;
 
 char *LoadFile(const char *filename,uint32_t &file_length)
 {
-    int fp=_open(filename,O_RDONLY|O_BINARY);
+    std::ifstream fs;
 
-    if(fp==-1)return(nullptr);
+    fs.open(filename,std::ios_base::binary);
 
-    file_length=_filelength(fp);
+    if(!fs.is_open())
+        return(nullptr);
+
+    fs.seekg(0,std::ios_base::end);
+    file_length=fs.tellg();
     char *data=new char[file_length];
 
-    const int result=_read(fp,data,file_length);
-    
-    if(result!=file_length)
-    {
-        delete[] data;
-        return(nullptr);
-    }
+    fs.seekg(0,std::ios_base::beg);
+    fs.read(data,file_length);
 
-    _close(fp);
+    fs.close();
     return data;
 }
 
@@ -180,7 +177,7 @@ int main(int,char **)
 
     if(!pipeline)
         return(-4);
-    
+
     delete pipeline;
 
     delete sem;
