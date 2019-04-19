@@ -11,6 +11,7 @@
 #include"VKPipeline.h"
 #include"VKCommandBuffer.h"
 #include"VKFence.h"
+#include"VKSemaphore.h"
 
 #include<io.h>
 #include<fcntl.h>
@@ -122,6 +123,7 @@ int main(int,char **)
         return -3;
 
     vulkan::Fence *fence=device->CreateFence();
+    vulkan::Semaphore *sem=device->CreateSem();
 
     vulkan::VertexInput vi;
     vulkan::PipelineCreater pc(device);
@@ -144,6 +146,7 @@ int main(int,char **)
         delete pipeline;
     }
 
+    delete sem;
     delete fence;
     delete rp;
 
