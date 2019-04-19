@@ -19,14 +19,14 @@ class Device
 {
     DeviceAttribute *attr;
 
+    Semaphore *image_acquired_semaphore;
+    uint32_t current_framebuffer;
+
 private:
 
     friend Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
 
-    Device(DeviceAttribute *da)
-    {
-        attr=da;
-    }
+    Device(DeviceAttribute *da);
 
 public:
 
@@ -66,6 +66,8 @@ public:
     Fence *CreateFence();
 
     Semaphore *CreateSem();
+
+    bool AcquireNextImage();
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE

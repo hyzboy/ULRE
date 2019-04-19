@@ -21,6 +21,8 @@ private:
 public:
 
     ~Semaphore();
+
+    operator VkSemaphore(){return sem;}
 };//class Semaphore
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SEMAPHORE_INCLUDE
