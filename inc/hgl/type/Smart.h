@@ -455,5 +455,35 @@ namespace hgl
 			return(*this);
 		}
 	};//template<typename T> class WeakArray
+
+    template<typename T> class AutoDelete
+    {
+        T *obj;
+
+    public:
+
+        AutoDelete(T *o)
+        {
+            obj=o;
+        }
+
+        ~AutoDelete()
+        {
+            if(obj)
+                delete obj;
+        }
+
+        void operator = (T *o)
+        {
+            obj=o;
+        }
+
+        T *operator -> (){return obj;}
+
+        void Clear()
+        {
+            obj=nullptr;
+        }
+    };//template<typename T> class AutoDelete
 }//namespace hgl
 #endif//HGL_SMART_INCLUDE
