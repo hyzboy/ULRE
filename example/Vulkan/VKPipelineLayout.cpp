@@ -10,30 +10,23 @@ PipelineLayout::~PipelineLayout()
 
 PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl)
 {
-    if(!dsl)return(nullptr);
-
-    if(dsl->GetCount()<=0)return(nullptr);
-
-    DescriptorSets *desc_sets=dsl->CreateSets();
-
-    if(!desc_sets)
-        return(nullptr);
+    const uint32_t layout_count=(dsl?dsl->GetCount():0);
+    const VkDescriptorSetLayout *layouts=(layout_count>0?dsl->GetData():nullptr);
 
     VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
     pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pPipelineLayoutCreateInfo.pNext = nullptr;
     pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
     pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-    pPipelineLayoutCreateInfo.setLayoutCount = dsl->GetCount();
-    pPipelineLayoutCreateInfo.pSetLayouts = dsl->GetData();
+    pPipelineLayoutCreateInfo.setLayoutCount = layout_count;
+    pPipelineLayoutCreateInfo.pSetLayouts = layouts;
 
     VkPipelineLayout pipeline_layout;
 
     if(vkCreatePipelineLayout(dev, &pPipelineLayoutCreateInfo, nullptr, &pipeline_layout)!=VK_SUCCESS)
-    {
-        delete desc_sets;
         return(nullptr);
-    }
+
+    DescriptorSets *desc_sets=(layout_count>0?dsl->CreateSets():nullptr);
 
     return(new PipelineLayout(dev,pipeline_layout,desc_sets));
 }

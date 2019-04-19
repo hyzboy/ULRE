@@ -67,15 +67,20 @@ void DescriptorSetLayoutCreater::Bind(const int binding,VkDescriptorType desc_ty
 
 DescriptorSetLayout *DescriptorSetLayoutCreater::Create()
 {
+    const int count=layout_binding_list.GetCount();
+
+    if(count<=0)
+        return(nullptr);
+
     VkDescriptorSetLayoutCreateInfo descriptor_layout = {};
     descriptor_layout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptor_layout.pNext = nullptr;
-    descriptor_layout.bindingCount = layout_binding_list.GetCount();
+    descriptor_layout.bindingCount = count;
     descriptor_layout.pBindings = layout_binding_list.GetData();
 
     List<VkDescriptorSetLayout> dsl_list;
 
-    dsl_list.SetCount(layout_binding_list.GetCount());
+    dsl_list.SetCount(count);
     if(vkCreateDescriptorSetLayout(device->GetDevice(),&descriptor_layout, nullptr, dsl_list.GetData())!=VK_SUCCESS)
         return(false);
 

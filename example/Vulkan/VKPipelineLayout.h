@@ -23,8 +23,8 @@ public:
 
     operator VkPipelineLayout (){return layout;}
 
-    const uint32_t          GetDescriptorSetCount   ()const{return desc_sets->GetCount();}
-    const VkDescriptorSet * GetDescriptorSets       ()const{return desc_sets->GetData();}
+    const uint32_t          GetDescriptorSetCount   ()const{return desc_sets?desc_sets->GetCount():0;}
+    const VkDescriptorSet * GetDescriptorSets       ()const{return desc_sets?desc_sets->GetData():nullptr;}
 };//class PipelineLayout
 
 PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl);
