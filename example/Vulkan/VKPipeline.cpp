@@ -14,6 +14,7 @@ PipelineCreater::PipelineCreater(Device *dev)
 {
     device=dev->GetDevice();
     extent=dev->GetExtent();
+    cache=dev->GetPipelineCache();
 
     hgl_zero(pipelineInfo);
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -133,7 +134,7 @@ Pipeline *PipelineCreater::Create()
 {
     VkPipeline graphicsPipeline;
 
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) 
+    if (vkCreateGraphicsPipelines(device, cache, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) 
         return(nullptr);
 
     return(new Pipeline(device,graphicsPipeline));

@@ -40,6 +40,7 @@ public:
     const   VkExtent2D &    GetExtent           ()const {return attr->swapchain_extent;}
 
     VkDescriptorPool        GetDescriptorPool   ()      {return attr->desc_pool;}
+    VkPipelineCache         GetPipelineCache    ()      {return attr->pipeline_cache;}
 
 public:
 
