@@ -21,6 +21,8 @@ private:
 public:
 
     ~Fence();
+
+    operator VkFence(){return fence;}
 };//class Fence
 VK_NAMESPACE_END
 #endif//HGL_VULKAN_GRAPH_FENCE_INCLUDE

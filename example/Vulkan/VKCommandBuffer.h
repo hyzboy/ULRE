@@ -23,6 +23,8 @@ public:
     CommandBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb);
     ~CommandBuffer();
 
+    operator VkCommandBuffer(){return cmd_buf;}
+
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetClearColor(float r,float g,float b,float a=1.0f)
     {

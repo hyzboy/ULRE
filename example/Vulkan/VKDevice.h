@@ -22,6 +22,8 @@ class Device
     Semaphore *image_acquired_semaphore;
     uint32_t current_framebuffer;
 
+    VkPresentInfoKHR present;
+
 private:
 
     friend Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
@@ -68,6 +70,12 @@ public:
     Semaphore *CreateSem();
 
     bool AcquireNextImage();
+
+    bool QueueSubmit(CommandBuffer *,Fence *);
+
+    bool Wait(Fence *,bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
+
+    bool QueuePresent();
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
