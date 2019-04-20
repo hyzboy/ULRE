@@ -191,7 +191,7 @@ Instance::Instance(VkInstance i,CharPointerList &el)
 
         create_info.sType=VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
         create_info.pNext=nullptr;
-        create_info.flags=VK_DEBUG_REPORT_ERROR_BIT_EXT|VK_DEBUG_REPORT_WARNING_BIT_EXT;
+        create_info.flags=VK_DEBUG_REPORT_ERROR_BIT_EXT|VK_DEBUG_REPORT_WARNING_BIT_EXT|VK_DEBUG_REPORT_DEBUG_BIT_EXT|VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
         create_info.pfnCallback=dbgFunc;
         create_info.pUserData=nullptr;
 
