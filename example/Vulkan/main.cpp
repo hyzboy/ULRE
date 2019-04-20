@@ -16,6 +16,10 @@
 #include"VKFramebuffer.h"
 
 #include<fstream>
+#ifdef WIN32
+#else
+#include<unistd.h>
+#endif//
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -170,7 +174,7 @@ int main(int,char **)
         return -3;
 
     vulkan::Semaphore *sem=device->CreateSem();
-    
+
     vulkan::VertexInput *vi=CreateVertexBuffer(device);
 
     vulkan::PipelineCreater pc(device);
