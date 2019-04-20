@@ -20,6 +20,8 @@ namespace hgl
 					case WM_CLOSE:
 						PostQuitMessage(0);
 						break;
+                    case WM_PAINT:
+                        return 0;
 					default:
 						break;
 				}

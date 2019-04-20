@@ -15,12 +15,16 @@ class RenderPass;
 class Fence;
 class Semaphore;
 
+#define MAX_FRAMES_IN_FLIGHT 2
+
 class Device
 {
     DeviceAttribute *attr;
 
     Semaphore *image_acquired_semaphore;
-    uint32_t current_framebuffer;
+    Fence *draw_fence;
+    
+    uint32_t current_frame;
 
     VkPresentInfoKHR present;
 
@@ -44,8 +48,11 @@ public:
 
 public:
 
-    VkImageView             GetColorImageView   (int index=-1)  {return GetObject(attr->sc_image_views,index==-1?current_framebuffer:index);}
-    VkImageView             GetDepthImageView   ()              {return attr->depth.view;}
+    const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_image_views.GetCount();}
+            VkImageView     GetColorImageView       (int index) {return GetObject(attr->sc_image_views,index);}
+            VkImageView     GetDepthImageView       ()          {return attr->depth.view;}
+
+    const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
 
 public:
 
@@ -71,8 +78,8 @@ public:
     Semaphore *     CreateSem();
 
     bool AcquireNextImage   ();
-    bool QueueSubmit        (CommandBuffer *,Fence *);
-    bool Wait               (Fence *,bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
+    bool QueueSubmit        (CommandBuffer *);
+    bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
     bool QueuePresent       ();
 };//class Device
 VK_NAMESPACE_END
