@@ -10,7 +10,6 @@
 #include"VKPipelineLayout.h"
 #include"VKPipeline.h"
 #include"VKCommandBuffer.h"
-#include"VKFence.h"
 #include"VKSemaphore.h"
 #include"VKFormat.h"
 #include"VKFramebuffer.h"
@@ -215,6 +214,9 @@ int main(int,char **)
     device->QueuePresent();
 
     wait_seconds(3);
+
+    delete vertex_buffer;
+    delete color_buffer;
 
     for(int i=0;i<image_count;i++)
         delete fb[i];
