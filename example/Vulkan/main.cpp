@@ -214,7 +214,7 @@ int main(int,char **)
     device->Wait();
     device->QueuePresent();
 
-    wait_seconds(1);
+    wait_seconds(3);
 
     for(int i=0;i<image_count;i++)
         delete fb[i];

@@ -44,7 +44,7 @@ public:
     bool Begin(RenderPass *rp,Framebuffer *fb);
     bool Bind(Pipeline *p);
     bool Bind(PipelineLayout *pl);
-    bool Bind(VertexInput *vi,const VkDeviceSize offset=0);
+    bool Bind(VertexInput *vi);
     void Draw(const uint32_t vertex_count);
     void Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex=0,const uint32_t first_instance=0);
     bool End();
