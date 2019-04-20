@@ -83,17 +83,17 @@ bool CommandBuffer::Bind(PipelineLayout *pl)
     return(true);
 }
 
-bool CommandBuffer::Bind(VertexInput *vi,const VkDeviceSize offset)
+bool CommandBuffer::Bind(VertexInput *vi)
 {
     if(!vi)
         return(false);
 
-    const List<VkBuffer> &buf_list=vi->GetBufferList();
+    const uint count=vi->GetCount();
 
-    if(buf_list.GetCount()<=0)
+    if(count<=0)
         return(false);
 
-    vkCmdBindVertexBuffers(cmd_buf,0,buf_list.GetCount(),buf_list.GetData(),&offset);
+    vkCmdBindVertexBuffers(cmd_buf,0,count,vi->GetBuffer(),vi->GetOffset());
     return(true);
 }
 

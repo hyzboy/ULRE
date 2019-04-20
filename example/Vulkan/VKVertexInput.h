@@ -31,6 +31,7 @@ class VertexInput
 
     ObjectList<VertexInputBuffer> vib_list;
     List<VkBuffer> buf_list;
+    List<VkDeviceSize> buf_offset;
 
     List<VkVertexInputBindingDescription> binding_list;
     List<VkVertexInputAttributeDescription> attribute_list;
@@ -40,12 +41,13 @@ public:
     VertexInput()=default;
     virtual ~VertexInput()=default;
 
-    bool Add(uint32_t location,VertexBuffer *,bool instance=false);
+    bool Add(uint32_t location,VertexBuffer *,bool instance=false,VkDeviceSize offset=0);
 
 public:
 
-    const uint GetCount()const{return buf_list.GetCount();}
-    const List<VkBuffer> &GetBufferList()const{return buf_list;}
+    const uint              GetCount    ()const{return buf_list.GetCount();}
+    const VkBuffer *        GetBuffer   ()const{return buf_list.GetData();}
+    const VkDeviceSize *    GetOffset   ()const{return buf_offset.GetData();}
 
     const VkPipelineVertexInputStateCreateInfo GetPipelineVertexInputStateCreateInfo()const;
 };//class VertexInput
