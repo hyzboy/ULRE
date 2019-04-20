@@ -76,8 +76,6 @@ Device::Device(DeviceAttribute *da)
 }
 Device::~Device()
 {
-    const uint32_t sc_count=attr->sc_image_views.GetCount();
-
     delete image_acquired_semaphore;
     delete draw_fence;
 
@@ -149,15 +147,15 @@ RenderPass *Device::CreateRenderPass()
     attachments[0].finalLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     attachments[0].flags=0;
 
-    //attachments[1].format=attr->depth.format;
-    //attachments[1].samples=VK_SAMPLE_COUNT_1_BIT;
-    //attachments[1].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
-    //attachments[1].storeOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    //attachments[1].stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    //attachments[1].stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    //attachments[1].initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-    //attachments[1].finalLayout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    //attachments[1].flags=0;
+    attachments[1].format=attr->depth.format;
+    attachments[1].samples=VK_SAMPLE_COUNT_1_BIT;
+    attachments[1].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachments[1].storeOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachments[1].stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachments[1].initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+    attachments[1].finalLayout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    attachments[1].flags=0;
 
     VkAttachmentReference color_reference={0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     VkAttachmentReference depth_reference={1,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
@@ -170,7 +168,7 @@ RenderPass *Device::CreateRenderPass()
     subpass.colorAttachmentCount=1;
     subpass.pColorAttachments=&color_reference;
     subpass.pResolveAttachments=nullptr;
-    subpass.pDepthStencilAttachment=nullptr;//&depth_reference;
+    subpass.pDepthStencilAttachment=&depth_reference;
     subpass.preserveAttachmentCount=0;
     subpass.pPreserveAttachments=nullptr;
 
@@ -185,7 +183,7 @@ RenderPass *Device::CreateRenderPass()
     VkRenderPassCreateInfo rp_info={};
     rp_info.sType=VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     rp_info.pNext=nullptr;
-    rp_info.attachmentCount=1;
+    rp_info.attachmentCount=2;
     rp_info.pAttachments=attachments;
     rp_info.subpassCount=1;
     rp_info.pSubpasses=&subpass;

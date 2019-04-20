@@ -201,7 +201,7 @@ int main(int,char **)
     vulkan::Framebuffer **fb=new vulkan::Framebuffer *[image_count];
 
     for(int i=0;i<image_count;i++)
-        fb[i]=vulkan::CreateFramebuffer(device,rp,device->GetColorImageView(i));
+        fb[i]=vulkan::CreateFramebuffer(device,rp,device->GetColorImageView(i),device->GetDepthImageView());
 
     cmd_buf->Begin(rp,fb[0]);
     cmd_buf->Bind(pipeline);
