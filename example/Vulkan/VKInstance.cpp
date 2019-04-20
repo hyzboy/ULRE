@@ -125,16 +125,19 @@ Instance *CreateInstance(const UTF8String &app_name)
     const char *validation_layers[]=
     {
 //        "VK_LAYER_LUNARG_api_dump",
-//        "VK_LAYER_LUNARG_assistant_layer",
+        "VK_LAYER_LUNARG_assistant_layer",
         "VK_LAYER_LUNARG_core_validation",
 //        "VK_LAYER_LUNARG_device_simulation",
-//        "VK_LAYER_LUNARG_monitor",
+        "VK_LAYER_LUNARG_monitor",
         "VK_LAYER_LUNARG_object_tracker",
         "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_LUNARG_parameter_validation",
 //        "VK_LAYER_LUNARG_vktrace",
+//        "VK_LAYER_RENDERDOC_Capture",
 
-//        "VK_LAYER_KHRONOS_validation",
+        "VK_LAYER_KHRONOS_validation",
+
+//        "VK_LAYER_NV_nsight-sys",
 
         "VK_LAYER_GOOGLE_unique_objects",
         "VK_LAYER_GOOGLE_threading"

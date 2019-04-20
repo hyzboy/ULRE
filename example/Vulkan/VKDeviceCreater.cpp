@@ -1,6 +1,7 @@
 ﻿#include"VKDevice.h"
 #include"VKInstance.h"
 #include"VKPhysicalDevice.h"
+#include"VKFramebuffer.h"
 
 VK_NAMESPACE_BEGIN
 VkSurfaceKHR CreateRenderDevice(VkInstance,Window *);
@@ -109,11 +110,8 @@ namespace
         swapchain_ci.clipped=true;
         swapchain_ci.imageColorSpace=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
         swapchain_ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        swapchain_ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-        swapchain_ci.queueFamilyIndexCount=0;
-        swapchain_ci.pQueueFamilyIndices=nullptr;
 
-        uint32_t queueFamilyIndices[2]={(uint32_t)rsa->graphics_family, (uint32_t)rsa->present_family};
+        uint32_t queueFamilyIndices[2]={rsa->graphics_family, rsa->present_family};
         if(rsa->graphics_family!=rsa->present_family)
         {
             // If the graphics and present queues are from different queue families,
@@ -123,6 +121,10 @@ namespace
             swapchain_ci.imageSharingMode=VK_SHARING_MODE_CONCURRENT;
             swapchain_ci.queueFamilyIndexCount=2;
             swapchain_ci.pQueueFamilyIndices=queueFamilyIndices;
+        }
+        else
+        {
+            swapchain_ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;            
         }
 
         VkSwapchainKHR swap_chain;

@@ -19,6 +19,20 @@ PipelineCreater::PipelineCreater(Device *dev)
     hgl_zero(pipelineInfo);
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
+    {
+        vis_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vis_create_info.pNext = nullptr;
+        vis_create_info.flags = 0;
+
+        vis_create_info.vertexBindingDescriptionCount = 0;
+        vis_create_info.pVertexBindingDescriptions = nullptr;
+
+        vis_create_info.vertexAttributeDescriptionCount = 0;
+        vis_create_info.pVertexAttributeDescriptions = nullptr;
+
+        pipelineInfo.pVertexInputState=&vis_create_info;
+    }
+
     viewport.x = 0.0f;
     viewport.y = 0.0f;
     viewport.width = extent.width;
@@ -42,8 +56,8 @@ PipelineCreater::PipelineCreater(Device *dev)
     depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencilState.pNext = nullptr;
     depthStencilState.flags = 0;
-    depthStencilState.depthTestEnable = VK_TRUE;
-    depthStencilState.depthWriteEnable = VK_TRUE;
+    depthStencilState.depthTestEnable = VK_FALSE;
+    depthStencilState.depthWriteEnable = VK_FALSE;
     depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencilState.depthBoundsTestEnable = VK_FALSE;
     depthStencilState.minDepthBounds = 0;
@@ -66,8 +80,8 @@ PipelineCreater::PipelineCreater(Device *dev)
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.cullMode = VK_CULL_MODE_FRONT_AND_BACK;
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     rasterizer.depthBiasConstantFactor = 0;
     rasterizer.depthBiasClamp = 0;
@@ -117,6 +131,8 @@ PipelineCreater::PipelineCreater(Device *dev)
     dynamicState.flags = 0;
     dynamicState.pDynamicStates = dynamicStateEnables;
     dynamicState.dynamicStateCount = 0;
+    dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
+    dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
 
     pipelineInfo.pDynamicState=&dynamicState;
 
@@ -147,7 +163,6 @@ bool PipelineCreater::Set(const VertexInput *vi)
 
     vis_create_info=vertex_input->GetPipelineVertexInputStateCreateInfo();
 
-    pipelineInfo.pVertexInputState=&vis_create_info;
     return(true);
 }
 
@@ -157,6 +172,8 @@ bool PipelineCreater::Set(const VkPrimitiveTopology topology,bool restart)
         if(topology!=PRIM_RECTANGLE)return(false);
 
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.pNext = nullptr;
+    inputAssembly.flags = 0;
     inputAssembly.topology = (topology==PRIM_RECTANGLE?VK_PRIMITIVE_TOPOLOGY_POINT_LIST:topology);
     inputAssembly.primitiveRestartEnable = restart;
 

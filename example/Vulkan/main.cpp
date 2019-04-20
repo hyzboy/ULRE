@@ -70,40 +70,43 @@ vulkan::Shader *LoadShader(VkDevice device)
     return(nullptr);
 }
 
-constexpr float vertex_data[]={0.0f,0.5f,   -0.5f,-0.5f,    0.5f,-0.5f };
-constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
-
-vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev)
-{
-    vulkan::VertexBuffer *vb=dev->CreateVBO(FMT_RG32F,6*sizeof(float));
-    vulkan::VertexBuffer *cb=dev->CreateVBO(FMT_RGB32F,9*sizeof(float));
-
-    {
-        float *p=(float *)vb->Map();
-
-        memcpy(p,vertex_data,6*sizeof(float));
-
-        vb->Unmap();
-    }
-
-    {
-        float *p=(float *)cb->Map();
-
-        memcpy(p,color_data,9*sizeof(float));
-
-        cb->Unmap();
-    }
-
-    vulkan::VertexInput *vi=new vulkan::VertexInput();
-
-    constexpr uint32_t position_shader_location=0;          //对应shader中的layout(locaiton=0，暂时这样写
-    constexpr uint32_t color_shader_location=1;
-
-    vi->Add(position_shader_location,   vb);
-    vi->Add(color_shader_location,      cb);
-
-    return vi;
-}
+//constexpr float vertex_data[]={0.0f,0.5f,   -0.5f,-0.5f,    0.5f,-0.5f };
+//constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
+//
+//vulkan::VertexBuffer *vertex_buffer=nullptr;
+//vulkan::VertexBuffer *color_buffer=nullptr;
+//
+//vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev)
+//{
+//    vertex_buffer=dev->CreateVBO(FMT_RG32F,6*sizeof(float));
+//    color_buffer=dev->CreateVBO(FMT_RGB32F,9*sizeof(float));
+//
+//    {
+//        float *p=(float *)vertex_buffer->Map();
+//
+//        memcpy(p,vertex_data,6*sizeof(float));
+//
+//        vertex_buffer->Unmap();
+//    }
+//
+//    {
+//        float *p=(float *)color_buffer->Map();
+//
+//        memcpy(p,color_data,9*sizeof(float));
+//
+//        color_buffer->Unmap();
+//    }
+//
+//    vulkan::VertexInput *vi=new vulkan::VertexInput();
+//
+//    constexpr uint32_t position_shader_location=0;          //对应shader中的layout(locaiton=0，暂时这样写
+//    constexpr uint32_t color_shader_location=1;
+//
+//    vi->Add(position_shader_location,   vertex_buffer);
+//    vi->Add(color_shader_location,      color_buffer);
+//
+//    return vi;
+//}
 
 void wait_seconds(int seconds) {
 #ifdef WIN32
@@ -166,10 +169,9 @@ int main(int,char **)
     if(!shader)
         return -3;
 
-    vulkan::Fence *fence=device->CreateFence();
     vulkan::Semaphore *sem=device->CreateSem();
 
-    vulkan::VertexInput *vi=CreateVertexBuffer(device);
+//    vulkan::VertexInput *vi=CreateVertexBuffer(device);
 
     vulkan::PipelineCreater pc(device);
     vulkan::RenderPass *rp=device->CreateRenderPass();
@@ -179,7 +181,7 @@ int main(int,char **)
     vulkan::PipelineLayout *pl=CreatePipelineLayout(device->GetDevice(),dsl);
 
     pc.Set(shader);
-    pc.Set(vi);
+    //pc.Set(vi);
     pc.Set(PRIM_TRIANGLES);
     pc.Set(*pl);
     pc.Set(*rp);
@@ -189,31 +191,43 @@ int main(int,char **)
     if(!pipeline)
         return(-4);
 
-    device->AcquireNextImage();     //这样才会得到current_framebuffer的值，下面的device->GetColorImageView()才会正确
+    device->AcquireNextImage();
 
-    vulkan::Framebuffer *fb=vulkan::CreateFramebuffer(device,rp,device->GetColorImageView(),device->GetDepthImageView());
+    const int image_count=device->GetSwapChainImageCount();
+    vulkan::Framebuffer **fb=new vulkan::Framebuffer *[image_count];
 
-    cmd_buf->Begin(rp,fb);
+    for(int i=0;i<image_count;i++)
+        fb[i]=vulkan::CreateFramebuffer(device,rp,device->GetColorImageView(i));
+
+    cmd_buf->Begin(rp,fb[0]);
     cmd_buf->Bind(pipeline);
     cmd_buf->Bind(pl);
-    cmd_buf->Bind(vi);
+//    cmd_buf->Bind(vi);
     cmd_buf->Draw(3);
     cmd_buf->End();
 
-    device->QueueSubmit(cmd_buf,fence);
-    device->Wait(fence);
+    device->QueueSubmit(cmd_buf);
+    device->Wait();
     device->QueuePresent();
 
-    wait_seconds(3);
+    wait_seconds(1);
+
+    for(int i=0;i<image_count;i++)
+        delete fb[i];
+    delete[] fb;
 
     delete pipeline;
 
+    delete pl;
+    delete dsl;
+
     delete sem;
-    delete fence;
     delete rp;
 
-    delete vi;
+//    delete vi;
 //    delete ubo;
+
+    delete shader;
 
     delete cmd_buf;
     delete device;

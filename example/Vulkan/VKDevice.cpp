@@ -60,8 +60,11 @@ namespace
 Device::Device(DeviceAttribute *da)
 {
     attr=da;
-    current_framebuffer=0;
+    
+    current_frame=0;
+
     image_acquired_semaphore=this->CreateSem();
+    draw_fence=this->CreateFence();
 
     present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present.pNext = nullptr;
@@ -73,7 +76,11 @@ Device::Device(DeviceAttribute *da)
 }
 Device::~Device()
 {
+    const uint32_t sc_count=attr->sc_image_views.GetCount();
+
     delete image_acquired_semaphore;
+    delete draw_fence;
+
     delete attr;
 }
 
@@ -142,15 +149,15 @@ RenderPass *Device::CreateRenderPass()
     attachments[0].finalLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     attachments[0].flags=0;
 
-    attachments[1].format=attr->depth.format;
-    attachments[1].samples=VK_SAMPLE_COUNT_1_BIT;
-    attachments[1].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
-    attachments[1].storeOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[1].stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[1].finalLayout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    attachments[1].flags=0;
+    //attachments[1].format=attr->depth.format;
+    //attachments[1].samples=VK_SAMPLE_COUNT_1_BIT;
+    //attachments[1].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
+    //attachments[1].storeOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    //attachments[1].stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    //attachments[1].stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    //attachments[1].initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+    //attachments[1].finalLayout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    //attachments[1].flags=0;
 
     VkAttachmentReference color_reference={0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     VkAttachmentReference depth_reference={1,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
@@ -163,19 +170,27 @@ RenderPass *Device::CreateRenderPass()
     subpass.colorAttachmentCount=1;
     subpass.pColorAttachments=&color_reference;
     subpass.pResolveAttachments=nullptr;
-    subpass.pDepthStencilAttachment=&depth_reference;
+    subpass.pDepthStencilAttachment=nullptr;//&depth_reference;
     subpass.preserveAttachmentCount=0;
     subpass.pPreserveAttachments=nullptr;
+
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     VkRenderPassCreateInfo rp_info={};
     rp_info.sType=VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     rp_info.pNext=nullptr;
-    rp_info.attachmentCount=2;
+    rp_info.attachmentCount=1;
     rp_info.pAttachments=attachments;
     rp_info.subpassCount=1;
     rp_info.pSubpasses=&subpass;
-    rp_info.dependencyCount=0;
-    rp_info.pDependencies=nullptr;
+    rp_info.dependencyCount=1;
+    rp_info.pDependencies=&dependency;
 
     VkRenderPass render_pass;
 
@@ -192,12 +207,12 @@ Fence *Device::CreateFence()
     fenceInfo.pNext = nullptr;
     fenceInfo.flags = 0;
 
-    VkFence drawFence;
+    VkFence fence;
 
-    if(vkCreateFence(attr->device, &fenceInfo, nullptr, &drawFence)!=VK_SUCCESS)
+    if(vkCreateFence(attr->device, &fenceInfo, nullptr, &fence)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new Fence(attr->device,drawFence));
+    return(new Fence(attr->device,fence));
 }
 
 Semaphore *Device::CreateSem()
@@ -216,48 +231,48 @@ Semaphore *Device::CreateSem()
 
 bool Device::AcquireNextImage()
 {
-    return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*image_acquired_semaphore,VK_NULL_HANDLE,&current_framebuffer)==VK_SUCCESS);
+    return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*image_acquired_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
 }
 
-bool Device::QueueSubmit(CommandBuffer *buf,Fence *fence)
+bool Device::QueueSubmit(CommandBuffer *buf)
 {
-    if(!buf||!fence)
+    if(!buf)
         return(false);
 
     VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    VkSubmitInfo submit_info[1] = {};
+    VkSubmitInfo submit_info = {};
 
-    VkSemaphore sem=*image_acquired_semaphore;
+    VkSemaphore wait_sem=*image_acquired_semaphore;
     VkCommandBuffer cmd_bufs=*buf;
 
-    submit_info[0].pNext = nullptr;
-    submit_info[0].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info[0].waitSemaphoreCount = 1;
-    submit_info[0].pWaitSemaphores = &sem;
-    submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
-    submit_info[0].commandBufferCount = 1;
-    submit_info[0].pCommandBuffers = &cmd_bufs;
-    submit_info[0].signalSemaphoreCount = 0;
-    submit_info[0].pSignalSemaphores = nullptr;
+    submit_info.pNext = nullptr;
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = &wait_sem;
+    submit_info.pWaitDstStageMask = &pipe_stage_flags;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &cmd_bufs;
+    submit_info.signalSemaphoreCount = 0;
+    submit_info.pSignalSemaphores = nullptr;
 
-    return(vkQueueSubmit(attr->graphics_queue, 1, submit_info, *fence)==VK_SUCCESS);
+    return(vkQueueSubmit(attr->graphics_queue, 1, &submit_info, *draw_fence)==VK_SUCCESS);
 }
 
-bool Device::Wait(Fence *f,bool wait_all,uint64_t time_out)
+bool Device::Wait(bool wait_all,uint64_t time_out)
 {
-    VkResult res;
-    VkFence fence=*f;
+    VkFence fence=*draw_fence;
 
-    do {
-        res = vkWaitForFences(attr->device, 1, &fence, wait_all, time_out);
-    } while (res == VK_TIMEOUT);
+    vkWaitForFences(attr->device, 1, &fence, wait_all, time_out);
+    vkResetFences(attr->device,1,&fence);
 
     return(true);
 }
 
 bool Device::QueuePresent()
 {
-    present.pImageIndices = &current_framebuffer;
+    present.pImageIndices = &current_frame;
+    present.waitSemaphoreCount = 0;
+    present.pWaitSemaphores = nullptr;
 
     return(vkQueuePresentKHR(attr->present_queue, &present)==VK_SUCCESS);
 }
