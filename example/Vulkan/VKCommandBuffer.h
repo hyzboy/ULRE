@@ -17,6 +17,7 @@ class CommandBuffer
 
     VkClearValue clear_values[2];
     VkRect2D render_area;
+    VkViewport viewport;
 
 public:
 

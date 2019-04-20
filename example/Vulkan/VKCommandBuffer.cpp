@@ -53,6 +53,17 @@ bool CommandBuffer::Begin(RenderPass *rp,Framebuffer *fb)
     rp_begin.pClearValues = clear_values;
 
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+
+    viewport.x=0;
+    viewport.y=0;
+    viewport.minDepth=0.0f;
+    viewport.maxDepth=1.0f;
+    viewport.width=render_area.extent.width;
+    viewport.height=render_area.extent.height;
+
+    vkCmdSetViewport(cmd_buf,0,1,&viewport);
+    vkCmdSetScissor(cmd_buf,0,1,&render_area);
+
     return(true);
 }
 
