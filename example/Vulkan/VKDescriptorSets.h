@@ -54,9 +54,9 @@ public:
     DescriptorSetLayoutCreater(Device *dev):device(dev){}
     ~DescriptorSetLayoutCreater()=default;
 
-    void Bind(const int binding,VkDescriptorType,VkShaderStageFlagBits);
+    void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);
 
-#define DESC_SET_BIND_FUNC(name,vkname) void Bind##name(const int binding,VkShaderStageFlagBits stage_flag){Bind(binding,VK_DESCRIPTOR_TYPE_##vkname,stage_flag);}
+#define DESC_SET_BIND_FUNC(name,vkname) void Bind##name(const uint32_t binding,VkShaderStageFlagBits stage_flag){Bind(binding,VK_DESCRIPTOR_TYPE_##vkname,stage_flag);}
 
     DESC_SET_BIND_FUNC(Sampler,     SAMPLER);
     DESC_SET_BIND_FUNC(UBO,         UNIFORM_BUFFER);

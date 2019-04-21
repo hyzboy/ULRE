@@ -4,6 +4,7 @@
 #include"VKDevice.h"
 #include"VKBuffer.h"
 #include"VKShader.h"
+#include"VKImageView.h"
 #include"VKVertexInput.h"
 #include"VKDescriptorSets.h"
 #include"VKRenderPass.h"
@@ -174,10 +175,24 @@ int main(int,char **)
 
     vulkan::Semaphore *sem=device->CreateSem();
 
+
     vulkan::VertexInput *vi=CreateVertexBuffer(device);
+    const int image_count=device->GetSwapChainImageCount();
+    vulkan::Framebuffer **fb=new vulkan::Framebuffer *[image_count];
+
+    vulkan::ImageView *color_iv=device->GetColorImageView(0);
+    vulkan::ImageView *depth_iv=device->GetDepthImageView();
+
+    vulkan::RenderPass *rp=device->CreateRenderPass(color_iv->GetFormat(),depth_iv->GetFormat());
+
+    for(int i=0;i<image_count;i++)
+    {
+        color_iv=device->GetColorImageView(i);
+
+        fb[i]=vulkan::CreateFramebuffer(device,rp,color_iv,depth_iv);
+    }
 
     vulkan::PipelineCreater pc(device);
-    vulkan::RenderPass *rp=device->CreateRenderPass();
 
     vulkan::DescriptorSetLayoutCreater dslc(device);
     vulkan::DescriptorSetLayout *dsl=dslc.Create();
@@ -195,12 +210,6 @@ int main(int,char **)
         return(-4);
 
     device->AcquireNextImage();
-
-    const int image_count=device->GetSwapChainImageCount();
-    vulkan::Framebuffer **fb=new vulkan::Framebuffer *[image_count];
-
-    for(int i=0;i<image_count;i++)
-        fb[i]=vulkan::CreateFramebuffer(device,rp,device->GetColorImageView(i),device->GetDepthImageView());
 
     cmd_buf->Begin(rp,fb[0]);
     cmd_buf->Bind(pipeline);

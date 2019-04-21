@@ -53,7 +53,7 @@ DescriptorSets *DescriptorSetLayout::CreateSets()const
     return(new DescriptorSets(device,desc_set));
 }
 
-void DescriptorSetLayoutCreater::Bind(const int binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
+void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
     VkDescriptorSetLayoutBinding layout_binding = {};
     layout_binding.binding = binding;

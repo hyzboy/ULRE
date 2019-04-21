@@ -49,8 +49,8 @@ public:
 public:
 
     const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_image_views.GetCount();}
-            VkImageView     GetColorImageView       (int index) {return GetObject(attr->sc_image_views,index);}
-            VkImageView     GetDepthImageView       ()          {return attr->depth.view;}
+            ImageView      *GetColorImageView       (int index) {return attr->sc_image_views[index];}
+            ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
     const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
 
@@ -73,7 +73,7 @@ public:
 #undef CREATE_BUFFER_OBJECT
 
     CommandBuffer * CreateCommandBuffer();
-    RenderPass *    CreateRenderPass();
+    RenderPass *    CreateRenderPass(VkFormat color_format,VkFormat depth_format);
     Fence *         CreateFence();
     Semaphore *     CreateSem();
 
