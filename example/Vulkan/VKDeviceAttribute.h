@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include"VK.h"
+#include"VKImageView.h"
 
 VK_NAMESPACE_BEGIN
 
@@ -38,7 +39,7 @@ struct DeviceAttribute
     VkSwapchainKHR                      swap_chain      =nullptr;
 
     List<VkImage>                       sc_images;
-    List<VkImageView>                   sc_image_views;
+    ObjectList<ImageView>               sc_image_views;
 
     struct
     {
@@ -46,7 +47,7 @@ struct DeviceAttribute
 
         VkImage         image   =nullptr;
         VkDeviceMemory  mem     =nullptr;
-        VkImageView     view    =nullptr;
+        ImageView *     view    =nullptr;
     }depth;
 
     VkDescriptorPool                    desc_pool       =nullptr;

@@ -1,17 +1,27 @@
 ﻿#include"VKFramebuffer.h"
 #include"VKDevice.h"
+#include"VKImageView.h"
 #include"VKRenderPass.h"
+
 VK_NAMESPACE_BEGIN
 Framebuffer::~Framebuffer()
 {
     vkDestroyFramebuffer(device,frame_buffer,nullptr);
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,VkImageView color,VkImageView depth)
+Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *color,ImageView *depth)
 {
-    if(!dev||!rp)return(nullptr);
-
+    if(!dev)return(nullptr);
+    if(!rp)return(nullptr);
     if(!color&&!depth)return(nullptr);
+
+    if(color)
+        if(rp->GetColorFormat()!=color->GetFormat())
+            return(nullptr);
+
+    if(depth)
+        if(rp->GetDepthFormat()!=depth->GetFormat())
+            return(nullptr);
 
     const VkExtent2D extent=dev->GetExtent();
     VkImageView attachments[2];
@@ -27,11 +37,11 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,VkImageView color,VkIm
 
     if(color)
     {
-        attachments[0]=color;
+        attachments[0]=*color;
 
         if(depth)
         {
-            attachments[1]=depth;
+            attachments[1]=*depth;
             fb_info.attachmentCount = 2;
         }
         else
@@ -39,7 +49,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,VkImageView color,VkIm
     }
     else
     {
-        attachments[0]=depth;
+        attachments[0]=*depth;
         fb_info.attachmentCount = 1;
     }
 

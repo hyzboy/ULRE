@@ -1,5 +1,6 @@
 ﻿#include"VKDeviceAttribute.h"
 #include"VKPhysicalDevice.h"
+#include"VKImageView.h"
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -137,8 +138,7 @@ DeviceAttribute::~DeviceAttribute()
     if(desc_pool)
         vkDestroyDescriptorPool(device,desc_pool,nullptr);
 
-    if(depth.view)
-        vkDestroyImageView(device,depth.view,nullptr);
+    SAFE_CLEAR(depth.view);
 
     if(depth.image)
         vkDestroyImage(device,depth.image,nullptr);
@@ -146,20 +146,7 @@ DeviceAttribute::~DeviceAttribute()
     if(depth.mem)
         vkFreeMemory(device,depth.mem,nullptr);
 
-    {
-        const uint32_t iv_count=sc_image_views.GetCount();
-
-        if(iv_count>0)
-        {
-            VkImageView *iv=sc_image_views.GetData();
-
-            for(uint32_t i=0;i<iv_count;i++)
-            {
-                vkDestroyImageView(device,*iv,nullptr);
-                ++iv;
-            }
-        }
-    }
+    sc_image_views.Clear();
 
     if(swap_chain)
         vkDestroySwapchainKHR(device,swap_chain,nullptr);

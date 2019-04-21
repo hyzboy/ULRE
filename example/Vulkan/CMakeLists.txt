@@ -10,6 +10,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKFormat.cpp
 								VKInstance.cpp
 								VKPhysicalDevice.cpp
+								VKImageView.cpp
 								VKCommandBuffer.cpp
 								VKDeviceAttribute.cpp
 								VKDeviceCreater.cpp
@@ -31,6 +32,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKPrimivate.h
 								VKInstance.h
 								VKPhysicalDevice.h
+								VKImageView.h
 								VKCommandBuffer.h
 								VKSurfaceExtensionName.h
 								VKDeviceAttribute.h

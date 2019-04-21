@@ -62,7 +62,7 @@ public:
 
     const VkFormat GetFormat()const { return format; }
     const uint32_t GetStride()const { return stride; }
-    const uint32_t GetCount()const{return count;}
+    const uint32_t GetCount ()const { return count; }
 
     uint8_t *Map(uint32_t start=0,uint32_t size=0) override
     {
