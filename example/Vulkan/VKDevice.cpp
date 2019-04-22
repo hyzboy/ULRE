@@ -5,6 +5,7 @@
 #include"VKCommandBuffer.h"
 //#include"VKDescriptorSet.h"
 #include"VKRenderPass.h"
+#include"VKFramebuffer.h"
 #include"VKFence.h"
 #include"VKSemaphore.h"
 
@@ -74,9 +75,22 @@ Device::Device(DeviceAttribute *da)
     present.pWaitSemaphores = nullptr;
     present.waitSemaphoreCount = 0;
     present.pResults = nullptr;
+
+    {
+        const int sc_count=attr->sc_image_views.GetCount();
+
+        main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
+
+        for(int i=0;i<sc_count;i++)
+            main_fb.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
+    }
 }
 Device::~Device()
 {
+    main_fb.Clear();
+
+    delete main_rp;
+
     delete image_acquired_semaphore;
     delete draw_fence;
 

@@ -5,6 +5,7 @@
 #include"VK.h"
 #include"Window.h"
 #include"VKDeviceAttribute.h"
+#include"VKFramebuffer.h"
 
 VK_NAMESPACE_BEGIN
 struct PhysicalDevice;
@@ -23,6 +24,9 @@ class Device
 
     Semaphore *image_acquired_semaphore;
     Fence *draw_fence;
+
+    RenderPass *main_rp;
+    ObjectList<Framebuffer> main_fb;
     
     uint32_t current_frame;
 
@@ -53,6 +57,9 @@ public:
             ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
     const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
+
+            RenderPass *    GetRenderPass           ()          {return main_rp;}
+            Framebuffer *   GetFramebuffer          (int index) {return main_fb[index];}
 
 public:
 
