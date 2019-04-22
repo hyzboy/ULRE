@@ -24,7 +24,7 @@ PipelineCreater::PipelineCreater(Device *dev,RenderPass *rp)
             rp=dev->GetRenderPass();
 
         pipelineInfo.renderPass = *rp;
-        pipelineInfo.subpass = 0;
+        pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
     }
 
     {
