@@ -55,14 +55,13 @@ private:
 
 public:
 
-    PipelineCreater(Device *dev);
+    PipelineCreater(Device *dev,RenderPass *rp=nullptr);
     ~PipelineCreater()=default;
 
     bool Set(const Shader *);
     bool Set(const VertexInput *);
     bool Set(const VkPrimitiveTopology,bool=false);
     bool Set(VkPipelineLayout pl);
-    bool Set(VkRenderPass,uint32_t subpass=0);
 
     void SetViewport(   float x,float y,float w,float h){viewport.x=x;viewport.y=y;viewport.width=w;viewport.height=h;}
     void SetDepthRange( float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}

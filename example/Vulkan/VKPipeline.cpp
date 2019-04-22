@@ -10,7 +10,7 @@ Pipeline::~Pipeline()
     vkDestroyPipeline(device,pipeline,nullptr);
 }
 
-PipelineCreater::PipelineCreater(Device *dev)
+PipelineCreater::PipelineCreater(Device *dev,RenderPass *rp)
 {
     device=dev->GetDevice();
     extent=dev->GetExtent();
@@ -18,6 +18,14 @@ PipelineCreater::PipelineCreater(Device *dev)
 
     hgl_zero(pipelineInfo);
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+
+    {
+        if(!rp)
+            rp=dev->GetRenderPass();
+
+        pipelineInfo.renderPass = *rp;
+        pipelineInfo.subpass = 0;
+    }
 
     {
         vis_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -186,16 +194,6 @@ bool PipelineCreater::Set(VkPipelineLayout pl)
     if(!pl)return(false);
 
     pipelineInfo.layout = pl;
-    return(true);
-}
-
-bool PipelineCreater::Set(VkRenderPass rp,uint32_t subpass)
-{
-    if(!rp)return(false);
-
-    pipelineInfo.renderPass = rp;
-    pipelineInfo.subpass = subpass;
-
     return(true);
 }
 

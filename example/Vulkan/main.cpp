@@ -156,8 +156,6 @@ int main(int,char **)
         std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
     }
 
-    vulkan::CommandBuffer *cmd_buf=device->CreateCommandBuffer();
-
     //vulkan::Buffer *ubo=device->CreateUBO(1024);
 
     //uint8_t *p=ubo->Map();
@@ -183,15 +181,6 @@ int main(int,char **)
     vulkan::ImageView *color_iv=device->GetColorImageView(0);
     vulkan::ImageView *depth_iv=device->GetDepthImageView();
 
-    vulkan::RenderPass *rp=device->CreateRenderPass(color_iv->GetFormat(),depth_iv->GetFormat());
-
-    for(int i=0;i<image_count;i++)
-    {
-        color_iv=device->GetColorImageView(i);
-
-        fb[i]=vulkan::CreateFramebuffer(device,rp,color_iv,depth_iv);
-    }
-
     vulkan::PipelineCreater pc(device);
 
     vulkan::DescriptorSetLayoutCreater dslc(device);
@@ -202,7 +191,6 @@ int main(int,char **)
     pc.Set(vi);
     pc.Set(PRIM_TRIANGLES);
     pc.Set(*pl);
-    pc.Set(*rp);
 
     vulkan::Pipeline *pipeline=pc.Create();
 
@@ -211,7 +199,9 @@ int main(int,char **)
 
     device->AcquireNextImage();
 
-    cmd_buf->Begin(rp,fb[0]);
+    vulkan::CommandBuffer *cmd_buf=device->CreateCommandBuffer();
+
+    cmd_buf->Begin(device->GetRenderPass(),device->GetFramebuffer(0));
     cmd_buf->Bind(pipeline);
     cmd_buf->Bind(pl);
     cmd_buf->Bind(vi);
@@ -227,17 +217,12 @@ int main(int,char **)
     delete vertex_buffer;
     delete color_buffer;
 
-    for(int i=0;i<image_count;i++)
-        delete fb[i];
-    delete[] fb;
-
     delete pipeline;
 
     delete pl;
     delete dsl;
 
     delete sem;
-    delete rp;
 
     delete vi;
 //    delete ubo;
