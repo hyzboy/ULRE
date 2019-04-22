@@ -173,13 +173,7 @@ int main(int,char **)
 
     vulkan::Semaphore *sem=device->CreateSem();
 
-
     vulkan::VertexInput *vi=CreateVertexBuffer(device);
-    const int image_count=device->GetSwapChainImageCount();
-    vulkan::Framebuffer **fb=new vulkan::Framebuffer *[image_count];
-
-    vulkan::ImageView *color_iv=device->GetColorImageView(0);
-    vulkan::ImageView *depth_iv=device->GetDepthImageView();
 
     vulkan::PipelineCreater pc(device);
 
