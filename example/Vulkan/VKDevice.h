@@ -42,6 +42,8 @@ public:
 
     virtual ~Device();
 
+    operator VkDevice                           ()      {return attr->device;}
+
             VkSurfaceKHR    GetSurface          ()      {return attr->surface;}
             VkDevice        GetDevice           ()      {return attr->device;}
     const   PhysicalDevice *GetPhysicalDevice   ()const {return attr->physical_device;}

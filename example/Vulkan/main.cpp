@@ -179,7 +179,7 @@ int main(int,char **)
 
     vulkan::DescriptorSetLayoutCreater dslc(device);
     vulkan::DescriptorSetLayout *dsl=dslc.Create();
-    vulkan::PipelineLayout *pl=CreatePipelineLayout(device->GetDevice(),dsl);
+    vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,dsl);
 
     pc.Set(shader);
     pc.Set(vi);
