@@ -18,7 +18,9 @@ class RenderPass
 
     VkFormat color_format,depth_format;
 
-public:
+private:
+
+    friend class Device;
 
     RenderPass(VkDevice d,VkRenderPass rp,VkFormat cf,VkFormat df)
     {
@@ -27,6 +29,9 @@ public:
         color_format=cf;
         depth_format=df;
     }
+
+public:
+
     virtual ~RenderPass();
 
     operator VkRenderPass(){return render_pass;}
