@@ -2,41 +2,37 @@
 #define HGL_GRAPH_VULKAN_DESCRIPTOR_SETS_LAYOUT_INCLUDE
 
 #include"VK.h"
+#include<hgl/type/Map.h>
 VK_NAMESPACE_BEGIN
 class Device;
-class DescriptorSets
-{
-    Device *device;
-    List<VkDescriptorSet> desc_sets;
-
-public:
-
-    DescriptorSets(Device *dev,List<VkDescriptorSet> &ds):device(dev),desc_sets(ds){}
-    ~DescriptorSets();
-
-    const uint32_t          GetCount()const{return desc_sets.GetCount();}
-    const VkDescriptorSet * GetData()const{return desc_sets.GetData();}
-};//class DescriptorSets
 
 class DescriptorSetLayout
 {
     Device *device;
     List<VkDescriptorSetLayout> desc_set_layout_list;
+    List<VkDescriptorSet> desc_sets;
+
+    Map<uint32_t,int> binding_index;
 
 public:
 
-    DescriptorSetLayout(Device *dev,const List<VkDescriptorSetLayout> &dsl_list)
+    DescriptorSetLayout(Device *dev,const List<VkDescriptorSetLayout> &dsl_list,List<VkDescriptorSet> &ds_list,
+                        Map<uint32_t,int> &bi)
     {
         device=dev;
         desc_set_layout_list=dsl_list;
+        desc_sets=ds_list;
+        binding_index=bi;
     }
 
     ~DescriptorSetLayout();
 
-    const uint32_t                  GetCount()const{return desc_set_layout_list.GetCount();}
-    const VkDescriptorSetLayout *   GetData ()const{return desc_set_layout_list.GetData();}
+    const uint32_t                  GetCount    ()const{return desc_set_layout_list.GetCount();}
+    const VkDescriptorSetLayout *   GetLayouts  ()const{return desc_set_layout_list.GetData();}
 
-    DescriptorSets *CreateSets()const;
+    const List<VkDescriptorSet> &   GetSets     ()const{return desc_sets;}
+
+    bool UpdateBuffer(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
 };//class DescriptorSetLayout
 
 /**
@@ -48,6 +44,8 @@ class DescriptorSetLayoutCreater
     VkDescriptorSet desc_set;
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
+
+    Map<uint32_t,int> binding_index;
 
 public:
 

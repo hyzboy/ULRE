@@ -14,6 +14,7 @@
 #include"VKSemaphore.h"
 #include"VKFormat.h"
 #include"VKFramebuffer.h"
+#include<hgl/math/Math.h>
 
 #include<fstream>
 #ifdef WIN32
@@ -24,8 +25,16 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
+
 VkShaderModule vs=nullptr;
 VkShaderModule fs=nullptr;
+
+struct
+{
+    Matrix4f mvp;    
+}ubo_vs;
 
 char *LoadFile(const char *filename,uint32_t &file_length)
 {
@@ -74,7 +83,33 @@ vulkan::Shader *LoadShader(VkDevice device)
     return(nullptr);
 }
 
-constexpr float vertex_data[]={0.0f,0.5f,   -0.5f,-0.5f,    0.5f,-0.5f };
+vulkan::Buffer *CreateUBO(vulkan::Device *dev,vulkan::Shader *shader)
+{
+    {
+        const VkExtent2D extent=dev->GetExtent();
+
+        ubo_vs.mvp=ortho2d(extent.width,extent.height);
+    }
+
+    vulkan::Buffer *ubo=dev->CreateUBO(sizeof(ubo_vs));
+
+    uint8_t *p=ubo->Map();
+
+    if(p)
+    {
+        memcpy(p,&ubo_vs,sizeof(ubo_vs));
+        ubo->Unmap();
+    }
+
+    return ubo;
+}
+
+constexpr float vertex_data[]=
+{
+    SCREEN_WIDTH/2,SCREEN_HEIGHT/4,
+    SCREEN_WIDTH*3/4,SCREEN_HEIGHT*3/4,
+    SCREEN_WIDTH/4,SCREEN_HEIGHT*3/4
+};
 constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
 
 vulkan::VertexBuffer *vertex_buffer=nullptr;
@@ -131,7 +166,7 @@ int main(int,char **)
 
     Window *win=CreateRenderWindow(OS_TEXT("VulkanTest"));
 
-    win->Create(1280,720);
+    win->Create(SCREEN_WIDTH,SCREEN_HEIGHT);
 
     vulkan::Instance *inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
 
@@ -156,20 +191,12 @@ int main(int,char **)
         std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
     }
 
-    //vulkan::Buffer *ubo=device->CreateUBO(1024);
-
-    //uint8_t *p=ubo->Map();
-
-    //if(p)
-    //{
-    //    memset(p,0,1024);
-    //    ubo->Unmap();
-    //}
-
     vulkan::Shader *shader=LoadShader(device->GetDevice());
 
     if(!shader)
         return -3;
+
+    vulkan::Buffer *ubo=CreateUBO(device,shader);
 
     vulkan::Semaphore *sem=device->CreateSem();
 
@@ -178,7 +205,13 @@ int main(int,char **)
     vulkan::PipelineCreater pc(device);
 
     vulkan::DescriptorSetLayoutCreater dslc(device);
+
+    dslc.BindUBO(0,VK_SHADER_STAGE_VERTEX_BIT);
+
     vulkan::DescriptorSetLayout *dsl=dslc.Create();
+
+    dsl->UpdateBuffer(0,*ubo);
+
     vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,dsl);
 
     pc.Set(shader);
@@ -219,7 +252,7 @@ int main(int,char **)
     delete sem;
 
     delete vi;
-//    delete ubo;
+    delete ubo;
 
     delete shader;
 
