@@ -11,7 +11,7 @@ PipelineLayout::~PipelineLayout()
 PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl)
 {
     const uint32_t layout_count=(dsl?dsl->GetCount():0);
-    const VkDescriptorSetLayout *layouts=(layout_count>0?dsl->GetData():nullptr);
+    const VkDescriptorSetLayout *layouts=(layout_count>0?dsl->GetLayouts():nullptr);
 
     VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
     pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -26,8 +26,6 @@ PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl
     if(vkCreatePipelineLayout(dev, &pPipelineLayoutCreateInfo, nullptr, &pipeline_layout)!=VK_SUCCESS)
         return(nullptr);
 
-    DescriptorSets *desc_sets=(layout_count>0?dsl->CreateSets():nullptr);
-
-    return(new PipelineLayout(dev,pipeline_layout,desc_sets));
+    return(new PipelineLayout(dev,pipeline_layout,dsl->GetSets()));
 }
 VK_NAMESPACE_END

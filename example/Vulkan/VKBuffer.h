@@ -33,7 +33,9 @@ public:
 
     virtual ~Buffer();
 
-    VkBuffer GetBuffer(){return buf.buffer;}
+    operator VkBuffer                   (){return buf.buffer;}
+    operator VkDeviceMemory             (){return buf.memory;}
+    operator VkDescriptorBufferInfo *   (){return &buf.info;}
 
     virtual uint8_t *Map(uint32_t start=0,uint32_t size=0);
     void Unmap();

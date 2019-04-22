@@ -22,7 +22,7 @@ bool VertexInput::Add(uint32_t location,VertexBuffer *buf,bool instance,VkDevice
     attrib.offset=offset;
 
     vib_list.Add(new VertexInputBuffer(binding,attrib,buf));
-    buf_list.Add(buf->GetBuffer());
+    buf_list.Add(*buf);
     buf_offset.Add(offset);
 
     binding_list.Add(binding);

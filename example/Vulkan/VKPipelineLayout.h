@@ -9,13 +9,13 @@ class PipelineLayout
     VkDevice device;
     VkPipelineLayout layout;
 
-    const DescriptorSets *desc_sets;
+    List<VkDescriptorSet> desc_sets;
 
 private:
 
     friend PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl);
 
-    PipelineLayout(VkDevice dev,VkPipelineLayout pl,const DescriptorSets *ds){device=dev;layout=pl;desc_sets=ds;}
+    PipelineLayout(VkDevice dev,VkPipelineLayout pl,const List<VkDescriptorSet> &ds){device=dev;layout=pl;desc_sets=ds;}
 
 public:
 
@@ -23,8 +23,8 @@ public:
 
     operator VkPipelineLayout (){return layout;}
 
-    const uint32_t          GetDescriptorSetCount   ()const{return desc_sets?desc_sets->GetCount():0;}
-    const VkDescriptorSet * GetDescriptorSets       ()const{return desc_sets?desc_sets->GetData():nullptr;}
+    const uint32_t          GetDescriptorSetCount   ()const{return desc_sets.GetCount();}
+    const VkDescriptorSet * GetDescriptorSets       ()const{return desc_sets.GetData();}
 };//class PipelineLayout
 
 PipelineLayout *CreatePipelineLayout(VkDevice dev,const DescriptorSetLayout *dsl);
