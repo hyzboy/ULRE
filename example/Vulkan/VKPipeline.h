@@ -67,10 +67,14 @@ public:
     void SetDepthRange( float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}
     void SetScissor(    float l,float t,float w,float h){scissor.offset.x=l;scissor.offset.y=t;scissor.extent.width=w;scissor.extent.height=h;}
 
+    void SetDepthTest(  bool                dt)         {depthStencilState.depthTestEnable=dt;}
+    void SetDepthWrite( bool                dw)         {depthStencilState.depthWriteEnable=dw;}
+
     void SetDepthClamp( bool                dc)         {rasterizer.depthClampEnable=dc;}
     void SetDiscard(    bool                discard)    {rasterizer.rasterizerDiscardEnable=discard;}
     void SetPolygonMode(VkPolygonMode       pm)         {rasterizer.polygonMode =pm;}
     void SetCullMode(   VkCullModeFlagBits  cm)         {rasterizer.cullMode    =cm;}
+    void CloseCullFace()                                {rasterizer.cullMode    =VK_CULL_MODE_NONE;}
     void SetFrontFace(  VkFrontFace         ff)         {rasterizer.frontFace   =ff;}
     void SetDepthBias(  float               ConstantFactor,
                         float               Clamp,
