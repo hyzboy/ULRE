@@ -119,21 +119,59 @@ namespace hgl
         return m.Inverted();
     }
 
+    inline Matrix4f ortho(  float left_plane,
+                            float right_plane,
+                            float bottom_plane,
+                            float top_plane,
+                            float near_plane,
+                            float far_plane ) 
+    {
+        Matrix4f orthographic_projection_matrix = 
+        {
+            2.0f / (right_plane - left_plane),0.0f,0.0f,-(right_plane + left_plane) / (right_plane - left_plane),
+            0.0f,2.0f / (bottom_plane - top_plane),0.0f,-(bottom_plane + top_plane) / (bottom_plane - top_plane),
+            0.0f,0.0f,1.0f / (near_plane - far_plane),near_plane / (near_plane - far_plane),
+            0.0f,0.0f,0.0f,1.0f
+        };
+
+        return orthographic_projection_matrix;
+    }
     /**
      * 生成一个2D正角视图矩阵
      * @param width 宽
      * @param height 高
-     * @param top_to_bottom 从上到下(是否最顶部y轴为0，默认否)
      * @param znear 近平面z值
      * @param zfar 远平台z值
      */
-    inline Matrix4f ortho2d(float width,float height,bool top_to_bottom=false,float znear=0,float zfar=1)
+    inline Matrix4f ortho(float width,float height,float znear=0,float zfar=1)
     {
-        //MathGeoLib生成的2D正交矩阵中心是0,0，所以需要偏移
+        Matrix4f orthographic_projection_matrix = 
+        {
+            2.0f / width,   0.0f,           0.0f,                   -1,
+            0.0f,           2.0f / height,  0.0f,                   -1,
+            0.0f,           0.0f,           1.0f / (znear - zfar),  znear / (znear - zfar),
+            0.0f,           0.0f,           0.0f,                   1.0f
+        };
 
-        return Matrix4f::OpenGLOrthoProjRH(znear,zfar,width,height)
-              *Matrix4f::Scale(1,top_to_bottom?-1:1,1)
-              *Matrix4f::Translate(-(width/2.0f),-(height/2.0f),0);
+        return orthographic_projection_matrix;
+    }
+
+    inline Matrix4f perspective(float aspect_ratio,
+                                float field_of_view,
+                                float near_plane,
+                                float far_plane ) 
+    {
+        const float f = 1.0f / tan( hgl_ang2rad( 0.5f * field_of_view ) );
+
+        Matrix4f perspective_projection_matrix = 
+        {
+            f / aspect_ratio,   0.0f,   0.0f,                                   0.0f,
+            0.0f,               -f,     0.0f,                                   0.0f,
+            0.0f,               0.0f,   far_plane / (near_plane - far_plane),   (near_plane * far_plane) / (near_plane - far_plane),
+            0.0f,               0.0f,   -1.0f,                                  0.0f
+        };
+
+        return perspective_projection_matrix;
     }
 
     inline Matrix4f translate(const Vector3f &v)
