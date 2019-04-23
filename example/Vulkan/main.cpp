@@ -17,8 +17,7 @@
 #include<hgl/math/Math.h>
 
 #include<fstream>
-#ifdef WIN32
-#else
+#ifndef WIN32
 #include<unistd.h>
 #endif//
 
@@ -88,7 +87,7 @@ vulkan::Buffer *CreateUBO(vulkan::Device *dev,vulkan::Shader *shader)
     {
         const VkExtent2D extent=dev->GetExtent();
 
-        ubo_vs.mvp=ortho2d(extent.width,extent.height);
+        ubo_vs.mvp=ortho(extent.width,extent.height);
     }
 
     vulkan::Buffer *ubo=dev->CreateUBO(sizeof(ubo_vs));
@@ -106,9 +105,9 @@ vulkan::Buffer *CreateUBO(vulkan::Device *dev,vulkan::Shader *shader)
 
 constexpr float vertex_data[]=
 {
-    SCREEN_WIDTH/2,SCREEN_HEIGHT/4,
-    SCREEN_WIDTH*3/4,SCREEN_HEIGHT*3/4,
-    SCREEN_WIDTH/4,SCREEN_HEIGHT*3/4
+    SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25,
+    SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75,
+    SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75
 };
 constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
 
@@ -213,6 +212,10 @@ int main(int,char **)
     dsl->UpdateBuffer(0,*ubo);
 
     vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,dsl);
+
+    pc.SetDepthTest(false);
+    pc.SetDepthWrite(false);
+    pc.CloseCullFace();
 
     pc.Set(shader);
     pc.Set(vi);
