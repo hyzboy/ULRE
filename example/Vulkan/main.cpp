@@ -11,7 +11,6 @@
 #include"VKPipelineLayout.h"
 #include"VKPipeline.h"
 #include"VKCommandBuffer.h"
-#include"VKSemaphore.h"
 #include"VKFormat.h"
 #include"VKFramebuffer.h"
 #include<hgl/math/Math.h>
@@ -197,8 +196,6 @@ int main(int,char **)
 
     vulkan::Buffer *ubo=CreateUBO(device,shader);
 
-    vulkan::Semaphore *sem=device->CreateSem();
-
     vulkan::VertexInput *vi=CreateVertexBuffer(device);
 
     vulkan::PipelineCreater pc(device);
@@ -251,8 +248,6 @@ int main(int,char **)
 
     delete pl;
     delete dsl;
-
-    delete sem;
 
     delete vi;
     delete ubo;
