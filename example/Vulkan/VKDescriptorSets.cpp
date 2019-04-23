@@ -36,7 +36,7 @@ DescriptorSetLayout::~DescriptorSetLayout()
     DestroyDescriptorSetLayout(*device,desc_set_layout_list);
 }
 
-bool DescriptorSetLayout::UpdateBuffer(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
+bool DescriptorSetLayout::UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
 {
     int index;
     
@@ -46,13 +46,9 @@ bool DescriptorSetLayout::UpdateBuffer(const uint32_t binding,const VkDescriptor
     VkDescriptorSet set;
     if(!desc_sets.Get(index,set))
         return(false);
-    // Update the descriptor set determining the shader binding points
-    // For every binding point used in a shader there needs to be one
-    // descriptor set matching that binding point
 
     VkWriteDescriptorSet writeDescriptorSet = {};
 
-    // Binding 0 : Uniform buffer
     writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;    
     writeDescriptorSet.dstSet = set;
     writeDescriptorSet.descriptorCount = 1;
