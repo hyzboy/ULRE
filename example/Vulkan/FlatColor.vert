@@ -3,7 +3,7 @@
 layout(location = 0) in vec2 Vertex;
 layout(location = 1) in vec3 Color;
 
-layout (binding = 0) uniform UBO 
+layout (binding = 0) uniform MVPMatrix
 {
 	mat4 MVP;
 } ubo;

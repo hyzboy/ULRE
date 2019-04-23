@@ -32,7 +32,7 @@ public:
 
     const List<VkDescriptorSet> &   GetSets     ()const{return desc_sets;}
 
-    bool UpdateBuffer(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
+    bool UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
 };//class DescriptorSetLayout
 
 /**

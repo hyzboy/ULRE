@@ -202,11 +202,13 @@ int main(int,char **)
 
     vulkan::DescriptorSetLayoutCreater dslc(device);
 
-    dslc.BindUBO(0,VK_SHADER_STAGE_VERTEX_BIT);
+    const int mvp_binding=0;    //shader->GetBinding("MVPMatrix");          实现从材质shader文件中根据名称获取binding的功能
+
+    dslc.BindUBO(mvp_binding,VK_SHADER_STAGE_VERTEX_BIT);
 
     vulkan::DescriptorSetLayout *dsl=dslc.Create();
 
-    dsl->UpdateBuffer(0,*ubo);
+    dsl->UpdateUBO(mvp_binding,*ubo);
 
     vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,dsl);
 
