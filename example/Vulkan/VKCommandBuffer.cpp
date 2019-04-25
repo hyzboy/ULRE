@@ -3,6 +3,7 @@
 #include"VKFramebuffer.h"
 #include"VKPipeline.h"
 #include"VKPipelineLayout.h"
+#include"VKBuffer.h"
 #include"VKVertexInput.h"
 #include"VKDescriptorSets.h"
 
@@ -94,6 +95,12 @@ bool CommandBuffer::Bind(VertexInput *vi)
         return(false);
 
     vkCmdBindVertexBuffers(cmd_buf,0,count,vi->GetBuffer(),vi->GetOffset());
+
+    IndexBuffer *indices_buffer=vi->GetIndexBuffer();
+
+    if(indices_buffer)    
+        vkCmdBindIndexBuffer(cmd_buf,*indices_buffer,vi->GetIndexOffset(),indices_buffer->GetType());
+
     return(true);
 }
 void CommandBuffer::SetDepthBias(float constant_factor,float clamp,float slope_factor)
@@ -139,6 +146,16 @@ void CommandBuffer::Draw(const uint32_t vertex_count)
 void CommandBuffer::Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex,const uint32_t first_instance)
 {
     vkCmdDraw(cmd_buf,vertex_count,instance_count,first_vertex,first_instance);
+}
+
+void CommandBuffer::DrawIndexed(const uint32_t index_count)
+{
+    vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);
+}
+
+void CommandBuffer::DrawIndexed(const uint32_t index_count,const uint32_t instance_count,const uint32_t first_index,const uint32_t vertex_offset,const uint32_t first_instance)
+{
+    vkCmdDrawIndexed(cmd_buf,index_count,instance_count,first_index,vertex_offset,first_instance);
 }
 
 bool CommandBuffer::End()

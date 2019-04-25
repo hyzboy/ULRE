@@ -4,6 +4,7 @@
 #include"VK.h"
 VK_NAMESPACE_BEGIN
 class VertexBuffer;
+class IndexBuffer;
 
 /**
  * 顶点输入配置，类似于OpenGL的VAB<br>
@@ -29,12 +30,15 @@ class VertexInput
         }
     };
 
-    ObjectList<VertexInputBuffer> vib_list;
+    ObjectList<VertexInputBuffer> vib_list;    
     List<VkBuffer> buf_list;
     List<VkDeviceSize> buf_offset;
 
     List<VkVertexInputBindingDescription> binding_list;
     List<VkVertexInputAttributeDescription> attribute_list;
+
+    IndexBuffer *indices_buffer=nullptr;
+    VkDeviceSize indices_offset=0;
 
 public:
 
@@ -42,12 +46,22 @@ public:
     virtual ~VertexInput()=default;
 
     bool Add(uint32_t location,VertexBuffer *,bool instance=false,VkDeviceSize offset=0);
+    bool AddIndices(IndexBuffer *ib,VkDeviceSize offset=0)
+    {
+        if(!ib)return(false);
+
+        indices_buffer=ib;
+        indices_offset=offset;
+    }
 
 public:
 
     const uint              GetCount    ()const{return buf_list.GetCount();}
     const VkBuffer *        GetBuffer   ()const{return buf_list.GetData();}
     const VkDeviceSize *    GetOffset   ()const{return buf_offset.GetData();}
+
+          IndexBuffer *     GetIndexBuffer()const{return indices_buffer;}
+    const VkDeviceSize      GetIndexOffset()const{return indices_offset;}
 
     const VkPipelineVertexInputStateCreateInfo GetPipelineVertexInputStateCreateInfo()const;
 };//class VertexInput

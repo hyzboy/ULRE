@@ -65,6 +65,8 @@ public:
 
     void Draw(const uint32_t vertex_count);
     void Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex=0,const uint32_t first_instance=0);
+    void DrawIndexed(const uint32_t index_count);
+    void DrawIndexed(const uint32_t index_count,const uint32_t instance_count,const uint32_t first_index=0,const uint32_t vertex_offset=0,const uint32_t first_instance=0);
 };//class CommandBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
