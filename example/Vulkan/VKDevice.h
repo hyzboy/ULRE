@@ -11,6 +11,7 @@ VK_NAMESPACE_BEGIN
 struct PhysicalDevice;
 class Buffer;
 class VertexBuffer;
+class IndexBuffer;
 class CommandBuffer;
 class RenderPass;
 class Fence;
@@ -68,12 +69,12 @@ public:
 public:
 
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
-    VertexBuffer *      CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+    
+    VertexBuffer *      CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
 
-#define CREATE_FORMAT_BUFFER_OBJECT(LargeName,type)  VertexBuffer *Create##LargeName(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,format,count,sharing_mode);}
-    CREATE_FORMAT_BUFFER_OBJECT(VBO,VERTEX)
-    CREATE_FORMAT_BUFFER_OBJECT(IBO,INDEX)
-#undef CREATE_FORMAT_BUFFER_OBJECT
+    IndexBuffer *       CreateIBO(VkIndexType index_type,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+    IndexBuffer *       CreateIBO16(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,sharing_mode);}
+    IndexBuffer *       CreateIBO32(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,sharing_mode);}
 
 #define CREATE_BUFFER_OBJECT(LargeName,type)  Buffer *Create##LargeName(VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,sharing_mode);}
 
