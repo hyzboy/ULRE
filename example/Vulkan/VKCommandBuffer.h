@@ -26,11 +26,6 @@ public:
 
     operator VkCommandBuffer(){return cmd_buf;}
 
-    bool Begin(RenderPass *rp,Framebuffer *fb);
-    bool Bind(Pipeline *p);
-    bool Bind(PipelineLayout *pl);
-    bool Bind(VertexInput *vi);
-
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetClearColor(float r,float g,float b,float a=1.0f)
     {
@@ -45,7 +40,15 @@ public:
         clear_values[1].depthStencil.depth=d;
         clear_values[1].depthStencil.stencil=s;
     }
-    
+
+    bool Begin(RenderPass *rp,Framebuffer *fb);
+    bool Bind(Pipeline *p);
+    bool Bind(PipelineLayout *pl);
+    bool Bind(VertexInput *vi);
+    bool End();
+
+public:
+
     void SetDepthBias(float constant_factor,float clamp,float slope_factor);
     void SetDepthBounds(float min_db,float max_db);
     void SetStencilCompareMask(VkStencilFaceFlags faceMask,uint32_t compareMask);
@@ -56,9 +59,10 @@ public:
 
     void SetLineWidth(float);
 
+public:
+
     void Draw(const uint32_t vertex_count);
     void Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex=0,const uint32_t first_instance=0);
-    bool End();
 };//class CommandBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
