@@ -96,7 +96,41 @@ bool CommandBuffer::Bind(VertexInput *vi)
     vkCmdBindVertexBuffers(cmd_buf,0,count,vi->GetBuffer(),vi->GetOffset());
     return(true);
 }
+void CommandBuffer::SetDepthBias(float constant_factor,float clamp,float slope_factor)
+{
+    vkCmdSetDepthBias(cmd_buf,constant_factor,clamp,slope_factor);
+}
 
+void CommandBuffer::SetDepthBounds(float min_db,float max_db)
+{
+    vkCmdSetDepthBounds(cmd_buf,min_db,max_db);
+}
+
+void CommandBuffer::SetStencilCompareMask(VkStencilFaceFlags faceMask,uint32_t compareMask)
+{
+    vkCmdSetStencilCompareMask(cmd_buf,faceMask,compareMask);
+}
+
+void CommandBuffer::SetStencilWriteMask(VkStencilFaceFlags faceMask,uint32_t compareMask)
+{
+    vkCmdSetStencilWriteMask(cmd_buf,faceMask,compareMask);
+}
+
+void CommandBuffer::SetStencilReference(VkStencilFaceFlags faceMask,uint32_t compareMask)
+{
+    vkCmdSetStencilReference(cmd_buf,faceMask,compareMask);
+}
+
+void CommandBuffer::SetBlendConstants(const float constants[4])
+{
+    vkCmdSetBlendConstants(cmd_buf,constants);
+}
+
+void CommandBuffer::SetLineWidth(float line_width)
+{
+    vkCmdSetLineWidth(cmd_buf,line_width);
+}
+ 
 void CommandBuffer::Draw(const uint32_t vertex_count)
 {
     vkCmdDraw(cmd_buf,vertex_count,1,0,0);

@@ -26,6 +26,11 @@ public:
 
     operator VkCommandBuffer(){return cmd_buf;}
 
+    bool Begin(RenderPass *rp,Framebuffer *fb);
+    bool Bind(Pipeline *p);
+    bool Bind(PipelineLayout *pl);
+    bool Bind(VertexInput *vi);
+
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetClearColor(float r,float g,float b,float a=1.0f)
     {
@@ -40,11 +45,17 @@ public:
         clear_values[1].depthStencil.depth=d;
         clear_values[1].depthStencil.stencil=s;
     }
+    
+    void SetDepthBias(float constant_factor,float clamp,float slope_factor);
+    void SetDepthBounds(float min_db,float max_db);
+    void SetStencilCompareMask(VkStencilFaceFlags faceMask,uint32_t compareMask);
+    void SetStencilWriteMask(VkStencilFaceFlags faceMask,uint32_t compareMask);
+    void SetStencilReference(VkStencilFaceFlags faceMask,uint32_t compareMask);
 
-    bool Begin(RenderPass *rp,Framebuffer *fb);
-    bool Bind(Pipeline *p);
-    bool Bind(PipelineLayout *pl);
-    bool Bind(VertexInput *vi);
+    void SetBlendConstants(const float constants[4]);
+
+    void SetLineWidth(float);
+
     void Draw(const uint32_t vertex_count);
     void Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex=0,const uint32_t first_instance=0);
     bool End();
