@@ -102,9 +102,6 @@ vulkan::Buffer *CreateUBO(vulkan::Device *dev)
     return ubo;
 }
 
-constexpr uint32_t SHADER_LOCATION_POSITION =0;          //对应shader中的layout(locaiton=0，暂时这样写
-constexpr uint32_t SHADER_LOCATION_COLOR    =1;
-
 constexpr float vertex_data[]=
 {
     SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25,
@@ -112,16 +109,6 @@ constexpr float vertex_data[]=
     SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75
 };
 constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
-
-vulkan::VertexInputState *InitVertexInput()
-{
-    vulkan::VertexInputState *vis=new vulkan::VertexInputState();
-
-    vis->Add(SHADER_LOCATION_POSITION,  FMT_RG32F);
-    vis->Add(SHADER_LOCATION_COLOR,     FMT_RGB32F);
-
-    return vis;
-}
 
 vulkan::VertexBuffer *vertex_buffer=nullptr;
 vulkan::VertexBuffer *color_buffer=nullptr;
@@ -133,8 +120,8 @@ vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev,vulkan::VertexInputS
 
     vulkan::VertexInput *vi=new vulkan::VertexInput(vis);
 
-    vi->Set(SHADER_LOCATION_POSITION,   vertex_buffer);
-    vi->Set(SHADER_LOCATION_COLOR,      color_buffer);
+    vi->Set("Vertex",   vertex_buffer);
+    vi->Set("Color",    color_buffer);
 
     return vi;
 }
@@ -201,7 +188,7 @@ int main(int,char **)
 
     vulkan::Buffer *ubo=CreateUBO(device);
 
-    vulkan::VertexInputState *vis=InitVertexInput();
+    vulkan::VertexInputState *vis=shader->GetVIS();
 
     vulkan::VertexInput *vi=CreateVertexBuffer(device,vis);
 
@@ -259,7 +246,6 @@ int main(int,char **)
     delete dsl;
 
     delete vi;
-    delete vis;
     delete ubo;
 
     delete shader;

@@ -3,7 +3,7 @@
 
 VK_NAMESPACE_BEGIN
 
-void VertexInputState::Add(const uint32_t shader_location,const VkFormat format,uint32_t offset,bool instance)
+int VertexInputState::Add(const UTF8String &name,const uint32_t shader_location,const VkFormat format,uint32_t offset,bool instance)
 {
     const int binding_index=binding_list.GetCount();        //参考opengl vab,binding_index必须从0开始，紧密排列。对应在vkCmdBindVertexBuffer中的缓冲区索引
 
@@ -25,7 +25,35 @@ void VertexInputState::Add(const uint32_t shader_location,const VkFormat format,
     attrib->binding=binding_index;
     attrib->location=shader_location;
     attrib->format=format;
-    attrib->offset=offset;    
+    attrib->offset=offset;
+
+    stage_input_locations.Add(name,StageInput(binding_index,shader_location,format));
+
+    return binding_index;
+}
+
+const int VertexInputState::GetLocation(const UTF8String &name)const
+{
+    if(name.IsEmpty())return -1;
+
+    StageInput si;
+
+    if(!stage_input_locations.Get(name,si))
+        return -1;
+
+    return si.location;
+}
+
+const int VertexInputState::GetBinding(const UTF8String &name)const
+{
+    if(name.IsEmpty())return -1;
+
+    StageInput si;
+
+    if(!stage_input_locations.Get(name,si))
+        return -1;
+
+    return si.binding;
 }
 
 void VertexInputState::Write(VkPipelineVertexInputStateCreateInfo &vis) const
@@ -58,7 +86,7 @@ VertexInput::~VertexInput()
     delete[] buf_list;
 }
 
-bool VertexInput::Set(uint32_t index,VertexBuffer *buf,VkDeviceSize offset)
+bool VertexInput::Set(int index,VertexBuffer *buf,VkDeviceSize offset)
 {
     if(index<0||index>=buf_count)return(false);
 

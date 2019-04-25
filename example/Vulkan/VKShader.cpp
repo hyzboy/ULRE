@@ -1,53 +1,90 @@
 #include"VKShader.h"
+#include"VKVertexInput.h"
 #include"spirv_cross.hpp"
 
 VK_NAMESPACE_BEGIN
+const VkFormat GetVecFormat(const spirv_cross::SPIRType &type)
+{
+    if(type.basetype==spirv_cross::SPIRType::Float)
+    {
+        constexpr VkFormat format[4]={FMT_R32F,FMT_RG32F,FMT_RGB32F,FMT_RGB32F};
 
-void shader_dump(const void *spv_data,const uint32_t spv_size)
+        return format[type.vecsize-1];
+    }
+    else
+    if(type.basetype==spirv_cross::SPIRType::Half)
+    {
+        constexpr VkFormat format[4]={FMT_R16F,FMT_RG16F,FMT_RGB16F,FMT_RGB16F};
+
+        return format[type.vecsize-1];
+    }
+    else
+    if(type.basetype==spirv_cross::SPIRType::UInt)
+    {
+        constexpr VkFormat format[4]={FMT_R32U,FMT_RG32U,FMT_RGB32U,FMT_RGB32U};
+
+        return format[type.vecsize-1];
+    }
+    else
+    if(type.basetype==spirv_cross::SPIRType::Int)
+    {
+        constexpr VkFormat format[4]={FMT_R32I,FMT_RG32I,FMT_RGB32I,FMT_RGB32I};
+
+        return format[type.vecsize-1];
+    }
+    else
+    if(type.basetype==spirv_cross::SPIRType::UShort)
+    {
+        constexpr VkFormat format[4]={FMT_R16U,FMT_RG16U,FMT_RGB16U,FMT_RGB16U};
+
+        return format[type.vecsize-1];
+    }
+    else
+    if(type.basetype==spirv_cross::SPIRType::Short)
+    {
+        constexpr VkFormat format[4]={FMT_R16I,FMT_RG16I,FMT_RGB16I,FMT_RGB16I};
+
+        return format[type.vecsize-1];
+    }
+
+    return VK_FORMAT_UNDEFINED;
+}
+
+bool Shader::CreateVIS(const void *spv_data,const uint32_t spv_size)
 {
     spirv_cross::Compiler comp((const uint32_t *)spv_data,spv_size/sizeof(uint32_t));
 
     spirv_cross::ShaderResources res=comp.get_shader_resources();
 
-    for(auto &ref:res.sampled_images)
+    for(auto &si:res.stage_inputs)
     {
-        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
-        unsigned binding=comp.get_decoration(ref.id,spv::DecorationBinding);
-        const std::string name=comp.get_name(ref.id);
+        const spirv_cross::SPIRType &   type    =comp.get_type(si.type_id);
+        const VkFormat                  format  =GetVecFormat(type);
 
-        std::cout<<"sampled image ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
+        if(format==VK_FORMAT_UNDEFINED)
+            return(false);
+
+        const uint32_t                  location=comp.get_decoration(si.id,spv::DecorationLocation);
+        const UTF8String &              name    =comp.get_name(si.id).c_str();
+
+        const int binding=vertex_input_state->Add(name,location,format);        
+
     }
 
-    for(auto &ref:res.stage_inputs)
-    {
-        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
-        unsigned location=comp.get_decoration(ref.id,spv::DecorationLocation);
-        const std::string name=comp.get_name(ref.id);
+    return(true);
+}
 
-        std::cout<<"stage input ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
-    }
+Shader::Shader(VkDevice dev)
+{
+    device=dev;
 
-    for(auto &ref:res.uniform_buffers)
-    {
-        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
-        unsigned binding=comp.get_decoration(ref.id,spv::DecorationBinding);
-        const std::string name=comp.get_name(ref.id);
-
-        std::cout<<"UBO ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
-    }
-
-    for(auto &ref:res.stage_outputs)
-    {
-        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
-        unsigned location=comp.get_decoration(ref.id,spv::DecorationLocation);
-        const std::string name=comp.get_name(ref.id);
-
-        std::cout<<"stage output ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
-    }
+    vertex_input_state=new VertexInputState();
 }
 
 Shader::~Shader()
 {
+    delete vertex_input_state;
+
     const int count=shader_stage_list.GetCount();
 
     if(count>0)
@@ -63,7 +100,8 @@ Shader::~Shader()
 
 bool Shader::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
 {   
-    shader_dump(spv_data,spv_size);
+    if(shader_stage_bit==VK_SHADER_STAGE_VERTEX_BIT)
+        CreateVIS(spv_data,spv_size);
 
     VkPipelineShaderStageCreateInfo shader_stage;
     shader_stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -86,5 +124,11 @@ bool Shader::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_da
     shader_stage_list.Add(shader_stage);
 
     return(true);
+}
+
+void Shader::Clear()
+{
+    shader_stage_list.Clear();
+    vertex_input_state->Clear();
 }
 VK_NAMESPACE_END
