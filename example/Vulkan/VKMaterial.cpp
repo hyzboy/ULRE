@@ -1,4 +1,6 @@
 ﻿#include"VKMaterial.h"
+#include"VKDescriptorSets.h"
+#include"VKShader.h"
 VK_NAMESPACE_BEGIN
 Material::~Material()
 {
@@ -8,5 +10,6 @@ Material::~Material()
 
 MaterialInstance *Material::CreateInstance()
 {
+    return(nullptr);
 }
 VK_NAMESPACE_END

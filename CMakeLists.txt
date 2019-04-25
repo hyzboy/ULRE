@@ -15,11 +15,16 @@ check_system_version()
 set_compiler_param()
 set_output_directory()
 
+
 IF(WIN32)
 	add_subdirectory(3rdpty/glfw)
 	include_directories(3rdpty/glfw/include)
 
     include_directories(${Vulkan_INCLUDE_DIRS})
+	
+	SET(SPIRV_CROSS_PATH 3rdpty/SPIRV-Cross)
+	include_directories(${SPIRV_CROSS_PATH})
+	add_subdirectory(${SPIRV_CROSS_PATH})
 
 	SET(OPENGL_LIB	opengl32)
 ELSE()

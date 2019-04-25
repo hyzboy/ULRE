@@ -347,10 +347,10 @@ bool Device::QueuePresent()
     return(vkQueuePresentKHR(attr->present_queue, &present)==VK_SUCCESS);
 }
 
-Material *Device::CreateMaterial(Shader *shader)
-{
-    DescriptorSetLayoutCreater *dslc=new DescriptorSetLayoutCreater(this);
-
-    return(new Material(shader,dslc));
-}
+//Material *Device::CreateMaterial(Shader *shader)
+//{
+//    DescriptorSetLayoutCreater *dslc=new DescriptorSetLayoutCreater(this);
+//
+//    return(new Material(shader,dslc));
+//}
 VK_NAMESPACE_END

@@ -3,9 +3,9 @@
 layout(location = 0) in vec2 Vertex;
 layout(location = 1) in vec3 Color;
 
-layout (binding = 0) uniform MVPMatrix
+layout(binding = 0) uniform MVPMatrix
 {
-	mat4 MVP;
+    mat4 MVP;
 } ubo;
 
 layout(location = 0) out vec4 FragmentColor;

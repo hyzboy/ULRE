@@ -1,6 +1,51 @@
 #include"VKShader.h"
+#include"spirv_cross.hpp"
 
 VK_NAMESPACE_BEGIN
+
+void shader_dump(const void *spv_data,const uint32_t spv_size)
+{
+    spirv_cross::Compiler comp((const uint32_t *)spv_data,spv_size/sizeof(uint32_t));
+
+    spirv_cross::ShaderResources res=comp.get_shader_resources();
+
+    for(auto &ref:res.sampled_images)
+    {
+        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
+        unsigned binding=comp.get_decoration(ref.id,spv::DecorationBinding);
+        const std::string name=comp.get_name(ref.id);
+
+        std::cout<<"sampled image ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<std::endl;
+    }
+
+    for(auto &ref:res.stage_inputs)
+    {
+        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
+        unsigned location=comp.get_decoration(ref.id,spv::DecorationLocation);
+        const std::string name=comp.get_name(ref.id);
+
+        std::cout<<"stage input ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<std::endl;
+    }
+
+    for(auto &ref:res.uniform_buffers)
+    {
+        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
+        unsigned binding=comp.get_decoration(ref.id,spv::DecorationBinding);
+        const std::string name=comp.get_name(ref.id);
+
+        std::cout<<"UBO ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<std::endl;
+    }
+
+    for(auto &ref:res.stage_outputs)
+    {
+        unsigned set=comp.get_decoration(ref.id,spv::DecorationDescriptorSet);
+        unsigned location=comp.get_decoration(ref.id,spv::DecorationLocation);
+        const std::string name=comp.get_name(ref.id);
+
+        std::cout<<"stage output ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<std::endl;
+    }
+}
+
 Shader::~Shader()
 {
     const int count=shader_stage_list.GetCount();
@@ -18,6 +63,8 @@ Shader::~Shader()
 
 bool Shader::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
 {   
+    shader_dump(spv_data,spv_size);
+
     VkPipelineShaderStageCreateInfo shader_stage;
     shader_stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shader_stage.pNext=nullptr;
