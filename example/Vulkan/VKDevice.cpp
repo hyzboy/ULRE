@@ -98,7 +98,7 @@ Device::~Device()
     delete attr;
 }
 
-VertexBuffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,uint32_t count,VkSharingMode sharing_mode)
+VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
 
@@ -112,10 +112,28 @@ VertexBuffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkFormat format,
 
     VulkanBuffer vb;
 
-    if(!CreateVulkanBuffer(vb,attr,buf_usage,size,sharing_mode))
+    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,sharing_mode))
         return(nullptr);
 
     return(new VertexBuffer(attr->device,vb,format,stride,count));
+}
+
+IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,VkSharingMode sharing_mode)
+{
+    uint32_t stride;
+    
+    if(index_type==VK_INDEX_TYPE_UINT16)stride=2;else
+    if(index_type==VK_INDEX_TYPE_UINT32)stride=4;else
+        return(nullptr);
+
+    const VkDeviceSize size=stride*count;
+
+    VulkanBuffer vb;
+
+    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,sharing_mode))
+        return(nullptr);
+
+    return(new IndexBuffer(attr->device,vb,index_type,count));
 }
 
 Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
