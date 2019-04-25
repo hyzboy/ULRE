@@ -2,6 +2,9 @@
 #include"VK.h"
 
 VK_NAMESPACE_BEGIN
+
+class VertexInputState;
+
 /**
  * Shader ´´½¨Æ÷
  */
@@ -11,9 +14,15 @@ class Shader
 
     List<VkPipelineShaderStageCreateInfo> shader_stage_list;
 
+    VertexInputState *vertex_input_state=nullptr;
+
+private:
+
+    bool CreateVIS(const void *,const uint32_t);
+
 public:
 
-    Shader(VkDevice dev):device(dev){}
+    Shader(VkDevice);
     ~Shader();
 
     bool Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
@@ -38,12 +47,11 @@ public:
     ADD_NV_SHADER_FUNC(Mesh,        MESH);
 #undef ADD_NV_SHADER_FUNC
 
-    void Clear()
-    {
-        shader_stage_list.Clear();
-    }
+    void Clear();
 
     const uint32_t                          GetCount    ()const{return shader_stage_list.GetCount();}
     const VkPipelineShaderStageCreateInfo * GetStages   ()const{return shader_stage_list.GetData();}
+
+    VertexInputState *GetVIS(){return vertex_input_state;}
 };//class ShaderCreater
 VK_NAMESPACE_END
