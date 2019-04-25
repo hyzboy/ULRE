@@ -61,4 +61,4 @@ SOURCE_GROUP("Shader Files" FILES ${SHADER_FILES})
 
 add_executable(VulkanTest ${VULKAN_TEST_HEADER_FILES} ${VULKAN_TEST_SOURCE_FILES} ${SHADER_FILES})
 
-target_link_libraries(VulkanTest PRIVATE ${ULRE} ${VULKAN_LIB} ${RENDER_WINDOW_LIBRARY})
+target_link_libraries(VulkanTest PRIVATE ${ULRE} ${VULKAN_LIB} ${RENDER_WINDOW_LIBRARY} spirv-cross-core)

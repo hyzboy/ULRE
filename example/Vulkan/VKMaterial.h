@@ -6,6 +6,7 @@ VK_NAMESPACE_BEGIN
 class Shader;
 class DescriptorSetLayoutCreater;
 class MaterialInstance;
+class VertexInputState;
 
 /**
  * 材质类<br>
@@ -14,13 +15,15 @@ class MaterialInstance;
 class Material
 {
     Shader *shader;
+    VertexInputState *vis;
     DescriptorSetLayoutCreater *dsl_creater;
 
 public:
 
-    Material(Shader *s,DescriptorSetLayoutCreater *dslc)
+    Material(Shader *s,VertexInputState *state,DescriptorSetLayoutCreater *dslc)
     {
         shader=s;
+        vis=state;
         dsl_creater=dslc;
     }
     ~Material();
