@@ -41,6 +41,8 @@ public:
         clear_values[1].depthStencil.stencil=s;
     }
 
+    //以上设定在Begin开始后即不可改变
+
     bool Begin(RenderPass *rp,Framebuffer *fb);
     bool Bind(Pipeline *p);
     bool Bind(PipelineLayout *pl);
