@@ -40,6 +40,9 @@ public:
 
     virtual uint8_t *Map(uint32_t start=0,uint32_t size=0);
     void Unmap();
+
+    bool Write(const void *ptr,uint32_t start,uint32_t size);
+    bool Write(const void *ptr){return Write(ptr,0,buf.info.range);}
 };//class Buffer
 
 class VertexBuffer:public Buffer
