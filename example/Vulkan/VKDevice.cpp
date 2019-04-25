@@ -8,9 +8,10 @@
 #include"VKFramebuffer.h"
 #include"VKFence.h"
 #include"VKSemaphore.h"
+#include"VKMaterial.h"
+#include"VKDescriptorSets.h"
 
 VK_NAMESPACE_BEGIN
-
 namespace
 {
     bool CreateVulkanBuffer(VulkanBuffer &vb,const DeviceAttribute *rsa,VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
@@ -314,5 +315,12 @@ bool Device::QueuePresent()
     present.pWaitSemaphores = nullptr;
 
     return(vkQueuePresentKHR(attr->present_queue, &present)==VK_SUCCESS);
+}
+
+Material *Device::CreateMaterial(Shader *shader)
+{
+    DescriptorSetLayoutCreater *dslc=new DescriptorSetLayoutCreater(this);
+
+    return(new Material(shader,dslc));
 }
 VK_NAMESPACE_END

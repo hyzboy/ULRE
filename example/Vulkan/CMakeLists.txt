@@ -25,6 +25,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKSemaphore.cpp
 								VKFramebuffer.cpp
 								VKFence.cpp
+								VKMaterial.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h
@@ -47,6 +48,7 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKPipeline.h
 								VKFramebuffer.h
 								VKFence.h
+								VKMaterial.h
 								Window.h)
 
 SET(SHADER_FILES	shader_compile.bat
