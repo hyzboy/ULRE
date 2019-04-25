@@ -15,6 +15,8 @@ class CommandBuffer;
 class RenderPass;
 class Fence;
 class Semaphore;
+class Material;
+class Shader;
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
@@ -80,6 +82,8 @@ public:
     CREATE_BUFFER_OBJECT(INBO,INDIRECT)
 
 #undef CREATE_BUFFER_OBJECT
+
+    Material *      CreateMaterial(Shader *);
 
     CommandBuffer * CreateCommandBuffer();
     RenderPass *    CreateRenderPass(VkFormat color_format,VkFormat depth_format);

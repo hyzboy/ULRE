@@ -81,7 +81,7 @@ vulkan::Shader *LoadShader(VkDevice device)
     return(nullptr);
 }
 
-vulkan::Buffer *CreateUBO(vulkan::Device *dev,vulkan::Shader *shader)
+vulkan::Buffer *CreateUBO(vulkan::Device *dev)
 {
     {
         const VkExtent2D extent=dev->GetExtent();
@@ -194,7 +194,7 @@ int main(int,char **)
     if(!shader)
         return -3;
 
-    vulkan::Buffer *ubo=CreateUBO(device,shader);
+    vulkan::Buffer *ubo=CreateUBO(device);
 
     vulkan::VertexInput *vi=CreateVertexBuffer(device);
 
