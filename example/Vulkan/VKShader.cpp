@@ -15,7 +15,7 @@ void shader_dump(const void *spv_data,const uint32_t spv_size)
         unsigned binding=comp.get_decoration(ref.id,spv::DecorationBinding);
         const std::string name=comp.get_name(ref.id);
 
-        std::cout<<"sampled image ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<std::endl;
+        std::cout<<"sampled image ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
     }
 
     for(auto &ref:res.stage_inputs)
@@ -24,7 +24,7 @@ void shader_dump(const void *spv_data,const uint32_t spv_size)
         unsigned location=comp.get_decoration(ref.id,spv::DecorationLocation);
         const std::string name=comp.get_name(ref.id);
 
-        std::cout<<"stage input ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<std::endl;
+        std::cout<<"stage input ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
     }
 
     for(auto &ref:res.uniform_buffers)
@@ -33,7 +33,7 @@ void shader_dump(const void *spv_data,const uint32_t spv_size)
         unsigned binding=comp.get_decoration(ref.id,spv::DecorationBinding);
         const std::string name=comp.get_name(ref.id);
 
-        std::cout<<"UBO ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<std::endl;
+        std::cout<<"UBO ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",binding="<<binding<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
     }
 
     for(auto &ref:res.stage_outputs)
@@ -42,7 +42,7 @@ void shader_dump(const void *spv_data,const uint32_t spv_size)
         unsigned location=comp.get_decoration(ref.id,spv::DecorationLocation);
         const std::string name=comp.get_name(ref.id);
 
-        std::cout<<"stage output ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<std::endl;
+        std::cout<<"stage output ["<<ref.id<<":"<<name.c_str()<<"] set="<<set<<",location="<<location<<",type:"<<ref.type_id<<",base type:"<<ref.base_type_id<<std::endl;
     }
 }
 
