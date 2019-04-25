@@ -14,7 +14,7 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    bool CreateVulkanBuffer(VulkanBuffer &vb,const DeviceAttribute *rsa,VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
+    bool CreateVulkanBuffer(VulkanBuffer &vb,const DeviceAttribute *rsa,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode)
     {
         VkBufferCreateInfo buf_info={};
         buf_info.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -48,7 +48,19 @@ namespace
                     vb.info.offset=0;
                     vb.info.range=size;
 
-                    return(true);
+                    if(!data)
+                        return(true);
+
+                    {
+                        void *dst;
+
+                        if(vkMapMemory(rsa->device,vb.memory,0,size,0,&dst)==VK_SUCCESS)
+                        {
+                            memcpy(dst,data,size);
+                            vkUnmapMemory(rsa->device,vb.memory);
+                            return(true);
+                        }
+                    }
                 }
 
                 vkFreeMemory(rsa->device,vb.memory,nullptr);
@@ -98,7 +110,7 @@ Device::~Device()
     delete attr;
 }
 
-VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode)
+VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
 
@@ -112,13 +124,13 @@ VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,VkSharingMode sha
 
     VulkanBuffer vb;
 
-    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,sharing_mode))
+    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,data,sharing_mode))
         return(nullptr);
 
     return(new VertexBuffer(attr->device,vb,format,stride,count));
 }
 
-IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,VkSharingMode sharing_mode)
+IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)
 {
     uint32_t stride;
     
@@ -130,17 +142,17 @@ IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,VkSharingMo
 
     VulkanBuffer vb;
 
-    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,sharing_mode))
+    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,data,sharing_mode))
         return(nullptr);
 
     return(new IndexBuffer(attr->device,vb,index_type,count));
 }
 
-Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode)
+Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode)
 {
     VulkanBuffer vb;
 
-    if(!CreateVulkanBuffer(vb,attr,buf_usage,size,sharing_mode))
+    if(!CreateVulkanBuffer(vb,attr,buf_usage,size,data,sharing_mode))
         return(nullptr);
 
     return(new Buffer(attr->device,vb));

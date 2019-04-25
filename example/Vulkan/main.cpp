@@ -115,24 +115,8 @@ vulkan::VertexBuffer *color_buffer=nullptr;
 
 vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev)
 {
-    vertex_buffer=dev->CreateVBO(FMT_RG32F,6*sizeof(float));
-    color_buffer=dev->CreateVBO(FMT_RGB32F,9*sizeof(float));
-
-    {
-        float *p=(float *)vertex_buffer->Map();
-
-        memcpy(p,vertex_data,6*sizeof(float));
-
-        vertex_buffer->Unmap();
-    }
-
-    {
-        float *p=(float *)color_buffer->Map();
-
-        memcpy(p,color_data,9*sizeof(float));
-
-        color_buffer->Unmap();
-    }
+    vertex_buffer=dev->CreateVBO(FMT_RG32F,3,vertex_data);
+    color_buffer=dev->CreateVBO(FMT_RGB32F,3,color_data);
 
     vulkan::VertexInput *vi=new vulkan::VertexInput();
 
