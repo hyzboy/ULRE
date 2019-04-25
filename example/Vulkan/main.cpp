@@ -102,6 +102,9 @@ vulkan::Buffer *CreateUBO(vulkan::Device *dev)
     return ubo;
 }
 
+constexpr uint32_t SHADER_LOCATION_POSITION =0;          //对应shader中的layout(locaiton=0，暂时这样写
+constexpr uint32_t SHADER_LOCATION_COLOR    =1;
+
 constexpr float vertex_data[]=
 {
     SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25,
@@ -110,21 +113,28 @@ constexpr float vertex_data[]=
 };
 constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
 
+vulkan::VertexInputState *InitVertexInput()
+{
+    vulkan::VertexInputState *vis=new vulkan::VertexInputState();
+
+    vis->Add(SHADER_LOCATION_POSITION,  FMT_RG32F);
+    vis->Add(SHADER_LOCATION_COLOR,     FMT_RGB32F);
+
+    return vis;
+}
+
 vulkan::VertexBuffer *vertex_buffer=nullptr;
 vulkan::VertexBuffer *color_buffer=nullptr;
 
-vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev)
-{
-    vertex_buffer=dev->CreateVBO(FMT_RG32F,3,vertex_data);
-    color_buffer=dev->CreateVBO(FMT_RGB32F,3,color_data);
+vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev,vulkan::VertexInputState *vis)
+{    
+    vertex_buffer   =dev->CreateVBO(FMT_RG32F,  3,vertex_data);
+    color_buffer    =dev->CreateVBO(FMT_RGB32F, 3,color_data);
 
-    vulkan::VertexInput *vi=new vulkan::VertexInput();
+    vulkan::VertexInput *vi=new vulkan::VertexInput(vis);
 
-    constexpr uint32_t position_shader_location=0;          //对应shader中的layout(locaiton=0，暂时这样写
-    constexpr uint32_t color_shader_location=1;
-
-    vi->Add(position_shader_location,   vertex_buffer);
-    vi->Add(color_shader_location,      color_buffer);
+    vi->Set(SHADER_LOCATION_POSITION,   vertex_buffer);
+    vi->Set(SHADER_LOCATION_COLOR,      color_buffer);
 
     return vi;
 }
@@ -138,6 +148,17 @@ void wait_seconds(int seconds) {
     sleep(seconds);
 #endif
 }
+
+//class ExampleFramework
+//{
+//    Window *win=nullptr;
+//    vulkan::Instance *inst=nullptr;
+//    vulkan::Device *device=nullptr;
+//    vulkan::Shader *shader=nullptr;
+//    vulkan::Buffer *ubo_mvp=nullptr;
+//    vulkan::VertexInput *vi=nullptr;
+//    vulkan::PipelineCreater
+//};//
 
 int main(int,char **)
 {
@@ -180,7 +201,9 @@ int main(int,char **)
 
     vulkan::Buffer *ubo=CreateUBO(device);
 
-    vulkan::VertexInput *vi=CreateVertexBuffer(device);
+    vulkan::VertexInputState *vis=InitVertexInput();
+
+    vulkan::VertexInput *vi=CreateVertexBuffer(device,vis);
 
     vulkan::PipelineCreater pc(device);
 
@@ -201,7 +224,7 @@ int main(int,char **)
     pc.CloseCullFace();
 
     pc.Set(shader);
-    pc.Set(vi);
+    pc.Set(vis);
     pc.Set(PRIM_TRIANGLES);
     pc.Set(*pl);
 
@@ -236,6 +259,7 @@ int main(int,char **)
     delete dsl;
 
     delete vi;
+    delete vis;
     delete ubo;
 
     delete shader;

@@ -2,46 +2,75 @@
 #include"VKBuffer.h"
 
 VK_NAMESPACE_BEGIN
-bool VertexInput::Add(uint32_t location,VertexBuffer *buf,bool instance,VkDeviceSize offset)
+
+void VertexInputState::Add(const uint32_t shader_location,const VkFormat format,uint32_t offset,bool instance)
 {
-    if(!buf)
-        return(false);
+    const int binding_index=binding_list.GetCount();        //参考opengl vab,binding_index必须从0开始，紧密排列。对应在vkCmdBindVertexBuffer中的缓冲区索引
 
-    const int binding_index=vib_list.GetCount();        //参考opengl vab,binding_index必须从0开始，紧密排列。对应在vkCmdBindVertexBuffer中的缓冲区索引
+    binding_list.SetCount(binding_index+1);
+    attribute_list.SetCount(binding_index+1);
 
-    VkVertexInputBindingDescription binding;
-    VkVertexInputAttributeDescription attrib;
+    VkVertexInputBindingDescription *binding=binding_list.GetData()+binding_index;
+    VkVertexInputAttributeDescription *attrib=attribute_list.GetData()+binding_index;
 
-    binding.binding=binding_index;
-    binding.stride=buf->GetStride();
-    binding.inputRate=instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
+    binding->binding=binding_index;
+    binding->stride=GetStrideByFormat(format);
+    binding->inputRate=instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
+    
+    //实际使用可以一个binding绑多个attrib，但我们仅支持1v1。
+    //一个binding是指在vertex shader中，由一个vertex输入流输入数据，attrib指其中的数据成分
+    //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
+    //但我们在一个流中，仅支持一个attrib传递
 
-    attrib.binding=binding_index;
-    attrib.location=location;
-    attrib.format=buf->GetFormat();
-    attrib.offset=offset;
-
-    vib_list.Add(new VertexInputBuffer(binding,attrib,buf));
-    buf_list.Add(*buf);
-    buf_offset.Add(offset);
-
-    binding_list.Add(binding);
-    attribute_list.Add(attrib);
-
-    return(true);
+    attrib->binding=binding_index;
+    attrib->location=shader_location;
+    attrib->format=format;
+    attrib->offset=offset;    
 }
 
-const VkPipelineVertexInputStateCreateInfo VertexInput::GetPipelineVertexInputStateCreateInfo()const
+void VertexInputState::Write(VkPipelineVertexInputStateCreateInfo &vis) const
 {
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vis.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    vertexInputInfo.vertexBindingDescriptionCount = binding_list.GetCount();
-    vertexInputInfo.pVertexBindingDescriptions = binding_list.GetData();
+    vis.vertexBindingDescriptionCount = binding_list.GetCount();
+    vis.pVertexBindingDescriptions = binding_list.GetData();
 
-    vertexInputInfo.vertexAttributeDescriptionCount = attribute_list.GetCount();
-    vertexInputInfo.pVertexAttributeDescriptions = attribute_list.GetData();
+    vis.vertexAttributeDescriptionCount = attribute_list.GetCount();
+    vis.pVertexAttributeDescriptions = attribute_list.GetData();
+}
 
-    return vertexInputInfo;
+VertexInput::VertexInput(VertexInputState *state)
+{
+    vis=state;
+
+    if(!vis)
+        return;
+
+    buf_count=vis->GetCount();
+
+    buf_list=hgl_zero_new<VkBuffer>(buf_count);
+    buf_offset=hgl_zero_new<VkDeviceSize>(buf_count);
+}
+
+VertexInput::~VertexInput()
+{
+    delete[] buf_offset;
+    delete[] buf_list;
+}
+
+bool VertexInput::Set(uint32_t index,VertexBuffer *buf,VkDeviceSize offset)
+{
+    if(index<0||index>=buf_count)return(false);
+
+    VkVertexInputBindingDescription *desc=vis->GetDesc(index);   
+    VkVertexInputAttributeDescription *attr=vis->GetAttr(index);
+
+    if(buf->GetFormat()!=attr->format)return(false);
+    if(buf->GetStride()!=desc->stride)return(false);
+
+    buf_list[index]=*buf;
+    buf_offset[index]=offset;
+
+    return(true);
 }
 VK_NAMESPACE_END
