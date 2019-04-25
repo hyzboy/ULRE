@@ -162,15 +162,12 @@ bool PipelineCreater::Set(const Shader *s)
     return(true);
 }
 
-bool PipelineCreater::Set(const VertexInput *vi)
+bool PipelineCreater::Set(const VertexInputState *vis)
 {
-    if(!vi)return(false);
-    if(vi->GetCount()<=0)return(false);
+    if(!vis)
+        return(false);
 
-    vertex_input=vi;
-
-    vis_create_info=vertex_input->GetPipelineVertexInputStateCreateInfo();
-
+    vis->Write(vis_create_info);
     return(true);
 }
 
