@@ -27,4 +27,18 @@ void Buffer::Unmap()
 {
     vkUnmapMemory(device,buf.memory);
 }
+
+bool Buffer::Write(const void *ptr,uint32_t start,uint32_t size)
+{
+    if(!ptr)return(false);
+
+    void *dst;
+
+    if(vkMapMemory(device,buf.memory,start,size,0,&dst)!=VK_SUCCESS)
+        return(false);
+
+    memcpy(dst,ptr,size);
+    vkUnmapMemory(device,buf.memory);
+    return(true);
+}
 VK_NAMESPACE_END
