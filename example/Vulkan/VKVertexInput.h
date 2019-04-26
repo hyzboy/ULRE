@@ -24,7 +24,9 @@ class VertexInputState
 
     Set<VertexInputStateInstance *> instance_set;
 
-public:
+private:
+
+    friend class Shader;
 
     VertexInputState()=default;
     ~VertexInputState();
