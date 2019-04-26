@@ -9,31 +9,6 @@ class IndexBuffer;
 class Shader;
 
 /**
- * 顶点输入状态实例<br>
- * 本对象用于传递给MaterialInstance,用于已经确定好顶点格式的情况下，依然可修改部分设定(如instance)。
- */
-class VertexAttributeBinding
-{
-    Shader *shader;
-    VkVertexInputBindingDescription *binding_list;
-
-private:
-
-    friend class Shader;
-
-    VertexAttributeBinding(Shader *);
-
-public:
-
-    ~VertexAttributeBinding();
-
-    bool SetInstance(const uint index,bool instance);
-    bool SetInstance(const UTF8String &name,bool instance);
-
-    void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
-};//class VertexInputStateInstance
-
-/**
  * 顶点输入配置，负责具体的buffer绑定，提供给CommandBuffer使用<br>
  * 注：本引擎不支持一个Buffer中包括多种数据
  */

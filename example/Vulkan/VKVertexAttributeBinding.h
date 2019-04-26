@@ -30,6 +30,9 @@ public:
     bool SetInstance(const uint index,bool instance);
     bool SetInstance(const UTF8String &name,bool instance);
 
+    bool SetStride(const uint index,uint32_t stride);
+    bool SetStride(const UTF8String &name,uint32_t stride);
+
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 };//class VertexAttributeBinding
 VK_NAMESPACE_END
