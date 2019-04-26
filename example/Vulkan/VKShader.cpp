@@ -37,6 +37,17 @@ bool Shader::CreateVIS(const void *spv_data,const uint32_t spv_size)
 
     spirv_cross::ShaderResources res=comp.get_shader_resources();
 
+    attr_count=res.stage_inputs.size();
+    binding_list=new VkVertexInputBindingDescription[attr_count];
+    attribute_list=new VkVertexInputAttributeDescription[attr_count];
+
+    VkVertexInputBindingDescription *bind=binding_list;
+    VkVertexInputAttributeDescription *attr=attribute_list;
+
+    uint32_t binding_index=0;
+
+    
+
     for(auto &si:res.stage_inputs)
     {
         const spirv_cross::SPIRType &   type    =comp.get_type(si.type_id);
@@ -45,10 +56,28 @@ bool Shader::CreateVIS(const void *spv_data,const uint32_t spv_size)
         if(format==VK_FORMAT_UNDEFINED)
             return(false);
 
-        const uint32_t                  location=comp.get_decoration(si.id,spv::DecorationLocation);
         const UTF8String &              name    =comp.get_name(si.id).c_str();
 
-        vertex_input_state->Add(name,location,format);        
+        bind->binding   =binding_index;                 //binding对应在vkCmdBindVertexBuffer中设置的缓冲区序列号，所以这个数字必须从0开始，而且紧密排列。
+                                                        //在VertexInput类中，buf_list需要严格按照本此binding为序列号排列
+        bind->stride    =GetStrideByFormat(format);
+        bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
+
+        //实际使用可以一个binding绑多个attrib，但我们仅支持1v1。
+        //一个binding是指在vertex shader中，由一个vertex输入流输入数据，attrib指其中的数据成分
+        //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
+        //但我们在一个流中，仅支持一个attrib传递
+
+        attr->binding   =binding_index;
+        attr->location  =comp.get_decoration(si.id,spv::DecorationLocation);
+        attr->format    =format;
+        attr->offset    =0;
+
+        stage_input_locations.Add(name,attr);
+
+        ++attr;
+        ++bind;
+        ++binding_index;
     }
 
     return(true);
@@ -57,13 +86,20 @@ bool Shader::CreateVIS(const void *spv_data,const uint32_t spv_size)
 Shader::Shader(VkDevice dev)
 {
     device=dev;
-
-    vertex_input_state=new VertexInputState();
+    attr_count=0;
+    binding_list=nullptr;
+    attribute_list=nullptr;
 }
 
 Shader::~Shader()
 {
-    delete vertex_input_state;
+    if(instance_set.GetCount()>0)
+    {
+        //还有在用的，这是个错误
+    }
+
+    SAFE_CLEAR_ARRAY(binding_list);
+    SAFE_CLEAR_ARRAY(attribute_list);
 
     const int count=shader_stage_list.GetCount();
 
@@ -106,14 +142,41 @@ bool Shader::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_da
     return(true);
 }
 
-void Shader::Clear()
+VertexAttributeBinding *Shader::CreateVertexAttributeBinding()
 {
-    shader_stage_list.Clear();
-    vertex_input_state->Clear();
+    VertexAttributeBinding *vis_instance=new VertexAttributeBinding(this);
+
+    instance_set.Add(vis_instance);
+
+    return(vis_instance);
 }
 
-VertexInputStateInstance *Shader::CreateVertexInputStateInstance()
+bool Shader::Release(VertexAttributeBinding *vis_instance)
 {
-    return vertex_input_state->CreateInstance();
+    return instance_set.Delete(vis_instance);
+}
+
+const int Shader::GetLocation(const UTF8String &name)const
+{
+    if(name.IsEmpty())return -1;
+
+    VkVertexInputAttributeDescription *attr;
+
+    if(!stage_input_locations.Get(name,attr))
+        return -1;
+
+    return attr->location;
+}
+
+const int Shader::GetBinding(const UTF8String &name)const
+{
+    if(name.IsEmpty())return -1;
+
+    VkVertexInputAttributeDescription *attr;
+
+    if(!stage_input_locations.Get(name,attr))
+        return -1;
+
+    return attr->binding;
 }
 VK_NAMESPACE_END

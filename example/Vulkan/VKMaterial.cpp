@@ -11,7 +11,7 @@ Material::~Material()
 
 MaterialInstance *Material::CreateInstance()
 {
-    VertexInputStateInstance *vis_instance=vis->CreateInstance();
+    VertexAttributeBinding *vis_instance=shader->CreateVertexAttributeBinding();
 
     return(new MaterialInstance(this,vis_instance));
 }
