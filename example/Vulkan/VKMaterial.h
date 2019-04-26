@@ -6,6 +6,7 @@ VK_NAMESPACE_BEGIN
 class Device;
 class Shader;
 class DescriptorSetLayoutCreater;
+class DescriptorSetLayout;
 class MaterialInstance;
 class VertexAttributeBinding;
 
@@ -17,14 +18,11 @@ class Material
 {
     Device *device;
     Shader *shader;
+    DescriptorSetLayoutCreater *dsl_creater;
 
 public:
 
-    Material(Device *dev,Shader *s)
-    {
-        device=dev;
-        shader=s;
-    }
+    Material(Device *dev,Shader *s);
     ~Material();
 
     MaterialInstance *CreateInstance();
@@ -38,7 +36,7 @@ class MaterialInstance
 {
     const Material *mat;                                                                            ///<这里的是对material的完全引用，不做任何修改
     VertexAttributeBinding *vab;
-    DescriptorSetLayoutCreater *dsl_creater;
+    DescriptorSetLayout *desc_set_layout;
 
 public:
 

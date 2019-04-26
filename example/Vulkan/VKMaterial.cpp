@@ -3,8 +3,16 @@
 #include"VKShader.h"
 #include"VKVertexAttributeBinding.h"
 VK_NAMESPACE_BEGIN
+Material::Material(Device *dev,Shader *s)
+{
+    device=dev;
+    shader=s;
+    dsl_creater=new DescriptorSetLayoutCreater(dev);
+}
+
 Material::~Material()
 {
+    delete dsl_creater;
     delete shader;
 }
 
