@@ -235,7 +235,7 @@ int main(int,char **)
     device->Wait();
     device->QueuePresent();
 
-    wait_seconds(3);
+    wait_seconds(1);
 
     delete vertex_buffer;
     delete color_buffer;
