@@ -162,7 +162,7 @@ bool PipelineCreater::Set(const Shader *s)
     return(true);
 }
 
-bool PipelineCreater::Set(const VertexInputState *vis)
+bool PipelineCreater::Set(const VertexInputStateInstance *vis)
 {
     if(!vis)
         return(false);

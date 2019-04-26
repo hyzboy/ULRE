@@ -1,12 +1,12 @@
-#pragma once
+ï»¿#pragma once
 #include"VK.h"
 
 VK_NAMESPACE_BEGIN
-
 class VertexInputState;
+class VertexInputStateInstance;
 
 /**
- * Shader ´´½¨Æ÷
+ * Shader åˆ›å»ºå™¨
  */
 class Shader
 {
@@ -52,6 +52,7 @@ public:
     const uint32_t                          GetCount    ()const{return shader_stage_list.GetCount();}
     const VkPipelineShaderStageCreateInfo * GetStages   ()const{return shader_stage_list.GetData();}
 
-    VertexInputState *GetVIS(){return vertex_input_state;}
+    const VertexInputState *GetVertexInputState()const{return vertex_input_state;}
+    VertexInputStateInstance *CreateVertexInputStateInstance();
 };//class ShaderCreater
 VK_NAMESPACE_END
