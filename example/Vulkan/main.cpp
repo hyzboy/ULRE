@@ -113,7 +113,7 @@ constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
 vulkan::VertexBuffer *vertex_buffer=nullptr;
 vulkan::VertexBuffer *color_buffer=nullptr;
 
-vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev,vulkan::VertexInputState *vis)
+vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev,const vulkan::VertexInputState *vis)
 {    
     vertex_buffer   =dev->CreateVBO(FMT_RG32F,  3,vertex_data);
     color_buffer    =dev->CreateVBO(FMT_RGB32F, 3,color_data);
@@ -188,9 +188,9 @@ int main(int,char **)
 
     vulkan::Buffer *ubo=CreateUBO(device);
 
-    vulkan::VertexInputState *vis=shader->GetVIS();
+    vulkan::VertexInputStateInstance *vis_instance=shader->CreateVertexInputStateInstance();
 
-    vulkan::VertexInput *vi=CreateVertexBuffer(device,vis);
+    vulkan::VertexInput *vi=CreateVertexBuffer(device,shader->GetVertexInputState());
 
     vulkan::PipelineCreater pc(device);
 
@@ -211,7 +211,7 @@ int main(int,char **)
     pc.CloseCullFace();
 
     pc.Set(shader);
-    pc.Set(vis);
+    pc.Set(vis_instance);
     pc.Set(PRIM_TRIANGLES);
     pc.Set(*pl);
 

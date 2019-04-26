@@ -1,4 +1,4 @@
-#include"VKShader.h"
+﻿#include"VKShader.h"
 #include"VKVertexInput.h"
 #include"spirv_cross.hpp"
 
@@ -110,5 +110,10 @@ void Shader::Clear()
 {
     shader_stage_list.Clear();
     vertex_input_state->Clear();
+}
+
+VertexInputStateInstance *Shader::CreateVertexInputStateInstance()
+{
+    return vertex_input_state->CreateInstance();
 }
 VK_NAMESPACE_END

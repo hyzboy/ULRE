@@ -2,9 +2,19 @@
 #include"VKBuffer.h"
 
 VK_NAMESPACE_BEGIN
+VertexInputState::~VertexInputState()
+{
+    if(instance_set.GetCount()>0)
+    {
+        //还有在用的，这是个错误
+    }
+}
 
 int VertexInputState::Add(const UTF8String &name,const uint32_t shader_location,const VkFormat format,uint32_t offset,bool instance)
 {
+    //binding对应在vkCmdBindVertexBuffer中设置的缓冲区序列号，所以这个数字必须从0开始，而且紧密排列。
+    //在VertexInput类中，buf_list需要严格按照本类产生的binding为序列号
+
     const int binding_index=binding_list.GetCount();        //参考opengl vab,binding_index必须从0开始，紧密排列。对应在vkCmdBindVertexBuffer中的缓冲区索引
 
     binding_list.SetCount(binding_index+1);
@@ -27,7 +37,7 @@ int VertexInputState::Add(const UTF8String &name,const uint32_t shader_location,
     attrib->format=format;
     attrib->offset=offset;
 
-    stage_input_locations.Add(name,StageInput(binding_index,shader_location,format));
+    stage_input_locations.Add(name,attrib);
 
     return binding_index;
 }
@@ -36,38 +46,85 @@ const int VertexInputState::GetLocation(const UTF8String &name)const
 {
     if(name.IsEmpty())return -1;
 
-    StageInput si;
+    VkVertexInputAttributeDescription *attr;
 
-    if(!stage_input_locations.Get(name,si))
+    if(!stage_input_locations.Get(name,attr))
         return -1;
 
-    return si.location;
+    return attr->location;
 }
 
 const int VertexInputState::GetBinding(const UTF8String &name)const
 {
     if(name.IsEmpty())return -1;
 
-    StageInput si;
+    VkVertexInputAttributeDescription *attr;
 
-    if(!stage_input_locations.Get(name,si))
+    if(!stage_input_locations.Get(name,attr))
         return -1;
 
-    return si.binding;
+    return attr->binding;
 }
 
-void VertexInputState::Write(VkPipelineVertexInputStateCreateInfo &vis) const
+VertexInputStateInstance *VertexInputState::CreateInstance()
 {
-    vis.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    VertexInputStateInstance *vis_instance=new VertexInputStateInstance(this);
 
-    vis.vertexBindingDescriptionCount = binding_list.GetCount();
-    vis.pVertexBindingDescriptions = binding_list.GetData();
+    instance_set.Add(vis_instance);
 
-    vis.vertexAttributeDescriptionCount = attribute_list.GetCount();
-    vis.pVertexAttributeDescriptions = attribute_list.GetData();
+    return(vis_instance);
 }
 
-VertexInput::VertexInput(VertexInputState *state)
+bool VertexInputState::Release(VertexInputStateInstance *vis_instance)
+{
+    return instance_set.Delete(vis_instance);
+}
+
+VertexInputStateInstance::VertexInputStateInstance(VertexInputState *_vis)
+{
+    vis=_vis;
+
+    const int count=vis->GetCount();
+
+    if(count<=0)
+    {
+        binding_list=nullptr;
+        return;
+    }
+
+    binding_list=hgl_copy_new(count,vis->GetDescList());
+}
+
+VertexInputStateInstance::~VertexInputStateInstance()
+{
+    delete[] binding_list;
+
+    vis->Release(this);
+}
+
+bool VertexInputStateInstance::SetInstance(const uint index,bool instance)
+{
+    if(index>=vis->GetCount())return(false);
+
+    binding_list[index].inputRate=instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
+
+    return(true);
+}
+
+void VertexInputStateInstance::Write(VkPipelineVertexInputStateCreateInfo &vis_create_info) const
+{
+    vis_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    const uint32_t count=vis->GetCount();
+
+    vis_create_info.vertexBindingDescriptionCount = count;
+    vis_create_info.pVertexBindingDescriptions = binding_list;
+
+    vis_create_info.vertexAttributeDescriptionCount = count;
+    vis_create_info.pVertexAttributeDescriptions = vis->GetAttrList();
+}
+
+VertexInput::VertexInput(const VertexInputState *state)
 {
     vis=state;
 
@@ -86,12 +143,12 @@ VertexInput::~VertexInput()
     delete[] buf_list;
 }
 
-bool VertexInput::Set(int index,VertexBuffer *buf,VkDeviceSize offset)
+bool VertexInput::Set(const int index,VertexBuffer *buf,VkDeviceSize offset)
 {
     if(index<0||index>=buf_count)return(false);
 
-    VkVertexInputBindingDescription *desc=vis->GetDesc(index);   
-    VkVertexInputAttributeDescription *attr=vis->GetAttr(index);
+    const VkVertexInputBindingDescription *desc=vis->GetDesc(index);   
+    const VkVertexInputAttributeDescription *attr=vis->GetAttr(index);
 
     if(buf->GetFormat()!=attr->format)return(false);
     if(buf->GetStride()!=desc->stride)return(false);
