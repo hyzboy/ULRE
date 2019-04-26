@@ -22,6 +22,7 @@ private:
     VkVertexInputAttributeDescription *attribute_list;
 
     Map<UTF8String,VkVertexInputAttributeDescription *> stage_input_locations;
+    Map<UTF8String,int> ubo_list;
 
     Set<VertexAttributeBinding *> vab_sets;
 
@@ -60,6 +61,8 @@ public: //shader部分
 
     const uint32_t                          GetStageCount    ()const{return shader_stage_list.GetCount();}
     const VkPipelineShaderStageCreateInfo * GetShaderStages   ()const{return shader_stage_list.GetData();}
+
+    const int                                   GetUBO(const UTF8String &name)const{int binding;if(ubo_list.Get(name,binding))return binding;else return -1;}
 
 public: //Vertex Input部分
 

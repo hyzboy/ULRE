@@ -81,6 +81,14 @@ bool Shader::ParseVertexShader(const void *spv_data,const uint32_t spv_size)
         ++binding_index;
     }
 
+    for(auto &ub:res.uniform_buffers)
+    {
+        const UTF8String &  name    =comp.get_name(ub.id).c_str();        
+        const uint          binding =comp.get_decoration(ub.id,spv::DecorationBinding);
+
+        ubo_list.Add(name,binding);
+    }
+
     return(true);
 }
 

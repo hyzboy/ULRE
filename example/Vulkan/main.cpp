@@ -29,10 +29,10 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 VkShaderModule vs=nullptr;
 VkShaderModule fs=nullptr;
 
-struct
+struct WorldConfig
 {
     Matrix4f mvp;    
-}ubo_vs;
+}world;
 
 char *LoadFile(const char *filename,uint32_t &file_length)
 {
@@ -86,16 +86,16 @@ vulkan::Buffer *CreateUBO(vulkan::Device *dev)
     {
         const VkExtent2D extent=dev->GetExtent();
 
-        ubo_vs.mvp=ortho(extent.width,extent.height);
+        world.mvp=ortho(extent.width,extent.height);
     }
 
-    vulkan::Buffer *ubo=dev->CreateUBO(sizeof(ubo_vs));
+    vulkan::Buffer *ubo=dev->CreateUBO(sizeof(WorldConfig));
 
     uint8_t *p=ubo->Map();
 
     if(p)
     {
-        memcpy(p,&ubo_vs,sizeof(ubo_vs));
+        memcpy(p,&world,sizeof(WorldConfig));
         ubo->Unmap();
     }
 
@@ -196,13 +196,13 @@ int main(int,char **)
 
     vulkan::DescriptorSetLayoutCreater dslc(device);
 
-    const int mvp_binding=0;    //shader->GetBinding("MVPMatrix");          实现从材质shader文件中根据名称获取binding的功能
+    const int ubo_world_config=shader->GetUBO("world");
 
-    dslc.BindUBO(mvp_binding,VK_SHADER_STAGE_VERTEX_BIT);
+    dslc.BindUBO(ubo_world_config,VK_SHADER_STAGE_VERTEX_BIT);
 
     vulkan::DescriptorSetLayout *dsl=dslc.Create();
 
-    dsl->UpdateUBO(mvp_binding,*ubo);
+    dsl->UpdateUBO(ubo_world_config,*ubo);
 
     vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,dsl);
 
