@@ -38,6 +38,20 @@ bool VertexAttributeBinding::SetInstance(const UTF8String &name,bool instance)
     return SetInstance(shader->GetBinding(name),instance);
 }
 
+bool VertexAttributeBinding::SetStride(const uint index,uint32_t stride)
+{
+    if(index>=shader->GetAttrCount())return(false);
+
+    binding_list[index].stride=stride;
+
+    return(true);
+}
+
+bool VertexAttributeBinding::SetStride(const UTF8String &name,uint32_t stride)
+{
+    return SetStride(shader->GetBinding(name),stride);
+}
+
 void VertexAttributeBinding::Write(VkPipelineVertexInputStateCreateInfo &vis_create_info) const
 {
     vis_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
