@@ -23,11 +23,11 @@ private:
 
     Map<UTF8String,VkVertexInputAttributeDescription *> stage_input_locations;
 
-    Set<VertexAttributeBinding *> instance_set;
+    Set<VertexAttributeBinding *> vab_sets;
 
 private:
 
-    bool CreateVIS(const void *,const uint32_t);
+    bool ParseVertexShader(const void *,const uint32_t);
 
 public:
 
@@ -65,7 +65,7 @@ public: //Vertex Input部分
 
     VertexAttributeBinding *                    CreateVertexAttributeBinding();
     bool                                        Release(VertexAttributeBinding *);
-    const uint32_t                              GetInstanceCount()const{return instance_set.GetCount();}
+    const uint32_t                              GetInstanceCount()const{return vab_sets.GetCount();}
 
     const uint32_t                              GetAttrCount()const{return attr_count;}
 
