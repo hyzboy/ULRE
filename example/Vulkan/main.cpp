@@ -113,12 +113,12 @@ constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
 vulkan::VertexBuffer *vertex_buffer=nullptr;
 vulkan::VertexBuffer *color_buffer=nullptr;
 
-vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev,const vulkan::VertexInputState *vis)
+vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev,const vulkan::Shader *shader)
 {    
     vertex_buffer   =dev->CreateVBO(FMT_RG32F,  3,vertex_data);
     color_buffer    =dev->CreateVBO(FMT_RGB32F, 3,color_data);
 
-    vulkan::VertexInput *vi=new vulkan::VertexInput(vis);
+    vulkan::VertexInput *vi=new vulkan::VertexInput(shader);
 
     vi->Set("Vertex",   vertex_buffer);
     vi->Set("Color",    color_buffer);
@@ -188,9 +188,9 @@ int main(int,char **)
 
     vulkan::Buffer *ubo=CreateUBO(device);
 
-    vulkan::VertexInputStateInstance *vis_instance=shader->CreateVertexInputStateInstance();
+    vulkan::VertexAttributeBinding *vis_instance=shader->CreateVertexAttributeBinding();
 
-    vulkan::VertexInput *vi=CreateVertexBuffer(device,shader->GetVertexInputState());
+    vulkan::VertexInput *vi=CreateVertexBuffer(device,shader);
 
     vulkan::PipelineCreater pc(device);
 

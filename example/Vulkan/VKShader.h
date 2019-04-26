@@ -1,9 +1,10 @@
 ﻿#pragma once
 #include"VK.h"
-
+#include<hgl/type/BaseString.h>
+#include<hgl/type/Map.h>
+#include<hgl/type/Set.h>
 VK_NAMESPACE_BEGIN
-class VertexInputState;
-class VertexInputStateInstance;
+class VertexAttributeBinding;
 
 /**
  * Shader 创建器
@@ -14,7 +15,15 @@ class Shader
 
     List<VkPipelineShaderStageCreateInfo> shader_stage_list;
 
-    VertexInputState *vertex_input_state=nullptr;
+private:
+
+    uint32_t attr_count;
+    VkVertexInputBindingDescription *binding_list;
+    VkVertexInputAttributeDescription *attribute_list;
+
+    Map<UTF8String,VkVertexInputAttributeDescription *> stage_input_locations;
+
+    Set<VertexAttributeBinding *> instance_set;
 
 private:
 
@@ -47,12 +56,26 @@ public:
     ADD_NV_SHADER_FUNC(Mesh,        MESH);
 #undef ADD_NV_SHADER_FUNC
 
-    void Clear();
+public: //shader部分
 
-    const uint32_t                          GetCount    ()const{return shader_stage_list.GetCount();}
-    const VkPipelineShaderStageCreateInfo * GetStages   ()const{return shader_stage_list.GetData();}
+    const uint32_t                          GetStageCount    ()const{return shader_stage_list.GetCount();}
+    const VkPipelineShaderStageCreateInfo * GetShaderStages   ()const{return shader_stage_list.GetData();}
 
-    const VertexInputState *GetVertexInputState()const{return vertex_input_state;}
-    VertexInputStateInstance *CreateVertexInputStateInstance();
+public: //Vertex Input部分
+
+    VertexAttributeBinding *                    CreateVertexAttributeBinding();
+    bool                                        Release(VertexAttributeBinding *);
+    const uint32_t                              GetInstanceCount()const{return instance_set.GetCount();}
+
+    const uint32_t                              GetAttrCount()const{return attr_count;}
+
+    const int                                   GetLocation (const UTF8String &)const;
+    const int                                   GetBinding  (const UTF8String &)const;
+
+    const VkVertexInputBindingDescription *     GetDescList ()const{return binding_list;}
+    const VkVertexInputAttributeDescription *   GetAttrList ()const{return attribute_list;}
+
+    const VkVertexInputBindingDescription *     GetDesc     (const uint32_t index)const{return (index>=attr_count?nullptr:binding_list+index);}
+    const VkVertexInputAttributeDescription *   GetAttr     (const uint32_t index)const{return (index>=attr_count?nullptr:attribute_list+index);}
 };//class ShaderCreater
 VK_NAMESPACE_END

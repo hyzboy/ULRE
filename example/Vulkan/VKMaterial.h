@@ -7,7 +7,7 @@ class Shader;
 class DescriptorSetLayoutCreater;
 class MaterialInstance;
 class VertexInputState;
-class VertexInputStateInstance;
+class VertexAttributeBinding;
 
 /**
  * 材质类<br>
@@ -16,15 +16,13 @@ class VertexInputStateInstance;
 class Material
 {
     Shader *shader;
-    VertexInputState *vis;
     DescriptorSetLayoutCreater *dsl_creater;
 
 public:
 
-    Material(Shader *s,VertexInputState *state,DescriptorSetLayoutCreater *dslc)
+    Material(Shader *s,DescriptorSetLayoutCreater *dslc)
     {
         shader=s;
-        vis=state;
         dsl_creater=dslc;
     }
     ~Material();
@@ -39,11 +37,11 @@ public:
 class MaterialInstance
 {
     const Material *mat;                                                                            ///<这里的是对material的完全引用，不做任何修改
-    VertexInputStateInstance *vis_instance;                                                         ///<这里的vis是Material中vis的复制体
+    VertexAttributeBinding *vis_instance;                                                         ///<这里的vis是Material中vis的复制体
 
 public:
 
-    MaterialInstance(Material *m,VertexInputStateInstance *vi)
+    MaterialInstance(Material *m,VertexAttributeBinding *vi)
     {
         mat=m;
         vis_instance=vi;

@@ -156,18 +156,18 @@ bool PipelineCreater::Set(const Shader *s)
 
     shader=s;
 
-    pipelineInfo.stageCount=shader->GetCount();
-    pipelineInfo.pStages=shader->GetStages();
+    pipelineInfo.stageCount=shader->GetStageCount();
+    pipelineInfo.pStages=shader->GetShaderStages();
 
     return(true);
 }
 
-bool PipelineCreater::Set(const VertexInputStateInstance *vis)
+bool PipelineCreater::Set(const VertexAttributeBinding *vab)
 {
-    if(!vis)
+    if(!vab)
         return(false);
 
-    vis->Write(vis_create_info);
+    vab->Write(vis_create_info);
     return(true);
 }
 
