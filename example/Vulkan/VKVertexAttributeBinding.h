@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_VERTEX_ATTRIBUTE_BINDING_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_VERTEX_ATTRIBUTE_BINDING_INCLUDE
 #define HGL_GRAPH_VULKAN_VERTEX_ATTRIBUTE_BINDING_INCLUDE
 
 #include"VK.h"
@@ -9,8 +9,8 @@ class IndexBuffer;
 class Shader;
 
 /**
-* ¶¥µãÊäÈë×´Ì¬ÊµÀı<br>
-* ±¾¶ÔÏóÓÃÓÚ´«µİ¸øMaterialInstance,ÓÃÓÚÒÑ¾­È·¶¨ºÃ¶¥µã¸ñÊ½µÄÇé¿öÏÂ£¬ÒÀÈ»¿ÉĞŞ¸Ä²¿·ÖÉè¶¨(Èçinstance)¡£
+* é¡¶ç‚¹è¾“å…¥çŠ¶æ€å®ä¾‹<br>
+* æœ¬å¯¹è±¡ç”¨äºä¼ é€’ç»™MaterialInstance,ç”¨äºå·²ç»ç¡®å®šå¥½é¡¶ç‚¹æ ¼å¼çš„æƒ…å†µä¸‹ï¼Œä¾ç„¶å¯ä¿®æ”¹éƒ¨åˆ†è®¾å®š(å¦‚instance)ã€‚
 */
 class VertexAttributeBinding
 {
