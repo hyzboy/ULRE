@@ -23,7 +23,9 @@ const VkFormat GetVecFormat(const spirv_cross::SPIRType &type)
 
     if(type.basetype<spirv_cross::SPIRType::SByte
      ||type.basetype>spirv_cross::SPIRType::Double
-     ||type.basetype==spirv_cross::SPIRType::AtomicCounter)
+     ||type.basetype==spirv_cross::SPIRType::AtomicCounter
+     ||type.vecsize<1
+     ||type.vecsize>4)
         return VK_FORMAT_UNDEFINED;
 
     return format[type.basetype-spirv_cross::SPIRType::SByte][type.vecsize-1];
