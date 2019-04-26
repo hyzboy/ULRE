@@ -26,7 +26,7 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKSemaphore.cpp
 								VKFramebuffer.cpp
 								VKFence.cpp
-								VKMaterial.cpp
+								#VKMaterial.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	VK.h

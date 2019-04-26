@@ -3,6 +3,7 @@
 
 #include"VK.h"
 VK_NAMESPACE_BEGIN
+class Device;
 class Shader;
 class DescriptorSetLayoutCreater;
 class MaterialInstance;
@@ -14,15 +15,15 @@ class VertexAttributeBinding;
  */
 class Material
 {
+    Device *device;
     Shader *shader;
-    DescriptorSetLayoutCreater *dsl_creater;
 
 public:
 
-    Material(Shader *s,DescriptorSetLayoutCreater *dslc)
+    Material(Device *dev,Shader *s)
     {
+        device=dev;
         shader=s;
-        dsl_creater=dslc;
     }
     ~Material();
 
@@ -36,16 +37,12 @@ public:
 class MaterialInstance
 {
     const Material *mat;                                                                            ///<这里的是对material的完全引用，不做任何修改
-    VertexAttributeBinding *vab;                                                         ///<这里的vis是Material中vis的复制体
+    VertexAttributeBinding *vab;
+    DescriptorSetLayoutCreater *dsl_creater;
 
 public:
 
-    MaterialInstance(Material *m,VertexAttributeBinding *vi)
-    {
-        mat=m;
-        vab=vi;
-    }
-
+    MaterialInstance(Material *m);
     ~MaterialInstance();
 };//class MaterialInstance
 VK_NAMESPACE_END
