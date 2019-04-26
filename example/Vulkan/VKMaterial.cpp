@@ -1,7 +1,7 @@
 ﻿#include"VKMaterial.h"
 #include"VKDescriptorSets.h"
 #include"VKShader.h"
-#include"VKVertexInput.h"
+#include"VKVertexAttributeBinding.h"
 VK_NAMESPACE_BEGIN
 Material::~Material()
 {
@@ -11,13 +11,13 @@ Material::~Material()
 
 MaterialInstance *Material::CreateInstance()
 {
-    VertexAttributeBinding *vis_instance=shader->CreateVertexAttributeBinding();
+    VertexAttributeBinding *vab=shader->CreateVertexAttributeBinding();
 
-    return(new MaterialInstance(this,vis_instance));
+    return(new MaterialInstance(this,vab));
 }
 
 MaterialInstance::~MaterialInstance()
 {
-    delete vis_instance;
+    delete vab;
 }
 VK_NAMESPACE_END

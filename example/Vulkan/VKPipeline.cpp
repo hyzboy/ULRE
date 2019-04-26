@@ -1,7 +1,7 @@
 ﻿#include"VKPipeline.h"
 #include"VKDevice.h"
 #include"VKShader.h"
-#include"VKVertexInput.h"
+#include"VKVertexAttributeBinding.h"
 #include"VKRenderPass.h"
 
 VK_NAMESPACE_BEGIN
