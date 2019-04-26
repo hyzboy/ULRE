@@ -3,35 +3,38 @@
 #include"spirv_cross.hpp"
 
 VK_NAMESPACE_BEGIN
-const VkFormat GetVecFormat(const spirv_cross::SPIRType &type)
+namespace
 {
-    constexpr VkFormat format[][4]=
+    const VkFormat GetVecFormat(const spirv_cross::SPIRType &type)
     {
-        {FMT_R8I,FMT_RG8I,FMT_RGB8I,FMT_RGBA8I},    //sbyte
-        {FMT_R8U,FMT_RG8U,FMT_RGB8U,FMT_RGBA8U},    //ubyte
-        {FMT_R16I,FMT_RG16I,FMT_RGB16I,FMT_RGBA16I},//short
-        {FMT_R16U,FMT_RG16U,FMT_RGB16U,FMT_RGBA16U},//ushort
-        {FMT_R32I,FMT_RG32I,FMT_RGB32I,FMT_RGBA32I},//int
-        {FMT_R32U,FMT_RG32U,FMT_RGB32U,FMT_RGBA32U},//uint
-        {FMT_R64I,FMT_RG64I,FMT_RGB64I,FMT_RGBA64I},//int64
-        {FMT_R64U,FMT_RG64U,FMT_RGB64U,FMT_RGBA64U},//uint64
-        {}, //atomic
-        {FMT_R16F,FMT_RG16F,FMT_RGB16F,FMT_RGBA16F},//half
-        {FMT_R32F,FMT_RG32F,FMT_RGB32F,FMT_RGBA32F},//float
-        {FMT_R64F,FMT_RG64F,FMT_RGB64F,FMT_RGBA64F} //double
-    };
+        constexpr VkFormat format[][4]=
+        {
+            {FMT_R8I,FMT_RG8I,FMT_RGB8I,FMT_RGBA8I},    //sbyte
+            {FMT_R8U,FMT_RG8U,FMT_RGB8U,FMT_RGBA8U},    //ubyte
+            {FMT_R16I,FMT_RG16I,FMT_RGB16I,FMT_RGBA16I},//short
+            {FMT_R16U,FMT_RG16U,FMT_RGB16U,FMT_RGBA16U},//ushort
+            {FMT_R32I,FMT_RG32I,FMT_RGB32I,FMT_RGBA32I},//int
+            {FMT_R32U,FMT_RG32U,FMT_RGB32U,FMT_RGBA32U},//uint
+            {FMT_R64I,FMT_RG64I,FMT_RGB64I,FMT_RGBA64I},//int64
+            {FMT_R64U,FMT_RG64U,FMT_RGB64U,FMT_RGBA64U},//uint64
+            {}, //atomic
+            {FMT_R16F,FMT_RG16F,FMT_RGB16F,FMT_RGBA16F},//half
+            {FMT_R32F,FMT_RG32F,FMT_RGB32F,FMT_RGBA32F},//float
+            {FMT_R64F,FMT_RG64F,FMT_RGB64F,FMT_RGBA64F} //double
+        };
 
-    if(type.basetype<spirv_cross::SPIRType::SByte
-     ||type.basetype>spirv_cross::SPIRType::Double
-     ||type.basetype==spirv_cross::SPIRType::AtomicCounter
-     ||type.vecsize<1
-     ||type.vecsize>4)
-        return VK_FORMAT_UNDEFINED;
+        if(type.basetype<spirv_cross::SPIRType::SByte
+         ||type.basetype>spirv_cross::SPIRType::Double
+         ||type.basetype==spirv_cross::SPIRType::AtomicCounter
+         ||type.vecsize<1
+         ||type.vecsize>4)
+            return VK_FORMAT_UNDEFINED;
 
-    return format[type.basetype-spirv_cross::SPIRType::SByte][type.vecsize-1];
-}
+        return format[type.basetype-spirv_cross::SPIRType::SByte][type.vecsize-1];
+    }
+}//namespace
 
-bool Shader::CreateVIS(const void *spv_data,const uint32_t spv_size)
+bool Shader::ParseVertexShader(const void *spv_data,const uint32_t spv_size)
 {
     spirv_cross::Compiler comp((const uint32_t *)spv_data,spv_size/sizeof(uint32_t));
 
@@ -46,8 +49,6 @@ bool Shader::CreateVIS(const void *spv_data,const uint32_t spv_size)
 
     uint32_t binding_index=0;
 
-    
-
     for(auto &si:res.stage_inputs)
     {
         const spirv_cross::SPIRType &   type    =comp.get_type(si.type_id);
@@ -58,18 +59,18 @@ bool Shader::CreateVIS(const void *spv_data,const uint32_t spv_size)
 
         const UTF8String &              name    =comp.get_name(si.id).c_str();
 
-        bind->binding   =binding_index;                 //binding对应在vkCmdBindVertexBuffer中设置的缓冲区序列号，所以这个数字必须从0开始，而且紧密排列。
+        bind->binding   =binding_index;                 //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
                                                         //在VertexInput类中，buf_list需要严格按照本此binding为序列号排列
         bind->stride    =GetStrideByFormat(format);
         bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
 
-        //实际使用可以一个binding绑多个attrib，但我们仅支持1v1。
-        //一个binding是指在vertex shader中，由一个vertex输入流输入数据，attrib指其中的数据成分
+        //binding对应的是第几个数据输入流
+        //实际使用一个binding可以绑定多个attrib
         //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
-        //但我们在一个流中，仅支持一个attrib传递
+        //但在我们的设计中，仅支持一个流传递一个attrib
 
         attr->binding   =binding_index;
-        attr->location  =comp.get_decoration(si.id,spv::DecorationLocation);
+        attr->location  =comp.get_decoration(si.id,spv::DecorationLocation);        //此值对应shader中的layout(location=
         attr->format    =format;
         attr->offset    =0;
 
@@ -93,7 +94,7 @@ Shader::Shader(VkDevice dev)
 
 Shader::~Shader()
 {
-    if(instance_set.GetCount()>0)
+    if(vab_sets.GetCount()>0)
     {
         //还有在用的，这是个错误
     }
@@ -117,7 +118,7 @@ Shader::~Shader()
 bool Shader::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
 {   
     if(shader_stage_bit==VK_SHADER_STAGE_VERTEX_BIT)
-        CreateVIS(spv_data,spv_size);
+        ParseVertexShader(spv_data,spv_size);
 
     VkPipelineShaderStageCreateInfo shader_stage;
     shader_stage.sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -144,16 +145,16 @@ bool Shader::Add(const VkShaderStageFlagBits shader_stage_bit,const void *spv_da
 
 VertexAttributeBinding *Shader::CreateVertexAttributeBinding()
 {
-    VertexAttributeBinding *vis_instance=new VertexAttributeBinding(this);
+    VertexAttributeBinding *vab=new VertexAttributeBinding(this);
 
-    instance_set.Add(vis_instance);
+    vab_sets.Add(vab);
 
-    return(vis_instance);
+    return(vab);
 }
 
-bool Shader::Release(VertexAttributeBinding *vis_instance)
+bool Shader::Release(VertexAttributeBinding *vab)
 {
-    return instance_set.Delete(vis_instance);
+    return vab_sets.Delete(vab);
 }
 
 const int Shader::GetLocation(const UTF8String &name)const
