@@ -1,5 +1,5 @@
 ﻿#include"VKShader.h"
-#include"VKVertexInput.h"
+#include"VKVertexAttributeBinding.h"
 #include"spirv_cross.hpp"
 
 VK_NAMESPACE_BEGIN

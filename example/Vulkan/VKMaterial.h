@@ -6,7 +6,6 @@ VK_NAMESPACE_BEGIN
 class Shader;
 class DescriptorSetLayoutCreater;
 class MaterialInstance;
-class VertexInputState;
 class VertexAttributeBinding;
 
 /**
@@ -37,14 +36,14 @@ public:
 class MaterialInstance
 {
     const Material *mat;                                                                            ///<这里的是对material的完全引用，不做任何修改
-    VertexAttributeBinding *vis_instance;                                                         ///<这里的vis是Material中vis的复制体
+    VertexAttributeBinding *vab;                                                         ///<这里的vis是Material中vis的复制体
 
 public:
 
     MaterialInstance(Material *m,VertexAttributeBinding *vi)
     {
         mat=m;
-        vis_instance=vi;
+        vab=vi;
     }
 
     ~MaterialInstance();

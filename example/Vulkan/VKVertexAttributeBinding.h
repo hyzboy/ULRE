@@ -15,7 +15,9 @@ class Shader;
 class VertexAttributeBinding
 {
     Shader *shader;
+    uint32_t attr_count;
     VkVertexInputBindingDescription *binding_list;
+    VkVertexInputAttributeDescription *attribute_list;
 
 private:
 
@@ -27,11 +29,17 @@ public:
 
     ~VertexAttributeBinding();
 
-    bool SetInstance(const uint index,bool instance);
-    bool SetInstance(const UTF8String &name,bool instance);
+    const uint GetIndex(const UTF8String &name);
 
-    bool SetStride(const uint index,uint32_t stride);
-    bool SetStride(const UTF8String &name,uint32_t stride);
+    bool SetInstance(const uint index,bool              instance);
+    bool SetStride  (const uint index,const uint32_t &  stride);
+    bool SetFormat  (const uint index,const VkFormat &  format);
+    bool SetOffset  (const uint index,const uint32_t    offset);
+
+    bool SetInstance(const UTF8String &name,bool            instance){return SetInstance(GetIndex(name),instance);}
+    bool SetStride  (const UTF8String &name,const uint32_t &stride  ){return SetStride  (GetIndex(name),stride);}
+    bool SetFormat  (const UTF8String &name,const VkFormat &format  ){return SetFormat  (GetIndex(name),format);}
+    bool SetOffset  (const UTF8String &name,const uint32_t  offset  ){return SetOffset  (GetIndex(name),offset);}
 
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 };//class VertexAttributeBinding
