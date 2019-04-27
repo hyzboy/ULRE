@@ -62,7 +62,7 @@ bool LoadShader(vulkan::Shader *sc,const char *filename,VkShaderStageFlagBits sh
     if(!data)
         return(false);
 
-    if(!sc->Add(shader_flag,data,size))
+    if(!sc->CreateShader(shader_flag,data,size))
         return(false);
 
     delete[] data;

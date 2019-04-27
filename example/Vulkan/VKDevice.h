@@ -17,6 +17,7 @@ class RenderPass;
 class Fence;
 class Semaphore;
 class ShaderModule;
+class ShaderModuleManage;
 class Material;
 
 #define MAX_FRAMES_IN_FLIGHT 2
@@ -34,6 +35,8 @@ class Device
     uint32_t current_frame;
 
     VkPresentInfoKHR present;
+
+    ShaderModuleManage *shader_module_manage;
 
 private:
 
@@ -66,7 +69,7 @@ public:
             RenderPass *    GetRenderPass           ()          {return main_rp;}
             Framebuffer *   GetFramebuffer          (int index) {return main_fb[index];}
 
-public:
+public: //Buffer相关
 
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
@@ -91,14 +94,18 @@ public:
 
 #undef CREATE_BUFFER_OBJECT
 
-    ShaderModule *  CreateShaderModule(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
+public: //material相关
+    
+    //Material *      CreateMaterial();
 
-    Material *      CreateMaterial(Shader *);
+public: //Command Buffer 相关
 
     CommandBuffer * CreateCommandBuffer();
     RenderPass *    CreateRenderPass(VkFormat color_format,VkFormat depth_format);
     Fence *         CreateFence();
     Semaphore *     CreateSem();
+
+public: //提交相关
 
     bool AcquireNextImage   ();
     bool QueueSubmit        (CommandBuffer *);
