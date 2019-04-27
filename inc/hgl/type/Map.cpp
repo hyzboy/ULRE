@@ -218,6 +218,19 @@ namespace hgl
 		return(true);
 	}
 
+    template<typename F,typename T,typename DataPair>
+    bool _Map<F,T,DataPair>::Check(const F &key,const T &value) const
+    {
+        int index=Find(key);
+
+        DataPair *obj=GetObject(data_list,index);
+
+        if(!obj)
+            return(false);
+
+        return (value==obj->right);
+    }
+
 	/**
 	* 根据序号取得数据
 	* @param index 序号
