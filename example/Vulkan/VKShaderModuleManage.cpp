@@ -2,7 +2,7 @@
 #include"VKShaderModule.h"
 
 VK_NAMESPACE_BEGIN
-int ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
+const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
 {
     VkPipelineShaderStageCreateInfo *shader_stage=new VkPipelineShaderStageCreateInfo;
     shader_stage->sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -20,13 +20,15 @@ int ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bi
     moduleCreateInfo.pCode=(const uint32_t *)spv_data;
 
     if(vkCreateShaderModule(device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
-        return(-1);
+        return(nullptr);
 
     ShaderModule *sm=new ShaderModule(shader_count,shader_stage);
 
     shader_list.Add(shader_count,sm);
 
-    return shader_count++;
+    ++shader_count;
+
+    return sm;
 }
 
 const ShaderModule *ShaderModuleManage::GetShader(int id)
@@ -42,12 +44,13 @@ const ShaderModule *ShaderModuleManage::GetShader(int id)
 
 bool ShaderModuleManage::ReleaseShader(const ShaderModule *const_sm)
 {
-    if(!const_sm)return;
+    if(!const_sm)
+        return(false);
 
     ShaderModule *sm;
 
     if(!shader_list.Get(const_sm->GetID(),sm))
-        return nullptr;
+        return(false);
     
     if(sm!=const_sm)
         return(false);

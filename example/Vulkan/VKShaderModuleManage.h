@@ -28,9 +28,9 @@ public:
 
     ~ShaderModuleManage();
 
-    int CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
+    const ShaderModule *CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
 
-#define ADD_SHADER_FUNC(sn,vk_name)   int Create##sn##Shader(const void *spv_data,const uint32_t spv_size){return CreateShader(VK_SHADER_STAGE_##vk_name##_BIT,spv_data,spv_size);}
+#define ADD_SHADER_FUNC(sn,vk_name)   const ShaderModule *Create##sn##Shader(const void *spv_data,const uint32_t spv_size){return CreateShader(VK_SHADER_STAGE_##vk_name##_BIT,spv_data,spv_size);}
     ADD_SHADER_FUNC(Vertex,     VERTEX)
     ADD_SHADER_FUNC(Fragment,   FRAGMENT)
     ADD_SHADER_FUNC(Geometry,   GEOMETRY)
@@ -39,7 +39,7 @@ public:
     ADD_SHADER_FUNC(Compute,    COMPUTE)
 #undef ADD_SHADER_FUNC
 
-#define ADD_NV_SHADER_FUNC(sn,vk_name)   int Create##sn##Shader(const void *spv_data,const uint32_t spv_size){return CreateShader(VK_SHADER_STAGE_##vk_name##_BIT_NV,spv_data,spv_size);}
+#define ADD_NV_SHADER_FUNC(sn,vk_name)   const ShaderModule *Create##sn##Shader(const void *spv_data,const uint32_t spv_size){return CreateShader(VK_SHADER_STAGE_##vk_name##_BIT_NV,spv_data,spv_size);}
     ADD_NV_SHADER_FUNC(Raygen,      RAYGEN);
     ADD_NV_SHADER_FUNC(AnyHit,      ANY_HIT);
     ADD_NV_SHADER_FUNC(ClosestHit,  CLOSEST_HIT);
