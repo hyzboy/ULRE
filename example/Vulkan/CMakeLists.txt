@@ -15,6 +15,8 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKDeviceAttribute.cpp
 								VKDeviceCreater.cpp
 								VKDevice.cpp
+								VKDeviceBuffer.cpp
+								VKDeviceMaterial.cpp
 								VKBuffer.cpp
 								VKDescriptorSets.cpp
 								VKPipelineLayout.cpp
