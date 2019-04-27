@@ -20,6 +20,8 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKPipelineLayout.cpp
 								VKRenderPass.cpp
 								VKShader.cpp
+								VKShaderModule.cpp
+								VKShaderModuleManage.cpp
 								VKVertexAttributeBinding.cpp
 								VKVertexInput.cpp
 								VKPipeline.cpp
@@ -44,6 +46,8 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKPipelineLayout.h
 								VKRenderPass.h
 								VKShader.h
+								VKShaderModule.h
+								VKShaderModuleManage.h
 								VKVertexInput.h
 								VKVertexAttributeBinding.h
 								VKSemaphore.h

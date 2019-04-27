@@ -17,12 +17,12 @@ class VertexAttributeBinding;
 class Material
 {
     Device *device;
-    Shader *shader;
+    ShaderModule *shader_modules;
     DescriptorSetLayoutCreater *dsl_creater;
 
 public:
 
-    Material(Device *dev,Shader *s);
+    Material(Device *dev,);
     ~Material();
 
     MaterialInstance *CreateInstance();
