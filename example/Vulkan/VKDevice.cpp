@@ -1,6 +1,5 @@
 ﻿#include"VKDevice.h"
 #include<hgl/type/Pair.h>
-#include"VKBuffer.h"
 #include"VKImageView.h"
 #include"VKCommandBuffer.h"
 //#include"VKDescriptorSet.h"
@@ -8,9 +7,7 @@
 #include"VKFramebuffer.h"
 #include"VKFence.h"
 #include"VKSemaphore.h"
-#include"VKShader.h"
 #include"VKShaderModuleManage.h"
-#include"VKMaterial.h"
 #include"VKDescriptorSets.h"
 
 VK_NAMESPACE_BEGIN
@@ -39,13 +36,10 @@ Device::Device(DeviceAttribute *da)
         for(int i=0;i<sc_count;i++)
             main_fb.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
     }
-
-    shader_module_manage=new ShaderModuleManage(attr->device);
 }
 
 Device::~Device()
 {
-    delete shader_module_manage;
     main_fb.Clear();
 
     delete main_rp;
@@ -195,6 +189,11 @@ Semaphore *Device::CreateSem()
         return(nullptr);
 
     return(new Semaphore(attr->device,sem));
+}
+
+ShaderModuleManage *Device::CreateShaderModuleManage()
+{
+    return(new ShaderModuleManage(this));
 }
 
 bool Device::AcquireNextImage()

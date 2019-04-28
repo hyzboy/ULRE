@@ -2,6 +2,8 @@
 #define HGL_GRAPH_RENDER_SURFACE_INCLUDE
 
 #include<hgl/type/List.h>
+#include<hgl/type/BaseString.h>
+#include<hgl/type/Map.h>
 #include"VK.h"
 #include"Window.h"
 #include"VKDeviceAttribute.h"
@@ -18,6 +20,7 @@ class Fence;
 class Semaphore;
 class ShaderModule;
 class ShaderModuleManage;
+class VertexShaderModule;
 class Material;
 
 #define MAX_FRAMES_IN_FLIGHT 2
@@ -35,9 +38,7 @@ class Device
     uint32_t current_frame;
 
     VkPresentInfoKHR present;
-
-    ShaderModuleManage *shader_module_manage;
-
+    
 private:
 
     friend Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
@@ -96,7 +97,7 @@ public: //Buffer相关
 
 public: //material相关
     
-    //Material *      CreateMaterial();
+    ShaderModuleManage *CreateShaderModuleManage();
 
 public: //Command Buffer 相关
 

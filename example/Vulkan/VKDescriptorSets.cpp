@@ -74,6 +74,29 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType de
     binding_index.Add(binding,index);
 }
 
+void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
+{
+    const int old_count=layout_binding_list.GetCount();
+
+    layout_binding_list.SetCount(old_count+count);
+
+    VkDescriptorSetLayoutBinding *p=layout_binding_list.GetData()+old_count;
+
+    for(int i=old_count;i<old_count+count;i++)
+    {
+        p->binding = *binding;
+        p->descriptorType = desc_type;
+        p->descriptorCount = 1;
+        p->stageFlags = stageFlags;
+        p->pImmutableSamplers = nullptr;
+
+        binding_index.Add(*binding,i);
+
+        ++binding;
+        ++p;
+    }
+}
+
 DescriptorSetLayout *DescriptorSetLayoutCreater::Create()
 {
     const int count=layout_binding_list.GetCount();

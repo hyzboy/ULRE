@@ -6,6 +6,7 @@ ELSEIF(WIN32)
 ENDIF()
 
 SET(VULKAN_TEST_SOURCE_FILES	main.cpp
+								AssetsManage.cpp
 								${RENDER_WINDOW_SOURCE}
 								VKFormat.cpp
 								VKInstance.cpp
@@ -16,12 +17,10 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKDeviceCreater.cpp
 								VKDevice.cpp
 								VKDeviceBuffer.cpp
-								VKDeviceMaterial.cpp
 								VKBuffer.cpp
 								VKDescriptorSets.cpp
 								VKPipelineLayout.cpp
 								VKRenderPass.cpp
-								VKShader.cpp
 								VKShaderModule.cpp
 								VKShaderModuleManage.cpp
 								VKVertexAttributeBinding.cpp
@@ -30,10 +29,11 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKSemaphore.cpp
 								VKFramebuffer.cpp
 								VKFence.cpp
-								#VKMaterial.cpp
+								VKMaterial.cpp
 							 )
 
-SET(VULKAN_TEST_HEADER_FILES	VK.h
+SET(VULKAN_TEST_HEADER_FILES	AssetsManage.h
+								VK.h
                                 VKFormat.h
 								VKPrimivate.h
 								VKInstance.h
@@ -47,7 +47,6 @@ SET(VULKAN_TEST_HEADER_FILES	VK.h
 								VKDescriptorSets.h
 								VKPipelineLayout.h
 								VKRenderPass.h
-								VKShader.h
 								VKShaderModule.h
 								VKShaderModuleManage.h
 								VKVertexInput.h

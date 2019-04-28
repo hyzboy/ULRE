@@ -1,12 +1,12 @@
 #include"VKVertexAttributeBinding.h"
-#include"VKShader.h"
+#include"VKShaderModule.h"
 
 VK_NAMESPACE_BEGIN
-VertexAttributeBinding::VertexAttributeBinding(Shader *s)
+VertexAttributeBinding::VertexAttributeBinding(VertexShaderModule *s)
 {
-    shader=s;
+    vsm=s;
 
-    attr_count=shader->GetAttrCount();
+    attr_count=vsm->GetAttrCount();
 
     if(attr_count<=0)
     {
@@ -15,8 +15,8 @@ VertexAttributeBinding::VertexAttributeBinding(Shader *s)
         return;
     }
 
-    binding_list=hgl_copy_new(attr_count,shader->GetDescList());
-    attribute_list=hgl_copy_new(attr_count,shader->GetAttrList());
+    binding_list=hgl_copy_new(attr_count,vsm->GetDescList());
+    attribute_list=hgl_copy_new(attr_count,vsm->GetAttrList());
 }
 
 VertexAttributeBinding::~VertexAttributeBinding()
@@ -24,12 +24,12 @@ VertexAttributeBinding::~VertexAttributeBinding()
     delete[] attribute_list;
     delete[] binding_list;
 
-    shader->Release(this);
+    vsm->Release(this);
 }
 
-const uint VertexAttributeBinding::GetIndex(const UTF8String &name)
+const uint VertexAttributeBinding::GetBinding(const UTF8String &name)
 {
-    return shader->GetBinding(name);
+    return vsm->GetBinding(name);
 }
 
 bool VertexAttributeBinding::SetInstance(const uint index,bool instance)
@@ -72,7 +72,7 @@ void VertexAttributeBinding::Write(VkPipelineVertexInputStateCreateInfo &vis_cre
 {
     vis_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-    const uint32_t count=shader->GetAttrCount();
+    const uint32_t count=vsm->GetAttrCount();
 
     vis_create_info.vertexBindingDescriptionCount = count;
     vis_create_info.pVertexBindingDescriptions = binding_list;

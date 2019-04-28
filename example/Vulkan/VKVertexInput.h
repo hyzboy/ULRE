@@ -6,7 +6,7 @@
 VK_NAMESPACE_BEGIN
 class VertexBuffer;
 class IndexBuffer;
-class Shader;
+class VertexShaderModule;
 
 /**
  * 顶点输入配置，负责具体的buffer绑定，提供给CommandBuffer使用<br>
@@ -14,7 +14,7 @@ class Shader;
  */
 class VertexInput
 {
-    const Shader *shader;
+    const VertexShaderModule *shader;
 
     int buf_count=0;
     VkBuffer *buf_list=nullptr;
@@ -25,7 +25,7 @@ class VertexInput
 
 public:
 
-    VertexInput(const Shader *);
+    VertexInput(const VertexShaderModule *);
     virtual ~VertexInput();
 
     bool Set(const int binding,     VertexBuffer *vb,VkDeviceSize offset=0);

@@ -1,5 +1,9 @@
 #include"VKShaderModuleManage.h"
 #include"VKShaderModule.h"
+#include"VKMaterial.h"
+#include"VKDevice.h"
+#include"AssetsManage.h"
+#include"VKShaderParse.h"
 
 VK_NAMESPACE_BEGIN
 const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
@@ -19,14 +23,36 @@ const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits
     moduleCreateInfo.codeSize=spv_size;
     moduleCreateInfo.pCode=(const uint32_t *)spv_data;
 
-    if(vkCreateShaderModule(device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
+    if(vkCreateShaderModule(*device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
         return(nullptr);
 
-    ShaderModule *sm=new ShaderModule(shader_count,shader_stage);
+    ShaderModule *sm;
+    ShaderParse *parse=new ShaderParse(spv_data,spv_size);
 
+    if(shader_stage_bit==VK_SHADER_STAGE_VERTEX_BIT)
+        sm=new VertexShaderModule(shader_count,shader_stage,parse);
+    else
+        sm=new ShaderModule(shader_count,shader_stage,parse);
+
+    delete parse;
     shader_list.Add(shader_count,sm);
 
     ++shader_count;
+
+    return sm;
+}
+
+const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const UTF8String &filename)
+{
+    uint32_t spv_size;
+    void *spv_data=LoadFileToMemory(filename,spv_size);
+
+    if(!spv_data)
+        return(nullptr);
+
+    const ShaderModule *sm=CreateShader(shader_stage_bit,spv_data,spv_size);
+
+    delete[] spv_data;
 
     return sm;
 }
@@ -57,5 +83,21 @@ bool ShaderModuleManage::ReleaseShader(const ShaderModule *const_sm)
     
     sm->DecRef();
     return(true);
+}
+
+const Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const
+{
+    if(!vertex_shader_module||!fragment_shader_module)
+        return(nullptr);
+
+    if(vertex_shader_module->GetStage()!=VK_SHADER_STAGE_VERTEX_BIT)return(nullptr);
+    if(fragment_shader_module->GetStage()!=VK_SHADER_STAGE_FRAGMENT_BIT)return(nullptr);
+
+    ShaderModuleMap *smm=new ShaderModuleMap;
+
+    smm->Add(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_module);
+    smm->Add(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_module);
+
+    return(new Material(device,smm));
 }
 VK_NAMESPACE_END
