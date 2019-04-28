@@ -58,8 +58,8 @@ public:
     const ShaderModule *GetShader       (int);
     bool                ReleaseShader   (const ShaderModule *);
 
-    const Material *    CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const;
-    const Material *    CreateMaterial(const UTF8String &vertex_shader_filename,const UTF8String &fragment_shader_filename)
+    Material *    CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const;
+    Material *    CreateMaterial(const UTF8String &vertex_shader_filename,const UTF8String &fragment_shader_filename)
     {
         const ShaderModule *vs=CreateShader(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_filename);
 

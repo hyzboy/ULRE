@@ -6,6 +6,23 @@
 #include"VKShaderParse.h"
 
 VK_NAMESPACE_BEGIN
+ShaderModuleManage::~ShaderModuleManage()
+{
+    const int count=shader_list.GetCount();
+
+    if(count>0)
+    {
+        auto **p=shader_list.GetDataList();
+
+        for(int i=0;i<count;i++)
+        {
+            delete (*p)->right;
+
+            ++p;
+        }
+    }
+}
+
 const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
 {
     VkPipelineShaderStageCreateInfo *shader_stage=new VkPipelineShaderStageCreateInfo;
@@ -85,7 +102,7 @@ bool ShaderModuleManage::ReleaseShader(const ShaderModule *const_sm)
     return(true);
 }
 
-const Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const
+Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const
 {
     if(!vertex_shader_module||!fragment_shader_module)
         return(nullptr);
