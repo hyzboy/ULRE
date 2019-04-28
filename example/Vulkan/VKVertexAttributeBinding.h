@@ -10,7 +10,7 @@ class VertexShaderModule;
 
 /**
 * 顶点输入状态实例<br>
-* 本对象用于传递给MaterialInstance,用于已经确定好顶点格式的情况下，依然可修改部分设定(如instance)。
+* 本对象用于传递给Material,用于已经确定好顶点格式的情况下，依然可修改部分设定(如instance)。
 */
 class VertexAttributeBinding
 {

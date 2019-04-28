@@ -120,7 +120,6 @@ class TestApp:public VulkanApplicationFramework
 private:    //需释放数据
 
     vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;    
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -142,7 +141,6 @@ public:
         SAFE_CLEAR(pipeline_creater);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
         SAFE_CLEAR(material);
     }
 
@@ -154,11 +152,7 @@ private:
         if(!material)
             return(false);
 
-        material_instance=material->CreateInstance();
-        if(!material_instance)
-            return(false);
-
-        render_obj=material_instance->CreateRenderable();
+        render_obj=material->CreateRenderable();
         return(true);
     }
 
@@ -173,7 +167,7 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        return material_instance->UpdateUBO("world",*ubo_mvp);
+        return material->UpdateUBO("world",*ubo_mvp);
     }
 
     void InitVBO()
@@ -187,7 +181,7 @@ private:
 
     bool InitPipeline()
     {
-        pipeline_creater=new vulkan::PipelineCreater(device,material_instance);
+        pipeline_creater=new vulkan::PipelineCreater(device,material);
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->CloseCullFace();
@@ -207,6 +201,7 @@ private:
 
         cmd_buf->Begin(device->GetRenderPass(),device->GetFramebuffer(0));
         cmd_buf->Bind(pipeline);
+        cmd_buf->Bind(material);
         cmd_buf->Bind(render_obj);
         cmd_buf->Draw(VERTEX_COUNT);
         cmd_buf->End();

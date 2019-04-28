@@ -4,60 +4,37 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    void DestroyDescriptorSetLayout(VkDevice device,List<VkDescriptorSetLayout> &dsl_list)
+    void DestroyDescriptorSetLayout(VkDevice device,const int count,VkDescriptorSetLayout *dsl_list)
     {
-        const int count=dsl_list.GetCount();
-
-        if(count>0)
+        if(count<=0)
+            return;
+        
+        for(int i=0;i<count;i++)
         {
-            VkDescriptorSetLayout *dsl=dsl_list.GetData();
-
-            for(int i=0;i<count;i++)
-            {
-                vkDestroyDescriptorSetLayout(device,*dsl,nullptr);
-                ++dsl;
-            }
-
-            dsl_list.Clear();
+            vkDestroyDescriptorSetLayout(device,*dsl_list,nullptr);
+            ++dsl_list;
         }
     }
 }//namespace
 
-DescriptorSetLayout::~DescriptorSetLayout()
-{
-    // 这里注释掉是因为从来不见那里的范例有FREE过，但又有vkFreeDescriptorSets这个函数。如发现此注释，请使用工具查是否有资源泄露
-    //{
-    //const int count=desc_sets.GetCount();
-
-    //if(count>0)
-    //    vkFreeDescriptorSets(device->GetDevice(),device->GetDescriptorPool(),count,desc_sets.GetData());
-    //}
-
-    DestroyDescriptorSetLayout(*device,desc_set_layout_list);
-}
-
-bool DescriptorSetLayout::UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
+VkDescriptorSet DescriptorSetLayout::GetDescriptorSet(const uint32_t binding)
 {
     int index;
-    
-    if(!binding_index.Get(binding,index))
-        return(false);
 
-    VkDescriptorSet set;
-    if(!desc_sets.Get(index,set))
-        return(false);
+    if(!index_by_binding.Get(binding,index))
+        return(nullptr);
 
-    VkWriteDescriptorSet writeDescriptorSet = {};
+    return desc_set_list[index];
+}
 
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;    
-    writeDescriptorSet.dstSet = set;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writeDescriptorSet.pBufferInfo = buf_info;
-    writeDescriptorSet.dstBinding = binding;
+DescriptorSetLayout::~DescriptorSetLayout()
+{
+    //if(count>0)
+    //    vkFreeDescriptorSets(device->GetDevice(),device->GetDescriptorPool(),count,desc_set_list);
 
-    vkUpdateDescriptorSets(device->GetDevice(), 1, &writeDescriptorSet, 0, nullptr);
-    return(true);
+    delete[] desc_set_list;
+    DestroyDescriptorSetLayout(*device,count,desc_set_layout_list);
+    delete[] desc_set_layout_list;
 }
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
@@ -71,7 +48,7 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType de
 
     const int index=layout_binding_list.Add(layout_binding);
     
-    binding_index.Add(binding,index);
+    index_by_binding.Add(binding,index);
 }
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
@@ -90,7 +67,7 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t cou
         p->stageFlags = stageFlags;
         p->pImmutableSamplers = nullptr;
 
-        binding_index.Add(*binding,i);
+        index_by_binding.Add(*binding,i);
 
         ++binding;
         ++p;
@@ -110,29 +87,31 @@ DescriptorSetLayout *DescriptorSetLayoutCreater::Create()
     descriptor_layout.bindingCount = count;
     descriptor_layout.pBindings = layout_binding_list.GetData();
 
-    List<VkDescriptorSetLayout> dsl_list;
+    VkDescriptorSetLayout *dsl_list=new VkDescriptorSetLayout[count];
 
-    dsl_list.SetCount(count);
-    if(vkCreateDescriptorSetLayout(device->GetDevice(),&descriptor_layout, nullptr, dsl_list.GetData())!=VK_SUCCESS)
+    if(vkCreateDescriptorSetLayout(device->GetDevice(),&descriptor_layout, nullptr, dsl_list)!=VK_SUCCESS)
+    {
+        delete[] dsl_list;
         return(nullptr);
+    }
 
     VkDescriptorSetAllocateInfo alloc_info;
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.pNext = nullptr;
     alloc_info.descriptorPool = device->GetDescriptorPool();
     alloc_info.descriptorSetCount = count;
-    alloc_info.pSetLayouts = dsl_list.GetData();
+    alloc_info.pSetLayouts = dsl_list;
 
-    List<VkDescriptorSet> desc_set;
+    VkDescriptorSet *desc_set=new VkDescriptorSet[count];
 
-    desc_set.SetCount(count);
-
-    if(vkAllocateDescriptorSets(device->GetDevice(), &alloc_info, desc_set.GetData())!=VK_SUCCESS)
+    if(vkAllocateDescriptorSets(device->GetDevice(),&alloc_info,desc_set)!=VK_SUCCESS)
     {
-        DestroyDescriptorSetLayout(*device,dsl_list);
+        delete[] desc_set;
+        DestroyDescriptorSetLayout(*device,count,dsl_list);
+        delete[] dsl_list;
         return(nullptr);
     }
 
-    return(new DescriptorSetLayout(device,dsl_list,desc_set,binding_index));
+    return(new DescriptorSetLayout(device,count,dsl_list,desc_set,index_by_binding));
 }
 VK_NAMESPACE_END
