@@ -3,7 +3,8 @@
 #include"VKPhysicalDevice.h"
 #include"VKDevice.h"
 #include"VKBuffer.h"
-#include"VKShader.h"
+#include"VKShaderModule.h"
+#include"VKShaderModuleManage.h"
 #include"VKImageView.h"
 #include"VKVertexInput.h"
 #include"VKDescriptorSets.h"
@@ -13,12 +14,8 @@
 #include"VKCommandBuffer.h"
 #include"VKFormat.h"
 #include"VKFramebuffer.h"
+#include"VKMaterial.h"
 #include<hgl/math/Math.h>
-
-#include<fstream>
-#ifndef WIN32
-#include<unistd.h>
-#endif//
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -34,72 +31,13 @@ struct WorldConfig
     Matrix4f mvp;    
 }world;
 
-char *LoadFile(const char *filename,uint32_t &file_length)
-{
-    std::ifstream fs;
-
-    fs.open(filename,std::ios_base::binary);
-
-    if(!fs.is_open())
-        return(nullptr);
-
-    fs.seekg(0,std::ios_base::end);
-    file_length=fs.tellg();
-    char *data=new char[file_length];
-
-    fs.seekg(0,std::ios_base::beg);
-    fs.read(data,file_length);
-
-    fs.close();
-    return data;
-}
-
-bool LoadShader(vulkan::Shader *sc,const char *filename,VkShaderStageFlagBits shader_flag)
-{
-    uint32_t size;
-    char *data=LoadFile(filename,size);
-
-    if(!data)
-        return(false);
-
-    if(!sc->CreateShader(shader_flag,data,size))
-        return(false);
-
-    delete[] data;
-    return(true);
-}
-
-vulkan::Shader *LoadShader(VkDevice device)
-{
-    vulkan::Shader *sc=new vulkan::Shader(device);
-
-    if(LoadShader(sc,"FlatColor.vert.spv",VK_SHADER_STAGE_VERTEX_BIT))
-    if(LoadShader(sc,"FlatColor.frag.spv",VK_SHADER_STAGE_FRAGMENT_BIT))
-        return sc;
-
-    delete sc;
-    return(nullptr);
-}
-
 vulkan::Buffer *CreateUBO(vulkan::Device *dev)
 {
-    {
-        const VkExtent2D extent=dev->GetExtent();
+    const VkExtent2D extent=dev->GetExtent();
 
-        world.mvp=ortho(extent.width,extent.height);
-    }
+    world.mvp=ortho(extent.width,extent.height);
 
-    vulkan::Buffer *ubo=dev->CreateUBO(sizeof(WorldConfig));
-
-    uint8_t *p=ubo->Map();
-
-    if(p)
-    {
-        memcpy(p,&world,sizeof(WorldConfig));
-        ubo->Unmap();
-    }
-
-    return ubo;
+    return dev->CreateUBO(sizeof(WorldConfig),&world);
 }
 
 constexpr float vertex_data[]=
@@ -113,17 +51,13 @@ constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
 vulkan::VertexBuffer *vertex_buffer=nullptr;
 vulkan::VertexBuffer *color_buffer=nullptr;
 
-vulkan::VertexInput *CreateVertexBuffer(vulkan::Device *dev,const vulkan::Shader *shader)
+void CreateVertexBuffer(vulkan::Device *dev,vulkan::VertexInput *vi)
 {    
     vertex_buffer   =dev->CreateVBO(FMT_RG32F,  3,vertex_data);
     color_buffer    =dev->CreateVBO(FMT_RGB32F, 3,color_data);
 
-    vulkan::VertexInput *vi=new vulkan::VertexInput(shader);
-
     vi->Set("Vertex",   vertex_buffer);
     vi->Set("Color",    color_buffer);
-
-    return vi;
 }
 
 void wait_seconds(int seconds) {
@@ -181,37 +115,30 @@ int main(int,char **)
         std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
     }
 
-    vulkan::Shader *shader=LoadShader(device->GetDevice());
+    vulkan::ShaderModuleManage *shader_manage=device->CreateShaderModuleManage();
 
-    if(!shader)
+    const vulkan::Material *material=shader_manage->CreateMaterial("FlatColor.vert.spv","FlatColor.frag.spv");
+
+    if(!material)
         return -3;
+
+    vulkan::MaterialInstance *mi=material->CreateInstance();
 
     vulkan::Buffer *ubo=CreateUBO(device);
 
-    vulkan::VertexAttributeBinding *vis_instance=shader->CreateVertexAttributeBinding();
-
-    vulkan::VertexInput *vi=CreateVertexBuffer(device,shader);
-
     vulkan::PipelineCreater pc(device);
 
-    vulkan::DescriptorSetLayoutCreater dslc(device);
+    mi->UpdateUBO("world",*ubo);
 
-    const int ubo_world_config=shader->GetUBO("world");
+    CreateVertexBuffer(device,mi->GetVI());
 
-    dslc.BindUBO(ubo_world_config,VK_SHADER_STAGE_VERTEX_BIT);
-
-    vulkan::DescriptorSetLayout *dsl=dslc.Create();
-
-    dsl->UpdateUBO(ubo_world_config,*ubo);
-
-    vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,dsl);
+    vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,mi->GetDSL());
 
     pc.SetDepthTest(false);
     pc.SetDepthWrite(false);
     pc.CloseCullFace();
 
-    pc.Set(shader);
-    pc.Set(vis_instance);
+    pc.Set(mi);
     pc.Set(PRIM_TRIANGLES);
     pc.Set(*pl);
 
@@ -227,7 +154,7 @@ int main(int,char **)
     cmd_buf->Begin(device->GetRenderPass(),device->GetFramebuffer(0));
     cmd_buf->Bind(pipeline);
     cmd_buf->Bind(pl);
-    cmd_buf->Bind(vi);
+    cmd_buf->Bind(mi->GetVI());
     cmd_buf->Draw(3);
     cmd_buf->End();
 
@@ -235,7 +162,7 @@ int main(int,char **)
     device->Wait();
     device->QueuePresent();
 
-    wait_seconds(1);
+    wait_seconds(2);
 
     delete vertex_buffer;
     delete color_buffer;
@@ -243,12 +170,13 @@ int main(int,char **)
     delete pipeline;
 
     delete pl;
-    delete dsl;
+//    delete dsl;
 
-    delete vi;
+//    delete vi;
     delete ubo;
 
-    delete shader;
+//    delete shader;
+    delete mi;
 
     delete cmd_buf;
     delete device;

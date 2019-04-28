@@ -7,6 +7,7 @@ VK_NAMESPACE_BEGIN
 class Device;
 class RenderPass;
 class VertexAttributeBinding;
+class MaterialInstance;
 
 class Pipeline
 {
@@ -59,8 +60,7 @@ public:
     PipelineCreater(Device *dev,RenderPass *rp=nullptr);
     ~PipelineCreater()=default;
 
-    bool Set(const Shader *);
-    bool Set(const VertexAttributeBinding *);
+    bool Set(const MaterialInstance *);
     bool Set(const VkPrimitiveTopology,bool=false);
     bool Set(VkPipelineLayout pl);
 

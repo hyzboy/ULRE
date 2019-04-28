@@ -1,9 +1,9 @@
 ﻿#include"VKVertexInput.h"
 #include"VKBuffer.h"
-#include"VKShader.h"
+#include"VKShaderModule.h"
 
 VK_NAMESPACE_BEGIN
-VertexInput::VertexInput(const Shader *s)
+VertexInput::VertexInput(const VertexShaderModule *s)
 {
     shader=s;
 
@@ -40,6 +40,8 @@ bool VertexInput::Set(const int index,VertexBuffer *buf,VkDeviceSize offset)
 
 bool VertexInput::Set(const UTF8String &name,VertexBuffer *vb,VkDeviceSize offset)
 {
-    return Set(shader->GetBinding(name),vb,offset);
+    const int binding=shader->GetBinding(name);
+
+    return Set(binding,vb,offset);
 }
 VK_NAMESPACE_END

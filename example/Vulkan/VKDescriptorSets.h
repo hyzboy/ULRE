@@ -53,8 +53,10 @@ public:
     ~DescriptorSetLayoutCreater()=default;
 
     void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);
+    void Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType type,VkShaderStageFlagBits stage);
 
-#define DESC_SET_BIND_FUNC(name,vkname) void Bind##name(const uint32_t binding,VkShaderStageFlagBits stage_flag){Bind(binding,VK_DESCRIPTOR_TYPE_##vkname,stage_flag);}
+#define DESC_SET_BIND_FUNC(name,vkname) void Bind##name(const uint32_t binding,VkShaderStageFlagBits stage_flag){Bind(binding,VK_DESCRIPTOR_TYPE_##vkname,stage_flag);} \
+                                        void Bind##name(const uint32_t *binding,const uint32_t count,VkShaderStageFlagBits stage_flag){Bind(binding,count,VK_DESCRIPTOR_TYPE_##vkname,stage_flag);}
 
     DESC_SET_BIND_FUNC(Sampler,     SAMPLER);
     DESC_SET_BIND_FUNC(UBO,         UNIFORM_BUFFER);

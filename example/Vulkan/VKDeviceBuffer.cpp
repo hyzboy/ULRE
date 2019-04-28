@@ -1,4 +1,5 @@
 #include"VKDevice.h"
+#include"VKBuffer.h"
 
 VK_NAMESPACE_BEGIN
 namespace

@@ -2,13 +2,19 @@
 #define HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
 
 #include"VK.h"
+#include<hgl/type/Map.h>
+#include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
 class Device;
-class Shader;
+class ShaderModule;
+class VertexShaderModule;
 class DescriptorSetLayoutCreater;
 class DescriptorSetLayout;
 class MaterialInstance;
 class VertexAttributeBinding;
+class VertexInput;
+
+using ShaderModuleMap=hgl::Map<VkShaderStageFlagBits,const ShaderModule *>;
 
 /**
  * 材质类<br>
@@ -16,16 +22,24 @@ class VertexAttributeBinding;
  */
 class Material
 {
-    Device *device;
-    ShaderModule *shader_modules;
+    VkDevice device;
+    ShaderModuleMap *shader_maps;
+    VertexShaderModule *vertex_sm;
+    List<VkPipelineShaderStageCreateInfo> shader_stage_list;
+
     DescriptorSetLayoutCreater *dsl_creater;
 
 public:
 
-    Material(Device *dev,);
+    Material(Device *dev,ShaderModuleMap *smm);
     ~Material();
 
-    MaterialInstance *CreateInstance();
+    const int GetUBOBinding(const UTF8String &)const;
+
+    MaterialInstance *CreateInstance()const;
+
+    const uint32_t                          GetStageCount   ()const{return shader_stage_list.GetCount();}
+    const VkPipelineShaderStageCreateInfo * GetStages       ()const{return shader_stage_list.GetData();}
 };//class Material
 
 /**
@@ -36,12 +50,29 @@ class MaterialInstance
 {
     const Material *mat;                                                                            ///<这里的是对material的完全引用，不做任何修改
     VertexAttributeBinding *vab;
+    VertexInput *vi;
     DescriptorSetLayout *desc_set_layout;
 
 public:
 
-    MaterialInstance(Material *m);
+    MaterialInstance(const Material *m,VertexAttributeBinding *v,VertexInput *i,DescriptorSetLayout *d);
     ~MaterialInstance();
+
+    bool UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
+    bool UpdateUBO(const UTF8String &name,const VkDescriptorBufferInfo *buf_info)
+    {
+        if(name.IsEmpty()||!buf_info)
+            return(false);
+
+        return UpdateUBO(mat->GetUBOBinding(name),buf_info);
+    }
+
+    const uint32_t                          GetStageCount   ()const{return mat->GetStageCount();}
+    const VkPipelineShaderStageCreateInfo * GetStages       ()const{return mat->GetStages();}
+    void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
+
+    VertexInput *           GetVI(){return vi;}
+    DescriptorSetLayout *   GetDSL(){return desc_set_layout;}
 };//class MaterialInstance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE

@@ -1,7 +1,6 @@
 ﻿#include"VKPipeline.h"
 #include"VKDevice.h"
-#include"VKShader.h"
-#include"VKVertexAttributeBinding.h"
+#include"VKMaterial.h"
 #include"VKRenderPass.h"
 
 VK_NAMESPACE_BEGIN
@@ -148,26 +147,17 @@ PipelineCreater::PipelineCreater(Device *dev,RenderPass *rp)
     pipelineInfo.basePipelineIndex = 0;
 }
 
-bool PipelineCreater::Set(const Shader *s)
+bool PipelineCreater::Set(const MaterialInstance *mi)
 {
-    if(!s)return(false);
+    if(!mi)return(false);
 
     //未来这里需要增加是否有vs/fs的检测
 
-    shader=s;
+    pipelineInfo.stageCount=mi->GetStageCount();
+    pipelineInfo.pStages=mi->GetStages();
 
-    pipelineInfo.stageCount=shader->GetStageCount();
-    pipelineInfo.pStages=shader->GetShaderStages();
+    mi->Write(vis_create_info);
 
-    return(true);
-}
-
-bool PipelineCreater::Set(const VertexAttributeBinding *vab)
-{
-    if(!vab)
-        return(false);
-
-    vab->Write(vis_create_info);
     return(true);
 }
 

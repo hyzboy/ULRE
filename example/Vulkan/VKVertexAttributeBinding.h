@@ -6,7 +6,7 @@
 VK_NAMESPACE_BEGIN
 class VertexBuffer;
 class IndexBuffer;
-class Shader;
+class VertexShaderModule;
 
 /**
 * 顶点输入状态实例<br>
@@ -14,32 +14,32 @@ class Shader;
 */
 class VertexAttributeBinding
 {
-    Shader *shader;
+    VertexShaderModule *vsm;
     uint32_t attr_count;
     VkVertexInputBindingDescription *binding_list;
     VkVertexInputAttributeDescription *attribute_list;
 
 private:
 
-    friend class Shader;
+    friend class VertexShaderModule;
 
-    VertexAttributeBinding(Shader *);
+    VertexAttributeBinding(VertexShaderModule *);
 
 public:
 
     ~VertexAttributeBinding();
 
-    const uint GetIndex(const UTF8String &name);
+    const uint GetBinding(const UTF8String &name);                                                  ///<取得一个变量的绑定点
 
-    bool SetInstance(const uint index,bool              instance);
-    bool SetStride  (const uint index,const uint32_t &  stride);
-    bool SetFormat  (const uint index,const VkFormat &  format);
-    bool SetOffset  (const uint index,const uint32_t    offset);
+    bool SetInstance(const uint binding,bool              instance);
+    bool SetStride  (const uint binding,const uint32_t &  stride);
+    bool SetFormat  (const uint binding,const VkFormat &  format);
+    bool SetOffset  (const uint binding,const uint32_t    offset);
 
-    bool SetInstance(const UTF8String &name,bool            instance){return SetInstance(GetIndex(name),instance);}
-    bool SetStride  (const UTF8String &name,const uint32_t &stride  ){return SetStride  (GetIndex(name),stride);}
-    bool SetFormat  (const UTF8String &name,const VkFormat &format  ){return SetFormat  (GetIndex(name),format);}
-    bool SetOffset  (const UTF8String &name,const uint32_t  offset  ){return SetOffset  (GetIndex(name),offset);}
+    bool SetInstance(const UTF8String &name,bool            instance){return SetInstance(GetBinding(name),instance);}
+    bool SetStride  (const UTF8String &name,const uint32_t &stride  ){return SetStride  (GetBinding(name),stride);}
+    bool SetFormat  (const UTF8String &name,const VkFormat &format  ){return SetFormat  (GetBinding(name),format);}
+    bool SetOffset  (const UTF8String &name,const uint32_t  offset  ){return SetOffset  (GetBinding(name),offset);}
 
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 };//class VertexAttributeBinding

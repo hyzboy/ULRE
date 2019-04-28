@@ -3,8 +3,12 @@
 
 #include"VK.h"
 #include<hgl/type/Map.h>
+#include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
+class Device;
 class ShaderModule;
+class VertexShaderModule;
+class Material;
 
 /**
  * ShaderÄ£¿é¹ÜÀíÆ÷<br>
@@ -13,14 +17,14 @@ class ShaderModule;
  */
 class ShaderModuleManage
 {
-    VkDevice device;
+    Device *device;
 
     int shader_count;
     Map<int,ShaderModule *> shader_list;
 
 public:
 
-    ShaderModuleManage(VkDevice dev)
+    ShaderModuleManage(Device *dev)
     {
         device=dev;
         shader_count=0;
@@ -29,6 +33,7 @@ public:
     ~ShaderModuleManage();
 
     const ShaderModule *CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
+    const ShaderModule *CreateShader(const VkShaderStageFlagBits shader_stage_bit,const UTF8String &filename);
 
 #define ADD_SHADER_FUNC(sn,vk_name)   const ShaderModule *Create##sn##Shader(const void *spv_data,const uint32_t spv_size){return CreateShader(VK_SHADER_STAGE_##vk_name##_BIT,spv_data,spv_size);}
     ADD_SHADER_FUNC(Vertex,     VERTEX)
@@ -52,6 +57,25 @@ public:
 
     const ShaderModule *GetShader       (int);
     bool                ReleaseShader   (const ShaderModule *);
+
+    const Material *    CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const;
+    const Material *    CreateMaterial(const UTF8String &vertex_shader_filename,const UTF8String &fragment_shader_filename)
+    {
+        const ShaderModule *vs=CreateShader(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_filename);
+
+        if(!vs)
+            return(nullptr);
+
+        const ShaderModule *fs=CreateShader(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_filename);
+
+        if(!fs)
+        {
+            ReleaseShader(vs);
+            return(nullptr);
+        }
+
+        return(CreateMaterial((VertexShaderModule *)vs,fs));
+    }
 };//class ShaderModuleManage
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SHADER_MODULE_MANAGE_INCLUDE

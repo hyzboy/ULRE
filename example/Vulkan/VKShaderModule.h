@@ -4,7 +4,13 @@
 #include"VK.h"
 #include<hgl/type/BaseString.h>
 #include<hgl/type/Map.h>
+
 VK_NAMESPACE_BEGIN
+
+using ShaderBindingList=List<uint32_t>;                     ///<shader绑定点列表
+
+class ShaderParse;
+
 /**
  * Shader模块<br>
  * 该模块提供的是原始的shader数据和信息，不可被修改，只能通过ShaderModuleManage创建和删除
@@ -19,19 +25,17 @@ private:
 
     VkPipelineShaderStageCreateInfo *stage_create_info;
 
-    uint32_t attr_count;
-    VkVertexInputBindingDescription *binding_list;
-    VkVertexInputAttributeDescription *attribute_list;
+    Map<UTF8String,int> ubo_map;
+    ShaderBindingList ubo_list;
 
-private:
+protected:
 
-    Map<UTF8String,VkVertexInputAttributeDescription *> stage_input_locations;
-    Map<UTF8String,int> ubo_list;
+    void ParseUBO(const ShaderParse *);
 
 public:
     
-    ShaderModule(int id,VkPipelineShaderStageCreateInfo *);
-    ~ShaderModule();
+    ShaderModule(int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *);
+    virtual ~ShaderModule();
 
     const int GetID()const{return shader_id;}
 
@@ -47,22 +51,61 @@ public:
     {
         int binding;
         
-        if(ubo_list.Get(name,binding))
+        if(ubo_map.Get(name,binding))
             return binding;
         else 
             return -1;
     }
 
-    const uint32_t                              GetAttrCount()const{return attr_count;}
+    const ShaderBindingList &               GetUBOBindingList()const{return ubo_list;}    ///<取得UBO绑定点列表
+};//class ShaderModule
+
+class VertexAttributeBinding;
+
+/**
+ * 顶点Shader模块<br>
+ * 由于顶点shader在最前方执行，所以它比其它shader多了VertexInput的数据
+ */
+class VertexShaderModule:public ShaderModule
+{
+    uint32_t attr_count;
+    VkVertexInputBindingDescription *binding_list;
+    VkVertexInputAttributeDescription *attribute_list;
+
+private:
+
+    Map<UTF8String,VkVertexInputAttributeDescription *> stage_input_locations;
+
+    Set<VertexAttributeBinding *> vab_sets;
+
+private:
+
+    void ParseVertexInput(const ShaderParse *);
+
+public:
+
+    VertexShaderModule(int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse):ShaderModule(id,pssci,parse)
+    {
+        ParseVertexInput(parse);
+    }
+    virtual ~VertexShaderModule();
 
     const int                                   GetLocation (const UTF8String &)const;
     const int                                   GetBinding  (const UTF8String &)const;
+
+    const uint32_t                              GetAttrCount()const{return attr_count;}
 
     const VkVertexInputBindingDescription *     GetDescList ()const{return binding_list;}
     const VkVertexInputAttributeDescription *   GetAttrList ()const{return attribute_list;}
 
     const VkVertexInputBindingDescription *     GetDesc     (const uint32_t index)const{return (index>=attr_count?nullptr:binding_list+index);}
     const VkVertexInputAttributeDescription *   GetAttr     (const uint32_t index)const{return (index>=attr_count?nullptr:attribute_list+index);}
-};//class ShaderModule
+
+public:
+
+    VertexAttributeBinding *                    CreateVertexAttributeBinding();
+    bool                                        Release(VertexAttributeBinding *);
+    const uint32_t                              GetInstanceCount()const{return vab_sets.GetCount();}
+};//class VertexShaderModule:public ShaderModule
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
