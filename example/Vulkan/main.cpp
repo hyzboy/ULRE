@@ -172,7 +172,7 @@ private:
 
         if(!ubo_mvp)
             return(false);
-        
+
         return material_instance->UpdateUBO("world",*ubo_mvp);
     }
 
@@ -259,7 +259,7 @@ int main(int,char **)
     app.AcquireNextFrame();
     app.Draw();
 
-    //wait_seconds(0.1);
+    wait_seconds(0.5);
     
     return 0;
 }
