@@ -32,7 +32,27 @@ namespace
 
     VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,void *pUserData)
     {
-        std::cerr<<"validation layer: "<<pCallbackData->pMessage<<std::endl;
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        {
+            std::cout<<"ERROR: "<<pCallbackData->pMessage<<std::endl;
+        }
+        else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        {
+            std::cout<<"WARNING: "<<pCallbackData->pMessage<<std::endl;
+        }
+        else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+        {
+            std::cout<<"INFO: "<<pCallbackData->pMessage<<std::endl;
+        }
+        else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+        {
+            std::cout<<"VERBOSE: "<<pCallbackData->pMessage<<std::endl;
+        }
+        else
+            std::cerr<<"validation layer: "<<pCallbackData->pMessage<<std::endl;
 
         return VK_FALSE;
     }
@@ -133,7 +153,7 @@ Instance *CreateInstance(const UTF8String &app_name)
         "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_LUNARG_parameter_validation",
 //        "VK_LAYER_LUNARG_vktrace",
-        "VK_LAYER_RENDERDOC_Capture",
+//        "VK_LAYER_RENDERDOC_Capture",
 
 //        "VK_LAYER_KHRONOS_validation",
 

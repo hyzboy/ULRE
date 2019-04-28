@@ -7,31 +7,20 @@ VK_NAMESPACE_BEGIN
 class Device;
 class RenderPass;
 class VertexAttributeBinding;
-class MaterialInstance;
+class Material;
 
 class Pipeline
 {
     VkDevice device;
     VkPipeline pipeline;
-    VkPipelineLayout pipeline_layout;
-
-    const List<VkDescriptorSet> *desc_sets;
 
 public:
 
-    Pipeline(VkDevice dev,VkPipeline p,VkPipelineLayout pl,const List<VkDescriptorSet> *ds){device=dev;pipeline=p;pipeline_layout=pl;desc_sets=ds;}
+    Pipeline(VkDevice dev,VkPipeline p){device=dev;pipeline=p;}
     virtual ~Pipeline();
 
     operator VkPipeline(){return pipeline;}
-
-    VkPipelineLayout        GetLayout(){return pipeline_layout;}
-
-    const uint32_t          GetDescriptorSetCount   ()const{return desc_sets->GetCount();}
-    const VkDescriptorSet * GetDescriptorSets       ()const{return desc_sets->GetData();}
 };//class GraphicsPipeline
-
-class Shader;
-class VertexInput;
 
 class PipelineCreater
 {
@@ -58,13 +47,9 @@ class PipelineCreater
     VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
     VkPipelineDynamicStateCreateInfo dynamicState;
 
-private:
-
-    const MaterialInstance *material=nullptr;
-
 public:
 
-    PipelineCreater(Device *dev,const MaterialInstance *,RenderPass *rp=nullptr);
+    PipelineCreater(Device *dev,const Material *,RenderPass *rp=nullptr);
     ~PipelineCreater()=default;
 
     bool Set(const VkPrimitiveTopology,bool=false);

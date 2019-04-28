@@ -9,21 +9,19 @@ Pipeline::~Pipeline()
     vkDestroyPipeline(device,pipeline,nullptr);
 }
 
-PipelineCreater::PipelineCreater(Device *dev,const MaterialInstance *mi,RenderPass *rp)
+PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass *rp)
 {
     device=dev->GetDevice();
     extent=dev->GetExtent();
     cache=dev->GetPipelineCache();
-
-    material=mi;
 
     //未来这里需要增加是否有vs/fs的检测
 
     hgl_zero(pipelineInfo);
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.layout = material->GetPipelineLayout();
-    pipelineInfo.stageCount=material->GetStageCount();
-    pipelineInfo.pStages=material->GetStages();
+    pipelineInfo.stageCount = material->GetStageCount();
+    pipelineInfo.pStages = material->GetStages();
 
     {
         if(!rp)
@@ -172,8 +170,6 @@ Pipeline *PipelineCreater::Create()
     if (vkCreateGraphicsPipelines(device, cache, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
         return(nullptr);
 
-    return(new Pipeline(device,graphicsPipeline,
-            material->GetPipelineLayout(),
-            material->GetDescriptorSets()));
+    return(new Pipeline(device,graphicsPipeline));
 }
 VK_NAMESPACE_END

@@ -9,30 +9,32 @@ class Device;
 class DescriptorSetLayout
 {
     Device *device;
-    List<VkDescriptorSetLayout> desc_set_layout_list;
-    List<VkDescriptorSet> desc_sets;
+    int count;
+    VkDescriptorSetLayout *desc_set_layout_list;
+    VkDescriptorSet *desc_set_list;
+    Map<uint32_t,int> index_by_binding;
 
-    Map<uint32_t,int> binding_index;
+private:
+
+    friend class DescriptorSetLayoutCreater;
+
+    DescriptorSetLayout(Device *dev,const int c,VkDescriptorSetLayout *dsl_list,VkDescriptorSet *desc_set,Map<uint32_t,int> &bi)
+    {
+        device=dev;
+        count=c;
+        desc_set_layout_list=dsl_list;
+        desc_set_list=desc_set;
+        index_by_binding=bi;
+    }
 
 public:
 
-    DescriptorSetLayout(Device *dev,const List<VkDescriptorSetLayout> &dsl_list,List<VkDescriptorSet> &ds_list,
-                        Map<uint32_t,int> &bi)
-    {
-        device=dev;
-        desc_set_layout_list=dsl_list;
-        desc_sets=ds_list;
-        binding_index=bi;
-    }
-
     ~DescriptorSetLayout();
 
-    const uint32_t                  GetCount    ()const{return desc_set_layout_list.GetCount();}
-    const VkDescriptorSetLayout *   GetLayouts  ()const{return desc_set_layout_list.GetData();}
-
-    const List<VkDescriptorSet> &   GetSets     ()const{return desc_sets;}
-
-    bool UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
+    const uint32_t                  GetCount            ()const{return count;}
+    const VkDescriptorSetLayout *   GetLayouts          ()const{return desc_set_layout_list;}
+    const VkDescriptorSet *         GetDescriptorSets   ()const{return desc_set_list;}
+          VkDescriptorSet           GetDescriptorSet    (const uint32_t binding);
 };//class DescriptorSetLayout
 
 /**
@@ -41,11 +43,10 @@ public:
 class DescriptorSetLayoutCreater
 {
     Device *device;
-    VkDescriptorSet desc_set;
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
 
-    Map<uint32_t,int> binding_index;
+    Map<uint32_t,int> index_by_binding;
 
 public:
 

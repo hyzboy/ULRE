@@ -6,6 +6,8 @@
 #include"VKShaderParse.h"
 
 VK_NAMESPACE_BEGIN
+Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps);
+
 ShaderModuleManage::~ShaderModuleManage()
 {
     const int count=shader_list.GetCount();
@@ -115,6 +117,6 @@ Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_sh
     smm->Add(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_module);
     smm->Add(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_module);
 
-    return(new Material(device,smm));
+    return(VK_NAMESPACE::CreateMaterial(device,smm));
 }
 VK_NAMESPACE_END

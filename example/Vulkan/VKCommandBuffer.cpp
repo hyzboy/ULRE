@@ -3,6 +3,7 @@
 #include"VKFramebuffer.h"
 #include"VKPipeline.h"
 #include"VKBuffer.h"
+#include"VKMaterial.h"
 #include"VKRenderable.h"
 #include"VKDescriptorSets.h"
 
@@ -71,10 +72,19 @@ bool CommandBuffer::Bind(Pipeline *p)
 {
     if(!p)return(false);
 
-    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
+    vkCmdBindPipeline(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
+    return(true);
+}
 
-    if(p->GetDescriptorSetCount()>0)
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, p->GetLayout(), 0, p->GetDescriptorSetCount(),p->GetDescriptorSets(), 0, nullptr);
+bool CommandBuffer::Bind(Material *mat)
+{
+    if(!mat)
+        return(false);
+
+    const uint32_t count=mat->GetDescriptorSetCount();
+    
+    if(count>0)
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,mat->GetPipelineLayout(),0,count,mat->GetDescriptorSets(),0,nullptr);
 
     return(true);
 }
