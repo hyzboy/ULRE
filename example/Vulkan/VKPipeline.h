@@ -26,8 +26,8 @@ public:
 
     VkPipelineLayout        GetLayout(){return pipeline_layout;}
 
-    const uint32_t          GetDescriptorSetCount()const{return desc_sets->GetCount();}
-    const VkDescriptorSet * GetDescriptorSets()const{return desc_sets->GetData();}
+    const uint32_t          GetDescriptorSetCount   ()const{return desc_sets->GetCount();}
+    const VkDescriptorSet * GetDescriptorSets       ()const{return desc_sets->GetData();}
 };//class GraphicsPipeline
 
 class Shader;

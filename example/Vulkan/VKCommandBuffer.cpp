@@ -71,10 +71,11 @@ bool CommandBuffer::Bind(Pipeline *p)
 {
     if(!p)return(false);
 
+    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
+
     if(p->GetDescriptorSetCount()>0)
         vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, p->GetLayout(), 0, p->GetDescriptorSetCount(),p->GetDescriptorSets(), 0, nullptr);
 
-    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
     return(true);
 }
 
