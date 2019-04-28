@@ -96,19 +96,40 @@ MaterialInstance *Material::CreateInstance()const
 
     DescriptorSetLayout *dsl=dsl_creater->Create();
 
-    return(new MaterialInstance(this,vertex_sm,vab,dsl));
+    const uint32_t layout_count=dsl->GetCount();
+    const VkDescriptorSetLayout *layouts=(layout_count>0?dsl->GetLayouts():nullptr);
+
+    VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
+    pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pPipelineLayoutCreateInfo.pNext = nullptr;
+    pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pPipelineLayoutCreateInfo.setLayoutCount = layout_count;
+    pPipelineLayoutCreateInfo.pSetLayouts = layouts;
+
+    VkPipelineLayout pipeline_layout;
+
+    if(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipeline_layout)!=VK_SUCCESS)
+        return(nullptr);
+
+    return(new MaterialInstance(device,this,vertex_sm,vab,dsl,pipeline_layout));
 }
 
-MaterialInstance::MaterialInstance(const Material *m,const VertexShaderModule *vsm,VertexAttributeBinding *v,DescriptorSetLayout *d)
+MaterialInstance::MaterialInstance(VkDevice dev,const Material *m,const VertexShaderModule *vsm,VertexAttributeBinding *v,DescriptorSetLayout *d,VkPipelineLayout pl)
 {
+    device=dev;
     mat=m;
     vertex_sm=vsm;
     vab=v;
     desc_set_layout=d;
+    pipeline_layout=pl;
 }
 
 MaterialInstance::~MaterialInstance()
 {
+    if(pipeline_layout)
+        vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
+
     delete desc_set_layout;
     delete vab;
 }
@@ -121,6 +142,11 @@ bool MaterialInstance::UpdateUBO(const uint32_t binding,const VkDescriptorBuffer
 void MaterialInstance::Write(VkPipelineVertexInputStateCreateInfo &vis)const
 {
     return vab->Write(vis);
+}
+
+const List<VkDescriptorSet> *MaterialInstance::GetDescriptorSets()const
+{
+    return &(desc_set_layout->GetSets());
 }
 
 Renderable *MaterialInstance::CreateRenderable()

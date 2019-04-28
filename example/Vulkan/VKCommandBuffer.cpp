@@ -2,7 +2,6 @@
 #include"VKRenderPass.h"
 #include"VKFramebuffer.h"
 #include"VKPipeline.h"
-#include"VKPipelineLayout.h"
 #include"VKBuffer.h"
 #include"VKRenderable.h"
 #include"VKDescriptorSets.h"
@@ -72,15 +71,10 @@ bool CommandBuffer::Bind(Pipeline *p)
 {
     if(!p)return(false);
 
-    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, *p);
-    return(true);
-}
+    if(p->GetDescriptorSetCount()>0)
+        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, p->GetLayout(), 0, p->GetDescriptorSetCount(),p->GetDescriptorSets(), 0, nullptr);
 
-bool CommandBuffer::Bind(PipelineLayout *pl)
-{
-    if(!pl)return(false);
-    if(pl->GetDescriptorSetCount()>0)
-        vkCmdBindDescriptorSets(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, *pl, 0, pl->GetDescriptorSetCount(),pl->GetDescriptorSets(), 0, nullptr);
+    vkCmdBindPipeline(cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
     return(true);
 }
 

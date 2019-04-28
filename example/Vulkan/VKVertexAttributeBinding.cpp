@@ -70,8 +70,6 @@ bool VertexAttributeBinding::SetOffset(const uint index,const uint32_t offset)
 
 void VertexAttributeBinding::Write(VkPipelineVertexInputStateCreateInfo &vis_create_info) const
 {
-    vis_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
     const uint32_t count=vsm->GetAttrCount();
 
     vis_create_info.vertexBindingDescriptionCount = count;

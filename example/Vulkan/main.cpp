@@ -9,7 +9,6 @@
 #include"VKRenderable.h"
 #include"VKDescriptorSets.h"
 #include"VKRenderPass.h"
-#include"VKPipelineLayout.h"
 #include"VKPipeline.h"
 #include"VKCommandBuffer.h"
 #include"VKFormat.h"
@@ -131,24 +130,16 @@ int main(int,char **)
 
     vulkan::MaterialInstance *mi=material->CreateInstance();
     vulkan::Renderable *render_obj=mi->CreateRenderable();
-
-    vulkan::Buffer *ubo=CreateUBO(device);
-
-    vulkan::PipelineCreater pc(device);
-
-    mi->UpdateUBO("world",*ubo);
-
     CreateVertexBuffer(device,render_obj);
 
-    vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,mi->GetDSL());
+    vulkan::Buffer *ubo=CreateUBO(device);
+    mi->UpdateUBO("world",*ubo);
 
+    vulkan::PipelineCreater pc(device,mi);    
     pc.SetDepthTest(false);
     pc.SetDepthWrite(false);
     pc.CloseCullFace();
-
-    pc.Set(mi);
     pc.Set(PRIM_TRIANGLES);
-    pc.Set(*pl);
 
     vulkan::Pipeline *pipeline=pc.Create();
 
@@ -161,7 +152,6 @@ int main(int,char **)
 
     cmd_buf->Begin(device->GetRenderPass(),device->GetFramebuffer(0));
     cmd_buf->Bind(pipeline);
-    cmd_buf->Bind(pl);
     cmd_buf->Bind(render_obj);
     cmd_buf->Draw(VERTEX_COUNT);
     cmd_buf->End();
@@ -177,7 +167,6 @@ int main(int,char **)
 
     delete pipeline;
 
-    delete pl;
     delete ubo;
     delete mi;
 

@@ -9,14 +9,21 @@ Pipeline::~Pipeline()
     vkDestroyPipeline(device,pipeline,nullptr);
 }
 
-PipelineCreater::PipelineCreater(Device *dev,RenderPass *rp)
+PipelineCreater::PipelineCreater(Device *dev,const MaterialInstance *mi,RenderPass *rp)
 {
     device=dev->GetDevice();
     extent=dev->GetExtent();
     cache=dev->GetPipelineCache();
 
+    material=mi;
+
+    //未来这里需要增加是否有vs/fs的检测
+
     hgl_zero(pipelineInfo);
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.layout = material->GetPipelineLayout();
+    pipelineInfo.stageCount=material->GetStageCount();
+    pipelineInfo.pStages=material->GetStages();
 
     {
         if(!rp)
@@ -31,11 +38,7 @@ PipelineCreater::PipelineCreater(Device *dev,RenderPass *rp)
         vis_create_info.pNext = nullptr;
         vis_create_info.flags = 0;
 
-        vis_create_info.vertexBindingDescriptionCount = 0;
-        vis_create_info.pVertexBindingDescriptions = nullptr;
-
-        vis_create_info.vertexAttributeDescriptionCount = 0;
-        vis_create_info.pVertexAttributeDescriptions = nullptr;
+        material->Write(vis_create_info);
 
         pipelineInfo.pVertexInputState=&vis_create_info;
     }
@@ -147,20 +150,6 @@ PipelineCreater::PipelineCreater(Device *dev,RenderPass *rp)
     pipelineInfo.basePipelineIndex = 0;
 }
 
-bool PipelineCreater::Set(const MaterialInstance *mi)
-{
-    if(!mi)return(false);
-
-    //未来这里需要增加是否有vs/fs的检测
-
-    pipelineInfo.stageCount=mi->GetStageCount();
-    pipelineInfo.pStages=mi->GetStages();
-
-    mi->Write(vis_create_info);
-
-    return(true);
-}
-
 bool PipelineCreater::Set(const VkPrimitiveTopology topology,bool restart)
 {
     if(topology<VK_PRIMITIVE_TOPOLOGY_BEGIN_RANGE||topology>VK_PRIMITIVE_TOPOLOGY_END_RANGE)
@@ -176,14 +165,6 @@ bool PipelineCreater::Set(const VkPrimitiveTopology topology,bool restart)
     return(true);
 }
 
-bool PipelineCreater::Set(VkPipelineLayout pl)
-{
-    if(!pl)return(false);
-
-    pipelineInfo.layout = pl;
-    return(true);
-}
-
 Pipeline *PipelineCreater::Create()
 {
     VkPipeline graphicsPipeline;
@@ -191,6 +172,8 @@ Pipeline *PipelineCreater::Create()
     if (vkCreateGraphicsPipelines(device, cache, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
         return(nullptr);
 
-    return(new Pipeline(device,graphicsPipeline));
+    return(new Pipeline(device,graphicsPipeline,
+            material->GetPipelineLayout(),
+            material->GetDescriptorSets()));
 }
 VK_NAMESPACE_END
