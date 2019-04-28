@@ -14,6 +14,7 @@ class MaterialInstance;
 class VertexAttributeBinding;
 class VertexBuffer;
 class Renderable;
+class PipelineLayout;
 
 using ShaderModuleMap=hgl::Map<VkShaderStageFlagBits,const ShaderModule *>;
 
@@ -50,14 +51,17 @@ public:
  */
 class MaterialInstance
 {
+    VkDevice device;
     const Material *mat;                                                                            ///<这里的是对material的完全引用，不做任何修改
     const VertexShaderModule *vertex_sm;
     VertexAttributeBinding *vab;
     DescriptorSetLayout *desc_set_layout;
 
+    VkPipelineLayout pipeline_layout;
+
 public:
 
-    MaterialInstance(const Material *m,const VertexShaderModule *,VertexAttributeBinding *v,DescriptorSetLayout *d);
+    MaterialInstance(VkDevice dev,const Material *m,const VertexShaderModule *,VertexAttributeBinding *v,DescriptorSetLayout *d,VkPipelineLayout pl);
     ~MaterialInstance();
 
     bool UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
@@ -68,15 +72,14 @@ public:
 
         return UpdateUBO(mat->GetUBOBinding(name),buf_info);
     }
-
-    const VertexShaderModule *              GetVertexShader ()const{return vertex_sm;}
-
+    
     const uint32_t                          GetStageCount   ()const{return mat->GetStageCount();}
     const VkPipelineShaderStageCreateInfo * GetStages       ()const{return mat->GetStages();}
 
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 
-    DescriptorSetLayout *   GetDSL(){return desc_set_layout;}
+    const VkPipelineLayout          GetPipelineLayout   ()const{return pipeline_layout;}
+    const List<VkDescriptorSet> *   GetDescriptorSets   ()const;
 
     Renderable *CreateRenderable();
 };//class MaterialInstance
