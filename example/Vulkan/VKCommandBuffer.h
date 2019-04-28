@@ -7,7 +7,7 @@ class RenderPass;
 class Framebuffer;
 class Pipeline;
 class PipelineLayout;
-class VertexInput;
+class Renderable;
 
 class CommandBuffer
 {
@@ -46,7 +46,7 @@ public:
     bool Begin(RenderPass *rp,Framebuffer *fb);
     bool Bind(Pipeline *p);
     bool Bind(PipelineLayout *pl);
-    bool Bind(VertexInput *vi);
+    bool Bind(Renderable *);
     bool End();
 
 public:

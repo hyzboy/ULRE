@@ -4,7 +4,7 @@
 #include"VKPipeline.h"
 #include"VKPipelineLayout.h"
 #include"VKBuffer.h"
-#include"VKVertexInput.h"
+#include"VKRenderable.h"
 #include"VKDescriptorSets.h"
 
 VK_NAMESPACE_BEGIN
@@ -84,22 +84,22 @@ bool CommandBuffer::Bind(PipelineLayout *pl)
     return(true);
 }
 
-bool CommandBuffer::Bind(VertexInput *vi)
+bool CommandBuffer::Bind(Renderable *render_obj)
 {
-    if(!vi)
+    if(!render_obj)
         return(false);
 
-    const uint count=vi->GetCount();
+    const uint count=render_obj->GetBufferCount();
 
     if(count<=0)
         return(false);
 
-    vkCmdBindVertexBuffers(cmd_buf,0,count,vi->GetBuffer(),vi->GetOffset());
+    vkCmdBindVertexBuffers(cmd_buf,0,count,render_obj->GetBuffer(),render_obj->GetOffset());
 
-    IndexBuffer *indices_buffer=vi->GetIndexBuffer();
+    IndexBuffer *indices_buffer=render_obj->GetIndexBuffer();
 
     if(indices_buffer)    
-        vkCmdBindIndexBuffer(cmd_buf,*indices_buffer,vi->GetIndexOffset(),indices_buffer->GetType());
+        vkCmdBindIndexBuffer(cmd_buf,*indices_buffer,render_obj->GetIndexOffset(),indices_buffer->GetType());
 
     return(true);
 }

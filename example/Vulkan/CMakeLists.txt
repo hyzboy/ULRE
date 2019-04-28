@@ -24,12 +24,12 @@ SET(VULKAN_TEST_SOURCE_FILES	main.cpp
 								VKShaderModule.cpp
 								VKShaderModuleManage.cpp
 								VKVertexAttributeBinding.cpp
-								VKVertexInput.cpp
 								VKPipeline.cpp
 								VKSemaphore.cpp
 								VKFramebuffer.cpp
 								VKFence.cpp
 								VKMaterial.cpp
+								VKRenderable.cpp
 							 )
 
 SET(VULKAN_TEST_HEADER_FILES	AssetsManage.h
@@ -49,13 +49,13 @@ SET(VULKAN_TEST_HEADER_FILES	AssetsManage.h
 								VKRenderPass.h
 								VKShaderModule.h
 								VKShaderModuleManage.h
-								VKVertexInput.h
 								VKVertexAttributeBinding.h
 								VKSemaphore.h
 								VKPipeline.h
 								VKFramebuffer.h
 								VKFence.h
 								VKMaterial.h
+								VKRenderable.h
 								Window.h)
 
 SET(SHADER_FILES	shader_compile.bat

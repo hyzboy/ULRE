@@ -12,7 +12,8 @@ class DescriptorSetLayoutCreater;
 class DescriptorSetLayout;
 class MaterialInstance;
 class VertexAttributeBinding;
-class VertexInput;
+class VertexBuffer;
+class Renderable;
 
 using ShaderModuleMap=hgl::Map<VkShaderStageFlagBits,const ShaderModule *>;
 
@@ -35,11 +36,12 @@ public:
     ~Material();
 
     const int GetUBOBinding(const UTF8String &)const;
+    const int GetVBOBinding(const UTF8String &)const;
 
     MaterialInstance *CreateInstance()const;
 
-    const uint32_t                          GetStageCount   ()const{return shader_stage_list.GetCount();}
-    const VkPipelineShaderStageCreateInfo * GetStages       ()const{return shader_stage_list.GetData();}
+    const uint32_t                          GetStageCount           ()const{return shader_stage_list.GetCount();}
+    const VkPipelineShaderStageCreateInfo * GetStages               ()const{return shader_stage_list.GetData();}
 };//class Material
 
 /**
@@ -49,13 +51,13 @@ public:
 class MaterialInstance
 {
     const Material *mat;                                                                            ///<这里的是对material的完全引用，不做任何修改
+    const VertexShaderModule *vertex_sm;
     VertexAttributeBinding *vab;
-    VertexInput *vi;
     DescriptorSetLayout *desc_set_layout;
 
 public:
 
-    MaterialInstance(const Material *m,VertexAttributeBinding *v,VertexInput *i,DescriptorSetLayout *d);
+    MaterialInstance(const Material *m,const VertexShaderModule *,VertexAttributeBinding *v,DescriptorSetLayout *d);
     ~MaterialInstance();
 
     bool UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
@@ -67,12 +69,16 @@ public:
         return UpdateUBO(mat->GetUBOBinding(name),buf_info);
     }
 
+    const VertexShaderModule *              GetVertexShader ()const{return vertex_sm;}
+
     const uint32_t                          GetStageCount   ()const{return mat->GetStageCount();}
     const VkPipelineShaderStageCreateInfo * GetStages       ()const{return mat->GetStages();}
+
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 
-    VertexInput *           GetVI(){return vi;}
     DescriptorSetLayout *   GetDSL(){return desc_set_layout;}
+
+    Renderable *CreateRenderable();
 };//class MaterialInstance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE

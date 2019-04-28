@@ -6,7 +6,7 @@
 #include"VKShaderModule.h"
 #include"VKShaderModuleManage.h"
 #include"VKImageView.h"
-#include"VKVertexInput.h"
+#include"VKRenderable.h"
 #include"VKDescriptorSets.h"
 #include"VKRenderPass.h"
 #include"VKPipelineLayout.h"
@@ -40,24 +40,31 @@ vulkan::Buffer *CreateUBO(vulkan::Device *dev)
     return dev->CreateUBO(sizeof(WorldConfig),&world);
 }
 
-constexpr float vertex_data[]=
+constexpr uint32_t VERTEX_COUNT=3;
+
+constexpr float vertex_data[VERTEX_COUNT][2]=
 {
-    SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25,
-    SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75,
-    SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75
+    {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
+    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
+    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
 };
-constexpr float color_data[]={1,0,0,    0,1,0,      0,0,1   };
+
+constexpr float color_data[VERTEX_COUNT][3]=
+{   {1,0,0},
+    {0,1,0},
+    {0,0,1}
+};
 
 vulkan::VertexBuffer *vertex_buffer=nullptr;
 vulkan::VertexBuffer *color_buffer=nullptr;
 
-void CreateVertexBuffer(vulkan::Device *dev,vulkan::VertexInput *vi)
+void CreateVertexBuffer(vulkan::Device *dev,vulkan::Renderable *render_obj)
 {    
-    vertex_buffer   =dev->CreateVBO(FMT_RG32F,  3,vertex_data);
-    color_buffer    =dev->CreateVBO(FMT_RGB32F, 3,color_data);
+    vertex_buffer   =dev->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
+    color_buffer    =dev->CreateVBO(FMT_RGB32F, VERTEX_COUNT,color_data);
 
-    vi->Set("Vertex",   vertex_buffer);
-    vi->Set("Color",    color_buffer);
+    render_obj->Set("Vertex",   vertex_buffer);
+    render_obj->Set("Color",    color_buffer);
 }
 
 void wait_seconds(int seconds) {
@@ -123,6 +130,7 @@ int main(int,char **)
         return -3;
 
     vulkan::MaterialInstance *mi=material->CreateInstance();
+    vulkan::Renderable *render_obj=mi->CreateRenderable();
 
     vulkan::Buffer *ubo=CreateUBO(device);
 
@@ -130,7 +138,7 @@ int main(int,char **)
 
     mi->UpdateUBO("world",*ubo);
 
-    CreateVertexBuffer(device,mi->GetVI());
+    CreateVertexBuffer(device,render_obj);
 
     vulkan::PipelineLayout *pl=CreatePipelineLayout(*device,mi->GetDSL());
 
@@ -154,15 +162,15 @@ int main(int,char **)
     cmd_buf->Begin(device->GetRenderPass(),device->GetFramebuffer(0));
     cmd_buf->Bind(pipeline);
     cmd_buf->Bind(pl);
-    cmd_buf->Bind(mi->GetVI());
-    cmd_buf->Draw(3);
+    cmd_buf->Bind(render_obj);
+    cmd_buf->Draw(VERTEX_COUNT);
     cmd_buf->End();
 
     device->QueueSubmit(cmd_buf);
     device->Wait();
     device->QueuePresent();
 
-    wait_seconds(2);
+    wait_seconds(1);
 
     delete vertex_buffer;
     delete color_buffer;
@@ -170,12 +178,7 @@ int main(int,char **)
     delete pipeline;
 
     delete pl;
-//    delete dsl;
-
-//    delete vi;
     delete ubo;
-
-//    delete shader;
     delete mi;
 
     delete cmd_buf;
