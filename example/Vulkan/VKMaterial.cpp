@@ -3,7 +3,8 @@
 #include"VKDescriptorSets.h"
 #include"VKShaderModule.h"
 #include"VKVertexAttributeBinding.h"
-#include"VKVertexInput.h"
+#include"VKRenderable.h"
+#include"VKBuffer.h"
 VK_NAMESPACE_BEGIN
 Material::Material(Device *dev,ShaderModuleMap *smm)
 {
@@ -76,6 +77,13 @@ const int Material::GetUBOBinding(const UTF8String &name)const
     return(-1);
 }
 
+const int Material::GetVBOBinding(const UTF8String &name)const
+{
+    if(!vertex_sm)return(-1);
+
+    return vertex_sm->GetBinding(name);
+}
+
 MaterialInstance *Material::CreateInstance()const
 {
     if(!vertex_sm)
@@ -86,23 +94,21 @@ MaterialInstance *Material::CreateInstance()const
     if(!vab)
         return(nullptr);
 
-    VertexInput *vi=new VertexInput(vertex_sm);
     DescriptorSetLayout *dsl=dsl_creater->Create();
 
-    return(new MaterialInstance(this,vab,vi,dsl));
+    return(new MaterialInstance(this,vertex_sm,vab,dsl));
 }
 
-MaterialInstance::MaterialInstance(const Material *m,VertexAttributeBinding *v,VertexInput *i,DescriptorSetLayout *d)
+MaterialInstance::MaterialInstance(const Material *m,const VertexShaderModule *vsm,VertexAttributeBinding *v,DescriptorSetLayout *d)
 {
     mat=m;
+    vertex_sm=vsm;
     vab=v;
     desc_set_layout=d;
-    vi=i;
 }
 
 MaterialInstance::~MaterialInstance()
 {
-    delete vi;
     delete desc_set_layout;
     delete vab;
 }
@@ -115,5 +121,10 @@ bool MaterialInstance::UpdateUBO(const uint32_t binding,const VkDescriptorBuffer
 void MaterialInstance::Write(VkPipelineVertexInputStateCreateInfo &vis)const
 {
     return vab->Write(vis);
+}
+
+Renderable *MaterialInstance::CreateRenderable()
+{
+    return(new Renderable(vertex_sm));
 }
 VK_NAMESPACE_END
