@@ -85,12 +85,10 @@ namespace NvTriStrip
     //Cleanup strips / faces, used by generatestrips
     void Cleanup(NvStripInfoVec& tempStrips, NvFaceInfoVec& tempFaces)
     {
-        int i,j;
-
 	    //delete strips
-	    for(i = 0; i < tempStrips.size(); i++)
+	    for(unsigned int i = 0; i < tempStrips.size(); i++)
 	    {
-		    for(j = 0; j < tempStrips[i]->m_faces.size(); j++)
+		    for(unsigned int j = 0; j < tempStrips[i]->m_faces.size(); j++)
 		    {
 			    delete tempStrips[i]->m_faces[j];
 			    tempStrips[i]->m_faces[j] = nullptr;
@@ -101,7 +99,7 @@ namespace NvTriStrip
 	    }
 
 	    //delete faces
-	    for(i = 0; i < tempFaces.size(); i++)
+	    for(unsigned int i = 0; i < tempFaces.size(); i++)
 	    {
 		    delete tempFaces[i];
 		    tempFaces[i] = nullptr;
@@ -154,7 +152,7 @@ namespace NvTriStrip
 	    //hash this triangle
 	    bool isLegit = false;
 	    int ctr = v0 % NUMBINS;
-	    for (int k = 0; k < in_bins[ctr].size(); ++k)
+	    for (unsigned int k = 0; k < in_bins[ctr].size(); ++k)
 	    {
 		    //check triangles in this bin
 		    if (SameTriangle(in_bins[ctr][k].m_v0, in_bins[ctr][k].m_v1, in_bins[ctr][k].m_v2, 
@@ -167,7 +165,7 @@ namespace NvTriStrip
 	    if (!isLegit)
 	    {
 		    ctr = v1 % NUMBINS;
-		    for (int k = 0; k < in_bins[ctr].size(); ++k)
+		    for (unsigned int k = 0; k < in_bins[ctr].size(); ++k)
 		    {
 			    //check triangles in this bin
 			    if (SameTriangle(in_bins[ctr][k].m_v0, in_bins[ctr][k].m_v1, in_bins[ctr][k].m_v2, 
@@ -181,7 +179,7 @@ namespace NvTriStrip
 		    if (!isLegit)
 		    {
 			    ctr = v2 % NUMBINS;
-			    for (int k = 0; k < in_bins[ctr].size(); ++k)
+			    for (unsigned int k = 0; k < in_bins[ctr].size(); ++k)
 			    {
 				    //check triangles in this bin
 				    if (SameTriangle(in_bins[ctr][k].m_v0, in_bins[ctr][k].m_v1, in_bins[ctr][k].m_v2, 
@@ -217,7 +215,7 @@ namespace NvTriStrip
 	    tempIndices.resize(in_numIndices);
 	    unsigned short maxIndex = 0;
 	    unsigned short minIndex = 0xFFFF;
-	    for(int i = 0; i < in_numIndices; i++)
+	    for(unsigned int i = 0; i < in_numIndices; i++)
 	    {
 		    tempIndices[i] = in_indices[i];
 		    if (in_indices[i] > maxIndex)
@@ -246,7 +244,7 @@ namespace NvTriStrip
 
 		    //count the total number of indices
 		    unsigned int numIndices = 0;
-		    for(int i = 0; i < tempStrips.size(); i++)
+		    for(unsigned int i = 0; i < tempStrips.size(); i++)
 		    {
 			    numIndices += tempStrips[i]->m_faces.size() * 3;
 		    }
@@ -260,9 +258,9 @@ namespace NvTriStrip
 
 		    //do strips
 		    unsigned int indexCtr = 0;
-		    for(int i = 0; i < tempStrips.size(); i++)
+		    for(unsigned int i = 0; i < tempStrips.size(); i++)
 		    {
-			    for(int j = 0; j < tempStrips[i]->m_faces.size(); j++)
+			    for(unsigned int j = 0; j < tempStrips[i]->m_faces.size(); j++)
 			    {
 				    //degenerates are of no use with lists
 				    if(!NvStripifier::IsDegenerate(tempStrips[i]->m_faces[j]))
@@ -280,7 +278,7 @@ namespace NvTriStrip
 		    }
 
 		    //do lists
-		    for(int i = 0; i < tempFaces.size(); i++)
+		    for(unsigned int i = 0; i < tempFaces.size(); i++)
 		    {			
 			    primGroupArray[0].indices[indexCtr++] = tempFaces[i]->m_v0;
 			    primGroupArray[0].indices[indexCtr++] = tempFaces[i]->m_v1;
@@ -304,14 +302,14 @@ namespace NvTriStrip
 		
 		    //first, the strips
 		    int startingLoc = 0;
-		    for(int stripCtr = 0; stripCtr < numSeparateStrips; stripCtr++)
+		    for(unsigned int stripCtr = 0; stripCtr < numSeparateStrips; stripCtr++)
 		    {
 			    int stripLength = 0;
 
 			    if(!bStitchStrips)
 			    {
-                    int i;
 				    //if we've got multiple strips, we need to figure out the correct length
+				    unsigned int i;
 				    for(i = startingLoc; i < stripIndices.size(); i++)
 				    {
 					    if(stripIndices[i] == -1)
@@ -344,7 +342,7 @@ namespace NvTriStrip
 			    primGroupArray[faceGroupLoc].indices    = new unsigned short[tempFaces.size() * 3];
 			    primGroupArray[faceGroupLoc].numIndices = tempFaces.size() * 3;
 			    int indexCtr = 0;
-			    for(int i = 0; i < tempFaces.size(); i++)
+			    for(unsigned int i = 0; i < tempFaces.size(); i++)
 			    {
 				    primGroupArray[faceGroupLoc].indices[indexCtr++] = tempFaces[i]->m_v0;
 				    primGroupArray[faceGroupLoc].indices[indexCtr++] = tempFaces[i]->m_v1;
@@ -361,7 +359,7 @@ namespace NvTriStrip
 		    std::vector<NvFaceInfo> in_bins[NUMBINS];
 		
 		    //hash input indices on first index
-		    for (int i = 0; i < in_numIndices; i += 3)
+		    for (unsigned int i = 0; i < in_numIndices; i += 3)
 		    {
 			    NvFaceInfo faceInfo(in_indices[i], in_indices[i + 1], in_indices[i + 2]);
 			    in_bins[in_indices[i] % NUMBINS].push_back(faceInfo);
@@ -373,7 +371,7 @@ namespace NvTriStrip
 			    {
 				    case PT_LIST:
 				    {
-					    for (int j = 0; j < (*primGroups)[i].numIndices; j += 3)
+					    for (unsigned int j = 0; j < (*primGroups)[i].numIndices; j += 3)
 					    {
 						    unsigned short v0 = (*primGroups)[i].indices[j];
 						    unsigned short v1 = (*primGroups)[i].indices[j + 1];
@@ -396,7 +394,7 @@ namespace NvTriStrip
 				    {
 					    int brokenCtr = 0;
 					    bool flip = false;
-					    for (int j = 2; j < (*primGroups)[i].numIndices; ++j)
+					    for (unsigned int j = 2; j < (*primGroups)[i].numIndices; ++j)
 					    {
 						    unsigned short v0 = (*primGroups)[i].indices[j - 2];
 						    unsigned short v1 = (*primGroups)[i].indices[j - 1];
@@ -478,7 +476,7 @@ namespace NvTriStrip
 		    (*remappedGroups)[i].numIndices = numIndices;
 		    (*remappedGroups)[i].indices    = new unsigned short[numIndices];
 
-		    for(int j = 0; j < numIndices; j++)
+		    for(unsigned int j = 0; j < numIndices; j++)
 		    {
 			    int cachedIndex = indexCache[in_primGroups[i].indices[j]];
 			    if(cachedIndex == -1) //we haven't seen this index before
