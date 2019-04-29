@@ -1,0 +1,9 @@
+cmake_minimum_required(VERSION 3.0)
+
+SET(NVTRISTRIP_HEADER_FILES VertexCache.h NvTriStripObjects.h NvTriStrip.h)
+SET(NVTRISTRIP_SOURCE_FILES NvTriStripObjects.cpp NvTriStrip.cpp)
+
+SOURCE_GROUP("Header Files" FILES ${NVTRISTRIP_HEADER_FILES})
+SOURCE_GROUP("Source Files" FILES ${NVTRISTRIP_SOURCE_FILES})
+
+add_library(NvTriStrip STATIC ${NVTRISTRIP_SOURCE_FILES} ${NVTRISTRIP_HEADER_FILES})
