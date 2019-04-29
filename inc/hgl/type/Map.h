@@ -40,7 +40,7 @@ namespace hgl
 				bool    KeyExist(const F &key)const{return(Find(key)!=-1);}                         ///<确认这个数据是否存在
 				bool    ValueExist(const T &value)const{return(FindByValue(value)!=-1);}            ///<确认这个数据是否存在
                 bool    Check(const F &key,const T &value)const;                                    ///<确认数据是否是这个
-		virtual bool	Get(const F &,T &)const;													///<取得数据
+		virtual bool	Get(const F &,T &) const;								                    ///<取得数据
 		virtual bool	Delete(const F &,T &);														///<将指定数据从列表中移除，并获得这个数据
 		virtual bool	DeleteByKey(const F &);													    ///<根据索引将指定数据从列表中移除
 		virtual int		DeleteByKey(const F *,const int);											///<根据索引将指定数据从列表中批量移除
@@ -93,17 +93,17 @@ namespace hgl
 					return count;
 				}
 
-				IDItem *GetItem(int n)const{return GetObject(data_list,n);}							///<取指定序号的数据
-				bool 	Get(int,F &,T &)const;														///<取指定序号的数据
-				bool	GetKey(int,F &)const;														///<取指定序号的索引
-				bool	GetValue(int,T &)const;														///<取指定序号的数据
+				IDItem *GetItem(int n){return GetObject(data_list,n);}							    ///<取指定序号的数据
+				bool 	Get(int,F &,T &) const;									                    ///<取指定序号的数据
+				bool	GetKey(int,F &);														    ///<取指定序号的索引
+				bool	GetValue(int,T &);														    ///<取指定序号的数据
 
 				bool	SetValueBySerial(int,T &);													///<根据序号设置数据
 
 				void	operator=(const _Map<F,T,IDItem> &);									    ///<操作符重载，复制一个列表
 
                 void    Enum(void (*enum_func)(const F &,T));                                       ///<枚举所有数据项
-                void    EnumKey(void (*enum_func)(const F &))const;                                 ///<枚举所有索引
+                void    EnumKey(void (*enum_func)(const F &));                                      ///<枚举所有索引
                 void    EnumValue(void (*enum_func)(T));                                            ///<枚举所有数值
 
                 void    EnumValue(bool (*enum_func)(T));                                            ///<枚举所有数值

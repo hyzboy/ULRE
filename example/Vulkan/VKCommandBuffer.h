@@ -43,10 +43,12 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool Begin(RenderPass *rp,Framebuffer *fb);
+    bool Begin();
+    bool BeginRenderPass(RenderPass *rp,Framebuffer *fb);
     bool Bind(Pipeline *p);
     bool Bind(Material *);
     bool Bind(Renderable *);
+    void EndRenderPass();
     bool End();
 
 public:

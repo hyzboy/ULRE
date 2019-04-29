@@ -31,8 +31,7 @@ CommandBuffer::~CommandBuffer()
     VkCommandBuffer cmd_bufs[1] = {cmd_buf};
     vkFreeCommandBuffers(device, pool, 1, cmd_bufs);
 }
-
-bool CommandBuffer::Begin(RenderPass *rp,Framebuffer *fb)
+bool CommandBuffer::Begin()
 {
     VkCommandBufferBeginInfo cmd_buf_info = {};
     cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -43,6 +42,11 @@ bool CommandBuffer::Begin(RenderPass *rp,Framebuffer *fb)
     if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)
         return(false);
 
+    return(true);
+}
+
+bool CommandBuffer::BeginRenderPass(RenderPass *rp,Framebuffer *fb)
+{
     VkRenderPassBeginInfo rp_begin;
 
     rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -163,9 +167,16 @@ void CommandBuffer::DrawIndexed(const uint32_t index_count,const uint32_t instan
     vkCmdDrawIndexed(cmd_buf,index_count,instance_count,first_index,vertex_offset,first_instance);
 }
 
-bool CommandBuffer::End()
+void CommandBuffer::EndRenderPass()
 {
     vkCmdEndRenderPass(cmd_buf);
-    return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);
+}
+
+bool CommandBuffer::End()
+{
+    if(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS)
+        return(true);
+
+    return(false);
 }
 VK_NAMESPACE_END
