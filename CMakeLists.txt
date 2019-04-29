@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.0)
 
 PROJECT(ULRE)
 
@@ -14,8 +14,7 @@ check_system_bits()
 check_system_version()
 set_compiler_param()
 set_output_directory()
-
-
+    
 IF(WIN32)
 	add_subdirectory(3rdpty/glfw)
 	include_directories(3rdpty/glfw/include)
@@ -39,13 +38,14 @@ add_definitions(-DMATH_AVX)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/GLEWCore/inc)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
-
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/GLEWCore)
+add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(src)
 
 SET(ULRE    ULRE.Base
