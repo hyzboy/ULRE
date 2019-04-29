@@ -258,7 +258,7 @@ namespace hgl
 	* @return 是否取得成功
 	*/
 	template<typename F,typename T,typename DataPair>
-	bool _Map<F,T,DataPair>::GetKey(int index,F &f) const
+	bool _Map<F,T,DataPair>::GetKey(int index,F &f)
 	{
 		if(index<0||index>=data_list.GetCount())return(false);
 
@@ -276,7 +276,7 @@ namespace hgl
 	* @return 是否取得成功
 	*/
 	template<typename F,typename T,typename DataPair>
-	bool _Map<F,T,DataPair>::GetValue(int index,T &t) const
+	bool _Map<F,T,DataPair>::GetValue(int index,T &t) 
 	{
 		if(index<0||index>=data_list.GetCount())return(false);
 
@@ -525,7 +525,7 @@ namespace hgl
     }
 
     template<typename F,typename T,typename DataPair>
-    void _Map<F,T,DataPair>::EnumKey(void (*enum_func)(const F &))const
+    void _Map<F,T,DataPair>::EnumKey(void (*enum_func)(const F &))
     {
         const int count=data_list.GetCount();
 

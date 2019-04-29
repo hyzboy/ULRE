@@ -19,8 +19,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 struct WorldConfig
 {
@@ -199,11 +199,13 @@ private:
         if(!cmd_buf)
             return(false);
 
-        cmd_buf->Begin(device->GetRenderPass(),device->GetFramebuffer(0));
-        cmd_buf->Bind(pipeline);
-        cmd_buf->Bind(material);
-        cmd_buf->Bind(render_obj);
-        cmd_buf->Draw(VERTEX_COUNT);
+        cmd_buf->Begin();
+            cmd_buf->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(0));
+                cmd_buf->Bind(pipeline);
+                cmd_buf->Bind(material);
+                cmd_buf->Bind(render_obj);
+                cmd_buf->Draw(VERTEX_COUNT);
+            cmd_buf->EndRenderPass();
         cmd_buf->End();
 
         return(true);
