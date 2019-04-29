@@ -1,7 +1,7 @@
 #ifndef VERTEX_CACHE_H
 #define VERTEX_CACHE_H
 
-#include<string.h>
+#include <string.h>
 
 namespace NvTriStrip
 {
@@ -20,7 +20,7 @@ namespace NvTriStrip
 	    }
 		
 	    VertexCache() { VertexCache(16); }
-	    ~VertexCache() { delete[] entries; entries = nullptr; }
+	    ~VertexCache() { delete[] entries; entries = 0; }
 	
 	    bool InCache(int entry)
 	    {
@@ -74,6 +74,7 @@ namespace NvTriStrip
 
       int *entries;
       int numEntries;
+
     };
 }//namespace NvTriStrip
 #endif
