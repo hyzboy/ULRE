@@ -2,34 +2,34 @@
 
 namespace hgl
 {
+    LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 	namespace
 	{
 		constexpr wchar_t WIN_CLASS_NAME[] = L"CMGameEngine/ULRE Window Class";
-	}
 
-    LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+        bool RegistryWinClass(HINSTANCE hInstance)
+        {
+            WNDCLASSEXW win_class;
 
-	bool WinWindow::Registry()
-	{
-		WNDCLASSEXW win_class;
+            hgl_zero(win_class);
 
-		hgl_zero(win_class);
+            win_class.cbSize = sizeof(WNDCLASSEXW);
+            win_class.style = CS_HREDRAW | CS_VREDRAW;
+            win_class.lpfnWndProc = WindowProc;
+            win_class.cbClsExtra = 0;
+            win_class.cbWndExtra = 0;
+            win_class.hInstance = hInstance;
+            win_class.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+            win_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
+            win_class.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+            win_class.lpszMenuName = nullptr;
+            win_class.lpszClassName = WIN_CLASS_NAME;
+            win_class.hIconSm = LoadIcon(nullptr, IDI_WINLOGO);
 
-		win_class.cbSize = sizeof(WNDCLASSEXW);
-		win_class.style = CS_HREDRAW | CS_VREDRAW;
-		win_class.lpfnWndProc = WindowProc;
-		win_class.cbClsExtra = 0;
-		win_class.cbWndExtra = 0;
-		win_class.hInstance = hInstance;
-		win_class.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
-		win_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
-		win_class.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-		win_class.lpszMenuName = nullptr;
-		win_class.lpszClassName = WIN_CLASS_NAME;
-		win_class.hIconSm = LoadIcon(nullptr, IDI_WINLOGO);
-
-		return RegisterClassExW(&win_class);
-	}
+            return RegisterClassExW(&win_class);
+        }
+	}//namespace
 
 	bool WinWindow::Create()
 	{
@@ -99,7 +99,7 @@ namespace hgl
 
 		hInstance = GetModuleHandleW(nullptr);
 
-		if (!Registry())
+		if (!RegistryWinClass(hInstance))
 			return(false);
 
 		if(!Create())

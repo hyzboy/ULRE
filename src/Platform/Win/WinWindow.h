@@ -17,7 +17,6 @@ namespace hgl
 
     protected:
 
-        bool Registry();
         bool Create();
 
         void OnClose() override{Close();}
