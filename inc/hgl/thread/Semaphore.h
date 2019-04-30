@@ -1,4 +1,4 @@
-#ifndef HGL_SEMAPHORE_INCLUDE
+﻿#ifndef HGL_SEMAPHORE_INCLUDE
 #define HGL_SEMAPHORE_INCLUDE
 
 #ifdef __APPLE__

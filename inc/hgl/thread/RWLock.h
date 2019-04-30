@@ -1,4 +1,4 @@
-#ifndef HGL_RWLOCK_INCLUDE
+﻿#ifndef HGL_RWLOCK_INCLUDE
 #define HGL_RWLOCK_INCLUDE
 
 #include<hgl/platform/Platform.h>
