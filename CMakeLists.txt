@@ -35,6 +35,7 @@ SET(VULKAN_LIB  ${Vulkan_LIBRARIES})
 add_definitions(-DMATH_USE_OPENGL)
 add_definitions(-DMATH_RIGHTHANDED_CAMERA)
 add_definitions(-DMATH_AVX)
+add_definitions(-DGLFW_INCLUDE_VULKAN)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/GLEWCore/inc)

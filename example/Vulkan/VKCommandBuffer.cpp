@@ -112,6 +112,7 @@ bool CommandBuffer::Bind(Renderable *render_obj)
 
     return(true);
 }
+
 void CommandBuffer::SetDepthBias(float constant_factor,float clamp,float slope_factor)
 {
     vkCmdSetDepthBias(cmd_buf,constant_factor,clamp,slope_factor);
