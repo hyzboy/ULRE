@@ -3,27 +3,27 @@
 
 namespace hgl
 {
-	/**
-	* 鼠标按钮枚举
-	*/
-	enum MouseButton:int
-	{
-		mbLeft=0,
-		mbRight,
-		mbMiddle,
+    /**
+    * 鼠标状态枚举定义
+    */
+    enum MouseButton
+    {
+        mbMove				=0x00000001,    ///<鼠标移动了
 
-		mbX1,
-		mbX2,
+        mbLeft				=0x00000010,    ///<鼠标左键处于按下状态
+        mbMid				=0x00000100,	///<鼠标中键处于按下状态
+        mbRight				=0x00001000,    ///<鼠标右键处于按下状态
 
-		mbEnd
-	};//enum MouseButton
+        mbShift				=0x10000000,    ///<Shift键处于按下状态
+        mbCtrl				=0x20000000,    ///<Ctrl键处于按下状态
+    };
 
 	/**
 	* 按键枚举定义
 	*/
 	enum KeyboardButton
 	{
-		kb_NONE=0,			///<起始定义，无意义
+        kbBeginRange=0,
 
 		//主键盘区
 		kbEsc,              ///<ESC
@@ -154,7 +154,8 @@ namespace hgl
 		kbNumDecimal,       ///<小键盘 . (小数点/删除键)
 		kbNumEnter,         ///<小键盘 回车键
 
-		kb_END				///<结束定义，无意义
+		kbEndRange,
+        kbRangeSize=kbEndRange-kbBeginRange+1
 	};//enum KeyboardButton
 
 	/**
@@ -162,7 +163,7 @@ namespace hgl
 	*/
 	enum JoystickButton
 	{
-		jbNone=0,
+		jbBeginRange=0,
 
 		jbUp,
 		jbDown,
@@ -195,6 +196,9 @@ namespace hgl
 
 		//XBOX/XBOX360
 		jbXBOX,						//西瓜键
+
+        jbEndRange,
+        jbRangeSize=jbEndRange-jbBeginRange+1
 	};
 }//namespace hgl
 #endif//HGL_INPUT_DEVICE_INCLUDE

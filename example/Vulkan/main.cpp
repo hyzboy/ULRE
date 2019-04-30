@@ -169,7 +169,7 @@ int main(int,char **)
     app.AcquireNextFrame();
     app.Draw();
 
-    app.Wait(0.5);
+    while(app.Run());
     
     return 0;
 }

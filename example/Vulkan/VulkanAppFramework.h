@@ -43,6 +43,8 @@ public:
 
     virtual bool Init(int w,int h) 
     {
+        InitNativeWindowSystem();
+
         win=CreateRenderWindow(OS_TEXT("VulkanTest"));
         if(!win)
             return(false);
@@ -80,14 +82,9 @@ public:
         device->QueuePresent();
     }
 
-    void Wait(double seconds) 
+    bool Run()
     {
-    #ifdef WIN32
-        Sleep(seconds * 1000.0f);
-    #elif defined(__ANDROID__)
-        sleep(seconds);
-    #else
-        sleep(seconds);
-    #endif
+        win->MessageProc();
+        return !win->IsClose();
     }
 };//class VulkanApplicationFramework
