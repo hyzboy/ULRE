@@ -1,0 +1,21 @@
+﻿add_library(ULRE.RenderDevice.Vulkan STATIC VKFormat.cpp
+                                            VKInstance.cpp
+                                            VKPhysicalDevice.cpp
+                                            VKImageView.cpp
+                                            VKCommandBuffer.cpp
+                                            VKDeviceAttribute.cpp
+                                            VKDeviceCreater.cpp
+                                            VKDevice.cpp
+                                            VKDeviceBuffer.cpp
+                                            VKBuffer.cpp
+                                            VKDescriptorSets.cpp
+                                            VKRenderPass.cpp
+                                            VKShaderModule.cpp
+                                            VKShaderModuleManage.cpp
+                                            VKVertexAttributeBinding.cpp
+                                            VKPipeline.cpp
+                                            VKSemaphore.cpp
+                                            VKFramebuffer.cpp
+                                            VKFence.cpp
+                                            VKMaterial.cpp
+                                            VKRenderable.cpp)

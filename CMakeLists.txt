@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+﻿cmake_minimum_required(VERSION 3.0)
 
 PROJECT(ULRE)
 
@@ -14,20 +14,15 @@ check_system_bits()
 check_system_version()
 set_compiler_param()
 set_output_directory()
-    
-IF(WIN32)
-	add_subdirectory(3rdpty/glfw)
-	include_directories(3rdpty/glfw/include)
 
+IF(WIN32)
     include_directories(${Vulkan_INCLUDE_DIRS})
-	
+
 	SET(SPIRV_CROSS_PATH 3rdpty/SPIRV-Cross)
 	include_directories(${SPIRV_CROSS_PATH})
 	add_subdirectory(${SPIRV_CROSS_PATH})
-
-	SET(OPENGL_LIB	opengl32)
 ELSE()
-	SET(OPENGL_LIB	GL)
+    SET(RENDER_LIBRARY xcb)
 ENDIF()
 
 SET(VULKAN_LIB  ${Vulkan_LIBRARIES})
@@ -38,24 +33,21 @@ add_definitions(-DMATH_AVX)
 add_definitions(-DGLFW_INCLUDE_VULKAN)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/GLEWCore/inc)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 add_subdirectory(3rdpty/MathGeoLib)
-add_subdirectory(3rdpty/GLEWCore)
 add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(src)
 
 SET(ULRE    ULRE.Base
-            ULRE.RenderDevice
-            ULRE.RenderDriver
+            ULRE.RenderDevice.Vulkan
             ULRE.Platform
             MathGeoLib
-            GLEWCore
-            glfw
-            ${OPENGL_LIB})
+            ${RENDER_LIBRARY}
+            spirv-cross-core
+            ${Vulkan_LIBRARY})
 
 add_subdirectory(example)

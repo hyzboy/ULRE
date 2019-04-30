@@ -1,0 +1,32 @@
+material flat_color
+{
+    shader
+    {
+        vertex
+        {
+            file = FlatColor.vert.spv
+
+            input Vertex
+            {
+                location = 0
+                format = vec2f                
+            }   
+            
+            input Color
+            {
+                location 1 
+                format = vec3f
+            }
+
+            ubo MVPMatrix ubo
+            {
+                binding = 0
+            }
+        }
+
+        fragment
+        {
+            file = FlatColor.frag.spv
+        }   
+    }    
+}

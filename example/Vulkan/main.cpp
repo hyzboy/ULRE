@@ -1,19 +1,4 @@
-﻿#include"Window.h"
-#include"VKInstance.h"
-#include"VKPhysicalDevice.h"
-#include"VKDevice.h"
-#include"VKBuffer.h"
-#include"VKShaderModule.h"
-#include"VKShaderModuleManage.h"
-#include"VKImageView.h"
-#include"VKRenderable.h"
-#include"VKDescriptorSets.h"
-#include"VKRenderPass.h"
-#include"VKPipeline.h"
-#include"VKCommandBuffer.h"
-#include"VKFormat.h"
-#include"VKFramebuffer.h"
-#include"VKMaterial.h"
+﻿#include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 
 using namespace hgl;
@@ -41,79 +26,6 @@ constexpr float color_data[VERTEX_COUNT][3]=
     {0,1,0},
     {0,0,1}
 };
-
-void wait_seconds(double seconds) 
-{
-#ifdef WIN32
-    Sleep(seconds * 1000.0f);
-#elif defined(__ANDROID__)
-    sleep(seconds);
-#else
-    sleep(seconds);
-#endif
-}
-
-class VulkanApplicationFramework
-{
-private:    
-
-            Window *            win             =nullptr;
-    vulkan::Instance *          inst            =nullptr;
-
-protected:
-
-    vulkan::Device *            device          =nullptr;
-    vulkan::ShaderModuleManage *shader_manage   =nullptr;
-
-public:
-
-    virtual ~VulkanApplicationFramework()
-    {   
-        SAFE_CLEAR(shader_manage);
-        SAFE_CLEAR(device);
-        SAFE_CLEAR(inst);
-        SAFE_CLEAR(win);
-    }
-
-    virtual bool Init(int w,int h) 
-    {
-        win=CreateRenderWindow(OS_TEXT("VulkanTest"));
-        if(!win)
-            return(false);
-
-        if(!win->Create(SCREEN_WIDTH,SCREEN_HEIGHT))
-            return(false);
-
-        inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
-
-        if(!inst)
-            return(false);
-
-        device=inst->CreateRenderDevice(win);
-
-        if(!device)
-            return(false);
-
-        shader_manage=device->CreateShaderModuleManage();
-        
-        const vulkan::PhysicalDevice *render_device=device->GetPhysicalDevice();
-
-        std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
-        return(true);
-    }
-
-    void AcquireNextFrame()
-    {
-        device->AcquireNextImage();
-    }
-
-    void Submit(vulkan::CommandBuffer *cmd_buf)
-    {
-        device->QueueSubmit(cmd_buf);
-        device->Wait();
-        device->QueuePresent();
-    }
-};//class VulkanApplicationFramework
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -148,7 +60,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial("FlatColor.vert.spv","FlatColor.frag.spv");
+        material=shader_manage->CreateMaterial(OS_TEXT("FlatColor.vert.spv"),
+                                               OS_TEXT("FlatColor.frag.spv"));
         if(!material)
             return(false);
 
@@ -256,7 +169,7 @@ int main(int,char **)
     app.AcquireNextFrame();
     app.Draw();
 
-    wait_seconds(0.5);
+    app.Wait(0.5);
     
     return 0;
 }
