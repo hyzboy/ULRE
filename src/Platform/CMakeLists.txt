@@ -89,9 +89,13 @@ IF(WIN32)
 
     SET(PLATFORM_DESKTOP_SOURCE         Win/Desktop.cpp)
 
-    SET(PLATFORM_WINDOW_SOURCE          Win/WinWindow.cpp)
-    SET(PLATFORM_INPUT_DEVICE_SOURCE    Win/KeyConvert.cpp)
+    SET(PLATFORM_WINDOW_SOURCE          Win/WinWindow.h
+										Win/WinWindow.cpp
+										Win/WinMessage.cpp
+										Win/WinVulkan.cpp)
 ENDIF(WIN32)
+
+SET(PLATFORM_WINDOW_SOURCE ${PLATFORM_WINDOW_SOURCE} Window.cpp)
 
 SOURCE_GROUP("InputDevice"  FILES ${PLATFORM_INPUT_DEVICE_SOURCE})
 SOURCE_GROUP("CodePage"     FILES ${PLATFORM_CODEPAGE_SOURCE})
