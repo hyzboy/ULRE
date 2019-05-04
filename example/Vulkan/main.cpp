@@ -37,7 +37,6 @@ private:
     vulkan::Renderable *        render_obj          =nullptr;    
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
-    vulkan::PipelineCreater *   pipeline_creater    =nullptr;
     vulkan::Pipeline *          pipeline            =nullptr;
     vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
@@ -52,7 +51,6 @@ public:
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
         SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(pipeline_creater);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
         SAFE_CLEAR(material);
@@ -96,6 +94,7 @@ private:
 
     bool InitPipeline()
     {
+        vulkan::PipelineCreater *
         pipeline_creater=new vulkan::PipelineCreater(device,material);
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
@@ -103,6 +102,9 @@ private:
         pipeline_creater->Set(PRIM_TRIANGLES);
 
         pipeline=pipeline_creater->Create();
+
+        delete pipeline_creater;
+        pipeline_creater=nullptr;
 
         return pipeline;
     }
