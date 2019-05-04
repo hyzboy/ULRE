@@ -17,4 +17,16 @@ namespace hgl
         OnKeyUp(kb);
         key_push[kb]=false;
     }
+
+    bool Window::Update()
+    {
+        while(MessageProc())
+        {
+        }
+
+        if(!active||width==0||height==0)
+            this->WaitMessage();
+
+        return(!is_close);
+    }
 }//namespace hgl

@@ -82,9 +82,18 @@ public:
         device->QueuePresent();
     }
 
+    virtual void Draw()=0;
+
     bool Run()
     {
-        win->MessageProc();
-        return !win->IsClose();
+        if(!win->Update())return(false);
+
+        if(win->IsVisible())
+        {
+            AcquireNextFrame();
+            Draw();
+        }
+
+        return(true);
     }
 };//class VulkanApplicationFramework
