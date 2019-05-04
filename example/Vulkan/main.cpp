@@ -157,9 +157,8 @@ public:
         return(true);
     }
 
-    void Draw()
+    void Draw() override
     {
-        AcquireNextFrame();
         Submit(cmd_buf[device->GetCurrentFrameIndices()]);
     }
 };//class TestApp:public VulkanApplicationFramework
@@ -176,8 +175,7 @@ int main(int,char **)
     if(!app.Init())
         return(-1);
 
-    while(app.Run())
-        app.Draw();
+    while(app.Run());
     
     return 0;
 }

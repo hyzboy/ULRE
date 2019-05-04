@@ -19,6 +19,11 @@ namespace hgl
 
         bool key_push[kbRangeSize];
 
+    protected:
+
+        virtual bool MessageProc()=0;
+        virtual bool WaitMessage()=0;
+
     public:
 
         uint GetWidth()const{return width;}
@@ -64,6 +69,7 @@ namespace hgl
         virtual void Close()=0;
 
                 bool IsClose()const{return is_close;}
+                bool IsVisible()const{return (!is_close)&&width&&height;}
 
         virtual void SetCaption(const OSString &)=0;
 
@@ -75,7 +81,7 @@ namespace hgl
 
         virtual void SetSystemCursor(bool){}
 
-        virtual bool MessageProc()=0;
+        virtual bool Update();
     };//class Window
 
     Window *CreateRenderWindow(const OSString &win_name);

@@ -46,5 +46,6 @@ namespace hgl
         void SetSystemCursor(bool visible) override;
 
         bool MessageProc() override;
+        bool WaitMessage() override;
     };//class WinWindow :public Window
 }//namespace win

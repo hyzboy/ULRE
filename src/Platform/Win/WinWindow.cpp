@@ -192,6 +192,11 @@ namespace hgl
         }
     }
 
+    bool WinWindow::WaitMessage()
+    {
+        return ::WaitMessage();
+    }
+
 	Window *CreateRenderWindow(const WideString& win_name)
 	{
 		return(new WinWindow(win_name));
