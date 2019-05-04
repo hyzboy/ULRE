@@ -4,8 +4,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
 struct WorldConfig
 {
@@ -29,7 +29,9 @@ constexpr float color_data[VERTEX_COUNT][3]=
 
 class TestApp:public VulkanApplicationFramework
 {
-private:    //需释放数据
+private:    
+
+    uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;    
@@ -37,7 +39,7 @@ private:    //需释放数据
 
     vulkan::PipelineCreater *   pipeline_creater    =nullptr;
     vulkan::Pipeline *          pipeline            =nullptr;
-    vulkan::CommandBuffer *     cmd_buf             =nullptr;
+    vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
     vulkan::VertexBuffer *      vertex_buffer       =nullptr;
     vulkan::VertexBuffer *      color_buffer        =nullptr;
@@ -48,7 +50,7 @@ public:
     {
         SAFE_CLEAR(color_buffer);
         SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(cmd_buf);
+        SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(pipeline_creater);
         SAFE_CLEAR(ubo_mvp);
@@ -107,19 +109,24 @@ private:
 
     bool InitCommandBuffer()
     {
-        cmd_buf=device->CreateCommandBuffer();
+        cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
 
-        if(!cmd_buf)
-            return(false);
+        for(uint i=0;i<swap_chain_count;i++)
+        {
+            cmd_buf[i]=device->CreateCommandBuffer();
 
-        cmd_buf->Begin();
-            cmd_buf->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(0));
-                cmd_buf->Bind(pipeline);
-                cmd_buf->Bind(material);
-                cmd_buf->Bind(render_obj);
-                cmd_buf->Draw(VERTEX_COUNT);
-            cmd_buf->EndRenderPass();
-        cmd_buf->End();
+            if(!cmd_buf[i])
+                return(false);
+
+            cmd_buf[i]->Begin();
+                cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
+                    cmd_buf[i]->Bind(pipeline);
+                    cmd_buf[i]->Bind(material);
+                    cmd_buf[i]->Bind(render_obj);
+                    cmd_buf[i]->Draw(VERTEX_COUNT);
+                cmd_buf[i]->EndRenderPass();
+            cmd_buf[i]->End();
+        }
 
         return(true);
     }
@@ -130,6 +137,8 @@ public:
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+
+        swap_chain_count=device->GetSwapChainImageCount();
 
         if(!InitMaterial())
             return(false);
@@ -150,7 +159,8 @@ public:
 
     void Draw()
     {
-        Submit(cmd_buf);
+        AcquireNextFrame();
+        Submit(cmd_buf[device->GetCurrentFrameIndices()]);
     }
 };//class TestApp:public VulkanApplicationFramework
 
@@ -166,10 +176,8 @@ int main(int,char **)
     if(!app.Init())
         return(-1);
 
-    app.AcquireNextFrame();
-    app.Draw();
-
-    while(app.Run());
+    while(app.Run())
+        app.Draw();
     
     return 0;
 }
