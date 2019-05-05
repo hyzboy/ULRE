@@ -49,7 +49,7 @@ class PipelineCreater
 
 public:
 
-    PipelineCreater(Device *dev,const Material *,RenderPass *rp=nullptr);
+    PipelineCreater(Device *dev,const Material *,RenderPass *rp);
     ~PipelineCreater()=default;
 
     bool Set(const VkPrimitiveTopology,bool=false);

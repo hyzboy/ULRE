@@ -24,9 +24,6 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
     pipelineInfo.pStages = material->GetStages();
 
     {
-        if(!rp)
-            rp=dev->GetRenderPass();
-
         pipelineInfo.renderPass = *rp;
         pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
     }
