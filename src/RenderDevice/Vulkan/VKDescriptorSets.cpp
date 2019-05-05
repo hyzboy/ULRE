@@ -8,7 +8,7 @@ namespace
     {
         if(count<=0)
             return;
-        
+
         for(int i=0;i<count;i++)
         {
             vkDestroyDescriptorSetLayout(device,*dsl_list,nullptr);
@@ -47,7 +47,7 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType de
     layout_binding.pImmutableSamplers = nullptr;
 
     const int index=layout_binding_list.Add(layout_binding);
-    
+
     index_by_binding.Add(binding,index);
 }
 

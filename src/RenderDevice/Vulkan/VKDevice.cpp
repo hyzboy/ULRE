@@ -14,7 +14,7 @@ VK_NAMESPACE_BEGIN
 Device::Device(DeviceAttribute *da)
 {
     attr=da;
-    
+
     current_frame=0;
 
     image_acquired_semaphore=this->CreateSem();
@@ -83,11 +83,11 @@ RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format
     subpass.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.flags=0;
     subpass.inputAttachmentCount=0;
-    subpass.pInputAttachments=nullptr;    
+    subpass.pInputAttachments=nullptr;
     subpass.pResolveAttachments=nullptr;
     subpass.preserveAttachmentCount=0;
     subpass.pPreserveAttachments=nullptr;
-    
+
     int att_count=0;
 
     if(color_format!=VK_FORMAT_UNDEFINED)

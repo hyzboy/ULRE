@@ -4,9 +4,9 @@ namespace hgl
 {
     LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-	namespace
-	{
-		constexpr wchar_t WIN_CLASS_NAME[] = L"CMGameEngine/ULRE Window Class";
+    namespace
+    {
+        constexpr wchar_t WIN_CLASS_NAME[] = L"CMGameEngine/ULRE Window Class";
 
         bool RegistryWinClass(HINSTANCE hInstance)
         {
@@ -29,80 +29,80 @@ namespace hgl
 
             return RegisterClassExW(&win_class);
         }
-	}//namespace
+    }//namespace
 
-	bool WinWindow::Create()
-	{
-		constexpr DWORD win_style = WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_SYSMENU ;
+    bool WinWindow::Create()
+    {
+        constexpr DWORD win_style = WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_SYSMENU ;
 
-		int win_left, win_top;
-		int win_width, win_height;
+        int win_left, win_top;
+        int win_width, win_height;
 
-		{
-			RECT win_rect;
+        {
+            RECT win_rect;
 
-			win_rect.left = 0;
-			win_rect.right = width;
-			win_rect.top = 0;
-			win_rect.bottom = height;
+            win_rect.left = 0;
+            win_rect.right = width;
+            win_rect.top = 0;
+            win_rect.bottom = height;
 
-			AdjustWindowRectEx(&win_rect, win_style, false, 0); //计算窗口坐标
+            AdjustWindowRectEx(&win_rect, win_style, false, 0); //计算窗口坐标
 
-			win_width = win_rect.right - win_rect.left;
-			win_height = win_rect.bottom - win_rect.top;
-		}
+            win_width = win_rect.right - win_rect.left;
+            win_height = win_rect.bottom - win_rect.top;
+        }
 
-		if (width && height)
-		{
-			win_left = (GetSystemMetrics(SM_CXSCREEN) - win_width) / 2;
-			win_top = (GetSystemMetrics(SM_CYSCREEN) - win_height) / 2;
-		}
-		else
-		{
-			win_left = CW_USEDEFAULT;
-			win_top = CW_USEDEFAULT;
-		}
+        if (width && height)
+        {
+            win_left = (GetSystemMetrics(SM_CXSCREEN) - win_width) / 2;
+            win_top = (GetSystemMetrics(SM_CYSCREEN) - win_height) / 2;
+        }
+        else
+        {
+            win_left = CW_USEDEFAULT;
+            win_top = CW_USEDEFAULT;
+        }
 
-		win_hwnd = CreateWindowExW(0,
-			WIN_CLASS_NAME,             // class name
-			win_name.c_str(),           // app name
-			win_style,					// window style
-			win_left,win_top,			// x/y coords
-			win_width,					// width
-			win_height,					// height
-			nullptr,					// handle to parent
-			nullptr,					// handle to menu
-			hInstance,					// hInstance
-			nullptr);					// no extra parameters
+        win_hwnd = CreateWindowExW(0,
+            WIN_CLASS_NAME,             // class name
+            win_name.c_str(),           // app name
+            win_style,                  // window style
+            win_left,win_top,           // x/y coords
+            win_width,                  // width
+            win_height,                 // height
+            nullptr,                    // handle to parent
+            nullptr,                    // handle to menu
+            hInstance,                  // hInstance
+            nullptr);                   // no extra parameters
 
-		if (!win_hwnd)
-		{
-			UnregisterClassW(WIN_CLASS_NAME, hInstance);
-			return(false);
-		}
+        if (!win_hwnd)
+        {
+            UnregisterClassW(WIN_CLASS_NAME, hInstance);
+            return(false);
+        }
 
-		win_dc = GetDC(win_hwnd);
-		SetWindowLongPtrW(win_hwnd, GWLP_USERDATA, (LONG_PTR)this);
-		return(true);
-	}
+        win_dc = GetDC(win_hwnd);
+        SetWindowLongPtrW(win_hwnd, GWLP_USERDATA, (LONG_PTR)this);
+        return(true);
+    }
 
     WinWindow::~WinWindow()
-	{
-		Close();
-	}
+    {
+        Close();
+    }
 
-	bool WinWindow::Create(uint w, uint h)
-	{
+    bool WinWindow::Create(uint w, uint h)
+    {
         full_screen=false;
-		width = w;
-		height = h;
+        width = w;
+        height = h;
 
-		hInstance = GetModuleHandleW(nullptr);
+        hInstance = GetModuleHandleW(nullptr);
 
-		if (!RegistryWinClass(hInstance))
-			return(false);
+        if (!RegistryWinClass(hInstance))
+            return(false);
 
-		if(!Create())
+        if(!Create())
         {
             is_close=true;
             return(false);
@@ -112,24 +112,24 @@ namespace hgl
             is_close=false;
             return(true);
         }
-	}
+    }
 
-	bool WinWindow::Create(uint, uint, uint)
-	{
+    bool WinWindow::Create(uint, uint, uint)
+    {
         full_screen=true;
-		return(false);
-	}
+        return(false);
+    }
 
-	void WinWindow::Close()
-	{
-		ReleaseDC(win_hwnd, win_dc);
-		DestroyWindow(win_hwnd);
-		UnregisterClassW(WIN_CLASS_NAME,hInstance);
+    void WinWindow::Close()
+    {
+        ReleaseDC(win_hwnd, win_dc);
+        DestroyWindow(win_hwnd);
+        UnregisterClassW(WIN_CLASS_NAME,hInstance);
 
-		win_dc = nullptr;
-		win_hwnd = nullptr;
+        win_dc = nullptr;
+        win_hwnd = nullptr;
         is_close = true;
-	}
+    }
 
     void WinWindow::SetCaption(const OSString &caption)
     {
@@ -137,20 +137,20 @@ namespace hgl
         SetWindowTextW(win_hwnd,caption.c_str());
     }
 
-	void WinWindow::Show()
-	{
-		ShowWindow(win_hwnd, SW_SHOW);
-		SetForegroundWindow(win_hwnd);
-		SetFocus(win_hwnd);
+    void WinWindow::Show()
+    {
+        ShowWindow(win_hwnd, SW_SHOW);
+        SetForegroundWindow(win_hwnd);
+        SetFocus(win_hwnd);
 
-		UpdateWindow(win_hwnd);
-	}
+        UpdateWindow(win_hwnd);
+    }
 
-	void WinWindow::Hide()
-	{
-		ShowWindow(win_hwnd, SW_HIDE);
-		UpdateWindow(win_hwnd);
-	}
+    void WinWindow::Hide()
+    {
+        ShowWindow(win_hwnd, SW_HIDE);
+        UpdateWindow(win_hwnd);
+    }
 
     void WinWindow::ToMinWindow()
     {
@@ -197,8 +197,8 @@ namespace hgl
         return ::WaitMessage();
     }
 
-	Window *CreateRenderWindow(const WideString& win_name)
-	{
-		return(new WinWindow(win_name));
-	}
+    Window *CreateRenderWindow(const WideString& win_name)
+    {
+        return(new WinWindow(win_name));
+    }
 }//namespace hgl

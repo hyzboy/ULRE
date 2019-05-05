@@ -124,7 +124,7 @@ namespace
         }
         else
         {
-            swapchain_ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;            
+            swapchain_ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;
         }
 
         VkSwapchainKHR swap_chain;
@@ -176,7 +176,7 @@ namespace
 
         return(true);
     }
-    
+
     bool CreateDepthBuffer(DeviceAttribute *rsa)
     {
         VkImageCreateInfo image_info={};
@@ -278,7 +278,7 @@ namespace
         pipelineCache.initialDataSize = 0;
         pipelineCache.pInitialData = nullptr;
         pipelineCache.flags = 0;
-        
+
         VkPipelineCache cache;
 
         if(vkCreatePipelineCache(device, &pipelineCache, nullptr, &cache)!=VK_SUCCESS)
@@ -298,7 +298,7 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     DeviceAttribute *attr=new DeviceAttribute(inst,physical_device,surface);
 
     AutoDelete<DeviceAttribute> auto_delete(attr);
-    
+
     attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,win->GetWidth(),win->GetHeight());
 
     if(attr->graphics_family==ERROR_FAMILY_INDEX)

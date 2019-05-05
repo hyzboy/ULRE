@@ -10,8 +10,8 @@ namespace hgl
 {
     namespace
     {
-	    static KeyboardButton KeyConvert[256];
-        static void (*WMProc[2048])(WinWindow *,uint32,uint32);					//消息处理队列
+        static KeyboardButton KeyConvert[256];
+        static void (*WMProc[2048])(WinWindow *,uint32,uint32);                 //消息处理队列
 
         uint32 GetKeyFlags(uint32 wflags)
         {
@@ -27,178 +27,178 @@ namespace hgl
             return(flag);
         }
 
-	    void InitKeyConvert()
-	    {
-		    int i;
+        void InitKeyConvert()
+        {
+            int i;
 
-		    memset(KeyConvert,0,sizeof(KeyConvert));
+            memset(KeyConvert,0,sizeof(KeyConvert));
 
-		    KeyConvert[VK_ESCAPE    ]=kbEsc;
-		    for(i=VK_F1;i<=VK_F12;i++)KeyConvert[i]=(KeyboardButton)(kbF1+i-VK_F1);
+            KeyConvert[VK_ESCAPE    ]=kbEsc;
+            for(i=VK_F1;i<=VK_F12;i++)KeyConvert[i]=(KeyboardButton)(kbF1+i-VK_F1);
 
-		    KeyConvert['`'          ]=kbGrave;
-		    for(i='0';i<='9';i++)KeyConvert[i]=(KeyboardButton)(kb0+i-'0');
-		    KeyConvert['-'          ]=kbMinus;
-		    KeyConvert['='          ]=kbEquals;
-		    KeyConvert['\\'         ]=kbBackSlash;
-		    KeyConvert[VK_BACK      ]=kbBackSpace;
+            KeyConvert['`'          ]=kbGrave;
+            for(i='0';i<='9';i++)KeyConvert[i]=(KeyboardButton)(kb0+i-'0');
+            KeyConvert['-'          ]=kbMinus;
+            KeyConvert['='          ]=kbEquals;
+            KeyConvert['\\'         ]=kbBackSlash;
+            KeyConvert[VK_BACK      ]=kbBackSpace;
 
-		    KeyConvert[VK_TAB       ]=kbTab;
-		    KeyConvert['Q'          ]=kbQ;
-		    KeyConvert['W'          ]=kbW;
-		    KeyConvert['E'          ]=kbE;
-		    KeyConvert['R'          ]=kbR;
-		    KeyConvert['T'          ]=kbT;
-		    KeyConvert['Y'          ]=kbY;
-		    KeyConvert['U'          ]=kbU;
-		    KeyConvert['I'          ]=kbI;
-		    KeyConvert['O'          ]=kbO;
-		    KeyConvert['P'          ]=kbP;
-		    KeyConvert['['          ]=kbLeftBracket;
-		    KeyConvert[']'          ]=kbRightBracket;
+            KeyConvert[VK_TAB       ]=kbTab;
+            KeyConvert['Q'          ]=kbQ;
+            KeyConvert['W'          ]=kbW;
+            KeyConvert['E'          ]=kbE;
+            KeyConvert['R'          ]=kbR;
+            KeyConvert['T'          ]=kbT;
+            KeyConvert['Y'          ]=kbY;
+            KeyConvert['U'          ]=kbU;
+            KeyConvert['I'          ]=kbI;
+            KeyConvert['O'          ]=kbO;
+            KeyConvert['P'          ]=kbP;
+            KeyConvert['['          ]=kbLeftBracket;
+            KeyConvert[']'          ]=kbRightBracket;
 
-		    KeyConvert[VK_CAPITAL   ]=kbCapsLock;
-		    KeyConvert['A'          ]=kbA;
-		    KeyConvert['S'          ]=kbS;
-		    KeyConvert['D'          ]=kbD;
-		    KeyConvert['F'          ]=kbF;
-		    KeyConvert['G'          ]=kbG;
-		    KeyConvert['H'          ]=kbH;
-		    KeyConvert['J'          ]=kbJ;
-		    KeyConvert['K'          ]=kbK;
-		    KeyConvert['L'          ]=kbL;
-		    KeyConvert[';'          ]=kbSemicolon;
-		    KeyConvert['\''         ]=kbApostrophe;
-		    KeyConvert[VK_RETURN    ]=kbEnter;
+            KeyConvert[VK_CAPITAL   ]=kbCapsLock;
+            KeyConvert['A'          ]=kbA;
+            KeyConvert['S'          ]=kbS;
+            KeyConvert['D'          ]=kbD;
+            KeyConvert['F'          ]=kbF;
+            KeyConvert['G'          ]=kbG;
+            KeyConvert['H'          ]=kbH;
+            KeyConvert['J'          ]=kbJ;
+            KeyConvert['K'          ]=kbK;
+            KeyConvert['L'          ]=kbL;
+            KeyConvert[';'          ]=kbSemicolon;
+            KeyConvert['\''         ]=kbApostrophe;
+            KeyConvert[VK_RETURN    ]=kbEnter;
 
-		    KeyConvert[VK_LSHIFT    ]=kbLeftShift;
-		    KeyConvert['Z'          ]=kbZ;
-		    KeyConvert['X'          ]=kbX;
-		    KeyConvert['C'          ]=kbC;
-		    KeyConvert['V'          ]=kbV;
-		    KeyConvert['B'          ]=kbB;
-		    KeyConvert['N'          ]=kbN;
-		    KeyConvert['M'          ]=kbM;
-		    KeyConvert[','          ]=kbComma;
-		    KeyConvert['.'          ]=kbPeriod;
-		    KeyConvert['/'          ]=kbSlash;
-		    KeyConvert[VK_RSHIFT    ]=kbRightShift;
+            KeyConvert[VK_LSHIFT    ]=kbLeftShift;
+            KeyConvert['Z'          ]=kbZ;
+            KeyConvert['X'          ]=kbX;
+            KeyConvert['C'          ]=kbC;
+            KeyConvert['V'          ]=kbV;
+            KeyConvert['B'          ]=kbB;
+            KeyConvert['N'          ]=kbN;
+            KeyConvert['M'          ]=kbM;
+            KeyConvert[','          ]=kbComma;
+            KeyConvert['.'          ]=kbPeriod;
+            KeyConvert['/'          ]=kbSlash;
+            KeyConvert[VK_RSHIFT    ]=kbRightShift;
 
-		    KeyConvert[VK_LCONTROL  ]=kbLeftCtrl;
-		    KeyConvert[VK_LWIN		]=kbLeftOS;
-		    KeyConvert[VK_LMENU		]=kbLeftAlt;
-		    KeyConvert[VK_SPACE     ]=kbSpace;
-		    KeyConvert[VK_RMENU		]=kbRightAlt;
-		    KeyConvert[VK_RWIN		]=kbRightOS;
-		    KeyConvert[VK_RCONTROL  ]=kbRightCtrl;
+            KeyConvert[VK_LCONTROL  ]=kbLeftCtrl;
+            KeyConvert[VK_LWIN      ]=kbLeftOS;
+            KeyConvert[VK_LMENU     ]=kbLeftAlt;
+            KeyConvert[VK_SPACE     ]=kbSpace;
+            KeyConvert[VK_RMENU     ]=kbRightAlt;
+            KeyConvert[VK_RWIN      ]=kbRightOS;
+            KeyConvert[VK_RCONTROL  ]=kbRightCtrl;
 
-		    KeyConvert[VK_PAUSE     ]=kbPause;
-	    //        KeyConvert[VK_CLEAR     ]=kbClear;
+            KeyConvert[VK_PAUSE     ]=kbPause;
+        //        KeyConvert[VK_CLEAR     ]=kbClear;
 
-		    KeyConvert[VK_NUMPAD0   ]=kbNum0;
-		    KeyConvert[VK_NUMPAD1   ]=kbNum1;
-		    KeyConvert[VK_NUMPAD2   ]=kbNum2;
-		    KeyConvert[VK_NUMPAD3   ]=kbNum3;
-		    KeyConvert[VK_NUMPAD4   ]=kbNum4;
-		    KeyConvert[VK_NUMPAD5   ]=kbNum5;
-		    KeyConvert[VK_NUMPAD6   ]=kbNum6;
-		    KeyConvert[VK_NUMPAD7   ]=kbNum7;
-		    KeyConvert[VK_NUMPAD8   ]=kbNum8;
-		    KeyConvert[VK_NUMPAD9   ]=kbNum9;
+            KeyConvert[VK_NUMPAD0   ]=kbNum0;
+            KeyConvert[VK_NUMPAD1   ]=kbNum1;
+            KeyConvert[VK_NUMPAD2   ]=kbNum2;
+            KeyConvert[VK_NUMPAD3   ]=kbNum3;
+            KeyConvert[VK_NUMPAD4   ]=kbNum4;
+            KeyConvert[VK_NUMPAD5   ]=kbNum5;
+            KeyConvert[VK_NUMPAD6   ]=kbNum6;
+            KeyConvert[VK_NUMPAD7   ]=kbNum7;
+            KeyConvert[VK_NUMPAD8   ]=kbNum8;
+            KeyConvert[VK_NUMPAD9   ]=kbNum9;
 
-		    KeyConvert[VK_DECIMAL   ]=kbNumDecimal;
-		    KeyConvert[VK_DIVIDE    ]=kbNumDivide;
-		    KeyConvert[VK_MULTIPLY  ]=kbNumMultiply;
-		    KeyConvert[VK_SUBTRACT  ]=kbNumSubtract;
-		    KeyConvert[VK_ADD       ]=kbNumAdd;
+            KeyConvert[VK_DECIMAL   ]=kbNumDecimal;
+            KeyConvert[VK_DIVIDE    ]=kbNumDivide;
+            KeyConvert[VK_MULTIPLY  ]=kbNumMultiply;
+            KeyConvert[VK_SUBTRACT  ]=kbNumSubtract;
+            KeyConvert[VK_ADD       ]=kbNumAdd;
 
-		    KeyConvert[VK_UP        ]=kbUp;
-		    KeyConvert[VK_DOWN      ]=kbDown;
-		    KeyConvert[VK_LEFT      ]=kbLeft;
-		    KeyConvert[VK_RIGHT     ]=kbRight;
+            KeyConvert[VK_UP        ]=kbUp;
+            KeyConvert[VK_DOWN      ]=kbDown;
+            KeyConvert[VK_LEFT      ]=kbLeft;
+            KeyConvert[VK_RIGHT     ]=kbRight;
 
-		    KeyConvert[VK_INSERT    ]=kbInsert;
-		    KeyConvert[VK_DELETE    ]=kbDelete;
-		    KeyConvert[VK_HOME      ]=kbHome;
-		    KeyConvert[VK_END       ]=kbEnd;
-		    KeyConvert[VK_PRIOR     ]=kbPageUp;
-		    KeyConvert[VK_NEXT      ]=kbPageDown;
+            KeyConvert[VK_INSERT    ]=kbInsert;
+            KeyConvert[VK_DELETE    ]=kbDelete;
+            KeyConvert[VK_HOME      ]=kbHome;
+            KeyConvert[VK_END       ]=kbEnd;
+            KeyConvert[VK_PRIOR     ]=kbPageUp;
+            KeyConvert[VK_NEXT      ]=kbPageDown;
 
-		    KeyConvert[VK_NUMLOCK   ]=kbNumLock;
-		    KeyConvert[VK_SCROLL    ]=kbScrollLock;
+            KeyConvert[VK_NUMLOCK   ]=kbNumLock;
+            KeyConvert[VK_SCROLL    ]=kbScrollLock;
 
-		    //KeyConvert[VK_SHIFT		]=kbLeftShift;
-		    //KeyConvert[VK_CONTROL	]=kbLeftCtrl;
-		    //KeyConvert[VK_MENU		]=kbLeftAlt;
+            //KeyConvert[VK_SHIFT       ]=kbLeftShift;
+            //KeyConvert[VK_CONTROL ]=kbLeftCtrl;
+            //KeyConvert[VK_MENU        ]=kbLeftAlt;
 
-		    KeyConvert[VK_OEM_1		]=kbSemicolon;
-		    KeyConvert[VK_OEM_PLUS	]=kbEquals;
-		    KeyConvert[VK_OEM_COMMA	]=kbComma;
-		    KeyConvert[VK_OEM_MINUS	]=kbMinus;
-		    KeyConvert[VK_OEM_PERIOD]=kbPeriod;
-		    KeyConvert[VK_OEM_2		]=kbSlash;
-		    KeyConvert[VK_OEM_3		]=kbGrave;
-		    KeyConvert[VK_OEM_4		]=kbLeftBracket;
-		    KeyConvert[VK_OEM_5		]=kbBackSlash;
-		    KeyConvert[VK_OEM_6		]=kbRightBracket;
-		    KeyConvert[VK_OEM_7		]=kbApostrophe;
-	    }
+            KeyConvert[VK_OEM_1     ]=kbSemicolon;
+            KeyConvert[VK_OEM_PLUS  ]=kbEquals;
+            KeyConvert[VK_OEM_COMMA ]=kbComma;
+            KeyConvert[VK_OEM_MINUS ]=kbMinus;
+            KeyConvert[VK_OEM_PERIOD]=kbPeriod;
+            KeyConvert[VK_OEM_2     ]=kbSlash;
+            KeyConvert[VK_OEM_3     ]=kbGrave;
+            KeyConvert[VK_OEM_4     ]=kbLeftBracket;
+            KeyConvert[VK_OEM_5     ]=kbBackSlash;
+            KeyConvert[VK_OEM_6     ]=kbRightBracket;
+            KeyConvert[VK_OEM_7     ]=kbApostrophe;
+        }
 
-	    KeyboardButton ConvertOSKey(uint key)
-	    {
-		    if(key<kbBeginRange||key>=kbEndRange)return(kbBeginRange);
+        KeyboardButton ConvertOSKey(uint key)
+        {
+            if(key<kbBeginRange||key>=kbEndRange)return(kbBeginRange);
 
-		    if(key==VK_SHIFT)
-		    {
-			    if((GetAsyncKeyState(VK_LSHIFT)>>15)&1)
-				    return kbLeftShift;
-			    else
-				    return kbRightShift;
-		    }
-		    else
-		    if(key==VK_CONTROL)
-		    {
-			    if((GetAsyncKeyState(VK_LCONTROL)>>15)&1)
-				    return kbLeftCtrl;
-			    else
-				    return kbRightCtrl;
-		    }
-		    if(key==VK_MENU)
-		    {
-			    if((GetAsyncKeyState(VK_LMENU)>>15)&1)
-				    return kbLeftAlt;
-			    else
-				    return kbRightAlt;
-		    }
+            if(key==VK_SHIFT)
+            {
+                if((GetAsyncKeyState(VK_LSHIFT)>>15)&1)
+                    return kbLeftShift;
+                else
+                    return kbRightShift;
+            }
+            else
+            if(key==VK_CONTROL)
+            {
+                if((GetAsyncKeyState(VK_LCONTROL)>>15)&1)
+                    return kbLeftCtrl;
+                else
+                    return kbRightCtrl;
+            }
+            if(key==VK_MENU)
+            {
+                if((GetAsyncKeyState(VK_LMENU)>>15)&1)
+                    return kbLeftAlt;
+                else
+                    return kbRightAlt;
+            }
 
     #ifdef _DEBUG
-		    if(KeyConvert[key]==0)
-		    {
-			    wchar_t name[64];
+            if(KeyConvert[key]==0)
+            {
+                wchar_t name[64];
 
-			    ::GetKeyNameTextW(key,name,64);
+                ::GetKeyNameTextW(key,name,64);
 
-			    LOG_INFO(WideString(L"Unknow Key: " )+WideString(key)
+                LOG_INFO(WideString(L"Unknow Key: " )+WideString(key)
                         +WideString(L" ,name: "     )+WideString(name));
-		    }
+            }
     #endif _DEBUG
 
-		    return KeyConvert[key];
-	    }
+            return KeyConvert[key];
+        }
 
         void WMProcDestroy(WinWindow *,uint32,uint32)
         {
             PostQuitMessage(0);
         }
 
-        #define WMEF_MOUSE(button,action)	void WMProcMouse##button##action(WinWindow *win,uint32 wParam,uint32 lParam)	\
-	        {	\
+        #define WMEF_MOUSE(button,action)   void WMProcMouse##button##action(WinWindow *win,uint32 wParam,uint32 lParam)    \
+            {   \
                 const int x=LOWORD(lParam); \
                 const int y=HIWORD(lParam); \
                 \
                 win->OnMouseMove(x,y);  \
-		        win->OnMouse##action(x,y,mb##button|GetKeyFlags(wParam));	\
-	        }
+                win->OnMouse##action(x,y,mb##button|GetKeyFlags(wParam));   \
+            }
 
             WMEF_MOUSE(Left,Down);
             WMEF_MOUSE(Left,Up);
@@ -213,9 +213,9 @@ namespace hgl
             WMEF_MOUSE(Right,DoubleClick);
 
             void WMProcMouseMove(WinWindow *win,uint32 wParam,uint32 lParam)
-	        {
+            {
                 win->OnMouseMove(LOWORD(lParam),HIWORD(lParam));
-	        }
+            }
         #undef WMEF_MOUSE
 
         #define WMEF2(name) void name(WinWindow *win,uint32 wParam,uint32 lParam)
@@ -268,28 +268,28 @@ namespace hgl
         //if(joy)
         //    LoadJoystick(win->hInstance,win->hWnd);
 
-    #define WM_MAP(wm,func)	WMProc[wm]=func;
+    #define WM_MAP(wm,func) WMProc[wm]=func;
 
-        WM_MAP(WM_CLOSE				,WMProcDestroy);
-        WM_MAP(WM_LBUTTONDOWN		,WMProcMouseLeftDown);
-        WM_MAP(WM_LBUTTONUP			,WMProcMouseLeftUp);
-        WM_MAP(WM_LBUTTONDBLCLK		,WMProcMouseLeftDoubleClick);
-        WM_MAP(WM_MBUTTONDOWN		,WMProcMouseMidDown);
-        WM_MAP(WM_MBUTTONUP			,WMProcMouseMidUp);
-        WM_MAP(WM_MBUTTONDBLCLK		,WMProcMouseMidDoubleClick);
-        WM_MAP(WM_RBUTTONDOWN		,WMProcMouseRightDown);
-        WM_MAP(WM_RBUTTONUP			,WMProcMouseRightUp);
-        WM_MAP(WM_RBUTTONDBLCLK		,WMProcMouseRightDoubleClick);
-        WM_MAP(WM_MOUSEWHEEL		,WMProcMouseWheel);
-        WM_MAP(WM_MOUSEMOVE			,WMProcMouseMove);
-        WM_MAP(WM_KEYDOWN			,WMProcKeyDown);
-        WM_MAP(WM_KEYUP				,WMProcKeyUp);
-        WM_MAP(WM_SYSKEYDOWN		,WMProcKeyDown);
-        WM_MAP(WM_SYSKEYUP			,WMProcKeyUp);
-        WM_MAP(WM_CHAR				,WMProcChar);
-        WM_MAP(WM_SYSCHAR			,WMProcChar);
-        WM_MAP(WM_ACTIVATE			,WMProcActive);
-        WM_MAP(WM_SIZE				,WMProcSize);
+        WM_MAP(WM_CLOSE             ,WMProcDestroy);
+        WM_MAP(WM_LBUTTONDOWN       ,WMProcMouseLeftDown);
+        WM_MAP(WM_LBUTTONUP         ,WMProcMouseLeftUp);
+        WM_MAP(WM_LBUTTONDBLCLK     ,WMProcMouseLeftDoubleClick);
+        WM_MAP(WM_MBUTTONDOWN       ,WMProcMouseMidDown);
+        WM_MAP(WM_MBUTTONUP         ,WMProcMouseMidUp);
+        WM_MAP(WM_MBUTTONDBLCLK     ,WMProcMouseMidDoubleClick);
+        WM_MAP(WM_RBUTTONDOWN       ,WMProcMouseRightDown);
+        WM_MAP(WM_RBUTTONUP         ,WMProcMouseRightUp);
+        WM_MAP(WM_RBUTTONDBLCLK     ,WMProcMouseRightDoubleClick);
+        WM_MAP(WM_MOUSEWHEEL        ,WMProcMouseWheel);
+        WM_MAP(WM_MOUSEMOVE         ,WMProcMouseMove);
+        WM_MAP(WM_KEYDOWN           ,WMProcKeyDown);
+        WM_MAP(WM_KEYUP             ,WMProcKeyUp);
+        WM_MAP(WM_SYSKEYDOWN        ,WMProcKeyDown);
+        WM_MAP(WM_SYSKEYUP          ,WMProcKeyUp);
+        WM_MAP(WM_CHAR              ,WMProcChar);
+        WM_MAP(WM_SYSCHAR           ,WMProcChar);
+        WM_MAP(WM_ACTIVATE          ,WMProcActive);
+        WM_MAP(WM_SIZE              ,WMProcSize);
 
     #undef WM_MAP
     }

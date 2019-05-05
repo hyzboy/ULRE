@@ -11,7 +11,7 @@
 #define VK_NAMESPACE_BEGIN  namespace hgl{namespace graph{namespace vulkan{
 #define VK_NAMESPACE_END    }}}
 
-VK_NAMESPACE_BEGIN  
+VK_NAMESPACE_BEGIN
 
 using CharPointerList=hgl::List<const char *>;
 

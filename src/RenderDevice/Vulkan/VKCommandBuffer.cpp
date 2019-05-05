@@ -86,7 +86,7 @@ bool CommandBuffer::Bind(Material *mat)
         return(false);
 
     const uint32_t count=mat->GetDescriptorSetCount();
-    
+
     if(count>0)
         vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,mat->GetPipelineLayout(),0,count,mat->GetDescriptorSets(),0,nullptr);
 
@@ -107,7 +107,7 @@ bool CommandBuffer::Bind(Renderable *render_obj)
 
     IndexBuffer *indices_buffer=render_obj->GetIndexBuffer();
 
-    if(indices_buffer)    
+    if(indices_buffer)
         vkCmdBindIndexBuffer(cmd_buf,*indices_buffer,render_obj->GetIndexOffset(),indices_buffer->GetType());
 
     return(true);
@@ -147,7 +147,7 @@ void CommandBuffer::SetLineWidth(float line_width)
 {
     vkCmdSetLineWidth(cmd_buf,line_width);
 }
- 
+
 void CommandBuffer::Draw(const uint32_t vertex_count)
 {
     vkCmdDraw(cmd_buf,vertex_count,1,0,0);

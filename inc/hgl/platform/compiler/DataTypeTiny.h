@@ -16,8 +16,8 @@ namespace hgl
     using f32=float;
     using f64=double;
 
-    #define enum_int(name)	enum name:int
-    #define enum_uint(name)	enum name:uint
+    #define enum_int(name)  enum name:int
+    #define enum_uint(name) enum name:uint
 
     using void_pointer=void *;
 

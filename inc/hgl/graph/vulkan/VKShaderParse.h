@@ -48,7 +48,7 @@ public:
     const VkFormat GetFormat(const spirv_cross::Resource &res)const
     {
         const spirv_cross::SPIRType &type=compiler->get_type(res.type_id);
-        
+
         constexpr VkFormat format[][4]=
         {
             {FMT_R8I,FMT_RG8I,FMT_RGB8I,FMT_RGBA8I},    //sbyte

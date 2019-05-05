@@ -23,14 +23,14 @@ bool Renderable::Set(const int binding,VertexBuffer *vbo,VkDeviceSize offset)
 {
     if(binding<0||binding>=buf_count||!vbo)return(false);
 
-    const VkVertexInputBindingDescription *desc=vertex_sm->GetDesc(binding);   
+    const VkVertexInputBindingDescription *desc=vertex_sm->GetDesc(binding);
     const VkVertexInputAttributeDescription *attr=vertex_sm->GetAttr(binding);
 
-    if(vbo->GetFormat()!=attr->format)return(false);        
+    if(vbo->GetFormat()!=attr->format)return(false);
     if(vbo->GetStride()!=desc->stride)return(false);
 
     //format信息来自于shader，实际中可以不一样。但那样需要为每一个格式产生一个同样shader的material instance，不同的格式又需要不同的pipeline，我们不支持这种行为
-    
+
     buf_list[binding]=*vbo;
     buf_offset[binding]=offset;
 
