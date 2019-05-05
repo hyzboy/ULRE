@@ -19,7 +19,6 @@
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSemaphore.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModule.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModuleManage.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderParse.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSurfaceExtensionName.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKVertexAttributeBinding.h)
 
@@ -37,6 +36,7 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
 								VKDescriptorSetLayoutCreater.cpp
 								VKDescriptorSetLayoutCreater.h
                                 VKRenderPass.cpp
+                                VKShaderParse.h
                                 VKShaderModule.cpp
                                 VKShaderModuleManage.cpp
                                 VKVertexAttributeBinding.cpp
@@ -54,6 +54,6 @@ SOURCE_GROUP("Header Files" FILES ${RENDER_DEVICE_VULKAN_HEADER})
 SOURCE_GROUP("Source Files" FILES ${RENDER_DEVICE_VULKAN_SOURCE})
 #SOURCE_GROUP("JSON Source Files" FILES ${RENDER_DEVICE_VULKAN_JSON_SOURCE})
 
-add_library(ULRE.RenderDevice.Vulkan STATIC ${RENDER_DEVICE_VULKAN_HEADER} 
+add_library(ULRE.RenderDevice.Vulkan STATIC ${RENDER_DEVICE_VULKAN_HEADER}
 											${RENDER_DEVICE_VULKAN_SOURCE}
 											${RENDER_DEVICE_VULKAN_JSON_SOURCE})
