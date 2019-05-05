@@ -28,9 +28,9 @@ CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,VkCommandPool
 
 CommandBuffer::~CommandBuffer()
 {
-    VkCommandBuffer cmd_bufs[1] = {cmd_buf};
-    vkFreeCommandBuffers(device, pool, 1, cmd_bufs);
+    vkFreeCommandBuffers(device,pool,1,&cmd_buf);
 }
+
 bool CommandBuffer::Begin()
 {
     VkCommandBufferBeginInfo cmd_buf_info = {};

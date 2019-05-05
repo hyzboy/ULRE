@@ -201,24 +201,23 @@ bool Device::AcquireNextImage()
     return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*image_acquired_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
 }
 
-bool Device::QueueSubmit(CommandBuffer *buf)
+bool Device::QueueSubmit(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 {
-    if(!buf)
+    if(!cmd_bufs)
         return(false);
 
     VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit_info = {};
 
     VkSemaphore wait_sem=*image_acquired_semaphore;
-    VkCommandBuffer cmd_bufs=*buf;
 
     submit_info.pNext = nullptr;
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = &wait_sem;
     submit_info.pWaitDstStageMask = &pipe_stage_flags;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &cmd_bufs;
+    submit_info.commandBufferCount = count;
+    submit_info.pCommandBuffers = cmd_bufs;
     submit_info.signalSemaphoreCount = 0;
     submit_info.pSignalSemaphores = nullptr;
 

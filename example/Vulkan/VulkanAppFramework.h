@@ -75,9 +75,9 @@ public:
         device->AcquireNextImage();
     }
 
-    void Submit(vulkan::CommandBuffer *cmd_buf)
+    void Submit(const VkCommandBuffer cmd_buf)
     {
-        device->QueueSubmit(cmd_buf);
+        device->QueueSubmit(&cmd_buf);
         device->Wait();
         device->QueuePresent();
     }

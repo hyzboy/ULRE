@@ -53,13 +53,13 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType de
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
-    const int old_count=layout_binding_list.GetCount();
+    const uint old_count=layout_binding_list.GetCount();
 
     layout_binding_list.SetCount(old_count+count);
 
     VkDescriptorSetLayoutBinding *p=layout_binding_list.GetData()+old_count;
 
-    for(int i=old_count;i<old_count+count;i++)
+    for(uint i=old_count;i<old_count+count;i++)
     {
         p->binding = *binding;
         p->descriptorType = desc_type;

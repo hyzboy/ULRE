@@ -95,7 +95,7 @@ private:
     bool InitPipeline()
     {
         vulkan::PipelineCreater *
-        pipeline_creater=new vulkan::PipelineCreater(device,material);
+        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass());
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->CloseCullFace();
@@ -161,7 +161,11 @@ public:
 
     void Draw() override
     {
-        Submit(cmd_buf[device->GetCurrentFrameIndices()]);
+        const uint32_t frame_index=device->GetCurrentFrameIndices();
+
+        const vulkan::CommandBuffer *cb=cmd_buf[frame_index];
+
+        Submit(*cb);
     }
 };//class TestApp:public VulkanApplicationFramework
 
