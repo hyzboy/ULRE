@@ -109,6 +109,7 @@ public:
 
     void SetBlendConstans(float *blend_constans)        {hgl_typecpy(colorBlending.blendConstants,blend_constans,4);}
 
+    const VkGraphicsPipelineCreateInfo *GetInfo()const{return &pipelineInfo;}
     Pipeline *Create();
 };//class PipelineCreater
 VK_NAMESPACE_END

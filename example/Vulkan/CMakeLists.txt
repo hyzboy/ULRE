@@ -5,4 +5,3 @@ endmacro()
 
 CreateProject(0.triangle main)
 CreateProject(1.cube cube)
-
