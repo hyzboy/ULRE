@@ -45,29 +45,13 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
 
     if(dsl)
     {
-        const uint32_t layout_count=dsl->GetCount();
-        const VkDescriptorSetLayout *layouts=(layout_count>0?dsl->GetLayouts():nullptr);
-
-        VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-        pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pPipelineLayoutCreateInfo.pNext = nullptr;
-        pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-        pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-        pPipelineLayoutCreateInfo.setLayoutCount = layout_count;
-        pPipelineLayoutCreateInfo.pSetLayouts = layouts;
-
-        VkPipelineLayout pipeline_layout;
-
-        if(vkCreatePipelineLayout(dev->GetDevice(), &pPipelineLayoutCreateInfo, nullptr, &pipeline_layout)==VK_SUCCESS)
-        {
-            return(new Material(dev,shader_maps,vertex_sm,shader_stage_list,dsl_creater,dsl,pipeline_layout,vab));
-        }
+        return(new Material(dev,shader_maps,vertex_sm,shader_stage_list,dsl_creater,dsl,vab));
     }
 
     return(nullptr);
 }
 
-Material::Material(Device *dev,ShaderModuleMap *smm,VertexShaderModule *vsm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc,DescriptorSetLayout *dsl,VkPipelineLayout pl,VertexAttributeBinding *v)
+Material::Material(Device *dev,ShaderModuleMap *smm,VertexShaderModule *vsm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc,DescriptorSetLayout *dsl,VertexAttributeBinding *v)
 {
     device=*dev;
     shader_maps=smm;
@@ -75,17 +59,13 @@ Material::Material(Device *dev,ShaderModuleMap *smm,VertexShaderModule *vsm,List
     shader_stage_list=psci_list;
     dsl_creater=dslc;
     desc_set_layout=dsl;
-    pipeline_layout=pl;
     vab=v;
 }
 
 Material::~Material()
 {
     delete vab;
-
-    if(pipeline_layout)
-        vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
-
+    
     delete desc_set_layout;
     delete dsl_creater;
 
@@ -130,6 +110,11 @@ const int Material::GetVBOBinding(const UTF8String &name)const
     if(!vertex_sm)return(-1);
 
     return vertex_sm->GetBinding(name);
+}
+
+const VkPipelineLayout Material::GetPipelineLayout()const
+{
+    return desc_set_layout->GetPipelineLayout();
 }
 
 const uint32_t Material::GetDescriptorSetCount()const
