@@ -109,7 +109,7 @@ public: //Command Buffer 相关
 public: //提交相关
 
     bool AcquireNextImage   ();
-    bool QueueSubmit        (CommandBuffer *);
+    bool QueueSubmit        (const VkCommandBuffer *,const uint32_t count=1);
     bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
     bool QueuePresent       ();
 };//class Device
