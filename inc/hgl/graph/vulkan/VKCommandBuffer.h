@@ -47,7 +47,7 @@ public:
     bool Begin();
     bool BeginRenderPass(RenderPass *rp,Framebuffer *fb);
     bool Bind(Pipeline *p);
-    bool Bind(DescriptorSets *);
+    bool Bind(DescriptorSets *,int first=0,int count=0);
     bool Bind(Renderable *);
     void EndRenderPass();
     bool End();
