@@ -32,6 +32,9 @@ DescriptorSetLayout::~DescriptorSetLayout()
     //if(count>0)
     //    vkFreeDescriptorSets(device->GetDevice(),device->GetDescriptorPool(),count,desc_set_list);
 
+    if(pipeline_layout)
+        vkDestroyPipelineLayout(*device,pipeline_layout,nullptr);
+
     delete[] desc_set_list;
     DestroyDescriptorSetLayout(*device,count,desc_set_layout_list);
     delete[] desc_set_layout_list;
@@ -89,7 +92,23 @@ DescriptorSetLayout *DescriptorSetLayoutCreater::Create()
 
     VkDescriptorSetLayout *dsl_list=new VkDescriptorSetLayout[count];
 
-    if(vkCreateDescriptorSetLayout(device->GetDevice(),&descriptor_layout, nullptr, dsl_list)!=VK_SUCCESS)
+    if(vkCreateDescriptorSetLayout(*device,&descriptor_layout, nullptr, dsl_list)!=VK_SUCCESS)
+    {
+        delete[] dsl_list;
+        return(nullptr);
+    }
+
+    VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
+    pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pPipelineLayoutCreateInfo.pNext = nullptr;
+    pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pPipelineLayoutCreateInfo.setLayoutCount = count;
+    pPipelineLayoutCreateInfo.pSetLayouts = dsl_list;
+
+    VkPipelineLayout pipeline_layout;
+
+    if(vkCreatePipelineLayout(*device, &pPipelineLayoutCreateInfo, nullptr, &pipeline_layout)!=VK_SUCCESS)
     {
         delete[] dsl_list;
         return(nullptr);
@@ -104,14 +123,15 @@ DescriptorSetLayout *DescriptorSetLayoutCreater::Create()
 
     VkDescriptorSet *desc_set=new VkDescriptorSet[count];
 
-    if(vkAllocateDescriptorSets(device->GetDevice(),&alloc_info,desc_set)!=VK_SUCCESS)
+    if(vkAllocateDescriptorSets(*device,&alloc_info,desc_set)!=VK_SUCCESS)
     {
+        vkDestroyPipelineLayout(*device,pipeline_layout,nullptr);
         delete[] desc_set;
         DestroyDescriptorSetLayout(*device,count,dsl_list);
         delete[] dsl_list;
         return(nullptr);
     }
 
-    return(new DescriptorSetLayout(device,count,dsl_list,desc_set,index_by_binding));
+    return(new DescriptorSetLayout(device,count,dsl_list,pipeline_layout,desc_set,index_by_binding));
 }
 VK_NAMESPACE_END

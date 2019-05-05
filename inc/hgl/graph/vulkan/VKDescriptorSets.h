@@ -14,17 +14,20 @@ class DescriptorSetLayout
     VkDescriptorSet *desc_set_list;
     Map<uint32_t,int> index_by_binding;
 
+    VkPipelineLayout pipeline_layout;
+
 private:
 
     friend class DescriptorSetLayoutCreater;
 
-    DescriptorSetLayout(Device *dev,const int c,VkDescriptorSetLayout *dsl_list,VkDescriptorSet *desc_set,Map<uint32_t,int> &bi)
+    DescriptorSetLayout(Device *dev,const int c,VkDescriptorSetLayout *dsl_list,VkPipelineLayout pl,VkDescriptorSet *desc_set,Map<uint32_t,int> &bi)
     {
         device=dev;
         count=c;
         desc_set_layout_list=dsl_list;
         desc_set_list=desc_set;
         index_by_binding=bi;
+        pipeline_layout=pl;
     }
 
 public:
@@ -35,6 +38,7 @@ public:
     const VkDescriptorSetLayout *   GetLayouts          ()const{return desc_set_layout_list;}
     const VkDescriptorSet *         GetDescriptorSets   ()const{return desc_set_list;}
           VkDescriptorSet           GetDescriptorSet    (const uint32_t binding);
+    const VkPipelineLayout          GetPipelineLayout   ()const{return pipeline_layout;}
 };//class DescriptorSetLayout
 
 /**

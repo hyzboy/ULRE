@@ -29,21 +29,20 @@ class Material
     List<VkPipelineShaderStageCreateInfo> *shader_stage_list;
     DescriptorSetLayoutCreater *dsl_creater;
     DescriptorSetLayout *desc_set_layout;
-    VkPipelineLayout pipeline_layout;
     VertexAttributeBinding *vab;
 
 public:
 
-    Material(Device *dev,ShaderModuleMap *smm,VertexShaderModule *vsm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc,DescriptorSetLayout *dsl,VkPipelineLayout pl,VertexAttributeBinding *v);
+    Material(Device *dev,ShaderModuleMap *smm,VertexShaderModule *vsm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc,DescriptorSetLayout *dsl,VertexAttributeBinding *v);
     ~Material();
 
     const int GetUBOBinding(const UTF8String &)const;
     const int GetVBOBinding(const UTF8String &)const;
 
-    const VkPipelineLayout                  GetPipelineLayout   ()const{return pipeline_layout;}
     const uint32_t                          GetStageCount       ()const{return shader_stage_list->GetCount();}
     const VkPipelineShaderStageCreateInfo * GetStages           ()const{return shader_stage_list->GetData();}
 
+    const VkPipelineLayout                  GetPipelineLayout       ()const;
     const uint32_t                          GetDescriptorSetCount   ()const;
     const VkDescriptorSet *                 GetDescriptorSets       ()const;
 
