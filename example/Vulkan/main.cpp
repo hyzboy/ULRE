@@ -4,6 +4,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+void SaveToTOML(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
+
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
@@ -101,11 +103,11 @@ private:
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
+        SaveToTOML(OS_TEXT("pipeline.toml"),pipeline_creater->GetInfo());
+
         pipeline=pipeline_creater->Create();
 
         delete pipeline_creater;
-        pipeline_creater=nullptr;
-
         return pipeline;
     }
 
