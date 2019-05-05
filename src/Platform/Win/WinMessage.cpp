@@ -186,8 +186,9 @@ namespace hgl
             return KeyConvert[key];
         }
 
-        void WMProcDestroy(WinWindow *,uint32,uint32)
+        void WMProcDestroy(WinWindow *win,uint32,uint32)
         {
+            win->OnClose();
             PostQuitMessage(0);
         }
 

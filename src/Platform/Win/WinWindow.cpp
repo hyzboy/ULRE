@@ -122,12 +122,21 @@ namespace hgl
 
     void WinWindow::Close()
     {
-        ReleaseDC(win_hwnd, win_dc);
-        DestroyWindow(win_hwnd);
+        if(win_hwnd)
+        {
+            if(win_dc)
+            {
+                ReleaseDC(win_hwnd,win_dc);
+                win_dc = nullptr;
+            }
+
+            DestroyWindow(win_hwnd);
+
+            win_hwnd = nullptr;
+        }
+
         UnregisterClassW(WIN_CLASS_NAME,hInstance);
 
-        win_dc = nullptr;
-        win_hwnd = nullptr;
         is_close = true;
     }
 

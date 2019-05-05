@@ -17,8 +17,8 @@ class ShaderParse;
  */
 class ShaderModule
 {
+    VkDevice device;
     int shader_id;
-
     int ref_count;
 
 private:
@@ -34,7 +34,7 @@ protected:
 
 public:
 
-    ShaderModule(int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *);
+    ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *);
     virtual ~ShaderModule();
 
     const int GetID()const{return shader_id;}
@@ -78,16 +78,9 @@ private:
 
     Set<VertexAttributeBinding *> vab_sets;
 
-private:
-
-    void ParseVertexInput(const ShaderParse *);
-
 public:
 
-    VertexShaderModule(int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse):ShaderModule(id,pssci,parse)
-    {
-        ParseVertexInput(parse);
-    }
+    VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse);
     virtual ~VertexShaderModule();
 
     const int                                   GetLocation (const UTF8String &)const;

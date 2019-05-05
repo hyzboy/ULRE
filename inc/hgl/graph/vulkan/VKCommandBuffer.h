@@ -6,7 +6,7 @@ VK_NAMESPACE_BEGIN
 class RenderPass;
 class Framebuffer;
 class Pipeline;
-class Material;
+class DescriptorSets;
 class Renderable;
 
 class CommandBuffer
@@ -47,7 +47,7 @@ public:
     bool Begin();
     bool BeginRenderPass(RenderPass *rp,Framebuffer *fb);
     bool Bind(Pipeline *p);
-    bool Bind(Material *);
+    bool Bind(DescriptorSets *);
     bool Bind(Renderable *);
     void EndRenderPass();
     bool End();

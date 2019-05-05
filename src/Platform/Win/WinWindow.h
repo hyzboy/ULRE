@@ -19,8 +19,6 @@ namespace hgl
 
         bool Create();
 
-        void OnClose() override{Close();}
-
     public:
 
         using Window::Window;

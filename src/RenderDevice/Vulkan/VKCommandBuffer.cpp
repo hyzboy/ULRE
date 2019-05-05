@@ -80,15 +80,15 @@ bool CommandBuffer::Bind(Pipeline *p)
     return(true);
 }
 
-bool CommandBuffer::Bind(Material *mat)
+bool CommandBuffer::Bind(DescriptorSets *dsl)
 {
-    if(!mat)
+    if(!dsl)
         return(false);
 
-    const uint32_t count=mat->GetDescriptorSetCount();
+    const uint32_t count=dsl->GetCount();
 
     if(count>0)
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,mat->GetPipelineLayout(),0,count,mat->GetDescriptorSets(),0,nullptr);
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,dsl->GetPipelineLayout(),0,count,dsl->GetDescriptorSets(),0,nullptr);
 
     return(true);
 }

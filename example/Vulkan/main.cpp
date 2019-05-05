@@ -4,7 +4,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-void SaveToTOML(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
+//void SaveToTOML(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
 
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
@@ -36,6 +36,7 @@ private:
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
+    vulkan::DescriptorSets *    desciptor_sets      =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -55,6 +56,7 @@ public:
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
+        SAFE_CLEAR(desciptor_sets);
         SAFE_CLEAR(material);
     }
 
@@ -68,6 +70,7 @@ private:
             return(false);
 
         render_obj=material->CreateRenderable();
+        desciptor_sets=material->CreateDescriptorSets();
         return(true);
     }
 
@@ -82,7 +85,7 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        return material->UpdateUBO("world",*ubo_mvp);
+        return desciptor_sets->UpdateUBO(material->GetUBOBinding("world"),*ubo_mvp);
     }
 
     void InitVBO()
@@ -103,7 +106,7 @@ private:
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
-        SaveToTOML(OS_TEXT("pipeline.toml"),pipeline_creater->GetInfo());
+//        SaveToTOML(OS_TEXT("pipeline.toml"),pipeline_creater->GetInfo());
 
         pipeline=pipeline_creater->Create();
 
@@ -125,7 +128,7 @@ private:
             cmd_buf[i]->Begin();
                 cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
                     cmd_buf[i]->Bind(pipeline);
-                    cmd_buf[i]->Bind(material);
+                    cmd_buf[i]->Bind(desciptor_sets);
                     cmd_buf[i]->Bind(render_obj);
                     cmd_buf[i]->Draw(VERTEX_COUNT);
                 cmd_buf[i]->EndRenderPass();

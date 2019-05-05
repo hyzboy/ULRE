@@ -3,8 +3,9 @@
 #include<hgl/graph/vulkan/VKShaderParse.h>
 
 VK_NAMESPACE_BEGIN
-ShaderModule::ShaderModule(int id,VkPipelineShaderStageCreateInfo *sci,const ShaderParse *sp)
+ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *sci,const ShaderParse *sp)
 {
+    device=dev;
     shader_id=id;
     ref_count=0;
 
@@ -15,6 +16,7 @@ ShaderModule::ShaderModule(int id,VkPipelineShaderStageCreateInfo *sci,const Sha
 
 ShaderModule::~ShaderModule()
 {
+    vkDestroyShaderModule(device,stage_create_info->module,nullptr);
     delete stage_create_info;
 }
 
@@ -30,11 +32,11 @@ void ShaderModule::ParseUBO(const ShaderParse *parse)
     }
 }
 
-void VertexShaderModule::ParseVertexInput(const ShaderParse *parse)
+VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse):ShaderModule(dev,id,pssci,parse)
 {
     const auto &stage_inputs=parse->GetStageInput();
 
-    attr_count=stage_inputs.size();
+    attr_count=(uint32_t)stage_inputs.size();
     binding_list=new VkVertexInputBindingDescription[attr_count];
     attribute_list=new VkVertexInputAttributeDescription[attr_count];
 
