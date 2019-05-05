@@ -104,9 +104,8 @@ namespace hgl
 
                 void    Enum(void (*enum_func)(const F &,T));                                       ///<枚举所有数据项
                 void    EnumKey(void (*enum_func)(const F &));                                      ///<枚举所有索引
-                void    EnumValue(void (*enum_func)(T));                                            ///<枚举所有数值
-
-                void    EnumValue(bool (*enum_func)(T));                                            ///<枚举所有数值
+                void    EnumAllValue(void (*enum_func)(T));                                         ///<枚举所有数值
+                void    EnumValue(bool (*enum_func)(T));                                            ///<枚举所有数值(返回true/false表示是否继续)
     };//class _Map
 
     template<typename F,typename T> class Map:public _Map<F,T,Pair<F,T> >

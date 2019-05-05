@@ -8,8 +8,8 @@ VK_NAMESPACE_BEGIN
 class Device;
 class ShaderModule;
 class VertexShaderModule;
+class DescriptorSets;
 class DescriptorSetLayoutCreater;
-class DescriptorSetLayout;
 class VertexAttributeBinding;
 class VertexBuffer;
 class Renderable;
@@ -23,17 +23,18 @@ using ShaderModuleMap=hgl::Map<VkShaderStageFlagBits,const ShaderModule *>;
  */
 class Material
 {
-    VkDevice device;
+    Device *device;
     ShaderModuleMap *shader_maps;
     VertexShaderModule *vertex_sm;
     List<VkPipelineShaderStageCreateInfo> *shader_stage_list;
+
     DescriptorSetLayoutCreater *dsl_creater;
-    DescriptorSetLayout *desc_set_layout;
+
     VertexAttributeBinding *vab;
 
 public:
 
-    Material(Device *dev,ShaderModuleMap *smm,VertexShaderModule *vsm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc,DescriptorSetLayout *dsl,VertexAttributeBinding *v);
+    Material(Device *dev,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc);
     ~Material();
 
     const int GetUBOBinding(const UTF8String &)const;
@@ -42,18 +43,8 @@ public:
     const uint32_t                          GetStageCount       ()const{return shader_stage_list->GetCount();}
     const VkPipelineShaderStageCreateInfo * GetStages           ()const{return shader_stage_list->GetData();}
 
-    const VkPipelineLayout                  GetPipelineLayout       ()const;
-    const uint32_t                          GetDescriptorSetCount   ()const;
-    const VkDescriptorSet *                 GetDescriptorSets       ()const;
-
-    bool UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info);
-    bool UpdateUBO(const UTF8String &name,const VkDescriptorBufferInfo *buf_info)
-    {
-        if(name.IsEmpty()||!buf_info)
-            return(false);
-
-        return UpdateUBO(GetUBOBinding(name),buf_info);
-    }
+    const VkPipelineLayout                  GetPipelineLayout   ()const;
+    DescriptorSets *                        CreateDescriptorSets()const;
 
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 

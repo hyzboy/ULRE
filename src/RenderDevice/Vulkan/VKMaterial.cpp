@@ -5,82 +5,75 @@
 #include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
+#include"VKDescriptorSetLayoutCreater.h"
 VK_NAMESPACE_BEGIN
 Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
 {
-    DescriptorSetLayoutCreater *dsl_creater=new DescriptorSetLayoutCreater(dev);
-
     const int shader_count=shader_maps->GetCount();
 
+    if(shader_count<2)
+        return(nullptr);
+
+    const ShaderModule *sm;
+
+    if(!shader_maps->Get(VK_SHADER_STAGE_VERTEX_BIT,sm))
+        return(nullptr);
+
+    const VertexShaderModule *vertex_sm=(VertexShaderModule *)sm;
+
+    DescriptorSetLayoutCreater *dsl_creater=new DescriptorSetLayoutCreater(dev);
     List<VkPipelineShaderStageCreateInfo> *shader_stage_list=new List<VkPipelineShaderStageCreateInfo>;
 
     shader_stage_list->SetCount(shader_count);
 
     VkPipelineShaderStageCreateInfo *p=shader_stage_list->GetData();
 
-    VertexShaderModule *vertex_sm;
-    const ShaderModule *sm;
     auto **itp=shader_maps->GetDataList();
     for(int i=0;i<shader_count;i++)
     {
         sm=(*itp)->right;
-
-        if(sm->GetStage()==VK_SHADER_STAGE_VERTEX_BIT)
-            vertex_sm=(VertexShaderModule *)sm;
-
         memcpy(p,sm->GetCreateInfo(),sizeof(VkPipelineShaderStageCreateInfo));
-        ++p;
-        ++itp;
 
         {
             const ShaderBindingList &ubo_list=sm->GetUBOBindingList();
 
             dsl_creater->BindUBO(ubo_list.GetData(),ubo_list.GetCount(),sm->GetStage());
         }
+
+        ++p;
+        ++itp;
     }
 
-    VertexAttributeBinding *vab=vertex_sm->CreateVertexAttributeBinding();
+    dsl_creater->CreatePipelineLayout();
 
-    DescriptorSetLayout *dsl=dsl_creater->Create();
-
-    if(dsl)
-    {
-        return(new Material(dev,shader_maps,vertex_sm,shader_stage_list,dsl_creater,dsl,vab));
-    }
-
-    return(nullptr);
+    return(new Material(dev,shader_maps,shader_stage_list,dsl_creater));
 }
 
-Material::Material(Device *dev,ShaderModuleMap *smm,VertexShaderModule *vsm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc,DescriptorSetLayout *dsl,VertexAttributeBinding *v)
+Material::Material(Device *dev,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc)
 {
-    device=*dev;
+    device=dev;
     shader_maps=smm;
-    vertex_sm=vsm;
     shader_stage_list=psci_list;
     dsl_creater=dslc;
-    desc_set_layout=dsl;
-    vab=v;
+
+    const ShaderModule *sm;
+    if(smm->Get(VK_SHADER_STAGE_VERTEX_BIT,sm))
+    {
+        vertex_sm=(VertexShaderModule *)sm;
+        vab=vertex_sm->CreateVertexAttributeBinding();
+    }
+    else
+    {
+        //理论上不可能到达这里，前面CreateMaterial已经检测过了
+        vertex_sm=nullptr;
+        vab=nullptr;
+    }
 }
 
 Material::~Material()
 {
-    delete vab;
-    
-    delete desc_set_layout;
     delete dsl_creater;
-
-    const int count=shader_stage_list->GetCount();
-
-    if(count>0)
-    {
-        VkPipelineShaderStageCreateInfo *ss=shader_stage_list->GetData();
-        for(int i=0;i<count;i++)
-        {
-            vkDestroyShaderModule(device,ss->module,nullptr);
-            ++ss;
-        }
-    }
-
+    delete vab;
     delete shader_stage_list;
     delete shader_maps;
 }
@@ -114,34 +107,12 @@ const int Material::GetVBOBinding(const UTF8String &name)const
 
 const VkPipelineLayout Material::GetPipelineLayout()const
 {
-    return desc_set_layout->GetPipelineLayout();
+    return dsl_creater->GetPipelineLayout();
 }
 
-const uint32_t Material::GetDescriptorSetCount()const
+DescriptorSets *Material::CreateDescriptorSets()const
 {
-    return desc_set_layout->GetCount();
-}
-
-const VkDescriptorSet *Material::GetDescriptorSets()const
-{
-    return desc_set_layout->GetDescriptorSets();
-}
-
-bool Material::UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
-{
-    VkDescriptorSet set=desc_set_layout->GetDescriptorSet(binding);
-
-    VkWriteDescriptorSet writeDescriptorSet = {};
-
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.dstSet = set;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writeDescriptorSet.pBufferInfo = buf_info;
-    writeDescriptorSet.dstBinding = binding;
-
-    vkUpdateDescriptorSets(device,1,&writeDescriptorSet,0,nullptr);
-    return(true);
+    return dsl_creater->Create();
 }
 
 void Material::Write(VkPipelineVertexInputStateCreateInfo &vis)const

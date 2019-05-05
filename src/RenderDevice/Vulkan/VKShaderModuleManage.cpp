@@ -49,9 +49,9 @@ const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits
     ShaderParse *parse=new ShaderParse(spv_data,spv_size);
 
     if(shader_stage_bit==VK_SHADER_STAGE_VERTEX_BIT)
-        sm=new VertexShaderModule(shader_count,shader_stage,parse);
+        sm=new VertexShaderModule(*device,shader_count,shader_stage,parse);
     else
-        sm=new ShaderModule(shader_count,shader_stage,parse);
+        sm=new ShaderModule(*device,shader_count,shader_stage,parse);
 
     delete parse;
     shader_list.Add(shader_count,sm);
