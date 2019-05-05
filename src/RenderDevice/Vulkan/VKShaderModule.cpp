@@ -1,6 +1,6 @@
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
-#include<hgl/graph/vulkan/VKShaderParse.h>
+#include"VKShaderParse.h"
 
 VK_NAMESPACE_BEGIN
 ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *sci,const ShaderParse *sp)
