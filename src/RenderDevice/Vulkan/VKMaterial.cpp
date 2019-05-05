@@ -13,7 +13,7 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
     const int shader_count=shader_maps->GetCount();
 
     List<VkPipelineShaderStageCreateInfo> *shader_stage_list=new List<VkPipelineShaderStageCreateInfo>;
-    
+
     shader_stage_list->SetCount(shader_count);
 
     VkPipelineShaderStageCreateInfo *p=shader_stage_list->GetData();
@@ -148,7 +148,7 @@ bool Material::UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *bu
 
     VkWriteDescriptorSet writeDescriptorSet = {};
 
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;    
+    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSet.dstSet = set;
     writeDescriptorSet.descriptorCount = 1;
     writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;

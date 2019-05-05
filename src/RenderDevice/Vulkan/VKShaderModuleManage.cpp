@@ -83,7 +83,7 @@ const ShaderModule *ShaderModuleManage::GetShader(int id)
 
     if(!shader_list.Get(id,sm))
         return nullptr;
-    
+
     sm->IncRef();
     return sm;
 }
@@ -97,10 +97,10 @@ bool ShaderModuleManage::ReleaseShader(const ShaderModule *const_sm)
 
     if(!shader_list.Get(const_sm->GetID(),sm))
         return(false);
-    
+
     if(sm!=const_sm)
         return(false);
-    
+
     sm->DecRef();
     return(true);
 }

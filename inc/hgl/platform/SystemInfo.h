@@ -43,9 +43,9 @@ namespace hgl
         OSString mydata;                ///<当前用户应用程序数据保存路径
         OSString myprogram;             ///<“我的程序”路径(Windows下为开始菜单程序路径,Mac下为应用程序路径)
         OSString mydesktop;             ///<“桌面”路径
-        
+
         OSString desktop;               ///<所有用户桌面路径
-        
+
         OSString engine;                ///<引擎所在路径
         OSString plug_ins;              ///<引擎插件路径
     };//struct SystemPath

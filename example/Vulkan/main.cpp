@@ -9,7 +9,7 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 struct WorldConfig
 {
-    Matrix4f mvp;    
+    Matrix4f mvp;
 }world;
 
 constexpr uint32_t VERTEX_COUNT=3;
@@ -29,12 +29,12 @@ constexpr float color_data[VERTEX_COUNT][3]=
 
 class TestApp:public VulkanApplicationFramework
 {
-private:    
+private:
 
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;    
+    vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
@@ -84,7 +84,7 @@ private:
     }
 
     void InitVBO()
-    {    
+    {
         vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
         color_buffer    =device->CreateVBO(FMT_RGB32F, VERTEX_COUNT,color_data);
 
@@ -135,7 +135,7 @@ private:
 
 public:
 
-    bool Init() 
+    bool Init()
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
@@ -182,6 +182,6 @@ int main(int,char **)
         return(-1);
 
     while(app.Run());
-    
+
     return 0;
 }

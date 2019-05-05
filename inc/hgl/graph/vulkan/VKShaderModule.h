@@ -33,7 +33,7 @@ protected:
     void ParseUBO(const ShaderParse *);
 
 public:
-    
+
     ShaderModule(int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *);
     virtual ~ShaderModule();
 
@@ -50,10 +50,10 @@ public:
     const int                               GetUBO          (const UTF8String &name)const
     {
         int binding;
-        
+
         if(ubo_map.Get(name,binding))
             return binding;
-        else 
+        else
             return -1;
     }
 

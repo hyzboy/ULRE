@@ -15,7 +15,7 @@ namespace
 
     constexpr StrideByFormat stride_list[]=
 #else
-    
+
     #define STRIDE_BY_FORMAT(vktype,size)   size
 
     constexpr uint32_t stride_list[]=
@@ -172,7 +172,7 @@ namespace
         STRIDE_BY_FORMAT(D16_UNORM_S8_UINT,           3),
         STRIDE_BY_FORMAT(D24_UNORM_S8_UINT,           4),
         STRIDE_BY_FORMAT(D32_SFLOAT_S8_UINT,          5)
-    };    
+    };
 
 #ifdef _DEBUG
     constexpr uint32_t STRIDE_FORMAT_COUNT=sizeof(stride_list)/sizeof(StrideByFormat);

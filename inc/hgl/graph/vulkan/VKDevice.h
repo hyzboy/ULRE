@@ -34,11 +34,11 @@ class Device
 
     RenderPass *main_rp;
     ObjectList<Framebuffer> main_fb;
-    
+
     uint32_t current_frame;
 
     VkPresentInfoKHR present;
-    
+
 private:
 
     friend Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
@@ -74,7 +74,7 @@ public: //Buffer相关
 
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
-    
+
     VertexBuffer *      CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
     VertexBuffer *      CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVBO(format,count,nullptr,sharing_mode);}
 
@@ -96,7 +96,7 @@ public: //Buffer相关
 #undef CREATE_BUFFER_OBJECT
 
 public: //material相关
-    
+
     ShaderModuleManage *CreateShaderModuleManage();
 
 public: //Command Buffer 相关

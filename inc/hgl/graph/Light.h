@@ -21,18 +21,18 @@ namespace hgl
          */
         enum LightType
         {
-            ltNone=0,			///<起始定义，无意义
+            ltNone=0,           ///<起始定义，无意义
 
             ltSunLight,         ///<太阳光
 
-            ltPoint,			///<点光源
-            ltDirection,		///<方向光
-            ltSpot,				///<聚光灯
+            ltPoint,            ///<点光源
+            ltDirection,        ///<方向光
+            ltSpot,             ///<聚光灯
             ltInfiniteSpotLight,///<无尽聚光灯
 
-            ltAreaQuad,			///<四边形面光源
+            ltAreaQuad,         ///<四边形面光源
 
-            ltEnd				///<结束定义，无意义
+            ltEnd               ///<结束定义，无意义
         };//enum LightType
 
         /**
@@ -40,13 +40,13 @@ namespace hgl
          */
         struct Light
         {
-            LightType	type;			///<光源类型
+            LightType   type;           ///<光源类型
 
-            bool		enabled;		///<是否开启
+            bool        enabled;        ///<是否开启
 
-            Color4f		ambient;		///<环境光
-            Color4f		specular;		///<镜面光
-            Color4f		diffuse;		///<漫反射
+            Color4f     ambient;        ///<环境光
+            Color4f     specular;       ///<镜面光
+            Color4f     diffuse;        ///<漫反射
         };//struct Light
 
         /**
@@ -62,10 +62,10 @@ namespace hgl
          */
         struct DirectionLight:public Light
         {
-            Vector3f	direction;				///<方向
+            Vector3f    direction;              ///<方向
 
-            float		nDotVP;					///<normal . light direction
-            float		nDotHV;					///<normal . half vector
+            float       nDotVP;                 ///<normal . light direction
+            float       nDotHV;                 ///<normal . half vector
         };//struct DirectionLight
 
         /**
@@ -73,9 +73,9 @@ namespace hgl
          */
         struct PointLight:public Light
         {
-            Vector3f	position;				///<光源位置
+            Vector3f    position;               ///<光源位置
 
-            Vector3f	attenuation;			///<constant,linear,quadratic
+            Vector3f    attenuation;            ///<constant,linear,quadratic
         };//struct PointLight
 
         /**
@@ -83,12 +83,12 @@ namespace hgl
          */
         struct SpotLight:public Light
         {
-            Vector3f	position;				///<位置
-            Vector3f	direction;				///<方向
-            Vector3f	attenuation;			///<constant,linear,quadratic
+            Vector3f    position;               ///<位置
+            Vector3f    direction;              ///<方向
+            Vector3f    attenuation;            ///<constant,linear,quadratic
 
-            float		coscutoff;
-            float		exponent;
+            float       coscutoff;
+            float       exponent;
         };//struct SpotLight
 
         /**
@@ -96,9 +96,9 @@ namespace hgl
          */
         struct InfiniteSpotLight:public Light
         {
-            Vector3f	position;
-            Vector3f	direction;
-            Vector3f	exponent;
+            Vector3f    position;
+            Vector3f    direction;
+            Vector3f    exponent;
         };//struct InfiniteSpotLight
     }//namespace graph
 }//namespace hgl

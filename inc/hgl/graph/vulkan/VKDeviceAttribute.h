@@ -51,7 +51,7 @@ struct DeviceAttribute
     }depth;
 
     VkDescriptorPool                    desc_pool       =nullptr;
-    
+
     VkPipelineCache                     pipeline_cache  =nullptr;
 
 public:

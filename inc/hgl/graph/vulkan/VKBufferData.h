@@ -23,7 +23,7 @@ VK_NAMESPACE_BEGIN
         friend BufferData *CreateBufferData(void *data,const VkFormat f,const uint32_t count,const uint32_t stride);
 
         BufferData(uint8_t *data,const VkFormat f,const uint32_t c,const uint32_t s)
-        {   
+        {
             buffer_data =data;
 
             format=f;
@@ -74,7 +74,7 @@ VK_NAMESPACE_BEGIN
     {
         VkFormat format;                                                                            ///<数据格式
         uint byte;                                                                                  ///<单个数据字节数
-        
+
         uint compoment;                                                                             ///<数据成份
 
     public:
@@ -141,7 +141,7 @@ VK_NAMESPACE_BEGIN
 
 #define VBDATA_CREATE_FUNC(short_name,type,comp_count,vk_type) \
     inline VertexBufferData *VB##comp_count##short_name(const uint32_t &count){return CreateVertexBufferData(vk_type,sizeof(type),comp_count,count);} \
-    inline VertexBufferData *VB##comp_count##short_name(const uint32_t &count,const type *data){return CreateVertexBufferData((void *)data,vk_type,sizeof(type),comp_count,count);} 
+    inline VertexBufferData *VB##comp_count##short_name(const uint32_t &count,const type *data){return CreateVertexBufferData((void *)data,vk_type,sizeof(type),comp_count,count);}
 
     // UNORM 指输入无符号数，自动转换为 0.0 to  1.0 的浮点数
     // SNORM 指输入有符号数，自动转换为-1.0 to +1.0 的浮点数
@@ -166,7 +166,7 @@ VK_NAMESPACE_BEGIN
     VBDATA_UIF_1234(uint32,int32,float ,VK_FORMAT_R32_UINT)
     VBDATA_UIF_1234(uint64,int64,double,VK_FORMAT_R64_UINT)
 #undef VBDATA_CREATE_FUNC
-        
+
     //inline VertexBufferData *EB16(const uint16 &count){return CreateVertexBufferData(GL_UNSIGNED_SHORT, 2,1,count);}
     //inline VertexBufferData *EB32(const uint32 &count){return CreateVertexBufferData(GL_UNSIGNED_INT,   4,1,count);}
 VK_NAMESPACE_END

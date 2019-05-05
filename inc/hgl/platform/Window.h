@@ -38,8 +38,8 @@ namespace hgl
         virtual void OnMouseDoubleClick (int,int,uint){}
 
         //virtual void OnJoystickDown     (uint){}
-        //virtual void OnJoystickPress	(uint){}
-        //virtual void OnJoystickUp		(uint){}
+        //virtual void OnJoystickPress  (uint){}
+        //virtual void OnJoystickUp     (uint){}
 
         virtual void OnKeyDown  (KeyboardButton);
         virtual void OnKeyPress (KeyboardButton){}
@@ -85,7 +85,7 @@ namespace hgl
     };//class Window
 
     Window *CreateRenderWindow(const OSString &win_name);
-    
+
     void InitNativeWindowSystem();
 }//namespace hgl
 #endif//HGL_GRAPH_WINDOW_INCLUDE
