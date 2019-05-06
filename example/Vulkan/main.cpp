@@ -88,7 +88,7 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        return desciptor_sets->UpdateUBO(material->GetUBOBinding("world"),*ubo_mvp);
+        return desciptor_sets->UpdateUBO(material->GetUBO("world"),*ubo_mvp);       //material中这里可以改成不区分类型，返回的值包含类型和ID,这样descriptor_sets->Update也不再需要类型
     }
 
     void InitVBO()

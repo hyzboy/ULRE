@@ -1,14 +1,9 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
-#include"VK.h"
-#include<hgl/type/BaseString.h>
-#include<hgl/type/Map.h>
+#include<hgl/graph/vulkan/VKShaderResource.h>
 
 VK_NAMESPACE_BEGIN
-
-using ShaderBindingList=List<uint32_t>;                     ///<shader绑定点列表
-
 class ShaderParse;
 
 /**
@@ -25,12 +20,7 @@ private:
 
     VkPipelineShaderStageCreateInfo *stage_create_info;
 
-    Map<UTF8String,int> ubo_map;
-    ShaderBindingList ubo_list;
-
-protected:
-
-    void ParseUBO(const ShaderParse *);
+    ShaderResource resource;
 
 public:
 
@@ -47,17 +37,11 @@ public:
     const VkShaderStageFlagBits             GetStage        ()const{return stage_create_info->stage;}
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
 
-    const int                               GetUBO          (const UTF8String &name)const
+    const ShaderResource &                  GetResource     ()const{return resource;}
+    const int                               GetBinding      (VkDescriptorType desc_type,const UTF8String &name)const
     {
-        int binding;
-
-        if(ubo_map.Get(name,binding))
-            return binding;
-        else
-            return -1;
+        return resource[desc_type].GetBinding(name);
     }
-
-    const ShaderBindingList &               GetUBOBindingList()const{return ubo_list;}    ///<取得UBO绑定点列表
 };//class ShaderModule
 
 class VertexAttributeBinding;

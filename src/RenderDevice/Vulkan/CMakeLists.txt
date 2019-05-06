@@ -17,6 +17,7 @@
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderable.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderPass.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSemaphore.h
+								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderResource.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModule.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModuleManage.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSurfaceExtensionName.h

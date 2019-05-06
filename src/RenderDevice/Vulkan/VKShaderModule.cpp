@@ -3,6 +3,21 @@
 #include"VKShaderParse.h"
 
 VK_NAMESPACE_BEGIN
+namespace
+{
+    void EnumShaderResource(const ShaderParse *parse,ShaderResourceList &sr,const spirv_cross::SmallVector<spirv_cross::Resource> &res)
+    {
+        for(const auto &obj:res)
+        {
+            const UTF8String &  name    =parse->GetName(obj);
+            const uint          binding =parse->GetBinding(obj);
+
+            sr.binding_by_name.Add(name,binding);
+            sr.binding_list.Add(binding);
+        }
+    }
+}//namespace
+
 ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *sci,const ShaderParse *sp)
 {
     device=dev;
@@ -11,7 +26,9 @@ ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *
 
     stage_create_info=sci;
 
-    ParseUBO(sp);
+    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER],sp->GetUBO());
+    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER],sp->GetSSBO());
+//    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_SAMPLER],sp->GetSampler());
 }
 
 ShaderModule::~ShaderModule()
@@ -20,21 +37,9 @@ ShaderModule::~ShaderModule()
     delete stage_create_info;
 }
 
-void ShaderModule::ParseUBO(const ShaderParse *parse)
-{
-    for(const auto &ubo:parse->GetUBO())
-    {
-        const UTF8String &  name    =parse->GetName(ubo);
-        const uint          binding =parse->GetBinding(ubo);
-
-        ubo_map.Add(name,binding);
-        ubo_list.Add(binding);
-    }
-}
-
 VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse):ShaderModule(dev,id,pssci,parse)
 {
-    const auto &stage_inputs=parse->GetStageInput();
+    const auto &stage_inputs=parse->GetStageInputs();
 
     attr_count=(uint32_t)stage_inputs.size();
     binding_list=new VkVertexInputBindingDescription[attr_count];
