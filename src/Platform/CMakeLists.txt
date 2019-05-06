@@ -40,7 +40,8 @@
             SET(PLATFORM_FILE_SOURCE            ${PLATFORM_FILE_SOURCE}
                                                 UNIX/ProgramPath.cpp)
 
-            SET(PLATFORM_WINDOW_SOURCE          UNIX/XCBWindow.cpp)
+            SET(PLATFORM_WINDOW_SOURCE          UNIX/XCBWindow.cpp
+                                                UNIX/XCBVulkan.cpp)
         ENDIF()
     ENDIF()
 

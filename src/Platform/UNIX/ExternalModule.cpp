@@ -1,4 +1,4 @@
-﻿#include<hgl/ExternalModule.h>
+﻿#include<hgl/platform/ExternalModule.h>
 #include<hgl/platform/Platform.h>
 #include<hgl/LogInfo.h>
 

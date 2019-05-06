@@ -35,13 +35,13 @@ constexpr uint16 index_data[INDEX_COUNT]=
 
 class TestApp:public VulkanApplicationFramework
 {
-private:    
+private:
 
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    desciptor_sets      =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;    
+    vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
@@ -89,11 +89,11 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        return desciptor_sets->UpdateUBO(material->GetUBOBinding("world"),*ubo_mvp);
+        return desciptor_sets->UpdateUBO(material->GetUBO("world"),*ubo_mvp);
     }
 
     void InitVBO()
-    {    
+    {
         vertex_buffer   =device->CreateVBO(FMT_RG32F,VERTEX_COUNT,vertex_data);
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
 
@@ -144,7 +144,7 @@ private:
 
 public:
 
-    bool Init() 
+    bool Init()
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
@@ -191,6 +191,6 @@ int main(int,char **)
         return(-1);
 
     while(app.Run());
-    
+
     return 0;
 }
