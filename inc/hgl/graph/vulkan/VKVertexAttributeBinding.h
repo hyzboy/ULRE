@@ -29,17 +29,17 @@ public:
 
     ~VertexAttributeBinding();
 
-    const uint GetBinding(const UTF8String &name);                                                  ///<取得一个变量的绑定点
+    const uint GetStageInputBinding(const UTF8String &name);                                                  ///<取得一个变量的绑定点
 
     bool SetInstance(const uint binding,bool              instance);
     bool SetStride  (const uint binding,const uint32_t &  stride);
     bool SetFormat  (const uint binding,const VkFormat &  format);
     bool SetOffset  (const uint binding,const uint32_t    offset);
 
-    bool SetInstance(const UTF8String &name,bool            instance){return SetInstance(GetBinding(name),instance);}
-    bool SetStride  (const UTF8String &name,const uint32_t &stride  ){return SetStride  (GetBinding(name),stride);}
-    bool SetFormat  (const UTF8String &name,const VkFormat &format  ){return SetFormat  (GetBinding(name),format);}
-    bool SetOffset  (const UTF8String &name,const uint32_t  offset  ){return SetOffset  (GetBinding(name),offset);}
+    bool SetInstance(const UTF8String &name,bool            instance){return SetInstance(GetStageInputBinding(name),instance);}
+    bool SetStride  (const UTF8String &name,const uint32_t &stride  ){return SetStride  (GetStageInputBinding(name),stride);}
+    bool SetFormat  (const UTF8String &name,const VkFormat &format  ){return SetFormat  (GetStageInputBinding(name),format);}
+    bool SetOffset  (const UTF8String &name,const uint32_t  offset  ){return SetOffset  (GetStageInputBinding(name),offset);}
 
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 };//class VertexAttributeBinding

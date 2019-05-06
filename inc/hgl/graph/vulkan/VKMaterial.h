@@ -38,7 +38,8 @@ public:
     ~Material();
 
     const int GetUBOBinding(const UTF8String &)const;
-    const int GetVBOBinding(const UTF8String &)const;
+//    const int GetSSBOBinding(const UTF8String &)const;
+//    const int GetINBOBinding(const UTF8String &)const;
 
     const uint32_t                          GetStageCount       ()const{return shader_stage_list->GetCount();}
     const VkPipelineShaderStageCreateInfo * GetStages           ()const{return shader_stage_list->GetData();}

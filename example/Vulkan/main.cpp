@@ -9,8 +9,8 @@ using namespace hgl::graph;
 
 //void SaveToTOML(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 struct WorldConfig
 {
