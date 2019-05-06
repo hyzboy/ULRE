@@ -46,7 +46,7 @@ SET(BASE_PLUG_IN_SOURCE
 
 SOURCE_GROUP("PlugIn" FILES ${BASE_PLUG_IN_SOURCE})
 
-add_library(ULRE.Base STATIC    #${SYSTEM_INFO_SOURCE}
+add_library(ULRE.Base SHARED    #${SYSTEM_INFO_SOURCE}
                                 ${BASE_TYPE_SOURCE}
                                 ${BASE_IO_SOURCE}
                                 ${BASE_FILE_SYSTEM_SOURCE}

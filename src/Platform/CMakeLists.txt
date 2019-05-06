@@ -124,4 +124,4 @@ SET(PLATFORM_SOURCE ${PLATFORM_SOURCE}
                     ${PLATFORM_WINDOW_SOURCE}
 )
 
-add_library(ULRE.Platform STATIC ${PLATFORM_SOURCE})
+add_library(ULRE.Platform SHARED ${PLATFORM_SOURCE})
