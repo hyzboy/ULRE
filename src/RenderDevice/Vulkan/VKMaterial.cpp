@@ -34,11 +34,7 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
         sm=(*itp)->right;
         memcpy(p,sm->GetCreateInfo(),sizeof(VkPipelineShaderStageCreateInfo));
 
-        {
-            const ShaderBindingList &ubo_list=sm->GetUBOBindingList();
-
-            dsl_creater->BindUBO(ubo_list.GetData(),ubo_list.GetCount(),sm->GetStage());
-        }
+        dsl_creater->Bind(sm->GetResource(),sm->GetStage());
 
         ++p;
         ++itp;
@@ -78,9 +74,14 @@ Material::~Material()
     delete shader_maps;
 }
 
-const int Material::GetUBOBinding(const UTF8String &name)const
+const int Material::GetBinding(VkDescriptorType desc_type,const UTF8String &name)const
 {
-    int result;
+    if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
+     ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE
+     ||name.IsEmpty())
+        return(-1);
+
+    int binding;
     const int shader_count=shader_maps->GetCount();
 
     const ShaderModule *sm;
@@ -88,23 +89,15 @@ const int Material::GetUBOBinding(const UTF8String &name)const
     for(int i=0;i<shader_count;i++)
     {
         sm=(*itp)->right;
-        result=sm->GetUBO(name);
-        if(result!=-1)
-            return result;
+        binding=sm->GetBinding(desc_type,name);
+        if(binding!=-1)
+            return binding;
 
         ++itp;
     }
 
     return(-1);
 }
-
-//const int Material::GetSSBOBinding(const UTF8String &name)const
-//{
-//}
-//
-//const int Material::GetINBOBinding(const UTF8String &name)const
-//{
-//}
 
 const VkPipelineLayout Material::GetPipelineLayout()const
 {
