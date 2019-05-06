@@ -31,8 +31,6 @@ else()
     message(FATAL_ERROR "Unsupported Platform!")
 ENDIF()
 
-SET(VULKAN_LIB  ${Vulkan_LIBRARIES})
-
 add_definitions(-DMATH_USE_OPENGL)
 add_definitions(-DMATH_RIGHTHANDED_CAMERA)
 add_definitions(-DMATH_AVX)
@@ -57,9 +55,9 @@ SET(ULRE    ULRE.Base
             ULRE.RenderDevice.Vulkan
             ULRE.Platform
             MathGeoLib
-            ${RENDER_LIBRARY}
             spirv-cross-core
-            ${Vulkan_LIBRARY})
+            ${RENDER_LIBRARY}
+            ${Vulkan_LIBRARIES})
 
 add_subdirectory(example)
 # add_executable(WIP WIP.cpp)
