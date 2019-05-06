@@ -20,10 +20,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
     include_directories(${Vulkan_INCLUDE_DIRS})
 
-    SET(SPIRV_CROSS_PATH 3rdpty/SPIRV-Cross)
-    include_directories(${SPIRV_CROSS_PATH})
-    add_subdirectory(${SPIRV_CROSS_PATH})
-
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/jsoncpp/include)
     add_subdirectory(3rdpty/jsoncpp)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
@@ -49,6 +45,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
+SET(SPIRV_CROSS_PATH 3rdpty/SPIRV-Cross)
+include_directories(${SPIRV_CROSS_PATH})
+add_subdirectory(${SPIRV_CROSS_PATH})
+
 add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(src)
@@ -62,4 +62,4 @@ SET(ULRE    ULRE.Base
             ${Vulkan_LIBRARY})
 
 add_subdirectory(example)
-add_executable(WIP WIP.cpp)
+# add_executable(WIP WIP.cpp)
