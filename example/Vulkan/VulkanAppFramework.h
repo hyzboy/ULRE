@@ -43,6 +43,11 @@ public:
 
     virtual bool Init(int w,int h) 
     {
+    #ifdef _DEBUG
+        if(!vulkan::CheckStrideBytesByFormat())
+            return(false);
+    #endif//
+
         InitNativeWindowSystem();
 
         win=CreateRenderWindow(OS_TEXT("VulkanTest"));

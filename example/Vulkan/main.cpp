@@ -176,11 +176,6 @@ public:
 
 int main(int,char **)
 {
-    #ifdef _DEBUG
-    if(!vulkan::CheckStrideBytesByFormat())
-        return 0xff;
-    #endif//
-
     TestApp app;
 
     if(!app.Init())
