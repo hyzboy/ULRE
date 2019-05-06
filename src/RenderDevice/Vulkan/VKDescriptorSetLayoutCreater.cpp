@@ -126,6 +126,6 @@ DescriptorSets *DescriptorSetLayoutCreater::Create()
         return(nullptr);
     }
 
-    return(new DescriptorSets(device,count,pipeline_layout,desc_set,index_by_binding));
+    return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding));
 }
 VK_NAMESPACE_END

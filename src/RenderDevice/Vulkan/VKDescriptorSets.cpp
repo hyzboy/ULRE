@@ -2,11 +2,11 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-VkDescriptorSet DescriptorSets::GetDescriptorSet(const uint32_t binding)
+VkDescriptorSet DescriptorSets::GetDescriptorSet(const uint32_t binding)const
 {
     int index;
 
-    if(!index_by_binding.Get(binding,index))
+    if(!index_by_binding->Get(binding,index))
         return(nullptr);
 
     return desc_set_list[index];
