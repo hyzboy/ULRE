@@ -4,4 +4,4 @@
 endmacro()
 
 CreateProject(0.triangle main)
-CreateProject(1.cube cube)
+CreateProject(1.indices_rect indices_rect)

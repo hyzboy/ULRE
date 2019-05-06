@@ -87,8 +87,8 @@ IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void 
     uint32_t stride;
 
     if(index_type==VK_INDEX_TYPE_UINT16)stride=2;else
-        if(index_type==VK_INDEX_TYPE_UINT32)stride=4;else
-            return(nullptr);
+    if(index_type==VK_INDEX_TYPE_UINT32)stride=4;else
+        return(nullptr);
 
     const VkDeviceSize size=stride*count;
 
