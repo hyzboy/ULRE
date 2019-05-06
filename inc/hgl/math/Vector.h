@@ -5,6 +5,7 @@
 #pragma warning(disable:4244)           // double -> int 精度丢失警告
 #endif//_MSC_VER
 
+#include<hgl/math/FastTriangle.h>
 #include<MathGeoLib.h>
 
 /**
