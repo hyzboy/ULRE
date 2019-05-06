@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
 #include"VK.h"
@@ -7,13 +7,13 @@
 
 VK_NAMESPACE_BEGIN
 
-using ShaderBindingList=List<uint32_t>;                     ///<shader°ó¶¨µãÁĞ±í
+using ShaderBindingList=List<uint32_t>;                     ///<shaderç»‘å®šç‚¹åˆ—è¡¨
 
 class ShaderParse;
 
 /**
- * ShaderÄ£¿é<br>
- * ¸ÃÄ£¿éÌá¹©µÄÊÇÔ­Ê¼µÄshaderÊı¾İºÍĞÅÏ¢£¬²»¿É±»ĞŞ¸Ä£¬Ö»ÄÜÍ¨¹ıShaderModuleManage´´½¨ºÍÉ¾³ı
+ * Shaderæ¨¡å—<br>
+ * è¯¥æ¨¡å—æä¾›çš„æ˜¯åŸå§‹çš„shaderæ•°æ®å’Œä¿¡æ¯ï¼Œä¸å¯è¢«ä¿®æ”¹ï¼Œåªèƒ½é€šè¿‡ShaderModuleManageåˆ›å»ºå’Œåˆ é™¤
  */
 class ShaderModule
 {
@@ -57,14 +57,14 @@ public:
             return -1;
     }
 
-    const ShaderBindingList &               GetUBOBindingList()const{return ubo_list;}    ///<È¡µÃUBO°ó¶¨µãÁĞ±í
+    const ShaderBindingList &               GetUBOBindingList()const{return ubo_list;}    ///<å–å¾—UBOç»‘å®šç‚¹åˆ—è¡¨
 };//class ShaderModule
 
 class VertexAttributeBinding;
 
 /**
- * ¶¥µãShaderÄ£¿é<br>
- * ÓÉÓÚ¶¥µãshaderÔÚ×îÇ°·½Ö´ĞĞ£¬ËùÒÔËü±ÈÆäËüshader¶àÁËVertexInputµÄÊı¾İ
+ * é¡¶ç‚¹Shaderæ¨¡å—<br>
+ * ç”±äºé¡¶ç‚¹shaderåœ¨æœ€å‰æ–¹æ‰§è¡Œï¼Œæ‰€ä»¥å®ƒæ¯”å…¶å®ƒshaderå¤šäº†VertexInputçš„æ•°æ®
  */
 class VertexShaderModule:public ShaderModule
 {
@@ -83,8 +83,10 @@ public:
     VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse);
     virtual ~VertexShaderModule();
 
-    const int                                   GetLocation (const UTF8String &)const;
-    const int                                   GetBinding  (const UTF8String &)const;
+    /**
+     * è·å–è¾“å…¥æµç»‘å®šç‚¹ï¼Œéœ€è¦æ³¨æ„çš„æ—¶ï¼Œè¿™é‡Œè·å–çš„bindingå¹¶éæ˜¯shaderä¸­çš„binding/locationï¼Œè€Œæ˜¯ç»‘å®šé¡ºåºçš„åºåˆ—å·ã€‚å¯¹åº”vkCmdBindVertexBufferçš„ç¼“å†²åŒºåºåˆ—å·
+     */
+    const int                                   GetStageInputBinding(const UTF8String &)const;
 
     const uint32_t                              GetAttrCount()const{return attr_count;}
 

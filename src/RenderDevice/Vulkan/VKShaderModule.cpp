@@ -84,19 +84,7 @@ VertexShaderModule::~VertexShaderModule()
     SAFE_CLEAR_ARRAY(attribute_list);
 }
 
-const int VertexShaderModule::GetLocation(const UTF8String &name)const
-{
-    if(name.IsEmpty())return -1;
-
-    VkVertexInputAttributeDescription *attr;
-
-    if(!stage_input_locations.Get(name,attr))
-        return -1;
-
-    return attr->location;
-}
-
-const int VertexShaderModule::GetBinding(const UTF8String &name)const
+const int VertexShaderModule::GetStageInputBinding(const UTF8String &name)const
 {
     if(name.IsEmpty())return -1;
 

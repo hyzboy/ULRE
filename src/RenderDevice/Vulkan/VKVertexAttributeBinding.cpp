@@ -27,9 +27,9 @@ VertexAttributeBinding::~VertexAttributeBinding()
     vsm->Release(this);
 }
 
-const uint VertexAttributeBinding::GetBinding(const UTF8String &name)
+const uint VertexAttributeBinding::GetStageInputBinding(const UTF8String &name)
 {
-    return vsm->GetBinding(name);
+    return vsm->GetStageInputBinding(name);
 }
 
 bool VertexAttributeBinding::SetInstance(const uint index,bool instance)

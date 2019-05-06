@@ -98,12 +98,13 @@ const int Material::GetUBOBinding(const UTF8String &name)const
     return(-1);
 }
 
-const int Material::GetVBOBinding(const UTF8String &name)const
-{
-    if(!vertex_sm)return(-1);
-
-    return vertex_sm->GetBinding(name);
-}
+//const int Material::GetSSBOBinding(const UTF8String &name)const
+//{
+//}
+//
+//const int Material::GetINBOBinding(const UTF8String &name)const
+//{
+//}
 
 const VkPipelineLayout Material::GetPipelineLayout()const
 {

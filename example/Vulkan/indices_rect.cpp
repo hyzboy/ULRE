@@ -12,7 +12,7 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 struct WorldConfig
 {
-    Matrix4f mvp;    
+    Matrix4f mvp;
 }world;
 
 constexpr uint32_t VERTEX_COUNT=4;
