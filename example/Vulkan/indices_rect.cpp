@@ -1,5 +1,5 @@
-﻿// 0.triangle
-// 该范例主要演示直接绘制一个渐变色的三角形
+﻿// 1.indices_rect
+// 该示例是0.triangle的进化，演示使用索引数据画一个矩形
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
@@ -7,53 +7,54 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-//void SaveToTOML(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
-
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 struct WorldConfig
 {
-    Matrix4f mvp;
+    Matrix4f mvp;    
 }world;
 
-constexpr uint32_t VERTEX_COUNT=3;
+constexpr uint32_t VERTEX_COUNT=4;
 
 constexpr float vertex_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
+    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.25},
+    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.25},
+    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75},
+    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75}
 };
 
-constexpr float color_data[VERTEX_COUNT][3]=
-{   {1,0,0},
-    {0,1,0},
-    {0,0,1}
+constexpr uint32_t INDEX_COUNT=6;
+
+constexpr uint16 index_data[INDEX_COUNT]=
+{
+    0,1,3,
+    0,3,2
 };
 
 class TestApp:public VulkanApplicationFramework
 {
-private:
+private:    
 
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    desciptor_sets      =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::Renderable *        render_obj          =nullptr;    
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
     vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
     vulkan::VertexBuffer *      vertex_buffer       =nullptr;
-    vulkan::VertexBuffer *      color_buffer        =nullptr;
+    vulkan::IndexBuffer *       index_buffer        =nullptr;
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(color_buffer);
+        SAFE_CLEAR(index_buffer);
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
         SAFE_CLEAR(pipeline);
@@ -67,7 +68,7 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("FlatColor.vert.spv"),
+        material=shader_manage->CreateMaterial(OS_TEXT("OnlyPosition.vert.spv"),
                                                OS_TEXT("FlatColor.frag.spv"));
         if(!material)
             return(false);
@@ -92,12 +93,12 @@ private:
     }
 
     void InitVBO()
-    {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
-        color_buffer    =device->CreateVBO(FMT_RGB32F, VERTEX_COUNT,color_data);
+    {    
+        vertex_buffer   =device->CreateVBO(FMT_RG32F,VERTEX_COUNT,vertex_data);
+        index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
 
-        render_obj->Set("Vertex",   vertex_buffer);
-        render_obj->Set("Color",    color_buffer);
+        render_obj->Set("Vertex",vertex_buffer);
+        render_obj->Set(index_buffer);
     }
 
     bool InitPipeline()
@@ -109,11 +110,11 @@ private:
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
-//        SaveToTOML(OS_TEXT("pipeline.toml"),pipeline_creater->GetInfo());
-
         pipeline=pipeline_creater->Create();
 
         delete pipeline_creater;
+        pipeline_creater=nullptr;
+
         return pipeline;
     }
 
@@ -133,7 +134,7 @@ private:
                     cmd_buf[i]->Bind(pipeline);
                     cmd_buf[i]->Bind(desciptor_sets);
                     cmd_buf[i]->Bind(render_obj);
-                    cmd_buf[i]->Draw(VERTEX_COUNT);
+                    cmd_buf[i]->DrawIndexed(INDEX_COUNT);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
@@ -143,7 +144,7 @@ private:
 
 public:
 
-    bool Init()
+    bool Init() 
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
@@ -179,12 +180,17 @@ public:
 
 int main(int,char **)
 {
+    #ifdef _DEBUG
+    if(!vulkan::CheckStrideBytesByFormat())
+        return 0xff;
+    #endif//
+
     TestApp app;
 
     if(!app.Init())
         return(-1);
 
     while(app.Run());
-
+    
     return 0;
 }
