@@ -1,22 +1,22 @@
-#ifndef HGL_GRAPH_VULKAN_BUFFER_DATA_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_BUFFER_DATA_INCLUDE
 #define HGL_GRAPH_BUFFER_DATA_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 VK_NAMESPACE_BEGIN
     /**
-        * »º³åÇøÊı¾İ¹ÜÀíÀà
+        * ç¼“å†²åŒºæ•°æ®ç®¡ç†ç±»
         */
     class BufferData
     {
     protected:
 
-        VkFormat    format;                                                                         ///<Êı¾İ¸ñÊ½
+        VkFormat    format;                                                                         ///<æ•°æ®æ ¼å¼
 
-        uint32_t    count;                                                                          ///<Êı¾İ¸öÊı
-        uint32_t    stride;                                                                         ///<µ¥¸öÊı¾İ×Ö½ÚÊı
+        uint32_t    count;                                                                          ///<æ•°æ®ä¸ªæ•°
+        uint32_t    stride;                                                                         ///<å•ä¸ªæ•°æ®å­—èŠ‚æ•°
 
-        uint8_t *   buffer_data;                                                                    ///<»º³åÇøÊı¾İ
-        uint32_t    total_bytes;                                                                    ///<Êı¾İ×Ü×Ö½ÚÊı
+        uint8_t *   buffer_data;                                                                    ///<ç¼“å†²åŒºæ•°æ®
+        uint32_t    total_bytes;                                                                    ///<æ•°æ®æ€»å­—èŠ‚æ•°
 
     protected:
 
@@ -37,10 +37,10 @@ VK_NAMESPACE_BEGIN
 
         virtual ~BufferData()=default;
 
-        uint      GetStride     ()const { return data_stride; }                                     ///<È¡µÃÃ¿Ò»×éÊı¾İ×Ö½ÚÊı
-        uint32_t  GetCount      ()const { return data_count; }                                      ///<È¡µÃÊı¾İÊıÁ¿
-        uint32_t  GetTotalBytes ()const { return total_bytes; }                                     ///<È¡µÃÊı¾İ×Ü×Ö½ÚÊı
-        void *    GetData       ()const { return buffer_data; }                                     ///<È¡µÃÊı¾İÖ¸Õë
+        uint      GetStride     ()const { return data_stride; }                                     ///<å–å¾—æ¯ä¸€ç»„æ•°æ®å­—èŠ‚æ•°
+        uint32_t  GetCount      ()const { return data_count; }                                      ///<å–å¾—æ•°æ®æ•°é‡
+        uint32_t  GetTotalBytes ()const { return total_bytes; }                                     ///<å–å¾—æ•°æ®æ€»å­—èŠ‚æ•°
+        void *    GetData       ()const { return buffer_data; }                                     ///<å–å¾—æ•°æ®æŒ‡é’ˆ
     };//class BufferData
 
     BufferData *CreateBufferData(const uint32_t &length);
@@ -58,8 +58,8 @@ VK_NAMESPACE_BEGIN
     #define DATA_COMPOMENT_DEPTH    0x10
 
     /**
-     * ·Ç´ò°üĞÍÊı¾İ<Br>
-     * ¸ÃÀàÊı¾İÎ´±»´ò°ü£¬ËùÒÔ¿ÉÒÔÖ±½Ó¶Ô³É·İÊı¾İÖğÒ»·ÃÎÊ
+     * éæ‰“åŒ…å‹æ•°æ®<Br>
+     * è¯¥ç±»æ•°æ®æœªè¢«æ‰“åŒ…ï¼Œæ‰€ä»¥å¯ä»¥ç›´æ¥å¯¹æˆä»½æ•°æ®é€ä¸€è®¿é—®
      */
     class BufferDataDirect:public BufferData
     {
@@ -67,15 +67,15 @@ VK_NAMESPACE_BEGIN
     };//
 
     /**
-     * ´ò°üĞÍÊı¾İ<Br>
-     * ¸ÃÀàÊı¾İÓÉÓÚ±»´ò°ü£¬ËùÒÔÎŞ·¨Ö±½Ó½øĞĞ¶ÁĞ´
+     * æ‰“åŒ…å‹æ•°æ®<Br>
+     * è¯¥ç±»æ•°æ®ç”±äºè¢«æ‰“åŒ…ï¼Œæ‰€ä»¥æ— æ³•ç›´æ¥è¿›è¡Œè¯»å†™
      */
     class BufferDataPack:public BufferData
     {
-        VkFormat format;                                                                            ///<Êı¾İ¸ñÊ½
-        uint byte;                                                                                  ///<µ¥¸öÊı¾İ×Ö½ÚÊı
+        VkFormat format;                                                                            ///<æ•°æ®æ ¼å¼
+        uint byte;                                                                                  ///<å•ä¸ªæ•°æ®å­—èŠ‚æ•°
 
-        uint compoment;                                                                             ///<Êı¾İ³É·İ
+        uint compoment;                                                                             ///<æ•°æ®æˆä»½
 
     public:
 
@@ -84,13 +84,13 @@ VK_NAMESPACE_BEGIN
 
     class VertexBufferData:public BufferData
     {
-        uint32_t    data_type;                                                                      ///<µ¥¸öÊı¾İÀàĞÍ (GL_BYTE,GL_UNSIGNED_SHORT,GL_FLOATµÈ)
-        uint        data_bytes;                                                                     ///<µ¥¸öÊı¾İ×Ö½ÚÊı (GL_BYTEÎª1,GL_UNSIGNED_SHORTÎª2,GL_FLOATÎª4µÈ)
-        uint        data_comp;                                                                      ///<Êı¾İ³ÉÔ±Êı (1/2/3/4£¬Èç2DÎÆÀí×ø±êÓÃ2£¬3D×ø±ê/·¨ÏßÓÃ3)
+        uint32_t    data_type;                                                                      ///<å•ä¸ªæ•°æ®ç±»å‹ (GL_BYTE,GL_UNSIGNED_SHORT,GL_FLOATç­‰)
+        uint        data_bytes;                                                                     ///<å•ä¸ªæ•°æ®å­—èŠ‚æ•° (GL_BYTEä¸º1,GL_UNSIGNED_SHORTä¸º2,GL_FLOATä¸º4ç­‰)
+        uint        data_comp;                                                                      ///<æ•°æ®æˆå‘˜æ•° (1/2/3/4ï¼Œå¦‚2Dçº¹ç†åæ ‡ç”¨2ï¼Œ3Dåæ ‡/æ³•çº¿ç”¨3)
 
-        uint        data_stride;                                                                    ///<Ã¿×éÊı¾İ×Ö½ÚÊı
+        uint        data_stride;                                                                    ///<æ¯ç»„æ•°æ®å­—èŠ‚æ•°
 
-        uint32_t    data_count;                                                                     ///<Êı¾İÊıÁ¿
+        uint32_t    data_count;                                                                     ///<æ•°æ®æ•°é‡
 
     protected:
 
@@ -111,31 +111,31 @@ VK_NAMESPACE_BEGIN
 
         virtual ~VertexBufferData()=default;
 
-        uint32_t    GetDataType     ()const{return data_type;}                                      ///<È¡µÃÊı¾İÀàĞÍ
-        uint        GetComponent    ()const{return data_comp;}                                      ///<È¡ÊıÃ¿Ò»×éÊı¾İÖĞµÄÊı¾İÊıÁ¿
-        uint        GetStride       ()const{return data_stride;}                                    ///<È¡µÃÃ¿Ò»×éÊı¾İ×Ö½ÚÊı
+        uint32_t    GetDataType     ()const{return data_type;}                                      ///<å–å¾—æ•°æ®ç±»å‹
+        uint        GetComponent    ()const{return data_comp;}                                      ///<å–æ•°æ¯ä¸€ç»„æ•°æ®ä¸­çš„æ•°æ®æ•°é‡
+        uint        GetStride       ()const{return data_stride;}                                    ///<å–å¾—æ¯ä¸€ç»„æ•°æ®å­—èŠ‚æ•°
 
-        uint32_t    GetCount        ()const{return data_count;}                                     ///<È¡µÃÊı¾İÊıÁ¿
-        uint32_t    GetTotalBytes   ()const{return total_bytes;}                                    ///<È¡µÃÊı¾İ×Ü×Ö½ÚÊı
+        uint32_t    GetCount        ()const{return data_count;}                                     ///<å–å¾—æ•°æ®æ•°é‡
+        uint32_t    GetTotalBytes   ()const{return total_bytes;}                                    ///<å–å¾—æ•°æ®æ€»å­—èŠ‚æ•°
     };
 
     /**
-        * ´´½¨Ò»¸ö¶¥µãÊı¾İ»º³åÇø<br>
-        * ÕâÖÖ·½Ê½´´½¨µÄ»º³åÇø£¬Ëü»á×ÔĞĞ·ÖÅäÄÚ´æ£¬×îÖÕÊÍ·Å
-        * @param dt µ¥¸öÊı¾İÀàĞÍ (GL_BYTE,GL_UNSIGNED_SHORT,GL_FLOATµÈ)
-        * @param dbytes µ¥¸öÊı¾İ×Ö½ÚÊı (GL_BYTEÎª1,GL_UNSIGNED_SHORTÎª2,GL_FLOATÎª4µÈ)
-        * @param dcm Êı¾İ³ÉÔ±Êı (1/2/3/4£¬Èç2DÎÆÀí×ø±êÓÃ2£¬3D×ø±ê/·¨ÏßÓÃ3)
-        * @param count Êı¾İÊıÁ¿
+        * åˆ›å»ºä¸€ä¸ªé¡¶ç‚¹æ•°æ®ç¼“å†²åŒº<br>
+        * è¿™ç§æ–¹å¼åˆ›å»ºçš„ç¼“å†²åŒºï¼Œå®ƒä¼šè‡ªè¡Œåˆ†é…å†…å­˜ï¼Œæœ€ç»ˆé‡Šæ”¾
+        * @param dt å•ä¸ªæ•°æ®ç±»å‹ (GL_BYTE,GL_UNSIGNED_SHORT,GL_FLOATç­‰)
+        * @param dbytes å•ä¸ªæ•°æ®å­—èŠ‚æ•° (GL_BYTEä¸º1,GL_UNSIGNED_SHORTä¸º2,GL_FLOATä¸º4ç­‰)
+        * @param dcm æ•°æ®æˆå‘˜æ•° (1/2/3/4ï¼Œå¦‚2Dçº¹ç†åæ ‡ç”¨2ï¼Œ3Dåæ ‡/æ³•çº¿ç”¨3)
+        * @param count æ•°æ®æ•°é‡
         */
     VertexBufferData *CreateVertexBufferData(const uint32_t &dt,const uint &dbytes,const uint &dcm,const uint32_t &count);
 
     /**
-        * ´´½¨Ò»¸ö¶¥µãÊı¾İ»º³åÇø
-        * @param data Êı¾İÖ¸Õë
-        * @param dt µ¥¸öÊı¾İÀàĞÍ (GL_BYTE,GL_UNSIGNED_SHORT,GL_FLOATµÈ)
-        * @param dbytes µ¥¸öÊı¾İ×Ö½ÚÊı (GL_BYTEÎª1,GL_UNSIGNED_SHORTÎª2,GL_FLOATÎª4µÈ)
-        * @param dcm Êı¾İ³ÉÔ±Êı (1/2/3/4£¬Èç2DÎÆÀí×ø±êÓÃ2£¬3D×ø±ê/·¨ÏßÓÃ3)
-        * @param count Êı¾İÊıÁ¿
+        * åˆ›å»ºä¸€ä¸ªé¡¶ç‚¹æ•°æ®ç¼“å†²åŒº
+        * @param data æ•°æ®æŒ‡é’ˆ
+        * @param dt å•ä¸ªæ•°æ®ç±»å‹ (GL_BYTE,GL_UNSIGNED_SHORT,GL_FLOATç­‰)
+        * @param dbytes å•ä¸ªæ•°æ®å­—èŠ‚æ•° (GL_BYTEä¸º1,GL_UNSIGNED_SHORTä¸º2,GL_FLOATä¸º4ç­‰)
+        * @param dcm æ•°æ®æˆå‘˜æ•° (1/2/3/4ï¼Œå¦‚2Dçº¹ç†åæ ‡ç”¨2ï¼Œ3Dåæ ‡/æ³•çº¿ç”¨3)
+        * @param count æ•°æ®æ•°é‡
         */
     VertexBufferData *CreateVertexBufferData(void *data,const uint32_t &dt,const uint &dbytes,const uint &dcm,const uint32_t &count);
 
@@ -143,8 +143,8 @@ VK_NAMESPACE_BEGIN
     inline VertexBufferData *VB##comp_count##short_name(const uint32_t &count){return CreateVertexBufferData(vk_type,sizeof(type),comp_count,count);} \
     inline VertexBufferData *VB##comp_count##short_name(const uint32_t &count,const type *data){return CreateVertexBufferData((void *)data,vk_type,sizeof(type),comp_count,count);}
 
-    // UNORM Ö¸ÊäÈëÎŞ·ûºÅÊı£¬×Ô¶¯×ª»»Îª 0.0 to  1.0 µÄ¸¡µãÊı
-    // SNORM Ö¸ÊäÈëÓĞ·ûºÅÊı£¬×Ô¶¯×ª»»Îª-1.0 to +1.0 µÄ¸¡µãÊı
+    // UNORM æŒ‡è¾“å…¥æ— ç¬¦å·æ•°ï¼Œè‡ªåŠ¨è½¬æ¢ä¸º 0.0 to  1.0 çš„æµ®ç‚¹æ•°
+    // SNORM æŒ‡è¾“å…¥æœ‰ç¬¦å·æ•°ï¼Œè‡ªåŠ¨è½¬æ¢ä¸º-1.0 to +1.0 çš„æµ®ç‚¹æ•°
 
 
 

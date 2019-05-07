@@ -7,9 +7,6 @@
 #include<hgl/graph/vulkan/VK.h>
 
 VK_NAMESPACE_BEGIN
-struct PhysicalDevice;
-class Device;
-
     class Instance
     {
         VkInstance inst;
@@ -34,15 +31,13 @@ class Device;
 
         virtual ~Instance();
 
-                VkInstance                  GetVkInstance       ()      {return inst;}
+                operator VkInstance (){return inst;}
 
         const   List<VkLayerProperties> &   GetLayerProperties  ()const {return layer_properties;}
         const   bool                        CheckLayerSupport   (const UTF8String &)const;
         const   CharPointerList &           GetExtList          ()const {return ext_list;}
         const   ObjectList<PhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
         const   PhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
-
-                Device *                    CreateRenderDevice  (Window *,const PhysicalDevice *pd=nullptr);
     };//class Instance
 
     Instance *CreateInstance(const UTF8String &);                                                   ///<创建一个Vulkan实例

@@ -138,19 +138,8 @@ DeviceAttribute::~DeviceAttribute()
     if(desc_pool)
         vkDestroyDescriptorPool(device,desc_pool,nullptr);
 
-    SAFE_CLEAR(depth.view);
-
-    if(depth.image)
-        vkDestroyImage(device,depth.image,nullptr);
-
-    if(depth.mem)
-        vkFreeMemory(device,depth.mem,nullptr);
-
-    sc_image_views.Clear();
-
-    if(swap_chain)
-        vkDestroySwapchainKHR(device,swap_chain,nullptr);
-
+    ClearSwapchain();
+    
     if(cmd_pool)
         vkDestroyCommandPool(device,cmd_pool,nullptr);
 
@@ -164,5 +153,30 @@ DeviceAttribute::~DeviceAttribute()
 bool DeviceAttribute::CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const
 {
     return physical_device->CheckMemoryType(typeBits,requirements_mask,typeIndex);
+}
+
+void DeviceAttribute::ClearSwapchain()
+{
+    SAFE_CLEAR(depth.view);
+
+    if(depth.image)
+    {
+        vkDestroyImage(device,depth.image,nullptr);
+        depth.image=nullptr;
+    }
+
+    if(depth.mem)
+    {
+        vkFreeMemory(device,depth.mem,nullptr);
+        depth.mem=nullptr;
+    }
+
+    sc_image_views.Clear();
+
+    if(swap_chain)
+    {
+        vkDestroySwapchainKHR(device,swap_chain,nullptr);
+        swap_chain=nullptr;
+    }
 }
 VK_NAMESPACE_END

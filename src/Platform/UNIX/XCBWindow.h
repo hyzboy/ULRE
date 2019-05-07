@@ -13,6 +13,7 @@ namespace hgl
     private:
 
         bool InitConnection();
+        VkSurfaceKHR CreateSurface(VkInstance) override;
 
     public:
 
@@ -29,11 +30,6 @@ namespace hgl
         void Hide()override{}
         bool MessageProc() override;
         bool WaitMessage() override;
-
-    public:
-
-        xcb_connection_t *GetConnection(){return connection;}
-        xcb_window_t GetWindow(){return window;}
     };//class XCBWindow:public Window
 }//namespace hgl
 

@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include<hgl/platform/Window.h>
 #include<Windows.h>
-
 namespace hgl
 {
     /**
@@ -18,16 +17,12 @@ namespace hgl
     protected:
 
         bool Create();
+        VkSurfaceKHR CreateSurface(VkInstance)override;
 
     public:
 
         using Window::Window;
         ~WinWindow();
-
-        HINSTANCE GetHInstance(){return hInstance;}
-        HWND GetHWnd(){return win_hwnd;}
-
-    public:
 
         bool Create(uint w, uint h) override;
         bool Create(uint, uint, uint) override;

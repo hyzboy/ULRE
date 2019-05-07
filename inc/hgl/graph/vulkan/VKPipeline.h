@@ -1,14 +1,8 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
 #define HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
 
-#include"VK.h"
-
+#include<hgl/graph/vulkan/VK.h>
 VK_NAMESPACE_BEGIN
-class Device;
-class RenderPass;
-class VertexAttributeBinding;
-class Material;
-
 class Pipeline
 {
     VkDevice device;

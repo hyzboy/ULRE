@@ -1,7 +1,7 @@
 #ifndef HGL_GRAPH_VULKAN_SEMAPHORE_INCLUDE
 #define HGL_GRAPH_VULKAN_SEMAPHORE_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 VK_NAMESPACE_BEGIN
 class Semaphore
 {

@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_RENDER_SURFACE_INCLUDE
+Ôªø#ifndef HGL_GRAPH_RENDER_SURFACE_INCLUDE
 #define HGL_GRAPH_RENDER_SURFACE_INCLUDE
 
 #include<hgl/type/List.h>
@@ -10,21 +10,6 @@
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 
 VK_NAMESPACE_BEGIN
-struct PhysicalDevice;
-class Buffer;
-class VertexBuffer;
-class IndexBuffer;
-class CommandBuffer;
-class RenderPass;
-class Fence;
-class Semaphore;
-class ShaderModule;
-class ShaderModuleManage;
-class VertexShaderModule;
-class Material;
-
-#define MAX_FRAMES_IN_FLIGHT 2
-
 class Device
 {
     DeviceAttribute *attr;
@@ -41,7 +26,11 @@ class Device
 
 private:
 
-    friend Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
+    void CreateMainBufferAndPass();
+
+private:
+
+    friend Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,uint width,uint height);
 
     Device(DeviceAttribute *da);
 
@@ -70,7 +59,9 @@ public:
             RenderPass *    GetRenderPass           ()          {return main_rp;}
             Framebuffer *   GetFramebuffer          (int index) {return main_fb[index];}
 
-public: //Bufferœ‡πÿ
+    bool                    Resize                  (uint,uint);
+
+public: //BufferÁõ∏ÂÖ≥
 
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
@@ -95,18 +86,18 @@ public: //Bufferœ‡πÿ
 
 #undef CREATE_BUFFER_OBJECT
 
-public: //materialœ‡πÿ
+public: //materialÁõ∏ÂÖ≥
 
     ShaderModuleManage *CreateShaderModuleManage();
 
-public: //Command Buffer œ‡πÿ
+public: //Command Buffer Áõ∏ÂÖ≥
 
     CommandBuffer * CreateCommandBuffer();
     RenderPass *    CreateRenderPass(VkFormat color_format,VkFormat depth_format);
     Fence *         CreateFence();
     Semaphore *     CreateSem();
 
-public: //Ã·Ωªœ‡πÿ
+public: //Êèê‰∫§Áõ∏ÂÖ≥
 
     bool AcquireNextImage   ();
     bool QueueSubmit        (const VkCommandBuffer *,const uint32_t count=1);

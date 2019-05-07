@@ -3,10 +3,15 @@
 
 #include<hgl/type/BaseString.h>
 #include<hgl/platform/InputDevice.h>
+#include<hgl/graph/vulkan/VK.h>
+
 namespace hgl
 {
     class Window
     {
+        VK_NAMESPACE::Device *device;
+        virtual VkSurfaceKHR CreateSurface(VkInstance)=0;
+
     protected:
 
         uint width,height;
@@ -16,6 +21,7 @@ namespace hgl
 
         bool active;
         bool is_close;
+        bool is_min;
 
         bool key_push[kbRangeSize];
 
@@ -47,7 +53,7 @@ namespace hgl
 
         virtual void OnChar     (os_char){}
 
-        virtual void OnResize   (int w,int h){width=w;height=h;}
+        virtual void OnResize   (uint,uint);
 
         virtual void OnActive   (bool a){active=a;}
         virtual void OnClose    (){is_close=true;}
@@ -56,18 +62,22 @@ namespace hgl
 
         Window(const OSString &wn)
         {
+            device=nullptr;
             width=height=0;
+            full_screen=false;
             win_name=wn;
             active=false;
             is_close=true;
+            is_min=false;
             hgl_zero(key_push);
         }
-        virtual ~Window()=default;
+        virtual ~Window();
 
         virtual bool Create(uint,uint)=0;
         virtual bool Create(uint,uint,uint)=0;
         virtual void Close()=0;
 
+                bool IsMin()const{return is_min;}
                 bool IsClose()const{return is_close;}
                 bool IsVisible()const{return (!is_close)&&width&&height;}
 
@@ -76,12 +86,17 @@ namespace hgl
         virtual void Show()=0;
         virtual void Hide()=0;
 
-        virtual void ToMinWindow(){}
-        virtual void ToMaxWindow(){}
+        virtual void ToMinWindow()=0;
+        virtual void ToMaxWindow()=0;
 
         virtual void SetSystemCursor(bool){}
 
         virtual bool Update();
+
+    public:
+
+        VK_NAMESPACE::Device *  CreateRenderDevice(VK_NAMESPACE::Instance *,const VK_NAMESPACE::PhysicalDevice *pd=nullptr);
+        void                    CloseRenderDevice();
     };//class Window
 
     Window *CreateRenderWindow(const OSString &win_name);

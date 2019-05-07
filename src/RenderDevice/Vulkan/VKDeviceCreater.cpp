@@ -4,8 +4,6 @@
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 
 VK_NAMESPACE_BEGIN
-VkSurfaceKHR CreateRenderDevice(VkInstance,Window *);
-
 namespace
 {
     template<typename T> T Clamp(const T &cur,const T &min_value,const T &max_value)
@@ -286,20 +284,31 @@ namespace
 
         return cache;
     }
+
+    bool CreateSwapchinAndImageView(DeviceAttribute *attr)
+    {
+        attr->swap_chain=CreateSwapChain(attr);
+
+        if(!attr->swap_chain)
+            return(false);
+
+        if(!CreateSwapchainImageView(attr))
+            return(false);
+
+        if(!CreateDepthBuffer(attr))
+            return(false);
+
+        return(true);
+    }
 }//namespace
 
-Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,Window *win)
+Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,uint width,uint height)
 {
-    VkSurfaceKHR surface=CreateRenderDevice(inst,win);
-
-    if(!surface)
-        return(nullptr);
-
     DeviceAttribute *attr=new DeviceAttribute(inst,physical_device,surface);
 
     AutoDelete<DeviceAttribute> auto_delete(attr);
 
-    attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,win->GetWidth(),win->GetHeight());
+    attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,width,height);
 
     if(attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
@@ -316,15 +325,7 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     if(!attr->cmd_pool)
         return(nullptr);
 
-    attr->swap_chain=CreateSwapChain(attr);
-
-    if(!attr->swap_chain)
-        return(nullptr);
-
-    if(!CreateSwapchainImageView(attr))
-        return(nullptr);
-
-    if(!CreateDepthBuffer(attr))
+    if(!CreateSwapchinAndImageView(attr))
         return(nullptr);
 
     attr->desc_pool=CreateDescriptorPool(attr->device,1);
@@ -340,5 +341,18 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     auto_delete.Clear();
 
     return(new Device(attr));
+}
+
+bool ResizeRenderDevice(DeviceAttribute *attr,uint width,uint height)
+{
+    if(attr->swapchain_extent.width==width
+     &&attr->swapchain_extent.height==height)
+        return(true);
+
+    attr->ClearSwapchain();
+
+    attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,width,height);
+
+    return CreateSwapchinAndImageView(attr);
 }
 VK_NAMESPACE_END

@@ -4,14 +4,40 @@
 #include<hgl/type/List.h>
 #include<vulkan/vulkan.h>
 #include<iostream>
-#include"VKFormat.h"
-#include"VKPrimivate.h"
+#include<hgl/graph/vulkan/VKFormat.h>
+#include<hgl/graph/vulkan/VKPrimivate.h>
 
 #define VK_NAMESPACE hgl::graph::vulkan
 #define VK_NAMESPACE_BEGIN  namespace hgl{namespace graph{namespace vulkan{
 #define VK_NAMESPACE_END    }}}
 
 VK_NAMESPACE_BEGIN
+
+class Instance;
+struct PhysicalDevice;
+class Device;
+class ImageView;
+class Framebuffer;
+
+class Buffer;
+class VertexBuffer;
+class IndexBuffer;
+
+class CommandBuffer;
+class RenderPass;
+class Fence;
+class Semaphore;
+
+class ShaderModule;
+class ShaderModuleManage;
+class VertexShaderModule;
+class Material;
+class PipelineLayout;
+class Pipeline;
+class DescriptorSets;
+class VertexAttributeBinding;
+
+class Renderable;
 
 using CharPointerList=hgl::List<const char *>;
 

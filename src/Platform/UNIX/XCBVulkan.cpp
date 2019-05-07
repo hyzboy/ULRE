@@ -3,15 +3,15 @@
 #include<vulkan/vulkan_xcb.h>
 
 VK_NAMESPACE_BEGIN
-VkSurfaceKHR CreateRenderDevice(VkInstance vk_inst,Window *win)
+VkSurfaceKHR XCBWindow::CreateSurface(VkInstance vk_inst)
 {
     XCBWindow *xcb_win=(XCBWindow *)win;
 
     VkXcbSurfaceCreateInfoKHR createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
     createInfo.pNext = nullptr;
-    createInfo.connection = xcb_win->GetConnection();
-    createInfo.window = xcb_win->GetWindow();
+    createInfo.connection = connection;
+    createInfo.window = window;
 
     VkSurfaceKHR surface;
 
