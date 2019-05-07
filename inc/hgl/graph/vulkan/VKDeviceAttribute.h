@@ -1,13 +1,11 @@
 ﻿#pragma once
 
-#include"VK.h"
-#include"VKImageView.h"
+#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKImageView.h>
 
 VK_NAMESPACE_BEGIN
 
 constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
-
-struct PhysicalDevice;
 
 struct DeviceAttribute
 {
@@ -60,5 +58,7 @@ public:
     ~DeviceAttribute();
 
     bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const;
+
+    void ClearSwapchain();
 };//class DeviceAttribute
 VK_NAMESPACE_END

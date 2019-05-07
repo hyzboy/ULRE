@@ -11,6 +11,8 @@
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
+bool ResizeRenderDevice(DeviceAttribute *attr,uint width,uint height);
+
 Device::Device(DeviceAttribute *da)
 {
     attr=da;
@@ -28,14 +30,7 @@ Device::Device(DeviceAttribute *da)
     present.waitSemaphoreCount = 0;
     present.pResults = nullptr;
 
-    {
-        const int sc_count=attr->sc_image_views.GetCount();
-
-        main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
-
-        for(int i=0;i<sc_count;i++)
-            main_fb.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
-    }
+    CreateMainBufferAndPass();
 }
 
 Device::~Device()
@@ -48,6 +43,30 @@ Device::~Device()
     delete draw_fence;
 
     delete attr;
+}
+
+void Device::CreateMainBufferAndPass()
+{
+    const int sc_count=attr->sc_image_views.GetCount();
+
+    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
+
+    for(int i=0;i<sc_count;i++)
+        main_fb.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
+}
+
+bool Device::Resize(uint width,uint height)
+{
+    main_fb.Clear();
+    delete main_rp;
+    main_rp=nullptr;
+
+    if(!ResizeRenderDevice(attr,width,height))
+        return(false);
+
+    CreateMainBufferAndPass();
+
+    return(true);
 }
 
 CommandBuffer *Device::CreateCommandBuffer()

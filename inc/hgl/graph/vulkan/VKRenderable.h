@@ -1,13 +1,9 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
 #define HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
-class VertexShaderModule;
-class VertexBuffer;
-class IndexBuffer;
-
 /**
  * 可渲染数据对象<br>
  * 本对象包含材质实例信息和Mesh信息，可渲染数据对象中包含供最终API使用的VBO数据，可能存在多个MESH数据的集合。</p>

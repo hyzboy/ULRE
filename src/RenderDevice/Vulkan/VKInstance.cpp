@@ -287,19 +287,4 @@ const PhysicalDevice *Instance::GetDevice(VkPhysicalDeviceType type)const
 
     return(nullptr);
 }
-
-Device *Instance::CreateRenderDevice(Window *win,const PhysicalDevice *pd)
-{
-    if(!win)
-        return(nullptr);
-
-    if(!pd)pd=GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
-    if(!pd)pd=GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
-    if(!pd)pd=GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
-
-    if(!pd)
-        return(nullptr);
-
-    return VK_NAMESPACE::CreateRenderDevice(inst,pd,win);
-}
 VK_NAMESPACE_END

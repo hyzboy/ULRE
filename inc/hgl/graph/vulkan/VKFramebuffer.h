@@ -1,11 +1,8 @@
 #ifndef HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
 #define HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 VK_NAMESPACE_BEGIN
-class Device;
-class RenderPass;
-class ImageView;
 
 class Framebuffer
 {

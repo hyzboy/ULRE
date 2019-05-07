@@ -36,7 +36,6 @@ public:
     virtual ~VulkanApplicationFramework()
     {   
         SAFE_CLEAR(shader_manage);
-        SAFE_CLEAR(device);
         SAFE_CLEAR(inst);
         SAFE_CLEAR(win);
     }
@@ -62,7 +61,7 @@ public:
         if(!inst)
             return(false);
 
-        device=inst->CreateRenderDevice(win);
+        device=win->CreateRenderDevice(inst);
 
         if(!device)
             return(false);

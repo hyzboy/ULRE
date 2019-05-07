@@ -1,14 +1,8 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
 #define HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 VK_NAMESPACE_BEGIN
-class RenderPass;
-class Framebuffer;
-class Pipeline;
-class DescriptorSets;
-class Renderable;
-
 class CommandBuffer
 {
     VkDevice device;

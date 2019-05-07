@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_BUFFER_INCLUDE
 #define HGL_GRAPH_VULKAN_BUFFER_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 VK_NAMESPACE_BEGIN
 
 struct VulkanBuffer

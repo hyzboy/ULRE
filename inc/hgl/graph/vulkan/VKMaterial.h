@@ -1,20 +1,11 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
 #define HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
-class Device;
-class ShaderModule;
-class VertexShaderModule;
-class DescriptorSets;
-class DescriptorSetLayoutCreater;
-class VertexAttributeBinding;
-class VertexBuffer;
-class Renderable;
-class PipelineLayout;
-
+class DescriptorSetLayoutCreater;;
 using ShaderModuleMap=hgl::Map<VkShaderStageFlagBits,const ShaderModule *>;
 
 /**

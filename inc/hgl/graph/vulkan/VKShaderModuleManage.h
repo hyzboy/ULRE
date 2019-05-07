@@ -1,19 +1,14 @@
-#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_MANAGE_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_MANAGE_INCLUDE
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_MANAGE_INCLUDE
 
-#include"VK.h"
+#include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
-class Device;
-class ShaderModule;
-class VertexShaderModule;
-class Material;
-
 /**
- * ShaderÄ£¿é¹ÜÀíÆ÷<br>
- * ËùÓĞµÄshaderÄ£¿é¾ùÓÉËü´´½¨ºÍÊÍ·Å
- * ¸Ã¹ÜÀíÆ÷ÔÚÒ»¸öÉè±¸ÏÂ½öÓĞÒ»¸ö£¬Ëü¸ºÔğ¹ÜÀíËùÓĞµÄshader(½övs/fs/gsµÈµ¥¸ö£¬·Ç×éºÏÌå)
+ * Shaderæ¨¡å—ç®¡ç†å™¨<br>
+ * æ‰€æœ‰çš„shaderæ¨¡å—å‡ç”±å®ƒåˆ›å»ºå’Œé‡Šæ”¾
+ * è¯¥ç®¡ç†å™¨åœ¨ä¸€ä¸ªè®¾å¤‡ä¸‹ä»…æœ‰ä¸€ä¸ªï¼Œå®ƒè´Ÿè´£ç®¡ç†æ‰€æœ‰çš„shader(ä»…vs/fs/gsç­‰å•ä¸ªï¼Œéç»„åˆä½“)
  */
 class ShaderModuleManage
 {
