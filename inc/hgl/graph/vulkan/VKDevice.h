@@ -26,7 +26,7 @@ class Device
 
 private:
 
-    void CreateMainBufferAndPass();
+    void CreateMainFramebuffer();
 
 private:
 

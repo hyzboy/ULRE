@@ -1,4 +1,4 @@
-#include<toml.hpp>
+#include<json/json.h>
 #include<vulkan/vulkan.h>
 #include<hgl/type/BaseString.h>
 #include<sstream>
@@ -104,13 +104,8 @@ TOML_END
 
 TOML_BEGIN(VkPipelineInputAssemblyStateCreateInfo)
 {
-    TOML_INTEGER(topology),
-    TOML_BOOL(primitiveRestartEnable)
-}
-TOML_END
+    Json::Value root;
 
-void SaveToTOML(const OSString &filename,const VkGraphicsPipelineCreateInfo *info)
-{
     const auto root=toml::table
     {
         {"ver",toml::table{{"file",100},{"vulkan",100}}},

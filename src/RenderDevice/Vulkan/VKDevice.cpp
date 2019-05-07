@@ -30,7 +30,9 @@ Device::Device(DeviceAttribute *da)
     present.waitSemaphoreCount = 0;
     present.pResults = nullptr;
 
-    CreateMainBufferAndPass();
+    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
+
+    CreateMainFramebuffer();
 }
 
 Device::~Device()
@@ -45,11 +47,9 @@ Device::~Device()
     delete attr;
 }
 
-void Device::CreateMainBufferAndPass()
+void Device::CreateMainFramebuffer()
 {
     const int sc_count=attr->sc_image_views.GetCount();
-
-    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
 
     for(int i=0;i<sc_count;i++)
         main_fb.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
@@ -58,14 +58,11 @@ void Device::CreateMainBufferAndPass()
 bool Device::Resize(uint width,uint height)
 {
     main_fb.Clear();
-    delete main_rp;
-    main_rp=nullptr;
 
     if(!ResizeRenderDevice(attr,width,height))
         return(false);
 
-    CreateMainBufferAndPass();
-
+    CreateMainFramebuffer();
     return(true);
 }
 

@@ -52,6 +52,7 @@ add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(src)
 
 SET(ULRE    ULRE.Base
+            ULRE.Util
             ULRE.RenderDevice.Vulkan
             ULRE.Platform
             MathGeoLib

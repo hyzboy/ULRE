@@ -12,7 +12,7 @@ inline hgl::OSString ToOSString(const std::string &str)
 
 inline std::string ToStdString(const hgl::OSString &str)
 {
-    UTF8String u8_str=hgl::to_u8(str);
+    hgl::UTF8String u8_str=hgl::to_u8(str);
 
     return std::string(u8_str.c_str());
 }
@@ -30,6 +30,6 @@ inline std::string ToStdString(const hgl::OSString &str)
 
 inline hgl::UTF8String ToUTF8String(const std::string &str)
 {
-    return hgl::UTF8String(str.c_str(),str.size());
+    return hgl::UTF8String(str.c_str(),int(str.size()));
 }
 

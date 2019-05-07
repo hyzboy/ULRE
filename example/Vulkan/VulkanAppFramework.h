@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include<hgl/platform/Window.h>
 #include<hgl/graph/vulkan/VKInstance.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
@@ -36,8 +36,8 @@ public:
     virtual ~VulkanApplicationFramework()
     {   
         SAFE_CLEAR(shader_manage);
+        SAFE_CLEAR(win);        //win中会删除device，所以必须放在instance前删除
         SAFE_CLEAR(inst);
-        SAFE_CLEAR(win);
     }
 
     virtual bool Init(int w,int h) 
