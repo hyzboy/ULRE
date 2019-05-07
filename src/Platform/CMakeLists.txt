@@ -62,7 +62,7 @@ IF(WIN32)
     SET(PLATFORM_FILE_SOURCE            Win/File.cpp
                                         Win/FileAccess.cpp
                                         Win/EnumFile.cpp
-										Win/EnumVolume.cpp
+                                        Win/EnumVolume.cpp
                                         Win/ProgramPath.cpp)
 
     SET(PLATFORM_CODEPAGE_SOURCE        Win/CodePage.cpp)
@@ -91,9 +91,9 @@ IF(WIN32)
     SET(PLATFORM_DESKTOP_SOURCE         Win/Desktop.cpp)
 
     SET(PLATFORM_WINDOW_SOURCE          Win/WinWindow.h
-										Win/WinWindow.cpp
-										Win/WinMessage.cpp
-										Win/WinVulkan.cpp)
+                                        Win/WinWindow.cpp
+                                        Win/WinMessage.cpp
+                                        Win/WinVulkan.cpp)
 ENDIF(WIN32)
 
 SET(PLATFORM_WINDOW_SOURCE ${PLATFORM_WINDOW_SOURCE} Window.cpp)
@@ -113,7 +113,7 @@ SOURCE_GROUP("Window"       FILES ${PLATFORM_WINDOW_SOURCE})
 SET(PLATFORM_SOURCE ${PLATFORM_SOURCE}
                     ${PLATFORM_FILE_SOURCE}
                     ${PLATFORM_CODEPAGE_SOURCE}
-					#${PLATFORM_SYSTEM_INFO_SOURCE}
+                    #${PLATFORM_SYSTEM_INFO_SOURCE}
                     ${PLATFORM_APPLICATION_SOURCE}
                     ${PLATFORM_LOG_SOURCE}
                     ${PLATFORM_MULTI_THREAD_SOURCE}
@@ -124,4 +124,4 @@ SET(PLATFORM_SOURCE ${PLATFORM_SOURCE}
                     ${PLATFORM_WINDOW_SOURCE}
 )
 
-add_library(ULRE.Platform SHARED ${PLATFORM_SOURCE})
+add_library(ULRE.Platform STATIC ${PLATFORM_SOURCE})

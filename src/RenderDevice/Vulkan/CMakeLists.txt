@@ -1,27 +1,27 @@
 ﻿SET(RENDER_DEVICE_VULKAN_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VK.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKBuffer.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKBufferData.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKCommandBuffer.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKDescriptorSets.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKDevice.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKDeviceAttribute.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKFence.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKFormat.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKFramebuffer.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKImageView.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKInstance.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKMaterial.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPhysicalDevice.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPipeline.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPrimivate.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderable.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderPass.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSemaphore.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderResource.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModule.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModuleManage.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSurfaceExtensionName.h
-								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKVertexAttributeBinding.h)
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKBuffer.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKBufferData.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKCommandBuffer.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKDescriptorSets.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKDevice.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKDeviceAttribute.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKFence.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKFormat.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKFramebuffer.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKImageView.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKInstance.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKMaterial.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPhysicalDevice.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPipeline.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPrimivate.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderable.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderPass.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSemaphore.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderResource.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModule.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModuleManage.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSurfaceExtensionName.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKVertexAttributeBinding.h)
 
 SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKInstance.cpp
@@ -34,8 +34,8 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKDeviceBuffer.cpp
                                 VKBuffer.cpp
                                 VKDescriptorSets.cpp
-								VKDescriptorSetLayoutCreater.cpp
-								VKDescriptorSetLayoutCreater.h
+                                VKDescriptorSetLayoutCreater.cpp
+                                VKDescriptorSetLayoutCreater.h
                                 VKRenderPass.cpp
                                 VKShaderParse.h
                                 VKShaderModule.cpp
@@ -55,6 +55,6 @@ SOURCE_GROUP("Header Files" FILES ${RENDER_DEVICE_VULKAN_HEADER})
 SOURCE_GROUP("Source Files" FILES ${RENDER_DEVICE_VULKAN_SOURCE})
 #SOURCE_GROUP("JSON Source Files" FILES ${RENDER_DEVICE_VULKAN_JSON_SOURCE})
 
-add_library(ULRE.RenderDevice.Vulkan SHARED ${RENDER_DEVICE_VULKAN_HEADER}
-											${RENDER_DEVICE_VULKAN_SOURCE}
-											${RENDER_DEVICE_VULKAN_JSON_SOURCE})
+add_library(ULRE.RenderDevice.Vulkan STATIC ${RENDER_DEVICE_VULKAN_HEADER}
+                                            ${RENDER_DEVICE_VULKAN_SOURCE}
+                                            ${RENDER_DEVICE_VULKAN_JSON_SOURCE})
