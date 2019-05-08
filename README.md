@@ -5,4 +5,8 @@ ULRE is a project of experimental nature,Used to experiment with various renderi
 
 In the future, its compilicated version will be integrated into CMGameEngine.Used to replace the old rendering engine.
 
+'master' branches will not be updated, please try to follow the latest branches or tags.
+
 ULRE是一个试验性质的工程，用于试验各种渲染相关的技术，以及做一些范例。在未来它的复杂化版本会被整合到CMGameEngine中，用于替代旧的渲染引擎。
+
+'master'分支不会得到更新，请尽量跟随最新分支或标记
