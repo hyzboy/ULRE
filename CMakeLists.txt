@@ -57,6 +57,7 @@ SET(ULRE    ULRE.Base
             ULRE.Platform
             MathGeoLib
             spirv-cross-core
+            jsoncpp_lib
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
