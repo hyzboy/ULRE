@@ -7,7 +7,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-//void SaveToTOML(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
+void SaveToJSON(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
 
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
@@ -109,7 +109,7 @@ private:
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
-//        SaveToTOML(OS_TEXT("pipeline.toml"),pipeline_creater->GetInfo());
+        SaveToJSON(OS_TEXT("pipeline.json"),pipeline_creater->GetInfo());
 
         pipeline=pipeline_creater->Create();
 

@@ -1,126 +1,141 @@
-#include<json/json.h>
+﻿#include<json/json.h>
 #include<vulkan/vulkan.h>
 #include<hgl/type/BaseString.h>
-#include<sstream>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/util/JsonTool.h>
 
 using namespace hgl;
 
-#define TOML_BEGIN(struct_name) toml::table ToTOML(const struct_name *state) \
-                                {   \
-                                    toml::table root=toml::table 
-
-#define TOML_END                    ;return root;    \
-                                }
-
-#define TOML_BOOL(name)     {#name,bool(state->##name)}
-#define TOML_INTEGER(name)  {#name,std::int64_t(state->##name)}
-#define TOML_FLOAT(name)    {#name,double(state->##name)}
-#define TOML_STRING(name)   {#name,toml::string(state->##name)}
-
-TOML_BEGIN(VkStencilOpState)
+namespace
 {
-    TOML_INTEGER(failOp),
-    TOML_INTEGER(passOp),
-    TOML_INTEGER(depthFailOp),
-    TOML_INTEGER(compareOp),
-    TOML_INTEGER(compareMask),
-    TOML_INTEGER(writeMask),
-    TOML_INTEGER(reference)
-}
-TOML_END
+    #define JSON_BEGIN(struct_name) Json::Value ToJSON(const struct_name *state) \
+                                    {   \
+                                        Json::Value root; 
 
-TOML_BEGIN(VkPipelineDepthStencilStateCreateInfo)
-{
-    TOML_BOOL   (depthTestEnable),
-    TOML_BOOL   (depthWriteEnable),
-    TOML_INTEGER(depthCompareOp),
-    TOML_BOOL   (depthBoundsTestEnable),
-    TOML_BOOL   (stencilTestEnable),
-    {"front",   ToTOML(&state->front)},
-    {"back",    ToTOML(&state->back)}
-}
-TOML_END
+    #define JSON_END                    return root;    \
+                                    }
 
-TOML_BEGIN(VkPipelineColorBlendAttachmentState)
-{
-    TOML_BOOL(blendEnable),
-    TOML_INTEGER(srcColorBlendFactor),
-    TOML_INTEGER(dstColorBlendFactor),
-    TOML_INTEGER(colorBlendOp),
-    TOML_INTEGER(srcAlphaBlendFactor),
-    TOML_INTEGER(dstAlphaBlendFactor),
-    TOML_INTEGER(alphaBlendOp),
-    TOML_INTEGER(colorWriteMask)
-}
-TOML_END
+    #define JSON_STRUCT(name)   root[#name]=ToJSON(&(state->name));
+    #define JSON_OBJECT(name)   root[#name]=ToJSON(state->name);
+    #define JSON_BOOL(name)     root[#name]=bool(state->name);
+    #define JSON_INT32(name)    root[#name]=Json::Int(state->name);
+    #define JSON_UINT32(name)   root[#name]=Json::UInt(state->name);
+    #define JSON_INT64(name)    root[#name]=Json::Int64(state->name);
+    #define JSON_UINT64(name)   root[#name]=Json::UInt64(state->name);
+    #define JSON_FLOAT(name)    root[#name]=state->name;
+    #define JSON_STRING(name)   root[#name]=state->name;
 
-TOML_BEGIN(VkPipelineColorBlendStateCreateInfo)
-{
-    TOML_BOOL(logicOpEnable),
-    TOML_INTEGER(logicOp),
-    {"blendConstants",  toml::array
-                        {
-                            state->blendConstants[0],
-                            state->blendConstants[1],
-                            state->blendConstants[2],
-                            state->blendConstants[3]
-                        }
-    }};
+    template<typename T>
+    Json::Value ToJSON_Array(const T *values,const uint count)
+    {
+        Json::Value items;
+    
+        for(uint i=0;i<count;i++)
+        {
+            items[i]=*values;
+            ++values;
+        }
 
-    toml::array pAttachments;
+        return items;
+    }
 
-    for(uint i=0;i<state->attachmentCount;i++)
-        pAttachments.push_back(ToTOML(&(state->pAttachments[i])));
+    #define JSON_ARRAY(name,count)    root[#name]=ToJSON_Array(state->name,count);
 
-    root.insert({"pAttachments",pAttachments});
+    template<typename T>
+    Json::Value ToJSON_StructArray(const T *object,const uint count)
+    {
+        Json::Value items;
 
-TOML_END
+        for(uint i=0;i<count;i++)
+        {
+            items[i]=ToJSON(object);
+            ++object;
+        }
 
-TOML_BEGIN(VkPipelineRasterizationStateCreateInfo)
-{
-    TOML_BOOL(depthClampEnable),
-    TOML_BOOL(rasterizerDiscardEnable),
-    TOML_INTEGER(polygonMode),
-    TOML_INTEGER(cullMode),
-    TOML_INTEGER(frontFace),
-    TOML_BOOL(depthBiasEnable),
-    TOML_FLOAT(depthBiasConstantFactor),
-    TOML_FLOAT(depthBiasClamp),
-    TOML_FLOAT(depthBiasSlopeFactor),
-    TOML_FLOAT(lineWidth)
-}
-TOML_END
+        return items;
+    }
 
-TOML_BEGIN(VkPipelineMultisampleStateCreateInfo)
-{
-    TOML_INTEGER(rasterizationSamples),
-    TOML_BOOL(sampleShadingEnable),
-    TOML_FLOAT(minSampleShading),
-    TOML_BOOL(alphaToCoverageEnable),
-    TOML_BOOL(alphaToOneEnable)
-}
-TOML_END
+    #define JSON_STRUCT_ARRAY(name,count)   root[#name]=ToJSON_StructArray(state->name,count)
 
-TOML_BEGIN(VkPipelineInputAssemblyStateCreateInfo)
+    JSON_BEGIN(VkStencilOpState)
+        JSON_UINT32(failOp)
+        JSON_UINT32(passOp)
+        JSON_UINT32(depthFailOp)
+        JSON_UINT32(compareOp)
+        JSON_UINT32(compareMask)
+        JSON_UINT32(writeMask)
+        JSON_UINT32(reference)
+    JSON_END
+
+    JSON_BEGIN(VkPipelineDepthStencilStateCreateInfo)
+        JSON_BOOL   (depthTestEnable)
+        JSON_BOOL   (depthWriteEnable)
+        JSON_UINT32 (depthCompareOp)
+        JSON_BOOL   (depthBoundsTestEnable)
+        JSON_BOOL   (stencilTestEnable)
+        JSON_STRUCT (front)
+        JSON_STRUCT (back)
+        JSON_FLOAT  (minDepthBounds)
+        JSON_FLOAT  (maxDepthBounds)
+    JSON_END
+
+    JSON_BEGIN(VkPipelineColorBlendAttachmentState)
+        JSON_BOOL(blendEnable)
+        JSON_UINT32(srcColorBlendFactor)
+        JSON_UINT32(dstColorBlendFactor)
+        JSON_UINT32(colorBlendOp)
+        JSON_UINT32(srcAlphaBlendFactor)
+        JSON_UINT32(dstAlphaBlendFactor)
+        JSON_UINT32(alphaBlendOp)
+        JSON_UINT32(colorWriteMask)
+    JSON_END
+
+    JSON_BEGIN(VkPipelineColorBlendStateCreateInfo)
+        JSON_BOOL(logicOpEnable)
+        JSON_UINT32(logicOp)
+        JSON_ARRAY(blendConstants,4);
+        JSON_STRUCT_ARRAY(pAttachments,state->attachmentCount);
+    JSON_END
+
+    JSON_BEGIN(VkPipelineRasterizationStateCreateInfo)
+        JSON_BOOL(depthClampEnable)
+        JSON_BOOL(rasterizerDiscardEnable)
+        JSON_UINT32(polygonMode)
+        JSON_UINT32(cullMode)
+        JSON_UINT32(frontFace)
+        JSON_BOOL(depthBiasEnable)
+        JSON_FLOAT(depthBiasConstantFactor)
+        JSON_FLOAT(depthBiasClamp)
+        JSON_FLOAT(depthBiasSlopeFactor)
+        JSON_FLOAT(lineWidth)
+    JSON_END
+
+    JSON_BEGIN(VkPipelineMultisampleStateCreateInfo)
+        JSON_UINT32(rasterizationSamples)
+        JSON_BOOL(sampleShadingEnable)
+        JSON_FLOAT(minSampleShading)
+        JSON_BOOL(alphaToCoverageEnable)
+        JSON_BOOL(alphaToOneEnable)
+    JSON_END 
+
+    JSON_BEGIN(VkPipelineInputAssemblyStateCreateInfo)
+        JSON_UINT32(topology)
+        JSON_BOOL(primitiveRestartEnable)
+    JSON_END
+}//namespace
+
+void SaveToJSON(const OSString &filename,const VkGraphicsPipelineCreateInfo *state)
 {
     Json::Value root;
 
-    const auto root=toml::table
-    {
-        {"ver",toml::table{{"file",100},{"vulkan",100}}},
-        {"pDepthStencilState",  ToTOML(info->pDepthStencilState)},
-        {"pColorBlendState",    ToTOML(info->pColorBlendState)},
-        {"pRasterizationState", ToTOML(info->pRasterizationState)},
-        {"pMultisampleState",   ToTOML(info->pMultisampleState)},
-        {"pInputAssemblyState", ToTOML(info->pInputAssemblyState)}
-    };
+    root["ver"]=100;
+    root["vulkan"]=100;
 
-    std::stringstream ss;
-
-    ss<<root;
-
-    const std::string str=ss.str();
-
-    filesystem::SaveMemoryToFile(filename,str.c_str(),str.length());
+    JSON_OBJECT(pDepthStencilState)
+    JSON_OBJECT(pColorBlendState)
+    JSON_OBJECT(pRasterizationState)
+    JSON_OBJECT(pMultisampleState)
+    JSON_OBJECT(pInputAssemblyState)
+    
+    SaveJson(root,filename);
 }
