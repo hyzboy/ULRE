@@ -139,3 +139,13 @@ void SaveToJSON(const OSString &filename,const VkGraphicsPipelineCreateInfo *sta
     
     SaveJson(root,filename);
 }
+
+bool LoadFromJSON(const OSString &filename,const VkGraphicsPipelineCreateInfo *state)
+{
+    Json::Value root;
+
+    if(!LoadJson(root,filename))
+        return(false);
+
+
+}
