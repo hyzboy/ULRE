@@ -93,9 +93,12 @@ namespace hgl
         {
         }
 
+        if(is_close)
+            return(false);
+
         if(!active||is_min)
             this->WaitMessage();
 
-        return(!is_close);
+        return(true);
     }
 }//namespace hgl
