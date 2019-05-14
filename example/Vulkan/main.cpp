@@ -109,9 +109,9 @@ private:
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
-        SaveToJSON(OS_TEXT("pipeline.json"),pipeline_creater->GetInfo());
-
         pipeline=pipeline_creater->Create();
+
+        SaveToJSON(OS_TEXT("pipeline.json"),pipeline_creater->GetInfo());
 
         delete pipeline_creater;
         return pipeline;
