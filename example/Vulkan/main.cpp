@@ -7,7 +7,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-void SaveToJSON(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
+bool SaveToFile(const OSString &filename,const VkGraphicsPipelineCreateInfo *info);
 
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
@@ -102,18 +102,25 @@ private:
 
     bool InitPipeline()
     {
-        vulkan::PipelineCreater *
-        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass());
-        pipeline_creater->SetDepthTest(false);
-        pipeline_creater->SetDepthWrite(false);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_TRIANGLES);
+        constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
+
+        //vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass());
+        //pipeline_creater->SetDepthTest(false);
+        //pipeline_creater->SetDepthWrite(false);
+        //pipeline_creater->CloseCullFace();
+        //pipeline_creater->Set(PRIM_TRIANGLES);
+
+        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass());
 
         pipeline=pipeline_creater->Create();
 
-        SaveToJSON(OS_TEXT("pipeline.json"),pipeline_creater->GetInfo());
+        SaveToFile(PIPELINE_FILENAME,pipeline_creater->GetInfo());
 
         delete pipeline_creater;
+        delete pipeline;
+
+        
+
         return pipeline;
     }
 

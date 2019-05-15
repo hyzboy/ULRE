@@ -48,13 +48,12 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKMaterial.cpp
                                 VKRenderable.cpp)
 
-#SET(RENDER_DEVICE_VULKAN_TOML_SOURCE toml/VKPipelineCreateInfo.TOML.cpp)
-SET(RENDER_DEVICE_VULKAN_JSON_SOURCE json/VKPipelineCreateInfo.JSON.cpp)
+SET(RENDER_DEVICE_VULKAN_POD_SOURCE pod/VKPipelineCreateInfo.POD.cpp)
 
 SOURCE_GROUP("Header Files" FILES ${RENDER_DEVICE_VULKAN_HEADER})
 SOURCE_GROUP("Source Files" FILES ${RENDER_DEVICE_VULKAN_SOURCE})
-SOURCE_GROUP("JSON Source Files" FILES ${RENDER_DEVICE_VULKAN_JSON_SOURCE})
+SOURCE_GROUP("POD Source Files" FILES ${RENDER_DEVICE_VULKAN_POD_SOURCE})
 
 add_library(ULRE.RenderDevice.Vulkan STATIC ${RENDER_DEVICE_VULKAN_HEADER}
                                             ${RENDER_DEVICE_VULKAN_SOURCE}
-                                            ${RENDER_DEVICE_VULKAN_JSON_SOURCE})
+                                            ${RENDER_DEVICE_VULKAN_POD_SOURCE})
