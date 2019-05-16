@@ -2,6 +2,7 @@
 #define HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
+#include<hgl/io/DataOutputStream.h>
 VK_NAMESPACE_BEGIN
 class Pipeline
 {
@@ -103,7 +104,9 @@ public:
 
     void SetBlendConstans(float *blend_constans)        {hgl_typecpy(colorBlending.blendConstants,blend_constans,4);}
 
-    const VkGraphicsPipelineCreateInfo *GetInfo()const{return &pipelineInfo;}
+    bool SaveToStream(io::DataOutputStream *dos);
+    bool LoadFromMemory(uchar *,uint);
+    
     Pipeline *Create();
 };//class PipelineCreater
 VK_NAMESPACE_END
