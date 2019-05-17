@@ -106,17 +106,17 @@ private:
     {
         constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
 
-        //{
-        //    vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
-        //    pipeline_creater->SetDepthTest(false);
-        //    pipeline_creater->SetDepthWrite(false);
-        //    pipeline_creater->CloseCullFace();
-        //    pipeline_creater->Set(PRIM_TRIANGLES);
+        {
+            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
+            pipeline_creater->SetDepthTest(false);
+            pipeline_creater->SetDepthWrite(false);
+            pipeline_creater->CloseCullFace();
+            pipeline_creater->Set(PRIM_TRIANGLES);
 
-        //    SaveToFile(PIPELINE_FILENAME,pipeline_creater);
+            SaveToFile(PIPELINE_FILENAME,pipeline_creater);
 
-        //    delete pipeline_creater;
-        //}
+            delete pipeline_creater;
+        }
 
         {
             void *data;

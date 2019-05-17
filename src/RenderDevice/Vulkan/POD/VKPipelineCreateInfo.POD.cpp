@@ -9,35 +9,37 @@
 using namespace hgl;
 
 VK_NAMESPACE_BEGIN
+
+#define WRITE_AND_CHECK_SIZE(ptr,type)  if(dos->Write(ptr,sizeof(type))!=sizeof(type))return(false);
+
 bool PipelineCreater::SaveToStream(io::DataOutputStream *dos)
 {
     if(!dos)return(false);
 
-    dos->WriteUint16(1);     //file ver
+    if(!dos->WriteUint16(1))return(false);     //file ver
 
-    dos->Write(&pipelineInfo,sizeof(VkGraphicsPipelineCreateInfo));
+    WRITE_AND_CHECK_SIZE(&pipelineInfo,VkGraphicsPipelineCreateInfo);
+    WRITE_AND_CHECK_SIZE(pipelineInfo.pInputAssemblyState,  VkPipelineInputAssemblyStateCreateInfo  );
+    WRITE_AND_CHECK_SIZE(pipelineInfo.pTessellationState,   VkPipelineTessellationStateCreateInfo   );
+    WRITE_AND_CHECK_SIZE(pipelineInfo.pRasterizationState,  VkPipelineRasterizationStateCreateInfo  );
 
-    dos->Write(pipelineInfo.pInputAssemblyState,    sizeof(VkPipelineInputAssemblyStateCreateInfo));
-    dos->Write(pipelineInfo.pTessellationState,     sizeof(VkPipelineTessellationStateCreateInfo));
-    dos->Write(pipelineInfo.pRasterizationState,    sizeof(VkPipelineRasterizationStateCreateInfo));
-
-    dos->Write(pipelineInfo.pMultisampleState,      sizeof(VkPipelineMultisampleStateCreateInfo));
+    WRITE_AND_CHECK_SIZE(pipelineInfo.pMultisampleState,    VkPipelineMultisampleStateCreateInfo    );
     if(pipelineInfo.pMultisampleState->pSampleMask)
     {
         const uint count=(pipelineInfo.pMultisampleState->rasterizationSamples+31)/32;
-        dos->WriteUint8(count);
-        dos->WriteUint32(pipelineInfo.pMultisampleState->pSampleMask,count);
+        if(!dos->WriteUint8(count))return(false);
+        if(dos->WriteUint32(pipelineInfo.pMultisampleState->pSampleMask,count)!=count)return(false);
     }
     else
     {
-        dos->WriteUint8(0);
+        if(!dos->WriteUint8(0))return(false);
     }
 
-    dos->Write(pipelineInfo.pDepthStencilState,    sizeof(VkPipelineDepthStencilStateCreateInfo));
+    WRITE_AND_CHECK_SIZE(pipelineInfo.pDepthStencilState,   VkPipelineDepthStencilStateCreateInfo);
 
-    dos->Write(pipelineInfo.pColorBlendState,sizeof(VkPipelineColorBlendStateCreateInfo));
+    WRITE_AND_CHECK_SIZE(pipelineInfo.pColorBlendState,     VkPipelineColorBlendStateCreateInfo);
     for(uint32_t i=0;i<pipelineInfo.pColorBlendState->attachmentCount;i++)
-        dos->Write(pipelineInfo.pColorBlendState->pAttachments+i,sizeof(VkPipelineColorBlendAttachmentState));
+        WRITE_AND_CHECK_SIZE(pipelineInfo.pColorBlendState->pAttachments+i,VkPipelineColorBlendAttachmentState);
 
     return(true);
 }
