@@ -77,7 +77,12 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     InitVertexInputState(material);
 
-    pipelineInfo.pTessellationState=nullptr;
+    tessellation.sType=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+    tessellation.pNext=nullptr;
+    tessellation.flags=0;
+    tessellation.patchControlPoints=0;
+
+    pipelineInfo.pTessellationState=&tessellation;
 
     InitViewportState();
 
