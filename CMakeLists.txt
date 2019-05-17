@@ -38,7 +38,6 @@ add_definitions(-DGLFW_INCLUDE_VULKAN)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
-# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/toml11)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
@@ -52,7 +51,7 @@ add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(src)
 
 SET(ULRE    ULRE.Base
-            ULRE.Util
+#             ULRE.Util
             ULRE.RenderDevice.Vulkan
             ULRE.Platform
             MathGeoLib
