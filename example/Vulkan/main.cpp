@@ -3,6 +3,7 @@
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
+#include<hgl/filesystem/FileSystem.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -105,22 +106,24 @@ private:
     {
         constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
 
+        //{
+        //    vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
+        //    pipeline_creater->SetDepthTest(false);
+        //    pipeline_creater->SetDepthWrite(false);
+        //    pipeline_creater->CloseCullFace();
+        //    pipeline_creater->Set(PRIM_TRIANGLES);
+
+        //    SaveToFile(PIPELINE_FILENAME,pipeline_creater);
+
+        //    delete pipeline_creater;
+        //}
+
         {
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass());
-            pipeline_creater->SetDepthTest(false);
-            pipeline_creater->SetDepthWrite(false);
-            pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(PRIM_TRIANGLES);
+            void *data;
+            uint size=filesystem::LoadFileToMemory(PIPELINE_FILENAME,(void **)&data);
 
-            SaveToFile(PIPELINE_FILENAME,pipeline_creater);
+            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent(),(uchar *)data,size);
 
-            delete pipeline_creater;
-        }
-
-        {
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass());
-
-            LoadFromFile(PIPELINE_FILENAME,pipeline_creater);
             pipeline=pipeline_creater->Create();
 
             delete pipeline_creater;

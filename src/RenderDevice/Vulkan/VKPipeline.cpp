@@ -9,24 +9,10 @@ Pipeline::~Pipeline()
     vkDestroyPipeline(device,pipeline,nullptr);
 }
 
-PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass *rp)
+void PipelineCreater::InitVertexInputState(const Material *material)
 {
-    device=dev->GetDevice();
-    extent=dev->GetExtent();
-    cache=dev->GetPipelineCache();
-
-    //未来这里需要增加是否有vs/fs的检测
-
-    hgl_zero(pipelineInfo);
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.layout = material->GetPipelineLayout();
     pipelineInfo.stageCount = material->GetStageCount();
     pipelineInfo.pStages = material->GetStages();
-
-    {
-        pipelineInfo.renderPass = *rp;
-        pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
-    }
 
     {
         vis_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -37,7 +23,10 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
 
         pipelineInfo.pVertexInputState=&vis_create_info;
     }
+}
 
+void PipelineCreater::InitViewportState()
+{
     viewport.x = 0.0f;
     viewport.y = 0.0f;
     viewport.width = extent.width;
@@ -57,27 +46,40 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
     viewportState.pScissors = &scissor;
 
     pipelineInfo.pViewportState = &viewportState;
+}
 
-    depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencilState.pNext = nullptr;
-    depthStencilState.flags = 0;
-    depthStencilState.depthTestEnable = VK_TRUE;
-    depthStencilState.depthWriteEnable = VK_TRUE;
-    depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-    depthStencilState.depthBoundsTestEnable = VK_FALSE;
-    depthStencilState.minDepthBounds = 0;
-    depthStencilState.maxDepthBounds = 0;
-    depthStencilState.stencilTestEnable = VK_FALSE;
-    depthStencilState.back.failOp = VK_STENCIL_OP_KEEP;
-    depthStencilState.back.passOp = VK_STENCIL_OP_KEEP;
-    depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
-    depthStencilState.back.compareMask = 0;
-    depthStencilState.back.reference = 0;
-    depthStencilState.back.depthFailOp = VK_STENCIL_OP_KEEP;
-    depthStencilState.back.writeMask = 0;
-    depthStencilState.front = depthStencilState.back;
+void PipelineCreater::InitDynamicState()
+{
+    memset(dynamicStateEnables, 0, sizeof dynamicStateEnables);
 
-    pipelineInfo.pDepthStencilState=&depthStencilState;
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.pNext = nullptr;
+    dynamicState.flags = 0;
+    dynamicState.pDynamicStates = dynamicStateEnables;
+    dynamicState.dynamicStateCount = 0;
+    dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
+    dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
+
+    pipelineInfo.pDynamicState=&dynamicState;
+}
+
+//为什么一定要把ext放在这里，因为如果不放在这里，总是会让人遗忘它的重要性
+
+PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass *rp,const VkExtent2D &ext)
+{
+    device=dev->GetDevice();
+    extent=ext;
+    cache=dev->GetPipelineCache();
+
+    //未来这里需要增加是否有vs/fs的检测
+
+    hgl_zero(pipelineInfo);
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    InitVertexInputState(material);
+
+    pipelineInfo.pTessellationState=nullptr;
+
+    InitViewportState();
 
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.pNext = nullptr;
@@ -107,22 +109,46 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
 
     pipelineInfo.pMultisampleState = &multisampling;
 
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencilState.pNext = nullptr;
+    depthStencilState.flags = 0;
+    depthStencilState.depthTestEnable = VK_TRUE;
+    depthStencilState.depthWriteEnable = VK_TRUE;
+    depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    depthStencilState.depthBoundsTestEnable = VK_FALSE;
+    depthStencilState.minDepthBounds = 0;
+    depthStencilState.maxDepthBounds = 0;
+    depthStencilState.stencilTestEnable = VK_FALSE;
+    depthStencilState.back.failOp = VK_STENCIL_OP_KEEP;
+    depthStencilState.back.passOp = VK_STENCIL_OP_KEEP;
+    depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
+    depthStencilState.back.compareMask = 0;
+    depthStencilState.back.reference = 0;
+    depthStencilState.back.depthFailOp = VK_STENCIL_OP_KEEP;
+    depthStencilState.back.writeMask = 0;
+    depthStencilState.front = depthStencilState.back;
+
+    pipelineInfo.pDepthStencilState=&depthStencilState;
+
+    VkPipelineColorBlendAttachmentState cba;
+    cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    cba.blendEnable = VK_FALSE;
+    cba.alphaBlendOp = VK_BLEND_OP_ADD;
+    cba.colorBlendOp = VK_BLEND_OP_ADD;
+    cba.srcColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    cba.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+
+    colorBlendAttachments.Add(cba);
 
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlending.pNext = nullptr;
     colorBlending.flags = 0;
     colorBlending.logicOpEnable = VK_FALSE;
     colorBlending.logicOp = VK_LOGIC_OP_COPY;
-    colorBlending.attachmentCount = 1;
-    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.attachmentCount = colorBlendAttachments.GetCount();
+    colorBlending.pAttachments = colorBlendAttachments.GetData();
     colorBlending.blendConstants[0] = 0.0f;
     colorBlending.blendConstants[1] = 0.0f;
     colorBlending.blendConstants[2] = 0.0f;
@@ -130,19 +156,52 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
 
     pipelineInfo.pColorBlendState = &colorBlending;
 
-    memset(dynamicStateEnables, 0, sizeof dynamicStateEnables);
-    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.pNext = nullptr;
-    dynamicState.flags = 0;
-    dynamicState.pDynamicStates = dynamicStateEnables;
-    dynamicState.dynamicStateCount = 0;
-    dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
-    dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
+    InitDynamicState();
 
-    pipelineInfo.pDynamicState=&dynamicState;
+    pipelineInfo.layout = material->GetPipelineLayout();
+    {
+        pipelineInfo.renderPass = *rp;
+        pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
+    }
 
-    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-    pipelineInfo.basePipelineIndex = 0;
+    {
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = 0;
+    }
+}
+
+PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass *rp,const VkExtent2D &ext,uchar *data,uint size)
+{
+    LoadFromMemory(data,size);
+
+    device=dev->GetDevice();
+    extent=ext;
+    cache=dev->GetPipelineCache();
+
+    InitVertexInputState(material);
+
+    pipelineInfo.pInputAssemblyState=&inputAssembly;
+    pipelineInfo.pTessellationState =&tessellation;
+
+    InitViewportState();
+
+    pipelineInfo.pRasterizationState=&rasterizer;
+    pipelineInfo.pMultisampleState  =&multisampling;
+    pipelineInfo.pDepthStencilState =&depthStencilState;
+    pipelineInfo.pColorBlendState   =&colorBlending;
+
+    InitDynamicState();
+
+    pipelineInfo.layout = material->GetPipelineLayout();
+    {
+        pipelineInfo.renderPass = *rp;
+        pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
+    }
+
+    {
+        pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+        pipelineInfo.basePipelineIndex = 0;
+    }
 }
 
 bool PipelineCreater::Set(const VkPrimitiveTopology topology,bool restart)

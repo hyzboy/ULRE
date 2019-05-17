@@ -62,6 +62,11 @@ namespace hgl
         virtual void operator << (const T &obj){Add(obj);}                                          ///<操作符重载添加一个数据
         virtual void operator -= (const T &obj){DeleteByValue(obj);}                                ///<操作符重载删除一个数据
 
+                T *  GetPointer(const int index)                                                        ///<取得指定序列号数据的索引
+                {
+                    return(index>=count?nullptr:items+index);
+                }
+
                 bool Get(int,T &)const;                                                             ///<取得指定索引处的数据
                 void Set(int,const T &);                                                            ///<设置指定索引处的数据
                 bool Rand(T &)const;                                                                ///<随机取得一个数据
