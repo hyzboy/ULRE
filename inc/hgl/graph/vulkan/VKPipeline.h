@@ -17,6 +17,8 @@ public:
     operator VkPipeline(){return pipeline;}
 };//class GraphicsPipeline
 
+constexpr size_t MAX_SAMPLE_MASK_COUNT=(VK_SAMPLE_COUNT_64_BIT+31)/32;
+
 class PipelineCreater
 {
     VkDevice device;
@@ -25,26 +27,37 @@ class PipelineCreater
     VkGraphicsPipelineCreateInfo pipelineInfo;
 
     VkPipelineVertexInputStateCreateInfo vis_create_info;
+
+    void InitVertexInputState(const Material *);
+
     VkPipelineInputAssemblyStateCreateInfo inputAssembly;
+    VkPipelineTessellationStateCreateInfo tessellation;
 
     VkViewport viewport;
     VkRect2D scissor;
     VkPipelineViewportStateCreateInfo viewportState;
-    VkPipelineDepthStencilStateCreateInfo depthStencilState;
+
+    void InitViewportState();
 
     VkPipelineRasterizationStateCreateInfo rasterizer;
 
     VkPipelineMultisampleStateCreateInfo multisampling;
+    VkSampleMask sample_mask[MAX_SAMPLE_MASK_COUNT];
 
-    VkPipelineColorBlendAttachmentState colorBlendAttachment;
+    VkPipelineDepthStencilStateCreateInfo depthStencilState;
+
     VkPipelineColorBlendStateCreateInfo colorBlending;
+    List<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
 
     VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
     VkPipelineDynamicStateCreateInfo dynamicState;
 
+    void InitDynamicState();
+
 public:
 
-    PipelineCreater(Device *dev,const Material *,RenderPass *rp);
+    PipelineCreater(Device *dev,const Material *,RenderPass *rp,const VkExtent2D &);
+    PipelineCreater(Device *dev,const Material *,RenderPass *rp,const VkExtent2D &,uchar *,uint);
     ~PipelineCreater()=default;
 
     bool Set(const VkPrimitiveTopology,bool=false);
@@ -80,19 +93,43 @@ public:
         multisampling.rasterizationSamples=sc;
     }
 
-    void SetColorWriteMask(bool r,bool g,bool b,bool a)
+    bool SetColorWriteMask(uint index,bool r,bool g,bool b,bool a)
     {
-        colorBlendAttachment.colorWriteMask=0;
+        VkPipelineColorBlendAttachmentState *cba=colorBlendAttachments.GetPointer(index);
+        
+        if(!cba)return(false);
 
-        if(r)colorBlendAttachment.colorWriteMask|=VK_COLOR_COMPONENT_R_BIT;
-        if(r)colorBlendAttachment.colorWriteMask|=VK_COLOR_COMPONENT_G_BIT;
-        if(g)colorBlendAttachment.colorWriteMask|=VK_COLOR_COMPONENT_B_BIT;
-        if(a)colorBlendAttachment.colorWriteMask|=VK_COLOR_COMPONENT_A_BIT;
+        cba->colorWriteMask=0;
+
+        if(r)cba->colorWriteMask|=VK_COLOR_COMPONENT_R_BIT;
+        if(r)cba->colorWriteMask|=VK_COLOR_COMPONENT_G_BIT;
+        if(g)cba->colorWriteMask|=VK_COLOR_COMPONENT_B_BIT;
+        if(a)cba->colorWriteMask|=VK_COLOR_COMPONENT_A_BIT;
+
+        return(true);
     }
 
-    void SetBlend(      bool                blend)      {colorBlendAttachment.blendEnable=blend;}
-    void SetLogicOp(    VkLogicOp           logic_op)   {colorBlending.logicOpEnable=VK_TRUE;colorBlending.logicOp=logic_op;}
-    void DisableLogicOp()                               {colorBlending.logicOpEnable=VK_FALSE;}
+    void AddColorBlendAttachment(const VkPipelineColorBlendAttachmentState *cba)
+    {
+        if(!cba)return;
+
+        colorBlendAttachments.Add(*cba);
+        colorBlending.attachmentCount=colorBlendAttachments.GetCount();
+    }
+
+    bool SetBlend(uint index,bool blend)
+    {
+        VkPipelineColorBlendAttachmentState *cba=colorBlendAttachments.GetPointer(index);
+
+        if(!cba)return(false);
+
+        cba->blendEnable=blend;
+
+        return(true);
+    }
+
+    void SetLogicOp(VkLogicOp logic_op) {colorBlending.logicOpEnable=VK_TRUE;colorBlending.logicOp=logic_op;}
+    void DisableLogicOp()               {colorBlending.logicOpEnable=VK_FALSE;}
 
     void SetBlendConstans(float r,float g,float b,float a)
     {
