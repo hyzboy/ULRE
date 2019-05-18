@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/vulkan/VKSampler.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
@@ -146,6 +147,29 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
     #undef VK_CHECK_RESULT
     }
 
-    return(new Texture2D(width,height,tex_data));
+    return(new Texture2D(width,height,attr->device,tex_data));
+}
+
+Sampler *Device::CreateSampler(VkSamplerCreateInfo *sci)
+{
+    if(!sci)return(nullptr);
+
+    VkSampler sampler;
+
+    if(attr->physical_device->features.samplerAnisotropy) 
+    {
+        sci->maxAnisotropy = attr->physical_device->properties.limits.maxSamplerAnisotropy;
+        sci->anisotropyEnable = VK_TRUE;
+    } 
+    else 
+    {
+        sci->maxAnisotropy = 1.0;
+        sci->anisotropyEnable = VK_FALSE;
+    }
+
+    if(vkCreateSampler(attr->device,sci,nullptr,&sampler)!=VK_SUCCESS)
+        return(nullptr);
+
+    return(new Sampler(attr->device,sampler));
 }
 VK_NAMESPACE_END

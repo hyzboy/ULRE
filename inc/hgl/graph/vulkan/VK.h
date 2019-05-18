@@ -27,6 +27,8 @@ class Texture3D;
 class TextureCubemap;
 class TextureCubemapArray;
 
+class Sampler;
+
 class Buffer;
 class VertexBuffer;
 class IndexBuffer;
