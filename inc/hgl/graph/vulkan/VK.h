@@ -19,6 +19,14 @@ class Device;
 class ImageView;
 class Framebuffer;
 
+class Texture1D;
+class Texture1DArray;
+class Texture2D;
+class Texture2DArray;
+class Texture3D;
+class TextureCubemap;
+class TextureCubemapArray;
+
 class Buffer;
 class VertexBuffer;
 class IndexBuffer;

@@ -180,9 +180,8 @@ namespace
         VkImageCreateInfo image_info={};
 
         const VkFormat depth_format=VK_FORMAT_D16_UNORM;
-        VkFormatProperties props;
 
-        vkGetPhysicalDeviceFormatProperties(rsa->physical_device->physical_device,depth_format,&props);
+        const VkFormatProperties props=rsa->physical_device->GetFormatProperties(depth_format);
 
         if(props.linearTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
             image_info.tiling=VK_IMAGE_TILING_LINEAR;

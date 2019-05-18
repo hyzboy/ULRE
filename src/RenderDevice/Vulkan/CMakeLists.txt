@@ -21,7 +21,8 @@
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModule.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModuleManage.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSurfaceExtensionName.h
-                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKVertexAttributeBinding.h)
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKVertexAttributeBinding.h
+								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKTexture.h)
 
 SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKInstance.cpp
@@ -32,6 +33,7 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKDeviceCreater.cpp
                                 VKDevice.cpp
                                 VKDeviceBuffer.cpp
+								VKDeviceTexture.cpp
                                 VKBuffer.cpp
                                 VKDescriptorSets.cpp
                                 VKDescriptorSetLayoutCreater.cpp
@@ -46,7 +48,8 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKFramebuffer.cpp
                                 VKFence.cpp
                                 VKMaterial.cpp
-                                VKRenderable.cpp)
+                                VKRenderable.cpp
+								VKTexture.cpp)
 
 SET(RENDER_DEVICE_VULKAN_POD_SOURCE pod/VKPipelineCreateInfo.POD.cpp)
 

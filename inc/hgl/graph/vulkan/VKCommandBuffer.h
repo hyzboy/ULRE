@@ -20,6 +20,7 @@ public:
 
     operator VkCommandBuffer(){return cmd_buf;}
     operator const VkCommandBuffer()const{return cmd_buf;}
+    operator const VkCommandBuffer *()const{return &cmd_buf;}
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetClearColor(float r,float g,float b,float a=1.0f)
@@ -39,6 +40,31 @@ public:
     //以上设定在Begin开始后即不可改变
 
     bool Begin();
+
+    void PipelineBarrier(
+        VkPipelineStageFlags                        srcStageMask,
+        VkPipelineStageFlags                        dstStageMask,
+        VkDependencyFlags                           dependencyFlags,
+        uint32_t                                    memoryBarrierCount,
+        const VkMemoryBarrier*                      pMemoryBarriers,
+        uint32_t                                    bufferMemoryBarrierCount,
+        const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
+        uint32_t                                    imageMemoryBarrierCount,
+        const VkImageMemoryBarrier*                 pImageMemoryBarriers)
+    {
+        vkCmdPipelineBarrier(cmd_buf,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
+    }
+
+    void CopyBufferToImage(
+        VkBuffer                                    srcBuffer,
+        VkImage                                     dstImage,
+        VkImageLayout                               dstImageLayout,
+        uint32_t                                    regionCount,
+        const VkBufferImageCopy*                    pRegions)
+    {
+        vkCmdCopyBufferToImage(cmd_buf,srcBuffer,dstImage,dstImageLayout,regionCount,pRegions);
+    }
+
     bool BeginRenderPass(RenderPass *rp,Framebuffer *fb);
     bool Bind(Pipeline *p);
     bool Bind(DescriptorSets *,int first=0,int count=0);
