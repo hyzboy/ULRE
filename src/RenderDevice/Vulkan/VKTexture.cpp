@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/vulkan/VKImageView.h>
 VK_NAMESPACE_BEGIN
 Texture::~Texture()
 {
