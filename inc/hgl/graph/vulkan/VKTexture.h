@@ -23,7 +23,7 @@ public:
 
     operator VkImage        (){return data?data->image:nullptr;}
     operator VkImageLayout  (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
-    operator VkImageView    (){return data?*(data->image_view):nullptr;}
+    operator ImageView *    (){return data?data->image_view:nullptr;}
 
     const uint32    GetMipLevels()const{return data?data->mip_levels:0;}
     const bool      IsLinear    ()const{return data?data->linear:false;}
@@ -57,6 +57,9 @@ public:
 
     Texture2D(uint32_t w,uint32_t h,VkDevice dev,TextureData *td):width(w),height(h),Texture(dev,td){}
     ~Texture2D()=default;
+
+    const uint32_t GetWidth()const{return width;}
+    const uint32_t GetHeight()const{return height;}
 };//class Texture2D:public Texture
 
 //class Texture2DArray:public Texture
