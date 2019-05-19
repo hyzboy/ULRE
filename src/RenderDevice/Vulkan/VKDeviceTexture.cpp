@@ -22,12 +22,26 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 {
     if(!data||width<=1||height<=1)return(nullptr);
 
-    if(force_linear)
-    {
-        const VkFormatProperties fp=attr->physical_device->GetFormatProperties(video_format);
+    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(video_format);
 
-        if(!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))      //如果不能用线性存储
-            force_linear=false;
+    if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)        
+    {
+        if(force_linear)
+        {
+            if(!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
+                force_linear=false;
+        }
+    }
+    else    //不能用优化存储，这种现像好像不存在啊    
+    {
+        if(!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
+        {
+            //也不能用线性储存？？WTF ?
+            return(nullptr);
+        }
+
+        force_linear=true;
+        return(nullptr);        //这个我们暂时不支持
     }
 
     TextureData *tex_data=new TextureData();
@@ -49,7 +63,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 
         Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
-        VkBufferImageCopy buffer_image_copy;
+        VkBufferImageCopy buffer_image_copy{};
         buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         buffer_image_copy.imageSubresource.mipLevel = 0;
         buffer_image_copy.imageSubresource.baseArrayLayer = 0;
@@ -63,7 +77,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 
         VkDeviceMemory device_memory;
 
-        VkImageCreateInfo imageCreateInfo;
+        VkImageCreateInfo imageCreateInfo{};
         imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
         imageCreateInfo.format = video_format;
@@ -78,8 +92,8 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         VK_CHECK_RESULT(vkCreateImage(attr->device, &imageCreateInfo, nullptr, &tex_data->image))
 
-        VkMemoryAllocateInfo memAllocInfo;
-        VkMemoryRequirements memReqs;
+        VkMemoryAllocateInfo memAllocInfo{};
+        VkMemoryRequirements memReqs{};
 
         memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 
@@ -97,7 +111,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         subresourceRange.levelCount = 1;
         subresourceRange.layerCount = 1;
 
-        VkImageMemoryBarrier imageMemoryBarrier;
+        VkImageMemoryBarrier imageMemoryBarrier{};
         imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
