@@ -1,11 +1,16 @@
-ï»¿// 1.indices_rect
-// è¯¥ç¤ºä¾‹æ˜¯0.triangleçš„è¿›åŒ–ï¼Œæ¼”ç¤ºä½¿ç”¨ç´¢å¼•æ•°æ®ç”»ä¸€ä¸ªçŸ©å½¢
+// 1.indices_rect
+// ¸ÃÊ¾ÀıÊÇ0.triangleµÄ½ø»¯£¬ÑİÊ¾Ê¹ÓÃË÷ÒıÊı¾İ»­Ò»¸ö¾ØĞÎ
 
 #include"VulkanAppFramework.h"
+#include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
 using namespace hgl::graph;
+
+VK_NAMESPACE_BEGIN
+Texture2D *LoadTGATexture(const OSString &filename,Device *device);
+VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
@@ -40,6 +45,7 @@ private:
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
+    vulkan::Texture2D *         texture             =nullptr;
     vulkan::DescriptorSets *    desciptor_sets      =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
@@ -61,6 +67,7 @@ public:
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
         SAFE_CLEAR(desciptor_sets);
+        SAFE_CLEAR(texture);
         SAFE_CLEAR(material);
     }
 
@@ -75,6 +82,8 @@ private:
 
         render_obj=material->CreateRenderable();
         desciptor_sets=material->CreateDescriptorSets();
+
+        texture=vulkan::LoadTGATexture(OS_TEXT("lena.tga"),device);
         return(true);
     }
 
@@ -104,7 +113,7 @@ private:
     bool InitPipeline()
     {
         vulkan::PipelineCreater *
-        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
+            pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->CloseCullFace();
@@ -130,12 +139,12 @@ private:
                 return(false);
 
             cmd_buf[i]->Begin();
-                cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-                    cmd_buf[i]->Bind(pipeline);
-                    cmd_buf[i]->Bind(desciptor_sets);
-                    cmd_buf[i]->Bind(render_obj);
-                    cmd_buf[i]->DrawIndexed(INDEX_COUNT);
-                cmd_buf[i]->EndRenderPass();
+            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
+            cmd_buf[i]->Bind(pipeline);
+            cmd_buf[i]->Bind(desciptor_sets);
+            cmd_buf[i]->Bind(render_obj);
+            cmd_buf[i]->DrawIndexed(INDEX_COUNT);
+            cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
 
@@ -180,10 +189,10 @@ public:
 
 int main(int,char **)
 {
-    #ifdef _DEBUG
+#ifdef _DEBUG
     if(!vulkan::CheckStrideBytesByFormat())
         return 0xff;
-    #endif//
+#endif//
 
     TestApp app;
 
