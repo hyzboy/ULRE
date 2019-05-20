@@ -1,5 +1,5 @@
-// 1.indices_rect
-// ¸ÃÊ¾ÀýÊÇ0.triangleµÄ½ø»¯£¬ÑÝÊ¾Ê¹ÓÃË÷ÒýÊý¾Ý»­Ò»¸ö¾ØÐÎ
+ï»¿// 2.texture_rect
+// è¯¥ç¤ºä¾‹æ˜¯1.indices_rectçš„è¿›åŒ–ï¼Œæ¼”ç¤ºåœ¨çŸ©å½¢ä¸Šè´´ä¸Šè´´å›¾
 
 #include"VulkanAppFramework.h"
 #include<hgl/graph/vulkan/VKTexture.h>
@@ -13,8 +13,8 @@ VK_NAMESPACE_BEGIN
 Texture2D *LoadTGATexture(const OSString &filename,Device *device);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 struct WorldConfig
 {
