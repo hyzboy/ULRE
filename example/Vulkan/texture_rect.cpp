@@ -13,8 +13,8 @@ VK_NAMESPACE_BEGIN
 Texture2D *LoadTGATexture(const OSString &filename,Device *device);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=256;
-constexpr uint32_t SCREEN_HEIGHT=256;
+constexpr uint32_t SCREEN_WIDTH=512;
+constexpr uint32_t SCREEN_HEIGHT=512;
 
 struct WorldConfig
 {
@@ -118,7 +118,7 @@ private:
         image_info.imageLayout  =*texture;
         image_info.sampler      =*sampler;
 
-        desciptor_sets->UpdateSampler(material->GetCombindImageSampler("texture_lena"),&image_info);
+        desciptor_sets->UpdateSampler(material->GetSampler("texture_lena"),&image_info);
         return(true);
     }
 

@@ -31,10 +31,10 @@ public:
     const int GetBinding(VkDescriptorType,const UTF8String &)const;
 
 #define GET_BO_BINDING(name,vk_name)    const int Get##name(const UTF8String &obj_name)const{return GetBinding(VK_DESCRIPTOR_TYPE_##vk_name,obj_name);}
-        GET_BO_BINDING(Sampler,             SAMPLER)
+//        GET_BO_BINDING(Sampler,             SAMPLER)
 
-        GET_BO_BINDING(CombindImageSampler, COMBINED_IMAGE_SAMPLER)
-        GET_BO_BINDING(SampledImage,        SAMPLED_IMAGE)
+        GET_BO_BINDING(Sampler,             COMBINED_IMAGE_SAMPLER)
+//        GET_BO_BINDING(SampledImage,        SAMPLED_IMAGE)
         GET_BO_BINDING(StorageImage,        STORAGE_IMAGE)
 
         GET_BO_BINDING(UTBO,                UNIFORM_TEXEL_BUFFER)
