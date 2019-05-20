@@ -1,4 +1,4 @@
-﻿#version 450 core
+#version 450 core
 
 layout(binding = 2) uniform sampler2D texture_lena;
 
