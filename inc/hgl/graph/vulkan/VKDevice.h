@@ -15,7 +15,9 @@ class Device
     DeviceAttribute *attr;
 
     Semaphore *image_acquired_semaphore;
-    Fence *draw_fence;
+    Fence *draw_fence,*texture_fence;
+
+    VkSubmitInfo texture_submitInfo;
 
     RenderPass *main_rp;
     ObjectList<Framebuffer> main_fb;
@@ -103,7 +105,8 @@ public: //Command Buffer 相关
 public: //提交相关
 
     bool AcquireNextImage   ();
-    bool QueueSubmit        (const VkCommandBuffer *,const uint32_t count=1);
+    bool SubmitDraw         (const VkCommandBuffer *,const uint32_t count=1);
+    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);
     bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
     bool QueuePresent       ();
 };//class Device
