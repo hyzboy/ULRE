@@ -61,4 +61,3 @@ SET(ULRE    ULRE.Base
             ${Vulkan_LIBRARIES})
 
 add_subdirectory(example)
-# add_executable(WIP WIP.cpp)
