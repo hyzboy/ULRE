@@ -131,6 +131,9 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
     if(tex)
     {
         LOG_INFO(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header->width)+OS_TEXT("x")+OSString(header->height)+OS_TEXT("> to texture ok"));
+
+        //下面代码用于测试修改纹理
+        //device->ChangeTexture2D(tex,pixel_data,header->width/4,header->height/4,header->width/2,header->height/2,line_size*header->height/4);
     }
     else
     {
