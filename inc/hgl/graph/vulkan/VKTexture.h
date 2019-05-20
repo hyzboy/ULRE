@@ -2,9 +2,11 @@
 #define HGL_GRAPH_VULKAN_TEXTURE_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKImageView.h>
 VK_NAMESPACE_BEGIN
 struct TextureData
 {
+    VkDeviceMemory memory;
     VkImage image;
     VkImageLayout image_layout;
     ImageView *image_view;
@@ -23,7 +25,7 @@ public:
 
     operator VkImage        (){return data?data->image:nullptr;}
     operator VkImageLayout  (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
-    operator ImageView *    (){return data?data->image_view:nullptr;}
+    operator VkImageView    (){return data?data->image_view->operator VkImageView():nullptr;}
 
     const uint32    GetMipLevels()const{return data?data->mip_levels:0;}
     const bool      IsLinear    ()const{return data?data->linear:false;}

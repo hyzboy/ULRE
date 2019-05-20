@@ -28,7 +28,7 @@ ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *
 
     EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER],sp->GetUBO());
     EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER],sp->GetSSBO());
-    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE],sp->GetSampler());
+    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER],sp->GetSampler());
 }
 
 ShaderModule::~ShaderModule()

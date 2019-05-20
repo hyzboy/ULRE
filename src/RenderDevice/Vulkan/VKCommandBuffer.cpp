@@ -80,19 +80,12 @@ bool CommandBuffer::Bind(Pipeline *p)
     return(true);
 }
 
-bool CommandBuffer::Bind(DescriptorSets *dsl,int first,int count)
+bool CommandBuffer::Bind(DescriptorSets *dsl)
 {
     if(!dsl)
         return(false);
 
-    if(first<0)
-        first=0;
-
-    if(count==0||first+count>dsl->GetCount())
-        count=dsl->GetCount()-first;
-
-    if(count>0)
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,dsl->GetPipelineLayout(),first,count,dsl->GetDescriptorSets(),0,nullptr);
+    vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,dsl->GetPipelineLayout(),0,1,dsl->GetDescriptorSets(),0,nullptr);
 
     return(true);
 }

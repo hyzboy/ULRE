@@ -242,21 +242,18 @@ namespace
 
     VkDescriptorPool CreateDescriptorPool(VkDevice device,int sets_count)
     {
-        constexpr size_t DESC_POOL_COUNT=1;
+        VkDescriptorPoolSize pool_size[2];
 
-        VkDescriptorPoolSize pool_size[DESC_POOL_COUNT];
-
-        for(size_t i=0;i<DESC_POOL_COUNT;i++)
-        {
-            pool_size[i].type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            pool_size[i].descriptorCount=1;
-        }
+        pool_size[0].type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        pool_size[0].descriptorCount=1024;
+        pool_size[1].type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        pool_size[1].descriptorCount=1024;
 
         VkDescriptorPoolCreateInfo dp_create_info={};
         dp_create_info.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         dp_create_info.pNext=nullptr;
         dp_create_info.maxSets=sets_count;
-        dp_create_info.poolSizeCount=DESC_POOL_COUNT;
+        dp_create_info.poolSizeCount=2;
         dp_create_info.pPoolSizes=pool_size;
 
         VkDescriptorPool desc_pool;
@@ -327,7 +324,7 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     if(!CreateSwapchinAndImageView(attr))
         return(nullptr);
 
-    attr->desc_pool=CreateDescriptorPool(attr->device,1);
+    attr->desc_pool=CreateDescriptorPool(attr->device,1024);
 
     if(!attr->desc_pool)
         return(nullptr);
