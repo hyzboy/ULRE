@@ -2,6 +2,7 @@
 #include<hgl/graph/vulkan/VKSampler.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
+#include<hgl/graph/vulkan/VKFence.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 VK_NAMESPACE_BEGIN
@@ -59,7 +60,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
     }
     else
     {
-    #define VK_CHECK_RESULT(func)   if(func!=VK_SUCCESS){delete tex_data;return(nullptr);}
+    #define VK_CHECK_RESULT(func)   if(func!=VK_SUCCESS){delete tex_data;delete buf;return(nullptr);}
 
         Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
@@ -152,8 +153,9 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
             1, &imageMemoryBarrier);
 
         cmd_buf->End();
-        QueueSubmit(*cmd_buf);
-        Wait();
+
+        SubmitTexture(*cmd_buf);
+
         delete buf;
 
         tex_data->image_view=CreateImageView2D(attr->device,video_format,VK_IMAGE_ASPECT_COLOR_BIT,tex_data->image);
@@ -162,6 +164,22 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
     }
 
     return(new Texture2D(width,height,attr->device,tex_data));
+}
+
+bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
+{
+    if(!cmd_bufs||count<=0)
+        return(false);
+
+    texture_submitInfo.commandBufferCount = count;
+    texture_submitInfo.pCommandBuffers = cmd_bufs;
+
+    VkFence fence=*texture_fence;
+
+    if(vkQueueSubmit(attr->graphics_queue, 1, &texture_submitInfo, fence))return(false);
+    if(vkWaitForFences(attr->device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC*0.1)!=VK_SUCCESS)return(false);
+
+    return(true);
 }
 
 Sampler *Device::CreateSampler(VkSamplerCreateInfo *sci)

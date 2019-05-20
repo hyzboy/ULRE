@@ -81,7 +81,7 @@ public:
 
     void Submit(const VkCommandBuffer cmd_buf)
     {
-        device->QueueSubmit(&cmd_buf);
+        device->SubmitDraw(&cmd_buf);
         device->Wait();
         device->QueuePresent();
     }

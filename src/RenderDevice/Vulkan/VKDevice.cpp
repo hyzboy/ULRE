@@ -21,6 +21,10 @@ Device::Device(DeviceAttribute *da)
 
     image_acquired_semaphore=this->CreateSem();
     draw_fence=this->CreateFence();
+    texture_fence=this->CreateFence();
+
+    hgl_zero(texture_submitInfo);
+    texture_submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present.pNext = nullptr;
@@ -42,6 +46,7 @@ Device::~Device()
     delete main_rp;
 
     delete image_acquired_semaphore;
+    delete texture_fence;
     delete draw_fence;
 
     delete attr;
@@ -217,9 +222,9 @@ bool Device::AcquireNextImage()
     return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*image_acquired_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
 }
 
-bool Device::QueueSubmit(const VkCommandBuffer *cmd_bufs,const uint32_t count)
+bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 {
-    if(!cmd_bufs)
+    if(!cmd_bufs||count<=0)
         return(false);
 
     VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
