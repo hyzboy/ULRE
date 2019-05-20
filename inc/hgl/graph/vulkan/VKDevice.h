@@ -18,6 +18,7 @@ class Device
     Fence *draw_fence,*texture_fence;
 
     VkSubmitInfo texture_submitInfo;
+    CommandBuffer *texture_cmd_buf;
 
     RenderPass *main_rp;
     ObjectList<Framebuffer> main_fb;

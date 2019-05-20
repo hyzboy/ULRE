@@ -103,8 +103,6 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         VK_CHECK_RESULT(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &tex_data->memory))
         VK_CHECK_RESULT(vkBindImageMemory(attr->device, tex_data->image, tex_data->memory, 0))
 
-        CommandBuffer *cmd_buf=CreateCommandBuffer();
-        
         VkImageSubresourceRange subresourceRange = {};
         subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         subresourceRange.baseMipLevel = 0;
@@ -122,8 +120,8 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-        cmd_buf->Begin();
-        cmd_buf->PipelineBarrier(
+        texture_cmd_buf->Begin();
+        texture_cmd_buf->PipelineBarrier(
             VK_PIPELINE_STAGE_HOST_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             0,
@@ -131,7 +129,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
             0, nullptr,
             1, &imageMemoryBarrier);
 
-        cmd_buf->CopyBufferToImage(
+        texture_cmd_buf->CopyBufferToImage(
             *buf,
             tex_data->image,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -143,7 +141,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        cmd_buf->PipelineBarrier(
+        texture_cmd_buf->PipelineBarrier(
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             0,
@@ -151,9 +149,9 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
             0, nullptr,
             1, &imageMemoryBarrier);
 
-        cmd_buf->End();
+        texture_cmd_buf->End();
 
-        SubmitTexture(*cmd_buf);
+        SubmitTexture(*texture_cmd_buf);
 
         delete buf;
 

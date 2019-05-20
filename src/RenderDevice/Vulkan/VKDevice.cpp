@@ -25,6 +25,7 @@ Device::Device(DeviceAttribute *da)
 
     hgl_zero(texture_submitInfo);
     texture_submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    texture_cmd_buf=CreateCommandBuffer();
 
     present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present.pNext = nullptr;
@@ -46,6 +47,8 @@ Device::~Device()
     delete main_rp;
 
     delete image_acquired_semaphore;
+
+    delete texture_cmd_buf;
     delete texture_fence;
     delete draw_fence;
 
