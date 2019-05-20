@@ -13,7 +13,7 @@ class DescriptorSetLayoutCreater
     Device *device;
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
-    VkDescriptorSetLayout *dsl_list=nullptr;
+    VkDescriptorSetLayout dsl=nullptr;
     Map<uint32_t,int> index_by_binding;
 
     VkPipelineLayout pipeline_layout=nullptr;
@@ -25,11 +25,14 @@ public:
 
     void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);
     void Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType type,VkShaderStageFlagBits stage);
-    void Bind(const ShaderResourceList &srl,VkDescriptorType type,VkShaderStageFlagBits stage){Bind(srl.binding_list.GetData(),srl.binding_list.GetCount(),type,stage);}
+    void Bind(const ShaderResourceList &srl,VkDescriptorType type,VkShaderStageFlagBits stage){if(srl.binding_list.GetCount()>0)Bind(srl.binding_list.GetData(),srl.binding_list.GetCount(),type,stage);}
     void Bind(const ShaderResource &sr,VkShaderStageFlagBits stage)
     {
         for(uint32_t i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)
-            Bind(sr[i],(VkDescriptorType)i,stage);
+        {
+            if(sr[i].binding_list.GetCount()>0)
+                Bind(sr[i],(VkDescriptorType)i,stage);
+        }
     }
 
 //以下代码不再需要，使用一个void Bind(const ShaderResource &sr,VkShaderStageFlagBits stage)即可全部替代，而且更方便，但以此为提示

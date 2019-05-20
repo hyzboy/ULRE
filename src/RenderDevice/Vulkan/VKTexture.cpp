@@ -10,5 +10,8 @@ Texture::~Texture()
 
     if(data->image)
         vkDestroyImage(device,data->image,nullptr);
+
+    if(data->memory)
+        vkFreeMemory(device,data->memory,nullptr);
 }
 VK_NAMESPACE_END

@@ -47,6 +47,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 
     TextureData *tex_data=new TextureData();
 
+    tex_data->memory=nullptr;
     tex_data->image=nullptr;
     tex_data->image_view=nullptr;
 
@@ -76,8 +77,6 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 
         tex_data->image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        VkDeviceMemory device_memory;
-
         VkImageCreateInfo imageCreateInfo{};
         imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -101,8 +100,8 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         vkGetImageMemoryRequirements(attr->device, tex_data->image, &memReqs);
         memAllocInfo.allocationSize = memReqs.size;
         attr->CheckMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,&memAllocInfo.memoryTypeIndex);
-        VK_CHECK_RESULT(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &device_memory))
-        VK_CHECK_RESULT(vkBindImageMemory(attr->device, tex_data->image, device_memory, 0))
+        VK_CHECK_RESULT(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &tex_data->memory))
+        VK_CHECK_RESULT(vkBindImageMemory(attr->device, tex_data->image, tex_data->memory, 0))
 
         CommandBuffer *cmd_buf=CreateCommandBuffer();
         
@@ -188,12 +187,14 @@ Sampler *Device::CreateSampler(VkSamplerCreateInfo *sci)
 
     VkSampler sampler;
 
-    if(attr->physical_device->features.samplerAnisotropy) 
-    {
-        sci->maxAnisotropy = attr->physical_device->properties.limits.maxSamplerAnisotropy;
-        sci->anisotropyEnable = VK_TRUE;
-    } 
-    else 
+    sci->sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+
+    //if(attr->physical_device->features.samplerAnisotropy)         //不知道为什么不准，先全部禁用吧
+    //{
+    //    sci->maxAnisotropy = attr->physical_device->properties.limits.maxSamplerAnisotropy;
+    //    sci->anisotropyEnable = VK_TRUE;
+    //} 
+    //else 
     {
         sci->maxAnisotropy = 1.0;
         sci->anisotropyEnable = VK_FALSE;

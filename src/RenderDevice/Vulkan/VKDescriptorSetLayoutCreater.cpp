@@ -3,31 +3,13 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-namespace
-{
-    void DestroyDescriptorSetLayout(VkDevice device,const int count,VkDescriptorSetLayout *dsl_list)
-    {
-        if(count<=0)
-            return;
-
-        for(int i=0;i<count;i++)
-        {
-            vkDestroyDescriptorSetLayout(device,*dsl_list,nullptr);
-            ++dsl_list;
-        }
-    }
-}//namespace
-
 DescriptorSetLayoutCreater::~DescriptorSetLayoutCreater()
 {
     if(pipeline_layout)
         vkDestroyPipelineLayout(*device,pipeline_layout,nullptr);
 
-    if(dsl_list)
-    {
-        DestroyDescriptorSetLayout(*device,layout_binding_list.GetCount(),dsl_list);
-        delete[] dsl_list;
-    }
+    if(dsl)
+        vkDestroyDescriptorSetLayout(*device,dsl,nullptr);
 }
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
@@ -46,6 +28,8 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType de
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
+    if(!binding||count<=0)return;
+
     const uint old_count=layout_binding_list.GetCount();
 
     layout_binding_list.SetCount(old_count+count);
@@ -80,30 +64,29 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     descriptor_layout.bindingCount = count;
     descriptor_layout.pBindings = layout_binding_list.GetData();
 
-    dsl_list=new VkDescriptorSetLayout[count];
+    if(dsl)
+        vkDestroyDescriptorSetLayout(*device,dsl,nullptr);
 
-    if(vkCreateDescriptorSetLayout(*device,&descriptor_layout,nullptr,dsl_list)==VK_SUCCESS)
-    {
-        VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-        pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pPipelineLayoutCreateInfo.pNext = nullptr;
-        pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-        pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-        pPipelineLayoutCreateInfo.setLayoutCount = count;
-        pPipelineLayoutCreateInfo.pSetLayouts = dsl_list;
+    if(vkCreateDescriptorSetLayout(*device,&descriptor_layout,nullptr,&dsl)!=VK_SUCCESS)
+        return(false);
+    
+    VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
+    pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pPipelineLayoutCreateInfo.pNext = nullptr;
+    pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+    pPipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pPipelineLayoutCreateInfo.setLayoutCount = 1;
+    pPipelineLayoutCreateInfo.pSetLayouts = &dsl;
 
-        if(vkCreatePipelineLayout(*device,&pPipelineLayoutCreateInfo,nullptr,&pipeline_layout)==VK_SUCCESS)
-            return(true);
-    }
+    if(vkCreatePipelineLayout(*device,&pPipelineLayoutCreateInfo,nullptr,&pipeline_layout)!=VK_SUCCESS)
+        return(false);
 
-    delete[] dsl_list;
-    dsl_list=nullptr;
-    return(false);
+    return(true);
 }
 
 DescriptorSets *DescriptorSetLayoutCreater::Create()
 {
-    if(!pipeline_layout||!dsl_list)
+    if(!pipeline_layout||!dsl)
         return(nullptr);
 
     const int count=layout_binding_list.GetCount();
@@ -115,16 +98,13 @@ DescriptorSets *DescriptorSetLayoutCreater::Create()
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.pNext = nullptr;
     alloc_info.descriptorPool = device->GetDescriptorPool();
-    alloc_info.descriptorSetCount = count;
-    alloc_info.pSetLayouts = dsl_list;
+    alloc_info.descriptorSetCount = 1;
+    alloc_info.pSetLayouts = &dsl;
 
-    VkDescriptorSet *desc_set=new VkDescriptorSet[count];
+    VkDescriptorSet desc_set;
 
-    if(vkAllocateDescriptorSets(*device,&alloc_info,desc_set)!=VK_SUCCESS)
-    {
-        delete[] desc_set;
+    if(vkAllocateDescriptorSets(*device,&alloc_info,&desc_set)!=VK_SUCCESS)
         return(nullptr);
-    }
 
     return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding));
 }

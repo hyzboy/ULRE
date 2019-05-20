@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -54,6 +55,25 @@ namespace
             src+=3;
         }
     }
+
+    void SwapRow(uint8 *data,uint line_size,uint height)
+    {
+        uint8 *top=data;
+        uint8 *bottom=data+(height-1)*line_size;
+        uint8 *tmp=new uint8[line_size];
+
+        while(top<bottom)
+        {
+            memcpy(tmp,bottom,line_size);
+            memcpy(bottom,top,line_size);
+            memcpy(top,tmp,line_size);
+
+            top+=line_size;
+            bottom-=line_size;
+        }
+
+        delete[] tmp;
+    }
 }//namespace
 
 Texture2D *LoadTGATexture(const OSString &filename,Device *device)
@@ -63,70 +83,61 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
     if(file_length<=0)
     {
-        std::cerr<<"[ERROR] open file<"<<filename.c_str()<<"> failed."<<std::endl;
+        LOG_ERROR(OS_TEXT("[ERROR] open file<")+filename+OS_TEXT("> failed."));
         return(nullptr);
     }
 
     TGAHeader *header=(TGAHeader *)data;
+    TGAImageDesc image_desc;
+    uint8 *pixel_data=data+sizeof(TGAHeader);
+
+    image_desc.image_desc=header->image_desc;
 
     VkFormat format;
-    uint pixels_size=0;
+    uint line_size;
 
     if(header->image_type==2)
     {
         if(header->bit==24)
         {
-            RGB8to565(data+sizeof(TGAHeader),header->width*header->height);
+            RGB8to565(pixel_data,header->width*header->height);
 
-            format=FMT_RGB565;
-            pixels_size=header->width*header->height*2;
+            format=FMT_BGR565;
+            line_size=header->width*2;
         }
         else if(header->bit==32)
         {
             format=FMT_RGBA8UN;
-            pixels_size=header->width*header->height*4;
+            line_size=header->width*4;
         }
     }
     else if(header->image_type==3&&header->bit==8)
     {
         format=FMT_R8UN;
-        pixels_size=header->width*header->height;
+        line_size=header->width;
     }
     else
     {
-        std::cerr<<"[ERROR] Image format error,filename: "<<filename.c_str()<<std::endl;
+        LOG_ERROR(OS_TEXT("[ERROR] Image format error,filename: ")+filename);
         delete[] data;
         return(nullptr);
     }
 
-    Texture2D *tex=device->CreateTexture2D(format,data+sizeof(TGAHeader),header->width,header->height,pixels_size);
+    if(image_desc.direction==0)
+        SwapRow(pixel_data,line_size,header->height);
+
+    Texture2D *tex=device->CreateTexture2D(format,pixel_data,header->width,header->height,line_size*header->height);
 
     if(tex)
     {
-        std::cout<<"load image file<"<<filename.c_str()<<">:<"<<header->width<<"x"<<header->height<<"> to texture ok"<<std::endl;
+        LOG_INFO(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header->width)+OS_TEXT("x")+OSString(header->height)+OS_TEXT("> to texture ok"));
     }
     else
     {
-        std::cout<<"load image file<"<<filename.c_str()<<">:<"<<header->width<<"x"<<header->height<<"> to texture failed."<<std::endl;
+        LOG_ERROR(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header->width)+OS_TEXT("x")+OSString(header->height)+OS_TEXT("> to texture failed."));
     }
 
     delete[] data;
     return(tex);
 }
-
-//GLuint CreateSamplerObject(GLint min_filter,GLint mag_filter,GLint clamp,const GLfloat *border_color)
-//{
-//    GLuint sampler_object;
-
-//    glGenSamplers(1,&sampler_object);
-
-//    glSamplerParameteri(sampler_object,GL_TEXTURE_MIN_FILTER,min_filter);
-//    glSamplerParameteri(sampler_object,GL_TEXTURE_MAG_FILTER,mag_filter);
-//    glSamplerParameteri(sampler_object,GL_TEXTURE_WRAP_S,clamp);
-//    glSamplerParameteri(sampler_object,GL_TEXTURE_WRAP_T,clamp);
-
-//    glSamplerParameterfv(sampler_object,GL_TEXTURE_BORDER_COLOR,border_color);
-
-//    return(sampler_object);
-//}
 VK_NAMESPACE_END

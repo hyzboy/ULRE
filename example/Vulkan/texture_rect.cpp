@@ -3,6 +3,7 @@
 
 #include"VulkanAppFramework.h"
 #include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/vulkan/VKSampler.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
@@ -24,10 +25,18 @@ constexpr uint32_t VERTEX_COUNT=4;
 
 constexpr float vertex_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75}
+    {0,             0},
+    {SCREEN_WIDTH,  0},
+    {0,             SCREEN_HEIGHT},
+    {SCREEN_WIDTH,  SCREEN_HEIGHT}
+};
+
+constexpr float tex_coord_data[VERTEX_COUNT][2]=
+{
+    {0,0},
+    {1,0},
+    {0,1},
+    {1,1}
 };
 
 constexpr uint32_t INDEX_COUNT=6;
@@ -46,6 +55,7 @@ private:
 
     vulkan::Material *          material            =nullptr;
     vulkan::Texture2D *         texture             =nullptr;
+    vulkan::Sampler *           sampler             =nullptr;
     vulkan::DescriptorSets *    desciptor_sets      =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
@@ -54,6 +64,7 @@ private:
     vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
     vulkan::VertexBuffer *      vertex_buffer       =nullptr;
+    vulkan::VertexBuffer *      tex_coord_buffer    =nullptr;
     vulkan::IndexBuffer *       index_buffer        =nullptr;
 
 public:
@@ -61,12 +72,14 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(index_buffer);
+        SAFE_CLEAR(tex_coord_buffer);
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
         SAFE_CLEAR(desciptor_sets);
+        SAFE_CLEAR(sampler);
         SAFE_CLEAR(texture);
         SAFE_CLEAR(material);
     }
@@ -75,8 +88,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("OnlyPosition.vert.spv"),
-                                               OS_TEXT("FlatColor.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("FlatTexture.vert.spv"),
+                                               OS_TEXT("FlatTexture.frag.spv"));
         if(!material)
             return(false);
 
@@ -84,6 +97,28 @@ private:
         desciptor_sets=material->CreateDescriptorSets();
 
         texture=vulkan::LoadTGATexture(OS_TEXT("lena.tga"),device);
+
+        VkSamplerCreateInfo sampler_create_info{};
+
+        sampler_create_info.magFilter   = VK_FILTER_LINEAR;
+        sampler_create_info.minFilter   = VK_FILTER_LINEAR;
+        sampler_create_info.mipmapMode  = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sampler_create_info.addressModeU= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.addressModeV= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.addressModeW= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.mipLodBias  = 0.0f;
+        sampler_create_info.compareOp   = VK_COMPARE_OP_NEVER;
+        sampler_create_info.minLod      = 0.0f;
+        sampler_create_info.maxLod      = 1.0f;
+
+        sampler=device->CreateSampler(&sampler_create_info);
+
+        VkDescriptorImageInfo image_info;
+        image_info.imageView    =*texture;
+        image_info.imageLayout  =*texture;
+        image_info.sampler      =*sampler;
+
+        desciptor_sets->UpdateSampler(material->GetCombindImageSampler("texture_lena"),&image_info);
         return(true);
     }
 
@@ -104,9 +139,11 @@ private:
     void InitVBO()
     {
         vertex_buffer   =device->CreateVBO(FMT_RG32F,VERTEX_COUNT,vertex_data);
+        tex_coord_buffer=device->CreateVBO(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
 
         render_obj->Set("Vertex",vertex_buffer);
+        render_obj->Set("TexCoord",tex_coord_buffer);
         render_obj->Set(index_buffer);
     }
 
