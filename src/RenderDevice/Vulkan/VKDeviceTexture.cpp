@@ -88,7 +88,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         // Set initial layout of the image to undefined
         imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageCreateInfo.extent = { width, height, 1 };
+        imageCreateInfo.extent = buffer_image_copy.imageExtent;
         imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         VK_CHECK_RESULT(vkCreateImage(attr->device, &imageCreateInfo, nullptr, &tex_data->image))
 
@@ -163,6 +163,84 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
     return(new Texture2D(width,height,attr->device,tex_data));
 }
 
+bool Device::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size)
+{
+    if(!tex||!data
+     ||left<0||left+width>tex->GetWidth()
+     ||top<0||top+height>tex->GetHeight()
+     ||width<=0||height<=0
+     ||size<=0)
+        return(false);
+
+    Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+
+    VkBufferImageCopy buffer_image_copy{};
+    buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    buffer_image_copy.imageSubresource.mipLevel = 0;
+    buffer_image_copy.imageSubresource.baseArrayLayer = 0;
+    buffer_image_copy.imageSubresource.layerCount = 1;
+    buffer_image_copy.imageExtent.width = width;
+    buffer_image_copy.imageExtent.height = height;
+    buffer_image_copy.imageExtent.depth = 1;
+    buffer_image_copy.imageOffset.x = left;
+    buffer_image_copy.imageOffset.y = top;
+    buffer_image_copy.imageOffset.z = 0;
+    buffer_image_copy.bufferOffset = 0;
+
+    VkImageSubresourceRange subresourceRange = {};
+    subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresourceRange.baseMipLevel = 0;
+    subresourceRange.levelCount = 1;
+    subresourceRange.layerCount = 1;
+
+    VkImageMemoryBarrier imageMemoryBarrier{};
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarrier.image = *tex;
+    imageMemoryBarrier.subresourceRange = subresourceRange;
+    imageMemoryBarrier.srcAccessMask = 0;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+    texture_cmd_buf->Begin();
+    texture_cmd_buf->PipelineBarrier(
+        VK_PIPELINE_STAGE_HOST_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &imageMemoryBarrier);
+
+    texture_cmd_buf->CopyBufferToImage(
+        *buf,
+        *tex,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &buffer_image_copy);
+
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    texture_cmd_buf->PipelineBarrier(
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &imageMemoryBarrier);
+
+    texture_cmd_buf->End();
+
+    SubmitTexture(*texture_cmd_buf);
+
+    delete buf;
+    return(true);
+}
+
 bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 {
     if(!cmd_bufs||count<=0)
@@ -175,6 +253,7 @@ bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 
     if(vkQueueSubmit(attr->graphics_queue, 1, &texture_submitInfo, fence))return(false);
     if(vkWaitForFences(attr->device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC*0.1)!=VK_SUCCESS)return(false);
+    vkResetFences(attr->device,1,&fence);
 
     return(true);
 }

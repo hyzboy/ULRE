@@ -80,7 +80,7 @@ namespace
         cmd_pool_info.sType=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cmd_pool_info.pNext=nullptr;
         cmd_pool_info.queueFamilyIndex=graphics_family;
-        cmd_pool_info.flags=0;
+        cmd_pool_info.flags=VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;        //允许COMMAND被重复begin，如果没有此标记也可以正常用，但是会频繁报错
 
         VkCommandPool cmd_pool;
 
