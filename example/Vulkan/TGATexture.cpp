@@ -47,9 +47,9 @@ namespace
 
         for(uint i=0;i<size;i++)
         {
-            *target=(((src[0])<<8)&0xF800)
-                   |(((src[1])<<3)&0x7E0)
-                   | ((src[2])>>3);
+            *target=((src[2]<<8)&0xF800)
+                   |((src[1]<<3)&0x7E0)
+                   | (src[0]>>3);
 
             ++target;
             src+=3;
@@ -100,9 +100,9 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
     {
         if(header->bit==24)
         {
-            RGB8to565(pixel_data,header->width*header->height);
+            RGB8to565(pixel_data,header->width*header->height);            
 
-            format=FMT_BGR565;
+            format=FMT_RGB565;
             line_size=header->width*2;
         }
         else if(header->bit==32)
