@@ -13,8 +13,8 @@ VK_NAMESPACE_BEGIN
 Texture2D *LoadTGATexture(const OSString &filename,Device *device);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=512;
-constexpr uint32_t SCREEN_HEIGHT=512;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 struct WorldConfig
 {
@@ -113,12 +113,10 @@ private:
 
         sampler=device->CreateSampler(&sampler_create_info);
 
-        VkDescriptorImageInfo image_info;
-        image_info.imageView    =*texture;
-        image_info.imageLayout  =*texture;
-        image_info.sampler      =*sampler;
+        desciptor_sets->BindSampler(material->GetSampler("texture_lena"),texture,sampler);
+        desciptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp);
+        desciptor_sets->Update();
 
-        desciptor_sets->UpdateSampler(material->GetSampler("texture_lena"),&image_info);
         return(true);
     }
 
@@ -130,10 +128,7 @@ private:
 
         ubo_mvp=device->CreateUBO(sizeof(WorldConfig),&world);
 
-        if(!ubo_mvp)
-            return(false);
-
-        return desciptor_sets->UpdateUBO(material->GetUBO("world"),*ubo_mvp);
+        return ubo_mvp;
     }
 
     void InitVBO()
@@ -197,10 +192,10 @@ public:
 
         swap_chain_count=device->GetSwapChainImageCount();
 
-        if(!InitMaterial())
+        if(!InitUBO())
             return(false);
 
-        if(!InitUBO())
+        if(!InitMaterial())
             return(false);
 
         InitVBO();

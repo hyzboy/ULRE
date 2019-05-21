@@ -1,8 +1,16 @@
 ﻿#include<hgl/graph/vulkan/VKDescriptorSets.h>
 #include<hgl/graph/vulkan/VKDevice.h>
+#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/vulkan/VKSampler.h>
 
 VK_NAMESPACE_BEGIN
-bool DescriptorSets::UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
+void DescriptorSets::Clear()
+{
+    write_desc_sets.ClearData();
+    desc_image_info.ClearData();
+}
+
+bool DescriptorSets::BindUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
 {
     VkWriteDescriptorSet writeDescriptorSet = {};
 
@@ -13,12 +21,20 @@ bool DescriptorSets::UpdateUBO(const uint32_t binding,const VkDescriptorBufferIn
     writeDescriptorSet.pBufferInfo = buf_info;
     writeDescriptorSet.dstBinding = binding;
 
-    vkUpdateDescriptorSets(*device,1,&writeDescriptorSet,0,nullptr);
+    write_desc_sets.Add(writeDescriptorSet);
     return(true);
 }
 
-bool DescriptorSets::UpdateSampler(const uint32_t binding,const VkDescriptorImageInfo *image_info)
+bool DescriptorSets::BindSampler(const uint32_t binding,Texture *tex,Sampler *sampler)
 {
+    if(!tex||!sampler)
+        return(false);
+
+    VkDescriptorImageInfo *image_info=desc_image_info.Add();
+    image_info->imageView    =*tex;
+    image_info->imageLayout  =*tex;
+    image_info->sampler      =*sampler;
+
     VkWriteDescriptorSet writeDescriptorSet = {};
 
     writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -28,7 +44,12 @@ bool DescriptorSets::UpdateSampler(const uint32_t binding,const VkDescriptorImag
     writeDescriptorSet.pImageInfo = image_info;
     writeDescriptorSet.dstBinding = binding;
 
-    vkUpdateDescriptorSets(*device,1,&writeDescriptorSet,0,nullptr);
+    write_desc_sets.Add(writeDescriptorSet);
     return(true);
+}
+
+void DescriptorSets::Update()
+{
+    vkUpdateDescriptorSets(*device,write_desc_sets.GetCount(),write_desc_sets.GetData(),0,nullptr);
 }
 VK_NAMESPACE_END

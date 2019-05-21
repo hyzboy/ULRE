@@ -15,6 +15,9 @@ class DescriptorSets
 
     VkPipelineLayout pipeline_layout;
 
+    List<VkDescriptorImageInfo> desc_image_info;
+    List<VkWriteDescriptorSet> write_desc_sets;
+
 private:
 
     friend class DescriptorSetLayoutCreater;
@@ -35,11 +38,10 @@ public:
     const VkDescriptorSet *         GetDescriptorSets   ()const{return &desc_set;}
     const VkPipelineLayout          GetPipelineLayout   ()const{return pipeline_layout;}
 
-    //未来统合所有的write descriptor sets,这里的update改为只是添加记录
-    //最终bind到cmd时一次性写入。
-
-    bool UpdateUBO(const uint32_t binding,const VkDescriptorBufferInfo *);
-    bool UpdateSampler(const uint32_t binding,const VkDescriptorImageInfo *);
+    void Clear();
+    bool BindUBO(const uint32_t binding,const VkDescriptorBufferInfo *);
+    bool BindSampler(const uint32_t binding,Texture *,Sampler *);
+    void Update();
 };//class DescriptorSets
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DESCRIPTOR_SETS_LAYOUT_INCLUDE
