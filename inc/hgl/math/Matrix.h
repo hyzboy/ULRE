@@ -2,7 +2,7 @@
 #define HGL_ALGORITHM_MATH_VECTOR_MATRIX_INCLUDE
 
 #include<hgl/math/Vector.h>
-
+#include<hgl/TypeFunc.h>
 //注：GLM/CML(OpenGLMode)是列矩阵,计算坐标matrix*pos
 //   而MGL是行矩阵，需要反过来pos*matrix
 

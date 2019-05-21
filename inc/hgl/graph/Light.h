@@ -2,6 +2,7 @@
 #define HGL_GRAPH_LIGHT_INCLUDE
 
 #include<hgl/math/Math.h>
+#include<hgl/type/Color4f.h>
 namespace hgl
 {
     namespace graph
