@@ -89,7 +89,11 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        return desciptor_sets->UpdateUBO(material->GetUBO("world"),*ubo_mvp);
+        if(!desciptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
+            return(false);
+
+        desciptor_sets->Update();
+        return(true);
     }
 
     void InitVBO()

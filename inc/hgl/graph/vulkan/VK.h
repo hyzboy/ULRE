@@ -19,6 +19,7 @@ class Device;
 class ImageView;
 class Framebuffer;
 
+class Texture;
 class Texture1D;
 class Texture1DArray;
 class Texture2D;
