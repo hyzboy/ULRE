@@ -53,6 +53,7 @@ add_subdirectory(src)
 SET(ULRE    ULRE.Base
 #             ULRE.Util
             ULRE.RenderDevice.Vulkan
+            ULRE.SceneGraph
             ULRE.Platform
             MathGeoLib
             spirv-cross-core
