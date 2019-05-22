@@ -255,5 +255,90 @@ namespace hgl
         result.x = center.x + ((source.x - center.x)*ac - (source.y - center.y)*as);
         result.y = center.y + ((source.x - center.x)*as + (source.y - center.y)*ac);
     }
+
+    template<typename T> union vec2
+    {
+        struct { T x,y; };
+        struct { T r,g; };
+        T data[2];
+
+    public:
+
+        vec2(){x=y=0;}
+        vec2(T v1,T v2):x(v1),y(v2){}
+        vec2(const vec2 &v2)
+        {
+            x=v2.x;
+            y=v2.y;
+        }
+
+        vec2(const Vector2f &v2f)
+        {
+            x=v2f.x;
+            y=v2f.y;
+        }
+
+        operator const Vector2f()const{return Vector2f(x,y);}
+    };
+
+    template<typename T> union vec3
+    {
+        struct { T x,y,z; };
+        struct { T r,g,b; };
+        T data[3];
+
+    public:
+
+        vec3(){x=y=z=0;}
+        vec3(T v1,T v2,T v3):x(v1),y(v2),z(v3){}
+        vec3(const vec3 &v3)
+        {
+            x=v3.x;
+            y=v3.y;
+            z=v3.z;
+        }
+
+        vec3(const Vector3f &v3f)
+        {
+            x=v3f.x;
+            y=v3f.y;
+            z=v3f.z;
+
+            return *this;
+        }
+
+        operator const Vector3f()const{return Vector3f(x,y,z);}
+    };
+
+    template<typename T> union vec4
+    {
+        struct { T x,y,z,w; };
+        struct { T r,g,b,a; };
+        T data[4];
+
+    public:
+
+        vec4(){x=y=z=w=0;}
+        vec4(T v1,T v2,T v3,T v4):x(v1),y(v2),z(v3),w(v4){}
+        vec4(const vec4 &v4)
+        {
+            x=v4.x;
+            y=v4.y;
+            z=v4.z;
+            w=v4.w;
+        }
+
+        vec4(const Vector4f &v4f)
+        {
+            x=v4f.x;
+            y=v4f.y;
+            z=v4f.z;
+            w=v4f.w;
+
+            return *this;
+        }
+
+        operator const Vector4f()const{return Vector4f(x,y,z,w);}
+    };
 }//namespace hgl
 #endif//HGL_ALGORITHM_MATH_VECTOR_INCLUDE

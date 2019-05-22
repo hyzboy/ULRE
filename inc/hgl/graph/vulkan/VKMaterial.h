@@ -28,6 +28,8 @@ public:
     Material(Device *dev,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc);
     ~Material();
 
+    const VertexShaderModule *GetVertexShaderModule()const{return vertex_sm;}
+
     const int GetBinding(VkDescriptorType,const UTF8String &)const;
 
 #define GET_BO_BINDING(name,vk_name)    const int Get##name(const UTF8String &obj_name)const{return GetBinding(VK_DESCRIPTOR_TYPE_##vk_name,obj_name);}

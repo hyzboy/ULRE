@@ -8,7 +8,7 @@ VK_NAMESPACE_BEGIN
  * 可渲染数据对象<br>
  * 本对象包含材质实例信息和Mesh信息，可渲染数据对象中包含供最终API使用的VBO数据，可能存在多个MESH数据的集合。</p>
  * 比如有多种形状的石头，它们使用了同一种材质，这种情况下多个mesh就可以合并到一个Renderable中，渲染时不再切换VBO。
-*/
+ */
 class Renderable
 {
     const VertexShaderModule *vertex_sm;

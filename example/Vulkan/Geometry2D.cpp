@@ -1,9 +1,12 @@
-﻿// 0.triangle
-// 该范例主要演示直接绘制一个渐变色的三角形
+﻿// 3.Geometry2D
+// 该范例有两个作用：
+//                  一、测试绘制2D几何体
+//                  二、试验动态合并材质渲染机制、包括普通合并与Instance
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/VertexBuffer.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -11,37 +14,85 @@ using namespace hgl::graph;
 bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 struct WorldConfig
 {
     Matrix4f mvp;
 }world;
 
-/**
- * 网格数据
- */
-class Mesh
+struct RectangleCreateInfo
 {
-public:
-};//class Mesh
+    RectScope2f scope;
+    vec3<float> normal;
+    Color4f color;
+    RectScope2f tex_coord;
+};
 
-/**
- * 网格数据生成器
- */
-class MeshCreater
+vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl,const RectangleCreateInfo *rci)
 {
-public:
+    const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
-    MeshCreater()
+    vulkan::Renderable *render_obj=mtl->CreateRenderable();
+
+    const int vertex_binding=vsm->GetStageInputBinding("Vertex");
+    
+    if(vertex_binding!=-1)
     {
-    }
-};//
+        VB2f *vertex=new VB2f(6);
 
-Mesh *CreateRectangle(float l,float t,float w,float h)
-{
-    MeshCreater *creater=new MeshCreater();
+        vertex->Begin();
+            vertex->WriteRect(rci->scope);
+        vertex->End();
+
+        render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+        delete vertex;
+    }
+
+    const int normal_binding=vsm->GetStageInputBinding("Normal");
+
+    if(normal_binding!=-1)
+    {
+        VB3f *normal=new VB3f(6);
+
+        normal->Begin();
+            normal->Write(rci->normal,6);
+        normal->End();
+
+        render_obj->Set(normal_binding,device->CreateVBO(normal));
+        delete normal;
+    }
+
+    const int color_binding=vsm->GetStageInputBinding("Color");
+    
+    if(color_binding!=-1)
+    {
+        VB4f *color=new VB4f(6);
+
+        color->Begin();
+            color->Write(rci->color,6);
+        color->End();
+
+        render_obj->Set(color_binding,device->CreateVBO(color));
+        delete color;
+    }
+
+    const int tex_coord_binding=vsm->GetStageInputBinding("TexCoord");
+    
+    if(tex_coord_binding!=-1)
+    {
+        VB2f *tex_coord=new VB2f(6);
+
+        tex_coord->Begin();
+            tex_coord->WriteRect(rci->tex_coord);
+        tex_coord->End();
+
+        render_obj->Set(tex_coord_binding,device->CreateVBO(tex_coord));
+        delete tex_coord;
+    }
+
+    return render_obj;
 }
 
 /**
@@ -49,24 +100,9 @@ Mesh *CreateRectangle(float l,float t,float w,float h)
  * @param r 半径
  * @param rp 半径精度
  */
-Mesh *CreateRoundrectangle(float l,float t,float w,float h,float r,uint32_t rp)
-{
-}
-
-constexpr uint32_t VERTEX_COUNT=3;
-
-constexpr float vertex_data[VERTEX_COUNT][2]=
-{
-    {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
-};
-
-constexpr float color_data[VERTEX_COUNT][3]=
-{   {1,0,0},
-    {0,1,0},
-    {0,0,1}
-};
+//Mesh *CreateRoundrectangle(float l,float t,float w,float h,float r,uint32_t rp)
+//{
+//}
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -103,14 +139,24 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("FlatColor.vert.spv"),
+        material=shader_manage->CreateMaterial(OS_TEXT("OnlyPosition.vert.spv"),
                                                OS_TEXT("FlatColor.frag.spv"));
         if(!material)
             return(false);
 
-        render_obj=material->CreateRenderable();
         desciptor_sets=material->CreateDescriptorSets();
         return(true);
+    }
+
+    bool CreateRenderObject()
+    {
+        struct RectangleCreateInfo rci;
+
+        rci.scope.Set(10,10,10,10);
+
+        render_obj=CreateRectangle(device,material,&rci);
+
+        return render_obj;
     }
 
     bool InitUBO()
@@ -130,16 +176,7 @@ private:
         desciptor_sets->Update();
         return(true);
     }
-
-    void InitVBO()
-    {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
-        color_buffer    =device->CreateVBO(FMT_RGB32F, VERTEX_COUNT,color_data);
-
-        render_obj->Set("Vertex",   vertex_buffer);
-        render_obj->Set("Color",    color_buffer);
-    }
-
+    
     bool InitPipeline()
     {
         constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
@@ -150,17 +187,6 @@ private:
             pipeline_creater->SetDepthWrite(false);
             pipeline_creater->CloseCullFace();
             pipeline_creater->Set(PRIM_TRIANGLES);
-
-            SaveToFile(PIPELINE_FILENAME,pipeline_creater);
-
-            delete pipeline_creater;
-        }
-
-        {
-            void *data;
-            uint size=filesystem::LoadFileToMemory(PIPELINE_FILENAME,(void **)&data);
-
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent(),(uchar *)data,size);
 
             pipeline=pipeline_creater->Create();
 
@@ -186,7 +212,7 @@ private:
                     cmd_buf[i]->Bind(pipeline);
                     cmd_buf[i]->Bind(desciptor_sets);
                     cmd_buf[i]->Bind(render_obj);
-                    cmd_buf[i]->Draw(VERTEX_COUNT);
+                    cmd_buf[i]->Draw(6);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
@@ -206,11 +232,12 @@ public:
         if(!InitMaterial())
             return(false);
 
-        if(!InitUBO())
+        if(!CreateRenderObject())
             return(false);
 
-        InitVBO();
-
+        if(!InitUBO())
+            return(false);
+            
         if(!InitPipeline())
             return(false);
 
