@@ -9,7 +9,7 @@ namespace hgl
     */
     template<typename T> class RectScope2                                                           ///矩形范围类
     {
-    public:
+    protected:
 
         T Left;                                                                                     ///<矩形左边所在的坐标
         T Top;                                                                                      ///<矩形上边所在的坐标
@@ -18,13 +18,27 @@ namespace hgl
 
     public:
 
-        T GetBottom()const{return Height+Top;}
-        T GetRight()const{return Width+Left;}
-        void SetBottom(T v){Top=v-Height;}
-        void SetRight(T v){Left=v-Width;}
+        T GetLeft   ()const{return Left;}
+        T GetTop    ()const{return Top;}
+        T GetWidth  ()const{return Width;}
+        T GetHeight ()const{return Height;}
+        T GetBottom ()const{return Height+Top;}
+        T GetRight  ()const{return Width+Left;}
+
+        void SetLeft    (T v){Left=v;}
+        void SetTop     (T v){Top=v;}
+        void SetWidth   (T v){Width=v;}
+        void SetHeight  (T v){Height=v;}
+        void SetBottom  (T v){Height=v-Top;}
+        void SetRight   (T v){Width=v-Left;}
 
         T GetCenterX()const{return Left+(Width/2);}
         T GetCenterY()const{return Top+(Height/2);}
+
+        const vec2<T> GetLeftTop    ()const{return vec2<T>(Left,        Top);}
+        const vec2<T> GetLeftBottom ()const{return vec2<T>(Left,        Top+Height);}
+        const vec2<T> GetRightTop   ()const{return vec2<T>(Left+Width,  Top);}
+        const vec2<T> GetRightBottom()const{return vec2<T>(Left+Width,  Top+Height);}
 
     public:
 
