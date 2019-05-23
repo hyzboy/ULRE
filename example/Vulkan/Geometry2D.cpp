@@ -7,6 +7,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VertexBuffer.h>
+#include<hgl/type/ResManage.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -28,15 +29,31 @@ struct RectangleCreateInfo
 };
 
 VK_NAMESPACE_BEGIN
+using MaterialID=int;
+using PipelineID=int;
+using DescriptorSetsID=int;
+using RenderableID=int;
+
 /**
  * 场景DB，用于管理场景内所需的所有数据
  */
 class SceneDatabase
 {
-    Set<Material *>         material_sets;                              ///<材质合集
-    Set<Pipeline *>         pipeline_sets;                              ///<管线合集
-    Set<DescriptorSets *>   desc_sets_sets;                             ///<描述符合集
-    Set<Renderable *>       renderable_sets;                            ///<可渲染对象合集
+    IDResManage<MaterialID,       Material>       rm_material;                                        ///<材质合集
+    IDResManage<PipelineID,       Pipeline>       rm_pipeline;                                        ///<管线合集
+    IDResManage<DescriptorSetsID, DescriptorSets> rm_desc_sets;                                       ///<描述符合集
+    IDResManage<RenderableID,     Renderable>     rm_renderable;                                      ///<可渲染对象合集
+
+public:
+
+    MaterialID Add(Material *mtl)
+    {
+        if(!mtl)return(-1);
+
+        rm_material.Add(mtl);
+    }
+
+    PipelineID 
 };//class SceneDatabase
 
 /**
@@ -51,7 +68,9 @@ class RenderableInstance
 public:
 
     RenderableInstance(Pipeline *p,DescriptorSets *ds,Renderable *r):pipeline(p),desc_sets(ds),render_obj(r){}
-    virtual ~RenderableInstance()=default;
+    virtual ~RenderableInstance()
+    {
+    }
 
     Pipeline *      GetPipeline         (){return pipeline;}
     DescriptorSets *GetDescriptorSets   (){return desc_sets;}
