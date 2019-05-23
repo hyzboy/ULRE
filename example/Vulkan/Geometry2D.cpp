@@ -25,9 +25,6 @@ struct WorldConfig
 struct RectangleCreateInfo
 {
     RectScope2f scope;
-    vec3<float> normal;
-    Color4f color;
-    RectScope2f tex_coord;
 };
 
 VK_NAMESPACE_BEGIN
@@ -109,7 +106,7 @@ vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl
 {
     const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
-    vulkan::Renderable *render_obj=mtl->CreateRenderable();
+    vulkan::Renderable *render_obj=mtl->CreateRenderable(VERTEX_COUNT);
 
     const int vertex_binding=vsm->GetStageInputBinding("Vertex");
     
@@ -124,60 +121,105 @@ vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl
         render_obj->Set(vertex_binding,device->CreateVBO(vertex));
         delete vertex;
     }
-
-    const int normal_binding=vsm->GetStageInputBinding("Normal");
-
-    if(normal_binding!=-1)
+    else
     {
-        VB3f *normal=new VB3f(VERTEX_COUNT);
-
-        normal->Begin();
-            normal->Write(rci->normal,VERTEX_COUNT);
-        normal->End();
-
-        render_obj->Set(normal_binding,device->CreateVBO(normal));
-        delete normal;
-    }
-
-    const int color_binding=vsm->GetStageInputBinding("Color");
-    
-    if(color_binding!=-1)
-    {
-        VB4f *color=new VB4f(VERTEX_COUNT);
-
-        color->Begin();
-            color->Write(rci->color,VERTEX_COUNT);
-        color->End();
-
-        render_obj->Set(color_binding,device->CreateVBO(color));
-        delete color;
-    }
-
-    const int tex_coord_binding=vsm->GetStageInputBinding("TexCoord");
-    
-    if(tex_coord_binding!=-1)
-    {
-        VB2f *tex_coord=new VB2f(VERTEX_COUNT);
-
-        tex_coord->Begin();
-            tex_coord->WriteRectFan(rci->tex_coord);
-        tex_coord->End();
-
-        render_obj->Set(tex_coord_binding,device->CreateVBO(tex_coord));
-        delete tex_coord;
+        delete render_obj;
+        return nullptr;
     }
 
     return render_obj;
 }
 
-/**
- * 创建一个圆角矩形
- * @param r 半径
- * @param rp 半径精度
- */
-//Mesh *CreateRoundrectangle(float l,float t,float w,float h,float r,uint32_t rp)
-//{
-//}
+struct RoundRectangleCreateInfo:public RectangleCreateInfo
+{
+    float radius;           //圆角半径
+    uint32_t round_per;     //圆角精度
+};
+
+vulkan::Renderable *CreateRoundRectangle(vulkan::Device *device,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
+{
+    const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
+
+    vulkan::Renderable *render_obj=nullptr;
+    const int vertex_binding=vsm->GetStageInputBinding("Vertex");
+
+    if(vertex_binding==-1)
+        return(nullptr);
+    
+    VB2f *vertex=nullptr;
+
+    if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
+    {        
+        vertex=new VB2f(4);
+
+        vertex->Begin();
+        vertex->WriteRectFan(rci->scope);
+        vertex->End();
+    }
+    else
+    {
+        float radius=rci->radius;
+
+        if(radius>rci->scope.GetWidth()/2.0f)radius=rci->scope.GetWidth()/2.0f;
+        if(radius>rci->scope.GetHeight()/2.0f)radius=rci->scope.GetHeight()/2.0f;
+
+        vertex=new VB2f(1+rci->round_per*4);
+
+        vertex->Begin();
+
+            vec2<float> *coord=new vec2<float>[rci->round_per];
+
+            for(uint i=0;i<rci->round_per;i++)
+            {
+                float ang=float(i)/float(rci->round_per-1)*90.0f;
+
+                float x=sin(hgl_ang2rad(ang))*radius;
+                float y=cos(hgl_ang2rad(ang))*radius;
+
+                coord[i].x=x;
+                coord[i].y=y;
+
+                //生成的是右上角的
+                vertex->Write(  rci->scope.GetRight()-radius+x,
+                                rci->scope.GetTop()+radius-y);
+            }
+
+            //右下角
+            for(uint i=0;i<rci->round_per;i++)
+            {
+                vertex->Write(rci->scope.GetRight() -radius+coord[rci->round_per-1-i].x,
+                              rci->scope.GetBottom()-radius+coord[rci->round_per-1-i].y);
+            }
+
+            //左下角
+            for(uint i=0;i<rci->round_per;i++)
+            {
+                vertex->Write(rci->scope.GetLeft()  +radius-coord[i].x,
+                              rci->scope.GetBottom()-radius+coord[i].y);
+            }
+
+            //左上角
+            for(uint i=0;i<rci->round_per;i++)
+            {
+                vertex->Write(rci->scope.GetLeft()  +radius-coord[rci->round_per-1-i].x,
+                              rci->scope.GetTop()   +radius-coord[rci->round_per-1-i].y);
+            }
+
+            vertex->Write(rci->scope.GetRight() -radius+coord[0].x,
+                          rci->scope.GetTop()   +radius-coord[0].y);
+
+            delete[] coord;
+
+        vertex->End();
+    }
+
+    render_obj=mtl->CreateRenderable(vertex->GetCount());
+    render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+
+    delete vertex;
+
+    return render_obj;
+}
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -186,8 +228,10 @@ private:
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    desciptor_sets      =nullptr;
+    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::RenderableInstance *render_instance     =nullptr;
+
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
@@ -200,13 +244,14 @@ public:
 
     ~TestApp()
     {
+        SAFE_CLEAR(render_instance);
         SAFE_CLEAR(color_buffer);
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(desciptor_sets);
+        SAFE_CLEAR(descriptor_sets);
         SAFE_CLEAR(material);
     }
 
@@ -219,17 +264,25 @@ private:
         if(!material)
             return(false);
 
-        desciptor_sets=material->CreateDescriptorSets();
+        descriptor_sets=material->CreateDescriptorSets();
         return(true);
     }
 
     bool CreateRenderObject()
     {
-        struct RectangleCreateInfo rci;
+        //struct RectangleCreateInfo rci;
 
-        rci.scope.Set(10,10,10,10);
+        //rci.scope.Set(10,10,10,10);
 
-        render_obj=CreateRectangle(device,material,&rci);
+        //render_obj=CreateRectangle(device,material,&rci);
+
+        struct RoundRectangleCreateInfo rrci;
+
+        rrci.scope.Set(10,10,SCREEN_WIDTH-20,SCREEN_HEIGHT-20);
+        rrci.radius=8;     //半径为8
+        rrci.round_per=8;   //圆角切分成8段
+
+        render_obj=CreateRoundRectangle(device,material,&rrci);
 
         return render_obj;
     }
@@ -245,10 +298,10 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        if(!desciptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
+        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
             return(false);
 
-        desciptor_sets->Update();
+        descriptor_sets->Update();
         return(true);
     }
     
@@ -271,6 +324,27 @@ private:
         return pipeline;
     }
 
+    void Draw(vulkan::CommandBuffer *cb,vulkan::RenderableInstance *ri)
+    {
+        cb->Bind(ri->GetPipeline());
+        cb->Bind(ri->GetDescriptorSets());
+
+        vulkan::Renderable *obj=ri->GetRenderable();
+
+        cb->Bind(obj);
+
+        const vulkan::IndexBuffer *ib=obj->GetIndexBuffer();
+
+        if(ib)
+        {
+            cb->DrawIndexed(ib->GetCount());
+        }
+        else
+        {
+            cb->Draw(obj->GetDrawCount());
+        }
+    }
+
     bool InitCommandBuffer()
     {
         cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
@@ -284,10 +358,7 @@ private:
 
             cmd_buf[i]->Begin();
                 cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-                    cmd_buf[i]->Bind(pipeline);
-                    cmd_buf[i]->Bind(desciptor_sets);
-                    cmd_buf[i]->Bind(render_obj);
-                    cmd_buf[i]->Draw(VERTEX_COUNT);
+                    Draw(cmd_buf[i],render_instance);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
@@ -315,6 +386,8 @@ public:
             
         if(!InitPipeline())
             return(false);
+
+        render_instance=new vulkan::RenderableInstance(pipeline,descriptor_sets,render_obj);
 
         if(!InitCommandBuffer())
             return(false);

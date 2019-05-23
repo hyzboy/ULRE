@@ -40,7 +40,7 @@ private:
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    desciptor_sets      =nullptr;
+    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -60,7 +60,7 @@ public:
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(desciptor_sets);
+        SAFE_CLEAR(descriptor_sets);
         SAFE_CLEAR(material);
     }
 
@@ -74,7 +74,7 @@ private:
             return(false);
 
         render_obj=material->CreateRenderable();
-        desciptor_sets=material->CreateDescriptorSets();
+        descriptor_sets=material->CreateDescriptorSets();
         return(true);
     }
 
@@ -89,10 +89,10 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        if(!desciptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
+        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
             return(false);
 
-        desciptor_sets->Update();
+        descriptor_sets->Update();
         return(true);
     }
 
@@ -136,7 +136,7 @@ private:
             cmd_buf[i]->Begin();
                 cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
                     cmd_buf[i]->Bind(pipeline);
-                    cmd_buf[i]->Bind(desciptor_sets);
+                    cmd_buf[i]->Bind(descriptor_sets);
                     cmd_buf[i]->Bind(render_obj);
                     cmd_buf[i]->DrawIndexed(INDEX_COUNT);
                 cmd_buf[i]->EndRenderPass();

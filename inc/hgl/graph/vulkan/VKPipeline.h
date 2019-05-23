@@ -145,7 +145,7 @@ public:
         {
             cba=colorBlendAttachments.GetData();
 
-            for(uint i=0;i<colorBlendAttachments.GetCount();i++)
+            for(int i=0;i<colorBlendAttachments.GetCount();i++)
                 if(cba->blendEnable)
                 {
                     alpha_blend=true;
