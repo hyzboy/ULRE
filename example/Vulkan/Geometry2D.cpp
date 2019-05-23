@@ -30,6 +30,81 @@ struct RectangleCreateInfo
     RectScope2f tex_coord;
 };
 
+VK_NAMESPACE_BEGIN
+/**
+ * 场景DB，用于管理场景内所需的所有数据
+ */
+class SceneDatabase
+{
+    Set<Material *>         material_sets;                              ///<材质合集
+    Set<Pipeline *>         pipeline_sets;                              ///<管线合集
+    Set<DescriptorSets *>   desc_sets_sets;                             ///<描述符合集
+    Set<Renderable *>       renderable_sets;                            ///<可渲染对象合集
+};//class SceneDatabase
+
+/**
+ * 可渲染对象实例
+ */
+class RenderableInstance
+{
+    Pipeline *        pipeline;
+    DescriptorSets *  desc_sets;
+    Renderable *      render_obj;
+
+public:
+
+    RenderableInstance(Pipeline *p,DescriptorSets *ds,Renderable *r):pipeline(p),desc_sets(ds),render_obj(r){}
+    virtual ~RenderableInstance()=default;
+
+    Pipeline *      GetPipeline         (){return pipeline;}
+    DescriptorSets *GetDescriptorSets   (){return desc_sets;}
+    Renderable *    GetRenderable       (){return render_obj;}
+
+    const int Comp(const RenderableInstance *ri)const
+    {
+        //绘制顺序：
+        
+        //  ARM Mali GPU :   不透明、AlphaTest、半透明
+        //  Adreno/NV/AMD:   AlphaTest、不透明、半透明
+        //  PowerVR:         同Adreno/NV/AMD，但不透明部分可以不排序
+
+        if(pipeline->IsAlphaTest())
+        {
+            if(!ri->pipeline->IsAlphaTest())
+                return -1;
+        }
+        else
+        {
+            if(ri->pipeline->IsAlphaTest())
+                return 1;
+        }
+
+        if(pipeline->IsAlphaBlend())
+        {
+            if(!ri->pipeline->IsAlphaBlend())
+                return 1;
+        }
+        else
+        {
+            if(ri->pipeline->IsAlphaBlend())
+                return -1;
+        }
+
+        if(pipeline!=ri->pipeline)
+            return pipeline-ri->pipeline;
+
+        if(desc_sets!=ri->desc_sets)
+            return desc_sets-ri->desc_sets;
+
+        return render_obj-ri->render_obj;
+    }
+
+    CompOperator(const RenderableInstance *,Comp)
+};//class RenderableInstance
+VK_NAMESPACE_END
+
+constexpr uint32_t VERTEX_COUNT=4;
+
 vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl,const RectangleCreateInfo *rci)
 {
     const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
@@ -40,10 +115,10 @@ vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl
     
     if(vertex_binding!=-1)
     {
-        VB2f *vertex=new VB2f(6);
+        VB2f *vertex=new VB2f(VERTEX_COUNT);
 
         vertex->Begin();
-            vertex->WriteRect(rci->scope);
+            vertex->WriteRectFan(rci->scope);
         vertex->End();
 
         render_obj->Set(vertex_binding,device->CreateVBO(vertex));
@@ -54,10 +129,10 @@ vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl
 
     if(normal_binding!=-1)
     {
-        VB3f *normal=new VB3f(6);
+        VB3f *normal=new VB3f(VERTEX_COUNT);
 
         normal->Begin();
-            normal->Write(rci->normal,6);
+            normal->Write(rci->normal,VERTEX_COUNT);
         normal->End();
 
         render_obj->Set(normal_binding,device->CreateVBO(normal));
@@ -68,10 +143,10 @@ vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl
     
     if(color_binding!=-1)
     {
-        VB4f *color=new VB4f(6);
+        VB4f *color=new VB4f(VERTEX_COUNT);
 
         color->Begin();
-            color->Write(rci->color,6);
+            color->Write(rci->color,VERTEX_COUNT);
         color->End();
 
         render_obj->Set(color_binding,device->CreateVBO(color));
@@ -82,10 +157,10 @@ vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl
     
     if(tex_coord_binding!=-1)
     {
-        VB2f *tex_coord=new VB2f(6);
+        VB2f *tex_coord=new VB2f(VERTEX_COUNT);
 
         tex_coord->Begin();
-            tex_coord->WriteRect(rci->tex_coord);
+            tex_coord->WriteRectFan(rci->tex_coord);
         tex_coord->End();
 
         render_obj->Set(tex_coord_binding,device->CreateVBO(tex_coord));
@@ -186,7 +261,7 @@ private:
             pipeline_creater->SetDepthTest(false);
             pipeline_creater->SetDepthWrite(false);
             pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(PRIM_TRIANGLES);
+            pipeline_creater->Set(PRIM_TRIANGLE_FAN);
 
             pipeline=pipeline_creater->Create();
 
@@ -212,7 +287,7 @@ private:
                     cmd_buf[i]->Bind(pipeline);
                     cmd_buf[i]->Bind(desciptor_sets);
                     cmd_buf[i]->Bind(render_obj);
-                    cmd_buf[i]->Draw(6);
+                    cmd_buf[i]->Draw(VERTEX_COUNT);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }

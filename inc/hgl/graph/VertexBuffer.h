@@ -348,6 +348,54 @@ namespace hgl
                                     scope.GetRightBottom(),
                                     scope.GetLeftBottom());
             }
+
+            template<typename V>
+            bool WriteRectFan(const RectScope2<V> &scope)
+            {
+                if(!this->access||this->access+8>this->mem_end)
+                {
+                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteRectFan(RectScope2 *) out"));
+                    return(false);
+                }
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetBottom();
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetBottom();
+
+                return(true);
+            }
+
+            template<typename V>
+            bool WriteRectTriangleStrip(const RectScope2<V> &scope)
+            {
+                if(!this->access||this->access+8>this->mem_end)
+                {
+                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteRectTriangleStrip(RectScope2 *) out"));
+                    return(false);
+                }
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetBottom();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetBottom();
+
+                return(true);
+            }
         };//class VertexBuffer2
 
         /**
