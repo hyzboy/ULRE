@@ -3,6 +3,10 @@
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 
+#ifdef _DEBUG
+#include<iostream>
+#endif//_DEBUG
+
 VK_NAMESPACE_BEGIN
 namespace
 {
@@ -300,6 +304,24 @@ namespace
 
 Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,uint width,uint height)
 {
+    #ifdef _DEBUG
+    {
+        const VkDriverIdKHR driver_id=physical_device->GetDriverId();
+
+        if(driver_id>=VK_DRIVER_ID_BEGIN_RANGE_KHR
+         &&driver_id<=VK_DRIVER_ID_END_RANGE_KHR)
+        {
+            std::cout<<"DriverID: "<<physical_device->GetDriverId()<<std::endl;
+            std::cout<<"DriverName: "<<physical_device->GetDriverName()<<std::endl;
+            std::cout<<"DriverInfo: "<<physical_device->GetDriverInfo()<<std::endl;
+        }
+        else
+        {
+            std::cout<<"Unknow VideoCard Driver"<<std::endl;
+        }
+    }
+    #endif//_DEBUG
+
     DeviceAttribute *attr=new DeviceAttribute(inst,physical_device,surface);
 
     AutoDelete<DeviceAttribute> auto_delete(attr);
