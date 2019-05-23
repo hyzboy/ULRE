@@ -79,20 +79,9 @@ namespace hgl
         {
             ResItem *obj=items.GetItem(index);
 
-            //items[index]->count++;
-            obj->count++;
+            ++obj->count;
 
-//          return(items[index]->data);
             return obj->right;
-        }
-
-        T *data=Create(flag);
-
-        if(data)
-        {
-            items.Add(flag,data);
-
-            return(data);
         }
 
         return(nullptr);
