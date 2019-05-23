@@ -147,6 +147,8 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
 
     colorBlendAttachments.Add(cba);
 
+    alpha_blend=false;
+
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlending.pNext = nullptr;
     colorBlending.flags = 0;
@@ -231,6 +233,6 @@ Pipeline *PipelineCreater::Create()
     if (vkCreateGraphicsPipelines(device, cache, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
         return(nullptr);
 
-    return(new Pipeline(device,graphicsPipeline));
+    return(new Pipeline(device,graphicsPipeline,alpha_test>0,alpha_blend));
 }
 VK_NAMESPACE_END
