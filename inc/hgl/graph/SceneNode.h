@@ -13,9 +13,8 @@ namespace hgl
         class SceneNode;
         struct Camera;
         class Frustum;
-
-        using RenderList=List<const SceneNode *>;                                                   ///<渲染列表类型重定义
-
+        class RenderList;
+        
         using RenderListCompFunc=float (*)(Camera *,SceneNode *,SceneNode *);                       ///<渲染列表排序比较函数
 
         float CameraLengthComp(Camera *,SceneNode *,SceneNode *);                                   ///<摄像机距离比较函数
@@ -98,7 +97,7 @@ namespace hgl
                     bool ExpendToList(RenderList *rl,Frustum *f)const                                                   ///<展开到渲染列表(使用平截头裁剪)
                         {return ExpendToList(rl,FrustumClipFilter,f);}
 
-                    bool ExpendToList(RenderList *,const Matrix4f &,const Matrix4f &,RenderListCompFunc=nullptr)const;  ///<展开到渲染列表(使用平截头裁剪并排序)
+//                    bool ExpendToList(RenderList *,const Matrix4f &,const Matrix4f &,RenderListCompFunc=nullptr)const;  ///<展开到渲染列表(使用平截头裁剪并排序)
                     bool ExpendToList(RenderList *,Camera *,RenderListCompFunc=nullptr)const;                           ///<展开到渲染列表(使用摄像机平截头裁剪并排序)
         };//class SceneNode
     }//namespace graph
