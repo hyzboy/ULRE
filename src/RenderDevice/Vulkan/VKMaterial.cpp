@@ -69,7 +69,10 @@ Material::Material(Device *dev,ShaderModuleMap *smm,List<VkPipelineShaderStageCr
 Material::~Material()
 {
     delete dsl_creater;
+
+    vertex_sm->Release(vab);
     delete vab;
+
     delete shader_stage_list;
     delete shader_maps;
 }
