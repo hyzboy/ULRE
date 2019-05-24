@@ -56,7 +56,7 @@ namespace hgl
                 return(in?in->ReadFully(buf,size):-1);
             }
 
-            virtual int64 Seek(int64 offset,SeekOrigin so=soBegin)
+            virtual int64 Seek(int64 offset,SeekOrigin so=SeekOrigin::Begin)
             {
                 return(in?in->Seek(offset,so):-1);
             }

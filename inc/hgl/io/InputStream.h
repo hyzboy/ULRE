@@ -29,7 +29,7 @@ namespace hgl
 
             virtual bool    Restart()=0;                                                            ///<复位访问指针
             virtual int64   Skip(int64)=0;                                                          ///<跳过指定字节不访问
-            virtual int64   Seek(int64,SeekOrigin=soBegin)=0;                                       ///<移动访问指针
+            virtual int64   Seek(int64,SeekOrigin=SeekOrigin::Begin)=0;                                       ///<移动访问指针
             virtual int64   Tell()const=0;                                                          ///<返回当前访问位置
             virtual int64   GetSize()const=0;                                                       ///<取得流长度
             virtual int64   Available()const=0;                                                     ///<剩下的可以不受阻塞访问的字节数

@@ -3,9 +3,10 @@
 #include<hgl/graph/vulkan/VKShaderModule.h>
 
 VK_NAMESPACE_BEGIN
-Renderable::Renderable(const VertexShaderModule *vsm)
+Renderable::Renderable(const VertexShaderModule *vsm,const uint32_t dc)
 {
     vertex_sm=vsm;
+    draw_count=dc;
 
     buf_count=vertex_sm->GetAttrCount();
 

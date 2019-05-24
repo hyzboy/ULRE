@@ -18,7 +18,8 @@
                                             Android/NativeActivitySupport.cpp)
 
         SET(PLATFORM_FILE_SOURCE            ${PLATFORM_FILE_SOURCE}
-                                            Android/ProgramPath.cpp)
+                                            Android/ProgramPath.cpp
+                                            Android/AssetManage.cpp)
 
         SET(PLATFORM_MULTI_THREAD_SOURCE    ${PLATFORM_MULTI_THREAD_SOURCE}
                                             UNIX/Semaphore.cpp)

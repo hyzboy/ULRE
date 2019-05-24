@@ -49,6 +49,7 @@ class DescriptorSets;
 class VertexAttributeBinding;
 
 class Renderable;
+class RenderableInstance;
 
 using CharPointerList=hgl::List<const char *>;
 

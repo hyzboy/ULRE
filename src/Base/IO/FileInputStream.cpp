@@ -52,7 +52,7 @@ namespace hgl
         bool    FileInputStream::CanSize    ()const                         {return file?file->CanSize():false;}
         bool    FileInputStream::CanPeek    ()const                         {return file?file->CanPeek():false;}
 
-        int64   FileInputStream::Skip       (int64 bytes)                   {return file?file->Seek(bytes,soCurrent):-1;}
+        int64   FileInputStream::Skip       (int64 bytes)                   {return file?file->Seek(bytes,SeekOrigin::Current):-1;}
         int64   FileInputStream::Tell       ()const                         {return file?file->Tell():-1;}
         int64   FileInputStream::GetSize    ()const                         {return file?file->GetSize():-1;}
         bool    FileInputStream::Restart    ()                              {return file?file->Restart():false;}

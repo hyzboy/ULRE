@@ -4,9 +4,9 @@
 //                  二、试验动态合并材质渲染机制、包括普通合并与Instance
 
 #include"VulkanAppFramework.h"
-#include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/VertexBuffer.h>
+#include<hgl/graph/InlineGeometry.h>
+#include<hgl/type/ResManage.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -22,87 +22,92 @@ struct WorldConfig
     Matrix4f mvp;
 }world;
 
-struct RectangleCreateInfo
-{
-    RectScope2f scope;
-    vec3<float> normal;
-    Color4f color;
-    RectScope2f tex_coord;
-};
-
-vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl,const RectangleCreateInfo *rci)
-{
-    const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
-
-    vulkan::Renderable *render_obj=mtl->CreateRenderable();
-
-    const int vertex_binding=vsm->GetStageInputBinding("Vertex");
-    
-    if(vertex_binding!=-1)
-    {
-        VB2f *vertex=new VB2f(6);
-
-        vertex->Begin();
-            vertex->WriteRect(rci->scope);
-        vertex->End();
-
-        render_obj->Set(vertex_binding,device->CreateVBO(vertex));
-        delete vertex;
-    }
-
-    const int normal_binding=vsm->GetStageInputBinding("Normal");
-
-    if(normal_binding!=-1)
-    {
-        VB3f *normal=new VB3f(6);
-
-        normal->Begin();
-            normal->Write(rci->normal,6);
-        normal->End();
-
-        render_obj->Set(normal_binding,device->CreateVBO(normal));
-        delete normal;
-    }
-
-    const int color_binding=vsm->GetStageInputBinding("Color");
-    
-    if(color_binding!=-1)
-    {
-        VB4f *color=new VB4f(6);
-
-        color->Begin();
-            color->Write(rci->color,6);
-        color->End();
-
-        render_obj->Set(color_binding,device->CreateVBO(color));
-        delete color;
-    }
-
-    const int tex_coord_binding=vsm->GetStageInputBinding("TexCoord");
-    
-    if(tex_coord_binding!=-1)
-    {
-        VB2f *tex_coord=new VB2f(6);
-
-        tex_coord->Begin();
-            tex_coord->WriteRect(rci->tex_coord);
-        tex_coord->End();
-
-        render_obj->Set(tex_coord_binding,device->CreateVBO(tex_coord));
-        delete tex_coord;
-    }
-
-    return render_obj;
-}
+VK_NAMESPACE_BEGIN
+//using MaterialID=int;
+//using PipelineID=int;
+//using DescriptorSetsID=int;
+//using RenderableID=int;
+//
+///**
+// * 场景DB，用于管理场景内所需的所有数据
+// */
+//class SceneDatabase
+//{
+//    IDResManage<MaterialID,       Material>       rm_material;                                        ///<材质合集
+//    IDResManage<PipelineID,       Pipeline>       rm_pipeline;                                        ///<管线合集
+//    IDResManage<DescriptorSetsID, DescriptorSets> rm_desc_sets;                                       ///<描述符合集
+//    IDResManage<RenderableID,     Renderable>     rm_renderable;                                      ///<可渲染对象合集
+//
+//public:
+//
+//    MaterialID          Add(Material *      mtl ){return rm_material.Add(mtl);}
+//    PipelineID          Add(Pipeline *      p   ){return rm_pipeline.Add(p);}
+//    DescriptorSetsID    Add(DescriptorSets *ds  ){return rm_desc_sets.Add(ds);}
+//    RenderableID        Add(Renderable *    r   ){return rm_renderable.Add(r);}
+//};//class SceneDatabase
 
 /**
- * 创建一个圆角矩形
- * @param r 半径
- * @param rp 半径精度
+ * 可渲染对象实例
  */
-//Mesh *CreateRoundrectangle(float l,float t,float w,float h,float r,uint32_t rp)
-//{
-//}
+class RenderableInstance
+{
+    Pipeline *        pipeline;
+    DescriptorSets *  desc_sets;
+    Renderable *      render_obj;
+
+public:
+
+    RenderableInstance(Pipeline *p,DescriptorSets *ds,Renderable *r):pipeline(p),desc_sets(ds),render_obj(r){}
+    virtual ~RenderableInstance()
+    {
+    }
+
+    Pipeline *      GetPipeline         (){return pipeline;}
+    DescriptorSets *GetDescriptorSets   (){return desc_sets;}
+    Renderable *    GetRenderable       (){return render_obj;}
+
+    const int Comp(const RenderableInstance *ri)const
+    {
+        //绘制顺序：
+        
+        //  ARM Mali GPU :   不透明、AlphaTest、半透明
+        //  Adreno/NV/AMD:   AlphaTest、不透明、半透明
+        //  PowerVR:         同Adreno/NV/AMD，但不透明部分可以不排序
+
+        if(pipeline->IsAlphaBlend())
+        {
+            if(!ri->pipeline->IsAlphaBlend())
+                return 1;
+        }
+        else
+        {
+            if(ri->pipeline->IsAlphaBlend())
+                return -1;
+        }
+
+        if(pipeline->IsAlphaTest())
+        {
+            if(!ri->pipeline->IsAlphaTest())
+                return 1;
+        }
+        else
+        {
+            if(ri->pipeline->IsAlphaTest())
+                return -1;
+        }
+
+        if(pipeline!=ri->pipeline)
+            return pipeline-ri->pipeline;
+
+        if(desc_sets!=ri->desc_sets)
+            return desc_sets-ri->desc_sets;
+
+        return render_obj-ri->render_obj;
+    }
+
+    CompOperator(const RenderableInstance *,Comp)
+};//class RenderableInstance
+VK_NAMESPACE_END
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -111,8 +116,10 @@ private:
     uint swap_chain_count=0;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    desciptor_sets      =nullptr;
+    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::RenderableInstance *render_instance     =nullptr;
+
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
@@ -125,13 +132,14 @@ public:
 
     ~TestApp()
     {
+        SAFE_CLEAR(render_instance);
         SAFE_CLEAR(color_buffer);
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(desciptor_sets);
+        SAFE_CLEAR(descriptor_sets);
         SAFE_CLEAR(material);
     }
 
@@ -144,17 +152,37 @@ private:
         if(!material)
             return(false);
 
-        desciptor_sets=material->CreateDescriptorSets();
+        descriptor_sets=material->CreateDescriptorSets();
         return(true);
     }
 
     bool CreateRenderObject()
     {
-        struct RectangleCreateInfo rci;
+        //struct RectangleCreateInfo rci;
 
-        rci.scope.Set(10,10,10,10);
+        //rci.scope.Set(10,10,10,10);
 
-        render_obj=CreateRectangle(device,material,&rci);
+        //render_obj=CreateRectangle(device,material,&rci);
+
+        //struct RoundRectangleCreateInfo rrci;
+
+        //rrci.scope.Set(10,10,SCREEN_WIDTH-20,SCREEN_HEIGHT-20);
+        //rrci.radius=8;     //半径为8
+        //rrci.round_per=8;   //圆角切分成8段
+
+        //render_obj=CreateRoundRectangle(device,material,&rrci);
+
+        struct CircleCreateInfo cci;
+
+        cci.center.x=SCREEN_WIDTH/2;
+        cci.center.y=SCREEN_HEIGHT/2;
+
+        cci.radius.x=SCREEN_WIDTH*0.45;
+        cci.radius.y=SCREEN_HEIGHT*0.45;
+
+        cci.field_count=8;
+
+        render_obj=CreateCircle(device,material,&cci);
 
         return render_obj;
     }
@@ -170,10 +198,10 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        if(!desciptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
+        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
             return(false);
 
-        desciptor_sets->Update();
+        descriptor_sets->Update();
         return(true);
     }
     
@@ -186,7 +214,7 @@ private:
             pipeline_creater->SetDepthTest(false);
             pipeline_creater->SetDepthWrite(false);
             pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(PRIM_TRIANGLES);
+            pipeline_creater->Set(PRIM_TRIANGLE_FAN);
 
             pipeline=pipeline_creater->Create();
 
@@ -194,6 +222,27 @@ private:
         }
 
         return pipeline;
+    }
+
+    void Draw(vulkan::CommandBuffer *cb,vulkan::RenderableInstance *ri)
+    {
+        cb->Bind(ri->GetPipeline());
+        cb->Bind(ri->GetDescriptorSets());
+
+        vulkan::Renderable *obj=ri->GetRenderable();
+
+        cb->Bind(obj);
+
+        const vulkan::IndexBuffer *ib=obj->GetIndexBuffer();
+
+        if(ib)
+        {
+            cb->DrawIndexed(ib->GetCount());
+        }
+        else
+        {
+            cb->Draw(obj->GetDrawCount());
+        }
     }
 
     bool InitCommandBuffer()
@@ -209,10 +258,7 @@ private:
 
             cmd_buf[i]->Begin();
                 cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-                    cmd_buf[i]->Bind(pipeline);
-                    cmd_buf[i]->Bind(desciptor_sets);
-                    cmd_buf[i]->Bind(render_obj);
-                    cmd_buf[i]->Draw(6);
+                    Draw(cmd_buf[i],render_instance);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
@@ -240,6 +286,8 @@ public:
             
         if(!InitPipeline())
             return(false);
+
+        render_instance=new vulkan::RenderableInstance(pipeline,descriptor_sets,render_obj);
 
         if(!InitCommandBuffer())
             return(false);
