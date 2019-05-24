@@ -32,11 +32,12 @@ namespace hgl
         {
             camera=cam;
 
-            MakeCameraMatrix(   &projection_matrix,
-                                &modelview_matrix,
+            MakeCameraMatrix(   &ubo_matrix.projection,
+                                &ubo_matrix.modelview,
                                 &camera);
 
-            mvp_matrix=projection_matrix*modelview_matrix;
+            ubo_matrix.mvp      =ubo_matrix.projection*ubo_matrix.modelview;
+            ubo_matrix.normal   =ubo_matrix.modelview.Float3x3Part();             //法线矩阵为3x3
 
             CameraToFrustum(&frustum,
                             &camera);
@@ -99,14 +100,14 @@ namespace hgl
 
             for(int i=0;i<count;i++)
             {
-                const Matrix4f fin_mv=modelview_matrix*(*node)->GetLocalToWorldMatrix();
+                const Matrix4f fin_mv=ubo_matrix.modelview*(*node)->GetLocalToWorldMatrix();
 
                 int sn=(*node)->RenderableList.GetCount();
                 RenderableInstance **p=(*node)->RenderableList.GetData();
 
                 for(int j=0;j<sn;j++)
                 {
-                    Render(*p,projection_matrix*fin_mv);
+                    Render(*p,ubo_matrix.projection*fin_mv);
 
                     p++;
                 }
