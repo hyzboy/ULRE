@@ -9,7 +9,7 @@ SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/AABox.h
 
 SET(SCENE_GRAPH_SOURCE  AABox.cpp
                         Camera.cpp
-#                        RenderList.cpp
+                        RenderList.cpp
                         SceneNode.cpp
                         SceneOrient.cpp
 						InlineGeometry.cpp)

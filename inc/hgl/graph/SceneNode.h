@@ -3,22 +3,24 @@
 
 #include<hgl/type/List.h>
 #include<hgl/graph/SceneOrient.h>
+#include<hgl/graph/vulkan/VK.h>
 namespace hgl
 {
     namespace graph
     {
+        using namespace vulkan;
+
         class SceneNode;
         struct Camera;
         class Frustum;
-        class Renderable;
 
-        typedef List<const SceneNode *> RenderList;                                                 ///<渲染列表类型重定义
+        using RenderList=List<const SceneNode *>;                                                   ///<渲染列表类型重定义
 
-        typedef float (*RenderListCompFunc)(Camera *,SceneNode *,SceneNode *);                      ///<渲染列表排序比较函数
+        using RenderListCompFunc=float (*)(Camera *,SceneNode *,SceneNode *);                       ///<渲染列表排序比较函数
 
         float CameraLengthComp(Camera *,SceneNode *,SceneNode *);                                   ///<摄像机距离比较函数
 
-        typedef bool (*FilterSceneNodeFunc)(const SceneNode *,void *);                              ///<场景节点过滤函数重定义
+        using FilterSceneNodeFunc=bool (*)(const SceneNode *,void *);                               ///<场景节点过滤函数重定义
 
         bool FrustumClipFilter(const SceneNode *,void *);                                           ///<平截头截减过滤函数
 
@@ -40,7 +42,7 @@ namespace hgl
 
         public:
 
-            List<Renderable *> SubData;                                                                                 ///<可渲染数据
+            List<RenderableInstance *> SubData;                                                                         ///<可渲染数据
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
 
         public:
@@ -52,7 +54,7 @@ namespace hgl
                 ClearRenderable();
             }
 
-            void        Add(Renderable *r){if(r)SubData.Add(r);}                                                        ///<增加一个可渲染数据
+            void        Add(RenderableInstance *r){if(r)SubData.Add(r);}                                                ///<增加一个可渲染数据
             void        ClearRenderable(){SubData.Clear();}                                                             ///<清除可渲染数据
 
             void        AddSubNode(SceneNode *n){if(n)SubNode.Add(n);}                                                  ///<增加一个子节点
@@ -63,7 +65,7 @@ namespace hgl
                 return sn;
             }
 
-            SceneNode * AddSubNode(Renderable *r,const Matrix4f &m)
+            SceneNode * AddSubNode(RenderableInstance *r,const Matrix4f &m)
             {
                 if(!r)return(nullptr);
 
