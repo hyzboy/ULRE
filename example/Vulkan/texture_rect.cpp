@@ -93,7 +93,7 @@ private:
         if(!material)
             return(false);
 
-        render_obj=material->CreateRenderable();
+        render_obj=material->CreateRenderable(VERTEX_COUNT);
         desciptor_sets=material->CreateDescriptorSets();
 
         texture=vulkan::LoadTGATexture(OS_TEXT("lena.tga"),device);
