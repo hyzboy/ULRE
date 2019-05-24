@@ -74,7 +74,7 @@ private:
         if(!material)
             return(false);
 
-        render_obj=material->CreateRenderable();
+        render_obj=material->CreateRenderable(VERTEX_COUNT);
         descriptor_sets=material->CreateDescriptorSets();
         return(true);
     }
