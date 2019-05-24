@@ -12,27 +12,21 @@ namespace hgl
         {
             const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
-            vulkan::Renderable *render_obj=mtl->CreateRenderable(4);
-
             const int vertex_binding=vsm->GetStageInputBinding("Vertex");
 
-            if(vertex_binding!=-1)
-            {
-                VB2f *vertex=new VB2f(4);
+            if(vertex_binding==-1)
+                return(nullptr);
+            
+            VB2f *vertex=new VB2f(4);
 
-                vertex->Begin();
-                vertex->WriteRectFan(rci->scope);
-                vertex->End();
+            vertex->Begin();
+            vertex->WriteRectFan(rci->scope);
+            vertex->End();
 
-                render_obj->Set(vertex_binding,device->CreateVBO(vertex));
-                delete vertex;
-            }
-            else
-            {
-               delete render_obj;
-                return nullptr;
-            }
+            vulkan::Renderable *render_obj=mtl->CreateRenderable(vertex->GetCount());
+            render_obj->Set(vertex_binding,device->CreateVBO(vertex));
 
+            delete vertex;
             return render_obj;
         }
 
@@ -114,7 +108,40 @@ namespace hgl
             render_obj->Set(vertex_binding,device->CreateVBO(vertex));
 
             delete vertex;
+            return render_obj;
+        }
 
+        vulkan::Renderable *CreateCircle(vulkan::Device *device,vulkan::Material *mtl,const CircleCreateInfo *cci)
+        {            
+            const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
+
+            const int vertex_binding=vsm->GetStageInputBinding("Vertex");
+
+            if(vertex_binding==-1)
+                return(nullptr);
+
+            VB2f *vertex=new VB2f(cci->field_count+2);
+
+            vertex->Begin();
+
+            vertex->Write(cci->center.x,cci->center.y);
+
+            for(uint i=0;i<=cci->field_count;i++)
+            {
+                float ang=float(i)/float(cci->field_count)*360.0f;
+
+                float x=cci->center.x+sin(hgl_ang2rad(ang))*cci->radius.x;
+                float y=cci->center.y+cos(hgl_ang2rad(ang))*cci->radius.y;
+                    
+                vertex->Write(x,y);
+            }
+
+            vertex->End();
+
+            vulkan::Renderable *render_obj=mtl->CreateRenderable(vertex->GetCount());
+            render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+
+            delete vertex;
             return render_obj;
         }
     }//namespace graph

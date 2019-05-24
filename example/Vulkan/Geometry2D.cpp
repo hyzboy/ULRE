@@ -109,9 +109,6 @@ public:
 };//class RenderableInstance
 VK_NAMESPACE_END
 
-constexpr uint32_t VERTEX_COUNT=4;
-
-
 class TestApp:public VulkanApplicationFramework
 {
 private:
@@ -167,13 +164,25 @@ private:
 
         //render_obj=CreateRectangle(device,material,&rci);
 
-        struct RoundRectangleCreateInfo rrci;
+        //struct RoundRectangleCreateInfo rrci;
 
-        rrci.scope.Set(10,10,SCREEN_WIDTH-20,SCREEN_HEIGHT-20);
-        rrci.radius=8;     //半径为8
-        rrci.round_per=8;   //圆角切分成8段
+        //rrci.scope.Set(10,10,SCREEN_WIDTH-20,SCREEN_HEIGHT-20);
+        //rrci.radius=8;     //半径为8
+        //rrci.round_per=8;   //圆角切分成8段
 
-        render_obj=CreateRoundRectangle(device,material,&rrci);
+        //render_obj=CreateRoundRectangle(device,material,&rrci);
+
+        struct CircleCreateInfo cci;
+
+        cci.center.x=SCREEN_WIDTH/2;
+        cci.center.y=SCREEN_HEIGHT/2;
+
+        cci.radius.x=SCREEN_WIDTH*0.45;
+        cci.radius.y=SCREEN_HEIGHT*0.45;
+
+        cci.field_count=8;
+
+        render_obj=CreateCircle(device,material,&cci);
 
         return render_obj;
     }

@@ -34,9 +34,12 @@ namespace hgl
          */
          struct CircleCreateInfo
          {
-            Vector2f center;
+            Vector2f center;            //圆心坐标
+            Vector2f radius;            //半径
             uint field_count;           //分段次数
          };
+
+         vulkan::Renderable *CreateCircle(vulkan::Device *device,vulkan::Material *mtl,const CircleCreateInfo *rci);
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE
