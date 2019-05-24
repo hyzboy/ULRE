@@ -45,8 +45,8 @@ namespace hgl
             {
                 const Matrix4f fin_mv=(*mv)*(*node)->GetLocalToWorldMatrix();
 
-                int sn=(*node)->SubData.GetCount();
-                RenderableInstance **p=(*node)->SubData.GetData();
+                int sn=(*node)->RenderableList.GetCount();
+                RenderableInstance **p=(*node)->RenderableList.GetData();
 
                 for(int j=0;j<sn;j++)
                 {
