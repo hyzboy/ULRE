@@ -109,7 +109,7 @@ namespace hgl
         {
             if(!CanSeek())return(-1);
 
-            return hgl_lseek64(fp,offset,orign);
+            return hgl_lseek64(fp,offset,(int)orign);
         }
 
         int64 FileAccess::Tell()const
@@ -142,7 +142,7 @@ namespace hgl
         {
             if(!CanRestart())return(false);
 
-            return(Seek(0,soBegin)==0);
+            return(Seek(0,SeekOrigin::Begin)==0);
         }
 
         int64 FileAccess::Read(void *buf,int64 size)
@@ -159,7 +159,7 @@ namespace hgl
             int result=hgl_read64(fp,buf,size);
 
             if(result>0)
-                hgl_lseek64(fp,-result,soCurrent);        //回移这个长度
+                hgl_lseek64(fp,-result,(int)SeekOrigin::Current);        //回移这个长度
 
             return result;
         }

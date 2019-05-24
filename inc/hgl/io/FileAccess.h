@@ -64,7 +64,7 @@ namespace hgl
             virtual bool CanRestart()const{return CanSeek();}                                       ///<文件是否可复位访问
             virtual bool CanSize()const{return(true);}                                              ///<文件是否可取得长度
 
-            virtual int64 Seek(int64,SeekOrigin=soBegin);                                           ///<定位访问指针
+            virtual int64 Seek(int64,SeekOrigin=SeekOrigin::Begin);                                           ///<定位访问指针
             virtual int64 Tell()const;                                                              ///<取得访问指针位置
             virtual int64 GetSize();                                                                ///<取得文件长度
             virtual bool Restart();                                                                 ///<复位访问指针

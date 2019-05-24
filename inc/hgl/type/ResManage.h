@@ -64,6 +64,7 @@ namespace hgl
 
         virtual F Add(T *value)
         {
+            if(!value)return(-1);
             if(!ResManage<F,T>::Add(id_count,value))
                 return(-1);
 

@@ -115,19 +115,19 @@ namespace hgl
 
             int64   Skip(int64 bytes)
             {
-                return Seek(bytes,soCurrent);
+                return Seek(bytes,SeekOrigin::Current);
             }
 
             int64   Seek(int64 off,SeekOrigin so)
             {
                 if(!CanSeek())return(-1);
 
-                if(so==soCurrent)
+                if(so==SeekOrigin::Current)
                 {
                     off+=cur_pos;
                 }
                 else
-                if(so==soEnd)
+                if(so==SeekOrigin::End)
                 {
                     off+=buf_size;
                 }
