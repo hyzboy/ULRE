@@ -194,16 +194,16 @@ namespace hgl
                 return(true);
             }
 
-            int64   Seek(int64 off,SeekOrigin so=soBegin) override
+            int64   Seek(int64 off,SeekOrigin so=SeekOrigin::Begin) override
             {
                 if(!CanSeek())return(-1);
 
-                if(so==soCurrent)
+                if(so==SeekOrigin::Current)
                 {
                     off+=cur_pos;
                 }
                 else
-                if(so==soEnd)
+                if(so==SeekOrigin::End)
                 {
                     off+=buf_size;
                 }

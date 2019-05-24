@@ -49,7 +49,7 @@ namespace hgl
         {
             if(!CanRead())return(-1);
 
-            if(_lseeki64(fp,offset,soBegin)==offset)
+            if(_lseeki64(fp,offset,(int)SeekOrigin::Begin)==offset)
                 return _read(fp,buf,size);
             else
                 return -1;
@@ -59,7 +59,7 @@ namespace hgl
         {
             if(!CanWrite())return(-1);
 
-            if(_lseeki64(fp,offset,soBegin)==offset)
+            if(_lseeki64(fp,offset,(int)SeekOrigin::Begin)==offset)
                 return _write(fp,buf,size);
             else
                 return -1;
