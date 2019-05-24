@@ -65,7 +65,7 @@ namespace hgl
                 if(!func(this,func_data))
                     return(false);
 
-            if(SubData.GetCount())
+            if(RenderableList.GetCount())
                 rl->Add(this);                                            //增加当前节点
 
             int count=SubNode.GetCount();

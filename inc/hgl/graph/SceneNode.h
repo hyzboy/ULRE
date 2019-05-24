@@ -42,7 +42,7 @@ namespace hgl
 
         public:
 
-            List<RenderableInstance *> SubData;                                                                         ///<可渲染数据
+            List<RenderableInstance *> RenderableList;                                                                  ///<可渲染实例列表
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
 
         public:
@@ -54,8 +54,8 @@ namespace hgl
                 ClearRenderable();
             }
 
-            void        Add(RenderableInstance *r){if(r)SubData.Add(r);}                                                ///<增加一个可渲染数据
-            void        ClearRenderable(){SubData.Clear();}                                                             ///<清除可渲染数据
+            void        Add(RenderableInstance *r){if(r)RenderableList.Add(r);}                                         ///<增加一个可渲染实例
+            void        ClearRenderable(){RenderableList.Clear();}                                                      ///<清除所有可渲染实例
 
             void        AddSubNode(SceneNode *n){if(n)SubNode.Add(n);}                                                  ///<增加一个子节点
             SceneNode * CreateSubNode()                                                                                 ///<创建一个子节点
