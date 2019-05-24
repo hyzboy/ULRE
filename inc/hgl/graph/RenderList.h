@@ -3,6 +3,7 @@
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/Camera.h>
+#include<hgl/type/Color4f.h>
 namespace hgl
 {
     namespace graph
@@ -14,24 +15,29 @@ namespace hgl
             Matrix4f projection;
             Matrix4f modelview;
             Matrix4f mvp;
+            Matrix3f normal;
         };//
 
         struct UBOSkyLight
-        {
-            Vector4f sky_color;
+        {            
+            Color4f sun_color;
+            Vector3f alignas(16) sun_direction;
         };//
 
         class RenderList
         {
             vulkan::CommandBuffer *cmd_buf;
 
+        private:
+
             Camera camera;
 
-            Matrix4f projection_matrix,
-                     modelview_matrix,
-                     mvp_matrix;
-
             Frustum frustum;
+
+        private:
+
+            UBOMatrixData ubo_matrix;
+            UBOSkyLight ubo_skylight;
 
         private:
 
@@ -59,6 +65,11 @@ namespace hgl
             void Clear  ()                      {SceneNodeList.ClearData();}
 
             void SetCamera(const Camera &);
+            void SetSkyLightColor(const Color4f &c,const Vector3f &d)
+            {
+                ubo_skylight.sun_color=c;
+                ubo_skylight.sun_direction=d;
+            }
 
             bool Render();
         };//class RenderList
