@@ -14,7 +14,7 @@ namespace hgl
         /**
         * 顶点属性数据实际模板
         */
-        template<typename T,int C> class VertexBuffer:public VertexBufferCreater
+        template<typename T,int C> class VertexBufferBase:public VertexBufferCreater
         {
         protected:
 
@@ -25,7 +25,7 @@ namespace hgl
 
         public:
 
-            VertexBuffer(uint32_t _size,const T *_data=nullptr):VertexBufferCreater(_size,C,sizeof(T))
+            VertexBufferBase(uint32_t _size,const T *_data=nullptr):VertexBufferCreater(_size,C,sizeof(T))
             {
                 mem_type=(T *)GetData();
                 access=0;
@@ -35,7 +35,7 @@ namespace hgl
                     memcpy(mem_type,_data,total_bytes);
             }
 
-            virtual ~VertexBuffer()=default;
+            virtual ~VertexBufferBase()=default;
 
             /**
             * 取得数据区地址
@@ -111,11 +111,11 @@ namespace hgl
         /**
         * 一元数据缓冲区
         */
-        template<typename T> class VertexBuffer1:public VertexBuffer<T,1>
+        template<typename T> class VertexBuffer1:public VertexBufferBase<T,1>
         {
         public:
 
-            using VertexBuffer<T,1>::VertexBuffer;
+            using VertexBufferBase<T,1>::VertexBufferBase;
             virtual ~VertexBuffer1()=default;
 
             VkFormat    GetDataType()const override;
@@ -154,11 +154,11 @@ namespace hgl
         /**
         * 二元数据缓冲区
         */
-        template<typename T> class VertexBuffer2:public VertexBuffer<T,2>
+        template<typename T> class VertexBuffer2:public VertexBufferBase<T,2>
         {
         public:
 
-            using VertexBuffer<T,2>::VertexBuffer;
+            using VertexBufferBase<T,2>::VertexBufferBase;
             virtual ~VertexBuffer2()=default;
 
             VkFormat    GetDataType()const override;
@@ -348,16 +348,64 @@ namespace hgl
                                     scope.GetRightBottom(),
                                     scope.GetLeftBottom());
             }
+
+            template<typename V>
+            bool WriteRectFan(const RectScope2<V> &scope)
+            {
+                if(!this->access||this->access+8>this->mem_end)
+                {
+                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteRectFan(RectScope2 *) out"));
+                    return(false);
+                }
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetBottom();
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetBottom();
+
+                return(true);
+            }
+
+            template<typename V>
+            bool WriteRectTriangleStrip(const RectScope2<V> &scope)
+            {
+                if(!this->access||this->access+8>this->mem_end)
+                {
+                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteRectTriangleStrip(RectScope2 *) out"));
+                    return(false);
+                }
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetLeft();
+                *this->access++=scope.GetBottom();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetTop();
+
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetBottom();
+
+                return(true);
+            }
         };//class VertexBuffer2
 
         /**
         * 三元数据缓冲区
         */
-        template<typename T> class VertexBuffer3:public VertexBuffer<T,3>
+        template<typename T> class VertexBuffer3:public VertexBufferBase<T,3>
         {
         public:
 
-            using VertexBuffer<T,3>::VertexBuffer;
+            using VertexBufferBase<T,3>::VertexBufferBase;
             virtual ~VertexBuffer3()=default;
 
             VkFormat    GetDataType()const override;
@@ -593,11 +641,11 @@ namespace hgl
         /**
         * 四元数据缓冲区
         */
-        template<typename T> class VertexBuffer4:public VertexBuffer<T,4>
+        template<typename T> class VertexBuffer4:public VertexBufferBase<T,4>
         {
         public:
 
-            using VertexBuffer<T,4>::VertexBuffer;
+            using VertexBufferBase<T,4>::VertexBufferBase;
             virtual ~VertexBuffer4()=default;
 
             VkFormat    GetDataType()const override;

@@ -40,7 +40,7 @@ namespace hgl
             virtual int64   Tell()const;                                                            ///<取当前位置
             virtual int64   GetSize();                                                              ///<取得文件长度
             virtual bool    Restart();                                                              ///<复位访问指针
-            virtual int64   Seek(int64,SeekOrigin=soBegin);                                         ///<移动访问指针
+            virtual int64   Seek(int64,SeekOrigin=SeekOrigin::Begin);                                         ///<移动访问指针
         };//class RandomAccessFile
     }//namespace io
 }//namespace hgl

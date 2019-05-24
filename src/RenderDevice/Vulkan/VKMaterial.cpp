@@ -117,8 +117,8 @@ void Material::Write(VkPipelineVertexInputStateCreateInfo &vis)const
     return vab->Write(vis);
 }
 
-Renderable *Material::CreateRenderable()
+Renderable *Material::CreateRenderable(const uint32_t draw_count)
 {
-    return(new Renderable(vertex_sm));
+    return(new Renderable(vertex_sm,draw_count));
 }
 VK_NAMESPACE_END

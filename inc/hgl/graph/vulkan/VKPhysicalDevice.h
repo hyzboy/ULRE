@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/graph/vulkan/VK.h>
+#include<hgl/type/BaseString.h>
 
 VK_NAMESPACE_BEGIN
 struct PhysicalDevice
@@ -9,6 +10,7 @@ struct PhysicalDevice
     VkPhysicalDevice                    physical_device=nullptr;
     VkPhysicalDeviceFeatures            features;
     VkPhysicalDeviceProperties          properties;
+    VkPhysicalDeviceDriverPropertiesKHR driver_properties;
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
     List<VkExtensionProperties>         extension_properties;
@@ -18,11 +20,16 @@ public:
     PhysicalDevice(VkInstance,VkPhysicalDevice);
     ~PhysicalDevice()=default;
 
-    const bool CheckMemoryType(uint32_t,VkFlags,uint32_t *)const;
+    const bool              CheckMemoryType(uint32_t,VkFlags,uint32_t *)const;
 
-    VkPhysicalDeviceType GetDeviceType()const{return properties.deviceType;}
+    VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
+    const char *            GetDeviceName()const{return properties.deviceName;}
 
-    const char *GetDeviceName()const{return properties.deviceName;}
+    const uint32_t          GetExtensionSpecVersion(const UTF8String &name)const;
+
+    const VkDriverIdKHR     GetDriverId     ()const{return driver_properties.driverID;}
+    const char *            GetDriverName   ()const{return driver_properties.driverName;}
+    const char *            GetDriverInfo   ()const{return driver_properties.driverInfo;}
 
     /**
     * 获取该设备是否是显卡

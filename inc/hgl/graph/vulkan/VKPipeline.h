@@ -4,17 +4,25 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/io/DataOutputStream.h>
 VK_NAMESPACE_BEGIN
+using PipelineID=uint64;
+
 class Pipeline
 {
     VkDevice device;
     VkPipeline pipeline;
 
+    bool alpha_test;
+    bool alpha_blend;
+
 public:
 
-    Pipeline(VkDevice dev,VkPipeline p){device=dev;pipeline=p;}
+    Pipeline(VkDevice dev,VkPipeline p,bool at,bool ab):device(dev),pipeline(p),alpha_test(at),alpha_blend(ab){}
     virtual ~Pipeline();
 
     operator VkPipeline(){return pipeline;}
+
+    const bool IsAlphaTest()const{return alpha_test;}
+    const bool IsAlphaBlend()const{return alpha_blend;}
 };//class GraphicsPipeline
 
 constexpr size_t MAX_SAMPLE_MASK_COUNT=(VK_SAMPLE_COUNT_64_BIT+31)/32;
@@ -54,6 +62,9 @@ class PipelineCreater
 
     void InitDynamicState();
 
+    float alpha_test=0;
+    bool alpha_blend=false;
+
 public:
 
     PipelineCreater(Device *dev,const Material *,RenderPass *rp,const VkExtent2D &);
@@ -65,6 +76,8 @@ public:
     void SetViewport(   float x,float y,float w,float h){viewport.x=x;viewport.y=y;viewport.width=w;viewport.height=h;}
     void SetDepthRange( float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}
     void SetScissor(    float l,float t,float w,float h){scissor.offset.x=l;scissor.offset.y=t;scissor.extent.width=w;scissor.extent.height=h;}
+
+    void SetAlphaTest(  const float at)                 {alpha_test=at;}
 
     void SetDepthTest(  bool                dt)         {depthStencilState.depthTestEnable=dt;}
     void SetDepthWrite( bool                dw)         {depthStencilState.depthWriteEnable=dw;}
@@ -115,6 +128,9 @@ public:
 
         colorBlendAttachments.Add(*cba);
         colorBlending.attachmentCount=colorBlendAttachments.GetCount();
+
+        if(cba->blendEnable)
+            alpha_blend=true;
     }
 
     bool SetBlend(uint index,bool blend)
@@ -124,6 +140,22 @@ public:
         if(!cba)return(false);
 
         cba->blendEnable=blend;
+
+        if(blend)
+            alpha_blend=true;
+        else
+        {
+            cba=colorBlendAttachments.GetData();
+
+            for(int i=0;i<colorBlendAttachments.GetCount();i++)
+                if(cba->blendEnable)
+                {
+                    alpha_blend=true;
+                    return(true);
+                }
+
+            alpha_blend=false;
+        }
 
         return(true);
     }

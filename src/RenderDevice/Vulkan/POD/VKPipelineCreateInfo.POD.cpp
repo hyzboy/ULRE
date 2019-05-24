@@ -41,6 +41,8 @@ bool PipelineCreater::SaveToStream(io::DataOutputStream *dos)
     for(uint32_t i=0;i<pipelineInfo.pColorBlendState->attachmentCount;i++)
         WRITE_AND_CHECK_SIZE(pipelineInfo.pColorBlendState->pAttachments+i,VkPipelineColorBlendAttachmentState);
 
+    if(!dos->WriteFloat(alpha_test))return(false);
+
     return(true);
 }
 
@@ -89,15 +91,28 @@ bool PipelineCreater::LoadFromMemory(uchar *data,uint size)
         if(size<colorBlending.attachmentCount*sizeof(VkPipelineColorBlendAttachmentState))
             return(false);
 
+        VkPipelineColorBlendAttachmentState *cba=(VkPipelineColorBlendAttachmentState *)data;
+
         colorBlendAttachments.SetCount(colorBlending.attachmentCount);
         memcpy(colorBlendAttachments.GetData(),data,colorBlending.attachmentCount*sizeof(VkPipelineColorBlendAttachmentState));
 
         colorBlending.pAttachments=colorBlendAttachments.GetData();
+
+        for(uint i=0;i<colorBlending.attachmentCount;i++)
+        {
+            if(cba->blendEnable)
+                alpha_blend=true;
+
+            ++cba;
+        }
     }
     else
     {
         colorBlending.pAttachments=nullptr;
+        alpha_blend=false;
     }
+
+    CHECK_SIZE_AND_COPY(alpha_test,float);
 
     return(true);
 }

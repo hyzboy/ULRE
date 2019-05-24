@@ -2,6 +2,7 @@
 #define HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
 /**
@@ -17,13 +18,26 @@ class Renderable
     VkBuffer *buf_list=nullptr;
     VkDeviceSize *buf_offset=nullptr;
 
+    uint32_t draw_count;
+
     IndexBuffer *indices_buffer=nullptr;
     VkDeviceSize indices_offset=0;
 
+protected:
+
+    friend class RenderableInstance;
+
+    uint ref_count=0;
+
+    uint RefInc(){return ++ref_count;}
+    uint RefDec(){return --ref_count;}
+
 public:
 
-    Renderable(const VertexShaderModule *);
+    Renderable(const VertexShaderModule *,const uint32_t dc);
     virtual ~Renderable();
+
+    const uint GetRefCount()const{return ref_count;}
 
     bool Set(const int stage_input_binding, VertexBuffer *vb,VkDeviceSize offset=0);
     bool Set(const UTF8String &name,        VertexBuffer *vb,VkDeviceSize offset=0);
@@ -38,6 +52,14 @@ public:
     }
 
 public:
+
+    const uint32_t          GetDrawCount    ()const                             ///<取得当前对象绘制需要多少个顶点
+    {
+        if(indices_buffer)
+            return indices_buffer->GetCount();
+
+        return draw_count;
+    }
 
     const int               GetBufferCount  ()const{return buf_count;}
     const VkBuffer *        GetBuffer       ()const{return buf_list;}
