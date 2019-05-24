@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/SceneNode.h>
+#include<hgl/graph/RenderList.h>
 //#include<hgl/graph/Frustum.h>
 namespace hgl
 {
@@ -81,12 +82,12 @@ namespace hgl
             return(true);
         }
 
-        bool SceneNode::ExpendToList(RenderList *rl,const Matrix4f &proj,const Matrix4f &mv,RenderListCompFunc comp_func)const
-        {
-            if(!rl)return(false);
+        //bool SceneNode::ExpendToList(RenderList *rl,const Matrix4f &proj,const Matrix4f &mv,RenderListCompFunc comp_func)const
+        //{
+        //    if(!rl)return(false);
 
 
-        }
+        //}
 
         /**
         * 从当前节点展开输出到一个渲染列表
