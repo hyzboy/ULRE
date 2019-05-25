@@ -120,6 +120,46 @@ namespace hgl
 
             VkFormat    GetDataType()const override;
 
+            /**
+            * 计算绑定盒
+            * @param min_vertex 最小值坐标
+            * @param max_vertex 最大值坐标
+            */
+            template<typename V>
+            void GetBoundingBox(V &min_vertex,V &max_vertex) const
+            {
+                T *p=this->mem_type;
+
+                //先以corner为最小值,length为最大值，求取最小最大值
+                min_vertex.x=*p++;
+
+                max_vertex=min_vertex;
+
+                for(uint32_t i=1;i<this->count;i++)
+                {
+                    if(*p<min_vertex.x)min_vertex.x=*p;
+                    if(*p>max_vertex.x)max_vertex.x=*p;
+                    ++p;
+                }
+            }
+
+            AABB GetAABB()const
+            {
+                vec min_point,max_point;
+
+                GetBoundingBox(min_point,max_point);
+
+                min_point.y=0;
+                min_point.z=0;
+                min_point.w=0;
+
+                max_point.y=0;
+                max_point.z=0;
+                max_point.w=0;
+
+                return AABB(min_point,max_point);
+            }
+
             bool Write(const T v1)
             {
                 if(!this->access||this->access+1>this->mem_end)
@@ -162,6 +202,48 @@ namespace hgl
             virtual ~VertexBuffer2()=default;
 
             VkFormat    GetDataType()const override;
+
+            /**
+            * 计算绑定盒
+            * @param min_vertex 最小值坐标
+            * @param max_vertex 最大值坐标
+            */
+            template<typename V>
+            void GetBoundingBox(V &min_vertex,V &max_vertex) const
+            {
+                T *p=this->mem_type;
+
+                //先以corner为最小值,length为最大值，求取最小最大值
+                min_vertex.x=*p++;
+                min_vertex.y=*p++;
+
+                max_vertex=min_vertex;
+
+                for(uint32_t i=1;i<this->count;i++)
+                {
+                    if(*p<min_vertex.x)min_vertex.x=*p;
+                    if(*p>max_vertex.x)max_vertex.x=*p;
+                    ++p;
+
+                    if(*p<min_vertex.y)min_vertex.y=*p;
+                    if(*p>max_vertex.y)max_vertex.y=*p;
+                    ++p;
+                }
+            }
+
+            AABB GetAABB()const
+            {
+                vec min_point,max_point;
+
+                GetBoundingBox(min_point,max_point);
+
+                min_point.z=0;
+                min_point.w=0;
+                max_point.z=0;
+                max_point.w=0;
+
+                return AABB(min_point,max_point);
+            }
 
             bool Write(const T v1,const T v2)
             {
@@ -416,7 +498,7 @@ namespace hgl
             * @param max_vertex 最大值坐标
             */
             template<typename V>
-            void GetBoundingBox(V &min_vertex,V &max_vertex)
+            void GetBoundingBox(V &min_vertex,V &max_vertex) const
             {
                 T *p=this->mem_type;
 
@@ -441,6 +523,18 @@ namespace hgl
                     if(*p>max_vertex.z)max_vertex.z=*p;
                     ++p;
                 }
+            }
+
+            AABB GetAABB()const
+            {
+                vec min_point,max_point;
+
+                GetBoundingBox(min_point,max_point);
+
+                min_point.w=0;
+                max_point.w=0;
+
+                return AABB(min_point,max_point);
             }
 
             bool Write(const T v1,const T v2,const T v3)
@@ -656,7 +750,7 @@ namespace hgl
             * @param max_vertex 最大值坐标
             */
             template<typename V>
-            void GetBoundingBox(V &min_vertex,V &max_vertex)
+            void GetBoundingBox(V &min_vertex,V &max_vertex) const
             {
                 T *p=this->mem_type;
 
@@ -664,6 +758,7 @@ namespace hgl
                 min_vertex.x=*p++;
                 min_vertex.y=*p++;
                 min_vertex.z=*p++;
+                ++p;
 
                 max_vertex=min_vertex;
 
@@ -680,7 +775,21 @@ namespace hgl
                     if(*p<min_vertex.z)min_vertex.z=*p;
                     if(*p>max_vertex.z)max_vertex.z=*p;
                     ++p;
+
+                    ++p;
                 }
+            }
+
+            AABB GetAABB()const
+            {
+                vec min_point,max_point;
+
+                GetBoundingBox(min_point,max_point);
+
+                min_point.w=0;
+                max_point.w=0;
+
+                return AABB(min_point,max_point);
             }
 
             bool Write(const T v1,const T v2,const T v3,const T v4)

@@ -4,9 +4,7 @@
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 #include<hgl/graph/VertexBuffer.h>
-#include<hgl/math/Math.h>
-
-#include<hgl/graph/vulkan/VKRenderableInstance.h>
+#include<hgl/graph/RenderableNode.h>
 
 namespace hgl
 {
@@ -43,7 +41,7 @@ namespace hgl
                             &camera);
         }
 
-        void RenderList::Render(vulkan::RenderableInstance *ri,const Matrix4f &fin_mvp)
+        void RenderList::Render(RenderableNode *ri,const Matrix4f &fin_mvp)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
@@ -95,22 +93,14 @@ namespace hgl
             last_desc_sets=nullptr;
             last_renderable=nullptr;
 
-            int count=SceneNodeList.GetCount();
-            const SceneNode **node=SceneNodeList.GetData();
+            const int count=renderable_node_list.GetCount();
+            RenderableNode **node=renderable_node_list.GetData();
 
             for(int i=0;i<count;i++)
             {
                 const Matrix4f fin_mv=ubo_matrix.modelview*(*node)->GetLocalToWorldMatrix();
 
-                int sn=(*node)->RenderableList.GetCount();
-                RenderableInstance **p=(*node)->RenderableList.GetData();
-
-                for(int j=0;j<sn;j++)
-                {
-                    Render(*p,ubo_matrix.projection*fin_mv);
-
-                    p++;
-                }
+                Render(*node,ubo_matrix.projection*fin_mv);
 
                 node++;
             }

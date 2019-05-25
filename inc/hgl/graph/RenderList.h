@@ -8,7 +8,7 @@ namespace hgl
 {
     namespace graph
     {
-        class SceneNode;
+        class RenderableNode;
 
         struct UBOMatrixData
         {
@@ -21,7 +21,7 @@ namespace hgl
         struct UBOSkyLight
         {            
             Color4f sun_color;
-            Vector3f alignas(16) sun_direction;
+            Vector4f sun_direction;
         };//
 
         class RenderList
@@ -41,13 +41,13 @@ namespace hgl
 
         private:
 
-            List<const SceneNode *> SceneNodeList;
+            List<RenderableNode *> renderable_node_list;
 
             vulkan::Pipeline *      last_pipeline;
             vulkan::DescriptorSets *last_desc_sets;
             vulkan::Renderable *    last_renderable;
 
-            void Render(vulkan::RenderableInstance *,const Matrix4f &);
+            void Render(RenderableNode *,const Matrix4f &);
 
         public:
 
@@ -61,11 +61,11 @@ namespace hgl
 
             ~RenderList()=default;
 
-            void Add    (const SceneNode *node) {if(node)SceneNodeList.Add(node);}
-            void Clear  ()                      {SceneNodeList.ClearData();}
+            void Add    (RenderableNode *node)  {if(node)renderable_node_list.Add(node);}
+            void Clear  ()                      {renderable_node_list.ClearData();}
 
             void SetCamera(const Camera &);
-            void SetSkyLightColor(const Color4f &c,const Vector3f &d)
+            void SetSkyLightColor(const Color4f &c,const Vector4f &d)
             {
                 ubo_skylight.sun_color=c;
                 ubo_skylight.sun_direction=d;

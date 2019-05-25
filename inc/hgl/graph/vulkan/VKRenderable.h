@@ -4,6 +4,7 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/type/BaseString.h>
+#include<hgl/math/Math.h>
 VK_NAMESPACE_BEGIN
 /**
  * 可渲染数据对象<br>
@@ -23,9 +24,13 @@ class Renderable
     IndexBuffer *indices_buffer=nullptr;
     VkDeviceSize indices_offset=0;
 
+private:
+
+    AABB BoundingBox;
+
 protected:
 
-    friend class RenderableInstance;
+    friend class RenderableNode;
 
     uint ref_count=0;
 
@@ -38,6 +43,9 @@ public:
     virtual ~Renderable();
 
     const uint GetRefCount()const{return ref_count;}
+
+    void        SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
+    const AABB &GetBoundingBox()const           {return BoundingBox;}
 
     bool Set(const int stage_input_binding, VertexBuffer *vb,VkDeviceSize offset=0);
     bool Set(const UTF8String &name,        VertexBuffer *vb,VkDeviceSize offset=0);

@@ -7,14 +7,14 @@ namespace hgl
     {
         /**
         * 刷新矩阵
-        * @param root 根矩阵
+        * @param root_matrix 根矩阵
         */
         void SceneNode::RefreshMatrix(const Matrix4f *root_matrix)
         {
             if(root_matrix)
                 RefreshLocalToWorldMatrix(root_matrix);
             else
-                LocalToWorldMatrix=LocalMatrix;
+                SetLocalToWorldMatrix(LocalMatrix);
 
             const int count=SubNode.GetCount();
 
@@ -36,19 +36,22 @@ namespace hgl
             int count=SubNode.GetCount();
             SceneNode **sub=SubNode.GetData();
 
-            Vector3f min_v,max_v;
+            AABB local,world;
 
             for(int i=0;i<count;i++)
             {
                 (*sub)->RefreshBoundingBox();
 
                 if(i==0)
-                {
-//                    min_v=(*sub)->GetBounding();
-                }
+                    local=(*sub)->GetLocalBoundingBox();
+                else
+                    local.Enclose((*sub)->GetLocalBoundingBox());
 
                 sub++;
             }
+
+            
+
         }
 
         /**
@@ -66,8 +69,8 @@ namespace hgl
                 if(!func(this,func_data))
                     return(false);
 
-            if(RenderableList.GetCount())
-                rl->Add(this);                                            //增加当前节点
+            if(CanRenderable())
+                rl->Add((RenderableNode *)this);                                            //增加当前节点
 
             int count=SubNode.GetCount();
             SceneNode **sub=SubNode.GetData();
