@@ -22,32 +22,6 @@ struct WorldConfig
     Matrix4f mvp;
 }world;
 
-VK_NAMESPACE_BEGIN
-//using MaterialID=int;
-//using PipelineID=int;
-//using DescriptorSetsID=int;
-//using RenderableID=int;
-//
-///**
-// * 场景DB，用于管理场景内所需的所有数据
-// */
-//class SceneDatabase
-//{
-//    IDResManage<MaterialID,       Material>       rm_material;                                        ///<材质合集
-//    IDResManage<PipelineID,       Pipeline>       rm_pipeline;                                        ///<管线合集
-//    IDResManage<DescriptorSetsID, DescriptorSets> rm_desc_sets;                                       ///<描述符合集
-//    IDResManage<RenderableID,     Renderable>     rm_renderable;                                      ///<可渲染对象合集
-//
-//public:
-//
-//    MaterialID          Add(Material *      mtl ){return rm_material.Add(mtl);}
-//    PipelineID          Add(Pipeline *      p   ){return rm_pipeline.Add(p);}
-//    DescriptorSetsID    Add(DescriptorSets *ds  ){return rm_desc_sets.Add(ds);}
-//    RenderableID        Add(Renderable *    r   ){return rm_renderable.Add(r);}
-//};//class SceneDatabase
-
-VK_NAMESPACE_END
-
 class TestApp:public VulkanApplicationFramework
 {
 private:
