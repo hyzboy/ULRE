@@ -38,19 +38,20 @@ namespace hgl
 
             AABB local,world;
 
-            for(int i=0;i<count;i++)
+            (*sub)->RefreshBoundingBox();
+            local=(*sub)->GetLocalBoundingBox();
+
+            ++sub;
+            for(int i=1;i<count;i++)
             {
                 (*sub)->RefreshBoundingBox();
 
-                if(i==0)
-                    local=(*sub)->GetLocalBoundingBox();
-                else
-                    local.Enclose((*sub)->GetLocalBoundingBox());
+                local.Enclose((*sub)->GetLocalBoundingBox());
 
-                sub++;
+                ++sub;
             }
 
-
+            LocalBoundingBox=local;
 
         }
 
