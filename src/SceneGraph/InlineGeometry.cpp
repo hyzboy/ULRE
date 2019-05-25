@@ -25,6 +25,7 @@ namespace hgl
 
             vulkan::Renderable *render_obj=mtl->CreateRenderable(vertex->GetCount());
             render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+            render_obj->SetBoundingBox(vertex->GetAABB());
 
             delete vertex;
             return render_obj;
@@ -106,6 +107,7 @@ namespace hgl
 
             render_obj=mtl->CreateRenderable(vertex->GetCount());
             render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+            render_obj->SetBoundingBox(vertex->GetAABB());
 
             delete vertex;
             return render_obj;
@@ -140,6 +142,7 @@ namespace hgl
 
             vulkan::Renderable *render_obj=mtl->CreateRenderable(vertex->GetCount());
             render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+            render_obj->SetBoundingBox(vertex->GetAABB());
 
             delete vertex;
             return render_obj;

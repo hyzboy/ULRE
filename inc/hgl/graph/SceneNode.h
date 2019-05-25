@@ -8,11 +8,8 @@ namespace hgl
 {
     namespace graph
     {
-        using namespace vulkan;
-
         class SceneNode;
         struct Camera;
-        class Frustum;
         class RenderList;
         
         using RenderListCompFunc=float (*)(Camera *,SceneNode *,SceneNode *);                       ///<渲染列表排序比较函数
@@ -32,8 +29,8 @@ namespace hgl
         protected:
 
             AABB BoundingBox;                                                                                           ///<绑定盒
-//          AABB LocalBoundingBox;                                                                                      ///<本地坐标绑定盒
-//          AABB WorldBoundingBox;                                                                                      ///<世界坐标绑定盒
+            AABB LocalBoundingBox;                                                                                      ///<本地坐标绑定盒
+            AABB WorldBoundingBox;                                                                                      ///<世界坐标绑定盒
 
             Vector3f Center;                                                                                            ///<中心点
             Vector3f LocalCenter;                                                                                       ///<本地坐标中心点
@@ -41,7 +38,6 @@ namespace hgl
 
         public:
 
-            List<RenderableInstance *> RenderableList;                                                                  ///<可渲染实例列表
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
 
         public:
@@ -50,11 +46,7 @@ namespace hgl
             virtual ~SceneNode()
             {
                 ClearSubNode();
-                ClearRenderable();
             }
-
-            void        Add(RenderableInstance *r){if(r)RenderableList.Add(r);}                                         ///<增加一个可渲染实例
-            void        ClearRenderable(){RenderableList.Clear();}                                                      ///<清除所有可渲染实例
 
             void        AddSubNode(SceneNode *n){if(n)SubNode.Add(n);}                                                  ///<增加一个子节点
             SceneNode * CreateSubNode()                                                                                 ///<创建一个子节点
@@ -64,17 +56,13 @@ namespace hgl
                 return sn;
             }
 
-            SceneNode * AddSubNode(RenderableInstance *r,const Matrix4f &m)
-            {
-                if(!r)return(nullptr);
-
-                SceneNode *sn=CreateSubNode();
-                sn->Add(r);
-                sn->SetLocalMatrix(m);
-                return sn;
-            }
-
             void        ClearSubNode(){SubNode.Clear();}                                                                ///<清除子节点
+
+        public:
+
+            virtual const bool IsCamera()const{return false;}                                                           ///<是否是摄像机
+            virtual const bool IsLight()const{return false;}                                                            ///<是否是灯光
+            virtual const bool CanRenderable()const{return false;}                                                      ///<是否可以渲染
 
         public: //坐标相关方法
 
@@ -84,8 +72,8 @@ namespace hgl
             virtual         void        RefreshBoundingBox  ();                                                         ///<刷新绑定盒
 
             virtual const   AABB &      GetBoundingBox      ()const{return BoundingBox;}                                ///<取得绑定盒
-//          virtual const   AABB &      GetLocalBoundingBox ()const{return LocalBoundingBox;}                           ///<取得本地坐标绑定盒
-//          virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
+            virtual const   AABB &      GetLocalBoundingBox ()const{return LocalBoundingBox;}                           ///<取得本地坐标绑定盒
+            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
 
             virtual const   Vector3f &  GetCenter           ()const{return Center;}                                     ///<取得中心点
             virtual const   Vector3f &  GetLocalCenter      ()const{return LocalCenter;}                                ///<取得本地坐标中心点
