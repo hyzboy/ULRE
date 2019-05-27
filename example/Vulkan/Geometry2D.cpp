@@ -7,7 +7,8 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/SceneDB.h>
-#include<hgl/graph/RenderableNode.h>
+#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/RenderList.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -30,12 +31,13 @@ private:
     uint swap_chain_count=0;
 
             SceneDB *           db                  =nullptr;
+            SceneNode *         render_root         =nullptr;
+            RenderList *        render_list         =nullptr;
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
     
     vulkan::Renderable *        render_obj          =nullptr;
-            RenderableNode *    render_node         =nullptr;
 
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -46,7 +48,8 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(render_node);
+        SAFE_CLEAR(render_list);
+        SAFE_CLEAR(render_root);
         SAFE_CLEAR(db);
 
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
@@ -70,20 +73,6 @@ private:
 
     bool CreateRenderObject()
     {
-        //struct RectangleCreateInfo rci;
-
-        //rci.scope.Set(10,10,10,10);
-
-        //render_obj=CreateRectangle(device,material,&rci);
-
-        //struct RoundRectangleCreateInfo rrci;
-
-        //rrci.scope.Set(10,10,SCREEN_WIDTH-20,SCREEN_HEIGHT-20);
-        //rrci.radius=8;     //半径为8
-        //rrci.round_per=8;   //圆角切分成8段
-
-        //render_obj=CreateRoundRectangle(device,material,&rrci);
-
         struct CircleCreateInfo cci;
 
         cci.center.x=SCREEN_WIDTH/2;
@@ -136,25 +125,20 @@ private:
         return pipeline;
     }
 
-    void Draw(vulkan::CommandBuffer *cb,RenderableNode *ri)
+    bool InitScene()
     {
-        cb->Bind(ri->GetPipeline());
-        cb->Bind(ri->GetDescriptorSets());
+        RenderableInstance *ri=db->CreateRenderableInstance(pipeline,descriptor_sets,render_obj);
 
-        vulkan::Renderable *obj=ri->GetRenderable();
+        if(!ri)
+            return(false);
 
-        cb->Bind(obj);
+        render_root=new SceneNode();
+        render_list=new RenderList();
 
-        const vulkan::IndexBuffer *ib=obj->GetIndexBuffer();
+        render_root->Add(ri);
+        render_root->ExpendToList(render_list);
 
-        if(ib)
-        {
-            cb->DrawIndexed(ib->GetCount());
-        }
-        else
-        {
-            cb->Draw(obj->GetDrawCount());
-        }
+        return(true);
     }
 
     bool InitCommandBuffer()
@@ -170,7 +154,7 @@ private:
 
             cmd_buf[i]->Begin();
                 cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-                    Draw(cmd_buf[i],render_node);
+                    render_list->Render(cmd_buf[i]);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
@@ -201,7 +185,8 @@ public:
         if(!InitPipeline())
             return(false);
 
-        render_node=new RenderableNode(pipeline,descriptor_sets,render_obj);
+        if(!InitScene())
+            return(false);
 
         if(!InitCommandBuffer())
             return(false);

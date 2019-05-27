@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/SceneDB.h>
 #include<hgl/graph/vulkan/VKDevice.h>
+#include<hgl/graph/RenderableInstance.h>
 
 namespace hgl
 {
@@ -40,5 +41,17 @@ namespace hgl
             SCENE_DB_CREATE_BUFFER(INBO)
 
         #undef SCENE_DB_CREATE_BUFFER
+
+        RenderableInstance *SceneDB::CreateRenderableInstance(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+        {
+            if(!p||!ds||!r)
+                return(nullptr);
+
+            RenderableInstance *ri=new RenderableInstance(p,ds,r);
+
+            Add(ri);
+
+            return ri;
+        }
     }//namespace graph
 }//namespace hgl

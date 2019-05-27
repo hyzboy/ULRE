@@ -11,6 +11,7 @@ namespace hgl
         class SceneNode;
         struct Camera;
         class RenderList;
+        class RenderableInstance;
         
         using RenderListCompFunc=float (*)(Camera *,SceneNode *,SceneNode *);                       ///<渲染列表排序比较函数
 
@@ -40,6 +41,8 @@ namespace hgl
 
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
 
+            List<RenderableInstance *> renderable_instances;                                                            ///<可渲染实例
+
         public:
 
             SceneNode()=default;
@@ -48,21 +51,11 @@ namespace hgl
                 ClearSubNode();
             }
 
-            void        AddSubNode(SceneNode *n){if(n)SubNode.Add(n);}                                                  ///<增加一个子节点
-            SceneNode * CreateSubNode()                                                                                 ///<创建一个子节点
-            {
-                SceneNode *sn=new SceneNode();
-                SubNode.Add(sn);
-                return sn;
-            }
+            void Add(SceneNode *n){if(n)SubNode.Add(n);}                                                                ///<增加一个子节点
+            void ClearSubNode(){SubNode.ClearData();}                                                                   ///<清除子节点
 
-            void        ClearSubNode(){SubNode.Clear();}                                                                ///<清除子节点
-
-        public:
-
-            virtual const bool IsCamera()const{return false;}                                                           ///<是否是摄像机
-            virtual const bool IsLight()const{return false;}                                                            ///<是否是灯光
-            virtual const bool CanRenderable()const{return false;}                                                      ///<是否可以渲染
+            void Add(RenderableInstance *ri){if(ri)renderable_instances.Add(ri);}                                       ///<增加渲染实例
+            void ClearRenderableInstance(){renderable_instances.ClearData();}                                           ///<清除渲染实例
 
         public: //坐标相关方法
 
@@ -81,12 +74,12 @@ namespace hgl
 
         public: //渲染列表相关方法
 
-            virtual bool ExpendToList(RenderList *,FilterSceneNodeFunc func=nullptr,void *func_data=nullptr)const;      ///<展开到渲染列表
-                    bool ExpendToList(RenderList *rl,Frustum *f)const                                                   ///<展开到渲染列表(使用平截头裁剪)
+            virtual bool ExpendToList(RenderList *,FilterSceneNodeFunc func=nullptr,void *func_data=nullptr);           ///<展开到渲染列表
+                    bool ExpendToList(RenderList *rl,Frustum *f)                                                        ///<展开到渲染列表(使用平截头裁剪)
                         {return ExpendToList(rl,FrustumClipFilter,f);}
 
-//                    bool ExpendToList(RenderList *,const Matrix4f &,const Matrix4f &,RenderListCompFunc=nullptr)const;  ///<展开到渲染列表(使用平截头裁剪并排序)
-                    bool ExpendToList(RenderList *,Camera *,RenderListCompFunc=nullptr)const;                           ///<展开到渲染列表(使用摄像机平截头裁剪并排序)
+//                    bool ExpendToList(RenderList *,const Matrix4f &,const Matrix4f &,RenderListCompFunc=nullptr);     ///<展开到渲染列表(使用平截头裁剪并排序)
+                    bool ExpendToList(RenderList *,Camera *,RenderListCompFunc=nullptr);                                ///<展开到渲染列表(使用摄像机平截头裁剪并排序)
         };//class SceneNode
     }//namespace graph
 }//namespace hgl

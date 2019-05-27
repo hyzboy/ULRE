@@ -62,7 +62,7 @@ namespace hgl
         * @param func_data 过滤函数用辅助数据
         * @return 成功与否
         */
-        bool SceneNode::ExpendToList(RenderList *rl,FilterSceneNodeFunc func,void *func_data)const
+        bool SceneNode::ExpendToList(RenderList *rl,FilterSceneNodeFunc func,void *func_data)
         {
             if(!rl)return(false);
 
@@ -70,17 +70,23 @@ namespace hgl
                 if(!func(this,func_data))
                     return(false);
 
-            if(CanRenderable())
-                rl->Add((RenderableNode *)this);                                            //增加当前节点
-
-            int count=SubNode.GetCount();
-            SceneNode **sub=SubNode.GetData();
-
-            for(int i=0;i<count;i++)
             {
-                (*sub)->ExpendToList(rl,func,func_data);                //展开子节点
+                int count=renderable_instances.GetCount();
 
-                sub++;
+                if(count>0)
+                    rl->Add(this);
+            }
+
+            {
+                int count=SubNode.GetCount();
+                SceneNode **sub=SubNode.GetData();
+
+                for(int i=0;i<count;i++)
+                {
+                    (*sub)->ExpendToList(rl,func,func_data);                //展开子节点
+
+                    ++sub;
+                }
             }
 
             return(true);
@@ -99,7 +105,7 @@ namespace hgl
         * @param cam 摄像机
         * @param comp_func 渲染列表远近比较函数
         */
-        bool SceneNode::ExpendToList(RenderList *rl,Camera *cam,RenderListCompFunc comp_func)const
+        bool SceneNode::ExpendToList(RenderList *rl,Camera *cam,RenderListCompFunc comp_func)
         {
             if(!rl||!cam)return(false);
 

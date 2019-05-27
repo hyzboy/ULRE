@@ -3,12 +3,13 @@
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/Camera.h>
+#include<hgl/graph/SceneNode.h>
 #include<hgl/type/Color4f.h>
 namespace hgl
 {
     namespace graph
     {
-        class RenderableNode;
+        class RenderableInstance;
 
         struct UBOMatrixData
         {
@@ -41,13 +42,14 @@ namespace hgl
 
         private:
 
-            List<RenderableNode *> renderable_node_list;
+            List<SceneNode *> scene_node_list;
 
             vulkan::Pipeline *      last_pipeline;
             vulkan::DescriptorSets *last_desc_sets;
             vulkan::Renderable *    last_renderable;
 
-            void Render(RenderableNode *,const Matrix4f &);
+            void Render(RenderableInstance *);
+            void Render(List<RenderableInstance *> &);
 
         public:
 
@@ -61,17 +63,19 @@ namespace hgl
 
             ~RenderList()=default;
 
-            void Add    (RenderableNode *node)  {if(node)renderable_node_list.Add(node);}
-            void Clear  ()                      {renderable_node_list.ClearData();}
+            void Add    (SceneNode *node)  {if(node)scene_node_list.Add(node);}
+            void Clear  ()                 {scene_node_list.ClearData();}
 
             void SetCamera(const Camera &);
+            void SetMVP(const Matrix4f &proj,const Matrix4f &mv);
+
             void SetSkyLightColor(const Color4f &c,const Vector4f &d)
             {
                 ubo_skylight.sun_color=c;
                 ubo_skylight.sun_direction=d;
             }
 
-            bool Render();
+            bool Render(vulkan::CommandBuffer *);
         };//class RenderList
     }//namespace graph
 }//namespace hgl
