@@ -1,7 +1,8 @@
 ﻿// 3.Geometry2D
 // 该范例有两个作用：
-//                  一、测试绘制2D几何体
-//                  二、试验动态合并材质渲染机制、包括普通合并与Instance
+//  一、测试绘制2D几何体
+//  二、试验动态合并材质渲染机制
+//  三、试验SceneDB/SceneGraph
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -31,8 +32,8 @@ private:
     uint swap_chain_count=0;
 
             SceneDB *           db                  =nullptr;
-            SceneNode *         render_root         =nullptr;
-            RenderList *        render_list         =nullptr;
+            SceneNode           render_root;
+            RenderList          render_list;
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
@@ -50,8 +51,6 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(render_list);
-        SAFE_CLEAR(render_root);
         SAFE_CLEAR(db);
 
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
@@ -147,14 +146,11 @@ private:
 
     bool InitScene()
     {
-        render_root=new SceneNode();
-        render_list=new RenderList();
+        render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_rectangle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_round_rectangle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
 
-        render_root->Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_rectangle));
-        render_root->Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_round_rectangle));
-        render_root->Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
-
-        render_root->ExpendToList(render_list);
+        render_root.ExpendToList(&render_list);
 
         return(true);
     }
@@ -172,7 +168,7 @@ private:
 
             cmd_buf[i]->Begin();
                 cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-                    render_list->Render(cmd_buf[i]);
+                    render_list.Render(cmd_buf[i]);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
