@@ -42,6 +42,15 @@ namespace hgl
 
         #undef SCENE_DB_CREATE_BUFFER
 
+        vulkan::IndexBuffer *SceneDB::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)
+        {
+            vulkan::IndexBuffer *buf=device->CreateIBO(index_type,count,data,sharing_mode);
+
+            if(!buf)return(nullptr);
+            rm_buffers.Add(buf);
+            return(buf);
+        }
+
         RenderableInstance *SceneDB::CreateRenderableInstance(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
         {
             if(!p||!ds||!r)
