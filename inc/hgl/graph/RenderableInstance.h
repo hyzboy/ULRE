@@ -70,7 +70,7 @@ namespace hgl
             }
 
             CompOperator(const RenderableInstance *,Comp)
-        };//class RenderableNode
+        };//class RenderableInstance
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
