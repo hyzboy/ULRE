@@ -57,16 +57,14 @@ namespace hgl
 
                 last_pipeline=ri->GetPipeline();
 
-                cmd_buf->Bind(ri->GetDescriptorSets());
+                last_desc_sets=nullptr;
             }
-            else
-            {
-                if(last_desc_sets!=ri->GetDescriptorSets())
-                {
-                    cmd_buf->Bind(ri->GetDescriptorSets());
 
-                    last_desc_sets=ri->GetDescriptorSets();
-                }
+            if(last_desc_sets!=ri->GetDescriptorSets())
+            {
+                cmd_buf->Bind(ri->GetDescriptorSets());
+
+                last_desc_sets=ri->GetDescriptorSets();
             }
 
             //更新fin_mvp

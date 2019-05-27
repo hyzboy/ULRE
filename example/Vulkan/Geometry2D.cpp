@@ -147,7 +147,6 @@ private:
 
     bool InitScene()
     {
-
         render_root=new SceneNode();
         render_list=new RenderList();
 
