@@ -1,14 +1,13 @@
 ﻿#include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VertexBuffer.h>
 #include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKMaterial.h>
-#include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
+#include<hgl/graph/SceneDB.h>
 namespace hgl
 {
     namespace graph
     {
-        vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl,const RectangleCreateInfo *rci)
+        vulkan::Renderable *CreateRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
         {
             const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
@@ -24,14 +23,15 @@ namespace hgl
             vertex->End();
 
             vulkan::Renderable *render_obj=mtl->CreateRenderable(vertex->GetCount());
-            render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+            render_obj->Set(vertex_binding,db->CreateVBO(vertex));
             render_obj->SetBoundingBox(vertex->GetAABB());
 
             delete vertex;
+            db->Add(render_obj);
             return render_obj;
         }
 
-        vulkan::Renderable *CreateRoundRectangle(vulkan::Device *device,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
+        vulkan::Renderable *CreateRoundRectangle(SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
         {
             const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
@@ -111,14 +111,15 @@ namespace hgl
             }
 
             render_obj=mtl->CreateRenderable(vertex->GetCount());
-            render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+            render_obj->Set(vertex_binding,db->CreateVBO(vertex));
             render_obj->SetBoundingBox(vertex->GetAABB());
 
             delete vertex;
+            db->Add(render_obj);
             return render_obj;
         }
 
-        vulkan::Renderable *CreateCircle(vulkan::Device *device,vulkan::Material *mtl,const CircleCreateInfo *cci)
+        vulkan::Renderable *CreateCircle(SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *cci)
         {            
             const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
@@ -146,10 +147,11 @@ namespace hgl
             vertex->End();
 
             vulkan::Renderable *render_obj=mtl->CreateRenderable(vertex->GetCount());
-            render_obj->Set(vertex_binding,device->CreateVBO(vertex));
+            render_obj->Set(vertex_binding,db->CreateVBO(vertex));
             render_obj->SetBoundingBox(vertex->GetAABB());
 
             delete vertex;
+            db->Add(render_obj);
             return render_obj;
         }
     }//namespace graph

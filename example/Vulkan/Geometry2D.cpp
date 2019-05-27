@@ -6,7 +6,8 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/type/ResManage.h>
+#include<hgl/graph/SceneDB.h>
+#include<hgl/graph/RenderableNode.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -28,32 +29,27 @@ private:
 
     uint swap_chain_count=0;
 
+            SceneDB *           db                  =nullptr;
+
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    
     vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::RenderableInstance *render_instance     =nullptr;
+            RenderableNode *    render_node         =nullptr;
 
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
     vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
-    vulkan::VertexBuffer *      vertex_buffer       =nullptr;
-    vulkan::VertexBuffer *      color_buffer        =nullptr;
-
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(render_instance);
-        SAFE_CLEAR(color_buffer);
-        SAFE_CLEAR(vertex_buffer);
+        SAFE_CLEAR(render_node);
+        SAFE_CLEAR(db);
+
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_mvp);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(descriptor_sets);
-        SAFE_CLEAR(material);
     }
 
 private:
@@ -66,6 +62,9 @@ private:
             return(false);
 
         descriptor_sets=material->CreateDescriptorSets();
+
+        db->Add(material);
+        db->Add(descriptor_sets);
         return(true);
     }
 
@@ -95,7 +94,7 @@ private:
 
         cci.field_count=8;
 
-        render_obj=CreateCircle(device,material,&cci);
+        render_obj=CreateCircle(db,material,&cci);
 
         return render_obj;
     }
@@ -106,7 +105,7 @@ private:
 
         world.mvp=ortho(extent.width,extent.height);
 
-        ubo_mvp=device->CreateUBO(sizeof(WorldConfig),&world);
+        ubo_mvp=db->CreateUBO(sizeof(WorldConfig),&world);
 
         if(!ubo_mvp)
             return(false);
@@ -130,14 +129,14 @@ private:
             pipeline_creater->Set(PRIM_TRIANGLE_FAN);
 
             pipeline=pipeline_creater->Create();
-
+            db->Add(pipeline);
             delete pipeline_creater;
         }
 
         return pipeline;
     }
 
-    void Draw(vulkan::CommandBuffer *cb,vulkan::RenderableInstance *ri)
+    void Draw(vulkan::CommandBuffer *cb,RenderableNode *ri)
     {
         cb->Bind(ri->GetPipeline());
         cb->Bind(ri->GetDescriptorSets());
@@ -171,7 +170,7 @@ private:
 
             cmd_buf[i]->Begin();
                 cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-                    Draw(cmd_buf[i],render_instance);
+                    Draw(cmd_buf[i],render_node);
                 cmd_buf[i]->EndRenderPass();
             cmd_buf[i]->End();
         }
@@ -188,6 +187,8 @@ public:
 
         swap_chain_count=device->GetSwapChainImageCount();
 
+        db=new SceneDB(device);
+
         if(!InitMaterial())
             return(false);
 
@@ -200,7 +201,7 @@ public:
         if(!InitPipeline())
             return(false);
 
-        render_instance=new vulkan::RenderableInstance(pipeline,descriptor_sets,render_obj);
+        render_node=new RenderableNode(pipeline,descriptor_sets,render_obj);
 
         if(!InitCommandBuffer())
             return(false);
