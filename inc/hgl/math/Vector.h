@@ -260,6 +260,7 @@ namespace hgl
     {
         struct { T x,y; };
         struct { T r,g; };
+        struct { T u,v; };
         T data[2];
 
     public:
@@ -285,6 +286,7 @@ namespace hgl
     {
         struct { T x,y,z; };
         struct { T r,g,b; };
+        struct { T u,v,w; };
         T data[3];
 
     public:

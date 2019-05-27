@@ -6,11 +6,19 @@ namespace hgl
 {
     namespace graph
     {
+        enum class CameraType
+        {
+            Perspective,
+            Ortho
+        };//
+
         /**
         * 摄像机数据结构
         */
         struct Camera
         {
+            CameraType type=CameraType::Perspective;
+
             float width;                ///<视图宽
             float height;               ///<视图高
 
@@ -21,11 +29,18 @@ namespace hgl
             Vector3f center;            ///<视点坐标
             Vector3f up_vector;         ///<向上量
             Vector3f forward_vector;    ///<向前量
+
+        public:
+
+            Matrix4f projection;
+            Matrix4f modelview;
+
+            Frustum frustum;
+
+        public:
+
+            void Refresh();
         };//struct Camera
-
-        void CameraToFrustum(Frustum *,const Camera *);
-
-        void MakeCameraMatrix(Matrix4f *proj,Matrix4f *mv,const Camera *cam);
 
         /**
         * 行走模拟像机
