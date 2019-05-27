@@ -37,7 +37,9 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
     
-    vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::Renderable          *ro_rectangle       =nullptr,
+                                *ro_circle          =nullptr,
+                                *ro_round_rectangle =nullptr;
 
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -71,21 +73,39 @@ private:
         return(true);
     }
 
-    bool CreateRenderObject()
+    void CreateRenderObject()
     {
-        struct CircleCreateInfo cci;
+        {
+            struct RectangleCreateInfo rci;
 
-        cci.center.x=SCREEN_WIDTH/2;
-        cci.center.y=SCREEN_HEIGHT/2;
+            rci.scope.Set(10,10,20,20);
 
-        cci.radius.x=SCREEN_WIDTH*0.45;
-        cci.radius.y=SCREEN_HEIGHT*0.45;
+            ro_rectangle=CreateRectangle(db,material,&rci);
+        }
 
-        cci.field_count=8;
+        {
+            struct RoundRectangleCreateInfo rrci;
 
-        render_obj=CreateCircle(db,material,&cci);
+            rrci.scope.Set(SCREEN_WIDTH-30,10,20,20);
+            rrci.radius=5;
+            rrci.round_per=5;
 
-        return render_obj;
+            ro_round_rectangle=CreateRoundRectangle(db,material,&rrci);
+        }
+
+        {
+            struct CircleCreateInfo cci;
+
+            cci.center.x=SCREEN_WIDTH/2;
+            cci.center.y=SCREEN_HEIGHT/2;
+
+            cci.radius.x=SCREEN_WIDTH*0.35;
+            cci.radius.y=SCREEN_HEIGHT*0.35;
+
+            cci.field_count=8;
+
+            ro_circle=CreateCircle(db,material,&cci);
+        }
     }
 
     bool InitUBO()
@@ -127,15 +147,14 @@ private:
 
     bool InitScene()
     {
-        RenderableInstance *ri=db->CreateRenderableInstance(pipeline,descriptor_sets,render_obj);
-
-        if(!ri)
-            return(false);
 
         render_root=new SceneNode();
         render_list=new RenderList();
 
-        render_root->Add(ri);
+        render_root->Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_rectangle));
+        render_root->Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_round_rectangle));
+        render_root->Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
+
         render_root->ExpendToList(render_list);
 
         return(true);
@@ -176,8 +195,7 @@ public:
         if(!InitMaterial())
             return(false);
 
-        if(!CreateRenderObject())
-            return(false);
+        CreateRenderObject();
 
         if(!InitUBO())
             return(false);
