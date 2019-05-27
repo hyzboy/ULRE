@@ -78,7 +78,6 @@ namespace hgl
                     bool ExpendToList(RenderList *rl,Frustum *f)                                                        ///<展开到渲染列表(使用平截头裁剪)
                         {return ExpendToList(rl,FrustumClipFilter,f);}
 
-//                    bool ExpendToList(RenderList *,const Matrix4f &,const Matrix4f &,RenderListCompFunc=nullptr);     ///<展开到渲染列表(使用平截头裁剪并排序)
                     bool ExpendToList(RenderList *,Camera *,RenderListCompFunc=nullptr);                                ///<展开到渲染列表(使用摄像机平截头裁剪并排序)
         };//class SceneNode
     }//namespace graph

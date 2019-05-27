@@ -30,15 +30,12 @@ namespace hgl
         {
             camera=cam;
 
-            MakeCameraMatrix(   &ubo_matrix.projection,
-                                &ubo_matrix.modelview,
-                                &camera);
-
+            ubo_matrix.projection=camera.projection;
+            ubo_matrix.modelview=camera.modelview;
             ubo_matrix.mvp      =ubo_matrix.projection*ubo_matrix.modelview;
             ubo_matrix.normal   =ubo_matrix.modelview.Float3x3Part();             //法线矩阵为3x3
 
-            CameraToFrustum(&frustum,
-                            &camera);
+            frustum=camera.frustum;
         }
 
         void RenderList::SetMVP(const Matrix4f &proj,const Matrix4f &mv)
