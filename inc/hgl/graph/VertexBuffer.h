@@ -273,8 +273,8 @@ namespace hgl
                 return(true);
             }
 
-            template<typename V>
-            bool Write(const vec2<V> &v)
+            template<typename V2>
+            bool Write(const V2 &v)
             {
                 if(!this->access||this->access+2>this->mem_end)
                 {
@@ -293,8 +293,8 @@ namespace hgl
              * @param v 值
              * @param count 写入数量
              */
-            template<typename V>
-            bool Write(const vec2<V> &v,const uint32_t count)
+            template<typename V2>
+            bool Fill(const V2 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count<<1)>this->mem_end)
                 {
@@ -327,8 +327,8 @@ namespace hgl
                 return(true);
             }
 
-            template<typename V>
-            bool WriteLine(const vec2<V> &start,const vec2<V> &end)
+            template<typename V2>
+            bool WriteLine(const V2 &start,const V2 &end)
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
@@ -347,8 +347,8 @@ namespace hgl
             /**
             * 写入2D三角形
             */
-            template<typename V>
-            bool WriteTriangle(const vec2<V> &v1,const vec2<V> &v2,const vec2<V> &v3)
+            template<typename V2>
+            bool WriteTriangle(const V2 &v1,const V2 &v2,const V2 &v3)
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
@@ -371,8 +371,8 @@ namespace hgl
             /**
             * 写入2D三角形
             */
-            template<typename V>
-            bool WriteTriangle(const vec2<V> *v)
+            template<typename V2>
+            bool WriteTriangle(const V2 *v)
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
@@ -397,8 +397,8 @@ namespace hgl
             /**
             * 写入2D四边形坐标数据
             */
-            template<typename V>
-            bool WriteQuad(const vec2<V> &lt,const vec2<V> &rt,const vec2<V> &rb,const vec2<V> &lb)
+            template<typename V2>
+            bool WriteQuad(const V2 &lt,const V2 &rt,const V2 &rb,const V2 &lb)
             {
                 if(WriteTriangle(lt,lb,rb))
                 if(WriteTriangle(lt,rb,rt))
@@ -552,7 +552,7 @@ namespace hgl
                 return(true);
             }
 
-            bool Write(const T *v)
+            bool Write3(const T *v)
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
@@ -567,28 +567,12 @@ namespace hgl
                 return(true);
             }
 
-            template<typename V>
-            bool Write(const vec3<V> &v)
+            template<typename V3>
+            bool Write(const V3 &v)
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
                     LOG_HINT(OS_TEXT("VertexBuffer3::Write(vec3 &) out"));
-                    return(false);
-                }
-
-                *this->access++=v.x;
-                *this->access++=v.y;
-                *this->access++=v.z;
-
-                return(true);
-            }
-
-            template<typename V>
-            bool Write(const vec4<V> &v)
-            {
-                if(!this->access||this->access+3>this->mem_end)
-                {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(vec4 &) out"));
                     return(false);
                 }
 
@@ -604,8 +588,8 @@ namespace hgl
              * @param v 值
              * @param count 写入数量
              */
-            template<typename V>
-            bool Write(const vec3<V> &v,const uint32_t count)
+            template<typename V3>
+            bool Fill(const V3 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count*3)>this->mem_end)
                 {
@@ -618,6 +602,32 @@ namespace hgl
                     *this->access++=v.x;
                     *this->access++=v.y;
                     *this->access++=v.z;
+                }
+
+                return(true);
+            }
+
+            /**
+            * 写入多个值到缓冲区
+            * @param v 值
+            * @param count 写入数量
+            */
+            template<typename V3>
+            bool Write(const V3 *v,const uint32_t count)
+            {
+                if(!this->access||this->access+(count*3)>this->mem_end)
+                {
+                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString(count)+OS_TEXT(") out"));
+                    return(false);
+                }
+
+                for(uint32_t i=0;i<count;i++)
+                {
+                    *this->access++=v->x;
+                    *this->access++=v->y;
+                    *this->access++=v->z;
+
+                    ++v;
                 }
 
                 return(true);
@@ -656,8 +666,8 @@ namespace hgl
                 return(true);
             }
 
-            template<typename V>
-            bool WriteLine(const vec3<V> &start,const vec3<V> &end)
+            template<typename V3>
+            bool WriteLine(const V3 &start,const V3 &end)
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
@@ -678,8 +688,8 @@ namespace hgl
             /**
             * 写入3D三角形
             */
-            template<typename V>
-            bool WriteTriangle(const vec3<V> &v1,const vec3<V> &v2,const vec3<V> &v3)
+            template<typename V3>
+            bool WriteTriangle(const V3 &v1,const V3 &v2,const V3 &v3)
             {
                 if(!this->access||this->access+9>this->mem_end)
                 {
@@ -705,8 +715,8 @@ namespace hgl
             /**
             * 写入3D三角形
             */
-            template<typename V>
-            bool WriteTriangle(const vec3<V> *v)
+            template<typename V3>
+            bool WriteTriangle(const V3 *v)
             {
                 if(!this->access||this->access+9>this->mem_end)
                 {
@@ -824,8 +834,8 @@ namespace hgl
                 return(true);
             }
 
-            template<typename V>
-            bool Write(const vec4<V> &v)
+            template<typename V4>
+            bool Write(const V4 &v)
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
@@ -857,7 +867,7 @@ namespace hgl
                 return(true);
             }
 
-            bool Write(const Color4f &v,const uint32_t count)
+            bool Fill(const Color4f &v,const uint32_t count)
             {
                 if(count<=0)return(false);
 
@@ -883,8 +893,8 @@ namespace hgl
              * @param v 值
              * @param count 写入数量
              */
-            template<typename V>
-            bool Write(const vec4<V> &v,const uint32_t count)
+            template<typename V4>
+            bool Fill(const V4 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count<<2)>this->mem_end)
                 {
@@ -898,6 +908,33 @@ namespace hgl
                     *this->access++=v.y;
                     *this->access++=v.z;
                     *this->access++=v.w;
+                }
+
+                return(true);
+            }
+
+            /**
+            * 将多个值写入缓冲区
+            * @param v 值
+            * @param count 写入数量
+            */
+            template<typename V4>
+            bool Write(const V4 *v,const uint32_t count)
+            {
+                if(!this->access||this->access+(count<<2)>this->mem_end)
+                {
+                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString(count)+OS_TEXT(") out"));
+                    return(false);
+                }
+
+                for(uint32_t i=0;i<count;i++)
+                {
+                    *this->access++=v->x;
+                    *this->access++=v->y;
+                    *this->access++=v->z;
+                    *this->access++=v->w;
+
+                    ++v;
                 }
 
                 return(true);
@@ -923,8 +960,8 @@ namespace hgl
                 return(true);
             }
 
-            template<typename V>
-            bool WriteLine(const vec3<V> &start,const vec3<V> &end)
+            template<typename V4>
+            bool WriteLine(const V4 &start,const V4 &end)
             {
                 if(!this->access||this->access+8>this->mem_end)
                 {
@@ -947,8 +984,8 @@ namespace hgl
             /**
             * 写入3D三角形
             */
-            template<typename V>
-            bool WriteTriangle(const vec3<V> &v1,const vec3<V> &v2,const vec3<V> &v3)
+            template<typename V4>
+            bool WriteTriangle(const V4 &v1,const V4 &v2,const V4 &v3)
             {
                 if(!this->access||this->access+12>this->mem_end)
                 {
@@ -977,8 +1014,8 @@ namespace hgl
             /**
             * 写入3D三角形
             */
-            template<typename V>
-            bool WriteTriangle(const vec3<V> *v)
+            template<typename V4>
+            bool WriteTriangle(const V4 *v)
             {
                 if(!this->access||this->access+12>this->mem_end)
                 {
