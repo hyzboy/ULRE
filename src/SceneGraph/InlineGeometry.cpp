@@ -64,6 +64,11 @@ namespace hgl
 
                 vec2<float> *coord=new vec2<float>[rci->round_per];
 
+                float   l=rci->scope.GetLeft(),
+                        r=rci->scope.GetRight(),
+                        t=rci->scope.GetTop(),
+                        b=rci->scope.GetBottom();
+
                 for(uint i=0;i<rci->round_per;i++)
                 {
                     float ang=float(i)/float(rci->round_per-1)*90.0f;
@@ -75,29 +80,29 @@ namespace hgl
                     coord[i].y=y;
 
                     //右上角
-                    vertex->Write(  rci->scope.GetRight()-radius+x,
-                                  rci->scope.GetTop()+radius-y);
+                    vertex->Write(r-radius+x,
+                                  t+radius-y);
                 }
 
                 //右下角
                 for(uint i=0;i<rci->round_per;i++)
                 {
-                    vertex->Write(rci->scope.GetRight() -radius+coord[rci->round_per-1-i].x,
-                                  rci->scope.GetBottom()-radius+coord[rci->round_per-1-i].y);
+                    vertex->Write(r-radius+coord[rci->round_per-1-i].x,
+                                  b-radius+coord[rci->round_per-1-i].y);
                 }
 
                 //左下角
                 for(uint i=0;i<rci->round_per;i++)
                 {
-                    vertex->Write(rci->scope.GetLeft()  +radius-coord[i].x,
-                                  rci->scope.GetBottom()-radius+coord[i].y);
+                    vertex->Write(l+radius-coord[i].x,
+                                  b-radius+coord[i].y);
                 }
 
                 //左上角
                 for(uint i=0;i<rci->round_per;i++)
                 {
-                    vertex->Write(rci->scope.GetLeft()  +radius-coord[rci->round_per-1-i].x,
-                                  rci->scope.GetTop()   +radius-coord[rci->round_per-1-i].y);
+                    vertex->Write(l+radius-coord[rci->round_per-1-i].x,
+                                  t+radius-coord[rci->round_per-1-i].y);
                 }
 
                 delete[] coord;
