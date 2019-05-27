@@ -8,6 +8,8 @@ namespace hgl
 {
     namespace graph
     {
+        class SceneDB;
+
         /**
          * 矩形创建信息
          */
@@ -16,7 +18,7 @@ namespace hgl
             RectScope2f scope;
         };
 
-        vulkan::Renderable *CreateRectangle(vulkan::Device *device,vulkan::Material *mtl,const RectangleCreateInfo *rci);
+        vulkan::Renderable *CreateRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
 
         /**
          * 圆角矩形创建信息
@@ -27,7 +29,7 @@ namespace hgl
             uint32_t round_per;     //圆角精度
         };
 
-        vulkan::Renderable *CreateRoundRectangle(vulkan::Device *device,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci);
+        vulkan::Renderable *CreateRoundRectangle(SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci);
 
         /**
          * 圆形创建信息
@@ -39,7 +41,7 @@ namespace hgl
             uint field_count;           //分段次数
          };
 
-         vulkan::Renderable *CreateCircle(vulkan::Device *device,vulkan::Material *mtl,const CircleCreateInfo *rci);
+         vulkan::Renderable *CreateCircle(SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *rci);
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE
