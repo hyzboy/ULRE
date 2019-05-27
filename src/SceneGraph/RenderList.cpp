@@ -4,7 +4,7 @@
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 #include<hgl/graph/VertexBuffer.h>
-#include<hgl/graph/RenderableNode.h>
+#include<hgl/graph/RenderableInstance.h>
 
 namespace hgl
 {
@@ -41,7 +41,15 @@ namespace hgl
                             &camera);
         }
 
-        void RenderList::Render(RenderableNode *ri,const Matrix4f &fin_mvp)
+        void RenderList::SetMVP(const Matrix4f &proj,const Matrix4f &mv)
+        {
+            ubo_matrix.projection   =proj;
+            ubo_matrix.modelview    =mv;
+            ubo_matrix.mvp          =proj*mv;
+            ubo_matrix.normal       =ubo_matrix.modelview.Float3x3Part();             //法线矩阵为3x3
+        }
+
+        void RenderList::Render(RenderableInstance *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
@@ -84,25 +92,36 @@ namespace hgl
             }
         }
 
-        bool RenderList::Render()
+        void RenderList::Render(List<RenderableInstance *> &ri_list)
         {
-            if(!cmd_buf)
+            const int count=ri_list.GetCount();
+            RenderableInstance **ri=ri_list.GetData();
+
+            for(int i=0;i<count;i++)
+            {
+                Render(*ri);
+                ++ri;
+            }
+        }
+
+        bool RenderList::Render(vulkan::CommandBuffer *cb)
+        {
+            if(!cb)
                 return(false);
+
+            cmd_buf=cb;
 
             last_pipeline=nullptr;
             last_desc_sets=nullptr;
             last_renderable=nullptr;
 
-            const int count=renderable_node_list.GetCount();
-            RenderableNode **node=renderable_node_list.GetData();
+            const int count=scene_node_list.GetCount();
+            SceneNode **node=scene_node_list.GetData();
 
             for(int i=0;i<count;i++)
             {
-                const Matrix4f fin_mv=ubo_matrix.modelview*(*node)->GetLocalToWorldMatrix();
-
-                Render(*node,ubo_matrix.projection*fin_mv);
-
-                node++;
+                Render((*node)->renderable_instances);
+                ++node;
             }
 
             return(true);

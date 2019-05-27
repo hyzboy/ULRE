@@ -1,10 +1,9 @@
-﻿#ifndef HGL_GRAPH_RENDERABLE_NODE_INCLUDE
-#define HGL_GRAPH_RENDERABLE_NODE_INCLUDE
+﻿#ifndef HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
+#define HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
 
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKPipeline.h>
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
-#include<hgl/graph/SceneNode.h>
 namespace hgl
 {
     namespace graph
@@ -12,7 +11,7 @@ namespace hgl
         /**
         * 可渲染对象节点
         */
-        class RenderableNode:public SceneNode
+        class RenderableInstance
         {
             vulkan::Pipeline *        pipeline;
             vulkan::DescriptorSets *  desc_sets;
@@ -20,8 +19,8 @@ namespace hgl
 
         public:
 
-            RenderableNode(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r):pipeline(p),desc_sets(ds),render_obj(r){}
-            virtual ~RenderableNode()
+            RenderableInstance(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r):pipeline(p),desc_sets(ds),render_obj(r){}
+            virtual ~RenderableInstance()
             {
                 //需要在这里添加删除pipeline/desc_sets/render_obj引用计数的代码
             }
@@ -31,9 +30,7 @@ namespace hgl
             vulkan::Renderable *    GetRenderable       (){return render_obj;}
             const AABB &            GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
 
-            const bool              CanRenderable       ()const override{return true;}              ///<是否可以渲染
-
-            const int Comp(const RenderableNode *ri)const
+            const int Comp(const RenderableInstance *ri)const
             {
                 //绘制顺序：
 
@@ -72,8 +69,8 @@ namespace hgl
                 return render_obj-ri->render_obj;
             }
 
-            CompOperator(const RenderableNode *,Comp)
+            CompOperator(const RenderableInstance *,Comp)
         };//class RenderableNode
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_RENDERABLE_NODE_INCLUDE
+#endif//HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE

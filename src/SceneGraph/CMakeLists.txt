@@ -4,7 +4,8 @@
 						${ROOT_INCLUDE_PATH}/hgl/graph/SceneDB.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneNode.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneOrient.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableNode.h
+                        ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableInstance.h
+						${ROOT_INCLUDE_PATH}/hgl/graph/RenderList.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/VertexBufferCreater.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/VertexBuffer.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/InlineGeometry.h)
