@@ -46,15 +46,44 @@ namespace hgl
         public:
 
             SceneNode()=default;
+            SceneNode(const Matrix4f &mat)
+            {
+                SetLocalMatrix(mat);
+            }
             virtual ~SceneNode()
             {
                 ClearSubNode();
+            }
+
+            SceneNode *CreateSubNode()
+            {
+                SceneNode *sn=new SceneNode();
+
+                SubNode.Add(sn);
+                return sn;
+            }
+
+            SceneNode *CreateSubNode(const Matrix4f &mat)
+            {
+                SceneNode *sn=new SceneNode(mat);
+
+                SubNode.Add(sn);
+                return sn;
             }
 
             void Add(SceneNode *n){if(n)SubNode.Add(n);}                                                                ///<增加一个子节点
             void ClearSubNode(){SubNode.ClearData();}                                                                   ///<清除子节点
 
             void Add(RenderableInstance *ri){if(ri)renderable_instances.Add(ri);}                                       ///<增加渲染实例
+
+            void Add(RenderableInstance *ri,const Matrix4f &mat)
+            {
+                SceneNode *sn=new SceneNode(mat);
+
+                sn->Add(ri);
+                SubNode.Add(sn);
+            }
+
             void ClearRenderableInstance(){renderable_instances.ClearData();}                                           ///<清除渲染实例
 
         public: //坐标相关方法
