@@ -2,6 +2,8 @@
 #define HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKPipeline.h>
+#include<hgl/graph/vulkan/VKDescriptorSets.h>
 VK_NAMESPACE_BEGIN
 class CommandBuffer
 {
@@ -12,6 +14,8 @@ class CommandBuffer
     VkClearValue clear_values[2];
     VkRect2D render_area;
     VkViewport viewport;
+
+    VkPipelineLayout pipeline_layout;
 
 public:
 
@@ -66,30 +70,50 @@ public:
     }
 
     bool BeginRenderPass(RenderPass *rp,Framebuffer *fb);
-    bool Bind(Pipeline *p);
-    bool Bind(DescriptorSets *);
+
+    bool Bind(Pipeline *p)
+    {
+        if(!p)return(false);
+
+        vkCmdBindPipeline(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,*p);
+        return(true);
+    }
+
+    bool Bind(DescriptorSets *dsl)
+    {
+        if(!dsl)return(false);
+
+        pipeline_layout=dsl->GetPipelineLayout();
+
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,dsl->GetDescriptorSets(),0,nullptr);
+
+        return(true);
+    }
+
+    void PushConstants(VkShaderStageFlagBits stage_flags,uint32_t offset,uint32_t size,const void *pValues){vkCmdPushConstants(cmd_buf,pipeline_layout,stage_flags,offset,size,pValues);}
+
     bool Bind(Renderable *);
-    void EndRenderPass();
-    bool End();
 
-public:
+    void SetViewport(uint32_t first,uint32_t count,const VkViewport *vp){vkCmdSetViewport(cmd_buf,first,count,vp);}
+    void SetScissor(uint32_t first,uint32_t count,const VkRect2D *sci){vkCmdSetScissor(cmd_buf,first,count,sci);}
 
-    void SetDepthBias(float constant_factor,float clamp,float slope_factor);
-    void SetDepthBounds(float min_db,float max_db);
-    void SetStencilCompareMask(VkStencilFaceFlags faceMask,uint32_t compareMask);
-    void SetStencilWriteMask(VkStencilFaceFlags faceMask,uint32_t compareMask);
-    void SetStencilReference(VkStencilFaceFlags faceMask,uint32_t compareMask);
+    void SetLineWidth(float line_width){vkCmdSetLineWidth(cmd_buf,line_width);}
 
-    void SetBlendConstants(const float constants[4]);
+    void SetDepthBias(float constant_factor,float clamp,float slope_factor){vkCmdSetDepthBias(cmd_buf,constant_factor,clamp,slope_factor);}
+    void SetBlendConstants(const float constants[4]){vkCmdSetBlendConstants(cmd_buf,constants);}
+    void SetDepthBounds(float min_db,float max_db){vkCmdSetDepthBounds(cmd_buf,min_db,max_db);}
 
-    void SetLineWidth(float);
+    void SetStencilCompareMask(VkStencilFaceFlags faceMask,uint32_t compareMask){vkCmdSetStencilCompareMask(cmd_buf,faceMask,compareMask);}
+    void SetStencilWriteMask(VkStencilFaceFlags faceMask,uint32_t compareMask){vkCmdSetStencilWriteMask(cmd_buf,faceMask,compareMask);}
+    void SetStencilReference(VkStencilFaceFlags faceMask,uint32_t compareMask){vkCmdSetStencilReference(cmd_buf,faceMask,compareMask);}
 
-public:
+    void Draw(const uint32_t vertex_count){vkCmdDraw(cmd_buf,vertex_count,1,0,0);}
+    void Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex,const uint32_t first_instance){vkCmdDraw(cmd_buf,vertex_count,instance_count,first_vertex,first_instance);}
+    void DrawIndexed(const uint32_t index_count){vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);}
+    void DrawIndexed(const uint32_t index_count,const uint32_t instance_count,const uint32_t first_index,const uint32_t vertex_offset,const uint32_t first_instance){vkCmdDrawIndexed(cmd_buf,index_count,instance_count,first_index,vertex_offset,first_instance);}
 
-    void Draw(const uint32_t vertex_count);
-    void Draw(const uint32_t vertex_count,const uint32_t instance_count,const uint32_t first_vertex=0,const uint32_t first_instance=0);
-    void DrawIndexed(const uint32_t index_count);
-    void DrawIndexed(const uint32_t index_count,const uint32_t instance_count,const uint32_t first_index=0,const uint32_t vertex_offset=0,const uint32_t first_instance=0);
+    void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
+    bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
 };//class CommandBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
