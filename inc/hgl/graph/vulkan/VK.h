@@ -3,6 +3,7 @@
 
 #include<hgl/type/List.h>
 #include<vulkan/vulkan.h>
+#include<hgl/math/Math.h>
 #include<iostream>
 #include<hgl/graph/vulkan/VKFormat.h>
 #include<hgl/graph/vulkan/VKPrimivate.h>
@@ -14,7 +15,7 @@
 VK_NAMESPACE_BEGIN
 
 class Instance;
-struct PhysicalDevice;
+class PhysicalDevice;
 class Device;
 class ImageView;
 class Framebuffer;
@@ -60,6 +61,20 @@ enum class ShaderType
     Geometry    =VK_SHADER_STAGE_GEOMETRY_BIT,
     Fragment    =VK_SHADER_STAGE_FRAGMENT_BIT,
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
+};//
+
+struct PushConstant256
+{
+    Matrix4f projection;
+    Matrix4f modelview;
+    Matrix4f mvp;
+    Matrix3f normal;
+};//
+
+struct PushConstant128
+{
+    Matrix4f projection;
+    Matrix4f modelview;
 };//
 
 #ifdef _DEBUG
