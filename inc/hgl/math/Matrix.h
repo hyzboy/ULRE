@@ -72,8 +72,8 @@ namespace hgl
      * @param znear 近截面
      * @param zfar 远截面
      */
-    inline Matrix4f perspective(float aspect_ratio,
-                                float field_of_view,
+    inline Matrix4f perspective(float field_of_view,
+                                float aspect_ratio,                                
                                 float znear,
                                 float zfar)
     {
@@ -91,8 +91,8 @@ namespace hgl
      * @param aspect_ratio 宽高比
      * @param field_of_view 视野
      */
-    inline Matrix4f perspective(float aspect_ratio,
-                                float field_of_view=45.0f)
+    inline Matrix4f perspective(float field_of_view,
+                                float aspect_ratio)
     {
         const float f = 1.0f / tan( hgl_ang2rad( 0.5f * field_of_view ) );
 

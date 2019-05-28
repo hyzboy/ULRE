@@ -1,4 +1,4 @@
-// 4.Geometry3D
+ï»¿// 4.Geometry3D
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -42,6 +42,7 @@ private:
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
+    vulkan::Pipeline *          pipeline_triangles  =nullptr;
     vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
 public:
@@ -57,19 +58,20 @@ private:
 
     void InitCamera()
     {
+        camera.type=CameraType::Perspective;
         camera.center.Set(0,0,0);
         camera.eye.Set(100,100,100);
         camera.up_vector.Set(0,0,1);
         camera.forward_vector.Set(0,1,0);
         camera.znear=4;
         camera.zfar=1000;
-        camera.fov=45;
+        camera.fov=90;
         camera.width=SCREEN_WIDTH;
         camera.height=SCREEN_HEIGHT;
 
-        camera.Refresh();      //¸üÐÂ¾ØÕó¼ÆËã
+        camera.Refresh();      //æ›´æ–°çŸ©é˜µè®¡ç®—
 
-        world.mvp=camera.projection*camera.modelview;
+        world.mvp=camera.projection*camera.modelview*scale(50,50,50);
     }
 
     bool InitMaterial()
@@ -101,6 +103,15 @@ private:
 
             ro_plane_grid=CreatePlaneGrid(db,material,&pgci);
         }
+
+        {
+            struct CubeCreateInfo cci;
+
+            cci.tile.x=0;
+            cci.tile.y=1;
+
+            ro_cube=CreateCube(db,material,&cci);
+        }
     }
 
     bool InitUBO()
@@ -131,7 +142,19 @@ private:
             pipeline_creater->Set(PRIM_LINES);
 
             pipeline_line=pipeline_creater->Create();
+            if(!pipeline_line)
+                return(false);
+
             db->Add(pipeline_line);
+
+            pipeline_creater->Set(PRIM_TRIANGLES);
+
+            pipeline_triangles=pipeline_creater->Create();
+            if(!pipeline_triangles)
+                return(false);
+
+            db->Add(pipeline_triangles);
+
             delete pipeline_creater;
         }
 
@@ -140,9 +163,11 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
-        //render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_round_rectangle));
+        //render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
+        render_root.Add(db->CreateRenderableInstance(pipeline_triangles,descriptor_sets,ro_cube));
         //render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
+
+        Matrix4f s10=scale(10,10,10);
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);

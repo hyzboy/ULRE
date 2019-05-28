@@ -5,6 +5,7 @@
 
 #ifdef _DEBUG
 #include<iostream>
+#include<iomanip>
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
@@ -300,6 +301,156 @@ namespace
 
         return(true);
     }
+
+    void DebugOutVersion(uint32_t version)
+    {
+        std::cout<<VK_VERSION_MAJOR(version)<<"."<<VK_VERSION_MINOR(version)<<"."<<VK_VERSION_PATCH(version)<<std::endl;
+    }
+
+    void DebugOut(const VkPhysicalDeviceLimits &limits)
+    {
+    #define OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<limits.name<<std::endl;
+    #define OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<limits.name[0]<<", "<<limits.name[1]<<std::endl;
+    #define OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<limits.name[0]<<", "<<limits.name[1]<<", "<<limits.name[2]<<std::endl;
+    #define OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(name) std::cout<<std::setw(60)<<std::right<<#name<<": "<<(limits.name?"true":"false")<<std::endl;
+
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimension1D)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimension2D)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimension3D)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageDimensionCube)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxImageArrayLayers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTexelBufferElements)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxUniformBufferRange)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxStorageBufferRange)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPushConstantsSize)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxMemoryAllocationCount)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSamplerAllocationCount)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(bufferImageGranularity)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sparseAddressSpaceSize)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxBoundDescriptorSets)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorSamplers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorUniformBuffers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorStorageBuffers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorSampledImages)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorStorageImages)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageDescriptorInputAttachments)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxPerStageResources)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetSamplers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetUniformBuffers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetUniformBuffersDynamic)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetStorageBuffers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetStorageBuffersDynamic)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetSampledImages)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetStorageImages)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDescriptorSetInputAttachments)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputAttributes)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputBindings)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputAttributeOffset)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexInputBindingStride)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxVertexOutputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationGenerationLevel)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationPatchSize)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlPerVertexInputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlPerVertexOutputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlPerPatchOutputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationControlTotalOutputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationEvaluationInputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTessellationEvaluationOutputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryShaderInvocations)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryInputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryOutputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryOutputVertices)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxGeometryTotalOutputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentInputComponents)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentOutputAttachments)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentDualSrcAttachments)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFragmentCombinedOutputResources)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxComputeSharedMemorySize)
+        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3(maxComputeWorkGroupCount)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxComputeWorkGroupInvocations)
+        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3(maxComputeWorkGroupSize)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(subPixelPrecisionBits)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(subTexelPrecisionBits)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(mipmapPrecisionBits)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDrawIndexedIndexValue)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxDrawIndirectCount)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSamplerLodBias)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSamplerAnisotropy)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxViewports)
+        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(maxViewportDimensions)
+        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(viewportBoundsRange)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(viewportSubPixelBits)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minMemoryMapAlignment)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minTexelBufferOffsetAlignment)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minUniformBufferOffsetAlignment)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minStorageBufferOffsetAlignment)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minTexelOffset)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTexelOffset)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minTexelGatherOffset)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxTexelGatherOffset)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(minInterpolationOffset)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxInterpolationOffset)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(subPixelInterpolationOffsetBits)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFramebufferWidth)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFramebufferHeight)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxFramebufferLayers)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferColorSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferDepthSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferStencilSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(framebufferNoAttachmentsSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxColorAttachments)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageColorSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageIntegerSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageDepthSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(sampledImageStencilSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(storageImageSampleCounts)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxSampleMaskWords)
+        OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(timestampComputeAndGraphics)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(timestampPeriod)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxClipDistances)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxCullDistances)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(maxCombinedClipAndCullDistances)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(discreteQueuePriorities)
+        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(pointSizeRange)
+        OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2(lineWidthRange)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(pointSizeGranularity)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(lineWidthGranularity)
+        OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(strictLines)
+        OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN(standardSampleLocations)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(optimalBufferCopyOffsetAlignment)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(optimalBufferCopyRowPitchAlignment)
+        OUT_PHYSICAL_DEVICE_LIMIT_INTEGER(nonCoherentAtomSize)
+
+#undef OUT_PHYSICAL_DEVICE_LIMIT_BOOLEAN
+#undef OUT_PHYSICAL_DEVICE_LIMIT_VECTOR3
+#undef OUT_PHYSICAL_DEVICE_LIMIT_VECTOR2
+#undef OUT_PHYSICAL_DEVICE_LIMIT_INTEGER
+    }
+
+    void DebugOut(const VkPhysicalDeviceProperties &pdp)
+    {
+        constexpr char DeviceTypeString[VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE][16]=
+        {
+            "Other",
+            "Integrated GPU",
+            "Discrete GPU",
+            "Virtual GPU",
+            "CPU"
+        };
+
+        std::cout<<"       apiVersion: ";DebugOutVersion(pdp.apiVersion);
+        std::cout<<"    driverVersion: ";DebugOutVersion(pdp.driverVersion);
+        std::cout<<"         vendorID: "<<pdp.vendorID<<std::endl;
+        std::cout<<"         deviceID: "<<pdp.deviceID<<std::endl;
+        std::cout<<"       deviceType: "<<DeviceTypeString[pdp.deviceType]<<std::endl;
+        std::cout<<"       deviceName: "<<pdp.deviceName<<std::endl;
+
+        UTF8String uuid=HexToString<char>(pdp.pipelineCacheUUID);
+
+        std::cout<<"pipelineCahceUUID: "<<uuid.c_str()<<std::endl;
+
+        DebugOut(pdp.limits);
+    }
 }//namespace
 
 Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,uint width,uint height)
@@ -319,6 +470,8 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
         {
             std::cout<<"Unknow VideoCard Driver"<<std::endl;
         }
+
+        DebugOut(physical_device->GetProperties());
     }
     #endif//_DEBUG
 
