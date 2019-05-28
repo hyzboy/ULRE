@@ -302,6 +302,67 @@ namespace
         return(true);
     }
 
+    void DebugOut(const VkPhysicalDeviceFeatures &features)
+    {
+    #define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(40)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(robustBufferAccess)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(fullDrawIndexUint32)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(imageCubeArray)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(independentBlend)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(geometryShader)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(tessellationShader)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sampleRateShading)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(dualSrcBlend)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(logicOp)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(multiDrawIndirect)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(drawIndirectFirstInstance)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(depthClamp)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(depthBiasClamp)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(fillModeNonSolid)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(depthBounds)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(wideLines)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(largePoints)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(alphaToOne)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(multiViewport)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerAnisotropy)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionETC2)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionASTC_LDR)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionBC)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(occlusionQueryPrecise)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(pipelineStatisticsQuery)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(vertexPipelineStoresAndAtomics)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(fragmentStoresAndAtomics)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderTessellationAndGeometryPointSize)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderImageGatherExtended)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageExtendedFormats)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageMultisample)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageReadWithoutFormat)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageWriteWithoutFormat)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformBufferArrayDynamicIndexing)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSampledImageArrayDynamicIndexing)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageBufferArrayDynamicIndexing)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageArrayDynamicIndexing)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderClipDistance)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderCullDistance)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderFloat64)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInt64)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInt16)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderResourceResidency)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderResourceMinLod)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseBinding)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyBuffer)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyImage2D)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyImage3D)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency2Samples)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency4Samples)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency8Samples)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidency16Samples)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(sparseResidencyAliased)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(variableMultisampleRate)
+            OUTPUT_PHYSICAL_DEVICE_FEATURE(inheritedQueries)
+    #undef OUTPUT_PHYSICAL_DEVICE_FEATURE
+    }
+
     void DebugOutVersion(uint32_t version)
     {
         std::cout<<VK_VERSION_MAJOR(version)<<"."<<VK_VERSION_MINOR(version)<<"."<<VK_VERSION_PATCH(version)<<std::endl;
@@ -472,6 +533,7 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
         }
 
         DebugOut(physical_device->GetProperties());
+        DebugOut(physical_device->GetFeatures());
     }
     #endif//_DEBUG
 
