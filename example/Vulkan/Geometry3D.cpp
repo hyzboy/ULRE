@@ -16,11 +16,6 @@ bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-struct WorldConfig
-{
-    Matrix4f mvp;
-}world;
-
 class TestApp:public VulkanApplicationFramework
 {
 private:
@@ -70,8 +65,6 @@ private:
         camera.height=SCREEN_HEIGHT;
 
         camera.Refresh();      //更新矩阵计算
-
-        world.mvp=camera.projection*camera.modelview*scale(50,50,50);
     }
 
     bool InitMaterial()
@@ -114,21 +107,21 @@ private:
         }
     }
 
-    bool InitUBO()
-    {
-        const VkExtent2D extent=device->GetExtent();
+    //bool InitUBO()
+    //{
+    //    const VkExtent2D extent=device->GetExtent();
 
-        ubo_mvp=db->CreateUBO(sizeof(WorldConfig),&world);
+    //    ubo_mvp=db->CreateUBO(sizeof(WorldConfig),&world);
 
-        if(!ubo_mvp)
-            return(false);
+    //    if(!ubo_mvp)
+    //        return(false);
 
-        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
-            return(false);
+    //    if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
+    //        return(false);
 
-        descriptor_sets->Update();
-        return(true);
-    }
+    //    descriptor_sets->Update();
+    //    return(true);
+    //}
 
     bool InitPipeline()
     {
@@ -163,13 +156,12 @@ private:
 
     bool InitScene()
     {
-        //render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
-        render_root.Add(db->CreateRenderableInstance(pipeline_triangles,descriptor_sets,ro_cube));
+        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
+        
+        render_root.Add(db->CreateRenderableInstance(pipeline_triangles,descriptor_sets,ro_cube),scale(50,50,50));
         //render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
 
-        Matrix4f s10=scale(10,10,10);
-
-        render_root.RefreshMatrix();
+        render_root.RefreshMatrix(&(camera.mvp));
         render_root.ExpendToList(&render_list);
 
         return(true);
@@ -214,8 +206,8 @@ public:
 
         CreateRenderObject();
 
-        if(!InitUBO())
-            return(false);
+//        if(!InitUBO())
+//            return(false);
 
         if(!InitPipeline())
             return(false);
