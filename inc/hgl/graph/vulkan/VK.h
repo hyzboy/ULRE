@@ -52,6 +52,16 @@ class Renderable;
 
 using CharPointerList=hgl::List<const char *>;
 
+enum class ShaderType
+{
+    Vertex      =VK_SHADER_STAGE_VERTEX_BIT,
+    TessControl =VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+    TessEval    =VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+    Geometry    =VK_SHADER_STAGE_GEOMETRY_BIT,
+    Fragment    =VK_SHADER_STAGE_FRAGMENT_BIT,
+    Compute     =VK_SHADER_STAGE_COMPUTE_BIT
+};//
+
 #ifdef _DEBUG
 bool CheckStrideBytesByFormat();                ///<检验所有数据类型长度数组是否符合规则
 #endif//_DEBUG

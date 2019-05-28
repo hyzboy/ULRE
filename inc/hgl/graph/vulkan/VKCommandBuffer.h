@@ -90,7 +90,10 @@ public:
         return(true);
     }
 
-    void PushConstants(VkShaderStageFlagBits stage_flags,uint32_t offset,uint32_t size,const void *pValues){vkCmdPushConstants(cmd_buf,pipeline_layout,stage_flags,offset,size,pValues);}
+    void PushConstants(ShaderType shader_type,uint32_t offset,uint32_t size,const void *pValues)
+    {
+        vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_type,offset,size,pValues);
+    }
 
     bool Bind(Renderable *);
 

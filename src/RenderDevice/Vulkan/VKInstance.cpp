@@ -153,7 +153,7 @@ Instance *CreateInstance(const UTF8String &app_name)
         "VK_LAYER_LUNARG_standard_validation",
         "VK_LAYER_LUNARG_parameter_validation",
 //        "VK_LAYER_LUNARG_vktrace",
-//        "VK_LAYER_RENDERDOC_Capture",
+        "VK_LAYER_RENDERDOC_Capture",
 
 //        "VK_LAYER_KHRONOS_validation",
 
