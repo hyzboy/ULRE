@@ -11,7 +11,7 @@ DeviceAttribute::DeviceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurf
     physical_device=pd;
     surface=s;
 
-    VkPhysicalDevice pdevice=physical_device->physical_device;
+    VkPhysicalDevice pdevice=*physical_device;
 
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice,surface,&surface_caps);
 
