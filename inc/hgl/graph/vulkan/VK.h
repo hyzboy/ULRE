@@ -63,20 +63,6 @@ enum class ShaderType
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
 };//
 
-struct PushConstant256
-{
-    Matrix4f projection;
-    Matrix4f modelview;
-    Matrix4f mvp;
-    Matrix3f normal;
-};//
-
-struct PushConstant128
-{
-    Matrix4f projection;
-    Matrix4f modelview;
-};//
-
 #ifdef _DEBUG
 bool CheckStrideBytesByFormat();                ///<检验所有数据类型长度数组是否符合规则
 #endif//_DEBUG
