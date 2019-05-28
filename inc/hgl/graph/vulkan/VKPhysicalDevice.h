@@ -25,6 +25,10 @@ public:
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
     const char *            GetDeviceName()const{return properties.deviceName;}
 
+    const VkPhysicalDeviceFeatures &        GetFeatures         ()const{return features;}
+    const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
+    const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
+
     const uint32_t          GetExtensionSpecVersion(const UTF8String &name)const;
 
     const VkDriverIdKHR     GetDriverId     ()const{return driver_properties.driverID;}

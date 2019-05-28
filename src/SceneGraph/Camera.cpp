@@ -26,7 +26,7 @@ namespace hgl
         void Camera::Refresh()
         {
             if(type==CameraType::Perspective)
-                projection=perspective(width/height,fov,znear,zfar);
+                projection=perspective(fov,width/height,znear,zfar);
             else
                 projection=ortho(width,height,znear,zfar);
 

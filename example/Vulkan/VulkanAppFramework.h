@@ -67,10 +67,6 @@ public:
             return(false);
 
         shader_manage=device->CreateShaderModuleManage();
-        
-        const vulkan::PhysicalDevice *render_device=device->GetPhysicalDevice();
-
-        std::cout<<"auto select physical device: "<<render_device->GetDeviceName()<<std::endl;
         return(true);
     }
 
