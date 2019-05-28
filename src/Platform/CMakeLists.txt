@@ -24,6 +24,9 @@
         SET(PLATFORM_MULTI_THREAD_SOURCE    ${PLATFORM_MULTI_THREAD_SOURCE}
                                             UNIX/Semaphore.cpp)
 
+
+        SET(PLATFORM_WINDOW_SOURCE          Android/AndroidVulkan.cpp)
+
     ELSE()
         SET(PLATFORM_CODEPAGE_SOURCE        UNIX/CodePage.cpp)
         SET(PLATFORM_LOG_SOURCE             UNIX/LogConsole.cpp)
