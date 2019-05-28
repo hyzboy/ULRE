@@ -546,7 +546,7 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     if(attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    attr->device=CreateDevice(inst,physical_device->physical_device,attr->graphics_family);
+    attr->device=CreateDevice(inst,*physical_device,attr->graphics_family);
 
     if(!attr->device)
         return(nullptr);

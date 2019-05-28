@@ -1,10 +1,10 @@
-#pragma once
+Ôªø#pragma once
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/BaseString.h>
 
 VK_NAMESPACE_BEGIN
-struct PhysicalDevice
+class PhysicalDevice
 {
     VkInstance                          instance=nullptr;
     VkPhysicalDevice                    physical_device=nullptr;
@@ -19,6 +19,9 @@ public:
 
     PhysicalDevice(VkInstance,VkPhysicalDevice);
     ~PhysicalDevice()=default;
+
+    operator VkPhysicalDevice(){return physical_device;}
+    operator const VkPhysicalDevice()const{return physical_device;}
 
     const bool              CheckMemoryType(uint32_t,VkFlags,uint32_t *)const;
 
@@ -35,8 +38,14 @@ public:
     const char *            GetDriverName   ()const{return driver_properties.driverName;}
     const char *            GetDriverInfo   ()const{return driver_properties.driverInfo;}
 
+public:
+
+    const uint32_t          GetConstantSize()const{return properties.limits.maxPushConstantsSize;}
+
+public:
+
     /**
-    * ªÒ»°∏√…Ë±∏ «∑Ò «œ‘ø®
+    * Ëé∑ÂèñËØ•ËÆæÂ§áÊòØÂê¶ÊòØÊòæÂç°
     */
     const bool isGPU()const
     {
@@ -47,9 +56,9 @@ public:
         return(false);
     }
 
-    const bool isDiscreteGPU    ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);}           ///< «∑Ò «∂¿¡¢œ‘ø®
-    const bool isIntegratedGPU  ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);}         ///< «∑Ò «ºØ≥…œ‘ø®
-    const bool isVirtualGPU     ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);}            ///< «∑Ò «–Èƒ‚œ‘ø®
+    const bool isDiscreteGPU    ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);}           ///<ÊòØÂê¶ÊòØÁã¨Á´ãÊòæÂç°
+    const bool isIntegratedGPU  ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);}         ///<ÊòØÂê¶ÊòØÈõÜÊàêÊòæÂç°
+    const bool isVirtualGPU     ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);}            ///<ÊòØÂê¶ÊòØËôöÊãüÊòæÂç°
 
 public:
 
@@ -61,5 +70,5 @@ public:
 
         return fp;
     }
-};//struct PhysicalDevice
+};//class PhysicalDevice
 VK_NAMESPACE_END
