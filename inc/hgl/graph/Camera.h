@@ -34,6 +34,7 @@ namespace hgl
 
             Matrix4f projection;
             Matrix4f modelview;
+            Matrix4f mvp;
 
             Frustum frustum;
 

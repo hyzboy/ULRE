@@ -32,6 +32,8 @@ namespace hgl
 
             modelview=hgl::graph::LookAt(eye,center,up_vector);
 
+            mvp=projection*modelview;
+
             frustum.SetVerticalFovAndAspectRatio(DegToRad(fov),width/height);
             frustum.SetViewPlaneDistances(znear,zfar);
         }
