@@ -11,6 +11,16 @@ namespace hgl
     using Matrix3f=float3x3;
     using Matrix4f=float4x4;
 
+    struct WorldMatrix
+    {
+        Matrix4f two_dim;       //2D矩阵
+
+        Matrix4f projection;
+        Matrix4f modelview;
+        Matrix4f mvp;
+        Matrix3f normal;
+    };//
+
     inline Matrix4f identity()
     {
         return Matrix4f::identity;

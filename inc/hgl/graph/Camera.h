@@ -32,9 +32,7 @@ namespace hgl
 
         public:
 
-            Matrix4f projection;
-            Matrix4f modelview;
-            Matrix4f mvp;
+            WorldMatrix matrix;
 
             Frustum frustum;
 

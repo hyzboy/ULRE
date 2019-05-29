@@ -3,6 +3,7 @@
 
 //#include<hgl/type/List.h>
 #include<hgl/math/Math.h>
+#include<hgl/graph/vulkan/VK.h>
 //#include<hgl/graph/Transform.h>
 namespace hgl
 {
@@ -23,10 +24,14 @@ namespace hgl
             Matrix4f InverseLocalMatrix;                                                                                ///<反向当前矩阵
             Matrix4f InverseLocalToWorldMatrix;                                                                         ///<反向当前到世界矩阵
 
+            vulkan::PushConstant pc;
+
         public:
 
             SceneOrient();
             virtual ~SceneOrient()=default;
+
+            vulkan::PushConstant *GetPushConstant(){return &pc;}
 
                     Matrix4f &  SetLocalMatrix              (const Matrix4f &);                                         ///<设定当前节点矩阵
                     Matrix4f &  SetLocalToWorldMatrix       (const Matrix4f &);                                         ///<设定当前节点到世界矩阵

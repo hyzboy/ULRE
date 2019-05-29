@@ -167,7 +167,7 @@ namespace hgl
             VB3f *vertex=new VB3f(((pgci->step.u+1)+(pgci->step.v+1))*2);
 
             vertex->Begin();
-            for(int row=0;row<=pgci->step.u;row++)
+            for(uint row=0;row<=pgci->step.u;row++)
             {
                 float pos=float(row)/float(pgci->step.u);
 
@@ -175,7 +175,7 @@ namespace hgl
                                     to(pgci->coord[3],pgci->coord[2],pos));
             }
 
-            for(int col=0;col<=pgci->step.v;col++)
+            for(uint col=0;col<=pgci->step.v;col++)
             {
                 float pos=float(col)/float(pgci->step.v);
 
@@ -187,6 +187,32 @@ namespace hgl
             vulkan::Renderable *render_obj=mtl->CreateRenderable(vertex->GetCount());
             render_obj->Set(vertex_binding,db->CreateVBO(vertex));
             render_obj->SetBoundingBox(vertex->GetAABB());
+
+            const int color_binding=vsm->GetStageInputBinding("Color");
+            if(color_binding!=-1)
+            {
+                VB4f *color=new VB4f(((pgci->step.u+1)+(pgci->step.v+1))*2);
+
+                color->Begin();
+                    for(uint row=0;row<=pgci->step.u;row++)
+                    {
+                        if((row%pgci->side_step.u)==0)
+                            color->Fill(pgci->side_color,2);
+                        else
+                            color->Fill(pgci->color,2);
+                    }
+
+                    for(uint col=0;col<=pgci->step.v;col++)
+                    {
+                        if((col%pgci->side_step.v)==0)
+                            color->Fill(pgci->side_color,2);
+                        else
+                            color->Fill(pgci->color,2);
+                    }
+                color->End();
+
+                render_obj->Set(color_binding,db->CreateVBO(color));
+            }
 
             delete vertex;
             db->Add(render_obj);

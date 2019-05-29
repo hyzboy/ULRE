@@ -31,13 +31,11 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
 
-    vulkan::Renderable          *ro_plane_grid      =nullptr,
-                                *ro_cube            =nullptr;
+    vulkan::Renderable          *ro_plane_grid[3];
 
-    vulkan::Buffer *            ubo_mvp             =nullptr;
+    vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
-    vulkan::Pipeline *          pipeline_triangles  =nullptr;
     vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
 public:
@@ -69,7 +67,7 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("OnlyPosition3D.vert.spv"),
+        material=shader_manage->CreateMaterial(OS_TEXT("PositionColor3D.vert.spv"),
                                                OS_TEXT("FlatColor.frag.spv"));
         if(!material)
             return(false);
@@ -94,34 +92,40 @@ private:
             pgci.step.u=20;
             pgci.step.v=20;
 
-            ro_plane_grid=CreatePlaneGrid(db,material,&pgci);
-        }
+            pgci.side_step.u=10;
+            pgci.side_step.v=10;
 
-        {
-            struct CubeCreateInfo cci;
+            pgci.color.Set(0.75,0,0,1);
+            pgci.side_color.Set(1,0,0,1);
 
-            cci.tile.x=0;
-            cci.tile.y=1;
+            ro_plane_grid[0]=CreatePlaneGrid(db,material,&pgci);
 
-            ro_cube=CreateCube(db,material,&cci);
+            pgci.color.Set(0,0.75,0,1);
+            pgci.side_color.Set(0,1,0,1);
+
+            ro_plane_grid[1]=CreatePlaneGrid(db,material,&pgci);
+
+            pgci.color.Set(0,0,0.75,1);
+            pgci.side_color.Set(0,0,1,1);
+            ro_plane_grid[2]=CreatePlaneGrid(db,material,&pgci);
         }
     }
 
-    //bool InitUBO()
-    //{
-    //    const VkExtent2D extent=device->GetExtent();
+    bool InitUBO()
+    {
+        const VkExtent2D extent=device->GetExtent();
 
-    //    ubo_mvp=db->CreateUBO(sizeof(WorldConfig),&world);
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
 
-    //    if(!ubo_mvp)
-    //        return(false);
+        if(!ubo_world_matrix)
+            return(false);
 
-    //    if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
-    //        return(false);
+        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_world_matrix))
+            return(false);
 
-    //    descriptor_sets->Update();
-    //    return(true);
-    //}
+        descriptor_sets->Update();
+        return(true);
+    }
 
     bool InitPipeline()
     {
@@ -140,14 +144,6 @@ private:
 
             db->Add(pipeline_line);
 
-            pipeline_creater->Set(PRIM_TRIANGLES);
-
-            pipeline_triangles=pipeline_creater->Create();
-            if(!pipeline_triangles)
-                return(false);
-
-            db->Add(pipeline_triangles);
-
             delete pipeline_creater;
         }
 
@@ -156,12 +152,11 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
-        
-        render_root.Add(db->CreateRenderableInstance(pipeline_triangles,descriptor_sets,ro_cube),scale(50,50,50));
-        //render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
+        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[0]));
+        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[1]),rotate(90,0,1,0));
+        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[2]),rotate(90,1,0,0));
 
-        render_root.RefreshMatrix(&(camera.mvp));
+        render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
 
         return(true);
@@ -206,8 +201,8 @@ public:
 
         CreateRenderObject();
 
-//        if(!InitUBO())
-//            return(false);
+        if(!InitUBO())
+            return(false);
 
         if(!InitPipeline())
             return(false);

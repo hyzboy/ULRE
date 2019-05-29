@@ -7,21 +7,6 @@
 VK_NAMESPACE_BEGIN
 //push constant 一般只有128/256字节，仅能存在矩阵。
 //所以我们将每个对象的独立变换矩阵存在push constant中
-
-struct PushConstant256
-{
-    Matrix4f projection;
-    Matrix4f modelview;
-    Matrix4f mvp;
-    Matrix3f normal;
-};//
-
-struct PushConstant128
-{
-    Matrix4f projection;
-    Matrix4f modelview;
-};//
-
 class CommandBuffer
 {
     VkDevice device;
@@ -112,8 +97,7 @@ public:
         vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_type,offset,size,pValues);
     }
 
-    void PushConstants(const PushConstant256 *pc){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(PushConstant256),pc);}
-    void PushConstants(const PushConstant128 *pc){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(PushConstant128),pc);}
+    void PushConstants(const PushConstant *pc){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(PushConstant),pc);}
 
     bool Bind(Renderable *);
 
