@@ -26,13 +26,15 @@ namespace hgl
         void Camera::Refresh()
         {
             if(type==CameraType::Perspective)
-                projection=perspective(fov,width/height,znear,zfar);
+                matrix.projection=perspective(fov,width/height,znear,zfar);
             else
-                projection=ortho(width,height,znear,zfar);
+                matrix.projection=ortho(width,height,znear,zfar);               //这个算的不对
 
-            modelview=hgl::graph::LookAt(eye,center,up_vector);
+            matrix.modelview=hgl::graph::LookAt(eye,center,up_vector);
 
-            mvp=projection*modelview;
+            matrix.mvp=matrix.projection*matrix.modelview;
+
+            matrix.two_dim=ortho(width,height,znear,zfar);
 
             frustum.SetVerticalFovAndAspectRatio(DegToRad(fov),width/height);
             frustum.SetViewPlaneDistances(znear,zfar);

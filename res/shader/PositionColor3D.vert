@@ -1,8 +1,7 @@
 #version 450 core
 
 layout(location = 0) in vec3 Vertex;
-layout(location = 1) in vec3 Color;
-layout(location = 2) in vec3 Normal;
+layout(location = 1) in vec4 Color;
 
 layout(binding = 0) uniform WorldMatrix
 {
@@ -21,7 +20,7 @@ layout(location = 0) out vec4 FragmentColor;
 
 void main()
 {
-    FragmentColor=vec4(Color,1.0);
+    FragmentColor=Color;
 
-    gl_Position=vec4(Vertex,1.0)*world.mvp;
+    gl_Position=vec4(Vertex,1.0)*pc.local_to_world*world.mvp;
 }

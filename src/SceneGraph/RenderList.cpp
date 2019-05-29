@@ -26,42 +26,29 @@ namespace hgl
         //    return (((Frustum *)fc)->BoxIn(node->GetWorldBoundingBox())!=Frustum::OUTSIDE);
         //}
 
-        void RenderList::SetCamera(const Camera &cam)
-        {
-            camera=cam;
-
-            ubo_matrix.projection=camera.projection;
-            ubo_matrix.modelview=camera.modelview;
-            ubo_matrix.mvp      =ubo_matrix.projection*ubo_matrix.modelview;
-            ubo_matrix.normal   =ubo_matrix.modelview.Float3x3Part();             //法线矩阵为3x3
-
-            frustum=camera.frustum;
-        }
-
-        void RenderList::SetMVP(const Matrix4f &proj,const Matrix4f &mv)
-        {
-            ubo_matrix.projection   =proj;
-            ubo_matrix.modelview    =mv;
-            ubo_matrix.mvp          =proj*mv;
-            ubo_matrix.normal       =ubo_matrix.modelview.Float3x3Part();             //法线矩阵为3x3
-        }
-
-        void RenderList::Render(RenderableInstance *ri)
+        void RenderList::Render(SceneNode *node,RenderableInstance *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
-                cmd_buf->Bind(ri->GetPipeline());
-
                 last_pipeline=ri->GetPipeline();
+
+                cmd_buf->Bind(last_pipeline);
 
                 last_desc_sets=nullptr;
             }
 
             if(last_desc_sets!=ri->GetDescriptorSets())
             {
-                cmd_buf->Bind(ri->GetDescriptorSets());
-
                 last_desc_sets=ri->GetDescriptorSets();
+
+                cmd_buf->Bind(last_desc_sets);
+            }
+
+            if(last_pc!=node->GetPushConstant())
+            {
+                last_pc=node->GetPushConstant();
+
+                cmd_buf->PushConstants(last_pc);
             }
 
             //更新fin_mvp
@@ -87,14 +74,14 @@ namespace hgl
             }
         }
 
-        void RenderList::Render(List<RenderableInstance *> &ri_list)
+        void RenderList::Render(SceneNode *node,List<RenderableInstance *> &ri_list)
         {
             const int count=ri_list.GetCount();
             RenderableInstance **ri=ri_list.GetData();
 
             for(int i=0;i<count;i++)
             {
-                Render(*ri);
+                Render(node,*ri);
                 ++ri;
             }
         }
@@ -115,7 +102,7 @@ namespace hgl
 
             for(int i=0;i<count;i++)
             {
-                Render((*node)->renderable_instances);
+                Render(*node,(*node)->renderable_instances);
                 ++node;
             }
 

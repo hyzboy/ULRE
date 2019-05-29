@@ -4,6 +4,7 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
+#include<hgl/type/Color4f.h>
 namespace hgl
 {
     namespace graph
@@ -50,6 +51,11 @@ namespace hgl
         {
             Vector3f coord[4];
             vec2<uint> step;
+
+            vec2<uint> side_step;   //到边界的步数
+
+            Color4f color;          //一般线条颜色
+            Color4f side_color;     //边界线条颜色
         };//struct PlaneGridCreateInfo
 
         vulkan::Renderable *CreatePlaneGrid(SceneDB *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci);

@@ -63,6 +63,11 @@ enum class ShaderType
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
 };//
 
+struct PushConstant
+{
+    Matrix4f local_to_world;
+};
+
 #ifdef _DEBUG
 bool CheckStrideBytesByFormat();                ///<检验所有数据类型长度数组是否符合规则
 #endif//_DEBUG
