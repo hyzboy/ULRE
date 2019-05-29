@@ -34,6 +34,9 @@ namespace hgl
 
             matrix.mvp=matrix.projection*matrix.modelview;
 
+            //注意： C++中要 projection * model_view * local_to_world * position
+            //而GLSL中要 position * local_to_world * model_view * projection
+
             matrix.two_dim=ortho(width,height,znear,zfar);
 
             frustum.SetVerticalFovAndAspectRatio(DegToRad(fov),width/height);
