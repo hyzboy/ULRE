@@ -48,6 +48,7 @@ add_subdirectory(${SPIRV_CROSS_PATH})
 
 add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/NvTriStrip)
+add_subdirectory(3rdpty/assimp)
 add_subdirectory(src)
 
 SET(ULRE    ULRE.Base
@@ -57,6 +58,7 @@ SET(ULRE    ULRE.Base
             ULRE.Platform
             MathGeoLib
             spirv-cross-core
+            assimp
 #            jsoncpp_lib
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
