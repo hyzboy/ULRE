@@ -10,7 +10,7 @@
 
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++14")
 
-        add_compile_options(/GR- /arch:AVX2)
+        add_compile_options(/arch:AVX2)
         add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 
     ELSE()

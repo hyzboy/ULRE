@@ -13,8 +13,8 @@ using namespace hgl::graph;
 bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -152,9 +152,11 @@ private:
 
     bool InitScene()
     {
+        const float rad90=hgl_ang2rad(90);
+
         render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[0]));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[1]),rotate(90,0,1,0));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[2]),rotate(90,1,0,0));
+        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[1]),rotate(rad90,0,1,0));
+        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[2]),rotate(rad90,1,0,0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
