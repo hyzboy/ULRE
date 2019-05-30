@@ -92,9 +92,9 @@ public:
         return(true);
     }
 
-    void PushConstants(ShaderType shader_type,uint32_t offset,uint32_t size,const void *pValues)
+    void PushConstants(ShaderStage shader_stage,uint32_t offset,uint32_t size,const void *pValues)
     {
-        vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_type,offset,size,pValues);
+        vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_stage,offset,size,pValues);
     }
 
     void PushConstants(const PushConstant *pc){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(PushConstant),pc);}
