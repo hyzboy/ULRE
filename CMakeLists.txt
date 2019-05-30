@@ -36,8 +36,20 @@ add_definitions(-DMATH_RIGHTHANDED_CAMERA)
 add_definitions(-DMATH_AVX)
 add_definitions(-DGLFW_INCLUDE_VULKAN)
 
+SET(ULRE    ULRE.Base
+#             ULRE.Util
+            ULRE.RenderDevice.Vulkan
+            ULRE.SceneGraph
+            ULRE.Platform
+            MathGeoLib
+            spirv-cross-core
+#            jsoncpp_lib
+            ${RENDER_LIBRARY}
+            ${Vulkan_LIBRARIES})
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
@@ -50,17 +62,5 @@ add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(3rdpty/assimp)
 add_subdirectory(src)
-
-SET(ULRE    ULRE.Base
-#             ULRE.Util
-            ULRE.RenderDevice.Vulkan
-            ULRE.SceneGraph
-            ULRE.Platform
-            MathGeoLib
-            spirv-cross-core
-            assimp
-#            jsoncpp_lib
-            ${RENDER_LIBRARY}
-            ${Vulkan_LIBRARIES})
 
 add_subdirectory(example)
