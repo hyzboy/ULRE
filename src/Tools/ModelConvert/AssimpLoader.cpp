@@ -137,25 +137,25 @@ constexpr VkSamplerAddressMode vk_wrap[4]=              //对应aiTextureMapMode
     VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE        //这个是declas
 };
 
-void OutMaterialTexture(const MaterialTextureStruct &mt,io::DataOutputStream *dos)
+void OutMaterialTexture(const MaterialTextureData &mt,io::DataOutputStream *dos)
 {
-    dos->WriteUint8(mt.type);
+    dos->WriteUint8((uint8)mt.type);
     dos->WriteInt32(mt.tex_id);
-    dos->WriteUint8(mt.new_uvindex);
+    dos->WriteUint8(mt.uvindex);
     dos->WriteFloat(mt.blend);
     dos->WriteUint8(mt.op);
     dos->WriteUint8(mt.wrap_mode,2);
 
-    LOG_INFO(OS_TEXT("\tTexture Type: ")+OSString(mt.type));
+    LOG_INFO(OS_TEXT("\tTexture Type: ")+OSString((uint)mt.type));
     LOG_INFO(OS_TEXT("\tTexture ID: ")+OSString(mt.tex_id));
 
-    LOG_INFO(OS_TEXT("\tuvindex: ")+OSString(mt.old_uvindex));
+    LOG_INFO(OS_TEXT("\tuvindex: ")+OSString(mt.uvindex));
     LOG_INFO(OS_TEXT("\tblend: ")+OSString(mt.blend));
     LOG_INFO(OS_TEXT("\top: ")+OSString(mt.op));
     LOG_INFO(OS_TEXT("\twrap_mode: ")+OSString(mt.wrap_mode[0])+OS_TEXT(",")+OSString(mt.wrap_mode[1]));
 }
 
-void OutMaterial(const MaterialStruct *ms,const OSString &filename)
+void OutMaterial(const MaterialData *ms,const OSString &filename)
 {
     io::FileOutputStream fos;
     io::LEDataOutputStream dos(&fos);
@@ -219,7 +219,7 @@ void AssimpLoader::LoadMaterial()
 
     material_count=scene->mNumMaterials;
 
-    material_list=new MaterialStruct[material_count];
+    material_list=new MaterialData[material_count];
 
     for(unsigned int m=0;m<scene->mNumMaterials;m++)
     {
@@ -236,7 +236,7 @@ void AssimpLoader::LoadMaterial()
             tex_count+=mtl->GetTextureCount((aiTextureType)tt);
         }
 
-        MaterialStruct *ms=&(material_list[m]);
+        MaterialData *ms=&(material_list[m]);
 
         ms->Init(tex_count);
 
@@ -248,7 +248,7 @@ void AssimpLoader::LoadMaterial()
             {
                 mtl->GetTexture((aiTextureType)tt,t,&filename,&tm,&uvindex,&blend,&op,wrap_mode);
 
-                ms->tex_list[tex_index].type=tt;
+                ms->tex_list[tex_index].type=(TextureType)tt;
 
                 ms->uv_use.Add(uvindex);
 
@@ -282,7 +282,7 @@ void AssimpLoader::LoadMaterial()
                     ms->tex_list[tex_index].tex_id=tex_id;
                 }
 
-                ms->tex_list[tex_index].old_uvindex=uvindex;
+                ms->tex_list[tex_index].uvindex=uvindex;
                 ms->tex_list[tex_index].blend=blend;
                 ms->tex_list[tex_index].op=op;
 
@@ -292,8 +292,6 @@ void AssimpLoader::LoadMaterial()
                 ++tex_index;
             }
         }
-
-        ms->ProcUVIndex();
 
         set_float4(c, 0.8f, 0.8f, 0.8f, 1.0f);
         if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_DIFFUSE, &diffuse))
@@ -351,7 +349,7 @@ void AssimpLoader::LoadMaterial()
         if(aiGetMaterialIntegerArray(mtl, AI_MATKEY_TWOSIDED, &two_sided, &max)==AI_SUCCESS)
             ms->two_sided=two_sided;
         else
-            ms->two_sided=true;
+            ms->two_sided=false;
 
         OutMaterial(ms,main_filename+OS_TEXT(".")+OSString(m)+OS_TEXT(".material"));
         LOG_BR;
@@ -521,7 +519,7 @@ void AssimpLoader::LoadMesh()
         if(pn!=3)
             continue;
 
-        MaterialStruct *mtl=&(material_list[mesh->mMaterialIndex]);
+        MaterialData *mtl=&(material_list[mesh->mMaterialIndex]);
 
         const uint uv_channels=mtl->uv_use.GetCount();
 
@@ -538,7 +536,7 @@ void AssimpLoader::LoadMesh()
         }
 
         {
-            MeshStruct ms;
+            MeshFileHeader ms;
 
             ms.primitive_type   =PRIM_TRIANGLES;
             ms.vertices_number  =mesh->mNumVertices;
@@ -557,7 +555,7 @@ void AssimpLoader::LoadMesh()
 
             ms.bones_number     =mesh->mNumBones;
 
-            fos.WriteFully(&ms,sizeof(MeshStruct));
+            fos.WriteFully(&ms,sizeof(MeshFileHeader));
         }
 
         if(mesh->HasPositions())
