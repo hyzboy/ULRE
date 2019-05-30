@@ -53,7 +53,7 @@ class Renderable;
 
 using CharPointerList=hgl::List<const char *>;
 
-enum class ShaderType
+enum class ShaderStage
 {
     Vertex      =VK_SHADER_STAGE_VERTEX_BIT,
     TessControl =VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
@@ -61,7 +61,7 @@ enum class ShaderType
     Geometry    =VK_SHADER_STAGE_GEOMETRY_BIT,
     Fragment    =VK_SHADER_STAGE_FRAGMENT_BIT,
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
-};//
+};//enum class ShaderStage
 
 struct PushConstant
 {
