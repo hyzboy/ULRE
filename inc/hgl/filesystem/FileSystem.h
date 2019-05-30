@@ -44,7 +44,6 @@ namespace hgl
 
         /**
          * 截取完整路径中的文件名
-         * @param filename 文件名
          * @param fullname 完整路径文件名
          */
         template<typename T>
@@ -61,6 +60,25 @@ namespace hgl
                 return BaseString<T>(fullname);
 
             return fullname.SubString(pos+1);
+        }
+
+        /**
+         * 截取一个文件名中的主名称(不能带路径)
+         * @param filename 文件名
+         * @param split_char 扩展名分隔符,一般为'.'
+         */
+        template<typename T>
+        inline BaseString<T> ClipFileMainname(const BaseString<T> &filename,const T split_char='.')
+        {
+            if(filename.Length()<=1)
+                return(BaseString<T>());
+
+            const int pos=filename.FindRightChar(split_char);
+
+            if(pos==-1)
+                return BaseString<T>(filename);
+
+            return filename.SubString(0,pos);
         }
 
         /**

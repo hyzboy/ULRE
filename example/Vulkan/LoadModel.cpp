@@ -1,4 +1,5 @@
-﻿// 4.Geometry3D
+﻿// 5.LoadModel
+//  加载纯色无贴图模型
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -27,8 +28,6 @@ private:
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
-
-    vulkan::Renderable          *ro_plane_grid[3];
 
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 

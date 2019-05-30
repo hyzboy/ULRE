@@ -2,6 +2,7 @@
 #define HGL_GRAPH_MATERIAL_INCLUDE
 
 #include<hgl/graph/TextureType.h>
+#include<hgl/type/Color4f.h>
 namespace hgl
 {
     namespace graph
