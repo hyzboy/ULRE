@@ -40,6 +40,11 @@ namespace hgl
             }
         };//struct MeshFileHeader
         #pragma pack(pop)
+
+        struct MeshData
+        {
+            VkPrimitiveTopology primitive;
+        };//
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_MESH_INCLUDE
