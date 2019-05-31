@@ -190,6 +190,47 @@ void OutMaterial(const MaterialData *ms,const OSString &filename)
     fos.Close();
 }
 
+bool GetMaterialBool(aiMaterial *mtl,const char *key,unsigned int type,unsigned int index,const bool default_value)
+{
+    int value;
+
+    if(aiGetMaterialInteger(mtl, AI_MATKEY_TWOSIDED, &value)==AI_SUCCESS)
+        return value;
+    else
+        return default_value;
+}
+
+uint GetMaterialInteger(aiMaterial *mtl,const char *key,unsigned int type,unsigned int index,const uint default_value)
+{
+    int value;
+
+    if(aiGetMaterialInteger(mtl, AI_MATKEY_TWOSIDED, &value)==AI_SUCCESS)
+        return value;
+    else
+        return default_value;
+}
+
+float GetMaterialFloat(aiMaterial *mtl,const char *key,unsigned int type,unsigned int index,const float default_value)
+{
+    float value;
+
+    if(aiGetMaterialFloat(mtl, AI_MATKEY_TWOSIDED, &value)==AI_SUCCESS)
+        return value;
+    else
+        return default_value;
+}
+
+Color4f GetMaterialColor(aiMaterial *mtl,const char *key,unsigned int type,unsigned int index,const Color4f &default_value)
+{
+    unsigned int max = 1;
+    aiColor4D color;
+
+    if(aiGetMaterialColor(mtl, AI_MATKEY_TWOSIDED, &color)==AI_SUCCESS)
+        return Color4f(color.r,color.g,color.b,color.a);
+    else
+        return default_value;
+}
+
 void AssimpLoader::LoadMaterial()
 {
     if(!scene->HasMaterials())return;
@@ -202,6 +243,12 @@ void AssimpLoader::LoadMaterial()
     aiColor4D emission;
     float shininess;
     float strength;
+    float bump_scaling;
+    float opacity;
+    float refracti;
+    aiColor4D transparent;
+    aiColor4D reflective;
+
     int two_sided;
     int wireframe;
     unsigned int max;   // changed: to unsigned
@@ -293,63 +340,26 @@ void AssimpLoader::LoadMaterial()
             }
         }
 
-        set_float4(c, 0.8f, 0.8f, 0.8f, 1.0f);
-        if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_DIFFUSE, &diffuse))
-            color4_to_float4(&diffuse, c);
-        //glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, c);
-        ms->diffuse.Set(c);
+        ms->two_sided           =GetMaterialBool    (mtl,AI_MATKEY_TWOSIDED,        true);
+        ms->shading_model       =GetMaterialInteger (mtl,AI_MATKEY_SHADING_MODEL,   aiShadingMode_Phong);
+        ms->wireframe           =GetMaterialBool    (mtl,AI_MATKEY_ENABLE_WIREFRAME,false);
+//        ms->blend_func          =
+        ms->opacity             =GetMaterialFloat(mtl,AI_MATKEY_OPACITY,            0);
+//        ms->transparency_factor =
 
-        set_float4(c, 0.0f, 0.0f, 0.0f, 1.0f);
-        if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_SPECULAR, &specular))
-            color4_to_float4(&specular, c);
-        //glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, c);
-        ms->specular.Set(c);
+        ms->bump_scaling        =GetMaterialFloat(mtl,AI_MATKEY_BUMPSCALING,        0);
+        ms->shininess           =GetMaterialFloat(mtl,AI_MATKEY_SHININESS,          0);
+        ms->shininess_strength  =GetMaterialFloat(mtl,AI_MATKEY_SHININESS_STRENGTH, 0);
+        ms->reflectivity        =GetMaterialFloat(mtl,AI_MATKEY_REFLECTIVITY,       0);
+        ms->refracti            =GetMaterialFloat(mtl,AI_MATKEY_REFRACTI,           0);
 
-        set_float4(c, 0.2f, 0.2f, 0.2f, 1.0f);
-        if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_AMBIENT, &ambient))
-            color4_to_float4(&ambient, c);
-        //glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, c);
-        ms->ambient.Set(c);
+        ms->diffuse             =GetMaterialColor(mtl,AI_MATKEY_COLOR_DIFFUSE,      pure_white_color);
+        ms->ambient             =GetMaterialColor(mtl,AI_MATKEY_COLOR_AMBIENT,      Color4f(0.2,0.2,0.2,1.0));
+        ms->specular            =GetMaterialColor(mtl,AI_MATKEY_COLOR_SPECULAR,     pure_black_color);
+        ms->emission            =GetMaterialColor(mtl,AI_MATKEY_COLOR_EMISSIVE,     pure_black_color);
 
-        set_float4(c, 0.0f, 0.0f, 0.0f, 1.0f);
-        if(AI_SUCCESS == aiGetMaterialColor(mtl, AI_MATKEY_COLOR_EMISSIVE, &emission))
-            color4_to_float4(&emission, c);
-        //glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, c);
-        ms->emission.Set(c);
-
-        max = 1;
-        ret1 = aiGetMaterialFloatArray(mtl, AI_MATKEY_SHININESS, &shininess, &max);
-        max = 1;
-        ret2 = aiGetMaterialFloatArray(mtl, AI_MATKEY_SHININESS_STRENGTH, &strength, &max);
-
-        if((ret1 == AI_SUCCESS) && (ret2 == AI_SUCCESS))
-        {
-            //glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess * strength);
-
-            ms->shininess=shininess*strength;
-        }
-        else
-        {
-            //glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0.0f);
-            ms->shininess=0;
-
-            set_float4(c, 0.0f, 0.0f, 0.0f, 0.0f);
-            //glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, c);
-
-            ms->specular.Zero();
-        }
-
-        max = 1;
-        if(aiGetMaterialIntegerArray(mtl, AI_MATKEY_ENABLE_WIREFRAME, &wireframe, &max)==AI_SUCCESS)
-            ms->wireframe=wireframe;
-        else
-            ms->wireframe=false;
-
-        max = 1;
-        if(aiGetMaterialIntegerArray(mtl, AI_MATKEY_TWOSIDED, &two_sided, &max)==AI_SUCCESS)
-            ms->two_sided=two_sided;
-        else
-            ms->two_sided=false;
+        ms->transparent         =GetMaterialColor(mtl,AI_MATKEY_COLOR_TRANSPARENT,  pure_black_color);
+        ms->reflective          =GetMaterialColor(mtl,AI_MATKEY_COLOR_REFLECTIVE,   pure_black_color);
 
         OutMaterial(ms,main_filename+OS_TEXT(".")+OSString(m)+OS_TEXT(".material"));
         LOG_BR;
@@ -709,7 +719,7 @@ bool AssimpLoader::LoadFile(const OSString &filename)
     const UTF8String ext_name=filesystem::ClipFileExtName(filename);
 #endif//
 
-    scene=aiImportFileFromMemory(filedata,filesize,aiProcessPreset_TargetRealtime_Quality|aiProcess_FlipUVs,ext_name.c_str());
+    scene=aiImportFileFromMemory(filedata,filesize,aiProcessPreset_TargetRealtime_MaxQuality|aiProcess_FlipUVs,ext_name.c_str());
 
     delete[] filedata;
 

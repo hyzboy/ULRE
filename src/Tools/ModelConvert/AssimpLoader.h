@@ -17,6 +17,9 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+const Color4f pure_black_color(0,0,0,1);
+const Color4f pure_white_color(1,1,1,1); 
+
 class AssimpLoader
 {
     OSString main_filename;

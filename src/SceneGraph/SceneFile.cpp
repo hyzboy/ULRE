@@ -41,11 +41,11 @@ namespace hgl
             private:
 
                 uint32 mesh_count=0;
-                MeshFileHeader *mesh_list;
+                MeshData *mesh_list;
 
                 void LoadMesh()
                 {
-                    mesh_list=new MeshFileHeader[mesh_count];
+                    mesh_list=new MeshData[mesh_count];
 
                     for(int i=0;i<mesh_count;i++)
                         LoadMeshFile(mesh_list[i],main_filename+OS_TEXT(".")+OSString(i)+OS_TEXT(".mesh"),md_list);

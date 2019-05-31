@@ -9,7 +9,7 @@ namespace hgl
 {
     namespace graph
     {
-        bool LoadMeshFile(MeshFileHeader &md,const OSString &filename,MaterialData *md_list)
+        bool LoadMeshFile(MeshData &md,const OSString &filename,MaterialData *md_list)
         {
             MeshFileHeader mfh;
 
