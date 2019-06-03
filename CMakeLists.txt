@@ -20,8 +20,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
     include_directories(${Vulkan_INCLUDE_DIRS})
 
-#     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/jsoncpp/include)
-#     add_subdirectory(3rdpty/jsoncpp)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/jsoncpp/include)
+    add_subdirectory(3rdpty/jsoncpp)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
     add_definitions(-DVK_USE_PLATFORM_ANDROID_KHR)
 elseif(UNIX)
@@ -37,13 +37,13 @@ add_definitions(-DMATH_AVX)
 add_definitions(-DGLFW_INCLUDE_VULKAN)
 
 SET(ULRE    ULRE.Base
-#             ULRE.Util
+            ULRE.Util
             ULRE.RenderDevice.Vulkan
             ULRE.SceneGraph
             ULRE.Platform
             MathGeoLib
             spirv-cross-core
-#            jsoncpp_lib
+            jsoncpp_lib
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 

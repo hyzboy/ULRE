@@ -1276,6 +1276,229 @@ namespace hgl
     }
 
     /**
+    * 复制一个字符串，并将字符串全部转换成小写
+    */
+    template<typename T>
+    uint lower_cpy(T *target,const T *source)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source)
+        {
+            if(*source>='A'&&*source<='Z')
+                *target=*source+32;
+            else
+                *target=*source;
+
+            ++target;
+            ++source;
+            ++count;
+        }
+
+        *target=0;
+        return count;
+    }
+
+    /**
+    * 复制一个字符串，并将字符串全部转换成大写
+    */
+    template<typename T>
+    uint upper_cpy(T *target,const T *source)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source)
+        {
+            if(*source>='a'&&*source<='z')
+                *target=*source-32;
+            else
+                *target=*source;
+
+            ++target;
+            ++source;
+            ++count;
+        }
+
+        *target=0;
+        return count;
+    }
+
+    /**
+    * 复制一个字符串，并将字符串全部转换成小写
+    */
+    template<typename T>
+    uint lower_cpy(T *target,const T *source,int source_max)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source&&source_max>0)
+        {
+            if(*source>='A'&&*source<='Z')
+                *target=*source+32;
+            else
+                *target=*source;
+
+            ++target;
+            ++source;
+            ++count;
+            --source_max;
+        }
+
+        *target=0;
+
+        return count;
+    }
+
+    /**
+    * 复制一个字符串，并将字符串全部转换成大写
+    */
+    template<typename T>
+    uint upper_cpy(T *target,const T *source,int source_max)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source&&source_max>0)
+        {
+            if(*source>='a'&&*source<='z')
+                *target=*source-32;
+            else
+                *target=*source;
+
+            ++target;
+            ++source;
+            ++count;
+            --source_max;
+        }
+
+        *target=0;
+        return count;
+    }
+
+    /**
+    * 复制一个字符串，将字符串全部转换成小写，并清除前后的空格
+    */
+    template<typename T>
+    uint lower_clip_cpy(T *target,const T *source)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source)
+        {
+            if(*source!=' ')
+            {
+                if(*source>='A'&&*source<='Z')
+                    *target=*source+32;
+                else
+                    *target=*source;
+
+                ++target;
+                ++count;
+            }
+
+            ++source;
+        }
+
+        *target=0;
+
+        return count;
+    }
+
+    /**
+    * 复制一个字符串，并将字符串全部转换成大写
+    */
+    template<typename T>
+    uint upper_clip_cpy(T *target,const T *source)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source)
+        {
+            if(*source!=' ')
+            {
+                if(*source>='a'&&*source<='z')
+                    *target=*source-32;
+                else
+                    *target=*source;
+
+                ++target;
+                ++count;
+            }
+
+            ++source;
+        }
+
+        *target=0;
+        return count;
+    }
+
+    /**
+    * 复制一个字符串，将字符串全部转换成小写，并清除前后的空格
+    */
+    template<typename T>
+    uint lower_clip_cpy(T *target,const T *source,int source_max)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source&&source_max>0)
+        {
+            if(*source!=' ')
+            {
+                if(*source>='A'&&*source<='Z')
+                    *target=*source+32;
+                else
+                    *target=*source;
+
+                ++target;
+                ++count;
+            }
+
+            ++source;
+            --source_max;
+        }
+
+        *target=0;
+
+        return count;
+    }
+
+    /**
+    * 复制一个字符串，并将字符串全部转换成大写
+    */
+    template<typename T>
+    uint upper_clip_cpy(T *target,const T *source,int source_max)
+    {
+        if(!target||!source)return 0;
+        uint count=0;
+
+        while(*source&&source_max>0)
+        {
+            if(*source!=' ')
+            {
+                if(*source>='a'&&*source<='z')
+                    *target=*source-32;
+                else
+                    *target=*source;
+
+                ++target;
+                ++count;
+            }
+
+            ++source;
+            --source_max;
+        }
+
+        *target=0;
+        return count;
+    }
+
+    /**
      * 统计在字符串中某个字符的出现次数
      * @param str 字符串
      * @param ch
