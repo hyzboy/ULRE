@@ -1379,7 +1379,7 @@ namespace hgl
     }
 
     /**
-    * 复制一个字符串，将字符串全部转换成小写，并清除前后的空格
+    * 复制一个字符串，将字符串全部转换成小写，同时清空字符串中的空格
     */
     template<typename T>
     uint lower_clip_cpy(T *target,const T *source)
@@ -1409,7 +1409,7 @@ namespace hgl
     }
 
     /**
-    * 复制一个字符串，并将字符串全部转换成大写
+    * 复制一个字符串，并将字符串全部转换成大写，同时清空字符串中的空格
     */
     template<typename T>
     uint upper_clip_cpy(T *target,const T *source)
@@ -1438,7 +1438,7 @@ namespace hgl
     }
 
     /**
-    * 复制一个字符串，将字符串全部转换成小写，并清除前后的空格
+    * 复制一个字符串，将字符串全部转换成小写，同时清空字符串中的空格
     */
     template<typename T>
     uint lower_clip_cpy(T *target,const T *source,int source_max)
@@ -1469,7 +1469,7 @@ namespace hgl
     }
 
     /**
-    * 复制一个字符串，并将字符串全部转换成大写
+    * 复制一个字符串，并将字符串全部转换成大写，同时清空字符串中的空格
     */
     template<typename T>
     uint upper_clip_cpy(T *target,const T *source,int source_max)
