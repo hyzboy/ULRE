@@ -9,9 +9,10 @@
                         ${ROOT_INCLUDE_PATH}/hgl/graph/VertexBufferCreater.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/VertexBuffer.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/InlineGeometry.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/Mesh.h
+                        #${ROOT_INCLUDE_PATH}/hgl/graph/Mesh.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/Material.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/TextureType.h
+						#${ROOT_INCLUDE_PATH}/hgl/graph/Spline.h
                         )
 
 SET(SCENE_GRAPH_SOURCE  AABox.cpp
@@ -22,8 +23,9 @@ SET(SCENE_GRAPH_SOURCE  AABox.cpp
                         SceneOrient.cpp
                         InlineGeometry.cpp
                         Material.cpp
-                        Mesh.cpp
-                        SceneFile.cpp)
+                        #Mesh.cpp
+                        #SceneFile.cpp
+						)
 
 SOURCE_GROUP("Header Files" FILES ${SCENE_GRAPH_HEADER})
 SOURCE_GROUP("Source Files" FILES ${SCENE_GRAPH_SOURCE})

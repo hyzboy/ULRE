@@ -3,6 +3,7 @@
 
 #include<hgl/graph/TextureType.h>
 #include<hgl/type/Color4f.h>
+#include<hgl/type/Set.h>
 namespace hgl
 {
     namespace graph
