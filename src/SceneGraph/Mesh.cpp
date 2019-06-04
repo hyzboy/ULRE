@@ -111,6 +111,7 @@ namespace hgl
 
                 md.va->SetIndex(face);
             }
+         
             else
             {
                 VB4u16 *face=new VB4u16(mfh.faces_number*3);
