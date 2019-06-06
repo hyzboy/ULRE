@@ -49,8 +49,10 @@ SET(ULRE    ULRE.Base
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/3rdpty/assimp/include)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
