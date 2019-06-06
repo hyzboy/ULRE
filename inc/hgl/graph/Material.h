@@ -22,11 +22,13 @@ namespace hgl
 
         struct MaterialData
         {
+            UTF8String name;
+
             uint8 tex_count;
 
             MaterialTextureData *tex_list;
 
-            Set<int> uv_use;
+            Set<uint> uv_use;
 
             bool two_sided=false;
             uint shading_model=0;
@@ -64,7 +66,7 @@ namespace hgl
             {
                 diffuse.Set(1,1,1,1);
                 specular.Set(0,0,0,1);
-                ambient.Set(0.2,0.2,0.2,1.0f);
+                ambient.Set(0.2f,0.2f,0.2f,1.0f);
                 emission.Set(0,0,0,1);
 
                 shininess=0;
