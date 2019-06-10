@@ -8,11 +8,74 @@
 #include<hgl/graph/RenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 
+#include"AssimpLoaderMesh.h"
+#include<hgl/graph/VertexBuffer.h>
+
 using namespace hgl;
 using namespace hgl::graph;
 
 constexpr uint32_t SCREEN_WIDTH=256;
 constexpr uint32_t SCREEN_HEIGHT=256;
+
+vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const MeshData *mesh)
+{
+    const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
+
+    uint draw_count=0;
+
+    if(mesh->indices16.GetCount()>0)
+        draw_count=mesh->indices16.GetCount();
+    else
+        draw_count=mesh->indices32.GetCount();
+
+    vulkan::Renderable *render_obj=nullptr;
+    {
+        const int vertex_binding=vsm->GetStageInputBinding("Vertex");
+
+        if(vertex_binding==-1)
+            return(nullptr);
+
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->position.GetCount(),mesh->position.GetData());
+
+        render_obj=mtl->CreateRenderable();
+        render_obj->Set(vertex_binding,vbo);
+        render_obj->SetBoundingBox(mesh->bounding_box);
+    }
+
+    const int normal_binding=vsm->GetStageInputBinding("Normal");
+
+    if(normal_binding!=-1)
+    {
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->normal.GetCount(),mesh->normal.GetData());
+
+        render_obj->Set(normal_binding,vbo);
+    }
+
+    const int tagent_binding=vsm->GetStageInputBinding("Tangent");
+
+    if(tagent_binding!=-1)
+    {
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->tangent.GetCount(),mesh->tangent.GetData());
+
+        render_obj->Set(tagent_binding,vbo);
+    }
+
+    const int bitagent_binding=vsm->GetStageInputBinding("Bitangent");
+
+    if(bitagent_binding!=-1)
+    {
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->bitangent.GetCount(),mesh->bitangent.GetData());
+
+        render_obj->Set(bitagent_binding,vbo);
+    }
+
+    if(mesh->indices16.GetCount()>0)
+        render_obj->Set(db->CreateIBO16(mesh->indices16.GetCount(),mesh->indices16.GetData()));
+    else
+        render_obj->Set(db->CreateIBO32(mesh->indices32.GetCount(),mesh->indices32.GetData()));
+
+    return(render_obj);
+}
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -34,6 +97,12 @@ private:
     vulkan::Pipeline *          pipeline_line       =nullptr;
     vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
+private:
+
+    ModelData *model_data;
+
+    vulkan::Renderable **mesh_renderable;
+
 public:
 
     ~TestApp()
@@ -47,9 +116,15 @@ private:
 
     void InitCamera()
     {
+        math::vec center_point=model_data->bounding_box.CenterPoint();
+        math::vec min_point=model_data->bounding_box.minPoint;
+        math::vec max_point=model_data->bounding_box.maxPoint;
+
         camera.type=CameraType::Perspective;
-        camera.center.Set(0,0,0);
-        camera.eye.Set(100,100,100);
+        camera.center=center_point.xyz();
+        camera.eye=max_point.xyz();
+        //camera.center.Set(0,0,0);
+        //camera.eye.Set(10,10,5);
         camera.up_vector.Set(0,0,1);
         camera.forward_vector.Set(0,1,0);
         camera.znear=4;
@@ -63,7 +138,7 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("PositionColor3D.vert.spv"),
+        material=shader_manage->CreateMaterial(OS_TEXT("OnlyPosition3D.vert.spv"),
                                                OS_TEXT("FlatColor.frag.spv"));
         if(!material)
             return(false);
@@ -77,33 +152,15 @@ private:
 
     void CreateRenderObject()
     {
+        const uint count=model_data->mesh_data.GetCount();
+        MeshData **md=model_data->mesh_data.GetData();
+
+        mesh_renderable=new vulkan::Renderable *[count];
+
+        for(uint i=0;i<count;i++)
         {
-            struct PlaneGridCreateInfo pgci;
-
-            pgci.coord[0].Set(-100,-100,0);
-            pgci.coord[1].Set( 100,-100,0);
-            pgci.coord[2].Set( 100, 100,0);
-            pgci.coord[3].Set(-100, 100,0);
-
-            pgci.step.u=20;
-            pgci.step.v=20;
-
-            pgci.side_step.u=10;
-            pgci.side_step.v=10;
-
-            pgci.color.Set(0.75,0,0,1);
-            pgci.side_color.Set(1,0,0,1);
-
-            ro_plane_grid[0]=CreatePlaneGrid(db,material,&pgci);
-
-            pgci.color.Set(0,0.75,0,1);
-            pgci.side_color.Set(0,1,0,1);
-
-            ro_plane_grid[1]=CreatePlaneGrid(db,material,&pgci);
-
-            pgci.color.Set(0,0,0.75,1);
-            pgci.side_color.Set(0,0,1,1);
-            ro_plane_grid[2]=CreatePlaneGrid(db,material,&pgci);
+            mesh_renderable[i]=CreateMeshRenderable(db,material,*md);
+            ++md;
         }
     }
 
@@ -129,10 +186,11 @@ private:
 
         {
             vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
-            pipeline_creater->SetDepthTest(true);
-            pipeline_creater->SetDepthWrite(true);
+            pipeline_creater->SetDepthTest(false);
+            pipeline_creater->SetDepthWrite(false);
+            pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
             pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(PRIM_LINES);
+            pipeline_creater->Set(PRIM_TRIANGLES);
 
             pipeline_line=pipeline_creater->Create();
             if(!pipeline_line)
@@ -146,13 +204,38 @@ private:
         return pipeline_line;
     }
 
+    void CreateRenderableInstance(SceneNode *scene_node,ModelSceneNode *model_node)
+    {
+        scene_node->SetLocalMatrix(model_node->local_matrix);
+
+        {
+            const uint count=model_node->mesh_index.GetCount();
+            const uint32 *mesh_index=model_node->mesh_index.GetData();
+
+            for(uint i=0;i<count;i++)
+            {
+                scene_node->Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,mesh_renderable[*mesh_index]));
+
+                ++mesh_index;
+            }
+        }
+
+        {
+            const uint count=model_node->children_node.GetCount();
+            ModelSceneNode **sub_model_node=model_node->children_node.GetData();
+
+            for(uint i=0;i<count;i++)
+            {
+                CreateRenderableInstance(scene_node->CreateSubNode(),*sub_model_node);
+
+                ++sub_model_node;
+            }
+        }
+    }
+
     bool InitScene()
     {
-        const float rad90=hgl_ang2rad(90);
-
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[0]));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[1]),rotate(rad90,0,1,0));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[2]),rotate(rad90,1,0,0));
+        CreateRenderableInstance(&render_root,model_data->root_node);
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -183,8 +266,13 @@ private:
 
 public:
 
-    bool Init()
+    bool Init(ModelData *md)
     {
+        if(!md)
+            return(false);
+
+        model_data=md;
+
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
@@ -192,12 +280,12 @@ public:
 
         db=new SceneDB(device);
 
-        InitCamera();
-
         if(!InitMaterial())
             return(false);
 
         CreateRenderObject();
+
+        InitCamera();
 
         if(!InitUBO())
             return(false);
@@ -224,14 +312,21 @@ public:
     }
 };//class TestApp:public VulkanApplicationFramework
 
-int main(int,char **)
+#ifdef _WIN32
+int wmain(int argc,wchar_t **argv)
+#else
+int main(int argc,char **argv)
+#endif//
 {
     TestApp app;
 
-    if(!app.Init())
-        return(-1);
+    ModelData *model_data=AssimpLoadModel(argv[1]);
 
-    while(app.Run());
+    if(app.Init(model_data))
+        while(app.Run());
+
+    if(model_data)
+        delete model_data;
 
     return 0;
 }

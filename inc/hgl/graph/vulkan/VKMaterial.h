@@ -57,7 +57,7 @@ public:
 
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 
-    Renderable *CreateRenderable(const uint32_t draw_count);
+    Renderable *CreateRenderable(const uint32_t draw_count=0);
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
