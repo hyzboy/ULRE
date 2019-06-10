@@ -83,9 +83,11 @@ namespace hgl
 
         /**
          * 截取完整文件名中的扩展名
+         * @param fullname 完整文件名
+         * @param include_dot 是否包括点
          */
         template<typename T>
-        inline BaseString<T> ClipFileExtName(const BaseString<T> &fullname)
+        inline BaseString<T> ClipFileExtName(const BaseString<T> &fullname,bool include_dot=true)
         {
             int end=fullname.FindChar(T('?'));         //url的文件名，以?为结束
 
@@ -97,7 +99,8 @@ namespace hgl
             if(pos==-1)
                 return BaseString<T>();
 
-            return fullname.SubString(pos+1,end-(pos+1));
+            return include_dot? fullname.SubString(pos,     end- pos   ):
+                                fullname.SubString(pos+1,   end-(pos+1));
         }
 
         /**

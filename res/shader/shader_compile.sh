@@ -7,3 +7,4 @@ glslangValidator -V -o FlatTexture.vert.spv FlatTexture.vert
 glslangValidator -V -o FlatTexture.frag.spv FlatTexture.frag
 
 glslangValidator -V -o PositionColor3D.vert.spv PositionColor3D.vert
+glslangValidator -V -o OnlyPosition3D.vert.spv OnlyPosition3D.vert

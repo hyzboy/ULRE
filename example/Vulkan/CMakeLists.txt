@@ -8,4 +8,6 @@ CreateProject(1.indices_rect indices_rect.cpp)
 CreateProject(2.texture_rect texture_rect.cpp TGATexture.cpp)
 CreateProject(3.Geometry2D Geometry2D.cpp)
 CreateProject(4.Geometry3D Geometry3D.cpp)
-CreateProject(5.LoadModel LoadModel.cpp TGATexture.cpp AssimpLoader.h AssimpLoader.cpp)
+CreateProject(5.LoadModel LoadModel.cpp TGATexture.cpp AssimpLoaderMesh.h AssimpLoaderMesh.cpp)
+
+target_link_libraries(5.LoadModel assimp)
