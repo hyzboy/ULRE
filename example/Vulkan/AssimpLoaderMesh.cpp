@@ -127,11 +127,6 @@ namespace
 
     Matrix4f MatrixRotate(const aiMatrix4x4 &s)
     {
-        //return Matrix4f(s.a1,s.b1,s.c1,s.d1,
-        //                s.a2,s.b2,s.c2,s.d2,
-        //                s.a3,s.b3,s.c3,s.d3,
-        //                s.a4,s.b4,s.c4,s.d4);
-
         return Matrix4f(s.a1,s.a2,s.a3,s.a4,
                         s.b1,s.b2,s.b3,s.b4,
                         s.c1,s.c2,s.c3,s.c4,

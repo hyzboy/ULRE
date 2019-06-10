@@ -14,8 +14,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=256;
-constexpr uint32_t SCREEN_HEIGHT=256;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=960;
 
 vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const MeshData *mesh)
 {
@@ -117,14 +117,15 @@ private:
     void InitCamera()
     {
         math::vec center_point=model_data->bounding_box.CenterPoint();
-        math::vec min_point=model_data->bounding_box.minPoint;
         math::vec max_point=model_data->bounding_box.maxPoint;
+
+        max_point.x*=3.0f;
+        max_point.y=center_point.y;
+        max_point.z=center_point.z;
 
         camera.type=CameraType::Perspective;
         camera.center=center_point.xyz();
         camera.eye=max_point.xyz();
-        //camera.center.Set(0,0,0);
-        //camera.eye.Set(10,10,5);
         camera.up_vector.Set(0,0,1);
         camera.forward_vector.Set(0,1,0);
         camera.znear=4;
