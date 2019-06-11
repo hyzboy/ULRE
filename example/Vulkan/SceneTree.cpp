@@ -134,15 +134,13 @@ private:
         uint count;
         float size;
 
-        const Vector3f axis(0,0,1);
-
         RenderableInstance *ri=db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_cube);
 
         for(uint i=0;i<360;i++)
         {
             size=(i+1)/100.0f;
             
-            cur_node=render_root.CreateSubNode( rotate(i/5.0f,axis)*
+            cur_node=render_root.CreateSubNode( rotate(i/5.0f,camera.up_vector)*
                                                 translate(i/4.0f,0,0)*
                                                 scale(size));
 
