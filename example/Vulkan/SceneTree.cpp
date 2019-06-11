@@ -136,9 +136,11 @@ private:
 
         const Vector3f axis(0,0,1);
 
+        RenderableInstance *ri=db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_cube);
+
         for(uint i=0;i<360;i++)
         {
-            render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_cube),
+            render_root.Add(ri,
                             rotate(i/5.0f,axis)*
                             translate(i/4.0f,0,0)*
                             scale((i+1)/100.0f));
