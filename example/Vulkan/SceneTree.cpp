@@ -144,9 +144,6 @@ private:
                             scale((i+1)/100.0f));
         }
 
-        render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
-
         return(true);
     }
 
@@ -216,6 +213,7 @@ public:
         Matrix4f rot=rotate(GetDoubleTime()-start_time,camera.right_vector);
 
         render_root.RefreshMatrix(&rot);
+        render_list.Clear();
         render_root.ExpendToList(&render_list);
 
         BuildCommandBuffer();
