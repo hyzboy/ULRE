@@ -369,6 +369,7 @@ namespace hgl
             }
 
             render_obj->Set(db->CreateIBO16(6*2*3,indices));
+            db->Add(render_obj);
             return(render_obj);
         }
 
@@ -399,6 +400,7 @@ namespace hgl
                 delete vertex;
             }
 
+            db->Add(render_obj);
             return render_obj;
         }
 

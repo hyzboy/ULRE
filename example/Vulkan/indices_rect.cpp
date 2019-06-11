@@ -37,15 +37,12 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    uint swap_chain_count=0;
-
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
-    vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
     vulkan::VertexBuffer *      vertex_buffer       =nullptr;
     vulkan::IndexBuffer *       index_buffer        =nullptr;
@@ -56,7 +53,6 @@ public:
     {
         SAFE_CLEAR(index_buffer);
         SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
@@ -122,38 +118,12 @@ private:
         return pipeline;
     }
 
-    bool InitCommandBuffer()
-    {
-        cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
-
-        for(uint i=0;i<swap_chain_count;i++)
-        {
-            cmd_buf[i]=device->CreateCommandBuffer();
-
-            if(!cmd_buf[i])
-                return(false);
-
-            cmd_buf[i]->Begin();
-                cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-                    cmd_buf[i]->Bind(pipeline);
-                    cmd_buf[i]->Bind(descriptor_sets);
-                    cmd_buf[i]->Bind(render_obj);
-                    cmd_buf[i]->DrawIndexed(INDEX_COUNT);
-                cmd_buf[i]->EndRenderPass();
-            cmd_buf[i]->End();
-        }
-
-        return(true);
-    }
-
 public:
 
     bool Init()
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-
-        swap_chain_count=device->GetSwapChainImageCount();
 
         if(!InitMaterial())
             return(false);
@@ -165,20 +135,10 @@ public:
 
         if(!InitPipeline())
             return(false);
-
-        if(!InitCommandBuffer())
-            return(false);
+            
+        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
 
         return(true);
-    }
-
-    void Draw() override
-    {
-        const uint32_t frame_index=device->GetCurrentFrameIndices();
-
-        const vulkan::CommandBuffer *cb=cmd_buf[frame_index];
-
-        Submit(*cb);
     }
 };//class TestApp:public VulkanApplicationFramework
 

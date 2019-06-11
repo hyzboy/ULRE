@@ -4,9 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/SceneDB.h>
 #include<hgl/graph/RenderableInstance.h>
-#include<hgl/graph/RenderList.h>
 
 #include"AssimpLoaderMesh.h"
 #include<hgl/graph/VertexBuffer.h>
@@ -74,6 +72,7 @@ vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const
     else
         render_obj->Set(db->CreateIBO32(mesh->indices32.GetCount(),mesh->indices32.GetData()));
 
+    db->Add(render_obj);
     return(render_obj);
 }
 
@@ -81,9 +80,6 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    uint swap_chain_count=0;
-
-    SceneDB *   db                  =nullptr;
     SceneNode   render_root;
     RenderList  render_list;
 
@@ -95,21 +91,20 @@ private:
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
-    vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
 private:
 
     ModelData *model_data;
 
     vulkan::Renderable **mesh_renderable;
+    RenderableInstance **mesh_renderable_instance;
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(db);
-
-        SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
+        delete[] mesh_renderable_instance;
+        delete[] mesh_renderable;
     }
 
 private:
@@ -151,11 +146,13 @@ private:
         const uint count=model_data->mesh_data.GetCount();
         MeshData **md=model_data->mesh_data.GetData();
 
-        mesh_renderable=new vulkan::Renderable *[count];
+        mesh_renderable         =new vulkan::Renderable *[count];
+        mesh_renderable_instance=new RenderableInstance *[count];
 
         for(uint i=0;i<count;i++)
         {
             mesh_renderable[i]=CreateMeshRenderable(db,material,*md);
+            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_line,descriptor_sets,mesh_renderable[i]);
             ++md;
         }
     }
@@ -200,7 +197,7 @@ private:
         return pipeline_line;
     }
 
-    void CreateRenderableInstance(SceneNode *scene_node,ModelSceneNode *model_node)
+    void CreateSceneNode(SceneNode *scene_node,ModelSceneNode *model_node)
     {
         scene_node->SetLocalMatrix(model_node->local_matrix);
 
@@ -210,7 +207,7 @@ private:
 
             for(uint i=0;i<count;i++)
             {
-                scene_node->Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,mesh_renderable[*mesh_index]));
+                scene_node->Add(mesh_renderable_instance[*mesh_index]);
 
                 ++mesh_index;
             }
@@ -222,7 +219,7 @@ private:
 
             for(uint i=0;i<count;i++)
             {
-                CreateRenderableInstance(scene_node->CreateSubNode(),*sub_model_node);
+                CreateSceneNode(scene_node->CreateSubNode(),*sub_model_node);
 
                 ++sub_model_node;
             }
@@ -231,32 +228,12 @@ private:
 
     bool InitScene()
     {
-        CreateRenderableInstance(&render_root,model_data->root_node);
+        CreateSceneNode(&render_root,model_data->root_node);
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
 
-        return(true);
-    }
-
-    bool InitCommandBuffer()
-    {
-        cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
-
-        for(uint i=0;i<swap_chain_count;i++)
-        {
-            cmd_buf[i]=device->CreateCommandBuffer();
-
-            if(!cmd_buf[i])
-                return(false);
-
-            cmd_buf[i]->Begin();
-            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-            render_list.Render(cmd_buf[i]);
-            cmd_buf[i]->EndRenderPass();
-            cmd_buf[i]->End();
-        }
-
+        BuildCommandBuffer(&render_list);
         return(true);
     }
 
@@ -272,14 +249,8 @@ public:
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        swap_chain_count=device->GetSwapChainImageCount();
-
-        db=new SceneDB(device);
-
         if(!InitMaterial())
             return(false);
-
-        CreateRenderObject();
 
         InitCamera();
 
@@ -289,22 +260,12 @@ public:
         if(!InitPipeline())
             return(false);
 
+        CreateRenderObject();
+
         if(!InitScene())
             return(false);
 
-        if(!InitCommandBuffer())
-            return(false);
-
         return(true);
-    }
-
-    void Draw() override
-    {
-        const uint32_t frame_index=device->GetCurrentFrameIndices();
-
-        const vulkan::CommandBuffer *cb=cmd_buf[frame_index];
-
-        Submit(*cb);
     }
 };//class TestApp:public VulkanApplicationFramework
 

@@ -15,6 +15,8 @@
 #include<hgl/graph/vulkan/VKFormat.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 #include<hgl/graph/vulkan/VKMaterial.h>
+#include<hgl/graph/SceneDB.h>
+#include<hgl/graph/RenderList.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -31,10 +33,23 @@ protected:
     vulkan::Device *            device          =nullptr;
     vulkan::ShaderModuleManage *shader_manage   =nullptr;
 
+private:
+
+            uint32_t            swap_chain_count=0;
+
+    vulkan::CommandBuffer **    cmd_buf         =nullptr;
+   
+protected:
+
+            SceneDB *           db              =nullptr;
+
 public:
 
     virtual ~VulkanApplicationFramework()
-    {   
+    {
+        SAFE_CLEAR(db);
+        SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
+
         SAFE_CLEAR(shader_manage);
         SAFE_CLEAR(win);        //win中会删除device，所以必须放在instance前删除
         SAFE_CLEAR(inst);
@@ -67,8 +82,60 @@ public:
             return(false);
 
         shader_manage=device->CreateShaderModuleManage();
+
+        swap_chain_count = device->GetSwapChainImageCount();
+        {
+            cmd_buf = hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
+
+            for (uint i=0;i<swap_chain_count;i++)
+                cmd_buf[i]=device->CreateCommandBuffer();
+        }
+
+        db=new SceneDB(device);
+
         return(true);
     }
+
+    void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+    {
+        if(!p||!ds||!r)
+            return;
+
+        const vulkan::IndexBuffer *ib=r->GetIndexBuffer();
+
+        for(uint i=0;i<swap_chain_count;i++)
+        {
+            cmd_buf[i]->Begin();
+            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
+            cmd_buf[i]->Bind(p);
+            cmd_buf[i]->Bind(ds);
+            cmd_buf[i]->Bind(r);
+
+            if (ib)
+                cmd_buf[i]->DrawIndexed(ib->GetCount());
+            else
+                cmd_buf[i]->Draw(r->GetDrawCount());
+
+            cmd_buf[i]->EndRenderPass();
+            cmd_buf[i]->End();
+        }
+    }
+
+    void BuildCommandBuffer(RenderList *rl)
+    {
+        if(!rl)return;
+
+        for(uint i=0;i<swap_chain_count;i++)
+        {
+            cmd_buf[i]->Begin();
+            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
+            rl->Render(cmd_buf[i]);
+            cmd_buf[i]->EndRenderPass();
+            cmd_buf[i]->End();
+        }
+    }
+
+private:
 
     void AcquireNextFrame()
     {
@@ -82,7 +149,14 @@ public:
         device->QueuePresent();
     }
 
-    virtual void Draw()=0;
+public:
+
+    virtual void Draw()
+    {
+        const vulkan::CommandBuffer *cb=cmd_buf[device->GetCurrentFrameIndices()];
+
+        Submit(*cb);
+    }
 
     bool Run()
     {
