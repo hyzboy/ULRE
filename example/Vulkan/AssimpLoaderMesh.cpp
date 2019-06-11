@@ -200,8 +200,26 @@ public:
 
         GetBoundingBox(scene->mRootNode,&scene_min,&scene_max);
 
-        model_data->bounding_box.minPoint=pos_to_vec(scene_min);
-        model_data->bounding_box.maxPoint=pos_to_vec(scene_max);
+        float tmp;
+        vec smin=pos_to_vec(scene_min);
+        vec smax=pos_to_vec(scene_max);
+
+        if(smin.y>smax.y)
+        {
+            tmp=smin.y;
+            smin.y=smax.y;
+            smax.y=tmp;
+        }
+
+        if(smin.z>smax.z)
+        {
+            tmp=smin.z;
+            smin.z=smax.z;
+            smax.z=tmp;
+        }
+
+        model_data->bounding_box.minPoint=smin;
+        model_data->bounding_box.maxPoint=smax;
     }
 
     ~AssimpLoaderMesh()=default;
