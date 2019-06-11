@@ -279,6 +279,9 @@ int main(int argc,char **argv)
 
     ModelData *model_data=AssimpLoadModel(argv[1]);
 
+    if(!model_data)
+        return -1;
+
     if(app.Init(model_data))
         while(app.Run());
 
