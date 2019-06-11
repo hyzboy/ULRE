@@ -87,6 +87,43 @@ namespace hgl
         return(nullptr);
     }
 
+    /**
+     * 确认指定数据是否存在
+     */
+    template<typename F,typename T>
+    bool ResManage<F,T>::ValueExist(T *value)
+    {
+        return(items.FindByValue(value)!=-1);
+    }
+
+    /**
+     * 获取指定数据的Key和引用计数
+     * @param value 数据
+     * @param key Key存放地址
+     * @param ref_count 引用计数存放地址
+     * @param 是否增加引用计数
+     */
+    template<typename F,typename T>
+    bool ResManage<F,T>::GetKeyByValue(T *value,F *key,uint *ref_count,bool inc_ref_count)
+    {
+        int index=items.FindByValue(value);
+
+        if(index==-1)return(false);
+
+        ResItem *obj=items.GetItem(index);
+
+        if(inc_ref_count)
+            ++obj->count;
+
+        if(key)
+            *key=obj->left;
+
+        if(ref_count)
+            *key=obj->count;
+
+        return(true);
+    }
+
     template<typename F,typename T>
     void ResManage<F,T>::ReleaseBySerial(int index,bool zero_clear)
     {
