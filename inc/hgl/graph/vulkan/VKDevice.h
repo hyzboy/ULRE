@@ -58,10 +58,10 @@ public:
             ImageView      *GetColorImageView       (int index) {return attr->sc_image_views[index];}
             ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
-    const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
-
             RenderPass *    GetRenderPass           ()          {return main_rp;}
             Framebuffer *   GetFramebuffer          (int index) {return main_fb[index];}
+    const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
+            Framebuffer *   GetCurrentFramebuffer   ()          {return main_fb[current_frame];}
 
     bool                    Resize                  (uint,uint);
 
