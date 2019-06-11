@@ -117,15 +117,15 @@ private:
     void InitCamera()
     {
         math::vec center_point=model_data->bounding_box.CenterPoint();
-        math::vec max_point=model_data->bounding_box.maxPoint;
+        math::vec min_point=model_data->bounding_box.minPoint;
 
-        max_point.x*=2.0f;
-        max_point.y=center_point.y;
-        max_point.z=center_point.z;
+        min_point.x*=2.0f;
+        min_point.y=center_point.y;
+        min_point.z=center_point.z;
 
         camera.type=CameraType::Perspective;
         camera.center=center_point;
-        camera.eye=max_point;
+        camera.eye=min_point;
         camera.width=SCREEN_WIDTH;
         camera.height=SCREEN_HEIGHT;
 

@@ -42,6 +42,8 @@ namespace hgl
             return(nullptr);
         }
 
+        active=true;
+
         return(device);
     }
 
