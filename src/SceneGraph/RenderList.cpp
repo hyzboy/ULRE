@@ -86,7 +86,7 @@ namespace hgl
             }
         }
 
-        bool RenderList::Render(vulkan::CommandBuffer *cb)
+        bool RenderList::Render(vulkan::CommandBuffer *cb) 
         {
             if(!cb)
                 return(false);

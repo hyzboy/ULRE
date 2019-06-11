@@ -10,16 +10,13 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=256;
-constexpr uint32_t SCREEN_HEIGHT=256;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    uint swap_chain_count=0;
-
-    SceneDB *   db                  =nullptr;
     SceneNode   render_root;
     RenderList  render_list;
 
@@ -33,16 +30,6 @@ private:
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
-    vulkan::CommandBuffer **    cmd_buf             =nullptr;
-
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(db);
-
-        SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
-    }
 
 private:
 
@@ -73,34 +60,32 @@ private:
 
     void CreateRenderObject()
     {
-        {
-            struct PlaneGridCreateInfo pgci;
+        struct PlaneGridCreateInfo pgci;
 
-            pgci.coord[0].Set(-100,-100,0);
-            pgci.coord[1].Set( 100,-100,0);
-            pgci.coord[2].Set( 100, 100,0);
-            pgci.coord[3].Set(-100, 100,0);
+        pgci.coord[0].Set(-100,-100,0);
+        pgci.coord[1].Set( 100,-100,0);
+        pgci.coord[2].Set( 100, 100,0);
+        pgci.coord[3].Set(-100, 100,0);
 
-            pgci.step.u=20;
-            pgci.step.v=20;
+        pgci.step.u=20;
+        pgci.step.v=20;
 
-            pgci.side_step.u=10;
-            pgci.side_step.v=10;
+        pgci.side_step.u=10;
+        pgci.side_step.v=10;
 
-            pgci.color.Set(0.75,0,0,1);
-            pgci.side_color.Set(1,0,0,1);
+        pgci.color.Set(0.75,0,0,1);
+        pgci.side_color.Set(1,0,0,1);
 
-            ro_plane_grid[0]=CreatePlaneGrid(db,material,&pgci);
+        ro_plane_grid[0]=CreatePlaneGrid(db,material,&pgci);
 
-            pgci.color.Set(0,0.75,0,1);
-            pgci.side_color.Set(0,1,0,1);
+        pgci.color.Set(0,0.75,0,1);
+        pgci.side_color.Set(0,1,0,1);
 
-            ro_plane_grid[1]=CreatePlaneGrid(db,material,&pgci);
+        ro_plane_grid[1]=CreatePlaneGrid(db,material,&pgci);
 
-            pgci.color.Set(0,0,0.75,1);
-            pgci.side_color.Set(0,0,1,1);
-            ro_plane_grid[2]=CreatePlaneGrid(db,material,&pgci);
-        }
+        pgci.color.Set(0,0,0.75,1);
+        pgci.side_color.Set(0,0,1,1);
+        ro_plane_grid[2]=CreatePlaneGrid(db,material,&pgci);
     }
 
     bool InitUBO()
@@ -153,26 +138,7 @@ private:
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
 
-        return(true);
-    }
-
-    bool InitCommandBuffer()
-    {
-        cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
-
-        for(uint i=0;i<swap_chain_count;i++)
-        {
-            cmd_buf[i]=device->CreateCommandBuffer();
-
-            if(!cmd_buf[i])
-                return(false);
-
-            cmd_buf[i]->Begin();
-            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-            render_list.Render(cmd_buf[i]);
-            cmd_buf[i]->EndRenderPass();
-            cmd_buf[i]->End();
-        }
+        BuildCommandBuffer(&render_list);
 
         return(true);
     }
@@ -183,10 +149,6 @@ public:
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-
-        swap_chain_count=device->GetSwapChainImageCount();
-
-        db=new SceneDB(device);
 
         InitCamera();
 
@@ -204,19 +166,7 @@ public:
         if(!InitScene())
             return(false);
 
-        if(!InitCommandBuffer())
-            return(false);
-
         return(true);
-    }
-
-    void Draw() override
-    {
-        const uint32_t frame_index=device->GetCurrentFrameIndices();
-
-        const vulkan::CommandBuffer *cb=cmd_buf[frame_index];
-
-        Submit(*cb);
     }
 };//class TestApp:public VulkanApplicationFramework
 

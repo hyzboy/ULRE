@@ -12,18 +12,15 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=256;
-constexpr uint32_t SCREEN_HEIGHT=256;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    double start_time;
+    double      start_time;
 
-    uint swap_chain_count=0;
-
-    SceneDB *   db                  =nullptr;
     SceneNode   render_root;
     RenderList  render_list;
 
@@ -37,7 +34,6 @@ private:
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
-    vulkan::CommandBuffer **    cmd_buf             =nullptr;
 
 public:
 
@@ -46,12 +42,7 @@ public:
         start_time=GetDoubleTime();
     }
 
-    ~TestApp()
-    {
-        SAFE_CLEAR(db);
-
-        SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
-    }
+    ~TestApp()=default;
 
 private:
 
@@ -150,32 +141,14 @@ private:
                 cur_node->Add(ri,translate(0,0,size*n*1.01));
         }
 
+        render_root.RefreshMatrix();
+        render_list.Clear();
+        render_root.ExpendToList(&render_list);
+
+        BuildCommandBuffer(&render_list);
         return(true);
     }
 
-    bool InitCommandBuffer()
-    {
-        cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
-
-        for(uint i=0;i<swap_chain_count;i++)
-            cmd_buf[i]=device->CreateCommandBuffer();
-
-        return BuildCommandBuffer();
-    }
-
-    bool BuildCommandBuffer()
-    {
-        for(uint i=0;i<swap_chain_count;i++)
-        {
-            cmd_buf[i]->Begin();
-            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-            render_list.Render(cmd_buf[i]);
-            cmd_buf[i]->EndRenderPass();
-            cmd_buf[i]->End();
-        }
-
-        return(true);
-    }
 
 public:
 
@@ -183,10 +156,6 @@ public:
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-
-        swap_chain_count=device->GetSwapChainImageCount();
-
-        db=new SceneDB(device);
 
         InitCamera();
 
@@ -204,17 +173,12 @@ public:
         if(!InitScene())
             return(false);
 
-        if(!InitCommandBuffer())
-            return(false);
-
         return(true);
     }
 
     void Draw() override
     {
-        vulkan::CommandBuffer *cb=cmd_buf[device->GetCurrentFrameIndices()];
-
-        Submit(*cb);
+        VulkanApplicationFramework::Draw();
 
         Matrix4f rot=rotate(GetDoubleTime()-start_time,camera.up_vector);
 
@@ -222,7 +186,7 @@ public:
         render_list.Clear();
         render_root.ExpendToList(&render_list);
 
-        BuildCommandBuffer();
+        BuildCommandBuffer(&render_list);
     }
 };//class TestApp:public VulkanApplicationFramework
 
