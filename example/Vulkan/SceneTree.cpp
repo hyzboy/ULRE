@@ -155,25 +155,21 @@ private:
         cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
 
         for(uint i=0;i<swap_chain_count;i++)
-        {
             cmd_buf[i]=device->CreateCommandBuffer();
 
-            BuildCommandBuffer(cmd_buf[i],device->GetFramebuffer(i));
-        }
-
-        return(true);
+        return BuildCommandBuffer();
     }
 
-    bool BuildCommandBuffer(vulkan::CommandBuffer *cb,vulkan::Framebuffer *fb)
+    bool BuildCommandBuffer()
     {
-        if (!cb)
-            return(false);
-
-        cb->Begin();
-        cb->BeginRenderPass(device->GetRenderPass(),fb);
-        render_list.Render(cb);
-        cb->EndRenderPass();
-        cb->End();
+        for(uint i=0;i<swap_chain_count;i++)
+        {
+            cmd_buf[i]->Begin();
+            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
+            render_list.Render(cmd_buf[i]);
+            cmd_buf[i]->EndRenderPass();
+            cmd_buf[i]->End();
+        }
 
         return(true);
     }
@@ -213,10 +209,7 @@ public:
 
     void Draw() override
     {
-        const uint32_t frame_index=device->GetCurrentFrameIndices();
-
-        vulkan::Framebuffer *   fb=device->GetFramebuffer(frame_index);
-        vulkan::CommandBuffer * cb=cmd_buf[frame_index];
+        vulkan::CommandBuffer *cb=cmd_buf[device->GetCurrentFrameIndices()];
 
         Submit(*cb);
 
@@ -225,7 +218,7 @@ public:
         render_root.RefreshMatrix(&rot);
         render_root.ExpendToList(&render_list);
 
-        BuildCommandBuffer(cb,fb);
+        BuildCommandBuffer();
     }
 };//class TestApp:public VulkanApplicationFramework
 
