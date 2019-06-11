@@ -49,13 +49,8 @@ private:
     void InitCamera()
     {
         camera.type=CameraType::Perspective;
-        camera.center.Set(0,0,0);
-        camera.eye.Set(100,100,100);
-        camera.up_vector.Set(0,0,1);
-        camera.forward_vector.Set(0,1,0);
-        camera.znear=4;
-        camera.zfar=1000;
-        camera.fov=90;
+        camera.center.Set(0,0,0,1);
+        camera.eye.Set(100,100,100,1);
         camera.width=SCREEN_WIDTH;
         camera.height=SCREEN_HEIGHT;
 

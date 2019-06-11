@@ -21,7 +21,7 @@ using namespace hgl::graph;
 
 class VulkanApplicationFramework
 {
-private:    
+private:
 
             Window *            win             =nullptr;
     vulkan::Instance *          inst            =nullptr;

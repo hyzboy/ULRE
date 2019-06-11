@@ -22,14 +22,14 @@ namespace hgl
             float width;                ///<视图宽
             float height;               ///<视图高
 
-            float fov;                  ///<水平FOV
-            float znear,zfar;           ///<Z轴上离眼睛的距离
+            float fov=90;               ///<水平FOV
+            float znear=0,zfar=1000;    ///<Z轴上离眼睛的距离
 
             Vector4f eye;               ///<眼睛坐标
             Vector4f center;            ///<视点坐标
-            Vector4f up_vector;         ///<向上量(默认0,0,1)
-            Vector4f forward_vector;    ///<向前量(默认1,0,0)
-            Vector4f right_vector;      ///<向右量(默认0,1,0)
+            Vector4f up_vector      =Vector4f(0,0,1,0); ///<向上量(默认0,0,1)
+            Vector4f forward_vector =Vector4f(0,1,0,0); ///<向前量(默认0,1,0)
+            Vector4f right_vector   =Vector4f(1,0,0,0); ///<向右量(默认0,0,1)
 
         public:
 
