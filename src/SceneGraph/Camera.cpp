@@ -3,24 +3,24 @@ namespace hgl
 {
     namespace graph
     {
-        inline Matrix4f LookAt(const Vector3f &eye,const Vector3f &target,const Vector3f &up)
+        inline Matrix4f LookAt(const Vector4f &eye,const Vector4f &target,const Vector4f &up)
         {
-            Vector3f forward=target-eye;
+            Vector4f forward=target-eye;
 
             normalize(forward);
 
-            Vector3f side=cross(forward,up);
+            Vector4f side=cross(forward,up);
 
             normalize(side);
 
-            Vector3f nup=cross(side,forward);
+            Vector4f nup=cross(side,forward);
 
             Matrix4f result(side.x,     side.y,     side.z,     0.0f,
                             nup.x,      nup.y,      nup.z,      0.0f,
                             -forward.x, -forward.y, -forward.z, 0.0f,
                             0.0f,       0.0f,       0.0f,       1.0f);
 
-            return result*translate(-eye);
+            return result*translate(-eye.xyz());
         }
 
         void Camera::Refresh()

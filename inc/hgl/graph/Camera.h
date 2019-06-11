@@ -25,10 +25,11 @@ namespace hgl
             float fov;                  ///<水平FOV
             float znear,zfar;           ///<Z轴上离眼睛的距离
 
-            Vector3f eye;               ///<眼睛坐标
-            Vector3f center;            ///<视点坐标
-            Vector3f up_vector;         ///<向上量
-            Vector3f forward_vector;    ///<向前量
+            Vector4f eye;               ///<眼睛坐标
+            Vector4f center;            ///<视点坐标
+            Vector4f up_vector;         ///<向上量(默认0,0,1)
+            Vector4f forward_vector;    ///<向前量(默认1,0,0)
+            Vector4f right_vector;      ///<向右量(默认0,1,0)
 
         public:
 
@@ -46,39 +47,76 @@ namespace hgl
         */
         class WalkerCamera:public Camera
         {
+        protected:
+
+            /**
+            * 向指定向量移动
+            * @param move_dist 移动距离
+            */
+            void Move(const Vector4f &move_dist)
+            {
+                eye += move_dist;
+                center += move_dist;
+            }
+
+            /**
+             * 以自身为中心旋转
+             * @param ang 角度
+             * @param axis 旋转轴
+             */
+            void Rotate(double ang,const Vector4f &axis)
+            {
+                center=eye+(center-eye)*rotate(hgl_ang2rad(ang),axis);
+            }
+
+            /**
+             * 以目标为中心旋转
+             * @param ang 角度
+             * @param axis 旋转轴
+             */
+             void WrapRotate(double ang,const Vector4f &axis)
+             {
+                eye=center+(eye-center)*rotate(hgl_ang2rad(ang),axis);
+             }
+
         public: //方法
 
-            virtual void Backward(float=0.01);                                                      ///<向后
+            virtual void Backward(float step=0.01){Move(forward_vector*step);}                      ///<向后
             virtual void Forward(float step=0.01){Backward(-step);}                                 ///<向前
 
-            virtual void Up(float step=0.01);                                                       ///<向上
+            virtual void Up(float step=0.01){Move(up_vector*step);}                                 ///<向上
             virtual void Down(float step=0.01){Up(-step);}                                          ///<向下
 
-            virtual void Right(float step=0.01);                                                    ///<向右
+            virtual void Right(float step=0.01){Move(right_vector);}                                ///<向右
             virtual void Left(float step=0.01){Right(-step);}                                       ///<向左
 
         public: //以自身为中心旋转
 
-            virtual void BackwardRotate(float=5);                                                   ///<以自身为中心向后旋转
-            virtual void ForwardRotate(float ang=5){BackwardRotate(-ang);}                          ///<以自身为中心向前旋转
+            virtual void RightDumping(float ang=5){Rotate(ang,forward_vector);}                     ///<右倾倒
+            virtual void LeftDumping(float ang=5){RightDumping(-ang);}                              ///<左倾倒
 
-            virtual void UpRotate(float=5);                                                         ///<以自身为中心向上旋转
-            virtual void DownRotate(float ang=5){UpRotate(-ang);}                                   ///<以自身为中心向下旋转
+            virtual void LeaningBack(float ang=5){Rotate(ang,right_vector);}                        ///<后仰
+            virtual void ForwardTilt(float ang=5){LeaningBack(-ang);}                               ///<前倾
 
-            virtual void RightRotate(float=5);                                                      ///<以自身为中心向右旋转
-            virtual void LeftRotate(float ang=5){RightRotate(-ang);}                                ///<以自身为中心向左旋转
+            virtual void RightRotate(float ang=5){Rotate(ang,up_vector);}                           ///<右转
+            virtual void LeftRotate(float ang=5){RightRotate(-ang);}                                ///<左转
 
         public: //以目标点为中心旋转
 
-            virtual void CenterUpRotate(float=5);                                                   ///<以目标点为中心向上旋转
-            virtual void CenterDownRotate(float ang=5){CenterUpRotate(-ang);}                       ///<以目标点为中心向下旋转
+            virtual void WrapUpRotate(float ang=5){WrapRotate(ang,right_vector);}                   ///<以目标点为中心向上旋转
+            virtual void WrapDownRotate(float ang=5){WrapUpRotate(-ang);}                           ///<以目标点为中心向下旋转
 
-            virtual void CenterRightRotate(float ang=5);                                            ///<以目标点为中心向右旋转
-            virtual void CenterLeftRotate(float ang=5){CenterRightRotate(-ang);}                    ///<以目标点为中心向左旋转
+            virtual void WrapRightRotate(float ang=5){WrapRotate(ang,up_vector);}                   ///<以目标点为中心向右旋转
+            virtual void WrapLeftRotate(float ang=5){WrapRightRotate(-ang);}                        ///<以目标点为中心向左旋转
 
         public: //距离
 
-            virtual void Distance(float=0.9);                                                       ///<调整距离
+            virtual void Distance(float pos)                                                        ///<调整距离
+            {
+                if(pos==1.0)return;
+
+                eye=center+(eye-center)*pos;
+            }
         };//class WalkerCamera
     }//namespace graph
 }//namespace hgl
