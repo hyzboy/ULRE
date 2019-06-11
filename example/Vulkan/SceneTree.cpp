@@ -58,7 +58,7 @@ private:
     void InitCamera()
     {
         camera.type=CameraType::Perspective;
-        camera.center.Set(0,0,0,1);
+        camera.center.Set(0,0,30,1);
         camera.eye.Set(100,100,100,1);
         camera.width=SCREEN_WIDTH;
         camera.height=SCREEN_HEIGHT;
@@ -129,10 +129,10 @@ private:
 
     bool InitScene()
     {
-        SceneNode *cur_node=&render_root;
+        SceneNode *cur_node;
 
-        uint size=1;
-        uint x=0;
+        uint count;
+        float size;
 
         const Vector3f axis(0,0,1);
 
@@ -140,10 +140,16 @@ private:
 
         for(uint i=0;i<360;i++)
         {
-            render_root.Add(ri,
-                            rotate(i/5.0f,axis)*
-                            translate(i/4.0f,0,0)*
-                            scale((i+1)/100.0f));
+            size=(i+1)/100.0f;
+            
+            cur_node=render_root.CreateSubNode( rotate(i/5.0f,axis)*
+                                                translate(i/4.0f,0,0)*
+                                                scale(size));
+
+            count=(rand()%16)+1;
+
+            for(uint n=0;n<count;n++)
+                cur_node->Add(ri,translate(0,0,size*n*1.01));
         }
 
         return(true);
@@ -212,7 +218,7 @@ public:
 
         Submit(*cb);
 
-        Matrix4f rot=rotate(GetDoubleTime()-start_time,camera.right_vector);
+        Matrix4f rot=rotate(GetDoubleTime()-start_time,camera.up_vector);
 
         render_root.RefreshMatrix(&rot);
         render_list.Clear();
