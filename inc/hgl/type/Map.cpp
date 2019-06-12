@@ -208,7 +208,7 @@ namespace hgl
     {
         int index=Find(flag);
 
-        DataPair *obj=GetObject(data_list,index);
+        DataPair *obj=GetListObject(data_list,index);
 
         if(!obj)
             return(false);
@@ -223,7 +223,7 @@ namespace hgl
     {
         int index=Find(key);
 
-        DataPair *obj=GetObject(data_list,index);
+        DataPair *obj=GetListObject(data_list,index);
 
         if(!obj)
             return(false);
@@ -315,7 +315,7 @@ namespace hgl
     {
         int index=Find(flag);
 
-        DataPair *dp=GetObject(data_list,index);
+        DataPair *dp=GetListObject(data_list,index);
 
         if(!dp)
             return(false);
@@ -386,7 +386,7 @@ namespace hgl
         if(index<0
          ||index>=data_list.GetCount())return(false);
 
-        data_pool.Release(GetObject(data_list,index));
+        data_pool.Release(GetListObject(data_list,index));
         data_list.DeleteMove(index);
 
         return(true);
@@ -424,7 +424,7 @@ namespace hgl
 
         if(FindPos(flag,result))
         {
-            DataPair *dp=GetObject(data_list,result);
+            DataPair *dp=GetListObject(data_list,result);
 
             if(dp)
                 dp->right=data;
@@ -449,7 +449,7 @@ namespace hgl
     template<typename F,typename T,typename DataPair>
     bool _Map<F,T,DataPair>::Change(const F &flag,const T &data)
     {
-        DataPair *dp=GetObject(data_list,Find(flag));
+        DataPair *dp=GetListObject(data_list,Find(flag));
 
         if(!dp)
             return(false);

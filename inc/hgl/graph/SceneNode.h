@@ -50,6 +50,7 @@ namespace hgl
             {
                 SetLocalMatrix(mat);
             }
+
             virtual ~SceneNode()
             {
                 ClearSubNode();
