@@ -13,13 +13,16 @@ namespace hgl
         static KeyboardButton KeyConvert[256];
         static void (*WMProc[2048])(WinWindow *,uint32,uint32);                 //消息处理队列
 
-        uint32 GetKeyFlags(uint32 wflags)
+        uint32 GetMouseKeyFlags(uint32 wflags)
         {
             uint32 flag=0;
 
             if(wflags&MK_LBUTTON)flag|=mbLeft;
             if(wflags&MK_RBUTTON)flag|=mbRight;
             if(wflags&MK_MBUTTON)flag|=mbMid;
+
+            if(wflags&MK_XBUTTON1)flag|=mbX1;
+            if(wflags&MK_XBUTTON2)flag|=mbX2;
 
             if(wflags&MK_SHIFT  )flag|=mbShift;
             if(wflags&MK_CONTROL)flag|=mbCtrl;
