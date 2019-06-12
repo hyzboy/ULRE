@@ -149,7 +149,6 @@ private:
         return(true);
     }
 
-
 public:
 
     bool Init()

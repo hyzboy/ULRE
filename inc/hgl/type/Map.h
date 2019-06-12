@@ -93,7 +93,7 @@ namespace hgl
                     return count;
                 }
 
-                IDItem *GetItem(int n){return GetObject(data_list,n);}                              ///<取指定序号的数据
+                IDItem *GetItem(int n){return GetListObject(data_list,n);}                          ///<取指定序号的数据
                 bool    Get(int,F &,T &) const;                                                     ///<取指定序号的数据
                 bool    GetKey(int,F &);                                                            ///<取指定序号的索引
                 bool    GetValue(int,T &);                                                          ///<取指定序号的数据
@@ -116,7 +116,7 @@ namespace hgl
         virtual ~Map()=default;
     };//class Map
 
-    template<typename T_ID,typename T_U> T_U *GetObject(Map<T_ID,T_U *> &list,const T_ID &id)
+    template<typename T_ID,typename T_U> T_U *GetListObject(Map<T_ID,T_U *> &list,const T_ID &id)
     {
         T_U *result;
 
@@ -141,7 +141,7 @@ namespace hgl
 
                 void    DeleteObject(int index)
                 {
-                    DeleteObject(GetObject(this->data_list,index));
+                    DeleteObject(GetListObject(this->data_list,index));
                 }
 
     public:
@@ -259,7 +259,7 @@ namespace hgl
             {
                 DeleteObject(index);
 
-                DataPair *dp=GetObject(this->data_list,index);
+                DataPair *dp=GetListObject(this->data_list,index);
 
                 if(dp)
                     dp->right=data;
@@ -284,7 +284,7 @@ namespace hgl
             {
                 DeleteObject(index);
 
-                DataPair *dp=GetObject(this->data_list,index);
+                DataPair *dp=GetListObject(this->data_list,index);
 
                 if(!dp)
                     return(false);
@@ -327,7 +327,7 @@ namespace hgl
 
         T *operator[](const F &index)const
         {
-            auto *obj=GetObject(this->data_list,this->Find(index));
+            auto *obj=GetListObject(this->data_list,this->Find(index));
 
             if(obj)
                 return obj->right;
