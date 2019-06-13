@@ -66,11 +66,19 @@ void Device::CreateMainFramebuffer()
 bool Device::Resize(uint width,uint height)
 {
     main_fb.Clear();
+    delete main_rp;
 
+    delete texture_cmd_buf;
+    
     if(!ResizeRenderDevice(attr,width,height))
         return(false);
 
+    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
+
     CreateMainFramebuffer();
+
+    texture_cmd_buf=CreateCommandBuffer();
+
     return(true);
 }
 

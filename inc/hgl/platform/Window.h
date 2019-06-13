@@ -32,31 +32,54 @@ namespace hgl
 
     public:
 
+        virtual void ProcMouseMove      (int x,int y)               {SafeCallEvent(OnMouseMove,     (x,y));}
+        virtual void ProcMouseWheel     (int x,int y, int v,int h)  {SafeCallEvent(OnMouseWheel,    (x,y,v,h));}
+        virtual void ProcMouseDown      (int x,int y,uint mb)       {SafeCallEvent(OnMouseDown,     (x,y,mb));}
+        virtual void ProcMouseUp        (int x,int y,uint mb)       {SafeCallEvent(OnMouseUp,       (x,y,mb));}
+        virtual void ProcMouseDblClick  (int x,int y,uint mb)       {SafeCallEvent(OnMouseDblClick, (x,y,mb));}
+
+        //virtual void ProcJoystickDown   (uint);
+        //virtual void ProcJoystickPress  (uint);
+        //virtual void ProcJoystickUp     (uint);
+
+        virtual void ProcKeyDown    (KeyboardButton);
+        virtual void ProcKeyPress   (KeyboardButton kb){SafeCallEvent(OnKeyPress,(kb));}
+        virtual void ProcKeyUp      (KeyboardButton);
+
+        virtual void ProcChar       (os_char ch){SafeCallEvent(OnChar,(ch));}
+
+        virtual void ProcResize     (uint,uint);
+
+        virtual void ProcActive     (bool);
+        virtual void ProcClose      ();
+
+    public:
+
         uint GetWidth()const{return width;}
         uint GetHeight()const{return height;}
 
     public:
 
-        virtual void OnMouseMove        (int,int){}
-        virtual void OnMouseWheel       (int,int, int){}
-        virtual void OnMouseDown        (int,int,uint){}
-        virtual void OnMouseUp          (int,int,uint){}
-        virtual void OnMouseDoubleClick (int,int,uint){}
+        DefEvent(void,OnMouseMove       ,(int,int));
+        DefEvent(void,OnMouseWheel      ,(int,int, int,int));
+        DefEvent(void,OnMouseDown       ,(int,int,uint));
+        DefEvent(void,OnMouseUp         ,(int,int,uint));
+        DefEvent(void,OnMouseDblClick   ,(int,int,uint));
 
-        //virtual void OnJoystickDown     (uint){}
-        //virtual void OnJoystickPress  (uint){}
-        //virtual void OnJoystickUp     (uint){}
+        //DefEvent(void,OnJoystickDown    ,(uint));
+        //DefEvent(void,OnJoystickPress ,(uint));
+        //DefEvent(void,OnJoystickUp    ,(uint));
 
-        virtual void OnKeyDown  (KeyboardButton);
-        virtual void OnKeyPress (KeyboardButton){}
-        virtual void OnKeyUp    (KeyboardButton);
+        DefEvent(void,OnKeyDown ,(KeyboardButton));
+        DefEvent(void,OnKeyPress,(KeyboardButton));
+        DefEvent(void,OnKeyUp   ,(KeyboardButton));
 
-        virtual void OnChar     (os_char){}
+        DefEvent(void,OnChar    ,(os_char));
 
-        virtual void OnResize   (uint,uint);
+        DefEvent(void,OnResize  ,(uint,uint));
 
-        virtual void OnActive   (bool a){active=a;}
-        virtual void OnClose    (){is_close=true;}
+        DefEvent(void,OnActive  ,(bool));
+        DefEvent(void,OnClose   ,());
 
     public:
 

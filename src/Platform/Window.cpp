@@ -52,23 +52,30 @@ namespace hgl
         SAFE_CLEAR(device);
     }
 
-    void Window::OnKeyDown(KeyboardButton kb)
+    void Window::ProcKeyDown(KeyboardButton kb)
     {
         if(key_push[kb])
-            OnKeyPress(kb);
+            ProcKeyPress(kb);
         else
             key_push[kb]=true;
+
+       SafeCallEvent(OnKeyDown,(kb));
     }
 
-    void Window::OnKeyUp(KeyboardButton kb)
+    void Window::ProcKeyUp(KeyboardButton kb)
     {
         key_push[kb]=false;
+
+        SafeCallEvent(OnKeyUp,(kb));
     }
 
-    void Window::OnResize(uint w,uint h)
+    void Window::ProcResize(uint w,uint h)
     {
         if(w==width&&height==h)
             return;
+
+        width=w;
+        height=h;
 
         if(w==0||h==0)
         {
@@ -77,12 +84,24 @@ namespace hgl
         else
         {
             is_min=false;
-            width=w;
-            height=h;
 
             if(device)
                 device->Resize(width,height);
         }
+
+        SafeCallEvent(OnResize,(w,h));
+    }
+
+    void Window::ProcActive(bool a)
+    {
+        active=a; 
+        SafeCallEvent(OnActive,(a));
+    }
+
+    void Window::ProcClose()
+    { 
+        is_close=true; 
+        SafeCallEvent(OnClose,());
     }
 
     bool Window::Update()

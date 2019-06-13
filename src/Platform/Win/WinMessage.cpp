@@ -191,7 +191,7 @@ namespace hgl
 
         void WMProcDestroy(WinWindow *win,uint32,uint32)
         {
-            win->OnClose();
+            win->ProcClose();
             PostQuitMessage(0);
         }
 
@@ -200,25 +200,25 @@ namespace hgl
                 const int x=LOWORD(lParam); \
                 const int y=HIWORD(lParam); \
                 \
-                win->OnMouseMove(x,y);  \
-                win->OnMouse##action(x,y,mb##button|GetMouseKeyFlags(wParam));   \
+                win->ProcMouseMove(x,y);  \
+                win->ProcMouse##action(x,y,mb##button|GetMouseKeyFlags(wParam));   \
             }
 
             WMEF_MOUSE(Left,Down);
             WMEF_MOUSE(Left,Up);
-            WMEF_MOUSE(Left,DoubleClick);
+            WMEF_MOUSE(Left,DblClick);
 
             WMEF_MOUSE(Mid,Down);
             WMEF_MOUSE(Mid,Up);
-            WMEF_MOUSE(Mid,DoubleClick);
+            WMEF_MOUSE(Mid,DblClick);
 
             WMEF_MOUSE(Right,Down);
             WMEF_MOUSE(Right,Up);
-            WMEF_MOUSE(Right,DoubleClick);
+            WMEF_MOUSE(Right,DblClick);
 
             void WMProcMouseMove(WinWindow *win,uint32 wParam,uint32 lParam)
             {
-                win->OnMouseMove(LOWORD(lParam),HIWORD(lParam));
+                win->ProcMouseMove(LOWORD(lParam),HIWORD(lParam));
             }
         #undef WMEF_MOUSE
 
@@ -228,30 +228,39 @@ namespace hgl
                 const int x=LOWORD(lParam);
                 const int y=HIWORD(lParam);
 
-                win->OnMouseMove(x,y);
-                win->OnMouseWheel(x,y,(short)HIWORD(wParam));
+                win->ProcMouseMove(x,y);
+                win->ProcMouseWheel(x,y,HIWORD(wParam),0);
+            }
+
+            WMEF2(WMProcMouseHWheel)
+            {
+                const int x=LOWORD(lParam);
+                const int y=HIWORD(lParam);
+
+                win->ProcMouseMove(x,y);
+                win->ProcMouseWheel(x,y,0,HIWORD(wParam));
             }
 
             WMEF2(WMProcSize)
             {
-                win->OnResize(LOWORD(lParam),HIWORD(lParam));
+                win->ProcResize(LOWORD(lParam),HIWORD(lParam));
             }
         #undef WMEF2
 
         #define WMEF1(name) void name(WinWindow *win,uint32 wParam,uint32)
             WMEF1(WMProcKeyDown)
             {
-                win->OnKeyDown(ConvertOSKey(wParam));
+                win->ProcKeyDown(ConvertOSKey(wParam));
             }
 
             WMEF1(WMProcKeyUp)
             {
-                win->OnKeyUp(ConvertOSKey(wParam));
+                win->ProcKeyUp(ConvertOSKey(wParam));
             }
 
             WMEF1(WMProcChar)
             {
-                win->OnChar((wchar_t)wParam);
+                win->ProcChar((wchar_t)wParam);
             }
 
             WMEF1(WMProcActive)
@@ -259,7 +268,7 @@ namespace hgl
                 //if(JoyPlugIn)
                 //    JoyInterface.SetInputActive(wParam);
 
-                win->OnActive(wParam);
+                win->ProcActive(wParam);
             }
         #undef WMEF1
     }//namespace
@@ -277,14 +286,15 @@ namespace hgl
         WM_MAP(WM_CLOSE             ,WMProcDestroy);
         WM_MAP(WM_LBUTTONDOWN       ,WMProcMouseLeftDown);
         WM_MAP(WM_LBUTTONUP         ,WMProcMouseLeftUp);
-        WM_MAP(WM_LBUTTONDBLCLK     ,WMProcMouseLeftDoubleClick);
+        WM_MAP(WM_LBUTTONDBLCLK     ,WMProcMouseLeftDblClick);
         WM_MAP(WM_MBUTTONDOWN       ,WMProcMouseMidDown);
         WM_MAP(WM_MBUTTONUP         ,WMProcMouseMidUp);
-        WM_MAP(WM_MBUTTONDBLCLK     ,WMProcMouseMidDoubleClick);
+        WM_MAP(WM_MBUTTONDBLCLK     ,WMProcMouseMidDblClick);
         WM_MAP(WM_RBUTTONDOWN       ,WMProcMouseRightDown);
         WM_MAP(WM_RBUTTONUP         ,WMProcMouseRightUp);
-        WM_MAP(WM_RBUTTONDBLCLK     ,WMProcMouseRightDoubleClick);
+        WM_MAP(WM_RBUTTONDBLCLK     ,WMProcMouseRightDblClick);
         WM_MAP(WM_MOUSEWHEEL        ,WMProcMouseWheel);
+        WM_MAP(WM_MOUSEHWHEEL       ,WMProcMouseHWheel);
         WM_MAP(WM_MOUSEMOVE         ,WMProcMouseMove);
         WM_MAP(WM_KEYDOWN           ,WMProcKeyDown);
         WM_MAP(WM_KEYUP             ,WMProcKeyUp);

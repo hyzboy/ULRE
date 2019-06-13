@@ -187,6 +187,11 @@ public:
 
         BuildCommandBuffer(&render_list);
     }
+
+    void Resize(int,int)override
+    {
+        BuildCommandBuffer(&render_list);     
+    }
 };//class TestApp:public VulkanApplicationFramework
 
 int main(int,char **)

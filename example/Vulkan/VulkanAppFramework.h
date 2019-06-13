@@ -86,7 +86,17 @@ public:
 
         InitCommandBuffer();
 
+        SetEventCall(win->OnResize,this,VulkanApplicationFramework,OnResize);
+
         return(true);
+    }
+
+    virtual void Resize(int,int)=0;
+
+    void OnResize(int w,int h)
+    {
+        InitCommandBuffer();
+        Resize(w,h);
     }
 
     void InitCommandBuffer()

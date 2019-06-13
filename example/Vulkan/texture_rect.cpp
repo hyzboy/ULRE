@@ -177,6 +177,11 @@ public:
 
         return(true);
     }
+
+    void Resize(int,int)override
+    {
+        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);        
+    }
 };//class TestApp:public VulkanApplicationFramework
 
 int main(int,char **)
