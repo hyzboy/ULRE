@@ -60,5 +60,6 @@ public:
     bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const;
 
     void ClearSwapchain();
+    void Refresh();
 };//class DeviceAttribute
 VK_NAMESPACE_END
