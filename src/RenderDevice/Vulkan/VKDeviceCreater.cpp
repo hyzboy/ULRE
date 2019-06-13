@@ -584,6 +584,8 @@ bool ResizeRenderDevice(DeviceAttribute *attr,uint width,uint height)
 
     attr->ClearSwapchain();
 
+    attr->Refresh();
+
     attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,width,height);
 
     return CreateSwapchinAndImageView(attr);
