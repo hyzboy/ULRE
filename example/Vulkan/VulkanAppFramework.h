@@ -82,18 +82,30 @@ public:
             return(false);
 
         shader_manage=device->CreateShaderModuleManage();
-
-        swap_chain_count = device->GetSwapChainImageCount();
-        {
-            cmd_buf = hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
-
-            for (uint i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateCommandBuffer();
-        }
-
         db=new SceneDB(device);
 
+        InitCommandBuffer();
+
         return(true);
+    }
+
+    void InitCommandBuffer()
+    {
+        if(cmd_buf)
+        {
+            for(uint i=0;i<swap_chain_count;i++)
+                delete cmd_buf[i];
+
+            delete[] cmd_buf;
+        }
+
+        swap_chain_count=device->GetSwapChainImageCount();
+        {
+            cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
+
+            for(uint i=0;i<swap_chain_count;i++)
+                cmd_buf[i]=device->CreateCommandBuffer();
+        }
     }
 
     void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
