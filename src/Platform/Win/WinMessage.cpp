@@ -201,7 +201,7 @@ namespace hgl
                 const int y=HIWORD(lParam); \
                 \
                 win->OnMouseMove(x,y);  \
-                win->OnMouse##action(x,y,mb##button|GetKeyFlags(wParam));   \
+                win->OnMouse##action(x,y,mb##button|GetMouseKeyFlags(wParam));   \
             }
 
             WMEF_MOUSE(Left,Down);
