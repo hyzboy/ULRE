@@ -267,6 +267,11 @@ public:
 
         return(true);
     }
+
+    void Resize(int,int)override
+    {
+        BuildCommandBuffer(&render_list);     
+    }
 };//class TestApp:public VulkanApplicationFramework
 
 #ifdef _WIN32

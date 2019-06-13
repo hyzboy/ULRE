@@ -186,7 +186,7 @@ namespace hgl
             DispatchMessage(&win_msg);
 
             if(win_msg.message==WM_QUIT)
-                OnClose();
+                ProcClose();
 
             return(true);
         }
