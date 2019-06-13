@@ -16,6 +16,7 @@ namespace hgl
         Matrix4f two_dim;       //2D矩阵
 
         Matrix4f projection;
+//        Matrix4f inverse_projection;
         Matrix4f modelview;
         Matrix4f mvp;
         Matrix3f normal;

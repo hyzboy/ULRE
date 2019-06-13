@@ -30,6 +30,8 @@ namespace hgl
             else
                 matrix.projection=ortho(width,height,znear,zfar);               //这个算的不对
 
+            //matrix.inverse_projection=matrix.projection.Inverted();
+
             matrix.modelview=hgl::graph::LookAt(eye,center,up_vector);
 
             matrix.mvp=matrix.projection*matrix.modelview;
