@@ -22,7 +22,7 @@ namespace hgl
             float width;                ///<视图宽
             float height;               ///<视图高
 
-            float fov=90;               ///<水平FOV
+            float fov=60;               ///<水平FOV
             float znear=0,zfar=1000;    ///<Z轴上离眼睛的距离
 
             Vector4f eye;               ///<眼睛坐标
@@ -94,8 +94,8 @@ namespace hgl
 
         public: //以自身为中心旋转
 
-            virtual void LeaningBack(float ang=5){Rotate(ang,cross(center-eye,up_vector));}         ///<后仰
-            virtual void ForwardTilt(float ang=5){LeaningBack(-ang);}                               ///<前倾
+            virtual void BackwardRotate(float ang=5){Rotate(ang,cross(center-eye,up_vector));}      ///<后仰
+            virtual void ForwardRotate(float ang=5){BackwardRotate(-ang);}                          ///<前倾
 
             virtual void RightRotate(float ang=5){Rotate(ang,up_vector);}                           ///<右转
             virtual void LeftRotate(float ang=5){RightRotate(-ang);}                                ///<左转
