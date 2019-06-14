@@ -45,8 +45,10 @@ namespace hgl
         /**
         * 行走模拟像机
         */
-        class WalkerCamera:public Camera
+        struct WalkerCamera:public Camera
         {
+            Vector4f foot;      //脚位置
+
         protected:
 
             /**
@@ -55,8 +57,9 @@ namespace hgl
             */
             void Move(const Vector4f &move_dist)
             {
-                eye += move_dist;
-                center += move_dist;
+                foot+=move_dist;
+                eye+=move_dist;
+                center+=move_dist;
             }
 
             /**
@@ -64,8 +67,9 @@ namespace hgl
              * @param ang 角度
              * @param axis 旋转轴
              */
-            void Rotate(double ang,const Vector4f &axis)
+            void Rotate(double ang,Vector4f axis)
             {
+                normalize(axis);
                 center=eye+(center-eye)*rotate(hgl_ang2rad(ang),axis);
             }
 
@@ -74,28 +78,29 @@ namespace hgl
              * @param ang 角度
              * @param axis 旋转轴
              */
-             void WrapRotate(double ang,const Vector4f &axis)
+             void WrapRotate(double ang,Vector4f axis)
              {
+                normalize(axis);
                 eye=center+(eye-center)*rotate(hgl_ang2rad(ang),axis);
              }
 
         public: //方法
 
-            virtual void Backward(float step=0.01){Move(forward_vector*step);}                      ///<向后
+            virtual void Backward(float step=0.01)                                                  ///<向后
+            {
+                Move(cross(cross(center-eye,up_vector),up_vector)*step);
+            }
             virtual void Forward(float step=0.01){Backward(-step);}                                 ///<向前
 
-            virtual void Up(float step=0.01){Move(up_vector*step);}                                 ///<向上
+            virtual void Up(float step=0.01){Move(length(eye,center)*step*up_vector);}              ///<向上
             virtual void Down(float step=0.01){Up(-step);}                                          ///<向下
 
-            virtual void Right(float step=0.01){Move(right_vector);}                                ///<向右
+            virtual void Right(float step=0.01){Move(cross(center-eye,up_vector)*step);}            ///<向右
             virtual void Left(float step=0.01){Right(-step);}                                       ///<向左
 
         public: //以自身为中心旋转
 
-            virtual void RightDumping(float ang=5){Rotate(ang,forward_vector);}                     ///<右倾倒
-            virtual void LeftDumping(float ang=5){RightDumping(-ang);}                              ///<左倾倒
-
-            virtual void LeaningBack(float ang=5){Rotate(ang,right_vector);}                        ///<后仰
+            virtual void LeaningBack(float ang=5){Rotate(ang,cross(center-eye,up_vector));}         ///<后仰
             virtual void ForwardTilt(float ang=5){LeaningBack(-ang);}                               ///<前倾
 
             virtual void RightRotate(float ang=5){Rotate(ang,up_vector);}                           ///<右转
@@ -103,7 +108,7 @@ namespace hgl
 
         public: //以目标点为中心旋转
 
-            virtual void WrapUpRotate(float ang=5){WrapRotate(ang,right_vector);}                   ///<以目标点为中心向上旋转
+            virtual void WrapUpRotate(float ang=5){WrapRotate(ang,cross(center-eye,up_vector));}    ///<以目标点为中心向上旋转
             virtual void WrapDownRotate(float ang=5){WrapUpRotate(-ang);}                           ///<以目标点为中心向下旋转
 
             virtual void WrapRightRotate(float ang=5){WrapRotate(ang,up_vector);}                   ///<以目标点为中心向右旋转
@@ -117,7 +122,7 @@ namespace hgl
 
                 eye=center+(eye-center)*pos;
             }
-        };//class WalkerCamera
+        };//struct WalkerCamera
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_CAMERA_INCLUDE

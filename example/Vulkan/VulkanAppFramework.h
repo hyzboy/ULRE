@@ -28,6 +28,16 @@ private:
             Window *            win             =nullptr;
     vulkan::Instance *          inst            =nullptr;
 
+    void OnResize(int w,int h)
+    {
+        InitCommandBuffer();
+        Resize(w,h);
+    }
+
+    void OnKeyDown(KeyboardButton kb){key_status[kb]=true;}
+    void OnKeyUp(KeyboardButton kb){key_status[kb]=false;}
+    void OnKeyPress(KeyboardButton kb){KeyPress(kb);}
+
 protected:
 
     vulkan::Device *            device          =nullptr;
@@ -38,10 +48,12 @@ private:
             uint32_t            swap_chain_count=0;
 
     vulkan::CommandBuffer **    cmd_buf         =nullptr;
-   
+
 protected:
 
             SceneDB *           db              =nullptr;
+
+            bool                key_status[kbRangeSize];
 
 public:
 
@@ -55,8 +67,10 @@ public:
         SAFE_CLEAR(inst);
     }
 
-    virtual bool Init(int w,int h) 
+    virtual bool Init(int w,int h)
     {
+        hgl_zero(key_status);
+
     #ifdef _DEBUG
         if(!vulkan::CheckStrideBytesByFormat())
             return(false);
@@ -86,18 +100,16 @@ public:
 
         InitCommandBuffer();
 
-        SetEventCall(win->OnResize,this,VulkanApplicationFramework,OnResize);
+        SetEventCall(win->OnResize,     this,VulkanApplicationFramework,OnResize    );
+        SetEventCall(win->OnKeyDown,    this,VulkanApplicationFramework,OnKeyDown   );
+        SetEventCall(win->OnKeyUp,      this,VulkanApplicationFramework,OnKeyUp     );
+        SetEventCall(win->OnKeyPress,   this,VulkanApplicationFramework,OnKeyPress  );
 
         return(true);
     }
 
     virtual void Resize(int,int)=0;
-
-    void OnResize(int w,int h)
-    {
-        InitCommandBuffer();
-        Resize(w,h);
-    }
+    virtual void KeyPress(KeyboardButton){}
 
     void InitCommandBuffer()
     {
@@ -193,3 +205,92 @@ public:
         return(true);
     }
 };//class VulkanApplicationFramework
+
+class WalkerCameraAppFramework:public VulkanApplicationFramework
+{
+private:
+
+    vulkan::Buffer *            ubo_world_matrix    =nullptr;
+
+protected:
+
+    WalkerCamera                camera;
+    float                       move_speed=0.01;
+
+public:
+
+    virtual ~WalkerCameraAppFramework()=default;
+
+    virtual bool Init(int w,int h)
+    {
+        if(!VulkanApplicationFramework::Init(w,h))
+            return(false);
+
+        InitCamera();
+        return(true);
+    }
+
+    virtual void InitCamera()
+    {
+        camera.type=CameraType::Perspective;
+        camera.center.Set(0,0,0,1);
+        camera.eye.Set(100,100,100,1);
+
+        camera.Refresh();      //更新矩阵计算
+    }
+
+    bool InitCameraUBO(vulkan::DescriptorSets *desc_set,uint world_matrix_bindpoint)
+    {
+        InitCamera();
+
+        const VkExtent2D extent=device->GetExtent();
+
+        camera.width=extent.width;
+        camera.height=extent.height;
+
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
+
+        if(!ubo_world_matrix)
+            return(false);
+
+        return desc_set->BindUBO(world_matrix_bindpoint,*ubo_world_matrix);
+    }
+
+    void RefreshCameraUBO()
+    {
+        camera.Refresh();                           //更新相机矩阵
+        ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
+    }
+
+    void Draw()override
+    {
+        VulkanApplicationFramework::Draw();
+
+        if(key_status[kbW])camera.Forward   (move_speed);else
+        if(key_status[kbS])camera.Backward  (move_speed);else
+        if(key_status[kbA])camera.Left      (move_speed);else
+        if(key_status[kbD])camera.Right     (move_speed);else
+
+        if(key_status[kbLeft    ])camera.WrapLeftRotate (move_speed*100);else
+        if(key_status[kbRight   ])camera.WrapRightRotate(move_speed*100);else
+        if(key_status[kbUp      ])camera.WrapUpRotate   (move_speed*100);else
+        if(key_status[kbDown    ])camera.WrapDownRotate (move_speed*100);else
+
+        if(key_status[kbHome    ])camera.ForwardTilt    (move_speed*100);else
+        if(key_status[kbEnd     ])camera.LeaningBack    (move_speed*100);else
+        if(key_status[kbDelete  ])camera.LeftRotate     (move_speed*100);else
+        if(key_status[kbPageDown])camera.RightRotate    (move_speed*100);else
+            return;
+
+        RefreshCameraUBO();
+    }
+
+    void KeyPress(KeyboardButton kb)override
+    {
+        if(kb==kbMinus)move_speed*=0.9;else
+        if(kb==kbEquals)move_speed*=1.1;else
+            return;
+
+        RefreshCameraUBO();
+    }
+};//class WalkerCameraAppFramework

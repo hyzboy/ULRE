@@ -76,19 +76,15 @@ vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const
     return(render_obj);
 }
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public WalkerCameraAppFramework
 {
 private:
 
     SceneNode   render_root;
     RenderList  render_list;
 
-    Camera      camera;
-
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
-
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
 
@@ -121,8 +117,6 @@ private:
         camera.type=CameraType::Perspective;
         camera.center=center_point;
         camera.eye=min_point;
-        camera.width=SCREEN_WIDTH;
-        camera.height=SCREEN_HEIGHT;
 
         camera.Refresh();      //更新矩阵计算
     }
@@ -159,14 +153,7 @@ private:
 
     bool InitUBO()
     {
-        const VkExtent2D extent=device->GetExtent();
-
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
-
-        if(!ubo_world_matrix)
-            return(false);
-
-        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_world_matrix))
+        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
             return(false);
 
         descriptor_sets->Update();
@@ -246,7 +233,7 @@ public:
 
         model_data=md;
 
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!WalkerCameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
         if(!InitMaterial())
@@ -270,9 +257,9 @@ public:
 
     void Resize(int,int)override
     {
-        BuildCommandBuffer(&render_list);     
+        BuildCommandBuffer(&render_list);
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WalkerCameraAppFramework
 
 #ifdef _WIN32
 int wmain(int argc,wchar_t **argv)

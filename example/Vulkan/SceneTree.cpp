@@ -1,5 +1,5 @@
-// 5.SceneTree
-//      ÓÃÓÚ²âÊÔÊ÷ĞÎÅÅÁĞµÄ³¡¾°ÖĞ£¬Ã¿Ò»¼¶½Úµã¶Ô±ä»»¾ØÕóµÄ´¦ÀíÊÇ·ñÕıÈ·
+ï»¿// 5.SceneTree
+//      ç”¨äºæµ‹è¯•æ ‘å½¢æ’åˆ—çš„åœºæ™¯ä¸­ï¼Œæ¯ä¸€çº§èŠ‚ç‚¹å¯¹å˜æ¢çŸ©é˜µçš„å¤„ç†æ˜¯å¦æ­£ç¡®
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -15,7 +15,7 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public WalkerCameraAppFramework
 {
 private:
 
@@ -24,14 +24,10 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    Camera      camera;
-
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
 
     vulkan::Renderable *        ro_cube             =nullptr;
-
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
 
@@ -45,17 +41,6 @@ public:
     ~TestApp()=default;
 
 private:
-
-    void InitCamera()
-    {
-        camera.type=CameraType::Perspective;
-        camera.center.Set(0,0,30,1);
-        camera.eye.Set(100,100,100,1);
-        camera.width=SCREEN_WIDTH;
-        camera.height=SCREEN_HEIGHT;
-
-        camera.Refresh();      //¸üĞÂ¾ØÕó¼ÆËã
-    }
 
     bool InitMaterial()
     {
@@ -80,14 +65,7 @@ private:
 
     bool InitUBO()
     {
-        const VkExtent2D extent=device->GetExtent();
-
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
-
-        if(!ubo_world_matrix)
-            return(false);
-
-        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_world_matrix))
+        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
             return(false);
 
         descriptor_sets->Update();
@@ -130,7 +108,7 @@ private:
         for(uint i=0;i<360;i++)
         {
             size=(i+1)/100.0f;
-            
+
             cur_node=render_root.CreateSubNode( rotate(i/5.0f,camera.up_vector)*
                                                 translate(i/4.0f,0,0)*
                                                 scale(size));
@@ -153,10 +131,8 @@ public:
 
     bool Init()
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!WalkerCameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-
-        InitCamera();
 
         if(!InitMaterial())
             return(false);
@@ -177,7 +153,7 @@ public:
 
     void Draw() override
     {
-        VulkanApplicationFramework::Draw();
+        WalkerCameraAppFramework::Draw();
 
         Matrix4f rot=rotate(GetDoubleTime()-start_time,camera.up_vector);
 
@@ -190,7 +166,7 @@ public:
 
     void Resize(int,int)override
     {
-        BuildCommandBuffer(&render_list);     
+        BuildCommandBuffer(&render_list);
     }
 };//class TestApp:public VulkanApplicationFramework
 

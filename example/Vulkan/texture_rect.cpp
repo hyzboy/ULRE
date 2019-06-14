@@ -180,7 +180,7 @@ public:
 
     void Resize(int,int)override
     {
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);        
+        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

@@ -100,7 +100,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
     {
         if(header->bit==24)
         {
-            RGB8to565(pixel_data,header->width*header->height);            
+            RGB8to565(pixel_data,header->width*header->height);
 
             format=FMT_RGB565;
             line_size=header->width*2;
