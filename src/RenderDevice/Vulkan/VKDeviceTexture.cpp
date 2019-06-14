@@ -45,7 +45,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         return(nullptr);        //这个我们暂时不支持
     }
 
-    TextureData *tex_data=new TextureData();
+    TextureData *tex_data=new TextureData(false);
 
     tex_data->memory=nullptr;
     tex_data->image=nullptr;
@@ -159,6 +159,20 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 
     #undef VK_CHECK_RESULT
     }
+
+    return(new Texture2D(width,height,attr->device,tex_data));
+}
+
+Texture2D *Device::CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits flag,VkImage image,VkImageView image_view)
+{
+    TextureData *tex_data=new TextureData(true);
+
+    tex_data->memory=nullptr;
+    tex_data->image=image;
+    tex_data->image_view=CreateRefImageView(attr->device,VK_IMAGE_VIEW_TYPE_2D,format,flag,image_view);
+
+    tex_data->mip_levels=0;
+    tex_data->linear=false;
 
     return(new Texture2D(width,height,attr->device,tex_data));
 }

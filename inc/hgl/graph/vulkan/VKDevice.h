@@ -93,6 +93,8 @@ public: //Buffer相关
 
 public: //material相关
 
+    Texture2D *CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits flag,VkImage image,VkImageView image_view);
+
     Texture2D *CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,bool force_linear=false);
     bool ChangeTexture2D(Texture2D *,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size);
     Sampler *CreateSampler(VkSamplerCreateInfo *);
