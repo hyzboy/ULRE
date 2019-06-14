@@ -215,7 +215,7 @@ private:
 protected:
 
     WalkerCamera                camera;
-    float                       move_speed=0.01;
+    float                       move_speed=1;
 
 public:
 
@@ -271,15 +271,15 @@ public:
         if(key_status[kbA])camera.Left      (move_speed);else
         if(key_status[kbD])camera.Right     (move_speed);else
 
-        if(key_status[kbLeft    ])camera.WrapLeftRotate (move_speed*100);else
-        if(key_status[kbRight   ])camera.WrapRightRotate(move_speed*100);else
-        if(key_status[kbUp      ])camera.WrapUpRotate   (move_speed*100);else
-        if(key_status[kbDown    ])camera.WrapDownRotate (move_speed*100);else
+        if(key_status[kbLeft    ])camera.WrapLeftRotate (move_speed);else
+        if(key_status[kbRight   ])camera.WrapRightRotate(move_speed);else
+        if(key_status[kbUp      ])camera.WrapUpRotate   (move_speed);else
+        if(key_status[kbDown    ])camera.WrapDownRotate (move_speed);else
 
-        if(key_status[kbHome    ])camera.ForwardTilt    (move_speed*100);else
-        if(key_status[kbEnd     ])camera.LeaningBack    (move_speed*100);else
-        if(key_status[kbDelete  ])camera.LeftRotate     (move_speed*100);else
-        if(key_status[kbPageDown])camera.RightRotate    (move_speed*100);else
+        if(key_status[kbHome    ])camera.ForwardTilt    (move_speed);else
+        if(key_status[kbEnd     ])camera.LeaningBack    (move_speed);else
+        if(key_status[kbDelete  ])camera.LeftRotate     (move_speed);else
+        if(key_status[kbPageDown])camera.RightRotate    (move_speed);else
             return;
 
         RefreshCameraUBO();
@@ -287,8 +287,8 @@ public:
 
     void KeyPress(KeyboardButton kb)override
     {
-        if(kb==kbMinus)move_speed*=0.9;else
-        if(kb==kbEquals)move_speed*=1.1;else
+        if(kb==kbMinus)move_speed*=0.9f;else
+        if(kb==kbEquals)move_speed*=1.1f;else
             return;
 
         RefreshCameraUBO();

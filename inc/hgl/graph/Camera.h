@@ -47,8 +47,6 @@ namespace hgl
         */
         struct WalkerCamera:public Camera
         {
-            Vector4f foot;      //脚位置
-
         protected:
 
             /**
@@ -57,7 +55,6 @@ namespace hgl
             */
             void Move(const Vector4f &move_dist)
             {
-                foot+=move_dist;
                 eye+=move_dist;
                 center+=move_dist;
             }
@@ -86,16 +83,13 @@ namespace hgl
 
         public: //方法
 
-            virtual void Backward(float step=0.01)                                                  ///<向后
-            {
-                Move(cross(cross(center-eye,up_vector),up_vector)*step);
-            }
+            virtual void Backward(float step=0.01){Move((eye-center)*step/length(eye,center));}     ///<向后
             virtual void Forward(float step=0.01){Backward(-step);}                                 ///<向前
 
-            virtual void Up(float step=0.01){Move(length(eye,center)*step*up_vector);}              ///<向上
+            virtual void Up(float step=0.01){Move(step*up_vector);}                                 ///<向上
             virtual void Down(float step=0.01){Up(-step);}                                          ///<向下
 
-            virtual void Right(float step=0.01){Move(cross(center-eye,up_vector)*step);}            ///<向右
+            virtual void Right(float step=0.01){Move(normalized(cross(center-eye,up_vector))*step);}///<向右
             virtual void Left(float step=0.01){Right(-step);}                                       ///<向左
 
         public: //以自身为中心旋转
