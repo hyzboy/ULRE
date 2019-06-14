@@ -6,21 +6,14 @@
 VK_NAMESPACE_BEGIN
 struct TextureData
 {
-    VkDeviceMemory memory;
-    VkImage image;
-    VkImageLayout image_layout;
-    ImageView *image_view;
-    uint32 mip_levels;
-    bool linear;
+    VkDeviceMemory  memory      =nullptr;
+    VkImage         image       =nullptr;
+    VkImageLayout   image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
+    ImageView *     image_view  =nullptr;
+    uint32          mip_levels  =0;
+    bool            linear      =false;
 
-    bool ref;                   //是否是引用
-
-public:
-
-    TextureData(bool r=false)
-    {
-        ref=r;
-    }
+    bool            ref         =false;     //是否是引用
 };//struct TextureData
 
 class Texture
