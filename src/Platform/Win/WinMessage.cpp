@@ -149,7 +149,8 @@ namespace hgl
 
         KeyboardButton ConvertOSKey(uint key)
         {
-            if(key<kbBeginRange||key>=kbEndRange)return(kbBeginRange);
+            if(key>=256)return(kbBeginRange);
+            if(KeyConvert[key]==0)return(kbBeginRange);
 
             if(key==VK_SHIFT)
             {

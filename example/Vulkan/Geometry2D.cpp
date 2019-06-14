@@ -34,7 +34,7 @@ private:
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
-    
+
     vulkan::Renderable          *ro_rectangle       =nullptr,
                                 *ro_circle          =nullptr,
                                 *ro_round_rectangle =nullptr;
@@ -111,7 +111,7 @@ private:
         descriptor_sets->Update();
         return(true);
     }
-    
+
     bool InitPipeline()
     {
         constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
@@ -157,7 +157,7 @@ public:
 
         if(!InitUBO())
             return(false);
-            
+
         if(!InitPipeline())
             return(false);
 
@@ -169,7 +169,7 @@ public:
 
     void Resize(int,int)override
     {
-        BuildCommandBuffer(&render_list);     
+        BuildCommandBuffer(&render_list);
     }
 };//class TestApp:public VulkanApplicationFramework
 

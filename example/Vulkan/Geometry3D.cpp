@@ -13,36 +13,21 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public WalkerCameraAppFramework
 {
 private:
 
     SceneNode   render_root;
     RenderList  render_list;
 
-    Camera      camera;
-
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
 
     vulkan::Renderable          *ro_plane_grid[3];
 
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
-
     vulkan::Pipeline *          pipeline_line       =nullptr;
 
 private:
-
-    void InitCamera()
-    {
-        camera.type=CameraType::Perspective;
-        camera.center.Set(0,0,0,1);
-        camera.eye.Set(100,100,100,1);
-        camera.width=SCREEN_WIDTH;
-        camera.height=SCREEN_HEIGHT;
-
-        camera.Refresh();      //更新矩阵计算
-    }
 
     bool InitMaterial()
     {
@@ -90,14 +75,7 @@ private:
 
     bool InitUBO()
     {
-        const VkExtent2D extent=device->GetExtent();
-
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
-
-        if(!ubo_world_matrix)
-            return(false);
-
-        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_world_matrix))
+        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
             return(false);
 
         descriptor_sets->Update();
@@ -147,10 +125,8 @@ public:
 
     bool Init()
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!WalkerCameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-
-        InitCamera();
 
         if(!InitMaterial())
             return(false);
@@ -171,9 +147,9 @@ public:
 
     void Resize(int,int)override
     {
-        BuildCommandBuffer(&render_list);     
+        BuildCommandBuffer(&render_list);
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WalkerCameraAppFramework
 
 int main(int,char **)
 {
