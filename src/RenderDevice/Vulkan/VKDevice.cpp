@@ -25,19 +25,10 @@ Device::Device(DeviceAttribute *da)
 
     hgl_zero(texture_submitInfo);
     texture_submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    texture_cmd_buf=CreateCommandBuffer();
 
-    present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present.pNext = nullptr;
-    present.swapchainCount = 1;
-    present.pSwapchains = &attr->swap_chain;
-    present.pWaitSemaphores = nullptr;
-    present.waitSemaphoreCount = 0;
-    present.pResults = nullptr;
-
-    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
-
-    CreateMainFramebuffer();
+    main_rp=nullptr;
+    texture_cmd_buf=nullptr;
+    RecreateDevice();
 }
 
 Device::~Device()
@@ -55,30 +46,35 @@ Device::~Device()
     delete attr;
 }
 
-void Device::CreateMainFramebuffer()
+void Device::RecreateDevice()
 {
+    main_fb.Clear();
+    if(main_rp)delete main_rp;
+    if(texture_cmd_buf)delete texture_cmd_buf;
+
+    present.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present.pNext = nullptr;
+    present.swapchainCount = 1;
+    present.pSwapchains = &attr->swap_chain;
+    present.pWaitSemaphores = nullptr;
+    present.waitSemaphoreCount = 0;
+    present.pResults = nullptr;
+
+    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
     const int sc_count=attr->sc_image_views.GetCount();
 
     for(int i=0;i<sc_count;i++)
         main_fb.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
+
+    texture_cmd_buf=CreateCommandBuffer();
 }
 
 bool Device::Resize(uint width,uint height)
 {
-    main_fb.Clear();
-    delete main_rp;
-
-    delete texture_cmd_buf;
-    
     if(!ResizeRenderDevice(attr,width,height))
         return(false);
 
-    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
-
-    CreateMainFramebuffer();
-
-    texture_cmd_buf=CreateCommandBuffer();
-
+    RecreateDevice();
     return(true);
 }
 

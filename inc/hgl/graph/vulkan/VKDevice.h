@@ -30,7 +30,7 @@ class Device
 
 private:
 
-    void CreateMainFramebuffer();
+    void RecreateDevice();
 
 private:
 
