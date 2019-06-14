@@ -8,6 +8,8 @@ Texture::~Texture()
     if(data->image_view)
         delete data->image_view;
 
+    if(data->ref)return;
+
     if(data->image)
         vkDestroyImage(device,data->image,nullptr);
 

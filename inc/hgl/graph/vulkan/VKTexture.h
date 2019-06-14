@@ -12,6 +12,15 @@ struct TextureData
     ImageView *image_view;
     uint32 mip_levels;
     bool linear;
+
+    bool ref;                   //是否是引用
+
+public:
+
+    TextureData(bool r=false)
+    {
+        ref=r;
+    }
 };//struct TextureData
 
 class Texture

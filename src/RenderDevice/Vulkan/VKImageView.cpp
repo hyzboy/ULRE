@@ -1,9 +1,23 @@
 #include<hgl/graph/vulkan/VKImageView.h>
 
 VK_NAMESPACE_BEGIN
-ImageView::~ImageView()
+class StandaloneImageView:public ImageView
 {
-    vkDestroyImageView(device,image_view,nullptr);
+    friend ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img);
+
+    using ImageView::ImageView;
+
+public:
+
+    ~StandaloneImageView()
+    {
+        vkDestroyImageView(device,image_view,nullptr);
+    }
+};
+
+ImageView *CreateRefImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImageView img_view)
+{
+    return(new ImageView(device,img_view,type,format,aspectMask));
 }
 
 ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img)
@@ -26,11 +40,11 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
     iv_createinfo.subresourceRange.baseArrayLayer=0;
     iv_createinfo.subresourceRange.layerCount=1;
 
-    VkImageView iv;
+    VkImageView img_view;
 
-    if(vkCreateImageView(device,&iv_createinfo,nullptr,&iv)!=VK_SUCCESS)
+    if(vkCreateImageView(device,&iv_createinfo,nullptr,&img_view)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new ImageView(device,iv,iv_createinfo));
+    return(new StandaloneImageView(device,img_view,type,format,aspectMask));
 }
 VK_NAMESPACE_END
