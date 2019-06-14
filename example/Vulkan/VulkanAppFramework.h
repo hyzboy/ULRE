@@ -34,9 +34,18 @@ private:
         Resize(w,h);
     }
 
-    void OnKeyDown(KeyboardButton kb){key_status[kb]=true;}
-    void OnKeyUp(KeyboardButton kb){key_status[kb]=false;}
-    void OnKeyPress(KeyboardButton kb){KeyPress(kb);}
+    void OnKeyDown  (KeyboardButton kb){key_status[kb]=true;}
+    void OnKeyUp    (KeyboardButton kb){key_status[kb]=false;}
+    void OnKeyPress (KeyboardButton kb){KeyPress(kb);}
+
+protected:
+
+    uint        mouse_key=0;
+    Vector2f    mouse_pos;
+
+    void OnMouseDown(int,int,uint mk){mouse_key=mk;MouseDown(mk);}
+    void OnMouseUp  (int,int,uint mk){mouse_key=0;MouseUp(mk);}
+    void OnMouseMove(int x,int y){mouse_pos.Set(x,y);MouseMove();}
 
 protected:
 
@@ -105,11 +114,18 @@ public:
         SetEventCall(win->OnKeyUp,      this,VulkanApplicationFramework,OnKeyUp     );
         SetEventCall(win->OnKeyPress,   this,VulkanApplicationFramework,OnKeyPress  );
 
+        SetEventCall(win->OnMouseDown,  this,VulkanApplicationFramework,OnMouseDown );
+        SetEventCall(win->OnMouseUp,    this,VulkanApplicationFramework,OnMouseUp   );
+        SetEventCall(win->OnMouseMove,  this,VulkanApplicationFramework,OnMouseMove );
+
         return(true);
     }
 
     virtual void Resize(int,int)=0;
     virtual void KeyPress(KeyboardButton){}
+    virtual void MouseDown(uint){}
+    virtual void MouseUp(uint){}
+    virtual void MouseMove(){}
 
     void InitCommandBuffer()
     {
@@ -217,6 +233,8 @@ protected:
     WalkerCamera                camera;
     float                       move_speed=1;
 
+    Vector2f                    mouse_last_pos;
+
 public:
 
     virtual ~WalkerCameraAppFramework()=default;
@@ -262,7 +280,7 @@ public:
         ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
     }
 
-    void Draw()override
+    virtual void Draw()override
     {
         VulkanApplicationFramework::Draw();
 
@@ -285,12 +303,33 @@ public:
         RefreshCameraUBO();
     }
 
-    void KeyPress(KeyboardButton kb)override
+    virtual void KeyPress(KeyboardButton kb)override
     {
         if(kb==kbMinus)move_speed*=0.9f;else
         if(kb==kbEquals)move_speed*=1.1f;else
             return;
 
         RefreshCameraUBO();
+    }
+
+    virtual void MouseDown(uint) override
+    {
+        mouse_last_pos=mouse_pos;
+    }
+
+    virtual void MouseMove() override
+    {
+        if(!(mouse_key&mbLeft))return;
+
+        Vector2f gap=mouse_pos-mouse_last_pos;
+
+        bool update=false;
+        if(gap.x!=0){update=true;camera.LeftRotate(gap.x);}
+        if(gap.y!=0){update=true;camera.ForwardRotate(gap.y);}
+
+        if(update)        
+            RefreshCameraUBO();
+
+        mouse_last_pos=mouse_pos;
     }
 };//class WalkerCameraAppFramework
