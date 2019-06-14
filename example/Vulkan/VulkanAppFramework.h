@@ -274,14 +274,11 @@ public:
         return desc_set->BindUBO(world_matrix_bindpoint,*ubo_world_matrix);
     }
 
-    void RefreshCameraUBO()
+    virtual void Draw()override
     {
         camera.Refresh();                           //更新相机矩阵
         ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
-    }
 
-    virtual void Draw()override
-    {
         VulkanApplicationFramework::Draw();
 
         if(key_status[kbW])camera.Forward   (move_speed);else
@@ -299,8 +296,6 @@ public:
         if(key_status[kbDelete  ])camera.LeftRotate     (move_speed);else
         if(key_status[kbPageDown])camera.RightRotate    (move_speed);else
             return;
-
-        RefreshCameraUBO();
     }
 
     virtual void KeyPress(KeyboardButton kb)override
@@ -308,8 +303,6 @@ public:
         if(kb==kbMinus)move_speed*=0.9f;else
         if(kb==kbEquals)move_speed*=1.1f;else
             return;
-
-        RefreshCameraUBO();
     }
 
     virtual void MouseDown(uint) override
@@ -326,9 +319,6 @@ public:
         bool update=false;
         if(gap.x!=0){update=true;camera.LeftRotate(gap.x);}
         if(gap.y!=0){update=true;camera.ForwardRotate(gap.y);}
-
-        if(update)        
-            RefreshCameraUBO();
 
         mouse_last_pos=mouse_pos;
     }
