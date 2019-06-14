@@ -276,8 +276,8 @@ public:
         if(key_status[kbUp      ])camera.WrapUpRotate   (move_speed);else
         if(key_status[kbDown    ])camera.WrapDownRotate (move_speed);else
 
-        if(key_status[kbHome    ])camera.ForwardTilt    (move_speed);else
-        if(key_status[kbEnd     ])camera.LeaningBack    (move_speed);else
+        if(key_status[kbHome    ])camera.ForwardRotate  (move_speed);else
+        if(key_status[kbEnd     ])camera.BackwardRotate (move_speed);else
         if(key_status[kbDelete  ])camera.LeftRotate     (move_speed);else
         if(key_status[kbPageDown])camera.RightRotate    (move_speed);else
             return;
