@@ -76,7 +76,7 @@ vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const
     return(render_obj);
 }
 
-class TestApp:public WalkerCameraAppFramework
+class TestApp:public CameraAppFramework
 {
 private:
 
@@ -233,7 +233,7 @@ public:
 
         model_data=md;
 
-        if(!WalkerCameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
         if(!InitMaterial())
@@ -259,7 +259,7 @@ public:
     {
         BuildCommandBuffer(&render_list);
     }
-};//class TestApp:public WalkerCameraAppFramework
+};//class TestApp:public CameraAppFramework
 
 #ifdef _WIN32
 int wmain(int argc,wchar_t **argv)
