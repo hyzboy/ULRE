@@ -192,8 +192,8 @@ public:
 
     virtual void Draw()
     {
-        device->AcquireNextImage();
         device->Wait();
+        device->AcquireNextImage();
 
         uint32_t index=device->GetCurrentFrameIndices();
 

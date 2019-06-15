@@ -50,6 +50,7 @@ Device::Device(DeviceAttribute *da)
 
 Device::~Device()
 {
+    fence_list.Clear();
     render_frame.Clear();
 
     delete present_complete_semaphore;
@@ -65,7 +66,9 @@ Device::~Device()
 
 void Device::RecreateDevice()
 {
+    fence_list.Clear();
     render_frame.Clear();
+
     if(main_rp)delete main_rp;
     if(texture_cmd_buf)delete texture_cmd_buf;
 
@@ -73,19 +76,17 @@ void Device::RecreateDevice()
 
     main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
 
-    const int sc_count=attr->sc_image_views.GetCount();
+    swap_chain_count=attr->sc_image_views.GetCount();
 
-    for(int i=0;i<sc_count;i++)
+    for(uint i=0;i<swap_chain_count;i++)
     {
-        RenderFrame *rf=new RenderFrame;
-
-        rf->frame_buffer                =vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view);
-        rf->draw_fence                  =this->CreateFence();
-
-        render_frame.Add(rf);
+        render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
+        fence_list.Add(this->CreateFence());
     }
 
     texture_cmd_buf=CreateCommandBuffer();
+
+    current_fence=0;
 }
 
 bool Device::Resize(uint width,uint height)
@@ -214,7 +215,7 @@ Fence *Device::CreateFence()
     VkFenceCreateInfo fenceInfo;
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.pNext = nullptr;
-    fenceInfo.flags = 0;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     VkFence fence;
 
@@ -256,20 +257,22 @@ bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
     submit_info.commandBufferCount = count;
     submit_info.pCommandBuffers = cmd_bufs;
     
-    VkFence fence=*(render_frame[current_frame]->draw_fence);
+    VkFence fence=*fence_list[current_fence];
 
     VkResult result=vkQueueSubmit(attr->graphics_queue,1,&submit_info,fence);
+
+    if(++current_fence==swap_chain_count)
+        current_fence=0;
     
     return(result==VK_SUCCESS);
 }
 
 bool Device::Wait(bool wait_all,uint64_t time_out)
 {
-    VkFence fence=*(render_frame[current_frame]->draw_fence);
+    VkFence fence=*fence_list[current_fence];
     
-    VkResult result=vkWaitForFences(attr->device,1,&fence,wait_all,time_out);
-
-    result=vkResetFences(attr->device,1,&fence);
+    vkWaitForFences(attr->device,1,&fence,wait_all,time_out);
+    vkResetFences(attr->device,1,&fence);
 
     return(true);
 }

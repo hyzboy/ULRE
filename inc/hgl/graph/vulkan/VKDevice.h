@@ -17,28 +17,13 @@ class Device
 {
     DeviceAttribute *attr;
 
+    uint swap_chain_count;
+
     Semaphore *present_complete_semaphore=nullptr,
               *render_complete_semaphore=nullptr;
 
     VkPipelineStageFlags pipe_stage_flags;
     VkSubmitInfo submit_info;
-
-    struct RenderFrame
-    {
-        Framebuffer *frame_buffer=nullptr;
-
-        Fence *draw_fence=nullptr;
-
-    public:
-
-        ~RenderFrame()
-        {
-            SAFE_CLEAR(frame_buffer);
-            SAFE_CLEAR(draw_fence);
-        }
-    };//struct RenderFrame
-
-    void Create(RenderFrame *);
 
     Fence *texture_fence;
 
@@ -48,7 +33,10 @@ class Device
     RenderPass *main_rp;
 
     uint32_t current_frame;
-    ObjectList<RenderFrame> render_frame;
+    ObjectList<Framebuffer> render_frame;
+
+    uint32_t current_fence;
+    ObjectList<Fence> fence_list;
 
     VkPresentInfoKHR present_info;
 
@@ -83,9 +71,9 @@ public:
             ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
             RenderPass *    GetRenderPass           ()          {return main_rp;}
-            Framebuffer *   GetFramebuffer          (int index) {return render_frame[index]->frame_buffer;}
+            Framebuffer *   GetFramebuffer          (int index) {return render_frame[index];}
     const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
-            Framebuffer *   GetCurrentFramebuffer   ()          {return render_frame[current_frame]->frame_buffer;}
+            Framebuffer *   GetCurrentFramebuffer   ()          {return render_frame[current_frame];}
 
     bool                    Resize                  (uint,uint);
 
