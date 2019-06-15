@@ -188,23 +188,18 @@ public:
         }
     }
 
-private:
-
-    void AcquireNextFrame()
-    {
-        device->AcquireNextImage();
-    }
-
 public:
 
     virtual void Draw()
     {
+        device->AcquireNextImage();
+        device->Wait();
+
         uint32_t index=device->GetCurrentFrameIndices();
 
         VkCommandBuffer cb=*cmd_buf[index];
         
         device->SubmitDraw(&cb);
-        device->Wait(&index);
         device->QueuePresent();
     }
 
@@ -213,10 +208,7 @@ public:
         if(!win->Update())return(false);
 
         if(win->IsVisible())
-        {
-            AcquireNextFrame();
             Draw();
-        }
 
         return(true);
     }
