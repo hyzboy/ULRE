@@ -46,6 +46,7 @@ protected:
     void OnMouseDown(int,int,uint mk){mouse_key=mk;MouseDown(mk);}
     void OnMouseUp  (int,int,uint mk){mouse_key=0;MouseUp(mk);}
     void OnMouseMove(int x,int y){mouse_pos.Set(x,y);MouseMove();}
+    void OnMouseWheel(int v,int h,uint mk){MouseWheel(v,h,mk);}
 
 protected:
 
@@ -117,6 +118,7 @@ public:
         SetEventCall(win->OnMouseDown,  this,VulkanApplicationFramework,OnMouseDown );
         SetEventCall(win->OnMouseUp,    this,VulkanApplicationFramework,OnMouseUp   );
         SetEventCall(win->OnMouseMove,  this,VulkanApplicationFramework,OnMouseMove );
+        SetEventCall(win->OnMouseWheel, this,VulkanApplicationFramework,OnMouseWheel);
 
         return(true);
     }
@@ -126,6 +128,7 @@ public:
     virtual void MouseDown(uint){}
     virtual void MouseUp(uint){}
     virtual void MouseMove(){}
+    virtual void MouseWheel(int,int,uint){}
 
     void InitCommandBuffer()
     {
@@ -313,5 +316,10 @@ public:
         if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.ForwardRotate(gap.y);else camera.WrapUpRotate(gap.y);}
 
         mouse_last_pos=mouse_pos;
+    }
+
+    virtual void MouseWheel(int v,int h,uint)
+    {
+        camera.Distance(1+(v/1000.0f));
     }
 };//class WalkerCameraAppFramework
