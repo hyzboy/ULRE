@@ -225,7 +225,7 @@ public:
     }
 };//class VulkanApplicationFramework
 
-class WalkerCameraAppFramework:public VulkanApplicationFramework
+class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
 
@@ -240,7 +240,7 @@ protected:
 
 public:
 
-    virtual ~WalkerCameraAppFramework()=default;
+    virtual ~CameraAppFramework()=default;
 
     virtual bool Init(int w,int h)
     {
@@ -290,6 +290,11 @@ public:
         if(key_status[kbD])camera.Right     (move_speed);else
         if(key_status[kbR])camera.Up        (move_speed);else
         if(key_status[kbF])camera.Down      (move_speed);else
+
+        if(key_status[kbLeft    ])camera.WrapHorzRotate(move_speed);else
+        if(key_status[kbRight   ])camera.WrapHorzRotate(-move_speed);else
+        if(key_status[kbUp      ])camera.WrapVertRotate(move_speed);else
+        if(key_status[kbDown    ])camera.WrapVertRotate(-move_speed);else
             return;
     }
 
@@ -322,4 +327,4 @@ public:
     {
         camera.Distance(1+(v/1000.0f));
     }
-};//class WalkerCameraAppFramework
+};//class CameraAppFramework

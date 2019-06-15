@@ -612,7 +612,7 @@ void AssimpLoader::LoadMesh()
         {
             int tc=0;
             int comp_total=0;
-            int *uv_use=mtl->uv_use.GetData();
+            uint *uv_use=mtl->uv_use.GetData();
 
             //这里要重新审视数据来源，并不是每一个纹理通道都有数据，并且和材质对应。
             //、、材质中的uv index具体对应啥 还不是很清楚

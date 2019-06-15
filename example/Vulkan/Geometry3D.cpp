@@ -13,7 +13,7 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-class TestApp:public WalkerCameraAppFramework
+class TestApp:public CameraAppFramework
 {
 private:
 
@@ -125,7 +125,7 @@ public:
 
     bool Init()
     {
-        if(!WalkerCameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
         if(!InitMaterial())
@@ -149,7 +149,7 @@ public:
     {
         BuildCommandBuffer(&render_list);
     }
-};//class TestApp:public WalkerCameraAppFramework
+};//class TestApp:public CameraAppFramework
 
 int main(int,char **)
 {
