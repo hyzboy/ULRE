@@ -43,9 +43,9 @@ namespace hgl
         };//struct Camera
 
         /**
-        * 行走模拟像机
+        * 简单可控像机
         */
-        struct WalkerCamera:public Camera
+        struct ControlCamera:public Camera
         {
         protected:
 
@@ -116,7 +116,7 @@ namespace hgl
 
                 eye=center+(eye-center)*pos;
             }
-        };//struct WalkerCamera
+        };//struct ControlCamera
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_CAMERA_INCLUDE

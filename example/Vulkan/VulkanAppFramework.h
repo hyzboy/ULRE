@@ -233,7 +233,7 @@ private:
 
 protected:
 
-    WalkerCamera                camera;
+    ControlCamera               camera;
     float                       move_speed=1;
 
     Vector2f                    mouse_last_pos;
