@@ -8,6 +8,8 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDeviceAttribute.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
+#include<hgl/graph/vulkan/VKFence.h>
+#include<hgl/graph/vulkan/VKSemaphore.h>
 #include<hgl/graph/VertexBufferCreater.h>
 
 VK_NAMESPACE_BEGIN
@@ -15,16 +17,38 @@ class Device
 {
     DeviceAttribute *attr;
 
-    Semaphore *image_acquired_semaphore;
-    Fence *draw_fence,*texture_fence;
+    struct RenderFrame
+    {
+        Framebuffer *frame_buffer=nullptr;
+
+        Semaphore *present_complete_semaphore=nullptr,
+                  *render_complete_semaphore=nullptr;
+
+        Fence *draw_fence=nullptr;
+
+    public:
+
+        ~RenderFrame()
+        {
+            SAFE_CLEAR(frame_buffer);
+
+            SAFE_CLEAR(present_complete_semaphore);
+            SAFE_CLEAR(render_complete_semaphore);
+            SAFE_CLEAR(draw_fence);
+        }
+    };//struct RenderFrame
+
+    void Create(RenderFrame *);
+
+    Fence *texture_fence;
 
     VkSubmitInfo texture_submitInfo;
     CommandBuffer *texture_cmd_buf;
 
     RenderPass *main_rp;
-    ObjectList<Framebuffer> main_fb;
 
     uint32_t current_frame;
+    ObjectList<RenderFrame> render_frame;
 
     VkPresentInfoKHR present;
 
@@ -59,9 +83,9 @@ public:
             ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
             RenderPass *    GetRenderPass           ()          {return main_rp;}
-            Framebuffer *   GetFramebuffer          (int index) {return main_fb[index];}
+            Framebuffer *   GetFramebuffer          (int index) {return render_frame[index]->frame_buffer;}
     const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
-            Framebuffer *   GetCurrentFramebuffer   ()          {return main_fb[current_frame];}
+            Framebuffer *   GetCurrentFramebuffer   ()          {return render_frame[current_frame]->frame_buffer;}
 
     bool                    Resize                  (uint,uint);
 

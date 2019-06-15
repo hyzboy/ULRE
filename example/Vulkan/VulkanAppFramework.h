@@ -195,20 +195,17 @@ private:
         device->AcquireNextImage();
     }
 
-    void Submit(const VkCommandBuffer cmd_buf)
-    {
-        device->SubmitDraw(&cmd_buf);
-        device->Wait();
-        device->QueuePresent();
-    }
-
 public:
 
     virtual void Draw()
     {
-        const vulkan::CommandBuffer *cb=cmd_buf[device->GetCurrentFrameIndices()];
+        uint32_t index=device->GetCurrentFrameIndices();
 
-        Submit(*cb);
+        VkCommandBuffer cb=*cmd_buf[index];
+        
+        device->SubmitDraw(&cb);
+        device->Wait(&index);
+        device->QueuePresent();
     }
 
     bool Run()
