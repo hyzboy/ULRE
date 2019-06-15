@@ -17,12 +17,15 @@ class Device
 {
     DeviceAttribute *attr;
 
+    Semaphore *present_complete_semaphore=nullptr,
+              *render_complete_semaphore=nullptr;
+
+    VkPipelineStageFlags pipe_stage_flags;
+    VkSubmitInfo submit_info;
+
     struct RenderFrame
     {
         Framebuffer *frame_buffer=nullptr;
-
-        Semaphore *present_complete_semaphore=nullptr,
-                  *render_complete_semaphore=nullptr;
 
         Fence *draw_fence=nullptr;
 
@@ -31,9 +34,6 @@ class Device
         ~RenderFrame()
         {
             SAFE_CLEAR(frame_buffer);
-
-            SAFE_CLEAR(present_complete_semaphore);
-            SAFE_CLEAR(render_complete_semaphore);
             SAFE_CLEAR(draw_fence);
         }
     };//struct RenderFrame
@@ -42,7 +42,7 @@ class Device
 
     Fence *texture_fence;
 
-    VkSubmitInfo texture_submitInfo;
+    VkSubmitInfo texture_submit_info;
     CommandBuffer *texture_cmd_buf;
 
     RenderPass *main_rp;
@@ -50,7 +50,7 @@ class Device
     uint32_t current_frame;
     ObjectList<RenderFrame> render_frame;
 
-    VkPresentInfoKHR present;
+    VkPresentInfoKHR present_info;
 
 private:
 

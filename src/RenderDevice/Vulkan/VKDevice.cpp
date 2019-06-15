@@ -19,17 +19,41 @@ Device::Device(DeviceAttribute *da)
 
     texture_fence=this->CreateFence();
 
-    hgl_zero(texture_submitInfo);
-    texture_submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    hgl_zero(texture_submit_info);
+    texture_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     main_rp=nullptr;
     texture_cmd_buf=nullptr;
+    
+    pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    
+    present_complete_semaphore  =this->CreateSem();
+    render_complete_semaphore   =this->CreateSem();
+    
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.pNext = nullptr;
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = *present_complete_semaphore;
+    submit_info.pWaitDstStageMask = &pipe_stage_flags;
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = *render_complete_semaphore;
+    
+    present_info.sType               = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.pNext               = nullptr;
+    present_info.swapchainCount      = 1;
+    present_info.pResults            = nullptr;
+    present_info.waitSemaphoreCount  = 1;
+    present_info.pWaitSemaphores     = *render_complete_semaphore;
+
     RecreateDevice();
 }
 
 Device::~Device()
 {
     render_frame.Clear();
+
+    delete present_complete_semaphore;
+    delete render_complete_semaphore;
 
     delete main_rp;
 
@@ -45,11 +69,7 @@ void Device::RecreateDevice()
     if(main_rp)delete main_rp;
     if(texture_cmd_buf)delete texture_cmd_buf;
 
-    present.sType           = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present.pNext           = nullptr;
-    present.swapchainCount  = 1;
-    present.pSwapchains     = &attr->swap_chain;
-    present.pResults        = nullptr;
+    present_info.pSwapchains=&attr->swap_chain;
 
     main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
 
@@ -60,8 +80,6 @@ void Device::RecreateDevice()
         RenderFrame *rf=new RenderFrame;
 
         rf->frame_buffer                =vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view);
-        rf->present_complete_semaphore  =this->CreateSem();
-        rf->render_complete_semaphore   =this->CreateSem();
         rf->draw_fence                  =this->CreateFence();
 
         render_frame.Add(rf);
@@ -227,9 +245,7 @@ ShaderModuleManage *Device::CreateShaderModuleManage()
 
 bool Device::AcquireNextImage()
 {
-    VkSemaphore present_complete_semaphore=*(render_frame[current_frame]->present_complete_semaphore);
-
-    return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
+    return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
 }
 
 bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
@@ -237,47 +253,37 @@ bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
     if(!cmd_bufs||count<=0)
         return(false);
 
-    VkPipelineStageFlags pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    VkSubmitInfo submit_info = {};
-
-    RenderFrame *rf=render_frame[current_frame];
-
-    VkSemaphore present_sem=*(rf->present_complete_semaphore);
-    VkSemaphore complete_sem=*(rf->render_complete_semaphore);
-
-    submit_info.pNext = nullptr;
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = &present_sem;
-    submit_info.pWaitDstStageMask = &pipe_stage_flags;
     submit_info.commandBufferCount = count;
     submit_info.pCommandBuffers = cmd_bufs;
-    submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = &complete_sem;
+    
+    VkFence fence=*(render_frame[current_frame]->draw_fence);
 
-    VkFence fence=*(rf->draw_fence);
-
-    return(vkQueueSubmit(attr->graphics_queue,1,&submit_info,fence)==VK_SUCCESS);
+    VkResult result=vkQueueSubmit(attr->graphics_queue,1,&submit_info,fence);
+    
+    return(result==VK_SUCCESS);
 }
 
 bool Device::Wait(bool wait_all,uint64_t time_out)
 {
     VkFence fence=*(render_frame[current_frame]->draw_fence);
     
-    while(vkWaitForFences(attr->device,1,&fence,wait_all,time_out)==VK_TIMEOUT){}
-    vkResetFences(attr->device,1,&fence);
+    VkResult result=vkWaitForFences(attr->device,1,&fence,wait_all,time_out);
+
+    result=vkResetFences(attr->device,1,&fence);
 
     return(true);
 }
 
 bool Device::QueuePresent()
 {
-    VkSemaphore render_complete_semaphore=*(render_frame[current_frame]->render_complete_semaphore);
+    present_info.pImageIndices=&current_frame;
 
-    present.pImageIndices = &current_frame;
-    present.waitSemaphoreCount = 1;
-    present.pWaitSemaphores = &render_complete_semaphore;
+    if(vkQueuePresentKHR(attr->graphics_queue,&present_info)!=VK_SUCCESS)
+        return(false);
+        
+    if(vkQueueWaitIdle(attr->graphics_queue)!=VK_SUCCESS)
+        return(false);
 
-    return(vkQueuePresentKHR(attr->present_queue, &present)==VK_SUCCESS);
+    return(true);
 }
 VK_NAMESPACE_END
