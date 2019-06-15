@@ -28,7 +28,7 @@ namespace
         const UTF8String ext_name=filesystem::ClipFileExtName(filename);
     #endif//
 
-        const aiScene *scene=aiImportFileFromMemory(filedata,filesize,aiProcessPreset_TargetRealtime_MaxQuality|aiProcess_FlipUVs,ext_name.c_str());
+        const aiScene *scene=aiImportFileFromMemory(filedata,filesize,aiProcessPreset_TargetRealtime_MaxQuality|aiProcess_FlipUVs|aiProcess_FlipWindingOrder|aiProcess_Triangulate,ext_name.c_str());
 
         delete[] filedata;
 
@@ -46,9 +46,9 @@ namespace
     const Color4f COLOR_PURE_BLACK(0,0,0,1);
     const Color4f COLOR_PURE_WHITE(1,1,1,1);
 
-    inline const vec pos_to_vec(const aiVector3D &v3d){return vec(v3d.x,-v3d.y,v3d.z,1.0);}
+    inline const vec pos_to_vec(const aiVector3D &v3d){return vec(v3d.x,v3d.y,v3d.z,1.0);}
 
-    void VecY2Z(List<Vector3f> &target,const aiVector3D *source,const uint count)
+    void VecFlipY(List<Vector3f> &target,const aiVector3D *source,const uint count)
     {
         target.SetCount(count);
 
@@ -182,13 +182,13 @@ private:
                 aiVector3D tmp = mesh->mVertices[t];
                 aiTransformVecByMatrix4(&tmp,&cur_matrix);
 
-                min_pos->x = aisgl_min(min_pos->x,tmp.x);
-                min_pos->y = aisgl_min(min_pos->y,tmp.y);
-                min_pos->z = aisgl_min(min_pos->z,tmp.z);
+                min_pos->x = aisgl_min(min_pos->x, tmp.x);
+                min_pos->y = aisgl_min(min_pos->y,-tmp.y);
+                min_pos->z = aisgl_min(min_pos->z, tmp.z);
 
-                max_pos->x = aisgl_max(max_pos->x,tmp.x);
-                max_pos->y = aisgl_max(max_pos->y,tmp.y);
-                max_pos->z = aisgl_max(max_pos->z,tmp.z);
+                max_pos->x = aisgl_max(max_pos->x, tmp.x);
+                max_pos->y = aisgl_max(max_pos->y,-tmp.y);
+                max_pos->z = aisgl_max(max_pos->z, tmp.z);
             }
         }
 
@@ -218,26 +218,8 @@ public:
 
         GetBoundingBox(scene->mRootNode,&scene_min,&scene_max);
 
-        float tmp;
-        vec smin=pos_to_vec(scene_min);
-        vec smax=pos_to_vec(scene_max);
-
-        if(smin.y>smax.y)
-        {
-            tmp=smin.y;
-            smin.y=smax.y;
-            smax.y=tmp;
-        }
-
-        if(smin.z>smax.z)
-        {
-            tmp=smin.z;
-            smin.z=smax.z;
-            smax.z=tmp;
-        }
-
-        model_data->bounding_box.minPoint=smin;
-        model_data->bounding_box.maxPoint=smax;
+        model_data->bounding_box.minPoint=pos_to_vec(scene_min);
+        model_data->bounding_box.maxPoint=pos_to_vec(scene_max);
     }
 
     ~AssimpLoaderMesh()=default;
@@ -253,11 +235,11 @@ private:
         md->name=mesh->mName.C_Str();
 
         if(mesh->HasPositions())
-            VecY2Z(md->position,mesh->mVertices,mesh->mNumVertices);
+            VecFlipY(md->position,mesh->mVertices,mesh->mNumVertices);
 
         if(mesh->HasNormals())
         {
-            VecY2Z(md->normal,mesh->mNormals,mesh->mNumVertices);
+            VecFlipY(md->normal,mesh->mNormals,mesh->mNumVertices);
 
             if(mesh->HasTangentsAndBitangents())
             {

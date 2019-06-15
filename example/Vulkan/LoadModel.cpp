@@ -1,7 +1,7 @@
 ﻿// 5.LoadModel
 //  加载纯色无贴图模型
 
-#include"VulkanAppFramework.h"
+#include"ViewModelFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderableInstance.h>
@@ -76,12 +76,9 @@ vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const
     return(render_obj);
 }
 
-class TestApp:public CameraAppFramework
+class TestApp:public ViewModelFramework
 {
 private:
-
-    SceneNode   render_root;
-    RenderList  render_list;
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
@@ -104,22 +101,6 @@ public:
     }
 
 private:
-
-    void InitCamera()
-    {
-        math::vec center_point=model_data->bounding_box.CenterPoint();
-        math::vec min_point=model_data->bounding_box.minPoint;
-
-        min_point.x*=2.0f;
-        min_point.y=center_point.y;
-        min_point.z=center_point.z;
-
-        camera.type=CameraType::Perspective;
-        camera.center=center_point;
-        camera.eye=min_point;
-
-        camera.Refresh();      //更新矩阵计算
-    }
 
     bool InitMaterial()
     {
@@ -213,17 +194,6 @@ private:
         }
     }
 
-    bool InitScene()
-    {
-        CreateSceneNode(&render_root,model_data->root_node);
-
-        render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
-
-        BuildCommandBuffer(&render_list);
-        return(true);
-    }
-
 public:
 
     bool Init(ModelData *md)
@@ -233,13 +203,11 @@ public:
 
         model_data=md;
 
-        if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!ViewModelFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT,model_data->bounding_box))
             return(false);
 
         if(!InitMaterial())
             return(false);
-
-        InitCamera();
 
         if(!InitUBO())
             return(false);
@@ -248,18 +216,12 @@ public:
             return(false);
 
         CreateRenderObject();
-
-        if(!InitScene())
-            return(false);
+        
+        CreateSceneNode(&render_root,model_data->root_node);
 
         return(true);
     }
-
-    void Resize(int,int)override
-    {
-        BuildCommandBuffer(&render_list);
-    }
-};//class TestApp:public CameraAppFramework
+};//class TestApp:public ViewModelFramework
 
 #ifdef _WIN32
 int wmain(int argc,wchar_t **argv)
