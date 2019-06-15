@@ -33,7 +33,7 @@ namespace hgl
     public:
 
         virtual void ProcMouseMove      (int x,int y)               {SafeCallEvent(OnMouseMove,     (x,y));}
-        virtual void ProcMouseWheel     (int x,int y, int v,int h)  {SafeCallEvent(OnMouseWheel,    (x,y,v,h));}
+        virtual void ProcMouseWheel     (int v,int h,uint mb)       {SafeCallEvent(OnMouseWheel,    (v,h,mb));}
         virtual void ProcMouseDown      (int x,int y,uint mb)       {SafeCallEvent(OnMouseDown,     (x,y,mb));}
         virtual void ProcMouseUp        (int x,int y,uint mb)       {SafeCallEvent(OnMouseUp,       (x,y,mb));}
         virtual void ProcMouseDblClick  (int x,int y,uint mb)       {SafeCallEvent(OnMouseDblClick, (x,y,mb));}
@@ -61,7 +61,7 @@ namespace hgl
     public:
 
         DefEvent(void,OnMouseMove       ,(int,int));
-        DefEvent(void,OnMouseWheel      ,(int,int, int,int));
+        DefEvent(void,OnMouseWheel      ,(int,int,uint));
         DefEvent(void,OnMouseDown       ,(int,int,uint));
         DefEvent(void,OnMouseUp         ,(int,int,uint));
         DefEvent(void,OnMouseDblClick   ,(int,int,uint));

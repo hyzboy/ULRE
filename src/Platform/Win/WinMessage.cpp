@@ -226,20 +226,18 @@ namespace hgl
         #define WMEF2(name) void name(WinWindow *win,uint32 wParam,uint32 lParam)
             WMEF2(WMProcMouseWheel)
             {
-                const int x=LOWORD(lParam);
-                const int y=HIWORD(lParam);
-
-                win->ProcMouseMove(x,y);
-                win->ProcMouseWheel(x,y,HIWORD(wParam),0);
+                int zDelta=GET_WHEEL_DELTA_WPARAM(wParam);
+                uint key=ConvertOSKey(GET_KEYSTATE_WPARAM(wParam));
+                
+                win->ProcMouseWheel(zDelta,0,key);
             }
 
             WMEF2(WMProcMouseHWheel)
             {
-                const int x=LOWORD(lParam);
-                const int y=HIWORD(lParam);
-
-                win->ProcMouseMove(x,y);
-                win->ProcMouseWheel(x,y,0,HIWORD(wParam));
+                int zDelta=GET_WHEEL_DELTA_WPARAM(wParam);
+                uint key=ConvertOSKey(GET_KEYSTATE_WPARAM(wParam));
+                
+                win->ProcMouseWheel(0,zDelta,key);
             }
 
             WMEF2(WMProcSize)
