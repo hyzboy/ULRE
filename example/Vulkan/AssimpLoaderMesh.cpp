@@ -46,8 +46,7 @@ namespace
     const Color4f COLOR_PURE_BLACK(0,0,0,1);
     const Color4f COLOR_PURE_WHITE(1,1,1,1);
 
-    inline const vec pos_to_vec(const aiVector3D &v3d){return vec(v3d.x,-v3d.z,v3d.y,1.0);}
-    inline const vec dir_to_vec(const aiVector3D &v3d){return vec(v3d.x,-v3d.z,v3d.y,0.0);}
+    inline const vec pos_to_vec(const aiVector3D &v3d){return vec(v3d.x,-v3d.y,v3d.z,1.0);}
 
     void VecY2Z(List<Vector3f> &target,const aiVector3D *source,const uint count)
     {
@@ -60,8 +59,27 @@ namespace
         for(uint i=0;i<count;i++)
         {
             tp->x= source->x;
-            tp->y=-source->z;
-            tp->z= source->y;
+            tp->y=-source->y;
+            tp->z= source->z;
+
+            ++source;
+            ++tp;
+        }
+    }
+
+    void VecCopy(List<Vector3f> &target,const aiVector3D *source,const uint count)
+    {
+        target.SetCount(count);
+
+        if(count<=0)return;
+
+        Vector3f *tp=target.GetData();
+
+        for(uint i=0;i<count;i++)
+        {
+            tp->x=source->x;
+            tp->y=source->y;
+            tp->z=source->z;
 
             ++source;
             ++tp;
@@ -243,8 +261,8 @@ private:
 
             if(mesh->HasTangentsAndBitangents())
             {
-                VecY2Z(md->tangent,     mesh->mTangents,    mesh->mNumVertices);
-                VecY2Z(md->bitangent,   mesh->mBitangents,  mesh->mNumVertices);
+                VecCopy(md->tangent,     mesh->mTangents,    mesh->mNumVertices);
+                VecCopy(md->bitangent,   mesh->mBitangents,  mesh->mNumVertices);
             }
         }
 
