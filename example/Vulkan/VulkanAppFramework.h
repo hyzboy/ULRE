@@ -285,16 +285,8 @@ public:
         if(key_status[kbS])camera.Backward  (move_speed);else
         if(key_status[kbA])camera.Left      (move_speed);else
         if(key_status[kbD])camera.Right     (move_speed);else
-
-        if(key_status[kbLeft    ])camera.WrapLeftRotate (move_speed);else
-        if(key_status[kbRight   ])camera.WrapRightRotate(move_speed);else
-        if(key_status[kbUp      ])camera.WrapUpRotate   (move_speed);else
-        if(key_status[kbDown    ])camera.WrapDownRotate (move_speed);else
-
-        if(key_status[kbHome    ])camera.ForwardRotate  (move_speed);else
-        if(key_status[kbEnd     ])camera.BackwardRotate (move_speed);else
-        if(key_status[kbDelete  ])camera.LeftRotate     (move_speed);else
-        if(key_status[kbPageDown])camera.RightRotate    (move_speed);else
+        if(key_status[kbR])camera.Up        (move_speed);else
+        if(key_status[kbF])camera.Down      (move_speed);else
             return;
     }
 
@@ -312,13 +304,13 @@ public:
 
     virtual void MouseMove() override
     {
-        if(!(mouse_key&mbLeft))return;
+        if(!(mouse_key&(mbLeft|mbRight)))return;
 
         Vector2f gap=mouse_pos-mouse_last_pos;
 
         bool update=false;
-        if(gap.x!=0){update=true;camera.LeftRotate(gap.x);}
-        if(gap.y!=0){update=true;camera.ForwardRotate(gap.y);}
+        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.LeftRotate(gap.x);else camera.WrapRightRotate(gap.x);}
+        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.ForwardRotate(gap.y);else camera.WrapUpRotate(gap.y);}
 
         mouse_last_pos=mouse_pos;
     }
