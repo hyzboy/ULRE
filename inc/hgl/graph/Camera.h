@@ -94,19 +94,13 @@ namespace hgl
 
         public: //以自身为中心旋转
 
-            virtual void BackwardRotate(float ang=5){Rotate(ang,cross(center-eye,up_vector));}      ///<后仰
-            virtual void ForwardRotate(float ang=5){BackwardRotate(-ang);}                          ///<前倾
-
-            virtual void RightRotate(float ang=5){Rotate(ang,up_vector);}                           ///<右转
-            virtual void LeftRotate(float ang=5){RightRotate(-ang);}                                ///<左转
+            virtual void VertRotate(float ang=5){Rotate(ang,cross(center-eye,up_vector));}          ///<垂直方向前后旋转
+            virtual void HorzRotate(float ang=5){Rotate(ang,up_vector);}                            ///<水平方向左右旋转
 
         public: //以目标点为中心旋转
 
-            virtual void WrapUpRotate(float ang=5){WrapRotate(ang,cross(center-eye,up_vector));}    ///<以目标点为中心向上旋转
-            virtual void WrapDownRotate(float ang=5){WrapUpRotate(-ang);}                           ///<以目标点为中心向下旋转
-
-            virtual void WrapRightRotate(float ang=5){WrapRotate(ang,up_vector);}                   ///<以目标点为中心向右旋转
-            virtual void WrapLeftRotate(float ang=5){WrapRightRotate(-ang);}                        ///<以目标点为中心向左旋转
+            virtual void WrapVertRotate(float ang=5){WrapRotate(ang,cross(center-eye,up_vector));}  ///<以目标点为中心上下旋转
+            virtual void WrapHorzRotate(float ang=5){WrapRotate(ang,up_vector);}                    ///<以目标点为中心左右旋转
 
         public: //距离
 
