@@ -164,8 +164,10 @@ public:
         BuildCommandBuffer(&render_list);
     }
 
-    void Resize(int,int)override
+    void Resize(int w,int h)override
     {
+        CameraAppFramework::Resize(w,h);
+        
         BuildCommandBuffer(&render_list);
     }
 };//class TestApp:public CameraAppFramework

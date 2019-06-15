@@ -235,29 +235,30 @@ public:
     {
         if(!VulkanApplicationFramework::Init(w,h))
             return(false);
-
-        InitCamera();
+            
+        InitCamera(w,h);
         return(true);
     }
 
-    virtual void InitCamera()
+    virtual void InitCamera(int w,int h)
     {
         camera.type=CameraType::Perspective;
+        camera.width=w;
+        camera.height=h;
         camera.center.Set(0,0,0,1);
         camera.eye.Set(100,100,100,1);
 
         camera.Refresh();      //更新矩阵计算
     }
+    
+    void Resize(int w,int h)override
+    {
+        camera.width=w;
+        camera.height=h;
+    }
 
     bool InitCameraUBO(vulkan::DescriptorSets *desc_set,uint world_matrix_bindpoint)
     {
-        InitCamera();
-
-        const VkExtent2D extent=device->GetExtent();
-
-        camera.width=extent.width;
-        camera.height=extent.height;
-
         ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
 
         if(!ubo_world_matrix)
@@ -306,8 +307,8 @@ public:
         Vector2f gap=mouse_pos-mouse_last_pos;
 
         bool update=false;
-        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.HorzRotate(-gap.x);else camera.WrapHorzRotate(gap.x);}
-        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.VertRotate(-gap.y);else camera.WrapVertRotate(gap.y);}
+        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.HorzRotate(-gap.x/10.0f);else camera.WrapHorzRotate(gap.x);}
+        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.VertRotate(-gap.y/10.0f);else camera.WrapVertRotate(gap.y);}
 
         mouse_last_pos=mouse_pos;
     }

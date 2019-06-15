@@ -85,7 +85,8 @@ void Device::RecreateDevice()
     }
 
     texture_cmd_buf=CreateCommandBuffer();
-
+    
+    current_frame=0;
     current_fence=0;
 }
 
