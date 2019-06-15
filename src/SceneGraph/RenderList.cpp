@@ -96,6 +96,7 @@ namespace hgl
             last_pipeline=nullptr;
             last_desc_sets=nullptr;
             last_renderable=nullptr;
+            last_pc=nullptr;
 
             const int count=scene_node_list.GetCount();
             SceneNode **node=scene_node_list.GetData();
