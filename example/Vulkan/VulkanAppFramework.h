@@ -312,8 +312,8 @@ public:
         Vector2f gap=mouse_pos-mouse_last_pos;
 
         bool update=false;
-        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.LeftRotate(gap.x);else camera.WrapRightRotate(gap.x);}
-        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.ForwardRotate(gap.y);else camera.WrapUpRotate(gap.y);}
+        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.HorzRotate(-gap.x);else camera.WrapHorzRotate(gap.x);}
+        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.VertRotate(-gap.y);else camera.WrapVertRotate(gap.y);}
 
         mouse_last_pos=mouse_pos;
     }
