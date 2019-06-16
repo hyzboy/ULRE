@@ -60,6 +60,8 @@ public:
         camera.eye=max_point;
 
         camera.Refresh();      //¸üÐÂ¾ØÕó¼ÆËã
+
+        move_speed=length(max_point,center_point)/100.0f;
     }
 
     bool InitCameraUBO(vulkan::DescriptorSets *desc_set,uint world_matrix_bindpoint)
@@ -98,8 +100,8 @@ public:
         if(key_status[kbR])camera.Up        (move_speed);else
         if(key_status[kbF])camera.Down      (move_speed);else
 
-        if(key_status[kbLeft ])view_model_matrix=rotate(hgl_ang2rad(move_speed*10),camera.forward_vector)*view_model_matrix;else
-        if(key_status[kbRight])view_model_matrix=rotate(hgl_ang2rad(-move_speed*10),camera.forward_vector)*view_model_matrix;else
+        if(key_status[kbLeft ])view_model_matrix=rotate(hgl_ang2rad(move_speed*100),normalized(camera.center-camera.eye))*view_model_matrix;else
+        if(key_status[kbRight])view_model_matrix=rotate(hgl_ang2rad(-move_speed*100),normalized(camera.center-camera.eye))*view_model_matrix;else
             return;
     }
 
@@ -117,7 +119,7 @@ public:
 
     virtual void MouseMove() override
     {
-        if(!(mouse_key&(mbLeft|mbRight)))return;
+        if(!mouse_key)return;
 
         Vector2f gap=mouse_pos-mouse_last_pos;
 
@@ -126,10 +128,15 @@ public:
             if(gap.x!=0)camera.HorzRotate(-gap.x/10.0f);
             if(gap.y!=0)camera.VertRotate(-gap.y/10.0f);
         }
-        else
+        else if(mouse_key&mbRight)
         {
             if(gap.x!=0)view_model_matrix=rotate(hgl_ang2rad(gap.x),camera.up_vector)*view_model_matrix;
             if(gap.y!=0)view_model_matrix=rotate(hgl_ang2rad(gap.y),camera.right_vector)*view_model_matrix;
+        }
+        else if(mouse_key&mbMid)
+        {
+            if(gap.x!=0)camera.Left(gap.x*move_speed/10.0f);
+            if(gap.y!=0)camera.Up(gap.y*move_speed/10.0f);
         }
 
         mouse_last_pos=mouse_pos;
