@@ -139,7 +139,7 @@ namespace hgl
             using GeometryCreater2D=GeometryCreater<VB2f>;
         }//namespace
 
-        vulkan::Renderable *CreateRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
+        vulkan::Renderable *CreateRenderableRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
         {
             GeometryCreater2D gc(db,mtl);
 
@@ -153,7 +153,7 @@ namespace hgl
             return gc.Finish();
         }
 
-        vulkan::Renderable *CreateRoundRectangle(SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
+        vulkan::Renderable *CreateRenderableRoundRectangle(SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
         {
             GeometryCreater2D gc(db,mtl);
 
@@ -229,7 +229,7 @@ namespace hgl
             return gc.Finish();
         }
 
-        vulkan::Renderable *CreateCircle(SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCircle(SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *cci)
         {
             GeometryCreater2D gc(db,mtl);
 
@@ -253,7 +253,7 @@ namespace hgl
             return gc.Finish();
         }
 
-        vulkan::Renderable *CreatePlaneGrid(SceneDB *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci)
+        vulkan::Renderable *CreateRenderablePlaneGrid(SceneDB *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci)
         {
             GeometryCreater3D gc(db,mtl);
 
@@ -300,7 +300,7 @@ namespace hgl
             return gc.Finish();
         }
 
-        vulkan::Renderable *CreatePlane(SceneDB *db,vulkan::Material *mtl,const PlaneCreateInfo *pci)
+        vulkan::Renderable *CreateRenderablePlane(SceneDB *db,vulkan::Material *mtl,const PlaneCreateInfo *pci)
         {
             const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    -0.5f,+0.5f,0.0f,   +0.5f,+0.5f,0.0f};
                     float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f,0.0f,           0.0f,1.0f,          1.0f, 1.0f};
@@ -341,7 +341,7 @@ namespace hgl
             return gc.Finish();
         }
 
-        vulkan::Renderable *CreateCube(SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCube(SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
         {                              // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    -0.5f, +0.5f, +0.5f,
             /*     *------------* */                            +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f,    -0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,

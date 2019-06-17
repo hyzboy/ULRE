@@ -22,6 +22,7 @@ SET(SCENE_GRAPH_SOURCE  AABox.cpp
                         SceneNode.cpp
                         SceneOrient.cpp
                         InlineGeometry.cpp
+						#InlinePipeline.cpp
                         #Material.cpp
                         #Mesh.cpp
                         #SceneFile.cpp
