@@ -81,6 +81,50 @@ namespace hgl
          * 创建一个球心坐标为0,0,0，半径为1的球体
          */
         vulkan::Renderable *CreateRenderableSphere(SceneDB *db,vulkan::Material *mtl,const uint numberSlices);
+
+        struct DomeCreateInfo
+        {
+            float radius;
+            uint numberSlices;
+        };//struct DomeCreateInfo
+
+        /**
+         * 创建一个穹顶
+         */
+        vulkan::Renderable *CreateRenderableDome(SceneDB *db,vulkan::Material *mtl, const DomeCreateInfo *);
+
+        struct TorusCreateInfo
+        {
+            float   innerRadius,
+                    outerRadius;
+
+            uint    numberSlices,
+                    numberStacks;
+        };//struct TorusCreateInfo
+        
+        /**
+         * 创建一个圆环
+         */
+        vulkan::Renderable *CreateRenderableTorus(SceneDB *db,vulkan::Material *mtl,TorusCreateInfo *tci);
+
+        struct CylinderCreateInfo
+        {
+            float   halfExtend,     //高度
+                    radius;         //半径
+            uint    numberSlices;
+        };//struct CylinderCreateInfo
+
+        vulkan::Renderable *CreateRenderableCylinder(SceneDB *db,vulkan::Material *mtl,CylinderCreateInfo *cci);
+
+        struct ConeCreateInfo
+        {
+            float   halfExtend,     //高度
+                    radius;         //半径
+            uint    numberSlices,   //圆切分精度
+                    numberStacks;   //柱高层数
+        };//struct ConeCreateInfo
+
+        vulkan::Renderable *CreateRenderableCone(SceneDB *db,vulkan::Material *mtl,ConeCreateInfo *cci);
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE

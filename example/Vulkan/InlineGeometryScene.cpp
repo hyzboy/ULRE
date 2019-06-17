@@ -26,10 +26,15 @@ private:
 
     vulkan::Renderable          *ro_plane_grid,
                                 *ro_cube,
-                                *ro_sphere;
+                                *ro_sphere,
+                                *ro_dome,
+                                *ro_torus,
+                                *ro_cylinder,
+                                *ro_cone;
 
-    vulkan::Pipeline            *pipeline_line       =nullptr,
-                                *pipeline_solid      =nullptr;
+    vulkan::Pipeline            *pipeline_line      =nullptr,
+                                *pipeline_solid     =nullptr,
+                                *pipeline_twoside   =nullptr;
 
 private:
 
@@ -77,6 +82,48 @@ private:
         {        
             ro_sphere=CreateRenderableSphere(db,material,16);
         }
+
+        {
+            DomeCreateInfo dci;
+
+            dci.radius=100;
+            dci.numberSlices=16;
+
+            ro_dome=CreateRenderableDome(db,material,&dci);
+        }
+
+        {
+            TorusCreateInfo tci;
+
+            tci.innerRadius=50;
+            tci.outerRadius=70;
+
+            tci.numberSlices=32;
+            tci.numberStacks=16;
+
+            ro_torus=CreateRenderableTorus(db,material,&tci);
+        }
+
+        {
+            CylinderCreateInfo cci;
+
+            cci.halfExtend=10;
+            cci.radius=10;
+            cci.numberSlices=16;
+
+            ro_cylinder=CreateRenderableCylinder(db,material,&cci);
+        }
+
+        {
+            ConeCreateInfo cci;
+
+            cci.halfExtend=10;
+            cci.radius=10;
+            cci.numberSlices=16;
+            cci.numberStacks=1;
+
+            ro_cone=CreateRenderableCone(db,material,&cci);
+        }
     }
 
     bool InitUBO()
@@ -99,8 +146,13 @@ private:
         db->Add(pipeline_line);
 
         pipeline_creater->Set(PRIM_TRIANGLES);
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
         pipeline_solid=pipeline_creater->Create();
         db->Add(pipeline_solid);
+
+        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
+        pipeline_twoside=pipeline_creater->Create();
+        db->Add(pipeline_twoside);
 
         delete pipeline_creater;
 
@@ -116,8 +168,12 @@ private:
     bool InitScene()
     {
         render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_cube      ),translate(-10,0,0)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_sphere    ),translate( 10,0,0)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_dome));
+        render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_torus));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cube     ),translate(-10,  0,10)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere   ),translate( 10,  0,10)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cylinder ),translate(  0, 16, 0));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cone     ),translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
