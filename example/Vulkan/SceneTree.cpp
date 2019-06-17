@@ -58,10 +58,9 @@ private:
 
     void CreateRenderObject()
     {
-        //struct CubeCreateInfo cci;
+        struct CubeCreateInfo cci;
 
-        //renderable_object=CreateCube(db,material,&cci);
-        renderable_object=CreateRenderableSphere(db,material,16);
+        renderable_object=CreateRenderableCube(db,material,&cci);
     }
 
     bool InitUBO()
@@ -121,8 +120,6 @@ private:
         render_root.RefreshMatrix();
         render_list.Clear();
         render_root.ExpendToList(&render_list);
-
-        BuildCommandBuffer(&render_list);
         return(true);
     }
 
@@ -159,15 +156,11 @@ public:
         render_root.RefreshMatrix(&rot);
         render_list.Clear();
         render_root.ExpendToList(&render_list);
-
-        BuildCommandBuffer(&render_list);
     }
-
-    void Resize(int w,int h)override
+    
+    void BuildCommandBuffer(uint32 index)
     {
-        CameraAppFramework::Resize(w,h);
-        
-        BuildCommandBuffer(&render_list);
+        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
     }
 };//class TestApp:public CameraAppFramework
 

@@ -66,7 +66,7 @@ private:
 
             rci.scope.Set(10,10,20,20);
 
-            ro_rectangle=CreateRectangle(db,material,&rci);
+            ro_rectangle=CreateRenderableRectangle(db,material,&rci);
         }
 
         {
@@ -76,7 +76,7 @@ private:
             rrci.radius=5;
             rrci.round_per=5;
 
-            ro_round_rectangle=CreateRoundRectangle(db,material,&rrci);
+            ro_round_rectangle=CreateRenderableRoundRectangle(db,material,&rrci);
         }
 
         {
@@ -90,7 +90,7 @@ private:
 
             cci.field_count=8;
 
-            ro_circle=CreateCircle(db,material,&cci);
+            ro_circle=CreateRenderableCircle(db,material,&cci);
         }
     }
 
@@ -138,7 +138,6 @@ private:
         render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
 
         render_root.ExpendToList(&render_list);
-
         BuildCommandBuffer(&render_list);
         return(true);
     }
@@ -167,9 +166,15 @@ public:
         return(true);
     }
 
-    void Resize(int,int)override
+    void Resize(int w,int h)
     {
         BuildCommandBuffer(&render_list);
+    }
+
+    void Draw()
+    {
+        AcquireNextImage();
+        VulkanApplicationFramework::Draw();
     }
 };//class TestApp:public VulkanApplicationFramework
 

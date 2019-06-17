@@ -82,6 +82,8 @@ public:
 
     virtual void Draw()override
     {
+        const uint32_t index=AcquireNextImage();
+
         camera.Refresh();                           //更新相机矩阵
         ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
         
@@ -89,9 +91,9 @@ public:
         render_list.Clear();
         render_root.ExpendToList(&render_list);
 
-        BuildCommandBuffer(&render_list);
+        BuildCommandBuffer(index,&render_list);
 
-        VulkanApplicationFramework::Draw();
+        SubmitDraw(index);
 
         if(key_status[kbW])camera.Forward   (move_speed);else
         if(key_status[kbS])camera.Backward  (move_speed);else

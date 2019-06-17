@@ -61,16 +61,16 @@ private:
         pgci.color.Set(0.75,0,0,1);
         pgci.side_color.Set(1,0,0,1);
 
-        ro_plane_grid[0]=CreatePlaneGrid(db,material,&pgci);
+        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,material,&pgci);
 
         pgci.color.Set(0,0.75,0,1);
         pgci.side_color.Set(0,1,0,1);
 
-        ro_plane_grid[1]=CreatePlaneGrid(db,material,&pgci);
+        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,material,&pgci);
 
         pgci.color.Set(0,0,0.75,1);
         pgci.side_color.Set(0,0,1,1);
-        ro_plane_grid[2]=CreatePlaneGrid(db,material,&pgci);
+        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,material,&pgci);
     }
 
     bool InitUBO()
@@ -114,7 +114,6 @@ private:
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
 
-        BuildCommandBuffer(&render_list);
         return(true);
     }
 
@@ -142,9 +141,9 @@ public:
         return(true);
     }
 
-    void Resize(int,int)override
+    void BuildCommandBuffer(uint32 index)
     {
-        BuildCommandBuffer(&render_list);
+        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
     }
 };//class TestApp:public CameraAppFramework
 

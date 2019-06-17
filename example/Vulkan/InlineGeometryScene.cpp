@@ -178,7 +178,6 @@ private:
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
 
-        BuildCommandBuffer(&render_list);
         return(true);
     }
 
@@ -205,10 +204,14 @@ public:
 
         return(true);
     }
-
-    void Resize(int,int)override
+    
+    void BuildCommandBuffer(uint32_t index) override
     {
-        BuildCommandBuffer(&render_list);
+        render_root.RefreshMatrix();
+        render_list.Clear();
+        render_root.ExpendToList(&render_list);
+        
+        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
     }
 };//class TestApp:public CameraAppFramework
 

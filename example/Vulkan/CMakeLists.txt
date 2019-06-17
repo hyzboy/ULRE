@@ -1,5 +1,5 @@
 ﻿macro(CreateProject name)
-	add_executable(${name} ${ARGN})
+	add_executable(${name} ${ARGN} VulkanAppFramework.h)
 	target_link_libraries(${name} ${ULRE})
 endmacro()
 
@@ -10,7 +10,7 @@ CreateProject(3.Geometry2D Geometry2D.cpp)
 CreateProject(4.Geometry3D Geometry3D.cpp)
 CreateProject(5.SceneTree SceneTree.cpp)
 
-CreateProject(6.LoadModel LoadModel.cpp TGATexture.cpp AssimpLoaderMesh.h AssimpLoaderMesh.cpp)
+CreateProject(6.LoadModel LoadModel.cpp TGATexture.cpp AssimpLoaderMesh.h AssimpLoaderMesh.cpp ViewModelFramework.h)
 target_link_libraries(6.LoadModel assimp)
 
 CreateProject(7.InlineGeometryScene InlineGeometryScene.cpp)
