@@ -149,58 +149,89 @@ public:
         }
     }
 
-    void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+    void BuildCommandBuffer(uint32_t index,vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
     {
         if(!p||!ds||!r)
             return;
 
         const vulkan::IndexBuffer *ib=r->GetIndexBuffer();
 
-        for(uint i=0;i<swap_chain_count;i++)
-        {
-            cmd_buf[i]->Begin();
-            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-            cmd_buf[i]->Bind(p);
-            cmd_buf[i]->Bind(ds);
-            cmd_buf[i]->Bind(r);
+        vulkan::CommandBuffer *cb=cmd_buf[index];
+        
+        cb->Begin();
+        cb->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(index));
+        cb->Bind(p);
+        cb->Bind(ds);
+        cb->Bind(r);
 
-            if (ib)
-                cmd_buf[i]->DrawIndexed(ib->GetCount());
-            else
-                cmd_buf[i]->Draw(r->GetDrawCount());
+        if (ib)
+            cb->DrawIndexed(ib->GetCount());
+        else
+            cb->Draw(r->GetDrawCount());
 
-            cmd_buf[i]->EndRenderPass();
-            cmd_buf[i]->End();
-        }
+        cb->EndRenderPass();
+        cb->End();
+    }
+    
+    void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+    {
+        for(uint32_t i=0;i<swap_chain_count;i++)
+            BuildCommandBuffer(i,p,ds,r);
+    }
+
+    void BuildCurrentCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+    {
+        BuildCommandBuffer(device->GetCurrentFrameIndices(),p,ds,r);
+    }
+
+    void BuildCommandBuffer(uint32_t index,RenderList *rl)
+    {
+        if(!rl)return;        
+
+        vulkan::CommandBuffer *cb=cmd_buf[index];
+
+        cb->Begin();
+        cb->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(index));
+        rl->Render(cb);
+        cb->EndRenderPass();
+        cb->End();
     }
 
     void BuildCommandBuffer(RenderList *rl)
     {
-        if(!rl)return;
-
-        for(uint i=0;i<swap_chain_count;i++)
-        {
-            cmd_buf[i]->Begin();
-            cmd_buf[i]->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(i));
-            rl->Render(cmd_buf[i]);
-            cmd_buf[i]->EndRenderPass();
-            cmd_buf[i]->End();
-        }
+        for(uint32_t i=0;i<swap_chain_count;i++)
+            BuildCommandBuffer(i,rl);
+    }
+    
+    void BuildCurrentCommandBuffer(RenderList *rl)
+    {    
+        BuildCommandBuffer(device->GetCurrentFrameIndices(),rl);
     }
 
 public:
 
-    virtual void Draw()
+    int AcquireNextImage()
     {
-        device->Wait();
-        device->AcquireNextImage();
+        if(device->Wait())
+            if(device->AcquireNextImage())
+                return device->GetCurrentFrameIndices();
 
-        uint32_t index=device->GetCurrentFrameIndices();
+        return -1;
+    }
 
+    void SubmitDraw(int index)
+    {
         VkCommandBuffer cb=*cmd_buf[index];
         
         device->SubmitDraw(&cb);
         device->QueuePresent();
+    }
+
+    virtual void Draw()
+    {
+        int index=AcquireNextImage();
+
+        SubmitDraw(index);
     }
 
     bool Run()
@@ -267,12 +298,18 @@ public:
         return desc_set->BindUBO(world_matrix_bindpoint,*ubo_world_matrix);
     }
 
+    virtual void BuildCommandBuffer(uint32_t index)=0;
+
     virtual void Draw()override
     {
+        const uint32_t index=AcquireNextImage();
+
         camera.Refresh();                           //更新相机矩阵
         ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
 
-        VulkanApplicationFramework::Draw();
+        BuildCommandBuffer(index);
+
+        SubmitDraw(index);
 
         if(key_status[kbW])camera.Forward   (move_speed);else
         if(key_status[kbS])camera.Backward  (move_speed);else

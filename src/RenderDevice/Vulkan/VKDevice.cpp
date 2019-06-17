@@ -245,8 +245,22 @@ ShaderModuleManage *Device::CreateShaderModuleManage()
     return(new ShaderModuleManage(this));
 }
 
+bool Device::Wait(bool wait_all,uint64_t time_out)
+{
+    VkFence fence=*fence_list[current_fence];
+    
+    VkResult result;
+
+    result=vkWaitForFences(attr->device,1,&fence,wait_all,time_out);
+    result=vkResetFences(attr->device,1,&fence);
+
+    return(true);
+}
+
 bool Device::AcquireNextImage()
 {
+    //VkFence fence=*fence_list[current_fence];
+
     return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
 }
 
@@ -261,21 +275,11 @@ bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
     VkFence fence=*fence_list[current_fence];
 
     VkResult result=vkQueueSubmit(attr->graphics_queue,1,&submit_info,fence);
-
-    return(result==VK_SUCCESS);
-}
-
-bool Device::Wait(bool wait_all,uint64_t time_out)
-{
-    VkFence fence=*fence_list[current_fence];
     
-    vkWaitForFences(attr->device,1,&fence,wait_all,time_out);
-    vkResetFences(attr->device,1,&fence);
-
     if(++current_fence==swap_chain_count)
         current_fence=0;
 
-    return(true);
+    return(result==VK_SUCCESS);
 }
 
 bool Device::QueuePresent()

@@ -158,8 +158,6 @@ namespace hgl
             GeometryCreater2D gc(db,mtl);
 
             if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
-
-            if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
             {
                 if(!gc.Init(4))
                     return(nullptr);
