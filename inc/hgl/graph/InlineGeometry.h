@@ -19,7 +19,7 @@ namespace hgl
             RectScope2f scope;
         };//struct RectangleCreateInfo
 
-        vulkan::Renderable *CreateRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
+        vulkan::Renderable *CreateRenderableRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
 
         /**
          * 圆角矩形创建信息
@@ -30,7 +30,7 @@ namespace hgl
             uint32_t round_per;     ///<圆角精度
         };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
 
-        vulkan::Renderable *CreateRoundRectangle(SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci);
+        vulkan::Renderable *CreateRenderableRoundRectangle(SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci);
 
         /**
          * 圆形创建信息
@@ -42,7 +42,7 @@ namespace hgl
             uint field_count;           ///<分段次数
         };//struct CircleCreateInfo
 
-        vulkan::Renderable *CreateCircle(SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *rci);
+        vulkan::Renderable *CreateRenderableCircle(SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *rci);
 
         /**
          * 平面网格创建信息
@@ -65,7 +65,7 @@ namespace hgl
             Vector2f tile;
         };//struct PlaneCreateInfo
 
-        vulkan::Renderable *CreatePlane(SceneDB *db,vulkan::Material *mtl,const PlaneCreateInfo *pci);
+        vulkan::Renderable *CreateRenderablePlane(SceneDB *db,vulkan::Material *mtl,const PlaneCreateInfo *pci);
 
         struct CubeCreateInfo
         {
