@@ -84,8 +84,6 @@ private:
 
     bool InitPipeline()
     {
-        constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
-
         {
             vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
             pipeline_creater->SetDepthTest(true);
@@ -117,7 +115,6 @@ private:
         render_root.ExpendToList(&render_list);
 
         BuildCommandBuffer(&render_list);
-
         return(true);
     }
 
