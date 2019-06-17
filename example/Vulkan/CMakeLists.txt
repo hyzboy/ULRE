@@ -12,3 +12,5 @@ CreateProject(5.SceneTree SceneTree.cpp)
 
 CreateProject(6.LoadModel LoadModel.cpp TGATexture.cpp AssimpLoaderMesh.h AssimpLoaderMesh.cpp)
 target_link_libraries(6.LoadModel assimp)
+
+CreateProject(7.InlineGeometryScene InlineGeometryScene.cpp)
