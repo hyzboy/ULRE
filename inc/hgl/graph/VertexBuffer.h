@@ -37,6 +37,13 @@ namespace hgl
 
             virtual ~VertexBufferBase()=default;
 
+            void BufferData(const T *ptr)
+            {
+                if(!ptr)return;
+
+                memcpy(mem_type,ptr,total_bytes);
+            }
+
             /**
             * 取得数据区地址
             * @param offset 从第几个数据开始访问
