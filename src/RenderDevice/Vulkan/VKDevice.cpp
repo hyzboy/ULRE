@@ -257,14 +257,11 @@ bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 
     submit_info.commandBufferCount = count;
     submit_info.pCommandBuffers = cmd_bufs;
-    
+
     VkFence fence=*fence_list[current_fence];
 
     VkResult result=vkQueueSubmit(attr->graphics_queue,1,&submit_info,fence);
 
-    if(++current_fence==swap_chain_count)
-        current_fence=0;
-    
     return(result==VK_SUCCESS);
 }
 
@@ -274,6 +271,9 @@ bool Device::Wait(bool wait_all,uint64_t time_out)
     
     vkWaitForFences(attr->device,1,&fence,wait_all,time_out);
     vkResetFences(attr->device,1,&fence);
+
+    if(++current_fence==swap_chain_count)
+        current_fence=0;
 
     return(true);
 }

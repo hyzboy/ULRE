@@ -71,12 +71,12 @@ private:
             pgci.color.Set(0.75,0,0,1);
             pgci.side_color.Set(1,0,0,1);
 
-            ro_plane_grid=CreatePlaneGrid(db,material,&pgci);
+            ro_plane_grid=CreateRenderablePlaneGrid(db,material,&pgci);
         }
         
         {
             struct CubeCreateInfo cci;            
-            ro_cube=CreateCube(db,material,&cci);
+            ro_cube=CreateRenderableCube(db,material,&cci);
         }
         
         {        
@@ -87,7 +87,7 @@ private:
             DomeCreateInfo dci;
 
             dci.radius=100;
-            dci.numberSlices=16;
+            dci.numberSlices=32;
 
             ro_dome=CreateRenderableDome(db,material,&dci);
         }
@@ -170,8 +170,8 @@ private:
         render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
         render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_dome));
         render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_torus));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cube     ),translate(-10,  0,10)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere   ),translate( 10,  0,10)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cylinder ),translate(  0, 16, 0));
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cone     ),translate(  0,-16, 0));
 
