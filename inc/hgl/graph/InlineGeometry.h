@@ -76,18 +76,11 @@ namespace hgl
          * 创建一个中心坐标为0,0,0，长宽高为1的立方体
          */
         vulkan::Renderable *CreateCube(SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
-
-        struct BoundingBoxCreateInfo
-        {
-            AABB bounding_box;
-        };//
-
+        
         /**
-         * 创建一个空心立方体，使用绑定盒的真实坐标
+         * 创建一个球心坐标为0,0,0，半径为1的球体
          */
-        vulkan::Renderable *CreateBoundingBox(SceneDB *db,vulkan::Material *mtl,const BoundingBoxCreateInfo *bbci);
-
-        //vulkan::Renderable *CreateSphere(SceneDB *db,vulkan::Material *mtl,const uint );
+        vulkan::Renderable *CreateRenderableSphere(SceneDB *db,vulkan::Material *mtl,const uint numberSlices);
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE

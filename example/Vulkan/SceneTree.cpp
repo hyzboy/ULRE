@@ -27,7 +27,7 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
 
-    vulkan::Renderable *        ro_cube             =nullptr;
+    vulkan::Renderable *        renderable_object   =nullptr;
 
     vulkan::Pipeline *          pipeline_line       =nullptr;
 
@@ -58,9 +58,10 @@ private:
 
     void CreateRenderObject()
     {
-        struct CubeCreateInfo cci;
+        //struct CubeCreateInfo cci;
 
-        ro_cube=CreateCube(db,material,&cci);
+        //renderable_object=CreateCube(db,material,&cci);
+        renderable_object=CreateRenderableSphere(db,material,16);
     }
 
     bool InitUBO()
@@ -74,8 +75,6 @@ private:
 
     bool InitPipeline()
     {
-        constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
-
         {
             vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
             pipeline_creater->SetDepthTest(true);
@@ -103,7 +102,7 @@ private:
         uint count;
         float size;
 
-        RenderableInstance *ri=db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_cube);
+        RenderableInstance *ri=db->CreateRenderableInstance(pipeline_line,descriptor_sets,renderable_object);
 
         for(uint i=0;i<360;i++)
         {

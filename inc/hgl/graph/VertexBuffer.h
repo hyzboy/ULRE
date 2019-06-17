@@ -79,10 +79,6 @@ namespace hgl
             */
             void End()
             {
-                //ChangeVertexBuffer( ((char *)start )-((char *)mem_type),
-                //                    ((char *)access)-((char *)start),
-                //                    start);
-
                 access=nullptr;
                 start=nullptr;
             }
