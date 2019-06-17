@@ -102,7 +102,7 @@ namespace
         swapchain_ci.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapchain_ci.pNext=nullptr;
         swapchain_ci.surface=rsa->surface;
-        swapchain_ci.minImageCount=rsa->surface_caps.minImageCount;
+        swapchain_ci.minImageCount=3;//rsa->surface_caps.minImageCount;
         swapchain_ci.imageFormat=rsa->format;
         swapchain_ci.imageExtent=rsa->swapchain_extent;
         swapchain_ci.preTransform=rsa->preTransform;

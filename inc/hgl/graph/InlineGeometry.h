@@ -58,7 +58,7 @@ namespace hgl
             Color4f side_color;     //边界线条颜色
         };//struct PlaneGridCreateInfo
 
-        vulkan::Renderable *CreatePlaneGrid(SceneDB *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci);
+        vulkan::Renderable *CreateRenderablePlaneGrid(SceneDB *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci);
 
         struct PlaneCreateInfo
         {
@@ -75,7 +75,7 @@ namespace hgl
         /**
          * 创建一个中心坐标为0,0,0，长宽高为1的立方体
          */
-        vulkan::Renderable *CreateCube(SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
+        vulkan::Renderable *CreateRenderableCube(SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
         
         /**
          * 创建一个球心坐标为0,0,0，半径为1的球体
