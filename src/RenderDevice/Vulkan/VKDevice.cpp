@@ -286,10 +286,20 @@ bool Device::QueuePresent()
 {
     present_info.pImageIndices=&current_frame;
 
-    if(vkQueuePresentKHR(attr->graphics_queue,&present_info)!=VK_SUCCESS)
-        return(false);
-        
-    if(vkQueueWaitIdle(attr->graphics_queue)!=VK_SUCCESS)
+    VkResult result=vkQueuePresentKHR(attr->graphics_queue,&present_info);
+    
+    if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) 
+    {
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			// Swap chain is no longer compatible with the surface and needs to be recreated
+			
+			return false;
+		} 
+	}
+
+    result=vkQueueWaitIdle(attr->graphics_queue);
+    
+    if(result!=VK_SUCCESS)
         return(false);
 
     return(true);
