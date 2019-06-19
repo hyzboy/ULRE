@@ -9,6 +9,15 @@ Framebuffer::~Framebuffer()
     vkDestroyFramebuffer(device,frame_buffer,nullptr);
 }
 
+Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> color,ImageView *depth)
+{    
+    if(!dev)return(nullptr);
+    if(!rp)return(nullptr);
+    if(!color.GetCount()&&!depth)return(nullptr);
+
+
+}
+
 Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *color,ImageView *depth)
 {
     if(!dev)return(nullptr);
@@ -16,8 +25,17 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *color,Image
     if(!color&&!depth)return(nullptr);
 
     if(color)
-        if(rp->GetColorFormat()!=color->GetFormat())
+    {
+        const auto &cf_list=rp->GetColorFormat();
+        
+        VkFormat cf;
+
+        if(!cf_list.Get(0,cf))
             return(nullptr);
+
+        if(cf!=color->GetFormat())
+            return(nullptr);
+    }
 
     if(depth)
         if(rp->GetDepthFormat()!=depth->GetFormat())
@@ -60,4 +78,6 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *color,Image
 
     return(new Framebuffer(dev->GetDevice(),fb));
 }
+
+//Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *depth)
 VK_NAMESPACE_END

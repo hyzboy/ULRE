@@ -13,17 +13,26 @@ class RenderPass
     VkDevice device;
     VkRenderPass render_pass;
 
-    VkFormat color_format,depth_format;
+    List<VkFormat> color_formats;
+    VkFormat depth_format;
 
 private:
 
     friend class Device;
 
+    RenderPass(VkDevice d,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
+    {
+        device=d;
+        render_pass=rp;
+        color_formats=cf;
+        depth_format=df;
+    }
+
     RenderPass(VkDevice d,VkRenderPass rp,VkFormat cf,VkFormat df)
     {
         device=d;
         render_pass=rp;
-        color_format=cf;
+        color_formats.Add(cf);
         depth_format=df;
     }
 
@@ -33,8 +42,8 @@ public:
 
     operator VkRenderPass(){return render_pass;}
 
-    const VkFormat GetColorFormat()const{return color_format;}
-    const VkFormat GetDepthFormat()const{return depth_format;}
+    const List<VkFormat> &  GetColorFormat()const{return color_formats;}
+    const VkFormat          GetDepthFormat()const{return depth_format;}
 };//class RenderPass
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
