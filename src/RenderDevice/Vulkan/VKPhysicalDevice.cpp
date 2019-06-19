@@ -35,7 +35,7 @@ PhysicalDevice::PhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
     if(GetExtensionSpecVersion(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
         GetPhysicalDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2KHR");
-    
+
     if(!GetPhysicalDeviceProperties2)
         if(GetExtensionSpecVersion(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME))
             GetPhysicalDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2");
@@ -89,6 +89,91 @@ const bool PhysicalDevice::CheckMemoryType(uint32_t typeBits,VkFlags requirement
         typeBits>>=1;
     }
     // No memory types matched, return failure
+    return false;
+}
+VkFormat PhysicalDevice::GetDepthFormat(bool lower_to_high)const
+{
+    constexpr VkFormat depthFormats[] =
+    {
+        VK_FORMAT_D16_UNORM,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT
+    };
+
+    VkFormat result=VK_FORMAT_UNDEFINED;
+
+    for (auto& format : depthFormats)
+    {
+        VkFormatProperties formatProps;
+
+        vkGetPhysicalDeviceFormatProperties(physical_device, format, &formatProps);
+
+        if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        {
+            if(lower_to_high)
+                return format;
+            else
+                result=format;
+        }
+    }
+
+    return result;
+}
+
+VkFormat PhysicalDevice::GetDepthStencilFormat(bool lower_to_high)const
+{
+    constexpr VkFormat depthStencilFormats[] =
+    {
+        VK_FORMAT_D16_UNORM_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT
+    };
+
+    VkFormat result=VK_FORMAT_UNDEFINED;
+
+    for (auto& format : depthStencilFormats)
+    {
+        VkFormatProperties formatProps;
+
+        vkGetPhysicalDeviceFormatProperties(physical_device, format, &formatProps);
+
+        if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        {
+            if(lower_to_high)
+                return format;
+            else
+                result=format;
+        }
+    }
+
+    return result;
+}
+
+bool PhysicalDevice::CheckDepthFormat(const VkFormat)const
+{
+    constexpr VkFormat depthFormats[] =
+    {
+        VK_FORMAT_D16_UNORM,
+        VK_FORMAT_X8_D24_UNORM_PACK32,
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D16_UNORM_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+    };
+
+    VkFormat result=VK_FORMAT_UNDEFINED;
+
+    for (auto& format : depthFormats)
+    {
+        VkFormatProperties formatProps;
+
+        vkGetPhysicalDeviceFormatProperties(physical_device, format, &formatProps);
+
+        if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+            return(true);
+    }
+
     return false;
 }
 VK_NAMESPACE_END

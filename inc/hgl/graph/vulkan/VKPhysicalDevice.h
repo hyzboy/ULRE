@@ -70,5 +70,10 @@ public:
 
         return fp;
     }
+    
+    VkFormat GetDepthFormat(bool lower_to_high=true)const;
+    VkFormat GetDepthStencilFormat(bool lower_to_high=true)const;
+
+    bool CheckDepthFormat(const VkFormat)const;
 };//class PhysicalDevice
 VK_NAMESPACE_END
