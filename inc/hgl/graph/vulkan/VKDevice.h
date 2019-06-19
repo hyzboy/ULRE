@@ -116,7 +116,15 @@ public: //material相关
 public: //Command Buffer 相关
 
     CommandBuffer * CreateCommandBuffer();
-    RenderPass *    CreateRenderPass(VkFormat color_format,VkFormat depth_format);
+
+    RenderPass *    CreateRenderPass(   List<VkFormat> color_format,VkFormat depth_format,
+                                        VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    RenderPass *    CreateRenderPass(   VkFormat color_format,VkFormat depth_format,
+                                        VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                        VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
     Fence *         CreateFence();
     Semaphore *     CreateSem();
 

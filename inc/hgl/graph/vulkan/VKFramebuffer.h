@@ -11,7 +11,9 @@ class Framebuffer
 
 private:
 
-    friend Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth);
+    friend Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> color,ImageView *depth);
+    friend Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth);    
+    friend Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *depth);
 
     Framebuffer(VkDevice dev,VkFramebuffer fb)
     {
@@ -26,6 +28,8 @@ public:
     operator VkFramebuffer(){return frame_buffer;}
 };//class Framebuffer
 
+Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> color,ImageView *depth=nullptr);
 Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth=nullptr);
+Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *depth);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
