@@ -12,11 +12,6 @@ Framebuffer::~Framebuffer()
 
 Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
 {    
-    if(!dev)return(nullptr);
-    if(!rp)return(nullptr);
-    
-    if(!color_count&&!depth)return(nullptr);
-
     uint att_count=color_count;
 
     if(depth)++att_count;
@@ -26,9 +21,6 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
     if(color_count)
     {
         const List<VkFormat> &cf_list=rp->GetColorFormat();
-
-        if(color_count!=cf_list.GetCount())
-            return(nullptr);
 
         const VkFormat *cf=cf_list.GetData();
         ImageView **iv=color_list;
@@ -75,6 +67,13 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
 
 Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> color,ImageView *depth)
 {    
+    if(!dev)return(nullptr);
+    if(!rp)return(nullptr);
+
+    if(rp->GetColorFormat().GetCount()!=color.GetCount())return(nullptr);
+
+    if(color.GetCount()==0&&!depth)return(nullptr);
+
     return CreateFramebuffer(dev,rp,color.GetData(),color.GetCount(),depth);
 }
 
