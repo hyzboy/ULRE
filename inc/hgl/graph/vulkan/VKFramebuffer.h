@@ -11,9 +11,7 @@ class Framebuffer
 
 private:
 
-    friend Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> color,ImageView *depth);
-    friend Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth);    
-    friend Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *depth);
+    friend Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
 
     Framebuffer(VkDevice dev,VkFramebuffer fb)
     {
