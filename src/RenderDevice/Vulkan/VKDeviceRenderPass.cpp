@@ -27,7 +27,7 @@ RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_
         attachments[i].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;
     }
 
-    VkFormat *cf=color_format.GetData();
+    const VkFormat *cf=color_format.GetData();
     for(int i=0;i<color_format.GetCount();i++)
     {
         attachments[i].finalLayout      = color_final_layout;
