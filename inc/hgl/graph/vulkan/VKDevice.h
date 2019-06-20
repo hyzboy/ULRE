@@ -130,11 +130,11 @@ public: //Command Buffer 相关
 
 public: //提交相关
 
-    bool AcquireNextImage   ();
-    bool SubmitDraw         (const VkCommandBuffer *,const uint32_t count=1);
-    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);
-    bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1);
-    bool QueuePresent       ();
+    bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1); ///<等待队列完成
+    bool AcquireNextImage   ();                                                                 ///<请求切换到下一帧(注意此函数调用并不代表画面会出现)
+    bool SubmitDraw         (const VkCommandBuffer *,const uint32_t count=1);                   ///<提交绘制指令
+    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
+    bool QueuePresent       ();                                                                 ///<等待队列完成，并将画面呈现出来
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
