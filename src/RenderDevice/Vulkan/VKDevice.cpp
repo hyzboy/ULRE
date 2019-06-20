@@ -30,20 +30,20 @@ Device::Device(DeviceAttribute *da)
     present_complete_semaphore  =this->CreateSem();
     render_complete_semaphore   =this->CreateSem();
     
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.pNext = nullptr;
-    submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = *present_complete_semaphore;
-    submit_info.pWaitDstStageMask = &pipe_stage_flags;
-    submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = *render_complete_semaphore;
+    submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.pNext                   = nullptr;
+    submit_info.waitSemaphoreCount      = 1;
+    submit_info.pWaitSemaphores         = *present_complete_semaphore;
+    submit_info.pWaitDstStageMask       = &pipe_stage_flags;
+    submit_info.signalSemaphoreCount    = 1;
+    submit_info.pSignalSemaphores       = *render_complete_semaphore;
     
     present_info.sType               = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.pNext               = nullptr;
-    present_info.swapchainCount      = 1;
-    present_info.pResults            = nullptr;
     present_info.waitSemaphoreCount  = 1;
     present_info.pWaitSemaphores     = *render_complete_semaphore;
+    present_info.swapchainCount      = 1;
+    present_info.pResults            = nullptr;
 
     RecreateDevice();
 }
@@ -104,12 +104,12 @@ CommandBuffer *Device::CreateCommandBuffer()
     if(!attr->cmd_pool)
         return(nullptr);
 
-    VkCommandBufferAllocateInfo cmd={};
-    cmd.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmd.pNext=nullptr;
-    cmd.commandPool=attr->cmd_pool;
-    cmd.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cmd.commandBufferCount=1;
+    VkCommandBufferAllocateInfo cmd;
+    cmd.sType               =VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmd.pNext               =nullptr;
+    cmd.commandPool         =attr->cmd_pool;
+    cmd.level               =VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmd.commandBufferCount  =1;
 
     VkCommandBuffer cmd_buf;
 
