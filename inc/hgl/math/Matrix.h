@@ -13,13 +13,13 @@ namespace hgl
 
     struct WorldMatrix
     {
-        Matrix4f two_dim;       //2D矩阵
+        alignas(16) Matrix4f two_dim;       //2D矩阵
 
-        Matrix4f projection;
-//        Matrix4f inverse_projection;
-        Matrix4f modelview;
-        Matrix4f mvp;
-        Matrix3f normal;
+        alignas(16) Matrix4f projection;
+//        alignas(16) Matrix4f inverse_projection;
+        alignas(16) Matrix4f modelview;
+        alignas(16) Matrix4f mvp;
+        alignas(16) Matrix3f normal;
     };//
 
     inline Matrix4f identity()
