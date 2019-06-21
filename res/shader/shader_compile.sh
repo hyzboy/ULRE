@@ -11,3 +11,6 @@ glslangValidator -V -o OnlyPosition3D.vert.spv OnlyPosition3D.vert
 
 glslangValidator -V -o c_gbuffer.vert.spv c_gbuffer.vert
 glslangValidator -V -o c_gbuffer.frag.spv c_gbuffer.frag
+
+glslangValidator -V -o Atomsphere.vert.spv Atomsphere.vert
+glslangValidator -V -o Atomsphere.frag.spv Atomsphere.frag
