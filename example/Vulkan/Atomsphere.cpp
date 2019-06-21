@@ -56,7 +56,7 @@ private:
 
     void CreateRenderObject()
     {
-        ro_sphere=CreateRenderableSphere(db,material,16);
+        ro_sphere=CreateRenderableSphere(db,material,128);
     }
     
     bool InitAtomsphereUBO(vulkan::DescriptorSets *desc_set,uint bindpoint)
