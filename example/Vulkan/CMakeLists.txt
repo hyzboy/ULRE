@@ -15,4 +15,6 @@ target_link_libraries(6.LoadModel assimp)
 
 CreateProject(7.InlineGeometryScene InlineGeometryScene.cpp)
 
-CreateProject(8.RenderToColor RenderToColor.cpp TGATexture.cpp)
+CreateProject(8.Atomsphere Atomsphere.cpp)
+
+CreateProject(9.RenderToColor RenderToColor.cpp TGATexture.cpp)
