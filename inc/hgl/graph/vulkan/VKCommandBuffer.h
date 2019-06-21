@@ -52,11 +52,11 @@ public:
         VkPipelineStageFlags                        dstStageMask,
         VkDependencyFlags                           dependencyFlags,
         uint32_t                                    memoryBarrierCount,
-        const VkMemoryBarrier*                      pMemoryBarriers,
+        const VkMemoryBarrier *                     pMemoryBarriers,
         uint32_t                                    bufferMemoryBarrierCount,
-        const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
+        const VkBufferMemoryBarrier *               pBufferMemoryBarriers,
         uint32_t                                    imageMemoryBarrierCount,
-        const VkImageMemoryBarrier*                 pImageMemoryBarriers)
+        const VkImageMemoryBarrier *                pImageMemoryBarriers)
     {
         vkCmdPipelineBarrier(cmd_buf,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
     }
