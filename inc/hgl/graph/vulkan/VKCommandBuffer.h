@@ -66,9 +66,19 @@ public:
         VkImage                                     dstImage,
         VkImageLayout                               dstImageLayout,
         uint32_t                                    regionCount,
-        const VkBufferImageCopy*                    pRegions)
+        const VkBufferImageCopy *                   pRegions)
     {
         vkCmdCopyBufferToImage(cmd_buf,srcBuffer,dstImage,dstImageLayout,regionCount,pRegions);
+    }
+
+    void CopyImageToBuffer( 
+        VkImage                                     srcImage,
+        VkImageLayout                               srcImageLayout,
+        VkBuffer                                    dstBuffer,
+        uint32_t                                    regionCount,
+        const VkBufferImageCopy *                   pRegions)
+    {
+        vkCmdCopyImageToBuffer(cmd_buf,srcImage,srcImageLayout,dstBuffer,regionCount,pRegions);
     }
 
     bool BeginRenderPass(RenderPass *rp,Framebuffer *fb);
