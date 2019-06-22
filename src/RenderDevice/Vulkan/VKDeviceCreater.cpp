@@ -247,18 +247,17 @@ namespace
 
     VkDescriptorPool CreateDescriptorPool(VkDevice device,int sets_count)
     {
-        VkDescriptorPoolSize pool_size[2];
-
-        pool_size[0].type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        pool_size[0].descriptorCount=1024;
-        pool_size[1].type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        pool_size[1].descriptorCount=1024;
+        VkDescriptorPoolSize pool_size[]=
+        {
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}
+        };
 
         VkDescriptorPoolCreateInfo dp_create_info={};
         dp_create_info.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         dp_create_info.pNext=nullptr;
         dp_create_info.maxSets=sets_count;
-        dp_create_info.poolSizeCount=2;
+        dp_create_info.poolSizeCount=sizeof(pool_size)/sizeof(VkDescriptorPoolSize);
         dp_create_info.pPoolSizes=pool_size;
 
         VkDescriptorPool desc_pool;
