@@ -58,9 +58,9 @@ namespace
 
         for(uint i=0;i<count;i++)
         {
-            tp->x= source->x;
-            tp->y=-source->y;
-            tp->z= source->z;
+            tp->x=source->x;
+            tp->y=source->y;
+            tp->z=source->z;
 
             ++source;
             ++tp;
@@ -143,7 +143,7 @@ namespace
         return AABB(POINT_VEC(minPoint),POINT_VEC(maxPoint));
     }
 
-    Matrix4f MatrixRotate(const aiMatrix4x4 &s)
+    Matrix4f MatrixConvert(const aiMatrix4x4 &s)
     {
         return Matrix4f(s.a1,s.a2,s.a3,s.a4,
                         s.b1,s.b2,s.b3,s.b4,
@@ -159,19 +159,19 @@ class AssimpLoaderMesh
 
     ModelData *model_data;
 
+    Matrix4f OpenGLCoord2VulkanCoordMatrix;
+
 private:
 
     void GetBoundingBox(const   aiNode *    node,
                                 aiVector3D *min_pos,
                                 aiVector3D *max_pos,
-                                const aiMatrix4x4 &up_matrix)
+                                const Matrix4f &up_matrix)
     {
-        aiMatrix4x4 cur_matrix;
+        Matrix4f cur_matrix;
         uint n = 0, t;
 
-        cur_matrix = up_matrix;
-
-        aiMultiplyMatrix4(&cur_matrix,&node->mTransformation);
+        cur_matrix=up_matrix*MatrixConvert(node->mTransformation);
 
         for (; n < node->mNumMeshes; ++n)
         {
@@ -179,16 +179,20 @@ private:
 
             for (t = 0; t < mesh->mNumVertices; ++t)
             {
-                aiVector3D tmp = mesh->mVertices[t];
-                aiTransformVecByMatrix4(&tmp,&cur_matrix);
+                aiVector3D gl_tmp = mesh->mVertices[t];
+                
+                Vector4f tmp=cur_matrix*Vector4f(gl_tmp.x,
+                                                 gl_tmp.y,
+                                                 gl_tmp.z,
+                                                 1.0f);
+                
+                min_pos->x = aisgl_min(min_pos->x,tmp.x);
+                min_pos->y = aisgl_min(min_pos->y,tmp.y);
+                min_pos->z = aisgl_min(min_pos->z,tmp.z);
 
-                min_pos->x = aisgl_min(min_pos->x, tmp.x);
-                min_pos->y = aisgl_min(min_pos->y,-tmp.y);
-                min_pos->z = aisgl_min(min_pos->z, tmp.z);
-
-                max_pos->x = aisgl_max(max_pos->x, tmp.x);
-                max_pos->y = aisgl_max(max_pos->y,-tmp.y);
-                max_pos->z = aisgl_max(max_pos->z, tmp.z);
+                max_pos->x = aisgl_max(max_pos->x,tmp.x);
+                max_pos->y = aisgl_max(max_pos->y,tmp.y);
+                max_pos->z = aisgl_max(max_pos->z,tmp.z);
             }
         }
 
@@ -198,9 +202,7 @@ private:
 
     void AssimpLoaderMesh::GetBoundingBox(const aiNode *node,aiVector3D *min_pos,aiVector3D *max_pos)
     {
-        aiMatrix4x4 root_matrix;
-
-        aiIdentityMatrix4(&root_matrix);
+        Matrix4f root_matrix=OpenGLCoord2VulkanCoordMatrix;
 
         min_pos->x = min_pos->y = min_pos->z =  1e10f;
         max_pos->x = max_pos->y = max_pos->z = -1e10f;
@@ -212,6 +214,8 @@ public:
 
     AssimpLoaderMesh(const OSString &fn,const aiScene *s):filename(fn),scene(s)
     {
+        OpenGLCoord2VulkanCoordMatrix=rotate(hgl_ang2rad(90),Vector3f(0,0,1))*rotate(hgl_ang2rad(90),Vector3f(1,0,0));
+
         model_data=new ModelData;
 
         aiVector3D scene_min,scene_max;
@@ -288,7 +292,7 @@ private:
     bool Load(ModelSceneNode *msn,const aiNode *node)
     {
         msn->name=node->mName.C_Str();
-        msn->local_matrix=MatrixRotate(node->mTransformation);
+        msn->local_matrix=MatrixConvert(node->mTransformation);
 
         if(node->mNumMeshes>0)
         {
@@ -321,7 +325,11 @@ public:
     {
         model_data->root_node=new ModelSceneNode;
 
-        return Load(model_data->root_node,scene->mRootNode);
+        if(!Load(model_data->root_node,scene->mRootNode))
+            return(false);
+
+        model_data->root_node->local_matrix=OpenGLCoord2VulkanCoordMatrix*model_data->root_node->local_matrix;
+        return(true);
     }
 };//class AssimpLoaderMesh
 

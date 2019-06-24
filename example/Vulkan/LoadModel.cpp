@@ -83,7 +83,8 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
 
-    vulkan::Pipeline *          pipeline_line       =nullptr;
+    vulkan::Pipeline *          pipeline_wireframe  =nullptr;
+    vulkan::Pipeline *          pipeline_lines      =nullptr;
 
 private:
 
@@ -92,13 +93,11 @@ private:
     vulkan::Renderable **mesh_renderable;
     RenderableInstance **mesh_renderable_instance;
 
-public:
+    vulkan::Renderable *axis_renderable;
+    RenderableInstance *axis_renderable_instance;
 
-    ~TestApp()
-    {
-        delete[] mesh_renderable_instance;
-        delete[] mesh_renderable;
-    }
+    vulkan::Renderable *bbox_renderable;
+    RenderableInstance *bbox_renderable_instance;
 
 private:
 
@@ -127,8 +126,28 @@ private:
         for(uint i=0;i<count;i++)
         {
             mesh_renderable[i]=CreateMeshRenderable(db,material,*md);
-            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_line,descriptor_sets,mesh_renderable[i]);
+            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_wireframe,descriptor_sets,mesh_renderable[i]);
             ++md;
+        }
+
+        {
+            AxisCreateInfo aci;
+
+            aci.root=model_data->bounding_box.CenterPoint().xyz();
+            aci.size=model_data->bounding_box.HalfSize().xyz();
+
+            axis_renderable=CreateRenderableAxis(db,material,&aci);
+            axis_renderable_instance=db->CreateRenderableInstance(pipeline_lines,descriptor_sets,axis_renderable);
+        }
+
+        {
+            CubeCreateInfo cci;
+
+            cci.center=model_data->bounding_box.CenterPoint().xyz();
+            cci.size=model_data->bounding_box.Size().xyz();
+
+            bbox_renderable=CreateRenderableBoundingBox(db,material,&cci);
+            bbox_renderable_instance=db->CreateRenderableInstance(pipeline_lines,descriptor_sets,bbox_renderable);
         }
     }
 
@@ -153,16 +172,23 @@ private:
             pipeline_creater->CloseCullFace();
             pipeline_creater->Set(PRIM_TRIANGLES);
 
-            pipeline_line=pipeline_creater->Create();
-            if(!pipeline_line)
-                return(false);
+            pipeline_wireframe=pipeline_creater->Create();
 
-            db->Add(pipeline_line);
+            if(pipeline_wireframe)
+                db->Add(pipeline_wireframe);
+
+            pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
+            pipeline_creater->Set(PRIM_LINES);
+
+            pipeline_lines=pipeline_creater->Create();
+
+            if(pipeline_lines)
+                db->Add(pipeline_lines);
 
             delete pipeline_creater;
         }
 
-        return pipeline_line;
+        return pipeline_wireframe;
     }
 
     void CreateSceneNode(SceneNode *scene_node,ModelSceneNode *model_node)
@@ -216,8 +242,11 @@ public:
             return(false);
 
         CreateRenderObject();
-        
-        CreateSceneNode(&render_root,model_data->root_node);
+
+        render_root.Add(axis_renderable_instance);
+        render_root.Add(bbox_renderable_instance);
+
+        CreateSceneNode(render_root.CreateSubNode(),model_data->root_node);
 
         return(true);
     }

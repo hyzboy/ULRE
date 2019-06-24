@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include"VulkanAppFramework.h"
 
@@ -15,7 +15,7 @@ protected:
 
     AABB                        bounding_box;
 
-    Matrix4f                    view_model_matrix;
+    Matrix4f                    object_matrix;
 
     ControlCamera               camera;
     float                       move_speed=1;
@@ -38,8 +38,6 @@ public:
 
         bounding_box=aabb;
 
-        view_model_matrix=identity();
-
         InitCamera(w,h);
         return(true);
     }
@@ -47,21 +45,25 @@ public:
     virtual void InitCamera(int w,int h)
     {     
         math::vec center_point=bounding_box.CenterPoint();
+        math::vec min_point=bounding_box.minPoint;
         math::vec max_point=bounding_box.maxPoint;
 
-        max_point.x*=5.0f;
-        max_point.y=center_point.y;
-        max_point.z=center_point.z;
+        math::vec eye(  max_point.x*5,
+                        center_point.y,
+                        center_point.z,
+                        1.0f);
         
-        camera.type=CameraType::Perspective;
-        camera.width=w;
-        camera.height=h;
-        camera.center=center_point;
-        camera.eye=max_point;
+        camera.type     =CameraType::Perspective;
+        camera.width    =w;
+        camera.height   =h;
+        camera.center   =center_point;
+        camera.eye      =eye;
 
-        camera.Refresh();      //¸üÐÂ¾ØÕó¼ÆËã
+        camera.Refresh();      //æ›´æ–°çŸ©é˜µè®¡ç®—
 
-        move_speed=length(max_point,center_point)/100.0f;
+        move_speed=length(min_point,center_point)/100.0f;
+
+        object_matrix=translate(-center_point.xyz());
     }
 
     bool InitCameraUBO(vulkan::DescriptorSets *desc_set,uint world_matrix_bindpoint)
@@ -84,10 +86,10 @@ public:
     {
         const uint32_t index=AcquireNextImage();
 
-        camera.Refresh();                           //¸üÐÂÏà»ú¾ØÕó
-        ubo_world_matrix->Write(&camera.matrix);    //Ð´Èë»º³åÇø
+        camera.Refresh();                           //æ›´æ–°ç›¸æœºçŸ©é˜µ
+        ubo_world_matrix->Write(&camera.matrix);    //å†™å…¥ç¼“å†²åŒº
         
-        render_root.RefreshMatrix(&view_model_matrix);
+        render_root.RefreshMatrix(&object_matrix);
         render_list.Clear();
         render_root.ExpendToList(&render_list);
 
@@ -102,8 +104,10 @@ public:
         if(key_status[kbR])camera.Up        (move_speed);else
         if(key_status[kbF])camera.Down      (move_speed);else
 
-        if(key_status[kbLeft ])view_model_matrix=rotate(hgl_ang2rad(move_speed*100),normalized(camera.center-camera.eye))*view_model_matrix;else
-        if(key_status[kbRight])view_model_matrix=rotate(hgl_ang2rad(-move_speed*100),normalized(camera.center-camera.eye))*view_model_matrix;else
+//        if(key_status[kbLeft ])object_matrix=rotate(hgl_ang2rad(move_speed),normalized(camera.center-camera.eye))*object_matrix;else
+        //if(key_status[kbRight])object_matrix=rotate(hgl_ang2rad(-move_speed),normalized(camera.center-camera.eye))*object_matrix;else
+        if(key_status[kbLeft ])camera.WrapHorzRotate(move_speed);else
+        if(key_status[kbRight])camera.WrapHorzRotate(-move_speed);else
             return;
     }
 
@@ -132,8 +136,8 @@ public:
         }
         else if(mouse_key&mbRight)
         {
-            if(gap.x!=0)view_model_matrix=rotate(hgl_ang2rad(gap.x),camera.up_vector)*view_model_matrix;
-            if(gap.y!=0)view_model_matrix=rotate(hgl_ang2rad(gap.y),camera.right_vector)*view_model_matrix;
+            if(gap.x!=0)object_matrix=rotate(hgl_ang2rad(gap.x),camera.up_vector)*object_matrix;
+            if(gap.y!=0)object_matrix=rotate(hgl_ang2rad(-gap.y),camera.forward_vector)*object_matrix;
         }
         else if(mouse_key&mbMid)
         {
