@@ -214,7 +214,9 @@ public:
 
     AssimpLoaderMesh(const OSString &fn,const aiScene *s):filename(fn),scene(s)
     {
-        OpenGLCoord2VulkanCoordMatrix=rotate(hgl_ang2rad(90),Vector3f(0,0,1))*rotate(hgl_ang2rad(90),Vector3f(1,0,0));
+        OpenGLCoord2VulkanCoordMatrix=Matrix4f::RotateZ(hgl_ang2rad(-90))*Matrix4f::RotateX(hgl_ang2rad(90));
+        
+        //rotate(hgl_ang2rad(90),Vector3f(0,0,1))*rotate(hgl_ang2rad(90),Vector3f(1,0,0))*scale(1,1,-1);
 
         model_data=new ModelData;
 
