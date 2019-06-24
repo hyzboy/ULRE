@@ -1,4 +1,4 @@
-// 8.大气渲染
+﻿// 8.大气渲染
 //  画一个球，纯粹使用shader计算出颜色
 
 #include"VulkanAppFramework.h"
