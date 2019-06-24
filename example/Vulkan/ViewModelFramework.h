@@ -15,9 +15,9 @@ protected:
 
     AABB                        bounding_box;
 
-    Matrix4f                    object_matrix;
+    Matrix4f                    object_matrix,origin_matrix;
 
-    ControlCamera               camera;
+    ControlCamera               camera,origin_camera;
     float                       move_speed=1;
 
     Vector2f                    mouse_last_pos;
@@ -44,12 +44,13 @@ public:
 
     virtual void InitCamera(int w,int h)
     {     
-        math::vec center_point=bounding_box.CenterPoint();
-        math::vec min_point=bounding_box.minPoint;
-        math::vec max_point=bounding_box.maxPoint;
+        math::vec center_point  =bounding_box.CenterPoint();
+        math::vec min_point     =bounding_box.minPoint;
+        math::vec max_point     =bounding_box.maxPoint;
+        math::vec size          =bounding_box.Size();
 
-        math::vec eye(  max_point.x*5,
-                        center_point.y,
+        math::vec eye(  center_point.x,
+                        center_point.y-size.y*2,
                         center_point.z,
                         1.0f);
         
@@ -61,9 +62,12 @@ public:
 
         camera.Refresh();      //更新矩阵计算
 
+        origin_camera=camera;
+
         move_speed=length(min_point,center_point)/100.0f;
 
         object_matrix=translate(-center_point.xyz());
+        origin_matrix=object_matrix;
     }
 
     bool InitCameraUBO(vulkan::DescriptorSets *desc_set,uint world_matrix_bindpoint)
@@ -97,18 +101,31 @@ public:
 
         SubmitDraw(index);
 
+        if(key_status[kbEnter])
+        {
+            origin_camera.width=camera.width;
+            origin_camera.height=camera.height;
+            camera=origin_camera;
+            object_matrix=origin_matrix;
+        }
+        else
         if(key_status[kbW])camera.Forward   (move_speed);else
         if(key_status[kbS])camera.Backward  (move_speed);else
         if(key_status[kbA])camera.Left      (move_speed);else
         if(key_status[kbD])camera.Right     (move_speed);else
         if(key_status[kbR])camera.Up        (move_speed);else
         if(key_status[kbF])camera.Down      (move_speed);else
+        {
+            auto axis=normalized(camera.center-camera.eye);
+            float rotate_rad=hgl_ang2rad(move_speed)*10;
 
-//        if(key_status[kbLeft ])object_matrix=rotate(hgl_ang2rad(move_speed),normalized(camera.center-camera.eye))*object_matrix;else
-        //if(key_status[kbRight])object_matrix=rotate(hgl_ang2rad(-move_speed),normalized(camera.center-camera.eye))*object_matrix;else
-        if(key_status[kbLeft ])camera.WrapHorzRotate(move_speed);else
-        if(key_status[kbRight])camera.WrapHorzRotate(-move_speed);else
+            if(key_status[kbLeft ])
+                object_matrix=rotate(-rotate_rad,camera.forward_vector)*object_matrix;else
+            if(key_status[kbRight])
+                object_matrix=rotate( rotate_rad,camera.forward_vector)*object_matrix;else
+
             return;
+        }
     }
 
     virtual void KeyPress(KeyboardButton kb)override
@@ -137,12 +154,12 @@ public:
         else if(mouse_key&mbRight)
         {
             if(gap.x!=0)object_matrix=rotate(hgl_ang2rad(gap.x),camera.up_vector)*object_matrix;
-            if(gap.y!=0)object_matrix=rotate(hgl_ang2rad(-gap.y),camera.forward_vector)*object_matrix;
+            if(gap.y!=0)object_matrix=rotate(hgl_ang2rad(gap.y),camera.right_vector)*object_matrix;
         }
         else if(mouse_key&mbMid)
         {
-            if(gap.x!=0)camera.Left(gap.x*move_speed/10.0f);
-            if(gap.y!=0)camera.Up(gap.y*move_speed/10.0f);
+            if(gap.x!=0)camera.Left(gap.x*move_speed/5.0f);
+            if(gap.y!=0)camera.Up(gap.y*move_speed/5.0f);
         }
 
         mouse_last_pos=mouse_pos;
