@@ -3,22 +3,23 @@ namespace hgl
 {
     namespace graph
     {
-        inline Matrix4f LookAt(const Vector4f &eye,const Vector4f &target,const Vector4f &up)
+        template<typename V>
+        inline Matrix4f LookAt(const V &eye,const V &target,const V &up)
         {
-            Vector4f forward=target-eye;
+            V forward=target-eye;
 
             normalize(forward);
 
-            Vector4f side=cross(forward,up);
+            V side=cross(forward,up);
 
             normalize(side);
 
-            Vector4f nup=cross(side,forward);
+            V nup=cross(side,forward);
 
-            Matrix4f result(side.x,         side.y,         side.z,             0.0f,
-                            nup.x,          nup.y,          nup.z,              0.0f,
+            Matrix4f result( side.x,         side.y,         side.z,            0.0f,
+                             nup.x,          nup.y,          nup.z,             0.0f,
                             -forward.x,     -forward.y,     -forward.z,         0.0f,
-                            -dot(side,eye), -dot(nup,eye),  dot(forward,eye),   1.0f);
+                            -dot(side,eye), -dot(nup,eye),   dot(forward,eye),  1.0f);
 
             return result*translate(-eye.xyz());
         }
@@ -33,6 +34,7 @@ namespace hgl
             //matrix.inverse_projection=matrix.projection.Inverted();
 
             matrix.modelview=hgl::graph::LookAt(eye,center,up_vector);
+            //matrix.modelview=Matrix4f::LookAt(eye.xyz(),center.xyz(),forward_vector.xyz(),up_vector.xyz(),up_vector.xyz());
 
             matrix.mvp=matrix.projection*matrix.modelview;
 
