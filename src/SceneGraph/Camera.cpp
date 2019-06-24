@@ -18,8 +18,8 @@ namespace hgl
 
             Matrix4f result( side.x,         side.y,         side.z,            0.0f,
                              nup.x,          nup.y,          nup.z,             0.0f,
-                            -forward.x,     -forward.y,     -forward.z,         0.0f,
-                            -dot(side,eye), -dot(nup,eye),   dot(forward,eye),  1.0f);
+                            -forward.x,     -forward.y,     -forward.z/2.0f,    0.0f,
+                             0.0f,           0.0f,           0.5f,              1.0f);
 
             return result*translate(-eye.xyz());
         }

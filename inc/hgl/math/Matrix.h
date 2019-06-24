@@ -20,7 +20,7 @@ namespace hgl
         alignas(16) Matrix4f modelview;
         alignas(16) Matrix4f mvp;
         alignas(16) Matrix3f normal;
-    };//
+    };//struct WorldMatrix
 
     inline Matrix4f identity()
     {

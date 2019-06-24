@@ -6,11 +6,27 @@ namespace hgl
 {
     namespace graph
     {
+        /*
+         * OpenGL Coordinate System         Vulkan Coordinate System        My Coordinate System
+         *
+         *                                         /Z
+         *     Y|    /Z                           /                             Z|    /Y
+         *      |   /                            /                               |   /        
+         *      |  /                            *------------                    |  /         
+         *      | /                             |           X                    | /          
+         *      |/                              |                                |/           
+         *      *------------                   |                                *------------
+         *                  X                   | Y                                          X
+         */       
+
+        /**
+         * 摄像机类型
+         */
         enum class CameraType
         {
             Perspective,
             Ortho
-        };//
+        };//enum class CameraType
 
         /**
         * 摄像机数据结构
@@ -28,7 +44,7 @@ namespace hgl
             Vector4f eye;               ///<眼睛坐标
             Vector4f center;            ///<视点坐标
             Vector4f up_vector      =Vector4f(0,0,1,0); ///<向上量(默认0,0,1)
-            Vector4f forward_vector =Vector4f(0,-1,0,0); ///<向前量(默认0,1,0)
+            Vector4f forward_vector =Vector4f(0,1,0,0); ///<向前量(默认0,1,0)
             Vector4f right_vector   =Vector4f(1,0,0,0); ///<向右量(默认0,0,1)
 
         public:
@@ -40,6 +56,25 @@ namespace hgl
         public:
 
             void Refresh();
+
+            void operator = (const Camera &cam)
+            {
+                type            =cam.type;
+                width           =cam.width;
+                height          =cam.height;
+                fov             =cam.fov;
+                znear           =cam.znear;
+                zfar            =cam.zfar;
+
+                eye             =cam.eye;
+                center          =cam.center;
+                up_vector       =cam.up_vector;
+                forward_vector  =cam.forward_vector;
+                right_vector    =cam.right_vector;
+
+                matrix          =cam.matrix;
+                frustum         =cam.frustum;
+            }
         };//struct Camera
 
         /**
@@ -75,11 +110,11 @@ namespace hgl
              * @param ang 角度
              * @param axis 旋转轴
              */
-             void WrapRotate(double ang,Vector4f axis)
-             {
+            void WrapRotate(double ang,Vector4f axis)
+            {
                 normalize(axis);
                 eye=center+(eye-center)*rotate(hgl_ang2rad(ang),axis);
-             }
+            }
 
         public: //方法
 

@@ -168,19 +168,16 @@ private:
                                 aiVector3D *max_pos,
                                 const Matrix4f &up_matrix)
     {
-        Matrix4f cur_matrix;
-        uint n = 0, t;
+        Matrix4f cur_matrix=up_matrix*MatrixConvert(node->mTransformation);
+        uint n, t;
 
-        cur_matrix=up_matrix*MatrixConvert(node->mTransformation);
-
-        for (; n < node->mNumMeshes; ++n)
+        for (n=0; n < node->mNumMeshes; ++n)
         {
             const aiMesh *mesh=scene->mMeshes[node->mMeshes[n]];
 
             for (t = 0; t < mesh->mNumVertices; ++t)
             {
                 aiVector3D gl_tmp = mesh->mVertices[t];
-                
                 Vector4f tmp=cur_matrix*Vector4f(gl_tmp.x,
                                                  gl_tmp.y,
                                                  gl_tmp.z,
@@ -214,9 +211,7 @@ public:
 
     AssimpLoaderMesh(const OSString &fn,const aiScene *s):filename(fn),scene(s)
     {
-        OpenGLCoord2VulkanCoordMatrix=Matrix4f::RotateZ(hgl_ang2rad(-90))*Matrix4f::RotateX(hgl_ang2rad(90));
-        
-        //rotate(hgl_ang2rad(90),Vector3f(0,0,1))*rotate(hgl_ang2rad(90),Vector3f(1,0,0))*scale(1,1,-1);
+        OpenGLCoord2VulkanCoordMatrix=scale(1,-1,1)*rotate(hgl_ang2rad(90),Vector3f(1,0,0));
 
         model_data=new ModelData;
 
