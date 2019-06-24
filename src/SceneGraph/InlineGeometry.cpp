@@ -74,11 +74,11 @@ namespace hgl
                 void WriteTangent   (const float *v){if(tangent   )tangent    ->BufferData(v);}
                 void WriteTexCoord  (const float *v){if(tex_coord )tex_coord  ->BufferData(v);}
 
-                VERTEX_VB_FORMAT *GetVertex     (){if(vertex    )vertex     ->Begin();return vertex;}
-                VB4f *GetColor      (){if(color     )color      ->Begin();return color;}
-                VB3f *GetNormal     (){if(normal    )normal     ->Begin();return normal;}
-                VB3f *GetTangent    (){if(tangent   )tangent    ->Begin();return tangent;}
-                VB2f *GetTexCoord   (){if(tex_coord )tex_coord  ->Begin();return tex_coord;}
+                VERTEX_VB_FORMAT *  GetVertex     (){return vertex;    }
+                VB4f *              GetColor      (){return color;     }
+                VB3f *              GetNormal     (){return normal;    }
+                VB3f *              GetTangent    (){return tangent;   }
+                VB2f *              GetTexCoord   (){return tex_coord; }
 
                 float *GetVertexPointer     (){return vertex    ?(float *)vertex    ->Begin():nullptr;}
                 float *GetColorPointer      (){return color     ?(float *)color     ->Begin():nullptr;}
@@ -116,10 +116,10 @@ namespace hgl
                         Finish(vertex_binding,vertex);
                     }
 
-                    if(color)Finish(color_binding,color);
-                    if(normal)Finish(normal_binding,normal);
-                    if(tangent)Finish(tangent_binding,tangent);
-                    if(tex_coord)Finish(texcoord_binding,tex_coord);
+                    if(color    )Finish(color_binding,      color);
+                    if(normal   )Finish(normal_binding,     normal);
+                    if(tangent  )Finish(tangent_binding,    tangent);
+                    if(tex_coord)Finish(texcoord_binding,   tex_coord);
 
                     if(ibo)
                     {   
@@ -358,7 +358,7 @@ namespace hgl
                                         +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,       0.0f, 0.0f,+1.0f,       0.0f, 0.0f,+1.0f,
                                          0.0f, 0.0f,+1.0f,       0.0f, 0.0f,+1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f };
 
-                  float tex_coords[] ={ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+            const float tex_coords[] ={ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
                                         1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
                                         0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f };
 
@@ -367,21 +367,45 @@ namespace hgl
             if(!gc.Init(24))
                 return(nullptr);
 
-            gc.WriteVertex(points);
+            if(cci->center  ==Vector3f(0,0,0)
+             &&cci->size    ==Vector3f(1,1,1))
+            {
+                gc.WriteVertex(points);
+            }
+            else
+            {
+                const float *sp=points;
+                float *vp=gc.GetVertexPointer();
+
+                for(uint i=0;i<24;i++)
+                {
+                    *vp=cci->center.x+(*sp)*cci->size.x;  ++vp;++sp;
+                    *vp=cci->center.y+(*sp)*cci->size.y;  ++vp;++sp;
+                    *vp=cci->center.z+(*sp)*cci->size.z;  ++vp;++sp;
+                }
+            }
+
             gc.WriteNormal(normals);
             gc.WriteTangent(tangents);
 
-            VB2f *tc_vb=gc.GetTexCoord();
-            if(tc_vb)
-            {
-                float *tc=tex_coords;
-                for(uint i=0;i<24;i++)
-                {
-                    (*tc)*=cci->tile.x;++tc;
-                    (*tc)*=cci->tile.y;++tc;
-                }
+            float *tcp=gc.GetTexCoordPointer();
 
-                tc_vb->BufferData(tex_coords);
+            if(tcp)
+            {
+                if(cci->tile.x==1&&cci->tile.y==1)
+                {
+                    gc.WriteTexCoord(tex_coords);
+                }
+                else
+                {
+                    const float *tc=tex_coords;
+
+                    for(uint i=0;i<24;i++)
+                    {
+                        *tcp=(*tc)*cci->tile.x;++tc;++tcp;
+                        *tcp=(*tc)*cci->tile.y;++tc;++tcp;
+                    }
+                }
             }
 
             gc.CreateIBO16(6*2*3,indices);            
@@ -668,7 +692,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableTorus(SceneDB *db,vulkan::Material *mtl,TorusCreateInfo *tci)
+        vulkan::Renderable *CreateRenderableTorus(SceneDB *db,vulkan::Material *mtl,const TorusCreateInfo *tci)
         {
             GeometryCreater3D gc(db,mtl);
 
@@ -819,7 +843,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableCylinder(SceneDB *db,vulkan::Material *mtl,CylinderCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCylinder(SceneDB *db,vulkan::Material *mtl,const CylinderCreateInfo *cci)
         {
             uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
@@ -1033,7 +1057,7 @@ namespace hgl
             }
         }//namespace
         
-        vulkan::Renderable *CreateRenderableCone(SceneDB *db,vulkan::Material *mtl,ConeCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCone(SceneDB *db,vulkan::Material *mtl,const ConeCreateInfo *cci)
         {
             GeometryCreater3D gc(db,mtl);
 
@@ -1151,6 +1175,85 @@ namespace hgl
                 CreateConeIndices<uint16>(gc.CreateIBO16(numberIndices),cci->numberSlices,cci->numberStacks);
             else
                 CreateConeIndices<uint32>(gc.CreateIBO32(numberIndices),cci->numberSlices,cci->numberStacks);
+
+            return gc.Finish();
+        }
+
+        vulkan::Renderable *CreateRenderableAxis(SceneDB *db,vulkan::Material *mtl,const AxisCreateInfo *aci)
+        {
+            GeometryCreater3D gc(db,mtl);
+
+            if(!gc.Init(6))
+                return(false);
+
+            VB3f *vertex=gc.GetVertex();
+            VB4f *color=gc.GetColor();
+
+            if(!vertex||!color)
+                return(nullptr);
+
+            vertex->Write(aci->root);color->Write(aci->color[0]);
+            vertex->Write(aci->root.x+aci->size[0],aci->root.y,aci->root.z);color->Write(aci->color[0]);
+
+            vertex->Write(aci->root);color->Write(aci->color[1]);
+            vertex->Write(aci->root.x,aci->root.y+aci->size[1],aci->root.z);color->Write(aci->color[1]);
+
+            vertex->Write(aci->root);color->Write(aci->color[2]);
+            vertex->Write(aci->root.x,aci->root.y,aci->root.z+aci->size[2]);color->Write(aci->color[2]);
+
+            return gc.Finish();
+        }
+
+        vulkan::Renderable *CreateRenderableBoundingBox(SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
+        {
+            // Points of a cube.
+            /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
+            /*     *------------* */                            -0.5, 0.5, 0.5,     0.5, 0.5,0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5};
+            /*    /|           /| */                            
+            /*  0/ |         1/ | */                            
+            /*  *--+---------*  | */    
+            /*  |  |         |  | */    
+            /*  | 7|         | 6| */    
+            /*  |  *---------+--* */    
+            /*  | /          | /  */    
+            /*  |/          2|/   */    
+            /* 3*------------*    */    
+            
+            const uint16 indices[]=
+            {
+                0,1,    1,2,    2,3,    3,0,
+                4,5,    5,6,    6,7,    7,4,
+                0,4,    1,5,    2,6,    3,7
+            };
+
+            GeometryCreater3D gc(db,mtl);
+
+            if(!gc.Init(8))
+                return(false);
+
+            VB3f *vertex=gc.GetVertex();
+
+            if(!vertex)return(nullptr);
+            
+            if(cci->center  ==Vector3f(0,0,0)
+             &&cci->size    ==Vector3f(1,1,1))
+            {
+                gc.WriteVertex(points);
+            }
+            else
+            {
+                const float *sp=points;
+                float *vp=gc.GetVertexPointer();
+
+                for(uint i=0;i<8;i++)
+                {
+                    *vp=cci->center.x+(*sp)*cci->size.x;  ++vp;++sp;
+                    *vp=cci->center.y+(*sp)*cci->size.y;  ++vp;++sp;
+                    *vp=cci->center.z+(*sp)*cci->size.z;  ++vp;++sp;
+                }
+            }
+
+            gc.CreateIBO16(24,indices);
 
             return gc.Finish();
         }
