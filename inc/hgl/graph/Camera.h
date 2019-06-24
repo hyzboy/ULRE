@@ -28,7 +28,7 @@ namespace hgl
             Vector4f eye;               ///<眼睛坐标
             Vector4f center;            ///<视点坐标
             Vector4f up_vector      =Vector4f(0,0,1,0); ///<向上量(默认0,0,1)
-            Vector4f forward_vector =Vector4f(0,1,0,0); ///<向前量(默认0,1,0)
+            Vector4f forward_vector =Vector4f(0,-1,0,0); ///<向前量(默认0,1,0)
             Vector4f right_vector   =Vector4f(1,0,0,0); ///<向右量(默认0,0,1)
 
         public:
