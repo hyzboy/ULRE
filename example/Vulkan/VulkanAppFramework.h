@@ -231,6 +231,8 @@ public:
     {
         int index=AcquireNextImage();
 
+        if(index<0||index>swap_chain_count)return;
+
         SubmitDraw(index);
     }
 

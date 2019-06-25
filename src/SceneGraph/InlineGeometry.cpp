@@ -18,7 +18,7 @@ namespace hgl
                 const vulkan::VertexShaderModule *vsm=nullptr;
 
                 vulkan::Renderable *render_obj=nullptr;
-            
+           
                 int vertex_binding  =-1;
                 int color_binding   =-1;
                 int normal_binding  =-1;
@@ -74,11 +74,11 @@ namespace hgl
                 void WriteTangent   (const float *v){if(tangent   )tangent    ->BufferData(v);}
                 void WriteTexCoord  (const float *v){if(tex_coord )tex_coord  ->BufferData(v);}
 
-                VERTEX_VB_FORMAT *  GetVertex     (){return vertex;    }
-                VB4f *              GetColor      (){return color;     }
-                VB3f *              GetNormal     (){return normal;    }
-                VB3f *              GetTangent    (){return tangent;   }
-                VB2f *              GetTexCoord   (){return tex_coord; }
+                VERTEX_VB_FORMAT *  GetVertex     (){if(!vertex)return nullptr;vertex->Begin();return vertex;    }
+                VB4f *              GetColor      (){if(!color)return nullptr;color->Begin();return color;     }
+                VB3f *              GetNormal     (){if(!normal)return nullptr;normal->Begin();return normal;    }
+                VB3f *              GetTangent    (){if(!tangent)return nullptr;tangent->Begin();return tangent;   }
+                VB2f *              GetTexCoord   (){if(!tex_coord)return nullptr;tex_coord->Begin();return tex_coord; }
 
                 float *GetVertexPointer     (){return vertex    ?(float *)vertex    ->Begin():nullptr;}
                 float *GetColorPointer      (){return color     ?(float *)color     ->Begin():nullptr;}
@@ -231,14 +231,12 @@ namespace hgl
         {
             GeometryCreater2D gc(db,mtl);
 
-            if(!gc.Init(cci->field_count+2))
+            if(!gc.Init(cci->field_count))
                 return(nullptr);
 
             VB2f *vertex=gc.GetVertex();
 
-            vertex->Write(cci->center.x,cci->center.y);
-
-            for(uint i=0;i<=cci->field_count;i++)
+            for(uint i=0;i<cci->field_count;i++)
             {
                 float ang=float(i)/float(cci->field_count)*360.0f;
 
