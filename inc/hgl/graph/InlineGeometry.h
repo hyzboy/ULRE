@@ -22,7 +22,7 @@ namespace hgl
         vulkan::Renderable *CreateRenderableRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
 
         /**
-         * 圆角矩形创建信息(扇形)
+         * 圆角矩形创建信息(扇形/线圈)
          */
         struct RoundRectangleCreateInfo:public RectangleCreateInfo
         {
@@ -43,7 +43,7 @@ namespace hgl
         };//struct CircleCreateInfo
 
         /**
-         * 创建一个2D圆形(扇形)
+         * 创建一个2D圆形(扇形/线圈)
          */
         vulkan::Renderable *CreateRenderableCircle(SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *rci);
 
