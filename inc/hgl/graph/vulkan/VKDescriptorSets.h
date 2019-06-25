@@ -40,6 +40,7 @@ public:
 
     void Clear();
     bool BindUBO(const uint32_t binding,const VkDescriptorBufferInfo *);
+    bool BindUBODynamic(const uint32_t binding,const VkDescriptorBufferInfo *);
     bool BindSampler(const uint32_t binding,Texture *,Sampler *);
     void Update();
 };//class DescriptorSets

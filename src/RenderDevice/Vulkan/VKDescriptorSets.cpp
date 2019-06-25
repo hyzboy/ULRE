@@ -25,6 +25,21 @@ bool DescriptorSets::BindUBO(const uint32_t binding,const VkDescriptorBufferInfo
     return(true);
 }
 
+bool DescriptorSets::BindUBODynamic(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
+{
+    VkWriteDescriptorSet writeDescriptorSet = {};
+
+    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.dstSet = desc_set;
+    writeDescriptorSet.descriptorCount = 1;
+    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeDescriptorSet.pBufferInfo = buf_info;
+    writeDescriptorSet.dstBinding = binding;
+
+    write_desc_sets.Add(writeDescriptorSet);
+    return(true);
+}
+
 bool DescriptorSets::BindSampler(const uint32_t binding,Texture *tex,Sampler *sampler)
 {
     if(!tex||!sampler)
