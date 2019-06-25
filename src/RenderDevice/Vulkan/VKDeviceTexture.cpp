@@ -32,26 +32,28 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
    
     VkImageCreateInfo imageCreateInfo;
 
-    imageCreateInfo.sType           = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageCreateInfo.pNext           = nullptr;
-    imageCreateInfo.flags           = 0;
-    imageCreateInfo.imageType       = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.format          = video_format;
-    imageCreateInfo.mipLevels       = 1;
-    imageCreateInfo.arrayLayers     = 1;
-    imageCreateInfo.samples         = VK_SAMPLE_COUNT_1_BIT;
-    imageCreateInfo.sharingMode     = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sType                   = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.pNext                   = nullptr;
+    imageCreateInfo.flags                   = 0;
+    imageCreateInfo.imageType               = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.format                  = video_format;
+    imageCreateInfo.extent.width            = width;
+    imageCreateInfo.extent.height           = height;
+    imageCreateInfo.extent.depth            = 1;
+    imageCreateInfo.mipLevels               = 1;
+    imageCreateInfo.arrayLayers             = 1;
+    imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
+    imageCreateInfo.usage                   = usage;
+    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
     // Set initial layout of the image to undefined
-    imageCreateInfo.initialLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.extent.width    = width;
-    imageCreateInfo.extent.height   = height;
-    imageCreateInfo.extent.depth    = 1;
-    imageCreateInfo.usage           = usage;
+    imageCreateInfo.queueFamilyIndexCount = 0;
+    imageCreateInfo.pQueueFamilyIndices =   nullptr;
+    imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
 
     if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-        imageCreateInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
+        imageCreateInfo.tiling              = VK_IMAGE_TILING_OPTIMAL;
     else
-        imageCreateInfo.tiling      = VK_IMAGE_TILING_LINEAR;
+        imageCreateInfo.tiling              = VK_IMAGE_TILING_LINEAR;
 
     VkImage image;
 
@@ -64,150 +66,107 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
     tex_data->mip_levels    = 1;    
     tex_data->image_layout  = image_layout;
     tex_data->image         = image;
-            
-    tex_data->image_view=CreateImageView2D(attr->device,video_format,aspectMask,image);
     
-    return(new Texture2D(width,height,attr->device,tex_data));
+    VkMemoryAllocateInfo memAllocInfo;
+    VkMemoryRequirements memReqs;
+
+    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memAllocInfo.pNext = nullptr;
+
+    vkGetImageMemoryRequirements(attr->device, tex_data->image, &memReqs);
+
+    memAllocInfo.allocationSize = memReqs.size;
+    attr->CheckMemoryType(memReqs.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,&memAllocInfo.memoryTypeIndex);
+     
+    if(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &tex_data->memory)==VK_SUCCESS)
+    if(vkBindImageMemory(attr->device, tex_data->image, tex_data->memory, 0)==VK_SUCCESS)
+    {    
+        tex_data->image_view=CreateImageView2D(attr->device,video_format,aspectMask,tex_data->image);
+    
+        return(new Texture2D(width,height,attr->device,tex_data));
+    }
+
+    delete tex_data;
+    return(nullptr);
 }
 
-Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,bool force_linear,const VkImageLayout image_layout)
+Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
 {
-    if(video_format<VK_FORMAT_BEGIN_RANGE||video_format>VK_FORMAT_END_RANGE)return(nullptr);
-    if(!data||width<1||height<1)return(nullptr);
+    Texture2D *tex=CreateTexture2D(video_format,width,height,aspectMask,usage,image_layout);
 
-    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(video_format);
+    if(!tex)return(nullptr);
 
-    if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)        
-    {
-        if(force_linear)
-        {
-            if(!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
-                force_linear=false;
-        }
-    }
-    else    //不能用优化存储，这种现像好像不存在啊    
-    {
-        if(!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
-        {
-            //也不能用线性储存？？WTF ?
-            return(nullptr);
-        }
+    TextureData *tex_data=*tex;    
 
-        force_linear=true;
-        return(nullptr);        //这个我们暂时不支持
-    }
+#define VK_CHECK_RESULT(func)   if(func!=VK_SUCCESS){delete tex_data;delete buf;return(nullptr);}
 
-    TextureData *tex_data=new TextureData;
+    Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
-    tex_data->ref           = false;
-    tex_data->mip_levels    = 1;    
-    tex_data->image_layout  = image_layout;
+    VkBufferImageCopy buffer_image_copy{};
+    buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    buffer_image_copy.imageSubresource.mipLevel = 0;
+    buffer_image_copy.imageSubresource.baseArrayLayer = 0;
+    buffer_image_copy.imageSubresource.layerCount = 1;
+    buffer_image_copy.imageExtent.width = width;
+    buffer_image_copy.imageExtent.height = height;
+    buffer_image_copy.imageExtent.depth = 1;
+    buffer_image_copy.bufferOffset = 0;
 
-    if(force_linear)
-    {
-        delete tex_data;
-        return(nullptr);
-    }
-    else
-    {
-    #define VK_CHECK_RESULT(func)   if(func!=VK_SUCCESS){delete tex_data;delete buf;return(nullptr);}
+    VkImageSubresourceRange subresourceRange = {};
+    subresourceRange.aspectMask = aspectMask;
+    subresourceRange.baseMipLevel = 0;
+    subresourceRange.levelCount = 1;
+    subresourceRange.layerCount = 1;
 
-        Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+    VkImageMemoryBarrier imageMemoryBarrier{};
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarrier.image = tex_data->image;
+    imageMemoryBarrier.subresourceRange = subresourceRange;
+    imageMemoryBarrier.srcAccessMask = 0;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-        VkBufferImageCopy buffer_image_copy{};
-        buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        buffer_image_copy.imageSubresource.mipLevel = 0;
-        buffer_image_copy.imageSubresource.baseArrayLayer = 0;
-        buffer_image_copy.imageSubresource.layerCount = 1;
-        buffer_image_copy.imageExtent.width = width;
-        buffer_image_copy.imageExtent.height = height;
-        buffer_image_copy.imageExtent.depth = 1;
-        buffer_image_copy.bufferOffset = 0;
+    texture_cmd_buf->Begin();
+    texture_cmd_buf->PipelineBarrier(
+        VK_PIPELINE_STAGE_HOST_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &imageMemoryBarrier);
 
-        VkImageCreateInfo imageCreateInfo{};
-        imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageCreateInfo.format = video_format;
-        imageCreateInfo.mipLevels = 1;
-        imageCreateInfo.arrayLayers = 1;
-        imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-        imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        // Set initial layout of the image to undefined
-        imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageCreateInfo.extent = buffer_image_copy.imageExtent;
-        imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        VK_CHECK_RESULT(vkCreateImage(attr->device, &imageCreateInfo, nullptr, &tex_data->image))
+    texture_cmd_buf->CopyBufferToImage(
+        *buf,
+        tex_data->image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,           //对应上方的imageMemoryBarrier.newLayout
+        1,
+        &buffer_image_copy);
 
-        VkMemoryAllocateInfo memAllocInfo{};
-        VkMemoryRequirements memReqs{};
+    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageMemoryBarrier.newLayout = image_layout;
 
-        memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    texture_cmd_buf->PipelineBarrier(
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &imageMemoryBarrier);
 
-        vkGetImageMemoryRequirements(attr->device, tex_data->image, &memReqs);
-        memAllocInfo.allocationSize = memReqs.size;
-        attr->CheckMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,&memAllocInfo.memoryTypeIndex);
-        VK_CHECK_RESULT(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &tex_data->memory))
-        VK_CHECK_RESULT(vkBindImageMemory(attr->device, tex_data->image, tex_data->memory, 0))
+    texture_cmd_buf->End();
 
-        VkImageSubresourceRange subresourceRange = {};
-        subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        subresourceRange.baseMipLevel = 0;
-        subresourceRange.levelCount = 1;
-        subresourceRange.layerCount = 1;
+    SubmitTexture(*texture_cmd_buf);
 
-        VkImageMemoryBarrier imageMemoryBarrier{};
-        imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageMemoryBarrier.image = tex_data->image;
-        imageMemoryBarrier.subresourceRange = subresourceRange;
-        imageMemoryBarrier.srcAccessMask = 0;
-        imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    delete buf;
 
-        texture_cmd_buf->Begin();
-        texture_cmd_buf->PipelineBarrier(
-            VK_PIPELINE_STAGE_HOST_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &imageMemoryBarrier);
+#undef VK_CHECK_RESULT
 
-        texture_cmd_buf->CopyBufferToImage(
-            *buf,
-            tex_data->image,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1,
-            &buffer_image_copy);
-
-        imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        texture_cmd_buf->PipelineBarrier(
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &imageMemoryBarrier);
-
-        texture_cmd_buf->End();
-
-        SubmitTexture(*texture_cmd_buf);
-
-        delete buf;
-
-        tex_data->image_view=CreateImageView2D(attr->device,video_format,VK_IMAGE_ASPECT_COLOR_BIT,tex_data->image);
-
-    #undef VK_CHECK_RESULT
-    }
-
-    return(new Texture2D(width,height,attr->device,tex_data));
+    return(tex);
 }
 
 Texture2D *Device::CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits flag,VkImage image,VkImageLayout image_layout,VkImageView image_view)

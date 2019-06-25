@@ -25,6 +25,9 @@ protected:
 
 public:
 
+    operator TextureData *  (){return data;}
+
+    operator VkDeviceMemory (){return data?data->memory:nullptr;}
     operator VkImage        (){return data?data->image:nullptr;}
     operator VkImageLayout  (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     operator VkImageView    (){return data?data->image_view->operator VkImageView():nullptr;}

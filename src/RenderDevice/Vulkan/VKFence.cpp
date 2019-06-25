@@ -1,4 +1,4 @@
-#include<hgl/graph/vulkan/VKFence.h>
+﻿#include<hgl/graph/vulkan/VKFence.h>
 VK_NAMESPACE_BEGIN
 Fence::~Fence()
 {

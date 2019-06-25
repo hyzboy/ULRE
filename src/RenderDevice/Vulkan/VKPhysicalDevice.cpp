@@ -1,4 +1,4 @@
-#include<hgl/graph/vulkan/VKPhysicalDevice.h>
+﻿#include<hgl/graph/vulkan/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
 PhysicalDevice::PhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
@@ -72,7 +72,7 @@ const uint32_t PhysicalDevice::GetExtensionSpecVersion(const UTF8String &name)co
     return 0;
 }
 
-const bool PhysicalDevice::CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex)const
+const bool PhysicalDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex)const
 {
     // Search memtypes to find first index with those properties
     for(uint32_t i=0; i<memory_properties.memoryTypeCount; i++)
@@ -80,7 +80,7 @@ const bool PhysicalDevice::CheckMemoryType(uint32_t typeBits,VkFlags requirement
         if((typeBits&1)==1)
         {
             // Type is available, does it match user properties?
-            if((memory_properties.memoryTypes[i].propertyFlags&requirements_mask)==requirements_mask)
+            if((memory_properties.memoryTypes[i].propertyFlags&properties)==properties)
             {
                 *typeIndex=i;
                 return true;
