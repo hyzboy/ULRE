@@ -46,11 +46,10 @@ public:
     {     
         math::vec center_point  =bounding_box.CenterPoint();
         math::vec min_point     =bounding_box.minPoint;
-        math::vec max_point     =bounding_box.maxPoint;
         math::vec size          =bounding_box.Size();
 
         math::vec eye(  center_point.x,
-                        center_point.y-size.y*2,
+                        center_point.y-size.y*4,
                         center_point.z,
                         1.0f);
         
@@ -66,7 +65,7 @@ public:
 
         move_speed=length(min_point,center_point)/100.0f;
 
-        object_matrix=translate(-center_point.xyz());
+        object_matrix=Matrix4f::identity;
         origin_matrix=object_matrix;
     }
 
