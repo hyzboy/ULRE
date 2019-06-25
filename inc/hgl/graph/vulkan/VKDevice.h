@@ -107,7 +107,42 @@ public: //material相关
 
     Texture2D *CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits flag,VkImage image,VkImageLayout image_layout,VkImageView image_view);
 
-    Texture2D *CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,bool force_linear=false);
+    Texture2D *CreateTexture2D(const VkFormat video_format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout);
+
+    Texture2D *CreateTexture2DColor(const VkFormat video_format,uint32_t width,uint32_t height)
+    {
+        return CreateTexture2D(video_format,width,height,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
+
+    Texture2D *CreateTexture2DDepth(const VkFormat video_format,uint32_t width,uint32_t height)
+    {
+        return CreateTexture2D(video_format,width,height,
+                VK_IMAGE_ASPECT_DEPTH_BIT,
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
+
+    Texture2D *CreateAttachmentTextureColor(const VkFormat video_format,uint32_t width,uint32_t height)
+    {
+        return CreateTexture2D(video_format,width,height,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    }
+
+    Texture2D *CreateAttachmentTextureDepth(const VkFormat video_format,uint32_t width,uint32_t height)
+    {
+        return CreateTexture2D(video_format,width,height,
+                VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
+                VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    }
+
+    Texture2D *CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,bool force_linear=false,const VkImageLayout image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
     bool ChangeTexture2D(Texture2D *,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size);
     Sampler *CreateSampler(VkSamplerCreateInfo *);
 

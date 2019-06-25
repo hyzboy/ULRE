@@ -19,9 +19,61 @@ namespace
     }
 }//namespace
 
-Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,bool force_linear)
+Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
 {
-    if(!data||width<=1||height<=1)return(nullptr);
+    if(video_format<VK_FORMAT_BEGIN_RANGE||video_format>VK_FORMAT_END_RANGE)return(nullptr);
+    if(width<1||height<1)return(nullptr);
+
+    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(video_format);
+
+    if(!(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+     &&!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
+        return(nullptr);
+   
+    VkImageCreateInfo imageCreateInfo;
+
+    imageCreateInfo.sType           = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.pNext           = nullptr;
+    imageCreateInfo.flags           = 0;
+    imageCreateInfo.imageType       = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.format          = video_format;
+    imageCreateInfo.mipLevels       = 1;
+    imageCreateInfo.arrayLayers     = 1;
+    imageCreateInfo.samples         = VK_SAMPLE_COUNT_1_BIT;
+    imageCreateInfo.sharingMode     = VK_SHARING_MODE_EXCLUSIVE;
+    // Set initial layout of the image to undefined
+    imageCreateInfo.initialLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageCreateInfo.extent.width    = width;
+    imageCreateInfo.extent.height   = height;
+    imageCreateInfo.extent.depth    = 1;
+    imageCreateInfo.usage           = usage;
+
+    if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+        imageCreateInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
+    else
+        imageCreateInfo.tiling      = VK_IMAGE_TILING_LINEAR;
+
+    VkImage image;
+
+    if(vkCreateImage(attr->device, &imageCreateInfo, nullptr, &image)!=VK_SUCCESS)
+        return(nullptr);
+
+    TextureData *tex_data=new TextureData;
+
+    tex_data->ref           = false;
+    tex_data->mip_levels    = 1;    
+    tex_data->image_layout  = image_layout;
+    tex_data->image         = image;
+            
+    tex_data->image_view=CreateImageView2D(attr->device,video_format,aspectMask,image);
+    
+    return(new Texture2D(width,height,attr->device,tex_data));
+}
+
+Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,bool force_linear,const VkImageLayout image_layout)
+{
+    if(video_format<VK_FORMAT_BEGIN_RANGE||video_format>VK_FORMAT_END_RANGE)return(nullptr);
+    if(!data||width<1||height<1)return(nullptr);
 
     const VkFormatProperties fp=attr->physical_device->GetFormatProperties(video_format);
 
@@ -47,8 +99,9 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 
     TextureData *tex_data=new TextureData;
 
-    tex_data->ref       =false;
-    tex_data->mip_levels=1;
+    tex_data->ref           = false;
+    tex_data->mip_levels    = 1;    
+    tex_data->image_layout  = image_layout;
 
     if(force_linear)
     {
@@ -70,8 +123,6 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
         buffer_image_copy.imageExtent.height = height;
         buffer_image_copy.imageExtent.depth = 1;
         buffer_image_copy.bufferOffset = 0;
-
-        tex_data->image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkImageCreateInfo imageCreateInfo{};
         imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;

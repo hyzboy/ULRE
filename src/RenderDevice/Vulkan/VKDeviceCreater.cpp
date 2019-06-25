@@ -249,8 +249,10 @@ namespace
     {
         VkDescriptorPoolSize pool_size[]=
         {
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024}
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       48}
         };
 
         VkDescriptorPoolCreateInfo dp_create_info={};
