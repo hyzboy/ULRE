@@ -34,9 +34,9 @@ DeviceAttribute::~DeviceAttribute()
         vkDestroySurfaceKHR(instance,surface,nullptr);
 }
 
-bool DeviceAttribute::CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const
+bool DeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const
 {
-    return physical_device->CheckMemoryType(typeBits,requirements_mask,typeIndex);
+    return physical_device->CheckMemoryType(typeBits,properties,typeIndex);
 }
 
 void DeviceAttribute::ClearSwapchain()

@@ -1,4 +1,4 @@
-#include<hgl/graph/vulkan/VKShaderModule.h>
+ï»¿#include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
 #include"VKShaderParse.h"
 
@@ -52,21 +52,21 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStage
 
     for(const auto &si:stage_inputs)
     {
-        const VkFormat                  format  =parse->GetFormat(si);                //×¢ÒâÕâ¸ö¸ñÊ½ÓĞ¿ÉÄÜ»á½âÎö²»³öÀ´(±ÈÈç¸÷ÖÖÑ¹Ëõ¸ñÊ½)
+        const VkFormat                  format  =parse->GetFormat(si);                //æ³¨æ„è¿™ä¸ªæ ¼å¼æœ‰å¯èƒ½ä¼šè§£æä¸å‡ºæ¥(æ¯”å¦‚å„ç§å‹ç¼©æ ¼å¼)
         const UTF8String &              name    =parse->GetName(si);
 
-        bind->binding   =binding_index;                 //binding¶ÔÓ¦ÔÚvkCmdBindVertexBufferÖĞÉèÖÃµÄ»º³åÇøµÄĞòÁĞºÅ£¬ËùÒÔÕâ¸öÊı×Ö±ØĞë´Ó0¿ªÊ¼£¬¶øÇÒ½ôÃÜÅÅÁĞ¡£
-                                                        //ÔÚVertexInputÀàÖĞ£¬buf_listĞèÒªÑÏ¸ñ°´ÕÕ±¾´ËbindingÎªĞòÁĞºÅÅÅÁĞ
+        bind->binding   =binding_index;                 //bindingå¯¹åº”åœ¨vkCmdBindVertexBufferä¸­è®¾ç½®çš„ç¼“å†²åŒºçš„åºåˆ—å·ï¼Œæ‰€ä»¥è¿™ä¸ªæ•°å­—å¿…é¡»ä»0å¼€å§‹ï¼Œè€Œä¸”ç´§å¯†æ’åˆ—ã€‚
+                                                        //åœ¨VertexInputç±»ä¸­ï¼Œbuf_listéœ€è¦ä¸¥æ ¼æŒ‰ç…§æœ¬æ­¤bindingä¸ºåºåˆ—å·æ’åˆ—
         bind->stride    =GetStrideByFormat(format);
         bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
 
-        //binding¶ÔÓ¦µÄÊÇµÚ¼¸¸öÊı¾İÊäÈëÁ÷
-        //Êµ¼ÊÊ¹ÓÃÒ»¸öbinding¿ÉÒÔ°ó¶¨¶à¸öattrib
-        //±ÈÈçÔÚÒ»¸öÁ÷ÖĞ´«µİ{pos,color}ÕâÑùÁ½¸öÊı¾İ£¬¾ÍĞèÒªÁ½¸öattrib
-        //µ«ÔÚÎÒÃÇµÄÉè¼ÆÖĞ£¬½öÖ§³ÖÒ»¸öÁ÷´«µİÒ»¸öattrib
+        //bindingå¯¹åº”çš„æ˜¯ç¬¬å‡ ä¸ªæ•°æ®è¾“å…¥æµ
+        //å®é™…ä½¿ç”¨ä¸€ä¸ªbindingå¯ä»¥ç»‘å®šå¤šä¸ªattrib
+        //æ¯”å¦‚åœ¨ä¸€ä¸ªæµä¸­ä¼ é€’{pos,color}è¿™æ ·ä¸¤ä¸ªæ•°æ®ï¼Œå°±éœ€è¦ä¸¤ä¸ªattrib
+        //ä½†åœ¨æˆ‘ä»¬çš„è®¾è®¡ä¸­ï¼Œä»…æ”¯æŒä¸€ä¸ªæµä¼ é€’ä¸€ä¸ªattrib
 
         attr->binding   =binding_index;
-        attr->location  =parse->GetLocation(si);                                        //´ËÖµ¶ÔÓ¦shaderÖĞµÄlayout(location=
+        attr->location  =parse->GetLocation(si);                                        //æ­¤å€¼å¯¹åº”shaderä¸­çš„layout(location=
         attr->format    =format;
         attr->offset    =0;
 
@@ -82,7 +82,7 @@ VertexShaderModule::~VertexShaderModule()
 {
     if(vab_sets.GetCount()>0)
     {
-        //»¹ÓĞÔÚÓÃµÄ£¬ÕâÊÇ¸ö´íÎó
+        //è¿˜æœ‰åœ¨ç”¨çš„ï¼Œè¿™æ˜¯ä¸ªé”™è¯¯
     }
 
     SAFE_CLEAR_ARRAY(binding_list);

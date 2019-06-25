@@ -1,4 +1,4 @@
-#ifndef HGL_VULKAN_GRAPH_FENCE_INCLUDE
+﻿#ifndef HGL_VULKAN_GRAPH_FENCE_INCLUDE
 #define HGL_VULKAN_GRAPH_FENCE_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>

@@ -57,7 +57,7 @@ public:
     DeviceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s);
     ~DeviceAttribute();
 
-    bool CheckMemoryType(uint32_t typeBits,VkFlags requirements_mask,uint32_t *typeIndex) const;
+    bool CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const;
 
     void ClearSwapchain();
     void Refresh();

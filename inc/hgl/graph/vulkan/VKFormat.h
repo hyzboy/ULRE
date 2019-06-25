@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_FORMAT_INCLUDE
+﻿#ifndef HGL_GRAPH_VULKAN_FORMAT_INCLUDE
 #define HGL_GRAPH_VULKAN_FORMAT_INCLUDE
 
 #include<vulkan/vulkan.h>

@@ -23,7 +23,7 @@ public:
     operator VkPhysicalDevice(){return physical_device;}
     operator const VkPhysicalDevice()const{return physical_device;}
 
-    const bool              CheckMemoryType(uint32_t,VkFlags,uint32_t *)const;
+    const bool              CheckMemoryType(uint32_t,VkMemoryPropertyFlags,uint32_t *)const;
 
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
     const char *            GetDeviceName()const{return properties.deviceName;}

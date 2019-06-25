@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_IMAGE_VIEW_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_IMAGE_VIEW_INCLUDE
 #define HGL_GRAPH_VULKAN_IMAGE_VIEW_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
@@ -41,12 +41,12 @@ public:
 };//class ImageView
 
 /**
- * ´´½¨Ò»¸öÒıÓÃImageView£¬ËüµÄÌØµãÊÇ²»»á×Ô¶¯É¾³ıVkImageView
+ * åˆ›å»ºä¸€ä¸ªå¼•ç”¨ImageViewï¼Œå®ƒçš„ç‰¹ç‚¹æ˜¯ä¸ä¼šè‡ªåŠ¨åˆ é™¤VkImageView
  */
 ImageView *CreateRefImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImageView img_view);
 
 /**
- * ¸ù¾İVkImage´´½¨Ò»¸öVkImageView£¬ÔÚÉ¾³ıËüÊ±£¬ËüÒ²»áÉ¾³ıVkImageView
+ * æ ¹æ®VkImageåˆ›å»ºä¸€ä¸ªVkImageViewï¼Œåœ¨åˆ é™¤å®ƒæ—¶ï¼Œå®ƒä¹Ÿä¼šåˆ é™¤VkImageView
  */
 ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img=nullptr);
 
