@@ -66,7 +66,7 @@ public:
 
 public:
 
-    const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_image_views.GetCount();}
+    const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_texture.GetCount();}
             //ImageView      *GetColorImageView       (int index) {return attr->sc_image_views[index];}
             //ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
@@ -108,8 +108,6 @@ public: //Buffer相关
 #undef CREATE_BUFFER_OBJECT
 
 public: //material相关
-
-    Texture2D *CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits flag,VkImage image,VkImageLayout image_layout,VkImageView image_view);
 
     Texture2D *CreateTexture2D(const VkFormat video_format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout);
 

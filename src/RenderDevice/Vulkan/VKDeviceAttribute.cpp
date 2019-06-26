@@ -43,8 +43,7 @@ bool DeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags pr
 void DeviceAttribute::ClearSwapchain()
 {
     SAFE_CLEAR(sc_depth);
-
-    sc_image_views.Clear();
+    sc_texture.Clear();
 
     if(swap_chain)
     {

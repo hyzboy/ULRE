@@ -16,8 +16,6 @@ struct TextureData
     VkFormat            format      =VK_FORMAT_UNDEFINED;
     VkImageAspectFlags  aspect      =0;
     VkExtent3D          extent;
-
-    bool                ref         =false;     //是否是引用
 };//struct TextureData
 
 class Texture
@@ -100,6 +98,7 @@ public:
 //    uint32_t width,height,count;
 //};//class TextureCubemapArray:public Texture
 
+Texture2D *CreateTexture2D(VkDevice device,VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout);
 Texture2D *CreateTexture2D(VkDevice device,const PhysicalDevice *pd,const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const VkImageTiling tiling);
 
 VK_NAMESPACE_END

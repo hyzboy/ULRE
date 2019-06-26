@@ -1,7 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/vulkan/VK.h>
-#include<hgl/graph/vulkan/VKImageView.h>
+#include<hgl/graph/vulkan/VKTexture.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -36,9 +35,7 @@ struct DeviceAttribute
     VkCommandPool                       cmd_pool        =nullptr;
     VkSwapchainKHR                      swap_chain      =nullptr;
 
-    List<VkImage>                       sc_images;
-    ObjectList<ImageView>               sc_image_views;
-
+    ObjectList<Texture2D>               sc_texture;
     Texture2D *                         sc_depth        =nullptr;
 
     VkDescriptorPool                    desc_pool       =nullptr;

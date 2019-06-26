@@ -16,7 +16,7 @@ protected:
 
 private:
 
-    friend ImageView *CreateRefImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImageView img_view);
+    friend ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img);
 
     ImageView(VkDevice dev,VkImageView iv,const VkImageViewType vt,const VkFormat fmt,const VkImageAspectFlags am)
     {
@@ -29,7 +29,7 @@ private:
 
 public:
 
-    virtual ~ImageView()=default;
+    virtual ~ImageView();
 
     operator VkImageView(){return image_view;}
 
@@ -40,15 +40,7 @@ public:
     const VkImageAspectFlags    GetAspectFlags  ()const{return aspect_mask;}
 };//class ImageView
 
-/**
- * 创建一个引用ImageView，它的特点是不会自动删除VkImageView
- */
-ImageView *CreateRefImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImageView img_view);
-
-/**
- * 根据VkImage创建一个VkImageView，在删除它时，它也会删除VkImageView
- */
-ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img=nullptr);
+ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img);
 
 #define CREATE_IMAGE_VIEW(short_name,larget_name) inline ImageView *CreateImageView##short_name(VkDevice device,VkFormat format,VkImageAspectFlags aspectMask,VkImage img=nullptr){return CreateImageView(device,VK_IMAGE_VIEW_TYPE_##larget_name,format,aspectMask,img);}
     CREATE_IMAGE_VIEW(1D,1D);
