@@ -1,5 +1,28 @@
 ﻿#include<hgl/graph/vulkan/VKMemory.h>
+#include<hgl/graph/vulkan/VKPhysicalDevice.h>
 VK_NAMESPACE_BEGIN
+Memory *CreateMemory(VkDevice device,const PhysicalDevice *pd,const VkMemoryRequirements &req,uint32_t properties)
+{
+    uint32_t index;
+
+    if(!pd->CheckMemoryType(req.memoryTypeBits,properties,&index))
+        return(false);
+
+    VkMemoryAllocateInfo alloc_info;
+
+    alloc_info.sType            =VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    alloc_info.pNext            =nullptr;
+    alloc_info.memoryTypeIndex  =index;
+    alloc_info.allocationSize   =req.size;
+
+    VkDeviceMemory memory;
+
+    if(vkAllocateMemory(device,&alloc_info,nullptr,&memory)!=VK_SUCCESS)
+        return(nullptr);
+
+    return(new Memory(device,memory,req,index,properties));
+}
+
 Memory::~Memory()
 {
     vkFreeMemory(device,memory,nullptr);

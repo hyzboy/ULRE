@@ -95,5 +95,8 @@ public:
 //{
 //    uint32_t width,height,count;
 //};//class TextureCubemapArray:public Texture
+
+Texture2D *CreateTexture2D(VkDevice device,const PhysicalDevice *pd,const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const VkImageTiling tiling);
+
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_TEXTURE_INCLUDE

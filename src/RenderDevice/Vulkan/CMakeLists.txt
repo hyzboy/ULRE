@@ -36,7 +36,6 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKDeviceAttribute.cpp
                                 VKDeviceCreater.cpp
                                 VKDevice.cpp
-								VKDeviceMemory.cpp
                                 VKDeviceBuffer.cpp
                                 VKDeviceTexture.cpp
 								VKDeviceRenderPass.cpp
