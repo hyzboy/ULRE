@@ -23,6 +23,7 @@ uint8_t *Buffer::Map(uint32_t start,uint32_t size)
 
     return nullptr;
 }
+
 void Buffer::Unmap()
 {
     vkUnmapMemory(device,buf.memory);

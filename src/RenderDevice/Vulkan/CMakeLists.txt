@@ -1,4 +1,5 @@
 ﻿SET(RENDER_DEVICE_VULKAN_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VK.h
+								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKMemory.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKBuffer.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKBufferData.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKCommandBuffer.h
@@ -27,6 +28,7 @@
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderTarget.h)
 
 SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
+                                VKMemory.cpp
                                 VKInstance.cpp
                                 VKPhysicalDevice.cpp
                                 VKImageView.cpp
@@ -34,6 +36,7 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKDeviceAttribute.cpp
                                 VKDeviceCreater.cpp
                                 VKDevice.cpp
+								VKDeviceMemory.cpp
                                 VKDeviceBuffer.cpp
                                 VKDeviceTexture.cpp
 								VKDeviceRenderPass.cpp

@@ -6,7 +6,7 @@
 VK_NAMESPACE_BEGIN
 struct TextureData
 {
-    VkDeviceMemory      memory      =nullptr;
+    Memory *            memory      =nullptr;
     VkImage             image       =nullptr;
     VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
     ImageView *         image_view  =nullptr;
@@ -30,7 +30,7 @@ public:
 
     operator TextureData *  (){return data;}
 
-    operator VkDeviceMemory (){return data?data->memory:nullptr;}
+    operator Memory *       (){return data?data->memory:nullptr;}
     operator VkImage        (){return data?data->image:nullptr;}
     operator VkImageLayout  (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     operator VkImageView    (){return data?data->image_view->operator VkImageView():nullptr;}

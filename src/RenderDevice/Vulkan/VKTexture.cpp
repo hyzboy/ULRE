@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKImageView.h>
+#include<hgl/graph/vulkan/VKMemory.h>
 VK_NAMESPACE_BEGIN
 Texture::~Texture()
 {
@@ -14,6 +15,6 @@ Texture::~Texture()
         vkDestroyImage(device,data->image,nullptr);
 
     if(data->memory)
-        vkFreeMemory(device,data->memory,nullptr);
+        delete data->memory;
 }
 VK_NAMESPACE_END

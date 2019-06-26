@@ -77,6 +77,10 @@ public:
 
     bool                    Resize                  (uint,uint);
 
+public: //内存相关
+
+    Memory *Device::CreateMemory(const VkMemoryRequirements &,uint32_t properties);
+
 public: //Buffer相关
 
     Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
