@@ -22,40 +22,22 @@ namespace
         VkMemoryRequirements mem_reqs;
         vkGetBufferMemoryRequirements(rsa->device,vb.buffer,&mem_reqs);
 
-        VkMemoryAllocateInfo alloc_info={};
-        alloc_info.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        alloc_info.pNext=nullptr;
-        alloc_info.memoryTypeIndex=0;
-        alloc_info.allocationSize=mem_reqs.size;
+        Memory *dm=CreateMemory(rsa->device,rsa->physical_device,mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-        if(rsa->CheckMemoryType(mem_reqs.memoryTypeBits,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,&alloc_info.memoryTypeIndex))
+        if(dm&&dm->Bind(vb.buffer))
         {
-            if(vkAllocateMemory(rsa->device,&alloc_info,nullptr,&vb.memory)==VK_SUCCESS)
-            {
-                if(vkBindBufferMemory(rsa->device,vb.buffer,vb.memory,0)==VK_SUCCESS)
-                {
-                    vb.info.buffer=vb.buffer;
-                    vb.info.offset=0;
-                    vb.info.range=size;
+            vb.info.buffer  =vb.buffer;
+            vb.info.offset  =0;
+            vb.info.range   =size;
 
-                    if(!data)
-                        return(true);
+            if(!data)
+                return(true);
 
-                    {
-                        void *dst;
-
-                        if(vkMapMemory(rsa->device,vb.memory,0,size,0,&dst)==VK_SUCCESS)
-                        {
-                            memcpy(dst,data,size);
-                            vkUnmapMemory(rsa->device,vb.memory);
-                            return(true);
-                        }
-                    }
-                }
-
-                vkFreeMemory(rsa->device,vb.memory,nullptr);
-            }
+            dm->Write(data,0,size);
+            return(true);
         }
+
+        delete dm;
 
         vkDestroyBuffer(rsa->device,vb.buffer,nullptr);
         return(false);

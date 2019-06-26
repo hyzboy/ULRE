@@ -39,9 +39,13 @@ public:
     const uint32_t              GetProperties   ()const{return properties;}
     
     void *Map();
-    void *Map(VkDeviceSize offset,VkDeviceSize map_size);
+    void *Map(VkDeviceSize offset,VkDeviceSize size);
     void Unmap();
 
+    bool Write(const void *ptr,VkDeviceSize start,VkDeviceSize size);
+    bool Write(const void *ptr){return Write(ptr,0,req.size);}
+
+    bool Bind(VkBuffer buffer);
     bool Bind(VkImage image);
 };//class Memory
 

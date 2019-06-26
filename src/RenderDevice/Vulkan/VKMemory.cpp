@@ -56,6 +56,27 @@ void Memory::Unmap()
     vkUnmapMemory(device,memory);
 }
 
+bool Memory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
+{
+    if(!ptr)return(false);
+
+    void *dst;
+
+    if(vkMapMemory(device,memory,start,size,0,&dst)!=VK_SUCCESS)
+        return(false);
+
+    memcpy(dst,ptr,size);
+    vkUnmapMemory(device,memory);
+    return(true);
+}
+
+bool Memory::Bind(VkBuffer buffer)
+{
+    if(!buffer)return(false);
+
+    return(vkBindBufferMemory(device,buffer,memory,0)==VK_SUCCESS);
+}
+
 bool Memory::Bind(VkImage image)
 {
     if(!image)return(false);
