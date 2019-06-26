@@ -246,7 +246,7 @@ namespace
         return cache;
     }
 
-    bool CreateSwapchinAndImageView(DeviceAttribute *attr)
+    bool CreateSwapchinAndDepthBuffer(DeviceAttribute *attr)
     {
         attr->swap_chain=CreateSwapChain(attr);
 
@@ -518,7 +518,7 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     if(!attr->cmd_pool)
         return(nullptr);
 
-    if(!CreateSwapchinAndImageView(attr))
+    if(!CreateSwapchinAndDepthBuffer(attr))
         return(nullptr);
 
     attr->desc_pool=CreateDescriptorPool(attr->device,1024);
@@ -548,6 +548,6 @@ bool ResizeRenderDevice(DeviceAttribute *attr,uint width,uint height)
 
     attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,width,height);
 
-    return CreateSwapchinAndImageView(attr);
+    return CreateSwapchinAndDepthBuffer(attr);
 }
 VK_NAMESPACE_END
