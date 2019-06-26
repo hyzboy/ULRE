@@ -2,13 +2,14 @@
 #define HGL_GRAPH_VULKAN_BUFFER_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKMemory.h>
 VK_NAMESPACE_BEGIN
 
 struct VulkanBuffer
 {
-    VkBuffer buffer;
-    VkDeviceMemory memory;
-    VkDescriptorBufferInfo info;
+    VkBuffer                buffer;
+    Memory *                memory=nullptr;
+    VkDescriptorBufferInfo  info;
 };//struct VulkanBuffer
 
 class Buffer
@@ -35,14 +36,15 @@ public:
     virtual ~Buffer();
 
     operator VkBuffer                   (){return buf.buffer;}
-    operator VkDeviceMemory             (){return buf.memory;}
+    operator Memory *                   (){return buf.memory;}
     operator VkDescriptorBufferInfo *   (){return &buf.info;}
 
-    virtual uint8_t *Map(uint32_t start=0,uint32_t size=0);
-    void Unmap();
+            void *  Map()                                       {return buf.memory->Map();}
+    virtual void *  Map(VkDeviceSize start,VkDeviceSize size)   {return buf.memory->Map(start,size);}
+            void    Unmap()                                     {return buf.memory->Unmap();}
 
-    bool Write(const void *ptr,uint32_t start,uint32_t size);
-    bool Write(const void *ptr){return Write(ptr,0,buf.info.range);}
+    bool    Write(const void *ptr,uint32_t start,uint32_t size) {return buf.memory->Write(ptr,start,size);}
+    bool    Write(const void *ptr)                              {return buf.memory->Write(ptr);}
 };//class Buffer
 
 class VertexBuffer:public Buffer
@@ -70,7 +72,7 @@ public:
     const uint32_t GetStride()const { return stride; }
     const uint32_t GetCount ()const { return count; }
 
-    uint8_t *Map(uint32_t start=0,uint32_t size=0) override
+    void *Map(VkDeviceSize start=0,VkDeviceSize size=0) override
     {
         return Buffer::Map(start*stride,size*stride);
     }
