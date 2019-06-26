@@ -45,27 +45,17 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
     imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.usage                   = usage;
     imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
-    // Set initial layout of the image to undefined
-    imageCreateInfo.queueFamilyIndexCount = 0;
-    imageCreateInfo.pQueueFamilyIndices =   nullptr;
+    imageCreateInfo.queueFamilyIndexCount   = 0;
+    imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-        imageCreateInfo.tiling              = VK_IMAGE_TILING_OPTIMAL;
-    else
-        imageCreateInfo.tiling              = VK_IMAGE_TILING_LINEAR;
+    imageCreateInfo.tiling                  = (fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?VK_IMAGE_TILING_OPTIMAL:VK_IMAGE_TILING_LINEAR;
 
     VkImage image;
 
     if(vkCreateImage(attr->device, &imageCreateInfo, nullptr, &image)!=VK_SUCCESS)
         return(nullptr);
 
-    TextureData *tex_data=new TextureData;
-
-    tex_data->ref           = false;
-    tex_data->mip_levels    = 1;    
-    tex_data->image_layout  = image_layout;
-    tex_data->image         = image;
+    VkDeviceMemory memory;
     
     VkMemoryAllocateInfo memAllocInfo;
     VkMemoryRequirements memReqs;
@@ -73,20 +63,35 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memAllocInfo.pNext = nullptr;
 
-    vkGetImageMemoryRequirements(attr->device, tex_data->image, &memReqs);
+    vkGetImageMemoryRequirements(attr->device, image, &memReqs);
 
     memAllocInfo.allocationSize = memReqs.size;
     attr->CheckMemoryType(memReqs.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,&memAllocInfo.memoryTypeIndex);
      
-    if(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &tex_data->memory)==VK_SUCCESS)
-    if(vkBindImageMemory(attr->device, tex_data->image, tex_data->memory, 0)==VK_SUCCESS)
-    {    
-        tex_data->image_view=CreateImageView2D(attr->device,video_format,aspectMask,tex_data->image);
+    if(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &memory)==VK_SUCCESS)
+    if(vkBindImageMemory(attr->device, image, memory, 0)==VK_SUCCESS)
+    {
+        ImageView *image_view=CreateImageView2D(attr->device,video_format,aspectMask,image);
+
+        if(image_view)
+        {
+            TextureData *tex_data=new TextureData;
+
+            tex_data->ref           = false;
+            tex_data->mip_levels    = 1;
+            tex_data->memory        = memory;
+            tex_data->image_layout  = image_layout;
+            tex_data->image         = image;
+            tex_data->image_view    = image_view;
+            tex_data->format        = video_format;
+            tex_data->aspect        = aspectMask;
+            tex_data->extent        = imageCreateInfo.extent;
     
-        return(new Texture2D(width,height,attr->device,tex_data));
+            return(new Texture2D(width,height,attr->device,tex_data));
+        }
     }
 
-    delete tex_data;
+    vkDestroyImage(attr->device,image,nullptr);
     return(nullptr);
 }
 
@@ -96,80 +101,12 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32
 
     if(!tex)return(nullptr);
 
-    TextureData *tex_data=*tex;    
-
-#define VK_CHECK_RESULT(func)   if(func!=VK_SUCCESS){delete tex_data;delete buf;return(nullptr);}
-
-    Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
-
-    VkBufferImageCopy buffer_image_copy{};
-    buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    buffer_image_copy.imageSubresource.mipLevel = 0;
-    buffer_image_copy.imageSubresource.baseArrayLayer = 0;
-    buffer_image_copy.imageSubresource.layerCount = 1;
-    buffer_image_copy.imageExtent.width = width;
-    buffer_image_copy.imageExtent.height = height;
-    buffer_image_copy.imageExtent.depth = 1;
-    buffer_image_copy.bufferOffset = 0;
-
-    VkImageSubresourceRange subresourceRange = {};
-    subresourceRange.aspectMask = aspectMask;
-    subresourceRange.baseMipLevel = 0;
-    subresourceRange.levelCount = 1;
-    subresourceRange.layerCount = 1;
-
-    VkImageMemoryBarrier imageMemoryBarrier{};
-    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarrier.image = tex_data->image;
-    imageMemoryBarrier.subresourceRange = subresourceRange;
-    imageMemoryBarrier.srcAccessMask = 0;
-    imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-    texture_cmd_buf->Begin();
-    texture_cmd_buf->PipelineBarrier(
-        VK_PIPELINE_STAGE_HOST_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &imageMemoryBarrier);
-
-    texture_cmd_buf->CopyBufferToImage(
-        *buf,
-        tex_data->image,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,           //对应上方的imageMemoryBarrier.newLayout
-        1,
-        &buffer_image_copy);
-
-    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageMemoryBarrier.newLayout = image_layout;
-
-    texture_cmd_buf->PipelineBarrier(
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &imageMemoryBarrier);
-
-    texture_cmd_buf->End();
-
-    SubmitTexture(*texture_cmd_buf);
-
-    delete buf;
-
-#undef VK_CHECK_RESULT
+    ChangeTexture2D(tex,data,0,0,width,height,size);
 
     return(tex);
 }
 
-Texture2D *Device::CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits flag,VkImage image,VkImageLayout image_layout,VkImageView image_view)
+Texture2D *Device::CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout,VkImageView image_view)
 {
     TextureData *tex_data=new TextureData;
 
@@ -178,10 +115,16 @@ Texture2D *Device::CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat fo
     tex_data->memory        =nullptr;
     tex_data->image         =image;
     tex_data->image_layout  =image_layout;
-    tex_data->image_view    =CreateRefImageView(attr->device,VK_IMAGE_VIEW_TYPE_2D,format,flag,image_view);
+    tex_data->image_view    =CreateRefImageView(attr->device,VK_IMAGE_VIEW_TYPE_2D,format,aspectMask,image_view);
 
     tex_data->mip_levels    =0;
     tex_data->linear        =false;
+    tex_data->format        =format;
+    tex_data->aspect        =aspectMask;
+
+    tex_data->extent.width  =width;
+    tex_data->extent.height =height;
+    tex_data->extent.depth  =1;
 
     return(new Texture2D(width,height,attr->device,tex_data));
 }
@@ -197,24 +140,27 @@ bool Device::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t to
 
     Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
-    VkBufferImageCopy buffer_image_copy{};
-    buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    buffer_image_copy.imageSubresource.mipLevel = 0;
-    buffer_image_copy.imageSubresource.baseArrayLayer = 0;
-    buffer_image_copy.imageSubresource.layerCount = 1;
+    VkBufferImageCopy buffer_image_copy;
+    buffer_image_copy.bufferOffset      = 0;
+    buffer_image_copy.bufferRowLength   = 0;
+    buffer_image_copy.bufferImageHeight = 0;
+    buffer_image_copy.imageSubresource.aspectMask       = tex->GetAspect();
+    buffer_image_copy.imageSubresource.mipLevel         = 0;
+    buffer_image_copy.imageSubresource.baseArrayLayer   = 0;
+    buffer_image_copy.imageSubresource.layerCount       = 1;
+    buffer_image_copy.imageOffset.x     = left;
+    buffer_image_copy.imageOffset.y     = top;
+    buffer_image_copy.imageOffset.z     = 0;
     buffer_image_copy.imageExtent.width = width;
-    buffer_image_copy.imageExtent.height = height;
+    buffer_image_copy.imageExtent.height= height;
     buffer_image_copy.imageExtent.depth = 1;
-    buffer_image_copy.imageOffset.x = left;
-    buffer_image_copy.imageOffset.y = top;
-    buffer_image_copy.imageOffset.z = 0;
-    buffer_image_copy.bufferOffset = 0;
 
-    VkImageSubresourceRange subresourceRange = {};
-    subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    subresourceRange.baseMipLevel = 0;
-    subresourceRange.levelCount = 1;
-    subresourceRange.layerCount = 1;
+    VkImageSubresourceRange subresourceRange;
+    subresourceRange.aspectMask     = tex->GetAspect();
+    subresourceRange.baseMipLevel   = 0;
+    subresourceRange.levelCount     = 1;
+    subresourceRange.baseArrayLayer = 0;
+    subresourceRange.layerCount     = 1;
 
     VkImageMemoryBarrier imageMemoryBarrier{};
     imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -273,10 +219,10 @@ bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
     texture_submit_info.pCommandBuffers = cmd_bufs;
 
     VkFence fence=*texture_fence;
-
+    
+    vkResetFences(attr->device,1,&fence);
     if(vkQueueSubmit(attr->graphics_queue, 1, &texture_submit_info, fence))return(false);
     if(vkWaitForFences(attr->device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC*0.1)!=VK_SUCCESS)return(false);
-    vkResetFences(attr->device,1,&fence);
 
     return(true);
 }

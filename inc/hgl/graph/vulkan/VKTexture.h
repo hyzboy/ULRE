@@ -6,14 +6,17 @@
 VK_NAMESPACE_BEGIN
 struct TextureData
 {
-    VkDeviceMemory  memory      =nullptr;
-    VkImage         image       =nullptr;
-    VkImageLayout   image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
-    ImageView *     image_view  =nullptr;
-    uint32          mip_levels  =0;
-    bool            linear      =false;
+    VkDeviceMemory      memory      =nullptr;
+    VkImage             image       =nullptr;
+    VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
+    ImageView *         image_view  =nullptr;
+    uint32              mip_levels  =0;
+    bool                linear      =false;
+    VkFormat            format      =VK_FORMAT_UNDEFINED;
+    VkImageAspectFlags  aspect      =0;
+    VkExtent3D          extent;
 
-    bool            ref         =false;     //是否是引用
+    bool                ref         =false;     //是否是引用
 };//struct TextureData
 
 class Texture
@@ -32,8 +35,12 @@ public:
     operator VkImageLayout  (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     operator VkImageView    (){return data?data->image_view->operator VkImageView():nullptr;}
 
-    const uint32    GetMipLevels()const{return data?data->mip_levels:0;}
-    const bool      IsLinear    ()const{return data?data->linear:false;}
+    const uint32                GetMipLevels()const{return data?data->mip_levels:0;}
+    const bool                  IsLinear    ()const{return data?data->linear:false;}
+
+    const VkFormat              GetFormat   ()const{return data?data->format:VK_FORMAT_UNDEFINED;}
+    const VkImageAspectFlags    GetAspect   ()const{return data?data->aspect:0;}
+    const VkExtent3D *          GetExtent   ()const{return data?&data->extent:nullptr;}
 
 public:
 
