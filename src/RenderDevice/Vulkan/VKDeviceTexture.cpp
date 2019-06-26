@@ -20,78 +20,20 @@ namespace
     }
 }//namespace
 
-Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
+Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
 {
-    if(video_format<VK_FORMAT_BEGIN_RANGE||video_format>VK_FORMAT_END_RANGE)return(nullptr);
-    if(width<1||height<1)return(nullptr);
-
-    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(video_format);
+    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(format);
 
     if(!(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
      &&!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
         return(nullptr);
-   
-    VkImageCreateInfo imageCreateInfo;
 
-    imageCreateInfo.sType                   = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageCreateInfo.pNext                   = nullptr;
-    imageCreateInfo.flags                   = 0;
-    imageCreateInfo.imageType               = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.format                  = video_format;
-    imageCreateInfo.extent.width            = width;
-    imageCreateInfo.extent.height           = height;
-    imageCreateInfo.extent.depth            = 1;
-    imageCreateInfo.mipLevels               = 1;
-    imageCreateInfo.arrayLayers             = 1;
-    imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
-    imageCreateInfo.usage                   = usage;
-    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
-    imageCreateInfo.queueFamilyIndexCount   = 0;
-    imageCreateInfo.pQueueFamilyIndices     = nullptr;
-    imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.tiling                  = (fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?VK_IMAGE_TILING_OPTIMAL:VK_IMAGE_TILING_LINEAR;
-
-    VkImage image;
-
-    if(vkCreateImage(attr->device, &imageCreateInfo, nullptr, &image)!=VK_SUCCESS)
-        return(nullptr);
-
-    VkMemoryRequirements memReqs;
-
-    vkGetImageMemoryRequirements(attr->device, image, &memReqs);
-
-    Memory *dm=CreateMemory(memReqs,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-     
-    if(dm&&dm->Bind(image))
-    {
-        ImageView *image_view=CreateImageView2D(attr->device,video_format,aspectMask,image);
-
-        if(image_view)
-        {
-            TextureData *tex_data=new TextureData;
-
-            tex_data->ref           = false;
-            tex_data->mip_levels    = 0;
-            tex_data->memory        = dm;
-            tex_data->image_layout  = image_layout;
-            tex_data->image         = image;
-            tex_data->image_view    = image_view;
-            tex_data->format        = video_format;
-            tex_data->aspect        = aspectMask;
-            tex_data->extent        = imageCreateInfo.extent;
-    
-            return(new Texture2D(width,height,attr->device,tex_data));
-        }
-    }
-
-    delete dm;
-    vkDestroyImage(attr->device,image,nullptr);
-    return(nullptr);
+    return VK_NAMESPACE::CreateTexture2D(attr->device,attr->physical_device,format,width,height,aspectMask,usage,image_layout,(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?VK_IMAGE_TILING_OPTIMAL:VK_IMAGE_TILING_LINEAR);
 }
 
-Texture2D *Device::CreateTexture2D(const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
+Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
 {
-    Texture2D *tex=CreateTexture2D(video_format,width,height,aspectMask,usage,image_layout);
+    Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout);
 
     if(!tex)return(nullptr);
 
