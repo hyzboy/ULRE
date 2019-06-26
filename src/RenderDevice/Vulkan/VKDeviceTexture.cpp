@@ -5,6 +5,7 @@
 #include<hgl/graph/vulkan/VKFence.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
+#include<hgl/graph/vulkan/VKMemory.h>
 VK_NAMESPACE_BEGIN
 namespace
 {
@@ -55,21 +56,13 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
     if(vkCreateImage(attr->device, &imageCreateInfo, nullptr, &image)!=VK_SUCCESS)
         return(nullptr);
 
-    VkDeviceMemory memory;
-    
-    VkMemoryAllocateInfo memAllocInfo;
     VkMemoryRequirements memReqs;
-
-    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memAllocInfo.pNext = nullptr;
 
     vkGetImageMemoryRequirements(attr->device, image, &memReqs);
 
-    memAllocInfo.allocationSize = memReqs.size;
-    attr->CheckMemoryType(memReqs.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,&memAllocInfo.memoryTypeIndex);
+    Memory *dm=CreateMemory(memReqs,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
      
-    if(vkAllocateMemory(attr->device, &memAllocInfo, nullptr, &memory)==VK_SUCCESS)
-    if(vkBindImageMemory(attr->device, image, memory, 0)==VK_SUCCESS)
+    if(dm&&dm->Bind(image))
     {
         ImageView *image_view=CreateImageView2D(attr->device,video_format,aspectMask,image);
 
@@ -79,7 +72,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
 
             tex_data->ref           = false;
             tex_data->mip_levels    = 0;
-            tex_data->memory        = memory;
+            tex_data->memory        = dm;
             tex_data->image_layout  = image_layout;
             tex_data->image         = image;
             tex_data->image_view    = image_view;
@@ -91,6 +84,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
         }
     }
 
+    delete dm;
     vkDestroyImage(attr->device,image,nullptr);
     return(nullptr);
 }

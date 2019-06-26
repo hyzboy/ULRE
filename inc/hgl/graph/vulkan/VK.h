@@ -31,6 +31,7 @@ class TextureCubemapArray;
 
 class Sampler;
 
+class Memory;
 class Buffer;
 class VertexBuffer;
 class IndexBuffer;
