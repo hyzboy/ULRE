@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/type/Pair.h>
+#include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKImageView.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 //#include<hgl/graph/vulkan/VKDescriptorSet.h>
@@ -74,13 +75,13 @@ void Device::RecreateDevice()
 
     present_info.pSwapchains=&attr->swap_chain;
 
-    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->depth.view->GetFormat());
+    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->sc_depth->GetFormat());
 
     swap_chain_count=attr->sc_image_views.GetCount();
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
+        render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],*attr->sc_depth));
         fence_list.Add(this->CreateFence(true));
     }
 

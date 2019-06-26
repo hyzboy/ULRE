@@ -2,6 +2,7 @@
 #include<hgl/graph/vulkan/VKInstance.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
+#include<hgl/graph/vulkan/VKTexture.h>
 
 #ifdef _DEBUG
 #include<iostream>
@@ -182,65 +183,74 @@ namespace
 
     bool CreateDepthBuffer(DeviceAttribute *rsa)
     {
-        VkImageCreateInfo image_info={};
+        //VkImageCreateInfo image_info={};
 
         const VkFormat depth_format=VK_FORMAT_D16_UNORM;
 
         const VkFormatProperties props=rsa->physical_device->GetFormatProperties(depth_format);
 
-        if(props.linearTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-            image_info.tiling=VK_IMAGE_TILING_LINEAR;
-        else
-        if(props.optimalTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-            image_info.tiling=VK_IMAGE_TILING_OPTIMAL;
-        else
-            return(false);
+        //if(props.linearTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        //    image_info.tiling=VK_IMAGE_TILING_LINEAR;
+        //else
+        //if(props.optimalTilingFeatures&VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        //    image_info.tiling=VK_IMAGE_TILING_OPTIMAL;
+        //else
+        //    return(false);
 
-        image_info.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        image_info.pNext=nullptr;
-        image_info.imageType=VK_IMAGE_TYPE_2D;
-        image_info.format=depth_format;
-        image_info.extent.width=rsa->swapchain_extent.width;
-        image_info.extent.height=rsa->swapchain_extent.height;
-        image_info.extent.depth=1;
-        image_info.mipLevels=1;
-        image_info.arrayLayers=1;
-        image_info.samples=VK_SAMPLE_COUNT_1_BIT;
-        image_info.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-        image_info.usage=VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        image_info.queueFamilyIndexCount=0;
-        image_info.pQueueFamilyIndices=nullptr;
-        image_info.sharingMode=VK_SHARING_MODE_EXCLUSIVE;
-        image_info.flags=0;
+        //image_info.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        //image_info.pNext=nullptr;
+        //image_info.imageType=VK_IMAGE_TYPE_2D;
+        //image_info.format=depth_format;
+        //image_info.extent.width=rsa->swapchain_extent.width;
+        //image_info.extent.height=rsa->swapchain_extent.height;
+        //image_info.extent.depth=1;
+        //image_info.mipLevels=1;
+        //image_info.arrayLayers=1;
+        //image_info.samples=VK_SAMPLE_COUNT_1_BIT;
+        //image_info.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+        //image_info.usage=VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        //image_info.queueFamilyIndexCount=0;
+        //image_info.pQueueFamilyIndices=nullptr;
+        //image_info.sharingMode=VK_SHARING_MODE_EXCLUSIVE;
+        //image_info.flags=0;
 
-        rsa->depth.format=depth_format;
+        //rsa->depth.format=depth_format;
 
-        if(vkCreateImage(rsa->device,&image_info,nullptr,&rsa->depth.image)!=VK_SUCCESS)
-            return(false);
+        //if(vkCreateImage(rsa->device,&image_info,nullptr,&rsa->depth.image)!=VK_SUCCESS)
+        //    return(false);
 
-        VkMemoryRequirements mem_reqs;
-        vkGetImageMemoryRequirements(rsa->device,rsa->depth.image,&mem_reqs);
+        //VkMemoryRequirements mem_reqs;
+        //vkGetImageMemoryRequirements(rsa->device,rsa->depth.image,&mem_reqs);
 
-        VkMemoryAllocateInfo mem_alloc={};
-        mem_alloc.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        mem_alloc.pNext=nullptr;
-        mem_alloc.allocationSize=0;
-        mem_alloc.memoryTypeIndex=0;
-        mem_alloc.allocationSize=mem_reqs.size;
+        //VkMemoryAllocateInfo mem_alloc={};
+        //mem_alloc.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        //mem_alloc.pNext=nullptr;
+        //mem_alloc.allocationSize=0;
+        //mem_alloc.memoryTypeIndex=0;
+        //mem_alloc.allocationSize=mem_reqs.size;
 
-        if(!rsa->CheckMemoryType(mem_reqs.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,&mem_alloc.memoryTypeIndex))
-            return(false);
+        //if(!rsa->CheckMemoryType(mem_reqs.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,&mem_alloc.memoryTypeIndex))
+        //    return(false);
 
-        if(vkAllocateMemory(rsa->device,&mem_alloc,nullptr,&rsa->depth.mem)!=VK_SUCCESS)
-            return(false);
+        //if(vkAllocateMemory(rsa->device,&mem_alloc,nullptr,&rsa->depth.mem)!=VK_SUCCESS)
+        //    return(false);
 
-        if(vkBindImageMemory(rsa->device,rsa->depth.image,rsa->depth.mem,0)!=VK_SUCCESS)
-            return(false);
+        //if(vkBindImageMemory(rsa->device,rsa->depth.image,rsa->depth.mem,0)!=VK_SUCCESS)
+        //    return(false);
 
-        rsa->depth.view=CreateDepthImageView(rsa->device,depth_format,rsa->depth.image);
+        //rsa->depth.view=CreateDepthImageView(rsa->device,depth_format,rsa->depth.image);
 
-        if(rsa->depth.view==nullptr)
-            return(false);
+        //if(rsa->depth.view==nullptr)
+        //    return(false);
+
+        rsa->sc_depth=VK_NAMESPACE::CreateTexture2D(rsa->device,rsa->physical_device,
+                                                    depth_format,
+                                                    rsa->swapchain_extent.width,
+                                                    rsa->swapchain_extent.height,
+                                                    VK_IMAGE_ASPECT_DEPTH_BIT,
+                                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                                    VK_IMAGE_LAYOUT_UNDEFINED,
+                                                    (props.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?VK_IMAGE_TILING_OPTIMAL:VK_IMAGE_TILING_LINEAR);
 
         return(true);
     }
