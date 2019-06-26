@@ -17,4 +17,4 @@ CreateProject(7.InlineGeometryScene InlineGeometryScene.cpp)
 
 CreateProject(8.Atomsphere Atomsphere.cpp)
 
-CreateProject(9.RenderToColor RenderToColor.cpp TGATexture.cpp)
+CreateProject(9.Deferred Deferred.cpp TGATexture.cpp)
