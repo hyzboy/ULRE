@@ -39,14 +39,7 @@ struct DeviceAttribute
     List<VkImage>                       sc_images;
     ObjectList<ImageView>               sc_image_views;
 
-    struct
-    {
-        VkFormat        format;
-
-        VkImage         image   =nullptr;
-        VkDeviceMemory  mem     =nullptr;
-        ImageView *     view    =nullptr;
-    }depth;
+    Texture2D *                         sc_depth        =nullptr;
 
     VkDescriptorPool                    desc_pool       =nullptr;
 

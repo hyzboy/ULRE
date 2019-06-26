@@ -67,8 +67,8 @@ public:
 public:
 
     const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_image_views.GetCount();}
-            ImageView      *GetColorImageView       (int index) {return attr->sc_image_views[index];}
-            ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
+            //ImageView      *GetColorImageView       (int index) {return attr->sc_image_views[index];}
+            //ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
             RenderPass *    GetRenderPass           ()          {return main_rp;}
             Framebuffer *   GetFramebuffer          (int index) {return render_frame[index];}

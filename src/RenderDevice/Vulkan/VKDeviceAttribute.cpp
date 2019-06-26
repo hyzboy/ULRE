@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VKDeviceAttribute.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 #include<hgl/graph/vulkan/VKImageView.h>
+#include<hgl/graph/vulkan/VKTexture.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -41,19 +42,7 @@ bool DeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags pr
 
 void DeviceAttribute::ClearSwapchain()
 {
-    SAFE_CLEAR(depth.view);
-
-    if(depth.image)
-    {
-        vkDestroyImage(device,depth.image,nullptr);
-        depth.image=nullptr;
-    }
-
-    if(depth.mem)
-    {
-        vkFreeMemory(device,depth.mem,nullptr);
-        depth.mem=nullptr;
-    }
+    SAFE_CLEAR(sc_depth);
 
     sc_image_views.Clear();
 
