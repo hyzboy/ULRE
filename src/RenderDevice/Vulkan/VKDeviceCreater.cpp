@@ -182,6 +182,7 @@ namespace
             ++ip;
         }
 
+        delete[] sc_images;
         return(true);
     }
 
