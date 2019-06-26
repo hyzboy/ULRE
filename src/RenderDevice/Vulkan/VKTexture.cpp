@@ -9,13 +9,34 @@ Texture::~Texture()
     if(data->image_view)
         delete data->image_view;
 
-    if(data->ref)return;
-
-    if(data->image)
-        vkDestroyImage(device,data->image,nullptr);
-
-    if(data->memory)
+    if(data->memory)        //没有memory的纹理都是从其它地方借来的，所以就不存在删除
+    {
         delete data->memory;
+
+        if(data->image)
+            vkDestroyImage(device,data->image,nullptr);
+    }
+}
+
+Texture2D *CreateTexture2D(VkDevice device,VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout)
+{
+    TextureData *tex_data=new TextureData;
+
+    tex_data->memory        =nullptr;
+    tex_data->image         =image;
+    tex_data->image_layout  =image_layout;
+    tex_data->image_view    =CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,aspectMask,image);
+
+    tex_data->mip_levels    =0;
+    tex_data->linear        =false;
+    tex_data->format        =format;
+    tex_data->aspect        =aspectMask;
+
+    tex_data->extent.width  =width;
+    tex_data->extent.height =height;
+    tex_data->extent.depth  =1;
+
+    return(new Texture2D(width,height,device,tex_data));
 }
 
 Texture2D *CreateTexture2D(VkDevice device,const PhysicalDevice *pd,const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const VkImageTiling tiling)
@@ -62,7 +83,6 @@ Texture2D *CreateTexture2D(VkDevice device,const PhysicalDevice *pd,const VkForm
         {
             TextureData *tex_data=new TextureData;
 
-            tex_data->ref           = false;
             tex_data->mip_levels    = 0;
             tex_data->memory        = dm;
             tex_data->image_layout  = image_layout;

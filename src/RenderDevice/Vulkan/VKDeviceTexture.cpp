@@ -42,29 +42,6 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t wid
     return(tex);
 }
 
-Texture2D *Device::CreateRefTexture2D(uint32_t width,uint32_t height,VkFormat format,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout,VkImageView image_view)
-{
-    TextureData *tex_data=new TextureData;
-
-    tex_data->ref           =true;
-
-    tex_data->memory        =nullptr;
-    tex_data->image         =image;
-    tex_data->image_layout  =image_layout;
-    tex_data->image_view    =CreateRefImageView(attr->device,VK_IMAGE_VIEW_TYPE_2D,format,aspectMask,image_view);
-
-    tex_data->mip_levels    =0;
-    tex_data->linear        =false;
-    tex_data->format        =format;
-    tex_data->aspect        =aspectMask;
-
-    tex_data->extent.width  =width;
-    tex_data->extent.height =height;
-    tex_data->extent.depth  =1;
-
-    return(new Texture2D(width,height,attr->device,tex_data));
-}
-
 bool Device::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size)
 {
     if(!tex||!data

@@ -75,13 +75,13 @@ void Device::RecreateDevice()
 
     present_info.pSwapchains=&attr->swap_chain;
 
-    main_rp=CreateRenderPass(attr->sc_image_views[0]->GetFormat(),attr->sc_depth->GetFormat());
+    main_rp=CreateRenderPass(attr->format,attr->sc_depth->GetFormat());
 
-    swap_chain_count=attr->sc_image_views.GetCount();
+    swap_chain_count=attr->sc_texture.GetCount();
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],*attr->sc_depth));
+        render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,*attr->sc_texture[i],*attr->sc_depth));
         fence_list.Add(this->CreateFence(true));
     }
 
