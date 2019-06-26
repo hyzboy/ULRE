@@ -43,6 +43,8 @@ namespace hgl
 
             matrix.two_dim=ortho(width,height,znear,zfar);
 
+            matrix.view_pos=eye;
+
             frustum.SetVerticalFovAndAspectRatio(DegToRad(fov),width/height);
             frustum.SetViewPlaneDistances(znear,zfar);
         }
