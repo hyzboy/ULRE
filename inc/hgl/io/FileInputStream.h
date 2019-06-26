@@ -39,7 +39,7 @@ namespace hgl
             virtual int64   Tell()const;                                                            ///<取当前位置
             virtual int64   GetSize()const;                                                         ///<取得文件长度
             virtual bool    Restart();                                                              ///<复位访问指针
-            virtual int64   Seek(int64,SeekOrigin=SeekOrigin::Begin);                                         ///<移动访问指针
+            virtual int64   Seek(int64,SeekOrigin=SeekOrigin::Begin);                               ///<移动访问指针
 
             virtual int64   Available()const;                                                       ///<剩下的可以不受阻塞访问的字节数
 

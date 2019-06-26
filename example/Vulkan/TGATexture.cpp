@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/vulkan/VKBuffer.h>
+#include<hgl/io/FileInputStream.h>
 #include<hgl/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
@@ -40,11 +41,8 @@ namespace
     };
     #pragma pack(pop)
 
-    void RGB8to565(uint8 *data,uint size)
+    void RGB8to565(uint16 *target,uint8 *src,uint size)
     {
-        uint8 *src=data;
-        uint16 *target=(uint16 *)data;
-
         for(uint i=0;i<size;i++)
         {
             *target=((src[2]<<8)&0xF800)
@@ -78,69 +76,101 @@ namespace
 
 Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 {
-    uint8 *data;
-    const int64 file_length=filesystem::LoadFileToMemory(filename,(void **)&data);
+    io::OpenFileInputStream fis(filename);
 
-    if(file_length<=0)
+    if(!fis)
     {
         LOG_ERROR(OS_TEXT("[ERROR] open file<")+filename+OS_TEXT("> failed."));
         return(nullptr);
     }
 
-    TGAHeader *header=(TGAHeader *)data;
-    TGAImageDesc image_desc;
-    uint8 *pixel_data=data+sizeof(TGAHeader);
+    const int64 file_length=fis->GetSize();
 
-    image_desc.image_desc=header->image_desc;
-
-    VkFormat format;
-    uint line_size;
-
-    if(header->image_type==2)
+    if(file_length<=sizeof(TGAHeader))
     {
-        if(header->bit==24)
-        {
-            RGB8to565(pixel_data,header->width*header->height);
-
-            format=FMT_RGB565;
-            line_size=header->width*2;
-        }
-        else if(header->bit==32)
-        {
-            format=FMT_RGBA8UN;
-            line_size=header->width*4;
-        }
-    }
-    else if(header->image_type==3&&header->bit==8)
-    {
-        format=FMT_R8UN;
-        line_size=header->width;
-    }
-    else
-    {
-        LOG_ERROR(OS_TEXT("[ERROR] Image format error,filename: ")+filename);
-        delete[] data;
+        LOG_ERROR(OS_TEXT("[ERROR] file<")+filename+OS_TEXT("> length < sizeof(TGAHeader)."));
         return(nullptr);
     }
 
-    if(image_desc.direction==0)
-        SwapRow(pixel_data,line_size,header->height);
+    TGAHeader header;
+    TGAImageDesc image_desc;
 
-    Texture2D *tex=device->CreateTexture2D(format,pixel_data,header->width,header->height,line_size*header->height);
+    if(fis->Read(&header,sizeof(TGAHeader))!=sizeof(TGAHeader))
+        return(false);
+        
+    const uint total_bytes=header.width*header.height*header.bit>>3;
+
+    if(file_length<sizeof(TGAHeader)+total_bytes)
+    {
+        LOG_ERROR(OS_TEXT("[ERROR] file<")+filename+OS_TEXT("> length error."));
+        return(nullptr);
+    }
+
+    image_desc.image_desc=header.image_desc;
+
+    VkFormat format=FMT_UNDEFINED;
+
+    if(header.image_type==2)
+    {
+        if(header.bit==24)format=FMT_RGB8UN;else
+        if(header.bit==32)format=FMT_RGBA8UN;
+    }
+    else if(header.image_type==3&&header.bit==8)
+        format=FMT_R8UN;
+
+    if(format==FMT_UNDEFINED)
+    {
+        LOG_ERROR(OS_TEXT("[ERROR] Image format error,filename: ")+filename);
+        return(nullptr);
+    }
+    
+    vulkan::Buffer *buf;
+
+    if(header.bit==24)
+    {
+        uint8 *pixel_data=new uint8[total_bytes];
+    
+        fis->Read(pixel_data,total_bytes);
+
+        if(image_desc.direction==0)
+            SwapRow((uint8 *)pixel_data,header.width*header.bit/8,header.height);
+
+        buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,header.width*header.height*2);
+        RGB8to565((uint16 *)buf->Map(),pixel_data,header.width*header.height);
+        buf->Unmap();
+
+        format=FMT_RGB565;
+    }
+    else
+    {
+        vulkan::Buffer *buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
+        
+        uint8 *pixel_data=(uint8 *)buf->Map();
+
+        fis->Read(pixel_data,total_bytes);
+
+        if(image_desc.direction==0)
+            SwapRow((uint8 *)pixel_data,header.width*header.bit/8,header.height);
+
+        buf->Unmap();
+    }
+
+    Texture2D *tex=device->CreateTexture2D(format,buf,header.width,header.height);
+
+    delete buf;
 
     if(tex)
     {
-        LOG_INFO(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header->width)+OS_TEXT("x")+OSString(header->height)+OS_TEXT("> to texture ok"));
+        LOG_INFO(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header.width)+OS_TEXT("x")+OSString(header.height)+OS_TEXT("> to texture ok"));
 
         //下面代码用于测试修改纹理
         //device->ChangeTexture2D(tex,pixel_data,header->width/4,header->height/4,header->width/2,header->height/2,line_size*header->height/4);
     }
     else
     {
-        LOG_ERROR(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header->width)+OS_TEXT("x")+OSString(header->height)+OS_TEXT("> to texture failed."));
+        LOG_ERROR(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header.width)+OS_TEXT("x")+OSString(header.height)+OS_TEXT("> to texture failed."));
     }
 
-    delete[] data;
     return(tex);
 }
 VK_NAMESPACE_END
