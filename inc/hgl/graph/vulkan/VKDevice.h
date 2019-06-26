@@ -67,8 +67,6 @@ public:
 public:
 
     const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_texture.GetCount();}
-            //ImageView      *GetColorImageView       (int index) {return attr->sc_image_views[index];}
-            //ImageView      *GetDepthImageView       ()          {return attr->depth.view;}
 
             RenderPass *    GetRenderPass           ()          {return main_rp;}
             Framebuffer *   GetFramebuffer          (int index) {return render_frame[index];}
@@ -148,11 +146,17 @@ public: //material相关
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
 
+    Texture2D *CreateTexture2D( const VkFormat video_format,Buffer *buf,uint32_t width,uint32_t height,
+                                const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
+                                const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                                const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
     Texture2D *CreateTexture2D( const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,
                                 const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
                                 const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
                                 const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+    bool ChangeTexture2D(Texture2D *,Buffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height);
     bool ChangeTexture2D(Texture2D *,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size);
     Sampler *CreateSampler(VkSamplerCreateInfo *);
 

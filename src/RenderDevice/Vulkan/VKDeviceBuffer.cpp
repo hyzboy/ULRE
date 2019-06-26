@@ -30,6 +30,8 @@ namespace
             vb.info.offset  =0;
             vb.info.range   =size;
 
+            vb.memory       =dm;
+
             if(!data)
                 return(true);
 

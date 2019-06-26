@@ -31,27 +31,38 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t
     return VK_NAMESPACE::CreateTexture2D(attr->device,attr->physical_device,format,width,height,aspectMask,usage,image_layout,(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?VK_IMAGE_TILING_OPTIMAL:VK_IMAGE_TILING_LINEAR);
 }
 
-Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
+Texture2D *Device::CreateTexture2D(const VkFormat format,Buffer *buf,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
 {
+    if(!buf)return(nullptr);
+
     Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout);
 
     if(!tex)return(nullptr);
 
-    ChangeTexture2D(tex,data,0,0,width,height,size);
+    ChangeTexture2D(tex,buf,0,0,width,height);
 
     return(tex);
 }
 
-bool Device::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size)
+Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
 {
-    if(!tex||!data
+    Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+
+    if(!buf)return(nullptr);
+
+    Texture2D *tex=CreateTexture2D(format,buf,width,height,aspectMask,image_layout);
+
+    delete buf;
+    return(tex);
+}
+
+bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height)
+{
+    if(!tex||!buf
      ||left<0||left+width>tex->GetWidth()
      ||top<0||top+height>tex->GetHeight()
-     ||width<=0||height<=0
-     ||size<=0)
+     ||width<=0||height<=0)
         return(false);
-
-    Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
     VkBufferImageCopy buffer_image_copy;
     buffer_image_copy.bufferOffset      = 0;
@@ -118,9 +129,25 @@ bool Device::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t to
     texture_cmd_buf->End();
 
     SubmitTexture(*texture_cmd_buf);
+    return(true);
+}
+
+bool Device::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size)
+{
+    if(!tex||!data
+     ||left<0||left+width>tex->GetWidth()
+     ||top<0||top+height>tex->GetHeight()
+     ||width<=0||height<=0
+     ||size<=0)
+        return(false);
+
+    Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+    
+    bool result=ChangeTexture2D(tex,buf,left,top,width,height);
 
     delete buf;
-    return(true);
+
+    return(result);
 }
 
 bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
