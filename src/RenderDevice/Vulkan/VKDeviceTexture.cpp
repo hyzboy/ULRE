@@ -78,7 +78,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat video_format,uint32_t width,ui
             TextureData *tex_data=new TextureData;
 
             tex_data->ref           = false;
-            tex_data->mip_levels    = 1;
+            tex_data->mip_levels    = 0;
             tex_data->memory        = memory;
             tex_data->image_layout  = image_layout;
             tex_data->image         = image;
@@ -220,9 +220,9 @@ bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 
     VkFence fence=*texture_fence;
     
-    vkResetFences(attr->device,1,&fence);
     if(vkQueueSubmit(attr->graphics_queue, 1, &texture_submit_info, fence))return(false);
-    if(vkWaitForFences(attr->device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC*0.1)!=VK_SUCCESS)return(false);
+    if(vkWaitForFences(attr->device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC*0.1)!=VK_SUCCESS)return(false);    
+    vkResetFences(attr->device,1,&fence);
 
     return(true);
 }

@@ -17,7 +17,7 @@ Device::Device(DeviceAttribute *da)
 
     current_frame=0;
 
-    texture_fence=this->CreateFence();
+    texture_fence=this->CreateFence(false);
 
     hgl_zero(texture_submit_info);
     texture_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -81,7 +81,7 @@ void Device::RecreateDevice()
     for(uint i=0;i<swap_chain_count;i++)
     {
         render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_image_views[i],attr->depth.view));
-        fence_list.Add(this->CreateFence());
+        fence_list.Add(this->CreateFence(true));
     }
 
     texture_cmd_buf=CreateCommandBuffer();
@@ -121,12 +121,16 @@ CommandBuffer *Device::CreateCommandBuffer()
     return(new CommandBuffer(attr->device,attr->swapchain_extent,attr->cmd_pool,cmd_buf));
 }
 
-Fence *Device::CreateFence()
+/**
+ * 创建栅栏
+ * @param create_signaled 是否创建初始信号
+ */
+Fence *Device::CreateFence(bool create_signaled)
 {
     VkFenceCreateInfo fenceInfo;
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.pNext = nullptr;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    fenceInfo.flags = create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0;
 
     VkFence fence;
 
@@ -169,8 +173,6 @@ bool Device::Wait(bool wait_all,uint64_t time_out)
 
 bool Device::AcquireNextImage()
 {
-    //VkFence fence=*fence_list[current_fence];
-
     return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
 }
 
@@ -185,9 +187,11 @@ bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
     VkFence fence=*fence_list[current_fence];
 
     VkResult result=vkQueueSubmit(attr->graphics_queue,1,&submit_info,fence);
-    
+
     if(++current_fence==swap_chain_count)
         current_fence=0;
+
+    //不在这里立即等待fence完成，是因为有可能queue submit需要久一点工作时间，我们这个时间可以去干别的。等在AcquireNextImage时再去等待fence，而且是另一帧的fence。这样有利于异步处理
 
     return(result==VK_SUCCESS);
 }
