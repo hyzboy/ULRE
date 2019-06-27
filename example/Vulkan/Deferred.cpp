@@ -30,13 +30,14 @@ private:
 
     struct SubpassParam
     {
-        vulkan::Material *      mtl;
+        vulkan::Material *      material;
         vulkan::DescriptorSets *desc_sets;
         vulkan::Pipeline *      pipeline;
     };//
 
-    SubpassParam *              mrt;
-    SubpassParam *              composition;
+    SubpassParam                sp_gbuffer_opaque;
+    SubpassParam                sp_gbuffer_alpha_test;
+    SubpassParam                sp_ds_composition;
 
     vulkan::Renderable          *ro_sphere;
    
@@ -45,22 +46,18 @@ private:
 
 private:
 
-    bool InitMaterial()
+    bool InitSubpass(SubpassParam *sp,const OSString &vs,const OSString &fs)
     {
-        material_mrt=shader_manage->CreateMaterial( OS_TEXT("Atomsphere.vert.spv"),
-                                                    OS_TEXT("Atomsphere.frag.spv"));
-        if(!material_mrt)
-            return(false);
+        sp->material=shader_manage->CreateMaterial(vs,fs);
 
-        descriptor_sets=material_mrt->CreateDescriptorSets();
+        if(!sp->material)
+            return(false);        
 
-        db->Add(material);
-        db->Add(descriptor_sets);
+        sp->desc_sets=sp->material->CreateDescriptorSets();
+
+        db->Add(sp->material);
+        db->Add(sp->desc_sets);
         return(true);
-    }
-
-    bool InitMaterial()
-    {
     }
 
     void CreateRenderObject()
@@ -110,6 +107,13 @@ private:
 
         delete pipeline_creater;
         return(true);
+    }
+
+    bool InitMaterial()
+    {
+        InitSubpass(&sp_gbuffer_opaque,     OS_TEXT("gbuffer_opaque.vert.spv"),         OS_TEXT("gbuffer_opaque.frag.spv")          );
+        //InitSubpass(&sp_gbuffer_alpha_test, OS_TEXT("sp_gbuffer_alpha_test.vert.spv"),  OS_TEXT("sp_gbuffer_alpha_test.frag.spv")   );
+        InitSubpass(&sp_ds_composition,     OS_TEXT("ds_composition.vert.spv"),         OS_TEXT("ds_composition.frag.spv")          );
     }
 
     bool InitScene()
