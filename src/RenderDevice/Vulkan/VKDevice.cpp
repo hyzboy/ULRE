@@ -197,7 +197,7 @@ bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
     return(result==VK_SUCCESS);
 }
 
-bool Device::QueuePresent()
+bool Device::PresentBackbuffer()
 {
     present_info.pImageIndices=&current_frame;
 
