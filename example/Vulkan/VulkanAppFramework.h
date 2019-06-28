@@ -224,7 +224,7 @@ public:
         VkCommandBuffer cb=*cmd_buf[index];
         
         device->SubmitDraw(&cb);
-        device->QueuePresent();
+        device->PresentBackbuffer();
     }
 
     virtual void Draw()
