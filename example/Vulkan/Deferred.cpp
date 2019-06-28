@@ -35,14 +35,10 @@ private:
         vulkan::Pipeline *      pipeline;
     };//
 
-    SubpassParam                sp_gbuffer_opaque;
-    SubpassParam                sp_gbuffer_alpha_test;
-    SubpassParam                sp_ds_composition;
+    SubpassParam                sp_gbuffer;
+    SubpassParam                sp_composition;
 
     vulkan::Renderable          *ro_sphere;
-   
-    vulkan::Buffer *            ubo_atomsphere      =nullptr;
-    AtomsphereData              atomsphere_data;
 
 private:
 
@@ -60,50 +56,37 @@ private:
         return(true);
     }
 
-    void CreateRenderObject()
+    bool InitGBufferPipeline(SubpassParam *sp)
     {
-        ro_sphere=CreateRenderableSphere(db,material,128);
-    }
-    
-    bool InitAtomsphereUBO(vulkan::DescriptorSets *desc_set,uint bindpoint)
-    {
-        atomsphere_data.position.Set(0,0.1f,-1.0f);
-        atomsphere_data.intensity=22.0f;
-        atomsphere_data.scattering_direction=0.758f;
-
-        ubo_atomsphere=db->CreateUBO(sizeof(AtomsphereData),&atomsphere_data);
-
-        if(!ubo_atomsphere)
+        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetRenderPass(),device->GetExtent());
+        pipeline_creater->SetDepthTest(true);
+        pipeline_creater->SetDepthWrite(true);
+        pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
+        pipeline_creater->Set(PRIM_TRIANGLES);
+        sp->pipeline=pipeline_creater->Create();
+        
+        if(!sp->pipeline)
             return(false);
 
-        return desc_set->BindUBO(bindpoint,*ubo_atomsphere);
-    }
+        db->Add(sp->pipeline);
 
-    bool InitUBO()
-    {
-        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
-            return(false);
-
-        if(!InitAtomsphereUBO(descriptor_sets,material->GetUBO("sun")))
-            return(false);
-
-        descriptor_sets->Update();
+        delete pipeline_creater;
         return(true);
     }
 
-    bool InitPipeline()
+    bool InitCompositionPipeline(SubpassParam *sp)
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
-        pipeline_creater->SetDepthTest(true);
-        pipeline_creater->SetDepthWrite(true);
+        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetRenderPass(),device->GetExtent());
+        pipeline_creater->SetDepthTest(false);
+        pipeline_creater->SetDepthWrite(false);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(PRIM_TRIANGLES);
-        pipeline_solid=pipeline_creater->Create();
+        sp->pipeline=pipeline_creater->Create();
         
-        if(!pipeline_solid)
+        if(!sp->pipeline)
             return(false);
 
-        db->Add(pipeline_solid);
+        db->Add(sp->pipeline);
 
         delete pipeline_creater;
         return(true);
@@ -111,14 +94,35 @@ private:
 
     bool InitMaterial()
     {
-        InitSubpass(&sp_gbuffer_opaque,     OS_TEXT("gbuffer_opaque.vert.spv"),         OS_TEXT("gbuffer_opaque.frag.spv")          );
-        //InitSubpass(&sp_gbuffer_alpha_test, OS_TEXT("sp_gbuffer_alpha_test.vert.spv"),  OS_TEXT("sp_gbuffer_alpha_test.frag.spv")   );
-        InitSubpass(&sp_ds_composition,     OS_TEXT("ds_composition.vert.spv"),         OS_TEXT("ds_composition.frag.spv")          );
+        InitSubpass(&sp_gbuffer,        OS_TEXT("gbuffer_opaque.vert.spv"),OS_TEXT("gbuffer_opaque.frag.spv"));
+        InitSubpass(&sp_composition,    OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv"));
+
+        InitGBufferPipeline(&sp_gbuffer);
+        InitCompositionPipeline(&sp_composition);
     }
 
-    bool InitScene()
+    void CreateRenderObject(vulkan::Material *mtl)
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere),scale(1000));
+        ro_sphere=CreateRenderableSphere(db,mtl,128);
+    }
+    
+    bool InitUBO(SubpassParam *sp)
+    {
+        if(!InitCameraUBO(sp->desc_sets,sp->material->GetUBO("world")))
+            return(false);
+
+        sp->desc_sets->Update();
+        return(true);
+    }
+
+    bool InitScene(SubpassParam *sp)
+    {
+        if(!InitUBO(sp))
+            return(false);
+
+        CreateRenderObject(sp->material);
+
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere),scale(1000));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -136,15 +140,7 @@ public:
         if(!InitMaterial())
             return(false);
 
-        CreateRenderObject();
-
-        if(!InitUBO())
-            return(false);
-
-        if(!InitPipeline())
-            return(false);
-
-        if(!InitScene())
+        if(!InitScene(&sp_gbuffer))
             return(false);
 
         return(true);

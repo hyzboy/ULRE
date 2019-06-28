@@ -133,12 +133,7 @@ public:
     void InitCommandBuffer()
     {
         if(cmd_buf)
-        {
-            for(uint i=0;i<swap_chain_count;i++)
-                delete cmd_buf[i];
-
-            delete[] cmd_buf;
-        }
+            SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
         swap_chain_count=device->GetSwapChainImageCount();
         {
