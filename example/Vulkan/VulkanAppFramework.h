@@ -154,7 +154,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
         
         cb->Begin();
-        cb->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(index));
+        cb->BeginRenderPass(device->GetMainRenderPass(),device->GetFramebuffer(index));
         cb->Bind(p);
         cb->Bind(ds);
         cb->Bind(r);
@@ -186,7 +186,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
 
         cb->Begin();
-        cb->BeginRenderPass(device->GetRenderPass(),device->GetFramebuffer(index));
+        cb->BeginRenderPass(device->GetMainRenderPass(),device->GetFramebuffer(index));
         rl->Render(cb);
         cb->EndRenderPass();
         cb->End();
@@ -226,7 +226,7 @@ public:
     {
         int index=AcquireNextImage();
 
-        if(index<0||index>swap_chain_count)return;
+        if(index<0||index>=swap_chain_count)return;
 
         SubmitDraw(index);
     }
