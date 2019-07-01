@@ -68,7 +68,7 @@ public:
 
     const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_texture.GetCount();}
 
-            RenderPass *    GetRenderPass           ()          {return main_rp;}
+            RenderPass *    GetMainRenderPass       ()          {return main_rp;}
             Framebuffer *   GetFramebuffer          (int index) {return render_frame[index];}
     const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
             Framebuffer *   GetCurrentFramebuffer   ()          {return render_frame[current_frame];}

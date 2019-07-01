@@ -75,7 +75,7 @@ private:
     bool InitPipeline()
     {
         {
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
+            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
             pipeline_creater->SetDepthTest(true);
             pipeline_creater->SetDepthWrite(true);
             pipeline_creater->CloseCullFace();

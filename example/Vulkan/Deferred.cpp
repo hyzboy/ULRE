@@ -58,7 +58,7 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetRenderPass(),device->GetExtent());
+        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetMainRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
@@ -76,13 +76,13 @@ private:
 
     bool InitCompositionPipeline(SubpassParam *sp)
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetRenderPass(),device->GetExtent());
+        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetMainRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(PRIM_TRIANGLES);
         sp->pipeline=pipeline_creater->Create();
-        
+
         if(!sp->pipeline)
             return(false);
 
@@ -94,11 +94,13 @@ private:
 
     bool InitMaterial()
     {
-        InitSubpass(&sp_gbuffer,        OS_TEXT("gbuffer_opaque.vert.spv"),OS_TEXT("gbuffer_opaque.frag.spv"));
-        InitSubpass(&sp_composition,    OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv"));
+        if(!InitSubpass(&sp_gbuffer,        OS_TEXT("gbuffer_opaque.vert.spv"),OS_TEXT("gbuffer_opaque.frag.spv")))return(false);
+        if(!InitSubpass(&sp_composition,    OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv")))return(false);
 
-        InitGBufferPipeline(&sp_gbuffer);
-        InitCompositionPipeline(&sp_composition);
+        if(!InitGBufferPipeline(&sp_gbuffer))return(false);
+        if(!InitCompositionPipeline(&sp_composition))return(false);
+
+        return(true);
     }
 
     void CreateRenderObject(vulkan::Material *mtl)

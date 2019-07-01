@@ -107,7 +107,7 @@ private:
         constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
 
         {
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent());
+            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
             pipeline_creater->SetDepthTest(false);
             pipeline_creater->SetDepthWrite(false);
             pipeline_creater->CloseCullFace();
@@ -122,7 +122,7 @@ private:
             void *data;
             uint size=filesystem::LoadFileToMemory(PIPELINE_FILENAME,(void **)&data);
 
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetRenderPass(),device->GetExtent(),(uchar *)data,size);
+            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent(),(uchar *)data,size);
 
             pipeline=pipeline_creater->Create();
 
