@@ -14,12 +14,13 @@ DescriptorSetLayoutCreater::~DescriptorSetLayoutCreater()
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
-    VkDescriptorSetLayoutBinding layout_binding = {};
-    layout_binding.binding = binding;
-    layout_binding.descriptorType = desc_type;
-    layout_binding.descriptorCount = 1;
-    layout_binding.stageFlags = stageFlags;
-    layout_binding.pImmutableSamplers = nullptr;
+    VkDescriptorSetLayoutBinding layout_binding;
+
+    layout_binding.binding              = binding;
+    layout_binding.descriptorType       = desc_type;
+    layout_binding.descriptorCount      = 1;
+    layout_binding.stageFlags           = stageFlags;
+    layout_binding.pImmutableSamplers   = nullptr;
 
     const int index=layout_binding_list.Add(layout_binding);
 
@@ -38,11 +39,11 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t cou
 
     for(uint i=old_count;i<old_count+count;i++)
     {
-        p->binding = *binding;
-        p->descriptorType = desc_type;
-        p->descriptorCount = 1;
-        p->stageFlags = stageFlags;
-        p->pImmutableSamplers = nullptr;
+        p->binding              = *binding;
+        p->descriptorType       = desc_type;
+        p->descriptorCount      = 1;
+        p->stageFlags           = stageFlags;
+        p->pImmutableSamplers   = nullptr;
 
         index_by_binding.Add(*binding,i);
 
@@ -58,11 +59,13 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     if(count<=0)
         return(false);
 
-    VkDescriptorSetLayoutCreateInfo descriptor_layout = {};
-    descriptor_layout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptor_layout.pNext = nullptr;
-    descriptor_layout.bindingCount = count;
-    descriptor_layout.pBindings = layout_binding_list.GetData();
+    VkDescriptorSetLayoutCreateInfo descriptor_layout;
+
+    descriptor_layout.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptor_layout.pNext         = nullptr;
+    descriptor_layout.flags         = 0;
+    descriptor_layout.bindingCount  = count;
+    descriptor_layout.pBindings     = layout_binding_list.GetData();
 
     if(dsl)
         vkDestroyDescriptorSetLayout(*device,dsl,nullptr);
@@ -72,17 +75,18 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
 
     VkPushConstantRange push_constant_rage;
 
-    push_constant_rage.stageFlags=VK_SHADER_STAGE_VERTEX_BIT;
-    push_constant_rage.size=sizeof(PushConstant);
-    push_constant_rage.offset=0;
+    push_constant_rage.stageFlags   = VK_SHADER_STAGE_VERTEX_BIT;
+    push_constant_rage.size         = sizeof(PushConstant);
+    push_constant_rage.offset       = 0;
     
-    VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-    pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pPipelineLayoutCreateInfo.pNext = nullptr;
-    pPipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-    pPipelineLayoutCreateInfo.pPushConstantRanges = &push_constant_rage;
-    pPipelineLayoutCreateInfo.setLayoutCount = 1;
-    pPipelineLayoutCreateInfo.pSetLayouts = &dsl;
+    VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
+    pPipelineLayoutCreateInfo.sType                     = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pPipelineLayoutCreateInfo.pNext                     = nullptr;
+    pPipelineLayoutCreateInfo.flags                     = 0;
+    pPipelineLayoutCreateInfo.setLayoutCount            = 1;
+    pPipelineLayoutCreateInfo.pSetLayouts               = &dsl;
+    pPipelineLayoutCreateInfo.pushConstantRangeCount    = 1;
+    pPipelineLayoutCreateInfo.pPushConstantRanges       = &push_constant_rage;
 
     if(vkCreatePipelineLayout(*device,&pPipelineLayoutCreateInfo,nullptr,&pipeline_layout)!=VK_SUCCESS)
         return(false);
@@ -101,11 +105,11 @@ DescriptorSets *DescriptorSetLayoutCreater::Create()
         return(nullptr);
 
     VkDescriptorSetAllocateInfo alloc_info;
-    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.pNext = nullptr;
-    alloc_info.descriptorPool = device->GetDescriptorPool();
-    alloc_info.descriptorSetCount = 1;
-    alloc_info.pSetLayouts = &dsl;
+    alloc_info.sType                = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.pNext                = nullptr;
+    alloc_info.descriptorPool       = device->GetDescriptorPool();
+    alloc_info.descriptorSetCount   = 1;
+    alloc_info.pSetLayouts          = &dsl;
 
     VkDescriptorSet desc_set;
 

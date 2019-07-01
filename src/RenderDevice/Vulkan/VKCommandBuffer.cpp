@@ -35,7 +35,8 @@ CommandBuffer::~CommandBuffer()
 
 bool CommandBuffer::Begin()
 {
-    VkCommandBufferBeginInfo cmd_buf_info = {};
+    VkCommandBufferBeginInfo cmd_buf_info;
+
     cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     cmd_buf_info.pNext = nullptr;
     cmd_buf_info.flags = 0;

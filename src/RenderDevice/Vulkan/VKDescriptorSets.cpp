@@ -12,14 +12,18 @@ void DescriptorSets::Clear()
 
 bool DescriptorSets::BindUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
 {
-    VkWriteDescriptorSet writeDescriptorSet = {};
+    VkWriteDescriptorSet writeDescriptorSet;
 
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.dstSet = desc_set;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writeDescriptorSet.pBufferInfo = buf_info;
-    writeDescriptorSet.dstBinding = binding;
+    writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.pNext            = nullptr;
+    writeDescriptorSet.dstSet           = desc_set;
+    writeDescriptorSet.dstBinding       = binding;
+    writeDescriptorSet.dstArrayElement  = 0;
+    writeDescriptorSet.descriptorCount  = 1;
+    writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    writeDescriptorSet.pImageInfo       = nullptr;
+    writeDescriptorSet.pBufferInfo      = buf_info;
+    writeDescriptorSet.pTexelBufferView = nullptr;
 
     write_desc_sets.Add(writeDescriptorSet);
     return(true);
@@ -27,14 +31,18 @@ bool DescriptorSets::BindUBO(const uint32_t binding,const VkDescriptorBufferInfo
 
 bool DescriptorSets::BindUBODynamic(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
 {
-    VkWriteDescriptorSet writeDescriptorSet = {};
+    VkWriteDescriptorSet writeDescriptorSet;
 
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.dstSet = desc_set;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    writeDescriptorSet.pBufferInfo = buf_info;
-    writeDescriptorSet.dstBinding = binding;
+    writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.pNext            = nullptr;
+    writeDescriptorSet.dstSet           = desc_set;
+    writeDescriptorSet.dstBinding       = binding;
+    writeDescriptorSet.dstArrayElement  = 0;
+    writeDescriptorSet.descriptorCount  = 1;
+    writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    writeDescriptorSet.pImageInfo       = nullptr;
+    writeDescriptorSet.pBufferInfo      = buf_info;
+    writeDescriptorSet.pTexelBufferView = nullptr;
 
     write_desc_sets.Add(writeDescriptorSet);
     return(true);
@@ -50,14 +58,18 @@ bool DescriptorSets::BindSampler(const uint32_t binding,Texture *tex,Sampler *sa
     image_info->imageLayout  =*tex;
     image_info->sampler      =*sampler;
 
-    VkWriteDescriptorSet writeDescriptorSet = {};
+    VkWriteDescriptorSet writeDescriptorSet;
 
     writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.dstSet = desc_set;
-    writeDescriptorSet.descriptorCount = 1;
-    writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSet.pImageInfo = image_info;
-    writeDescriptorSet.dstBinding = binding;
+    writeDescriptorSet.pNext            = nullptr;
+    writeDescriptorSet.dstSet           = desc_set;
+    writeDescriptorSet.dstBinding       = binding;
+    writeDescriptorSet.dstArrayElement  = 0;
+    writeDescriptorSet.descriptorCount  = 1;
+    writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    writeDescriptorSet.pImageInfo       = image_info;
+    writeDescriptorSet.pBufferInfo      = nullptr;
+    writeDescriptorSet.pTexelBufferView = nullptr;
 
     write_desc_sets.Add(writeDescriptorSet);
     return(true);
