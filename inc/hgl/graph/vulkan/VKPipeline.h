@@ -73,34 +73,40 @@ public:
 
     bool Set(const VkPrimitiveTopology,bool=false);
 
-    void SetViewport(   float x,float y,float w,float h){viewport.x=x;viewport.y=y;viewport.width=w;viewport.height=h;}
-    void SetDepthRange( float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}
-    void SetScissor(    float l,float t,float w,float h){scissor.offset.x=l;scissor.offset.y=t;scissor.extent.width=w;scissor.extent.height=h;}
+    void SetViewport(       float x,float y,float w,float h){viewport.x=x;viewport.y=y;viewport.width=w;viewport.height=h;}
+    void SetDepthRange(     float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}
+    void SetScissor(        float l,float t,float w,float h){scissor.offset.x=l;scissor.offset.y=t;scissor.extent.width=w;scissor.extent.height=h;}
 
-    void SetAlphaTest(  const float at)                 {alpha_test=at;}
+    void SetAlphaTest(      const float at)                 {alpha_test=at;}
 
-    void SetDepthTest(  bool                dt)         {depthStencilState.depthTestEnable=dt;}
-    void SetDepthWrite( bool                dw)         {depthStencilState.depthWriteEnable=dw;}
+    void SetDepthTest(      bool                dt)         {depthStencilState.depthTestEnable=dt;}
+    void SetDepthWrite(     bool                dw)         {depthStencilState.depthWriteEnable=dw;}
+    void SetDepthCompareOp( VkCompareOp         op)         {depthStencilState.depthCompareOp=op;}
+    void SetDepthBoundsTest(bool                dbt)        {depthStencilState.depthBoundsTestEnable=dbt;}
+    void SetDepthBounds(    float               min_depth,
+                            float               max_depth)  {depthStencilState.minDepthBounds=min_depth;
+                                                             depthStencilState.maxDepthBounds=max_depth;}
+    void SetStencilTest(    bool                st)         {depthStencilState.stencilTestEnable=st;}
 
-    void SetDepthClamp( bool                dc)         {rasterizer.depthClampEnable=dc;}
-    void SetDiscard(    bool                discard)    {rasterizer.rasterizerDiscardEnable=discard;}
-    void SetPolygonMode(VkPolygonMode       pm)         {rasterizer.polygonMode =pm;}
-    void SetCullMode(   VkCullModeFlagBits  cm)         {rasterizer.cullMode    =cm;}
-    void CloseCullFace()                                {rasterizer.cullMode    =VK_CULL_MODE_NONE;}
-    void SetFrontFace(  VkFrontFace         ff)         {rasterizer.frontFace   =ff;}
-    void SetDepthBias(  float               ConstantFactor,
-                        float               Clamp,
-                        float               SlopeFactor)
+    void SetDepthClamp(     bool                dc)         {rasterizer.depthClampEnable=dc;}
+    void SetDiscard(        bool                discard)    {rasterizer.rasterizerDiscardEnable=discard;}
+    void SetPolygonMode(    VkPolygonMode       pm)         {rasterizer.polygonMode =pm;}
+    void SetCullMode(       VkCullModeFlagBits  cm)         {rasterizer.cullMode    =cm;}
+    void CloseCullFace()                                    {rasterizer.cullMode    =VK_CULL_MODE_NONE;}
+    void SetFrontFace(      VkFrontFace         ff)         {rasterizer.frontFace   =ff;}
+    void SetDepthBias(      float               ConstantFactor,
+                            float               Clamp,
+                            float               SlopeFactor)
     {
         rasterizer.depthBiasEnable          =VK_TRUE;
         rasterizer.depthBiasConstantFactor  =ConstantFactor;
         rasterizer.depthBiasClamp           =Clamp;
         rasterizer.depthBiasSlopeFactor     =SlopeFactor;
     }
-    void DisableDepthBias()                             {rasterizer.depthBiasEnable=VK_FALSE;}
-    void SetLineWidth(  float               line_width) {rasterizer.lineWidth   =line_width;}
+    void DisableDepthBias()                                 {rasterizer.depthBiasEnable=VK_FALSE;}
+    void SetLineWidth(      float               line_width) {rasterizer.lineWidth   =line_width;}
 
-    void SetSamleCount( VkSampleCountFlagBits sc)
+    void SetSamleCount(     VkSampleCountFlagBits sc)
     {
         multisampling.sampleShadingEnable=(sc==VK_SAMPLE_COUNT_1_BIT?VK_FALSE:VK_TRUE);
         multisampling.rasterizationSamples=sc;
