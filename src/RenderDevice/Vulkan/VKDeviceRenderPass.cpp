@@ -13,18 +13,18 @@ RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_
         depth=atta_count++;
     }
 
-    VkAttachmentDescription *attachments=new VkAttachmentDescription[atta_count];
-    VkAttachmentReference *color_references=new VkAttachmentReference[color_format.GetCount()];
+    SharedArray<VkAttachmentDescription> attachments=new VkAttachmentDescription[atta_count];
+    SharedArray<VkAttachmentReference> color_references=new VkAttachmentReference[color_format.GetCount()];
     VkAttachmentReference depth_references;
 
     for(uint i=0;i<atta_count;i++)
     {
         attachments[i].samples          = VK_SAMPLE_COUNT_1_BIT;
-        attachments[i].loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[i].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[i].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachments[i].loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR代表LOAD时清空内容
+        attachments[i].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROE代表SOTRE时储存内容
+        attachments[i].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CARE表示不在意
         attachments[i].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[i].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;
+        attachments[i].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;        //代表不关心初始布局
     }
 
     const VkFormat *cf=color_format.GetData();
