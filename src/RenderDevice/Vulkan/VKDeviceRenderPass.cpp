@@ -91,93 +91,10 @@ RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_
 
 RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
-    VkAttachmentDescription attachments[2];
+    List<VkFormat> color_format_list;
 
-    VkAttachmentReference color_reference={0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-    VkAttachmentReference depth_reference={1,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+    color_format_list.Add(color_format);
 
-    VkSubpassDescription subpass={};
-    subpass.pipelineBindPoint=VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.flags=0;
-    subpass.inputAttachmentCount=0;
-    subpass.pInputAttachments=nullptr;
-    subpass.pResolveAttachments=nullptr;
-    subpass.preserveAttachmentCount=0;
-    subpass.pPreserveAttachments=nullptr;
-
-    int att_count=0;
-
-    if(color_format!=VK_FORMAT_UNDEFINED)
-    {
-        attachments[0].format=color_format;
-        attachments[0].samples=VK_SAMPLE_COUNT_1_BIT;
-        attachments[0].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[0].storeOp=VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[0].stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[0].stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[0].initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[0].finalLayout=color_final_layout;
-        attachments[0].flags=0;
-
-        ++att_count;
-
-        subpass.colorAttachmentCount=1;
-        subpass.pColorAttachments=&color_reference;
-    }
-    else
-    {
-        subpass.colorAttachmentCount=0;
-        subpass.pColorAttachments=nullptr;
-    }
-
-    if(depth_format!=VK_FORMAT_UNDEFINED)
-    {
-        attachments[att_count].format=depth_format;
-        attachments[att_count].samples=VK_SAMPLE_COUNT_1_BIT;
-        attachments[att_count].loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[att_count].storeOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[att_count].stencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[att_count].stencilStoreOp=VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[att_count].initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[att_count].finalLayout=depth_final_layout;
-        attachments[att_count].flags=0;
-
-        depth_reference.attachment=att_count;
-
-        ++att_count;
-
-        subpass.pDepthStencilAttachment=&depth_reference;
-    }
-    else
-    {
-        subpass.pDepthStencilAttachment=nullptr;
-    }
-
-    VkSubpassDependency dependency;
-    dependency.srcSubpass       = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass       = 0;
-    dependency.srcStageMask     = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstStageMask     = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask    = 0;
-    dependency.dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependency.dependencyFlags  = VK_DEPENDENCY_BY_REGION_BIT;
-
-    VkRenderPassCreateInfo rp_info;
-    rp_info.sType           =VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    rp_info.pNext           =nullptr;
-    rp_info.flags           =0;
-    rp_info.attachmentCount =att_count;
-    rp_info.pAttachments    =attachments;
-    rp_info.subpassCount    =1;
-    rp_info.pSubpasses      =&subpass;
-    rp_info.dependencyCount =1;
-    rp_info.pDependencies   =&dependency;
-
-    VkRenderPass render_pass;
-
-    if(vkCreateRenderPass(attr->device,&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
-        return(nullptr);
-
-    return(new RenderPass(attr->device,render_pass,color_format,depth_format));
+    return CreateRenderPass(color_format_list,depth_format,color_final_layout,depth_final_layout);
 }
 VK_NAMESPACE_END
