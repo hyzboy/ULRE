@@ -2,6 +2,7 @@
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/BaseString.h>
+#include<hgl/type/Set.h>
 
 VK_NAMESPACE_BEGIN
 class PhysicalDevice
@@ -14,6 +15,15 @@ class PhysicalDevice
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
     List<VkExtensionProperties>         extension_properties;
+
+    Set<VkFormat> optimal_color_format;
+    Set<VkFormat> optimal_depth_format;
+    Set<VkFormat> linear_color_format;
+    Set<VkFormat> linear_depth_format;
+    Set<VkFormat> buffer_color_format;
+    Set<VkFormat> buffer_depth_format;
+
+    void InitFormatSupport();
 
 public:
 
@@ -71,9 +81,14 @@ public:
         return fp;
     }
     
+    bool IsOptimalColorFormat(const VkFormat format)const{return optimal_color_format.IsMember(format);}
+    bool IsOptimalDepthFormat(const VkFormat format)const{return optimal_depth_format.IsMember(format);}
+    bool IsLinearColorFormat(const VkFormat format)const{return linear_color_format.IsMember(format);}
+    bool IsLinearDepthFormat(const VkFormat format)const{return linear_depth_format.IsMember(format);}
+    bool IsBufferColorFormat(const VkFormat format)const{return buffer_color_format.IsMember(format);}
+    bool IsBufferDepthFormat(const VkFormat format)const{return buffer_depth_format.IsMember(format);}
+    
     VkFormat GetDepthFormat(bool lower_to_high=true)const;
     VkFormat GetDepthStencilFormat(bool lower_to_high=true)const;
-
-    bool CheckDepthFormat(const VkFormat)const;
 };//class PhysicalDevice
 VK_NAMESPACE_END
