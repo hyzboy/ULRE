@@ -3,7 +3,7 @@
 #include<hgl/graph/vulkan/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN
-RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+RenderPass *Device::CreateRenderPass(List<VkSubpassDescription> &subpass,List<VkFormat> color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
     int depth=-1;
     uint atta_count=color_format.GetCount();
@@ -15,7 +15,6 @@ RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_
 
     SharedArray<VkAttachmentDescription> attachments=new VkAttachmentDescription[atta_count];
     SharedArray<VkAttachmentReference> color_references=new VkAttachmentReference[color_format.GetCount()];
-    VkAttachmentReference depth_references;
 
     for(uint i=0;i<atta_count;i++)
     {
@@ -34,53 +33,83 @@ RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_
         attachments[i].finalLayout      = color_final_layout;
         attachments[i].format           = *cf;
         ++cf;
-
-        color_references[i].attachment  = i;
-        color_references[i].layout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
-
-    VkSubpassDescription subpass;
-    subpass.flags                   = 0;
-    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.inputAttachmentCount    = 0;
-    subpass.pInputAttachments       = nullptr;
-    subpass.colorAttachmentCount    = color_format.GetCount();
-    subpass.pColorAttachments       = color_references;
-    subpass.pResolveAttachments     = nullptr;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments    = nullptr;
 
     if(depth!=-1)
     {
         attachments[depth].finalLayout  = depth_final_layout;
         attachments[depth].format       = depth_format;
+    }
 
-        depth_references.attachment     = depth;
-        depth_references.layout         = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    const uint32_t subpass_count=subpass.GetCount();
+    uint32_t dependency_count;
 
-        subpass.pDepthStencilAttachment = &depth_references;
+    SharedArray<VkSubpassDependency> dependency;
+    
+    if(subpass_count==1)
+    {
+        dependency_count=1;
+        dependency=new VkSubpassDependency[dependency_count];
+        
+        dependency[0].srcSubpass        = VK_SUBPASS_EXTERNAL;
+        dependency[0].dstSubpass        = 0;
+        dependency[0].srcStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        dependency[0].dstStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        dependency[0].srcAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
+        dependency[0].dstAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
+        dependency[0].dependencyFlags   = VK_DEPENDENCY_BY_REGION_BIT;
     }
     else
-        subpass.pDepthStencilAttachment = nullptr;
+    {
+        dependency_count=subpass_count+1;
 
-    VkSubpassDependency dependency;
-    dependency.srcSubpass       = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass       = 0;
-    dependency.srcStageMask     = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstStageMask     = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask    = 0;
-    dependency.dstAccessMask    = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependency.dependencyFlags  = VK_DEPENDENCY_BY_REGION_BIT;
+        dependency=new VkSubpassDependency[dependency_count];
+
+        for(uint32_t i=0;i<subpass_count+1;i++)
+        {
+            if(i==0)
+            {
+                dependency[i].srcSubpass        = VK_SUBPASS_EXTERNAL;
+                dependency[i].dstSubpass        = 0;
+                dependency[i].srcStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;            
+                dependency[i].dstStageMask      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                dependency[i].srcAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
+                dependency[i].dstAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            }
+            else
+            {
+                dependency[i].srcSubpass        = i-1;
+                dependency[i].srcStageMask      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+                if(i==subpass_count)
+                {
+                    dependency[i].dstSubpass        = VK_SUBPASS_EXTERNAL;
+                    dependency[i].dstStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                    dependency[i].srcAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                    dependency[i].dstAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
+                }
+                else
+                {
+                    dependency[i].dstSubpass        = i;
+                    dependency[i].dstStageMask      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                    dependency[i].srcAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                    dependency[i].dstAccessMask     = VK_ACCESS_SHADER_READ_BIT;
+                }
+            }
+
+            dependency[i].dependencyFlags  = VK_DEPENDENCY_BY_REGION_BIT;
+        }
+    }
 
     VkRenderPassCreateInfo rp_info;
     rp_info.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     rp_info.pNext           = nullptr;
     rp_info.attachmentCount = atta_count;
     rp_info.pAttachments    = attachments;
-    rp_info.subpassCount    = 1;
-    rp_info.pSubpasses      = &subpass;
-    rp_info.dependencyCount = 1;
-    rp_info.pDependencies   = &dependency;
+    rp_info.subpassCount    = subpass.GetCount();
+    rp_info.pSubpasses      = subpass.GetData();
+    rp_info.dependencyCount = dependency_count;
+    rp_info.pDependencies   = dependency;
 
     VkRenderPass render_pass;
 
@@ -92,10 +121,30 @@ RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_
 
 RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
+    VkAttachmentReference color_atta_ref={0,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference depth_atta_ref={1,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+
+    List<VkSubpassDescription> subpass_desc_list;
+
+    VkSubpassDescription subpass;
+        
+    subpass.flags                   = 0;
+    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.inputAttachmentCount    = 0;
+    subpass.pInputAttachments       = nullptr;
+    subpass.colorAttachmentCount    = 1;
+    subpass.pColorAttachments       = &color_atta_ref;
+    subpass.pResolveAttachments     = nullptr;
+    subpass.pDepthStencilAttachment = &depth_atta_ref;
+    subpass.preserveAttachmentCount = 0;
+    subpass.pPreserveAttachments    = nullptr;
+
+    subpass_desc_list.Add(subpass);
+
     List<VkFormat> color_format_list;
 
     color_format_list.Add(color_format);
 
-    return CreateRenderPass(color_format_list,depth_format,color_final_layout,depth_final_layout);
+    return CreateRenderPass(subpass_desc_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
 }
 VK_NAMESPACE_END
