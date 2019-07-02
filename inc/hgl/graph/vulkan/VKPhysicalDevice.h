@@ -16,12 +16,7 @@ class PhysicalDevice
     List<VkLayerProperties>             layer_properties;
     List<VkExtensionProperties>         extension_properties;
 
-    Set<VkFormat> optimal_color_format;
-    Set<VkFormat> optimal_depth_format;
-    Set<VkFormat> linear_color_format;
-    Set<VkFormat> linear_depth_format;
-    Set<VkFormat> buffer_color_format;
-    Set<VkFormat> buffer_depth_format;
+    VkFormatProperties format_properties[VK_FORMAT_RANGE_SIZE];
 
     void InitFormatSupport();
 
@@ -80,13 +75,17 @@ public:
 
         return fp;
     }
+
+    bool IsOptimalTilingFeatures(const VkFormat format,const VkFormatFeatureFlags flag)const
+    {
+        if(format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)
+            return(false);
+            
+        return(format_properties[format].optimalTilingFeatures&flag);
+    }
     
-    bool IsOptimalColorFormat(const VkFormat format)const{return optimal_color_format.IsMember(format);}
-    bool IsOptimalDepthFormat(const VkFormat format)const{return optimal_depth_format.IsMember(format);}
-    bool IsLinearColorFormat(const VkFormat format)const{return linear_color_format.IsMember(format);}
-    bool IsLinearDepthFormat(const VkFormat format)const{return linear_depth_format.IsMember(format);}
-    bool IsBufferColorFormat(const VkFormat format)const{return buffer_color_format.IsMember(format);}
-    bool IsBufferDepthFormat(const VkFormat format)const{return buffer_depth_format.IsMember(format);}
+    bool IsColorAttachmentOptimal(const VkFormat format)const{return IsOptimalTilingFeatures(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
+    bool IsDepthAttachmentOptimal(const VkFormat format)const{return IsOptimalTilingFeatures(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
     
     VkFormat GetDepthFormat(bool lower_to_high=true)const;
     VkFormat GetDepthStencilFormat(bool lower_to_high=true)const;
