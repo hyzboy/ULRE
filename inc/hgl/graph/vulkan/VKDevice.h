@@ -165,15 +165,31 @@ public: //material相关
 public: //Command Buffer 相关
 
     CommandBuffer * CreateCommandBuffer();
+    
+    void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count);
 
-    RenderPass *    CreateRenderPass(   List<VkSubpassDescription> &subpass,
-                                        List<VkFormat> color_format,VkFormat depth_format,
-                                        VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    bool CreateAttachment(      List<VkAttachmentReference> &ref_list,
+                                List<VkAttachmentDescription> &desc_list,
+                                const List<VkFormat> &color_format,
+                                const VkFormat depth_format,
+                                const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    RenderPass *    CreateRenderPass(   VkFormat color_format,VkFormat depth_format,
-                                        VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                        VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+//    bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+//    bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
+                                        const List<VkSubpassDescription> &subpass,
+                                        const List<VkSubpassDependency> &dependency,
+                                        const List<VkFormat> &color_format,
+                                        const VkFormat depth_format,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    RenderPass *    CreateRenderPass(   const VkFormat color_format,
+                                        const VkFormat depth_format,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     Fence *         CreateFence(bool);
     Semaphore *     CreateSem();
