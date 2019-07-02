@@ -94,18 +94,26 @@ private:
 
         texture=vulkan::LoadTGATexture(OS_TEXT("lena.tga"),device);
 
-        VkSamplerCreateInfo sampler_create_info{};
+        VkSamplerCreateInfo sampler_create_info;
 
-        sampler_create_info.magFilter   = VK_FILTER_LINEAR;
-        sampler_create_info.minFilter   = VK_FILTER_LINEAR;
-        sampler_create_info.mipmapMode  = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        sampler_create_info.addressModeU= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        sampler_create_info.addressModeV= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        sampler_create_info.addressModeW= VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        sampler_create_info.mipLodBias  = 0.0f;
-        sampler_create_info.compareOp   = VK_COMPARE_OP_NEVER;
-        sampler_create_info.minLod      = 0.0f;
-        sampler_create_info.maxLod      = 1.0f;
+        sampler_create_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sampler_create_info.pNext                   = nullptr;
+        sampler_create_info.flags                   = 0;
+        sampler_create_info.magFilter               = VK_FILTER_LINEAR;
+        sampler_create_info.minFilter               = VK_FILTER_LINEAR;
+        sampler_create_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sampler_create_info.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.mipLodBias              = 0.0f;
+        sampler_create_info.anisotropyEnable        = false;
+        sampler_create_info.maxAnisotropy           = 0;
+        sampler_create_info.compareEnable           = false;
+        sampler_create_info.compareOp               = VK_COMPARE_OP_NEVER;
+        sampler_create_info.minLod                  = 0.0f;
+        sampler_create_info.maxLod                  = 1.0f;
+        sampler_create_info.borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+        sampler_create_info.unnormalizedCoordinates = false;
 
         sampler=device->CreateSampler(&sampler_create_info);
 
