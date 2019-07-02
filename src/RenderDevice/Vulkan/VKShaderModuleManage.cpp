@@ -27,6 +27,9 @@ ShaderModuleManage::~ShaderModuleManage()
 
 const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
 {
+    if(!spv_data||spv_size<=0)
+        return(nullptr);
+
     VkPipelineShaderStageCreateInfo *shader_stage=new VkPipelineShaderStageCreateInfo;
     shader_stage->sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shader_stage->pNext=nullptr;
@@ -63,11 +66,10 @@ const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits
 
 const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const OSString &filename)
 {
-    uint32_t spv_size;
     void *spv_data;
-    spv_size=hgl::filesystem::LoadFileToMemory(filename,&spv_data);
+    int64 spv_size=hgl::filesystem::LoadFileToMemory(filename,&spv_data);
 
-    if(!spv_data)
+    if(spv_size<=0)
         return(nullptr);
 
     const ShaderModule *sm=CreateShader(shader_stage_bit,spv_data,spv_size);
