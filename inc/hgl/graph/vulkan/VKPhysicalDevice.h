@@ -76,16 +76,12 @@ public:
         return fp;
     }
 
-    bool IsOptimalTilingFeatures(const VkFormat format,const VkFormatFeatureFlags flag)const
-    {
-        if(format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)
-            return(false);
-            
-        return(format_properties[format].optimalTilingFeatures&flag);
-    }
+    bool OptimalSupport (const VkFormat format,const VkFormatFeatureFlags flag)const{return((format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)?false:(format_properties[format].optimalTilingFeatures&flag));}
+    bool LinearSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{return((format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)?false:(format_properties[format].linearTilingFeatures&flag));}
+    bool BufferSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{return((format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)?false:(format_properties[format].bufferFeatures&flag));}
     
-    bool IsColorAttachmentOptimal(const VkFormat format)const{return IsOptimalTilingFeatures(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
-    bool IsDepthAttachmentOptimal(const VkFormat format)const{return IsOptimalTilingFeatures(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
+    bool IsColorAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
+    bool IsDepthAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
     
     VkFormat GetDepthFormat(bool lower_to_high=true)const;
     VkFormat GetDepthStencilFormat(bool lower_to_high=true)const;
