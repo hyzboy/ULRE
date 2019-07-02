@@ -96,21 +96,13 @@ const bool PhysicalDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFla
 
 void PhysicalDevice::InitFormatSupport()
 {
-    VkFormatProperties formatProps;
+    VkFormatProperties *fp=format_properties;
 
     for(uint32 i=VK_FORMAT_BEGIN_RANGE;i<=VK_FORMAT_END_RANGE;i++)
     {        
-        hgl_zero(formatProps);
-
-        vkGetPhysicalDeviceFormatProperties(physical_device,(VkFormat)i,&formatProps);
-
-        if(formatProps.optimalTilingFeatures    & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT        )optimal_color_format.Add((VkFormat)i);
-        if(formatProps.linearTilingFeatures     & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT        )linear_color_format.Add((VkFormat)i);
-        if(formatProps.bufferFeatures           & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT        )buffer_color_format.Add((VkFormat)i);
-
-        if(formatProps.optimalTilingFeatures    & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)optimal_depth_format.Add((VkFormat)i);
-        if(formatProps.linearTilingFeatures     & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)linear_depth_format.Add((VkFormat)i);
-        if(formatProps.bufferFeatures           & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)buffer_depth_format.Add((VkFormat)i);
+        vkGetPhysicalDeviceFormatProperties(physical_device,(VkFormat)i,fp);
+        
+        ++fp;
     }    
 }
 
@@ -128,7 +120,7 @@ VkFormat PhysicalDevice::GetDepthFormat(bool lower_to_high)const
 
     for (auto& format : depthFormats)
     {
-        if(IsOptimalDepthFormat(format))
+        if(IsDepthAttachmentOptimal(format))
         {
             if(lower_to_high)
                 return format;
@@ -153,7 +145,7 @@ VkFormat PhysicalDevice::GetDepthStencilFormat(bool lower_to_high)const
 
     for (auto& format : depthStencilFormats)
     {
-        if(IsOptimalDepthFormat(format))
+        if(IsDepthAttachmentOptimal(format))
         {
             if(lower_to_high)
                 return format;

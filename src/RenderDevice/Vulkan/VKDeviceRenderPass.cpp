@@ -109,7 +109,7 @@ bool Device::CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<V
 
     for(uint i=0;i<color_format.GetCount();i++)
     {
-        if(!attr->physical_device->IsOptimalColorFormat(*cf))
+        if(!attr->physical_device->IsColorAttachmentOptimal(*cf))
             return(false);
 
         ++cf;
@@ -143,7 +143,7 @@ bool Device::CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<V
 
 bool Device::CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout)
 {
-    if(!attr->physical_device->IsOptimalDepthFormat(depth_format))
+    if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
         return(false);
 
     {
@@ -184,14 +184,14 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
 
         for(uint i=0;i<color_format.GetCount();i++)
         {
-            if(!attr->physical_device->IsOptimalColorFormat(*cf))
+            if(!attr->physical_device->IsColorAttachmentOptimal(*cf))
                 return(false);
 
             ++cf;
         }
     }
 
-    if(!attr->physical_device->IsOptimalDepthFormat(depth_format))
+    if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
         return(false);
 
     VkRenderPassCreateInfo rp_info;
@@ -214,10 +214,10 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
 
 RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
-    if(!attr->physical_device->IsOptimalColorFormat(color_format))
+    if(!attr->physical_device->IsColorAttachmentOptimal(color_format))
         return(false);
 
-    if(!attr->physical_device->IsOptimalDepthFormat(depth_format))
+    if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
         return(false);
 
     List<VkAttachmentReference> ref_list;
