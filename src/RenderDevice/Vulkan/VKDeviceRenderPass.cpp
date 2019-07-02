@@ -19,6 +19,7 @@ RenderPass *Device::CreateRenderPass(List<VkFormat> color_format,VkFormat depth_
 
     for(uint i=0;i<atta_count;i++)
     {
+        attachments[i].flags            = 0;
         attachments[i].samples          = VK_SAMPLE_COUNT_1_BIT;
         attachments[i].loadOp           = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR代表LOAD时清空内容
         attachments[i].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROE代表SOTRE时储存内容
