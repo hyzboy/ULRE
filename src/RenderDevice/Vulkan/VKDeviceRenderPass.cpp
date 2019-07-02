@@ -64,9 +64,6 @@ void Device::CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependen
 
 bool Device::CreateAttachment(List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
-    if(!attr->physical_device->CheckDepthFormat(depth_format))
-        return(false);
-
     uint atta_count=color_format.GetCount();
 
     desc_list.SetCount(atta_count+1);
@@ -106,6 +103,74 @@ bool Device::CreateAttachment(List<VkAttachmentReference> &ref_list,List<VkAttac
     return(true);
 }
 
+bool Device::CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout)
+{
+    const VkFormat *cf=color_format.GetData();
+
+    for(uint i=0;i<color_format.GetCount();i++)
+    {
+        if(!attr->physical_device->IsOptimalColorFormat(*cf))
+            return(false);
+
+        ++cf;
+    }
+
+    ref_list.SetCount(color_format.GetCount());
+    VkAttachmentReference *ref=ref_list.GetData();
+
+    desc_list.SetCount(color_format.GetCount());
+    VkAttachmentDescription *desc=desc_list.GetData();
+
+    for(uint i=0;i<color_format.GetCount();i++)
+    {    
+        desc->flags             = 0;
+        desc->samples           = VK_SAMPLE_COUNT_1_BIT;
+        desc->loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR代表LOAD时清空内容
+        desc->storeOp           = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROE代表SOTRE时储存内容
+        desc->stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CARE表示不在意
+        desc->stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        desc->initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;        //代表不关心初始布局
+        desc->finalLayout       = color_final_layout;
+        ++desc;
+
+        ref->attachment       = i;
+        ref->layout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        ++ref;
+    }
+
+    return(true);
+}
+
+bool Device::CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout)
+{
+    if(!attr->physical_device->IsOptimalDepthFormat(depth_format))
+        return(false);
+
+    {
+        ref_list.SetCount(1);
+        VkAttachmentReference *ref=ref_list.GetData();
+
+        ref->attachment=0;
+        ref->layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    }
+
+    {
+        desc_list.SetCount(1);
+        VkAttachmentDescription *desc=desc_list.GetData();
+
+        desc->flags             = 0;
+        desc->samples           = VK_SAMPLE_COUNT_1_BIT;
+        desc->loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR代表LOAD时清空内容
+        desc->storeOp           = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROE代表SOTRE时储存内容
+        desc->stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CARE表示不在意
+        desc->stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        desc->initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;        //代表不关心初始布局
+        desc->finalLayout       = depth_final_layout;
+    }
+
+    return(true);
+}
+
 RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
@@ -114,6 +179,20 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
                                         const VkImageLayout color_final_layout,
                                         const VkImageLayout depth_final_layout)
 {
+    {
+        const VkFormat *cf=color_format.GetData();
+
+        for(uint i=0;i<color_format.GetCount();i++)
+        {
+            if(!attr->physical_device->IsOptimalColorFormat(*cf))
+                return(false);
+
+            ++cf;
+        }
+    }
+
+    if(!attr->physical_device->IsOptimalDepthFormat(depth_format))
+        return(false);
 
     VkRenderPassCreateInfo rp_info;
     rp_info.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -135,6 +214,12 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
 
 RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
+    if(!attr->physical_device->IsOptimalColorFormat(color_format))
+        return(false);
+
+    if(!attr->physical_device->IsOptimalDepthFormat(depth_format))
+        return(false);
+
     List<VkAttachmentReference> ref_list;
     List<VkAttachmentDescription> desc_list;
 
