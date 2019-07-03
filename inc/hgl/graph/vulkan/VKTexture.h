@@ -37,6 +37,8 @@ public:
     operator Memory *       (){return data?data->memory:nullptr;}
     operator ImageView *    (){return data?data->image_view:nullptr;}
 
+    ImageView *                 GetImageView(){return data?data->image_view:nullptr;}
+
     const uint32                GetMipLevels()const{return data?data->mip_levels:0;}
     const bool                  IsLinear    ()const{return data?data->linear:false;}
 

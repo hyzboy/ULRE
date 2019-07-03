@@ -7,6 +7,9 @@
 #include<hgl/graph/SceneDB.h>
 #include<hgl/graph/RenderableInstance.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/vulkan/VKImageView.h>
+#include<hgl/graph/vulkan/VKFramebuffer.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -21,12 +24,46 @@ struct AtomsphereData
     float scattering_direction;
 };//
 
+using Texture2DPointer=vulkan::Texture2D *;
+
 class TestApp:public CameraAppFramework
 {
 private:
 
     SceneNode   render_root;
     RenderList  render_list;
+
+    struct DeferredGBuffer
+    {
+        uint32_t width,height;
+        vulkan::Framebuffer *framebuffer;
+        vulkan::RenderPass *renderpass;
+
+        union
+        {
+            struct
+            {
+                Texture2DPointer position,normal,albedo,depth;
+            };
+
+            Texture2DPointer texture_list[4];
+        };
+
+        List<VkFormat> color_format_list;
+        List<vulkan::ImageView *> image_view_list;
+
+        struct
+        {
+            List<VkAttachmentDescription> desc_list;
+            List<VkAttachmentReference> ref_list;
+        }attachment;
+        
+        struct
+        {
+            List<VkSubpassDescription> desc;
+            List<VkSubpassDependency> dependency;
+        }subpass;
+    }gbuffer;//
 
     struct SubpassParam
     {
@@ -41,6 +78,53 @@ private:
     vulkan::Renderable          *ro_sphere;
 
 private:
+
+    bool InitGBuffer()
+    {
+        gbuffer.width=power_to_2(SCREEN_WIDTH);
+        gbuffer.height=power_to_2(SCREEN_HEIGHT);
+
+        gbuffer.position=device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
+        gbuffer.normal  =device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
+        gbuffer.albedo  =device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
+        gbuffer.depth   =device->CreateTexture2DDepth(FMT_D32F,     gbuffer.width,gbuffer.height);
+
+        for(uint i=0;i<3;i++)
+        {
+            gbuffer.color_format_list.Add(gbuffer.texture_list[i]->GetFormat());
+            gbuffer.image_view_list.Add(gbuffer.texture_list[i]->GetImageView());
+        }
+
+        if(!device->CreateAttachment(   gbuffer.attachment.ref_list,
+                                        gbuffer.attachment.desc_list,
+                                        gbuffer.color_format_list,
+                                        gbuffer.depth->GetFormat()))
+            return(false);
+
+        VkSubpassDescription desc;
+
+        device->CreateSubpassDescription(desc,gbuffer.attachment.ref_list);
+
+        gbuffer.subpass.desc.Add(desc);
+
+        device->CreateSubpassDependency(gbuffer.subpass.dependency,2);
+
+        gbuffer.renderpass=device->CreateRenderPass(gbuffer.attachment.desc_list,
+                                                    gbuffer.subpass.desc,
+                                                    gbuffer.subpass.dependency,
+                                                    gbuffer.color_format_list,
+                                                    gbuffer.depth->GetFormat());
+
+        if(!gbuffer.renderpass)
+            return(false);
+
+        gbuffer.framebuffer=vulkan::CreateFramebuffer(device,gbuffer.renderpass,gbuffer.image_view_list);
+
+        if(!gbuffer.framebuffer)
+            return(false);
+
+        return(true);
+    }
 
     bool InitSubpass(SubpassParam *sp,const OSString &vs,const OSString &fs)
     {
@@ -58,7 +142,7 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetMainRenderPass(),device->GetExtent());
+        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,device->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);

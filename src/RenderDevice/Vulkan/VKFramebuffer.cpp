@@ -65,7 +65,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
     return(new Framebuffer(dev->GetDevice(),fb));
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> color,ImageView *depth)
+Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &color,ImageView *depth)
 {    
     if(!dev)return(nullptr);
     if(!rp)return(nullptr);
@@ -75,6 +75,18 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> colo
     if(color.GetCount()==0&&!depth)return(nullptr);
 
     return CreateFramebuffer(dev,rp,color.GetData(),color.GetCount(),depth);
+}
+
+Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> image_view_list)
+{
+    const int count=image_view_list.GetCount();
+
+    ImageView *last_iv=*(image_view_list.GetData()+count-1);
+
+    if(last_iv->GetAspectFlags()&VK_IMAGE_ASPECT_DEPTH_BIT)
+        return CreateFramebuffer(dev,rp,image_view_list.GetData(),count-1,last_iv);
+    else
+        return CreateFramebuffer(dev,rp,image_view_list.GetData(),count,nullptr);
 }
 
 Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *color,ImageView *depth)
