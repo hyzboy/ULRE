@@ -3,7 +3,7 @@
 #include<hgl/graph/vulkan/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN
-void Device::CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)
+void Device::CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependency_list,const uint32_t count) const
 {
     if(count==1)
     {
@@ -62,7 +62,7 @@ void Device::CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependen
     }
 }
 
-bool Device::CreateAttachment(List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+bool Device::CreateAttachment(List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout) const
 {
     uint atta_count=color_format.GetCount();
 
@@ -84,7 +84,7 @@ bool Device::CreateAttachment(List<VkAttachmentReference> &ref_list,List<VkAttac
     }
 
     const VkFormat *cf=color_format.GetData();
-    for(int i=0;i<atta_count;i++)
+    for(uint i=0;i<atta_count;i++)
     {
         desc[i].finalLayout      = color_final_layout;
         desc[i].format           = *cf;
@@ -103,11 +103,11 @@ bool Device::CreateAttachment(List<VkAttachmentReference> &ref_list,List<VkAttac
     return(true);
 }
 
-bool Device::CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout)
+bool Device::CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout) const
 {
     const VkFormat *cf=color_format.GetData();
 
-    for(uint i=0;i<color_format.GetCount();i++)
+    for(int i=0;i<color_format.GetCount();i++)
     {
         if(!attr->physical_device->IsColorAttachmentOptimal(*cf))
             return(false);
@@ -121,7 +121,7 @@ bool Device::CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<V
     desc_list.SetCount(color_format.GetCount());
     VkAttachmentDescription *desc=desc_list.GetData();
 
-    for(uint i=0;i<color_format.GetCount();i++)
+    for(int i=0;i<color_format.GetCount();i++)
     {    
         desc->flags             = 0;
         desc->samples           = VK_SAMPLE_COUNT_1_BIT;
@@ -141,7 +141,7 @@ bool Device::CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<V
     return(true);
 }
 
-bool Device::CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout)
+bool Device::CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout) const
 {
     if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
         return(false);
@@ -171,18 +171,37 @@ bool Device::CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<V
     return(true);
 }
 
+void Device::CreateSubpassDescription(VkSubpassDescription &sd,const List<VkAttachmentReference> &ref_list) const
+{
+    const VkAttachmentReference *end_ref=ref_list.GetPointer(ref_list.GetCount()-1);
+
+    if(end_ref->layout==VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)       //最后一个是深度
+    {
+        sd.colorAttachmentCount     =ref_list.GetCount()-1;
+        sd.pDepthStencilAttachment  =end_ref;
+    }
+    else
+    {
+        sd.colorAttachmentCount     =ref_list.GetCount();
+        sd.pDepthStencilAttachment  =nullptr;
+    }
+
+    sd.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	sd.pColorAttachments = ref_list.GetData();
+}
+
 RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
                                         const List<VkFormat> &color_format,
                                         const VkFormat depth_format,
                                         const VkImageLayout color_final_layout,
-                                        const VkImageLayout depth_final_layout)
+                                        const VkImageLayout depth_final_layout) const
 {
     {
         const VkFormat *cf=color_format.GetData();
 
-        for(uint i=0;i<color_format.GetCount();i++)
+        for(int i=0;i<color_format.GetCount();i++)
         {
             if(!attr->physical_device->IsColorAttachmentOptimal(*cf))
                 return(false);
@@ -212,7 +231,7 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
     return(new RenderPass(attr->device,render_pass,color_format,depth_format));
 }
 
-RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout) const
 {
     if(!attr->physical_device->IsColorAttachmentOptimal(color_format))
         return(false);

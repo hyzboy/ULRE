@@ -26,7 +26,8 @@ public:
     operator VkFramebuffer(){return frame_buffer;}
 };//class Framebuffer
 
-Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> color,ImageView *depth=nullptr);
+Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> &color,ImageView *depth);
+Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> &image_view_list);
 Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth=nullptr);
 Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *depth);
 VK_NAMESPACE_END
