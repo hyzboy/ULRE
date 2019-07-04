@@ -43,7 +43,7 @@ private:
         {
             struct
             {
-                Texture2DPointer position,normal,albedo,depth;
+                Texture2DPointer position,normal,color,depth;
             };
 
             Texture2DPointer texture_list[4];
@@ -85,8 +85,8 @@ private:
         gbuffer.height=power_to_2(SCREEN_HEIGHT);
 
         gbuffer.position=device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
+        gbuffer.color   =device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
         gbuffer.normal  =device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
-        gbuffer.albedo  =device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
         gbuffer.depth   =device->CreateTexture2DDepth(FMT_D32F,     gbuffer.width,gbuffer.height);
 
         for(uint i=0;i<3;i++)
