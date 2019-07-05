@@ -5,59 +5,53 @@
 VK_NAMESPACE_BEGIN
 void Device::CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependency_list,const uint32_t count) const
 {
-    if(count==1)
-    {
-        VkSubpassDependency dependency;
-        
-        dependency.srcSubpass        = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass        = 0;
-        dependency.srcStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        dependency.dstStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        dependency.srcAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
-        dependency.dstAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
-        dependency.dependencyFlags   = VK_DEPENDENCY_BY_REGION_BIT;
+    if(count<=0)return;
 
-        subpass_dependency_list.Add(dependency);
+    subpass_dependency_list.SetCount(count);
+    
+    VkSubpassDependency *dependency=subpass_dependency_list.GetData();
+
+        dependency->srcSubpass      = VK_SUBPASS_EXTERNAL;
+        dependency->dstSubpass      = 0;
+        dependency->srcStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;            
+        dependency->srcAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
+        dependency->dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    if(count==1)
+    {        
+        dependency->dstStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        dependency->dstAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
     }
     else
     {
-        for(uint32_t i=0;i<count;i++)
-        {        
-            VkSubpassDependency dependency;
+        dependency->dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency->dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-            if(i==0)
+        ++dependency;
+
+        for(uint32_t i=1;i<count;i++)
+        {
+                dependency->srcSubpass        = i-1;
+                dependency->srcStageMask      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+            if(i==count-1)
             {
-                dependency.srcSubpass        = VK_SUBPASS_EXTERNAL;
-                dependency.dstSubpass        = 0;
-                dependency.srcStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;            
-                dependency.dstStageMask      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-                dependency.srcAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
-                dependency.dstAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                dependency->dstSubpass        = VK_SUBPASS_EXTERNAL;
+                dependency->dstStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                dependency->srcAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                dependency->dstAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
             }
             else
             {
-                dependency.srcSubpass        = i-1;
-                dependency.srcStageMask      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-                if(i==count-1)
-                {
-                    dependency.dstSubpass        = VK_SUBPASS_EXTERNAL;
-                    dependency.dstStageMask      = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-                    dependency.srcAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                    dependency.dstAccessMask     = VK_ACCESS_MEMORY_READ_BIT;
-                }
-                else
-                {
-                    dependency.dstSubpass        = i;
-                    dependency.dstStageMask      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-                    dependency.srcAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                    dependency.dstAccessMask     = VK_ACCESS_SHADER_READ_BIT;
-                }
+                dependency->dstSubpass        = i;
+                dependency->dstStageMask      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                dependency->srcAccessMask     = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                dependency->dstAccessMask     = VK_ACCESS_SHADER_READ_BIT;
             }
 
-            dependency.dependencyFlags  = VK_DEPENDENCY_BY_REGION_BIT;
-        
-            subpass_dependency_list.Add(dependency);
+                dependency->dependencyFlags  = VK_DEPENDENCY_BY_REGION_BIT;
+
+            ++dependency;
         }
     }
 }
@@ -186,8 +180,14 @@ void Device::CreateSubpassDescription(VkSubpassDescription &sd,const List<VkAtta
         sd.pDepthStencilAttachment  =nullptr;
     }
 
-    sd.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	sd.pColorAttachments = ref_list.GetData();
+    sd.flags                    =0;
+    sd.pipelineBindPoint        =VK_PIPELINE_BIND_POINT_GRAPHICS;
+    sd.inputAttachmentCount     =0;
+    sd.pInputAttachments        =nullptr;
+	sd.pColorAttachments        =ref_list.GetData();
+    sd.pResolveAttachments      =nullptr;
+    sd.preserveAttachmentCount  =0;
+    sd.pPreserveAttachments     =nullptr;
 }
 
 RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
@@ -203,14 +203,16 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
 
         for(int i=0;i<color_format.GetCount();i++)
         {
-            if(!attr->physical_device->IsColorAttachmentOptimal(*cf))
+            if(!attr->physical_device->IsColorAttachmentOptimal(*cf)
+             &&!attr->physical_device->IsColorAttachmentLinear(*cf))
                 return(false);
 
             ++cf;
         }
     }
 
-    if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
+    if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format)
+     &&!attr->physical_device->IsDepthAttachmentLinear(depth_format))
         return(false);
 
     VkRenderPassCreateInfo rp_info;
@@ -251,7 +253,7 @@ RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format
     List<VkSubpassDescription> subpass_desc_list;
 
     VkSubpassDescription subpass;
-        
+       
     subpass.flags                   = 0;
     subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.inputAttachmentCount    = 0;

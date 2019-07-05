@@ -77,7 +77,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &col
     return CreateFramebuffer(dev,rp,color.GetData(),color.GetCount(),depth);
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> image_view_list)
+Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &image_view_list)
 {
     const int count=image_view_list.GetCount();
 
