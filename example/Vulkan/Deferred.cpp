@@ -14,6 +14,9 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+constexpr uint32_t GBUFFER_WIDTH=1024;
+constexpr uint32_t GBUFFER_HEIGHT=1024;
+
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
@@ -116,8 +119,8 @@ private:
 
     bool InitGBuffer()
     {
-        gbuffer.width=1024;
-        gbuffer.height=1024;
+        gbuffer.width   =GBUFFER_WIDTH;
+        gbuffer.height  =GBUFFER_HEIGHT;
 
         //根据候选格式表选择格式
         const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
@@ -222,8 +225,8 @@ private:
 
     bool InitMaterial()
     {
-        if(!InitSubpass(&sp_gbuffer,        OS_TEXT("gbuffer_opaque.vert.spv"),OS_TEXT("gbuffer_opaque.frag.spv")))return(false);
-        if(!InitSubpass(&sp_composition,    OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv")))return(false);
+        if(!InitSubpass(&sp_gbuffer,    OS_TEXT("gbuffer_opaque.vert.spv"),OS_TEXT("gbuffer_opaque.frag.spv")))return(false);
+        if(!InitSubpass(&sp_composition,OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv")))return(false);
 
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         if(!InitCompositionPipeline(&sp_composition))return(false);
