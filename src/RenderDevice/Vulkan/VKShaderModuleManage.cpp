@@ -31,19 +31,19 @@ const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits
         return(nullptr);
 
     VkPipelineShaderStageCreateInfo *shader_stage=new VkPipelineShaderStageCreateInfo;
-    shader_stage->sType=VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shader_stage->pNext=nullptr;
-    shader_stage->pSpecializationInfo=nullptr;
-    shader_stage->flags=0;
-    shader_stage->stage=shader_stage_bit;
-    shader_stage->pName="main";
+    shader_stage->sType                 =VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shader_stage->pNext                 =nullptr;
+    shader_stage->pSpecializationInfo   =nullptr;
+    shader_stage->flags                 =0;
+    shader_stage->stage                 =shader_stage_bit;
+    shader_stage->pName                 ="main";
 
     VkShaderModuleCreateInfo moduleCreateInfo;
-    moduleCreateInfo.sType=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.pNext=nullptr;
-    moduleCreateInfo.flags=0;
-    moduleCreateInfo.codeSize=spv_size;
-    moduleCreateInfo.pCode=(const uint32_t *)spv_data;
+    moduleCreateInfo.sType      =VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleCreateInfo.pNext      =nullptr;
+    moduleCreateInfo.flags      =0;
+    moduleCreateInfo.codeSize   =spv_size;
+    moduleCreateInfo.pCode      =(const uint32_t *)spv_data;
 
     if(vkCreateShaderModule(*device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
         return(nullptr);

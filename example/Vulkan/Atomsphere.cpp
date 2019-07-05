@@ -87,7 +87,8 @@ private:
 
     bool InitPipeline()
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        SharedPtr<vulkan::PipelineCreater> 
+        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
@@ -98,8 +99,6 @@ private:
             return(false);
 
         db->Add(pipeline_solid);
-
-        delete pipeline_creater;
         return(true);
     }
 

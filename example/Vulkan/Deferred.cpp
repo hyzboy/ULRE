@@ -49,7 +49,7 @@ private:
             Texture2DPointer texture_list[4];
         };
 
-        List<VkFormat> color_format_list;
+        List<VkFormat> gbuffer_format_list;
         List<vulkan::ImageView *> image_view_list;
 
         struct
@@ -91,13 +91,13 @@ private:
 
         for(uint i=0;i<3;i++)
         {
-            gbuffer.color_format_list.Add(gbuffer.texture_list[i]->GetFormat());
+            gbuffer.gbuffer_format_list.Add(gbuffer.texture_list[i]->GetFormat());
             gbuffer.image_view_list.Add(gbuffer.texture_list[i]->GetImageView());
         }
 
         if(!device->CreateAttachment(   gbuffer.attachment.ref_list,
                                         gbuffer.attachment.desc_list,
-                                        gbuffer.color_format_list,
+                                        gbuffer.gbuffer_format_list,
                                         gbuffer.depth->GetFormat()))
             return(false);
 
@@ -112,7 +112,7 @@ private:
         gbuffer.renderpass=device->CreateRenderPass(gbuffer.attachment.desc_list,
                                                     gbuffer.subpass.desc,
                                                     gbuffer.subpass.dependency,
-                                                    gbuffer.color_format_list,
+                                                    gbuffer.gbuffer_format_list,
                                                     gbuffer.depth->GetFormat());
 
         if(!gbuffer.renderpass)
@@ -131,7 +131,7 @@ private:
         sp->material=shader_manage->CreateMaterial(vs,fs);
 
         if(!sp->material)
-            return(false);        
+            return(false);
 
         sp->desc_sets=sp->material->CreateDescriptorSets();
 
@@ -142,25 +142,24 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,device->GetExtent());
+        SharedPtr<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,device->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
         pipeline_creater->Set(PRIM_TRIANGLES);
+
         sp->pipeline=pipeline_creater->Create();
         
         if(!sp->pipeline)
             return(false);
 
         db->Add(sp->pipeline);
-
-        delete pipeline_creater;
         return(true);
     }
 
     bool InitCompositionPipeline(SubpassParam *sp)
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetMainRenderPass(),device->GetExtent());
+        SharedPtr<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetMainRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
@@ -171,8 +170,6 @@ private:
             return(false);
 
         db->Add(sp->pipeline);
-
-        delete pipeline_creater;
         return(true);
     }
 

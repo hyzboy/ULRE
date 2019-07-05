@@ -73,25 +73,21 @@ private:
     }
 
     bool InitPipeline()
-    {
-        {
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
-            pipeline_creater->SetDepthTest(true);
-            pipeline_creater->SetDepthWrite(true);
-            pipeline_creater->CloseCullFace();
-            pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
-            pipeline_creater->Set(PRIM_TRIANGLES);
+    {   
+        SharedPtr<vulkan::PipelineCreater> 
+        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        pipeline_creater->SetDepthTest(true);
+        pipeline_creater->SetDepthWrite(true);
+        pipeline_creater->CloseCullFace();
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
+        pipeline_creater->Set(PRIM_TRIANGLES);
 
-            pipeline_line=pipeline_creater->Create();
-            if(!pipeline_line)
-                return(false);
+        pipeline_line=pipeline_creater->Create();
+        if(!pipeline_line)
+            return(false);
 
-            db->Add(pipeline_line);
-
-            delete pipeline_creater;
-        }
-
-        return pipeline_line;
+        db->Add(pipeline_line);
+        return(true);
     }
 
     bool InitScene()
