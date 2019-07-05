@@ -107,7 +107,7 @@ private:
 
         gbuffer.subpass.desc.Add(desc);
 
-        device->CreateSubpassDependency(gbuffer.subpass.dependency,2);
+        device->CreateSubpassDependency(gbuffer.subpass.dependency,2);          //为啥要2个还不清楚
 
         gbuffer.renderpass=device->CreateRenderPass(gbuffer.attachment.desc_list,
                                                     gbuffer.subpass.desc,
