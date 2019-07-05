@@ -137,31 +137,35 @@ private:
 
     bool InitPipeline()
     {
-        vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        SharedPtr<vulkan::PipelineCreater> 
+        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->Set(PRIM_LINES);
 
         pipeline_line=pipeline_creater->Create();
+
+        if(!pipeline_line)
+            return(false);
+
         db->Add(pipeline_line);
 
         pipeline_creater->Set(PRIM_TRIANGLES);
         pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
         pipeline_solid=pipeline_creater->Create();
-        db->Add(pipeline_solid);
-
-        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
-        pipeline_twoside=pipeline_creater->Create();
-        db->Add(pipeline_twoside);
-
-        delete pipeline_creater;
-
-        if(!pipeline_line)
-            return(false);
 
         if(!pipeline_solid)
             return(false);
 
+        db->Add(pipeline_solid);
+
+        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
+        pipeline_twoside=pipeline_creater->Create();
+
+        if(!pipeline_twoside)
+            return(false);
+
+        db->Add(pipeline_twoside);
         return(true);
     }
 

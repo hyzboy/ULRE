@@ -162,33 +162,31 @@ private:
 
     bool InitPipeline()
     {
-        constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
+        SharedPtr<vulkan::PipelineCreater> 
+        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        pipeline_creater->SetDepthTest(false);
+        pipeline_creater->SetDepthWrite(false);
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
+        pipeline_creater->CloseCullFace();
+        pipeline_creater->Set(PRIM_TRIANGLES);
 
-        {
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
-            pipeline_creater->SetDepthTest(false);
-            pipeline_creater->SetDepthWrite(false);
-            pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
-            pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(PRIM_TRIANGLES);
+        pipeline_wireframe=pipeline_creater->Create();
 
-            pipeline_wireframe=pipeline_creater->Create();
+        if(!pipeline_wireframe)
+            return(false);
 
-            if(pipeline_wireframe)
-                db->Add(pipeline_wireframe);
+        db->Add(pipeline_wireframe);
 
-            pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
-            pipeline_creater->Set(PRIM_LINES);
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
+        pipeline_creater->Set(PRIM_LINES);
 
-            pipeline_lines=pipeline_creater->Create();
+        pipeline_lines=pipeline_creater->Create();
 
-            if(pipeline_lines)
-                db->Add(pipeline_lines);
+        if(!pipeline_lines)
+            return(false);
 
-            delete pipeline_creater;
-        }
-
-        return pipeline_wireframe;
+        db->Add(pipeline_lines);
+        return(true);
     }
 
     void CreateSceneNode(SceneNode *scene_node,ModelSceneNode *model_node)

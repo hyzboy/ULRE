@@ -103,7 +103,7 @@ private:
 
     bool InitPipeline()
     {
-        vulkan::PipelineCreater *
+        SharedPtr<vulkan::PipelineCreater> 
         pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
@@ -111,9 +111,6 @@ private:
         pipeline_creater->Set(PRIM_TRIANGLES);
 
         pipeline=pipeline_creater->Create();
-
-        delete pipeline_creater;
-        pipeline_creater=nullptr;
 
         return pipeline;
     }

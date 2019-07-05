@@ -114,21 +114,18 @@ private:
 
     bool InitPipeline()
     {
-        constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
+        SharedPtr<vulkan::PipelineCreater> 
+        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        pipeline_creater->SetDepthTest(false);
+        pipeline_creater->SetDepthWrite(false);
+        pipeline_creater->CloseCullFace();
+        pipeline_creater->Set(PRIM_TRIANGLE_FAN);
 
-        {
-            vulkan::PipelineCreater *pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
-            pipeline_creater->SetDepthTest(false);
-            pipeline_creater->SetDepthWrite(false);
-            pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(PRIM_TRIANGLE_FAN);
+        pipeline=pipeline_creater->Create();
+        if(!pipeline)return(false);
 
-            pipeline=pipeline_creater->Create();
-            db->Add(pipeline);
-            delete pipeline_creater;
-        }
-
-        return pipeline;
+        db->Add(pipeline);
+        return(true);
     }
 
     bool InitScene()

@@ -52,22 +52,22 @@ bool CommandBuffer::BeginRenderPass(RenderPass *rp,Framebuffer *fb)
 {
     VkRenderPassBeginInfo rp_begin;
 
-    rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rp_begin.pNext = nullptr;
-    rp_begin.renderPass = *rp;
-    rp_begin.framebuffer = *fb;
-    rp_begin.renderArea = render_area;
-    rp_begin.clearValueCount = 2;
-    rp_begin.pClearValues = clear_values;
+    rp_begin.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rp_begin.pNext              = nullptr;
+    rp_begin.renderPass         = *rp;
+    rp_begin.framebuffer        = *fb;
+    rp_begin.renderArea         = render_area;
+    rp_begin.clearValueCount    = 2;
+    rp_begin.pClearValues       = clear_values;
 
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 
-    viewport.x=0;
-    viewport.y=0;
-    viewport.minDepth=0.0f;
-    viewport.maxDepth=1.0f;
-    viewport.width=render_area.extent.width;
-    viewport.height=render_area.extent.height;
+    viewport.x          = 0;
+    viewport.y          = 0;
+    viewport.minDepth   = 0.0f;
+    viewport.maxDepth   = 1.0f;
+    viewport.width      = render_area.extent.width;
+    viewport.height     = render_area.extent.height;
 
     vkCmdSetViewport(cmd_buf,0,1,&viewport);
     vkCmdSetScissor(cmd_buf,0,1,&render_area);

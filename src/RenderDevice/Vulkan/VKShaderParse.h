@@ -32,8 +32,8 @@ public:
     SHADER_PARSE_GET_RESOURCE(StageInputs,  stage_inputs)
     SHADER_PARSE_GET_RESOURCE(StageOutputs, stage_outputs)
     SHADER_PARSE_GET_RESOURCE(Sampler,      sampled_images)
+    SHADER_PARSE_GET_RESOURCE(Subpass,      subpass_inputs)
 
-    //SmallVector<Resource> subpass_inputs;
     //SmallVector<Resource> storage_images;
     //SmallVector<Resource> atomic_counters;
     //SmallVector<Resource> acceleration_structures;
