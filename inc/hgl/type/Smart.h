@@ -480,6 +480,9 @@ namespace hgl
 
         T *operator -> (){return obj;}
 
+        operator T *(){return obj;}
+        operator const T *()const{return obj;}
+
         void Clear()
         {
             obj=nullptr;
