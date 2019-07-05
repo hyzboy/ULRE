@@ -107,7 +107,7 @@ private:
         constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
 
         {
-            SharedPtr<vulkan::PipelineCreater> 
+            AutoDelete<vulkan::PipelineCreater> 
             pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
             pipeline_creater->SetDepthTest(false);
             pipeline_creater->SetDepthWrite(false);
@@ -121,7 +121,7 @@ private:
             void *data;
             uint size=filesystem::LoadFileToMemory(PIPELINE_FILENAME,(void **)&data);
 
-            SharedPtr<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent(),(uchar *)data,size);
+            AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent(),(uchar *)data,size);
 
             pipeline=pipeline_creater->Create();
         }

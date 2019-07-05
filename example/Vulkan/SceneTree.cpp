@@ -74,7 +74,7 @@ private:
 
     bool InitPipeline()
     {   
-        SharedPtr<vulkan::PipelineCreater> 
+        AutoDelete<vulkan::PipelineCreater> 
         pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
