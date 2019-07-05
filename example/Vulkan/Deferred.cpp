@@ -26,6 +26,11 @@ struct AtomsphereData
 
 using Texture2DPointer=vulkan::Texture2D *;
 
+constexpr VkFormat position_candidate_format[]={FMT_RGBA32F,FMT_RGBA16F};
+constexpr VkFormat color_candidate_format   []={FMT_RGBA32F,FMT_RGBA16F,FMT_RGB16UN,FMT_RGB16SN,FMT_RGBA8UN,FMT_RGBA8SN,FMT_RGBA8U,FMT_RGB565,FMT_BGR565};
+constexpr VkFormat normal_candidate_format  []={FMT_RGBA32F,FMT_RGBA16F};
+constexpr VkFormat depth_candidate_format   []={FMT_D32F,FMT_D32F_S8U,FMT_X8_D24,FMT_D24UN_S8U,FMT_D16UN,FMT_D16UN_S8U};
+
 class TestApp:public CameraAppFramework
 {
 private:
@@ -79,15 +84,57 @@ private:
 
 private:
 
+    const VkFormat GetCandidateFormat(const VkFormat *fmt_list,const uint count)
+    {
+        auto pd=device->GetPhysicalDevice();
+
+        for(uint i=0;i<count;i++)
+            if(pd->IsColorAttachmentOptimal(fmt_list[i]))
+                return fmt_list[i];
+
+        for(uint i=0;i<count;i++)
+            if(pd->IsColorAttachmentLinear(fmt_list[i]))
+                return fmt_list[i];
+
+        return FMT_UNDEFINED;
+    }
+
+    const VkFormat GetDepthCandidateFormat()
+    {
+        auto pd=device->GetPhysicalDevice();
+
+        for(VkFormat fmt:depth_candidate_format)
+            if(pd->IsDepthAttachmentOptimal(fmt))
+                return fmt;
+
+        for(VkFormat fmt:depth_candidate_format)
+            if(pd->IsDepthAttachmentLinear(fmt))
+                return fmt;
+
+        return FMT_UNDEFINED;
+    }
+
     bool InitGBuffer()
     {
-        gbuffer.width=power_to_2(SCREEN_WIDTH);
-        gbuffer.height=power_to_2(SCREEN_HEIGHT);
+        gbuffer.width=1024;
+        gbuffer.height=1024;
 
-        gbuffer.position=device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
-        gbuffer.color   =device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
-        gbuffer.normal  =device->CreateTexture2DColor(FMT_RGB32F,   gbuffer.width,gbuffer.height);
-        gbuffer.depth   =device->CreateTexture2DDepth(FMT_D32F,     gbuffer.width,gbuffer.height);
+        //根据候选格式表选择格式
+        const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
+        const VkFormat color_format     =GetCandidateFormat(color_candidate_format,     sizeof(color_candidate_format));
+        const VkFormat normal_format    =GetCandidateFormat(normal_candidate_format,    sizeof(normal_candidate_format));
+        const VkFormat depth_format     =GetDepthCandidateFormat();
+
+        if(position_format  ==FMT_UNDEFINED
+         ||color_format     ==FMT_UNDEFINED
+         ||normal_format    ==FMT_UNDEFINED
+         ||depth_format     ==FMT_UNDEFINED)
+            return(false);
+
+        gbuffer.position=device->CreateTexture2DColor(position_format,  gbuffer.width,gbuffer.height);
+        gbuffer.color   =device->CreateTexture2DColor(color_format,     gbuffer.width,gbuffer.height);
+        gbuffer.normal  =device->CreateTexture2DColor(normal_format,    gbuffer.width,gbuffer.height);
+        gbuffer.depth   =device->CreateTexture2DDepth(depth_format,     gbuffer.width,gbuffer.height);
 
         for(uint i=0;i<3;i++)
         {
@@ -118,7 +165,7 @@ private:
         if(!gbuffer.renderpass)
             return(false);
 
-        gbuffer.framebuffer=vulkan::CreateFramebuffer(device,gbuffer.renderpass,gbuffer.image_view_list);
+        gbuffer.framebuffer=vulkan::CreateFramebuffer(device,gbuffer.renderpass,gbuffer.image_view_list,gbuffer.depth->GetImageView());
 
         if(!gbuffer.framebuffer)
             return(false);
@@ -218,6 +265,9 @@ public:
     bool Init()
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+            return(false);
+
+        if(!InitGBuffer())
             return(false);
 
         if(!InitMaterial())

@@ -82,6 +82,12 @@ public:
     
     bool IsColorAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
     bool IsDepthAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
+
+    bool IsColorAttachmentLinear(const VkFormat format)const{return LinearSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
+    bool IsDepthAttachmentLinear(const VkFormat format)const{return LinearSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
+
+    bool IsColorAttachmentBuffer(const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
+    bool IsDepthAttachmentBuffer(const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
     
     VkFormat GetDepthFormat(bool lower_to_high=true)const;
     VkFormat GetDepthStencilFormat(bool lower_to_high=true)const;
