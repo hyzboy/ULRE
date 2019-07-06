@@ -48,7 +48,7 @@ void DeviceAttribute::ClearSwapchain()
     if(swap_chain)
     {
         vkDestroySwapchainKHR(device,swap_chain,nullptr);
-        swap_chain=nullptr;
+        swap_chain=VK_NULL_HANDLE;
     }
 }
 

@@ -70,14 +70,14 @@ bool Memory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
     return(true);
 }
 
-bool Memory::Bind(VkBuffer buffer)
+bool Memory::BindBuffer(VkBuffer buffer)
 {
     if(!buffer)return(false);
 
     return(vkBindBufferMemory(device,buffer,memory,0)==VK_SUCCESS);
 }
 
-bool Memory::Bind(VkImage image)
+bool Memory::BindImage(VkImage image)
 {
     if(!image)return(false);
 

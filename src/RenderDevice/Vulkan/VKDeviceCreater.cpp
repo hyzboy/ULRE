@@ -93,7 +93,7 @@ namespace
         if(vkCreateCommandPool(device,&cmd_pool_info,nullptr,&cmd_pool)==VK_SUCCESS)
             return cmd_pool;
 
-        return(nullptr);
+        return(VK_NULL_HANDLE);
     }
 
     VkSwapchainKHR CreateSwapChain(DeviceAttribute *rsa)
@@ -136,15 +136,15 @@ namespace
         if(vkCreateSwapchainKHR(rsa->device,&swapchain_ci,nullptr,&swap_chain)==VK_SUCCESS)
             return(swap_chain);
 
-        return(nullptr);
+        return(VK_NULL_HANDLE);
     }
 
-    ImageView *Create2DImageView(VkDevice device,VkFormat format,VkImage img=nullptr)
+    ImageView *Create2DImageView(VkDevice device,VkFormat format,VkImage img=VK_NULL_HANDLE)
     {
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,VK_IMAGE_ASPECT_COLOR_BIT,img);
     }
 
-    ImageView *CreateDepthImageView(VkDevice device,VkFormat format,VkImage img=nullptr)
+    ImageView *CreateDepthImageView(VkDevice device,VkFormat format,VkImage img=VK_NULL_HANDLE)
     {
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,VK_IMAGE_ASPECT_DEPTH_BIT,img);
     }
@@ -224,7 +224,7 @@ namespace
         VkDescriptorPool desc_pool;
 
         if(vkCreateDescriptorPool(device,&dp_create_info,nullptr,&desc_pool)!=VK_SUCCESS)
-            return(nullptr);
+            return(VK_NULL_HANDLE);
 
         return desc_pool;
     }
@@ -241,7 +241,7 @@ namespace
         VkPipelineCache cache;
 
         if(vkCreatePipelineCache(device, &pipelineCache, nullptr, &cache)!=VK_SUCCESS)
-            return(nullptr);
+            return(VK_NULL_HANDLE);
 
         return cache;
     }

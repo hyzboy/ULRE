@@ -76,7 +76,7 @@ public:
         if(!ubo_world_matrix)
             return(false);
 
-        return desc_set->BindUBO(world_matrix_bindpoint,*ubo_world_matrix);
+        return desc_set->BindUBO(world_matrix_bindpoint,ubo_world_matrix);
     }
 
     void Resize(int w,int h)override

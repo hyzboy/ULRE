@@ -8,7 +8,7 @@ VK_NAMESPACE_BEGIN
 struct TextureData
 {
     Memory *            memory      =nullptr;
-    VkImage             image       =nullptr;
+    VkImage             image       =VK_NULL_HANDLE;
     VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
     ImageView *         image_view  =nullptr;
     uint32              mip_levels  =0;
@@ -27,17 +27,15 @@ protected:
 
 public:
 
-    operator TextureData *  (){return data;}
+    TextureData *               GetData             (){return data;}
 
-    operator VkDeviceMemory (){return data?data->memory->operator VkDeviceMemory():nullptr;}
-    operator VkImage        (){return data?data->image:nullptr;}
-    operator VkImageLayout  (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
-    operator VkImageView    (){return data?data->image_view->operator VkImageView():nullptr;}
+    VkDeviceMemory              GetDeviceMemory     (){return data?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE;}
+    VkImage                     GetImage            (){return data?data->image:VK_NULL_HANDLE;}
+    VkImageLayout               GetImageLayout      (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
+    VkImageView                 GetVulkanImageView  (){return data?data->image_view->operator VkImageView():VK_NULL_HANDLE;}
 
-    operator Memory *       (){return data?data->memory:nullptr;}
-    operator ImageView *    (){return data?data->image_view:nullptr;}
-
-    ImageView *                 GetImageView(){return data?data->image_view:nullptr;}
+    Memory *                    GetMemory           (){return data?data->memory:nullptr;}
+    ImageView *                 GetImageView        (){return data?data->image_view:nullptr;}
 
     const uint32                GetMipLevels()const{return data?data->mip_levels:0;}
     const bool                  IsLinear    ()const{return data?data->linear:false;}

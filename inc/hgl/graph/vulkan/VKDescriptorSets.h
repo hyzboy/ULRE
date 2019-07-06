@@ -5,6 +5,7 @@
 #include<hgl/type/Map.h>
 VK_NAMESPACE_BEGIN
 class Device;
+class Buffer;
 
 class DescriptorSets
 {
@@ -39,8 +40,8 @@ public:
     const VkPipelineLayout          GetPipelineLayout   ()const{return pipeline_layout;}
 
     void Clear();
-    bool BindUBO(const uint32_t binding,const VkDescriptorBufferInfo *);
-    bool BindUBODynamic(const uint32_t binding,const VkDescriptorBufferInfo *);
+    bool BindUBO(const uint32_t binding,const Buffer *);
+    bool BindUBODynamic(const uint32_t binding,const Buffer *);
     bool BindSampler(const uint32_t binding,Texture *,Sampler *);
     void Update();
 };//class DescriptorSets

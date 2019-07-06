@@ -35,9 +35,9 @@ public:
 
     virtual ~Buffer();
 
-    operator VkBuffer                   (){return buf.buffer;}
-    operator Memory *                   (){return buf.memory;}
-    operator VkDescriptorBufferInfo *   (){return &buf.info;}
+            VkBuffer                   GetBuffer    (){return buf.buffer;}
+            Memory *                   GetMemory    (){return buf.memory;}
+    const   VkDescriptorBufferInfo *   GetBufferInfo()const{return &buf.info;}
 
             void *  Map()                                       {return buf.memory->Map();}
     virtual void *  Map(VkDeviceSize start,VkDeviceSize size)   {return buf.memory->Map(start,size);}
