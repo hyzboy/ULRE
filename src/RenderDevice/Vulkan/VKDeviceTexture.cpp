@@ -95,7 +95,7 @@ bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,uint32_t left,uint32_t t
     imageMemoryBarrier.newLayout            = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     imageMemoryBarrier.srcQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
     imageMemoryBarrier.dstQueueFamilyIndex  = VK_QUEUE_FAMILY_IGNORED;
-    imageMemoryBarrier.image                = *tex;
+    imageMemoryBarrier.image                = tex->GetImage();
     imageMemoryBarrier.subresourceRange     = subresourceRange;
 
     texture_cmd_buf->Begin();
@@ -108,8 +108,8 @@ bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,uint32_t left,uint32_t t
         1, &imageMemoryBarrier);
 
     texture_cmd_buf->CopyBufferToImage(
-        *buf,
-        *tex,
+        buf->GetBuffer(),
+        tex->GetImage(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &buffer_image_copy);

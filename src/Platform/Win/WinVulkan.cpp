@@ -16,7 +16,7 @@ namespace hgl
         VkResult res=vkCreateWin32SurfaceKHR(vk_inst,&createInfo,nullptr,&surface);
 
         if(res!=VK_SUCCESS)
-            return(nullptr);
+            return(VK_NULL_HANDLE);
 
         return(surface);
     }

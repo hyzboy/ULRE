@@ -45,8 +45,8 @@ public:
     bool Write(const void *ptr,VkDeviceSize start,VkDeviceSize size);
     bool Write(const void *ptr){return Write(ptr,0,req.size);}
 
-    bool Bind(VkBuffer buffer);
-    bool Bind(VkImage image);
+    bool BindBuffer(VkBuffer buffer);
+    bool BindImage(VkImage image);
 };//class Memory
 
 Memory *CreateMemory(VkDevice device,const PhysicalDevice *pd,const VkMemoryRequirements &req,uint32_t properties);

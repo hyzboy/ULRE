@@ -32,7 +32,7 @@ bool Renderable::Set(const int stage_input_binding,VertexBuffer *vbo,VkDeviceSiz
 
     //format信息来自于shader，实际中可以不一样。但那样需要为每一个格式产生一个同样shader的material instance，不同的格式又需要不同的pipeline，我们不支持这种行为
 
-    buf_list[stage_input_binding]=*vbo;
+    buf_list[stage_input_binding]=vbo->GetBuffer();
     buf_offset[stage_input_binding]=offset;
 
     return(true);

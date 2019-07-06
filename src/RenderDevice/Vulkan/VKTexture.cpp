@@ -75,7 +75,7 @@ Texture2D *CreateTexture2D(VkDevice device,const PhysicalDevice *pd,const VkForm
 
     Memory *dm=CreateMemory(device,pd,memReqs,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
      
-    if(dm&&dm->Bind(image))
+    if(dm&&dm->BindImage(image))
     {
         ImageView *image_view=CreateImageView2D(device,format,aspectMask,image);
 

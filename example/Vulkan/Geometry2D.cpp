@@ -105,7 +105,7 @@ private:
         if(!ubo_mvp)
             return(false);
 
-        if(!descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp))
+        if(!descriptor_sets->BindUBO(material->GetUBO("world"),ubo_mvp))
             return(false);
 
         descriptor_sets->Update();

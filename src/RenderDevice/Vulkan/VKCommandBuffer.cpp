@@ -25,7 +25,7 @@ CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,VkCommandPool
     render_area.offset.y=0;
     render_area.extent=extent;
 
-    pipeline_layout=nullptr;
+    pipeline_layout=VK_NULL_HANDLE;
 }
 
 CommandBuffer::~CommandBuffer()
@@ -72,7 +72,7 @@ bool CommandBuffer::BeginRenderPass(RenderPass *rp,Framebuffer *fb)
     vkCmdSetViewport(cmd_buf,0,1,&viewport);
     vkCmdSetScissor(cmd_buf,0,1,&render_area);
 
-    pipeline_layout=nullptr;
+    pipeline_layout=VK_NULL_HANDLE;
 
     return(true);
 }
@@ -92,7 +92,7 @@ bool CommandBuffer::Bind(Renderable *render_obj)
     IndexBuffer *indices_buffer=render_obj->GetIndexBuffer();
 
     if(indices_buffer)
-        vkCmdBindIndexBuffer(cmd_buf,*indices_buffer,render_obj->GetIndexOffset(),indices_buffer->GetType());
+        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),render_obj->GetIndexOffset(),indices_buffer->GetType());
 
     return(true);
 }

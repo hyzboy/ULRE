@@ -70,7 +70,7 @@ private:
         if(!ubo_atomsphere)
             return(false);
 
-        return desc_set->BindUBO(bindpoint,*ubo_atomsphere);
+        return desc_set->BindUBO(bindpoint,ubo_atomsphere);
     }
 
     bool InitUBO()

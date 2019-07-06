@@ -42,7 +42,7 @@ public:
 
 ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img);
 
-#define CREATE_IMAGE_VIEW(short_name,larget_name) inline ImageView *CreateImageView##short_name(VkDevice device,VkFormat format,VkImageAspectFlags aspectMask,VkImage img=nullptr){return CreateImageView(device,VK_IMAGE_VIEW_TYPE_##larget_name,format,aspectMask,img);}
+#define CREATE_IMAGE_VIEW(short_name,larget_name) inline ImageView *CreateImageView##short_name(VkDevice device,VkFormat format,VkImageAspectFlags aspectMask,VkImage img=VK_NULL_HANDLE){return CreateImageView(device,VK_IMAGE_VIEW_TYPE_##larget_name,format,aspectMask,img);}
     CREATE_IMAGE_VIEW(1D,1D);
     CREATE_IMAGE_VIEW(2D,2D);
     CREATE_IMAGE_VIEW(3D,3D);

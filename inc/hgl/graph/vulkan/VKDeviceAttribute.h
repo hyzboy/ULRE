@@ -8,18 +8,18 @@ constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
 struct DeviceAttribute
 {
-    VkInstance                          instance        =nullptr;
+    VkInstance                          instance        =VK_NULL_HANDLE;
     const PhysicalDevice *              physical_device =nullptr;
 
-    VkSurfaceKHR                        surface         =nullptr;
+    VkSurfaceKHR                        surface         =VK_NULL_HANDLE;
     VkSurfaceCapabilitiesKHR            surface_caps;
     VkExtent2D                          swapchain_extent;
 
     uint32_t                            graphics_family =ERROR_FAMILY_INDEX;
     uint32_t                            present_family  =ERROR_FAMILY_INDEX;
 
-    VkQueue                             graphics_queue  =nullptr;
-    VkQueue                             present_queue   =nullptr;
+    VkQueue                             graphics_queue  =VK_NULL_HANDLE;
+    VkQueue                             present_queue   =VK_NULL_HANDLE;
 
     List<VkQueueFamilyProperties>       family_properties;
     List<VkBool32>                      supports_present;
@@ -31,16 +31,16 @@ struct DeviceAttribute
     VkSurfaceTransformFlagBitsKHR       preTransform;
     VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
-    VkDevice                            device          =nullptr;
-    VkCommandPool                       cmd_pool        =nullptr;
-    VkSwapchainKHR                      swap_chain      =nullptr;
+    VkDevice                            device          =VK_NULL_HANDLE;
+    VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
+    VkSwapchainKHR                      swap_chain      =VK_NULL_HANDLE;
 
     ObjectList<Texture2D>               sc_texture;
     Texture2D *                         sc_depth        =nullptr;
 
-    VkDescriptorPool                    desc_pool       =nullptr;
+    VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
 
-    VkPipelineCache                     pipeline_cache  =nullptr;
+    VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
 public:
 

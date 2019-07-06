@@ -87,7 +87,7 @@ namespace hgl
             CubeCreateInfo()
             {
                 center.Set(0,0,0);
-                center.Set(1,1,1);
+                size.Set(1,1,1);
                 tile.Set(1,1);
             }
         };//struct CubeCreateInfo

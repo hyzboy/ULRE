@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/vulkan/VKDescriptorSets.h>
 #include<hgl/graph/vulkan/VKDevice.h>
+#include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKSampler.h>
 
@@ -10,7 +11,7 @@ void DescriptorSets::Clear()
     desc_image_info.ClearData();
 }
 
-bool DescriptorSets::BindUBO(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
+bool DescriptorSets::BindUBO(const uint32_t binding,const Buffer *buf)
 {
     VkWriteDescriptorSet writeDescriptorSet;
 
@@ -22,14 +23,14 @@ bool DescriptorSets::BindUBO(const uint32_t binding,const VkDescriptorBufferInfo
     writeDescriptorSet.descriptorCount  = 1;
     writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     writeDescriptorSet.pImageInfo       = nullptr;
-    writeDescriptorSet.pBufferInfo      = buf_info;
+    writeDescriptorSet.pBufferInfo      = buf->GetBufferInfo();
     writeDescriptorSet.pTexelBufferView = nullptr;
 
     write_desc_sets.Add(writeDescriptorSet);
     return(true);
 }
 
-bool DescriptorSets::BindUBODynamic(const uint32_t binding,const VkDescriptorBufferInfo *buf_info)
+bool DescriptorSets::BindUBODynamic(const uint32_t binding,const Buffer *buf)
 {
     VkWriteDescriptorSet writeDescriptorSet;
 
@@ -41,7 +42,7 @@ bool DescriptorSets::BindUBODynamic(const uint32_t binding,const VkDescriptorBuf
     writeDescriptorSet.descriptorCount  = 1;
     writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     writeDescriptorSet.pImageInfo       = nullptr;
-    writeDescriptorSet.pBufferInfo      = buf_info;
+    writeDescriptorSet.pBufferInfo      = buf->GetBufferInfo();;
     writeDescriptorSet.pTexelBufferView = nullptr;
 
     write_desc_sets.Add(writeDescriptorSet);
@@ -54,8 +55,8 @@ bool DescriptorSets::BindSampler(const uint32_t binding,Texture *tex,Sampler *sa
         return(false);
 
     VkDescriptorImageInfo *image_info=desc_image_info.Add();
-    image_info->imageView    =*tex;
-    image_info->imageLayout  =*tex;
+    image_info->imageView    =tex->GetVulkanImageView();
+    image_info->imageLayout  =tex->GetImageLayout();
     image_info->sampler      =*sampler;
 
     VkWriteDescriptorSet writeDescriptorSet;

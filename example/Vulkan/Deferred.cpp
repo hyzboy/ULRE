@@ -20,13 +20,6 @@ constexpr uint32_t GBUFFER_HEIGHT=1024;
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-struct AtomsphereData
-{
-    alignas(16) Vector3f position;
-    float intensity;
-    float scattering_direction;
-};//
-
 using Texture2DPointer=vulkan::Texture2D *;
 
 constexpr VkFormat position_candidate_format[]={FMT_RGBA32F,FMT_RGBA16F};

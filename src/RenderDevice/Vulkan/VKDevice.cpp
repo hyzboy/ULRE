@@ -81,7 +81,7 @@ void Device::RecreateDevice()
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,*attr->sc_texture[i],*attr->sc_depth));
+        render_frame.Add(vulkan::CreateFramebuffer(this,main_rp,attr->sc_texture[i]->GetImageView(),attr->sc_depth->GetImageView()));
         fence_list.Add(this->CreateFence(true));
     }
 

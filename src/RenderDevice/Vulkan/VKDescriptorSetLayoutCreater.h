@@ -13,10 +13,10 @@ class DescriptorSetLayoutCreater
     Device *device;
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
-    VkDescriptorSetLayout dsl=nullptr;
+    VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
     Map<uint32_t,int> index_by_binding;
 
-    VkPipelineLayout pipeline_layout=nullptr;
+    VkPipelineLayout pipeline_layout=VK_NULL_HANDLE;
 
 public:
 

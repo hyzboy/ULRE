@@ -205,7 +205,7 @@ Instance::Instance(VkInstance i,CharPointerList &el)
         debug_out(extension_properties);
     }
 
-    debug_report_callback=nullptr;
+    debug_report_callback=VK_NULL_HANDLE;
     {
         VkDebugReportCallbackCreateInfoEXT create_info={};
 
@@ -218,7 +218,7 @@ Instance::Instance(VkInstance i,CharPointerList &el)
         CreateDebugReportCallbackEXT(inst,&create_info,nullptr,&debug_report_callback);
     }
 
-    debug_messenger=nullptr;
+    debug_messenger=VK_NULL_HANDLE;
     {
         VkDebugUtilsMessengerCreateInfoEXT createInfo={};
         createInfo.sType=VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;

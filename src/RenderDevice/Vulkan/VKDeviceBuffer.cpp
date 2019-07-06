@@ -24,7 +24,7 @@ namespace
 
         Memory *dm=CreateMemory(rsa->device,rsa->physical_device,mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-        if(dm&&dm->Bind(vb.buffer))
+        if(dm&&dm->BindBuffer(vb.buffer))
         {
             vb.info.buffer  =vb.buffer;
             vb.info.offset  =0;

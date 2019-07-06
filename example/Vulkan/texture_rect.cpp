@@ -118,7 +118,7 @@ private:
         sampler=device->CreateSampler(&sampler_create_info);
 
         descriptor_sets->BindSampler(material->GetSampler("texture_lena"),texture,sampler);
-        descriptor_sets->BindUBO(material->GetUBO("world"),*ubo_mvp);
+        descriptor_sets->BindUBO(material->GetUBO("world"),ubo_mvp);
         descriptor_sets->Update();
 
         return(true);
