@@ -54,6 +54,17 @@ namespace
         }
     }
 
+    void RGBtoRGBA(uint8 *tar,uint8 *src,uint size)
+    {
+        for(uint i=0;i<size;i++)
+        {
+            *tar++=*src++;
+            *tar++=*src++;
+            *tar++=*src++;
+            *tar++=255;
+        }
+    }
+
     void SwapRow(uint8 *data,uint line_size,uint height)
     {
         uint8 *top=data;
@@ -112,8 +123,8 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
     if(header.image_type==2)
     {
-        if(header.bit==24)format=FMT_RGB8UN;else
-        if(header.bit==32)format=FMT_RGBA8UN;
+        if(header.bit==24)format=FMT_BGR8UN;else
+        if(header.bit==32)format=FMT_BGRA8UN;
     }
     else if(header.image_type==3&&header.bit==8)
         format=FMT_R8UN;
@@ -135,11 +146,11 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
         if(image_desc.direction==0)
             SwapRow((uint8 *)pixel_data,header.width*header.bit/8,header.height);
 
-        buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,header.width*header.height*2);
-        RGB8to565((uint16 *)buf->Map(),pixel_data,header.width*header.height);
+        buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,header.width*header.height*4);
+        RGBtoRGBA((uint8 *)buf->Map(),pixel_data,header.width*header.height);
         buf->Unmap();
 
-        format=FMT_RGB565;
+        format=FMT_BGRA8UN;
     }
     else
     {
