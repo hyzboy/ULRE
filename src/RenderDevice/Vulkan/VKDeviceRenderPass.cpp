@@ -218,6 +218,7 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
     VkRenderPassCreateInfo rp_info;
     rp_info.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     rp_info.pNext           = nullptr;
+    rp_info.flags           = 0;
     rp_info.attachmentCount = desc_list.GetCount();
     rp_info.pAttachments    = desc_list.GetData();
     rp_info.subpassCount    = subpass.GetCount();

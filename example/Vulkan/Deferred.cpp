@@ -9,6 +9,7 @@
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKImageView.h>
+#include<hgl/graph/vulkan/VKSampler.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 
 using namespace hgl;
@@ -91,10 +92,13 @@ private:
                                 *specular=nullptr;
     }texture;
 
+    vulkan::CommandBuffer       *gbuffer_cmd=nullptr;
+
 public:
 
     ~TestApp()
     {
+        SAFE_CLEAR(gbuffer_cmd);
         SAFE_CLEAR(texture.specular);
         SAFE_CLEAR(texture.normal);
         SAFE_CLEAR(texture.color);
@@ -229,6 +233,7 @@ private:
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(PRIM_TRIANGLES);
+
         sp->pipeline=pipeline_creater->Create();
 
         if(!sp->pipeline)
@@ -241,10 +246,10 @@ private:
     bool InitMaterial()
     {
         if(!InitSubpass(&sp_gbuffer,    OS_TEXT("gbuffer_opaque.vert.spv"),OS_TEXT("gbuffer_opaque.frag.spv")))return(false);
-        if(!InitSubpass(&sp_composition,OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv")))return(false);
+        //if(!InitSubpass(&sp_composition,OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv")))return(false);
 
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
-        if(!InitCompositionPipeline(&sp_composition))return(false);
+        //if(!InitCompositionPipeline(&sp_composition))return(false);
 
         texture.color   =vulkan::LoadTGATexture(OS_TEXT("cardboardPlainStain.tga"),device);
         texture.normal  =vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_NRM.tga"),device);
@@ -301,6 +306,25 @@ private:
         return(true);
     }
 
+    bool InitGBufferCommandBuffer()
+    {
+        gbuffer_cmd=device->CreateCommandBuffer();
+
+        if(!gbuffer_cmd)
+            return(false);
+
+        gbuffer_cmd->Begin();
+            if(!gbuffer_cmd->BeginRenderPass(gbuffer.renderpass,gbuffer.framebuffer))
+                return(false);
+
+
+
+            gbuffer_cmd->EndRenderPass();
+        gbuffer_cmd->End();
+
+        return(true);
+    }
+
 public:
 
     bool Init()
@@ -315,6 +339,9 @@ public:
             return(false);
 
         if(!InitScene(&sp_gbuffer))
+            return(false);
+
+        if(!InitGBufferCommandBuffer())
             return(false);
 
         return(true);
