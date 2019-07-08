@@ -14,6 +14,10 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+VK_NAMESPACE_BEGIN
+Texture2D *LoadTGATexture(const OSString &filename,Device *device);
+VK_NAMESPACE_END
+
 constexpr uint32_t GBUFFER_WIDTH=1024;
 constexpr uint32_t GBUFFER_HEIGHT=1024;
 
@@ -76,7 +80,14 @@ private:
     SubpassParam                sp_gbuffer;
     SubpassParam                sp_composition;
 
-    vulkan::Renderable          *ro_sphere;
+    vulkan::Renderable *        ro_cube;
+
+    vulkan::Sampler *           sampler;
+
+    struct
+    {
+        vulkan::Texture2D       *color,*normal,*specular;
+    }texture;
 
 private:
 
@@ -224,12 +235,18 @@ private:
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         if(!InitCompositionPipeline(&sp_composition))return(false);
 
+        texture.color   =vulkan::LoadTGATexture(OS_TEXT("cardboardPlainStain.tga"),device);
+        texture.normal  =vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_NRM.tga"),device);
+        texture.specular=vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_SPEC.tga"),device);
+
         return(true);
     }
 
     void CreateRenderObject(vulkan::Material *mtl)
     {
-        ro_sphere=CreateRenderableSphere(db,mtl,128);
+        struct CubeCreateInfo cci;
+
+        ro_cube=CreateRenderableCube(db,mtl,&cci);
     }
     
     bool InitUBO(SubpassParam *sp)
@@ -248,7 +265,7 @@ private:
 
         CreateRenderObject(sp->material);
 
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere),scale(1000));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube),scale(1000));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
