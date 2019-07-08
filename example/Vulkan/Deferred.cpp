@@ -238,7 +238,36 @@ private:
         texture.color   =vulkan::LoadTGATexture(OS_TEXT("cardboardPlainStain.tga"),device);
         texture.normal  =vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_NRM.tga"),device);
         texture.specular=vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_SPEC.tga"),device);
+        
+        VkSamplerCreateInfo sampler_create_info;
 
+        sampler_create_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sampler_create_info.pNext                   = nullptr;
+        sampler_create_info.flags                   = 0;
+        sampler_create_info.magFilter               = VK_FILTER_LINEAR;
+        sampler_create_info.minFilter               = VK_FILTER_LINEAR;
+        sampler_create_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sampler_create_info.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sampler_create_info.mipLodBias              = 0.0f;
+        sampler_create_info.anisotropyEnable        = false;
+        sampler_create_info.maxAnisotropy           = 0;
+        sampler_create_info.compareEnable           = false;
+        sampler_create_info.compareOp               = VK_COMPARE_OP_NEVER;
+        sampler_create_info.minLod                  = 0.0f;
+        sampler_create_info.maxLod                  = 1.0f;
+        sampler_create_info.borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+        sampler_create_info.unnormalizedCoordinates = false;
+
+        sampler=device->CreateSampler(&sampler_create_info);
+
+        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureColor"),texture.color,sampler);
+        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureNormal"),texture.normal,sampler);
+        
+        InitCameraUBO(sp_gbuffer.desc_sets,sp_gbuffer.material->GetUBO("world"));
+
+        sp_gbuffer.desc_sets->Update();
         return(true);
     }
 
@@ -249,20 +278,8 @@ private:
         ro_cube=CreateRenderableCube(db,mtl,&cci);
     }
     
-    bool InitUBO(SubpassParam *sp)
-    {
-        if(!InitCameraUBO(sp->desc_sets,sp->material->GetUBO("world")))
-            return(false);
-
-        sp->desc_sets->Update();
-        return(true);
-    }
-
     bool InitScene(SubpassParam *sp)
     {
-        if(!InitUBO(sp))
-            return(false);
-
         CreateRenderObject(sp->material);
 
         render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube),scale(1000));
