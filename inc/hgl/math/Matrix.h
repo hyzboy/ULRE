@@ -19,7 +19,6 @@ namespace hgl
 //        alignas(16) Matrix4f inverse_projection;
         alignas(16) Matrix4f modelview;
         alignas(16) Matrix4f mvp;
-        alignas(16) Matrix3f normal;
         alignas(16) Vector4f view_pos;      //眼睛坐标
     };//struct WorldMatrix
 

@@ -11,6 +11,7 @@ layout(binding = 0) uniform WorldMatrix
     mat4 projection;
     mat4 modelview;
     mat4 mvp;
+    vec4 view_pos;
 } world;
 
 layout(push_constant) uniform Consts {
