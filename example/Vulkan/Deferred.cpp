@@ -82,13 +82,24 @@ private:
 
     vulkan::Renderable *        ro_cube;
 
-    vulkan::Sampler *           sampler;
+    vulkan::Sampler *           sampler=nullptr;
 
     struct
     {
-        vulkan::Texture2D       *color,*normal,*specular;
+        vulkan::Texture2D       *color=nullptr,
+                                *normal=nullptr,
+                                *specular=nullptr;
     }texture;
 
+public:
+
+    ~TestApp()
+    {
+        SAFE_CLEAR(texture.specular);
+        SAFE_CLEAR(texture.normal);
+        SAFE_CLEAR(texture.color);
+        SAFE_CLEAR(sampler);
+    }
 private:
 
     const VkFormat GetCandidateFormat(const VkFormat *fmt_list,const uint count)
@@ -138,10 +149,10 @@ private:
          ||depth_format     ==FMT_UNDEFINED)
             return(false);
 
-        gbuffer.position=device->CreateTexture2DColor(position_format,  gbuffer.width,gbuffer.height);
-        gbuffer.color   =device->CreateTexture2DColor(color_format,     gbuffer.width,gbuffer.height);
-        gbuffer.normal  =device->CreateTexture2DColor(normal_format,    gbuffer.width,gbuffer.height);
-        gbuffer.depth   =device->CreateTexture2DDepth(depth_format,     gbuffer.width,gbuffer.height);
+        gbuffer.position=device->CreateAttachmentTextureColor(position_format,  gbuffer.width,gbuffer.height);
+        gbuffer.color   =device->CreateAttachmentTextureColor(color_format,     gbuffer.width,gbuffer.height);
+        gbuffer.normal  =device->CreateAttachmentTextureColor(normal_format,    gbuffer.width,gbuffer.height);
+        gbuffer.depth   =device->CreateAttachmentTextureDepth(depth_format,     gbuffer.width,gbuffer.height);
 
         for(uint i=0;i<3;i++)
         {
@@ -238,7 +249,7 @@ private:
         texture.color   =vulkan::LoadTGATexture(OS_TEXT("cardboardPlainStain.tga"),device);
         texture.normal  =vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_NRM.tga"),device);
         texture.specular=vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_SPEC.tga"),device);
-        
+
         VkSamplerCreateInfo sampler_create_info;
 
         sampler_create_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

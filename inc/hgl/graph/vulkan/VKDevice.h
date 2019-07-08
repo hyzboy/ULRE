@@ -141,7 +141,7 @@ public: //material相关
     Texture2D *CreateAttachmentTextureDepth(const VkFormat video_format,uint32_t width,uint32_t height)
     {
         return CreateAttachmentTexture( video_format,width,height,
-                                        VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
+                                        VK_IMAGE_ASPECT_DEPTH_BIT,
                                         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
