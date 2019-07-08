@@ -153,7 +153,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
     colorBlending.pNext = nullptr;
     colorBlending.flags = 0;
     colorBlending.logicOpEnable = VK_FALSE;
-    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.logicOp = VK_LOGIC_OP_CLEAR;
     colorBlending.attachmentCount = colorBlendAttachments.GetCount();
     colorBlending.pAttachments = colorBlendAttachments.GetData();
     colorBlending.blendConstants[0] = 0.0f;
