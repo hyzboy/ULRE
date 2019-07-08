@@ -121,7 +121,7 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
 
 void main()
 {
-    vec3 nrd=vec3(.x,-FragmentVertex.y,FragmentVertex.z);       //vulkan coord to opengl(shader from opengl sample)
+    vec3 nrd=vec3(FragmentVertex.x,-FragmentVertex.y,FragmentVertex.z);       //vulkan coord to opengl(shader from opengl sample)
 
     vec3 color=atmosphere(
         nrd,                            // normalized ray direction
