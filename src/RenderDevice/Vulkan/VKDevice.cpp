@@ -100,7 +100,7 @@ bool Device::Resize(uint width,uint height)
     return(true);
 }
 
-CommandBuffer *Device::CreateCommandBuffer()
+CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D *extent)
 {
     if(!attr->cmd_pool)
         return(nullptr);
@@ -119,7 +119,7 @@ CommandBuffer *Device::CreateCommandBuffer()
     if(res!=VK_SUCCESS)
         return(nullptr);
 
-    return(new CommandBuffer(attr->device,attr->swapchain_extent,attr->cmd_pool,cmd_buf));
+    return(new CommandBuffer(attr->device,extent?*extent:attr->swapchain_extent,attr->cmd_pool,cmd_buf));
 }
 
 /**

@@ -46,16 +46,14 @@ SET(ULRE    ULRE.Base
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/3rdpty/assimp/include)
-
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+SET(SPIRV_CROSS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/SPIRV-Cross)
 
-SET(SPIRV_CROSS_PATH 3rdpty/SPIRV-Cross)
 include_directories(${SPIRV_CROSS_PATH})
 add_subdirectory(${SPIRV_CROSS_PATH})
 

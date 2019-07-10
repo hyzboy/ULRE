@@ -54,10 +54,12 @@ bool DescriptorSets::BindSampler(const uint32_t binding,Texture *tex,Sampler *sa
     if(!tex||!sampler)
         return(false);
 
-    VkDescriptorImageInfo *image_info=desc_image_info.Add();
+    VkDescriptorImageInfo *image_info=new VkDescriptorImageInfo;
     image_info->imageView    =tex->GetVulkanImageView();
     image_info->imageLayout  =tex->GetImageLayout();
     image_info->sampler      =*sampler;
+
+    desc_image_info.Add(image_info);
 
     VkWriteDescriptorSet writeDescriptorSet;
 
