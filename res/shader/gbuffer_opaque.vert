@@ -32,12 +32,8 @@ void main()
     FragmentPosition=(pos*world.modelview).xyz;
     FragmentTexCoord=TexCoord;
 
-//    mat3 n=inverse(mat3(pc.local_to_world));
+    mat3 n=mat3(pc.local_to_world*world.modelview);
 
-//    Normal.y=-Normal.y;
-//    FragmentNormal=normalize(Normal)*n;
-//    FragmentTangent=normalize(Tangent)*n;
-
-    FragmentNormal=Normal;
-    FragmentTangent=Tangent;
+    FragmentNormal=normalize(Normal)*n;
+    FragmentTangent=normalize(Tangent)*n;
 }

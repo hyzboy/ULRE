@@ -16,15 +16,12 @@ void main()
 {
     outPosition=vec4(normalize(FragmentPosition*2.0-vec3(1.0)),1.0);
 
-/*    vec3 N = normalize(FragmentNormal);
-    N.y=-N.y;
+    vec3 N = normalize(FragmentNormal);
     vec3 T = normalize(FragmentTangent);
     vec3 B = cross(N,T);
     mat3 TBN = mat3(T,B,N);
-    vec3 tnorm = normalize(texture(TextureNormal,FragmentTexCoord).xyz*2.0-vec3(1.0))*TBN;*/
+    vec3 tnorm = normalize(texture(TextureNormal,FragmentTexCoord).xyz*2.0-vec3(1.0))*TBN;
 
-    //outNormal=vec4(tnorm,1.0);
-    
-    outNormal=vec4(normalize(FragmentNormal*2.0-vec3(1.0)),1.0);
+    outNormal=vec4(tnorm,1.0);
     outColor=texture(TextureColor,FragmentTexCoord);
 }
