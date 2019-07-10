@@ -103,8 +103,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("OnlyPosition3D.vert.spv"),
-                                               OS_TEXT("FlatColor.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert.spv"),
+                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
         if(!material)
             return(false);
 

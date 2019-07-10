@@ -84,8 +84,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("FlatTexture.vert.spv"),
-                                               OS_TEXT("FlatTexture.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatTexture.vert.spv"),
+                                               OS_TEXT("res/shader/FlatTexture.frag.spv"));
         if(!material)
             return(false);
 

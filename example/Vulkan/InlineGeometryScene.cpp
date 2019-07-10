@@ -40,8 +40,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("OnlyPosition3D.vert.spv"),
-                                               OS_TEXT("FlatColor.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert.spv"),
+                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
         if(!material)
             return(false);
 
@@ -151,7 +151,7 @@ private:
         db->Add(pipeline_line);
 
         pipeline_creater->Set(PRIM_TRIANGLES);
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
         pipeline_solid=pipeline_creater->Create();
 
         if(!pipeline_solid)
