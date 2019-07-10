@@ -195,7 +195,7 @@ namespace
 
     bool CreateDepthBuffer(DeviceAttribute *rsa)
     {
-        const VkFormat depth_format=rsa->physical_device->GetDepthFormat();
+        const VkFormat depth_format=rsa->physical_device->GetDepthFormat(false);
 
         const VkFormatProperties props=rsa->physical_device->GetFormatProperties(depth_format);
 
