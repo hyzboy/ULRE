@@ -145,7 +145,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
     cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 
-    colorBlendAttachments.Add(cba);
+    colorBlendAttachments.Add(cba,rp->GetColorCount());     //这个需要和subpass中的color attachment数量相等，所以添加多份
 
     alpha_blend=false;
 

@@ -42,6 +42,7 @@ public:
 
     operator VkRenderPass(){return render_pass;}
 
+    const uint              GetColorCount()const{return color_formats.GetCount();}
     const List<VkFormat> &  GetColorFormat()const{return color_formats;}
     const VkFormat          GetDepthFormat()const{return depth_format;}
 };//class RenderPass
