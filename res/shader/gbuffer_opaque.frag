@@ -14,7 +14,7 @@ layout (location = 2) out vec4 outColor;
 
 void main()
 {
-    outPosition=vec4(FragmentPosition,1.0);
+    outPosition=vec4(normalize(FragmentPosition*2.0-vec3(1.0)),1.0);
 
 /*    vec3 N = normalize(FragmentNormal);
     N.y=-N.y;
@@ -25,6 +25,6 @@ void main()
 
     //outNormal=vec4(tnorm,1.0);
     
-    outNormal=vec4(FragmentNormal,1.0);
+    outNormal=vec4(normalize(FragmentNormal*2.0-vec3(1.0)),1.0);
     outColor=texture(TextureColor,FragmentTexCoord);
 }

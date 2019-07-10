@@ -29,7 +29,7 @@ void main()
 
     gl_Position=pos*world.mvp;
 
-    FragmentPosition=pos.xyz;
+    FragmentPosition=(pos*world.modelview).xyz;
     FragmentTexCoord=TexCoord;
 
 //    mat3 n=inverse(mat3(pc.local_to_world));
@@ -38,6 +38,6 @@ void main()
 //    FragmentNormal=normalize(Normal)*n;
 //    FragmentTangent=normalize(Tangent)*n;
 
-    FragmentNormal=normalize((Normal+vec3(1.0))/2.0);
+    FragmentNormal=Normal;
     FragmentTangent=Tangent;
 }

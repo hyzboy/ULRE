@@ -1,4 +1,4 @@
-// 9.延迟渲染
+﻿// 9.延迟渲染
 //  简单的延迟渲染测试，仅一个太阳光
 
 #include"VulkanAppFramework.h"
@@ -224,6 +224,7 @@ private:
         AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,gbuffer.extent);
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
+        pipeline_creater->SetDepthCompareOp(VK_COMPARE_OP_ALWAYS);
         //pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(PRIM_TRIANGLES);

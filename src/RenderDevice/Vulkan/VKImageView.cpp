@@ -23,7 +23,10 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
     iv_createinfo.subresourceRange.layerCount=1;
 
     if(aspectMask&VK_IMAGE_ASPECT_DEPTH_BIT)
-    {    
+    {
+        if(format>=VK_FORMAT_D16_UNORM_S8_UINT)
+            iv_createinfo.subresourceRange.aspectMask|=VK_IMAGE_ASPECT_STENCIL_BIT;
+
         iv_createinfo.components.r=VK_COMPONENT_SWIZZLE_IDENTITY;
         iv_createinfo.components.g=VK_COMPONENT_SWIZZLE_IDENTITY;
         iv_createinfo.components.b=VK_COMPONENT_SWIZZLE_IDENTITY;
