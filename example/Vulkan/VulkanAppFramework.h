@@ -301,10 +301,10 @@ public:
 
     virtual void Draw()override
     {
-        const uint32_t index=AcquireNextImage();
-
         camera.Refresh();                           //更新相机矩阵
         ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
+
+        const uint32_t index=AcquireNextImage();
 
         BuildCommandBuffer(index);
 

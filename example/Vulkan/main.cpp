@@ -109,8 +109,6 @@ private:
         {
             AutoDelete<vulkan::PipelineCreater> 
             pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
-            pipeline_creater->SetDepthTest(false);
-            pipeline_creater->SetDepthWrite(false);
             pipeline_creater->CloseCullFace();
             pipeline_creater->Set(PRIM_TRIANGLES);
 
