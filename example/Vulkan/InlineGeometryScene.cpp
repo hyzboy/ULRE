@@ -139,8 +139,6 @@ private:
     {
         AutoDelete<vulkan::PipelineCreater> 
         pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
-        pipeline_creater->SetDepthTest(true);
-        pipeline_creater->SetDepthWrite(true);
         pipeline_creater->Set(PRIM_LINES);
 
         pipeline_line=pipeline_creater->Create();
@@ -172,7 +170,7 @@ private:
     bool InitScene()
     {
         render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
-        render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_dome));
+        //render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_dome));
         render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_torus));
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));

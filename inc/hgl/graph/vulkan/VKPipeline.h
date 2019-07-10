@@ -84,7 +84,8 @@ public:
     void SetDepthCompareOp( VkCompareOp         op)         {depthStencilState.depthCompareOp=op;}
     void SetDepthBoundsTest(bool                dbt)        {depthStencilState.depthBoundsTestEnable=dbt;}
     void SetDepthBounds(    float               min_depth,
-                            float               max_depth)  {depthStencilState.minDepthBounds=min_depth;
+                            float               max_depth)  {depthStencilState.depthBoundsTestEnable=VK_TRUE;
+                                                             depthStencilState.minDepthBounds=min_depth;
                                                              depthStencilState.maxDepthBounds=max_depth;}
     void SetStencilTest(    bool                st)         {depthStencilState.stencilTestEnable=st;}
 

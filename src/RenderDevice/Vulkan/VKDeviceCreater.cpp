@@ -115,6 +115,12 @@ namespace
         swapchain_ci.imageColorSpace=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
         swapchain_ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
+        if(rsa->surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+            swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+        if(rsa->surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+            swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
         uint32_t queueFamilyIndices[2]={rsa->graphics_family, rsa->present_family};
         if(rsa->graphics_family!=rsa->present_family)
         {
