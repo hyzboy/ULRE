@@ -21,20 +21,20 @@ Texture::~Texture()
 Texture2D *CreateTexture2D(VkDevice device,VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout)
 {
     TextureData *tex_data=new TextureData;
+    
+    tex_data->extent.width  =width;
+    tex_data->extent.height =height;
+    tex_data->extent.depth  =1;
 
     tex_data->memory        =nullptr;
     tex_data->image         =image;
     tex_data->image_layout  =image_layout;
-    tex_data->image_view    =CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,aspectMask,image);
+    tex_data->image_view    =CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,tex_data->extent,aspectMask,image);
 
     tex_data->mip_levels    =0;
     tex_data->linear        =false;
     tex_data->format        =format;
     tex_data->aspect        =aspectMask;
-
-    tex_data->extent.width  =width;
-    tex_data->extent.height =height;
-    tex_data->extent.depth  =1;
 
     return(new Texture2D(width,height,device,tex_data));
 }
@@ -77,7 +77,7 @@ Texture2D *CreateTexture2D(VkDevice device,const PhysicalDevice *pd,const VkForm
      
     if(dm&&dm->BindImage(image))
     {
-        ImageView *image_view=CreateImageView2D(device,format,aspectMask,image);
+        ImageView *image_view=CreateImageView2D(device,format,imageCreateInfo.extent,aspectMask,image);
 
         if(image_view)
         {

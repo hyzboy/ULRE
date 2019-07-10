@@ -8,18 +8,25 @@
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,VkCommandPool cp,VkCommandBuffer cb)
+CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t atta_count,VkCommandPool cp,VkCommandBuffer cb)
 {
     device=dev;
     pool=cp;
     cmd_buf=cb;
 
-    clear_values[0].color.float32[0] = 0.2f;
-    clear_values[0].color.float32[1] = 0.2f;
-    clear_values[0].color.float32[2] = 0.2f;
-    clear_values[0].color.float32[3] = 0.2f;
-    clear_values[1].depthStencil.depth = 1.0f;
-    clear_values[1].depthStencil.stencil = 0;
+    cv_count=atta_count;
+
+    if(cv_count>0)
+    {
+        clear_values=hgl_zero_new<VkClearValue>(cv_count);
+
+        clear_values[cv_count-1].depthStencil.depth = 1.0f;
+        clear_values[cv_count-1].depthStencil.stencil = 0;
+    }
+    else
+    {
+        clear_values=nullptr;
+    }
 
     render_area.offset.x=0;
     render_area.offset.y=0;
@@ -30,6 +37,8 @@ CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,VkCommandPool
 
 CommandBuffer::~CommandBuffer()
 {
+    delete[] clear_values;
+
     vkFreeCommandBuffers(device,pool,1,&cmd_buf);
 }
 
@@ -57,7 +66,7 @@ bool CommandBuffer::BeginRenderPass(RenderPass *rp,Framebuffer *fb)
     rp_begin.renderPass         = *rp;
     rp_begin.framebuffer        = *fb;
     rp_begin.renderArea         = render_area;
-    rp_begin.clearValueCount    = 2;
+    rp_begin.clearValueCount    = cv_count;
     rp_begin.pClearValues       = clear_values;
 
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);

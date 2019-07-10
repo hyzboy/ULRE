@@ -6,7 +6,7 @@ ImageView::~ImageView()
     vkDestroyImageView(device,image_view,nullptr);
 }
 
-ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,VkImageAspectFlags aspectMask,VkImage img)
+ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img)
 {
     VkImageViewCreateInfo iv_createinfo={};
 
@@ -16,21 +16,32 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
     iv_createinfo.image=img;
     iv_createinfo.format=format;
     iv_createinfo.viewType=type;
-    iv_createinfo.components.r=VK_COMPONENT_SWIZZLE_R;
-    iv_createinfo.components.g=VK_COMPONENT_SWIZZLE_G;
-    iv_createinfo.components.b=VK_COMPONENT_SWIZZLE_B;
-    iv_createinfo.components.a=VK_COMPONENT_SWIZZLE_A;
     iv_createinfo.subresourceRange.aspectMask=aspectMask;
     iv_createinfo.subresourceRange.baseMipLevel=0;
     iv_createinfo.subresourceRange.levelCount=1;
     iv_createinfo.subresourceRange.baseArrayLayer=0;
     iv_createinfo.subresourceRange.layerCount=1;
 
+    if(aspectMask&VK_IMAGE_ASPECT_DEPTH_BIT)
+    {    
+        iv_createinfo.components.r=VK_COMPONENT_SWIZZLE_IDENTITY;
+        iv_createinfo.components.g=VK_COMPONENT_SWIZZLE_IDENTITY;
+        iv_createinfo.components.b=VK_COMPONENT_SWIZZLE_IDENTITY;
+        iv_createinfo.components.a=VK_COMPONENT_SWIZZLE_IDENTITY;
+    }
+    else
+    {
+        iv_createinfo.components.r=VK_COMPONENT_SWIZZLE_R;
+        iv_createinfo.components.g=VK_COMPONENT_SWIZZLE_G;
+        iv_createinfo.components.b=VK_COMPONENT_SWIZZLE_B;
+        iv_createinfo.components.a=VK_COMPONENT_SWIZZLE_A;
+    }
+
     VkImageView img_view;
 
     if(vkCreateImageView(device,&iv_createinfo,nullptr,&img_view)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new ImageView(device,img_view,type,format,aspectMask));
+    return(new ImageView(device,img_view,type,format,ext,aspectMask));
 }
 VK_NAMESPACE_END

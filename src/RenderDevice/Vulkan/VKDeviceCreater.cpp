@@ -139,14 +139,21 @@ namespace
         return(VK_NULL_HANDLE);
     }
 
-    ImageView *Create2DImageView(VkDevice device,VkFormat format,VkImage img=VK_NULL_HANDLE)
+    ImageView *Create2DImageView(VkDevice device,VkFormat format,const VkExtent2D &ext,VkImage img=VK_NULL_HANDLE)
     {
-        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,VK_IMAGE_ASPECT_COLOR_BIT,img);
+        VkExtent3D extent;
+
+        copy(extent,ext);
+
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,VK_IMAGE_ASPECT_COLOR_BIT,img);
     }
 
-    ImageView *CreateDepthImageView(VkDevice device,VkFormat format,VkImage img=VK_NULL_HANDLE)
+    ImageView *CreateDepthImageView(VkDevice device,VkFormat format,const VkExtent2D &ext,VkImage img=VK_NULL_HANDLE)
     {
-        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,VK_IMAGE_ASPECT_DEPTH_BIT,img);
+        VkExtent3D extent;
+
+        copy(extent,ext);
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,VK_IMAGE_ASPECT_DEPTH_BIT,img);
     }
 
     bool CreateSwapchainTexture(DeviceAttribute *rsa)

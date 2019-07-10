@@ -137,10 +137,12 @@ public:
 
         swap_chain_count=device->GetSwapChainImageCount();
         {
+            const VkExtent2D extent=device->GetExtent();
+
             cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
 
             for(uint i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateCommandBuffer();
+                cmd_buf[i]=device->CreateCommandBuffer(&extent,2);
         }
     }
 

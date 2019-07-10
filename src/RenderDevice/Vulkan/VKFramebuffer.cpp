@@ -44,7 +44,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
         attachments[color_count]=*depth;
     }
 
-    const VkExtent2D extent=dev->GetExtent();
+    const VkExtent3D extent=depth->GetExtent();
 
     VkFramebufferCreateInfo fb_info;
     fb_info.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
