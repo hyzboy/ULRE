@@ -147,16 +147,21 @@ private:
         gbuffer.extent.height  =GBUFFER_HEIGHT;
 
         //根据候选格式表选择格式
-        const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
-        const VkFormat color_format     =GetCandidateFormat(color_candidate_format,     sizeof(color_candidate_format));
-        const VkFormat normal_format    =GetCandidateFormat(normal_candidate_format,    sizeof(normal_candidate_format));
-        const VkFormat depth_format     =GetDepthCandidateFormat();
+        //const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
+        //const VkFormat color_format     =GetCandidateFormat(color_candidate_format,     sizeof(color_candidate_format));
+        //const VkFormat normal_format    =GetCandidateFormat(normal_candidate_format,    sizeof(normal_candidate_format));
+        //const VkFormat depth_format     =GetDepthCandidateFormat();
 
-        if(position_format  ==FMT_UNDEFINED
-         ||color_format     ==FMT_UNDEFINED
-         ||normal_format    ==FMT_UNDEFINED
-         ||depth_format     ==FMT_UNDEFINED)
-            return(false);
+        //if(position_format  ==FMT_UNDEFINED
+        // ||color_format     ==FMT_UNDEFINED
+        // ||normal_format    ==FMT_UNDEFINED
+        // ||depth_format     ==FMT_UNDEFINED)
+        //    return(false);
+
+        const VkFormat position_format  =FMT_RGBA16F;
+        const VkFormat color_format     =FMT_RGBA16F;
+        const VkFormat normal_format    =FMT_RGBA16F;
+        const VkFormat depth_format     =FMT_D16UN;
 
         gbuffer.position=device->CreateAttachmentTextureColor(position_format,  gbuffer.extent.width,gbuffer.extent.height);
         gbuffer.color   =device->CreateAttachmentTextureColor(color_format,     gbuffer.extent.width,gbuffer.extent.height);
