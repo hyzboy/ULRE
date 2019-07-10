@@ -41,7 +41,7 @@ private:
 
     struct DeferredGBuffer
     {
-        uint32_t width,height;
+        VkExtent2D extent;
         vulkan::Framebuffer *framebuffer;
         vulkan::RenderPass *renderpass;
 
@@ -81,15 +81,20 @@ private:
     SubpassParam                sp_gbuffer;
     SubpassParam                sp_composition;
 
-    vulkan::Renderable *        ro_cube;
+    vulkan::Renderable          *ro_plane_grid,
+                                *ro_cube,
+                                *ro_sphere,
+                                *ro_torus,
+                                *ro_cylinder,
+                                *ro_cone;
 
     vulkan::Sampler *           sampler=nullptr;
 
     struct
     {
-        vulkan::Texture2D       *color=nullptr,
-                                *normal=nullptr,
-                                *specular=nullptr;
+        Texture2DPointer        color=nullptr;
+        Texture2DPointer        normal=nullptr;
+//        Texture2DPointer        specular=nullptr;
     }texture;
 
     vulkan::CommandBuffer       *gbuffer_cmd=nullptr;
@@ -99,7 +104,7 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(gbuffer_cmd);
-        SAFE_CLEAR(texture.specular);
+        //SAFE_CLEAR(texture.specular);
         SAFE_CLEAR(texture.normal);
         SAFE_CLEAR(texture.color);
         SAFE_CLEAR(sampler);
@@ -138,8 +143,8 @@ private:
 
     bool InitGBuffer()
     {
-        gbuffer.width   =GBUFFER_WIDTH;
-        gbuffer.height  =GBUFFER_HEIGHT;
+        gbuffer.extent.width   =GBUFFER_WIDTH;
+        gbuffer.extent.height  =GBUFFER_HEIGHT;
 
         //根据候选格式表选择格式
         const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
@@ -153,10 +158,10 @@ private:
          ||depth_format     ==FMT_UNDEFINED)
             return(false);
 
-        gbuffer.position=device->CreateAttachmentTextureColor(position_format,  gbuffer.width,gbuffer.height);
-        gbuffer.color   =device->CreateAttachmentTextureColor(color_format,     gbuffer.width,gbuffer.height);
-        gbuffer.normal  =device->CreateAttachmentTextureColor(normal_format,    gbuffer.width,gbuffer.height);
-        gbuffer.depth   =device->CreateAttachmentTextureDepth(depth_format,     gbuffer.width,gbuffer.height);
+        gbuffer.position=device->CreateAttachmentTextureColor(position_format,  gbuffer.extent.width,gbuffer.extent.height);
+        gbuffer.color   =device->CreateAttachmentTextureColor(color_format,     gbuffer.extent.width,gbuffer.extent.height);
+        gbuffer.normal  =device->CreateAttachmentTextureColor(normal_format,    gbuffer.extent.width,gbuffer.extent.height);
+        gbuffer.depth   =device->CreateAttachmentTextureDepth(depth_format,     gbuffer.extent.width,gbuffer.extent.height);
 
         for(uint i=0;i<3;i++)
         {
@@ -211,7 +216,7 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,device->GetExtent());
+        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,gbuffer.extent);
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
@@ -253,7 +258,7 @@ private:
 
         texture.color   =vulkan::LoadTGATexture(OS_TEXT("cardboardPlainStain.tga"),device);
         texture.normal  =vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_NRM.tga"),device);
-        texture.specular=vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_SPEC.tga"),device);
+        //texture.specular=vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_SPEC.tga"),device);
 
         VkSamplerCreateInfo sampler_create_info;
 
@@ -289,16 +294,79 @@ private:
 
     void CreateRenderObject(vulkan::Material *mtl)
     {
-        struct CubeCreateInfo cci;
+        {
+            struct PlaneGridCreateInfo pgci;
 
-        ro_cube=CreateRenderableCube(db,mtl,&cci);
+            pgci.coord[0].Set(-100,-100,0);
+            pgci.coord[1].Set( 100,-100,0);
+            pgci.coord[2].Set( 100, 100,0);
+            pgci.coord[3].Set(-100, 100,0);
+
+            pgci.step.u=20;
+            pgci.step.v=20;
+
+            pgci.side_step.u=10;
+            pgci.side_step.v=10;
+
+            pgci.color.Set(0.75,0,0,1);
+            pgci.side_color.Set(1,0,0,1);
+
+            ro_plane_grid=CreateRenderablePlaneGrid(db,mtl,&pgci);
+        }
+        
+        {
+            struct CubeCreateInfo cci;            
+            ro_cube=CreateRenderableCube(db,mtl,&cci);
+        }
+        
+        {        
+            ro_sphere=CreateRenderableSphere(db,mtl,16);
+        }
+
+        {
+            TorusCreateInfo tci;
+
+            tci.innerRadius=50;
+            tci.outerRadius=70;
+
+            tci.numberSlices=32;
+            tci.numberStacks=16;
+
+            ro_torus=CreateRenderableTorus(db,mtl,&tci);
+        }
+
+        {
+            CylinderCreateInfo cci;
+
+            cci.halfExtend=10;
+            cci.radius=10;
+            cci.numberSlices=16;
+
+            ro_cylinder=CreateRenderableCylinder(db,mtl,&cci);
+        }
+
+        {
+            ConeCreateInfo cci;
+
+            cci.halfExtend=10;
+            cci.radius=10;
+            cci.numberSlices=16;
+            cci.numberStacks=1;
+
+            ro_cone=CreateRenderableCone(db,mtl,&cci);
+        }
     }
     
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
 
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube),scale(1000));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_plane_grid));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_torus));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cylinder ),translate(  0, 16, 0));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cone     ),translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -308,7 +376,7 @@ private:
 
     bool InitGBufferCommandBuffer()
     {
-        gbuffer_cmd=device->CreateCommandBuffer();
+        gbuffer_cmd=device->CreateCommandBuffer(&gbuffer.extent);
 
         if(!gbuffer_cmd)
             return(false);
@@ -317,10 +385,12 @@ private:
             if(!gbuffer_cmd->BeginRenderPass(gbuffer.renderpass,gbuffer.framebuffer))
                 return(false);
 
-
+            render_list.Render(gbuffer_cmd);
 
             gbuffer_cmd->EndRenderPass();
         gbuffer_cmd->End();
+        
+        device->SubmitDraw(*gbuffer_cmd);
 
         return(true);
     }

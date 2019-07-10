@@ -164,7 +164,7 @@ public: //material相关
 
 public: //Command Buffer 相关
 
-    CommandBuffer * CreateCommandBuffer();
+    CommandBuffer * CreateCommandBuffer(const VkExtent2D *extent=nullptr);
     
     bool CreateAttachment(      List<VkAttachmentReference> &ref_list,
                                 List<VkAttachmentDescription> &desc_list,

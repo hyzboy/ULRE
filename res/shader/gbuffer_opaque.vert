@@ -32,8 +32,8 @@ void main()
     FragmentPosition=pos.xyz;
     FragmentTexCoord=TexCoord;
 
-    mat3 n=transpose(inverse(mat3(pc.local_to_world)));
+    mat3 n=inverse(mat3(pc.local_to_world));
 
-    FragmentNormal=n*normalize(Normal);
-    FragmentTangent=n*normalize(Tangent);
+    FragmentNormal=normalize(Normal)*n;
+    FragmentTangent=normalize(Tangent)*n;
 }
