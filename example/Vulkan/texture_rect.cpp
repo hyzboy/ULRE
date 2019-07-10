@@ -92,7 +92,7 @@ private:
         render_obj=material->CreateRenderable(VERTEX_COUNT);
         descriptor_sets=material->CreateDescriptorSets();
 
-        texture=vulkan::LoadTGATexture(OS_TEXT("lena.tga"),device);
+        texture=vulkan::LoadTGATexture(OS_TEXT("res/image/lena.tga"),device);
 
         VkSamplerCreateInfo sampler_create_info;
 
