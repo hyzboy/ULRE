@@ -13,7 +13,8 @@ class CommandBuffer
     VkCommandPool pool;
     VkCommandBuffer cmd_buf;
 
-    VkClearValue clear_values[2];
+    uint32_t cv_count;
+    VkClearValue *clear_values;
     VkRect2D render_area;
     VkViewport viewport;
 
@@ -21,7 +22,7 @@ class CommandBuffer
 
 public:
 
-    CommandBuffer(VkDevice dev,const VkExtent2D &extent,VkCommandPool cp,VkCommandBuffer cb);
+    CommandBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t att_count,VkCommandPool cp,VkCommandBuffer cb);
     ~CommandBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
@@ -29,18 +30,26 @@ public:
     operator const VkCommandBuffer *()const{return &cmd_buf;}
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
-    void SetClearColor(float r,float g,float b,float a=1.0f)
+    void SetClearColor(int index,float r,float g,float b,float a=1.0f)
     {
-        clear_values[0].color.float32[0]=r;
-        clear_values[0].color.float32[1]=g;
-        clear_values[0].color.float32[2]=b;
-        clear_values[0].color.float32[3]=a;
+        if(index<0||index>cv_count)return;
+
+        VkClearValue *cv=clear_values+index;
+
+        cv->color.float32[0]=r;
+        cv->color.float32[1]=g;
+        cv->color.float32[2]=b;
+        cv->color.float32[3]=a;
     }
 
-    void SetClearDepthStencil(float d=1.0f,float s=0)
+    void SetClearDepthStencil(int index,float d=1.0f,float s=0)
     {
-        clear_values[1].depthStencil.depth=d;
-        clear_values[1].depthStencil.stencil=s;
+        if(index<0||index>cv_count)return;
+
+        VkClearValue *cv=clear_values+index;
+
+        cv->depthStencil.depth=d;
+        cv->depthStencil.stencil=s;
     }
 
     //以上设定在Begin开始后即不可改变

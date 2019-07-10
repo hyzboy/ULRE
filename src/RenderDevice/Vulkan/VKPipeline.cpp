@@ -132,6 +132,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
     depthStencilState.back.depthFailOp = VK_STENCIL_OP_KEEP;
     depthStencilState.back.writeMask = 0;
     depthStencilState.front = depthStencilState.back;
+    depthStencilState.front.compareOp=VK_COMPARE_OP_NEVER;
 
     pipelineInfo.pDepthStencilState=&depthStencilState;
 
@@ -173,7 +174,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
 
     {
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-        pipelineInfo.basePipelineIndex = 0;
+        pipelineInfo.basePipelineIndex = -1;
     }
 }
 
@@ -207,7 +208,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,RenderPass
 
     {
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-        pipelineInfo.basePipelineIndex = 0;
+        pipelineInfo.basePipelineIndex = -1;
     }
 }
 

@@ -85,7 +85,7 @@ void Device::RecreateDevice()
         fence_list.Add(this->CreateFence(true));
     }
 
-    texture_cmd_buf=CreateCommandBuffer();
+    texture_cmd_buf=CreateCommandBuffer(nullptr,0);
     
     current_frame=0;
     current_fence=0;
@@ -100,7 +100,7 @@ bool Device::Resize(uint width,uint height)
     return(true);
 }
 
-CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D *extent)
+CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D *extent,const uint32_t atta_count)
 {
     if(!attr->cmd_pool)
         return(nullptr);
@@ -119,7 +119,7 @@ CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D *extent)
     if(res!=VK_SUCCESS)
         return(nullptr);
 
-    return(new CommandBuffer(attr->device,extent?*extent:attr->swapchain_extent,attr->cmd_pool,cmd_buf));
+    return(new CommandBuffer(attr->device,extent?*extent:attr->swapchain_extent,atta_count,attr->cmd_pool,cmd_buf));
 }
 
 /**

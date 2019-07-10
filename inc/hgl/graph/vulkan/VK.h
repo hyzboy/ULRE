@@ -69,6 +69,13 @@ struct PushConstant
     Matrix4f local_to_world;
 };
 
+inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d)
+{
+    e3d.width   =e2d.width;
+    e3d.height  =e2d.height;
+    e3d.depth   =1;
+}
+
 #ifdef _DEBUG
 bool CheckStrideBytesByFormat();                ///<检验所有数据类型长度数组是否符合规则
 #endif//_DEBUG

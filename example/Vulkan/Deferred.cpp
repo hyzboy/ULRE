@@ -219,7 +219,8 @@ private:
         AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,gbuffer.extent);
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
-        pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
+        //pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
+        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(PRIM_TRIANGLES);
 
         sp->pipeline=pipeline_creater->Create();
@@ -360,13 +361,13 @@ private:
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
-
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_plane_grid));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_torus));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cylinder ),translate(  0, 16, 0));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cone     ),translate(  0,-16, 0));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube),scale(50,50,50));
+        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_plane_grid));
+        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_torus));
+        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
+        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
+        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cylinder ),translate(  0, 16, 0));
+        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cone     ),translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -376,7 +377,7 @@ private:
 
     bool InitGBufferCommandBuffer()
     {
-        gbuffer_cmd=device->CreateCommandBuffer(&gbuffer.extent);
+        gbuffer_cmd=device->CreateCommandBuffer(&gbuffer.extent,gbuffer.attachment.desc_list.GetCount());
 
         if(!gbuffer_cmd)
             return(false);
