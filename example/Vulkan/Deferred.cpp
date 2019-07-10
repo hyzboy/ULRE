@@ -251,15 +251,15 @@ private:
 
     bool InitMaterial()
     {
-        if(!InitSubpass(&sp_gbuffer,    OS_TEXT("gbuffer_opaque.vert.spv"),OS_TEXT("gbuffer_opaque.frag.spv")))return(false);
-        //if(!InitSubpass(&sp_composition,OS_TEXT("ds_composition.vert.spv"),OS_TEXT("ds_composition.frag.spv")))return(false);
+        if(!InitSubpass(&sp_gbuffer,    OS_TEXT("res/shader/gbuffer_opaque.vert.spv"),OS_TEXT("res/shader/gbuffer_opaque.frag.spv")))return(false);
+        //if(!InitSubpass(&sp_composition,OS_TEXT("res/shader/ds_composition.vert.spv"),OS_TEXT("res/shader/ds_composition.frag.spv")))return(false);
 
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         //if(!InitCompositionPipeline(&sp_composition))return(false);
 
-        texture.color   =vulkan::LoadTGATexture(OS_TEXT("cardboardPlainStain.tga"),device);
-        texture.normal  =vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_NRM.tga"),device);
-        //texture.specular=vulkan::LoadTGATexture(OS_TEXT("APOCWALL029_SPEC.tga"),device);
+        texture.color   =vulkan::LoadTGATexture(OS_TEXT("res/image/cardboardPlainStain.tga"),device);
+        texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_NRM.tga"),device);
+        //texture.specular=vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_SPEC.tga"),device);
 
         VkSamplerCreateInfo sampler_create_info;
 

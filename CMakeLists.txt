@@ -57,6 +57,8 @@ SET(SPIRV_CROSS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/SPIRV-Cross)
 include_directories(${SPIRV_CROSS_PATH})
 add_subdirectory(${SPIRV_CROSS_PATH})
 
+SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
+
 add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(3rdpty/assimp)
