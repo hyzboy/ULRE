@@ -277,6 +277,8 @@ public:
         camera.height=h;
         camera.center.Set(0,0,0,1);
         camera.eye.Set(100,100,100,1);
+        camera.znear=-1;
+        camera.zfar=1;
 
         camera.Refresh();      //更新矩阵计算
     }
