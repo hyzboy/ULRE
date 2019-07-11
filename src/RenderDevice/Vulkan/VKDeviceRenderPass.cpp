@@ -90,6 +90,7 @@ bool Device::CreateAttachment(List<VkAttachmentReference> &ref_list,List<VkAttac
 
     desc[atta_count].finalLayout  = depth_final_layout;
     desc[atta_count].format       = depth_format;
+    desc[atta_count].storeOp      = VK_ATTACHMENT_STORE_OP_DONT_CARE;   //深度缓冲区不用于显示也不用于下一帧，所以结束后不用保存
     
     ref[atta_count].attachment  = atta_count;
     ref[atta_count].layout      = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
