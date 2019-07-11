@@ -169,7 +169,7 @@ private:
         const VkFormat position_format  =FMT_RGBA16F;
         const VkFormat color_format     =FMT_RGBA16F;
         const VkFormat normal_format    =FMT_RGBA16F;
-        const VkFormat depth_format     =FMT_D16UN;
+        const VkFormat depth_format     =FMT_D32F;
 
         gbuffer.position=device->CreateAttachmentTextureColor(position_format,  gbuffer.extent.width,gbuffer.extent.height);
         gbuffer.color   =device->CreateAttachmentTextureColor(color_format,     gbuffer.extent.width,gbuffer.extent.height);

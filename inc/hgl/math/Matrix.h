@@ -97,23 +97,6 @@ namespace hgl
             0.0f,               0.0f,   -1.0f,                  0.0f);
     }
 
-    /**
-     * 生成一个透视矩阵
-     * @param aspect_ratio 宽高比
-     * @param field_of_view 视野
-     */
-    inline Matrix4f perspective(float field_of_view,
-                                float aspect_ratio)
-    {
-        const float f = 1.0f / tan( hgl_ang2rad( 0.5f * field_of_view ) );
-
-        return Matrix4f(
-            f / aspect_ratio,   0.0f,   0.0f,   0.0f,
-            0.0f,               -f,     0.0f,   0.0f,
-            0.0f,               0.0f,   -1.0f,  0.0f,
-            0.0f,               0.0f,   -1.0f,  0.0f);
-    }
-
     inline Matrix4f translate(const Vector3f &v)
     {
         return Matrix4f::Translate(v);
