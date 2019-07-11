@@ -165,12 +165,6 @@ public:
     {
         BuildCommandBuffer(&render_list);
     }
-
-    void Draw()
-    {
-        AcquireNextImage();
-        VulkanApplicationFramework::Draw();
-    }
 };//class TestApp:public VulkanApplicationFramework
 
 int main(int,char **)
