@@ -20,26 +20,84 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    struct MDP
+    {
+        vulkan::Material *      material        =nullptr;
+        vulkan::DescriptorSets *descriptor_sets =nullptr;
+        vulkan::Pipeline *      pipeline        =nullptr;
+    }m3d,m2d;
 
-    vulkan::Renderable          *ro_plane_grid[3];
-
-    vulkan::Pipeline *          pipeline_line       =nullptr;
+    vulkan::Renderable          *ro_plane_grid[3],
+                                *ro_round_rectangle =nullptr;
 
 private:
 
-    bool InitMaterial()
+    bool InitMaterial(MDP *mdp,const OSString &vs,const OSString &fs)
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/PositionColor3D.vert.spv"),
-                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
-        if(!material)
+        mdp->material=shader_manage->CreateMaterial(vs,fs);
+        
+        if(!mdp->material)
             return(false);
 
-        descriptor_sets=material->CreateDescriptorSets();
+        mdp->descriptor_sets=mdp->material->CreateDescriptorSets();
 
-        db->Add(material);
-        db->Add(descriptor_sets);
+        db->Add(mdp->material);
+        db->Add(mdp->descriptor_sets);
+        return(true);
+    }
+
+    bool InitUBO(MDP *mdp)
+    {
+        if(!InitCameraUBO(mdp->descriptor_sets,mdp->material->GetUBO("world")))
+            return(false);
+
+        mdp->descriptor_sets->Update();
+        return(true);
+    }
+
+    bool InitPipeline(MDP *mdp,const VkPrimitiveTopology primitive)
+    {
+        AutoDelete<vulkan::PipelineCreater> 
+        pipeline_creater=new vulkan::PipelineCreater(device,mdp->material,device->GetMainRenderPass(),device->GetExtent());
+        pipeline_creater->CloseCullFace();
+        pipeline_creater->Set(primitive);
+
+        mdp->pipeline=pipeline_creater->Create();
+
+        if(!mdp->pipeline)
+            return(false);
+
+        db->Add(mdp->pipeline);
+        return(true);
+    }
+
+    bool InitMDP(MDP *mdp,const VkPrimitiveTopology primitive,const OSString &vs,const OSString &fs)
+    {
+        if(!InitMaterial(mdp,vs,fs))
+            return(false);
+
+        if(!InitUBO(mdp))
+            return(false);
+
+        if(!InitPipeline(mdp,primitive))
+            return(false);
+
+        return(true);
+    }
+
+    bool InitScene()
+    {
+        const float rad90=hgl_ang2rad(90);
+        
+        render_root.Add(db->CreateRenderableInstance(m2d.pipeline,m2d.descriptor_sets,ro_round_rectangle));
+
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[0]));
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[1]),rotate(rad90,0,1,0));
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[2]),rotate(rad90,1,0,0));
+
+        render_root.RefreshMatrix();
+        render_root.ExpendToList(&render_list);
+
         return(true);
     }
 
@@ -61,56 +119,26 @@ private:
         pgci.color.Set(0.75,0,0,1);
         pgci.side_color.Set(1,0,0,1);
 
-        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,material,&pgci);
+        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
 
         pgci.color.Set(0,0.75,0,1);
         pgci.side_color.Set(0,1,0,1);
 
-        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,material,&pgci);
+        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
 
         pgci.color.Set(0,0,0.75,1);
         pgci.side_color.Set(0,0,1,1);
-        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,material,&pgci);
-    }
+        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
 
-    bool InitUBO()
-    {
-        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
-            return(false);
+        {
+            struct RoundRectangleCreateInfo rrci;
 
-        descriptor_sets->Update();
-        return(true);
-    }
+            rrci.scope.Set(SCREEN_WIDTH-30,10,20,20);
+            rrci.radius=5;
+            rrci.round_per=5;
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
-        pipeline_creater->SetDepthTest(true);
-        pipeline_creater->SetDepthWrite(true);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_LINES);
-
-        pipeline_line=pipeline_creater->Create();
-        if(!pipeline_line)
-            return(false);
-
-        db->Add(pipeline_line);
-        return(true);
-    }
-
-    bool InitScene()
-    {
-        const float rad90=hgl_ang2rad(90);
-
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[0]));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[1]),rotate(rad90,0,1,0));
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid[2]),rotate(rad90,1,0,0));
-
-        render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
-
-        return(true);
+            ro_round_rectangle=CreateRenderableRoundRectangle(db,m2d.material,&rrci);
+        }
     }
 
 public:
@@ -120,16 +148,15 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        if(!InitMaterial())
+        if(!InitMDP(&m3d,PRIM_LINES,OS_TEXT("res/shader/PositionColor3D.vert.spv"),
+                                    OS_TEXT("res/shader/FlatColor.frag.spv")))
+            return(false);
+
+        if(!InitMDP(&m2d,PRIM_TRIANGLE_FAN, OS_TEXT("res/shader/OnlyPosition.vert.spv"),
+                                            OS_TEXT("res/shader/FlatColor.frag.spv")))
             return(false);
 
         CreateRenderObject();
-
-        if(!InitUBO())
-            return(false);
-
-        if(!InitPipeline())
-            return(false);
 
         if(!InitScene())
             return(false);
