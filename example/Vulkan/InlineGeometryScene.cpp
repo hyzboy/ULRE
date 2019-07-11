@@ -11,8 +11,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
 class TestApp:public CameraAppFramework
 {
@@ -33,8 +33,7 @@ private:
                                 *ro_cone;
 
     vulkan::Pipeline            *pipeline_line      =nullptr,
-                                *pipeline_solid     =nullptr,
-                                *pipeline_twoside   =nullptr;
+                                *pipeline_solid     =nullptr;
 
 private:
 
@@ -156,22 +155,14 @@ private:
             return(false);
 
         db->Add(pipeline_solid);
-
-        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
-        pipeline_twoside=pipeline_creater->Create();
-
-        if(!pipeline_twoside)
-            return(false);
-
-        db->Add(pipeline_twoside);
         return(true);
     }
 
     bool InitScene()
     {
         render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
-        //render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_dome));
-        render_root.Add(db->CreateRenderableInstance(pipeline_twoside,descriptor_sets,ro_torus));
+        //render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_dome));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_torus));
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cylinder ),translate(  0, 16, 0));
