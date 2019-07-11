@@ -28,8 +28,16 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 using Texture2DPointer=vulkan::Texture2D *;
 
 constexpr VkFormat position_candidate_format[]={FMT_RGBA32F,FMT_RGBA16F};
-constexpr VkFormat color_candidate_format   []={FMT_RGBA32F,FMT_RGBA16F,FMT_RGB16UN,FMT_RGB16SN,FMT_RGBA8UN,FMT_RGBA8SN,FMT_RGBA8U,FMT_RGB565,FMT_BGR565};
-constexpr VkFormat normal_candidate_format  []={FMT_RGBA32F,FMT_RGBA16F};
+constexpr VkFormat color_candidate_format   []={FMT_RGBA32F,
+                                                FMT_RGBA16F,FMT_RGB16UN,FMT_RGB16SN,
+                                                FMT_RGBA8UN,FMT_RGBA8SN,FMT_RGBA8U,
+                                                FMT_BGRA8UN,FMT_BGRA8SN,FMT_BGRA8U,
+                                                FMT_ABGR8UN,FMT_ABGR8SN,FMT_ABGR8U,
+                                                FMT_RGB565,FMT_BGR565};
+constexpr VkFormat normal_candidate_format  []={FMT_RGBA32F,
+                                                FMT_RGBA16F,
+                                                FMT_A2RGB10UN,FMT_A2RGB10SN,FMT_A2BGR10UN,
+                                                FMT_A2BGR10SN};
 constexpr VkFormat depth_candidate_format   []={FMT_D32F,FMT_D32F_S8U,FMT_X8_D24,FMT_D24UN_S8U,FMT_D16UN,FMT_D16UN_S8U};
 
 class TestApp:public CameraAppFramework
@@ -222,11 +230,8 @@ private:
     bool InitGBufferPipeline(SubpassParam *sp)
     {
         AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,gbuffer.extent);
-        pipeline_creater->SetDepthTest(true);
-        pipeline_creater->SetDepthWrite(true);
-        pipeline_creater->SetDepthCompareOp(VK_COMPARE_OP_ALWAYS);
         //pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
-        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
+        pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
         sp->pipeline=pipeline_creater->Create();
@@ -327,7 +332,7 @@ private:
         }
         
         {        
-            ro_sphere=CreateRenderableSphere(db,mtl,16);
+            ro_sphere=CreateRenderableSphere(db,mtl,64);
         }
 
         {
@@ -368,12 +373,12 @@ private:
     {
         CreateRenderObject(sp->material);
         render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube),scale(50,50,50));
-        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_plane_grid));
-        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_torus));
-        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
-        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
-        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cylinder ),translate(  0, 16, 0));
-        //render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cone     ),translate(  0,-16, 0));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_plane_grid));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_torus));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere   ),translate( 10,  0, 5)*scale(40,40,40));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cylinder ),translate(  0, 16, 0));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cone     ),translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);

@@ -156,8 +156,8 @@ bool Device::CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<V
         desc->flags             = 0;
         desc->samples           = VK_SAMPLE_COUNT_1_BIT;
         desc->loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR代表LOAD时清空内容
-        desc->storeOp           = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROE代表SOTRE时储存内容
-        desc->stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CARE表示不在意
+        desc->storeOp           = VK_ATTACHMENT_STORE_OP_DONT_CARE; //DONT CARE表示不在意
+        desc->stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  
         desc->stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         desc->initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;        //代表不关心初始布局
         desc->finalLayout       = depth_final_layout;

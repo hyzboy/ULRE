@@ -39,7 +39,7 @@ namespace hgl
             float height;               ///<视图高
 
             float fov=60;               ///<水平FOV
-            float znear=0,zfar=1000;    ///<Z轴上离眼睛的距离
+            float znear=-1,zfar=1;      ///<Z轴上离眼睛的距离
 
             Vector4f eye;               ///<眼睛坐标
             Vector4f center;            ///<视点坐标
