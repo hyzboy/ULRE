@@ -20,14 +20,14 @@ namespace
         return cur;
     }
 
-    VkExtent2D GetSwapchainExtent(VkSurfaceCapabilitiesKHR &surface_caps,uint32_t width,uint32_t height)
+    VkExtent2D GetSwapchainExtent(VkSurfaceCapabilitiesKHR &surface_caps,const VkExtent2D &acquire_extent)
     {
         if(surface_caps.currentExtent.width==UINT32_MAX)
         {
             VkExtent2D swapchain_extent;
 
-            swapchain_extent.width=Clamp(width,surface_caps.minImageExtent.width,surface_caps.maxImageExtent.width);
-            swapchain_extent.height=Clamp(height,surface_caps.minImageExtent.height,surface_caps.maxImageExtent.height);
+            swapchain_extent.width  =Clamp(acquire_extent.width,    surface_caps.minImageExtent.width,  surface_caps.maxImageExtent.width   );
+            swapchain_extent.height =Clamp(acquire_extent.height,   surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height  );
 
             return swapchain_extent;
         }
@@ -549,17 +549,11 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     return(new Device(attr));
 }
 
-bool ResizeRenderDevice(DeviceAttribute *attr,uint width,uint height)
+Swapchain *CreateSwapchain(DeviceAttribute *attr,const VkExtent2D &acquire_extent)
 {
-    if(attr->swapchain_extent.width==width
-     &&attr->swapchain_extent.height==height)
-        return(true);
-
-    attr->ClearSwapchain();
-
     attr->Refresh();
 
-    attr->swapchain_extent=GetSwapchainExtent(attr->surface_caps,width,height);
+    VkExtent2D extent=GetSwapchainExtent(attr->surface_caps,acquire_extent);
 
     return CreateSwapchinAndDepthBuffer(attr);
 }

@@ -13,7 +13,6 @@ struct DeviceAttribute
 
     VkSurfaceKHR                        surface         =VK_NULL_HANDLE;
     VkSurfaceCapabilitiesKHR            surface_caps;
-    VkExtent2D                          swapchain_extent;
 
     uint32_t                            graphics_family =ERROR_FAMILY_INDEX;
     uint32_t                            present_family  =ERROR_FAMILY_INDEX;
@@ -33,10 +32,6 @@ struct DeviceAttribute
 
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
-    VkSwapchainKHR                      swap_chain      =VK_NULL_HANDLE;
-
-    ObjectList<Texture2D>               sc_texture;
-    Texture2D *                         sc_depth        =nullptr;
 
     VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
 
@@ -49,7 +44,6 @@ public:
 
     bool CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const;
 
-    void ClearSwapchain();
     void Refresh();
 };//class DeviceAttribute
 VK_NAMESPACE_END

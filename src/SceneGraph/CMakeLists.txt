@@ -1,4 +1,5 @@
-﻿SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/AABox.h
+﻿SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Coordinate.h
+						${ROOT_INCLUDE_PATH}/hgl/graph/AABox.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/Camera.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneDB.h
@@ -15,11 +16,12 @@
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Spline.h
                         )
 
-SET(SCENE_GRAPH_SOURCE  AABox.cpp
+SET(SCENE_GRAPH_SOURCE  Coordinate.cpp
+						AABox.cpp
                         Camera.cpp
                         RenderList.cpp
                         SceneDB.cpp
-                        SceneNode.cpp
+                        SceneNode.cpp	
                         SceneOrient.cpp
                         InlineGeometry.cpp
 						#InlinePipeline.cpp
