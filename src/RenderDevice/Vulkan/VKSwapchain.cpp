@@ -1,4 +1,4 @@
-#include<hgl/graph/vulkan/VKSwapchain.h>
+ï»¿#include<hgl/graph/vulkan/VKSwapchain.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKRenderPass.h>
 
@@ -117,7 +117,7 @@ bool Swapchain::SubmitDraw(List<VkCommandBuffer> &cmd_lists,List<VkSemaphore> &w
     if(++current_fence==swap_chain_count)
         current_fence=0;
 
-    //²»ÔÚÕâÀïÁ¢¼´µÈ´ıfenceÍê³É£¬ÊÇÒòÎªÓĞ¿ÉÄÜqueue submitĞèÒª¾ÃÒ»µã¹¤×÷Ê±¼ä£¬ÎÒÃÇÕâ¸öÊ±¼ä¿ÉÒÔÈ¥¸É±ğµÄ¡£µÈÔÚAcquireNextImageÊ±ÔÙÈ¥µÈ´ıfence£¬¶øÇÒÊÇÁíÒ»Ö¡µÄfence¡£ÕâÑùÓĞÀûÓÚÒì²½´¦Àí
+    //ä¸åœ¨è¿™é‡Œç«‹å³ç­‰å¾…fenceå®Œæˆï¼Œæ˜¯å› ä¸ºæœ‰å¯èƒ½queue submitéœ€è¦ä¹…ä¸€ç‚¹å·¥ä½œæ—¶é—´ï¼Œæˆ‘ä»¬è¿™ä¸ªæ—¶é—´å¯ä»¥å»å¹²åˆ«çš„ã€‚ç­‰åœ¨AcquireNextImageæ—¶å†å»ç­‰å¾…fenceï¼Œè€Œä¸”æ˜¯å¦ä¸€å¸§çš„fenceã€‚è¿™æ ·æœ‰åˆ©äºå¼‚æ­¥å¤„ç†
 
     return(result==VK_SUCCESS);
 }

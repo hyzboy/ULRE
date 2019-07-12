@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_COORDINATE_INCLUDE
+ï»¿#ifndef HGL_GRAPH_COORDINATE_INCLUDE
 #define HGL_GRAPH_COORDINATE_INCLUDE
 
 #include<hgl/math/Math.h>
@@ -20,7 +20,7 @@ namespace hgl
          *                  X                   | Y                                          X
          */
 
-        extern Matrix4f MATRIX_FROM_OPENGL_COORDINATE;              //OpenGL×ø±êÏµÊı¾İµ½ÎÒ·½×ø±êÏµÊı¾İ±ä»»ÓÃ¾ØÕó
+        extern Matrix4f MATRIX_FROM_OPENGL_COORDINATE;              //OpenGLåæ ‡ç³»æ•°æ®åˆ°æˆ‘æ–¹åæ ‡ç³»æ•°æ®å˜æ¢ç”¨çŸ©é˜µ
 
         }//namespace graph
 }//namespace hgl

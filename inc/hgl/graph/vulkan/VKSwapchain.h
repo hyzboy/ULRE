@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
 #define HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
 
 #include<hgl/graph/Vulkan/VK.h>
@@ -59,24 +59,24 @@ public:
 
     void Recreate           ();
 
-    bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1); ///<µÈ´ý¶ÓÁÐÍê³É
+    bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1); ///<ç­‰å¾…é˜Ÿåˆ—å®Œæˆ
 
     /**
-     * ÇëÇó»ñµÃÏÂÒ»Ö¡µÄË÷Òý£¬²¢½«È·ÈÏÐÅÏ¢·¢ËÍµ½Ö¸¶¨ÐÅºÅ
+     * è¯·æ±‚èŽ·å¾—ä¸‹ä¸€å¸§çš„ç´¢å¼•ï¼Œå¹¶å°†ç¡®è®¤ä¿¡æ¯å‘é€åˆ°æŒ‡å®šä¿¡å·
      */
-    bool AcquireNextImage   (VkSemaphore);                                                      ///<ÇëÇó»ñµÃÏÂÒ»Ö¡µÄË÷Òý
+    bool AcquireNextImage   (VkSemaphore);                                                      ///<è¯·æ±‚èŽ·å¾—ä¸‹ä¸€å¸§çš„ç´¢å¼•
 
     /**
-     * Ìá½»Ò»Åú»æÖÆÖ¸Áî
-     * @param cmd_list »æÖÆÖ¸Áî
-     * @param wait_sems Ö¸Áî¿ªÊ¼Ç°ÒªµÈ´ýµÄÈ·ÈÏµÄÐÅºÅ
-     * @param complete_semaphores »æÖÆÍê³Éºó·¢ËÍµÄÐÅºÅ
+     * æäº¤ä¸€æ‰¹ç»˜åˆ¶æŒ‡ä»¤
+     * @param cmd_list ç»˜åˆ¶æŒ‡ä»¤
+     * @param wait_sems æŒ‡ä»¤å¼€å§‹å‰è¦ç­‰å¾…çš„ç¡®è®¤çš„ä¿¡å·
+     * @param complete_semaphores ç»˜åˆ¶å®ŒæˆåŽå‘é€çš„ä¿¡å·
      */
-    bool SubmitDraw         (List<VkCommandBuffer> &cmd_list,List<VkSemaphore> &wait_sems,List<VkSemaphore> &complete_semaphores);       ///<Ìá½»»æÖÆÖ¸Áî
+    bool SubmitDraw         (List<VkCommandBuffer> &cmd_list,List<VkSemaphore> &wait_sems,List<VkSemaphore> &complete_semaphores);       ///<æäº¤ç»˜åˆ¶æŒ‡ä»¤
 
-    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<Ìá½»ÎÆÀí´¦Àíµ½¶ÓÁÐ
+    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<æäº¤çº¹ç†å¤„ç†åˆ°é˜Ÿåˆ—
 
-    bool PresentBackbuffer  ();                                                                 ///<µÈ´ý»æÖÆ¶ÓÁÐÍê³É£¬²¢½«ºóÌ¨»º³åÇø³ÊÏÖµ½Ç°Ì¨
+    bool PresentBackbuffer  ();                                                                 ///<ç­‰å¾…ç»˜åˆ¶é˜Ÿåˆ—å®Œæˆï¼Œå¹¶å°†åŽå°ç¼“å†²åŒºå‘ˆçŽ°åˆ°å‰å°
 };//class Swapchain
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE

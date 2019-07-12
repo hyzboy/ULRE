@@ -1,4 +1,4 @@
-#include<hgl/graph/Coordinate.h>
+﻿#include<hgl/graph/Coordinate.h>
 
 namespace hgl
 {
