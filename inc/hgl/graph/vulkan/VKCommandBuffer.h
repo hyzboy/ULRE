@@ -31,9 +31,9 @@ public:
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetViewport(const VkViewport &vp){viewport=vp;}
-    void SetClearColor(int index,float r,float g,float b,float a=1.0f)
+    void SetClearColor(uint32_t index,float r,float g,float b,float a=1.0f)
     {
-        if(index<0||index>cv_count)return;
+        if(index>=cv_count)return;
 
         VkClearValue *cv=clear_values+index;
 
@@ -43,9 +43,9 @@ public:
         cv->color.float32[3]=a;
     }
 
-    void SetClearDepthStencil(int index,float d=1.0f,float s=0)
+    void SetClearDepthStencil(uint32_t index,float d=1.0f,float s=0)
     {
-        if(index<0||index>cv_count)return;
+        if(index>=cv_count)return;
 
         VkClearValue *cv=clear_values+index;
 

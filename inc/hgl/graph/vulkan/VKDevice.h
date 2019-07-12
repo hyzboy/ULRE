@@ -7,9 +7,7 @@
 #include<hgl/platform/Window.h>
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDeviceAttribute.h>
-#include<hgl/graph/vulkan/VKFramebuffer.h>
-#include<hgl/graph/vulkan/VKFence.h>
-#include<hgl/graph/vulkan/VKSemaphore.h>
+#include<hgl/graph/vulkan/VKSwapchain.h>
 #include<hgl/graph/VertexBufferCreater.h>
 
 VK_NAMESPACE_BEGIN
@@ -17,32 +15,12 @@ class Device
 {
     DeviceAttribute *attr;
 
-    uint swap_chain_count;
-
-    Semaphore *present_complete_semaphore=nullptr,
-              *render_complete_semaphore=nullptr;
-
-    VkPipelineStageFlags pipe_stage_flags;
-    VkSubmitInfo submit_info;
-
     Fence *texture_fence;
 
     VkSubmitInfo texture_submit_info;
     CommandBuffer *texture_cmd_buf;
 
-    RenderPass *main_rp;
-
-    uint32_t current_frame;
-    ObjectList<Framebuffer> render_frame;
-
-    uint32_t current_fence;
-    ObjectList<Fence> fence_list;
-
-    VkPresentInfoKHR present_info;
-
-private:
-
-    void RecreateDevice();
+    Swapchain *swapchain;
 
 private:
 
@@ -54,26 +32,23 @@ public:
 
     virtual ~Device();
 
-    operator VkDevice                           ()      {return attr->device;}
+    operator    VkDevice                                ()      {return attr->device;}
 
-            VkSurfaceKHR    GetSurface          ()      {return attr->surface;}
-            VkDevice        GetDevice           ()      {return attr->device;}
-    const   PhysicalDevice *GetPhysicalDevice   ()const {return attr->physical_device;}
-    const   VkExtent2D &    GetExtent           ()const {return attr->swapchain_extent;}
+                VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
+                VkDevice            GetDevice           ()      {return attr->device;}
+    const       PhysicalDevice *    GetPhysicalDevice   ()const {return attr->physical_device;}
 
-    VkDescriptorPool        GetDescriptorPool   ()      {return attr->desc_pool;}
-    VkPipelineCache         GetPipelineCache    ()      {return attr->pipeline_cache;}
+                VkDescriptorPool    GetDescriptorPool   ()      {return attr->desc_pool;}
+                VkPipelineCache     GetPipelineCache    ()      {return attr->pipeline_cache;}
+
+    const       VkFormat            GetSurfaceFormat    ()const {return attr->format;}
+                VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
+
+                Swapchain *         GetSwapchain        ()      {return swapchain;}
 
 public:
 
-    const   uint32_t        GetSwapChainImageCount  ()const     {return attr->sc_texture.GetCount();}
-
-            RenderPass *    GetMainRenderPass       ()          {return main_rp;}
-            Framebuffer *   GetFramebuffer          (int index) {return render_frame[index];}
-    const   uint32_t        GetCurrentFrameIndices  ()          {return current_frame;}
-            Framebuffer *   GetCurrentFramebuffer   ()          {return render_frame[current_frame];}
-
-    bool                    Resize                  (uint,uint);
+                bool                Resize              (const VkExtent2D &);
 
 public: //内存相关
 
@@ -164,7 +139,7 @@ public: //material相关
 
 public: //Command Buffer 相关
 
-    CommandBuffer * CreateCommandBuffer(const VkExtent2D *extent,const uint32_t atta_count);
+    CommandBuffer * CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count);
     
     bool CreateAttachment(      List<VkAttachmentReference> &ref_list,
                                 List<VkAttachmentDescription> &desc_list,
@@ -194,27 +169,6 @@ public: //Command Buffer 相关
 
     Fence *         CreateFence(bool);
     Semaphore *     CreateSem();
-
-public: //提交相关
-
-    bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1); ///<等待队列完成
-
-    /**
-     * 请求获得下一帧的索引，并将确认信息发送到指定信号
-     */
-    bool AcquireNextImage   (VkSemaphore);                                                      ///<请求获得下一帧的索引
-
-    /**
-     * 提交一批绘制指令
-     * @param cmd_list 绘制指令
-     * @param wait_sems 指令开始前要等待的确认的信号
-     * @param complete_semaphores 绘制完成后发送的信号
-     */
-    bool SubmitDraw         (List<VkCommandBuffer> &cmd_list,List<VkSemaphore> &wait_sems,List<VkSemaphore> &complete_semaphores);       ///<提交绘制指令
-
-    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
-
-    bool PresentBackbuffer  ();                                                                 ///<等待绘制队列完成，并将后台缓冲区呈现到前台
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE

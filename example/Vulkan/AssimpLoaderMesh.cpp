@@ -1,4 +1,5 @@
 ﻿#include"AssimpLoaderMesh.h"
+#include<hgl/graph/Coordinate.h>
 #include<assimp/postprocess.h>
 #include<assimp/cimport.h>
 #include<assimp/scene.h>
@@ -47,25 +48,6 @@ namespace
     const Color4f COLOR_PURE_WHITE(1,1,1,1);
 
     inline const vec pos_to_vec(const aiVector3D &v3d){return vec(v3d.x,v3d.y,v3d.z,1.0);}
-
-    void VecFlipY(List<Vector3f> &target,const aiVector3D *source,const uint count)
-    {
-        target.SetCount(count);
-
-        if(count<=0)return;
-
-        Vector3f *tp=target.GetData();
-
-        for(uint i=0;i<count;i++)
-        {
-            tp->x=source->x;
-            tp->y=source->y;
-            tp->z=source->z;
-
-            ++source;
-            ++tp;
-        }
-    }
 
     void VecCopy(List<Vector3f> &target,const aiVector3D *source,const uint count)
     {
@@ -159,8 +141,6 @@ class AssimpLoaderMesh
 
     ModelData *model_data;
 
-    Matrix4f OpenGLCoord2VulkanCoordMatrix;
-
 private:
 
     void GetBoundingBox(const   aiNode *    node,
@@ -199,7 +179,7 @@ private:
 
     void AssimpLoaderMesh::GetBoundingBox(const aiNode *node,aiVector3D *min_pos,aiVector3D *max_pos)
     {
-        Matrix4f root_matrix=OpenGLCoord2VulkanCoordMatrix;
+        Matrix4f root_matrix=hgl::graph::MATRIX_FROM_OPENGL_COORDINATE;
 
         min_pos->x = min_pos->y = min_pos->z =  1e10f;
         max_pos->x = max_pos->y = max_pos->z = -1e10f;
@@ -211,8 +191,6 @@ public:
 
     AssimpLoaderMesh(const OSString &fn,const aiScene *s):filename(fn),scene(s)
     {
-        OpenGLCoord2VulkanCoordMatrix=scale(1,-1,1)*rotate(hgl_ang2rad(90),Vector3f(1,0,0));
-
         model_data=new ModelData;
 
         aiVector3D scene_min,scene_max;
@@ -236,11 +214,11 @@ private:
         md->name=mesh->mName.C_Str();
 
         if(mesh->HasPositions())
-            VecFlipY(md->position,mesh->mVertices,mesh->mNumVertices);
+            VecCopy(md->position,mesh->mVertices,mesh->mNumVertices);
 
         if(mesh->HasNormals())
         {
-            VecFlipY(md->normal,mesh->mNormals,mesh->mNumVertices);
+            VecCopy(md->normal,mesh->mNormals,mesh->mNumVertices);
 
             if(mesh->HasTangentsAndBitangents())
             {
@@ -325,7 +303,7 @@ public:
         if(!Load(model_data->root_node,scene->mRootNode))
             return(false);
 
-        model_data->root_node->local_matrix=OpenGLCoord2VulkanCoordMatrix*model_data->root_node->local_matrix;
+        model_data->root_node->local_matrix=hgl::graph::MATRIX_FROM_OPENGL_COORDINATE*model_data->root_node->local_matrix;
         return(true);
     }
 };//class AssimpLoaderMesh

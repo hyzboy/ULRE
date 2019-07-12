@@ -5,7 +5,6 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-
 DeviceAttribute::DeviceAttribute(VkInstance inst,const PhysicalDevice *pd,VkSurfaceKHR s)
 {
     instance=inst;
@@ -23,8 +22,6 @@ DeviceAttribute::~DeviceAttribute()
     if(desc_pool)
         vkDestroyDescriptorPool(device,desc_pool,nullptr);
 
-    ClearSwapchain();
-    
     if(cmd_pool)
         vkDestroyCommandPool(device,cmd_pool,nullptr);
 
@@ -38,18 +35,6 @@ DeviceAttribute::~DeviceAttribute()
 bool DeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const
 {
     return physical_device->CheckMemoryType(typeBits,properties,typeIndex);
-}
-
-void DeviceAttribute::ClearSwapchain()
-{
-    SAFE_CLEAR(sc_depth);
-    sc_texture.Clear();
-
-    if(swap_chain)
-    {
-        vkDestroySwapchainKHR(device,swap_chain,nullptr);
-        swap_chain=VK_NULL_HANDLE;
-    }
 }
 
 void DeviceAttribute::Refresh()
@@ -70,7 +55,7 @@ void DeviceAttribute::Refresh()
     }
 
     {
-        constexpr VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4] = { VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        constexpr VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4]={VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                                                                       VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
                                                                       VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
                                                                       VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR };

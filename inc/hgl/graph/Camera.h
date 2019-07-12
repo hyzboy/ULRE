@@ -6,19 +6,6 @@ namespace hgl
 {
     namespace graph
     {
-        /*
-         * OpenGL Coordinate System         Vulkan Coordinate System        My Coordinate System
-         *
-         *                                         /Z
-         *     Y|    /Z                           /                             Z|    /Y
-         *      |   /                            /                               |   /        
-         *      |  /                            *------------                    |  /         
-         *      | /                             |           X                    | /          
-         *      |/                              |                                |/           
-         *      *------------                   |                                *------------
-         *                  X                   | Y                                          X
-         */       
-
         /**
          * 摄像机类型
          */
