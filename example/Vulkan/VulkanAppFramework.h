@@ -276,7 +276,9 @@ public:
         camera.width=w;
         camera.height=h;
         camera.center.Set(0,0,0,1);
-        camera.eye.Set(100,100,0,1);      //xyz三个值不要一样，以方便调试
+        camera.eye.Set(100,100,100,1);      //xyz三个值不要一样，以方便调试
+        camera.znear=16;
+        camera.zfar=256;
 
         camera.Refresh();      //更新矩阵计算
     }

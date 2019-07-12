@@ -16,9 +16,9 @@ namespace hgl
 
             V nup=cross(side,forward);
 
-            Matrix4f result( side.x,         side.y,         side.z,            0.0f,
-                             nup.x,          nup.y,          nup.z,             0.0f,
-                            -forward.x,     -forward.y,     -forward.z/2.0f,    0.0f,
+            Matrix4f result( side.x,         side.y,         side.z,            1.0f,
+                             nup.x,          nup.y,          nup.z,             1.0f,
+                            -forward.x,     -forward.y,     -forward.z/2.0f,    1.0f,
                              0.0f,           0.0f,           0.0f,              1.0f);
                                                         //  ^^^^^^
                                                         //      某些引擎此项为0.5，这个会影响最终输出的z值，但我们这里必须为0

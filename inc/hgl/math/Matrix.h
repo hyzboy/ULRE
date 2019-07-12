@@ -90,6 +90,11 @@ namespace hgl
     {
         const float f = 1.0f / tan( hgl_ang2rad( 0.5f * field_of_view ) );
 
+  //      float  scaleX, shearXy, shearXz, x;
+		//float shearYx,  scaleY, shearYz, y;
+		//float shearZx, shearZy,  scaleZ, z;
+		//float shearWx, shearWy, shearWz, w;
+
         return Matrix4f(
             f / aspect_ratio,   0.0f,   0.0f,                   0.0f,
             0.0f,               -f,     0.0f,                   0.0f,

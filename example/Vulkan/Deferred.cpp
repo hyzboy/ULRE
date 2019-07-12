@@ -19,9 +19,6 @@ VK_NAMESPACE_BEGIN
 Texture2D *LoadTGATexture(const OSString &filename,Device *device);
 VK_NAMESPACE_END
 
-constexpr uint32_t GBUFFER_WIDTH=1024;
-constexpr uint32_t GBUFFER_HEIGHT=1024;
-
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
@@ -83,7 +80,8 @@ private:
     {
         vulkan::Material *      material;
         vulkan::DescriptorSets *desc_sets;
-        vulkan::Pipeline *      pipeline;
+        vulkan::Pipeline *      pipeline_line;
+        vulkan::Pipeline *      pipeline_solid;
     };//
 
     SubpassParam                sp_gbuffer;
@@ -151,8 +149,8 @@ private:
 
     bool InitGBuffer()
     {
-        gbuffer.extent.width   =GBUFFER_WIDTH;
-        gbuffer.extent.height  =GBUFFER_HEIGHT;
+        gbuffer.extent.width   =512;
+        gbuffer.extent.height  =512;
 
         //根据候选格式表选择格式
         //const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
@@ -166,9 +164,9 @@ private:
         // ||depth_format     ==FMT_UNDEFINED)
         //    return(false);
 
-        const VkFormat position_format  =FMT_RGBA16F;
-        const VkFormat color_format     =FMT_RGBA16F;
-        const VkFormat normal_format    =FMT_RGBA16F;
+        const VkFormat position_format  =FMT_RGBA32F;
+        const VkFormat color_format     =FMT_RGBA32F;
+        const VkFormat normal_format    =FMT_RGBA32F;
         const VkFormat depth_format     =FMT_D32F;
 
         gbuffer.position=device->CreateAttachmentTextureColor(position_format,  gbuffer.extent.width,gbuffer.extent.height);
@@ -230,16 +228,24 @@ private:
     bool InitGBufferPipeline(SubpassParam *sp)
     {
         AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,gbuffer.extent);
-        //pipeline_creater->SetCullMode(VK_CULL_MODE_BACK_BIT);
-        pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
-        sp->pipeline=pipeline_creater->Create();
+        sp->pipeline_solid=pipeline_creater->Create();
         
-        if(!sp->pipeline)
+        if(!sp->pipeline_solid)
             return(false);
 
-        db->Add(sp->pipeline);
+        db->Add(sp->pipeline_solid);
+
+        pipeline_creater->CloseCullFace();
+        pipeline_creater->Set(PRIM_LINES);
+
+        sp->pipeline_line=pipeline_creater->Create();
+
+        if(!sp->pipeline_line)
+            return(false);
+
+        db->Add(sp->pipeline_line);
         return(true);
     }
 
@@ -251,12 +257,12 @@ private:
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(PRIM_TRIANGLES);
 
-        sp->pipeline=pipeline_creater->Create();
+        sp->pipeline_solid=pipeline_creater->Create();
 
-        if(!sp->pipeline)
+        if(!sp->pipeline_solid)
             return(false);
 
-        db->Add(sp->pipeline);
+        db->Add(sp->pipeline_solid);
         return(true);
     }
 
@@ -270,6 +276,7 @@ private:
 
         texture.color   =vulkan::LoadTGATexture(OS_TEXT("res/image/cardboardPlainStain.tga"),device);
         texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_NRM.tga"),device);
+        //texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/flat_normal.tga"),device);
         //texture.specular=vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_SPEC.tga"),device);
 
         VkSamplerCreateInfo sampler_create_info;
@@ -372,13 +379,12 @@ private:
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube),scale(50,50,50));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_plane_grid));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_torus));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_sphere   ),translate( 10,  0, 5)*scale(40,40,40));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cylinder ),translate(  0, 16, 0));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline,sp->desc_sets,ro_cone     ),translate(  0,-16, 0));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_line,sp->desc_sets,ro_plane_grid));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_torus    ),translate(0,0,25));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_sphere   ),scale(25,25,25));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_cube     ),translate(-16,  0,15)*scale(10,10,10));        
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_cylinder ),translate( 16, 16,10)*scale(1,1,2));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_cone     ),translate(  0,-16, 0)*scale(1,1,2));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
