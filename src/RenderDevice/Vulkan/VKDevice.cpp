@@ -172,18 +172,22 @@ bool Device::Wait(bool wait_all,uint64_t time_out)
     return(true);
 }
 
-bool Device::AcquireNextImage()
+bool Device::AcquireNextImage(VkSemaphore present_complete_semaphore)
 {
-    return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,*present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
+    return(vkAcquireNextImageKHR(attr->device,attr->swap_chain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
 }
 
-bool Device::SubmitDraw(const VkCommandBuffer *cmd_bufs,const uint32_t count)
+bool Device::SubmitDraw(List<VkCommandBuffer> &cmd_lists,List<VkSemaphore> &wait_sems,List<VkSemaphore> &complete_sems)
 {
-    if(!cmd_bufs||count<=0)
+    if(cmd_lists.GetCount()<=0)
         return(false);
-
-    submit_info.commandBufferCount = count;
-    submit_info.pCommandBuffers = cmd_bufs;
+    
+    submit_info.waitSemaphoreCount  =wait_sems.GetCount();
+    submit_info.pWaitSemaphores     =wait_sems.GetData();
+    submit_info.commandBufferCount  =cmd_lists.GetCount();
+    submit_info.pCommandBuffers     =cmd_lists.GetData();
+    submit_info.signalSemaphoreCount=complete_sems.GetCount();
+    submit_info.pSignalSemaphores   =complete_sems.GetData();
 
     VkFence fence=*fence_list[current_fence];
 

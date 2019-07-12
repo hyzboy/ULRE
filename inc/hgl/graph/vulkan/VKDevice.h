@@ -198,9 +198,22 @@ public: //Command Buffer 相关
 public: //提交相关
 
     bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1); ///<等待队列完成
-    bool AcquireNextImage   ();                                                                 ///<请求获得下一帧的索引
-    bool SubmitDraw         (const VkCommandBuffer *,const uint32_t count=1);                   ///<提交绘制指令
+
+    /**
+     * 请求获得下一帧的索引，并将确认信息发送到指定信号
+     */
+    bool AcquireNextImage   (VkSemaphore);                                                      ///<请求获得下一帧的索引
+
+    /**
+     * 提交一批绘制指令
+     * @param cmd_list 绘制指令
+     * @param wait_sems 指令开始前要等待的确认的信号
+     * @param complete_semaphores 绘制完成后发送的信号
+     */
+    bool SubmitDraw         (List<VkCommandBuffer> &cmd_list,List<VkSemaphore> &wait_sems,List<VkSemaphore> &complete_semaphores);       ///<提交绘制指令
+
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
+
     bool PresentBackbuffer  ();                                                                 ///<等待绘制队列完成，并将后台缓冲区呈现到前台
 };//class Device
 VK_NAMESPACE_END
