@@ -58,6 +58,7 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKTexture.cpp
                                 VKSampler.cpp
 								VKSwapchain.cpp
+								VKSwapchainCreater.cpp
 								)
 
 SET(RENDER_DEVICE_VULKAN_POD_SOURCE pod/VKPipelineCreateInfo.POD.cpp)

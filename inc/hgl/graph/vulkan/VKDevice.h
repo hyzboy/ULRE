@@ -169,6 +169,10 @@ public: //Command Buffer 相关
 
     Fence *         CreateFence(bool);
     Semaphore *     CreateSem();
+
+public:
+
+    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
