@@ -110,10 +110,12 @@ VkFormat PhysicalDevice::GetDepthFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthFormats[] =
     {
-        VK_FORMAT_D16_UNORM,
-        VK_FORMAT_D24_UNORM_S8_UINT,
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_D32_SFLOAT_S8_UINT
+        FMT_D16UN,
+        FMT_X8_D24,
+        FMT_D16UN_S8U,
+        FMT_D24UN_S8U,
+        FMT_D32F,
+        FMT_D32F_S8U
     };
 
     VkFormat result=VK_FORMAT_UNDEFINED;
@@ -136,9 +138,9 @@ VkFormat PhysicalDevice::GetDepthStencilFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthStencilFormats[] =
     {
-        VK_FORMAT_D16_UNORM_S8_UINT,
-        VK_FORMAT_D24_UNORM_S8_UINT,
-        VK_FORMAT_D32_SFLOAT_S8_UINT
+        FMT_D16UN_S8U,
+        FMT_D24UN_S8U,
+        FMT_D32F_S8U
     };
 
     VkFormat result=VK_FORMAT_UNDEFINED;
