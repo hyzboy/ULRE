@@ -26,7 +26,7 @@ using Texture2DPointer=vulkan::Texture2D *;
 
 constexpr VkFormat position_candidate_format[]={FMT_RGBA32F,FMT_RGBA16F};
 constexpr VkFormat color_candidate_format   []={FMT_RGBA32F,
-                                                FMT_RGBA16F,FMT_RGB16UN,FMT_RGB16SN,
+                                                FMT_RGBA16F,
                                                 FMT_RGBA8UN,FMT_RGBA8SN,FMT_RGBA8U,
                                                 FMT_BGRA8UN,FMT_BGRA8SN,FMT_BGRA8U,
                                                 FMT_ABGR8UN,FMT_ABGR8SN,FMT_ABGR8U,

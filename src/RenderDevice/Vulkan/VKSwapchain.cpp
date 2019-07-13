@@ -93,9 +93,33 @@ bool Swapchain::Wait(bool wait_all,uint64_t time_out)
     return(true);
 }
 
-bool Swapchain::AcquireNextImage(VkSemaphore present_complete_semaphore)
+int Swapchain::AcquireNextImage(VkSemaphore present_complete_semaphore)
 {
-    return(vkAcquireNextImageKHR(device->GetDevice(),swap_chain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS);
+    if(vkAcquireNextImageKHR(device->GetDevice(),swap_chain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
+        return current_frame;
+
+    return -1;
+}
+
+bool Swapchain::SubmitDraw(VkCommandBuffer &cmd_list,VkSemaphore &wait_sem,VkSemaphore &complete_sem)
+{
+    submit_info.waitSemaphoreCount  =1;
+    submit_info.pWaitSemaphores     =&wait_sem;
+    submit_info.commandBufferCount  =1;
+    submit_info.pCommandBuffers     =&cmd_list;
+    submit_info.signalSemaphoreCount=1;
+    submit_info.pSignalSemaphores   =&complete_sem;
+
+    VkFence fence=*fence_list[current_fence];
+
+    VkResult result=vkQueueSubmit(graphics_queue,1,&submit_info,fence);
+
+    if(++current_fence==swap_chain_count)
+        current_fence=0;
+
+    //不在这里立即等待fence完成，是因为有可能queue submit需要久一点工作时间，我们这个时间可以去干别的。等在AcquireNextImage时再去等待fence，而且是另一帧的fence。这样有利于异步处理
+
+    return(result==VK_SUCCESS);
 }
 
 bool Swapchain::SubmitDraw(List<VkCommandBuffer> &cmd_lists,List<VkSemaphore> &wait_sems,List<VkSemaphore> &complete_sems)
