@@ -30,15 +30,11 @@ private:
 
 public:
 
-    ~RenderTarget()
+    virtual ~RenderTarget()
     {
-        if(fb)delete fb;
+        if(fb)
+            delete fb;
     }
-
-    operator RenderPass *   (){return rp;}
-    operator Framebuffer *  (){return fb;}
-    operator VkRenderPass   (){return rp?rp->operator VkRenderPass():nullptr;}
-    operator VkFramebuffer  (){return fb?fb->operator VkFramebuffer():nullptr;}
 
     const VkExtent2D &  GetExtent       ()const{return extent;}                                     ///<取得画面尺寸
 

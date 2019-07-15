@@ -6,11 +6,9 @@
 #include<hgl/graph/vulkan/VKFence.h>
 #include<hgl/graph/vulkan/VKSemaphore.h>
 VK_NAMESPACE_BEGIN
-class Swapchain
+struct SwapchainAttribute
 {
-protected:
-
-    Device *device;
+    VkDevice device;
     
     VkExtent2D              extent;
 
@@ -19,8 +17,17 @@ protected:
 
     uint32_t                swap_chain_count;
 
-    ObjectList<Texture2D>   sc_texture;
+    ObjectList<Texture2D>   sc_color;
     Texture2D *             sc_depth        =nullptr;
+};//struct SwapchainAttribute
+
+class Swapchain
+{
+protected:
+
+    Device *device;
+
+    SwapchainAttribute *sc_attr;
 
 protected:
 
@@ -42,8 +49,8 @@ protected:
 
 public:
 
-    const   VkExtent2D &    GetExtent               ()const     {return extent;}
-    const   uint32_t        GetImageCount           ()const     {return sc_texture.GetCount();}
+    const   VkExtent2D &    GetExtent               ()const     {return sc_attr->extent;}
+    const   uint32_t        GetImageCount           ()const     {return sc_attr->sc_color.GetCount();}
 
             RenderPass *    GetMainRenderPass       ()          {return main_rp;}
             Framebuffer *   GetFramebuffer          (int index) {return render_frame[index];}
@@ -52,10 +59,9 @@ public:
 
 public:
 
-    Swapchain(Device *);
-    virtual ~Swapchain();
+    Swapchain(Device *,SwapchainAttribute *sa);
 
-    void Clear              ();
+    virtual ~Swapchain();
 
     void Recreate           ();
 

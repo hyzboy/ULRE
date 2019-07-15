@@ -3,9 +3,10 @@
 #include<hgl/graph/vulkan/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN
-Swapchain::Swapchain(Device *dev)
+Swapchain::Swapchain(Device *dev,SwapchainAttribute *sa)
 {
     device=dev;
+    sc_attr=sa;
     
     pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -29,8 +30,6 @@ Swapchain::Swapchain(Device *dev)
     present_info.pWaitSemaphores     = *render_complete_semaphore;
     present_info.swapchainCount      = 1;
     present_info.pResults            = nullptr;
-
-    graphics_queue=device->GetGraphicsQueue();
 }
 
 Swapchain::~Swapchain()
@@ -43,19 +42,7 @@ Swapchain::~Swapchain()
 
     delete main_rp;
 
-    Clear();
-}
-
-void Swapchain::Clear()
-{
-    SAFE_CLEAR(sc_depth);
-    sc_texture.Clear();
-
-    if(swap_chain)
-    {
-        vkDestroySwapchainKHR(device->GetDevice(),swap_chain,nullptr);
-        swap_chain=VK_NULL_HANDLE;
-    }
+    SAFE_CLEAR(sc_attr);
 }
 
 void Swapchain::Recreate()
@@ -65,15 +52,13 @@ void Swapchain::Recreate()
 
     if(main_rp)delete main_rp;
 
-    present_info.pSwapchains=&swap_chain;
+    present_info.pSwapchains=&(sc_attr->swap_chain);
 
-    main_rp=device->CreateRenderPass(device->GetSurfaceFormat(),sc_depth->GetFormat());
+    main_rp=device->CreateRenderPass(sc_attr->sc_color[0]->GetFormat(),sc_attr->sc_depth->GetFormat());
 
-    swap_chain_count=sc_texture.GetCount();
-
-    for(uint i=0;i<swap_chain_count;i++)
+    for(uint i=0;i<sc_attr->swap_chain_count;i++)
     {
-        render_frame.Add(vulkan::CreateFramebuffer(device,main_rp,sc_texture[i]->GetImageView(),sc_depth->GetImageView()));
+        render_frame.Add(vulkan::CreateFramebuffer(device,main_rp,sc_attr->sc_color[i]->GetImageView(),sc_attr->sc_depth->GetImageView()));
         fence_list.Add(device->CreateFence(true));
     }
     
@@ -95,7 +80,7 @@ bool Swapchain::Wait(bool wait_all,uint64_t time_out)
 
 int Swapchain::AcquireNextImage(VkSemaphore present_complete_semaphore)
 {
-    if(vkAcquireNextImageKHR(device->GetDevice(),swap_chain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
+    if(vkAcquireNextImageKHR(device->GetDevice(),sc_attr->swap_chain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
         return current_frame;
 
     return -1;
@@ -112,9 +97,9 @@ bool Swapchain::SubmitDraw(VkCommandBuffer &cmd_list,VkSemaphore &wait_sem,VkSem
 
     VkFence fence=*fence_list[current_fence];
 
-    VkResult result=vkQueueSubmit(graphics_queue,1,&submit_info,fence);
+    VkResult result=vkQueueSubmit(sc_attr->graphics_queue,1,&submit_info,fence);
 
-    if(++current_fence==swap_chain_count)
+    if(++current_fence==sc_attr->swap_chain_count)
         current_fence=0;
 
     //不在这里立即等待fence完成，是因为有可能queue submit需要久一点工作时间，我们这个时间可以去干别的。等在AcquireNextImage时再去等待fence，而且是另一帧的fence。这样有利于异步处理
@@ -136,9 +121,9 @@ bool Swapchain::SubmitDraw(List<VkCommandBuffer> &cmd_lists,List<VkSemaphore> &w
 
     VkFence fence=*fence_list[current_fence];
 
-    VkResult result=vkQueueSubmit(graphics_queue,1,&submit_info,fence);
+    VkResult result=vkQueueSubmit(sc_attr->graphics_queue,1,&submit_info,fence);
 
-    if(++current_fence==swap_chain_count)
+    if(++current_fence==sc_attr->swap_chain_count)
         current_fence=0;
 
     //不在这里立即等待fence完成，是因为有可能queue submit需要久一点工作时间，我们这个时间可以去干别的。等在AcquireNextImage时再去等待fence，而且是另一帧的fence。这样有利于异步处理
@@ -150,7 +135,7 @@ bool Swapchain::PresentBackbuffer()
 {
     present_info.pImageIndices=&current_frame;
 
-    VkResult result=vkQueuePresentKHR(graphics_queue,&present_info);
+    VkResult result=vkQueuePresentKHR(sc_attr->graphics_queue,&present_info);
     
     if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) 
     {
@@ -161,7 +146,7 @@ bool Swapchain::PresentBackbuffer()
 		} 
 	}
 
-    result=vkQueueWaitIdle(graphics_queue);
+    result=vkQueueWaitIdle(sc_attr->graphics_queue);
     
     if(result!=VK_SUCCESS)
         return(false);

@@ -17,16 +17,17 @@
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPrimivate.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderable.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderPass.h
+#                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderTarget.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSemaphore.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderResource.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModule.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModuleManage.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSurfaceExtensionName.h
 								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSwapchain.h
+								${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSwapchainAttribute.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKVertexAttributeBinding.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKTexture.h
-                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSampler.h
-                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderTarget.h)
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSampler.h)
 
 SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKMemory.cpp
@@ -45,6 +46,7 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKDescriptorSetLayoutCreater.cpp
                                 VKDescriptorSetLayoutCreater.h
                                 VKRenderPass.cpp
+#								VKRenderTarget.cpp
                                 VKShaderParse.h
                                 VKShaderModule.cpp
                                 VKShaderModuleManage.cpp
@@ -58,7 +60,7 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKTexture.cpp
                                 VKSampler.cpp
 								VKSwapchain.cpp
-								VKSwapchainCreater.cpp
+								VKSwapchainAttribute.cpp
 								)
 
 SET(RENDER_DEVICE_VULKAN_POD_SOURCE pod/VKPipelineCreateInfo.POD.cpp)

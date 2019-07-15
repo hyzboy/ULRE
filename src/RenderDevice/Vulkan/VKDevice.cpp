@@ -10,7 +10,7 @@
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-Swapchain *CreateSwapchain(DeviceAttribute *attr,const VkExtent2D &);
+Swapchain *CreateSwapchain(Device *attr,const VkExtent2D &);
 
 Device::Device(DeviceAttribute *da)
 {
@@ -39,7 +39,7 @@ bool Device::Resize(const VkExtent2D &extent)
     if(swapchain)
         delete swapchain;
 
-    swapchain=CreateSwapchain(attr,extent);
+    swapchain=CreateSwapchain(this,extent);
     
     if(texture_cmd_buf)delete texture_cmd_buf;
 

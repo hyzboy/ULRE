@@ -24,7 +24,7 @@ class Device
 
 private:
 
-    friend Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,uint width,uint height);
+    friend Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
 
     Device(DeviceAttribute *da);
 
@@ -33,6 +33,7 @@ public:
     virtual ~Device();
 
     operator    VkDevice                                ()      {return attr->device;}
+                DeviceAttribute *   GetDeviceAttribute  ()      {return attr;}
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
                 VkDevice            GetDevice           ()      {return attr->device;}
