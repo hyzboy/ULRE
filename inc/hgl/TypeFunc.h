@@ -398,6 +398,14 @@ namespace hgl
         memcpy(&x,&y,sizeof(T));
         memcpy(&y,&t,sizeof(T));
     }
+    
+    template<typename T> T hgl_clamp(const T &cur,const T &min_value,const T &max_value)
+    {
+        if(cur<min_value)return min_value;
+        if(cur>max_value)return max_value;
+
+        return cur;
+    }
 
     template<typename T> inline T hgl_abs(const T &v){return (v>=0?v:-v);}
 
