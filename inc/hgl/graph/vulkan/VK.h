@@ -17,6 +17,7 @@ VK_NAMESPACE_BEGIN
 class Instance;
 class PhysicalDevice;
 class Device;
+struct DeviceAttribute;
 class ImageView;
 class Framebuffer;
 

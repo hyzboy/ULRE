@@ -3,6 +3,7 @@
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 #include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/vulkan/VKDevice.h>
 
 #ifdef _DEBUG
 #include<iostream>
@@ -10,6 +11,8 @@
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
+SwapchainAttribute *CreateSwapchinAttribute(const DeviceAttribute *attr,const VkExtent2D &acquire_extent);
+
 namespace
 {
     VkDevice CreateDevice(VkInstance instance,VkPhysicalDevice physical_device,uint32_t graphics_family)
@@ -71,55 +74,6 @@ namespace
         return(VK_NULL_HANDLE);
     }
 
-    VkSwapchainKHR CreateSwapChain(DeviceAttribute *rsa)
-    {
-        VkSwapchainCreateInfoKHR swapchain_ci={};
-
-        swapchain_ci.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swapchain_ci.pNext=nullptr;
-        swapchain_ci.surface=rsa->surface;
-        swapchain_ci.minImageCount=3;//rsa->surface_caps.minImageCount;
-        swapchain_ci.imageFormat=rsa->format;
-        swapchain_ci.imageExtent=rsa->swapchain_extent;
-        swapchain_ci.preTransform=rsa->preTransform;
-        swapchain_ci.compositeAlpha=rsa->compositeAlpha;
-        swapchain_ci.imageArrayLayers=1;
-        swapchain_ci.presentMode=VK_PRESENT_MODE_FIFO_KHR;
-        swapchain_ci.oldSwapchain=VK_NULL_HANDLE;
-        swapchain_ci.clipped=true;
-        swapchain_ci.imageColorSpace=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-        swapchain_ci.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-        if(rsa->surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
-            swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-        if(rsa->surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-            swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-        uint32_t queueFamilyIndices[2]={rsa->graphics_family, rsa->present_family};
-        if(rsa->graphics_family!=rsa->present_family)
-        {
-            // If the graphics and present queues are from different queue families,
-            // we either have to explicitly transfer ownership of images between
-            // the queues, or we have to create the swapchain with imageSharingMode
-            // as VK_SHARING_MODE_CONCURRENT
-            swapchain_ci.imageSharingMode=VK_SHARING_MODE_CONCURRENT;
-            swapchain_ci.queueFamilyIndexCount=2;
-            swapchain_ci.pQueueFamilyIndices=queueFamilyIndices;
-        }
-        else
-        {
-            swapchain_ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-        }
-
-        VkSwapchainKHR swap_chain;
-
-        if(vkCreateSwapchainKHR(rsa->device,&swapchain_ci,nullptr,&swap_chain)==VK_SUCCESS)
-            return(swap_chain);
-
-        return(VK_NULL_HANDLE);
-    }
-
     ImageView *Create2DImageView(VkDevice device,VkFormat format,const VkExtent2D &ext,VkImage img=VK_NULL_HANDLE)
     {
         VkExtent3D extent;
@@ -137,22 +91,23 @@ namespace
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,VK_IMAGE_ASPECT_DEPTH_BIT,img);
     }
 
-    VkDescriptorPool CreateDescriptorPool(VkDevice device,int sets_count)
+    VkDescriptorPool CreateDescriptorPool(VkDevice device,uint32_t sets_count)
     {
         VkDescriptorPoolSize pool_size[]=
         {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1024},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1024},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       48}
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, sets_count},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         sets_count},
+            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, sets_count},
+            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       sets_count}
         };
 
-        VkDescriptorPoolCreateInfo dp_create_info={};
-        dp_create_info.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        dp_create_info.pNext=nullptr;
-        dp_create_info.maxSets=sets_count;
+        VkDescriptorPoolCreateInfo dp_create_info;
+        dp_create_info.sType        =VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        dp_create_info.pNext        =nullptr;
+        dp_create_info.flags        =0;
+        dp_create_info.maxSets      =sets_count;
         dp_create_info.poolSizeCount=sizeof(pool_size)/sizeof(VkDescriptorPoolSize);
-        dp_create_info.pPoolSizes=pool_size;
+        dp_create_info.pPoolSizes   =pool_size;
 
         VkDescriptorPool desc_pool;
 
@@ -165,11 +120,11 @@ namespace
     VkPipelineCache CreatePipelineCache(VkDevice device)
     {
         VkPipelineCacheCreateInfo pipelineCache;
-        pipelineCache.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-        pipelineCache.pNext = nullptr;
-        pipelineCache.initialDataSize = 0;
-        pipelineCache.pInitialData = nullptr;
-        pipelineCache.flags = 0;
+        pipelineCache.sType             = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+        pipelineCache.pNext             = nullptr;
+        pipelineCache.flags             = 0;
+        pipelineCache.initialDataSize   = 0;
+        pipelineCache.pInitialData      = nullptr;
 
         VkPipelineCache cache;
 
@@ -391,7 +346,7 @@ namespace
     }
 }//namespace
 
-Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,uint width,uint height)
+Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent)
 {
     #ifdef _DEBUG
     {
@@ -414,49 +369,47 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     }
     #endif//_DEBUG
 
-    DeviceAttribute *attr=new DeviceAttribute(inst,physical_device,surface);
+    DeviceAttribute *device_attr=new DeviceAttribute(inst,physical_device,surface);
 
-    AutoDelete<DeviceAttribute> auto_delete(attr);
+    AutoDelete<DeviceAttribute> auto_delete(device_attr);
 
-    if(attr->graphics_family==ERROR_FAMILY_INDEX)
+    if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    attr->device=CreateDevice(inst,*physical_device,attr->graphics_family);
+    device_attr->device=CreateDevice(inst,*physical_device,device_attr->graphics_family);
 
-    if(!attr->device)
+    if(!device_attr->device)
         return(nullptr);
 
-    GetDeviceQueue(attr);
+    GetDeviceQueue(device_attr);
 
-    attr->cmd_pool=CreateCommandPool(attr->device,attr->graphics_family);
+    device_attr->cmd_pool=CreateCommandPool(device_attr->device,device_attr->graphics_family);
 
-    if(!attr->cmd_pool)
+    if(!device_attr->cmd_pool)
+        return(nullptr);
+        
+    device_attr->desc_pool=CreateDescriptorPool(device_attr->device,1024);
+
+    if(!device_attr->desc_pool)
         return(nullptr);
 
-    if(!CreateSwapchinAndDepthBuffer(attr))
-        return(nullptr);
+    device_attr->pipeline_cache=CreatePipelineCache(device_attr->device);
 
-    attr->desc_pool=CreateDescriptorPool(attr->device,1024);
-
-    if(!attr->desc_pool)
-        return(nullptr);
-
-    attr->pipeline_cache=CreatePipelineCache(attr->device);
-
-    if(!attr->pipeline_cache)
+    if(!device_attr->pipeline_cache)
         return(nullptr);
 
     auto_delete.Clear();
 
-    return(new Device(attr));
+    return(new Device(device_attr));
 }
 
-Swapchain *CreateSwapchain(DeviceAttribute *attr,const VkExtent2D &acquire_extent)
+Swapchain *CreateSwapchain(Device *device,const VkExtent2D &extent)
 {
-    attr->Refresh();
+    SwapchainAttribute *sc_attr=CreateSwapchinAttribute(device->GetDeviceAttribute(),extent);
+    
+    if(!sc_attr)
+        return(nullptr);
 
-    VkExtent2D extent=GetSwapchainExtent(attr->surface_caps,acquire_extent);
-
-    return CreateSwapchinAndDepthBuffer(attr);
+    return(new Swapchain(device,sc_attr));
 }
 VK_NAMESPACE_END
