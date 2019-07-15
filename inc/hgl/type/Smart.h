@@ -487,6 +487,51 @@ namespace hgl
         {
             obj=nullptr;
         }
+
+        T *Finish()
+        {
+            T *reuslt=obj;
+            
+            obj=nullptr;
+
+            return reuslt;
+        }
     };//template<typename T> class AutoDelete
+
+    template<typename T> class AutoDeleteArray
+    {
+        T *obj;
+
+    public:
+
+        AutoDeleteArray(T *o)
+        {
+            obj=o;
+        }
+
+        ~AutoDeleteArray()
+        {
+            if(obj)
+                delete[] obj;
+        }
+
+        void operator = (T *o)
+        {
+            obj=o;
+        }
+
+        T *operator -> (){return obj;}
+
+        operator T *(){return obj;}
+        operator const T *()const{return obj;}
+
+                T &operator[](int index){return obj[index];}
+        const   T &operator[](int index)const{return obj[index];}
+
+        void Clear()
+        {
+            obj=nullptr;
+        }
+    };//template<typename T> class AutoDeleteArray
 }//namespace hgl
 #endif//HGL_SMART_INCLUDE
