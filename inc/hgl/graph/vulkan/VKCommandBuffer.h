@@ -91,7 +91,7 @@ public:
         vkCmdCopyImageToBuffer(cmd_buf,srcImage,srcImageLayout,dstBuffer,regionCount,pRegions);
     }
 
-    bool BeginRenderPass(RenderPass *rp,Framebuffer *fb);
+    bool BeginRenderPass(VkRenderPass rp,VkFramebuffer fb);
 
     bool Bind(Pipeline *p)
     {

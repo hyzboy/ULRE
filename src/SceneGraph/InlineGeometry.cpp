@@ -1241,7 +1241,7 @@ namespace hgl
             else
             {
                 const float *sp=points;
-                float *vp=gc.GetVertexPointer();
+                float *vp=(float *)(vertex->Get());
 
                 for(uint i=0;i<8;i++)
                 {
