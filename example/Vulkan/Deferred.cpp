@@ -46,6 +46,11 @@ private:
 
     struct DeferredGBuffer
     {
+        vulkan::Semaphore *present_complete_semaphore  =nullptr,
+                          *render_complete_semaphore   =nullptr;
+
+        vulkan::RenderTarget *rt;
+
         VkExtent2D extent;
         vulkan::Framebuffer *framebuffer;
         vulkan::RenderPass *renderpass;
@@ -152,6 +157,9 @@ private:
         gbuffer.extent.width   =512;
         gbuffer.extent.height  =512;
 
+        gbuffer.present_complete_semaphore  =device->CreateSem();
+        gbuffer.render_complete_semaphore   =device->CreateSem();
+
         //根据候选格式表选择格式
         //const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
         //const VkFormat color_format     =GetCandidateFormat(color_candidate_format,     sizeof(color_candidate_format));
@@ -208,6 +216,8 @@ private:
         if(!gbuffer.framebuffer)
             return(false);
 
+        gbuffer.rt=device->CreateRenderTarget(gbuffer.framebuffer);
+
         return(true);
     }
 
@@ -227,7 +237,7 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.renderpass,gbuffer.extent);
+        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.rt);
         pipeline_creater->Set(PRIM_TRIANGLES);
 
         sp->pipeline_solid=pipeline_creater->Create();
@@ -400,7 +410,7 @@ private:
             return(false);
 
         gbuffer_cmd->Begin();
-            if(!gbuffer_cmd->BeginRenderPass(gbuffer.renderpass,gbuffer.framebuffer))
+            if(!gbuffer_cmd->BeginRenderPass(gbuffer.rt))
                 return(false);
 
             render_list.Render(gbuffer_cmd);
@@ -408,7 +418,7 @@ private:
             gbuffer_cmd->EndRenderPass();
         gbuffer_cmd->End();
         
-        device->Submit(*gbuffer_cmd);
+        gbuffer.rt->Submit(*gbuffer_cmd,gbuffer.present_complete_semaphore,gbuffer.render_complete_semaphore);
 
         return(true);
     }
@@ -433,6 +443,15 @@ public:
             return(false);
 
         return(true);
+    }
+    
+    virtual void SubmitDraw(int index)
+    {
+        VkCommandBuffer cb=*cmd_buf[index];
+        
+        sc_render_target->Submit(cb,present_complete_semaphore,render_complete_semaphore);
+        sc_render_target->PresentBackbuffer(render_complete_semaphore);
+        sc_render_target->Wait();
     }
     
     void BuildCommandBuffer(uint32_t index) override
