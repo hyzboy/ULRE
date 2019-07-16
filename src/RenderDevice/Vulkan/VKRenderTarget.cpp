@@ -15,17 +15,13 @@ SubmitQueue::SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count)
     queue=q;
 
     for(uint32_t i=0;i<fence_count;i++)
-         fence_list.Add(device->CreateFence(true));
+         fence_list.Add(device->CreateFence(false));
 
     current_fence=0;
 
     submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.pNext                   = nullptr;
-    //submit_info.waitSemaphoreCount      = 1;
-    //submit_info.pWaitSemaphores         = *present_complete_semaphore;
     submit_info.pWaitDstStageMask       = &pipe_stage_flags;
-    //submit_info.signalSemaphoreCount    = 1;
-    //submit_info.pSignalSemaphores       = *render_complete_semaphore;
 }
 
 SubmitQueue::~SubmitQueue()
@@ -42,31 +38,58 @@ bool SubmitQueue::Wait(const bool wait_all,uint64_t time_out)
     result=vkWaitForFences(device->GetDevice(),1,&fence,wait_all,time_out);
     result=vkResetFences(device->GetDevice(),1,&fence);
 
+    if(++current_fence==fence_list.GetCount())
+        current_fence=0;
+
     return(true);
 }
     
-bool SubmitQueue::Submit(VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem)
+bool SubmitQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem)
 {
-    VkSemaphore ws=*wait_sem;
-    VkSemaphore cs=*complete_sem;
+    VkSemaphore ws;
+    VkSemaphore cs;
 
-    submit_info.waitSemaphoreCount  =1;
-    submit_info.pWaitSemaphores     =&ws;
-    submit_info.commandBufferCount  =1;
-    submit_info.pCommandBuffers     =&cmd_buf;
-    submit_info.signalSemaphoreCount=1;
-    submit_info.pSignalSemaphores   =&cs;
+    if(wait_sem)
+    {
+        ws=*wait_sem;
+
+        submit_info.waitSemaphoreCount  =1;
+        submit_info.pWaitSemaphores     =&ws;
+    }
+    else
+    {
+        submit_info.waitSemaphoreCount  =0;
+        submit_info.pWaitSemaphores     =nullptr;
+    }
+
+    if(complete_sem)
+    {
+        cs=*complete_sem;
+
+        submit_info.signalSemaphoreCount=1;
+        submit_info.pSignalSemaphores   =&cs;
+    }
+    else
+    {
+        submit_info.signalSemaphoreCount=0;
+        submit_info.pSignalSemaphores   =nullptr;
+    }
+
+    submit_info.commandBufferCount  =cb_count;
+    submit_info.pCommandBuffers     =cmd_buf;
     
     VkFence fence=*fence_list[current_fence];
 
     VkResult result=vkQueueSubmit(queue,1,&submit_info,fence);
 
-    if(++current_fence==fence_list.GetCount())
-        current_fence=0;
-
     //不在这里立即等待fence完成，是因为有可能queue submit需要久一点工作时间，我们这个时间可以去干别的。等在AcquireNextImage时再去等待fence，而且是另一帧的fence。这样有利于异步处理
 
     return(result==VK_SUCCESS);
+}
+    
+bool SubmitQueue::Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem)
+{
+    return Submit(&cmd_buf,1,wait_sem,complete_sem);
 }
 
 RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)

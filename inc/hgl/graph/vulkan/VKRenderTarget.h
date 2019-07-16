@@ -25,7 +25,8 @@ public:
     virtual ~SubmitQueue();
     
     bool Wait(const bool wait_wall=true,const uint64 time_out=HGL_NANO_SEC_PER_SEC);
-    bool Submit(VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
+    bool Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
+    bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
 };//class SumbitQueue
 
 /**

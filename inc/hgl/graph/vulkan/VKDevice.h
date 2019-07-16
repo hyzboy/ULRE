@@ -16,9 +16,7 @@ class Device
 {
     DeviceAttribute *attr;
 
-    Fence *texture_fence;
-
-    VkSubmitInfo texture_submit_info;
+    SubmitQueue *textureSQ;
     CommandBuffer *texture_cmd_buf;
 
     Swapchain *swapchain;
