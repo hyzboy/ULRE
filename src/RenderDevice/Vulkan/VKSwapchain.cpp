@@ -9,49 +9,22 @@ Swapchain::Swapchain(Device *dev,SwapchainAttribute *sa)
     sc_attr=sa;
     
     pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-    current_frame=0;
-    main_rp=nullptr;
-    
-    present_complete_semaphore  =device->CreateSem();
-    render_complete_semaphore   =device->CreateSem();
     
     submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.pNext                   = nullptr;
-    submit_info.waitSemaphoreCount      = 1;
-    submit_info.pWaitSemaphores         = *present_complete_semaphore;
+    //submit_info.waitSemaphoreCount      = 1;
+    //submit_info.pWaitSemaphores         = *present_complete_semaphore;
     submit_info.pWaitDstStageMask       = &pipe_stage_flags;
-    submit_info.signalSemaphoreCount    = 1;
-    submit_info.pSignalSemaphores       = *render_complete_semaphore;
+    //submit_info.signalSemaphoreCount    = 1;
+    //submit_info.pSignalSemaphores       = *render_complete_semaphore;
     
     present_info.sType               = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.pNext               = nullptr;
     present_info.waitSemaphoreCount  = 1;
-    present_info.pWaitSemaphores     = *render_complete_semaphore;
+    //present_info.pWaitSemaphores     = *render_complete_semaphore;
     present_info.swapchainCount      = 1;
     present_info.pResults            = nullptr;
-}
-
-Swapchain::~Swapchain()
-{
-    fence_list.Clear();
-    render_frame.Clear();
-
-    delete present_complete_semaphore;
-    delete render_complete_semaphore;
-
-    delete main_rp;
-
-    SAFE_CLEAR(sc_attr);
-}
-
-void Swapchain::Recreate()
-{
-    fence_list.Clear();
-    render_frame.Clear();
-
-    if(main_rp)delete main_rp;
-
+    
     present_info.pSwapchains=&(sc_attr->swap_chain);
 
     main_rp=device->CreateRenderPass(sc_attr->sc_color[0]->GetFormat(),sc_attr->sc_depth->GetFormat());
@@ -66,6 +39,16 @@ void Swapchain::Recreate()
     current_fence=0;
 }
 
+Swapchain::~Swapchain()
+{
+    fence_list.Clear();
+    render_frame.Clear();
+
+    delete main_rp;
+
+    SAFE_CLEAR(sc_attr);
+}
+
 bool Swapchain::Wait(bool wait_all,uint64_t time_out)
 {
     VkFence fence=*fence_list[current_fence];
@@ -78,22 +61,27 @@ bool Swapchain::Wait(bool wait_all,uint64_t time_out)
     return(true);
 }
 
-int Swapchain::AcquireNextImage(VkSemaphore present_complete_semaphore)
+int Swapchain::AcquireNextImage(vulkan::Semaphore *present_complete_semaphore)
 {
-    if(vkAcquireNextImageKHR(device->GetDevice(),sc_attr->swap_chain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
+    VkSemaphore sem=*present_complete_semaphore;
+
+    if(vkAcquireNextImageKHR(device->GetDevice(),sc_attr->swap_chain,UINT64_MAX,sem,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
         return current_frame;
 
     return -1;
 }
 
-bool Swapchain::SubmitDraw(VkCommandBuffer &cmd_list,VkSemaphore &wait_sem,VkSemaphore &complete_sem)
+bool Swapchain::SubmitDraw(VkCommandBuffer &cmd_list,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem)
 {
+    VkSemaphore ws=*wait_sem;
+    VkSemaphore cs=*complete_sem;
+
     submit_info.waitSemaphoreCount  =1;
-    submit_info.pWaitSemaphores     =&wait_sem;
+    submit_info.pWaitSemaphores     =&ws;
     submit_info.commandBufferCount  =1;
     submit_info.pCommandBuffers     =&cmd_list;
     submit_info.signalSemaphoreCount=1;
-    submit_info.pSignalSemaphores   =&complete_sem;
+    submit_info.pSignalSemaphores   =&cs;
 
     VkFence fence=*fence_list[current_fence];
 
@@ -131,8 +119,11 @@ bool Swapchain::SubmitDraw(List<VkCommandBuffer> &cmd_lists,List<VkSemaphore> &w
     return(result==VK_SUCCESS);
 }
 
-bool Swapchain::PresentBackbuffer()
+bool Swapchain::PresentBackbuffer(vulkan::Semaphore *render_complete_semaphore)
 {
+    VkSemaphore sem=*render_complete_semaphore;
+
+    present_info.pWaitSemaphores=&sem;
     present_info.pImageIndices=&current_frame;
 
     VkResult result=vkQueuePresentKHR(sc_attr->graphics_queue,&present_info);

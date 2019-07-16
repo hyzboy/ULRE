@@ -4,7 +4,7 @@
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
-Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,uint width,uint height);
+Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &);
 VK_NAMESPACE_END
 
 namespace hgl
@@ -34,7 +34,9 @@ namespace hgl
         if(!surface)
             return(nullptr);
 
-        device=VK_NAMESPACE::CreateRenderDevice(*vk_inst,pd,surface,width,height);
+        VkExtent2D extent={width,height};
+
+        device=VK_NAMESPACE::CreateRenderDevice(*vk_inst,pd,surface,extent);
 
         if(!device)
         {

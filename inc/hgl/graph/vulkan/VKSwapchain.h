@@ -1,26 +1,11 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
 #define HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
 
-#include<hgl/graph/Vulkan/VK.h>
+#include<hgl/graph/vulkan/VKSwapchainAttribute.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 #include<hgl/graph/vulkan/VKFence.h>
 #include<hgl/graph/vulkan/VKSemaphore.h>
 VK_NAMESPACE_BEGIN
-struct SwapchainAttribute
-{
-    VkDevice device;
-    
-    VkExtent2D              extent;
-
-    VkQueue                 graphics_queue  =VK_NULL_HANDLE;
-    VkSwapchainKHR          swap_chain      =VK_NULL_HANDLE;
-
-    uint32_t                swap_chain_count;
-
-    ObjectList<Texture2D>   sc_color;
-    Texture2D *             sc_depth        =nullptr;
-};//struct SwapchainAttribute
-
 class Swapchain
 {
 protected:
@@ -39,10 +24,7 @@ protected:
     uint32_t current_fence;
     ObjectList<Fence> fence_list;
 
-    RenderPass *main_rp =nullptr;
-    
-    Semaphore *present_complete_semaphore   =nullptr,
-              *render_complete_semaphore    =nullptr;
+    RenderPass *main_rp =nullptr;    
 
     VkSubmitInfo submit_info;
     VkPresentInfoKHR present_info;
@@ -63,8 +45,6 @@ public:
 
     virtual ~Swapchain();
 
-    void Recreate           ();
-
     bool Wait               (bool wait_all=VK_TRUE,uint64_t time_out=HGL_NANO_SEC_PER_SEC*0.1); ///<等待队列完成
 
     /**
@@ -73,7 +53,7 @@ public:
      * @return 下一帧的索引
      * @return <0 错误
      */
-    int AcquireNextImage    (VkSemaphore complete_semaphore);                                       ///<请求获得下一帧的索引
+    int AcquireNextImage    (vulkan::Semaphore *complete_semaphore);                                       ///<请求获得下一帧的索引
     
     /**
      * 提交一个绘制指令
@@ -81,7 +61,7 @@ public:
      * @param wait_sem 指令开始前要等待的确认的信号
      * @param complete_semaphore 绘制完成后发送的信号
      */
-    bool SubmitDraw         (VkCommandBuffer &cmd_list,VkSemaphore &wait_sem,VkSemaphore &complete_semaphore);       ///<提交绘制指令
+    bool SubmitDraw         (VkCommandBuffer &cmd_list,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_semaphore);       ///<提交绘制指令
 
     /**
      * 提交一批绘制指令
@@ -91,8 +71,10 @@ public:
      */
     bool SubmitDraw         (List<VkCommandBuffer> &cmd_list,List<VkSemaphore> &wait_sems,List<VkSemaphore> &complete_semaphores);       ///<提交绘制指令
 
-
-    bool PresentBackbuffer  ();                                                                 ///<等待绘制队列完成，并将后台缓冲区呈现到前台
+    /**
+     * @param render_complete_semaphore 渲染完成信号
+     */
+    bool PresentBackbuffer  (vulkan::Semaphore *render_complete_semaphore);                                                                 ///<等待绘制队列完成，并将后台缓冲区呈现到前台
 };//class Swapchain
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
