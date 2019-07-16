@@ -2,9 +2,14 @@
 
 layout(location = 0) in vec2 Vertex;
 
-layout(binding = 0) uniform WorldConfig
+layout(binding = 0) uniform WorldMatrix
 {
+	vec2 vp_size;
+    mat4 ortho;
+    mat4 projection;
+    mat4 modelview;
     mat4 mvp;
+    vec4 view_pos;
 } world;
 
 layout(location = 0) out vec4 FragmentColor;
@@ -13,5 +18,5 @@ void main()
 {
     FragmentColor=vec4(1.0);
 
-    gl_Position=vec4(Vertex,0.0,1.0)*world.mvp;
+    gl_Position=vec4(Vertex,0.0,1.0)*world.ortho;
 }
