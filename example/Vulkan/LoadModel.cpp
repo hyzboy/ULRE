@@ -163,7 +163,7 @@ private:
     bool InitPipeline()
     {
         AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        pipeline_creater=new vulkan::PipelineCreater(device,material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);

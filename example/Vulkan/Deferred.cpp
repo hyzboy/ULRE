@@ -251,7 +251,7 @@ private:
 
     bool InitCompositionPipeline(SubpassParam *sp)
     {
-        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,device->GetMainRenderPass(),device->GetExtent());
+        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
@@ -394,7 +394,7 @@ private:
 
     bool InitGBufferCommandBuffer()
     {
-        gbuffer_cmd=device->CreateCommandBuffer(&gbuffer.extent,gbuffer.attachment.desc_list.GetCount());
+        gbuffer_cmd=device->CreateCommandBuffer(gbuffer.extent,gbuffer.attachment.desc_list.GetCount());
 
         if(!gbuffer_cmd)
             return(false);

@@ -137,7 +137,7 @@ private:
     bool InitPipeline()
     {
         AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        pipeline_creater=new vulkan::PipelineCreater(device,material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
         pipeline_creater->Set(PRIM_LINES);
 
         pipeline_line=pipeline_creater->Create();
