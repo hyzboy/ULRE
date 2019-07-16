@@ -37,8 +37,8 @@ public:
 
     ~Framebuffer();
 
-            VkFramebuffer   GetFramebuffer      (){return frame_buffer;}
-            VkRenderPass    GetRenderPass       (){return fb_info->renderPass;}
+    const   VkFramebuffer   GetFramebuffer      ()const{return frame_buffer;}
+    const   VkRenderPass    GetRenderPass       ()const{return fb_info->renderPass;}
 
     const   VkExtent2D &    GetExtent           ()const{return extent;}
 

@@ -67,8 +67,8 @@ class PipelineCreater
 
 public:
 
-    PipelineCreater(Device *dev,const Material *,RenderPass *rp,const VkExtent2D &);
-    PipelineCreater(Device *dev,const Material *,RenderPass *rp,const VkExtent2D &,uchar *,uint);
+    PipelineCreater(Device *dev,const Material *,const RenderTarget *);
+    PipelineCreater(Device *dev,const Material *,const RenderTarget *,uchar *,uint);
     ~PipelineCreater()=default;
 
     bool Set(const VkPrimitiveTopology,bool=false);

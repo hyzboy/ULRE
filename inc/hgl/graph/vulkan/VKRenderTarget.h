@@ -35,6 +35,8 @@ class RenderTarget:public SubmitQueue
 protected:
 
     Framebuffer *fb;
+    
+    VkExtent2D extent;
 
 protected:
 
@@ -46,6 +48,9 @@ public:
 
     virtual ~RenderTarget()=default;
     
+            const VkExtent2D &  GetExtent()const{return extent;}
+    virtual const VkRenderPass  GetRenderPass()const{return fb->GetRenderPass();}
+    virtual const uint32_t      GetColorCount()const{return fb->GetColorCount();}
 };//class RenderTarget
 
 /**
@@ -60,7 +65,6 @@ class SwapchainRenderTarget:public RenderTarget
     RenderPass *main_rp=nullptr;
 
     uint32_t swap_chain_count;
-    VkExtent2D extent;
 
     uint32_t current_frame;
     ObjectList<Framebuffer> render_frame;
@@ -70,13 +74,13 @@ public:
     SwapchainRenderTarget(Device *dev,Swapchain *sc);
     ~SwapchainRenderTarget();
 
-    const   uint32_t        GetImageCount()const{return swap_chain_count;}
-    const   VkExtent2D &    GetExtent()const{return extent;}
+    const   VkRenderPass  GetRenderPass()const override{return *main_rp;}
+            VkFramebuffer GetFramebuffer(const uint32_t index){return render_frame[index]->GetFramebuffer();}
 
-            RenderPass *    GetRenderPass(){return main_rp;}
-            Framebuffer *   GetFramebuffer(const uint32_t index){return render_frame[index];}
+    const   uint32_t      GetColorCount()const override{return 1;}
+    const   uint32_t      GetImageCount()const{return swap_chain_count;}
 
-    const   uint32_t        GetCurrentFrameIndices()const{return current_frame;}
+    const   uint32_t      GetCurrentFrameIndices()const{return current_frame;}
 
 public:
 

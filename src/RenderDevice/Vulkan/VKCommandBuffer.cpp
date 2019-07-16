@@ -57,14 +57,14 @@ bool CommandBuffer::Begin()
     return(true);
 }
 
-bool CommandBuffer::BeginRenderPass(RenderPass *rp,Framebuffer *fb)
+bool CommandBuffer::BeginRenderPass(VkRenderPass rp,VkFramebuffer fb)
 {
     VkRenderPassBeginInfo rp_begin;
 
     rp_begin.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rp_begin.pNext              = nullptr;
-    rp_begin.renderPass         = *rp;
-    rp_begin.framebuffer        = fb->GetFramebuffer();
+    rp_begin.renderPass         = rp;
+    rp_begin.framebuffer        = fb;
     rp_begin.renderArea         = render_area;
     rp_begin.clearValueCount    = cv_count;
     rp_begin.pClearValues       = clear_values;
