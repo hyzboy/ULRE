@@ -178,8 +178,8 @@ public: //Command Buffer 相关
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                         const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)const;
 
-    Fence *         CreateFence(bool);
-    Semaphore *     CreateSem();
+    Fence *             CreateFence(bool);
+    vulkan::Semaphore * CreateSem();
 
 public:
 

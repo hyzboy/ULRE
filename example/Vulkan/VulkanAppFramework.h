@@ -3,6 +3,7 @@
 #include<hgl/graph/vulkan/VKInstance.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 #include<hgl/graph/vulkan/VKDevice.h>
+#include<hgl/graph/vulkan/VKSemaphore.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/VKShaderModuleManage.h>

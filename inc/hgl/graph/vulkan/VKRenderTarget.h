@@ -2,6 +2,7 @@
 #define HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKFence.h>
 #include<hgl/graph/vulkan/VKRenderPass.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
