@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VKRenderTarget.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
+#include<hgl/graph/vulkan/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
 namespace 

@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/type/Pair.h>
+#include<hgl/graph/vulkan/VKSemaphore.h>
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKImageView.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
@@ -10,7 +11,7 @@
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-Swapchain *CreateSwapchain(Device *attr,const VkExtent2D &);
+Swapchain *CreateSwapchain(const DeviceAttribute *attr,const VkExtent2D &acquire_extent);
 
 Device::Device(DeviceAttribute *da)
 {
@@ -44,7 +45,7 @@ bool Device::Resize(const VkExtent2D &extent)
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
-    swapchain=CreateSwapchain(this,extent);
+    swapchain=CreateSwapchain(attr,extent);
     
     if(texture_cmd_buf)delete texture_cmd_buf;
 
@@ -96,7 +97,7 @@ Fence *Device::CreateFence(bool create_signaled)
     return(new Fence(attr->device,fence));
 }
 
-Semaphore *Device::CreateSem()
+vulkan::Semaphore *Device::CreateSem()
 {
     VkSemaphoreCreateInfo SemaphoreCreateInfo;
     SemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -107,7 +108,7 @@ Semaphore *Device::CreateSem()
     if(vkCreateSemaphore(attr->device, &SemaphoreCreateInfo, nullptr, &sem)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new Semaphore(attr->device,sem));
+    return(new vulkan::Semaphore(attr->device,sem));
 }
 
 ShaderModuleManage *Device::CreateShaderModuleManage()

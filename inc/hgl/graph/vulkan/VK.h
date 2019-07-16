@@ -20,7 +20,7 @@ class Device;
 struct DeviceAttribute;
 class ImageView;
 class Framebuffer;
-class Swapchain;
+struct Swapchain;
 class RenderTarget;
 class SwapchainRenderTarget;
 

@@ -11,7 +11,7 @@
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
-SwapchainAttribute *CreateSwapchinAttribute(const DeviceAttribute *attr,const VkExtent2D &acquire_extent);
+Swapchain *CreateSwapchain(const DeviceAttribute *attr,const VkExtent2D &acquire_extent);
 
 namespace
 {
@@ -401,15 +401,5 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     auto_delete.Clear();
 
     return(new Device(device_attr));
-}
-
-Swapchain *CreateSwapchain(Device *device,const VkExtent2D &extent)
-{
-    SwapchainAttribute *sc_attr=CreateSwapchinAttribute(device->GetDeviceAttribute(),extent);
-    
-    if(!sc_attr)
-        return(nullptr);
-
-    return(new Swapchain(device,sc_attr));
 }
 VK_NAMESPACE_END
