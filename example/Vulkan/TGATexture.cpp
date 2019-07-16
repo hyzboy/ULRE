@@ -123,7 +123,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
     if(header.image_type==2)
     {
-        if(header.bit==24)format=FMT_BGR8UN;else
+        if(header.bit==24)format=FMT_BGRA8UN;else
         if(header.bit==32)format=FMT_BGRA8UN;
     }
     else if(header.image_type==3&&header.bit==8)

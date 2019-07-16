@@ -88,7 +88,7 @@ private:
     bool InitPipeline()
     {
         AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,device->GetMainRenderPass(),device->GetExtent());
+        pipeline_creater=new vulkan::PipelineCreater(device,material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
@@ -104,7 +104,7 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere),scale(1000));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere),scale(100));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
