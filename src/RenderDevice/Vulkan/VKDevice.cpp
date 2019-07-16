@@ -17,11 +17,7 @@ Device::Device(DeviceAttribute *da)
 {
     attr=da;
 
-    texture_fence=this->CreateFence(false);
-
-    hgl_zero(texture_submit_info);
-    texture_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
+    textureSQ=nullptr;
     texture_cmd_buf=nullptr;
 
     swapchain=nullptr;
@@ -34,8 +30,8 @@ Device::~Device()
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
-    delete texture_cmd_buf;
-    delete texture_fence;
+    SAFE_CLEAR(textureSQ);
+    SAFE_CLEAR(texture_cmd_buf);
 
     delete attr;
 }
@@ -45,11 +41,13 @@ bool Device::Resize(const VkExtent2D &extent)
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
-    swapchain=CreateSwapchain(attr,extent);
-    
-    if(texture_cmd_buf)delete texture_cmd_buf;
+    SAFE_CLEAR(textureSQ);
+    SAFE_CLEAR(texture_cmd_buf);
 
-    texture_cmd_buf=CreateCommandBuffer(swapchain->GetExtent(),0);
+    swapchain=CreateSwapchain(attr,extent);
+
+    texture_cmd_buf=CreateCommandBuffer(extent,0);
+    textureSQ=new SubmitQueue(this,attr->graphics_queue,1);
 
     swapchainRT=new SwapchainRenderTarget(this,swapchain);
 

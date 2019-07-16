@@ -156,14 +156,8 @@ bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
     if(!cmd_bufs||count<=0)
         return(false);
 
-    texture_submit_info.commandBufferCount = count;
-    texture_submit_info.pCommandBuffers = cmd_bufs;
-
-    VkFence fence=*texture_fence;
-    
-    if(vkQueueSubmit(attr->graphics_queue, 1, &texture_submit_info, fence))return(false);
-    if(vkWaitForFences(attr->device, 1, &fence, VK_TRUE, HGL_NANO_SEC_PER_SEC*0.1)!=VK_SUCCESS)return(false);    
-    vkResetFences(attr->device,1,&fence);
+    textureSQ->Submit(cmd_bufs,count,nullptr,nullptr);
+    textureSQ->Wait();
 
     return(true);
 }

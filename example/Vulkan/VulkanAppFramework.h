@@ -223,14 +223,7 @@ public:
 
     int AcquireNextImage()
     {
-        if(sc_render_target->Wait())
-        {
-            int cur=sc_render_target->AcquireNextImage(present_complete_semaphore);
-
-            return cur;
-        }
-
-        return -1;
+        return sc_render_target->AcquireNextImage(present_complete_semaphore);
     }
 
     void SubmitDraw(int index)
@@ -239,6 +232,7 @@ public:
         
         sc_render_target->Submit(cb,present_complete_semaphore,render_complete_semaphore);
         sc_render_target->PresentBackbuffer(render_complete_semaphore);
+        sc_render_target->Wait();
     }
 
     virtual void Draw()
