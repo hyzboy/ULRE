@@ -23,11 +23,14 @@ Device::Device(DeviceAttribute *da)
 
     texture_cmd_buf=nullptr;
 
+    swapchain=nullptr;
     Resize(attr->surface_caps.currentExtent);
 }
 
 Device::~Device()
 {
+    SAFE_CLEAR(swapchain);
+
     delete texture_cmd_buf;
     delete texture_fence;
 

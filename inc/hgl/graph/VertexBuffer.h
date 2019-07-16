@@ -1111,11 +1111,11 @@ namespace hgl
         typedef VertexBuffer2<float >   VB2f;           template<> inline VkFormat VertexBuffer2<float  >::GetDataType()const{return FMT_RG32F; }
         typedef VertexBuffer2<double>   VB2d;           template<> inline VkFormat VertexBuffer2<double >::GetDataType()const{return FMT_RG64F; }
 
-        typedef VertexBuffer3<int8  >   VB3i8   ,VB3b;  template<> inline VkFormat VertexBuffer3<int8   >::GetDataType()const{return FMT_RGB8I;  }
-        typedef VertexBuffer3<int16 >   VB3i16  ,VB3s;  template<> inline VkFormat VertexBuffer3<int16  >::GetDataType()const{return FMT_RGB16I; }
+//        typedef VertexBuffer3<int8  >   VB3i8   ,VB3b;  template<> inline VkFormat VertexBuffer3<int8   >::GetDataType()const{return FMT_RGB8I;  }
+//        typedef VertexBuffer3<int16 >   VB3i16  ,VB3s;  template<> inline VkFormat VertexBuffer3<int16  >::GetDataType()const{return FMT_RGB16I; }
         typedef VertexBuffer3<int32 >   VB3i32  ,VB3i;  template<> inline VkFormat VertexBuffer3<int32  >::GetDataType()const{return FMT_RGB32I; }
-        typedef VertexBuffer3<uint8 >   VB3u8   ,VB3ub; template<> inline VkFormat VertexBuffer3<uint8  >::GetDataType()const{return FMT_RGB8U;  }
-        typedef VertexBuffer3<uint16>   VB3u16  ,VB3us; template<> inline VkFormat VertexBuffer3<uint16 >::GetDataType()const{return FMT_RGB16U; }
+//        typedef VertexBuffer3<uint8 >   VB3u8   ,VB3ub; template<> inline VkFormat VertexBuffer3<uint8  >::GetDataType()const{return FMT_RGB8U;  }
+//        typedef VertexBuffer3<uint16>   VB3u16  ,VB3us; template<> inline VkFormat VertexBuffer3<uint16 >::GetDataType()const{return FMT_RGB16U; }
         typedef VertexBuffer3<uint32>   VB3u32  ,VB3ui; template<> inline VkFormat VertexBuffer3<uint32 >::GetDataType()const{return FMT_RGB32U; }
         typedef VertexBuffer3<float >   VB3f;           template<> inline VkFormat VertexBuffer3<float  >::GetDataType()const{return FMT_RGB32F; }
         typedef VertexBuffer3<double>   VB3d;           template<> inline VkFormat VertexBuffer3<double >::GetDataType()const{return FMT_RGB64F; }

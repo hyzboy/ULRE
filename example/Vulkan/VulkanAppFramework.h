@@ -51,6 +51,11 @@ protected:
 protected:
 
     vulkan::Device *            device          =nullptr;
+    vulkan::Swapchain *         swapchain       =nullptr;
+    
+    vulkan::Semaphore *         present_complete_semaphore   =nullptr,
+                      *         render_complete_semaphore    =nullptr;
+
     vulkan::ShaderModuleManage *shader_manage   =nullptr;
 
 private:
@@ -69,6 +74,9 @@ public:
 
     virtual ~VulkanApplicationFramework()
     {
+        SAFE_CLEAR(present_complete_semaphore);
+        SAFE_CLEAR(render_complete_semaphore);
+
         SAFE_CLEAR(db);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
@@ -105,6 +113,10 @@ public:
         if(!device)
             return(false);
 
+        swapchain=device->GetSwapchain();
+        present_complete_semaphore  =device->CreateSem();
+        render_complete_semaphore   =device->CreateSem();
+
         shader_manage=device->CreateShaderModuleManage();
         db=new SceneDB(device);
 
@@ -135,14 +147,15 @@ public:
         if(cmd_buf)
             SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
-        swap_chain_count=device->GetSwapChainImageCount();
+
+        swap_chain_count=swapchain->GetImageCount();
         {
-            const VkExtent2D extent=device->GetExtent();
+            const VkExtent2D extent=swapchain->GetExtent();
 
             cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
 
             for(uint i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateCommandBuffer(&extent,2);
+                cmd_buf[i]=device->CreateCommandBuffer(extent,2);
         }
     }
 
@@ -156,7 +169,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
         
         cb->Begin();
-        cb->BeginRenderPass(device->GetMainRenderPass(),device->GetFramebuffer(index));
+        cb->BeginRenderPass(swapchain->GetMainRenderPass(),swapchain->GetFramebuffer(index));
         cb->Bind(p);
         cb->Bind(ds);
         cb->Bind(r);
@@ -178,7 +191,7 @@ public:
 
     void BuildCurrentCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
     {
-        BuildCommandBuffer(device->GetCurrentFrameIndices(),p,ds,r);
+        BuildCommandBuffer(swapchain->GetCurrentFrameIndices(),p,ds,r);
     }
 
     void BuildCommandBuffer(uint32_t index,RenderList *rl)
@@ -188,7 +201,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
 
         cb->Begin();
-        cb->BeginRenderPass(device->GetMainRenderPass(),device->GetFramebuffer(index));
+        cb->BeginRenderPass(swapchain->GetMainRenderPass(),swapchain->GetFramebuffer(index));
         rl->Render(cb);
         cb->EndRenderPass();
         cb->End();
@@ -202,16 +215,19 @@ public:
     
     void BuildCurrentCommandBuffer(RenderList *rl)
     {    
-        BuildCommandBuffer(device->GetCurrentFrameIndices(),rl);
+        BuildCommandBuffer(swapchain->GetCurrentFrameIndices(),rl);
     }
 
 public:
 
     int AcquireNextImage()
     {
-        if(device->Wait())
-            if(device->AcquireNextImage())
-                return device->GetCurrentFrameIndices();
+        if(swapchain->Wait())
+        {
+            int cur=swapchain->AcquireNextImage(present_complete_semaphore);
+
+            return cur;
+        }
 
         return -1;
     }
@@ -220,8 +236,8 @@ public:
     {
         VkCommandBuffer cb=*cmd_buf[index];
         
-        device->SubmitDraw(&cb);
-        device->PresentBackbuffer();
+        swapchain->SubmitDraw(cb,present_complete_semaphore,render_complete_semaphore);
+        swapchain->PresentBackbuffer(render_complete_semaphore);
     }
 
     virtual void Draw()

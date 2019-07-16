@@ -1,7 +1,8 @@
 #ifndef HGL_GRAPH_VULKAN_SWAP_CHAIN_ATTRIBUTE_INCLUDE
 #define HGL_GRAPH_VULKAN_SWAP_CHAIN_ATTRIBUTE_INCLUDE
 
-#include<hgl/graph/Vulkan/VK.h>
+#include<hgl/graph/vulkan/VK.h>
+#include<hgl/type/List.h>
 VK_NAMESPACE_BEGIN
 struct SwapchainAttribute
 {
