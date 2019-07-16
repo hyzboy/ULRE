@@ -44,6 +44,7 @@ bool Device::Resize(const VkExtent2D &extent)
     SAFE_CLEAR(textureSQ);
     SAFE_CLEAR(texture_cmd_buf);
 
+    attr->Refresh();
     swapchain=CreateSwapchain(attr,extent);
 
     texture_cmd_buf=CreateCommandBuffer(extent,0);

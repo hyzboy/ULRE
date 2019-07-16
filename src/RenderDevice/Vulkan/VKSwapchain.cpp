@@ -21,19 +21,12 @@ namespace
 {
     VkExtent2D SwapchainExtentClamp(const VkSurfaceCapabilitiesKHR &surface_caps,const VkExtent2D &acquire_extent)
     {
-        if(surface_caps.currentExtent.width==UINT32_MAX)
-        {
-            VkExtent2D swapchain_extent;
+        VkExtent2D swapchain_extent;
 
-            swapchain_extent.width  =hgl_clamp(acquire_extent.width,    surface_caps.minImageExtent.width,  surface_caps.maxImageExtent.width   );
-            swapchain_extent.height =hgl_clamp(acquire_extent.height,   surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height  );
+        swapchain_extent.width  =hgl_clamp(acquire_extent.width,    surface_caps.minImageExtent.width,  surface_caps.maxImageExtent.width   );
+        swapchain_extent.height =hgl_clamp(acquire_extent.height,   surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height  );
 
-            return swapchain_extent;
-        }
-        else
-        {
-            return surface_caps.currentExtent;
-        }
+        return swapchain_extent;
     }
     
     VkSwapchainKHR CreateSwapChain(const DeviceAttribute *dev_attr,const VkExtent2D &extent)
