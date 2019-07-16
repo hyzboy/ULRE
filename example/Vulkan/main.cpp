@@ -14,11 +14,6 @@ bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-struct WorldConfig
-{
-    Matrix4f mvp;
-}world;
-
 constexpr uint32_t VERTEX_COUNT=3;
 
 constexpr float vertex_data[VERTEX_COUNT][2]=
@@ -37,6 +32,8 @@ constexpr float color_data[VERTEX_COUNT][3]=
 class TestApp:public VulkanApplicationFramework
 {
 private:
+
+    WorldMatrix wm;
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
@@ -79,9 +76,12 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        world.mvp=ortho(extent.width,extent.height);
+        wm.vp_size.x=extent.width;
+        wm.vp_size.y=extent.height;
 
-        ubo_mvp=device->CreateUBO(sizeof(WorldConfig),&world);
+        wm.ortho=ortho(extent.width,extent.height);
+
+        ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&wm);
 
         if(!ubo_mvp)
             return(false);
@@ -92,7 +92,7 @@ private:
         descriptor_sets->Update();
         return(true);
     }
-
+    
     void InitVBO()
     {
         vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
@@ -150,8 +150,14 @@ public:
         return(true);
     }
 
-    void Resize(int,int)override
+    void Resize(int w,int h)override
     {
+        wm.vp_size.x=w;
+        wm.vp_size.y=h;
+        wm.ortho=ortho(w,h);
+
+        ubo_mvp->Write(&wm);
+
         BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework

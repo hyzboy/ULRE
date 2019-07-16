@@ -28,6 +28,9 @@ namespace hgl
 
         void Camera::Refresh()
         {
+            matrix.vp_size.x=width;
+            matrix.vp_size.y=height;
+
             if(type==CameraType::Perspective)
                 matrix.projection=perspective(fov,width/height,znear,zfar);
             else
@@ -43,7 +46,7 @@ namespace hgl
             //注意： C++中要 projection * model_view * local_to_world * position
             //而GLSL中要 position * local_to_world * model_view * projection
 
-            matrix.two_dim=ortho(width,height,znear,zfar);
+            matrix.ortho=ortho(width,height,znear,zfar);
 
             matrix.view_pos=eye;
 

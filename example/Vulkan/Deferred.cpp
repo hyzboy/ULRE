@@ -46,8 +46,7 @@ private:
 
     struct DeferredGBuffer
     {
-        vulkan::Semaphore *present_complete_semaphore  =nullptr,
-                          *render_complete_semaphore   =nullptr;
+        vulkan::Semaphore *render_complete_semaphore   =nullptr;
 
         vulkan::RenderTarget *rt;
 
@@ -157,7 +156,6 @@ private:
         gbuffer.extent.width   =512;
         gbuffer.extent.height  =512;
 
-        gbuffer.present_complete_semaphore  =device->CreateSem();
         gbuffer.render_complete_semaphore   =device->CreateSem();
 
         //根据候选格式表选择格式
@@ -417,8 +415,6 @@ private:
 
             gbuffer_cmd->EndRenderPass();
         gbuffer_cmd->End();
-        
-        gbuffer.rt->Submit(*gbuffer_cmd,gbuffer.present_complete_semaphore,gbuffer.render_complete_semaphore);
 
         return(true);
     }
@@ -445,11 +441,13 @@ public:
         return(true);
     }
     
-    virtual void SubmitDraw(int index)
-    {
+    virtual void SubmitDraw(int index) override
+    {        
+        gbuffer.rt->Submit(*gbuffer_cmd,present_complete_semaphore,gbuffer.render_complete_semaphore);
+
         VkCommandBuffer cb=*cmd_buf[index];
         
-        sc_render_target->Submit(cb,present_complete_semaphore,render_complete_semaphore);
+        sc_render_target->Submit(cb,gbuffer.render_complete_semaphore,render_complete_semaphore);
         sc_render_target->PresentBackbuffer(render_complete_semaphore);
         sc_render_target->Wait();
     }

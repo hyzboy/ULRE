@@ -10,19 +10,14 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-struct WorldConfig
-{
-    Matrix4f mvp;
-}world;
-
 constexpr uint32_t VERTEX_COUNT=4;
 
 constexpr float vertex_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75}
+    {SCREEN_WIDTH*0,  SCREEN_HEIGHT*0},
+    {SCREEN_WIDTH*1,  SCREEN_HEIGHT*0},
+    {SCREEN_WIDTH*0,  SCREEN_HEIGHT*1},
+    {SCREEN_WIDTH*1,  SCREEN_HEIGHT*1}
 };
 
 constexpr uint32_t INDEX_COUNT=6;
@@ -36,6 +31,8 @@ constexpr uint16 index_data[INDEX_COUNT]=
 class TestApp:public VulkanApplicationFramework
 {
 private:
+
+    WorldMatrix                 wm;
 
     vulkan::Material *          material            =nullptr;
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
@@ -65,7 +62,7 @@ private:
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert.spv"),
-                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
+                                               OS_TEXT("res/shader/glFragCoord.frag.spv"));
         if(!material)
             return(false);
 
@@ -78,9 +75,12 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        world.mvp=ortho(extent.width,extent.height);
+        wm.vp_size.x=extent.width;
+        wm.vp_size.y=extent.height;
 
-        ubo_mvp=device->CreateUBO(sizeof(WorldConfig),&world);
+        wm.ortho=ortho(extent.width,extent.height);
+
+        ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&wm);
 
         if(!ubo_mvp)
             return(false);

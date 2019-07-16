@@ -17,3 +17,5 @@ glslangValidator -V -o Atomsphere.frag.spv Atomsphere.frag
 
 glslangValidator -V -o gbuffer_opaque.vert.spv gbuffer_opaque.vert
 glslangValidator -V -o gbuffer_opaque.frag.spv gbuffer_opaque.frag
+
+glslangValidator -V -o glFragCoord.frag.spv glFragCoord.frag
