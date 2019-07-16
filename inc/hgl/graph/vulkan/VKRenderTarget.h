@@ -53,6 +53,7 @@ public:
             const VkExtent2D &  GetExtent()const{return extent;}
     virtual const VkRenderPass  GetRenderPass()const{return fb->GetRenderPass();}
     virtual const uint32_t      GetColorCount()const{return fb->GetColorCount();}
+    virtual const VkFramebuffer GetFramebuffer()const{return fb->GetFramebuffer();}
 };//class RenderTarget
 
 /**
@@ -77,6 +78,7 @@ public:
     ~SwapchainRenderTarget();
 
     const   VkRenderPass  GetRenderPass()const override{return *main_rp;}
+    const   VkFramebuffer GetFramebuffer()const override{return render_frame[current_frame]->GetFramebuffer();}
             VkFramebuffer GetFramebuffer(const uint32_t index){return render_frame[index]->GetFramebuffer();}
 
     const   uint32_t      GetColorCount()const override{return 1;}

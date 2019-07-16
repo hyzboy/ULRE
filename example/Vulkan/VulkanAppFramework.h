@@ -226,7 +226,7 @@ public:
         return sc_render_target->AcquireNextImage(present_complete_semaphore);
     }
 
-    void SubmitDraw(int index)
+    virtual void SubmitDraw(int index)
     {
         VkCommandBuffer cb=*cmd_buf[index];
         

@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VKCommandBuffer.h>
 #include<hgl/graph/vulkan/VKRenderPass.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
+#include<hgl/graph/vulkan/VKRenderTarget.h>
 #include<hgl/graph/vulkan/VKPipeline.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKMaterial.h>
@@ -84,6 +85,11 @@ bool CommandBuffer::BeginRenderPass(VkRenderPass rp,VkFramebuffer fb)
     pipeline_layout=VK_NULL_HANDLE;
 
     return(true);
+}
+
+bool CommandBuffer::BeginRenderPass(RenderTarget *rt)
+{
+    return BeginRenderPass(rt->GetRenderPass(),rt->GetFramebuffer());
 }
 
 bool CommandBuffer::Bind(Renderable *render_obj)
