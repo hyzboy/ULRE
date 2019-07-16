@@ -4,42 +4,93 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKRenderPass.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
+#include<hgl/graph/vulkan/VKSwapchain.h>
 VK_NAMESPACE_BEGIN
-class RenderTarget
+class SubmitQueue
 {
+protected:
+
     Device *device;
+    VkQueue queue;
+    
+    uint32_t current_fence;
+    ObjectList<Fence> fence_list;
 
-    RenderPass *rp;
-    Framebuffer *fb;
-
-    VkExtent2D extent;
-
-    List<ImageView *> colors;
-    ImageView *depth;
-
-private:
-
-    friend class Device;
-
-    RenderTarget(Device *dev,RenderPass *_rp,Framebuffer *_fb)
-    {
-        device=dev;
-        rp=_rp;
-        fb=_fb;
-    }
+    VkSubmitInfo submit_info;
 
 public:
 
-    virtual ~RenderTarget()
-    {
-        if(fb)
-            delete fb;
-    }
+    SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count=1);
+    virtual ~SubmitQueue();
+    
+    bool Wait(const bool wait_wall=true,const uint64 time_out=HGL_NANO_SEC_PER_SEC);
+    bool Submit(VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
+};//class SumbitQueue
 
-    const VkExtent2D &  GetExtent       ()const{return extent;}                                     ///<取得画面尺寸
+/**
+ * 渲染目标
+ */
+class RenderTarget:public SubmitQueue
+{
+protected:
 
-    const uint          GetColorCount   ()const{colors.GetCount();}                                 ///<取得颜色成份数量
-    const bool          IsExistDepth    ()const{return depth;}                                      ///<是否存在深度成份
+    Framebuffer *fb;
+
+protected:
+
+    friend class Device;
+
+    RenderTarget(Device *dev,Framebuffer *_fb,const uint32_t fence_count=1);
+
+public:
+
+    virtual ~RenderTarget()=default;
+    
 };//class RenderTarget
+
+/**
+ * 交换链专用渲染目标
+ */
+class SwapchainRenderTarget:public RenderTarget
+{
+    Swapchain *swapchain;
+    VkSwapchainKHR vk_swapchain;
+    VkPresentInfoKHR present_info;
+
+    RenderPass *main_rp=nullptr;
+
+    uint32_t swap_chain_count;
+    VkExtent2D extent;
+
+    uint32_t current_frame;
+    ObjectList<Framebuffer> render_frame;
+
+public:
+
+    SwapchainRenderTarget(Device *dev,Swapchain *sc);
+    ~SwapchainRenderTarget();
+
+    const   uint32_t        GetImageCount()const{return swap_chain_count;}
+    const   VkExtent2D &    GetExtent()const{return extent;}
+
+            RenderPass *    GetRenderPass(){return main_rp;}
+            Framebuffer *   GetFramebuffer(const uint32_t index){return render_frame[index];}
+
+    const   uint32_t        GetCurrentFrameIndices()const{return current_frame;}
+
+public:
+
+    /**
+     * 请求下一帧画面的索引
+     * @param present_complete_semaphore 推送完成信号
+     */
+    int AcquireNextImage(vulkan::Semaphore *present_complete_semaphore);
+
+    /**
+     * 推送后台画面到前台
+     * @param render_complete_semaphore 渲染完成信号
+     */
+    bool PresentBackbuffer(vulkan::Semaphore *render_complete_semaphore);
+};//class SwapchainRenderTarget:public RenderTarget
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE

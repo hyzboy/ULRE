@@ -16,7 +16,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
 
     if(depth)++att_count;
     
-    SharedArray<VkImageView> attachments=new VkImageView[att_count];
+    VkImageView *attachments=new VkImageView[att_count];
 
     if(color_count)
     {
@@ -39,30 +39,33 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
     if(depth)
     {
         if(rp->GetDepthFormat()!=depth->GetFormat())
+        {
+            delete[] attachments;
             return(nullptr);
+        }
 
         attachments[color_count]=*depth;
     }
 
     const VkExtent3D extent=depth->GetExtent();
 
-    VkFramebufferCreateInfo fb_info;
-    fb_info.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    fb_info.pNext           = nullptr;
-    fb_info.flags           = 0;
-    fb_info.renderPass      = *rp;
-    fb_info.attachmentCount = att_count;
-    fb_info.pAttachments    = attachments;
-    fb_info.width           = extent.width;
-    fb_info.height          = extent.height;
-    fb_info.layers          = 1;
+    VkFramebufferCreateInfo *fb_info=new VkFramebufferCreateInfo;
+    fb_info->sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fb_info->pNext           = nullptr;
+    fb_info->flags           = 0;
+    fb_info->renderPass      = *rp;
+    fb_info->attachmentCount = att_count;
+    fb_info->pAttachments    = attachments;
+    fb_info->width           = extent.width;
+    fb_info->height          = extent.height;
+    fb_info->layers          = 1;
 
     VkFramebuffer fb;
 
-    if(vkCreateFramebuffer(dev->GetDevice(), &fb_info, nullptr, &fb)!=VK_SUCCESS)
+    if(vkCreateFramebuffer(dev->GetDevice(),fb_info,nullptr,&fb)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new Framebuffer(dev->GetDevice(),fb));
+    return(new Framebuffer(dev->GetDevice(),fb,fb_info,depth));
 }
 
 Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &color,ImageView *depth)

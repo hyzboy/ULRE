@@ -24,11 +24,13 @@ Device::Device(DeviceAttribute *da)
     texture_cmd_buf=nullptr;
 
     swapchain=nullptr;
+    swapchainRT=nullptr;
     Resize(attr->surface_caps.currentExtent);
 }
 
 Device::~Device()
 {
+    SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
     delete texture_cmd_buf;
@@ -39,14 +41,16 @@ Device::~Device()
 
 bool Device::Resize(const VkExtent2D &extent)
 {
-    if(swapchain)
-        delete swapchain;
+    SAFE_CLEAR(swapchainRT);
+    SAFE_CLEAR(swapchain);
 
     swapchain=CreateSwapchain(this,extent);
     
     if(texture_cmd_buf)delete texture_cmd_buf;
 
     texture_cmd_buf=CreateCommandBuffer(swapchain->GetExtent(),0);
+
+    swapchainRT=new SwapchainRenderTarget(this,swapchain);
 
     return(true);
 }
@@ -109,5 +113,10 @@ Semaphore *Device::CreateSem()
 ShaderModuleManage *Device::CreateShaderModuleManage()
 {
     return(new ShaderModuleManage(this));
+}
+
+RenderTarget *Device::CreateRenderTarget(Framebuffer *fb)
+{
+    return(new RenderTarget(this,fb));
 }
 VK_NAMESPACE_END

@@ -58,7 +58,7 @@ private:
     bool InitPipeline(MDP *mdp,const VkPrimitiveTopology primitive)
     {
         AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,mdp->material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
+        pipeline_creater=new vulkan::PipelineCreater(device,mdp->material,sc_render_target->GetRenderPass(),sc_render_target->GetExtent());
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(primitive);
 

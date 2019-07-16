@@ -77,7 +77,7 @@ private:
 
     bool InitUBO()
     {
-        const VkExtent2D extent=swapchain->GetExtent();
+        const VkExtent2D extent=sc_render_target->GetExtent();
 
         world.mvp=ortho(extent.width,extent.height);
 
@@ -108,7 +108,7 @@ private:
 
         {
             AutoDelete<vulkan::PipelineCreater> 
-            pipeline_creater=new vulkan::PipelineCreater(device,material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
+            pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target->GetRenderPass(),sc_render_target->GetExtent());
             pipeline_creater->CloseCullFace();
             pipeline_creater->Set(PRIM_TRIANGLES);
 
@@ -119,7 +119,7 @@ private:
             void *data;
             uint size=filesystem::LoadFileToMemory(PIPELINE_FILENAME,(void **)&data);
 
-            AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,material,swapchain->GetMainRenderPass(),swapchain->GetExtent(),(uchar *)data,size);
+            AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target->GetRenderPass(),sc_render_target->GetExtent(),(uchar *)data,size);
 
             pipeline=pipeline_creater->Create();
         }

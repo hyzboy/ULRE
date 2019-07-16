@@ -75,7 +75,7 @@ private:
     bool InitPipeline()
     {   
         AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
+        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target->GetRenderPass(),sc_render_target->GetExtent());
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->CloseCullFace();

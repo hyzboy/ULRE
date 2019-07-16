@@ -15,6 +15,7 @@
 #include<hgl/graph/vulkan/VKFormat.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 #include<hgl/graph/vulkan/VKMaterial.h>
+#include<hgl/graph/vulkan/VKRenderTarget.h>
 #include<hgl/graph/SceneDB.h>
 #include<hgl/graph/RenderList.h>
 
@@ -50,19 +51,19 @@ protected:
 
 protected:
 
-    vulkan::Device *            device          =nullptr;
-    vulkan::Swapchain *         swapchain       =nullptr;
+    vulkan::Device *                device                      =nullptr;
+    vulkan::SwapchainRenderTarget * sc_render_target            =nullptr;
     
-    vulkan::Semaphore *         present_complete_semaphore   =nullptr,
-                      *         render_complete_semaphore    =nullptr;
+    vulkan::Semaphore *             present_complete_semaphore  =nullptr,
+                      *             render_complete_semaphore   =nullptr;
 
-    vulkan::ShaderModuleManage *shader_manage   =nullptr;
+    vulkan::ShaderModuleManage *    shader_manage   =nullptr;
 
 private:
 
-            uint32_t            swap_chain_count=0;
+            uint32_t                swap_chain_count=0;
 
-    vulkan::CommandBuffer **    cmd_buf         =nullptr;
+    vulkan::CommandBuffer **        cmd_buf         =nullptr;
 
 protected:
 
@@ -113,7 +114,7 @@ public:
         if(!device)
             return(false);
 
-        swapchain=device->GetSwapchain();
+        sc_render_target=device->GetSwapchainRT();
         present_complete_semaphore  =device->CreateSem();
         render_complete_semaphore   =device->CreateSem();
 
@@ -147,10 +148,9 @@ public:
         if(cmd_buf)
             SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
-
-        swap_chain_count=swapchain->GetImageCount();
+        swap_chain_count=sc_render_target->GetImageCount();
         {
-            const VkExtent2D extent=swapchain->GetExtent();
+            const VkExtent2D extent=sc_render_target->GetExtent();
 
             cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
 
@@ -169,7 +169,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
         
         cb->Begin();
-        cb->BeginRenderPass(swapchain->GetMainRenderPass(),swapchain->GetFramebuffer(index));
+        cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
         cb->Bind(p);
         cb->Bind(ds);
         cb->Bind(r);
@@ -191,7 +191,7 @@ public:
 
     void BuildCurrentCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
     {
-        BuildCommandBuffer(swapchain->GetCurrentFrameIndices(),p,ds,r);
+        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),p,ds,r);
     }
 
     void BuildCommandBuffer(uint32_t index,RenderList *rl)
@@ -201,7 +201,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
 
         cb->Begin();
-        cb->BeginRenderPass(swapchain->GetMainRenderPass(),swapchain->GetFramebuffer(index));
+        cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
         rl->Render(cb);
         cb->EndRenderPass();
         cb->End();
@@ -215,16 +215,16 @@ public:
     
     void BuildCurrentCommandBuffer(RenderList *rl)
     {    
-        BuildCommandBuffer(swapchain->GetCurrentFrameIndices(),rl);
+        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),rl);
     }
 
 public:
 
     int AcquireNextImage()
     {
-        if(swapchain->Wait())
+        if(sc_render_target->Wait())
         {
-            int cur=swapchain->AcquireNextImage(present_complete_semaphore);
+            int cur=sc_render_target->AcquireNextImage(present_complete_semaphore);
 
             return cur;
         }
@@ -236,8 +236,8 @@ public:
     {
         VkCommandBuffer cb=*cmd_buf[index];
         
-        swapchain->SubmitDraw(cb,present_complete_semaphore,render_complete_semaphore);
-        swapchain->PresentBackbuffer(render_complete_semaphore);
+        sc_render_target->Submit(cb,present_complete_semaphore,render_complete_semaphore);
+        sc_render_target->PresentBackbuffer(render_complete_semaphore);
     }
 
     virtual void Draw()

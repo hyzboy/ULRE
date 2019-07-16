@@ -11,8 +11,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_WIDTH=128;
+constexpr uint32_t SCREEN_HEIGHT=128;
 
 class TestApp:public CameraAppFramework
 {
@@ -137,7 +137,7 @@ private:
     bool InitPipeline()
     {
         AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,swapchain->GetMainRenderPass(),swapchain->GetExtent());
+        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target->GetRenderPass(),sc_render_target->GetExtent());
         pipeline_creater->Set(PRIM_LINES);
 
         pipeline_line=pipeline_creater->Create();
