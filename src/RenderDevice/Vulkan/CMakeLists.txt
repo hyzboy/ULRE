@@ -17,7 +17,7 @@
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKPrimivate.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderable.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderPass.h
-#                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderTarget.h
+                                ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKRenderTarget.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKSemaphore.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderResource.h
                                 ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/VKShaderModule.h
@@ -46,7 +46,7 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKDescriptorSetLayoutCreater.cpp
                                 VKDescriptorSetLayoutCreater.h
                                 VKRenderPass.cpp
-#								VKRenderTarget.cpp
+								VKRenderTarget.cpp
                                 VKShaderParse.h
                                 VKShaderModule.cpp
                                 VKShaderModuleManage.cpp

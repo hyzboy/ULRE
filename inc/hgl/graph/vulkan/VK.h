@@ -20,6 +20,9 @@ class Device;
 struct DeviceAttribute;
 class ImageView;
 class Framebuffer;
+class Swapchain;
+class RenderTarget;
+class SwapchainRenderTarget;
 
 class Texture;
 class Texture1D;

@@ -8,6 +8,7 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDeviceAttribute.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
+#include<hgl/graph/vulkan/VKRenderTarget.h>
 #include<hgl/graph/VertexBufferCreater.h>
 
 VK_NAMESPACE_BEGIN
@@ -21,6 +22,7 @@ class Device
     CommandBuffer *texture_cmd_buf;
 
     Swapchain *swapchain;
+    SwapchainRenderTarget *swapchainRT;
 
 private:
 
@@ -46,6 +48,8 @@ public:
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
                 Swapchain *         GetSwapchain        ()      {return swapchain;}
+
+    SwapchainRenderTarget *         GetSwapchainRT      ()      {return swapchainRT;}
 
 public:
 
@@ -180,6 +184,8 @@ public: //Command Buffer 相关
 public:
 
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
+
+    RenderTarget *CreateRenderTarget(Framebuffer *);
 };//class Device
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
