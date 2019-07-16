@@ -30,12 +30,6 @@ private:
             Window *            win             =nullptr;
     vulkan::Instance *          inst            =nullptr;
 
-    void OnResize(int w,int h)
-    {
-        InitCommandBuffer();
-        Resize(w,h);
-    }
-
     void OnKeyDown  (KeyboardButton kb){key_status[kb]=true;}
     void OnKeyUp    (KeyboardButton kb){key_status[kb]=false;}
     void OnKeyPress (KeyboardButton kb){KeyPress(kb);}
@@ -60,7 +54,7 @@ protected:
 
     vulkan::ShaderModuleManage *    shader_manage   =nullptr;
 
-private:
+protected:
 
             uint32_t                swap_chain_count=0;
 
@@ -115,7 +109,6 @@ public:
         if(!device)
             return(false);
 
-        sc_render_target=device->GetSwapchainRT();
         present_complete_semaphore  =device->CreateSem();
         render_complete_semaphore   =device->CreateSem();
 
@@ -143,11 +136,19 @@ public:
     virtual void MouseUp(uint){}
     virtual void MouseMove(){}
     virtual void MouseWheel(int,int,uint){}
+    
+    void OnResize(int w,int h)
+    {
+        InitCommandBuffer();
+        Resize(w,h);
+    }
 
     void InitCommandBuffer()
     {
         if(cmd_buf)
             SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
+            
+        sc_render_target=device->GetSwapchainRT();
 
         swap_chain_count=sc_render_target->GetImageCount();
         {
