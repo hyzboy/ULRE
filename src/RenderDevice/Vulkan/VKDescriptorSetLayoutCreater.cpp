@@ -14,6 +14,12 @@ DescriptorSetLayoutCreater::~DescriptorSetLayoutCreater()
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
+    if(index_by_binding.KeyExist(binding))
+    {
+        //重复的绑定点，有可能存在的，比如WorldMatrix在vs/fs中同时存在
+        return;
+    }
+
     VkDescriptorSetLayoutBinding layout_binding;
 
     layout_binding.binding              = binding;
@@ -33,23 +39,32 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t cou
 
     const uint old_count=layout_binding_list.GetCount();
 
-    layout_binding_list.SetCount(old_count+count);
+    layout_binding_list.PreMalloc(old_count+count);
 
     VkDescriptorSetLayoutBinding *p=layout_binding_list.GetData()+old_count;
 
+    uint fin_count=0;
+
     for(uint i=old_count;i<old_count+count;i++)
     {
-        p->binding              = *binding;
-        p->descriptorType       = desc_type;
-        p->descriptorCount      = 1;
-        p->stageFlags           = stageFlags;
-        p->pImmutableSamplers   = nullptr;
+        if(!index_by_binding.KeyExist(*binding))
+        {
+            p->binding              = *binding;
+            p->descriptorType       = desc_type;
+            p->descriptorCount      = 1;
+            p->stageFlags           = stageFlags;
+            p->pImmutableSamplers   = nullptr;
 
-        index_by_binding.Add(*binding,i);
+            index_by_binding.Add(*binding,i);
+
+            ++p;
+            ++fin_count;
+        }
 
         ++binding;
-        ++p;
     }
+
+    layout_binding_list.SetCount(old_count+fin_count);
 }
 
 bool DescriptorSetLayoutCreater::CreatePipelineLayout()
