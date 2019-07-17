@@ -279,7 +279,7 @@ private:
     bool InitMaterial()
     {
         if(!InitSubpass(&sp_gbuffer,    OS_TEXT("res/shader/gbuffer_opaque.vert.spv"),OS_TEXT("res/shader/gbuffer_opaque.frag.spv")))return(false);
-        if(!InitSubpass(&sp_composition,OS_TEXT("res/shader/gbuffer_composition.vert.spv"),OS_TEXT("res/shader/gbuffer_composition.frag.spv")))return(false);
+        if(!InitSubpass(&sp_composition,OS_TEXT("res/shader/gbuffer_debug.vert.spv"),OS_TEXT("res/shader/gbuffer_debug.frag.spv")))return(false);
 
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         if(!InitCompositionPipeline(&sp_composition))return(false);
@@ -458,7 +458,7 @@ public:
     }
     
     virtual void SubmitDraw(int index) override
-    {        
+    {   
         gbuffer.rt->Submit(*gbuffer_cmd,present_complete_semaphore,gbuffer.render_complete_semaphore);
 
         VkCommandBuffer cb=*cmd_buf[index];
@@ -466,6 +466,7 @@ public:
         sc_render_target->Submit(cb,gbuffer.render_complete_semaphore,render_complete_semaphore);
         sc_render_target->PresentBackbuffer(render_complete_semaphore);
         sc_render_target->Wait();
+        gbuffer.rt->Wait();
     }
     
     void BuildCommandBuffer(uint32_t index) override

@@ -442,18 +442,18 @@ namespace hgl
                     LOG_HINT(OS_TEXT("VertexBuffer2::WriteRectFan(RectScope2 *) out"));
                     return(false);
                 }
-
+                
                 *this->access++=scope.GetLeft();
-                *this->access++=scope.GetTop();
+                *this->access++=scope.GetBottom();
+                
+                *this->access++=scope.GetRight();
+                *this->access++=scope.GetBottom();
 
                 *this->access++=scope.GetRight();
                 *this->access++=scope.GetTop();
 
-                *this->access++=scope.GetRight();
-                *this->access++=scope.GetBottom();
-
                 *this->access++=scope.GetLeft();
-                *this->access++=scope.GetBottom();
+                *this->access++=scope.GetTop();
 
                 return(true);
             }
