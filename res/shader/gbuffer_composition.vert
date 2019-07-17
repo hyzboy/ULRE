@@ -8,5 +8,5 @@ void main()
 {
     gl_Position=vec4(Vertex,0.0,1.0);
 
-    FragmentPosition=Vertex;
+    FragmentPosition=(Vertex+1.0)/2.0;
 }

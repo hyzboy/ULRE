@@ -22,6 +22,11 @@ namespace hgl
         vulkan::Renderable *CreateRenderableRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
 
         /**
+         * 创建延迟渲染用全屏平面
+         */
+        vulkan::Renderable *CreateRenderableGBufferComposition(SceneDB *db,vulkan::Material *mtl);
+
+        /**
          * 圆角矩形创建信息(扇形/线圈)
          */
         struct RoundRectangleCreateInfo:public RectangleCreateInfo
@@ -69,6 +74,13 @@ namespace hgl
         struct PlaneCreateInfo
         {
             Vector2f tile;
+
+        public:
+
+            PlaneCreateInfo()
+            {
+                tile.Set(1,1);
+            }
         };//struct PlaneCreateInfo
 
         /**
