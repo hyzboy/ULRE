@@ -148,7 +148,7 @@ namespace hgl
             
             VB2f *vertex=gc.GetVertex();
 
-            vertex->WriteRectFan(rci->scope);
+            vertex->WriteRectTriangleStrip(rci->scope);
 
             return gc.Finish();
         }

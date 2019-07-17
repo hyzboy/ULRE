@@ -30,6 +30,8 @@ void main()
     
     vec3 light_pos=vec3(1,1,1);
     vec3 light_halfVector=vec3(1,1,1);    
+    
+    
     float pf;
     
     float nDotVP=max(0.0,dot(normal,normalize(light_pos)));

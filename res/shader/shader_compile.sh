@@ -20,3 +20,6 @@ glslangValidator -V -o gbuffer_opaque.frag.spv gbuffer_opaque.frag
 
 glslangValidator -V -o gbuffer_composition.vert.spv gbuffer_composition.vert
 glslangValidator -V -o gbuffer_composition.frag.spv gbuffer_composition.frag
+
+glslangValidator -V -o gbuffer_debug.vert.spv gbuffer_debug.vert
+glslangValidator -V -o gbuffer_debug.frag.spv gbuffer_debug.frag
