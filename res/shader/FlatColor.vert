@@ -5,7 +5,6 @@ layout(location = 1) in vec3 Color;
 
 layout(binding = 0) uniform WorldMatrix
 {
-	vec2 vp_size;
     mat4 ortho;
     mat4 projection;
     mat4 modelview;

@@ -7,7 +7,7 @@ layout(location = 3) in vec3 Tangent;
 
 layout(binding = 0) uniform WorldMatrix
 {
-    mat4 two_dim;
+    mat4 ortho;
     mat4 projection;
     mat4 modelview;
     mat4 mvp;

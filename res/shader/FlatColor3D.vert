@@ -6,11 +6,11 @@ layout(location = 2) in vec3 Normal;
 
 layout(binding = 0) uniform WorldMatrix
 {
-    mat4 two_dim;
+    mat4 ortho;
     mat4 projection;
     mat4 modelview;
     mat4 mvp;
-    mat3 normal;
+    vec4 view_pos;
 } world;
 
 layout(push_constant) uniform Consts {

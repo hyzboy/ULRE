@@ -12,12 +12,15 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
+constexpr float SSP=0.25;
+constexpr float SSN=1-SSP;
+
 constexpr float vertex_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0,  SCREEN_HEIGHT*0},
-    {SCREEN_WIDTH*1,  SCREEN_HEIGHT*0},
-    {SCREEN_WIDTH*0,  SCREEN_HEIGHT*1},
-    {SCREEN_WIDTH*1,  SCREEN_HEIGHT*1}
+    {SCREEN_WIDTH*SSP,  SCREEN_HEIGHT*SSP},
+    {SCREEN_WIDTH*SSN,  SCREEN_HEIGHT*SSP},
+    {SCREEN_WIDTH*SSP,  SCREEN_HEIGHT*SSN},
+    {SCREEN_WIDTH*SSN,  SCREEN_HEIGHT*SSN}
 };
 
 constexpr uint32_t INDEX_COUNT=6;
@@ -62,7 +65,7 @@ private:
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert.spv"),
-                                               OS_TEXT("res/shader/glFragCoord.frag.spv"));
+                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
         if(!material)
             return(false);
 
@@ -74,9 +77,6 @@ private:
     bool InitUBO()
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
-
-        wm.vp_size.x=extent.width;
-        wm.vp_size.y=extent.height;
 
         wm.ortho=ortho(extent.width,extent.height);
 

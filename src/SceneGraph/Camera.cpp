@@ -28,9 +28,6 @@ namespace hgl
 
         void Camera::Refresh()
         {
-            matrix.vp_size.x=width;
-            matrix.vp_size.y=height;
-
             if(type==CameraType::Perspective)
                 matrix.projection=perspective(fov,width/height,znear,zfar);
             else

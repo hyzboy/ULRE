@@ -4,7 +4,6 @@ layout(location = 0) in vec2 Vertex;
 
 layout(binding = 0) uniform WorldMatrix
 {
-	vec2 vp_size;
     mat4 ortho;
     mat4 projection;
     mat4 modelview;
