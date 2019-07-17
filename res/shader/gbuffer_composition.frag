@@ -28,21 +28,9 @@ void main()
     vec3 normal =texture(GB_Normal,     FragmentPosition).xyz;
     vec3 color  =texture(GB_Color,      FragmentPosition).xyz;
     
-    vec3 light_pos=vec3(1,1,1);
-    vec3 light_halfVector=vec3(1,1,1);    
+    vec3 sun_light_direction=vec3(1,1,1);
     
+    float sun_light_intensity=max(dot(normal,sun_light_direction),0.0);
     
-    float pf;
-    
-    float nDotVP=max(0.0,dot(normal,normalize(light_pos)));
-    float nDotHV=max(0.0,dot(normal,normalize(light_halfVector)));
-    
-    if(nDotVP==0.0)
-    {
-        pf=0.0;
-    }
-    else
-    {
-        pf=pow(nDotHV,
-    }
+    FragColor=vec4(color*sun_light_intensity,1.0);
 }
