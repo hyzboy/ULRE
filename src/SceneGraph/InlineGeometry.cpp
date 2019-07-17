@@ -1098,8 +1098,8 @@ namespace hgl
             if(np)
             {
                 *np =  0.0f;++np;
+                *np = -1.0f;++np;
                 *np =  0.0f;++np;
-                *np =  1.0f;++np;
             }
 
             if(tp)
@@ -1126,8 +1126,8 @@ namespace hgl
                 if(np)
                 {
 		            *np =  0.0f;++np;
+		            *np = -1.0f;++np;
 		            *np =  0.0f;++np;
-		            *np =  1.0f;++np;
                 }
 
                 if(tp)
@@ -1159,8 +1159,8 @@ namespace hgl
                     if(np)
                     {
 			            *np = h / l *  cosf(currentAngle);  ++np;
+			            *np = r / l;                        ++np;
 			            *np = h / l * -sinf(currentAngle);  ++np;
-			            *np =-r / l;                        ++np;
                     }
 
                     if(tp)
