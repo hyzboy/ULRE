@@ -56,7 +56,8 @@ bool DescriptorSets::BindSampler(const uint32_t binding,Texture *tex,Sampler *sa
 
     VkDescriptorImageInfo *image_info=new VkDescriptorImageInfo;
     image_info->imageView    =tex->GetVulkanImageView();
-    image_info->imageLayout  =tex->GetImageLayout();
+    //image_info->imageLayout  =tex->GetImageLayout();
+    image_info->imageLayout  =VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     image_info->sampler      =*sampler;
 
     desc_image_info.Add(image_info);
