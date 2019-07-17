@@ -153,6 +153,15 @@ namespace hgl
             return gc.Finish();
         }
 
+        vulkan::Renderable *CreateRenderableGBufferComposition(SceneDB *db,vulkan::Material *mtl)
+        {
+            RectangleCreateInfo rci;
+
+            rci.scope.Set(-1,-1,2,2);
+
+            return CreateRenderableRectangle(db,mtl,&rci);
+        }
+
         vulkan::Renderable *CreateRenderableRoundRectangle(SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
         {
             GeometryCreater2D gc(db,mtl);

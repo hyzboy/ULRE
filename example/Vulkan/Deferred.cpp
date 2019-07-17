@@ -96,7 +96,9 @@ private:
                                 *ro_sphere,
                                 *ro_torus,
                                 *ro_cylinder,
-                                *ro_cone;
+                                *ro_cone,
+                                
+                                *ro_plane;
 
     vulkan::Sampler *           sampler=nullptr;
 
@@ -153,8 +155,8 @@ private:
 
     bool InitGBuffer()
     {
-        gbuffer.extent.width   =512;
-        gbuffer.extent.height  =512;
+        gbuffer.extent.width   =1024;
+        gbuffer.extent.height  =1024;
 
         gbuffer.render_complete_semaphore   =device->CreateSem();
 
@@ -263,7 +265,7 @@ private:
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
-        pipeline_creater->Set(PRIM_TRIANGLES);
+        pipeline_creater->Set(PRIM_TRIANGLE_FAN);
 
         sp->pipeline_solid=pipeline_creater->Create();
 
@@ -277,14 +279,13 @@ private:
     bool InitMaterial()
     {
         if(!InitSubpass(&sp_gbuffer,    OS_TEXT("res/shader/gbuffer_opaque.vert.spv"),OS_TEXT("res/shader/gbuffer_opaque.frag.spv")))return(false);
-        //if(!InitSubpass(&sp_composition,OS_TEXT("res/shader/ds_composition.vert.spv"),OS_TEXT("res/shader/ds_composition.frag.spv")))return(false);
+        if(!InitSubpass(&sp_composition,OS_TEXT("res/shader/gbuffer_composition.vert.spv"),OS_TEXT("res/shader/gbuffer_composition.frag.spv")))return(false);
 
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
-        //if(!InitCompositionPipeline(&sp_composition))return(false);
+        if(!InitCompositionPipeline(&sp_composition))return(false);
 
         texture.color   =vulkan::LoadTGATexture(OS_TEXT("res/image/cardboardPlainStain.tga"),device);
         texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_NRM.tga"),device);
-        //texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/flat_normal.tga"),device);
         //texture.specular=vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_SPEC.tga"),device);
 
         VkSamplerCreateInfo sampler_create_info;
@@ -310,12 +311,17 @@ private:
 
         sampler=device->CreateSampler(&sampler_create_info);
 
-        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureColor"),texture.color,sampler);
-        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureNormal"),texture.normal,sampler);
-        
         InitCameraUBO(sp_gbuffer.desc_sets,sp_gbuffer.material->GetUBO("world"));
 
+        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureColor"    ),texture.color,    sampler);
+        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureNormal"   ),texture.normal,   sampler);
         sp_gbuffer.desc_sets->Update();
+
+        sp_composition.desc_sets->BindSampler(sp_composition.material->GetSampler("GB_Position" ),gbuffer.position, sampler);
+        sp_composition.desc_sets->BindSampler(sp_composition.material->GetSampler("GB_Normal"   ),gbuffer.normal,   sampler);
+        sp_composition.desc_sets->BindSampler(sp_composition.material->GetSampler("GB_Color"    ),gbuffer.color,    sampler);
+        sp_composition.desc_sets->Update();
+
         return(true);
     }
 
@@ -383,6 +389,13 @@ private:
             ro_cone=CreateRenderableCone(db,mtl,&cci);
         }
     }
+
+    bool InitCompositionRenderable()
+    {
+        ro_plane=CreateRenderableGBufferComposition(db,sp_composition.material);
+
+        return ro_plane;
+    }
     
     bool InitScene(SubpassParam *sp)
     {
@@ -438,6 +451,9 @@ public:
         if(!InitGBufferCommandBuffer())
             return(false);
 
+        if(!InitCompositionRenderable())
+            return(false);
+
         return(true);
     }
     
@@ -453,12 +469,11 @@ public:
     }
     
     void BuildCommandBuffer(uint32_t index) override
-    {
-        render_root.RefreshMatrix();
-        render_list.Clear();
-        render_root.ExpendToList(&render_list);
-        
-        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
+    {    
+        VulkanApplicationFramework::BuildCommandBuffer( index,
+                                                        sp_composition.pipeline_solid,
+                                                        sp_composition.desc_sets,
+                                                        ro_plane);
     }
 };//class TestApp:public CameraAppFramework
 
