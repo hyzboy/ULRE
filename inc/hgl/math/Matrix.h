@@ -13,8 +13,6 @@ namespace hgl
 
     struct WorldMatrix
     {
-        alignas(8) Vector2f vp_size;       //viewport尺寸
-
         alignas(16) Matrix4f ortho;         //2D正角视图矩阵
 
         alignas(16) Matrix4f projection;

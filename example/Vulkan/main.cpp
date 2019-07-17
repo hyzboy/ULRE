@@ -76,9 +76,6 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        wm.vp_size.x=extent.width;
-        wm.vp_size.y=extent.height;
-
         wm.ortho=ortho(extent.width,extent.height);
 
         ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&wm);
@@ -152,8 +149,6 @@ public:
 
     void Resize(int w,int h)override
     {
-        wm.vp_size.x=w;
-        wm.vp_size.y=h;
         wm.ortho=ortho(w,h);
 
         ubo_mvp->Write(&wm);
