@@ -429,12 +429,12 @@ namespace hgl
                 for (uint j = 0; j < numberSlices; j++)
                 {
                     *tp= i      * (numberSlices + 1) + j;       ++tp;
-                    *tp=(i + 1) * (numberSlices + 1) + j;       ++tp;
                     *tp=(i + 1) * (numberSlices + 1) + (j + 1); ++tp;
+                    *tp=(i + 1) * (numberSlices + 1) + j;       ++tp;
 
                     *tp= i      * (numberSlices + 1) + j;       ++tp;
-                    *tp=(i + 1) * (numberSlices + 1) + (j + 1); ++tp;
                     *tp= i      * (numberSlices + 1) + (j + 1); ++tp;
+                    *tp=(i + 1) * (numberSlices + 1) + (j + 1); ++tp;
                 }
             }
         }
@@ -545,9 +545,9 @@ namespace hgl
             {
                 for (uint j = 0; j < numberSlices + 1; j++)
                 {
-                    float x= sin(angleStep * (double) i) * sin(angleStep * (double) j);
-                    float y= cos(angleStep * (double) i);
-                    float z= sin(angleStep * (double) i) * cos(angleStep * (double) j);
+                    float x = sin(angleStep * (double) i) * sin(angleStep * (double) j);
+                    float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
+                    float z = cos(angleStep * (double) i);
                     
                     *vp=x;++vp;
                     *vp=y;++vp;
@@ -628,7 +628,7 @@ namespace hgl
 
                     float x= dci->radius * sinf(angleStep * (float) i) * sinf(angleStep * (float) j);
                     float y= dci->radius * sinf(angleStep * (float) i) * cosf(angleStep * (float) j);
-                    float z=-dci->radius * cosf(angleStep * (float) i);
+                    float z= dci->radius * cosf(angleStep * (float) i);
 
                     *vp=x;++vp;
                     *vp=y;++vp;
@@ -763,8 +763,8 @@ namespace hgl
 
                     // generate vertex and stores it in the right position
                     *vp = (centerRadius + torusRadius * cos2PIt) * cos2PIs; ++vp;
-                    *vp =-(centerRadius + torusRadius * cos2PIt) * sin2PIs; ++vp;
                     *vp = torusRadius * sin2PIt; ++vp;
+                    *vp = (centerRadius + torusRadius * cos2PIt) * sin2PIs; ++vp;
 
                     if(np)
                     {
@@ -772,8 +772,8 @@ namespace hgl
                         // NOTE: cos (2PIx) = cos (x) and sin (2PIx) = sin (x) so, we can use this formula
                         //       normal = {cos(2PIs)cos(2PIt) , sin(2PIs)cos(2PIt) ,sin(2PIt)}
                         *np = cos2PIs * cos2PIt; ++np;
-                        *np =-sin2PIs * cos2PIt; ++np;
                         *np = sin2PIt; ++np;
+                        *np = sin2PIs * cos2PIt; ++np;
                     }
 
                     if(tc)
@@ -816,8 +816,8 @@ namespace hgl
                 for (i = 0; i < numberSlices; i++)
                 {
     	            *tp = centerIndex;      ++tp;
-                    *tp = indexCounter + 1; ++tp;
                     *tp = indexCounter;     ++tp;
+                    *tp = indexCounter + 1; ++tp;
 
                     indexCounter++;
                 }
@@ -830,8 +830,8 @@ namespace hgl
                 for (i = 0; i < numberSlices; i++)
                 {
     	            *tp = centerIndex;      ++tp;
-                    *tp = indexCounter;     ++tp;
                     *tp = indexCounter + 1; ++tp;
+                    *tp = indexCounter;     ++tp;
 
                     indexCounter++;
                 }
@@ -841,12 +841,12 @@ namespace hgl
                 for (i = 0; i < numberSlices; i++)
                 {
     	            *tp = indexCounter;     ++tp;
-                    *tp = indexCounter + 2; ++tp;
                     *tp = indexCounter + 1; ++tp;
+                    *tp = indexCounter + 2; ++tp;
 
     	            *tp = indexCounter + 2; ++tp;
-                    *tp = indexCounter + 3; ++tp;
                     *tp = indexCounter + 1; ++tp;
+                    *tp = indexCounter + 3; ++tp;
 
                     indexCounter += 2;
                 }
@@ -877,15 +877,15 @@ namespace hgl
             float *tp=gc.GetTangentPointer();
             float *tc=gc.GetTexCoordPointer();
 
-            *vp = 0.0f;             ++vp;
-            *vp = 0.0f;             ++vp;
-            *vp = cci->halfExtend;  ++vp;
+            *vp =  0.0f;             ++vp;
+            *vp =  0.0f;             ++vp;
+            *vp = -cci->halfExtend;  ++vp;
 
             if(np)
             {
                 *np = 0.0f; ++np;
                 *np = 0.0f; ++np;
-                *np = 1.0f; ++np;
+                *np =-1.0f; ++np;
             }
 
             if(tp)
@@ -907,13 +907,13 @@ namespace hgl
 
 		        *vp =  cosf(currentAngle) * cci->radius;++vp;
 		        *vp = -sinf(currentAngle) * cci->radius;++vp;
-		        *vp =  cci->halfExtend;                 ++vp;
+		        *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
                     *np = 0.0f; ++np;
                     *np = 0.0f; ++np;
-                    *np = 1.0f; ++np;
+                    *np =-1.0f; ++np;
                 }
 
                 if(tp)
@@ -932,13 +932,13 @@ namespace hgl
             
             *vp = 0.0f;             ++vp;
             *vp = 0.0f;             ++vp;
-            *vp =-cci->halfExtend;  ++vp;
+            *vp = cci->halfExtend;  ++vp;
 
             if(np)
             {
-                *np =  0.0f;    ++np;
-                *np =  0.0f;    ++np;
-                *np = -1.0f;    ++np;
+                *np = 0.0f;    ++np;
+                *np = 0.0f;    ++np;
+                *np = 1.0f;    ++np;
             }
 
             if(tp)
@@ -960,13 +960,13 @@ namespace hgl
 
 		        *vp =  cosf(currentAngle) * cci->radius;++vp;
 		        *vp = -sinf(currentAngle) * cci->radius;++vp;
-		        *vp = -cci->halfExtend;                 ++vp;
+		        *vp =  cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
-                    *np =  0.0f;    ++np;
-                    *np =  0.0f;    ++np;
-                    *np = -1.0f;    ++np;
+                    *np = 0.0f;    ++np;
+                    *np = 0.0f;    ++np;
+                    *np = 1.0f;    ++np;
                 }
 
                 if(tp)
@@ -993,7 +993,7 @@ namespace hgl
                 {
 			        *vp =  cosf(currentAngle) * cci->radius;    ++vp;
 			        *vp = -sinf(currentAngle) * cci->radius;    ++vp;
-			        *vp = -cci->halfExtend * sign;              ++vp;
+			        *vp =  cci->halfExtend * sign;              ++vp;
 
                     if(np)
                     {
