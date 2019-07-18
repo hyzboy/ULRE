@@ -1,4 +1,7 @@
-﻿#include<hgl/graph/InlineGeometry.h>
+﻿// sphere、cylinear、cone、tours code from McNopper,website: https://github.com/McNopper/GLUS
+// GL to VK: swap Y/Z of position/normal/tangent/index
+
+#include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VertexBuffer.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
@@ -307,8 +310,8 @@ namespace hgl
 
         vulkan::Renderable *CreateRenderablePlane(SceneDB *db,vulkan::Material *mtl,const PlaneCreateInfo *pci)
         {
-            const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    -0.5f,+0.5f,0.0f,   +0.5f,+0.5f,0.0f};
-                    float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f,0.0f,           0.0f,1.0f,          1.0f, 1.0f};
+            const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
+                    float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
             const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
             const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
@@ -336,7 +339,7 @@ namespace hgl
 
                 if(tex_coord)
                 {
-                    xy_tex_coord[2]=xy_tex_coord[6]=pci->tile.x;
+                    xy_tex_coord[2]=xy_tex_coord[4]=pci->tile.x;
                     xy_tex_coord[5]=xy_tex_coord[7]=pci->tile.y;
                     
                     tex_coord->BufferData(xy_tex_coord);
@@ -426,12 +429,12 @@ namespace hgl
                 for (uint j = 0; j < numberSlices; j++)
                 {
                     *tp= i      * (numberSlices + 1) + j;       ++tp;
-                    *tp=(i + 1) * (numberSlices + 1) + (j + 1); ++tp;
                     *tp=(i + 1) * (numberSlices + 1) + j;       ++tp;
+                    *tp=(i + 1) * (numberSlices + 1) + (j + 1); ++tp;
 
                     *tp= i      * (numberSlices + 1) + j;       ++tp;
-                    *tp= i      * (numberSlices + 1) + (j + 1); ++tp;
                     *tp=(i + 1) * (numberSlices + 1) + (j + 1); ++tp;
+                    *tp= i      * (numberSlices + 1) + (j + 1); ++tp;
                 }
             }
         }
@@ -543,8 +546,8 @@ namespace hgl
                 for (uint j = 0; j < numberSlices + 1; j++)
                 {
                     float x= sin(angleStep * (double) i) * sin(angleStep * (double) j);
-                    float y= sin(angleStep * (double) i) * cos(angleStep * (double) j);
-                    float z=-cos(angleStep * (double) i);
+                    float y= cos(angleStep * (double) i);
+                    float z= sin(angleStep * (double) i) * cos(angleStep * (double) j);
                     
                     *vp=x;++vp;
                     *vp=y;++vp;
@@ -1093,13 +1096,13 @@ namespace hgl
 
             *vp =  0.0f;            ++vp;
             *vp =  0.0f;            ++vp;
-            *vp =  cci->halfExtend; ++vp;
+            *vp = -cci->halfExtend; ++vp;
 
             if(np)
             {
-                *np =  0.0f;++np;
-                *np = -1.0f;++np;
-                *np =  0.0f;++np;
+                *np = 0.0f;++np;
+                *np = 0.0f;++np;
+                *np =-1.0f;++np;
             }
 
             if(tp)
@@ -1121,13 +1124,13 @@ namespace hgl
 
 		        *vp =  cosf(currentAngle) * cci->radius;++vp;
 		        *vp = -sinf(currentAngle) * cci->radius;++vp;
-		        *vp =  cci->halfExtend;                 ++vp;
+		        *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
-		            *np =  0.0f;++np;
-		            *np = -1.0f;++np;
-		            *np =  0.0f;++np;
+		            *np = 0.0f;++np;
+		            *np = 0.0f;++np;
+		            *np =-1.0f;++np;
                 }
 
                 if(tp)
@@ -1154,13 +1157,13 @@ namespace hgl
 
 			        *vp =  cosf(currentAngle) * cci->radius * (1.0f - level);   ++vp;
 			        *vp = -sinf(currentAngle) * cci->radius * (1.0f - level);   ++vp;
-			        *vp =  cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
+			        *vp = -cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
 
                     if(np)
                     {
 			            *np = h / l *  cosf(currentAngle);  ++np;
-			            *np = r / l;                        ++np;
 			            *np = h / l * -sinf(currentAngle);  ++np;
+			            *np = r / l;                        ++np;
                     }
 
                     if(tp)

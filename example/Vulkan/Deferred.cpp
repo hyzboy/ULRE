@@ -84,21 +84,21 @@ private:
     {
         vulkan::Material *      material;
         vulkan::DescriptorSets *desc_sets;
-        vulkan::Pipeline *      pipeline_line;
-        vulkan::Pipeline *      pipeline_solid;
+        vulkan::Pipeline *      pipeline_fan;
+        vulkan::Pipeline *      pipeline_triangles;
     };//
 
     SubpassParam                sp_gbuffer;
     SubpassParam                sp_composition;
 
-    vulkan::Renderable          *ro_plane_grid,
+    vulkan::Renderable          *ro_plane,
                                 *ro_cube,
                                 *ro_sphere,
                                 *ro_torus,
                                 *ro_cylinder,
                                 *ro_cone,
                                 
-                                *ro_plane;
+                                *ro_gbc_plane;
 
     vulkan::Sampler *           sampler=nullptr;
 
@@ -238,24 +238,28 @@ private:
     bool InitGBufferPipeline(SubpassParam *sp)
     {
         AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.rt);
-        pipeline_creater->Set(PRIM_TRIANGLES);
 
-        sp->pipeline_solid=pipeline_creater->Create();
+        {
+            pipeline_creater->Set(PRIM_TRIANGLES);
+
+            sp->pipeline_triangles=pipeline_creater->Create();
         
-        if(!sp->pipeline_solid)
-            return(false);
+            if(!sp->pipeline_triangles)
+                return(false);
 
-        db->Add(sp->pipeline_solid);
+            db->Add(sp->pipeline_triangles);
+        }
 
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_LINES);
+        {
+            pipeline_creater->Set(PRIM_TRIANGLE_FAN);
 
-        sp->pipeline_line=pipeline_creater->Create();
+            sp->pipeline_fan=pipeline_creater->Create();
+        
+            if(!sp->pipeline_fan)
+                return(false);
 
-        if(!sp->pipeline_line)
-            return(false);
-
-        db->Add(sp->pipeline_line);
+            db->Add(sp->pipeline_fan);
+        }
         return(true);
     }
 
@@ -267,12 +271,12 @@ private:
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(PRIM_TRIANGLE_FAN);
 
-        sp->pipeline_solid=pipeline_creater->Create();
+        sp->pipeline_triangles=pipeline_creater->Create();
 
-        if(!sp->pipeline_solid)
+        if(!sp->pipeline_triangles)
             return(false);
 
-        db->Add(sp->pipeline_solid);
+        db->Add(sp->pipeline_triangles);
         return(true);
     }
 
@@ -328,23 +332,9 @@ private:
     void CreateRenderObject(vulkan::Material *mtl)
     {
         {
-            struct PlaneGridCreateInfo pgci;
+            struct PlaneCreateInfo pci;
 
-            pgci.coord[0].Set(-100,-100,0);
-            pgci.coord[1].Set( 100,-100,0);
-            pgci.coord[2].Set( 100, 100,0);
-            pgci.coord[3].Set(-100, 100,0);
-
-            pgci.step.u=20;
-            pgci.step.v=20;
-
-            pgci.side_step.u=10;
-            pgci.side_step.v=10;
-
-            pgci.color.Set(0.75,0,0,1);
-            pgci.side_color.Set(1,0,0,1);
-
-            ro_plane_grid=CreateRenderablePlaneGrid(db,mtl,&pgci);
+            ro_plane=CreateRenderablePlane(db,mtl,&pci);
         }
         
         {
@@ -392,20 +382,20 @@ private:
 
     bool InitCompositionRenderable()
     {
-        ro_plane=CreateRenderableGBufferComposition(db,sp_composition.material);
+        ro_gbc_plane=CreateRenderableGBufferComposition(db,sp_composition.material);
 
-        return ro_plane;
+        return ro_gbc_plane;
     }
     
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_line,sp->desc_sets,ro_plane_grid));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_torus    ),translate(0,0,25));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_sphere   ),scale(25,25,25));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_cube     ),translate(-16,  0,15)*scale(10,10,10));        
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_cylinder ),translate( 16, 16,10)*scale(1,1,2));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_solid,sp->desc_sets,ro_cone     ),translate(  0,-16, 0)*scale(1,1,2));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_fan,sp->desc_sets,ro_plane),scale(100,100,1));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_torus    ),translate(0,0,0));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_sphere   ),scale(20,20,20));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cube     ),translate(-30,  0,10)*scale(10,10,10));        
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cylinder ),translate( 30, 30,10)*scale(1,1,2));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cone     ),translate(  0,-30, 0)*scale(1,1,2));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -472,9 +462,9 @@ public:
     void BuildCommandBuffer(uint32_t index) override
     {    
         VulkanApplicationFramework::BuildCommandBuffer( index,
-                                                        sp_composition.pipeline_solid,
+                                                        sp_composition.pipeline_triangles,
                                                         sp_composition.desc_sets,
-                                                        ro_plane);
+                                                        ro_gbc_plane);
     }
 };//class TestApp:public CameraAppFramework
 
