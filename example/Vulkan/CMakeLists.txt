@@ -22,3 +22,5 @@ CreateProject(7.InlineGeometryScene InlineGeometryScene.cpp)
 CreateProject(8.Atomsphere Atomsphere.cpp)
 
 CreateProject(9.Deferred Deferred.cpp TGATexture.cpp)
+
+CreateProject(10.TextureFormat TextureFormat.cpp TGATexture.cpp)

@@ -86,7 +86,7 @@ bool SubmitQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
 
     return(result==VK_SUCCESS);
 }
-    
+
 bool SubmitQueue::Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem)
 {
     return Submit(&cmd_buf,1,wait_sem,complete_sem);
@@ -149,9 +149,9 @@ bool SwapchainRenderTarget::PresentBackbuffer(vulkan::Semaphore *render_complete
 {
     VkSemaphore sem=*render_complete_semaphore;
 
-    present_info.waitSemaphoreCount=1;
-    present_info.pWaitSemaphores=&sem;
-    present_info.pImageIndices=&current_frame;
+    present_info.waitSemaphoreCount =1;
+    present_info.pWaitSemaphores    =&sem;
+    present_info.pImageIndices      =&current_frame;
 
     VkResult result=vkQueuePresentKHR(queue,&present_info);
     
