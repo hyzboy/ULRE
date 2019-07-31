@@ -18,5 +18,5 @@ void main()
 {
     FragmentTexCoord=TexCoord;
 
-    gl_Position=vec4(Vertex,0.0,1.0)*world.mvp;
+    gl_Position=vec4(Vertex,0.0,1.0)*world.ortho;
 }
