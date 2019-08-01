@@ -11,8 +11,11 @@ void DescriptorSets::Clear()
     desc_image_info.ClearData();
 }
 
-bool DescriptorSets::BindUBO(const uint32_t binding,const Buffer *buf)
+bool DescriptorSets::BindUBO(const int binding,const Buffer *buf)
 {
+    if(binding<0||!buf)
+        return(false);
+
     VkWriteDescriptorSet writeDescriptorSet;
 
     writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -30,8 +33,11 @@ bool DescriptorSets::BindUBO(const uint32_t binding,const Buffer *buf)
     return(true);
 }
 
-bool DescriptorSets::BindUBODynamic(const uint32_t binding,const Buffer *buf)
+bool DescriptorSets::BindUBODynamic(const int binding,const Buffer *buf)
 {
+    if(binding<0||!buf)
+        return(false);
+
     VkWriteDescriptorSet writeDescriptorSet;
 
     writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -49,9 +55,9 @@ bool DescriptorSets::BindUBODynamic(const uint32_t binding,const Buffer *buf)
     return(true);
 }
 
-bool DescriptorSets::BindSampler(const uint32_t binding,Texture *tex,Sampler *sampler)
+bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler)
 {
-    if(!tex||!sampler)
+    if(binding<0||!tex||!sampler)
         return(false);
 
     VkDescriptorImageInfo *image_info=new VkDescriptorImageInfo;
