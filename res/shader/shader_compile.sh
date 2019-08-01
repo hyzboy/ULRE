@@ -23,3 +23,8 @@ glslangValidator -V -o gbuffer_composition.frag.spv gbuffer_composition.frag
 
 glslangValidator -V -o gbuffer_debug.vert.spv gbuffer_debug.vert
 glslangValidator -V -o gbuffer_debug.frag.spv gbuffer_debug.frag
+
+glslangValidator -V -o drand48.frag.spv drand48.frag
+
+glslangValidator -V -o Texture2D.vert.spv Texture2D.vert
+glslangValidator -V -o hqfilter.frag.spv hqfilter.frag
