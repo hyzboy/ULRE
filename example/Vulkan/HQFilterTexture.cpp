@@ -131,7 +131,7 @@ private:
 
     bool InitTexture()
     {
-        texture=vulkan::LoadTGATexture(OS_TEXT("res/image/Gear.tga"),device);
+        texture=vulkan::LoadTGATexture(OS_TEXT("res/image/noise32.tga"),device);
         return texture;
     }
 
