@@ -48,7 +48,7 @@ private:
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert.spv"),
-                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
+                                               OS_TEXT("res/shader/drand48.frag.spv"));
         if(!material)
             return(false);
 
@@ -161,7 +161,7 @@ public:
         return(true);
     }
 
-    void Resize(int w,int h)
+    void Resize(int w,int h) override
     {
         BuildCommandBuffer(&render_list);
     }
