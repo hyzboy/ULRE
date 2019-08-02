@@ -87,13 +87,11 @@ private:
 
     bool InitScene()
     {
-        const float rad90=hgl_ang2rad(90);
-        
         render_root.Add(db->CreateRenderableInstance(m2d.pipeline,m2d.descriptor_sets,ro_round_rectangle));
 
         render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[0]));
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[1]),rotate(rad90,0,1,0));
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[2]),rotate(rad90,1,0,0));
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[1]),rotate(HGL_RAD_90,0,1,0));
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[2]),rotate(HGL_RAD_90,1,0,0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
