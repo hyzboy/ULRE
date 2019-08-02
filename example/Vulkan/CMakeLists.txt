@@ -7,7 +7,7 @@
     ENDIF()
 endmacro()
 
-CreateProject(00.triangle main.cpp)
+CreateProject(00.triangle first_triangle.cpp)
 CreateProject(01.indices_rect indices_rect.cpp)
 CreateProject(02.texture_rect texture_rect.cpp TGATexture.cpp)
 CreateProject(03.HQFilterTexture HQFilterTexture.cpp TGATexture.cpp)
