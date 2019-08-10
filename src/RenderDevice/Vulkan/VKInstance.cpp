@@ -159,8 +159,8 @@ Instance *CreateInstance(const UTF8String &app_name)
 
 //        "VK_LAYER_NV_nsight-sys",
 
-        "VK_LAYER_GOOGLE_unique_objects",
-        "VK_LAYER_GOOGLE_threading"
+//        "VK_LAYER_GOOGLE_unique_objects",
+//        "VK_LAYER_GOOGLE_threading"
     };
 
     inst_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -207,24 +207,40 @@ Instance::Instance(VkInstance i,CharPointerList &el)
 
     debug_report_callback=VK_NULL_HANDLE;
     {
-        VkDebugReportCallbackCreateInfoEXT create_info={};
+        VkDebugReportCallbackCreateInfoEXT create_info;
 
-        create_info.sType=VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-        create_info.pNext=nullptr;
-        create_info.flags=VK_DEBUG_REPORT_ERROR_BIT_EXT|VK_DEBUG_REPORT_WARNING_BIT_EXT|VK_DEBUG_REPORT_DEBUG_BIT_EXT|VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-        create_info.pfnCallback=dbgFunc;
-        create_info.pUserData=nullptr;
+        create_info.sType       =VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+        create_info.pNext       =nullptr;
+
+        create_info.flags       =VK_DEBUG_REPORT_ERROR_BIT_EXT
+                                |VK_DEBUG_REPORT_WARNING_BIT_EXT
+                                |VK_DEBUG_REPORT_DEBUG_BIT_EXT
+                                |VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+
+        create_info.pfnCallback =dbgFunc;
+        create_info.pUserData   =nullptr;
 
         CreateDebugReportCallbackEXT(inst,&create_info,nullptr,&debug_report_callback);
     }
 
     debug_messenger=VK_NULL_HANDLE;
     {
-        VkDebugUtilsMessengerCreateInfoEXT createInfo={};
-        createInfo.sType=VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity=VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType=VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback=debugCallback;
+        VkDebugUtilsMessengerCreateInfoEXT createInfo;
+
+        createInfo.sType            =VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.pNext            =nullptr;
+        createInfo.flags            =0;
+
+        createInfo.messageSeverity  =VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+                                    |VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+                                    |VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+        createInfo.messageType      =VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+                                    |VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+                                    |VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+        createInfo.pfnUserCallback  =debugCallback;
+        createInfo.pUserData        =nullptr;
 
         CreateDebugUtilsMessengerEXT(inst,&createInfo,nullptr,&debug_messenger);
     }
