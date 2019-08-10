@@ -42,10 +42,12 @@ SET(ULRE    ULRE.Base
             ULRE.Platform
             MathGeoLib
             spirv-cross-core
+            glslang
             jsoncpp_lib
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/glslang/glslang/Include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
@@ -59,6 +61,7 @@ add_subdirectory(${SPIRV_CROSS_PATH})
 
 SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_subdirectory(3rdpty/glslang)
 add_subdirectory(3rdpty/MathGeoLib)
 add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(3rdpty/assimp)
