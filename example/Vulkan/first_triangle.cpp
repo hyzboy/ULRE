@@ -4,6 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/shader/glsl2spv.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -159,6 +160,8 @@ public:
 
 int main(int,char **)
 {
+    hgl::graph::InitDefaultShaderBuildResource();
+
     TestApp app;
 
     if(!app.Init())

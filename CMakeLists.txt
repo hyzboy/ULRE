@@ -37,17 +37,18 @@ add_definitions(-DMATH_AVX)
 
 SET(ULRE    ULRE.Base
             ULRE.Util
+            ULRE.Shader
             ULRE.RenderDevice.Vulkan
             ULRE.SceneGraph
             ULRE.Platform
             MathGeoLib
             spirv-cross-core
-            glslang
+            SPIRV
             jsoncpp_lib
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/glslang/glslang/Include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/glslang)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
