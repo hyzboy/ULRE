@@ -111,7 +111,7 @@ VkFormat PhysicalDevice::GetDepthFormat(bool lower_to_high)const
     constexpr VkFormat depthFormats[] =
     {
         FMT_D16UN,
-        FMT_X8_D24,
+        FMT_X8_D24UN,
         FMT_D16UN_S8U,
         FMT_D24UN_S8U,
         FMT_D32F,
