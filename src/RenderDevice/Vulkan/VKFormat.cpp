@@ -4,182 +4,204 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-#ifdef _DEBUG
-    struct StrideByFormat
+    //enum class ColorDataTypeEnum:uint8
+    //{
+    //    X=0,
+    //    R,G,B,A,DEPTH,STENCIL
+    //};
+
+    //enum class ColorDataType:uint8
+    //{
+    //    UNORM=1,
+    //    SNORM,
+    //    USCALED,
+    //    SSCALE,
+    //    UINT,
+    //    SINT,
+    //    UFLOAT,
+    //    SFLOAT,
+    //    SRGB,
+    //};//
+
+    struct VulkanTextureFormat
     {
-        VkFormat format;        //格式，此值保留仅为参考
-        uint32_t bytes;
+#ifdef _DEBUG
+        VkFormat format;        ///<Vulkan格式，此值保留仅为参考
+#endif//_DEBUG
+
+        uint32_t bytes;         ///<每象素字节数
+
+        char name[16];          ///<名称
     };
 
-    #define STRIDE_BY_FORMAT(vktype,size)   {VK_FORMAT_##vktype,size}
+    #define VULKAN_TEXTURE_FORMAT_DEFINE(name,size)   {FMT_##name,size,#name}
 
-    constexpr StrideByFormat stride_list[]=
-#else
-
-    #define STRIDE_BY_FORMAT(vktype,size)   size
-
-    constexpr uint32_t stride_list[]=
-#endif//
+    constexpr VulkanTextureFormat vulkan_format_list[]=
     {
-        STRIDE_BY_FORMAT(UNDEFINED,                   0),
+        VULKAN_TEXTURE_FORMAT_DEFINE(UNDEFINED,     0),
 
-        STRIDE_BY_FORMAT(R4G4_UNORM_PACK8,            1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG4UN,         1),
 
-        STRIDE_BY_FORMAT(R4G4B4A4_UNORM_PACK16,       2),
-        STRIDE_BY_FORMAT(B4G4R4A4_UNORM_PACK16,       2),
-        STRIDE_BY_FORMAT(R5G6B5_UNORM_PACK16,         2),
-        STRIDE_BY_FORMAT(B5G6R5_UNORM_PACK16,         2),
-        STRIDE_BY_FORMAT(R5G5B5A1_UNORM_PACK16,       2),
-        STRIDE_BY_FORMAT(B5G5R5A1_UNORM_PACK16,       2),
-        STRIDE_BY_FORMAT(A1R5G5B5_UNORM_PACK16,       2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA4,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA4,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB565,        2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR565,        2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB5A1,        2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR5A1,        2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A1RGB5,        2),
 
-        STRIDE_BY_FORMAT(R8_UNORM,                    1),
-        STRIDE_BY_FORMAT(R8_SNORM,                    1),
-        STRIDE_BY_FORMAT(R8_USCALED,                  1),
-        STRIDE_BY_FORMAT(R8_SSCALED,                  1),
-        STRIDE_BY_FORMAT(R8_UINT,                     1),
-        STRIDE_BY_FORMAT(R8_SINT,                     1),
-        STRIDE_BY_FORMAT(R8_SRGB,                     1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R8UN,          1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R8SN,          1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R8US,          1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R8SS,          1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R8U,           1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R8I,           1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R8s,           1),
 
-        STRIDE_BY_FORMAT(R8G8_UNORM,                  2),
-        STRIDE_BY_FORMAT(R8G8_SNORM,                  2),
-        STRIDE_BY_FORMAT(R8G8_USCALED,                2),
-        STRIDE_BY_FORMAT(R8G8_SSCALED,                2),
-        STRIDE_BY_FORMAT(R8G8_UINT,                   2),
-        STRIDE_BY_FORMAT(R8G8_SINT,                   2),
-        STRIDE_BY_FORMAT(R8G8_SRGB,                   2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG8UN,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG8SN,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG8US,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG8SS,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG8U,          2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG8I,          2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG8s,          2),
 
-        STRIDE_BY_FORMAT(R8G8B8_UNORM,                3),
-        STRIDE_BY_FORMAT(R8G8B8_SNORM,                3),
-        STRIDE_BY_FORMAT(R8G8B8_USCALED,              3),
-        STRIDE_BY_FORMAT(R8G8B8_SSCALED,              3),
-        STRIDE_BY_FORMAT(R8G8B8_UINT,                 3),
-        STRIDE_BY_FORMAT(R8G8B8_SINT,                 3),
-        STRIDE_BY_FORMAT(R8G8B8_SRGB,                 3),
-        STRIDE_BY_FORMAT(B8G8R8_UNORM,                3),
-        STRIDE_BY_FORMAT(B8G8R8_SNORM,                3),
-        STRIDE_BY_FORMAT(B8G8R8_USCALED,              3),
-        STRIDE_BY_FORMAT(B8G8R8_SSCALED,              3),
-        STRIDE_BY_FORMAT(B8G8R8_UINT,                 3),
-        STRIDE_BY_FORMAT(B8G8R8_SINT,                 3),
-        STRIDE_BY_FORMAT(B8G8R8_SRGB,                 3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8UN,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8SN,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8US,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8SS,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8U,         3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8I,         3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8s,         3),
+        
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8UN,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8SN,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8US,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8SS,        3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8U,         3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8I,         3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8s,         3),
 
-        STRIDE_BY_FORMAT(R8G8B8A8_UNORM,              4),
-        STRIDE_BY_FORMAT(R8G8B8A8_SNORM,              4),
-        STRIDE_BY_FORMAT(R8G8B8A8_USCALED,            4),
-        STRIDE_BY_FORMAT(R8G8B8A8_SSCALED,            4),
-        STRIDE_BY_FORMAT(R8G8B8A8_UINT,               4),
-        STRIDE_BY_FORMAT(R8G8B8A8_SINT,               4),
-        STRIDE_BY_FORMAT(R8G8B8A8_SRGB,               4),
-        STRIDE_BY_FORMAT(B8G8R8A8_UNORM,              4),
-        STRIDE_BY_FORMAT(B8G8R8A8_SNORM,              4),
-        STRIDE_BY_FORMAT(B8G8R8A8_USCALED,            4),
-        STRIDE_BY_FORMAT(B8G8R8A8_SSCALED,            4),
-        STRIDE_BY_FORMAT(B8G8R8A8_UINT,               4),
-        STRIDE_BY_FORMAT(B8G8R8A8_SINT,               4),
-        STRIDE_BY_FORMAT(B8G8R8A8_SRGB,               4),
-        STRIDE_BY_FORMAT(A8B8G8R8_UNORM_PACK32,       4),
-        STRIDE_BY_FORMAT(A8B8G8R8_SNORM_PACK32,       4),
-        STRIDE_BY_FORMAT(A8B8G8R8_USCALED_PACK32,     4),
-        STRIDE_BY_FORMAT(A8B8G8R8_SSCALED_PACK32,     4),
-        STRIDE_BY_FORMAT(A8B8G8R8_UINT_PACK32,        4),
-        STRIDE_BY_FORMAT(A8B8G8R8_SINT_PACK32,        4),
-        STRIDE_BY_FORMAT(A8B8G8R8_SRGB_PACK32,        4),
-        STRIDE_BY_FORMAT(A2R10G10B10_UNORM_PACK32,    4),
-        STRIDE_BY_FORMAT(A2R10G10B10_SNORM_PACK32,    4),
-        STRIDE_BY_FORMAT(A2R10G10B10_USCALED_PACK32,  4),
-        STRIDE_BY_FORMAT(A2R10G10B10_SSCALED_PACK32,  4),
-        STRIDE_BY_FORMAT(A2R10G10B10_UINT_PACK32,     4),
-        STRIDE_BY_FORMAT(A2R10G10B10_SINT_PACK32,     4),
-        STRIDE_BY_FORMAT(A2B10G10R10_UNORM_PACK32,    4),
-        STRIDE_BY_FORMAT(A2B10G10R10_SNORM_PACK32,    4),
-        STRIDE_BY_FORMAT(A2B10G10R10_USCALED_PACK32,  4),
-        STRIDE_BY_FORMAT(A2B10G10R10_SSCALED_PACK32,  4),
-        STRIDE_BY_FORMAT(A2B10G10R10_UINT_PACK32,     4),
-        STRIDE_BY_FORMAT(A2B10G10R10_SINT_PACK32,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8UN,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8SN,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8US,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8SS,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8U,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8I,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8s,        4),
 
-        STRIDE_BY_FORMAT(R16_UNORM,                   2),
-        STRIDE_BY_FORMAT(R16_SNORM,                   2),
-        STRIDE_BY_FORMAT(R16_USCALED,                 2),
-        STRIDE_BY_FORMAT(R16_SSCALED,                 2),
-        STRIDE_BY_FORMAT(R16_UINT,                    2),
-        STRIDE_BY_FORMAT(R16_SINT,                    2),
-        STRIDE_BY_FORMAT(R16_SFLOAT,                  2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8UN,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8SN,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8US,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8SS,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8U,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8I,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8s,        4),
 
-        STRIDE_BY_FORMAT(R16G16_UNORM,                4),
-        STRIDE_BY_FORMAT(R16G16_SNORM,                4),
-        STRIDE_BY_FORMAT(R16G16_USCALED,              4),
-        STRIDE_BY_FORMAT(R16G16_SSCALED,              4),
-        STRIDE_BY_FORMAT(R16G16_UINT,                 4),
-        STRIDE_BY_FORMAT(R16G16_SINT,                 4),
-        STRIDE_BY_FORMAT(R16G16_SFLOAT,               4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8UN,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8SN,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8US,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8SS,       4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8U,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8I,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8s,        4),
 
-        STRIDE_BY_FORMAT(R16G16B16_UNORM,             6),
-        STRIDE_BY_FORMAT(R16G16B16_SNORM,             6),
-        STRIDE_BY_FORMAT(R16G16B16_USCALED,           6),
-        STRIDE_BY_FORMAT(R16G16B16_SSCALED,           6),
-        STRIDE_BY_FORMAT(R16G16B16_UINT,              6),
-        STRIDE_BY_FORMAT(R16G16B16_SINT,              6),
-        STRIDE_BY_FORMAT(R16G16B16_SFLOAT,            6),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10UN,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10SN,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10US,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10SS,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10U,      4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10I,      4),
 
-        STRIDE_BY_FORMAT(R16G16B16A16_UNORM,          8),
-        STRIDE_BY_FORMAT(R16G16B16A16_SNORM,          8),
-        STRIDE_BY_FORMAT(R16G16B16A16_USCALED,        8),
-        STRIDE_BY_FORMAT(R16G16B16A16_SSCALED,        8),
-        STRIDE_BY_FORMAT(R16G16B16A16_UINT,           8),
-        STRIDE_BY_FORMAT(R16G16B16A16_SINT,           8),
-        STRIDE_BY_FORMAT(R16G16B16A16_SFLOAT,         8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10UN,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10SN,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10US,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10SS,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10U,      4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10I,      4),
 
-        STRIDE_BY_FORMAT(R32_UINT,                    4),
-        STRIDE_BY_FORMAT(R32_SINT,                    4),
-        STRIDE_BY_FORMAT(R32_SFLOAT,                  4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R16UN,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R16SN,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R16US,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R16SS,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R16U,          2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R16I,          2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R16F,          2),
 
-        STRIDE_BY_FORMAT(R32G32_UINT,                 8),
-        STRIDE_BY_FORMAT(R32G32_SINT,                 8),
-        STRIDE_BY_FORMAT(R32G32_SFLOAT,               8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG16UN,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG16SN,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG16US,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG16SS,        4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG16U,         4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG16I,         4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG16F,         4),
 
-        STRIDE_BY_FORMAT(R32G32B32_UINT,              12),
-        STRIDE_BY_FORMAT(R32G32B32_SINT,              12),
-        STRIDE_BY_FORMAT(R32G32B32_SFLOAT,            12),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16UN,       6),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16SN,       6),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16US,       6),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16SS,       6),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16U,        6),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16I,        6),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16F,        6),
 
-        STRIDE_BY_FORMAT(R32G32B32A32_UINT,           16),
-        STRIDE_BY_FORMAT(R32G32B32A32_SINT,           16),
-        STRIDE_BY_FORMAT(R32G32B32A32_SFLOAT,         16),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16UN,      8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16SN,      8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16US,      8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16SS,      8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16U,       8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16I,       8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16F,       8),
 
-        STRIDE_BY_FORMAT(R64_UINT,                    8),
-        STRIDE_BY_FORMAT(R64_SINT,                    8),
-        STRIDE_BY_FORMAT(R64_SFLOAT,                  8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R32U,          4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R32I,          4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R32F,          4),
 
-        STRIDE_BY_FORMAT(R64G64_UINT,                 16),
-        STRIDE_BY_FORMAT(R64G64_SINT,                 16),
-        STRIDE_BY_FORMAT(R64G64_SFLOAT,               16),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG32U,         8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG32I,         8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG32F,         8),
 
-        STRIDE_BY_FORMAT(R64G64B64_UINT,              24),
-        STRIDE_BY_FORMAT(R64G64B64_SINT,              24),
-        STRIDE_BY_FORMAT(R64G64B64_SFLOAT,            24),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB32U,        12),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB32I,        12),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB32F,        12),
 
-        STRIDE_BY_FORMAT(R64G64B64A64_UINT,           32),
-        STRIDE_BY_FORMAT(R64G64B64A64_SINT,           32),
-        STRIDE_BY_FORMAT(R64G64B64A64_SFLOAT,         32),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA32U,       16),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA32I,       16),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA32F,       16),
 
-        STRIDE_BY_FORMAT(B10G11R11_UFLOAT_PACK32,     4),
-        STRIDE_BY_FORMAT(E5B9G9R9_UFLOAT_PACK32,      4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R64U,          8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R64I,          8),
+        VULKAN_TEXTURE_FORMAT_DEFINE(R64F,          8),
 
-        STRIDE_BY_FORMAT(D16_UNORM,                   2),
-        STRIDE_BY_FORMAT(X8_D24_UNORM_PACK32,         4),
-        STRIDE_BY_FORMAT(D32_SFLOAT,                  4),
-        STRIDE_BY_FORMAT(S8_UINT,                     1),
-        STRIDE_BY_FORMAT(D16_UNORM_S8_UINT,           3),
-        STRIDE_BY_FORMAT(D24_UNORM_S8_UINT,           4),
-        STRIDE_BY_FORMAT(D32_SFLOAT_S8_UINT,          5)
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG64U,         16),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG64I,         16),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RG64F,         16),
+
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB64U,        24),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB64I,        24),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGB64F,        24),
+
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA64U,       32),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA64I,       32),
+        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA64F,       32),
+
+        VULKAN_TEXTURE_FORMAT_DEFINE(B10GR11UF,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(E5BGR9UF,      4),
+
+        VULKAN_TEXTURE_FORMAT_DEFINE(D16UN,         2),
+        VULKAN_TEXTURE_FORMAT_DEFINE(X8_D24UN,      4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(D32F,          4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(S8U,           1),
+        VULKAN_TEXTURE_FORMAT_DEFINE(D16UN_S8U,     3),
+        VULKAN_TEXTURE_FORMAT_DEFINE(D24UN_S8U,     4),
+        VULKAN_TEXTURE_FORMAT_DEFINE(D32F_S8U,      5)
     };
 
 #ifdef _DEBUG
-    constexpr uint32_t STRIDE_FORMAT_COUNT=sizeof(stride_list)/sizeof(StrideByFormat);
+    constexpr size_t TEXTURE_FORMAT_COUNT=sizeof(vulkan_format_list)/sizeof(VulkanTextureFormat);
 
     uint32_t GetStrideBytesByFormat(const VkFormat &format)
     {
-        if(format<=VK_FORMAT_UNDEFINED||format>=STRIDE_FORMAT_COUNT)return(0);
+        if(format<=VK_FORMAT_UNDEFINED||format>=TEXTURE_FORMAT_COUNT)return(0);
 
         if(format<=VK_FORMAT_UNDEFINED
          ||format>=VK_FORMAT_BC1_RGB_UNORM_BLOCK)return 0;
@@ -220,10 +242,10 @@ namespace
 #ifdef _DEBUG
 bool CheckStrideBytesByFormat()
 {
-    for(uint32 i=0;i<STRIDE_FORMAT_COUNT;i++)
+    for(uint32 i=0;i<TEXTURE_FORMAT_COUNT;i++)
     {
-        if(stride_list[i].format!=i)return(false);
-        if(stride_list[i].bytes!=GetStrideBytesByFormat(stride_list[i].format))return(false);
+        if(vulkan_format_list[i].format!=i)return(false);
+        if(vulkan_format_list[i].bytes!=GetStrideBytesByFormat(vulkan_format_list[i].format))return(false);
     }
 
     return(true);
@@ -232,12 +254,15 @@ bool CheckStrideBytesByFormat()
 
 uint32_t GetStrideByFormat(const VkFormat &format)
 {
-    if(format<=VK_FORMAT_UNDEFINED||format>=STRIDE_FORMAT_COUNT)return(0);
+    if(format<=VK_FORMAT_UNDEFINED||format>=TEXTURE_FORMAT_COUNT)return(0);
 
-    #ifdef _DEBUG
-        return stride_list[format].bytes;
-    #else
-        return stride_list[format];
-    #endif//_DEBUG
+    return vulkan_format_list[format].bytes;
+}
+
+const char *GetColorFormatName(const VkFormat &format)
+{
+    if(format<=VK_FORMAT_UNDEFINED||format>=TEXTURE_FORMAT_COUNT)return(nullptr);
+    
+    return vulkan_format_list[format].name;
 }
 VK_NAMESPACE_END

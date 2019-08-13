@@ -184,7 +184,8 @@ namespace hgl
                 return false;
             }
 
-            glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
+            glslang::GlslangToSpv(*program.getIntermediate(stage),spirv);
+            return(true);
         }
     }//namespace graph
 }//namespace hgl

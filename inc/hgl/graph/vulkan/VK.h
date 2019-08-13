@@ -8,7 +8,10 @@
 #include<hgl/graph/vulkan/VKFormat.h>
 #include<hgl/graph/vulkan/VKPrimivate.h>
 
-#define VK_NAMESPACE hgl::graph::vulkan
+#define VK_NAMESPACE        hgl::graph::vulkan
+
+#define VK_NAMESPACE_USING  using namespace VK_NAMESPACE;
+
 #define VK_NAMESPACE_BEGIN  namespace hgl{namespace graph{namespace vulkan{
 #define VK_NAMESPACE_END    }}}
 
@@ -84,7 +87,8 @@ inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d)
 bool CheckStrideBytesByFormat();                ///<检验所有数据类型长度数组是否符合规则
 #endif//_DEBUG
 
-uint32_t GetStrideByFormat(const VkFormat &);   ///<根据数据类型获取访类型单个数据长度字节数
+uint32_t GetStrideByFormat(const VkFormat &);       ///<根据数据类型获取得类型单个数据长度字节数
+const char *GetColorFormatName(const VkFormat &);   ///<根据数据类型获取得类型名称
 
 inline void debug_out(const hgl::List<VkLayerProperties> &layer_properties)
 {
