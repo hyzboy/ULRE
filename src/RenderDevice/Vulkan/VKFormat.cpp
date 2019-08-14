@@ -225,6 +225,14 @@ namespace
         if(format==VK_FORMAT_D24_UNORM_S8_UINT)return 4;
         if(format==VK_FORMAT_D32_SFLOAT_S8_UINT)return 5;
 
+        if(format==VK_FORMAT_R10X6_UNORM_PACK16)return 2;
+        if(format==VK_FORMAT_R10X6G10X6_UNORM_2PACK16)return 4;
+        if(format==VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16)return 8;
+
+        if(format==VK_FORMAT_R12X4_UNORM_PACK16)return 2;
+        if(format==VK_FORMAT_R12X4G12X4_UNORM_2PACK16)return 4;
+        if(format==VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16)return 8;
+
         return(0);
     }
 #else
