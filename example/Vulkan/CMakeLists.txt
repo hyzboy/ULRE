@@ -24,4 +24,4 @@ CreateProject(09.Atomsphere Atomsphere.cpp)
 
 CreateProject(10.Deferred Deferred.cpp TGATexture.cpp)
 
-CreateProject(11.TextureFormat TextureFormat.cpp TGATexture.cpp)
+CreateProject(11.TextureFormat TextureFormat.cpp)
