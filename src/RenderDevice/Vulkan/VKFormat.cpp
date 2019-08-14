@@ -1,7 +1,6 @@
-﻿#include<hgl/graph/vulkan/VK.h>
+﻿#include<hgl/graph/vulkan/VKFormat.h>
 
 VK_NAMESPACE_BEGIN
-
 namespace
 {
     //enum class ColorDataTypeEnum:uint8
@@ -10,194 +9,188 @@ namespace
     //    R,G,B,A,DEPTH,STENCIL
     //};
 
-    //enum class ColorDataType:uint8
-    //{
-    //    UNORM=1,
-    //    SNORM,
-    //    USCALED,
-    //    SSCALE,
-    //    UINT,
-    //    SINT,
-    //    UFLOAT,
-    //    SFLOAT,
-    //    SRGB,
-    //};//
+    #define VULKAN_FORMAT_DEFINE(id,size,name,compress,color,depth,stencil) {id,size,name,TextureCompressType::compress,VulkanDataType::color,VulkanDataType::depth,VulkanDataType::stencil}
 
-    struct VulkanTextureFormat
+    #define COLOR_FORMAT_DEFINE(name,size,color)            VULKAN_FORMAT_DEFINE(FMT_##name,size,#name,NONE,    color,NONE,NONE)
+    #define COMPRESS_FORMAT_DEFINE(id,name,compress,color)  VULKAN_FORMAT_DEFINE(id,0,name,compress,color,NONE,NONE)
+    
+    #define DEPTH_FORMAT_DEFINE(name,size,type)             VULKAN_FORMAT_DEFINE(FMT_##name,size,#name,NONE,NONE,type,  NONE)
+    #define STENCIL_FORMAT_DEFINE(name,size,type)           VULKAN_FORMAT_DEFINE(FMT_##name,size,#name,NONE,NONE,NONE,  type)
+    #define DEPTH_STENCIL_FORMAT_DEFINE(name,size,dt,st)    VULKAN_FORMAT_DEFINE(FMT_##name,size,#name,NONE,NONE,dt,    st  )
+
+
+    #define S3TC_Us_FORMAT_DEFINE(name)         COMPRESS_FORMAT_DEFINE(FMT_##name##UN,#name "UN",S3TC,UNORM),   \
+                                                COMPRESS_FORMAT_DEFINE(FMT_##name##s,#name "s",S3TC,SRGB)
+
+    #define S3TC_NORM_FORMAT_DEFINE(name)       COMPRESS_FORMAT_DEFINE(FMT_##name##UN,#name "UN",S3TC,UNORM),   \
+                                                COMPRESS_FORMAT_DEFINE(FMT_##name##SN,#name "SN",S3TC,SNORM)
+
+    #define S3TC_FLOAT_FORMAT_DEFINE(name)      COMPRESS_FORMAT_DEFINE(FMT_##name##UF,#name "UF",S3TC,UFLOAT),   \
+                                                COMPRESS_FORMAT_DEFINE(FMT_##name##SF,#name "SF",S3TC,SFLOAT)
+
+    #define ETC2_FORMAT_DEFINE(name)            COMPRESS_FORMAT_DEFINE(FMT_ETC2_##name##UN,"ETC2" #name "UN",ETC2,UNORM),   \
+                                                COMPRESS_FORMAT_DEFINE(FMT_ETC2_##name##s,"ETC2" #name "s",ETC2,SRGB)
+
+    #define EAC_FORMAT_DEFINE(name)             COMPRESS_FORMAT_DEFINE(FMT_EAC_##name##UN,"EAC" #name "UN",EAC,UNORM),   \
+                                                COMPRESS_FORMAT_DEFINE(FMT_EAC_##name##SN,"EAC" #name "SN",EAC,SNORM)
+
+    #define ASTC_FORMAT_DEFINE(mat)             COMPRESS_FORMAT_DEFINE(FMT_ASTC_##mat##UN,"ASTC" #mat "UN",ASTC,UNORM),  \
+                                                COMPRESS_FORMAT_DEFINE(FMT_ASTC_##mat##s,"ASTC" #mat "s",ASTC,SRGB)
+
+    #define YUV_FORMAT_DEFINE(name)             COMPRESS_FORMAT_DEFINE(FMT_##name,#name,YUV,UNORM)
+
+    #define PVRTC_FORMAT_DEFINE(level,bpp)      COMPRESS_FORMAT_DEFINE(FMT_PVRTC##level##_##bpp##UN,"PVRTC" #level "_" #bpp "UN",PVRTC,UNORM),    \
+                                                COMPRESS_FORMAT_DEFINE(FMT_PVRTC##level##_##bpp##s,"PVRTC" #level "_" #bpp "s",PVRTC,SRGB)
+
+    constexpr VulkanFormat vulkan_color_format_list[]=
     {
-#ifdef _DEBUG
-        VkFormat format;        ///<Vulkan格式，此值保留仅为参考
-#endif//_DEBUG
+        COLOR_FORMAT_DEFINE(UNDEFINED,     0,UNORM),
 
-        uint32_t bytes;         ///<每象素字节数
+        COLOR_FORMAT_DEFINE(RG4UN,         1,UNORM),
 
-        char name[16];          ///<名称
-    };
+        COLOR_FORMAT_DEFINE(RGBA4,         2,UNORM),
+        COLOR_FORMAT_DEFINE(BGRA4,         2,UNORM),
+        COLOR_FORMAT_DEFINE(RGB565,        2,UNORM),
+        COLOR_FORMAT_DEFINE(BGR565,        2,UNORM),
+        COLOR_FORMAT_DEFINE(RGB5A1,        2,UNORM),
+        COLOR_FORMAT_DEFINE(BGR5A1,        2,UNORM),
+        COLOR_FORMAT_DEFINE(A1RGB5,        2,UNORM),
 
-    #define VULKAN_TEXTURE_FORMAT_DEFINE(name,size)   {FMT_##name,size,#name}
+        #define COLOR_6_FORMAT_DEFINE(type,byte)    COLOR_FORMAT_DEFINE(type##UN,          byte,UNORM), \
+                                                    COLOR_FORMAT_DEFINE(type##SN,          byte,SNORM), \
+                                                    COLOR_FORMAT_DEFINE(type##US,          byte,USCALED), \
+                                                    COLOR_FORMAT_DEFINE(type##SS,          byte,SSCALED), \
+                                                    COLOR_FORMAT_DEFINE(type##U,           byte,UINT), \
+                                                    COLOR_FORMAT_DEFINE(type##I,           byte,SINT), \
 
-    constexpr VulkanTextureFormat vulkan_format_list[]=
-    {
-        VULKAN_TEXTURE_FORMAT_DEFINE(UNDEFINED,     0),
+        #define COLOR_7s_FORMAT_DEFINE(type,byte)   COLOR_6_FORMAT_DEFINE(type,byte)                    \
+                                                    COLOR_FORMAT_DEFINE(type##s,           byte,SRGB),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG4UN,         1),
+        #define COLOR_7F_FORMAT_DEFINE(type,byte)   COLOR_6_FORMAT_DEFINE(type,byte)                    \
+                                                    COLOR_FORMAT_DEFINE(type##F,           byte,SFLOAT),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA4,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA4,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB565,        2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR565,        2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB5A1,        2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR5A1,        2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A1RGB5,        2),
+        #define COLOR_UIF_FORMAT_DEFINE(type,byte)  COLOR_FORMAT_DEFINE(type##U,           byte,UINT), \
+                                                    COLOR_FORMAT_DEFINE(type##I,           byte,SINT), \
+                                                    COLOR_FORMAT_DEFINE(type##F,           byte,SFLOAT),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(R8UN,          1),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R8SN,          1),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R8US,          1),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R8SS,          1),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R8U,           1),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R8I,           1),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R8s,           1),
+        COLOR_7s_FORMAT_DEFINE(R8,1)
+        COLOR_7s_FORMAT_DEFINE(RG8,2)
+        COLOR_7s_FORMAT_DEFINE(RGB8,3)
+        COLOR_7s_FORMAT_DEFINE(BGR8,3)
+        COLOR_7s_FORMAT_DEFINE(RGBA8,4)
+        COLOR_7s_FORMAT_DEFINE(BGRA8,4)
+        COLOR_7s_FORMAT_DEFINE(ABGR8,4)
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG8UN,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG8SN,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG8US,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG8SS,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG8U,          2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG8I,          2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG8s,          2),
+        COLOR_6_FORMAT_DEFINE(A2RGB10,4)
+        COLOR_6_FORMAT_DEFINE(A2BGR10,4)
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8UN,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8SN,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8US,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8SS,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8U,         3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8I,         3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB8s,         3),
-        
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8UN,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8SN,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8US,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8SS,        3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8U,         3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8I,         3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGR8s,         3),
+        COLOR_7F_FORMAT_DEFINE(R16,2)
+        COLOR_7F_FORMAT_DEFINE(RG16,4)
+        COLOR_7F_FORMAT_DEFINE(RGB16,6)
+        COLOR_7F_FORMAT_DEFINE(RGBA16,8)
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8UN,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8SN,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8US,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8SS,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8U,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8I,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA8s,        4),
+        COLOR_UIF_FORMAT_DEFINE(R32,4)
+        COLOR_UIF_FORMAT_DEFINE(RG32,8)
+        COLOR_UIF_FORMAT_DEFINE(RGB32,12)
+        COLOR_UIF_FORMAT_DEFINE(RGBA32,16)
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8UN,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8SN,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8US,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8SS,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8U,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8I,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(BGRA8s,        4),
+        COLOR_UIF_FORMAT_DEFINE(R64,8)
+        COLOR_UIF_FORMAT_DEFINE(RG64,16)
+        COLOR_UIF_FORMAT_DEFINE(RGB64,24)
+        COLOR_UIF_FORMAT_DEFINE(RGBA64,32)
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8UN,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8SN,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8US,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8SS,       4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8U,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8I,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(ABGR8s,        4),
+        COLOR_FORMAT_DEFINE(B10GR11UF,     4,UFLOAT),
+        COLOR_FORMAT_DEFINE(E5BGR9UF,      4,UFLOAT),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10UN,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10SN,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10US,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10SS,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10U,      4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2RGB10I,      4),
+        DEPTH_FORMAT_DEFINE(D16UN,         2,UNORM),
+        DEPTH_FORMAT_DEFINE(X8_D24UN,      4,UNORM),
+        DEPTH_FORMAT_DEFINE(D32F,          4,SFLOAT),
+        STENCIL_FORMAT_DEFINE(S8U,           1,UINT),
+        DEPTH_STENCIL_FORMAT_DEFINE(D16UN_S8U,     3,UNORM,UINT),
+        DEPTH_STENCIL_FORMAT_DEFINE(D24UN_S8U,     4,UNORM,UINT),
+        DEPTH_STENCIL_FORMAT_DEFINE(D32F_S8U,      5,SFLOAT,UINT),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10UN,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10SN,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10US,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10SS,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10U,      4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(A2BGR10I,      4),
+        S3TC_Us_FORMAT_DEFINE(     BC1_RGB),
+        S3TC_Us_FORMAT_DEFINE(     BC1_RGBA),
+        S3TC_Us_FORMAT_DEFINE(     BC2),
+        S3TC_Us_FORMAT_DEFINE(     BC3),
+        S3TC_NORM_FORMAT_DEFINE(   BC4),
+        S3TC_NORM_FORMAT_DEFINE(   BC5),
+        S3TC_FLOAT_FORMAT_DEFINE(  BC6),
+        S3TC_Us_FORMAT_DEFINE(     BC7),
+          
+        ETC2_FORMAT_DEFINE(RGB8),
+        ETC2_FORMAT_DEFINE(RGB8A1),
+        ETC2_FORMAT_DEFINE(RGBA8),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(R16UN,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R16SN,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R16US,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R16SS,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R16U,          2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R16I,          2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R16F,          2),
+        EAC_FORMAT_DEFINE(R11),
+        EAC_FORMAT_DEFINE(RG11),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG16UN,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG16SN,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG16US,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG16SS,        4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG16U,         4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG16I,         4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG16F,         4),
+        ASTC_FORMAT_DEFINE(4x4),
+        ASTC_FORMAT_DEFINE(5x4),
+        ASTC_FORMAT_DEFINE(5x5),
+        ASTC_FORMAT_DEFINE(6x5),
+        ASTC_FORMAT_DEFINE(6x6),
+        ASTC_FORMAT_DEFINE(8x5),
+        ASTC_FORMAT_DEFINE(8x6),
+        ASTC_FORMAT_DEFINE(8x8),
+        ASTC_FORMAT_DEFINE(10x5),
+        ASTC_FORMAT_DEFINE(10x6),
+        ASTC_FORMAT_DEFINE(10x8),
+        ASTC_FORMAT_DEFINE(10x10),
+        ASTC_FORMAT_DEFINE(12x10),
+        ASTC_FORMAT_DEFINE(12x12),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16UN,       6),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16SN,       6),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16US,       6),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16SS,       6),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16U,        6),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16I,        6),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB16F,        6),
+        YUV_FORMAT_DEFINE(YUYV8_422),
+        YUV_FORMAT_DEFINE(UYVY8_422),
+        YUV_FORMAT_DEFINE(YUV8_420),
+        YUV_FORMAT_DEFINE(Y8_UV8_420),
+        YUV_FORMAT_DEFINE(YUV8_422),
+        YUV_FORMAT_DEFINE(Y8_UV8_422),
+        YUV_FORMAT_DEFINE(YUV8_444),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16UN,      8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16SN,      8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16US,      8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16SS,      8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16U,       8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16I,       8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA16F,       8),
+        COLOR_FORMAT_DEFINE(R10X6UN,2,UNORM),
+        COLOR_FORMAT_DEFINE(RG10X6UN,4,UNORM),
+        COLOR_FORMAT_DEFINE(RGBA10X6UN,8,UNORM),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(R32U,          4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R32I,          4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R32F,          4),
+        YUV_FORMAT_DEFINE(YUYV10_422),
+        YUV_FORMAT_DEFINE(UYVY10_422),
+        YUV_FORMAT_DEFINE(YUV10_420),
+        YUV_FORMAT_DEFINE(Y10_UV10_420),
+        YUV_FORMAT_DEFINE(YUV10_422),
+        YUV_FORMAT_DEFINE(Y10_UV10_422),
+        YUV_FORMAT_DEFINE(YUV10_444),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG32U,         8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG32I,         8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG32F,         8),
+        COLOR_FORMAT_DEFINE(R12X4UN,2,UNORM),
+        COLOR_FORMAT_DEFINE(RG12X4UN,4,UNORM),
+        COLOR_FORMAT_DEFINE(RGBA12X4UN,8,UNORM),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB32U,        12),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB32I,        12),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB32F,        12),
+        YUV_FORMAT_DEFINE(YUYV12_422),
+        YUV_FORMAT_DEFINE(UYVY12_422),
+        YUV_FORMAT_DEFINE(YUV12_420),
+        YUV_FORMAT_DEFINE(Y12_UV12_420),
+        YUV_FORMAT_DEFINE(YUV12_422),
+        YUV_FORMAT_DEFINE(Y12_UV12_422),
+        YUV_FORMAT_DEFINE(YUV12_444),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA32U,       16),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA32I,       16),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA32F,       16),
+        YUV_FORMAT_DEFINE(YUYV16_422),
+        YUV_FORMAT_DEFINE(UYVY16_422),
+        YUV_FORMAT_DEFINE(YUV16_420),
+        YUV_FORMAT_DEFINE(Y16_UV16_420),
+        YUV_FORMAT_DEFINE(YUV16_422),
+        YUV_FORMAT_DEFINE(Y16_UV16_422),
+        YUV_FORMAT_DEFINE(YUV16_444),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(R64U,          8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R64I,          8),
-        VULKAN_TEXTURE_FORMAT_DEFINE(R64F,          8),
+        PVRTC_FORMAT_DEFINE(1,2),
+        PVRTC_FORMAT_DEFINE(1,4),
+        PVRTC_FORMAT_DEFINE(2,2),
+        PVRTC_FORMAT_DEFINE(2,4),
 
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG64U,         16),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG64I,         16),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RG64F,         16),
-
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB64U,        24),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB64I,        24),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGB64F,        24),
-
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA64U,       32),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA64I,       32),
-        VULKAN_TEXTURE_FORMAT_DEFINE(RGBA64F,       32),
-
-        VULKAN_TEXTURE_FORMAT_DEFINE(B10GR11UF,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(E5BGR9UF,      4),
-
-        VULKAN_TEXTURE_FORMAT_DEFINE(D16UN,         2),
-        VULKAN_TEXTURE_FORMAT_DEFINE(X8_D24UN,      4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(D32F,          4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(S8U,           1),
-        VULKAN_TEXTURE_FORMAT_DEFINE(D16UN_S8U,     3),
-        VULKAN_TEXTURE_FORMAT_DEFINE(D24UN_S8U,     4),
-        VULKAN_TEXTURE_FORMAT_DEFINE(D32F_S8U,      5)
+        COLOR_FORMAT_DEFINE(UNDEFINED,0,UNORM)
     };
 
 #ifdef _DEBUG
-    constexpr size_t TEXTURE_FORMAT_COUNT=sizeof(vulkan_format_list)/sizeof(VulkanTextureFormat);
+    constexpr size_t TEXTURE_FORMAT_COUNT=sizeof(vulkan_color_format_list)/sizeof(VulkanFormat);
 
     uint32_t GetStrideBytesByFormat(const VkFormat &format)
     {
@@ -242,27 +235,44 @@ namespace
 #ifdef _DEBUG
 bool CheckStrideBytesByFormat()
 {
-    for(uint32 i=0;i<TEXTURE_FORMAT_COUNT;i++)
+    const VulkanFormat *vcf=vulkan_color_format_list;
+
+    for(uint32_t i=VK_FORMAT_BEGIN_RANGE;i<=VK_FORMAT_END_RANGE;i++)
     {
-        if(vulkan_format_list[i].format!=i)return(false);
-        if(vulkan_format_list[i].bytes!=GetStrideBytesByFormat(vulkan_format_list[i].format))return(false);
+        if(vcf->format!=i)return(false);
+        if(vcf->bytes!=GetStrideBytesByFormat((VkFormat)i))return(false);
+
+        ++vcf;
     }
 
     return(true);
 }
 #endif//_DEBUG
 
-uint32_t GetStrideByFormat(const VkFormat &format)
+const VulkanFormat *GetVulkanFormatList(uint32_t &count)
 {
-    if(format<=VK_FORMAT_UNDEFINED||format>=TEXTURE_FORMAT_COUNT)return(0);
+    count=sizeof(vulkan_color_format_list)/sizeof(VulkanFormat);
 
-    return vulkan_format_list[format].bytes;
+    return vulkan_color_format_list;
 }
 
-const char *GetColorFormatName(const VkFormat &format)
+const VulkanFormat *GetVulkanFormat(const VkFormat &format)
 {
-    if(format<=VK_FORMAT_UNDEFINED||format>=TEXTURE_FORMAT_COUNT)return(nullptr);
-    
-    return vulkan_format_list[format].name;
+    if(format<=VK_FORMAT_BEGIN_RANGE)return(nullptr);
+
+    if(format<=VK_FORMAT_END_RANGE)
+        return vulkan_color_format_list+format;
+        
+    const VulkanFormat *vcf=vulkan_color_format_list+VK_FORMAT_END_RANGE+1;
+
+    while(vcf->format!=FMT_UNDEFINED)
+    {
+        if(vcf->format==format)
+            return vcf;
+
+        ++vcf;
+    }
+
+    return nullptr;
 }
 VK_NAMESPACE_END

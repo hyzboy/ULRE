@@ -3,6 +3,33 @@
 
 VK_NAMESPACE_USING;
 
+constexpr char *texture_compress_name[]=
+{
+    "NONE",
+    "S3TC",
+    "PVRTC",
+    "ETC1",
+    "ETC2",
+    "EAC",
+    "ATC",
+    "ASTC",
+    "YUV"
+};
+
+constexpr char *data_type_name[]
+{
+    "NONE",
+    "UNORM",
+    "SNORM",
+    "USCALED",
+    "SSCALED",
+    "UINT",
+    "SINT",
+    "UFLOAT",
+    "SFLOAT",
+    "SRGB"
+};//
+
 int main(int,char **)
 {
     #ifdef _DEBUG
@@ -13,13 +40,35 @@ int main(int,char **)
         }
     #endif//_DEBUG
 
-    for(uint32_t i=VK_FORMAT_BEGIN_RANGE;i<=VK_FORMAT_END_RANGE;i++)
-    {
-        const char *    name    =GetColorFormatName((VkFormat)i);
-        const uint32_t  bytes   =GetStrideByFormat((VkFormat)i);
+    uint32_t count;
+    const VulkanFormat *vf=GetVulkanFormatList(count);
 
-        if(name)
-            std::cout<<"Format["<<i<<"]["<<name<<"] pixel is "<<bytes<<" bytes"<<std::endl;
+    if(!count)return(255);
+
+    for(uint32_t i=0;i<count;i++)
+    {
+        std::cout<<i<<". ";
+        
+        std::cout<<" Format [ID:"<<vf->format<<"]["<<vf->name<<"] ";
+
+        if(vf->compress_type!=TextureCompressType::NONE)
+            std::cout<<"use "<<texture_compress_name[size_t(vf->compress_type)]<<" compress.";
+        else
+            std::cout<<vf->bytes<<" bytes/pixel.";
+
+        if(vf->depth!=VulkanDataType::NONE)
+            std::cout<<"[Depth:"<<data_type_name[size_t(vf->depth)]<<"]";
+        
+        if(vf->stencil!=VulkanDataType::NONE)
+            std::cout<<"[Stencil:"<<data_type_name[size_t(vf->stencil)]<<"]";
+
+        if((vf->depth==VulkanDataType::NONE)
+         &&(vf->stencil==VulkanDataType::NONE))
+            std::cout<<"[Color:"<<data_type_name[size_t(vf->color)]<<"]";
+            
+        std::cout<<std::endl;
+
+        ++vf;
     }
 
     return 0;
