@@ -35,7 +35,7 @@ constexpr VkFormat normal_candidate_format  []={FMT_RGBA32F,
                                                 FMT_RGBA16F,
                                                 FMT_A2RGB10UN,FMT_A2RGB10SN,FMT_A2BGR10UN,
                                                 FMT_A2BGR10SN};
-constexpr VkFormat depth_candidate_format   []={FMT_D32F,FMT_D32F_S8U,FMT_X8_D24,FMT_D24UN_S8U,FMT_D16UN,FMT_D16UN_S8U};
+constexpr VkFormat depth_candidate_format   []={FMT_D32F,FMT_D32F_S8U,FMT_X8_D24UN,FMT_D24UN_S8U,FMT_D16UN,FMT_D16UN_S8U};
 
 class TestApp:public CameraAppFramework
 {

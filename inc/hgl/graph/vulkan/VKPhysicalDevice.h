@@ -16,10 +16,6 @@ class PhysicalDevice
     List<VkLayerProperties>             layer_properties;
     List<VkExtensionProperties>         extension_properties;
 
-    VkFormatProperties format_properties[VK_FORMAT_RANGE_SIZE];
-
-    void InitFormatSupport();
-
 public:
 
     PhysicalDevice(VkInstance,VkPhysicalDevice);
@@ -76,9 +72,9 @@ public:
         return fp;
     }
 
-    bool OptimalSupport (const VkFormat format,const VkFormatFeatureFlags flag)const{return((format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)?false:(format_properties[format].optimalTilingFeatures&flag));}
-    bool LinearSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{return((format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)?false:(format_properties[format].linearTilingFeatures&flag));}
-    bool BufferSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{return((format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)?false:(format_properties[format].bufferFeatures&flag));}
+    bool OptimalSupport (const VkFormat format,const VkFormatFeatureFlags flag)const{VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);return fp.optimalTilingFeatures&flag;}
+    bool LinearSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);return fp.linearTilingFeatures&flag;}
+    bool BufferSupport  (const VkFormat format,const VkFormatFeatureFlags flag)const{VkFormatProperties fp;vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);return fp.bufferFeatures&flag;}
     
     bool IsColorAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
     bool IsDepthAttachmentOptimal(const VkFormat format)const{return OptimalSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
