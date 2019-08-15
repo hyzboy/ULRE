@@ -278,6 +278,7 @@ VK_NAMESPACE_BEGIN
 enum class TextureCompressType
 {
     NONE=0,
+
     S3TC,
     PVRTC,
     ETC1,
@@ -291,6 +292,7 @@ enum class TextureCompressType
 enum class VulkanDataType
 {
     NONE=0,
+
     UNORM,
     SNORM,
     USCALED,
