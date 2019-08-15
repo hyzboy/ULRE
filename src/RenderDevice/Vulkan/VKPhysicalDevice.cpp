@@ -56,8 +56,6 @@ PhysicalDevice::PhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
         hgl_zero(driver_properties);
     }
-
-    InitFormatSupport();
 }
 
 const uint32_t PhysicalDevice::GetExtensionSpecVersion(const UTF8String &name)const
@@ -92,18 +90,6 @@ const bool PhysicalDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFla
     }
     // No memory types matched, return failure
     return false;
-}
-
-void PhysicalDevice::InitFormatSupport()
-{
-    VkFormatProperties *fp=format_properties;
-
-    for(uint32 i=VK_FORMAT_BEGIN_RANGE;i<=VK_FORMAT_END_RANGE;i++)
-    {        
-        vkGetPhysicalDeviceFormatProperties(physical_device,(VkFormat)i,fp);
-        
-        ++fp;
-    }    
 }
 
 VkFormat PhysicalDevice::GetDepthFormat(bool lower_to_high)const
