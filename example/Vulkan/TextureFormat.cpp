@@ -1,5 +1,10 @@
-﻿#include<hgl/graph/vulkan/VK.h>
-#include<iostream>
+﻿#include<iostream>
+#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKDevice.h>
+#include<hgl/graph/vulkan/VKInstance.h>
+
+using namespace hgl;
+using namespace hgl::graph;
 
 VK_NAMESPACE_USING;
 
@@ -32,6 +37,11 @@ constexpr char *data_type_name[]
 
 int main(int,char **)
 {
+                    Window *        win             =nullptr;
+            vulkan::Instance *      inst            =nullptr;    
+            vulkan::Device *        device          =nullptr;
+    const   vulkan::PhysicalDevice *physical_device =nullptr;
+
     #ifdef _DEBUG
         if(!CheckStrideBytesByFormat())
         {
@@ -39,6 +49,24 @@ int main(int,char **)
             return(1);
         }
     #endif//_DEBUG
+
+    InitNativeWindowSystem();
+
+    win=CreateRenderWindow(OS_TEXT("VulkanTest"));
+    if(!win)
+        return(false);
+
+    if(!win->Create(128,128))
+        return(false);
+
+    inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
+
+    if(!inst)
+        return(false);
+
+    device=win->CreateRenderDevice(inst);
+
+    physical_device=device->GetPhysicalDevice();
 
     uint32_t count;
     const VulkanFormat *vf=GetVulkanFormatList(count);
@@ -65,11 +93,26 @@ int main(int,char **)
         if((vf->depth==VulkanDataType::NONE)
          &&(vf->stencil==VulkanDataType::NONE))
             std::cout<<"[Color:"<<data_type_name[size_t(vf->color)]<<"]";
+
+        {
+            const VkFormatProperties fp=physical_device->GetFormatProperties(vf->format);
+
+            if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+                std::cout<<"[Optimal]";
+            if(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+                std::cout<<"[Linear]";
+            if(fp.bufferFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+                std::cout<<"[Buffer]";
+        }
             
         std::cout<<std::endl;
 
         ++vf;
     }
+
+    win->CloseRenderDevice();
+    delete inst;
+    delete win;
 
     return 0;
 }

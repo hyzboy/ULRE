@@ -4,7 +4,7 @@
 #include<hgl/type/BaseString.h>
 #include<hgl/type/List.h>
 #include<hgl/platform/Window.h>
-#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
     class Instance
