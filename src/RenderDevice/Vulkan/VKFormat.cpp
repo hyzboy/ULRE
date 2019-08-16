@@ -12,6 +12,24 @@ namespace
     #define VULKAN_FORMAT_DEFINE(id,size,name,compress,color,depth,stencil) {id,size,name,TextureCompressType::compress,VulkanDataType::color,VulkanDataType::depth,VulkanDataType::stencil}
 
     #define COLOR_FORMAT_DEFINE(name,size,color)            VULKAN_FORMAT_DEFINE(FMT_##name,size,#name,NONE,    color,NONE,NONE)
+
+    #define COLOR_6_FORMAT_DEFINE(type,byte)                COLOR_FORMAT_DEFINE(type##UN,          byte,UNORM), \
+                                                            COLOR_FORMAT_DEFINE(type##SN,          byte,SNORM), \
+                                                            COLOR_FORMAT_DEFINE(type##US,          byte,USCALED), \
+                                                            COLOR_FORMAT_DEFINE(type##SS,          byte,SSCALED), \
+                                                            COLOR_FORMAT_DEFINE(type##U,           byte,UINT), \
+                                                            COLOR_FORMAT_DEFINE(type##I,           byte,SINT), \
+
+    #define COLOR_7s_FORMAT_DEFINE(type,byte)               COLOR_6_FORMAT_DEFINE(type,byte)                    \
+                                                            COLOR_FORMAT_DEFINE(type##s,           byte,SRGB),
+
+    #define COLOR_7F_FORMAT_DEFINE(type,byte)               COLOR_6_FORMAT_DEFINE(type,byte)                    \
+                                                            COLOR_FORMAT_DEFINE(type##F,           byte,SFLOAT),
+
+    #define COLOR_UIF_FORMAT_DEFINE(type,byte)              COLOR_FORMAT_DEFINE(type##U,           byte,UINT), \
+                                                            COLOR_FORMAT_DEFINE(type##I,           byte,SINT), \
+                                                            COLOR_FORMAT_DEFINE(type##F,           byte,SFLOAT),
+
     #define COMPRESS_FORMAT_DEFINE(id,name,compress,color)  VULKAN_FORMAT_DEFINE(id,0,name,compress,color,NONE,NONE)
     
     #define DEPTH_FORMAT_DEFINE(name,size,type)             VULKAN_FORMAT_DEFINE(FMT_##name,size,#name,NONE,NONE,type,  NONE)
@@ -38,6 +56,14 @@ namespace
                                                 COMPRESS_FORMAT_DEFINE(FMT_ASTC_##mat##s,"ASTC" #mat "s",ASTC,SRGB)
 
     #define YUV_FORMAT_DEFINE(name)             COMPRESS_FORMAT_DEFINE(FMT_##name,#name,YUV,UNORM)
+    
+    #define YUV_FORMAT_COMBO(bit)               YUV_FORMAT_DEFINE(YUYV##bit##_422),   \
+                                                YUV_FORMAT_DEFINE(UYVY##bit##_422),   \
+                                                YUV_FORMAT_DEFINE(YUV##bit##_420),    \
+                                                YUV_FORMAT_DEFINE(Y##bit##_UV##bit##_420),  \
+                                                YUV_FORMAT_DEFINE(YUV##bit##_422),    \
+                                                YUV_FORMAT_DEFINE(Y##bit##_UV##bit##_422),  \
+                                                YUV_FORMAT_DEFINE(YUV##bit##_444)
 
     #define PVRTC_FORMAT_DEFINE(level,bpp)      COMPRESS_FORMAT_DEFINE(FMT_PVRTC##level##_##bpp##UN,"PVRTC" #level "_" #bpp "UN",PVRTC,UNORM),    \
                                                 COMPRESS_FORMAT_DEFINE(FMT_PVRTC##level##_##bpp##s,"PVRTC" #level "_" #bpp "s",PVRTC,SRGB)
@@ -55,23 +81,6 @@ namespace
         COLOR_FORMAT_DEFINE(RGB5A1,        2,UNORM),
         COLOR_FORMAT_DEFINE(BGR5A1,        2,UNORM),
         COLOR_FORMAT_DEFINE(A1RGB5,        2,UNORM),
-
-        #define COLOR_6_FORMAT_DEFINE(type,byte)    COLOR_FORMAT_DEFINE(type##UN,          byte,UNORM), \
-                                                    COLOR_FORMAT_DEFINE(type##SN,          byte,SNORM), \
-                                                    COLOR_FORMAT_DEFINE(type##US,          byte,USCALED), \
-                                                    COLOR_FORMAT_DEFINE(type##SS,          byte,SSCALED), \
-                                                    COLOR_FORMAT_DEFINE(type##U,           byte,UINT), \
-                                                    COLOR_FORMAT_DEFINE(type##I,           byte,SINT), \
-
-        #define COLOR_7s_FORMAT_DEFINE(type,byte)   COLOR_6_FORMAT_DEFINE(type,byte)                    \
-                                                    COLOR_FORMAT_DEFINE(type##s,           byte,SRGB),
-
-        #define COLOR_7F_FORMAT_DEFINE(type,byte)   COLOR_6_FORMAT_DEFINE(type,byte)                    \
-                                                    COLOR_FORMAT_DEFINE(type##F,           byte,SFLOAT),
-
-        #define COLOR_UIF_FORMAT_DEFINE(type,byte)  COLOR_FORMAT_DEFINE(type##U,           byte,UINT), \
-                                                    COLOR_FORMAT_DEFINE(type##I,           byte,SINT), \
-                                                    COLOR_FORMAT_DEFINE(type##F,           byte,SFLOAT),
 
         COLOR_7s_FORMAT_DEFINE(R8,1)
         COLOR_7s_FORMAT_DEFINE(RG8,2)
@@ -141,63 +150,52 @@ namespace
         ASTC_FORMAT_DEFINE(12x10),
         ASTC_FORMAT_DEFINE(12x12),
 
-        YUV_FORMAT_DEFINE(YUYV8_422),
-        YUV_FORMAT_DEFINE(UYVY8_422),
-        YUV_FORMAT_DEFINE(YUV8_420),
-        YUV_FORMAT_DEFINE(Y8_UV8_420),
-        YUV_FORMAT_DEFINE(YUV8_422),
-        YUV_FORMAT_DEFINE(Y8_UV8_422),
-        YUV_FORMAT_DEFINE(YUV8_444),
+        YUV_FORMAT_COMBO(8),
 
         COLOR_FORMAT_DEFINE(R10X6UN,2,UNORM),
         COLOR_FORMAT_DEFINE(RG10X6UN,4,UNORM),
         COLOR_FORMAT_DEFINE(RGBA10X6UN,8,UNORM),
 
-        YUV_FORMAT_DEFINE(YUYV10_422),
-        YUV_FORMAT_DEFINE(UYVY10_422),
-        YUV_FORMAT_DEFINE(YUV10_420),
-        YUV_FORMAT_DEFINE(Y10_UV10_420),
-        YUV_FORMAT_DEFINE(YUV10_422),
-        YUV_FORMAT_DEFINE(Y10_UV10_422),
-        YUV_FORMAT_DEFINE(YUV10_444),
+        YUV_FORMAT_COMBO(10),
 
         COLOR_FORMAT_DEFINE(R12X4UN,2,UNORM),
         COLOR_FORMAT_DEFINE(RG12X4UN,4,UNORM),
         COLOR_FORMAT_DEFINE(RGBA12X4UN,8,UNORM),
 
-        YUV_FORMAT_DEFINE(YUYV12_422),
-        YUV_FORMAT_DEFINE(UYVY12_422),
-        YUV_FORMAT_DEFINE(YUV12_420),
-        YUV_FORMAT_DEFINE(Y12_UV12_420),
-        YUV_FORMAT_DEFINE(YUV12_422),
-        YUV_FORMAT_DEFINE(Y12_UV12_422),
-        YUV_FORMAT_DEFINE(YUV12_444),
-
-        YUV_FORMAT_DEFINE(YUYV16_422),
-        YUV_FORMAT_DEFINE(UYVY16_422),
-        YUV_FORMAT_DEFINE(YUV16_420),
-        YUV_FORMAT_DEFINE(Y16_UV16_420),
-        YUV_FORMAT_DEFINE(YUV16_422),
-        YUV_FORMAT_DEFINE(Y16_UV16_422),
-        YUV_FORMAT_DEFINE(YUV16_444),
+        YUV_FORMAT_COMBO(12),
+        YUV_FORMAT_COMBO(16),
 
         PVRTC_FORMAT_DEFINE(1,2),
         PVRTC_FORMAT_DEFINE(1,4),
         PVRTC_FORMAT_DEFINE(2,2),
-        PVRTC_FORMAT_DEFINE(2,4),
-
-        COLOR_FORMAT_DEFINE(UNDEFINED,0,UNORM)
+        PVRTC_FORMAT_DEFINE(2,4)
     };
+
+    const VulkanFormat *vulkan_yuv_format_list=vulkan_color_format_list+FMT_RANGE_SIZE;
+    const VulkanFormat *vulkan_pvrtc_format_list=vulkan_color_format_list+FMT_RANGE_SIZE+FMT_YUV_RANGE_SIZE;
 
 #ifdef _DEBUG
     constexpr size_t TEXTURE_FORMAT_COUNT=sizeof(vulkan_color_format_list)/sizeof(VulkanFormat);
 
     uint32_t GetStrideBytesByFormat(const VkFormat &format)
     {
-        if(format<=VK_FORMAT_UNDEFINED||format>=TEXTURE_FORMAT_COUNT)return(0);
+        if(format<=VK_FORMAT_UNDEFINED)
+            return 0;
+        
+        if(format>VK_FORMAT_END_RANGE)
+        {
+            if(format==VK_FORMAT_R10X6_UNORM_PACK16)return 2;
+            if(format==VK_FORMAT_R10X6G10X6_UNORM_2PACK16)return 4;
+            if(format==VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16)return 8;
 
-        if(format<=VK_FORMAT_UNDEFINED
-         ||format>=VK_FORMAT_BC1_RGB_UNORM_BLOCK)return 0;
+            if(format==VK_FORMAT_R12X4_UNORM_PACK16)return 2;
+            if(format==VK_FORMAT_R12X4G12X4_UNORM_2PACK16)return 4;
+            if(format==VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16)return 8;
+
+            return 0;
+        }
+
+        if(format>=VK_FORMAT_BC1_RGB_UNORM_BLOCK)return 0;
 
         if(format==VK_FORMAT_R4G4_UNORM_PACK8)return 1;
         if(format<=VK_FORMAT_A1R5G5B5_UNORM_PACK16)return 2;
@@ -224,14 +222,6 @@ namespace
         if(format==VK_FORMAT_D16_UNORM_S8_UINT)return 3;
         if(format==VK_FORMAT_D24_UNORM_S8_UINT)return 4;
         if(format==VK_FORMAT_D32_SFLOAT_S8_UINT)return 5;
-
-        if(format==VK_FORMAT_R10X6_UNORM_PACK16)return 2;
-        if(format==VK_FORMAT_R10X6G10X6_UNORM_2PACK16)return 4;
-        if(format==VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16)return 8;
-
-        if(format==VK_FORMAT_R12X4_UNORM_PACK16)return 2;
-        if(format==VK_FORMAT_R12X4G12X4_UNORM_2PACK16)return 4;
-        if(format==VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16)return 8;
 
         return(0);
     }
@@ -271,15 +261,11 @@ const VulkanFormat *GetVulkanFormat(const VkFormat &format)
     if(format<=VK_FORMAT_END_RANGE)
         return vulkan_color_format_list+format;
         
-    const VulkanFormat *vcf=vulkan_color_format_list+VK_FORMAT_END_RANGE+1;
+    if(format>=FMT_YUV_BEGIN_RANGE&&format<=FMT_YUV_END_RANGE)
+        return vulkan_yuv_format_list+format-FMT_YUV_BEGIN_RANGE;
 
-    while(vcf->format!=FMT_UNDEFINED)
-    {
-        if(vcf->format==format)
-            return vcf;
-
-        ++vcf;
-    }
+    if(format>=FMT_PVRTC_BEGIN_RANGE&&format<=FMT_PVRTC_END_RANGE)
+        return vulkan_pvrtc_format_list+format-FMT_PVRTC_BEGIN_RANGE;
 
     return nullptr;
 }
