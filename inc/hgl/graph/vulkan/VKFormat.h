@@ -322,7 +322,7 @@ struct VulkanFormat
 
     uint32_t            bytes;          ///<每象素字节数
 
-    char                name[32];       ///<名称
+    char                name[16];       ///<名称
 
     TextureCompressType compress_type;  ///<压缩类型
     VulkanDataType      color;          ///<颜色数据类型
