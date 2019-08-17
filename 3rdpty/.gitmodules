@@ -1,0 +1,15 @@
+[submodule "MathGeoLib"]
+	path = MathGeoLib
+	url = https://github.com/juj/MathGeoLib.git
+[submodule "SPIRV-Cross"]
+	path = SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross
+[submodule "glslang"]
+	path = glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "jsoncpp"]
+	path = jsoncpp
+	url = https://github.com/open-source-parsers/jsoncpp
+[submodule "assimp"]
+	path = assimp
+	url = https://github.com/assimp/assimp.git
