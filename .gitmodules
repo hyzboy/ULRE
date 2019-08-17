@@ -13,3 +13,15 @@
 [submodule "assimp"]
 	path = assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "3rdpty/SPIRV-Cross"]
+	path = 3rdpty/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross
+[submodule "3rdpty/glslang"]
+	path = 3rdpty/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "3rdpty/jsoncpp"]
+	path = 3rdpty/jsoncpp
+	url = https://github.com/open-source-parsers/jsoncpp
+[submodule "3rdpty/assimp"]
+	path = 3rdpty/assimp
+	url = https://github.com/assimp/assimp.git
