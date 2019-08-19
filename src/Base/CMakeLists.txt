@@ -53,3 +53,5 @@ add_library(ULRE.Base STATIC    #${SYSTEM_INFO_SOURCE}
                                 ${BASE_FILE_SYSTEM_SOURCE}
                                 ${BASE_OTHER_SOURCE}
                                 ${BASE_PLUG_IN_SOURCE})
+
+set_property(TARGET ULRE.Base PROPERTY FOLDER "ULRE")

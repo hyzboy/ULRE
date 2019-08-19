@@ -35,3 +35,5 @@ SOURCE_GROUP("Source Files" FILES ${SCENE_GRAPH_SOURCE})
 
 add_library(ULRE.SceneGraph STATIC  ${SCENE_GRAPH_HEADER}
                                     ${SCENE_GRAPH_SOURCE})
+
+set_property(TARGET ULRE.SceneGraph PROPERTY FOLDER "ULRE")

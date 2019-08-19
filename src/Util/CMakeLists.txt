@@ -12,3 +12,5 @@ SOURCE_GROUP("Source Files" FILES ${UTIL_SOURCE})
 
 add_library(ULRE.Util STATIC    ${UTIL_HEADER}
                                 ${UTIL_SOURCE})
+
+set_property(TARGET ULRE.Util PROPERTY FOLDER "ULRE")
