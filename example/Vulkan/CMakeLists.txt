@@ -1,10 +1,12 @@
 ﻿macro(CreateProject name)
-	add_executable(${name} ${ARGN} VulkanAppFramework.h)
-	target_link_libraries(${name} ${ULRE})
+    add_executable(${name} ${ARGN} VulkanAppFramework.h)
+    target_link_libraries(${name} ${ULRE})
     
     IF(WIN32)
         set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
     ENDIF()
+
+    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan")
 endmacro()
 
 CreateProject(00.triangle first_triangle.cpp)

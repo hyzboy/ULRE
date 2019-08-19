@@ -9,3 +9,5 @@ SOURCE_GROUP("Source Files" FILES ${GRAPH_SHADER_SOURCE})
 
 add_library(ULRE.Shader STATIC ${GRAPH_SHADER_HEADER}
                                ${GRAPH_SHADER_SOURCE})
+
+set_property(TARGET ULRE.Shader PROPERTY FOLDER "ULRE")

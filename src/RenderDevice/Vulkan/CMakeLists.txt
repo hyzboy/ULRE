@@ -70,3 +70,5 @@ SOURCE_GROUP("POD Source Files" FILES ${RENDER_DEVICE_VULKAN_POD_SOURCE})
 add_library(ULRE.RenderDevice.Vulkan STATIC ${RENDER_DEVICE_VULKAN_HEADER}
                                             ${RENDER_DEVICE_VULKAN_SOURCE}
                                             ${RENDER_DEVICE_VULKAN_POD_SOURCE})
+
+set_property(TARGET ULRE.RenderDevice.Vulkan PROPERTY FOLDER "ULRE")
