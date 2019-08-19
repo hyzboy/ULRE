@@ -44,11 +44,11 @@ SET(ULRE    ULRE.Base
             MathGeoLib
             spirv-cross-core
             SPIRV
+            glslang
             jsoncpp_lib
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/glslang)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
@@ -59,6 +59,20 @@ SET(SPIRV_CROSS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/SPIRV-Cross)
 
 include_directories(${SPIRV_CROSS_PATH})
 add_subdirectory(${SPIRV_CROSS_PATH})
+
+macro(glslang_pch SRCS PCHCPP)
+    message("use null [glslang_pch] macro")
+endmacro()
+
+include_directories(${SPIRV_CROSS_PATH}/external/glslang/glslang/Public)
+add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/glslang)
+
+include_directories(${SPIRV_CROSS_PATH}/external/glslang)
+add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/SPIRV)
+
+if(WIN32)
+add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/OGLCompilersDLL)
+endif()
 
 SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
 
