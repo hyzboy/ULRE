@@ -1,4 +1,7 @@
-﻿SET(SYSTEM_INFO_SOURCE   SystemInfo.cpp)
+﻿file(GLOB TYPE_TEMPLATE_HEADER ${ROOT_INCLUDE_PATH}/hgl/type/*.h)
+file(GLOB TYPE_TEMPLATE_SOURCE ${ROOT_INCLUDE_PATH}/hgl/type/*.cpp)
+
+SET(SYSTEM_INFO_SOURCE   SystemInfo.cpp)
 
 SET(BASE_TYPE_SOURCE
 #    DataType/Info.cpp
@@ -10,6 +13,8 @@ SET(BASE_TYPE_SOURCE
     DataType/StringList.cpp
 	DataType/Endian.cpp)
 
+SOURCE_GROUP("DataType\\Template\\Header Files" FILES ${TYPE_TEMPLATE_HEADER})
+SOURCE_GROUP("DataType\\Template\\Source Files" FILES ${TYPE_TEMPLATE_SOURCE})
 SOURCE_GROUP("DataType" FILES ${BASE_TYPE_SOURCE})
 
 SET(BASE_IO_SOURCE
@@ -48,7 +53,9 @@ SET(BASE_PLUG_IN_SOURCE
 SOURCE_GROUP("PlugIn" FILES ${BASE_PLUG_IN_SOURCE})
 
 add_library(ULRE.Base STATIC    #${SYSTEM_INFO_SOURCE}
-                                ${BASE_TYPE_SOURCE}
+								${TYPE_TEMPLATE_HEADER}
+								${TYPE_TEMPLATE_SOURCE}
+								${BASE_TYPE_SOURCE}
                                 ${BASE_IO_SOURCE}
                                 ${BASE_FILE_SYSTEM_SOURCE}
                                 ${BASE_OTHER_SOURCE}
