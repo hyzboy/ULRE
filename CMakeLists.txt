@@ -4,18 +4,15 @@ PROJECT(ULRE)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMCMakeModule)
 
-include(system_bit)
-include(version)
-include(compiler)
-include(output_path)
+include(math)
+use_mgl(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib)
+
+include(use_cm_module)
+use_cm_module(Core)
+
 include(FindVulkan)
-
-check_system_bits()
-check_system_version()
-set_compiler_param()
-set_output_directory()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR -DWIN32_LEAN_AND_MEAN)
@@ -33,11 +30,7 @@ else()
     message(FATAL_ERROR "Unsupported Platform!")
 ENDIF()
 
-add_definitions(-DMATH_USE_OPENGL)
-add_definitions(-DMATH_RIGHTHANDED_CAMERA)
-add_definitions(-DMATH_AVX)
-
-SET(ULRE    ULRE.Base
+SET(ULRE    CMCore
             ULRE.Util
             ULRE.Shader
             ULRE.RenderDevice.Vulkan
@@ -52,7 +45,6 @@ SET(ULRE    ULRE.Base
             ${Vulkan_LIBRARIES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib/src)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
@@ -78,8 +70,6 @@ endif()
 
 SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_subdirectory(3rdpty/MathGeoLib)
-add_subdirectory(3rdpty/NvTriStrip)
 add_subdirectory(3rdpty/assimp)
 add_subdirectory(src)
 
