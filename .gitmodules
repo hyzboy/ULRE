@@ -13,3 +13,6 @@
 [submodule "CMCMakeModule"]
 	path = CMCMakeModule
 	url = https://github.com/hyzboy/CMCMakeModule
+[submodule "CMCore"]
+	path = CMCore
+	url = https://github.com/hyzboy/CMCore
