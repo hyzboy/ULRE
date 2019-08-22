@@ -1,6 +1,5 @@
-add_subdirectory(Base)
+
 add_subdirectory(Util)
 add_subdirectory(RenderDevice)
 add_subdirectory(SceneGraph)
-add_subdirectory(Platform)
 add_subdirectory(Tools)
