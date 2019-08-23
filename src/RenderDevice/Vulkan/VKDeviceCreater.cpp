@@ -1,4 +1,6 @@
-﻿#include<hgl/graph/vulkan/VKDevice.h>
+﻿#include<hgl/platform/Vulkan.h>
+#include<hgl/platform/Window.h>
+#include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKInstance.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
@@ -401,5 +403,38 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     auto_delete.Clear();
 
     return(new Device(device_attr));
+}
+
+Device *CreateRenderDevice(vulkan::Instance *inst,Window *win,const vulkan::PhysicalDevice *pd)
+{
+    if(!inst)
+        return(nullptr);
+
+    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
+    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
+    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
+
+    if(!pd)
+        return(nullptr);
+
+    VkSurfaceKHR surface=CreateVulkanSurface(*inst,win);
+
+    if(!surface)
+        return(nullptr);
+        
+    VkExtent2D extent;
+    
+    extent.width=win->GetWidth();
+    extent.height=win->GetHeight();
+
+    Device *device=CreateRenderDevice(*inst,pd,surface,extent);
+
+    if(!device)
+    {
+        vkDestroySurfaceKHR(*inst,surface,nullptr);
+        return(nullptr);
+    }
+
+    return device;
 }
 VK_NAMESPACE_END

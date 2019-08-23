@@ -77,7 +77,8 @@ public:
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
         SAFE_CLEAR(shader_manage);
-        SAFE_CLEAR(win);        //win中会删除device，所以必须放在instance前删除
+        SAFE_CLEAR(device);
+        SAFE_CLEAR(win);        
         SAFE_CLEAR(inst);
     }
 
@@ -104,7 +105,7 @@ public:
         if(!inst)
             return(false);
 
-        device=win->CreateRenderDevice(inst);
+        device=CreateRenderDevice(inst,win);
 
         if(!device)
             return(false);
@@ -139,6 +140,9 @@ public:
     
     void OnResize(int w,int h)
     {
+        if(w>0&&h>0)
+            device->Resize(w,h);
+
         InitCommandBuffer();
         Resize(w,h);
     }
