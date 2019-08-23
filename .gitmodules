@@ -16,3 +16,6 @@
 [submodule "CMCore"]
 	path = CMCore
 	url = https://github.com/hyzboy/CMCore
+[submodule "CMPlatform"]
+	path = CMPlatform
+	url = https://github.com/hyzboy/CMPlatform
