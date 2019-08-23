@@ -6,36 +6,26 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMCMakeModule)
 
+include(vulkan)
+
 include(math)
 use_mgl(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib)
 
 include(use_cm_module)
 use_cm_module(Core)
-
-include(FindVulkan)
+use_cm_module(Platform)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR -DWIN32_LEAN_AND_MEAN)
-
-    include_directories(${Vulkan_INCLUDE_DIRS})
-
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/jsoncpp/include)
     add_subdirectory(3rdpty/jsoncpp)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
-    add_definitions(-DVK_USE_PLATFORM_ANDROID_KHR)
-elseif(UNIX)
-    add_definitions(-DVK_USE_PLATFORM_XCB_KHR)
-    SET(RENDER_LIBRARY xcb)
-else()
-    message(FATAL_ERROR "Unsupported Platform!")
 ENDIF()
 
 SET(ULRE    CMCore
+            CMPlatform
             ULRE.Util
             ULRE.Shader
             ULRE.RenderDevice.Vulkan
             ULRE.SceneGraph
-            ULRE.Platform
             MathGeoLib
             spirv-cross-core
             SPIRV
