@@ -185,5 +185,7 @@ public:
 
     RenderTarget *CreateRenderTarget(Framebuffer *);
 };//class Device
+
+Device *CreateRenderDevice(Instance *inst,Window *win,const PhysicalDevice *physical_device=nullptr);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
