@@ -6,7 +6,7 @@
 #include<hgl/type/RectScope.h>
 #include<hgl/type/BaseString.h>
 #include<hgl/graph/VertexBufferCreater.h>
-#include<hgl/LogInfo.h>
+#include<hgl/log/LogInfo.h>
 namespace hgl
 {
     namespace graph

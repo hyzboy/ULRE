@@ -3,7 +3,7 @@
 #include<json/json.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/type/StdString.h>
-#include<hgl/LogInfo.h>
+#include<hgl/log/LogInfo.h>
 
 using namespace hgl;
 using namespace hgl::filesystem;
