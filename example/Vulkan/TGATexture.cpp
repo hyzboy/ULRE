@@ -2,7 +2,7 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/io/FileInputStream.h>
-#include<hgl/LogInfo.h>
+#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 namespace
