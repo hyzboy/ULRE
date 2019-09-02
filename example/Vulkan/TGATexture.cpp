@@ -7,39 +7,55 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    #pragma pack(push,1)
-    struct TGAHeader
+    namespace tga
     {
-        uint8 id;
-        uint8 color_map_type;
-        uint8 image_type;               // 1 colormap image ,2 true-color,3 grayscale
-
-        uint16 color_map_first;
-        uint16 color_map_length;
-        uint8 color_map_size;
-
-        uint16 x_origin;
-        uint16 y_origin;
-
-        uint16 width;
-        uint16 height;
-        uint8 bit;
-
-        uint8 image_desc;
-    };
-
-    union TGAImageDesc
-    {
-        //不要把此union放到上面的struct中，否则Visual C++会将此union编译成4字节。GCC无此问题
-        uint8 image_desc;
-        struct
+        enum class ImageType:uint8
         {
-            uint alpha_depth:4;
-            uint reserved:1;
-            uint direction:1;       //0 lower-left,1 upper left
+            ColorMap=1,
+            TrueColor=2,
+            Grayscale=3
         };
-    };
-    #pragma pack(pop)
+
+        enum class VerticalDirection:uint
+        {
+            BottomToTop=0,
+            TopToBottom=1
+        };
+
+        #pragma pack(push,1)
+        struct Header
+        {
+            uint8 id;
+            uint8 color_map_type;
+            ImageType image_type;               // 1 colormap image ,2 true-color,3 grayscale
+
+            uint16 color_map_first;
+            uint16 color_map_length;
+            uint8 color_map_size;
+
+            uint16 x_origin;
+            uint16 y_origin;
+
+            uint16 width;
+            uint16 height;
+            uint8 bit;
+
+            uint8 image_desc;
+        };
+
+        union ImageDesc
+        {
+            //不要把此union放到上面的struct中，否则Visual C++会将此union编译成4字节。GCC无此问题
+            uint8 image_desc;
+            struct
+            {
+                uint alpha_depth:4;
+                uint horizontal_directon:1;     // 水平方向(不支持该参数)
+                VerticalDirection vertical_direction:1;      // 0 bottom to top,1 top to bottom
+            };
+        };
+        #pragma pack(pop)
+    }//namespace tga
 
     void RGB8to565(uint16 *target,uint8 *src,uint size)
     {
@@ -97,21 +113,21 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
     const int64 file_length=fis->GetSize();
 
-    if(file_length<=sizeof(TGAHeader))
+    if(file_length<=sizeof(tga::Header))
     {
-        LOG_ERROR(OS_TEXT("[ERROR] file<")+filename+OS_TEXT("> length < sizeof(TGAHeader)."));
+        LOG_ERROR(OS_TEXT("[ERROR] file<")+filename+OS_TEXT("> length < sizeof(tga::Header)."));
         return(nullptr);
     }
 
-    TGAHeader header;
-    TGAImageDesc image_desc;
+    tga::Header header;
+    tga::ImageDesc image_desc;
 
-    if(fis->Read(&header,sizeof(TGAHeader))!=sizeof(TGAHeader))
+    if(fis->Read(&header,sizeof(tga::Header))!=sizeof(tga::Header))
         return(false);
         
     const uint total_bytes=header.width*header.height*header.bit>>3;
 
-    if(file_length<sizeof(TGAHeader)+total_bytes)
+    if(file_length<sizeof(tga::Header)+total_bytes)
     {
         LOG_ERROR(OS_TEXT("[ERROR] file<")+filename+OS_TEXT("> length error."));
         return(nullptr);
@@ -121,13 +137,17 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
     VkFormat format=FMT_UNDEFINED;
 
-    if(header.image_type==2)
+    if(header.image_type==tga::ImageType::TrueColor)
     {
         if(header.bit==24)format=FMT_BGRA8UN;else
         if(header.bit==32)format=FMT_BGRA8UN;
     }
-    else if(header.image_type==3&&header.bit==8)
-        format=FMT_R8UN;
+    else
+    if(header.image_type==tga::ImageType::Grayscale)
+    {
+        if(header.bit== 8)format=FMT_R8UN;else
+        if(header.bit==16)format=FMT_R16UN;
+    }
 
     if(format==FMT_UNDEFINED)
     {
@@ -143,7 +163,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
     
         fis->Read(pixel_data,total_bytes);
 
-        if(image_desc.direction==0)
+        if(image_desc.vertical_direction==tga::VerticalDirection::BottomToTop)
             SwapRow((uint8 *)pixel_data,header.width*header.bit/8,header.height);
 
         buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,header.width*header.height*4);
@@ -160,7 +180,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
         fis->Read(pixel_data,total_bytes);
 
-        if(image_desc.direction==0)
+        if(image_desc.vertical_direction==tga::VerticalDirection::BottomToTop)
             SwapRow((uint8 *)pixel_data,header.width*header.bit/8,header.height);
 
         buf->Unmap();
