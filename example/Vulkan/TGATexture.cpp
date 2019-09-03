@@ -70,15 +70,49 @@ namespace
         }
     }
 
-    void RGBtoRGBA(uint8 *tar,uint8 *src,uint size)
+    template<typename T>
+    void RGB2RGBA(T *tar,T *src,uint size,const T alpha)
     {
         for(uint i=0;i<size;i++)
         {
             *tar++=*src++;
             *tar++=*src++;
             *tar++=*src++;
-            *tar++=255;
+            *tar++=alpha;
         }
+    }
+
+    template<typename T>
+    void BGR2RGBASwap(T *tar,T *src,uint size,const T alpha)
+    {
+        for(uint i=0;i<size;i++)
+        {
+            *tar++=src[2];
+            *tar++=src[1];
+            *tar++=src[0];
+            *tar++=alpha;
+            src+=3;
+        }
+    }
+
+    template<typename T,typename S>
+    void BGR2FloatRGBASwap(T *tar,S *src,uint size,const T max_value,const T alpha)
+    {
+        for(uint i=0;i<size;i++)
+        {
+            *tar++=T(src[2])/max_value;
+            *tar++=T(src[1])/max_value;
+            *tar++=T(src[0])/max_value;
+            *tar++=alpha;
+            src+=3;
+        }
+    }
+
+    template<typename T,typename S>
+    void UInteger2Float(T *tar,S *src,uint size,const T max_value)
+    {
+        for(uint i=0;i<size;i++)
+            *tar++=T(*src++)/max_value;
     }
 
     void SwapRow(uint8 *data,uint line_size,uint height)
@@ -125,7 +159,10 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
     if(fis->Read(&header,sizeof(tga::Header))!=sizeof(tga::Header))
         return(false);
         
-    const uint total_bytes=header.width*header.height*header.bit>>3;
+    const uint pixel_count  =header.width*header.height;        //象素数量
+    const uint pixel_byte   =header.bit>>3;                     //单个象素字节数
+    const uint line_bytes   =header.width*pixel_byte;           //每行字节数
+    const uint total_bytes  =header.height*line_bytes;          //总字节数
 
     if(file_length<sizeof(tga::Header)+total_bytes)
     {
@@ -140,13 +177,16 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
     if(header.image_type==tga::ImageType::TrueColor)
     {
         if(header.bit==24)format=FMT_BGRA8UN;else
-        if(header.bit==32)format=FMT_BGRA8UN;
+        if(header.bit==32)format=FMT_BGRA8UN;else
+        if(header.bit==48)format=FMT_RGBA16UN;else
+        if(header.bit==64)format=FMT_RGBA16UN;
     }
     else
     if(header.image_type==tga::ImageType::Grayscale)
     {
         if(header.bit== 8)format=FMT_R8UN;else
-        if(header.bit==16)format=FMT_R16UN;
+        if(header.bit==16)format=FMT_R16UN;else
+        if(header.bit==32)format=FMT_R32F;
     }
 
     if(format==FMT_UNDEFINED)
@@ -154,23 +194,42 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
         LOG_ERROR(OS_TEXT("[ERROR] Image format error,filename: ")+filename);
         return(nullptr);
     }
-    
-    vulkan::Buffer *buf;
 
-    if(header.bit==24)
+    vulkan::Buffer *buf;
+    
+    if(header.image_type==tga::ImageType::TrueColor
+     &&(header.bit==24||header.bit==48||header.bit==72))
     {
         uint8 *pixel_data=new uint8[total_bytes];
     
         fis->Read(pixel_data,total_bytes);
 
         if(image_desc.vertical_direction==tga::VerticalDirection::BottomToTop)
-            SwapRow((uint8 *)pixel_data,header.width*header.bit/8,header.height);
+            SwapRow((uint8 *)pixel_data,line_bytes,header.height);
 
-        buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,header.width*header.height*4);
-        RGBtoRGBA((uint8 *)buf->Map(),pixel_data,header.width*header.height);
+        const uint new_pixel_byte=((header.bit>>3)/3)*4;
+
+        buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,pixel_count*new_pixel_byte);
+
+        if(new_pixel_byte==4)
+        {
+            RGB2RGBA<uint8>((uint8 *)buf->Map(),pixel_data,pixel_count,HGL_U8_MAX);
+            format=FMT_BGRA8UN;
+        }
+        else
+        if(new_pixel_byte==8)
+        {
+            BGR2RGBASwap<uint16>((uint16 *)buf->Map(),(uint16 *)pixel_data,pixel_count,HGL_U16_MAX);
+            format=FMT_RGBA16UN;
+        }
+        else 
+        if(new_pixel_byte==16)
+        {
+            BGR2FloatRGBASwap<float,uint32>((float *)buf->Map(),(uint32 *)pixel_data,pixel_count,(float)HGL_U32_MAX,1.0f);
+            format=FMT_RGBA32F;
+        }
+
         buf->Unmap();
-
-        format=FMT_BGRA8UN;
     }
     else
     {
@@ -180,8 +239,11 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
         fis->Read(pixel_data,total_bytes);
 
+        if(header.image_type==tga::ImageType::Grayscale&&header.bit==32)
+            UInteger2Float<float,uint32>((float *)pixel_data,(uint32 *)pixel_data,pixel_count,(float)HGL_U32_MAX);
+
         if(image_desc.vertical_direction==tga::VerticalDirection::BottomToTop)
-            SwapRow((uint8 *)pixel_data,header.width*header.bit/8,header.height);
+            SwapRow((uint8 *)pixel_data,line_bytes,header.height);
 
         buf->Unmap();
     }
