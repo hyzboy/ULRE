@@ -173,10 +173,10 @@ namespace
 
     const VulkanFormat *vulkan_yuv_format_list=vulkan_color_format_list+FMT_RANGE_SIZE;
     const VulkanFormat *vulkan_pvrtc_format_list=vulkan_color_format_list+FMT_RANGE_SIZE+FMT_YUV_RANGE_SIZE;
-
-#ifdef _DEBUG
+    
     constexpr size_t TEXTURE_FORMAT_COUNT=sizeof(vulkan_color_format_list)/sizeof(VulkanFormat);
 
+#ifdef _DEBUG
     uint32_t GetStrideBytesByFormat(const VkFormat &format)
     {
         if(format<=VK_FORMAT_UNDEFINED)
@@ -225,8 +225,6 @@ namespace
 
         return(0);
     }
-#else
-    constexpr uint32_t STRIDE_FORMAT_COUNT=sizeof(stride_list)/sizeof(uint32);
 #endif//_DEBUG
 }//namespace
 
