@@ -109,8 +109,11 @@ namespace
     }
 
     template<typename T,typename S>
-    void UInteger2Float(T *tar,S *src,uint size,const T max_value)
+    void UInteger2Float(void *ptr,uint size,const T max_value)
     {
+        T *tar=(T *)ptr;
+        S *src=(S *)ptr;
+
         for(uint i=0;i<size;i++)
             *tar++=T(*src++)/max_value;
     }
@@ -158,7 +161,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
 
     if(fis->Read(&header,sizeof(tga::Header))!=sizeof(tga::Header))
         return(false);
-        
+
     const uint pixel_count  =header.width*header.height;        //象素数量
     const uint pixel_byte   =header.bit>>3;                     //单个象素字节数
     const uint line_bytes   =header.width*pixel_byte;           //每行字节数
@@ -240,7 +243,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
         fis->Read(pixel_data,total_bytes);
 
         if(header.image_type==tga::ImageType::Grayscale&&header.bit==32)
-            UInteger2Float<float,uint32>((float *)pixel_data,(uint32 *)pixel_data,pixel_count,(float)HGL_U32_MAX);
+            UInteger2Float<float,uint32>(pixel_data,pixel_count,(float)HGL_U32_MAX);
 
         if(image_desc.vertical_direction==tga::VerticalDirection::BottomToTop)
             SwapRow((uint8 *)pixel_data,line_bytes,header.height);
