@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/vulkan/VKFormat.h>
+#include<hgl/type/StrChar.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -266,5 +267,22 @@ const VulkanFormat *GetVulkanFormat(const VkFormat &format)
         return vulkan_pvrtc_format_list+format-FMT_PVRTC_BEGIN_RANGE;
 
     return nullptr;
+}
+
+const VulkanFormat *GetVulkanFormat(const char *fmt_name)
+{
+    if(!fmt_name||!*fmt_name)return(nullptr);
+    
+    const VulkanFormat *vcf=vulkan_color_format_list;
+
+    for(uint32_t i=VK_FORMAT_BEGIN_RANGE;i<=VK_FORMAT_END_RANGE;i++)
+    {
+        if(hgl::strcmp(fmt_name,vcf->name)==0)
+            return vcf;
+
+        ++vcf;
+    }
+
+    return(nullptr);
 }
 VK_NAMESPACE_END

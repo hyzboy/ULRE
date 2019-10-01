@@ -62,6 +62,8 @@ void PipelineCreater::InitDynamicState()
     dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
     dynamicStateEnables[dynamicState.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
 
+    //如果窗口大小不变，可以不设置这两个。能不能提升效能未知
+
     pipelineInfo.pDynamicState=&dynamicState;
 }
 
