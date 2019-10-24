@@ -17,6 +17,7 @@
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 #include<hgl/graph/vulkan/VKMaterial.h>
 #include<hgl/graph/vulkan/VKRenderTarget.h>
+#include<hgl/graph/shader/glsl2spv.h>
 #include<hgl/graph/SceneDB.h>
 #include<hgl/graph/RenderList.h>
 
@@ -90,6 +91,8 @@ public:
         if(!vulkan::CheckStrideBytesByFormat())
             return(false);
     #endif//
+
+        InitDefaultShaderBuildResource();
 
         InitNativeWindowSystem();
 
