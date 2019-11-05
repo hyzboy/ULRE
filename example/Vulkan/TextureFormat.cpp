@@ -64,7 +64,7 @@ int main(int,char **)
     if(!inst)
         return(false);
 
-    device=win->CreateRenderDevice(inst);
+    device=CreateRenderDevice(inst,win);
 
     physical_device=device->GetPhysicalDevice();
 
@@ -110,7 +110,7 @@ int main(int,char **)
         ++vf;
     }
 
-    win->CloseRenderDevice();
+    delete device;
     delete inst;
     delete win;
 
