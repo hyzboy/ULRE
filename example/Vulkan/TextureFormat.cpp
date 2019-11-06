@@ -52,6 +52,8 @@ int main(int,char **)
 
     InitNativeWindowSystem();
 
+    InitVulkanProperties();
+
     win=CreateRenderWindow(OS_TEXT("VulkanTest"));
     if(!win)
         return(false);
