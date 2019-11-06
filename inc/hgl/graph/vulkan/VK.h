@@ -104,5 +104,11 @@ inline void debug_out(const hgl::List<VkExtensionProperties> &extension_properti
         ++ep;
     }
 }
+
+        void                            InitVulkanProperties();
+const   List<VkLayerProperties> &       GetLayerProperties();
+const   List<VkExtensionProperties> &   GetExtensionProperties();
+const   bool                            CheckLayerSupport(const char *);
+
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INCLUDE
