@@ -3,6 +3,7 @@
 SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKMemory.cpp
 								VKProperties.cpp
+								VKDebugOut.cpp
                                 VKInstance.cpp
                                 VKPhysicalDevice.cpp
                                 VKImageView.cpp

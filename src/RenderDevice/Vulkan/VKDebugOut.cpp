@@ -1,7 +1,62 @@
-#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKDebugOut.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
+namespace
+{
+    const char VkDebugReportObjectTypename[][32]=
+    {
+        "UNKNOWN",
+        "INSTANCE",
+        "PHYSICAL_DEVICE",
+        "DEVICE",
+        "QUEUE",
+        "SEMAPHORE",
+        "COMMAND_BUFFER",
+        "FENCE",
+        "DEVICE_MEMORY",
+        "BUFFER",
+        "IMAGE",
+        "EVENT",
+        "QUERY_POOL",
+        "BUFFER_VIEW",
+        "IMAGE_VIEW",
+        "SHADER_MODULE",
+        "PIPELINE_CACHE",
+        "PIPELINE_LAYOUT",
+        "RENDER_PASS",
+        "PIPELINE",
+        "DESCRIPTOR_SET_LAYOUT",
+        "SAMPLER",
+        "DESCRIPTOR_POOL",
+        "DESCRIPTOR_SET",
+        "FRAMEBUFFER",
+        "COMMAND_POOL",
+        "SURFACE_KHR",
+        "SWAPCHAIN_KHR",
+        "DEBUG_REPORT_CALLBACK_EXT",
+        "DISPLAY_KHR",
+        "DISPLAY_MODE_KHR",
+        "OBJECT_TABLE_NVX",
+        "INDIRECT_COMMANDS_LAYOUT_NVX",
+        "VALIDATION_CACHE_EXT",
+
+        "SAMPLER_YCBCR_CONVERSION",
+        "DESCRIPTOR_UPDATE_TEMPLATE",
+        "ACCELERATION_STRUCTURE_NV"
+    };
+}//namespace 
+
+const char *GetVkDebugReportObjectTypename(VkDebugReportObjectTypeEXT objType)
+{
+    if(objType==VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT)   return VkDebugReportObjectTypename[VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT+1];else
+    if(objType==VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT) return VkDebugReportObjectTypename[VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT+2];else
+    if(objType==VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV_EXT)  return VkDebugReportObjectTypename[VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT+3];else
+    if(objType<VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT
+     &&objType>VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT)        return VkDebugReportObjectTypename[0];else
+                                                                            return VkDebugReportObjectTypename[objType];
+}
+
 namespace
 {
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,const VkAllocationCallbacks *pAllocator,VkDebugUtilsMessengerEXT *pDebugMessenger)
@@ -25,32 +80,31 @@ namespace
             func(instance,debugMessenger,pAllocator);
         }
     }
-
-    VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,void *pUserData)
+    
+    VkBool32 DefaultVulkanDebugUtilsMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                            VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                            const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData)
     {
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-        {
-            std::cout<<"ERROR: "<<pCallbackData->pMessage<<std::endl;
-        }
-        else
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-        {
-            std::cout<<"WARNING: "<<pCallbackData->pMessage<<std::endl;
-        }
-        else
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-        {
-            std::cout<<"INFO: "<<pCallbackData->pMessage<<std::endl;
-        }
-        else
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-        {
-            std::cout<<"VERBOSE: "<<pCallbackData->pMessage<<std::endl;
-        }
-        else
-            std::cerr<<"validation layer: "<<pCallbackData->pMessage<<std::endl;
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)   std::cerr<<"[ERROR] ";           else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) std::cerr<<"[WARNING] ";         else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)    std::cerr<<"[INFO] ";            else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) std::cerr<<"[VERBOSE] ";         else
+                                                                            std::cerr<<"[Validation layer] ";
+
+        std::cerr<<pCallbackData->pMessage<<std::endl;
 
         return VK_FALSE;
+    }
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_utils_callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,void *pUserData)
+    {
+        if(!pCallbackData)
+            return VK_FALSE;
+
+        if(!pUserData)
+            return DefaultVulkanDebugUtilsMessage(messageSeverity,messageType,pCallbackData);
+        else 
+            return ((VKDebugOut *)pUserData)->OnDebugUtilsMessage(messageSeverity,messageType,pCallbackData);
     }
 
     bool CreateDebugReportCallbackEXT(VkInstance instance,const VkDebugReportCallbackCreateInfoEXT *pCreateInfo,const VkAllocationCallbacks *pAllocator,VkDebugReportCallbackEXT *pCallback)
@@ -81,47 +135,43 @@ namespace
         }
     }
 
-    VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags,VkDebugReportObjectTypeEXT objType,uint64_t srcObject,
+    VkBool32 DefaultVulkanDebugReport(  VkDebugReportFlagsEXT msgFlags,
+                                        VkDebugReportObjectTypeEXT objType,
+                                        uint64_t srcObject,
+                                        size_t location,
+                                        int32_t msgCode,
+                                        const char *pLayerPrefix,
+                                        const char *pMsg)
+    {
+        const char *obj_type_name=GetVkDebugReportObjectTypename(objType);
+
+        if(msgFlags&VK_DEBUG_REPORT_ERROR_BIT_EXT)              std::cerr<<"[ERROR:";               else
+        if(msgFlags&VK_DEBUG_REPORT_WARNING_BIT_EXT)            std::cerr<<"[WARNING:";             else
+        if(msgFlags&VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)std::cerr<<"[PERFORMANCE WARNING:"; else
+        if(msgFlags&VK_DEBUG_REPORT_INFORMATION_BIT_EXT)        std::cerr<<"[INFO:";                else
+        if(msgFlags&VK_DEBUG_REPORT_DEBUG_BIT_EXT)              std::cerr<<"[DEBUG:";
+
+        std::cerr<<msgCode<<"]["<<obj_type_name<<":"<<srcObject<<"][Location:"<<location<<"]["<<pLayerPrefix<<"] "<<pMsg<<std::endl;
+
+        return VK_FALSE;
+    }
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL vulkan_debug_report_callback(VkDebugReportFlagsEXT msgFlags,VkDebugReportObjectTypeEXT objType,uint64_t srcObject,
                                            size_t location,int32_t msgCode,const char *pLayerPrefix,const char *pMsg,
                                            void *pUserData)
     {
-        if(msgFlags&VK_DEBUG_REPORT_ERROR_BIT_EXT)
-        {
-            std::cout<<"ERROR: ";
-        }
-        else if(msgFlags&VK_DEBUG_REPORT_WARNING_BIT_EXT)
-        {
-            std::cout<<"WARNING: ";
-        }
-        else if(msgFlags&VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
-        {
-            std::cout<<"PERFORMANCE WARNING: ";
-        }
-        else if(msgFlags&VK_DEBUG_REPORT_INFORMATION_BIT_EXT)
-        {
-            std::cout<<"INFO: ";
-        }
-        else if(msgFlags&VK_DEBUG_REPORT_DEBUG_BIT_EXT)
-        {
-            std::cout<<"DEBUG: ";
-        }
-
-        std::cout<<"["<<pLayerPrefix<<"] Code "<<msgCode<<" : "<<pMsg<<std::endl;
-
-        /*
-         * false indicates that layer should not bail-out of an
-         * API call that had validation failures. This may mean that the
-         * app dies inside the driver due to invalid parameter(s).
-         * That's what would happen without validation layers, so we'll
-         * keep that behavior here.
-         */
-        return false;
+        if(!pUserData)
+            return DefaultVulkanDebugReport(msgFlags,objType,srcObject,location,msgCode,pLayerPrefix,pMsg);
+        else
+            return ((VKDebugOut *)pUserData)->OnDebugReport(msgFlags,objType,srcObject,location,msgCode,pLayerPrefix,pMsg);
     }
 }//namespace
 
+bool VKDebugOut::Init(VkInstance i)
+{
+    int count=0;
 
-    virtual bool Init(VkInstance);
-    debug_report_callback=VK_NULL_HANDLE;
+    inst=i;
     {
         VkDebugReportCallbackCreateInfoEXT create_info;
 
@@ -133,39 +183,54 @@ namespace
                                 |VK_DEBUG_REPORT_DEBUG_BIT_EXT
                                 |VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
 
-        create_info.pfnCallback =dbgFunc;
-        create_info.pUserData   =nullptr;
+        create_info.pfnCallback =vulkan_debug_report_callback;
+        create_info.pUserData   =this;
 
-        CreateDebugReportCallbackEXT(inst,&create_info,nullptr,&debug_report_callback);
+        if(CreateDebugReportCallbackEXT(inst,&create_info,nullptr,&debug_report_callback))
+            ++count;
     }
 
-    debug_messenger=VK_NULL_HANDLE;
     {
-        VkDebugUtilsMessengerCreateInfoEXT createInfo;
+        VkDebugUtilsMessengerCreateInfoEXT create_info;
 
-        createInfo.sType            =VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.pNext            =nullptr;
-        createInfo.flags            =0;
+        create_info.sType           =VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        create_info.pNext           =nullptr;
+        create_info.flags           =0;
 
-        createInfo.messageSeverity  =VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+        create_info.messageSeverity =VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
                                     |VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
                                     |VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 
-        createInfo.messageType      =VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+        create_info.messageType     =VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
                                     |VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
                                     |VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
-        createInfo.pfnUserCallback  =debugCallback;
-        createInfo.pUserData        =nullptr;
+        create_info.pfnUserCallback =vulkan_debug_utils_callback;
+        create_info.pUserData       =this;
 
-        CreateDebugUtilsMessengerEXT(inst,&createInfo,nullptr,&debug_messenger);
+        if(CreateDebugUtilsMessengerEXT(inst,&create_info,nullptr,&debug_messenger))
+            ++count;
     }
 
-    void close()
-    {
-        if(debug_messenger)
-            DestroyDebugUtilsMessengerEXT(inst,debug_messenger,nullptr);
+    return(count);
+}
 
-        if(debug_report_callback)
-            DestroyDebugReportCallbackEXT(inst,debug_report_callback,nullptr);
-    }
+VKDebugOut::~VKDebugOut()
+{
+    if(debug_messenger)
+        DestroyDebugUtilsMessengerEXT(inst,debug_messenger,nullptr);
+
+    if(debug_report_callback)
+        DestroyDebugReportCallbackEXT(inst,debug_report_callback,nullptr);
+}
+
+VkBool32 VKDebugOut::OnDebugUtilsMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,VkDebugUtilsMessageTypeFlagsEXT messageType,const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData)
+{
+    return DefaultVulkanDebugUtilsMessage(messageSeverity,messageType,pCallbackData);
+}
+
+VkBool32 VKDebugOut::OnDebugReport(VkDebugReportFlagsEXT msgFlags,VkDebugReportObjectTypeEXT objType,uint64_t srcObject,size_t location,int32_t msgCode,const char *pLayerPrefix,const char *pMsg)
+{
+    return DefaultVulkanDebugReport(msgFlags,objType,srcObject,location,msgCode,pLayerPrefix,pMsg);
+}
+VK_NAMESPACE_END

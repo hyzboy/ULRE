@@ -1,12 +1,13 @@
 ﻿#include<hgl/graph/vulkan/VKInstance.h>
 #include<hgl/graph/vulkan/VKSurfaceExtensionName.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>
+#include<hgl/graph/vulkan/VKDebugOut.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
 Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
 
-Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *do)
+Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *out)
 {
     VkApplicationInfo app_info;
     VkInstanceCreateInfo inst_info;
@@ -43,19 +44,22 @@ Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *do)
 
     if(vkCreateInstance(&inst_info,nullptr,&inst)==VK_SUCCESS)
     {
-        do->Init(inst);
-        return(new Instance(inst,ext_list,do));
+        if(!out)
+            out=new VKDebugOut;
+        
+        out->Init(inst);
+        return(new Instance(inst,ext_list,out));
     }
 
     return(nullptr);
 }
 
-Instance::Instance(VkInstance i,CharPointerList &el,VKDebugOut *do)
+Instance::Instance(VkInstance i,CharPointerList &el,VKDebugOut *out)
 {
     inst=i;
     ext_list=el;
 
-    debug_out=do;
+    debug_out=out;
 
     uint32_t gpu_count = 1;
 
@@ -72,7 +76,7 @@ Instance::Instance(VkInstance i,CharPointerList &el,VKDebugOut *do)
 }
 
 Instance::~Instance()
-
+{
     SAFE_CLEAR(debug_out);
     
     physical_devices.Clear();
