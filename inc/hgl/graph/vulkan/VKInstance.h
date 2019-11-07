@@ -20,9 +20,9 @@ VK_NAMESPACE_BEGIN
 
     private:
 
-        friend Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *do=nullptr);
+        friend Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *out=nullptr);
 
-        Instance(VkInstance,VKDebugOut *,CharPointerList &);
+        Instance(VkInstance,CharPointerList &,VKDebugOut *);
 
     public:
 
@@ -35,6 +35,6 @@ VK_NAMESPACE_BEGIN
         const   PhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
     };//class Instance
 
-    Instance *CreateInstance(const UTF8String &,VKDebugOut *do=nullptr);                            ///<创建一个Vulkan实例
+    Instance *CreateInstance(const UTF8String &,VKDebugOut *);                            ///<创建一个Vulkan实例
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
