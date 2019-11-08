@@ -1,8 +1,8 @@
-#include<hgl/graph/vulkan/VK.h>
+﻿#include<hgl/graph/vulkan/VK.h>
 
 VK_NAMESPACE_BEGIN
 
-namespace 
+namespace
 {
     static List<VkLayerProperties> layer_properties;
     static List<VkExtensionProperties> extension_properties;
