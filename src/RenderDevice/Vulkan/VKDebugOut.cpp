@@ -1,4 +1,4 @@
-#include<hgl/graph/vulkan/VKDebugOut.h>
+﻿#include<hgl/graph/vulkan/VKDebugOut.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -45,7 +45,7 @@ namespace
         "DESCRIPTOR_UPDATE_TEMPLATE",
         "ACCELERATION_STRUCTURE_NV"
     };
-}//namespace 
+}//namespace
 
 const char *GetVkDebugReportObjectTypename(VkDebugReportObjectTypeEXT objType)
 {
@@ -80,7 +80,7 @@ namespace
             func(instance,debugMessenger,pAllocator);
         }
     }
-    
+
     VkBool32 DefaultVulkanDebugUtilsMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                             VkDebugUtilsMessageTypeFlagsEXT messageType,
                                             const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData)
@@ -103,7 +103,7 @@ namespace
 
         if(!pUserData)
             return DefaultVulkanDebugUtilsMessage(messageSeverity,messageType,pCallbackData);
-        else 
+        else
             return ((VKDebugOut *)pUserData)->OnDebugUtilsMessage(messageSeverity,messageType,pCallbackData);
     }
 

@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_DEBUG_OUT_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_DEBUG_OUT_INCLUDE
 #define HGL_GRAPH_VULKAN_DEBUG_OUT_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
@@ -8,8 +8,8 @@ VK_NAMESPACE_BEGIN
 const char *GetVkDebugReportObjectTypename(VkDebugReportObjectTypeEXT objType);
 
 /**
- * Vulkan µ÷ÊÔĞÅÏ¢Êä³ö»ùÀà<br>
- * ÈçÈôĞèÒª×Ô¶¨ÒåµÄµ÷ÊÔĞÅÏ¢Êä³ö£¬Çë´Ó´ËÀàÅÉÉú
+ * Vulkan è°ƒè¯•ä¿¡æ¯è¾“å‡ºåŸºç±»<br>
+ * å¦‚è‹¥éœ€è¦è‡ªå®šä¹‰çš„è°ƒè¯•ä¿¡æ¯è¾“å‡ºï¼Œè¯·ä»æ­¤ç±»æ´¾ç”Ÿ
  */
 class VKDebugOut
 {
