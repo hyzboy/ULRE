@@ -35,18 +35,13 @@ constexpr char *data_type_name[]
     "SRGB"
 };//
 
-int main(int,char **)
+vulkan::Instance *InitVulkanInstance()
 {
-                    Window *        win             =nullptr;
-            vulkan::Instance *      inst            =nullptr;    
-            vulkan::Device *        device          =nullptr;
-    const   vulkan::PhysicalDevice *physical_device =nullptr;
-
     #ifdef _DEBUG
         if(!CheckStrideBytesByFormat())
         {
             std::cerr<<"check stride bytes by format failed."<<std::endl;
-            return(1);
+            return(nullptr);
         }
     #endif//_DEBUG
 
@@ -54,10 +49,30 @@ int main(int,char **)
 
     InitVulkanProperties();
 
-    inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
+    CreateInstanceLayerInfo cili;
+
+    memset(&cili,0,sizeof(CreateInstanceLayerInfo));
+
+    cili.lunarg.standard_validation=true;
+    cili.khronos.validation=true;
+
+    return vulkan::CreateInstance(U8_TEXT("VulkanTest"),nullptr,&cili);
+}
+
+int main(int,char **)
+{
+                    Window *        win             =nullptr;
+            vulkan::Instance *      inst            =nullptr;    
+            vulkan::Device *        device          =nullptr;
+    const   vulkan::PhysicalDevice *physical_device =nullptr;
+
+    inst=InitVulkanInstance();
 
     if(!inst)
+    {
+        std::cerr<<"[VULKAN FATAL ERROR] Create Vulkan Instance failed.";
         return(false);
+    }
 
         physical_device=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
 
