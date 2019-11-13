@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
 
-using CharPointerList=hgl::List<const char *>;
+void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
 
 Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
 {
@@ -33,37 +33,7 @@ Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *out,CreateInstan
 #endif//_DEBUG
 
     if(layer_info)
-    {
-    #define VK_LAYER_LUNARG_ADD(name)       if(layer_info->lunarg.name)layer_list.Add("VK_LAYER_LUNARG_" #name);
-
-        VK_LAYER_LUNARG_ADD(api_dump)
-        VK_LAYER_LUNARG_ADD(device_simulation)
-        VK_LAYER_LUNARG_ADD(monitor)
-        VK_LAYER_LUNARG_ADD(screenshot)
-        VK_LAYER_LUNARG_ADD(standard_validation)
-        VK_LAYER_LUNARG_ADD(vktrace)
-
-    #define VK_LAYER_KHRONOS_ADD(name)      if(layer_info->khronos.name)layer_list.Add("VK_LAYER_KHRONOS_" #name);
-
-        VK_LAYER_KHRONOS_ADD(validation)
-
-    #define VK_LAYER_NV_ADD(name)           if(layer_info->nv.name)layer_list.Add("VK_LAYER_NV_" #name);
-
-        VK_LAYER_NV_ADD(optimus)
-
-    #define VK_LAYER_VALVE_ADD(name)        if(layer_info->valve.name)layer_list.Add("VK_LAYER_VALVE_" #name);
-
-        VK_LAYER_VALVE_ADD(steam_overlay)
-        VK_LAYER_VALVE_ADD(steam_fossilize)
-
-    #define VK_LAYER_RENDERDOC_ADD(name)    if(layer_info->RenderDoc.name)layer_list.Add("VK_LAYER_RENDERDOC_" #name);
-
-        VK_LAYER_RENDERDOC_ADD(Capture)
-
-    #define VK_LAYER_BANDICAM_ADD(name)     if(layer_info->bandicam.name)layer_list.Add("VK_LAYER_bandicam_" #name);
-
-        VK_LAYER_BANDICAM_ADD(helper)
-    }
+        CheckInstanceLayer(layer_list,layer_info);
 
     inst_info.sType                     = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     inst_info.pNext                     = nullptr;
