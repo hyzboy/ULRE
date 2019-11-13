@@ -54,21 +54,15 @@ int main(int,char **)
 
     InitVulkanProperties();
 
-    win=CreateRenderWindow(OS_TEXT("VulkanTest"));
-    if(!win)
-        return(false);
-
-    if(!win->Create(128,128))
-        return(false);
-
     inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
 
     if(!inst)
         return(false);
 
-    device=CreateRenderDevice(inst,win);
+        physical_device=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
 
-    physical_device=device->GetPhysicalDevice();
+    if(!physical_device)
+        physical_device=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);
 
     uint32_t count;
     const VulkanFormat *vf=GetVulkanFormatList(count);
@@ -112,9 +106,7 @@ int main(int,char **)
         ++vf;
     }
 
-    delete device;
     delete inst;
-    delete win;
-
+ 
     return 0;
 }
