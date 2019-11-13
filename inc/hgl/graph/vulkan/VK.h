@@ -10,6 +10,8 @@
 
 VK_NAMESPACE_BEGIN
 
+using CharPointerList=hgl::List<const char *>;
+
 class Instance;
 class PhysicalDevice;
 class Device;

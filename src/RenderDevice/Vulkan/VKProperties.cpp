@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/vulkan/VKInstance.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -54,5 +55,44 @@ const bool CheckLayerSupport(const char *layer_name)
     }
 
     return(false);
+}
+
+void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info)
+{
+    #define VK_LAYER_CHECK(sname,lname,name)    if(layer_info->sname.name)  \
+                                                {   \
+                                                    if(CheckLayerSupport("VK_LAYER_" lname "_" #name)) \
+                                                          layer_list.Add("VK_LAYER_" lname "_" #name); \
+                                                }
+
+#define VK_LAYER_LUNARG_ADD(name)       VK_LAYER_CHECK(lunarg,"LUNARG",name)
+
+    VK_LAYER_LUNARG_ADD(api_dump)
+    VK_LAYER_LUNARG_ADD(device_simulation)
+    VK_LAYER_LUNARG_ADD(monitor)
+    VK_LAYER_LUNARG_ADD(screenshot)
+    VK_LAYER_LUNARG_ADD(standard_validation)
+    VK_LAYER_LUNARG_ADD(vktrace)
+
+#define VK_LAYER_KHRONOS_ADD(name)      VK_LAYER_CHECK(khronos,"KHRONOS",name)
+
+    VK_LAYER_KHRONOS_ADD(validation)
+
+#define VK_LAYER_NV_ADD(name)           VK_LAYER_CHECK(nv,"NV",name)
+
+    VK_LAYER_NV_ADD(optimus)
+
+#define VK_LAYER_VALVE_ADD(name)        VK_LAYER_CHECK(valve,"VALVE",name)
+
+    VK_LAYER_VALVE_ADD(steam_overlay)
+    VK_LAYER_VALVE_ADD(steam_fossilize)
+
+#define VK_LAYER_RENDERDOC_ADD(name)    VK_LAYER_CHECK(RenderDoc,"RENDERDOC",name)
+
+    VK_LAYER_RENDERDOC_ADD(Capture)
+
+#define VK_LAYER_BANDICAM_ADD(name)     VK_LAYER_CHECK(bandicam,"bandicam",name)
+
+    VK_LAYER_BANDICAM_ADD(helper)    
 }
 VK_NAMESPACE_END
