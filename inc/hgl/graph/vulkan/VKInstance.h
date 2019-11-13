@@ -14,15 +14,13 @@ VK_NAMESPACE_BEGIN
 
         VKDebugOut *debug_out;
 
-        CharPointerList ext_list;
-
         ObjectList<PhysicalDevice> physical_devices;
 
     private:
 
         friend Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *out=nullptr);
 
-        Instance(VkInstance,CharPointerList &,VKDebugOut *);
+        Instance(VkInstance,VKDebugOut *);
 
     public:
 
@@ -30,7 +28,6 @@ VK_NAMESPACE_BEGIN
 
                 operator VkInstance (){return inst;}
 
-        const   CharPointerList &           GetExtList          ()const {return ext_list;}
         const   ObjectList<PhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
         const   PhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
     };//class Instance

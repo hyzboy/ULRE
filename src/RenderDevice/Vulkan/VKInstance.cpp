@@ -48,16 +48,15 @@ Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *out)
             out=new VKDebugOut;
         
         out->Init(inst);
-        return(new Instance(inst,ext_list,out));
+        return(new Instance(inst,out));
     }
 
     return(nullptr);
 }
 
-Instance::Instance(VkInstance i,CharPointerList &el,VKDebugOut *out)
+Instance::Instance(VkInstance i,VKDebugOut *out)
 {
     inst=i;
-    ext_list=el;
 
     debug_out=out;
 
