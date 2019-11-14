@@ -62,7 +62,7 @@ vulkan::Instance *InitVulkanInstance()
 int main(int,char **)
 {
                     Window *        win             =nullptr;
-            vulkan::Instance *      inst            =nullptr;    
+            vulkan::Instance *      inst            =nullptr;
             vulkan::Device *        device          =nullptr;
     const   vulkan::PhysicalDevice *physical_device =nullptr;
 

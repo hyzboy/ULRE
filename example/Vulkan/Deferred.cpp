@@ -19,8 +19,8 @@ VK_NAMESPACE_BEGIN
 Texture2D *LoadTGATexture(const OSString &filename,Device *device);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 using Texture2DPointer=vulkan::Texture2D *;
 
@@ -288,8 +288,8 @@ private:
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         if(!InitCompositionPipeline(&sp_composition))return(false);
 
-        texture.color   =vulkan::LoadTGATexture(OS_TEXT("res/image/cardboardPlainStain.tga"),device);
-        texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_NRM.tga"),device);
+        texture.color   =vulkan::LoadTGATexture(OS_TEXT("res/image/Brickwall/Albedo.tga"),device);
+        texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/Brickwall/Normal.tga"),device);
         //texture.specular=vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_SPEC.tga"),device);
 
         VkSamplerCreateInfo sampler_create_info;

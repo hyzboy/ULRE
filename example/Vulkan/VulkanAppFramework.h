@@ -96,6 +96,8 @@ public:
 
         InitNativeWindowSystem();
 
+        VK_NAMESPACE::InitVulkanProperties();
+
         win=CreateRenderWindow(OS_TEXT("VulkanTest"));
         if(!win)
             return(false);
@@ -103,10 +105,20 @@ public:
         if(!win->Create(w,h))
             return(false);
 
-        inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
+        {
+            VK_NAMESPACE::CreateInstanceLayerInfo cili;
 
-        if(!inst)
-            return(false);
+            memset(&cili, 0, sizeof(VK_NAMESPACE::CreateInstanceLayerInfo));
+
+            cili.lunarg.standard_validation = true;
+            cili.khronos.validation = true;
+            cili.RenderDoc.Capture = true;
+
+            inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
+
+            if(!inst)
+                return(false);
+        }
 
         device=CreateRenderDevice(inst,win);
 
