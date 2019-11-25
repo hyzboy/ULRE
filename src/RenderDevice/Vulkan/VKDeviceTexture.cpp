@@ -92,7 +92,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t
 
     ImageView *iv=CreateImageView2D(attr->device,format,ext,aspectMask,img);
 
-    return CreateTexture2D(format,width,height,aspectMask,usage,image_layout,linear);
+    return CreateTexture2D(mem,img,iv,image_layout,linear);
 }
 
 Texture2D *Device::CreateTexture2D(const VkFormat format,Buffer *buf,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const bool linear)
