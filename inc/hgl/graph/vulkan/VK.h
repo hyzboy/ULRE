@@ -35,6 +35,7 @@ class Sampler;
 
 class Memory;
 class Buffer;
+struct BufferData;
 class VertexBuffer;
 class IndexBuffer;
 

@@ -20,22 +20,86 @@ namespace
     }
 }//namespace
 
-Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
+Texture2D *Device::CreateTexture2D(Memory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,bool linear)
+{
+    TextureData *tex_data=new TextureData;
+
+    tex_data->memory        = mem;
+    tex_data->image_layout  = image_layout;
+    tex_data->image         = image;
+    tex_data->image_view    = image_view;
+
+    tex_data->mip_levels    = 0;
+    tex_data->linear        = linear;
+
+    return(new Texture2D(attr->device,tex_data));
+}
+
+Texture2D *Device::CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout,bool linear)
+{
+    VkExtent3D extent={width,height,1};
+
+    ImageView *iv=CreateImageView(attr->device,VK_IMAGE_VIEW_TYPE_2D,format,extent,aspectMask,image);
+
+    return this->CreateTexture2D(nullptr,image,iv,image_layout,false);
+}
+
+Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,bool linear)
 {
     const VkFormatProperties fp=attr->physical_device->GetFormatProperties(format);
 
-    if(!(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-     &&!(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
-        return(nullptr);
+    enum VkImageTiling tiling;
 
-    return VK_NAMESPACE::CreateTexture2D(attr->device,attr->physical_device,format,width,height,aspectMask,usage,image_layout,(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?VK_IMAGE_TILING_OPTIMAL:VK_IMAGE_TILING_LINEAR);
+    if(linear)
+    {
+        if(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+            tiling=VK_IMAGE_TILING_LINEAR;
+        else 
+            return(nullptr);
+    }
+    else
+    {
+        if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+        {
+            tiling=VK_IMAGE_TILING_OPTIMAL;
+        }
+        else
+        {
+            if(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+            {
+                tiling=VK_IMAGE_TILING_LINEAR;
+                linear=true;
+            }
+            else 
+                return(nullptr);
+        }
+    }
+
+    VkImage img=CreateImage(format,width,height,usage,tiling);
+
+    if(!img)return(nullptr);
+
+    Memory *mem=CreateMemory(img);
+
+    if(!mem->BindImage(img))
+    {
+        delete mem;
+        DestoryImage(img);
+        return(nullptr);
+    }
+
+    const VkExtent3D ext={width,height,1};
+
+    ImageView *iv=CreateImageView2D(attr->device,format,ext,aspectMask,img);
+
+    return CreateTexture2D(format,width,height,aspectMask,usage,image_layout,linear);
 }
 
-Texture2D *Device::CreateTexture2D(const VkFormat format,Buffer *buf,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
+Texture2D *Device::CreateTexture2D(const VkFormat format,Buffer *buf,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const bool linear)
 {
     if(!buf)return(nullptr);
 
-    Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout);
+    Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout,false);
 
     if(!tex)return(nullptr);
 
@@ -44,13 +108,13 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,Buffer *buf,uint32_t wi
     return(tex);
 }
 
-Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
+Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const bool linear)
 {
     Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
     if(!buf)return(nullptr);
 
-    Texture2D *tex=CreateTexture2D(format,buf,width,height,aspectMask,image_layout);
+    Texture2D *tex=CreateTexture2D(format,buf,width,height,aspectMask,image_layout,linear);
 
     delete buf;
     return(tex);

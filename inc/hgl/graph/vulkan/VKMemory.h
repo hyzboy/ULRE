@@ -13,7 +13,7 @@ class Memory
 
 private:
 
-    friend Memory *CreateMemory(VkDevice device,const PhysicalDevice *pd,const VkMemoryRequirements &req,uint32_t properties);
+    friend class Device;
 
     Memory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p)
     {
@@ -48,7 +48,5 @@ public:
     bool BindBuffer(VkBuffer buffer);
     bool BindImage(VkImage image);
 };//class Memory
-
-Memory *CreateMemory(VkDevice device,const PhysicalDevice *pd,const VkMemoryRequirements &req,uint32_t properties);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MEMORY_INCLUDE

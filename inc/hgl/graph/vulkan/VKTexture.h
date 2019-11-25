@@ -13,9 +13,6 @@ struct TextureData
     ImageView *         image_view  =nullptr;
     uint32              mip_levels  =0;
     bool                linear      =false;
-    VkFormat            format      =VK_FORMAT_UNDEFINED;
-    VkImageAspectFlags  aspect      =0;
-    VkExtent3D          extent;
 };//struct TextureData
 
 class Texture
@@ -40,9 +37,9 @@ public:
     const uint32                GetMipLevels()const{return data?data->mip_levels:0;}
     const bool                  IsLinear    ()const{return data?data->linear:false;}
 
-    const VkFormat              GetFormat   ()const{return data?data->format:VK_FORMAT_UNDEFINED;}
-    const VkImageAspectFlags    GetAspect   ()const{return data?data->aspect:0;}
-    const VkExtent3D *          GetExtent   ()const{return data?&data->extent:nullptr;}
+    const VkFormat              GetFormat   ()const{return data?data->image_view->GetFormat():VK_FORMAT_UNDEFINED;}
+    const VkImageAspectFlags    GetAspect   ()const{return data?data->image_view->GetAspectFlags():0;}
+    const VkExtent3D *          GetExtent   ()const{return data?&data->image_view->GetExtent():nullptr;}
 
 public:
 
@@ -67,15 +64,13 @@ public:
 
 class Texture2D:public Texture
 {
-    uint32_t width,height;
-
 public:
 
-    Texture2D(uint32_t w,uint32_t h,VkDevice dev,TextureData *td):width(w),height(h),Texture(dev,td){}
+    Texture2D(VkDevice dev,TextureData *td):Texture(dev,td){}
     ~Texture2D()=default;
 
-    const uint32_t GetWidth()const{return width;}
-    const uint32_t GetHeight()const{return height;}
+    const uint32_t GetWidth()const{return data?data->image_view->GetExtent().width:0;}
+    const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
 };//class Texture2D:public Texture
 
 //class Texture2DArray:public Texture

@@ -4,8 +4,7 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKMemory.h>
 VK_NAMESPACE_BEGIN
-
-struct VulkanBuffer
+struct BufferData
 {
     VkBuffer                buffer;
     Memory *                memory=nullptr;
@@ -17,7 +16,7 @@ class Buffer
 protected:
 
     VkDevice device;
-    VulkanBuffer buf;
+    BufferData buf;
 
 private:
 
@@ -25,10 +24,10 @@ private:
     friend class VertexBuffer;
     friend class IndexBuffer;
 
-    Buffer(VkDevice d,const VulkanBuffer &vb)
+    Buffer(VkDevice d,const BufferData &b)
     {
         device=d;
-        buf=vb;
+        buf=b;
     }
 
 public:
@@ -57,7 +56,7 @@ private:
 
     friend class Device;
 
-    VertexBuffer(VkDevice d,const VulkanBuffer &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):Buffer(d,vb)
+    VertexBuffer(VkDevice d,const BufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):Buffer(d,vb)
     {
         format=fmt;
         stride=_stride;
@@ -87,7 +86,7 @@ private:
 
     friend class Device;
 
-    IndexBuffer(VkDevice d,const VulkanBuffer &vb,VkIndexType it,uint32_t _count):Buffer(d,vb)
+    IndexBuffer(VkDevice d,const BufferData &vb,VkIndexType it,uint32_t _count):Buffer(d,vb)
     {
         index_type=it;
         count=_count;
