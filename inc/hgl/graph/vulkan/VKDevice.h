@@ -61,7 +61,11 @@ public:
 
 public: //内存相关
 
-    Memory *Device::CreateMemory(const VkMemoryRequirements &,uint32_t properties);
+    Memory *CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
+
+private: //Buffer相关
+
+    bool                CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode);
 
 public: //Buffer相关
 
@@ -89,24 +93,36 @@ public: //Buffer相关
 
 #undef CREATE_BUFFER_OBJECT
 
-public: //material相关
+public: //Image
 
-    Texture2D *CreateTexture2D(const VkFormat video_format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout);
+    VkImage CreateImage(const VkFormat format,uint32_t width,uint32_t height,const uint usage,const VkImageTiling tiling);
+    void DestoryImage(VkImage);
 
-    Texture2D *CreateTexture2DColor(const VkFormat video_format,uint32_t width,uint32_t height)
+    Memory *CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+public: //Texture
+
+    Texture2D *CreateTexture2D(Memory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,bool linear);
+    Texture2D *CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout,bool linear=false);
+
+    Texture2D *CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,bool linear=false);
+
+    Texture2D *CreateTexture2DColor(const VkFormat video_format,uint32_t width,uint32_t height,bool linear=false)
     {
         return CreateTexture2D(video_format,width,height,
                 VK_IMAGE_ASPECT_COLOR_BIT,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                linear);
     }
 
-    Texture2D *CreateTexture2DDepth(const VkFormat video_format,uint32_t width,uint32_t height)
+    Texture2D *CreateTexture2DDepth(const VkFormat video_format,uint32_t width,uint32_t height,bool linear=false)
     {
         return CreateTexture2D(video_format,width,height,
                 VK_IMAGE_ASPECT_DEPTH_BIT,
                 VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                linear);
     }
 
     Texture2D *CreateAttachmentTexture(const VkFormat video_format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
@@ -133,15 +149,20 @@ public: //material相关
     Texture2D *CreateTexture2D( const VkFormat video_format,Buffer *buf,uint32_t width,uint32_t height,
                                 const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
                                 const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
-                                const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                const bool                  linear      =false);
 
     Texture2D *CreateTexture2D( const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,
                                 const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
                                 const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
-                                const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                                const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                const bool                  linear      =false);
 
     bool ChangeTexture2D(Texture2D *,Buffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height);
     bool ChangeTexture2D(Texture2D *,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size);
+
+public: //
+
     Sampler *CreateSampler(VkSamplerCreateInfo *);
 
     ShaderModuleManage *CreateShaderModuleManage();

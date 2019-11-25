@@ -2,49 +2,47 @@
 #include<hgl/graph/vulkan/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-namespace
+bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode)
 {
-    bool CreateVulkanBuffer(VulkanBuffer &vb,const DeviceAttribute *rsa,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode)
-    {
-        VkBufferCreateInfo buf_info={};
-        buf_info.sType=VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        buf_info.pNext=nullptr;
-        buf_info.usage=buf_usage;
-        buf_info.size=size;
-        buf_info.queueFamilyIndexCount=0;
-        buf_info.pQueueFamilyIndices=nullptr;
-        buf_info.sharingMode=sharing_mode;
-        buf_info.flags=0;
+    VkBufferCreateInfo buf_info={};
+    buf_info.sType                  =VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buf_info.pNext                  =nullptr;
+    buf_info.usage                  =buf_usage;
+    buf_info.size                   =size;
+    buf_info.queueFamilyIndexCount  =0;
+    buf_info.pQueueFamilyIndices    =nullptr;
+    buf_info.sharingMode            =sharing_mode;
+    buf_info.flags                  =0;
 
-        if(vkCreateBuffer(rsa->device,&buf_info,nullptr,&vb.buffer)!=VK_SUCCESS)
-            return(false);
-
-        VkMemoryRequirements mem_reqs;
-        vkGetBufferMemoryRequirements(rsa->device,vb.buffer,&mem_reqs);
-
-        Memory *dm=CreateMemory(rsa->device,rsa->physical_device,mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        if(dm&&dm->BindBuffer(vb.buffer))
-        {
-            vb.info.buffer  =vb.buffer;
-            vb.info.offset  =0;
-            vb.info.range   =size;
-
-            vb.memory       =dm;
-
-            if(!data)
-                return(true);
-
-            dm->Write(data,0,size);
-            return(true);
-        }
-
-        delete dm;
-
-        vkDestroyBuffer(rsa->device,vb.buffer,nullptr);
+    if(vkCreateBuffer(attr->device,&buf_info,nullptr,&buf->buffer)!=VK_SUCCESS)
         return(false);
+
+    VkMemoryRequirements mem_reqs;
+
+    vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
+
+    Memory *dm=CreateMemory(mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    if(dm&&dm->BindBuffer(buf->buffer))
+    {
+        buf->info.buffer  =buf->buffer;
+        buf->info.offset  =0;
+        buf->info.range   =size;
+
+        buf->memory       =dm;
+
+        if(!data)
+            return(true);
+
+        dm->Write(data,0,size);
+        return(true);
     }
-}//namespace
+
+    delete dm;
+
+    vkDestroyBuffer(attr->device,buf->buffer,nullptr);
+    return(false);
+}
 
 VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
 {
@@ -58,12 +56,12 @@ VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,const void *data,
 
     const VkDeviceSize size=stride*count;
 
-    VulkanBuffer vb;
+    BufferData buf;
 
-    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,data,sharing_mode))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,data,sharing_mode))
         return(nullptr);
 
-    return(new VertexBuffer(attr->device,vb,format,stride,count));
+    return(new VertexBuffer(attr->device,buf,format,stride,count));
 }
 
 IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)
@@ -76,21 +74,21 @@ IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void 
 
     const VkDeviceSize size=stride*count;
 
-    VulkanBuffer vb;
+    BufferData buf;
 
-    if(!CreateVulkanBuffer(vb,attr,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,data,sharing_mode))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,data,sharing_mode))
         return(nullptr);
 
-    return(new IndexBuffer(attr->device,vb,index_type,count));
+    return(new IndexBuffer(attr->device,buf,index_type,count));
 }
 
 Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode)
 {
-    VulkanBuffer vb;
+    BufferData buf;
 
-    if(!CreateVulkanBuffer(vb,attr,buf_usage,size,data,sharing_mode))
+    if(!CreateBuffer(&buf,buf_usage,size,data,sharing_mode))
         return(nullptr);
 
-    return(new Buffer(attr->device,vb));
+    return(new Buffer(attr->device,buf));
 }
 VK_NAMESPACE_END

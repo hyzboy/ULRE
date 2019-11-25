@@ -37,16 +37,11 @@ constexpr VkFormat normal_candidate_format  []={FMT_RGBA32F,
                                                 FMT_A2BGR10SN};
 constexpr VkFormat depth_candidate_format   []={FMT_D32F,FMT_D32F_S8U,FMT_X8_D24UN,FMT_D24UN_S8U,FMT_D16UN,FMT_D16UN_S8U};
 
-class TestApp:public CameraAppFramework
+class DeferredRenderingFramework:public CameraAppFramework
 {
-private:
-
-    SceneNode   render_root;
-    RenderList  render_list;
-
     struct DeferredGBuffer
     {
-        vulkan::Semaphore *render_complete_semaphore   =nullptr;
+        vulkan::Semaphore *render_complete_semaphore = nullptr;
 
         vulkan::RenderTarget *rt;
 
@@ -58,7 +53,7 @@ private:
         {
             struct
             {
-                Texture2DPointer position,normal,color,depth;
+                Texture2DPointer position, normal, color, depth;
             };
 
             Texture2DPointer texture_list[4];
@@ -72,7 +67,7 @@ private:
             List<VkAttachmentDescription> desc_list;
             List<VkAttachmentReference> ref_list;
         }attachment;
-        
+
         struct
         {
             List<VkSubpassDescription> desc;
@@ -82,14 +77,194 @@ private:
 
     struct SubpassParam
     {
-        vulkan::Material *      material;
+        vulkan::Material *material;
         vulkan::DescriptorSets *desc_sets;
-        vulkan::Pipeline *      pipeline_fan;
-        vulkan::Pipeline *      pipeline_triangles;
+        vulkan::Pipeline *pipeline_fan;
+        vulkan::Pipeline *pipeline_triangles;
     };//
 
     SubpassParam                sp_gbuffer;
     SubpassParam                sp_composition;
+
+    vulkan::CommandBuffer *gbuffer_cmd = nullptr;
+
+public:
+
+    DeferredRenderingFramework()
+    {
+    }
+
+    ~DeferredRenderingFramework()
+    {
+        SAFE_CLEAR(gbuffer_cmd);
+    }
+
+private:
+
+    const VkFormat GetCandidateFormat(const VkFormat *fmt_list, const uint count)
+    {
+        auto pd = device->GetPhysicalDevice();
+
+        for (uint i = 0; i < count; i++)
+            if (pd->IsColorAttachmentOptimal(fmt_list[i]))
+                return fmt_list[i];
+
+        for (uint i = 0; i < count; i++)
+            if (pd->IsColorAttachmentLinear(fmt_list[i]))
+                return fmt_list[i];
+
+        return FMT_UNDEFINED;
+    }
+
+    const VkFormat GetDepthCandidateFormat()
+    {
+        auto pd = device->GetPhysicalDevice();
+
+        for (VkFormat fmt : depth_candidate_format)
+            if (pd->IsDepthAttachmentOptimal(fmt))
+                return fmt;
+
+        for (VkFormat fmt : depth_candidate_format)
+            if (pd->IsDepthAttachmentLinear(fmt))
+                return fmt;
+
+        return FMT_UNDEFINED;
+    }
+
+    bool InitGBuffer()
+    {
+        gbuffer.extent.width = 1024;
+        gbuffer.extent.height = 1024;
+
+        gbuffer.render_complete_semaphore = device->CreateSem();
+
+        //根据候选格式表选择格式
+        //const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
+        //const VkFormat color_format     =GetCandidateFormat(color_candidate_format,     sizeof(color_candidate_format));
+        //const VkFormat normal_format    =GetCandidateFormat(normal_candidate_format,    sizeof(normal_candidate_format));
+        //const VkFormat depth_format     =GetDepthCandidateFormat();
+
+        //if(position_format  ==FMT_UNDEFINED
+        // ||color_format     ==FMT_UNDEFINED
+        // ||normal_format    ==FMT_UNDEFINED
+        // ||depth_format     ==FMT_UNDEFINED)
+        //    return(false);
+
+        const VkFormat position_format = FMT_RGBA32F;
+        const VkFormat color_format = FMT_RGBA32F;
+        const VkFormat normal_format = FMT_RGBA32F;
+        const VkFormat depth_format = FMT_D32F;
+
+        gbuffer.position = device->CreateAttachmentTextureColor(position_format, gbuffer.extent.width, gbuffer.extent.height);
+        gbuffer.color = device->CreateAttachmentTextureColor(color_format, gbuffer.extent.width, gbuffer.extent.height);
+        gbuffer.normal = device->CreateAttachmentTextureColor(normal_format, gbuffer.extent.width, gbuffer.extent.height);
+        gbuffer.depth = device->CreateAttachmentTextureDepth(depth_format, gbuffer.extent.width, gbuffer.extent.height);
+
+        for (uint i = 0; i < 3; i++)
+        {
+            gbuffer.gbuffer_format_list.Add(gbuffer.texture_list[i]->GetFormat());
+            gbuffer.image_view_list.Add(gbuffer.texture_list[i]->GetImageView());
+        }
+
+        if (!device->CreateAttachment(gbuffer.attachment.ref_list,
+            gbuffer.attachment.desc_list,
+            gbuffer.gbuffer_format_list,
+            gbuffer.depth->GetFormat()))
+            return(false);
+
+        VkSubpassDescription desc;
+
+        device->CreateSubpassDescription(desc, gbuffer.attachment.ref_list);
+
+        gbuffer.subpass.desc.Add(desc);
+
+        device->CreateSubpassDependency(gbuffer.subpass.dependency, 2);          //为啥要2个还不清楚
+
+        gbuffer.renderpass = device->CreateRenderPass(gbuffer.attachment.desc_list,
+            gbuffer.subpass.desc,
+            gbuffer.subpass.dependency,
+            gbuffer.gbuffer_format_list,
+            gbuffer.depth->GetFormat());
+
+        if (!gbuffer.renderpass)
+            return(false);
+
+        gbuffer.framebuffer = vulkan::CreateFramebuffer(device, gbuffer.renderpass, gbuffer.image_view_list, gbuffer.depth->GetImageView());
+
+        if (!gbuffer.framebuffer)
+            return(false);
+
+        gbuffer.rt = device->CreateRenderTarget(gbuffer.framebuffer);
+
+        return(true);
+    }
+
+    bool InitSubpass(SubpassParam *sp, const OSString &vs, const OSString &fs)
+    {
+        sp->material = shader_manage->CreateMaterial(vs, fs);
+
+        if (!sp->material)
+            return(false);
+
+        sp->desc_sets = sp->material->CreateDescriptorSets();
+
+        db->Add(sp->material);
+        db->Add(sp->desc_sets);
+        return(true);
+    }
+
+    bool InitGBufferPipeline(SubpassParam *sp)
+    {
+        AutoDelete<vulkan::PipelineCreater> pipeline_creater = new vulkan::PipelineCreater(device, sp->material, gbuffer.rt);
+
+        {
+            pipeline_creater->Set(PRIM_TRIANGLES);
+
+            sp->pipeline_triangles = pipeline_creater->Create();
+
+            if (!sp->pipeline_triangles)
+                return(false);
+
+            db->Add(sp->pipeline_triangles);
+        }
+
+        {
+            pipeline_creater->Set(PRIM_TRIANGLE_FAN);
+
+            sp->pipeline_fan = pipeline_creater->Create();
+
+            if (!sp->pipeline_fan)
+                return(false);
+
+            db->Add(sp->pipeline_fan);
+        }
+        return(true);
+    }
+
+    bool InitCompositionPipeline(SubpassParam *sp)
+    {
+        AutoDelete<vulkan::PipelineCreater> pipeline_creater = new vulkan::PipelineCreater(device, sp->material, sc_render_target);
+        pipeline_creater->SetDepthTest(false);
+        pipeline_creater->SetDepthWrite(false);
+        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
+        pipeline_creater->Set(PRIM_TRIANGLE_FAN);
+
+        sp->pipeline_triangles = pipeline_creater->Create();
+
+        if (!sp->pipeline_triangles)
+            return(false);
+
+        db->Add(sp->pipeline_triangles);
+        return(true);
+    }
+};//class DeferredRenderingFramework:public CameraAppFramework
+
+class TestApp:public CameraAppFramework
+{
+private:
+
+    SceneNode   render_root;
+    RenderList  render_list;
 
     vulkan::Renderable          *ro_plane,
                                 *ro_cube,
@@ -109,175 +284,15 @@ private:
 //        Texture2DPointer        specular=nullptr;
     }texture;
 
-    vulkan::CommandBuffer       *gbuffer_cmd=nullptr;
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(gbuffer_cmd);
         //SAFE_CLEAR(texture.specular);
         SAFE_CLEAR(texture.normal);
         SAFE_CLEAR(texture.color);
         SAFE_CLEAR(sampler);
-    }
-private:
-
-    const VkFormat GetCandidateFormat(const VkFormat *fmt_list,const uint count)
-    {
-        auto pd=device->GetPhysicalDevice();
-
-        for(uint i=0;i<count;i++)
-            if(pd->IsColorAttachmentOptimal(fmt_list[i]))
-                return fmt_list[i];
-
-        for(uint i=0;i<count;i++)
-            if(pd->IsColorAttachmentLinear(fmt_list[i]))
-                return fmt_list[i];
-
-        return FMT_UNDEFINED;
-    }
-
-    const VkFormat GetDepthCandidateFormat()
-    {
-        auto pd=device->GetPhysicalDevice();
-
-        for(VkFormat fmt:depth_candidate_format)
-            if(pd->IsDepthAttachmentOptimal(fmt))
-                return fmt;
-
-        for(VkFormat fmt:depth_candidate_format)
-            if(pd->IsDepthAttachmentLinear(fmt))
-                return fmt;
-
-        return FMT_UNDEFINED;
-    }
-
-    bool InitGBuffer()
-    {
-        gbuffer.extent.width   =1024;
-        gbuffer.extent.height  =1024;
-
-        gbuffer.render_complete_semaphore   =device->CreateSem();
-
-        //根据候选格式表选择格式
-        //const VkFormat position_format  =GetCandidateFormat(position_candidate_format,  sizeof(position_candidate_format));
-        //const VkFormat color_format     =GetCandidateFormat(color_candidate_format,     sizeof(color_candidate_format));
-        //const VkFormat normal_format    =GetCandidateFormat(normal_candidate_format,    sizeof(normal_candidate_format));
-        //const VkFormat depth_format     =GetDepthCandidateFormat();
-
-        //if(position_format  ==FMT_UNDEFINED
-        // ||color_format     ==FMT_UNDEFINED
-        // ||normal_format    ==FMT_UNDEFINED
-        // ||depth_format     ==FMT_UNDEFINED)
-        //    return(false);
-
-        const VkFormat position_format  =FMT_RGBA32F;
-        const VkFormat color_format     =FMT_RGBA32F;
-        const VkFormat normal_format    =FMT_RGBA32F;
-        const VkFormat depth_format     =FMT_D32F;
-
-        gbuffer.position=device->CreateAttachmentTextureColor(position_format,  gbuffer.extent.width,gbuffer.extent.height);
-        gbuffer.color   =device->CreateAttachmentTextureColor(color_format,     gbuffer.extent.width,gbuffer.extent.height);
-        gbuffer.normal  =device->CreateAttachmentTextureColor(normal_format,    gbuffer.extent.width,gbuffer.extent.height);
-        gbuffer.depth   =device->CreateAttachmentTextureDepth(depth_format,     gbuffer.extent.width,gbuffer.extent.height);
-
-        for(uint i=0;i<3;i++)
-        {
-            gbuffer.gbuffer_format_list.Add(gbuffer.texture_list[i]->GetFormat());
-            gbuffer.image_view_list.Add(gbuffer.texture_list[i]->GetImageView());
-        }
-
-        if(!device->CreateAttachment(   gbuffer.attachment.ref_list,
-                                        gbuffer.attachment.desc_list,
-                                        gbuffer.gbuffer_format_list,
-                                        gbuffer.depth->GetFormat()))
-            return(false);
-
-        VkSubpassDescription desc;
-
-        device->CreateSubpassDescription(desc,gbuffer.attachment.ref_list);
-
-        gbuffer.subpass.desc.Add(desc);
-
-        device->CreateSubpassDependency(gbuffer.subpass.dependency,2);          //为啥要2个还不清楚
-
-        gbuffer.renderpass=device->CreateRenderPass(gbuffer.attachment.desc_list,
-                                                    gbuffer.subpass.desc,
-                                                    gbuffer.subpass.dependency,
-                                                    gbuffer.gbuffer_format_list,
-                                                    gbuffer.depth->GetFormat());
-
-        if(!gbuffer.renderpass)
-            return(false);
-
-        gbuffer.framebuffer=vulkan::CreateFramebuffer(device,gbuffer.renderpass,gbuffer.image_view_list,gbuffer.depth->GetImageView());
-
-        if(!gbuffer.framebuffer)
-            return(false);
-
-        gbuffer.rt=device->CreateRenderTarget(gbuffer.framebuffer);
-
-        return(true);
-    }
-
-    bool InitSubpass(SubpassParam *sp,const OSString &vs,const OSString &fs)
-    {
-        sp->material=shader_manage->CreateMaterial(vs,fs);
-
-        if(!sp->material)
-            return(false);
-
-        sp->desc_sets=sp->material->CreateDescriptorSets();
-
-        db->Add(sp->material);
-        db->Add(sp->desc_sets);
-        return(true);
-    }
-
-    bool InitGBufferPipeline(SubpassParam *sp)
-    {
-        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,gbuffer.rt);
-
-        {
-            pipeline_creater->Set(PRIM_TRIANGLES);
-
-            sp->pipeline_triangles=pipeline_creater->Create();
-        
-            if(!sp->pipeline_triangles)
-                return(false);
-
-            db->Add(sp->pipeline_triangles);
-        }
-
-        {
-            pipeline_creater->Set(PRIM_TRIANGLE_FAN);
-
-            sp->pipeline_fan=pipeline_creater->Create();
-        
-            if(!sp->pipeline_fan)
-                return(false);
-
-            db->Add(sp->pipeline_fan);
-        }
-        return(true);
-    }
-
-    bool InitCompositionPipeline(SubpassParam *sp)
-    {
-        AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,sp->material,sc_render_target);
-        pipeline_creater->SetDepthTest(false);
-        pipeline_creater->SetDepthWrite(false);
-        pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
-        pipeline_creater->Set(PRIM_TRIANGLE_FAN);
-
-        sp->pipeline_triangles=pipeline_creater->Create();
-
-        if(!sp->pipeline_triangles)
-            return(false);
-
-        db->Add(sp->pipeline_triangles);
-        return(true);
     }
 
     bool InitMaterial()

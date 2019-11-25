@@ -350,9 +350,9 @@ public:
         if(key_status[kbR])camera.Up        (move_speed);else
         if(key_status[kbF])camera.Down      (move_speed);else
 
-        if(key_status[kbLeft    ])camera.WrapHorzRotate(move_speed);else
+        if(key_status[kbLeft    ])camera.WrapHorzRotate( move_speed);else
         if(key_status[kbRight   ])camera.WrapHorzRotate(-move_speed);else
-        if(key_status[kbUp      ])camera.WrapVertRotate(move_speed);else
+        if(key_status[kbUp      ])camera.WrapVertRotate( move_speed);else
         if(key_status[kbDown    ])camera.WrapVertRotate(-move_speed);else
             return;
     }

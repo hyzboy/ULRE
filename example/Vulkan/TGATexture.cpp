@@ -138,7 +138,7 @@ namespace
     }
 }//namespace
 
-Texture2D *LoadTGATexture(const OSString &filename,Device *device)
+Texture2D *LoadTGATexture(const OSString &filename,Device *device,bool use_optimar)
 {
     io::OpenFileInputStream fis(filename);
 
@@ -199,7 +199,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
     }
 
     vulkan::Buffer *buf;
-    
+
     if(header.image_type==tga::ImageType::TrueColor
      &&(header.bit==24||header.bit==48||header.bit==72))
     {
@@ -251,16 +251,21 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device)
         buf->Unmap();
     }
 
-    Texture2D *tex=device->CreateTexture2D(format,buf,header.width,header.height);
-
-    delete buf;
+    Texture2D *tex;
+    
+    if(use_optimar)
+    {   
+        device->CreateTexture2D(format,buf,header.width,header.height);
+        delete buf;
+    }
+    else
+    {
+        device->CreateTexture2DLinear(format,buf,header.width, header.height);
+    }
 
     if(tex)
     {
         LOG_INFO(OS_TEXT("load image file<")+filename+OS_TEXT(">:<")+OSString(header.width)+OS_TEXT("x")+OSString(header.height)+OS_TEXT("> to texture ok"));
-
-        //下面代码用于测试修改纹理
-        //device->ChangeTexture2D(tex,pixel_data,header->width/4,header->height/4,header->width/2,header->height/2,line_size*header->height/4);
     }
     else
     {

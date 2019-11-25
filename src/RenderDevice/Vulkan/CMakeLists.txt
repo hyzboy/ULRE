@@ -5,13 +5,14 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
 								VKProperties.cpp
 								VKDebugOut.cpp
                                 VKInstance.cpp
-                                VKPhysicalDevice.cpp
+                                VKPhysicalDevice.cpp								
                                 VKImageView.cpp
                                 VKCommandBuffer.cpp
                                 VKDeviceAttribute.cpp
                                 VKDeviceCreater.cpp
                                 VKDevice.cpp
                                 VKDeviceBuffer.cpp
+								VKDeviceImage.cpp
                                 VKDeviceTexture.cpp
                                 VKDeviceRenderPass.cpp
                                 VKBuffer.cpp
