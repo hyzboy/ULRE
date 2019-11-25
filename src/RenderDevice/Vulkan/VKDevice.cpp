@@ -11,8 +11,6 @@
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-Swapchain *CreateSwapchain(const DeviceAttribute *attr,const VkExtent2D &acquire_extent);
-
 Device::Device(DeviceAttribute *da)
 {
     attr=da;
@@ -45,7 +43,7 @@ bool Device::Resize(const VkExtent2D &extent)
     SAFE_CLEAR(texture_cmd_buf);
 
     attr->Refresh();
-    swapchain=CreateSwapchain(attr,extent);
+    swapchain=CreateSwapchain(extent);
 
     texture_cmd_buf=CreateCommandBuffer(extent,0);
     textureSQ=new SubmitQueue(this,attr->graphics_queue,1);

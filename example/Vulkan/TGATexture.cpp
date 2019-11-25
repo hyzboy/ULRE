@@ -260,7 +260,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device,bool use_optim
     }
     else
     {
-        device->CreateTexture2DLinear(format,buf,header.width, header.height);
+        //device->CreateTexture2DLinear(format,buf,header.width, header.height);
     }
 
     if(tex)
