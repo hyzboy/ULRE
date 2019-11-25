@@ -255,7 +255,7 @@ Texture2D *LoadTGATexture(const OSString &filename,Device *device,bool use_optim
     
     if(use_optimar)
     {   
-        device->CreateTexture2D(format,buf,header.width,header.height);
+        tex=device->CreateTexture2D(format,buf,header.width,header.height);
         delete buf;
     }
     else

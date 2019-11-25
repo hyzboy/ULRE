@@ -16,7 +16,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *LoadTGATexture(const OSString &filename,Device *device);
+Texture2D *LoadTGATexture(const OSString &filename,Device *device,bool use_optimal=true);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=256;

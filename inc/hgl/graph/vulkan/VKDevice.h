@@ -25,7 +25,7 @@ class Device
     bool CreateSwapchainColorTexture();
     bool CreateSwapchainDepthTexture();
 
-    Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
+    bool CreateSwapchain(const VkExtent2D &acquire_extent);
 
 private:
 

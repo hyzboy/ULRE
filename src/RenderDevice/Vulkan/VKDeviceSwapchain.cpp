@@ -118,24 +118,23 @@ bool Device::CreateSwapchainDepthTexture()
     return swapchain->sc_depth;
 }
 
-Swapchain *Device::CreateSwapchain(const VkExtent2D &acquire_extent)
+bool Device::CreateSwapchain(const VkExtent2D &acquire_extent)
 {
-    AutoDelete<Swapchain> sc=new Swapchain;
+    swapchain=new Swapchain;
 
-    sc->device          =attr->device;
-    sc->extent          =SwapchainExtentClamp(attr->surface_caps,acquire_extent);
-    sc->graphics_queue  =attr->graphics_queue;
-    sc->swap_chain      =CreateSwapChain(attr,sc->extent);
+    swapchain->device          =attr->device;
+    swapchain->extent          =SwapchainExtentClamp(attr->surface_caps,acquire_extent);
+    swapchain->graphics_queue  =attr->graphics_queue;
+    swapchain->swap_chain      =CreateSwapChain(attr,swapchain->extent);
 
-    if(!sc->swap_chain)
-        return(nullptr);
+    if(swapchain->swap_chain)
+    if(CreateSwapchainColorTexture())
+    if(CreateSwapchainDepthTexture())
+        return(true);
 
-    if(!CreateSwapchainColorTexture())
-        return(nullptr);
+    delete swapchain;
+    swapchain=nullptr;
 
-    if(!CreateSwapchainDepthTexture())
-        return(nullptr);
-
-    return sc.Finish();
+    return(false);
 }
 VK_NAMESPACE_END
