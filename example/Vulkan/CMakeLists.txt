@@ -24,8 +24,10 @@ CreateProject(08.InlineGeometryScene InlineGeometryScene.cpp)
 
 CreateProject(09.Atomsphere Atomsphere.cpp)
 
-CreateProject(10.Deferred Deferred.cpp TGATexture.cpp)
+CreateProject(10.PBRBasic PBRBasic.cpp)
 
-CreateProject(10.DeferredModel DeferredModel.cpp TGATexture.cpp)
+CreateProject(11.Deferred Deferred.cpp TGATexture.cpp)
 
-CreateProject(11.TextureFormat TextureFormat.cpp)
+CreateProject(12.DeferredModel DeferredModel.cpp TGATexture.cpp)
+
+CreateProject(13.TextureFormat TextureFormat.cpp)
