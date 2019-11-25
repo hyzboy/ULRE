@@ -22,6 +22,11 @@ class Device
     Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
 
+    bool CreateSwapchainColorTexture();
+    bool CreateSwapchainDepthTexture();
+
+    Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
+
 private:
 
     friend Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
