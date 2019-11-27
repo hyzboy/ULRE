@@ -6,17 +6,19 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMCMakeModule)
 
+set(ULRE_3RDPTY_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty)
+
 include(vulkan)
 
 include(math)
-use_mgl(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/MathGeoLib)
+use_mgl(${ULRE_3RDPTY_ROOT_PATH}/MathGeoLib)
 
 include(use_cm_module)
 use_cm_module(Core)
 use_cm_module(Platform)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/jsoncpp/include)
+    include_directories(${ULRE_3RDPTY_ROOT_PATH}/jsoncpp/include)
     add_subdirectory(3rdpty/jsoncpp)
 ENDIF()
 
@@ -34,12 +36,12 @@ SET(ULRE    CMCore
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/assimp/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/NvTriStrip)
+include_directories(${ULRE_3RDPTY_ROOT_PATH}/assimp/include)
+include_directories(${ULRE_3RDPTY_ROOT_PATH}/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-SET(SPIRV_CROSS_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty/SPIRV-Cross)
+SET(SPIRV_CROSS_PATH ${ULRE_3RDPTY_ROOT_PATH}/SPIRV-Cross)
 
 include_directories(${SPIRV_CROSS_PATH})
 add_subdirectory(${SPIRV_CROSS_PATH})
