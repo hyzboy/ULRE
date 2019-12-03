@@ -12,7 +12,7 @@ struct TextureData
     VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
     ImageView *         image_view  =nullptr;
     uint32              mip_levels  =0;
-    bool                linear      =false;
+    VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
 };//struct TextureData
 
 class Texture
@@ -35,7 +35,8 @@ public:
     ImageView *                 GetImageView        (){return data?data->image_view:nullptr;}
 
     const uint32                GetMipLevels()const{return data?data->mip_levels:0;}
-    const bool                  IsLinear    ()const{return data?data->linear:false;}
+    const bool                  IsOptimal   ()const{return data?data->tiling==VK_IMAGE_TILING_OPTIMAL:false;}
+    const bool                  IsLinear    ()const{return data?data->tiling==VK_IMAGE_TILING_LINEAR:false;}
 
     const VkFormat              GetFormat   ()const{return data?data->image_view->GetFormat():VK_FORMAT_UNDEFINED;}
     const VkImageAspectFlags    GetAspect   ()const{return data?data->image_view->GetAspectFlags():0;}
