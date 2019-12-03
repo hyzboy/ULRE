@@ -12,7 +12,6 @@
                         ${ROOT_INCLUDE_PATH}/hgl/graph/InlineGeometry.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Mesh.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Material.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/TextureType.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Spline.h
                         )
 
