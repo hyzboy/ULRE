@@ -10,7 +10,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *LoadTGATexture(const OSString &filename,Device *device,bool use_optimal=true);
+Texture2D *CreateTextureFromFile(Device *device,const OSString &filename,bool use_optimar=true);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=512;
@@ -131,7 +131,7 @@ private:
 
     bool InitTexture()
     {
-        texture=vulkan::LoadTGATexture(OS_TEXT("res/image/noise32.tga"),device);
+        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/noise32.Tex2D"));
         return texture;
     }
 

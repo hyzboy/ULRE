@@ -154,6 +154,7 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename,bool us
 
         Texture2D *tex=device->CreateTexture2D(format,buf,file_header.width,file_header.height);
 
+        delete buf;
         return tex;
     }
     else
