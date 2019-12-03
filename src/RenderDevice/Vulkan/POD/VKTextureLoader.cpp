@@ -99,7 +99,7 @@ namespace
     #pragma pack(pop)
 }//namespace
 
-Texture2D *CreateTextureFromFile(Device *device,const OSString &filename,bool use_optimar)
+Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
 {
     if(!device)
         return(nullptr);
@@ -139,7 +139,6 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename,bool us
     if(file_length<sizeof(Tex2DFileHeader)+total_bytes)
         return(nullptr);
 
-    if(use_optimar)
     {
         vulkan::Buffer *buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
 
@@ -156,10 +155,6 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename,bool us
 
         delete buf;
         return tex;
-    }
-    else
-    {
-        return nullptr;
     }
 }
 VK_NAMESPACE_END
