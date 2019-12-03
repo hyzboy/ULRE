@@ -10,7 +10,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *LoadTGATexture(const OSString &filename,Device *device,bool use_optimal=true);
+Texture2D *CreateTextureFromFile(Device *device,const OSString &filename,bool use_optimar=true);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=128;
@@ -92,7 +92,7 @@ private:
         render_obj=material->CreateRenderable(VERTEX_COUNT);
         descriptor_sets=material->CreateDescriptorSets();
 
-        texture=vulkan::LoadTGATexture(OS_TEXT("res/image/lena.tga"),device);
+        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
 
         VkSamplerCreateInfo sampler_create_info;
 

@@ -11,7 +11,7 @@ endmacro()
 
 CreateProject(00.triangle first_triangle.cpp)
 CreateProject(01.indices_rect indices_rect.cpp)
-CreateProject(02.1.texture_rect texture_rect.cpp TGATexture.cpp)
+CreateProject(02.1.texture_rect texture_rect.cpp)
 #CreateProject(02.2.texture_linear texture_linear.cpp TGATexture.cpp)
 CreateProject(03.HQFilterTexture HQFilterTexture.cpp TGATexture.cpp)
 CreateProject(04.Geometry2D Geometry2D.cpp)

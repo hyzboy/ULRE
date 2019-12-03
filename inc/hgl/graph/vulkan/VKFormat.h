@@ -288,7 +288,7 @@ constexpr size_t FMT_PVRTC_RANGE_SIZE=FMT_PVRTC_END_RANGE-FMT_PVRTC_BEGIN_RANGE+
 //以下为AMD/NVIDIA/INTEL/QUALCOMM/ARM/POWERVR全部可用的通用格式
 #define UFMT_BGRA4   FMT_BGRA4
 #define UFMT_RGB565  FMT_RGB565
-#define UFMT_A4RGB5  FMT_A1RGB5
+#define UFMT_A1RGB5  FMT_A1RGB5
 #define UFMT_R8      FMT_R8UN
 #define UFMT_RG8     FMT_RG8UN
 #define UFMT_RGBA8   FMT_RGBA8UN
@@ -340,6 +340,8 @@ enum class VulkanDataType
     UFLOAT,
     SFLOAT,
     SRGB,
+
+    END
 };//
 
 struct VulkanFormat
