@@ -47,7 +47,8 @@ namespace
         {UFMT_RGB32F,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanDataType::SFLOAT},
         {UFMT_RGBA32U,    4,{'R','G','B','A'},{32,32,32,32},VulkanDataType::UINT},
         {UFMT_RGBA32I,    4,{'R','G','B','A'},{32,32,32,32},VulkanDataType::SINT},
-        {UFMT_RGBA32F,    4,{'R','G','B','A'},{32,32,32,32},VulkanDataType::SFLOAT}
+        {UFMT_RGBA32F,    4,{'R','G','B','A'},{32,32,32,32},VulkanDataType::SFLOAT},
+        {UFMT_B10GR11UF,  3,{'B','G','R', 0 },{10,11,11, 0},VulkanDataType::UFLOAT}
     };
 
     constexpr uint PixelFormatCount=sizeof(pf_list)/sizeof(PixelFormat);
@@ -76,7 +77,7 @@ namespace
             const PixelFormat *pf=pf_list;
 
             for(uint i=0;i<PixelFormatCount;i++,++pf)
-            {                
+            {
                 if(channels!=pf->channels)continue;
                 if(datatype!=(uint8)pf->type)continue;
 

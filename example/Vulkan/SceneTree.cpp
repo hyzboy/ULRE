@@ -73,7 +73,7 @@ private:
     }
 
     bool InitPipeline()
-    {   
+    {
         AutoDelete<vulkan::PipelineCreater> 
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
         pipeline_creater->SetDepthTest(true);

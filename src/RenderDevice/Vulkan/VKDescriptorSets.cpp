@@ -48,7 +48,7 @@ bool DescriptorSets::BindUBODynamic(const int binding,const Buffer *buf)
     writeDescriptorSet.descriptorCount  = 1;
     writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     writeDescriptorSet.pImageInfo       = nullptr;
-    writeDescriptorSet.pBufferInfo      = buf->GetBufferInfo();;
+    writeDescriptorSet.pBufferInfo      = buf->GetBufferInfo();
     writeDescriptorSet.pTexelBufferView = nullptr;
 
     write_desc_sets.Add(writeDescriptorSet);
