@@ -16,7 +16,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *LoadTGATexture(const OSString &filename,Device *device);
+Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=256;
@@ -106,7 +106,6 @@ private:
     {
         Texture2DPointer        color=nullptr;
         Texture2DPointer        normal=nullptr;
-//        Texture2DPointer        specular=nullptr;
     }texture;
 
     vulkan::CommandBuffer       *gbuffer_cmd=nullptr;
@@ -116,7 +115,6 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(gbuffer_cmd);
-        //SAFE_CLEAR(texture.specular);
         SAFE_CLEAR(texture.normal);
         SAFE_CLEAR(texture.color);
         SAFE_CLEAR(sampler);
@@ -288,9 +286,8 @@ private:
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         if(!InitCompositionPipeline(&sp_composition))return(false);
 
-        texture.color   =vulkan::LoadTGATexture(OS_TEXT("res/image/Brickwall/Albedo.tga"),device);
-        texture.normal  =vulkan::LoadTGATexture(OS_TEXT("res/image/Brickwall/Normal.tga"),device);
-        //texture.specular=vulkan::LoadTGATexture(OS_TEXT("res/image/APOCWALL029_SPEC.tga"),device);
+        texture.color   =vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
+        texture.normal  =vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
 
         VkSamplerCreateInfo sampler_create_info;
 
@@ -386,7 +383,7 @@ private:
 
         return ro_gbc_plane;
     }
-    
+
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
