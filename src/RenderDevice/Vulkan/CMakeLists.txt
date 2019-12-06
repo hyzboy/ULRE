@@ -28,7 +28,6 @@ SET(VK_RENDER_PASS_SOURCE   VKFramebuffer.cpp
                             VKSwapchain.cpp
                             VKCommandBuffer.cpp)
 
-
 SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKMemory.cpp
                                 VKProperties.cpp
@@ -57,15 +56,13 @@ SOURCE_GROUP("Header Files" FILES ${RENDER_DEVICE_VULKAN_HEADER})
 SOURCE_GROUP("Source Files" FILES ${RENDER_DEVICE_VULKAN_SOURCE})
 SOURCE_GROUP("POD Source Files" FILES ${RENDER_DEVICE_VULKAN_POD_SOURCE})
 
-add_library(ULRE.RenderDevice.Vulkan STATIC ${RENDER_DEVICE_VULKAN_HEADER}
-                                            ${RENDER_DEVICE_VULKAN_SOURCE}
-                                            ${RENDER_DEVICE_VULKAN_POD_SOURCE}
+add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${RENDER_DEVICE_VULKAN_HEADER}
+                                                ${RENDER_DEVICE_VULKAN_SOURCE}
+                                                ${RENDER_DEVICE_VULKAN_POD_SOURCE}
 
-                                            ${VK_DEVICE_SOURCE}
-                                            ${VK_DESCRIPTOR_SETS_SOURCE}
-                                            ${VK_SHADER_SOURCE}
-                                            ${VK_MATERIAL_SOURCE}
-                                            ${VK_RENDER_PASS_SOURCE}
-                                            ${RENDER_DEVICE_VULKAN_SOURCE})
-
-set_property(TARGET ULRE.RenderDevice.Vulkan PROPERTY FOLDER "ULRE")
+                                                ${VK_DEVICE_SOURCE}
+                                                ${VK_DESCRIPTOR_SETS_SOURCE}
+                                                ${VK_SHADER_SOURCE}
+                                                ${VK_MATERIAL_SOURCE}
+                                                ${VK_RENDER_PASS_SOURCE}
+                                                ${RENDER_DEVICE_VULKAN_SOURCE})
