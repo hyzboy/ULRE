@@ -7,7 +7,5 @@ SET(GRAPH_SHADER_SOURCE glsl2spv.cpp)
 SOURCE_GROUP("Header Files" FILES ${GRAPH_SHADER_HEADER})
 SOURCE_GROUP("Source Files" FILES ${GRAPH_SHADER_SOURCE})
 
-add_library(ULRE.Shader STATIC ${GRAPH_SHADER_HEADER}
-                               ${GRAPH_SHADER_SOURCE})
-
-set_property(TARGET ULRE.Shader PROPERTY FOLDER "ULRE")
+add_cm_library(ULRE.Shader "ULRE"   ${GRAPH_SHADER_HEADER}
+                                    ${GRAPH_SHADER_SOURCE})

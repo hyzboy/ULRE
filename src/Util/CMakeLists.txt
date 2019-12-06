@@ -10,7 +10,5 @@ SET(UTIL_SOURCE #Field.cpp
 SOURCE_GROUP("Header Files" FILES ${UTIL_HEADER})
 SOURCE_GROUP("Source Files" FILES ${UTIL_SOURCE})
 
-add_library(ULRE.Util STATIC    ${UTIL_HEADER}
+add_cm_library(ULRE.Util "ULRE" ${UTIL_HEADER}
                                 ${UTIL_SOURCE})
-
-set_property(TARGET ULRE.Util PROPERTY FOLDER "ULRE")
