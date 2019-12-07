@@ -1,15 +1,12 @@
 ﻿#ifndef HGL_SHADER_NODE_DEFINE_INCLUDE
 #define HGL_SHADER_NODE_DEFINE_INCLUDE
 
-BEGIN_SHADER_NAMESPACE
-namespace node
+BEGIN_SHADER_NODE_NAMESPACE
+class Bool
 {
-    class Bool
-    {
-    public:
+public:
 
 
-    };//class Bool
-}//namespace node
-END_SHADER_NAMESPACE
+};//class Bool
+END_SHADER_NODE_NAMESPACE
 #endif//HGL_SHADER_NODE_DEFINE_INCLUDE
