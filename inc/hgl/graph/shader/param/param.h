@@ -1,8 +1,11 @@
-﻿#ifndef HGL_SHADER_PARAM_TYPE_INCLUDE
-#define HGL_SHADER_PARAM_TYPE_INCLUDE
+﻿#ifndef HGL_GRAPH_SHADER_PARAM_INCLUDE
+#define HGL_GRAPH_SHADER_PARAM_INCLUDE
 
-#define BEGIN_SHADER_NAMESPACE    namespace hgl{namespace graph{namespace shader{
-#undef END_SHADER_NAMESPACE }}}
+#include<hgl/type/BaseString.h>
+
+#define SHADER_NAMESPACE        hgl::graph::shader
+#define BEGIN_SHADER_NAMESPACE  namespace hgl{namespace graph{namespace shader{
+#define END_SHADER_NAMESPACE    }}}
 
 BEGIN_SHADER_NAMESPACE
     /**
@@ -65,30 +68,27 @@ BEGIN_SHADER_NAMESPACE
 
         BEGIN_RANGE =FLOAT_1,
         END_RANGE   =NODE,
-        RANGE_SIZE  =(END_RAGE-BEGIN_RANGE+1)
+        RANGE_SIZE  =(END_RANGE-BEGIN_RANGE+1)
     };//enum class ParamType
 
     /**
      * 参数定义
      */
-    struct Param
+    class Param
     {
         UTF8String name;            //参数名称
         ParamType type;             //类型
-    };//struct Param
-    /**
-     * 数值类输入参数定义
-     */
-    template<typename T>
-    struct ParamNumber:public Param
-    {
-        bool is_const;
-        T min_value;
-        T max_value;
-    };//struct ParamNumber:public Param
 
-#define SHADER_INPUT_PARAM(name,type) input_params.Add(new Param(#name,ParamType::type);
-#define SHADER_OUTPUT_PARAM(name,type) output_params.Add(new Param(#name,ParamType::type);
+    public:
+
+        Param(const UTF8String &n,const ParamType &t)
+        {
+            name=n;
+            type=t;
+        }
+
+        virtual ~Param()=default;
+    };//class Param
 
 END_SHADER_NAMESPACE
-#endif//HGL_SHADER_PARAM_TYPE_INCLUDE
+#endif//HGL_GRAPH_SHADER_PARAM_INCLUDE

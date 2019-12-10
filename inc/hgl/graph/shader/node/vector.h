@@ -1,9 +1,10 @@
-﻿#ifndef HGL_GRAPH_SHADER_VECTOR_NODE_INCLUDE
-#define HGL_GRAPH_SHADER_VECTOR_NODE_INCLUDE
+﻿#ifndef HGL_GRAPH_SHADER_NODE_VECTOR_INCLUDE
+#define HGL_GRAPH_SHADER_NODE_VECTOR_INCLUDE
 
-#include<hgl/graph/shader/ShaderParam.h>
-#include<hgl/graph/shader/ShaderNode.h>
-BEGIN_SHADER_NAMESPACE
+#include<hgl/graph/shader/param/out.h>
+#include<hgl/graph/shader/node/out.h>
+
+BEGIN_SHADER_NODE_NAMESPACE
 class float1:public Output
 {
     float x;
@@ -51,5 +52,5 @@ public:
         SHADER_OUTPUT_PARAM(XYZW,FLOAT_4)
     }
 };//class float4:public Output
-END_SHADER_NAMESPACE
-#endif//HGL_GRAPH_SHADER_VECTOR_NODE_INCLUDE
+END_SHADER_NODE_NAMESPACE
+#endif//HGL_GRAPH_SHADER_NODE_VECTOR_INCLUDE

@@ -1,7 +1,8 @@
-﻿#ifndef HGL_SHADER_TEXTURE_NODE_INCLUDE
-#define HGL_SHADER_TEXTURE_NODE_INCLUDE
+﻿#ifndef HGL_GRAPH_SHADER_NODE_TEXTURE_INCLUDE
+#define HGL_GRAPH_SHADER_NODE_TEXTURE_INCLUDE
 
-#include<hgl/graph/shader/VectorNode.h>
+#include<hgl/graph/shader/node/vector.h>
+#include<hgl/graph/shader/node/inout.h>
 BEGIN_SHADER_NODE_NAMESPACE
 class texture1D:public InputOutput
 {
@@ -33,7 +34,7 @@ public:
     }
 };//class texture3D:public InputOutput
 
-class TextureCube:public InputOutput
+class textureCube:public InputOutput
 {
 public:
 
@@ -43,4 +44,4 @@ public:
     }
 };//class TextureCube:public InputOutput
 END_SHADER_NODE_NAMESPACE
-#endif//HGL_SHADER_TEXTURE_NODE_INCLUDE
+#endif//HGL_GRAPH_SHADER_NODE_TEXTURE_INCLUDE
