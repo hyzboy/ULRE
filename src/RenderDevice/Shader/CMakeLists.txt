@@ -19,7 +19,8 @@ SET(GRAPH_SPV_SOURCE    ${GRAPH_SHADER_HEADER_PATH}/glsl2spv.h
 
 SOURCE_GROUP("SPIR-V" FILES ${GRAPH_SPV_SOURCE})
 
-add_cm_library(ULRE.Shader "ULRE"   ${GRAPH_SHADER_NODE_HEADER_FILES}
+add_cm_library(ULRE.Shader "ULRE"   ${GRAPH_SHADER_HEADER_PATH}/common.h
+                                    ${GRAPH_SHADER_NODE_HEADER_FILES}
                                     ${GRAPH_SHADER_PARAM_HEADER_FILES}
                                     ${GRAPH_SHADER_MAKER_SOURCE}
                                     ${GRAPH_SPV_SOURCE})

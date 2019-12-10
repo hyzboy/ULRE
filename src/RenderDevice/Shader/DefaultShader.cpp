@@ -1,5 +1,5 @@
-﻿#include<hgl/graph/shader/node/finished.h>
-
+﻿#include<hgl/graph/shader/param/out.h>
+#include<hgl/graph/shader/node/finished.h>
 BEGIN_SHADER_NAMESPACE
 bool CreateDefaultMaterial()
 {

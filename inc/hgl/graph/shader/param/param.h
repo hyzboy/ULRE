@@ -2,12 +2,9 @@
 #define HGL_GRAPH_SHADER_PARAM_INCLUDE
 
 #include<hgl/type/BaseString.h>
+#include<hgl/graph/shader/common.h>
 
-#define SHADER_NAMESPACE        hgl::graph::shader
-#define BEGIN_SHADER_NAMESPACE  namespace hgl{namespace graph{namespace shader{
-#define END_SHADER_NAMESPACE    }}}
-
-BEGIN_SHADER_NAMESPACE
+BEGIN_SHADER_PARAM_NAMESPACE
     /**
      * 参数类型
      */
@@ -90,5 +87,5 @@ BEGIN_SHADER_NAMESPACE
         virtual ~Param()=default;
     };//class Param
 
-END_SHADER_NAMESPACE
+END_SHADER_PARAM_NAMESPACE
 #endif//HGL_GRAPH_SHADER_PARAM_INCLUDE
