@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_SHADER_NODE_INPUT_INCLUDE
+﻿#ifndef HGL_GRAPH_SHADER_NODE_INPUT_INCLUDE
 #define HGL_GRAPH_SHADER_NODE_INPUT_INCLUDE
 
 #include<hgl/graph/shader/node/node.h>
@@ -12,7 +12,7 @@ class Input:public Node
 {
 protected:
 
-    ObjectList<InputParam> input_params;
+    ObjectList<param::InputParam> input_params;
 
 public:
 
