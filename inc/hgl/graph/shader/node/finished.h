@@ -29,25 +29,13 @@ public:
 };//class VertexFinished:public FinishedNode
 
 /**
- * 前向渲染最终输出节点
+ * 片段最终输出节点
  */
- class ForwardFinished:public Finished
- {
- public:
-
-    ForwardFinished():Finished("Forward Output")
-    {
-    }
- };//class ForwardFinished:public Finished
-
-/**
- * GBuffer最终输出节点
- */
-class GBufferFinished:public Finished
+class FragmentFinished:public Finished
 {
 public:
 
-    GBufferFinished():Finished("GBuffer Output")
+    FragmentFinished():Finished("Fragment Output")
     {
         SHADER_INPUT_PARAM(BaseColor,   FLOAT_3)
         SHADER_INPUT_PARAM(Normal,      FLOAT_3)
@@ -56,6 +44,6 @@ public:
         SHADER_INPUT_PARAM(Opacity,     FLOAT_1)
         SHADER_INPUT_PARAM(DepthOffset, FLOAT_1)
     }
-};//class GBufferFinished:public FinishedNode
+};//class FragmentFinished:public Finished
 END_SHADER_NODE_NAMESPACE
 #endif//HGL_GRAPH_SHADER_NODE_FINISHED_INCLUDE
