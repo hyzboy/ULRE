@@ -1,8 +1,18 @@
 ﻿#ifndef HGL_GRAPH_SHADER_MAKER_INCLUDE
 #define HGL_GRAPH_SHADER_MAKER_INCLUDE
 
-namespace hgl
+#include<hgl/graph/shader/node/finished.h>
+BEGIN_SHADER_NAMESPACE
+class ShaderMaker
 {
+    node::Finished *fin_node;
 
-}//namespace hgl
+public:
+
+    ShaderMaker(node::Finished *fn){fin_node=fn;}
+    ~ShaderMaker();
+
+    bool Make();
+};//class ShaderMaker
+END_SHADER_NAMESPACE
 #endif//HGL_GRAPH_SHADER_MAKER_INCLUDE

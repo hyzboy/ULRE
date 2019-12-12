@@ -1,18 +1,18 @@
 ﻿#ifndef HGL_GRAPH_SHADER_NODE_FINISHED_INCLUDE
 #define HGL_GRAPH_SHADER_NODE_FINISHED_INCLUDE
 
-#include<hgl/graph/shader/node/in.h>
+#include<hgl/graph/shader/node/node.h>
 #include<hgl/graph/shader/param/in.h>
 
 BEGIN_SHADER_NODE_NAMESPACE
 /**
  * 最终节点，用于最终结果的一类节点，无输出部分
  */
-class Finished:public Input
+class Finished:public Node
 {
 public:
 
-    using Input::Input;
+    using Node::Node;
     virtual ~Finished()=default;
 };//class Finished:public Input
 
@@ -25,7 +25,10 @@ public:
 
     VertexFinished():Finished("Vertex Output")
     {
+        SHADER_INPUT_PARAM(Position,   Float3)
     }
+
+    ~VertexFinished()=default;
 };//class VertexFinished:public FinishedNode
 
 /**
@@ -37,13 +40,15 @@ public:
 
     FragmentFinished():Finished("Fragment Output")
     {
-        SHADER_INPUT_PARAM(BaseColor,   FLOAT_3)
-        SHADER_INPUT_PARAM(Normal,      FLOAT_3)
-        SHADER_INPUT_PARAM(Metallic,    FLOAT_1)
-        SHADER_INPUT_PARAM(Roughness,   FLOAT_1)
-        SHADER_INPUT_PARAM(Opacity,     FLOAT_1)
-        SHADER_INPUT_PARAM(DepthOffset, FLOAT_1)
+        SHADER_INPUT_PARAM(BaseColor,   Float3)
+        SHADER_INPUT_PARAM(Normal,      Float3)
+        SHADER_INPUT_PARAM(Metallic,    Float1)
+        SHADER_INPUT_PARAM(Roughness,   Float1)
+        SHADER_INPUT_PARAM(Opacity,     Float1)
+        SHADER_INPUT_PARAM(DepthOffset, Float1)
     }
+
+    ~FragmentFinished()=default;
 };//class FragmentFinished:public Finished
 END_SHADER_NODE_NAMESPACE
 #endif//HGL_GRAPH_SHADER_NODE_FINISHED_INCLUDE
