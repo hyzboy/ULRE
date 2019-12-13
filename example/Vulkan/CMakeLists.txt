@@ -30,3 +30,5 @@ CreateProject(11.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
 
 CreateProject(12.DeferredModel DeferredModel.cpp)
+
+CreateProject(13.AutoMaterial auto_material.cpp)

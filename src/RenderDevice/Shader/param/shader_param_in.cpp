@@ -6,7 +6,7 @@ bool InputParam::Join(node::Node *n,param::OutputParam *op)
 {
     if(!n||!op)return(false);
 
-    if(!n->IsOutputParam(op))
+    if(!n->IsOutput(op))
         return(false);
 
     if(!JoinCheck(n,op))

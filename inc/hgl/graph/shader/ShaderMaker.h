@@ -10,9 +10,9 @@ class ShaderMaker
 public:
 
     ShaderMaker(node::Finished *fn){fin_node=fn;}
-    ~ShaderMaker();
+    virtual ~ShaderMaker()=default;
 
-    bool Make();
+    virtual bool Make();
 };//class ShaderMaker
 END_SHADER_NAMESPACE
 #endif//HGL_GRAPH_SHADER_MAKER_INCLUDE
