@@ -39,6 +39,8 @@ public:
     InputParam(const bool mj,const UTF8String &n,const ParamType &t):Param(n,t)
     {
         must_join=mj;
+        join_node=nullptr;
+        join_param=nullptr;
     }
     virtual ~InputParam()=default;
 
