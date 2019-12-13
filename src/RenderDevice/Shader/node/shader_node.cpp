@@ -1,7 +1,14 @@
 ﻿#include<hgl/graph/shader/node/node.h>
 
 BEGIN_SHADER_NODE_NAMESPACE
-bool Node::CheckInputParam()
+bool Node::IsOutputParam(param::OutputParam *op)
+{
+    if(!op)return(false);
+
+    return output_params.IsExist(op);
+}
+
+bool Node::Check()
 {
     const int count=input_params.GetCount();
     param::InputParam **ip=input_params.GetData();

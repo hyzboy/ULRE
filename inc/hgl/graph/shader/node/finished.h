@@ -25,7 +25,7 @@ public:
 
     VertexFinished():Finished("Vertex Output")
     {
-        SHADER_INPUT_PARAM(Position,   Float3)
+        SHADER_INPUT_PARAM(true,Position,   Float3)
     }
 
     ~VertexFinished()=default;
@@ -40,12 +40,12 @@ public:
 
     FragmentFinished():Finished("Fragment Output")
     {
-        SHADER_INPUT_PARAM(BaseColor,   Float3)
-        SHADER_INPUT_PARAM(Normal,      Float3)
-        SHADER_INPUT_PARAM(Metallic,    Float1)
-        SHADER_INPUT_PARAM(Roughness,   Float1)
-        SHADER_INPUT_PARAM(Opacity,     Float1)
-        SHADER_INPUT_PARAM(DepthOffset, Float1)
+        SHADER_INPUT_PARAM(false,BaseColor,   Float3)
+        SHADER_INPUT_PARAM(false,Normal,      Float3)
+        SHADER_INPUT_PARAM(false,Metallic,    Float1)
+        SHADER_INPUT_PARAM(false,Roughness,   Float1)
+        SHADER_INPUT_PARAM(false,Opacity,     Float1)
+        SHADER_INPUT_PARAM(false,DepthOffset, Float1)
     }
 
     ~FragmentFinished()=default;
