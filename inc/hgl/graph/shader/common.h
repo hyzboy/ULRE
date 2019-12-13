@@ -19,7 +19,6 @@ END_SHADER_NODE_NAMESPACE
 
 BEGIN_SHADER_PARAM_NAMESPACE
 class Param;
-class InputParam:public Param;
-class OutputParam:public Param;
 END_SHADER_PARAM_NAMESPACE
+
 #endif//HGL_GRAPH_SHADER_COMMON_INCLUDE
