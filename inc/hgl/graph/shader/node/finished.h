@@ -12,7 +12,7 @@ class Finished:public Node
 {
 public:
 
-    using Node::Node;
+    Finished(const UTF8String &n):Node(NodeType::Finished,n){}
     virtual ~Finished()=default;
 };//class Finished:public Input
 

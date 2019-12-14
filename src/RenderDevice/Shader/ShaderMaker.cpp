@@ -3,7 +3,7 @@
 #include<hgl/type/Set.h>
 
 BEGIN_SHADER_NAMESPACE
-bool ShaderMaker::Make()
+bool ShaderMaker::Check()
 {
     if(!fin_node)
         return(false);
@@ -49,5 +49,13 @@ bool ShaderMaker::Make()
     }
 
     return(true);
+}
+
+bool ShaderMaker::Make()
+{
+    if(!Check())
+        return(false);
+
+
 }
 END_SHADER_NAMESPACE

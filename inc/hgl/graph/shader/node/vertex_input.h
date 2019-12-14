@@ -10,7 +10,7 @@ class VertexInput:public Node
 {
 public:
 
-    VertexInput(const UTF8String &n,const param::ParamType &pt):Node("VertexInput",n)
+    VertexInput(const UTF8String &n,const param::ParamType &pt):Node(NodeType::VertexInput,n)
     {
         AddOutput(n,pt);
     }

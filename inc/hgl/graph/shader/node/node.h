@@ -4,6 +4,7 @@
 #include<hgl/type/BaseString.h>
 #include<hgl/type/List.h>
 #include<hgl/type/Map.h>
+#include<hgl/graph/shader/node/type.h>
 #include<hgl/graph/shader/param/in.h>
 #include<hgl/graph/shader/param/out.h>
 
@@ -22,7 +23,7 @@ using OutputParamMapByName=Map<UTF8String,param::OutputParam *>;
  */
 class Node
 {
-    UTF8String type_name;                                                       ///<节点类型本身的名称
+    NodeType type;
 
 protected:
 
@@ -49,11 +50,11 @@ public:
 
 public:
 
-    Node(const UTF8String &n){type_name=n;}
-    Node(const UTF8String &tn,const UTF8String &n){type_name=tn;user_name=n;}
+    Node(const NodeType &nt){type=nt;}
+    Node(const NodeType &nt,const UTF8String &n){type=nt;user_name=n;}
     virtual ~Node()=default;
 
-    const   UTF8String &        GetTypename         ()const{return type_name;}
+    const   NodeType            GetNodeType         ()const{return type;}
 
     const   UTF8String &        GetUsername         ()const{return user_name;}
             void                SetUsername         (const UTF8String &n){user_name=n;}
