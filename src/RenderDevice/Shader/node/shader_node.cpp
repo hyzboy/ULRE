@@ -19,14 +19,12 @@ void Node::AddOutput(const UTF8String &n,const param::ParamType &pt)
     output_params_by_name.Add(n,op);
 }
 
-bool Node::JoinInput(const UTF8String &param_name,node::Node *n,const UTF8String &op_name)
+bool Node::JoinInput(const UTF8String &param_name,node::Node *n,param::OutputParam *op)
 {
-    if(param_name.IsEmpty()||!n)
+    if(param_name.IsEmpty()||!n||op)
         return(false);
 
-    param::OutputParam *op=n->GetOutput(op_name);
-
-    if(!op)
+    if(!n->IsOutput(op))
         return(false);
 
     param::InputParam *ip=GetInput(param_name);
