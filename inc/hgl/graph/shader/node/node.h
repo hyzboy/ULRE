@@ -39,6 +39,8 @@ protected:
             void                AddInput            (bool mj,const UTF8String &n,const param::ParamType &pt);
             void                AddOutput           (const UTF8String &n,const param::ParamType &pt);
 
+public:
+
             param::InputParam * GetInput            (const UTF8String &n)       ///<根据名称获取输入参数
                 {return GetListObject(input_params_by_name,n);}
 
@@ -61,7 +63,7 @@ public: //参数相关
             InputParamList &    GetInputParamList   (){return input_params;}
             OutputParamList &   GetOutputParamList  (){return output_params;}
 
-    virtual bool                JoinInput           (const UTF8String &,node::Node *,const UTF8String &);
+    virtual bool                JoinInput           (const UTF8String &,node::Node *,param::OutputParam *);
 
 public: //参数相关
 
