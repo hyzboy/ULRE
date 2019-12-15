@@ -4,16 +4,26 @@
 #include<hgl/graph/shader/node/finished.h>
 #include<hgl/graph/shader/node/vertex_input.h>
 BEGIN_SHADER_NAMESPACE
+
+using NodeList=List<node::Node *>;
+
 class ShaderMaker
 {
     node::Finished *fin_node;
 
 protected:
 
-    List<node::VertexInput *> vi_list;              ///<顶点输入节点列表
-//    List<node::Texture *> tex_list;                  ///<纹理输入节点列表
-//    List<node::UBO *> ubo_list;                      ///<UBO输入节点列表
-//    List<node::Function *> func_list;               ///<材质函数节点列表
+    NodeList node_list[node::NodeType::NODE_TYPE_RANGE_SIZE];
+
+protected:
+
+    virtual void MakeHeader();
+    virtual void MakeVertexInput(const NodeList &);
+    virtual void MakeConstValue(const NodeList &);
+    virtual void MakeTextureInput(const NodeList &);
+    virtual void MakeUBOInput(const NodeList &);
+    virtual void MakeOutput();
+    virtual void MakeFinished();
 
 public:
 
