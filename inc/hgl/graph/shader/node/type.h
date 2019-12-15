@@ -4,7 +4,7 @@
 #include<hgl/graph/shader/common.h>
 
 BEGIN_SHADER_NODE_NAMESPACE
-enum class NodeType
+enum class NodeType:int
 {
     VertexInput=0,                      ///<顶点输入流节点
 
