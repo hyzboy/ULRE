@@ -1,27 +1,31 @@
 ﻿#include<hgl/graph/shader/node/node.h>
 
 BEGIN_SHADER_NODE_NAMESPACE
-void Node::AddInput(bool mj,const UTF8String &n,const param::ParamType &pt)
+param::InputParam *Node::AddInput(bool mj,const UTF8String &n,const param::ParamType &pt)
 {
     param::InputParam *ip=new param::InputParam(mj,n,pt);
 
     input_params.Add(ip);
 
     input_params_by_name.Add(n,ip);
+
+    return ip;
 }
 
-void Node::AddOutput(const UTF8String &n,const param::ParamType &pt)
+param::OutputParam *Node::AddOutput(const UTF8String &n,const param::ParamType &pt)
 {
     param::OutputParam *op=new param::OutputParam(n,pt);
 
     output_params.Add(op);
 
     output_params_by_name.Add(n,op);
+
+    return op;
 }
 
 bool Node::JoinInput(const UTF8String &param_name,node::Node *n,param::OutputParam *op)
 {
-    if(param_name.IsEmpty()||!n||op)
+    if(param_name.IsEmpty()||!n||!op)
         return(false);
 
     if(!n->IsOutput(op))

@@ -2,6 +2,7 @@
 #define HGL_GRAPH_SHADER_PARAM_TYPE_INCLUDE
 
 #include<hgl/graph/shader/common.h>
+#include<hgl/type/BaseString.h>
 
 BEGIN_SHADER_PARAM_NAMESPACE
 /**
@@ -9,9 +10,13 @@ BEGIN_SHADER_PARAM_NAMESPACE
  */
 enum class ParamType
 {
-    BOOL=1,
+    BOOL=0,
+    FLOAT,DOUBLE,INT,UINT,MATRIX,          //不区分1/2/3/4通道数量的类型
 
-    FLOAT,INT,UINT,MATRIX,          //不区分1/2/3/4通道数量的类型
+    Bool1,
+    Bool2,
+    Bool3,
+    Bool4,
 
     Float1,
     Float2,
@@ -28,9 +33,20 @@ enum class ParamType
     UInteger3,
     UInteger4,
 
-    Matrix3x3,
+    Double1,
+    Double2,
+    Double3,
+    Double4,
+
+    Matrix2,
+    Matrix3,
+    Matrix4,
+    Matrix3x2,
+    Matrix2x3,
+    Matrix4x2,
+    Matrix2x4,
+    Matrix4x3,
     Matrix3x4,
-    Matrix4x4,
 
     Texture1D,
     Texture2D,
@@ -42,20 +58,19 @@ enum class ParamType
     Texture2DArray,
     TextureCubeArray,
 
-    FLOAT_1_STREAM,
-    FLOAT_2_STREAM,
-    FLOAT_3_STREAM,
-    FLOAT_4_STREAM,
+    Texture1DShadow,
+    Texture2DShadow,
+    TextureCubeShadow,
+    TextureRectShadow,
 
-    INT_1_STREAM,
-    INT_2_STREAM,
-    INT_3_STREAM,
-    INT_4_STREAM,
+    Texture1DArrayShadow,
+    Texture2DArrayShadow,
+    TextureCubeArrayShadow,
 
-    UINT_1_STREAM,
-    UINT_2_STREAM,
-    UINT_3_STREAM,
-    UINT_4_STREAM,
+    Texture2DMultiSample,
+    Texture2DMultiSampleArray,
+
+    TBO,
 
     ARRAY_1D,               //阵列
     ARRAY_2D,               //2D阵列
@@ -63,9 +78,11 @@ enum class ParamType
     UBO,                    //UBO name
     NODE,                   //另一个节点，只可做为输入参数
 
-    BEGIN_RANGE =Float1,
+    BEGIN_RANGE =BOOL,
     END_RANGE   =NODE,
     RANGE_SIZE  =(END_RANGE-BEGIN_RANGE+1)
 };//enum class ParamType
+
+const char *GetTypename(const ParamType);
 END_SHADER_PARAM_NAMESPACE
 #endif//HGL_GRAPH_SHADER_PARAM_TYPE_INCLUDE

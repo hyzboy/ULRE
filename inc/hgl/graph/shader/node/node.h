@@ -11,7 +11,7 @@
 BEGIN_SHADER_NODE_NAMESPACE
 
 #define SHADER_INPUT_PARAM(mj,name,type) AddInput(mj,#name,SHADER_PARAM_NAMESPACE::ParamType::type);
-#define SHADER_OUTPUT_PARAM(name,type) AddOutput(#name,SHADER_PARAM_NAMESPACE::ParamType::type));
+#define SHADER_OUTPUT_PARAM(name,type) AddOutput(#name,SHADER_PARAM_NAMESPACE::ParamType::type);
 
 using InputParamList=ObjectList<param::InputParam>;
 using OutputParamList=ObjectList<param::OutputParam>;
@@ -23,11 +23,11 @@ using OutputParamMapByName=Map<UTF8String,param::OutputParam *>;
  */
 class Node
 {
-    NodeType type;
+    NodeType node_type;
 
 protected:
 
-    UTF8String user_name;                                                       ///<节点用户自定义名称
+    UTF8String node_name;                                                       ///<节点用户自定义名称
 
     InputParamList input_params;
     OutputParamList output_params;
@@ -37,8 +37,8 @@ protected:
 
 protected:
 
-            void                AddInput            (bool mj,const UTF8String &n,const param::ParamType &pt);
-            void                AddOutput           (const UTF8String &n,const param::ParamType &pt);
+            param::InputParam * AddInput            (bool mj,const UTF8String &n,const param::ParamType &pt);
+            param::OutputParam *AddOutput           (const UTF8String &n,const param::ParamType &pt);
 
 public:
 
@@ -50,14 +50,14 @@ public:
 
 public:
 
-    Node(const NodeType &nt){type=nt;}
-    Node(const NodeType &nt,const UTF8String &n){type=nt;user_name=n;}
+    Node(const NodeType &nt){node_type=nt;}
+    Node(const NodeType &nt,const UTF8String &n){node_type=nt;node_name=n;}
     virtual ~Node()=default;
 
-    const   NodeType            GetNodeType         ()const{return type;}
+    const   NodeType            GetNodeType         ()const{return node_type;}
 
-    const   UTF8String &        GetUsername         ()const{return user_name;}
-            void                SetUsername         (const UTF8String &n){user_name=n;}
+    const   UTF8String &        GetNodeName         ()const{return node_name;}
+            void                SetNodeName         (const UTF8String &n){node_name=n;}
 
 public: //参数相关
 
@@ -71,6 +71,8 @@ public: //参数相关
     virtual bool IsOutput(param::OutputParam *);
 
     virtual bool Check();                                                       ///<检测当前节点是否可用
+
+    virtual bool GenCode(UTF8StringList &){return false;}
 };//class Node
 END_SHADER_NODE_NAMESPACE
 #endif//HGL_GRAPH_SHADER_NODE_INCLUDE

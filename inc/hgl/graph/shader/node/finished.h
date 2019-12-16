@@ -26,6 +26,9 @@ public:
     VertexFinished():Finished("Vertex Output")
     {
         SHADER_INPUT_PARAM(true,Position,   Float3)
+
+        SHADER_OUTPUT_PARAM(FragmentPosition,Float3)
+        SHADER_OUTPUT_PARAM(FragmentTexCoord,Float2)
     }
 
     ~VertexFinished()=default;
