@@ -2,55 +2,64 @@
 #define HGL_GRAPH_SHADER_NODE_VECTOR_INCLUDE
 
 #include<hgl/graph/shader/param/out.h>
-#include<hgl/graph/shader/node/out.h>
+#include<hgl/graph/shader/node/node.h>
 
 BEGIN_SHADER_NODE_NAMESPACE
-class float1:public Output
+class Parameter:public Node
+{
+    param::ParamType param_type;
+
+public:
+
+    Parameter(const param::ParamType &pt):Node(NodeType::Param)
+    {
+        param_type=pt;
+    }
+
+    const param::ParamType &GetParamType()const{return param_type;}
+};//class Parameter:public Node
+
+#define SHADER_PARAMETER_CONSTRUCT_FUNC(name,value) name():Parameter(param::ParamType::name)        \
+                                                    {   \
+                                                        SHADER_OUTPUT_PARAM(value,name)    \
+                                                    }
+
+class Float1:public Parameter
 {
     float x;
 
 public:
 
-    float1():Output("float1")
-    {
-        SHADER_OUTPUT_PARAM(X,FLOAT_1)
-    }
-};//class float1:public Output
+    SHADER_PARAMETER_CONSTRUCT_FUNC(Float1,X)
+};//class float1:public Parameter
 
-class float2:public Output
+class Float2:public Parameter
 {
     float x,y;
 
 public:
 
-    float2():Output("float2")
-    {
-        SHADER_OUTPUT_PARAM(XY,FLOAT_2)
-    }
-};//class float2:public Output
+    SHADER_PARAMETER_CONSTRUCT_FUNC(Float2,XY)
+};//class float2:public Parameter
 
-class float3:public Output
+class Float3:public Parameter
 {
     float x,y,z;
 
 public:
 
-    float3():Output("float3")
-    {
-        SHADER_OUTPUT_PARAM(XYZ,FLOAT_3)
-    }
-};//class float3:public Output
+    SHADER_PARAMETER_CONSTRUCT_FUNC(Float3,XYZ)
+};//class Float3:public Parameter
 
-class float4:public Output
+class Float4:public Parameter
 {
     float x,y,z,w;
 
 public:
 
-    float4():Output("float4")
-    {
-        SHADER_OUTPUT_PARAM(XYZW,FLOAT_4)
-    }
-};//class float4:public Output
+    SHADER_PARAMETER_CONSTRUCT_FUNC(Float4,XYZW)
+};//class Float4:public Parameter
+
+#undef SHADER_PARAMETER_CONSTRUCT_FUNC
 END_SHADER_NODE_NAMESPACE
 #endif//HGL_GRAPH_SHADER_NODE_VECTOR_INCLUDE
