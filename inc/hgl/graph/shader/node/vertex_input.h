@@ -24,6 +24,8 @@ public:
 
         return AddOutput(n,pt);
     }
+
+    bool GetOutputParamName(UTF8String &,const param::OutputParam *) override;
 };//class VertexInput:public Node
 END_SHADER_NODE_NAMESPACE
 #endif//HGL_GRAPH_SHADER_NODE_VERTEX_INPUT_INCLUDE

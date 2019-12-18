@@ -76,10 +76,8 @@ bool ShaderMaker::Check()
 
 bool ShaderMaker::MakeHeader()
 {
-    if(api==API::Vulkan||api==API::OpenGLCore)
-        shader_source.Add("#version "+UTF8String(api_version)+" core"); else
-    if(api==API::OpenGLES)
-        shader_source.Add("#version "+UTF8String(api_version)+" es"); else
+    if(api==API::Vulkan||api==API::OpenGLCore)  shader_source.Add("#version "+UTF8String(api_version)+" core"); else
+    if(api==API::OpenGLES)                      shader_source.Add("#version "+UTF8String(api_version)+" es"); else
     {
         return(false);
     }
@@ -88,7 +86,7 @@ bool ShaderMaker::MakeHeader()
     shader_source.Add("{");
     shader_source.Add("    mat4 local_to_world;");
     shader_source.Add("}pc;");
-    
+
     shader_source.Add("");
     return(true);
 }
@@ -178,9 +176,36 @@ void ShaderMaker::MakeFinished()
 {
     shader_source.Add("void main()");
     shader_source.Add("{");
+    {
+        const uint count=node_stack.GetCount();
+        node::Node **cur=node_stack.GetEnd();
 
+        for(uint i=0;i<count;i++)
+        {
+            (*cur)->GenTempValueDefine(shader_source);      //临时变量定义
 
+            --cur;
+        }
+        
+        shader_source.Add("");
 
+        cur=node_stack.GetEnd();
+
+        for(uint i=0;i<count;i++)
+        {
+            #ifdef _DEBUG
+            shader_source.Add("//[begin] auto code of "+(*cur)->GetNodeName());
+            #endif//_DEBUG
+
+            (*cur)->GenCode(shader_source);                 //产生代码
+
+            #ifdef _DEBUG
+            shader_source.Add("//[end] auto code of "+(*cur)->GetNodeName());
+            #endif//_DEBUG
+
+            --cur;
+        }
+    }
     shader_source.Add("}");
 }
 
@@ -196,11 +221,13 @@ bool ShaderMaker::Make()
         return(false);
 
     if(!MakeHeader())return(false);
-    if(!MakeVertexInput())return(false);
 
     MakeConstValue  (node_list[int(node::NodeType::Const    )-int(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
     MakeTextureInput(node_list[int(node::NodeType::Texture  )-int(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
     MakeUBOInput    (node_list[int(node::NodeType::UBO      )-int(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
+
+    if(!MakeVertexInput())return(false);
+
     MakeOutput      ();
     MakeFinished    ();
 
