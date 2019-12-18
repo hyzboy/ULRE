@@ -39,7 +39,7 @@ bool Node::JoinInput(const UTF8String &param_name,node::Node *n,param::OutputPar
     return ip->Join(n,op);
 }
 
-bool Node::IsOutput(param::OutputParam *op)
+bool Node::IsOutput(const param::OutputParam *op) const
 {
     if(!op)return(false);
 
@@ -56,6 +56,100 @@ bool Node::Check()
             return(false);
         else
             ++ip;
+
+    return(true);
+}
+
+bool Node::GetInputParamName(UTF8String &result,const param::InputParam *ip)
+{
+    if(!ip)return(false);
+
+    result=node_name+U8_TEXT("_")+ip->GetName();
+
+    return(true);
+}
+
+bool Node::GetOutputParamName(UTF8String &result,const param::OutputParam *op)
+{
+    if(!op)return(false);
+
+    result=node_name+U8_TEXT("_")+op->GetName();
+
+    return(true);
+}
+
+bool Node::GenInputParamCode(UTF8StringList &sl)
+{
+    const int count=input_params.GetCount();
+    param::InputParam **ip=input_params.GetData();
+
+    UTF8String in_name,out_name;
+    Node *jin;
+    param::OutputParam *jop;
+
+    for(int i=0;i<count;i++)
+    {
+        if(!this->GetInputParamName(in_name,*ip))
+            return(false);
+
+        jin=(*ip)->GetJoinNode();
+        if(jin)
+        {
+            jop=(*ip)->GetJoinParam();
+
+            if(!jin->GetOutputParamName(out_name,jop))
+                return(false);
+        }
+        else
+        {
+            out_name=(*ip)->GetDefaultValue();
+        }
+
+        sl.Add(in_name+"="+out_name+";");
+
+        ++ip;
+    }
+
+    return(true);
+}
+
+bool Node::GenOutputParamCode(UTF8StringList &)
+{
+    return true;
+}
+
+bool Node::GenTempValueDefine(UTF8StringList &sl)
+{
+    const int count=input_params.GetCount();
+    param::InputParam **ip=input_params.GetData();
+    param::ParamType pt;
+    UTF8String value_name;
+
+    for(int i=0;i<count;i++)
+    {
+        if(!GetInputParamName(value_name,*ip))
+            return(false);
+
+        pt=(*ip)->GetType();
+
+        if((*ip)->GetJoinNode())
+            sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+";\t\t\t// temp value of ["+node_name+"]");
+        else
+            sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+"="+(*ip)->GetDefaultValue()+";\t\t\t// temp value of ["+node_name+"]");
+    
+        ++ip;
+    }
+
+    return(true);    
+}
+
+bool Node::GenCode(UTF8StringList &sl)
+{
+    if(!GenInputParamCode(sl))
+        return(false);
+
+    if(!GenOutputParamCode(sl))
+        return(false);
 
     return(true);
 }

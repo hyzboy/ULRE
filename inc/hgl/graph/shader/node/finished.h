@@ -21,17 +21,23 @@ public:
  */
 class VertexFinished:public Finished
 {
+protected:
+
+    param::InputParam *ip_Position;
+
 public:
 
-    VertexFinished():Finished("Vertex Output")
+    VertexFinished():Finished("FinVertex")
     {
-        SHADER_INPUT_PARAM(true,Position,   Float3)
+        ip_Position=SHADER_INPUT_PARAM(true,Position,   Float3)
 
         SHADER_OUTPUT_PARAM(FragmentPosition,Float3)
         SHADER_OUTPUT_PARAM(FragmentTexCoord,Float2)
     }
 
     ~VertexFinished()=default;
+    
+    bool GenCode(UTF8StringList &)override;
 };//class VertexFinished:public FinishedNode
 
 /**
@@ -41,7 +47,7 @@ class FragmentFinished:public Finished
 {
 public:
 
-    FragmentFinished():Finished("Fragment Output")
+    FragmentFinished():Finished("FinFragment")
     {
         SHADER_INPUT_PARAM(false,BaseColor,   Float3)
         SHADER_INPUT_PARAM(false,Normal,      Float3)

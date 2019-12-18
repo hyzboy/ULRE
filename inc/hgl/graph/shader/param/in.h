@@ -34,6 +34,8 @@ public: //属性
     node::Node *        GetJoinNode (){return join_node;}                       ///<取得接入节点
     param::OutputParam *GetJoinParam(){return join_param;}                      ///<取得接入节点参数
 
+    virtual const UTF8String GetDefaultValue()const{return "?";}                ///<取得缺省值
+
 public:
 
     InputParam(const bool mj,const UTF8String &n,const ParamType &t):Param(n,t)

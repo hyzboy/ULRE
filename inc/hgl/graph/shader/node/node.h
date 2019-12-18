@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_SHADER_NODE_INCLUDE
 #define HGL_GRAPH_SHADER_NODE_INCLUDE
 
-#include<hgl/type/BaseString.h>
+#include<hgl/type/StringList.h>
 #include<hgl/type/List.h>
 #include<hgl/type/Map.h>
 #include<hgl/graph/shader/node/type.h>
@@ -37,6 +37,11 @@ protected:
 
 protected:
 
+    virtual bool GenInputParamCode(UTF8StringList &);
+    virtual bool GenOutputParamCode(UTF8StringList &);
+
+protected:
+
             param::InputParam * AddInput            (bool mj,const UTF8String &n,const param::ParamType &pt);
             param::OutputParam *AddOutput           (const UTF8String &n,const param::ParamType &pt);
 
@@ -68,11 +73,17 @@ public: //参数相关
 
 public: //参数相关
 
-    virtual bool IsOutput(param::OutputParam *);
+    virtual bool IsOutput(const param::OutputParam *) const;
 
     virtual bool Check();                                                       ///<检测当前节点是否可用
 
-    virtual bool GenCode(UTF8StringList &){return false;}
+    virtual bool GetInputParamName(UTF8String &result,const param::InputParam *);
+    virtual bool GetOutputParamName(UTF8String &result,const param::OutputParam *);
+
+public: //产生代码相关
+
+    virtual bool GenTempValueDefine(UTF8StringList &);                          ///<产生临时变量定义
+    virtual bool GenCode(UTF8StringList &);
 };//class Node
 END_SHADER_NODE_NAMESPACE
 #endif//HGL_GRAPH_SHADER_NODE_INCLUDE
