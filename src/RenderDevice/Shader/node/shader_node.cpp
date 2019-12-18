@@ -118,6 +118,8 @@ bool Node::GenOutputParamCode(UTF8StringList &)
     return true;
 }
 
+#define SHADER_NODE_TEMP_VALUE_COMMENT ";\t\t\t// temp value of ["+node_name+"]"
+
 bool Node::GenTempValueDefine(UTF8StringList &sl)
 {
     const int count=input_params.GetCount();
@@ -133,9 +135,9 @@ bool Node::GenTempValueDefine(UTF8StringList &sl)
         pt=(*ip)->GetType();
 
         if((*ip)->GetJoinNode())
-            sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+";\t\t\t// temp value of ["+node_name+"]");
+            sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+SHADER_NODE_TEMP_VALUE_COMMENT);
         else
-            sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+"="+(*ip)->GetDefaultValue()+";\t\t\t// temp value of ["+node_name+"]");
+            sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+"="+(*ip)->GetDefaultValue()+SHADER_NODE_TEMP_VALUE_COMMENT);
     
         ++ip;
     }

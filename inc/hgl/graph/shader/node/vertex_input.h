@@ -19,7 +19,7 @@ public:
         //未来还要做个数判断之类的
 
         if(pt<param::ParamType::Float1
-         ||pt>param::ParamType::UInteger4)
+         ||pt>param::ParamType::Double4)
             return(nullptr);
 
         return AddOutput(n,pt);
