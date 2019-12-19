@@ -38,7 +38,7 @@ protected:
 protected:
 
     virtual bool GenInputParamCode(UTF8StringList &);
-    virtual bool GenOutputParamCode(UTF8StringList &);
+    virtual bool GenOutputParamCode(UTF8StringList &){return true;}
 
 protected:
 
