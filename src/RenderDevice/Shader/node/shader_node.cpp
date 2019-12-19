@@ -113,11 +113,6 @@ bool Node::GenInputParamCode(UTF8StringList &sl)
     return(true);
 }
 
-bool Node::GenOutputParamCode(UTF8StringList &)
-{
-    return true;
-}
-
 #define SHADER_NODE_TEMP_VALUE_COMMENT ";\t\t\t// temp value of ["+node_name+"]"
 
 bool Node::GenTempValueDefine(UTF8StringList &sl)
@@ -138,11 +133,11 @@ bool Node::GenTempValueDefine(UTF8StringList &sl)
             sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+SHADER_NODE_TEMP_VALUE_COMMENT);
         else
             sl.Add("\t"+UTF8String(param::GetTypename(pt))+" "+value_name+"="+(*ip)->GetDefaultValue()+SHADER_NODE_TEMP_VALUE_COMMENT);
-    
+
         ++ip;
     }
 
-    return(true);    
+    return(true);
 }
 
 bool Node::GenCode(UTF8StringList &sl)
