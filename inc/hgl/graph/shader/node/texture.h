@@ -10,7 +10,7 @@ class texture:public Node
 
 public:
 
-    texture(const param::ParamType &pt):Node(NodeType::Texture)
+    texture(const param::ParamType &pt,const UTF8String &n):Node(NodeType::Texture,n)
     {
         texture_type=pt;
     }
@@ -22,7 +22,7 @@ class texture1D:public texture
 {
 public:
 
-    texture1D():texture(param::ParamType::Texture1D)
+    texture1D():texture(param::ParamType::Texture1D,"texture1d")
     {
         SHADER_INPUT_PARAM(false,U,Float1)
     }
@@ -32,7 +32,7 @@ class texture2D:public texture
 {
 public:
 
-    texture2D():texture(param::ParamType::Texture2D)
+    texture2D():texture(param::ParamType::Texture2D,"texture2d")
     {
         SHADER_INPUT_PARAM(false,UV,Float2)
     }
@@ -42,7 +42,7 @@ class textureRect:public texture
 {
 public:
 
-    textureRect():texture(param::ParamType::TextureRect)
+    textureRect():texture(param::ParamType::TextureRect,"textureRect")
     {
         SHADER_INPUT_PARAM(false,UV,UInteger2)
     }
@@ -52,7 +52,7 @@ class texture3D:public texture
 {
 public:
 
-    texture3D():texture(param::ParamType::Texture3D)
+    texture3D():texture(param::ParamType::Texture3D,"texture3d")
     {
         SHADER_INPUT_PARAM(false,UVD,Float3)
     }
@@ -62,7 +62,7 @@ class textureCube:public texture
 {
 public:
 
-    textureCube():texture(param::ParamType::TextureCube)
+    textureCube():texture(param::ParamType::TextureCube,"textureCube")
     {
         SHADER_INPUT_PARAM(false,XYZ,Float3)
     }

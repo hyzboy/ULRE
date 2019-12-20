@@ -10,7 +10,7 @@ class ComboVector1to2:public Node
 
 public:
 
-    ComboVector1to2():Node(NodeType::ComboVector)
+    ComboVector1to2():Node(NodeType::ComboVector,"ComboVector1to2")
     {
         ip_x=SHADER_INPUT_PARAM(false,X,Float1)
         ip_y=SHADER_INPUT_PARAM(false,Y,Float1)
@@ -25,19 +25,20 @@ public:
 class ComboVector1to3:public Node
 {
     param::InputParam *ip_x,*ip_y,*ip_z;
+    param::OutputParam *op_xyz;
 
 public:
 
-    ComboVector1to3():Node(NodeType::ComboVector)
+    ComboVector1to3():Node(NodeType::ComboVector,"ComboVector1to3")
     {
         ip_x=SHADER_INPUT_PARAM(false,X,Float1)
         ip_y=SHADER_INPUT_PARAM(false,Y,Float1)
         ip_z=SHADER_INPUT_PARAM(false,Z,Float1)
 
-        SHADER_OUTPUT_PARAM(XYZ,Float3)
+        op_xyz=SHADER_OUTPUT_PARAM(XYZ,Float3)
     }
-
-    bool GenCode(UTF8StringList &) override;
+    
+    bool GenOutputParamCode(UTF8StringList &)override;
 };//class ComboVector1to3:public Node
 
 class ComboVector1to4:public Node
@@ -46,7 +47,7 @@ class ComboVector1to4:public Node
 
 public:
 
-    ComboVector1to4():Node(NodeType::ComboVector)
+    ComboVector1to4():Node(NodeType::ComboVector,"ComboVector1to4")
     {
         ip_x=SHADER_INPUT_PARAM(false,X,Float1)
         ip_y=SHADER_INPUT_PARAM(false,Y,Float1)
@@ -65,7 +66,7 @@ class ComboVector12to3:public Node
 
 public:
 
-    ComboVector12to3():Node(NodeType::ComboVector)
+    ComboVector12to3():Node(NodeType::ComboVector,"ComboVector12to3")
     {
         ip_xy=SHADER_INPUT_PARAM(false,XY,Float2)
         ip_z =SHADER_INPUT_PARAM(false,Z,Float1)
@@ -82,7 +83,7 @@ class ComboVector13to4:public Node
 
 public:
 
-    ComboVector13to4():Node(NodeType::ComboVector)
+    ComboVector13to4():Node(NodeType::ComboVector,"ComboVector13to4")
     {
         ip_xyz=SHADER_INPUT_PARAM(false,XYZ,Float3)
         ip_w  =SHADER_INPUT_PARAM(false,W,Float1)
@@ -99,7 +100,7 @@ class ComboVector22to4:public Node
 
 public:
 
-    ComboVector22to4():Node(NodeType::ComboVector)
+    ComboVector22to4():Node(NodeType::ComboVector,"ComboVector22to4")
     {
         ip_xy=SHADER_INPUT_PARAM(false,XY,Float2)
         ip_zw=SHADER_INPUT_PARAM(false,ZW,Float2)

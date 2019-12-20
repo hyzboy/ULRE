@@ -11,7 +11,7 @@ class Parameter:public Node
 
 public:
 
-    Parameter(const param::ParamType &pt):Node(NodeType::Param)
+    Parameter(const param::ParamType &pt,const UTF8String &n):Node(NodeType::Param,n)
     {
         param_type=pt;
     }
@@ -19,7 +19,7 @@ public:
     const param::ParamType &GetParamType()const{return param_type;}
 };//class Parameter:public Node
 
-#define SHADER_PARAMETER_CONSTRUCT_FUNC(name,value) name():Parameter(param::ParamType::name)        \
+#define SHADER_PARAMETER_CONSTRUCT_FUNC(name,value) name():Parameter(param::ParamType::name,#name)        \
                                                     {   \
                                                         SHADER_OUTPUT_PARAM(value,name)    \
                                                     }
