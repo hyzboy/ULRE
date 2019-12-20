@@ -201,6 +201,7 @@ void ShaderMaker::MakeFinished()
 
             #ifdef _DEBUG
             shader_source.Add("//[end] auto code of "+(*cur)->GetNodeName());
+            shader_source.Add("");
             #endif//_DEBUG
 
             --cur;

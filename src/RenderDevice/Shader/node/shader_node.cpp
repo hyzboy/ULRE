@@ -39,6 +39,26 @@ bool Node::JoinInput(const UTF8String &param_name,node::Node *n,param::OutputPar
     return ip->Join(n,op);
 }
 
+bool Node::JoinInput(const UTF8String &param_name,node::Node *n)
+{
+    if(param_name.IsEmpty()||!n)
+        return(false);
+
+    node::OutputParamList &opl=n->GetOutputParamList();
+
+    if(opl.GetCount()!=1)
+        return(false);
+
+    param::OutputParam *op=*(opl.GetBegin());
+    
+    param::InputParam *ip=GetInput(param_name);
+
+    if(!ip)
+        return(false);
+
+    return ip->Join(n,op);    
+}
+
 bool Node::IsOutput(const param::OutputParam *op) const
 {
     if(!op)return(false);

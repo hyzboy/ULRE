@@ -55,7 +55,6 @@ public:
 
 public:
 
-    Node(const NodeType &nt){node_type=nt;}
     Node(const NodeType &nt,const UTF8String &n){node_type=nt;node_name=n;}
     virtual ~Node()=default;
 
@@ -70,6 +69,8 @@ public: //参数相关
             OutputParamList &   GetOutputParamList  (){return output_params;}
 
     virtual bool                JoinInput           (const UTF8String &,node::Node *,param::OutputParam *);
+
+    virtual bool                JoinInput           (const UTF8String &,node::Node *);                                  ///<连接一个输入节点(限输入节点只有一个输出参数)
 
 public: //参数相关
 
