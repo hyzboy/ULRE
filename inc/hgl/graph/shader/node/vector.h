@@ -30,7 +30,7 @@ class Float1:public Parameter
 
 public:
 
-    SHADER_PARAMETER_CONSTRUCT_FUNC(Float1,X)
+    SHADER_PARAMETER_CONSTRUCT_FUNC(Float1,Value)
 };//class float1:public Parameter
 
 class Float2:public Parameter
