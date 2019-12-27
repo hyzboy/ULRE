@@ -70,7 +70,7 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
 
     VkWriteDescriptorSet writeDescriptorSet;
 
-    writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     writeDescriptorSet.pNext            = nullptr;
     writeDescriptorSet.dstSet           = desc_set;
     writeDescriptorSet.dstBinding       = binding;
