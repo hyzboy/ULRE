@@ -86,5 +86,18 @@ public: //产生代码相关
     virtual bool GenTempValueDefine(UTF8StringList &);                          ///<产生临时变量定义
     virtual bool GenCode(UTF8StringList &);
 };//class Node
+
+/**
+ * GLSL原生变量
+ */
+template<typename T> class NativeValue:public Node
+{
+public:
+
+    NativeValue(const NodeType &nt,const UTF8String &n):Node(nt,n){}
+    virtual ~NativeValue()=default;
+
+
+};//template<typename T> class NativeValue:public Node
 END_SHADER_NODE_NAMESPACE
 #endif//HGL_GRAPH_SHADER_NODE_INCLUDE
