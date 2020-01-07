@@ -34,4 +34,3 @@ add_cm_library(ULRE.Shader "ULRE"   ${GRAPH_SHADER_HEADER_PATH}/common.h
                                     ${GRAPH_SHADER_PARAM_FILES}
                                     ${GRAPH_SHADER_MAKER_SOURCE}
                                     ${GRAPH_SPV_SOURCE})
-
