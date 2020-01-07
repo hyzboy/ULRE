@@ -1,6 +1,8 @@
 ﻿#ifndef HGL_GRAPH_COLOR_SPACE_INCLUDE
 #define HGL_GRAPH_COLOR_SPACE_INCLUDE
 
+#include<math.h>
+
 namespace hgl
 {
     namespace graph
@@ -16,13 +18,17 @@ namespace hgl
             RANGE_SIZE  =(END_RANGE-BEGIN_RANGE)+1
         };//enum class ColorSpace
 
+        constexpr double SRGB_GAMMA         =1.0f/2.2f;
+        constexpr double SRGB_INVERSE_GAMMA =2.2f;
+        constexpr double SRGB_ALPHA         =0.055f;
+
         template<typename T>
         inline const T sRGB2Linear(const T &in)
         {
             if(in<=0.4045)
                 return in/12.92;
             else
-                return pow((in+0.55)/1.055,2.4);
+                return pow((in+SRGB_ALPHA)/(1+SRGB_ALPHA),2.4);
         }
 
         template<typename T>
@@ -31,19 +37,19 @@ namespace hgl
             if(in<=0.0031308f)
                 return in*12.92f;
             else
-                return pow((in*1.055f),1.0f/2.4f)-0.055f;
+                return (1+SRGB_ALPHA)*pow(in,1.0f/2.4f)-SRGB_ALPHA;
         }
 
         template<typename T>
         inline const T sRGB2LinearApprox(const T &in)
         {
-            return pow(in,2.2f);
+            return pow(in,T(SRGB_INVERSE_GAMMA));
         }
 
         template<typename T>
         inline const T Linear2sRGBApprox(const T &in)
         {
-            return pow(in,1.0f/2.2f);
+            return pow(in,SRGB_GAMMA);
         }
 
         template<typename T>
@@ -60,6 +66,22 @@ namespace hgl
             r= 3.2406f*x-1.5373f*y-0.4986f*z;
             g=-0.9689f*x+1.8758f*y+0.0416f*z;
             b= 0.0557f*x-0.2040f*y+1.0570f*z;
+        }
+
+        template<typename T>
+        inline void RGB2YCbCr(T &Y,T &Cb,T &Cr,const T &r,const T &g,const T &b
+        {
+            Y = 0.299 * r + 0.587 * g + 0.114 * b;
+            Cb = (b - Y) * 0.565;
+            Cr = (r - Y) * 0.713;
+        }
+
+        template<typename T>
+        inline void YCbCr2RGB(T &r,T &g,T &b,const T &Y,const T &Cb,const T &Cr)
+        {
+            r=Y+1.403*Cr;
+            g=Y-0.344*Cb-0.714*Cr;
+            b=Y+1.770*Cb;
         }
     }//namespace graph
 }//namespace hgl
