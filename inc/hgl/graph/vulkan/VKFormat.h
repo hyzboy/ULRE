@@ -162,6 +162,30 @@ VK_NAMESPACE_BEGIN
 #define FMT_D24UN_S8U   VK_FORMAT_D24_UNORM_S8_UINT
 #define FMT_D32F_S8U    VK_FORMAT_D32_SFLOAT_S8_UINT
 
+/**
+ *                  Type of data        bytes/pixel     Palette size    Line Segments       User For                                            Compressed components/Description
+ * ----------------+----------------+--------------+-----------------+--------------------+----------------------------------------------------+--------------------------------------
+ *  BC1(S3TC1)      RGB5/RGB5A1             0.5             4               1               Color maps,Normal maps
+ *  BC2(S3TC3)      RGBA4                   1               4               1                                                                   BC1+uncompress 4-bit alpha
+ *  BC3(S3TC5)      RGBA4                   1               4               1Color+1Alpha   Color maps                                          BC1+BC4 compress alpha
+ *  BC4(ATI1/3Dc+)  Grayscale               0.5             8               1
+ *  BC5(ATI2/3Dc)   2xGrayscale             1               8 per channel   1 per channel   Tangent-space normal maps
+ *  BC6H            FloatRGB                1               8-16            1-2             HDR images
+ *  BC7             RGB/RGBA                1               4-16            1-3             High-quality color maps
+ *
+ *  ETC             RGB
+ *  ETC2            RGB/RGBA1                                                               Color maps,Normals
+ *  EAC             Grayscale
+ *  2xEAC           RG
+ *  ETC2+EAC        RGBA
+ *
+ *  PVRTC           RGB/RGBA1/RGBA
+ *  PVRTC2          RGB/RGBA1/RGBA
+ *
+ *  ASTC            R/RG/RGB/RGBA
+ * ----------------+----------------+--------------+-----------------+--------------------+----------------------------------------------------+
+ */
+
 #define FMT_BC1_RGBUN   VK_FORMAT_BC1_RGB_UNORM_BLOCK
 #define FMT_BC1_RGBs    VK_FORMAT_BC1_RGB_SRGB_BLOCK
 #define FMT_BC1_RGBAUN  VK_FORMAT_BC1_RGBA_UNORM_BLOCK
