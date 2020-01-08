@@ -67,22 +67,6 @@ namespace hgl
             g=-0.9689f*x+1.8758f*y+0.0416f*z;
             b= 0.0557f*x-0.2040f*y+1.0570f*z;
         }
-
-        template<typename T>
-        inline void RGB2YCbCr(T &Y,T &Cb,T &Cr,const T &r,const T &g,const T &b
-        {
-            Y = 0.299 * r + 0.587 * g + 0.114 * b;
-            Cb = (b - Y) * 0.565;
-            Cr = (r - Y) * 0.713;
-        }
-
-        template<typename T>
-        inline void YCbCr2RGB(T &r,T &g,T &b,const T &Y,const T &Cb,const T &Cr)
-        {
-            r=Y+1.403*Cr;
-            g=Y-0.344*Cb-0.714*Cr;
-            b=Y+1.770*Cb;
-        }
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_COLOR_SPACE_INCLUDE

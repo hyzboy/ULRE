@@ -1,94 +1,97 @@
 ﻿#ifndef HGL_GRAPH_MATERIAL_INCLUDE
 #define HGL_GRAPH_MATERIAL_INCLUDE
 
-#include<hgl/graph/TextureType.h>
-#include<hgl/type/Color4f.h>
-#include<hgl/type/Set.h>
+#include<hgl/graph/MaterialData.h>
 namespace hgl
 {
     namespace graph
     {
-        struct MaterialTextureData
+        class Material
         {
-            TextureType type=TextureType::None;
+        };//
 
-            int32 tex_id=-1;
-
-            uint8 uvindex=0;
-            float blend=0;
-            uint8 op=0;
-            uint8 wrap_mode[2]={0,0};
-        };//struct MaterialTextureData
-
-        struct MaterialData
+        enum class MaterialBlendMode
         {
-            UTF8String name;
+            Opaque=0,
+            Mask,
+            Alpha,
+            Additive,
+            Modulate,
+            PreMultiAlpha,  //预计算好一半的Alpha
 
-            uint8 tex_count;
+            BEGIN_RANGE =Opaque,
+            END_RANGE   =PreMultiAlpha,
+            RANGE_SIZE  =END_RANGE-BEGIN_RANGE+1
+        };//
 
-            MaterialTextureData *tex_list;
+        enum class MaterialComponent
+        {
+            Color=0,
+            Normal,
+            Tangent,
 
-            Set<uint> uv_use;
+            Metallic,
+            Roughness,
+            Emissive,
+            Specular,
 
-            bool two_sided=false;
-            uint shading_model=0;
-            bool wireframe=false;
+            Anisotropy,
 
-            uint blend_func;
+            Opacity,
 
-            float opacity;              ///<透明度
+            SubsurfaceColor,
+            AmbientOcclusion,
+            Refraction,
 
-            uint transparency_factor;
+            Rotation,
+            IOR,
 
-            float bump_scaling;
-            float shininess;
-            float reflectivity;         ///<反射率
-            float shininess_strength;
+            ShadingModel,
 
-            float refracti;             ///<折射率
+            BEGIN_RANGE =Opaque,
+            END_RANGE   =ShadingModel,
+            RANGE_SIZE  =END_RANGE-BEGIN_RANGE+1,
+        };//
 
-            Color4f diffuse;
-            Color4f ambient;
-            Color4f specular;
-            Color4f emission;
-            Color4f transparent;        ///<透明色
-            Color4f reflective;         ///<反射颜色
+        enum class MaterialComponentBit
+        {
+#define MC_BIT_DEFINE(name) name=1<<MaterialComponent::name
+            MC_BIT_DEFINE(Color             ),
+            MC_BIT_DEFINE(Normal            ),
+            MC_BIT_DEFINE(Tangent           ),
 
-        public:
+            MC_BIT_DEFINE(Metallic          ),
+            MC_BIT_DEFINE(Roughness         ),
+            MC_BIT_DEFINE(Emissive          ),
+            MC_BIT_DEFINE(Specular          ),
 
-            MaterialData()
-            {
-                tex_count=0;
-                tex_list=nullptr;
-            }
+            MC_BIT_DEFINE(Anisotropy        ),
 
-            void InitDefaultColor()
-            {
-                diffuse.Set(1,1,1,1);
-                specular.Set(0,0,0,1);
-                ambient.Set(0.2f,0.2f,0.2f,1.0f);
-                emission.Set(0,0,0,1);
+            MC_BIT_DEFINE(Opacity           ),
 
-                shininess=0;
+            MC_BIT_DEFINE(SubsurfaceColor   ),
+            MC_BIT_DEFINE(AmbientOcclusion  ),
+            MC_BIT_DEFINE(Refraction        ),
 
-                opacity=1.0f;
-                refracti=0;
-                transparent.Set(0,0,0,1);
-                reflective.Set(1,1,1,1);
-            }
+            MC_BIT_DEFINE(Rotation          ),
+            MC_BIT_DEFINE(IOR               ),
 
-            void Init(const uint32 tc)
-            {
-                tex_count=tc;
+            MC_BIT_DEFINE(ShadingModel      )
+        };//enum class MaterialComponentBit
 
-                tex_list=new MaterialTextureData[tc];
-            }
+        using MCB=MaterialComponentBit;
 
-            ~MaterialData()
-            {
-                delete[] tex_list;
-            }
-        };//struct MaterialData
+        using MaterialComponentConfig=uint32;
+
+        constexpr MaterialComponentConfig MC_PureColor      =MCB::Color;
+        constexpr MaterialComponentConfig MC_ColorNormal    =MCB::Color|MCB::Normal;
+        constexpr MaterialComponentConfig MC_PBR            =MCB::Color|MCB::Normal|MCB::Metallic|MCB::Roughness;
+
+        class Material
+        {
+            MaterialBlendMode       blend_mode;
+            MaterialComponentConfig component_config;
+        };//class Material
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_MATERIAL_INCLUDE
