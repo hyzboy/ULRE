@@ -70,6 +70,23 @@ BEGIN_MATERIAL_NAMESPACE
         Uint,
     };//
 
+    enum class DataFormat
+    {
+        NONE=0,
+
+    #define MATERIAL_DATA_FORMAT_DEFINE(long_name,short_name,type)  long_name           =((uint(ComponentDataType)<<4)|1), \
+                                                                    vec##short_name##1  =((uint(ComponentDataType)<<4)|2), \
+                                                                    vec##short_name##2  =((uint(ComponentDataType)<<4)|3), \
+                                                                    vec##short_name##3  =((uint(ComponentDataType)<<4)|4),
+
+        MATERIAL_DATA_FORMAT_DEFINE(boolean,b,Bool  ),
+        MATERIAL_DATA_FORMAT_DEFINE(float,  f,Float ),
+        MATERIAL_DATA_FORMAT_DEFINE(int,    i,Int   ),
+        MATERIAL_DATA_FORMAT_DEFINE(uint,   u,Uint  ),
+
+    #undef MATERIAL_DATA_FORMAT_DEFINE
+    };
+
     using ComponentBitsConfig=uint32;
 
     constexpr ComponentBitsConfig MCC_PureColor     =uint32(ComponentBit::Color);
