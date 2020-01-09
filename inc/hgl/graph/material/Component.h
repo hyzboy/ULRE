@@ -3,8 +3,11 @@
 
 #include<hgl/type/DataType.h>
 
-#define BEGIN_MATERIAL_NAMESPACE namespace hgl{namespace graph{namespace material{
-#define END_MATERIAL_NAMESPACE }}}
+#define BEGIN_MATERIAL_NAMESPACE    namespace hgl{namespace graph{namespace material{
+#define END_MATERIAL_NAMESPACE      }}}
+
+#define MATERIAL_NAMESPACE          hgl::graph::material
+#define USING_MATERIAL_NAMESPACE    using namespace MATERIAL_NAMESPACE;
 
 BEGIN_MATERIAL_NAMESPACE
     enum class Component
