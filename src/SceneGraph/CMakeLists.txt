@@ -1,10 +1,9 @@
-﻿SET(SG_MATERIAL_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/MaterialComponent.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/Material.h
+﻿file(GLOB SG_MATERIAL_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/material/*.*)
 
-                        MaterialComponent.cpp
-                        Material.cpp)
+file(GLOB SG_MATERIAL_SOURCE material/*.*)
 
-SOURCE_GROUP("Material" FILES   ${SG_MATERIAL_SOURCE})
+SOURCE_GROUP("Material" FILES   ${SG_MATERIAL_HEADER}
+                                ${SG_MATERIAL_SOURCE})
 
 SET(SG_VERTEX_SOURCE    ${ROOT_INCLUDE_PATH}/hgl/graph/VertexBufferCreater.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/VertexBuffer.h)
@@ -46,5 +45,7 @@ SOURCE_GROUP("Source Files" FILES ${SCENE_GRAPH_SOURCE})
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SCENE_GRAPH_SOURCE}
 
+                                        ${SG_MATERIAL_HEADER}
                                         ${SG_MATERIAL_SOURCE}
+
                                         ${SG_VERTEX_SOURCE})

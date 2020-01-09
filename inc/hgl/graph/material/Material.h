@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_MATERIAL_INCLUDE
 #define HGL_GRAPH_MATERIAL_INCLUDE
 
-#include<hgl/graph/MaterialComponent.h>
+#include<hgl/graph/material/Component.h>
 BEGIN_MATERIAL_NAMESPACE
     enum class BlendMode
     {
@@ -15,7 +15,7 @@ BEGIN_MATERIAL_NAMESPACE
         BEGIN_RANGE =Opaque,
         END_RANGE   =PreMultiAlpha,
         RANGE_SIZE  =END_RANGE-BEGIN_RANGE+1
-    };//
+    };//enum class BlendMode
 
     class Material
     {

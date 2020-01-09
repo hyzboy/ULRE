@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/MaterialComponent.h>
+﻿#include<hgl/graph/material/Component.h>
 
 BEGIN_MATERIAL_NAMESPACE
     namespace
@@ -35,7 +35,7 @@ BEGIN_MATERIAL_NAMESPACE
     const ComponentConfig *GetConfig(const enum class Component c)
     {
         if(c<=Component::BEGIN_RANGE
-            ||c>=Component::END_RANGE)return(nullptr);
+         ||c>=Component::END_RANGE)return(nullptr);
 
         return material_component_config_list+(uint)c;
     }

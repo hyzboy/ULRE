@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/Material.h>
+﻿#include<hgl/graph/material/Material.h>
 #include<hgl/io/FileInputStream.h>
 #include<hgl/io/DataInputStream.h>
 #include<hgl/log/LogInfo.h>
