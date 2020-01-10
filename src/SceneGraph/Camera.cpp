@@ -21,7 +21,8 @@ namespace hgl
                             -forward.x,     -forward.y,     -forward.z/2.0f,    1.0f,
                              0.0f,           0.0f,           0.0f,              1.0f);
                                                         //  ^^^^^^
-                                                        //      某些引擎此项为0.5，这个会影响最终输出的z值，但我们这里必须为0
+                                                        //  某些引擎这里为0.5，那是因为他们是 -1 to 1 的Z值设定，而我们是0 to 1，所以这里不用乘
+                                                        //  同理，camera的znear为接近0的正数，zfar为一个较大的正数，默认使用16/256
 
             return result*translate(-eye.xyz());
         }
@@ -33,12 +34,14 @@ namespace hgl
             else
                 matrix.projection=ortho(width,height,znear,zfar);               //这个算的不对
 
-            //matrix.inverse_projection=matrix.projection.Inverted();
+            matrix.inverse_projection=matrix.projection.Inverted();
 
             matrix.modelview=hgl::graph::LookAt(eye,center,up_vector);
             //matrix.modelview=Matrix4f::LookAt(eye.xyz(),center.xyz(),forward_vector.xyz(),up_vector.xyz(),up_vector.xyz());
+            matrix.inverse_modelview=matrix.modelview.Inverted();
 
             matrix.mvp=matrix.projection*matrix.modelview;
+            matrix.inverse_map=matrix.mvp.Inverted();
 
             //注意： C++中要 projection * model_view * local_to_world * position
             //而GLSL中要 position * local_to_world * model_view * projection

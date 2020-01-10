@@ -23,6 +23,10 @@ public:
     DataSource()                    {format=DataFormat::NONE;}
     DataSource(const DataFormat &df){format=df;}
     virtual ~DataSource()=default;
+
+public:
+
+    virtual bool GenDefine(UTF8String &){return false;}                                             ///<产生define代码
 };//class DataSource
 
 /**
@@ -33,6 +37,8 @@ class DataSourceConst:public DataSource
 public:
 
     using DataSource::DataSource;
+
+    virtual bool GenDefine(UTF8String &)=0;                                                         ///<产生define代码
 };//class DataSourceConst:public DataSource
 
 /**
