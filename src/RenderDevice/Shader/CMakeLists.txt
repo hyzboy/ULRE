@@ -23,6 +23,10 @@ SET(GRAPH_SHADER_MAKER_SOURCE   ${GRAPH_SHADER_HEADER_PATH}/ShaderMaker.h
 
 source_group("Shader Maker" FILES ${GRAPH_SHADER_MAKER_SOURCE})
 
+
+
+
+
 SET(GRAPH_SPV_SOURCE    ${GRAPH_SHADER_HEADER_PATH}/glsl2spv.h
                         glsl2spv.cpp)
 

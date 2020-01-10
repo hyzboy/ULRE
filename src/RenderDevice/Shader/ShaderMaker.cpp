@@ -8,6 +8,17 @@
 #include<hgl/io/DataOutputStream.h>
 #include<hgl/io/TextOutputStream.h>
 
+/*
+    设计概念：
+
+        节点分类:
+                    const   直接写在代码中的数值
+                    scalr   由UBO传入的数据
+                    Texture 纹理
+
+ 
+*/
+
 BEGIN_SHADER_NAMESPACE
 namespace
 {
@@ -144,6 +155,30 @@ void ShaderMaker::MakeTextureInput(const NodeList &nl)
     shader_source.Add("");
 }
 
+void ShaderMaker::MakeScalarValue(const NodeList &nl)
+{
+    const uint count=nl.GetCount();
+
+    if(count<=0)return;
+
+    shader_source.Add("layout(binding="+UTF8String(binding)+") uniform UserInput");
+    shader_source.Add("{");
+
+    node::texture **tex_node=(node::texture **)nl.GetData();
+    param::ParamType tt;
+
+    for(uint i=0;i<count;i++)
+    {
+        tt=(*tex_node)->GetTextureType();
+
+        shader_source.Add("layout(binding="+UTF8String(binding)+") uniform "+GetTypename(tt)+" "+(*tex_node)->GetNodeName()+";");
+
+        ++tex_node;
+        ++binding;
+    }
+    shader_source.Add("}");
+}
+
 void ShaderMaker::MakeUBOInput(const NodeList &nl)
 {
 }
@@ -223,9 +258,10 @@ bool ShaderMaker::Make()
 
     if(!MakeHeader())return(false);
 
-    MakeConstValue  (node_list[int(node::NodeType::Const    )-int(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
-    MakeTextureInput(node_list[int(node::NodeType::Texture  )-int(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
-    MakeUBOInput    (node_list[int(node::NodeType::UBO      )-int(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
+    MakeConstValue  (node_list[uint(node::NodeType::Const   )-uint(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
+    MakeScalarValue (node_list[uint(node::NodeType::Param   )-uint(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
+    MakeTextureInput(node_list[uint(node::NodeType::Texture )-uint(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
+    MakeUBOInput    (node_list[uint(node::NodeType::UBO     )-uint(node::NodeType::BEGIN_NODE_TYPE_RANGE)]);
 
     if(!MakeVertexInput())return(false);
 

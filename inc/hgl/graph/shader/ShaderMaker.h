@@ -15,6 +15,14 @@ enum class API
     Vulkan
 };
 
+/**
+ * 缺省绑定号
+ */
+enum class ShaderDefaultBinding
+{
+    WorldMatrix=0,
+};
+
 class ShaderMaker
 {
 protected:
@@ -44,6 +52,7 @@ protected:
     virtual bool MakeHeader();
     virtual bool MakeVertexInput();
     virtual void MakeConstValue(const NodeList &);
+    virtual void MakeScalarValue(const NodeList &);
     virtual void MakeTextureInput(const NodeList &);
     virtual void MakeUBOInput(const NodeList &);
     virtual void MakeOutput();
