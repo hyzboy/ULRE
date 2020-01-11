@@ -9,6 +9,15 @@
 BEGIN_SHADER_NAMESPACE
 namespace
 {
+    namespace InlineShader
+    {
+        UTF8String Header;
+        UTF8String UBOWorldMatrix;
+        UTF8String PushConstant;
+
+        UTF8String VSOutputLayout;
+    }//namespace InlineShader
+
     constexpr enum class API    DEFAULT_RENDER_API          =API::Vulkan;
     constexpr uint              DEFAULT_RENDER_API_VERSION  =450;
 
@@ -22,7 +31,7 @@ namespace
         node::VertexFinished vs_fin_node;                                           //创建一个vs最终节点
 
         node::VertexInput vi;                                                       //创建一个顶点输入节点
-        
+
         param::OutputParam *op=vi.Add(  SHADER_VERTEX_INPUT_STREAM_POSITION_NAME,   //该节点输出参数名称
                                         param::ParamType::Float3);                  //该节点数据类型
 

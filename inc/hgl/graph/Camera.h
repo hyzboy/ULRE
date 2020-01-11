@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_CAMERA_INCLUDE
 #define HGL_GRAPH_CAMERA_INCLUDE
 
-#include<hgl/math/Math.h>
+#include<hgl/graph/WorldMatrix.h>
 namespace hgl
 {
     namespace graph
