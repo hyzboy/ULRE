@@ -12,6 +12,7 @@ SOURCE_GROUP("VertexBuffer" FILES   ${SG_VERTEX_SOURCE})
 
 SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Coordinate.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/AABox.h
+                        ${ROOT_INCLUDE_PATH}/hgl/graph/WorldMatrix.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/Camera.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneDB.h
