@@ -11,20 +11,20 @@ namespace hgl
          * 世界矩阵数据
          * @see res/shader/UBO_WorldMatrix.glsl
          */
-        struct WorldMatrix
+        struct alignas(4) WorldMatrix
         {
-            alignas(16) Matrix4f ortho;                 //2D正角视图矩阵
+            Matrix4f ortho;                 //2D正角视图矩阵
 
-            alignas(16) Matrix4f projection;
-            alignas(16) Matrix4f inverse_projection;
+            Matrix4f projection;
+            Matrix4f inverse_projection;
 
-            alignas(16) Matrix4f modelview;
-            alignas(16) Matrix4f inverse_modelview;
+            Matrix4f modelview;
+            Matrix4f inverse_modelview;
 
-            alignas(16) Matrix4f mvp;
-            alignas(16) Matrix4f inverse_map;
+            Matrix4f mvp;
+            Matrix4f inverse_map;
 
-            alignas(16) Vector4f view_pos;              ///<眼睛坐标
+            Vector4f view_pos;              ///<眼睛坐标
         };//struct WorldMatrix
     }//namespace graph
 }//namespace hgl
