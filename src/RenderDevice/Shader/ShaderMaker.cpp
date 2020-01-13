@@ -23,6 +23,7 @@ BEGIN_SHADER_NAMESPACE
 namespace
 {
     
+    
 }//namespace
 
 bool ShaderMaker::Check()

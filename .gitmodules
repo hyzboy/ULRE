@@ -19,3 +19,6 @@
 [submodule "CMPlatform"]
 	path = CMPlatform
 	url = https://github.com/hyzboy/CMPlatform
+[submodule "CMAssetsManage"]
+	path = CMAssetsManage
+	url = https://github.com/hyzboy/CMAssetsManage.git
