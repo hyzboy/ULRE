@@ -65,9 +65,10 @@ enum class ShaderStage
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
 };//enum class ShaderStage
 
-struct PushConstant
+struct alignas(4) PushConstant
 {
     Matrix4f local_to_world;
+    Matrix3f normal;
 };
 
 inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d)

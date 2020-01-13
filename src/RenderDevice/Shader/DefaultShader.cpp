@@ -5,6 +5,7 @@
 #include<hgl/graph/shader/node/vertex_input.h>
 #include<hgl/graph/shader/node/vector.h>
 #include<hgl/graph/shader/node/combo_vector.h>
+#include<hgl/assets/AssetsSource.h>
 
 BEGIN_SHADER_NAMESPACE
 namespace
@@ -16,6 +17,26 @@ namespace
         UTF8String PushConstant;
 
         UTF8String VSOutputLayout;
+
+        bool Load()
+        {
+            assets::AssetsSource *as=assets::GetSource("shader");
+
+            if(!as)
+                return(false);
+
+            #ifndef USE_MOBILE_SHADER
+            Header          =UTF8String(as->Open("header_desktop.glsl"));
+            #else
+            Header          =UTF8String(as->Open("header_mobile.glsl"));
+            #endif//
+
+            UBOWorldMatrix  =UTF8String(as->Open("UBO_WorldMatrix.glsl"));
+            PushConstant    =UTF8String(as->Open("push_constant_3d.glsl"));
+            VSOutputLayout  =UTF8String(as->Open("vertex_shader_output_layout.glsl"));
+
+            return(true);
+        }
     }//namespace InlineShader
 
     constexpr enum class API    DEFAULT_RENDER_API          =API::Vulkan;
@@ -77,6 +98,9 @@ namespace
 
 bool CreateDefaultMaterial()
 {
+    if(!InlineShader::Load())
+        return(false);
+
     if(!CreateDefaultVertexShader())return(false);
     if(!CreateDefaultFragmentVertex())return(false);
 

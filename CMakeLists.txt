@@ -16,6 +16,7 @@ use_mgl(${ULRE_3RDPTY_ROOT_PATH}/MathGeoLib)
 include(use_cm_module)
 use_cm_module(Core)
 use_cm_module(Platform)
+use_cm_module(AssetsManage)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     include_directories(${ULRE_3RDPTY_ROOT_PATH}/jsoncpp/include)
@@ -24,6 +25,7 @@ ENDIF()
 
 SET(ULRE    CMCore
             CMPlatform
+            CMAssetsManage
             ULRE.Util
             ULRE.Shader
             ULRE.RenderDevice.Vulkan
