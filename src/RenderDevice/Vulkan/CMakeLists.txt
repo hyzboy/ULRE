@@ -56,7 +56,14 @@ SOURCE_GROUP("Header Files" FILES ${RENDER_DEVICE_VULKAN_HEADER})
 SOURCE_GROUP("Source Files" FILES ${RENDER_DEVICE_VULKAN_SOURCE})
 SOURCE_GROUP("POD Source Files" FILES ${RENDER_DEVICE_VULKAN_POD_SOURCE})
 
-add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${RENDER_DEVICE_VULKAN_HEADER}
+OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
+
+IF(FORCE_DISCETE_GPU)
+    SET(RENDER_DEVICE_SOURCE ForceDiscreteGPU.c)
+ENDIF()
+
+add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${RENDER_DEVICE_SOURCE}
+                                                ${RENDER_DEVICE_VULKAN_HEADER}
                                                 ${RENDER_DEVICE_VULKAN_SOURCE}
                                                 ${RENDER_DEVICE_VULKAN_POD_SOURCE}
 
