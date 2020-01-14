@@ -2,26 +2,26 @@
 #define HGL_GRAPH_SHADER_COMMON_INCLUDE
 
 #define SHADER_NAMESPACE        hgl::graph::shader
-#define BEGIN_SHADER_NAMESPACE  namespace hgl{namespace graph{namespace shader{
-#define END_SHADER_NAMESPACE    }}}
-#define USING_SHADER_NAMESPACE  using SHADER_NAMESPACE;
+#define SHADER_NAMESPACE_BEGIN  namespace hgl{namespace graph{namespace shader{
+#define SHADER_NAMESPACE_END    }}}
+#define SHADER_NAMESPACE_USING  using SHADER_NAMESPACE;
 
 #define SHADER_NODE_NAMESPACE       hgl::graph::shader::node
-#define BEGIN_SHADER_NODE_NAMESPACE namespace hgl{namespace graph{namespace shader{namespace node{
-#define END_SHADER_NODE_NAMESPACE   }}}}
-#define USING_SHADER_NODE_NAMESPACE using SHADER_NODE_NAMESPACE;
+#define SHADER_NODE_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace shader{namespace node{
+#define SHADER_NODE_NAMESPACE_END   }}}}
+#define SHADER_NODE_NAMESPACE_USING using SHADER_NODE_NAMESPACE;
 
 #define SHADER_PARAM_NAMESPACE       hgl::graph::shader::param
-#define BEGIN_SHADER_PARAM_NAMESPACE namespace hgl{namespace graph{namespace shader{namespace param{
-#define END_SHADER_PARAM_NAMESPACE   }}}}
-#define USING_SHADER_PARAM_NAMESPACE using SHADER_PARAM_NAMESPACE;
+#define SHADER_PARAM_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace shader{namespace param{
+#define SHADER_PARAM_NAMESPACE_END   }}}}
+#define SHADER_PARAM_NAMESPACE_USING using SHADER_PARAM_NAMESPACE;
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 class Node;
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 
-BEGIN_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_BEGIN
 class Param;
-END_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_END
 
 #endif//HGL_GRAPH_SHADER_COMMON_INCLUDE

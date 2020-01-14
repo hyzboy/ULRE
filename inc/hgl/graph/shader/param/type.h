@@ -4,7 +4,7 @@
 #include<hgl/graph/shader/common.h>
 #include<hgl/type/BaseString.h>
 
-BEGIN_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_BEGIN
 /**
  * 参数类型
  */
@@ -84,5 +84,5 @@ enum class ParamType
 };//enum class ParamType
 
 const char *GetTypename(const ParamType);
-END_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_PARAM_TYPE_INCLUDE

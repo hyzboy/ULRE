@@ -2,7 +2,7 @@
 #define HGL_GRAPH_SHADER_NODE_VERTEX_INPUT_INCLUDE
 
 #include<hgl/graph/shader/node/node.h>
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 /**
  * 顶点输入流节点
  */
@@ -27,5 +27,5 @@ public:
 
     bool GetOutputParamName(UTF8String &,const param::OutputParam *) override;
 };//class VertexInput:public Node
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_VERTEX_INPUT_INCLUDE

@@ -4,9 +4,9 @@ using namespace hgl;
 using namespace hgl::graph;
 using namespace hgl::graph::shader;
 
-BEGIN_SHADER_NAMESPACE
+SHADER_NAMESPACE_BEGIN
 bool CreateDefaultMaterial();
-END_SHADER_NAMESPACE
+SHADER_NAMESPACE_END
 
 int main()
 {

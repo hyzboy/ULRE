@@ -1,7 +1,7 @@
 #include<hgl/graph/shader/param/in.h>
 #include<hgl/graph/shader/node/node.h>
 
-BEGIN_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_BEGIN
 bool InputParam::Join(node::Node *n,param::OutputParam *op)
 {
     if(!n||!op)return(false);
@@ -17,4 +17,4 @@ bool InputParam::Join(node::Node *n,param::OutputParam *op)
 
     return(true);
 }
-END_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_END

@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/material/Component.h>
 
-BEGIN_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_BEGIN
     namespace
     {
         constexpr ComponentConfig material_component_config_list[]=
@@ -39,4 +39,4 @@ BEGIN_MATERIAL_NAMESPACE
 
         return material_component_config_list+(uint)c;
     }
-END_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_END

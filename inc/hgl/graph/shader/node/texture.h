@@ -3,7 +3,7 @@
 
 #include<hgl/graph/shader/node/vector.h>
 #include<hgl/graph/shader/node/node.h>
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 class texture:public Node
 {
     param::ParamType texture_type;
@@ -67,5 +67,5 @@ public:
         SHADER_INPUT_PARAM(false,XYZ,Float3)
     }
 };//class TextureCube:public texture
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_TEXTURE_INCLUDE

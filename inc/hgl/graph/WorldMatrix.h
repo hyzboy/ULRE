@@ -11,7 +11,7 @@ namespace hgl
          * 世界矩阵数据
          * @see res/shader/UBO_WorldMatrix.glsl
          */
-        struct alignas(4) WorldMatrix
+        struct WorldMatrix
         {
             Matrix4f ortho;                 //2D正角视图矩阵
 

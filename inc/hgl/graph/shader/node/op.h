@@ -2,7 +2,7 @@
 #define HGL_GRAPH_SHADER_NODE_OP_INCLUDE
 
 #include<hgl/graph/shader/node/node.h>
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 enum class ScalarOpType:uint
 {
     Add=0,  Sub,    Mul,    Div,
@@ -64,5 +64,5 @@ enum class ColorOpType:uint
     END_OP_RANGE=HardLight,
     RANGE_SIZE=(END_OP_RANGE-BEGIN_OP_RANGE)+1
 };//enum class ColorOpType:uint
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_OP_INCLUDE

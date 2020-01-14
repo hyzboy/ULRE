@@ -3,18 +3,18 @@
 
 #include<hgl/type/DataType.h>
 
-#define BEGIN_MATERIAL_NAMESPACE    namespace hgl{namespace graph{namespace material{
-#define END_MATERIAL_NAMESPACE      }}}
+#define MATERIAL_NAMESPACE_BEGIN    namespace hgl{namespace graph{namespace material{
+#define MATERIAL_NAMESPACE_END      }}}
 
 #define MATERIAL_NAMESPACE          hgl::graph::material
-#define USING_MATERIAL_NAMESPACE    using namespace MATERIAL_NAMESPACE;
+#define MATERIAL_NAMESPACE_USING    using namespace MATERIAL_NAMESPACE;
 
-BEGIN_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_BEGIN
     enum class Component
     {
         ShadingModel=0,
 
-        Color,
+        BaseColor,
         Mask,
         Opacity,
         Normal,
@@ -43,7 +43,7 @@ BEGIN_MATERIAL_NAMESPACE
     #define MC_BIT_DEFINE(name) name=1<<(uint)Component::name
         MC_BIT_DEFINE(ShadingModel      ),
 
-        MC_BIT_DEFINE(Color             ),
+        MC_BIT_DEFINE(BaseColor         ),
         MC_BIT_DEFINE(Mask              ),
         MC_BIT_DEFINE(Opacity           ),
         MC_BIT_DEFINE(Normal            ),
@@ -96,11 +96,11 @@ BEGIN_MATERIAL_NAMESPACE
 
     using ComponentBitsConfig=uint32;
 
-    constexpr ComponentBitsConfig MCC_PureColor     =uint32(ComponentBit::Color);
+    constexpr ComponentBitsConfig MCC_PureColor     =uint32(ComponentBit::BaseColor);
     constexpr ComponentBitsConfig MCC_PureNormal    =uint32(ComponentBit::Normal);
     constexpr ComponentBitsConfig MCC_PureOpacity   =uint32(ComponentBit::Opacity);
-    constexpr ComponentBitsConfig MCC_ColorNormal   =uint32(ComponentBit::Color)|uint32(ComponentBit::Normal);
-    constexpr ComponentBitsConfig MCC_CNMR          =uint32(ComponentBit::Color)|uint32(ComponentBit::Normal)|uint32(ComponentBit::Metallic)|uint32(ComponentBit::Roughness);
+    constexpr ComponentBitsConfig MCC_ColorNormal   =uint32(ComponentBit::BaseColor)|uint32(ComponentBit::Normal);
+    constexpr ComponentBitsConfig MCC_CNMR          =uint32(ComponentBit::BaseColor)|uint32(ComponentBit::Normal)|uint32(ComponentBit::Metallic)|uint32(ComponentBit::Roughness);
 
     struct ComponentConfig
     {
@@ -111,5 +111,5 @@ BEGIN_MATERIAL_NAMESPACE
     };//struct ComponentConfig
 
     const ComponentConfig *GetConfig(const enum class Component c);
-END_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_END
 #endif//HGL_GRAPH_MATERIAL_COMPONENT_INCLUDE

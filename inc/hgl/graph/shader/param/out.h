@@ -3,7 +3,7 @@
 
 #include<hgl/graph/shader/param/param.h>
 
-BEGIN_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_BEGIN
 
 using namespace hgl;
 
@@ -18,5 +18,5 @@ public:
     virtual ~OutputParam()=default;
 };//class OutputParam:public Param
 
-END_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_PARAM_OUTPUT_INCLUDE

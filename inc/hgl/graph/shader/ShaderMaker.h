@@ -4,7 +4,7 @@
 #include<hgl/graph/shader/node/finished.h>
 #include<hgl/graph/shader/node/vertex_input.h>
 #include<hgl/type/StringList.h>
-BEGIN_SHADER_NAMESPACE
+SHADER_NAMESPACE_BEGIN
 
 using NodeList=List<node::Node *>;
 
@@ -75,5 +75,5 @@ public:
 
     virtual bool SaveToFile(const OSString &);
 };//class ShaderMaker
-END_SHADER_NAMESPACE
+SHADER_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_MAKER_INCLUDE

@@ -3,7 +3,7 @@
 #include<hgl/io/DataInputStream.h>
 #include<hgl/log/LogInfo.h>
 
-BEGIN_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_BEGIN
     //bool LoadMaterialFile(MaterialData &md,const OSString &filename)//,Texture **tex_list)
     //{
     //    io::FileInputStream fis;
@@ -61,4 +61,4 @@ BEGIN_MATERIAL_NAMESPACE
 
     //    return(true);
     //}
-END_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_END

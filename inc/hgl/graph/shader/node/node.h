@@ -8,7 +8,7 @@
 #include<hgl/graph/shader/param/in.h>
 #include<hgl/graph/shader/param/out.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 
 #define SHADER_INPUT_PARAM(mj,name,type) AddInput(mj,#name,SHADER_PARAM_NAMESPACE::ParamType::type);
 #define SHADER_OUTPUT_PARAM(name,type) AddOutput(#name,SHADER_PARAM_NAMESPACE::ParamType::type);
@@ -99,5 +99,5 @@ public:
 
 
 };//template<typename T> class NativeValue:public Node
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_INCLUDE

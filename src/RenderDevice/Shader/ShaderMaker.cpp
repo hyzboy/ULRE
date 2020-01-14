@@ -19,7 +19,7 @@
  
 */
 
-BEGIN_SHADER_NAMESPACE
+SHADER_NAMESPACE_BEGIN
 namespace
 {
     
@@ -286,4 +286,4 @@ bool ShaderMaker::SaveToFile(const OSString &filename)
     delete tos;
     return(true);
 }
-END_SHADER_NAMESPACE
+SHADER_NAMESPACE_END

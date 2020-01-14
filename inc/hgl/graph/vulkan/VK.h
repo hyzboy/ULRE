@@ -65,7 +65,13 @@ enum class ShaderStage
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
 };//enum class ShaderStage
 
-struct alignas(4) PushConstant
+/**
+ * max-lengths:
+ *
+        256 bytes:  nvidia,arm
+        128 bytes:  amd,intel,powervr,adreno
+ */
+struct PushConstant
 {
     Matrix4f local_to_world;
     Matrix3f normal;

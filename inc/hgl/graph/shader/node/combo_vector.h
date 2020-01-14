@@ -2,7 +2,7 @@
 #define HGL_GRAPH_SHADER_NODE_COMBO_VECTOR_INCLUDE
 
 #include<hgl/graph/shader/node/node.h>
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 class ComboVector1to2:public Node
 {
     param::InputParam *ip_x,*ip_y;
@@ -110,5 +110,5 @@ public:
 
     bool GenCode(UTF8StringList &) override;
 };//class ComboVector22to4:public Node
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_COMBO_VECTOR_INCLUDE

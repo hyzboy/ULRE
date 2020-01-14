@@ -1,6 +1,6 @@
 #include<hgl/graph/shader/node/finished.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 bool VertexFinished::GenCode(UTF8StringList &sl)
 {
     if(!Finished::GenCode(sl))
@@ -14,4 +14,4 @@ bool VertexFinished::GenCode(UTF8StringList &sl)
     sl.Add("gl_Position="+name+";");
     return(true);
 }
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
