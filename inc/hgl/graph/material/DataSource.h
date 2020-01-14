@@ -4,7 +4,7 @@
 #include<hgl/graph/material/Material.h>
 #include<hgl/type/BaseString.h>
 
-BEGIN_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_BEGIN
 
 /**
  * 数据源
@@ -54,12 +54,22 @@ public:
 /**
  * 函数数据源
  */
- class DataSourceFunction:public DataSource
- {
+class DataSourceFunction:public DataSource
+{
 public:
 
     using DataSource::DataSource;
- };//class DataSourceFunction:public DataSource
+};//class DataSourceFunction:public DataSource
+
+/**
+ * 顶点数据源
+ */
+class DataSourceVertex:public DataSource
+{
+public:
+
+    using DataSource::DataSource;
+};//class DataSourceVertex:public DataSource
 
 /**
  * 纹理数据源
@@ -112,5 +122,5 @@ public:
 
     using DataSourceTexture::DataSourceTexture;
 };//class DataSourceTextureCubemapArrays:public DataSourceTexture
-END_MATERIAL_NAMESPACE
+MATERIAL_NAMESPACE_END
 #endif//HGL_GRAPH_MATERIAL_DATA_SOURCE_INCLUDE

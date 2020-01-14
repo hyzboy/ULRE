@@ -1,6 +1,6 @@
 #include<hgl/graph/shader/param/type.h>
 
-BEGIN_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_BEGIN
 const char *GetTypename(const ParamType pt)
 {
     constexpr char *name[]=
@@ -83,4 +83,4 @@ const char *GetTypename(const ParamType pt)
 
     return name[size_t(pt)-size_t(ParamType::BEGIN_RANGE)];
 }
-END_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_END

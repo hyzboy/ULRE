@@ -5,7 +5,7 @@
 #include<hgl/graph/shader/param/out.h>
 #include<hgl/graph/shader/param/param.h>
 
-BEGIN_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_BEGIN
 
 /**
  * 输入参数定义
@@ -51,5 +51,5 @@ public:
 
     virtual bool Check(){return(must_join?join_param:true);}                    ///<检测当前节点是否可用
 };//class InputParam:public Param
-END_SHADER_PARAM_NAMESPACE
+SHADER_PARAM_NAMESPACE_END
 #endif//#ifndef HGL_GRAPH_SHADER_PARAM_INPUT_INCLUDE

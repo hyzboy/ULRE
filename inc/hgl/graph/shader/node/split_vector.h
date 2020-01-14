@@ -2,7 +2,7 @@
 #define HGL_GRAPH_SHADER_NODE_SPLIT_VECTOR_INCLUDE
 
 #include<hgl/graph/shader/node/node.h>
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 class SplitVector2to1:public Node
 {
 public:
@@ -83,5 +83,5 @@ public:
         SHADER_INPUT_PARAM(true,XYZW,Float4)
     }
 };//class SplitVector4to22:public Node
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_SPLIT_VECTOR_INCLUDE

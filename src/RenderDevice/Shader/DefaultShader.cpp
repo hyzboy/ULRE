@@ -7,7 +7,7 @@
 #include<hgl/graph/shader/node/combo_vector.h>
 #include<hgl/assets/AssetsSource.h>
 
-BEGIN_SHADER_NAMESPACE
+SHADER_NAMESPACE_BEGIN
 namespace
 {
     namespace InlineShader
@@ -106,4 +106,4 @@ bool CreateDefaultMaterial()
 
     return(true);
 }
-END_SHADER_NAMESPACE
+SHADER_NAMESPACE_END

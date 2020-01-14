@@ -4,7 +4,7 @@
 #include<hgl/graph/shader/param/out.h>
 #include<hgl/graph/shader/node/node.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 class Parameter:public Node
 {
     param::ParamType param_type;
@@ -61,5 +61,5 @@ public:
 };//class Float4:public Parameter
 
 #undef SHADER_PARAMETER_CONSTRUCT_FUNC
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_VECTOR_INCLUDE

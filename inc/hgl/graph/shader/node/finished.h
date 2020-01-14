@@ -4,7 +4,7 @@
 #include<hgl/graph/shader/node/node.h>
 #include<hgl/graph/shader/param/in.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 /**
  * 最终节点，用于最终结果的一类节点，无输出部分
  */
@@ -59,5 +59,5 @@ public:
 
     ~FragmentFinished()=default;
 };//class FragmentFinished:public Finished
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_FINISHED_INCLUDE

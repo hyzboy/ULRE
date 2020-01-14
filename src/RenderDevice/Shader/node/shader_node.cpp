@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/shader/node/node.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 param::InputParam *Node::AddInput(bool mj,const UTF8String &n,const param::ParamType &pt)
 {
     param::InputParam *ip=new param::InputParam(mj,n,pt);
@@ -170,4 +170,4 @@ bool Node::GenCode(UTF8StringList &sl)
 
     return(true);
 }
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END

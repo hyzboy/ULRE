@@ -1,6 +1,6 @@
 #include<hgl/graph/shader/node/vertex_input.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 bool VertexInput::GetOutputParamName(UTF8String &result,const param::OutputParam *op)
 {
     if(!op||!IsOutput(op))
@@ -9,4 +9,4 @@ bool VertexInput::GetOutputParamName(UTF8String &result,const param::OutputParam
     result=op->GetName();
     return(true);
 }
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END

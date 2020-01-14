@@ -3,7 +3,7 @@
 
 #include<hgl/graph/shader/common.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 enum class NodeType:int
 {
     VertexInput=0,                      ///<顶点输入流节点
@@ -26,5 +26,5 @@ enum class NodeType:int
     END_NODE_TYPE_RANGE     =Finished,
     NODE_TYPE_RANGE_SIZE    =(END_NODE_TYPE_RANGE-BEGIN_NODE_TYPE_RANGE)+1
 };//enum class NodeType
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
 #endif//HGL_GRAPH_SHADER_NODE_TYPE_INCLUDE

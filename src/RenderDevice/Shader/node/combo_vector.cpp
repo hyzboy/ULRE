@@ -1,6 +1,6 @@
 #include<hgl/graph/shader/node/combo_vector.h>
 
-BEGIN_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_BEGIN
 bool ComboVector1to2::GenOutputParamCode(UTF8StringList &sl)
 {
     UTF8String name_x,name_y;
@@ -31,4 +31,4 @@ bool ComboVector1to3::GenOutputParamCode(UTF8StringList &sl)
 
     return(true);
 }
-END_SHADER_NODE_NAMESPACE
+SHADER_NODE_NAMESPACE_END
