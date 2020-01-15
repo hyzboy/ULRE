@@ -20,6 +20,23 @@ MATERIAL_NAMESPACE_BEGIN
         RANGE_SIZE  =END_RANGE-BEGIN_RANGE+1
     };//enum class BlendMode
 
+    /**
+     * 延迟渲染阶段流程
+     */
+    enum class DeferredRenderPass
+    {
+        Opaque,                 ///<不透明部分
+        Mask,                   ///<遮罩部分
+
+        Composition,            ///<GBuffer合成阶段
+
+        Additive,               ///<Subtractive混合阶段
+        Subtractive,            ///<Additive混合阶段
+        Alpha,                  ///<Alpha透明区混合阶段
+
+        PostProcess,            ///<后期
+    };//enum class DeferredRenderPass
+
     class Material
     {
         UTF8String          name;
