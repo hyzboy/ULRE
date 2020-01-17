@@ -1,0 +1,15 @@
+[attribute]
+
+    vec4 BaseColor;
+
+[output]
+
+    vec4 gb_color;
+
+[attribute_to_gbuffer]
+
+    gb_color=BaseColor;
+
+[gbuffer_to_attribute]
+
+    BaseColor=texture(gb_color,vs_out_position);
