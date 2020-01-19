@@ -25,6 +25,7 @@ namespace hgl
             Matrix4f inverse_map;
 
             Vector4f view_pos;              ///<眼睛坐标
+            Vector2f resolution;            ///<画布尺寸
         };//struct WorldMatrix
     }//namespace graph
 }//namespace hgl

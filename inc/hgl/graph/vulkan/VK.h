@@ -75,6 +75,8 @@ struct PushConstant
 {
     Matrix4f local_to_world;
     Matrix3f normal;
+    Vector3f object_position;
+    Vector3f object_size;
 };
 
 inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d)
