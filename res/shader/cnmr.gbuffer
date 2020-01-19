@@ -5,7 +5,7 @@
     float Metallic;
     float Roughness;
 
-[output]
+[gbuffer]
 
     vec4 gb_color_metallic;
     vec4 gb_normal_roughness;
