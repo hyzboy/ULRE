@@ -33,6 +33,8 @@ namespace hgl
 
             pc.local_to_world   =LocalToWorldMatrix;
             pc.normal           =pc.local_to_world.Float3x3Part();
+//            pc.object_position  =;
+//            pc.object_size      =;
 
             return LocalToWorldMatrix;
         }
