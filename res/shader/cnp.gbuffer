@@ -1,0 +1,23 @@
+[attribute]
+
+    vec3 BaseColor;
+    vec3 Normal;
+    vec3 Position;
+
+[gbuffer]
+
+    vec3 gb_color;
+    vec3 gb_normal;
+    vec3 gb_position;
+
+[attribute_to_gbuffer]
+
+    gb_color=BaseColor;
+    gb_normal=Normal;
+    gb_position=Position;
+
+[gbuffer_to_attribute]
+
+    BaseColor   =texture(gb_color,      FragmentPosition);
+    Normal      =texture(gb_normal,     FragmentPosition);
+    Position    =texture(gb_position,   FragmentPosition);

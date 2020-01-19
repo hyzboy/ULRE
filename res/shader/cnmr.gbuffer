@@ -20,8 +20,11 @@
 
 [gbuffer_to_attribute]
 
-    BaseColor =gb_color_metallic.rgb;
-    Metallic  =gb_color_metallic.a;
+    vec4 gb_cm=texture(gb_color_metallic,FragmentPosition);
+    vec4 gb_cr=texture(gb_normal_roughness,FragmentPosition);
 
-    Normal    =gb_normal_roughness.rgb;
-    Roughness =gb_normal_roughness.a;
+    BaseColor =gb_cm.rgb;
+    Metallic  =gb_cm.a;
+
+    Normal    =gb_cr.rgb;
+    Roughness =gb_cr.a;
