@@ -30,7 +30,7 @@ private:
     Camera cam;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -46,7 +46,7 @@ public:
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(descriptor_sets);
+        SAFE_CLEAR(material_instance);
         SAFE_CLEAR(material);
     }
 
@@ -60,20 +60,7 @@ private:
             return(false);
 
         render_obj=material->CreateRenderable(VERTEX_COUNT);
-        descriptor_sets=material->CreateDescriptorSets();
-        return(true);
-    }
-
-    bool BindUBO(const UTF8String &name,vulkan::Buffer *ubo)
-    {
-        const int index=material->GetUBO(name);
-
-        if(index<0)
-            return(false);
-
-        if(!descriptor_sets->BindUBO(index,ubo))
-            return(false);
-
+        material_instance=material->CreateInstance();
         return(true);
     }
 
@@ -91,10 +78,10 @@ private:
         if(!ubo_mvp)
             return(nullptr);
         
-        BindUBO("world",ubo_mvp);
-        BindUBO("fragment_world",ubo_mvp);
+        material_instance->BindUBO("world",ubo_mvp);
+        material_instance->BindUBO("fragment_world",ubo_mvp);
 
-        descriptor_sets->Update();
+        material_instance->Update();
         return(true);
     }
     
@@ -135,7 +122,7 @@ public:
         if(!InitPipeline())
             return(false);
 
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
 
         return(true);
     }
@@ -149,7 +136,7 @@ public:
 
         ubo_mvp->Write(&cam.matrix);
 
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

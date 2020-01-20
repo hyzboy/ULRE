@@ -19,7 +19,8 @@ SET(VK_SHADER_SOURCE    VKShaderParse.h
 
 SET(VK_MATERIAL_SOURCE  VKImageView.cpp
                         VKTexture.cpp
-                        VKMaterial.cpp)
+                        VKMaterial.cpp
+                        VKMaterialInstance.cpp)
 
 SET(VK_RENDER_PASS_SOURCE   VKFramebuffer.cpp
                             VKPipeline.cpp

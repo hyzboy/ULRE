@@ -5,7 +5,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
-class DescriptorSetLayoutCreater;;
+class DescriptorSetLayoutCreater;
 using ShaderModuleMap=hgl::Map<VkShaderStageFlagBits,const ShaderModule *>;
 
 /**
@@ -58,6 +58,7 @@ public:
     void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
 
     Renderable *CreateRenderable(const uint32_t draw_count=0);
+    MaterialInstance *CreateInstance();
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
