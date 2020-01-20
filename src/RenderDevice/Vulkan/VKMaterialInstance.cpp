@@ -17,12 +17,31 @@ MaterialInstance::~MaterialInstance()
 
 bool MaterialInstance::BindUBO(const UTF8String &name,vulkan::Buffer *ubo)
 {
+    if(name.IsEmpty()||!ubo)
+        return(false);
+
     const int index=material->GetUBO(name);
 
     if(index<0)
         return(false);
 
     if(!descriptor_sets->BindUBO(index,ubo))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialInstance::BindSampler(const UTF8String &name,Texture *tex,Sampler *sampler)
+{
+    if(name.IsEmpty()||!tex||!sampler)
+        return(false);
+
+    const int index=material->GetSampler(name);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_sets->BindSampler(index,tex,sampler))
         return(false);
 
     return(true);

@@ -26,6 +26,7 @@ public:
     ~MaterialInstance();
 
     bool BindUBO(const UTF8String &name,vulkan::Buffer *ubo);
+    bool BindSampler(const UTF8String &name,Texture *tex,Sampler *sampler);
     
     void Update();
 };//class MaterialInstance
