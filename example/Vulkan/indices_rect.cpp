@@ -146,14 +146,14 @@ public:
         if(!InitPipeline())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
+        BuildCommandBuffer(pipeline,material_instance,render_obj);
 
         return(true);
     }
 
     void Resize(int,int)override
     {
-        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
+        BuildCommandBuffer(pipeline,material_instance,render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

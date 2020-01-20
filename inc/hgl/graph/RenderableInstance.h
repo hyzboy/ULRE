@@ -14,21 +14,21 @@ namespace hgl
         class RenderableInstance
         {
             vulkan::Pipeline *        pipeline;
-            vulkan::DescriptorSets *  desc_sets;
+            vulkan::MaterialInstance *mat_inst;
             vulkan::Renderable *      render_obj;
 
         public:
 
-            RenderableInstance(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r):pipeline(p),desc_sets(ds),render_obj(r){}
+            RenderableInstance(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r):pipeline(p),mat_inst(mi),render_obj(r){}
             virtual ~RenderableInstance()
             {
                 //需要在这里添加删除pipeline/desc_sets/render_obj引用计数的代码
             }
 
-            vulkan::Pipeline *      GetPipeline         (){return pipeline;}
-            vulkan::DescriptorSets *GetDescriptorSets   (){return desc_sets;}
-            vulkan::Renderable *    GetRenderable       (){return render_obj;}
-            const AABB &            GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
+            vulkan::Pipeline *          GetPipeline         (){return pipeline;}
+            vulkan::MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+            vulkan::Renderable *        GetRenderable       (){return render_obj;}
+            const AABB &                GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
 
             const int Comp(const RenderableInstance *ri)const
             {
@@ -63,8 +63,8 @@ namespace hgl
                 if(pipeline!=ri->pipeline)
                     return pipeline-ri->pipeline;
 
-                if(desc_sets!=ri->desc_sets)
-                    return desc_sets-ri->desc_sets;
+                if(mat_inst!=ri->mat_inst)
+                    return int64(mat_inst)-int64(ri->mat_inst);
 
                 return render_obj-ri->render_obj;
             }

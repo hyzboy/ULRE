@@ -122,7 +122,7 @@ public:
         if(!InitPipeline())
             return(false);
 
-        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
+        BuildCommandBuffer(pipeline,material_instance,render_obj);
 
         return(true);
     }
@@ -136,7 +136,7 @@ public:
 
         ubo_mvp->Write(&cam.matrix);
 
-        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
+        BuildCommandBuffer(pipeline,material_instance,render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

@@ -5,6 +5,7 @@
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 #include<hgl/graph/VertexBuffer.h>
 #include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/vulkan/VKMaterialInstance.h>
 
 namespace hgl
 {
@@ -34,14 +35,14 @@ namespace hgl
 
                 cmd_buf->Bind(last_pipeline);
 
-                last_desc_sets=nullptr;
+                last_mat_inst=nullptr;
             }
 
-            if(last_desc_sets!=ri->GetDescriptorSets())
+            if(last_mat_inst!=ri->GetMaterialInstance())
             {
-                last_desc_sets=ri->GetDescriptorSets();
+                last_mat_inst=ri->GetMaterialInstance();
 
-                cmd_buf->Bind(last_desc_sets);
+                cmd_buf->Bind(last_mat_inst->GetDescriptorSets());
             }
 
             if(last_pc!=node->GetPushConstant())
@@ -94,7 +95,7 @@ namespace hgl
             cmd_buf=cb;
 
             last_pipeline=nullptr;
-            last_desc_sets=nullptr;
+            last_mat_inst=nullptr;
             last_renderable=nullptr;
             last_pc=nullptr;
 

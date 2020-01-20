@@ -81,7 +81,7 @@ class TestApp:public ViewModelFramework
 private:
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
 
     vulkan::Pipeline *          pipeline_wireframe  =nullptr;
     vulkan::Pipeline *          pipeline_lines      =nullptr;
@@ -108,10 +108,10 @@ private:
         if(!material)
             return(false);
 
-        descriptor_sets=material->CreateDescriptorSets();
+        material_instance=material->CreateInstance();
 
         db->Add(material);
-        db->Add(descriptor_sets);
+        db->Add(material_instance);
         return(true);
     }
 
@@ -126,7 +126,7 @@ private:
         for(uint i=0;i<count;i++)
         {
             mesh_renderable[i]=CreateMeshRenderable(db,material,*md);
-            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_wireframe,descriptor_sets,mesh_renderable[i]);
+            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_wireframe,material_instance,mesh_renderable[i]);
             ++md;
         }
 
@@ -137,7 +137,7 @@ private:
             aci.size=model_data->bounding_box.HalfSize().xyz();
 
             axis_renderable=CreateRenderableAxis(db,material,&aci);
-            axis_renderable_instance=db->CreateRenderableInstance(pipeline_lines,descriptor_sets,axis_renderable);
+            axis_renderable_instance=db->CreateRenderableInstance(pipeline_lines,material_instance,axis_renderable);
         }
 
         {
@@ -147,16 +147,16 @@ private:
             cci.size=model_data->bounding_box.Size().xyz();
 
             bbox_renderable=CreateRenderableBoundingBox(db,material,&cci);
-            bbox_renderable_instance=db->CreateRenderableInstance(pipeline_lines,descriptor_sets,bbox_renderable);
+            bbox_renderable_instance=db->CreateRenderableInstance(pipeline_lines,material_instance,bbox_renderable);
         }
     }
 
     bool InitUBO()
     {
-        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
+        if(!InitCameraUBO(material_instance,"world"))
             return(false);
 
-        descriptor_sets->Update();
+        material_instance->Update();
         return(true);
     }
 

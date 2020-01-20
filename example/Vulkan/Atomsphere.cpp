@@ -16,7 +16,7 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 struct AtomsphereData
 {
-    alignas(16) Vector3f position;
+    Vector3f position;
     float intensity;
     float scattering_direction;
 };//
@@ -29,11 +29,11 @@ private:
     RenderList  render_list;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
 
-    vulkan::Renderable          *ro_sphere;
+    vulkan::Renderable *        ro_sphere           =nullptr;
 
-    vulkan::Pipeline            *pipeline_solid     =nullptr;
+    vulkan::Pipeline *          pipeline_solid      =nullptr;
     
     vulkan::Buffer *            ubo_atomsphere      =nullptr;
     AtomsphereData              atomsphere_data;
@@ -47,10 +47,10 @@ private:
         if(!material)
             return(false);
 
-        descriptor_sets=material->CreateDescriptorSets();
+        material_instance=material->CreateInstance();
 
         db->Add(material);
-        db->Add(descriptor_sets);
+        db->Add(material_instance);
         return(true);
     }
 
@@ -59,7 +59,7 @@ private:
         ro_sphere=CreateRenderableSphere(db,material,128);
     }
     
-    bool InitAtomsphereUBO(vulkan::DescriptorSets *desc_set,uint bindpoint)
+    bool InitAtomsphereUBO(vulkan::MaterialInstance *mi,const UTF8String &sun_node_name)
     {
         atomsphere_data.position.Set(0,0.1f,-1.0f);
         atomsphere_data.intensity=22.0f;
@@ -70,18 +70,18 @@ private:
         if(!ubo_atomsphere)
             return(false);
 
-        return desc_set->BindUBO(bindpoint,ubo_atomsphere);
+        return mi->BindUBO(sun_node_name,ubo_atomsphere);
     }
 
     bool InitUBO()
     {
-        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
+        if(!InitCameraUBO(material_instance,"world"))
             return(false);
 
-        if(!InitAtomsphereUBO(descriptor_sets,material->GetUBO("sun")))
+        if(!InitAtomsphereUBO(material_instance,"sun"))
             return(false);
 
-        descriptor_sets->Update();
+        material_instance->Update();
         return(true);
     }
 
@@ -104,7 +104,7 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere),scale(100));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_sphere),scale(100));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
