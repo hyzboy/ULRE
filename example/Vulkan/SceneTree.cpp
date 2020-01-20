@@ -17,6 +17,8 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 class TestApp:public CameraAppFramework
 {
+    Color4f color;
+
 private:
 
     double      start_time;
@@ -26,6 +28,8 @@ private:
 
     vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
+
+    vulkan::Buffer *            ubo_color           =nullptr;
 
     vulkan::Renderable *        renderable_object   =nullptr;
 
@@ -67,6 +71,11 @@ private:
     {
         if(!InitCameraUBO(material_instance,"world"))
             return(false);
+            
+        color.Set(1,1,0,1);
+        ubo_color=device->CreateUBO(sizeof(Color4f),&color);
+
+        material_instance->BindUBO("color_material",ubo_color);
 
         material_instance->Update();
         return(true);
