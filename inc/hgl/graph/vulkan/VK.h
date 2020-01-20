@@ -48,6 +48,7 @@ class ShaderModule;
 class ShaderModuleManage;
 class VertexShaderModule;
 class Material;
+class MaterialInstance;
 class PipelineLayout;
 class Pipeline;
 class DescriptorSets;
