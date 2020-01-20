@@ -48,10 +48,10 @@ private:
 
     struct MPD
     {
-        vulkan::Material *          material        =nullptr;
-        vulkan::Pipeline *          pipeline        =nullptr;
-        vulkan::DescriptorSets *    descriptor_sets =nullptr;
-        vulkan::Renderable *        render_obj      =nullptr;
+        vulkan::Material *          material            =nullptr;
+        vulkan::Pipeline *          pipeline            =nullptr;
+        vulkan::MaterialInstance *  material_instance   =nullptr;
+        vulkan::Renderable *        render_obj          =nullptr;
 
     public:
 
@@ -59,7 +59,7 @@ private:
         {
             delete material;
             delete render_obj;
-            delete descriptor_sets;
+        SAFE_CLEAR(material_instance);
             delete pipeline;
         }
     }nearest,linear,nearest_hq,linear_hq;
@@ -142,10 +142,10 @@ private:
         if(!mpd->material)
             return(false);
 
-        mpd->descriptor_sets=mpd->material->CreateDescriptorSets();
+        mpd->material_instance=mpd->material->CreateInstance();
 
-        mpd->descriptor_sets->BindSampler(mpd->material->GetSampler("tex"),texture,sampler);
-        mpd->descriptor_sets->Update();
+        mpd->material_instance->BindSampler("tex",texture,sampler);
+        mpd->material_instance->Update();
         
         mpd->render_obj=mpd->material->CreateRenderable(VERTEX_COUNT);
         mpd->render_obj->Set("Vertex",vertex_buffer);
@@ -164,7 +164,7 @@ private:
 
     bool Add(struct MPD *mpd,const Matrix4f &offset)
     {
-        RenderableInstance *ri=db->CreateRenderableInstance(mpd->pipeline,mpd->descriptor_sets,mpd->render_obj);
+        RenderableInstance *ri=db->CreateRenderableInstance(mpd->pipeline,mpd->material_instance->GetDescriptorSets(),mpd->render_obj);
 
         if(!ri)return(false);
 

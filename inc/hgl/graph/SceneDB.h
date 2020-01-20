@@ -13,10 +13,11 @@ namespace hgl
 {
     namespace graph
     {
-        using MaterialID        =int;
-        using PipelineID        =int;
-        using BufferID          =int;
-        using DescriptorSetsID  =int;
+        using MaterialID            =int;
+        using MaterialInstanceID    =int;
+        using PipelineID            =int;
+        using BufferID              =int;
+        using DescriptorSetsID      =int;
         using RenderableID          =int;
         using RenderableInstanceID  =int;
 
@@ -29,24 +30,26 @@ namespace hgl
         {
             vulkan::Device *device;
 
-            IDResManage<MaterialID,             vulkan::Material>       rm_material;                ///<材质合集
-            IDResManage<PipelineID,             vulkan::Pipeline>       rm_pipeline;                ///<管线合集
-            IDResManage<DescriptorSetsID,       vulkan::DescriptorSets> rm_desc_sets;               ///<描述符合集
-            IDResManage<RenderableID,           vulkan::Renderable>     rm_renderables;             ///<可渲染对象合集
-            IDResManage<BufferID,               vulkan::Buffer>         rm_buffers;                 ///<顶点缓冲区合集
-            IDResManage<RenderableInstanceID,   RenderableInstance>     rm_renderable_instances;    ///<渲染实例集合集
+            IDResManage<MaterialID,             vulkan::Material>           rm_material;                ///<材质合集
+            IDResManage<MaterialInstanceID,     vulkan::MaterialInstance>   rm_material_instance;       ///<材质实例合集
+            IDResManage<PipelineID,             vulkan::Pipeline>           rm_pipeline;                ///<管线合集
+            IDResManage<DescriptorSetsID,       vulkan::DescriptorSets>     rm_desc_sets;               ///<描述符合集
+            IDResManage<RenderableID,           vulkan::Renderable>         rm_renderables;             ///<可渲染对象合集
+            IDResManage<BufferID,               vulkan::Buffer>             rm_buffers;                 ///<顶点缓冲区合集
+            IDResManage<RenderableInstanceID,   RenderableInstance>         rm_renderable_instances;    ///<渲染实例集合集
 
         public:
 
             SceneDB(vulkan::Device *dev):device(dev){}
             virtual ~SceneDB()=default;
 
-            MaterialID              Add(vulkan::Material *      mtl ){return rm_material.Add(mtl);}
-            PipelineID              Add(vulkan::Pipeline *      p   ){return rm_pipeline.Add(p);}
-            DescriptorSetsID        Add(vulkan::DescriptorSets *ds  ){return rm_desc_sets.Add(ds);}
-            RenderableID            Add(vulkan::Renderable *    r   ){return rm_renderables.Add(r);}
-            BufferID                Add(vulkan::Buffer *        buf ){return rm_buffers.Add(buf);}
-            RenderableInstanceID    Add(RenderableInstance *    ri  ){return rm_renderable_instances.Add(ri);}
+            MaterialID              Add(vulkan::Material *          mtl ){return rm_material.Add(mtl);}
+            MaterialInstanceID      Add(vulkan::MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
+            PipelineID              Add(vulkan::Pipeline *          p   ){return rm_pipeline.Add(p);}
+            DescriptorSetsID        Add(vulkan::DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
+            RenderableID            Add(vulkan::Renderable *        r   ){return rm_renderables.Add(r);}
+            BufferID                Add(vulkan::Buffer *            buf ){return rm_buffers.Add(buf);}
+            RenderableInstanceID    Add(RenderableInstance *        ri  ){return rm_renderable_instances.Add(ri);}
 
             vulkan::VertexBuffer *CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
             vulkan::VertexBuffer *CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVBO(format,count,nullptr,sharing_mode);}
@@ -72,12 +75,13 @@ namespace hgl
 
             RenderableInstance *    CreateRenderableInstance(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r);
 
-            vulkan::Material *      GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
-            vulkan::Pipeline *      GetPipeline             (const PipelineID           &id){return rm_pipeline.Get(id);}
-            vulkan::DescriptorSets *GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
-            vulkan::Renderable *    GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
-            vulkan::Buffer *        GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
-            RenderableInstance *    GetRenderableInstance   (const RenderableInstanceID &id){return rm_renderable_instances.Get(id);}
+            vulkan::Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
+            vulkan::MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+            vulkan::Pipeline *          GetPipeline             (const PipelineID           &id){return rm_pipeline.Get(id);}
+            vulkan::DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
+            vulkan::Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
+            vulkan::Buffer *            GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
+            RenderableInstance *        GetRenderableInstance   (const RenderableInstanceID &id){return rm_renderable_instances.Get(id);}
         };//class SceneDB
     }//namespace graph
 }//namespace hgl

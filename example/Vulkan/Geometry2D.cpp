@@ -1,4 +1,4 @@
-﻿// 3.Geometry2D
+﻿// Geometry2D
 // 该范例有两个作用：
 //  一、测试绘制2D几何体
 //  二、试验动态合并材质渲染机制
@@ -20,26 +20,26 @@ bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-struct WorldConfig
-{
-    Matrix4f mvp;
-}world;
+static Vector4f color(1,1,0,1);
 
 class TestApp:public VulkanApplicationFramework
 {
+    Camera cam;
+
 private:
 
             SceneNode           render_root;
             RenderList          render_list;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
 
     vulkan::Renderable          *ro_rectangle       =nullptr,
                                 *ro_circle          =nullptr,
                                 *ro_round_rectangle =nullptr;
 
     vulkan::Buffer *            ubo_mvp             =nullptr;
+    vulkan::Buffer *            ubo_color_material  =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
@@ -48,14 +48,14 @@ private:
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert.spv"),
-                                               OS_TEXT("res/shader/drand48.frag.spv"));
+                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
         if(!material)
             return(false);
-
-        descriptor_sets=material->CreateDescriptorSets();
+            
+        material_instance=material->CreateInstance();
 
         db->Add(material);
-        db->Add(descriptor_sets);
+        db->Add(material_instance);
         return(true);
     }
 
@@ -94,21 +94,35 @@ private:
         }
     }
 
+    vulkan::Buffer *CreateUBO(const UTF8String &name,const VkDeviceSize size,void *data)
+    {
+        vulkan::Buffer *ubo=device->CreateUBO(size,data);
+
+        if(!ubo)
+            return(nullptr);
+
+        if(!material_instance->BindUBO(name,ubo))
+        {
+            SAFE_CLEAR(ubo);
+            return(nullptr);
+        }
+
+        return ubo;
+    }
+
     bool InitUBO()
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        world.mvp=ortho(extent.width,extent.height);
+        cam.width=extent.width;
+        cam.height=extent.height;
 
-        ubo_mvp=db->CreateUBO(sizeof(WorldConfig),&world);
+        cam.Refresh();
+        
+        ubo_mvp             =CreateUBO("world",         sizeof(WorldMatrix),&cam.matrix);
+        ubo_color_material  =CreateUBO("color_material",sizeof(Vector4f),&color);
 
-        if(!ubo_mvp)
-            return(false);
-
-        if(!descriptor_sets->BindUBO(material->GetUBO("world"),ubo_mvp))
-            return(false);
-
-        descriptor_sets->Update();
+        material_instance->Update();
         return(true);
     }
 
@@ -128,9 +142,9 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_rectangle));
-        render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_round_rectangle));
-        render_root.Add(db->CreateRenderableInstance(pipeline,descriptor_sets,ro_circle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance->GetDescriptorSets(),ro_rectangle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance->GetDescriptorSets(),ro_round_rectangle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance->GetDescriptorSets(),ro_circle));
 
         render_root.ExpendToList(&render_list);
         BuildCommandBuffer(&render_list);
@@ -163,6 +177,13 @@ public:
 
     void Resize(int w,int h) override
     {
+        cam.width=w;
+        cam.height=h;
+
+        cam.Refresh();
+
+        ubo_mvp->Write(&cam.matrix);
+
         BuildCommandBuffer(&render_list);
     }
 };//class TestApp:public VulkanApplicationFramework
