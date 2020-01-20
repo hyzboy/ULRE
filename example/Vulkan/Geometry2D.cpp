@@ -142,9 +142,9 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance->GetDescriptorSets(),ro_rectangle));
-        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance->GetDescriptorSets(),ro_round_rectangle));
-        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance->GetDescriptorSets(),ro_circle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_rectangle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_round_rectangle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_circle));
 
         render_root.ExpendToList(&render_list);
         BuildCommandBuffer(&render_list);

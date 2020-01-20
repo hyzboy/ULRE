@@ -164,7 +164,7 @@ private:
 
     bool Add(struct MPD *mpd,const Matrix4f &offset)
     {
-        RenderableInstance *ri=db->CreateRenderableInstance(mpd->pipeline,mpd->material_instance->GetDescriptorSets(),mpd->render_obj);
+        RenderableInstance *ri=db->CreateRenderableInstance(mpd->pipeline,mpd->material_instance,mpd->render_obj);
 
         if(!ri)return(false);
 

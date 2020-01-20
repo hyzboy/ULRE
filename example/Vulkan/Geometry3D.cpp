@@ -22,9 +22,9 @@ private:
 
     struct MDP
     {
-        vulkan::Material *      material        =nullptr;
-        vulkan::DescriptorSets *descriptor_sets =nullptr;
-        vulkan::Pipeline *      pipeline        =nullptr;
+        vulkan::Material *          material            =nullptr;
+        vulkan::MaterialInstance *  material_instance   =nullptr;
+        vulkan::Pipeline *          pipeline            =nullptr;
     }m3d,m2d;
 
     vulkan::Renderable          *ro_plane_grid[3],
@@ -39,19 +39,19 @@ private:
         if(!mdp->material)
             return(false);
 
-        mdp->descriptor_sets=mdp->material->CreateDescriptorSets();
+        mdp->material_instance=mdp->material->CreateInstance();
 
         db->Add(mdp->material);
-        db->Add(mdp->descriptor_sets);
+        db->Add(mdp->material_instance);
         return(true);
     }
 
     bool InitUBO(MDP *mdp)
     {
-        if(!InitCameraUBO(mdp->descriptor_sets,mdp->material->GetUBO("world")))
+        if(!InitCameraUBO(mdp->material_instance,mdp->material->GetUBO("world")))
             return(false);
 
-        mdp->descriptor_sets->Update();
+        mdp->material_instance->Update();
         return(true);
     }
 
@@ -87,11 +87,11 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(m2d.pipeline,m2d.descriptor_sets,ro_round_rectangle));
+        render_root.Add(db->CreateRenderableInstance(m2d.pipeline,m2d.material_instance,ro_round_rectangle));
 
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[0]));
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[1]),rotate(HGL_RAD_90,0,1,0));
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.descriptor_sets,ro_plane_grid[2]),rotate(HGL_RAD_90,1,0,0));
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.material_instance,ro_plane_grid[0]));
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.material_instance,ro_plane_grid[1]),rotate(HGL_RAD_90,0,1,0));
+        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.material_instance,ro_plane_grid[2]),rotate(HGL_RAD_90,1,0,0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);

@@ -6,6 +6,7 @@
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
+#include<hgl/graph/vulkan/VKMaterialInstance.h>
 #include<hgl/graph/VertexBufferCreater.h>
 #include<hgl/graph/RenderableInstance.h>
 #include<hgl/type/ResManage.h>
@@ -73,7 +74,7 @@ namespace hgl
             vulkan::IndexBuffer *CreateIBO16(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sharing_mode);}
             vulkan::IndexBuffer *CreateIBO32(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sharing_mode);}
 
-            RenderableInstance *    CreateRenderableInstance(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r);
+            RenderableInstance *    CreateRenderableInstance(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r);
 
             vulkan::Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
             vulkan::MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}

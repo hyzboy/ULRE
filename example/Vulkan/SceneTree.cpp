@@ -25,7 +25,7 @@ private:
     RenderList  render_list;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
 
     vulkan::Renderable *        renderable_object   =nullptr;
 
@@ -49,10 +49,10 @@ private:
         if(!material)
             return(false);
 
-        descriptor_sets=material->CreateDescriptorSets();
+        material_instance=material->CreateInstance();
 
         db->Add(material);
-        db->Add(descriptor_sets);
+        db->Add(material_instance);
         return(true);
     }
 
@@ -65,10 +65,10 @@ private:
 
     bool InitUBO()
     {
-        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
+        if(!InitCameraUBO(material_instance,"world"))
             return(false);
 
-        descriptor_sets->Update();
+        material_instance->Update();
         return(true);
     }
 
@@ -97,7 +97,7 @@ private:
         uint count;
         float size;
 
-        RenderableInstance *ri=db->CreateRenderableInstance(pipeline_line,descriptor_sets,renderable_object);
+        RenderableInstance *ri=db->CreateRenderableInstance(pipeline_line,material_instance,renderable_object);
 
         for(uint i=0;i<360;i++)
         {

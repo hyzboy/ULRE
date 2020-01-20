@@ -82,10 +82,10 @@ private:
 
     struct SubpassParam
     {
-        vulkan::Material *      material;
-        vulkan::DescriptorSets *desc_sets;
-        vulkan::Pipeline *      pipeline_fan;
-        vulkan::Pipeline *      pipeline_triangles;
+        vulkan::Material *          material;
+        vulkan::MaterialInstance *  material_instance;
+        vulkan::Pipeline *          pipeline_fan;
+        vulkan::Pipeline *          pipeline_triangles;
     };//
 
     SubpassParam                sp_gbuffer;

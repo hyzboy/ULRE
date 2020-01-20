@@ -69,14 +69,14 @@ public:
         origin_matrix=object_matrix;
     }
 
-    bool InitCameraUBO(vulkan::DescriptorSets *desc_set,uint world_matrix_bindpoint)
+    bool InitCameraUBO(vulkan::MaterialInstance *mi,const UTF8String &world_matrix_name)
     {
         ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
 
         if(!ubo_world_matrix)
             return(false);
 
-        return desc_set->BindUBO(world_matrix_bindpoint,ubo_world_matrix);
+        return mi->BindUBO(world_matrix_name,ubo_world_matrix);
     }
 
     void Resize(int w,int h)override

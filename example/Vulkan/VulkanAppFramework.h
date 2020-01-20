@@ -54,17 +54,17 @@ protected:
     vulkan::Semaphore *             present_complete_semaphore  =nullptr,
                       *             render_complete_semaphore   =nullptr;
 
-    vulkan::ShaderModuleManage *    shader_manage   =nullptr;
+    vulkan::ShaderModuleManage *    shader_manage               =nullptr;
 
 protected:
 
-            uint32_t                swap_chain_count=0;
+            int32_t                 swap_chain_count            =0;
 
-    vulkan::CommandBuffer **        cmd_buf         =nullptr;
+    vulkan::CommandBuffer **        cmd_buf                     =nullptr;
 
 protected:
 
-            SceneDB *           db              =nullptr;
+            SceneDB *           db                              =nullptr;
 
             bool                key_status[kbRangeSize];
 
@@ -181,9 +181,9 @@ public:
         }
     }
 
-    void BuildCommandBuffer(uint32_t index,vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+    void BuildCommandBuffer(uint32_t index,vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
     {
-        if(!p||!ds||!r)
+        if(!p||!mi||!r)
             return;
 
         const vulkan::IndexBuffer *ib=r->GetIndexBuffer();
@@ -193,7 +193,7 @@ public:
         cb->Begin();
         cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
         cb->Bind(p);
-        cb->Bind(ds);
+        cb->Bind(mi->GetDescriptorSets());
         cb->Bind(r);
 
         if (ib)
@@ -205,15 +205,15 @@ public:
         cb->End();
     }
     
-    void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+    void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
     {
         for(uint32_t i=0;i<swap_chain_count;i++)
-            BuildCommandBuffer(i,p,ds,r);
+            BuildCommandBuffer(i,p,mi,r);
     }
 
-    void BuildCurrentCommandBuffer(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+    void BuildCurrentCommandBuffer(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
     {
-        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),p,ds,r);
+        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),p,mi,r);
     }
 
     void BuildCommandBuffer(uint32_t index,RenderList *rl)
@@ -321,14 +321,14 @@ public:
         camera.height=h;
     }
 
-    bool InitCameraUBO(vulkan::DescriptorSets *desc_set,uint world_matrix_bindpoint)
+    bool InitCameraUBO(vulkan::MaterialInstance *mi,const UTF8String &node_name)
     {
         ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
 
         if(!ubo_world_matrix)
             return(false);
 
-        return desc_set->BindUBO(world_matrix_bindpoint,ubo_world_matrix);
+        return mi->BindUBO(node_name,ubo_world_matrix);
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;

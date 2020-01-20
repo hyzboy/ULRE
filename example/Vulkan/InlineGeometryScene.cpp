@@ -22,7 +22,7 @@ private:
     RenderList  render_list;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
 
     vulkan::Renderable          *ro_plane_grid,
                                 *ro_cube,
@@ -44,10 +44,10 @@ private:
         if(!material)
             return(false);
 
-        descriptor_sets=material->CreateDescriptorSets();
+        material_instance=material->CreateInstance();
 
         db->Add(material);
-        db->Add(descriptor_sets);
+        db->Add(material_instance);
         return(true);
     }
 
@@ -127,10 +127,10 @@ private:
 
     bool InitUBO()
     {
-        if(!InitCameraUBO(descriptor_sets,material->GetUBO("world")))
+        if(!InitCameraUBO(material_instance,"world"))
             return(false);
 
-        descriptor_sets->Update();
+        material_instance->Update();
         return(true);
     }
 
@@ -160,13 +160,13 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,descriptor_sets,ro_plane_grid));
-        //render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_dome));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_torus));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cylinder ),translate(  0, 16, 0));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,descriptor_sets,ro_cone     ),translate(  0,-16, 0));
+        render_root.Add(db->CreateRenderableInstance(pipeline_line,material_instance,ro_plane_grid));
+        //render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_dome));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_torus));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cylinder ),translate(  0, 16, 0));
+        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cone     ),translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);

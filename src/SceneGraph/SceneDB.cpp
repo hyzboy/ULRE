@@ -51,12 +51,12 @@ namespace hgl
             return(buf);
         }
 
-        RenderableInstance *SceneDB::CreateRenderableInstance(vulkan::Pipeline *p,vulkan::DescriptorSets *ds,vulkan::Renderable *r)
+        RenderableInstance *SceneDB::CreateRenderableInstance(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
         {
-            if(!p||!ds||!r)
+            if(!p||!mi||!r)
                 return(nullptr);
 
-            RenderableInstance *ri=new RenderableInstance(p,ds,r);
+            RenderableInstance *ri=new RenderableInstance(p,mi,r);
 
             Add(ri);
 

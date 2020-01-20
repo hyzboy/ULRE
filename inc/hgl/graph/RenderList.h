@@ -19,10 +19,10 @@ namespace hgl
 
             List<SceneNode *> scene_node_list;
 
-            vulkan::PushConstant *  last_pc;
-            vulkan::Pipeline *      last_pipeline;
-            vulkan::DescriptorSets *last_desc_sets;
-            vulkan::Renderable *    last_renderable;
+            vulkan::PushConstant *      last_pc;
+            vulkan::Pipeline *          last_pipeline;
+            vulkan::MaterialInstance *  last_mat_inst;
+            vulkan::Renderable *        last_renderable;
 
             void Render(SceneNode *,RenderableInstance *);
             void Render(SceneNode *,List<RenderableInstance *> &);
@@ -34,7 +34,7 @@ namespace hgl
                 cmd_buf=nullptr;
                 last_pc=nullptr;
                 last_pipeline=nullptr;
-                last_desc_sets=nullptr;
+                last_mat_inst=nullptr;
                 last_renderable=nullptr;
             }
 
