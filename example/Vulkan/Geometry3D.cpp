@@ -15,6 +15,10 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 class TestApp:public CameraAppFramework
 {
+    Color4f color;
+
+    vulkan::Buffer *ubo_color=nullptr;
+
 private:
 
     SceneNode   render_root;
@@ -48,7 +52,7 @@ private:
 
     bool InitUBO(MDP *mdp)
     {
-        if(!InitCameraUBO(mdp->material_instance,mdp->material->GetUBO("world")))
+        if(!InitCameraUBO(mdp->material_instance,"world"))
             return(false);
 
         mdp->material_instance->Update();
@@ -147,12 +151,20 @@ public:
             return(false);
 
         if(!InitMDP(&m3d,PRIM_LINES,OS_TEXT("res/shader/PositionColor3D.vert.spv"),
-                                    OS_TEXT("res/shader/FlatColor.frag.spv")))
+                                    OS_TEXT("res/shader/VertexColor.frag.spv")))
             return(false);
 
         if(!InitMDP(&m2d,PRIM_TRIANGLE_FAN, OS_TEXT("res/shader/OnlyPosition.vert.spv"),
                                             OS_TEXT("res/shader/FlatColor.frag.spv")))
             return(false);
+
+        {
+            color.Set(1,1,0,1);
+            ubo_color=device->CreateUBO(sizeof(Vector4f),&color);
+
+            m2d.material_instance->BindUBO("color_material",ubo_color);
+            m2d.material_instance->Update();
+        }
 
         CreateRenderObject();
 
