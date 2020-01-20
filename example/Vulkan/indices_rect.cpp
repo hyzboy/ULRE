@@ -40,7 +40,7 @@ private:
     WorldMatrix                 wm;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
     vulkan::Buffer *            ubo_color_material  =nullptr;
@@ -60,7 +60,7 @@ public:
         SAFE_CLEAR(ubo_color_material);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(descriptor_sets);
+        SAFE_CLEAR(material_instance);
         SAFE_CLEAR(material);
     }
 
@@ -74,7 +74,7 @@ private:
             return(false);
 
         render_obj=material->CreateRenderable(VERTEX_COUNT);
-        descriptor_sets=material->CreateDescriptorSets();
+        material_instance=material->CreateInstance();
         return(true);
     }
 
@@ -85,15 +85,7 @@ private:
         if(!ubo)
             return(nullptr);
 
-        const int index=material->GetUBO(name);
-
-        if(index<0)
-        {
-            SAFE_CLEAR(ubo);
-            return(nullptr);
-        }
-
-        if(!descriptor_sets->BindUBO(index,ubo))
+        if(!material_instance->BindUBO(name,ubo))
         {
             SAFE_CLEAR(ubo);
             return(nullptr);
@@ -110,8 +102,8 @@ private:
 
         ubo_mvp             =CreateUBO("world",         sizeof(WorldMatrix),&wm);
         ubo_color_material  =CreateUBO("color_material",sizeof(Vector4f),&color);
-
-        descriptor_sets->Update();
+        
+        material_instance->Update();
         return(true);
     }
 
@@ -153,15 +145,15 @@ public:
 
         if(!InitPipeline())
             return(false);
-
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+            
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
 
         return(true);
     }
 
     void Resize(int,int)override
     {
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 
