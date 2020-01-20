@@ -33,10 +33,10 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    WorldMatrix wm;
+    Camera cam;
 
     vulkan::Material *          material            =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -54,7 +54,7 @@ public:
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(descriptor_sets);
+        SAFE_CLEAR(material_instance);
         SAFE_CLEAR(material);
     }
 
@@ -63,12 +63,12 @@ private:
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatColor.vert.spv"),
-                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
+                                               OS_TEXT("res/shader/VertexColor.frag.spv"));
         if(!material)
             return(false);
 
         render_obj=material->CreateRenderable(VERTEX_COUNT);
-        descriptor_sets=material->CreateDescriptorSets();
+        material_instance=material->CreateInstance();
         return(true);
     }
 
@@ -76,17 +76,18 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        wm.ortho=ortho(extent.width,extent.height);
+        cam.width=extent.width;
+        cam.height=extent.height;
 
-        ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&wm);
+        cam.Refresh();
+
+        ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
         if(!ubo_mvp)
             return(false);
-
-        if(!descriptor_sets->BindUBO(material->GetUBO("world"),ubo_mvp))
-            return(false);
-
-        descriptor_sets->Update();
+            
+        material_instance->BindUBO("world",ubo_mvp);
+        material_instance->Update();
         return(true);
     }
     
@@ -142,18 +143,21 @@ public:
         if(!InitPipeline())
             return(false);
 
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
 
         return(true);
     }
 
     void Resize(int w,int h)override
     {
-        wm.ortho=ortho(w,h);
+        cam.width=w;
+        cam.height=h;
 
-        ubo_mvp->Write(&wm);
+        cam.Refresh();
 
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+        ubo_mvp->Write(&cam.matrix);
+
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 
