@@ -16,11 +16,6 @@ VK_NAMESPACE_END
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-struct WorldConfig
-{
-    Matrix4f mvp;
-}world;
-
 constexpr uint32_t VERTEX_COUNT=4;
 
 constexpr float vertex_data[VERTEX_COUNT][2]=
@@ -49,12 +44,14 @@ constexpr uint16 index_data[INDEX_COUNT]=
 
 class TestApp:public VulkanApplicationFramework
 {
+    Camera cam;
+
 private:
 
     vulkan::Material *          material            =nullptr;
     vulkan::Texture2D *         texture             =nullptr;
     vulkan::Sampler *           sampler             =nullptr;
-    vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
 
@@ -74,7 +71,7 @@ public:
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(descriptor_sets);
+        SAFE_CLEAR(material_instance);
         SAFE_CLEAR(sampler);
         SAFE_CLEAR(texture);
         SAFE_CLEAR(material);
@@ -90,7 +87,7 @@ private:
             return(false);
 
         render_obj=material->CreateRenderable(VERTEX_COUNT);
-        descriptor_sets=material->CreateDescriptorSets();
+        material_instance=material->CreateInstance();
 
         texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
 
@@ -117,9 +114,9 @@ private:
 
         sampler=device->CreateSampler(&sampler_create_info);
 
-        descriptor_sets->BindSampler(material->GetSampler("tex"),texture,sampler);
-        descriptor_sets->BindUBO(material->GetUBO("world"),ubo_mvp);
-        descriptor_sets->Update();
+        material_instance->BindSampler("tex",texture,sampler);
+        material_instance->BindUBO("world",ubo_mvp);
+        material_instance->Update();
 
         return(true);
     }
@@ -128,11 +125,17 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        world.mvp=ortho(extent.width,extent.height);
+        cam.width=extent.width;
+        cam.height=extent.height;
 
-        ubo_mvp=device->CreateUBO(sizeof(WorldConfig),&world);
+        cam.Refresh();
 
-        return ubo_mvp;
+        ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+
+        if(!ubo_mvp)
+            return(false);
+
+        return(true);
     }
 
     void InitVBO()
@@ -175,15 +178,22 @@ public:
 
         if(!InitPipeline())
             return(false);
-
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+            
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
 
         return(true);
     }
 
-    void Resize(int,int)override
+    void Resize(int w,int h)override
     {
-        BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
+        cam.width=w;
+        cam.height=h;
+
+        cam.Refresh();
+
+        ubo_mvp->Write(&cam.matrix);
+
+        BuildCommandBuffer(pipeline,material_instance->GetDescriptorSets(),render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 
