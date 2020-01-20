@@ -2,7 +2,7 @@
 
     vec4 BaseColor;
 
-[output]
+[gbuffer]
 
     vec4 gb_color;
 
