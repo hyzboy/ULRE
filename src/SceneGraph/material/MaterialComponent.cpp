@@ -9,7 +9,7 @@ MATERIAL_NAMESPACE_BEGIN
 
             MCC_DEFINE(ShadingModel,    Uint,   1,  false   ),
 
-            MCC_DEFINE(Color,           Float,  3,  true    ),
+            MCC_DEFINE(BaseColor,       Float,  3,  true    ),
 
             MCC_DEFINE(Opacity,         Float,  1,  false   ),
             MCC_DEFINE(Normal,          Float,  3,  false   ),

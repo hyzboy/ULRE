@@ -1,8 +1,6 @@
 #version 450 core
 
-layout(location = 0) in vec2 Vertex;
-
-layout(binding=0) uniform WorldMatrix     // hgl/math/Math.h
+layout(binding=1) uniform WorldMatrix     // hgl/math/Math.h
 {
     mat4 ortho;
 
@@ -17,9 +15,11 @@ layout(binding=0) uniform WorldMatrix     // hgl/math/Math.h
 
     vec4 view_pos;
     vec2 resolution;
-} world;
+}fragment_world;
+
+layout(location = 0) out vec4 FragColor;
 
 void main()
 {
-    gl_Position=vec4(Vertex,0.0,1.0)*world.ortho;
+    FragColor=vec4(gl_FragCoord.xy/fragment_world.resolution,0,1);
 }

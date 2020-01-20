@@ -28,3 +28,5 @@ glslangValidator -V -o drand48.frag.spv drand48.frag
 
 glslangValidator -V -o Texture2D.vert.spv Texture2D.vert
 glslangValidator -V -o hqfilter.frag.spv hqfilter.frag
+
+glslangValidator -V -o FragCoord.frag.spv FragCoord.frag
