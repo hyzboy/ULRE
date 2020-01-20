@@ -33,7 +33,6 @@ private:
     vulkan::DescriptorSets *    descriptor_sets     =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_mvp             =nullptr;
-    vulkan::Buffer *            ubo_mvp_fs          =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
@@ -45,7 +44,6 @@ public:
     {
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_mvp_fs);
         SAFE_CLEAR(ubo_mvp);
         SAFE_CLEAR(render_obj);
         SAFE_CLEAR(descriptor_sets);
@@ -66,28 +64,17 @@ private:
         return(true);
     }
 
-    vulkan::Buffer *CreateUBO(const UTF8String &name,const VkDeviceSize size,void *data)
+    bool BindUBO(const UTF8String &name,vulkan::Buffer *ubo)
     {
-        vulkan::Buffer *ubo=device->CreateUBO(size,data);
-
-        if(!ubo)
-            return(nullptr);
-
         const int index=material->GetUBO(name);
 
         if(index<0)
-        {
-            SAFE_CLEAR(ubo);
-            return(nullptr);
-        }
+            return(false);
 
         if(!descriptor_sets->BindUBO(index,ubo))
-        {
-            SAFE_CLEAR(ubo);
-            return(nullptr);
-        }
+            return(false);
 
-        return ubo;
+        return(true);
     }
 
     bool InitUBO()
@@ -98,9 +85,14 @@ private:
         cam.height=extent.height;
 
         cam.Refresh();
+
+        ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+
+        if(!ubo_mvp)
+            return(nullptr);
         
-        ubo_mvp     =CreateUBO("world",         sizeof(WorldMatrix),&cam.matrix);
-        ubo_mvp_fs  =CreateUBO("fragment_world",sizeof(WorldMatrix),&cam.matrix);
+        BindUBO("world",ubo_mvp);
+        BindUBO("fragment_world",ubo_mvp);
 
         descriptor_sets->Update();
         return(true);
@@ -156,7 +148,6 @@ public:
         cam.Refresh();
 
         ubo_mvp->Write(&cam.matrix);
-        ubo_mvp_fs->Write(&cam.matrix);
 
         BuildCommandBuffer(pipeline,descriptor_sets,render_obj);
     }
