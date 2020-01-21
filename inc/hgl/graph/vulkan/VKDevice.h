@@ -176,8 +176,13 @@ public: //Command Buffer 相关
 
     CommandBuffer * CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count);
     
-    bool CreateAttachment(      List<VkAttachmentReference> &ref_list,
-                                List<VkAttachmentDescription> &desc_list,
+    void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint count,VkImageLayout layout)const;
+
+    void CreateColorAttachmentReference(List<VkAttachmentReference> &ref_list,  uint start,uint count )const{ref_list.SetCount(count);  CreateAttachmentReference(ref_list.GetData(),  start,count,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);}
+    void CreateDepthAttachmentReference(     VkAttachmentReference  *depth_ref, uint index            )const{                           CreateAttachmentReference(depth_ref,           index,1    ,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);}
+    void CreateInputAttachment(         List<VkAttachmentReference> &ref_list,  uint start,uint count )const{ref_list.SetCount(count);  CreateAttachmentReference(ref_list.GetData(),  start,count,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);}
+
+    bool CreateAttachment(      List<VkAttachmentDescription> &color_output_desc_list,
                                 const List<VkFormat> &color_format,
                                 const VkFormat depth_format,
                                 const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -186,8 +191,9 @@ public: //Command Buffer 相关
     bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)const;
     bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)const;
 
+    void CreateSubpassDependency(VkSubpassDependency *);
     void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count)const;
-    void CreateSubpassDescription(VkSubpassDescription &,const List<VkAttachmentReference> &)const;
+    void CreateSubpassDescription(VkSubpassDescription &,const List<VkAttachmentReference> &color_ref_list,VkAttachmentReference *depth_ref=nullptr)const;
 
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
