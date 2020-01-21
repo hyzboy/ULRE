@@ -16,6 +16,8 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 class TestApp:public CameraAppFramework
 {
+    Color4f color;
+
 private:
 
     SceneNode   render_root;
@@ -23,6 +25,7 @@ private:
 
     vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
+    vulkan::Buffer *            ubo_color           =nullptr;
 
     vulkan::Renderable          *ro_plane_grid,
                                 *ro_cube,
@@ -127,6 +130,14 @@ private:
 
     bool InitUBO()
     {
+        color.Set(1,1,1,1);
+        
+        ubo_color=device->CreateUBO(sizeof(Vector4f),&color);
+
+        db->Add(ubo_color);
+
+        material_instance->BindUBO("color_material",ubo_color);
+
         if(!InitCameraUBO(material_instance,"world"))
             return(false);
 
