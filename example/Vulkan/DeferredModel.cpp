@@ -70,7 +70,8 @@ private:
         struct
         {
             List<VkAttachmentDescription> desc_list;
-            List<VkAttachmentReference> ref_list;
+            List<VkAttachmentReference> color_ref_list;
+            VkAttachmentReference depth_ref;
         }attachment;
         
         struct
@@ -186,15 +187,19 @@ private:
             gbuffer.image_view_list.Add(gbuffer.texture_list[i]->GetImageView());
         }
 
-        if(!device->CreateAttachment(   gbuffer.attachment.ref_list,
-                                        gbuffer.attachment.desc_list,
+        device->CreateColorAttachmentReference(gbuffer.attachment.color_ref_list,0,3);
+        device->CreateDepthAttachmentReference(&gbuffer.attachment.depth_ref,3);
+
+        if(!device->CreateAttachment(   gbuffer.attachment.desc_list,
                                         gbuffer.gbuffer_format_list,
                                         gbuffer.depth->GetFormat()))
             return(false);
 
         VkSubpassDescription desc;
 
-        device->CreateSubpassDescription(desc,gbuffer.attachment.ref_list);
+        device->CreateSubpassDescription(desc,
+                                        gbuffer.attachment.color_ref_list,
+                                        &gbuffer.attachment.depth_ref);
 
         gbuffer.subpass.desc.Add(desc);
 
