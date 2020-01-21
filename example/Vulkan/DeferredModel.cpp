@@ -226,10 +226,10 @@ private:
         if(!sp->material)
             return(false);
 
-        sp->desc_sets=sp->material->CreateDescriptorSets();
+        sp->material_instance=sp->material->CreateInstance();
 
         db->Add(sp->material);
-        db->Add(sp->desc_sets);
+        db->Add(sp->material_instance);
         return(true);
     }
 
@@ -312,16 +312,16 @@ private:
 
         sampler=device->CreateSampler(&sampler_create_info);
 
-        InitCameraUBO(sp_gbuffer.desc_sets,sp_gbuffer.material->GetUBO("world"));
+        InitCameraUBO(sp_gbuffer.material_instance,"world");
 
-        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureColor"    ),texture.color,    sampler);
-        sp_gbuffer.desc_sets->BindSampler(sp_gbuffer.material->GetSampler("TextureNormal"   ),texture.normal,   sampler);
-        sp_gbuffer.desc_sets->Update();
+        sp_gbuffer.material_instance->BindSampler("TextureColor"    ,texture.color,    sampler);
+        sp_gbuffer.material_instance->BindSampler("TextureNormal"   ,texture.normal,   sampler);
+        sp_gbuffer.material_instance->Update();
 
-        sp_composition.desc_sets->BindSampler(sp_composition.material->GetSampler("GB_Position" ),gbuffer.position, sampler);
-        sp_composition.desc_sets->BindSampler(sp_composition.material->GetSampler("GB_Normal"   ),gbuffer.normal,   sampler);
-        sp_composition.desc_sets->BindSampler(sp_composition.material->GetSampler("GB_Color"    ),gbuffer.color,    sampler);
-        sp_composition.desc_sets->Update();
+        sp_composition.material_instance->BindSampler("GB_Position" ,gbuffer.position, sampler);
+        sp_composition.material_instance->BindSampler("GB_Normal"   ,gbuffer.normal,   sampler);
+        sp_composition.material_instance->BindSampler("GB_Color"    ,gbuffer.color,    sampler);
+        sp_composition.material_instance->Update();
 
         return(true);
     }
@@ -387,12 +387,12 @@ private:
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_fan,sp->desc_sets,ro_plane),scale(100,100,1));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_torus    ),translate(0,0,0));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_sphere   ),scale(20,20,20));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cube     ),translate(-30,  0,10)*scale(10,10,10));        
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cylinder ),translate( 30, 30,10)*scale(1,1,2));
-        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->desc_sets,ro_cone     ),translate(  0,-30, 0)*scale(1,1,2));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_fan,      sp->material_instance,ro_plane      ),scale(100,100,1));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->material_instance,ro_torus      ),translate(0,0,0));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->material_instance,ro_sphere     ),scale(20,20,20));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->material_instance,ro_cube       ),translate(-30,  0,10)*scale(10,10,10));        
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->material_instance,ro_cylinder   ),translate( 30, 30,10)*scale(1,1,2));
+        render_root.Add(db->CreateRenderableInstance(sp->pipeline_triangles,sp->material_instance,ro_cone       ),translate(  0,-30, 0)*scale(1,1,2));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -460,7 +460,7 @@ public:
     {    
         VulkanApplicationFramework::BuildCommandBuffer( index,
                                                         sp_composition.pipeline_triangles,
-                                                        sp_composition.desc_sets,
+                                                        sp_composition.material_instance,
                                                         ro_gbc_plane);
     }
 };//class TestApp:public CameraAppFramework

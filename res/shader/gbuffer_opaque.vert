@@ -5,13 +5,21 @@ layout(location = 1) in vec2 TexCoord;
 layout(location = 2) in vec3 Normal;
 layout(location = 3) in vec3 Tangent;
 
-layout(binding = 0) uniform WorldMatrix
+layout(binding=0) uniform WorldMatrix     // hgl/math/Math.h
 {
     mat4 ortho;
+
     mat4 projection;
+    mat4 inverse_projection;
+
     mat4 modelview;
+    mat4 inverse_modelview;
+
     mat4 mvp;
+    mat4 inverse_mvp;
+
     vec4 view_pos;
+    vec2 resolution;
 } world;
 
 layout(push_constant) uniform Consts {
