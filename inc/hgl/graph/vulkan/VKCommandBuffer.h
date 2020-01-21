@@ -148,6 +148,8 @@ public:
         vkCmdDrawIndexed(cmd_buf,index_count,instance_count,first_index,vertex_offset,first_instance);
     }
 
+    void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
+
     void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
     bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
 };//class CommandBuffer
