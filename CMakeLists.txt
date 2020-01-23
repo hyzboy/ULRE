@@ -21,20 +21,22 @@ use_cm_module(AssetsManage)
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     include_directories(${ULRE_3RDPTY_ROOT_PATH}/jsoncpp/include)
     add_subdirectory(3rdpty/jsoncpp)
+    SET(JSONCPP_LIBRARY jsoncpp_lib)
+ELSE()
+    SET(JSONCPP_LIBRARY jsoncpp)
 ENDIF()
 
 SET(ULRE    CMCore
             CMPlatform
             CMAssetsManage
             ULRE.Util
-            ULRE.Shader
             ULRE.RenderDevice.Vulkan
             ULRE.SceneGraph
             MathGeoLib
             spirv-cross-core
             SPIRV
             glslang
-            jsoncpp_lib
+            ${JSONCPP_LIBRARY}
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
@@ -58,9 +60,7 @@ add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/glslang)
 include_directories(${SPIRV_CROSS_PATH}/external/glslang)
 add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/SPIRV)
 
-if(WIN32)
 add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/OGLCompilersDLL)
-endif()
 
 SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
 

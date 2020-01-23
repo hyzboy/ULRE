@@ -1194,7 +1194,7 @@ namespace hgl
             GeometryCreater3D gc(db,mtl);
 
             if(!gc.Init(6))
-                return(false);
+                return(nullptr);
 
             VB3f *vertex=gc.GetVertex();
             VB4f *color=gc.GetColor();
@@ -1239,7 +1239,7 @@ namespace hgl
             GeometryCreater3D gc(db,mtl);
 
             if(!gc.Init(8))
-                return(false);
+                return(nullptr);
 
             VB3f *vertex=gc.GetVertex();
 

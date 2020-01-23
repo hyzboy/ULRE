@@ -3,7 +3,7 @@
 SHADER_PARAM_NAMESPACE_BEGIN
 const char *GetTypename(const ParamType pt)
 {
-    constexpr char *name[]=
+    const char *name[]=
     {
         "?boolean?",
         "?float?",

@@ -91,8 +91,8 @@ MATERIAL_NAMESPACE_BEGIN
     #undef MATERIAL_DATA_FORMAT_DEFINE
     };//enum class DataFormat
 
-    inline const ComponentDataType  GetFormatBaseType   (const enum class DataFormat &df){return ComponentDataType(uint(df)>>4);}
-    inline const uint               GetFormatChannels   (const enum class DataFormat &df){return uint(df)&7;}
+    inline const ComponentDataType  GetFormatBaseType   (const DataFormat &df){return ComponentDataType(uint(df)>>4);}
+    inline const uint               GetFormatChannels   (const DataFormat &df){return uint(df)&7;}
 
     using ComponentBitsConfig=uint32;
 
@@ -110,6 +110,6 @@ MATERIAL_NAMESPACE_BEGIN
         bool                LinearColorspace;   ///<是要求线性颜色空间
     };//struct ComponentConfig
 
-    const ComponentConfig *GetConfig(const enum class Component c);
+    const ComponentConfig *GetConfig(const Component c);
 MATERIAL_NAMESPACE_END
 #endif//HGL_GRAPH_MATERIAL_COMPONENT_INCLUDE

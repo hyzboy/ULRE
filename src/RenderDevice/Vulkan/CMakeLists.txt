@@ -42,8 +42,8 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
                                 VKRenderable.cpp
                                 VKSampler.cpp)
 
-SET(RENDER_DEVICE_VULKAN_POD_SOURCE pod/VKPipelineCreateInfo.POD.cpp
-                                    pod/VKTextureLoader.cpp)
+SET(RENDER_DEVICE_VULKAN_POD_SOURCE POD/VKPipelineCreateInfo.POD.cpp
+                                    POD/VKTextureLoader.cpp)
 
 SOURCE_GROUP("Device" FILES ${VK_DEVICE_SOURCE})
 SOURCE_GROUP("Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})

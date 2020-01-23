@@ -50,7 +50,7 @@ protected:
 
     vulkan::Device *                device                      =nullptr;
     vulkan::SwapchainRenderTarget * sc_render_target            =nullptr;
-    
+
     vulkan::Semaphore *             present_complete_semaphore  =nullptr,
                       *             render_complete_semaphore   =nullptr;
 
@@ -80,7 +80,7 @@ public:
 
         SAFE_CLEAR(shader_manage);
         SAFE_CLEAR(device);
-        SAFE_CLEAR(win);        
+        SAFE_CLEAR(win);
         SAFE_CLEAR(inst);
     }
 
@@ -92,8 +92,6 @@ public:
         if(!vulkan::CheckStrideBytesByFormat())
             return(false);
     #endif//
-
-        InitDefaultShaderBuildResource();
 
         InitNativeWindowSystem();
 
@@ -153,7 +151,7 @@ public:
     virtual void MouseUp(uint){}
     virtual void MouseMove(){}
     virtual void MouseWheel(int,int,uint){}
-    
+
     void OnResize(int w,int h)
     {
         if(w>0&&h>0)
@@ -167,7 +165,7 @@ public:
     {
         if(cmd_buf)
             SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
-            
+
         sc_render_target=device->GetSwapchainRT();
 
         swap_chain_count=sc_render_target->GetImageCount();
@@ -189,7 +187,7 @@ public:
         const vulkan::IndexBuffer *ib=r->GetIndexBuffer();
 
         vulkan::CommandBuffer *cb=cmd_buf[index];
-        
+
         cb->Begin();
         cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
         cb->Bind(p);
@@ -204,7 +202,7 @@ public:
         cb->EndRenderPass();
         cb->End();
     }
-    
+
     void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
     {
         for(uint32_t i=0;i<swap_chain_count;i++)
@@ -218,7 +216,7 @@ public:
 
     void BuildCommandBuffer(uint32_t index,RenderList *rl)
     {
-        if(!rl)return;        
+        if(!rl)return;
 
         vulkan::CommandBuffer *cb=cmd_buf[index];
 
@@ -234,9 +232,9 @@ public:
         for(uint32_t i=0;i<swap_chain_count;i++)
             BuildCommandBuffer(i,rl);
     }
-    
+
     void BuildCurrentCommandBuffer(RenderList *rl)
-    {    
+    {
         BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),rl);
     }
 
@@ -250,7 +248,7 @@ public:
     virtual void SubmitDraw(int index)
     {
         VkCommandBuffer cb=*cmd_buf[index];
-        
+
         sc_render_target->Submit(cb,present_complete_semaphore,render_complete_semaphore);
         sc_render_target->PresentBackbuffer(render_complete_semaphore);
         sc_render_target->Wait();
@@ -297,7 +295,7 @@ public:
     {
         if(!VulkanApplicationFramework::Init(w,h))
             return(false);
-            
+
         InitCamera(w,h);
         return(true);
     }
@@ -314,7 +312,7 @@ public:
 
         camera.Refresh();      //更新矩阵计算
     }
-    
+
     void Resize(int w,int h)override
     {
         camera.width=w;

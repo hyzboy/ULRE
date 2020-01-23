@@ -66,8 +66,8 @@ const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits
 
 const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const OSString &filename)
 {
-    void *spv_data;
-    int64 spv_size=hgl::filesystem::LoadFileToMemory(filename,&spv_data);
+    char *spv_data;
+    int64 spv_size=hgl::filesystem::LoadFileToMemory(filename,(void **)&spv_data);
 
     if(spv_size<=0)
         return(nullptr);
