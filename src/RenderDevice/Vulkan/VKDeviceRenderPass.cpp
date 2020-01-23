@@ -218,7 +218,7 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
         {
             if(!attr->physical_device->IsColorAttachmentOptimal(*cf)
              &&!attr->physical_device->IsColorAttachmentLinear(*cf))
-                return(false);
+                return(nullptr);
 
             ++cf;
         }
@@ -226,7 +226,7 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
 
     if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format)
      &&!attr->physical_device->IsDepthAttachmentLinear(depth_format))
-        return(false);
+        return(nullptr);
 
     VkRenderPassCreateInfo rp_info;
     rp_info.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -250,10 +250,10 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
 RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout) const
 {
     if(!attr->physical_device->IsColorAttachmentOptimal(color_format))
-        return(false);
+        return(nullptr);
 
     if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
-        return(false);
+        return(nullptr);
 
     List<VkAttachmentReference> color_ref;
     VkAttachmentReference depth_ref;

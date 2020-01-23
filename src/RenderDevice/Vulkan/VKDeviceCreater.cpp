@@ -7,10 +7,8 @@
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 
-#ifdef _DEBUG
 #include<iostream>
 #include<iomanip>
-#endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
 Swapchain *CreateSwapchain(const DeviceAttribute *attr,const VkExtent2D &acquire_extent);

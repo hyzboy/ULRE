@@ -41,7 +41,7 @@ protected:
 
 protected:
 
-    NodeList node_list[node::NodeType::NODE_TYPE_RANGE_SIZE];
+    NodeList node_list[(size_t)node::NodeType::NODE_TYPE_RANGE_SIZE];
 
     uint in_location=0;
     uint out_location=0;

@@ -140,7 +140,7 @@ bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc)
     if(filename.IsEmpty()||!pc)
         return(false);
 
-    void *data;
+    char *data;
     uint size=filesystem::LoadFileToMemory(filename,(void **)&data);
 
     bool result=pc->LoadFromMemory((uchar *)data,size);

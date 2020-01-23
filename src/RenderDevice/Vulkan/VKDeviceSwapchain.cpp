@@ -76,10 +76,7 @@ bool Device::CreateSwapchainColorTexture()
     AutoDeleteArray<VkImage> sc_images=new VkImage[swapchain->swap_chain_count];
 
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->swap_chain_count),sc_images)!=VK_SUCCESS)
-    {
-        delete sc_images;
         return(false);
-    }
 
     VkImage *ip=sc_images;
     Texture2D *tex;

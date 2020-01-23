@@ -49,7 +49,11 @@ public:
     virtual bool Join(node::Node *,param::OutputParam *);                       ///<增加一个关联节点
     virtual void Break(){join_node=nullptr;join_param=nullptr;}                 ///<断开一个关联节点
 
-    virtual bool Check(){return(must_join?join_param:true);}                    ///<检测当前节点是否可用
+    virtual bool Check()                                                        ///<检测当前节点是否可用
+    {
+        if(must_join&&!join_param)return(false);
+        return true;
+    }
 };//class InputParam:public Param
 SHADER_PARAM_NAMESPACE_END
 #endif//#ifndef HGL_GRAPH_SHADER_PARAM_INPUT_INCLUDE

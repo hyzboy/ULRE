@@ -1,9 +1,9 @@
-﻿#include<hgl/graph/Mesh.h>
+#include<hgl/graph/Mesh.h>
 #include<hgl/graph/Material.h>
 #include<hgl/graph/VertexBuffer.h>
 #include<hgl/io/FileInputStream.h>
 #include<hgl/io/DataInputStream.h>
-#include<hgl/LogInfo.h>
+#include<hgl/log/LogInfo.h>
 
 namespace hgl
 {

@@ -32,7 +32,7 @@ MATERIAL_NAMESPACE_BEGIN
         };
     };//namespace
 
-    const ComponentConfig *GetConfig(const enum class Component c)
+    const ComponentConfig *GetConfig(const Component c)
     {
         if(c<=Component::BEGIN_RANGE
          ||c>=Component::END_RANGE)return(nullptr);

@@ -7,7 +7,7 @@ Memory *Device::CreateMemory(const VkMemoryRequirements &req,uint32_t properties
     uint32_t index;
 
     if(!attr->physical_device->CheckMemoryType(req.memoryTypeBits,properties,&index))
-        return(false);
+        return(nullptr);
 
     VkMemoryAllocateInfo alloc_info;
 

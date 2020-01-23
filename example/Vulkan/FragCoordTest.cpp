@@ -76,15 +76,15 @@ private:
         ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
         if(!ubo_mvp)
-            return(nullptr);
-        
+            return(false);
+
         material_instance->BindUBO("world",ubo_mvp);
         material_instance->BindUBO("fragment_world",ubo_mvp);
 
         material_instance->Update();
         return(true);
     }
-    
+
     void InitVBO()
     {
         vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
@@ -94,7 +94,7 @@ private:
 
     bool InitPipeline()
     {
-        AutoDelete<vulkan::PipelineCreater> 
+        AutoDelete<vulkan::PipelineCreater>
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLE_STRIP);
