@@ -36,6 +36,7 @@ SET(ULRE    CMCore
             spirv-cross-core
             SPIRV
             glslang
+            OGLCompiler
             ${JSONCPP_LIBRARY}
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})

@@ -12,11 +12,8 @@
 
 [attribute_to_gbuffer]
 
-    gb_color_metallic.rgb   =BaseColor;
-    gb_color_metallic.a     =Metallic;
-
-    gb_normal_roughness.rgb =Normal;
-    gb_normal_roughness.a   =Roughness;
+    gb_color_metallic   =vec4(BaseColor,Metallic);
+    gb_normal_roughness =vec4(Normal,   Roughness);
 
 [gbuffer_to_attribute]
 
