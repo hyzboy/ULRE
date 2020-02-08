@@ -352,8 +352,8 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     {
         const VkDriverIdKHR driver_id=physical_device->GetDriverId();
 
-        if(driver_id>=VK_DRIVER_ID_BEGIN_RANGE_KHR
-         &&driver_id<=VK_DRIVER_ID_END_RANGE_KHR)
+        if(driver_id>=VK_DRIVER_ID_BEGIN_RANGE
+         &&driver_id<=VK_DRIVER_ID_END_RANGE)
         {
             std::cout<<"DriverID: "<<physical_device->GetDriverId()<<std::endl;
             std::cout<<"DriverName: "<<physical_device->GetDriverName()<<std::endl;
