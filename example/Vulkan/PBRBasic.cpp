@@ -22,9 +22,10 @@ private:
 
     struct MDP
     {
-        vulkan::Material *      material        =nullptr;
-        vulkan::DescriptorSets *descriptor_sets =nullptr;
-        vulkan::Pipeline *      pipeline        =nullptr;
+        vulkan::Material *          material            =nullptr;
+        vulkan::MaterialInstance *  material_instance   =nullptr;
+        vulkan::DescriptorSets *    descriptor_sets     =nullptr;
+        vulkan::Pipeline *          pipeline            =nullptr;
     }mdp_line;
 
     vulkan::Renderable          *ro_plane_grid;
@@ -40,14 +41,17 @@ private:
 
         mdp->descriptor_sets=mdp->material->CreateDescriptorSets();
 
+        mdp->material_instance=mdp->material->CreateInstance();
+
         db->Add(mdp->material);
+        db->Add(mdp->material_instance);
         db->Add(mdp->descriptor_sets);
         return(true);
     }
 
     bool InitUBO(MDP *mdp)
     {
-        if(!InitCameraUBO(mdp->descriptor_sets,mdp->material->GetUBO("world")))
+        if(!InitCameraUBO(mdp->material_instance,mdp->material->GetUBO("world")))
             return(false);
 
         mdp->descriptor_sets->Update();
@@ -86,7 +90,7 @@ private:
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(mdp_line.pipeline,mdp_line.descriptor_sets,ro_plane_grid));
+        render_root.Add(db->CreateRenderableInstance(mdp_line.pipeline,mdp_line.material_instance,ro_plane_grid));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
