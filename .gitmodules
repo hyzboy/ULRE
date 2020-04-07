@@ -22,3 +22,6 @@
 [submodule "CMAssetsManage"]
 	path = CMAssetsManage
 	url = https://github.com/hyzboy/CMAssetsManage.git
+[submodule "res"]
+	path = res
+	url = https://github.com/hyzboy/RuntimeData.git
