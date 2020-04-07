@@ -26,10 +26,10 @@ CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
 
 CreateProject(11.Atomsphere Atomsphere.cpp)
 
-CreateProject(12.PBRBasic PBRBasic.cpp)
+#CreateProject(12.PBRBasic PBRBasic.cpp)
 
 #CreateProject(12.Deferred Deferred.cpp)
 
 CreateProject(13.DeferredModel DeferredModel.cpp)
 
-CreateProject(14.AutoMaterial auto_material.cpp)
+#CreateProject(14.AutoMaterial auto_material.cpp)
