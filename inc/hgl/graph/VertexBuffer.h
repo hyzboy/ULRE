@@ -53,7 +53,7 @@ namespace hgl
             {
                 if(!mem_type||offset>=count)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer::Get() out,offset:")+OSString(offset));
+                    LOG_HINT(OS_TEXT("VertexBuffer::Get() out,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -69,7 +69,7 @@ namespace hgl
             {
                 if(access)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer::Begin() access!=0,offset:")+OSString(offset));
+                    LOG_HINT(OS_TEXT("VertexBuffer::Begin() access!=0,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -99,7 +99,7 @@ namespace hgl
             {
                 if(!this->access||this->access+C*number>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer::Write(const T *,number) out,number:")+OSString(number));
+                    LOG_HINT(OS_TEXT("VertexBuffer::Write(const T *,number) out,number:")+OSString::valueOf(number));
                     return(false);
                 }
 
@@ -184,7 +184,7 @@ namespace hgl
             {
                 if(!this->access||this->access+count>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T,")+OSString(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -301,7 +301,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<1)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer1::Write(const Vector2f &,")+OSString(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexBuffer1::Write(const Vector2f &,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -596,7 +596,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -620,7 +620,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -901,7 +901,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -926,7 +926,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
