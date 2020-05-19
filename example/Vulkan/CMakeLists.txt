@@ -33,3 +33,6 @@ CreateProject(11.Atomsphere Atomsphere.cpp)
 CreateProject(13.DeferredModel DeferredModel.cpp)
 
 #CreateProject(14.AutoMaterial auto_material.cpp)
+
+CreateProject(14.SimplePBRForward SimplePBRForward.cpp AssimpLoaderMesh.h AssimpLoaderMesh.cpp)
+target_link_libraries(14.SimplePBRForward assimp)

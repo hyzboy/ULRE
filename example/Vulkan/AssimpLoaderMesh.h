@@ -36,12 +36,11 @@ struct ModelSceneNode
 
 struct ModelData
 {
-    AABB bounding_box;
-
     ObjectList<MeshData> mesh_data;
     Map<UTF8String,MeshData *> mesh_by_name;
 
     ModelSceneNode *root_node;
+    AABB bounding_box;
 
 public:
 
