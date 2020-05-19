@@ -8,7 +8,7 @@
 #include<hgl/graph/VertexBuffer.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/NTB.h>
-#include<hgl/graph/Material.h>
+//#include<hgl/graph/Material/Material.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/io/FileOutputStream.h>
 #include<assimp/Importer.hpp>
