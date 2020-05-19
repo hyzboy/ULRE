@@ -20,7 +20,7 @@ namespace hgl
          *                  X                   | Y                                          X
          */
 
-        extern Matrix4f MATRIX_FROM_OPENGL_COORDINATE;              //OpenGL坐标系数据到我方坐标系数据变换用矩阵
+        const Matrix4f GetOpenGL2VulkanMatrix();              //OpenGL坐标系数据到我方坐标系数据变换用矩阵
 
         }//namespace graph
 }//namespace hgl
