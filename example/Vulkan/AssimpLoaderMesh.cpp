@@ -179,7 +179,7 @@ private:
 
     void AssimpLoaderMesh::GetBoundingBox(const aiNode *node,aiVector3D *min_pos,aiVector3D *max_pos)
     {
-        Matrix4f root_matrix=hgl::graph::MATRIX_FROM_OPENGL_COORDINATE;
+        Matrix4f root_matrix=hgl::graph::GetOpenGL2VulkanMatrix();
 
         min_pos->x = min_pos->y = min_pos->z =  1e10f;
         max_pos->x = max_pos->y = max_pos->z = -1e10f;
@@ -264,8 +264,12 @@ public:
 
 private:
 
-    bool Load(ModelSceneNode *msn,const aiNode *node)
+    bool Load(int level,ModelSceneNode *msn,const aiNode *node)
     {
+        for(int i=0;i<level;i++)
+            std::cout<<"    ";
+        std::cout<<node->mName.C_Str()<<std::endl;
+
         msn->name=node->mName.C_Str();
         msn->local_matrix=MatrixConvert(node->mTransformation);
 
@@ -282,7 +286,7 @@ private:
         {
             ModelSceneNode *sub=new ModelSceneNode;
 
-            if(!Load(sub,node->mChildren[i]))
+            if(!Load(level+1,sub,node->mChildren[i]))
             {
                 delete sub;
                 return(false);
@@ -300,10 +304,12 @@ public:
     {
         model_data->root_node=new ModelSceneNode;
 
-        if(!Load(model_data->root_node,scene->mRootNode))
+        std::cout<<"SceneRoot"<<std::endl;
+
+        if(!Load(1,model_data->root_node,scene->mRootNode))
             return(false);
 
-        model_data->root_node->local_matrix=hgl::graph::MATRIX_FROM_OPENGL_COORDINATE*model_data->root_node->local_matrix;
+        model_data->root_node->local_matrix=hgl::graph::GetOpenGL2VulkanMatrix()*model_data->root_node->local_matrix;
         return(true);
     }
 };//class AssimpLoaderMesh
@@ -314,16 +320,11 @@ ModelData *AssimpLoadModel(const OSString &filename)
 
     if(!scene)return(nullptr);
 
-    AssimpLoaderMesh *alm=new AssimpLoaderMesh(ClipFileMainname(filename),scene);
-
-    ModelData *data=nullptr;
+    AutoDelete<AssimpLoaderMesh> alm=new AssimpLoaderMesh(ClipFileMainname(filename),scene);
 
     if(alm->LoadMesh())
-    {
         if(alm->LoadScene())
-            data=alm->GetModelData();
-    }
+            return alm->GetModelData();
 
-    delete alm;
-    return data;
+    return(nullptr);
 }
