@@ -131,20 +131,14 @@ private:
         }
 
         {
-            AxisCreateInfo aci;
-
-            aci.root=model_data->bounding_box.CenterPoint().xyz();
-            aci.size=model_data->bounding_box.HalfSize().xyz();
+            AxisCreateInfo aci(model_data->bounding_box);
 
             axis_renderable=CreateRenderableAxis(db,material,&aci);
             axis_renderable_instance=db->CreateRenderableInstance(pipeline_lines,material_instance,axis_renderable);
         }
 
         {
-            CubeCreateInfo cci;
-
-            cci.center=model_data->bounding_box.CenterPoint().xyz();
-            cci.size=model_data->bounding_box.Size().xyz();
+            CubeCreateInfo cci(model_data->bounding_box);
 
             bbox_renderable=CreateRenderableBoundingBox(db,material,&cci);
             bbox_renderable_instance=db->CreateRenderableInstance(pipeline_lines,material_instance,bbox_renderable);
