@@ -95,11 +95,23 @@ namespace hgl
             Vector2f tile;
 
         public:
+        
+            void Set(const AABB &box)
+            {
+                center=box.CenterPoint().xyz();
+                size=box.HalfSize().xyz();
+            }
 
             CubeCreateInfo()
             {
                 center.Set(0,0,0);
                 size.Set(1,1,1);
+                tile.Set(1,1);
+            }
+
+            CubeCreateInfo(const AABB &box)
+            {
+                Set(box);
                 tile.Set(1,1);
             }
         };//struct CubeCreateInfo
@@ -177,13 +189,30 @@ namespace hgl
 
         public:
 
+            void RestartColor()
+            {
+                color[0].Set(1,0,0,1);
+                color[1].Set(0,1,0,1);
+                color[2].Set(0,0,1,1);
+            }
+
+            void Set(const AABB &box)
+            {
+                root=box.CenterPoint().xyz();
+                size=box.HalfSize().xyz();
+            }
+
             AxisCreateInfo()
             {
                 root.Set(0,0,0);
                 size.Set(1,1,1);
-                color[0].Set(1,0,0,1);
-                color[1].Set(0,1,0,1);
-                color[2].Set(0,0,1,1);
+                RestartColor();
+            }
+
+            AxisCreateInfo(const AABB &box)
+            {
+                Set(box);
+                RestartColor();
             }
         };//struct AxisCreateInfo
 
