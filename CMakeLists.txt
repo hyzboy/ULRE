@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+﻿cmake_minimum_required(VERSION 3.0)
 
 PROJECT(ULRE)
 
@@ -33,10 +33,6 @@ SET(ULRE    CMCore
             ULRE.RenderDevice.Vulkan
             ULRE.SceneGraph
             MathGeoLib
-            spirv-cross-core
-            SPIRV
-            glslang
-            OGLCompiler
             ${JSONCPP_LIBRARY}
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
@@ -46,22 +42,6 @@ include_directories(${ULRE_3RDPTY_ROOT_PATH}/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-SET(SPIRV_CROSS_PATH ${ULRE_3RDPTY_ROOT_PATH}/SPIRV-Cross)
-
-include_directories(${SPIRV_CROSS_PATH})
-add_subdirectory(${SPIRV_CROSS_PATH})
-
-macro(glslang_pch SRCS PCHCPP)
-    message("use null [glslang_pch] macro")
-endmacro()
-
-include_directories(${SPIRV_CROSS_PATH}/external/glslang/glslang/Public)
-add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/glslang)
-
-include_directories(${SPIRV_CROSS_PATH}/external/glslang)
-add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/SPIRV)
-
-add_subdirectory(${SPIRV_CROSS_PATH}/external/glslang/OGLCompilersDLL)
 
 SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
 
