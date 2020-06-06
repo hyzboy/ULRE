@@ -29,8 +29,7 @@ SET(VK_RENDER_PASS_SOURCE   VKFramebuffer.cpp
                             VKSwapchain.cpp
                             VKCommandBuffer.cpp)
 
-SET(RENDER_DEVICE_VULKAN_SOURCE VKFormat.cpp
-                                VKMemory.cpp
+SET(RENDER_DEVICE_VULKAN_SOURCE VKMemory.cpp
                                 VKProperties.cpp
                                 VKDebugOut.cpp
                                 VKInstance.cpp
