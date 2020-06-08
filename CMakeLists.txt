@@ -17,6 +17,7 @@ include(use_cm_module)
 use_cm_module(Core)
 use_cm_module(Platform)
 use_cm_module(AssetsManage)
+use_cm_module(SceneGraph)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     include_directories(${ULRE_3RDPTY_ROOT_PATH}/jsoncpp/include)
@@ -29,6 +30,7 @@ ENDIF()
 SET(ULRE    CMCore
             CMPlatform
             CMAssetsManage
+            CMSceneGraph
             ULRE.Util
             ULRE.RenderDevice.Vulkan
             ULRE.SceneGraph

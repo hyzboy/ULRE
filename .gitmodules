@@ -25,3 +25,6 @@
 [submodule "res"]
 	path = res
 	url = https://github.com/hyzboy/RuntimeData.git
+[submodule "CMSceneGraph"]
+	path = CMSceneGraph
+	url = https://github.com/hyzboy/CMSceneGraph.git
