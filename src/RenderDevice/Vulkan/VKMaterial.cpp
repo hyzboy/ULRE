@@ -32,7 +32,7 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
         vsm=(*itp)->right;
         memcpy(p,vsm->GetCreateInfo(),sizeof(VkPipelineShaderStageCreateInfo));
 
-        dsl_creater->Bind(vsm->GetResource(),vsm->GetStage());
+        dsl_creater->Bind(vsm->GetDescriptorList(),vsm->GetStage());
 
         ++p;
         ++itp;

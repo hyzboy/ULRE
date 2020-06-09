@@ -56,7 +56,7 @@ class VertexAttributeBinding;
 
 class Renderable;
 
-enum class ShaderStage
+enum class ShaderStageBit
 {
     Vertex      =VK_SHADER_STAGE_VERTEX_BIT,
     TessControl =VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
@@ -64,7 +64,7 @@ enum class ShaderStage
     Geometry    =VK_SHADER_STAGE_GEOMETRY_BIT,
     Fragment    =VK_SHADER_STAGE_FRAGMENT_BIT,
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
-};//enum class ShaderStage
+};//enum class ShaderStageBit
 
 /**
  * max-lengths:
@@ -79,6 +79,8 @@ struct PushConstant
     Vector3f object_position;
     Vector3f object_size;
 };
+
+constexpr uint32_t MAX_PUSH_CONSTANT_BYTES=sizeof(PushConstant);
 
 inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d)
 {

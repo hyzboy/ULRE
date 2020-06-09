@@ -1,6 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/graph/vulkan/VKShaderResource.h>
+#include<hgl/graph/shader/ShaderResource.h>
+#include<hgl/type/Map.h>
 VK_NAMESPACE_BEGIN
 class Device;
 class DescriptorSets;
@@ -25,13 +26,20 @@ public:
 
     void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);
     void Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType type,VkShaderStageFlagBits stage);
-    void Bind(const ShaderResourceList &srl,VkDescriptorType type,VkShaderStageFlagBits stage){if(srl.binding_list.GetCount()>0)Bind(srl.binding_list.GetData(),srl.binding_list.GetCount(),type,stage);}
-    void Bind(const ShaderResource &sr,VkShaderStageFlagBits stage)
+    void Bind(const ShaderBindingList &sbl,VkDescriptorType type,VkShaderStageFlagBits stage)
+    {
+        if(sbl.GetCount()>0)
+            Bind(sbl.GetData(),sbl.GetCount(),type,stage);
+    }
+
+    void Bind(const ShaderDescriptorList *sdl,VkShaderStageFlagBits stage)
     {
         for(uint32_t i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)
         {
-            if(sr[i].binding_list.GetCount()>0)
-                Bind(sr[i],(VkDescriptorType)i,stage);
+            if(sdl->binding_list.GetCount()>0)
+                Bind(sdl->binding_list.GetData(),sdl->binding_list.GetCount(),(VkDescriptorType)i,stage);
+
+            ++sdl;
         }
     }
 

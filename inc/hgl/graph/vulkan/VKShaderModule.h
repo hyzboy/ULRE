@@ -1,10 +1,10 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
-#include<hgl/graph/vulkan/VKShaderResource.h>
+#include<hgl/graph/shader/ShaderResource.h>
+#include<hgl/type/Set.h>
 
 VK_NAMESPACE_BEGIN
-class ShaderParse;
 
 /**
  * Shader模块<br>
@@ -20,11 +20,13 @@ private:
 
     VkPipelineShaderStageCreateInfo *stage_create_info;
 
-    ShaderResource resource;
+protected:
+
+    ShaderResource *shader_resource;
 
 public:
 
-    ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *);
+    ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *);
     virtual ~ShaderModule();
 
     const int GetID()const{return shader_id;}
@@ -37,11 +39,12 @@ public:
     const VkShaderStageFlagBits             GetStage        ()const{return stage_create_info->stage;}
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
 
-    const ShaderResource &                  GetResource     ()const{return resource;}
     const int                               GetBinding      (VkDescriptorType desc_type,const UTF8String &name)const
     {
-        return resource[desc_type].GetBinding(name);
+        return shader_resource->GetBinding(desc_type,name);
     }
+
+    const ShaderDescriptorList *            GetDescriptorList()const{return shader_resource->GetDescriptorList();}
 };//class ShaderModule
 
 class VertexAttributeBinding;
@@ -58,19 +61,17 @@ class VertexShaderModule:public ShaderModule
 
 private:
 
-    Map<UTF8String,VkVertexInputAttributeDescription *> stage_input_locations;
-
     Set<VertexAttributeBinding *> vab_sets;
 
 public:
 
-    VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse);
+    VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr);
     virtual ~VertexShaderModule();
 
     /**
      * 获取输入流绑定点，需要注意的时，这里获取的binding并非是shader中的binding/location，而是绑定顺序的序列号。对应vkCmdBindVertexBuffer的缓冲区序列号
      */
-    const int                                   GetStageInputBinding(const UTF8String &)const;
+    const int                                   GetStageInputBinding(const UTF8String &name)const{return shader_resource->GetStageInputBinding(name);}
 
     const uint32_t                              GetAttrCount()const{return attr_count;}
 

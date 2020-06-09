@@ -1,24 +1,8 @@
 ﻿#include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
-#include"VKShaderParse.h"
 
 VK_NAMESPACE_BEGIN
-namespace
-{
-    void EnumShaderResource(const ShaderParse *parse,ShaderResourceList &sr,const spirv_cross::SmallVector<spirv_cross::Resource> &res)
-    {
-        for(const auto &obj:res)
-        {
-            const UTF8String &  name    =parse->GetName(obj);
-            const uint          binding =parse->GetBinding(obj);
-
-            sr.binding_by_name.Add(name,binding);
-            sr.binding_list.Add(binding);
-        }
-    }
-}//namespace
-
-ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *sci,const ShaderParse *sp)
+ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *sci,ShaderResource *sr)
 {
     device=dev;
     shader_id=id;
@@ -26,9 +10,7 @@ ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *
 
     stage_create_info=sci;
 
-    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER],sp->GetUBO());
-    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER],sp->GetSSBO());
-    EnumShaderResource(sp,resource[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER],sp->GetSampler());
+    shader_resource=sr;
 }
 
 ShaderModule::~ShaderModule()
@@ -37,27 +19,25 @@ ShaderModule::~ShaderModule()
     delete stage_create_info;
 }
 
-VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,const ShaderParse *parse):ShaderModule(dev,id,pssci,parse)
+VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,id,pssci,sr)
 {
-    const auto &stage_inputs=parse->GetStageInputs();
+    const ShaderStageList &stage_inputs=sr->GetStageInputs();
 
-    attr_count=(uint32_t)stage_inputs.size();
+    attr_count=stage_inputs.GetCount();
     binding_list=new VkVertexInputBindingDescription[attr_count];
     attribute_list=new VkVertexInputAttributeDescription[attr_count];
 
     VkVertexInputBindingDescription *bind=binding_list;
     VkVertexInputAttributeDescription *attr=attribute_list;
 
-    uint32_t binding_index=0;
+    uint32_t binding_index=0;    
+    ShaderStage **si=stage_inputs.GetData();
 
-    for(const auto &si:stage_inputs)
+    for(uint i=0;i<attr_count;i++)
     {
-        const VkFormat                  format  =parse->GetFormat(si);                //注意这个格式有可能会解析不出来(比如各种压缩格式)
-        const UTF8String &              name    =parse->GetName(si);
-
         bind->binding   =binding_index;                 //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
                                                         //在VertexInput类中，buf_list需要严格按照本此binding为序列号排列
-        bind->stride    =GetStrideByFormat(format);
+        bind->stride    =GetStrideByFormat((*si)->format);
         bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
 
         //binding对应的是第几个数据输入流
@@ -66,15 +46,15 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStage
         //但在我们的设计中，仅支持一个流传递一个attrib
 
         attr->binding   =binding_index;
-        attr->location  =parse->GetLocation(si);                                        //此值对应shader中的layout(location=
-        attr->format    =format;
+        attr->location  =(*si)->location;               //此值对应shader中的layout(location=
+        attr->format    =(*si)->format;
         attr->offset    =0;
-
-        stage_input_locations.Add(name,attr);
 
         ++attr;
         ++bind;
         ++binding_index;
+
+        ++si;
     }
 }
 
@@ -87,18 +67,6 @@ VertexShaderModule::~VertexShaderModule()
 
     SAFE_CLEAR_ARRAY(binding_list);
     SAFE_CLEAR_ARRAY(attribute_list);
-}
-
-const int VertexShaderModule::GetStageInputBinding(const UTF8String &name)const
-{
-    if(name.IsEmpty())return -1;
-
-    VkVertexInputAttributeDescription *attr;
-
-    if(!stage_input_locations.Get(name,attr))
-        return -1;
-
-    return attr->binding;
 }
 
 VertexAttributeBinding *VertexShaderModule::CreateVertexAttributeBinding()

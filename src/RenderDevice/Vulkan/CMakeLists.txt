@@ -13,8 +13,7 @@ SET(VK_DESCRIPTOR_SETS_SOURCE   VKDescriptorSets.cpp
                                 VKDescriptorSetLayoutCreater.cpp
                                 VKDescriptorSetLayoutCreater.h)
 
-SET(VK_SHADER_SOURCE    VKShaderParse.h
-                        VKShaderModule.cpp
+SET(VK_SHADER_SOURCE    VKShaderModule.cpp
                         VKShaderModuleManage.cpp)
 
 SET(VK_MATERIAL_SOURCE  VKImageView.cpp
