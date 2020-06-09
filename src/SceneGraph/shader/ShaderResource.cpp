@@ -8,10 +8,17 @@ namespace hgl
     {
         namespace
         {
-            constexpr char SHADER_FILE_HEADER[]="Shader\x1A";
-            constexpr uint SHADER_FILE_HEADER_BYTES=sizeof(SHADER_FILE_HEADER)-1;
+            constexpr char      SHADER_FILE_HEADER[]    ="Shader\x1A";
+            constexpr uint      SHADER_FILE_HEADER_BYTES=sizeof(SHADER_FILE_HEADER)-1;
 
-            uint8 *LoadShaderStages(ShaderStageList &ss_list,uint8 *data)
+            constexpr uint32    SHADER_FILE_MIN_SIZE    =SHADER_FILE_HEADER_BYTES
+                                                        +1                         //version
+                                                        +sizeof(uint32)            //shader flag
+                                                        +sizeof(uint32)            //spv_size
+                                                        +1                         //input states count
+                                                        +1;                        //output states count
+
+            const uint8 *LoadShaderStages(ShaderStageList &ss_list,const uint8 *data)
             {
                 const uint count=*data++;
 
@@ -47,7 +54,7 @@ namespace hgl
                 return data;
             }
 
-            uint8 *LoadShaderDescriptor(ShaderDescriptorList &sd_list,uint8 *data)
+            const uint8 *LoadShaderDescriptor(ShaderDescriptorList &sd_list,const uint8 *data)
             {   
                 const uint32 total_bytes=*(uint32 *)data;
                 data+=sizeof(uint32);
@@ -72,19 +79,34 @@ namespace hgl
             }
         }//namespcae
 
+        ShaderResource::ShaderResource(const void *fd,const void *sd,const uint32 size)
+        {
+            data=fd;
+            spv_data=sd;
+            spv_size=size;            
+        }
+
+        ShaderResource::~ShaderResource()
+        {
+            delete[] data;
+        }
+
         ShaderResource *LoadShaderResoruce(const OSString &filename)
         {
             int64 filesize;
-            AutoDeleteArray<uint8> origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename,filesize);
+            uint8 *origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename,filesize);
 
-            uint8 *filedata=origin_filedata;
+            if(!origin_filedata)return(nullptr);
 
-            if(!filedata)return(nullptr);
-
-            const uint8 *file_end=filedata+filesize;
-
-            if(memcmp(filedata,SHADER_FILE_HEADER,SHADER_FILE_HEADER_BYTES))
+            if(filesize<SHADER_FILE_MIN_SIZE
+             ||memcmp(origin_filedata,SHADER_FILE_HEADER,SHADER_FILE_HEADER_BYTES))
+            {
+                delete[] origin_filedata;
                 return(false);
+            }
+
+            const uint8 *filedata=origin_filedata;
+            const uint8 *file_end=filedata+filesize;
 
             filedata+=SHADER_FILE_HEADER_BYTES;
 
@@ -97,10 +119,9 @@ namespace hgl
             const uint32 spv_size=*(uint32 *)filedata;
             filedata+=sizeof(uint32);
 
-            const void *spv_data=filedata;
-            filedata+=spv_size;
+            ShaderResource *sr=new ShaderResource(origin_filedata,filedata,spv_size);
 
-            ShaderResource *sr=new ShaderResource;
+            filedata+=spv_size;
 
             filedata=LoadShaderStages(sr->GetInputStages(),filedata);
             filedata=LoadShaderStages(sr->GetOutputStages(),filedata);
