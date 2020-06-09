@@ -5,6 +5,9 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/BaseString.h>
 VK_NAMESPACE_BEGIN
+
+class ShaderResource;
+
 /**
  * Shader模块管理器<br>
  * 所有的shader模块均由它创建和释放
@@ -27,9 +30,9 @@ public:
 
     ~ShaderModuleManage();
 
-    const ShaderModule *CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size);
+    const ShaderModule *CreateShader(ShaderResource *);
     const ShaderModule *CreateShader(const VkShaderStageFlagBits shader_stage_bit,const OSString &filename);
-
+/*
 #define ADD_SHADER_FUNC(sn,vk_name)   const ShaderModule *Create##sn##Shader(const void *spv_data,const uint32_t spv_size){return CreateShader(VK_SHADER_STAGE_##vk_name##_BIT,spv_data,spv_size);}
     ADD_SHADER_FUNC(Vertex,     VERTEX)
     ADD_SHADER_FUNC(Fragment,   FRAGMENT)
@@ -49,7 +52,7 @@ public:
     ADD_NV_SHADER_FUNC(Task,        TASK);
     ADD_NV_SHADER_FUNC(Mesh,        MESH);
 #undef ADD_NV_SHADER_FUNC
-
+*/
     const ShaderModule *GetShader       (int);
     bool                ReleaseShader   (const ShaderModule *);
 

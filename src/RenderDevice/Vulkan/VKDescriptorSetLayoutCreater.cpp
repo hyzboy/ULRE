@@ -88,11 +88,11 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     if(vkCreateDescriptorSetLayout(*device,&descriptor_layout,nullptr,&dsl)!=VK_SUCCESS)
         return(false);
 
-    VkPushConstantRange push_constant_rage;
+    VkPushConstantRange push_constant_range;
 
-    push_constant_rage.stageFlags   = VK_SHADER_STAGE_VERTEX_BIT;
-    push_constant_rage.size         = sizeof(PushConstant);
-    push_constant_rage.offset       = 0;
+    push_constant_range.stageFlags   = VK_SHADER_STAGE_VERTEX_BIT;
+    push_constant_range.size         = MAX_PUSH_CONSTANT_BYTES;
+    push_constant_range.offset       = 0;
     
     VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
     pPipelineLayoutCreateInfo.sType                     = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -101,7 +101,7 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     pPipelineLayoutCreateInfo.setLayoutCount            = 1;
     pPipelineLayoutCreateInfo.pSetLayouts               = &dsl;
     pPipelineLayoutCreateInfo.pushConstantRangeCount    = 1;
-    pPipelineLayoutCreateInfo.pPushConstantRanges       = &push_constant_rage;
+    pPipelineLayoutCreateInfo.pPushConstantRanges       = &push_constant_range;
 
     if(vkCreatePipelineLayout(*device,&pPipelineLayoutCreateInfo,nullptr,&pipeline_layout)!=VK_SUCCESS)
         return(false);

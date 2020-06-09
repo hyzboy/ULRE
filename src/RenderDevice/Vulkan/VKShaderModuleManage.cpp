@@ -2,7 +2,7 @@
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/VKMaterial.h>
 #include<hgl/graph/vulkan/VKDevice.h>
-#include"VKShaderParse.h"
+#include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/filesystem/FileSystem.h>
 
 VK_NAMESPACE_BEGIN
@@ -25,9 +25,9 @@ ShaderModuleManage::~ShaderModuleManage()
     }
 }
 
-const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const void *spv_data,const uint32_t spv_size)
+const ShaderModule *ShaderModuleManage::CreateShader(ShaderResource *sr)
 {
-    if(!spv_data||spv_size<=0)
+    if(!sr)
         return(nullptr);
 
     VkPipelineShaderStageCreateInfo *shader_stage=new VkPipelineShaderStageCreateInfo;
@@ -35,28 +35,26 @@ const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits
     shader_stage->pNext                 =nullptr;
     shader_stage->pSpecializationInfo   =nullptr;
     shader_stage->flags                 =0;
-    shader_stage->stage                 =shader_stage_bit;
+    shader_stage->stage                 =sr->GetStage();
     shader_stage->pName                 ="main";
 
     VkShaderModuleCreateInfo moduleCreateInfo;
     moduleCreateInfo.sType      =VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     moduleCreateInfo.pNext      =nullptr;
     moduleCreateInfo.flags      =0;
-    moduleCreateInfo.codeSize   =spv_size;
-    moduleCreateInfo.pCode      =(const uint32_t *)spv_data;
+    moduleCreateInfo.codeSize   =sr->GetCodeSize();
+    moduleCreateInfo.pCode      =sr->GetCode();
 
     if(vkCreateShaderModule(*device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
         return(nullptr);
 
     ShaderModule *sm;
-    ShaderParse *parse=new ShaderParse(spv_data,spv_size);
 
-    if(shader_stage_bit==VK_SHADER_STAGE_VERTEX_BIT)
-        sm=new VertexShaderModule(*device,shader_count,shader_stage,parse);
+    if(sr->GetStage()==VK_SHADER_STAGE_VERTEX_BIT)
+        sm=new VertexShaderModule(*device,shader_count,shader_stage,sr);
     else
-        sm=new ShaderModule(*device,shader_count,shader_stage,parse);
+        sm=new ShaderModule(*device,shader_count,shader_stage,sr);
 
-    delete parse;
     shader_list.Add(shader_count,sm);
 
     ++shader_count;
@@ -66,17 +64,11 @@ const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits
 
 const ShaderModule *ShaderModuleManage::CreateShader(const VkShaderStageFlagBits shader_stage_bit,const OSString &filename)
 {
-    char *spv_data;
-    int64 spv_size=hgl::filesystem::LoadFileToMemory(filename,(void **)&spv_data);
+    ShaderResource *shader_resource=LoadShaderResoruce(filename);
 
-    if(spv_size<=0)
-        return(nullptr);
+    if(!shader_resource)return(nullptr);
 
-    const ShaderModule *sm=CreateShader(shader_stage_bit,spv_data,spv_size);
-
-    delete[] spv_data;
-
-    return sm;
+    return CreateShader(shader_resource);
 }
 
 const ShaderModule *ShaderModuleManage::GetShader(int id)

@@ -11,8 +11,8 @@ using namespace hgl::graph;
 bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
