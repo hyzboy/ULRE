@@ -30,12 +30,11 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStage
     VkVertexInputBindingDescription *bind=binding_list;
     VkVertexInputAttributeDescription *attr=attribute_list;
 
-    uint32_t binding_index=0;    
     ShaderStage **si=stage_inputs.GetData();
 
     for(uint i=0;i<attr_count;i++)
     {
-        bind->binding   =binding_index;                 //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
+        bind->binding   =i;                             //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
                                                         //在VertexInput类中，buf_list需要严格按照本此binding为序列号排列
         bind->stride    =GetStrideByFormat((*si)->format);
         bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
@@ -45,14 +44,13 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStage
         //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
         //但在我们的设计中，仅支持一个流传递一个attrib
 
-        attr->binding   =binding_index;
+        attr->binding   =i;
         attr->location  =(*si)->location;               //此值对应shader中的layout(location=
         attr->format    =(*si)->format;
         attr->offset    =0;
 
         ++attr;
         ++bind;
-        ++binding_index;
 
         ++si;
     }
