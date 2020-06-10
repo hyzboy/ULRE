@@ -94,7 +94,7 @@ VK_NAMESPACE_BEGIN
         for(int i=0;i<count;i++)
         {
             if(name==(*ss)->name)
-                return (*ss)->location;
+                return i;
 
             ++ss;
         }
@@ -122,7 +122,7 @@ VK_NAMESPACE_BEGIN
     ShaderResource *LoadShaderResoruce(const OSString &filename)
     {
         int64 filesize;
-        uint8 *origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename,filesize);
+        uint8 *origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".shader"),filesize);
 
         if(!origin_filedata)return(nullptr);
 
@@ -159,10 +159,6 @@ VK_NAMESPACE_BEGIN
             desc_type=AccessByPointer(filedata,uint32);
 
             filedata=LoadShaderDescriptor(sr->GetDescriptorList((VkDescriptorType)desc_type),filedata);
-            {
-                delete sr;
-                return(nullptr);
-            }
         }
 
         return sr;

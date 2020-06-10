@@ -62,8 +62,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatColor.vert.spv"),
-                                               OS_TEXT("res/shader/VertexColor.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatColor.vert"),
+                                               OS_TEXT("res/shader/VertexColor.frag"));
         if(!material)
             return(false);
 
@@ -91,13 +91,15 @@ private:
         return(true);
     }
     
-    void InitVBO()
+    bool InitVBO()
     {
         vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
         color_buffer    =device->CreateVBO(FMT_RGB32F, VERTEX_COUNT,color_data);
 
-        render_obj->Set("Vertex",   vertex_buffer);
-        render_obj->Set("Color",    color_buffer);
+        if(!render_obj->Set("Vertex",   vertex_buffer))return(false);
+        if(!render_obj->Set("Color",    color_buffer))return(false);
+
+        return(true);
     }
 
     bool InitPipeline()
@@ -138,7 +140,8 @@ public:
         if(!InitUBO())
             return(false);
 
-        InitVBO();
+        if(!InitVBO())
+            return(false);
 
         if(!InitPipeline())
             return(false);
