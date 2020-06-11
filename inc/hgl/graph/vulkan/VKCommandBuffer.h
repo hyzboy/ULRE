@@ -30,7 +30,9 @@ public:
     operator const VkCommandBuffer *()const{return &cmd_buf;}
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
+    void SetRenderArea(const VkExtent2D &);
     void SetViewport(const VkViewport &vp){viewport=vp;}
+
     void SetClearColor(uint32_t index,float r,float g,float b,float a=1.0f)
     {
         if(index>=cv_count)return;
