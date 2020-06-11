@@ -218,7 +218,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const Rend
 
 bool PipelineCreater::Set(const VkPrimitiveTopology topology,bool restart)
 {
-    if(topology<VK_PRIMITIVE_TOPOLOGY_BEGIN_RANGE||topology>VK_PRIMITIVE_TOPOLOGY_END_RANGE)
+    if(topology<PRIM_BEGIN||topology>PRIM_END)
         if(topology!=PRIM_RECTANGLE)return(false);
 
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
