@@ -59,7 +59,7 @@ private:
         {
             delete material;
             delete render_obj;
-        SAFE_CLEAR(material_instance);
+            delete material_instance;
             delete pipeline;
         }
     }nearest,linear,nearest_hq,linear_hq;
@@ -131,14 +131,14 @@ private:
 
     bool InitTexture()
     {
-        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/noise32.Tex2D"));
+        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/heightmap.Tex2D"));
         return texture;
     }
 
     bool InitMaterial(struct MPD *mpd,vulkan::Sampler *sampler,const OSString &fragment_shader)
     {
-        mpd->material=shader_manage->CreateMaterial(OS_TEXT("res/shader/Texture2D.vert.spv"),
-                                                    OS_TEXT("res/shader/")+fragment_shader+OS_TEXT(".frag.spv"));
+        mpd->material=shader_manage->CreateMaterial(OS_TEXT("res/shader/Texture2D.vert"),
+                                                    OS_TEXT("res/shader/")+fragment_shader+OS_TEXT(".frag"));
         if(!mpd->material)
             return(false);
 
@@ -185,6 +185,7 @@ private:
         BuildCommandBuffer(&render_list);
         return(true);
     }
+
 public:
 
     bool Init()
