@@ -43,6 +43,13 @@ CommandBuffer::~CommandBuffer()
     vkFreeCommandBuffers(device,pool,1,&cmd_buf);
 }
 
+void CommandBuffer::SetRenderArea(const VkExtent2D &ext2d)
+{
+    render_area.offset.x=0;
+    render_area.offset.y=0;
+    render_area.extent=ext2d;
+}
+
 bool CommandBuffer::Begin()
 {
     VkCommandBufferBeginInfo cmd_buf_info;
