@@ -3,7 +3,7 @@
 VK_NAMESPACE_BEGIN
 VkImage Device::CreateImage(const VkFormat format,uint32_t width,uint32_t height,const uint usage,const VkImageTiling tiling)
 {
-    if(format<VK_FORMAT_BEGIN_RANGE||format>VK_FORMAT_END_RANGE)return(nullptr);
+    if(!CheckVulkanFormat(format))return(nullptr);
     if(width<1||height<1)return(nullptr);
 
     VkImageCreateInfo imageCreateInfo;

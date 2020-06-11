@@ -131,8 +131,7 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
 
     const VkFormat format=file_header.vk_format();
 
-    if(format<=VK_FORMAT_BEGIN_RANGE
-     ||format>=VK_FORMAT_END_RANGE)
+    if(!CheckVulkanFormat(format))
         return(nullptr);
 
     const uint total_bytes=file_header.total_bytes();
