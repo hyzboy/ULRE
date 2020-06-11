@@ -54,8 +54,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert.spv"),
-                                               OS_TEXT("res/shader/FragCoord.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert"),
+                                               OS_TEXT("res/shader/FragCoord.frag"));
         if(!material)
             return(false);
 
@@ -68,8 +68,8 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        cam.width=extent.width;
-        cam.height=extent.height;
+        cam.vp_width=cam.width=extent.width;
+        cam.vp_height=cam.height=extent.height;        
 
         cam.Refresh();
 
@@ -129,8 +129,8 @@ public:
 
     void Resize(int w,int h)override
     {
-        cam.width=w;
-        cam.height=h;
+        cam.vp_width=w;
+        cam.vp_height=h;
 
         cam.Refresh();
 
