@@ -12,8 +12,6 @@ namespace hgl
             LocalToWorldMatrix          =Matrix4f::identity;
             InverseLocalMatrix          =Matrix4f::identity;
             InverseLocalToWorldMatrix   =Matrix4f::identity;
-
-            pc.normal                   =Matrix3f::identity;
         }
 
         Matrix4f &SceneOrient::SetLocalMatrix(const Matrix4f &m)
@@ -32,7 +30,6 @@ namespace hgl
             InverseLocalToWorldMatrix=inverse(LocalToWorldMatrix);
 
             pc.local_to_world   =LocalToWorldMatrix;
-            pc.normal           =pc.local_to_world.Float3x3Part();
 //            pc.object_position  =;
 //            pc.object_size      =;
 

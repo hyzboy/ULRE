@@ -49,7 +49,7 @@ namespace hgl
             {
                 last_pc=node->GetPushConstant();
 
-                cmd_buf->PushConstants(last_pc);
+                cmd_buf->PushConstants(last_pc,sizeof(vulkan::PushConstant));
             }
 
             //更新fin_mvp
