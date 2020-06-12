@@ -112,7 +112,7 @@ public:
             cili.khronos.validation = true;
             cili.RenderDoc.Capture = true;
 
-            inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"));
+            inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"),nullptr,&cili);
 
             if(!inst)
                 return(false);
@@ -304,12 +304,16 @@ public:
         camera.type=CameraType::Perspective;
         camera.width=w;
         camera.height=h;
+        camera.vp_width=w;
+        camera.vp_height=h;
         camera.center.Set(0,0,0,1);
         camera.eye.Set(100,100,100,1);      //xyz三个值不要一样，以方便调试
         camera.znear=16;
         camera.zfar=256;
 
         camera.Refresh();      //更新矩阵计算
+        
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
     }
 
     void Resize(int w,int h)override
@@ -318,14 +322,9 @@ public:
         camera.height=h;
     }
 
-    bool InitCameraUBO(vulkan::MaterialInstance *mi,const UTF8String &node_name)
+    vulkan::Buffer *GetCameraMatrixBuffer()
     {
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
-
-        if(!ubo_world_matrix)
-            return(false);
-
-        return mi->BindUBO(node_name,ubo_world_matrix);
+        return ubo_world_matrix;
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;
