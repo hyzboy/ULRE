@@ -120,7 +120,7 @@ public:
         vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_stage_bit,offset,size,pValues);
     }
 
-    void PushConstants(const PushConstant *pc){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,sizeof(PushConstant),pc);}
+    void PushConstants(const void *data,const uint32_t size){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,size,data);}
 
     bool Bind(Renderable *);
 

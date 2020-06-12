@@ -75,9 +75,6 @@ enum class ShaderStageBit
 struct PushConstant
 {
     Matrix4f local_to_world;
-    Matrix3f normal;
-    Vector3f object_position;
-    Vector3f object_size;
 };
 
 constexpr uint32_t MAX_PUSH_CONSTANT_BYTES=sizeof(PushConstant);
