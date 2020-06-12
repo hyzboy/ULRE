@@ -10,8 +10,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
 class TestApp:public CameraAppFramework
 {
@@ -52,7 +52,7 @@ private:
 
     bool InitUBO(MDP *mdp)
     {
-        if(!InitCameraUBO(mdp->material_instance,"world"))
+        if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
 
         mdp->material_instance->Update();
@@ -150,12 +150,12 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        if(!InitMDP(&m3d,PRIM_LINES,OS_TEXT("res/shader/PositionColor3D.vert.spv"),
-                                    OS_TEXT("res/shader/VertexColor.frag.spv")))
+        if(!InitMDP(&m3d,PRIM_LINES,OS_TEXT("res/shader/PositionColor3D.vert"),
+                                    OS_TEXT("res/shader/VertexColor.frag")))
             return(false);
 
-        if(!InitMDP(&m2d,PRIM_TRIANGLE_FAN, OS_TEXT("res/shader/OnlyPosition.vert.spv"),
-                                            OS_TEXT("res/shader/FlatColor.frag.spv")))
+        if(!InitMDP(&m2d,PRIM_TRIANGLE_FAN, OS_TEXT("res/shader/OnlyPosition.vert"),
+                                            OS_TEXT("res/shader/FlatColor.frag")))
             return(false);
 
         {
