@@ -17,7 +17,13 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 class TestApp:public CameraAppFramework
 {
-    Color4f color;
+    struct
+    {
+        Vector4f color;
+        Vector4f abiment;
+    }color_material;
+
+    Vector3f sun_direction;
 
 private:
 
@@ -30,6 +36,7 @@ private:
     vulkan::MaterialInstance *  material_instance   =nullptr;
 
     vulkan::Buffer *            ubo_color           =nullptr;
+    vulkan::Buffer *            ubo_sun             =nullptr;
 
     vulkan::Renderable *        renderable_object   =nullptr;
 
@@ -48,8 +55,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert"),
-                                               OS_TEXT("res/shader/FlatColor.frag"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/LightPosition3D.vert"),
+                                               OS_TEXT("res/shader/VertexColor.frag"));
         if(!material)
             return(false);
 
@@ -62,22 +69,30 @@ private:
 
     void CreateRenderObject()
     {
-        struct CubeCreateInfo cci;
+        renderable_object=CreateRenderableSphere(db,material,40);
 
-        renderable_object=CreateRenderableCube(db,material,&cci);
+        db->Add(renderable_object);
     }
 
     bool InitUBO()
     {
-        if(!InitCameraUBO(material_instance,"world"))
-            return(false);
-            
-        color.Set(1,1,0,1);
-        ubo_color=device->CreateUBO(sizeof(Color4f),&color);
+        LCG lcg;
 
+        color_material.color=Vector4f(1,1,1,1.0);
+        color_material.abiment.Set(0.25,0.25,0.25,1.0);
+        ubo_color=device->CreateUBO(sizeof(color_material),&color_material);
+
+        sun_direction=Vector3f::RandomDir(lcg);
+        ubo_sun=device->CreateUBO(sizeof(sun_direction),&sun_direction);
+
+        material_instance->BindUBO("world",GetCameraMatrixBuffer());
         material_instance->BindUBO("color_material",ubo_color);
+        material_instance->BindUBO("sun",ubo_sun);
 
         material_instance->Update();
+
+        db->Add(ubo_color);
+        db->Add(ubo_sun);
         return(true);
     }
 
@@ -88,7 +103,7 @@ private:
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->CloseCullFace();
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
         pipeline_creater->Set(PRIM_TRIANGLES);
 
         pipeline_line=pipeline_creater->Create();
