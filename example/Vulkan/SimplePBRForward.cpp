@@ -82,6 +82,9 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
 
+    vulkan::Material *          pbr_material            =nullptr;
+    vulkan::MaterialInstance *  pbr_material_instance   =nullptr;
+
     vulkan::Pipeline *          pipeline_wireframe  =nullptr;
     vulkan::Pipeline *          pipeline_lines      =nullptr;
 
@@ -100,10 +103,15 @@ private:
 
 private:
 
+    bool InitPBRMaterial()
+    {
+
+    }
+
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert.spv"),
-                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert"),
+                                               OS_TEXT("res/shader/FlatColor.frag"));
         if(!material)
             return(false);
 

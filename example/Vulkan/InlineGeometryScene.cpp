@@ -11,8 +11,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
 class TestApp:public CameraAppFramework
 {
@@ -42,8 +42,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert.spv"),
-                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert"),
+                                               OS_TEXT("res/shader/FlatColor.frag"));
         if(!material)
             return(false);
 
@@ -138,7 +138,7 @@ private:
 
         material_instance->BindUBO("color_material",ubo_color);
 
-        if(!InitCameraUBO(material_instance,"world"))
+        if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
 
         material_instance->Update();
