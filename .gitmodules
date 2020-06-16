@@ -7,9 +7,6 @@
 [submodule "3rdpty/jsoncpp"]
 	path = 3rdpty/jsoncpp
 	url = https://github.com/open-source-parsers/jsoncpp
-[submodule "3rdpty/assimp"]
-	path = 3rdpty/assimp
-	url = https://github.com/assimp/assimp.git
 [submodule "CMCMakeModule"]
 	path = CMCMakeModule
 	url = https://github.com/hyzboy/CMCMakeModule

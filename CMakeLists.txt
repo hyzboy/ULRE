@@ -39,7 +39,6 @@ SET(ULRE    CMCore
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
-include_directories(${ULRE_3RDPTY_ROOT_PATH}/assimp/include)
 include_directories(${ULRE_3RDPTY_ROOT_PATH}/NvTriStrip)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
@@ -47,7 +46,6 @@ SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_subdirectory(3rdpty/assimp)
 add_subdirectory(src)
 
 add_subdirectory(example)
