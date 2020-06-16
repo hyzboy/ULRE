@@ -18,21 +18,9 @@ CreateProject(05.HQFilterTexture HQFilterTexture.cpp)
 CreateProject(06.Geometry2D Geometry2D.cpp)
 CreateProject(07.Geometry3D Geometry3D.cpp)
 CreateProject(08.SceneTree SceneTree.cpp)
-
-CreateProject(09.LoadModel LoadModel.cpp AssimpLoaderMesh.h AssimpLoaderMesh.cpp ViewModelFramework.h)
-target_link_libraries(09.LoadModel assimp)
-
 CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
-
 CreateProject(11.Atomsphere Atomsphere.cpp)
-
 #CreateProject(12.PBRBasic PBRBasic.cpp)
-
 #CreateProject(12.Deferred Deferred.cpp)
-
 CreateProject(13.DeferredModel DeferredModel.cpp)
-
 #CreateProject(14.AutoMaterial auto_material.cpp)
-
-CreateProject(14.SimplePBRForward SimplePBRForward.cpp AssimpLoaderMesh.h AssimpLoaderMesh.cpp)
-target_link_libraries(14.SimplePBRForward assimp)
