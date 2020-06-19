@@ -63,20 +63,17 @@ public:
 
         origin_camera=camera;
 
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
+
         move_speed=length(min_point,center_point)/100.0f;
 
         object_matrix=Matrix4f::identity;
         origin_matrix=object_matrix;
     }
 
-    bool InitCameraUBO(vulkan::MaterialInstance *mi,const UTF8String &world_matrix_name)
+    vulkan::Buffer *GetCameraMatrixBuffer()
     {
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
-
-        if(!ubo_world_matrix)
-            return(false);
-
-        return mi->BindUBO(world_matrix_name,ubo_world_matrix);
+        return ubo_world_matrix;
     }
 
     void Resize(int w,int h)override

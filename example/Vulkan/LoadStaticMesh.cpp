@@ -20,19 +20,14 @@ namespace hgl
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=1280;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
-/*vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const MeshData *mesh)
+vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const MeshData *mesh)
 {
     const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
-    uint draw_count=0;
-
-    if(mesh->indices16.GetCount()>0)
-        draw_count=mesh->indices16.GetCount();
-    else
-        draw_count=mesh->indices32.GetCount();
+    uint draw_count=mesh->indices_count;
 
     vulkan::Renderable *render_obj=nullptr;
     {
@@ -41,7 +36,7 @@ constexpr uint32_t SCREEN_HEIGHT=128;
         if(vertex_binding==-1)
             return(nullptr);
 
-        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->position.GetCount(),mesh->position.GetData());
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->vertex_count,mesh->position);
 
         render_obj=mtl->CreateRenderable();
         render_obj->Set(vertex_binding,vbo);
@@ -52,7 +47,7 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
     if(normal_binding!=-1)
     {
-        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->normal.GetCount(),mesh->normal.GetData());
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->vertex_count,mesh->normal);
 
         render_obj->Set(normal_binding,vbo);
     }
@@ -61,7 +56,7 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
     if(tagent_binding!=-1)
     {
-        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->tangent.GetCount(),mesh->tangent.GetData());
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->vertex_count,mesh->tangent);
 
         render_obj->Set(tagent_binding,vbo);
     }
@@ -70,15 +65,15 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
     if(bitagent_binding!=-1)
     {
-        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->bitangent.GetCount(),mesh->bitangent.GetData());
+        vulkan::VertexBuffer *vbo=db->CreateVBO(FMT_RGB32F,mesh->vertex_count,mesh->bitangent);
 
         render_obj->Set(bitagent_binding,vbo);
     }
 
-    if(mesh->indices16.GetCount()>0)
-        render_obj->Set(db->CreateIBO16(mesh->indices16.GetCount(),mesh->indices16.GetData()));
+    if(mesh->vertex_count<=0xFFFF)
+        render_obj->Set(db->CreateIBO16(mesh->indices_count,mesh->indices16));
     else
-        render_obj->Set(db->CreateIBO32(mesh->indices32.GetCount(),mesh->indices32.GetData()));
+        render_obj->Set(db->CreateIBO32(mesh->indices_count,mesh->indices32));
 
     db->Add(render_obj);
     return(render_obj);
@@ -86,12 +81,23 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 class TestApp:public ViewModelFramework
 {
+    struct
+    {
+        Vector4f color;
+        Vector4f abiment;
+    }color_material;
+
+    Vector3f sun_direction;
+
 private:
 
     vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
 
-    vulkan::Pipeline *          pipeline_wireframe  =nullptr;
+    vulkan::Buffer *            ubo_color           =nullptr;
+    vulkan::Buffer *            ubo_sun             =nullptr;
+
+    vulkan::Pipeline *          pipeline_solid      =nullptr;
     vulkan::Pipeline *          pipeline_lines      =nullptr;
 
 private:
@@ -111,8 +117,8 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert.spv"),
-                                               OS_TEXT("res/shader/FlatColor.frag.spv"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/LightPosition3D.vert"),
+                                               OS_TEXT("res/shader/VertexColor.frag"));
         if(!material)
             return(false);
 
@@ -125,8 +131,8 @@ private:
 
     void CreateRenderObject()
     {
-        const uint count=model_data->mesh_data.GetCount();
-        MeshData **md=model_data->mesh_data.GetData();
+        const uint count=model_data->mesh_list.GetCount();
+        MeshData **md=model_data->mesh_list.GetData();
 
         mesh_renderable         =new vulkan::Renderable *[count];
         mesh_renderable_instance=new RenderableInstance *[count];
@@ -134,7 +140,7 @@ private:
         for(uint i=0;i<count;i++)
         {
             mesh_renderable[i]=CreateMeshRenderable(db,material,*md);
-            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_wireframe,material_instance,mesh_renderable[i]);
+            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_solid,material_instance,mesh_renderable[i]);
             ++md;
         }
 
@@ -155,10 +161,22 @@ private:
 
     bool InitUBO()
     {
-        if(!InitCameraUBO(material_instance,"world"))
-            return(false);
+        LCG lcg;
 
+        color_material.color=Vector4f(1,1,1,1.0);
+        color_material.abiment.Set(0.25,0.25,0.25,1.0);
+        ubo_color=device->CreateUBO(sizeof(color_material),&color_material);
+
+        sun_direction=Vector3f::RandomDir(lcg);
+        ubo_sun=device->CreateUBO(sizeof(sun_direction),&sun_direction);
+
+        material_instance->BindUBO("world",GetCameraMatrixBuffer());
+        material_instance->BindUBO("color_material",ubo_color);
+        material_instance->BindUBO("sun",ubo_sun);
         material_instance->Update();
+
+        db->Add(ubo_color);
+        db->Add(ubo_sun);
         return(true);
     }
 
@@ -168,18 +186,17 @@ private:
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
         pipeline_creater->SetDepthTest(false);
         pipeline_creater->SetDepthWrite(false);
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_LINE);
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
         pipeline_creater->CloseCullFace();
         pipeline_creater->Set(PRIM_TRIANGLES);
 
-        pipeline_wireframe=pipeline_creater->Create();
+        pipeline_solid=pipeline_creater->Create();
 
-        if(!pipeline_wireframe)
+        if(!pipeline_solid)
             return(false);
 
-        db->Add(pipeline_wireframe);
+        db->Add(pipeline_solid);
 
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
         pipeline_creater->Set(PRIM_LINES);
 
         pipeline_lines=pipeline_creater->Create();
@@ -191,13 +208,13 @@ private:
         return(true);
     }
 
-    void CreateSceneNode(SceneNode *scene_node,ModelSceneNode *model_node)
+    void CreateSceneNode(SceneNode *scene_node,SceneNodeData *node_data)
     {
-        scene_node->SetLocalMatrix(model_node->local_matrix);
+        scene_node->SetLocalMatrix(node_data->local_matrix);
 
         {
-            const uint count=model_node->mesh_index.GetCount();
-            const uint32 *mesh_index=model_node->mesh_index.GetData();
+            const uint count=node_data->mesh_count;
+            const uint32 *mesh_index=node_data->mesh_index;
 
             for(uint i=0;i<count;i++)
             {
@@ -208,8 +225,8 @@ private:
         }
 
         {
-            const uint count=model_node->children_node.GetCount();
-            ModelSceneNode **sub_model_node=model_node->children_node.GetData();
+            const uint count=node_data->sub_nodes.GetCount();
+            SceneNodeData **sub_model_node=node_data->sub_nodes.GetData();
 
             for(uint i=0;i<count;i++)
             {
@@ -243,27 +260,26 @@ public:
 
         CreateRenderObject();
 
-        render_root.Add(axis_renderable_instance);
-        render_root.Add(bbox_renderable_instance);
+        //render_root.Add(axis_renderable_instance);
+        //render_root.Add(bbox_renderable_instance);
 
         CreateSceneNode(render_root.CreateSubNode(),model_data->root_node);
 
         return(true);
     }
 };//class TestApp:public ViewModelFramework
-*/
 
 int os_main(const int argc,const os_char **argv)
 {
-    //TestApp app;
+    TestApp app;
 
     ModelData *model_data=LoadModelFromFile(argv[1]);
 
     if(!model_data)
         return -1;
 
-    //if(app.Init(model_data))
-    //    while(app.Run());
+    if(app.Init(model_data))
+        while(app.Run());
 
     if(model_data)
         delete model_data;
