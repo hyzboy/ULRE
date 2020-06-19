@@ -167,6 +167,64 @@ namespace hgl
                     return(true);
                 }
 
+                SceneNodeData *LoadNode(const int level)
+                {
+                    #ifdef _DEBUG
+                    AutoDeleteArray<char> spaces=new char[level+1];
+
+                    memset(spaces,' ',level);
+                    spaces[level]=0;
+                    #endif//_DEBUG
+
+                    SceneNodeData *node=new SceneNodeData;
+
+                    memcpy(&(node->local_matrix),sp,sizeof(Matrix4f));
+                    sp+=sizeof(Matrix4f);
+
+                    {
+                        const uint8 name_len=*sp++;
+
+                        node->name.SetString((char *)sp,name_len);
+                        sp+=name_len;
+
+                        LOG_INFO(spaces+UTF8String("Node name: ")+node->name);
+                    }
+
+                    {
+                        node->mesh_count=*(uint32 *)sp;
+                        sp+=sizeof(uint32);
+
+                        if(node->mesh_count>0)
+                        {
+                            node->mesh_index=(const uint32 *)sp;
+
+                            #ifdef _DEBUG
+                            const uint32 *mi=node->mesh_index;
+
+                            for(uint i=0;i<node->mesh_count;i++)
+                                LOG_INFO(spaces+UTF8String(" ")+UTF8String::valueOf(i)+UTF8String(" : ")+md->mesh_name[*mi++]);
+                            #endif//_DEBUG
+
+                            sp+=node->mesh_count*sizeof(uint32);
+                        }
+                    }
+
+                    {
+                        const uint32 child_count=*(uint32 *)sp;
+                        sp+=sizeof(uint32);
+
+                        if(child_count>0)
+                        {
+                            LOG_INFO(spaces+UTF8String("Sub-node Count: ")+UTF8String::valueOf(child_count));
+
+                            for(uint i=0;i<child_count;i++)
+                                node->sub_nodes.Add(LoadNode(level+1));
+                        }
+                    }
+
+                    return node;
+                }
+
             public:
 
                 LoadModelData(uint8 *source,const uint8 *s)
@@ -203,6 +261,12 @@ namespace hgl
 
                         md->mesh_list.Add(mesh);
                     }
+
+                    LOG_INFO(OS_TEXT("Load Scene Tree"));
+
+                    Load(md->bounding_box);
+
+                    md->root_node=LoadNode(1);
 
                     return(true);
                 }

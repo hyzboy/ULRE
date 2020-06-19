@@ -14,7 +14,8 @@ namespace hgl
 
             Matrix4f local_matrix;
 
-            List<uint32> mesh_index;
+            uint32 mesh_count;
+            const uint32 *mesh_index;
 
             ObjectList<SceneNodeData> sub_nodes;
         };//struct SceneNodeData
