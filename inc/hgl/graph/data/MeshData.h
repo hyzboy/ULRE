@@ -10,10 +10,10 @@ namespace hgl
     {        
         struct MeshData
         {
-            int index;
-            uint32 vertex_count;            ///<顶点数量
+            int index=-1;
+            uint32 vertex_count=0;            ///<顶点数量
 
-            uint8 ntb;
+            uint8 ntb=0;
 
             float *position;
             float *normal;
@@ -25,14 +25,14 @@ namespace hgl
                 float *binormal;
             };
 
-            uint32 color_count;
-            uint8 **colors;
+            uint32 color_count=0;
+            uint8 **colors=nullptr;
 
-            uint32 uv_count;
-            const uint8 *uv_component;
-            float **uv;
+            uint32 uv_count=0;
+            const uint8 *uv_component=nullptr;
+            float **uv=nullptr;
 
-            uint32 indices_count;
+            uint32 indices_count=0;
 
             union
             {
@@ -44,13 +44,6 @@ namespace hgl
             AABB bounding_box;
 
         public:
-
-            MeshData()
-            {
-                hgl_zero(this,sizeof(MeshData));
-
-                index=-1;
-            }
 
             ~MeshData()
             {
