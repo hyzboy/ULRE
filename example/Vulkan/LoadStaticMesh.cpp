@@ -5,9 +5,17 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderableInstance.h>
-
-#include"AssimpLoaderMesh.h"
 #include<hgl/graph/VertexBuffer.h>
+
+#include<hgl/graph/data/SceneNodeData.h>
+
+namespace hgl
+{
+    namespace graph
+    {
+        ModelData *LoadModelFromFile(const OSString &filename);
+    }
+}
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -15,7 +23,7 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const MeshData *mesh)
+/*vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const MeshData *mesh)
 {
     const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
@@ -243,22 +251,19 @@ public:
         return(true);
     }
 };//class TestApp:public ViewModelFramework
+*/
 
-#ifdef _WIN32
-int wmain(int argc,wchar_t **argv)
-#else
-int main(int argc,char **argv)
-#endif//
+int os_main(const int argc,const os_char **argv)
 {
-    TestApp app;
+    //TestApp app;
 
-    ModelData *model_data=AssimpLoadModel(argv[1]);
+    ModelData *model_data=LoadModelFromFile(argv[1]);
 
     if(!model_data)
         return -1;
 
-    if(app.Init(model_data))
-        while(app.Run());
+    //if(app.Init(model_data))
+    //    while(app.Run());
 
     if(model_data)
         delete model_data;
