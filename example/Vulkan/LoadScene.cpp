@@ -1,4 +1,4 @@
-#include<hgl/graph/data/SceneNodeData.h>
+﻿#include<hgl/graph/data/SceneNodeData.h>
 #include<hgl/graph/NTB.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/log/LogInfo.h>
@@ -34,7 +34,7 @@ namespace hgl
                     if(md->version!=1)
                         return(false);
 
-                    LOG_INFO(OS_TEXT("Load StaticMesh file begin, ver:")+OSString::valueOf(version));
+                    LOG_INFO(OS_TEXT("Load StaticMesh file begin, ver:")+OSString::valueOf(md->version));
                     return(true);
                 }
 
@@ -70,6 +70,9 @@ namespace hgl
                     box.maxPoint.x=*(float *)sp;sp+=sizeof(float);
                     box.maxPoint.y=*(float *)sp;sp+=sizeof(float);
                     box.maxPoint.z=*(float *)sp;sp+=sizeof(float);
+
+                    LOG_INFO(OS_TEXT("\tmin point: ")+OSString::valueOf(box.minPoint.x)+OS_TEXT(",")+OSString::valueOf(box.minPoint.y)+OS_TEXT(",")+OSString::valueOf(box.minPoint.z));
+                    LOG_INFO(OS_TEXT("\tmax point: ")+OSString::valueOf(box.maxPoint.x)+OS_TEXT(",")+OSString::valueOf(box.maxPoint.y)+OS_TEXT(",")+OSString::valueOf(box.maxPoint.z));
                 }
 
                 bool LoadMesh(MeshData *mesh)
@@ -84,12 +87,12 @@ namespace hgl
                     LOG_INFO(OS_TEXT("\tVertex: ")+OSString::valueOf(mesh->vertex_count));
 
                     mesh->position=(float *)sp;
-                    sp+=sizeof(float)*mesh->vertex_count;
+                    sp+=sizeof(float)*3*mesh->vertex_count;
 
                     if(mesh->ntb&NTB_BIT_NORMAL)
                     {
                         mesh->normal=(float *)sp;
-                        sp+=sizeof(float)*mesh->vertex_count;
+                        sp+=sizeof(float)*3*mesh->vertex_count;
 
                         LOG_INFO(OS_TEXT("\thas normal"));
                     }
@@ -97,7 +100,7 @@ namespace hgl
                     if(mesh->ntb&NTB_BIT_TANGENT)
                     {
                         mesh->tangent=(float *)sp;
-                        sp+=sizeof(float)*mesh->vertex_count;
+                        sp+=sizeof(float)*3*mesh->vertex_count;
 
                         LOG_INFO(OS_TEXT("\thas tangent"));
                     }
@@ -105,36 +108,44 @@ namespace hgl
                     if(mesh->ntb&NTB_BIT_BINORMAL)
                     {
                         mesh->binormal=(float *)sp;
-                        sp+=sizeof(float)*mesh->vertex_count;
+                        sp+=sizeof(float)*3*mesh->vertex_count;
 
                         LOG_INFO(OS_TEXT("\thas bitangent/binormal"));
                     }
 
                     {
                         mesh->color_count=*sp++;
-                        LOG_INFO(OS_TEXT("\tColor: ")+OSString::valueOf(mesh->vertex_count));
 
-                        mesh->colors=new uint8 *[mesh->color_count];
-                        for(uint i=0;i<mesh->color_count;i++)
+                        if(mesh->color_count)
                         {
-                            mesh->colors[i]=(uint8 *)sp;
-                            sp+=4*mesh->vertex_count;
+                            LOG_INFO(OS_TEXT("\tColor: ")+OSString::valueOf(mesh->color_count));
+
+                            mesh->colors=new uint8 *[mesh->color_count];
+                            for(uint i=0;i<mesh->color_count;i++)
+                            {
+                                mesh->colors[i]=(uint8 *)sp;
+                                sp+=4*mesh->vertex_count;
+                            }
                         }
                     }
 
                     {
                         mesh->uv_count=*sp++;
                         LOG_INFO(OS_TEXT("\tUV: ")+OSString::valueOf(mesh->uv_count));
-                        mesh->uv_component=sp;
-                        sp+=mesh->uv_count;
 
-                        mesh->uv=new float *[mesh->uv_count];
-                        for(uint i=0;i<mesh->uv_count;i++)
+                        if(mesh->uv_count>0)
                         {
-                            mesh->uv[i]=(float *)sp;
-                            sp+=sizeof(float)*mesh->uv_component[i]*mesh->vertex_count;
+                            mesh->uv_component=sp;
+                            sp+=mesh->uv_count;
 
-                            LOG_INFO(OS_TEXT("\t\tUV ")+OSString::valueOf(i)+OS_TEXT(" : ")+OSString::valueOf(mesh->uv_component[i]));
+                            mesh->uv=new float *[mesh->uv_count];
+                            for(uint i=0;i<mesh->uv_count;i++)
+                            {
+                                mesh->uv[i]=(float *)sp;
+                                sp+=sizeof(float)*mesh->uv_component[i]*mesh->vertex_count;
+
+                                LOG_INFO(OS_TEXT("\t\tUV ")+OSString::valueOf(i)+OS_TEXT(" : ")+OSString::valueOf(mesh->uv_component[i]));
+                            }
                         }
                     }
 
