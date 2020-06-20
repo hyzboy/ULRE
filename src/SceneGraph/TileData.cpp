@@ -1,4 +1,4 @@
-#include<hgl/graph/TileData.h>
+﻿#include<hgl/graph/TileData.h>
 #include<hgl/log/LogInfo.h>
 
 namespace hgl
@@ -65,13 +65,13 @@ namespace hgl
 
             tile_object[index]=obj;
 
-            tile_texture->ChangeImage(    left,
-                                        top,
-                                        tile_width,
-                                        tile_height,
-                                        data,
-                                        bytes,
-                                        format);
+            //tile_texture->ChangeImage(    left,
+            //                            top,
+            //                            tile_width,
+            //                            tile_height,
+            //                            data,
+            //                            bytes,
+            //                            format);
             //请保留这段代码，以便未来使用时该数据时不会使用
             //{
             //    vertex->Begin(index*6);

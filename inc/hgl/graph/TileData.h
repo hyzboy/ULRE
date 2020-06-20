@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_TILE_DATA_INCLUDE
+﻿#ifndef HGL_GRAPH_TILE_DATA_INCLUDE
 #define HGL_GRAPH_TILE_DATA_INCLUDE
 
 #include<hgl/graph/vulkan/VKTexture.h>
