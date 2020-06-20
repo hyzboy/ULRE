@@ -1,7 +1,7 @@
 ﻿// 5.LoadModel
 //  加载纯色无贴图模型
 
-#include"ViewModelFramework.h"
+#include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderableInstance.h>
@@ -79,7 +79,7 @@ vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const
     return(render_obj);
 }
 
-class TestApp:public ViewModelFramework
+class TestApp:public CameraAppFramework
 {
     struct
     {
@@ -89,18 +89,22 @@ class TestApp:public ViewModelFramework
 
     Vector3f sun_direction;
 
-private:
-
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-
     vulkan::Buffer *            ubo_color           =nullptr;
     vulkan::Buffer *            ubo_sun             =nullptr;
 
-    vulkan::Pipeline *          pipeline_solid      =nullptr;
-    vulkan::Pipeline *          pipeline_lines      =nullptr;
+private:
+
+    struct MP
+    {
+        vulkan::Material *          material            =nullptr;
+        vulkan::MaterialInstance *  material_instance   =nullptr;
+        vulkan::Pipeline *          pipeline            =nullptr;
+    }mp_line,mp_solid;
 
 private:
+
+    SceneNode   render_root;
+    RenderList  render_list;
 
     ModelData *model_data;
 
@@ -115,18 +119,52 @@ private:
 
 private:
 
-    bool InitMaterial()
+    bool InitPipeline(MP *mp,VkPrimitiveTopology primitive)
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/LightPosition3D.vert"),
-                                               OS_TEXT("res/shader/VertexColor.frag"));
-        if(!material)
+        AutoDelete<vulkan::PipelineCreater> 
+        pipeline_creater=new vulkan::PipelineCreater(device,mp->material,sc_render_target);
+        pipeline_creater->SetDepthTest(true);
+        pipeline_creater->SetDepthWrite(true);
+        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
+        pipeline_creater->CloseCullFace();
+        pipeline_creater->Set(primitive);
+
+        mp->pipeline=pipeline_creater->Create();
+
+        if(!mp->pipeline)
             return(false);
 
-        material_instance=material->CreateInstance();
-
-        db->Add(material);
-        db->Add(material_instance);
+        db->Add(mp->pipeline);
         return(true);
+    }
+
+    bool InitMaterial(MP *mp,const OSString &vs_file,const OSString &fs_file)
+    {
+        mp->material=shader_manage->CreateMaterial(vs_file,fs_file);
+        if(!mp->material)
+            return(false);
+
+        mp->material_instance=mp->material->CreateInstance();
+
+        db->Add(mp->material);
+        db->Add(mp->material_instance);
+        return(true);
+    }
+
+    bool InitMP(MP *mp,VkPrimitiveTopology primitive,const OSString &vs_file,const OSString &fs_file)
+    {
+        if(!InitMaterial(mp,vs_file,fs_file))
+            return(false);
+
+        if(!InitPipeline(mp,primitive))
+            return(false);
+
+        return(true);
+    }
+
+    RenderableInstance *CreateRenderableInstance(const MP &mp,vulkan::Renderable *r)
+    {
+        return db->CreateRenderableInstance(mp.pipeline,mp.material_instance,r);
     }
 
     void CreateRenderObject()
@@ -139,23 +177,25 @@ private:
 
         for(uint i=0;i<count;i++)
         {
-            mesh_renderable[i]=CreateMeshRenderable(db,material,*md);
-            mesh_renderable_instance[i]=db->CreateRenderableInstance(pipeline_solid,material_instance,mesh_renderable[i]);
+            mesh_renderable[i]=CreateMeshRenderable(db,mp_solid.material,*md);
+            mesh_renderable_instance[i]=CreateRenderableInstance(mp_solid,mesh_renderable[i]);
             ++md;
         }
 
         {
-            AxisCreateInfo aci(model_data->bounding_box);
+            AxisCreateInfo aci;//(model_data->bounding_box);
 
-            axis_renderable=CreateRenderableAxis(db,material,&aci);
-            axis_renderable_instance=db->CreateRenderableInstance(pipeline_lines,material_instance,axis_renderable);
+            aci.size.Set(1000,1000,1000);
+
+            axis_renderable=CreateRenderableAxis(db,mp_line.material,&aci);
+            axis_renderable_instance=CreateRenderableInstance(mp_line,axis_renderable);
         }
 
         {
             CubeCreateInfo cci(model_data->bounding_box);
 
-            bbox_renderable=CreateRenderableBoundingBox(db,material,&cci);
-            bbox_renderable_instance=db->CreateRenderableInstance(pipeline_lines,material_instance,bbox_renderable);
+            bbox_renderable=CreateRenderableBoundingBox(db,mp_line.material,&cci);
+            bbox_renderable_instance=CreateRenderableInstance(mp_line,bbox_renderable);
         }
     }
 
@@ -170,41 +210,17 @@ private:
         sun_direction=Vector3f::RandomDir(lcg);
         ubo_sun=device->CreateUBO(sizeof(sun_direction),&sun_direction);
 
-        material_instance->BindUBO("world",GetCameraMatrixBuffer());
-        material_instance->BindUBO("color_material",ubo_color);
-        material_instance->BindUBO("sun",ubo_sun);
-        material_instance->Update();
+        mp_line.material_instance->BindUBO("world",GetCameraMatrixBuffer());
+        mp_line.material_instance->Update();
+
+        mp_solid.material_instance->BindUBO("world",GetCameraMatrixBuffer());
+
+        mp_solid.material_instance->BindUBO("color_material",ubo_color);
+        mp_solid.material_instance->BindUBO("sun",ubo_sun);
+        mp_solid.material_instance->Update();
 
         db->Add(ubo_color);
         db->Add(ubo_sun);
-        return(true);
-    }
-
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->SetDepthTest(false);
-        pipeline_creater->SetDepthWrite(false);
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_TRIANGLES);
-
-        pipeline_solid=pipeline_creater->Create();
-
-        if(!pipeline_solid)
-            return(false);
-
-        db->Add(pipeline_solid);
-
-        pipeline_creater->Set(PRIM_LINES);
-
-        pipeline_lines=pipeline_creater->Create();
-
-        if(!pipeline_lines)
-            return(false);
-
-        db->Add(pipeline_lines);
         return(true);
     }
 
@@ -246,26 +262,39 @@ public:
 
         model_data=md;
 
-        if(!ViewModelFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT,model_data->bounding_box))
+        if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))//,model_data->bounding_box))
             return(false);
 
-        if(!InitMaterial())
+        camera.zfar=10240;
+
+        if(!InitMP(&mp_solid, PRIM_TRIANGLES,   OS_TEXT("res/shader/LightPosition3D.vert"),
+                                                OS_TEXT("res/shader/VertexColor.frag")))
+            return(false);
+
+        if(!InitMP(&mp_line,  PRIM_LINES,       OS_TEXT("res/shader/PositionColor3D.vert"),
+                                                OS_TEXT("res/shader/VertexColor.frag")))
             return(false);
 
         if(!InitUBO())
             return(false);
 
-        if(!InitPipeline())
-            return(false);
-
         CreateRenderObject();
 
-        //render_root.Add(axis_renderable_instance);
-        //render_root.Add(bbox_renderable_instance);
-
+        render_root.Add(axis_renderable_instance);
+        render_root.Add(bbox_renderable_instance);
+        
         CreateSceneNode(render_root.CreateSubNode(),model_data->root_node);
 
+        render_root.RefreshMatrix();
+        render_list.Clear();
+        render_root.ExpendToList(&render_list);
+
         return(true);
+    }
+    
+    void BuildCommandBuffer(uint32 index)
+    {
+        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
     }
 };//class TestApp:public ViewModelFramework
 
