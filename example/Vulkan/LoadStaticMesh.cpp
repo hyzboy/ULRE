@@ -214,6 +214,7 @@ private:
         mp_line.material_instance->Update();
 
         mp_solid.material_instance->BindUBO("world",GetCameraMatrixBuffer());
+        mp_solid.material_instance->BindUBO("fs_world",GetCameraMatrixBuffer());
 
         mp_solid.material_instance->BindUBO("color_material",ubo_color);
         mp_solid.material_instance->BindUBO("sun",ubo_sun);
@@ -268,7 +269,7 @@ public:
         camera.zfar=10240;
 
         if(!InitMP(&mp_solid, PRIM_TRIANGLES,   OS_TEXT("res/shader/LightPosition3D.vert"),
-                                                OS_TEXT("res/shader/VertexColor.frag")))
+                                                OS_TEXT("res/shader/DirectionLight.frag")))
             return(false);
 
         if(!InitMP(&mp_line,  PRIM_LINES,       OS_TEXT("res/shader/PositionColor3D.vert"),
