@@ -56,8 +56,12 @@ public:
         camera.type     =CameraType::Perspective;
         camera.width    =w;
         camera.height   =h;
+        camera.vp_width =w;
+        camera.vp_height=h;
         camera.center   =center_point;
         camera.eye      =eye;
+        camera.znear    =16;
+        camera.zfar     =256;
 
         camera.Refresh();      //更新矩阵计算
 
@@ -86,10 +90,10 @@ public:
     {
         const uint32_t index=AcquireNextImage();
 
-        camera.Refresh();                           //更新相机矩阵
-        ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
+//        camera.Refresh();                           //更新相机矩阵
+//        ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
         
-        render_root.RefreshMatrix(&object_matrix);
+        //render_root.RefreshMatrix(&object_matrix);
         render_list.Clear();
         render_root.ExpendToList(&render_list);
 
