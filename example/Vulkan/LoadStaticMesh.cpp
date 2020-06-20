@@ -194,6 +194,9 @@ private:
         {
             CubeCreateInfo cci(model_data->bounding_box);
 
+            cci.has_color=true;
+            cci.color.Set(1,1,1,1);
+
             bbox_renderable=CreateRenderableBoundingBox(db,mp_line.material,&cci);
             bbox_renderable_instance=CreateRenderableInstance(mp_line,bbox_renderable);
         }

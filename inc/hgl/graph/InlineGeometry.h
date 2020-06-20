@@ -94,12 +94,15 @@ namespace hgl
             Vector3f size;
             Vector2f tile;
 
+            bool has_color;
+            Vector4f color;
+
         public:
         
             void Set(const AABB &box)
             {
                 center=box.CenterPoint().xyz();
-                size=box.HalfSize().xyz();
+                size=box.Size().xyz();
             }
 
             CubeCreateInfo()
@@ -107,12 +110,16 @@ namespace hgl
                 center.Set(0,0,0);
                 size.Set(1,1,1);
                 tile.Set(1,1);
+
+                has_color=false;
             }
 
             CubeCreateInfo(const AABB &box)
             {
                 Set(box);
                 tile.Set(1,1);
+                
+                has_color=false;
             }
         };//struct CubeCreateInfo
 
