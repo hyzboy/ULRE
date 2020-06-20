@@ -307,7 +307,7 @@ public:
         camera.vp_width=w;
         camera.vp_height=h;
         camera.center.Set(0,0,0,1);
-        camera.eye.Set(0,100,100,1);      //xyz三个值不要一样，以方便调试
+        camera.eye.Set(10,10,10,1);      //xyz三个值不要一样，以方便调试
 
         camera.Refresh();      //更新矩阵计算
         

@@ -84,12 +84,13 @@ class TestApp:public CameraAppFramework
     struct
     {
         Vector4f color;
-        Vector4f abiment;
-    }color_material;
+        float metallic;
+        float roughness;
+    }pbr_material;
 
     Vector3f sun_direction;
 
-    vulkan::Buffer *            ubo_color           =nullptr;
+    vulkan::Buffer *            ubo_pbr_material    =nullptr;
     vulkan::Buffer *            ubo_sun             =nullptr;
 
 private:
@@ -206,9 +207,11 @@ private:
     {
         LCG lcg;
 
-        color_material.color=Vector4f(1,1,1,1.0);
-        color_material.abiment.Set(0.25,0.25,0.25,1.0);
-        ubo_color=device->CreateUBO(sizeof(color_material),&color_material);
+        pbr_material.color=Vector4f(1,1,1,1.0);
+        pbr_material.metallic=0.5;
+        pbr_material.roughness=0.5;
+
+        ubo_pbr_material=device->CreateUBO(sizeof(pbr_material),&pbr_material);
 
         sun_direction=Vector3f::RandomDir(lcg);
         ubo_sun=device->CreateUBO(sizeof(sun_direction),&sun_direction);
@@ -219,11 +222,11 @@ private:
         mp_solid.material_instance->BindUBO("world",GetCameraMatrixBuffer());
         mp_solid.material_instance->BindUBO("fs_world",GetCameraMatrixBuffer());
 
-        mp_solid.material_instance->BindUBO("color_material",ubo_color);
+        mp_solid.material_instance->BindUBO("pbr_material",ubo_pbr_material);
         mp_solid.material_instance->BindUBO("sun",ubo_sun);
         mp_solid.material_instance->Update();
 
-        db->Add(ubo_color);
+        db->Add(ubo_pbr_material);
         db->Add(ubo_sun);
         return(true);
     }
@@ -268,11 +271,9 @@ public:
 
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))//,model_data->bounding_box))
             return(false);
-
-        camera.zfar=10240;
-
-        if(!InitMP(&mp_solid, PRIM_TRIANGLES,   OS_TEXT("res/shader/LightPosition3D.vert"),
-                                                OS_TEXT("res/shader/DirectionLight.frag")))
+        
+        if(!InitMP(&mp_solid, PRIM_TRIANGLES,   OS_TEXT("res/shader/pbr_Light.vert"),
+                                                OS_TEXT("res/shader/pbr_DirectionLight.frag")))
             return(false);
 
         if(!InitMP(&mp_line,  PRIM_LINES,       OS_TEXT("res/shader/PositionColor3D.vert"),
