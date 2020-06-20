@@ -55,7 +55,7 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/LightPosition3D.vert"),
+        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/VertexLight.vert"),
                                                OS_TEXT("res/shader/VertexColor.frag"));
         if(!material)
             return(false);
