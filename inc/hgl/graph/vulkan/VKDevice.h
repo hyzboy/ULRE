@@ -11,6 +11,14 @@
 #include<hgl/graph/vulkan/VKRenderTarget.h>
 #include<hgl/graph/VertexBufferCreater.h>
 
+namespace hgl
+{
+    namespace graph
+    {
+        class TileData;
+    }//namespace graph
+}//namespace hgl
+
 VK_NAMESPACE_BEGIN
 class Device
 {
@@ -216,6 +224,8 @@ public:
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
 
     RenderTarget *CreateRenderTarget(Framebuffer *);
+
+    TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);               ///<创建一个Tile数据集
 };//class Device
 
 Device *CreateRenderDevice(Instance *inst,Window *win,const PhysicalDevice *physical_device=nullptr);

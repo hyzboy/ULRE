@@ -38,7 +38,8 @@ SET(RENDER_DEVICE_VULKAN_SOURCE VKMemory.cpp
                                 VKSemaphore.cpp
                                 VKFence.cpp
                                 VKRenderable.cpp
-                                VKSampler.cpp)
+                                VKSampler.cpp
+                                VKTileData.cpp)
 
 SET(RENDER_DEVICE_VULKAN_POD_SOURCE POD/VKPipelineCreateInfo.POD.cpp
                                     POD/VKTextureLoader.cpp)

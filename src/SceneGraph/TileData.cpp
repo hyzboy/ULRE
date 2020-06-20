@@ -1,63 +1,88 @@
 #include<hgl/graph/TileData.h>
+#include<hgl/log/LogInfo.h>
 
 namespace hgl
 {
     namespace graph
     {
-        namespace
+        TileData::TileData(Texture2D *tt,const uint tw,const uint th)
         {
-            void AnalyseSize(int &fw,int &fh,const int w,const int h,const int count,const int max_texture_size)
-			{
-				int total,tw,th,t;
+            tile_texture=tt;
 
-				fw=fh=0;
+            tile_width=tw;
+            tile_height=th;
 
-				tw=max_texture_size;
-				while(tw>=w)
-				{
-					th=max_texture_size;
-					while(th>=h)
-					{
-						t=(tw/w)*(th/h);
+            tile_rows=tile_texture->GetHeight()/tile_height;
+            tile_cols=tile_texture->GetWidth()/tile_width;
 
-						if(!fw)
-						{
-							fw=tw;
-							fh=th;
+            tile_max_count=tile_rows*tile_cols;
+            tile_count=0;
 
-							total=t;
-						}
-						else
-						{
-							if(t==count)
-							{
-								//正好，就要这么大的
+            NEW_NULL_ARRAY(tile_object,TileData::Object *,tile_max_count);
+        }
 
-								fw=tw;
-								fh=th;
+        TileData::~TileData()
+        {
+            SAFE_CLEAR(tile_texture);
+            SAFE_CLEAR_OBJECT_ARRAY(tile_object,tile_max_count);
+        }
 
-								return;
-							}
-							else
-							if(t>count)                //要比要求的最大值大
-							{
-								if(t<total)            //找到最接近最大值的
-								{
-									//比现在选中的更节省
-									fw=tw;
-									fh=th;
+        int TileData::FindSpace()
+        {
+            if(!tile_object)return(-1);
+            if(tile_count>=tile_max_count)return(-1);
 
-									total=t;
-								}
-							}
-						}
+            int n=tile_max_count;
 
-						th>>=1;
-					}
+            while(n--)
+                if(!(tile_object[n]))
+                    return(n);
 
-					tw>>=1;
-				}
-			}//void AnalyseSize
-        }//namespace
+            LOG_PROBLEM(OS_TEXT("无法在Tile数据区内找到足够的空间！"));
+            return(-1);
+        }
+        
+        void TileData::WriteTile(int index,TileData::Object *obj,void *data,uint bytes,VkFormat format,int ctw,int cth)
+        {
+            int col,row;
+            double left,top;
+
+            col=index%tile_cols;
+            row=index/tile_cols;
+
+            left=tile_width *col;
+            top =tile_height*row;
+
+            obj->index  =index;
+
+            obj->width    =(ctw==-1)?tile_width:ctw;
+            obj->height   =(cth==-1)?tile_height:cth;
+
+            obj->fl=left/double(tile_texture->GetWidth());
+            obj->ft=top /double(tile_texture->GetHeight());
+            obj->fw=double(obj->width)/double(tile_texture->GetWidth());
+            obj->fh=double(obj->height)/double(tile_texture->GetHeight());
+
+            tile_object[index]=obj;
+
+            tile_texture->ChangeImage(    left,
+                                        top,
+                                        tile_width,
+                                        tile_height,
+                                        data,
+                                        bytes,
+                                        format);
+            //请保留这段代码，以便未来使用时该数据时不会使用
+            //{
+            //    vertex->Begin(index*6);
+            //    texcoord->Begin(index*6);
+
+            //        texcoord->WriteRect(obj->fl,obj->ft,obj->fw,obj->fh);
+            //        vertex->WriteRect(0,0,obj->width,obj->height);
+
+            //    texcoord->End();
+            //    vertex->End();
+            //}
+        }
     }//namespace graph
 }//namespace hgl
