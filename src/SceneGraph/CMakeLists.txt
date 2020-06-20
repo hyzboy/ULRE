@@ -24,6 +24,7 @@ SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableInstance.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/RenderList.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/InlineGeometry.h
+                        ${ROOT_INCLUDE_PATH}/hgl/graph/TileData.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Mesh.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Material.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Spline.h
@@ -34,6 +35,7 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         SceneNode.cpp
                         SceneOrient.cpp
                         InlineGeometry.cpp
+                        TileData.cpp
                         #InlinePipeline.cpp
                         #Material.cpp
                         #Mesh.cpp
