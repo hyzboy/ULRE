@@ -141,6 +141,8 @@ private:
 
             ro_round_rectangle=CreateRenderableRoundRectangle(db,m2d.material,&rrci);
         }
+
+        camera.eye.Set(200,200,200,1.0);
     }
 
 public:
@@ -164,6 +166,8 @@ public:
 
             m2d.material_instance->BindUBO("color_material",ubo_color);
             m2d.material_instance->Update();
+
+            db->Add(ubo_color);
         }
 
         CreateRenderObject();
