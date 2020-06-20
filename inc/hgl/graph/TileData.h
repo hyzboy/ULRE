@@ -32,35 +32,35 @@ namespace hgl
 
             TileData::Object **tile_object;                                                         ///<所有的Tile对象
 
-            int tile_width,tile_height;                                                             ///<Tile的宽和高
-			int tile_count,tile_total;																///<当前Tile数量与最大数量
-			int tile_rows,tile_cols;																///<贴图中可用的Tile行数和列数
+            uint tile_width,tile_height;                                                            ///<Tile的宽和高
+			uint tile_count,tile_max_count;														    ///<当前Tile数量与最大数量
+			uint tile_rows,tile_cols;																///<贴图中可用的Tile行数和列数
 
         protected:
         
 			int FindSpace();																		///<寻找一个空位
-			void WriteTile(int,TileData::Object *,void *,uint,uint32,int,int);	                    ///<写入一个Tile
+			void WriteTile(int,TileData::Object *,void *,uint,VkFormat,int,int);	                    ///<写入一个Tile
             
 		public:
 
 			int			GetWidth	()const{return tile_width;}										///<取得Tile宽
 			int			GetHeight	()const{return tile_height;}									///<取得Tile高
 			int			GetCount	()const{return tile_count;}										///<取得Tile数量
-			int			GetMaxCount	()const{return tile_total;}										///<取得Tile最大数量
-			int			GetFreeCount()const{return tile_total-tile_count;}							///<取得空余Tile数量
+			int			GetMaxCount	()const{return tile_max_count;}									///<取得Tile最大数量
+			int			GetFreeCount()const{return tile_max_count-tile_count;}						///<取得空余Tile数量
 
 			Texture2D *	GetTexture	()const{return tile_texture;}									///<取得贴图
 
         public:
 
-			TileData(int,int,int,unsigned int);
+			TileData(Texture2D *,const uint tw,const uint th);
 			virtual ~TileData();
 
-			TileData::Object *Add(void *,unsigned int,uint32,int=-1,int=-1);			            ///<增加一个Tile
+			TileData::Object *Add(void *,VkFormat,uint32,int=-1,int=-1);			                ///<增加一个Tile
 //			TileData::Object *Add(Bitmap2D *,int=-1,int=-1);										    ///<增加一个Tile
 
 			bool Delete(TileData::Object *);														///<删除一个Tile
-			bool Change(TileData::Object *,void *,unsigned int,uint32,int=-1,int=-1);	            ///<更改一个Tile的数据内容
+			bool Change(TileData::Object *,void *,VkFormat,uint32,int=-1,int=-1);	                ///<更改一个Tile的数据内容
 			void Clear();                                                                           ///<清除Tile数据
         };//class TileData
     }//namespace graph

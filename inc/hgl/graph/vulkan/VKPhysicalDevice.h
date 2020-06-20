@@ -88,6 +88,8 @@ public:
     VkFormat GetDepthFormat(bool lower_to_high=true)const;
     VkFormat GetDepthStencilFormat(bool lower_to_high=true)const;
 
+public:
+
     const uint32_t GetMaxImage1D            ()const{return properties.limits.maxImageDimension1D;}
     const uint32_t GetMaxImage2D            ()const{return properties.limits.maxImageDimension2D;}
     const uint32_t GetMaxImage3D            ()const{return properties.limits.maxImageDimension3D;}
@@ -102,7 +104,18 @@ public:
 
     const uint32_t GetMaxColorAttachments       ()const{return properties.limits.maxColorAttachments;}
 
-    const void     GetPointSize(float &,float &)
+    const void     GetPointSize(float &granularity,float &min_point,float &max_point)
+    {
+        granularity =properties.limits.pointSizeGranularity;
+        min_point   =properties.limits.pointSizeRange[0];
+        max_point   =properties.limits.pointSizeRange[1];
+    }
 
+    const void      GetLineWidth(float &granularity,float &min_width,float &max_width)
+    {
+        granularity =properties.limits.lineWidthGranularity;
+        min_width   =properties.limits.lineWidthRange[0];
+        max_width   =properties.limits.lineWidthRange[1];
+    }
 };//class PhysicalDevice
 VK_NAMESPACE_END
