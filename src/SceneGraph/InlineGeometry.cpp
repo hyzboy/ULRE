@@ -1263,6 +1263,20 @@ namespace hgl
                 }
             }
 
+            if(cci->has_color)
+            {
+                float *color_pointer=gc.GetColorPointer();
+
+                if(color_pointer)
+                {
+                    for(uint i=0;i<8;i++)
+                    {
+                        memcpy(color_pointer,&(cci->color),4*sizeof(float));
+                        color_pointer+=4;
+                    }
+                }
+            }
+
             gc.CreateIBO16(24,indices);
 
             return gc.Finish();
