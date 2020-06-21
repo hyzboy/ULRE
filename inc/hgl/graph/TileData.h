@@ -15,6 +15,8 @@ namespace hgl
          */
         class TileData                                                                               ///Tile纹理管理
         {
+            Device *device;
+
         public:
 
             struct Object
@@ -28,18 +30,22 @@ namespace hgl
 
         protected:
 
+            vulkan::Buffer *tile_buffer;                                                            ///<Tile暂存缓冲区
+
             Texture2D *tile_texture;                                                                ///<TileData所用的纹理对象
 
             TileData::Object **tile_object;                                                         ///<所有的Tile对象
 
             uint tile_width,tile_height;                                                            ///<Tile的宽和高
+            uint32_t tile_bytes;                                                                    ///<一个tile字节数
 			uint tile_count,tile_max_count;														    ///<当前Tile数量与最大数量
 			uint tile_rows,tile_cols;																///<贴图中可用的Tile行数和列数
 
         protected:
         
 			int FindSpace();																		///<寻找一个空位
-			void WriteTile(int,TileData::Object *,void *,uint,VkFormat,int,int);	                    ///<写入一个Tile
+			void WriteTile( const int,TileData::Object *,
+                            const void *,const uint,const VkFormat,const int,const int);	        ///<写入一个Tile数据
             
 		public:
 
@@ -53,15 +59,15 @@ namespace hgl
 
         public:
 
-			TileData(Texture2D *,const uint tw,const uint th);
+			TileData(Device *,Texture2D *,const uint tw,const uint th);
 			virtual ~TileData();
 
-			TileData::Object *Add(void *,VkFormat,uint32,int=-1,int=-1);			                ///<增加一个Tile
+			TileData::Object *Add(const void *,const uint,const VkFormat,const int=-1,const int=-1);                    ///<增加一个Tile
 //			TileData::Object *Add(Bitmap2D *,int=-1,int=-1);										    ///<增加一个Tile
 
-			bool Delete(TileData::Object *);														///<删除一个Tile
-			bool Change(TileData::Object *,void *,VkFormat,uint32,int=-1,int=-1);	                ///<更改一个Tile的数据内容
-			void Clear();                                                                           ///<清除Tile数据
+			bool Delete(TileData::Object *);														                    ///<删除一个Tile
+			bool Change(TileData::Object *,const void *,const uint,const VkFormat,const int=-1,const int=-1);	        ///<更改一个Tile的数据内容
+			void Clear();                                                                                               ///<清除Tile数据
         };//class TileData
     }//namespace graph
 }//namespace hgl
