@@ -51,7 +51,7 @@ namespace hgl
             return(-1);
         }
         
-        void TileData::WriteTile(const int index,TileData::Object *obj,const void *data,const uint bytes,const VkFormat format,int ctw,int cth)
+        void TileData::WriteTile(const int index,TileData::Object *obj,const void *data,const uint bytes,int ctw,int cth)
         {
             int col,row;
             double left,top;
@@ -101,12 +101,11 @@ namespace hgl
         * 增加一个Tile
         * @param data 图形原始数据
         * @param bytes 图形原始数据字节数
-        * @param format 图形的色彩格式
         * @param ctw 当前tile宽度,-1表示等同全局设置
         * @param cth 当前tile高度,-1表示等同全局设置
         * @return 为增加的Tile创建的对象
         */
-        TileData::Object *TileData::Add(const void *data,const uint bytes,const VkFormat format,const int ctw,const int cth)
+        TileData::Object *TileData::Add(const void *data,const uint bytes,const int ctw,const int cth)
         {
             if(!tile_object)return(nullptr);
 
@@ -121,7 +120,7 @@ namespace hgl
 
                TileData::Object *obj=new TileData::Object;
 
-            WriteTile(index,obj,data,bytes,format,ctw,cth);
+            WriteTile(index,obj,data,bytes,ctw,cth);
 
             tile_count++;
             return(obj);
@@ -165,12 +164,11 @@ namespace hgl
         * @param obj 要更改的Tile的对象指针
         * @param data 图形原始数据
         * @param bytes 图形原始数据字节数
-        * @param format 图形的色彩格式
         * @param ctw 当前tile宽度,-1表示等同全局设置
         * @param cth 当前tile高度,-1表示等同全局设置
         * @return 更改是否成功
         */
-        bool TileData::Change(TileData::Object *obj,const void *data,const uint bytes,const VkFormat format,const int ctw,const int cth)
+        bool TileData::Change(TileData::Object *obj,const void *data,const uint bytes,const int ctw,const int cth)
         {
             if(!tile_object)return(false);
 
@@ -183,7 +181,7 @@ namespace hgl
                 }
                 else
                 {
-                    WriteTile(obj->index,obj,data,bytes,format,ctw,cth);
+                    WriteTile(obj->index,obj,data,bytes,ctw,cth);
 
                     return(true);
                 }
