@@ -104,11 +104,11 @@ public:
 
     const uint32_t GetMaxColorAttachments       ()const{return properties.limits.maxColorAttachments;}
 
-    const void     GetPointSize(float &granularity,float &min_point,float &max_point)
+    const void     GetPointSize(float &granularity,float &min_size,float &max_size)
     {
         granularity =properties.limits.pointSizeGranularity;
-        min_point   =properties.limits.pointSizeRange[0];
-        max_point   =properties.limits.pointSizeRange[1];
+        min_size    =properties.limits.pointSizeRange[0];
+        max_size    =properties.limits.pointSizeRange[1];
     }
 
     const void      GetLineWidth(float &granularity,float &min_width,float &max_width)
