@@ -108,7 +108,13 @@ public: //Buffer相关
 
 public: //Image
 
-    VkImage CreateImage(const VkFormat format,uint32_t width,uint32_t height,const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage1D           (const VkFormat format,const uint32_t width,const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage1DArray      (const VkFormat format,const uint32_t width,const uint32_t layer,const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage2D           (const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage2DArray      (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t layer,const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage3D           (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t depth,const uint usage,const VkImageTiling tiling);
+    VkImage CreateImageCubemap      (const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling);
+
     void DestoryImage(VkImage);
 
     Memory *CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);

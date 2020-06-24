@@ -64,7 +64,7 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t
             return(nullptr);
     }
 
-    VkImage img=CreateImage(format,width,height,usage,tiling);
+    VkImage img=CreateImage2D(format,width,height,usage,tiling);
 
     if(!img)return(nullptr);
 

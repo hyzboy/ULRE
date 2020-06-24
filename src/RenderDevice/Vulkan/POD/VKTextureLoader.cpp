@@ -157,4 +157,67 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
         return tex;
     }
 }
+
+struct Texture2DData
+{
+    uint32 width;
+    uint32 height;
+    VkFormat format;
+    uint32 bytes;
+};//
+
+void *LoadTextureFromFile(const OSString &filename)
+{
+    io::OpenFileInputStream fis(filename);
+
+    if(!fis)
+    {
+        LOG_ERROR(OS_TEXT("[ERROR] open texture file<")+filename+OS_TEXT("> failed."));
+        return(nullptr);
+    }
+
+    const int64 file_length=fis->GetSize();
+
+    if(file_length<sizeof(Tex2DFileHeader))
+        return(nullptr);
+
+    Tex2DFileHeader file_header;
+
+    if(fis->Read(&file_header,sizeof(Tex2DFileHeader))!=sizeof(Tex2DFileHeader))
+        return(nullptr);
+
+    if(file_header.version!=2)
+        return(nullptr);
+
+    if(file_header.total_bytes()==0)
+        return(nullptr);
+
+    const VkFormat format=file_header.vk_format();
+
+    if(!CheckVulkanFormat(format))
+        return(nullptr);
+
+    const uint total_bytes=file_header.total_bytes();
+
+    if(file_length<sizeof(Tex2DFileHeader)+total_bytes)
+        return(nullptr);
+
+    {
+        vulkan::Buffer *buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
+
+        if(!buf)
+            return(nullptr);
+
+        void *pixel_data=buf->Map();
+
+        fis->Read(pixel_data,total_bytes);
+
+        buf->Unmap();
+
+        Texture2D *tex=device->CreateTexture2D(format,buf,file_header.width,file_header.height);
+
+        delete buf;
+        return tex;
+    }    
+}
 VK_NAMESPACE_END
