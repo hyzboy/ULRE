@@ -114,4 +114,24 @@ Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_sh
 
     return(VK_NAMESPACE::CreateMaterial(device,smm));
 }
+
+Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)const
+{
+    if(!vertex_shader_module
+     ||!geometry_shader_module
+     ||!fragment_shader_module)
+        return(nullptr);
+
+    if(vertex_shader_module->GetStage()!=VK_SHADER_STAGE_VERTEX_BIT)return(nullptr);
+    if(geometry_shader_module->GetStage()!=VK_SHADER_STAGE_GEOMETRY_BIT)return(nullptr);
+    if(fragment_shader_module->GetStage()!=VK_SHADER_STAGE_FRAGMENT_BIT)return(nullptr);
+
+    ShaderModuleMap *smm=new ShaderModuleMap;
+
+    smm->Add(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_module);
+    smm->Add(VK_SHADER_STAGE_GEOMETRY_BIT,geometry_shader_module);
+    smm->Add(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_module);
+
+    return(VK_NAMESPACE::CreateMaterial(device,smm));
+}
 VK_NAMESPACE_END
