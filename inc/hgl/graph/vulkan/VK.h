@@ -79,11 +79,11 @@ struct PushConstant
 
 constexpr uint32_t MAX_PUSH_CONSTANT_BYTES=sizeof(PushConstant);
 
-inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d)
+inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d,const uint32 depth=1)
 {
     e3d.width   =e2d.width;
     e3d.height  =e2d.height;
-    e3d.depth   =1;
+    e3d.depth   =depth;
 }
 
 inline void debug_out(const hgl::List<VkLayerProperties> &layer_properties)

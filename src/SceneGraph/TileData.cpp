@@ -95,7 +95,6 @@ namespace hgl
             //    vertex->End();
             //}
         }
-        
 
         /**
         * 增加一个Tile

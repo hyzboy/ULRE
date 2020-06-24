@@ -87,7 +87,7 @@ namespace
     {
         VkExtent3D extent;
 
-        copy(extent,ext);
+        copy(extent,ext,1);
         return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,VK_IMAGE_ASPECT_DEPTH_BIT,img);
     }
 
