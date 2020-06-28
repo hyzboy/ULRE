@@ -21,7 +21,10 @@ CreateProject(08.SceneTree SceneTree.cpp)
 CreateProject(09.LoadStaticMesh LoadStaticMesh.cpp LoadScene.cpp)
 CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
 CreateProject(11.Atomsphere Atomsphere.cpp)
+CreateProject(12.DrawText DrawText.cpp)
+
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
-CreateProject(13.DeferredModel DeferredModel.cpp)
+#CreateProject(13.DeferredModel DeferredModel.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
+
