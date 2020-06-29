@@ -1,0 +1,10 @@
+/.project
+*.log
+*.kdev4
+*.suo
+*.db
+*.ipch
+*.tlog
+*.obj
+.vs
+/build
