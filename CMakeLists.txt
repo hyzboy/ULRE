@@ -19,6 +19,8 @@ use_cm_module(Platform)
 use_cm_module(AssetsManage)
 use_cm_module(SceneGraph)
 
+OPTION(SUPPORT_QT_VULKAN	OFF)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     include_directories(${ULRE_3RDPTY_ROOT_PATH}/jsoncpp/include)
     add_subdirectory(3rdpty/jsoncpp)
@@ -49,3 +51,8 @@ SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(src)
 
 add_subdirectory(example)
+
+IF(SUPPORT_QT_VULKAN)
+    fix_project_version(1,1)
+    add_project_meta(META_FILES_TO_INCLUDE)
+ENDIF(SUPPORT_QT_VULKAN)

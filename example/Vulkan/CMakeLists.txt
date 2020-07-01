@@ -9,6 +9,20 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan")
 endmacro()
 
+macro(CreateQtProject name)
+    add_executable(${name} ${ARGN} VulkanAppFramework.h)
+
+    set(IDENTIFIER "com.hyzgame.texconv")
+
+    target_link_libraries(${name} ${ULRE} Qt5::Core Qt5::Gui Qt5::Widgets)
+
+    IF(WIN32)
+        set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+    ENDIF()
+
+    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan")
+endmacro()
+
 CreateProject(00.triangle first_triangle.cpp)
 CreateProject(01.FragCoord FragCoordTest.cpp)
 CreateProject(02.indices_rect indices_rect.cpp)
@@ -22,6 +36,15 @@ CreateProject(09.LoadStaticMesh LoadStaticMesh.cpp LoadScene.cpp)
 CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
 CreateProject(11.Atomsphere Atomsphere.cpp)
 CreateProject(12.DrawText DrawText.cpp)
+
+IF(SUPPORT_QT_VULKAN)
+include(QtCommon)
+CreateQtProject(13.VulkanQT VulkanQtApp.cpp 
+                            QtVulkanWindow.cpp
+                            QtVulkanWindow.h
+                            QtVulkanMainWindow.h
+                            QtVulkanMainWindow.cpp)
+ENDIF(SUPPORT_QT_VULKAN)
 
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
