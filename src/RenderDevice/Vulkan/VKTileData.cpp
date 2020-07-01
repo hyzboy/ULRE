@@ -95,6 +95,6 @@ TileData *Device::CreateTileData(const VkFormat format,const uint width,const ui
 	else
 		return(nullptr);
 
-	return(new TileData(tex,width,height));
+	return(new TileData(this,tex,width,height));
 }
 VK_NAMESPACE_END
