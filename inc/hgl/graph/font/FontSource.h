@@ -3,6 +3,7 @@
 
 #include<hgl/type/StrChar.h>
 #include<hgl/type/Map.h>
+#include<hgl/type/Set.h>
 #include<hgl/graph/font/Font.h>
 
 using namespace hgl;
@@ -37,6 +38,8 @@ namespace hgl
 
 			MapObject<u32char,FontBitmap> chars_bitmap;												///<字符位图
 
+			Set<void *> ref_object;
+
 		protected:
 
 			virtual bool MakeCharBitmap(FontBitmap *,u32char)=0;									///<产生字体数据
@@ -48,6 +51,10 @@ namespace hgl
 			virtual ~FontSource()=default;
 
 			FontBitmap *GetCharBitmap(const u32char &);												///<取得字符位图数据
+
+			void RefAcquire(void *);																///<引用请求
+			void RefRelease(void *);																///<引用释放
+			int  RefCount()const{return ref_object.GetCount();}										///<获取引用对象数量
 		};//class FontSource
 	}//namespace graph
 }//namespace hgl
