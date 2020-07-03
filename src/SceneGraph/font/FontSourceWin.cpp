@@ -57,11 +57,6 @@ namespace hgl
 			}
 		}//namespace
 
-		FontSource *CreateWinBitmapFont(const Font &f)
-		{
-			return(new WinBitmapFont(f));
-		}
-
 		WinBitmapFont::WinBitmapFont(const Font &f):FontSource(f)
 		{
 			hdc=CreateCompatibleDC(0);
@@ -145,6 +140,11 @@ namespace hgl
 				ConvertBitmap(bmp->data,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/bmp->h);
 
 			return(true);
+		}
+
+		FontSource *CreateFontSource(const Font &f)
+		{
+			return(new WinBitmapFont(f));
 		}
 	}//namespace graph
 }//namespace hgl

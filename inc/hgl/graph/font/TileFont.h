@@ -15,22 +15,14 @@ namespace hgl
          */
         class TileFont
         {
-            using FontSourcePointer=FontSource *;
-            using FontSourceTable=FontSourcePointer[(size_t)UnicodeBlock::RANGE_SIZE];
-
-            FontSourceTable source_map;
 
             TileData *tile_data;
 
         public:
 
-            TileFont()
-            {
-                hgl_zero(source_map);
-            }            
+            TileFont(TileData *td,FontSource *fs);
+            virtual ~TileFont();
         };//class TileFont
-
-        TileFont *CreateTileFont(const Font &,const int=-1);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TILE_FONT_INCLUDE
