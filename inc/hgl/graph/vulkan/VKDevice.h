@@ -64,6 +64,8 @@ public:
 
 public:
 
+                const VkExtent2D &  GetSwapchainSize    ()const {return swapchain->extent;}
+
                 bool                Resize              (const VkExtent2D &);
                 bool                Resize              (const uint32_t &w,const uint32_t &h)
                 {
