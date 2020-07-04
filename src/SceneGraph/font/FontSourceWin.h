@@ -8,7 +8,7 @@ namespace hgl
 {
 	namespace graph
 	{
-		class WinBitmapFont:public FontSource
+		class WinBitmapFont:public FontSourceSingle
 		{
     		HDC hdc;
 			HFONT hfont;    		
@@ -18,7 +18,7 @@ namespace hgl
 
 			uint ggo;
 
-			unsigned char *buffer;
+			uint8 *buffer;
 			int buffer_size;
 
 		protected:
