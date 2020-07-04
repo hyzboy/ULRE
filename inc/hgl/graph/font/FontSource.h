@@ -5,6 +5,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/Set.h>
 #include<hgl/graph/font/Font.h>
+#include<hgl/type/UnicodeBlocks.h>
 
 using namespace hgl;
 
@@ -34,11 +35,29 @@ namespace hgl
 		{
 		protected:
 
+			Set<void *> ref_object;
+
+		public:
+
+			virtual ~FontSource()=default;
+
+			virtual FontBitmap *GetCharBitmap(const u32char &)=0;									///<取得字符位图数据
+
+			void RefAcquire(void *);																///<引用请求
+			void RefRelease(void *);																///<引用释放
+			int  RefCount()const{return ref_object.GetCount();}										///<获取引用对象数量
+		};//class FontSource
+
+		/**
+		 * 文字位图单一数据源
+		 */
+		class FontSourceSingle:public FontSource
+		{
+		protected:
+
 			Font fnt;
 
 			MapObject<u32char,FontBitmap> chars_bitmap;												///<字符位图
-
-			Set<void *> ref_object;
 
 		protected:
 
@@ -47,15 +66,36 @@ namespace hgl
 
 		public:
 
-			FontSource(const Font &f){fnt=f;}
-			virtual ~FontSource()=default;
+			FontSourceSingle(const Font &f){fnt=f;}
+			virtual ~FontSourceSingle()=default;
 
-			FontBitmap *GetCharBitmap(const u32char &);												///<取得字符位图数据
+			FontBitmap *GetCharBitmap(const u32char &ch) override;
+		};//class FontSourceSingle:public FontSource
 
-			void RefAcquire(void *);																///<引用请求
-			void RefRelease(void *);																///<引用释放
-			int  RefCount()const{return ref_object.GetCount();}										///<获取引用对象数量
-		};//class FontSource
+		/**
+		 * 文字位图多重数据源
+		 */
+        class FontSourceMulti:public FontSource
+        {
+            using FontSourcePointer=FontSource *;
+
+			FontSource *default_source;
+			Map<UnicodeBlock,FontSourcePointer> source_map;
+
+        public:
+
+			/**
+			 * @param dfs 缺省字符数据源
+			 */
+            FontSourceMulti(FontSource *dfs);
+            virtual ~FontSourceMulti();
+
+            void Add(UnicodeBlock,FontSource *);
+			void Remove(UnicodeBlock);
+			void Remove(FontSource *);
+
+			FontBitmap *GetCharBitmap(const u32char &ch) override;
+        };//class FontSourceMulti:public FontSource
 	}//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_FONT_SOURCE_INCLUDE

@@ -43,9 +43,24 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         )
 
 file(GLOB FONT_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/font/*.*)
-file(GLOB FONT_SOURCE font/*.*)
+
+SET(FONT_SOURCE font/Font.cpp
+                font/FontSource.cpp
+                font/FontSourceSingle.cpp
+                font/FontSourceMulti.cpp
+                font/FontSourceManage.cpp
+                font/TileFont.cpp)
 
 SOURCE_GROUP("Font" FILES ${FONT_HEADER} ${FONT_SOURCE})
+
+IF(WIN32)
+    SET(FONT_SOURCE_OS  font/FontSourceWin.cpp
+                        font/FontSourceWin.h)
+
+    SOURCE_GROUP("Font\\Windows" FILES ${FONT_SOURCE_OS})
+
+    SET(FONT_SOURCE ${FONT_SOURCE} ${FONT_SOURCE_OS})
+ENDIF(WIN32)
 
 SOURCE_GROUP("Header Files" FILES ${SCENE_GRAPH_HEADER})
 SOURCE_GROUP("Source Files" FILES ${SCENE_GRAPH_SOURCE})

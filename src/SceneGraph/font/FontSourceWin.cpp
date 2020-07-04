@@ -57,7 +57,7 @@ namespace hgl
 			}
 		}//namespace
 
-		WinBitmapFont::WinBitmapFont(const Font &f):FontSource(f)
+		WinBitmapFont::WinBitmapFont(const Font &f):FontSourceSingle(f)
 		{
 			hdc=CreateCompatibleDC(0);
 
@@ -103,13 +103,13 @@ namespace hgl
 			if(ch>0xFFFF)
 				return(false);
 
-			memset(&gm,0,sizeof(GLYPHMETRICS));
-			memset(&mat,0,sizeof(MAT2));
+			hgl_zero(gm);
+			hgl_zero(mat);
 
 			mat.eM11.value = 1;
 			mat.eM22.value = 1;
 
-			const int size=GetGlyphOutline(hdc,ch,ggo,&gm,0,0,&mat);
+			const int size=GetGlyphOutlineW(hdc,ch,ggo,&gm,0,0,&mat);
 
 			if(size<=0)return(false);
 
@@ -121,7 +121,7 @@ namespace hgl
 				buffer=new uint8[buffer_size];
 			}
 
-			GetGlyphOutline(hdc,ch,ggo,&gm,buffer_size,buffer,&mat);
+			GetGlyphOutlineW(hdc,ch,ggo,&gm,buffer_size,buffer,&mat);
 
 			bmp->w=gm.gmBlackBoxX;
 			bmp->h=gm.gmBlackBoxY;
