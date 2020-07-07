@@ -350,7 +350,7 @@ namespace
         std::cout<<"       deviceType: "<<DeviceTypeString[pdp.deviceType]<<std::endl;
         std::cout<<"       deviceName: "<<pdp.deviceName<<std::endl;
 
-        UTF8String uuid=HexToString<char>(pdp.pipelineCacheUUID);
+        AnsiString uuid=HexToString<char>(pdp.pipelineCacheUUID);
 
         std::cout<<"pipelineCahceUUID: "<<uuid.c_str()<<std::endl;
 

@@ -10,22 +10,19 @@ namespace hgl
         
         TileFont::TileFont(TileData *td,FontSource *fs)
         {
-            hgl_zero(source_map);
             tile_data=td;
-            
-            for(uint i=0;i<(uint)UnicodeBlock::RANGE_SIZE;i++)
-                source_map[i]=fs;
 
-            fs->RefAcquire(this);
+            if(fs)
+            {
+                source=fs;
+                source->RefAcquire(this);                
+            }
         }
 
         TileFont::~TileFont()
         {
-            for(uint i=0;i<(uint)UnicodeBlock::RANGE_SIZE;i++)
-            {
-                if(source_map[i])
-                    source_map[i]->RefRelease(this);
-            }
+            if(source)
+                source->RefRelease(this);
 
             SAFE_CLEAR(tile_data);
         }

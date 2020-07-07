@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
     struct ShaderStage
     {
-        UTF8String  name;
+        AnsiString  name;
         uint        location;
         VkFormat    format;
     };//struct ShaderStage
@@ -17,7 +17,7 @@ VK_NAMESPACE_BEGIN
 
     struct ShaderDescriptorList
     {
-        UTF8StringList      name_list;
+        AnsiStringList      name_list;
         ShaderBindingList   binding_list;
     };
 
@@ -60,7 +60,7 @@ VK_NAMESPACE_BEGIN
         ShaderStageList &GetStageInputs(){return stage_inputs;}
         ShaderStageList &GetStageOutputs(){return stage_outputs;}
 
-        const int GetStageInputBinding(const UTF8String &);
+        const int GetStageInputBinding(const AnsiString &);
 
         const ShaderDescriptorList *GetDescriptorList()const{return descriptor_list;}
               ShaderDescriptorList *GetDescriptorList(VkDescriptorType desc_type)
@@ -75,7 +75,7 @@ VK_NAMESPACE_BEGIN
         ShaderDescriptorList &GetSSBO(){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];}
         ShaderDescriptorList &GetSampler(){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
 
-        const int                   GetBinding      (VkDescriptorType desc_type,const UTF8String &name)const;
+        const int                   GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;
         const ShaderBindingList *   GetBindingList  (VkDescriptorType desc_type)const
         {
             if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE

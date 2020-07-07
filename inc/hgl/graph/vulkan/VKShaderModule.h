@@ -39,7 +39,7 @@ public:
     const VkShaderStageFlagBits             GetStage        ()const{return stage_create_info->stage;}
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
 
-    const int                               GetBinding      (VkDescriptorType desc_type,const UTF8String &name)const
+    const int                               GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const
     {
         return shader_resource->GetBinding(desc_type,name);
     }
@@ -71,7 +71,7 @@ public:
     /**
      * 获取输入流绑定点，需要注意的时，这里获取的binding并非是shader中的binding/location，而是绑定顺序的序列号。对应vkCmdBindVertexBuffer的缓冲区序列号
      */
-    const int                                   GetStageInputBinding(const UTF8String &name)const{return shader_resource->GetStageInputBinding(name);}
+    const int                                   GetStageInputBinding(const AnsiString &name)const{return shader_resource->GetStageInputBinding(name);}
 
     const uint32_t                              GetAttrCount()const{return attr_count;}
 

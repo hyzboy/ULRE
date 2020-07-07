@@ -58,7 +58,7 @@ PhysicalDevice::PhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
     }
 }
 
-const uint32_t PhysicalDevice::GetExtensionSpecVersion(const UTF8String &name)const
+const uint32_t PhysicalDevice::GetExtensionSpecVersion(const AnsiString &name)const
 {
     const uint count=extension_properties.GetCount();
     const VkExtensionProperties *ep=extension_properties.GetData();

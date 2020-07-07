@@ -48,7 +48,7 @@ public:
     const AABB &GetBoundingBox()const           {return BoundingBox;}
 
     bool Set(const int stage_input_binding, VertexBuffer *vb,VkDeviceSize offset=0);
-    bool Set(const UTF8String &name,        VertexBuffer *vb,VkDeviceSize offset=0);
+    bool Set(const AnsiString &name,        VertexBuffer *vb,VkDeviceSize offset=0);
 
     bool Set(IndexBuffer *ib,VkDeviceSize offset=0)
     {

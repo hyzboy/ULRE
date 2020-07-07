@@ -83,7 +83,7 @@ public:
     PipelineCreater(Device *dev,const Material *,const RenderTarget *,uchar *,uint);
     ~PipelineCreater()=default;
 
-    bool Set(const VkPrimitiveTopology,bool=false);
+    bool Set(const uint prim,bool=false);
 
     void SetViewport(       float x,float y,float w,float h){viewport.x=x;viewport.y=y;viewport.width=w;viewport.height=h;}
     void SetDepthRange(     float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}
