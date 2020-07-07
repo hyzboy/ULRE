@@ -217,7 +217,30 @@ bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 
 Sampler *Device::CreateSampler(VkSamplerCreateInfo *sci)
 {
-    if(!sci)return(nullptr);
+    static VkSamplerCreateInfo default_sampler_create_info
+    {
+        .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .pNext                   = nullptr,
+        .flags                   = 0,
+        .magFilter               = VK_FILTER_LINEAR,
+        .minFilter               = VK_FILTER_LINEAR,
+        .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .mipLodBias              = 0.0f,
+        .anisotropyEnable        = false,
+        .maxAnisotropy           = 0,
+        .compareEnable           = false,
+        .compareOp               = VK_COMPARE_OP_NEVER,
+        .minLod                  = 0.0f,
+        .maxLod                  = 1.0f,
+        .borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+        .unnormalizedCoordinates = false
+    };
+
+    if(!sci)
+        sci=&default_sampler_create_info;
 
     VkSampler sampler;
 

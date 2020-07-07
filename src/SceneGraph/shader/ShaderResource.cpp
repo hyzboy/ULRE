@@ -65,7 +65,7 @@ VK_NAMESPACE_BEGIN
             {
                 sd_list->binding_list.Add(*data++);
                 str_len=*data++;
-                sd_list->name_list.Add(UTF8String((char *)data,str_len));
+                sd_list->name_list.Add(AnsiString((char *)data,str_len));
                 data+=str_len;
             }
 
@@ -86,7 +86,7 @@ VK_NAMESPACE_BEGIN
         delete[] data;
     }
 
-    const int ShaderResource::GetStageInputBinding(const UTF8String &name)
+    const int ShaderResource::GetStageInputBinding(const AnsiString &name)
     {
         const int count=stage_inputs.GetCount();
         ShaderStage **ss=stage_inputs.GetData();
@@ -102,7 +102,7 @@ VK_NAMESPACE_BEGIN
         return -1;
     }
     
-    const int ShaderResource::GetBinding(VkDescriptorType desc_type,const UTF8String &name)const
+    const int ShaderResource::GetBinding(VkDescriptorType desc_type,const AnsiString &name)const
     {
         if(desc_type>=VK_DESCRIPTOR_TYPE_RANGE_SIZE)return -1;
         if(name.IsEmpty())return -1;

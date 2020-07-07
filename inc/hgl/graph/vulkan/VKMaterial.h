@@ -30,9 +30,9 @@ public:
 
     const VertexShaderModule *GetVertexShaderModule()const{return vertex_sm;}
 
-    const int GetBinding(VkDescriptorType,const UTF8String &)const;
+    const int GetBinding(VkDescriptorType,const AnsiString &)const;
 
-#define GET_BO_BINDING(name,vk_name)    const int Get##name(const UTF8String &obj_name)const{return GetBinding(VK_DESCRIPTOR_TYPE_##vk_name,obj_name);}
+#define GET_BO_BINDING(name,vk_name)    const int Get##name(const AnsiString &obj_name)const{return GetBinding(VK_DESCRIPTOR_TYPE_##vk_name,obj_name);}
 //        GET_BO_BINDING(Sampler,             SAMPLER)
 
         GET_BO_BINDING(Sampler,             COMBINED_IMAGE_SAMPLER)

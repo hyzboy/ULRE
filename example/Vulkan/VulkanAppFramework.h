@@ -112,7 +112,7 @@ public:
             cili.khronos.validation = true;
             cili.RenderDoc.Capture = true;
 
-            inst=vulkan::CreateInstance(U8_TEXT("VulkanTest"),nullptr,&cili);
+            inst=vulkan::CreateInstance("VulkanTest",nullptr,&cili);
 
             if(!inst)
                 return(false);

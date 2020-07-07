@@ -9,7 +9,7 @@ Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
 
 void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
 
-Instance *CreateInstance(const UTF8String &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
+Instance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
 {
     VkApplicationInfo app_info;
     VkInstanceCreateInfo inst_info;

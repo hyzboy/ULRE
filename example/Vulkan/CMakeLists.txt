@@ -35,11 +35,13 @@ CreateProject(08.SceneTree SceneTree.cpp)
 CreateProject(09.LoadStaticMesh LoadStaticMesh.cpp LoadScene.cpp)
 CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
 CreateProject(11.Atomsphere Atomsphere.cpp)
-CreateProject(12.DrawText DrawText.cpp)
+
+CreateProject(12.RectanglePrimivate RectanglePrimivate.cpp)
+CreateProject(13.DrawText DrawText.cpp)
 
 IF(SUPPORT_QT_VULKAN)
 include(QtCommon)
-CreateQtProject(13.VulkanQT VulkanQtApp.cpp 
+CreateQtProject(14.VulkanQT VulkanQtApp.cpp 
                             QtVulkanWindow.cpp
                             QtVulkanWindow.h
                             QtVulkanMainWindow.h

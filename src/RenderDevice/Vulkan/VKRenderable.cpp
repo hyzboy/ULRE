@@ -38,7 +38,7 @@ bool Renderable::Set(const int stage_input_binding,VertexBuffer *vbo,VkDeviceSiz
     return(true);
 }
 
-bool Renderable::Set(const UTF8String &name,VertexBuffer *vbo,VkDeviceSize offset)
+bool Renderable::Set(const AnsiString &name,VertexBuffer *vbo,VkDeviceSize offset)
 {
     return Set(vertex_sm->GetStageInputBinding(name),vbo,offset);
 }

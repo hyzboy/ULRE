@@ -75,7 +75,7 @@ Material::~Material()
     delete shader_maps;
 }
 
-const int Material::GetBinding(VkDescriptorType desc_type,const UTF8String &name)const
+const int Material::GetBinding(VkDescriptorType desc_type,const AnsiString &name)const
 {
     if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
      ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE

@@ -184,7 +184,7 @@ public: //Texture
 
 public: //
 
-    Sampler *CreateSampler(VkSamplerCreateInfo *);
+    Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr);
 
     ShaderModuleManage *CreateShaderModuleManage();
 

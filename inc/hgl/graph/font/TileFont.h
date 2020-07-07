@@ -15,7 +15,7 @@ namespace hgl
          */
         class TileFont
         {
-
+            FontSource *source;
             TileData *tile_data;
 
         public:

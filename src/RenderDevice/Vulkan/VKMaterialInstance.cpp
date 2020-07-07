@@ -15,7 +15,7 @@ MaterialInstance::~MaterialInstance()
     delete descriptor_sets;
 }
 
-bool MaterialInstance::BindUBO(const UTF8String &name,vulkan::Buffer *ubo)
+bool MaterialInstance::BindUBO(const AnsiString &name,vulkan::Buffer *ubo)
 {
     if(name.IsEmpty()||!ubo)
         return(false);
@@ -31,7 +31,7 @@ bool MaterialInstance::BindUBO(const UTF8String &name,vulkan::Buffer *ubo)
     return(true);
 }
 
-bool MaterialInstance::BindSampler(const UTF8String &name,Texture *tex,Sampler *sampler)
+bool MaterialInstance::BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     if(name.IsEmpty()||!tex||!sampler)
         return(false);
