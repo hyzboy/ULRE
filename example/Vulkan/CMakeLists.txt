@@ -36,7 +36,7 @@ CreateProject(09.LoadStaticMesh LoadStaticMesh.cpp LoadScene.cpp)
 CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
 CreateProject(11.Atomsphere Atomsphere.cpp)
 
-CreateProject(12.RectanglePrimivate RectanglePrimivate.cpp)
+CreateProject(12.RectanglePrimitive RectanglePrimitive.cpp)
 CreateProject(13.DrawText DrawText.cpp)
 
 IF(SUPPORT_QT_VULKAN)
