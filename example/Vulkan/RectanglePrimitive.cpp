@@ -13,15 +13,16 @@ VK_NAMESPACE_BEGIN
 Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=512;
-constexpr uint32_t SCREEN_HEIGHT=512;
+constexpr uint32_t SCREEN_SIZE=512;
 
 constexpr uint32_t VERTEX_COUNT=1;
 
+constexpr float BORDER=0.1;
+
 constexpr float vertex_data[4]=
 {
-    128,             128,
-    384,  384
+    SCREEN_SIZE*BORDER,         SCREEN_SIZE*BORDER,
+    SCREEN_SIZE*(1.0-BORDER),   SCREEN_SIZE*(1.0-BORDER)
 };
 
 constexpr float tex_coord_data[4]=
@@ -128,7 +129,7 @@ public:
 
     bool Init()
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!VulkanApplicationFramework::Init(SCREEN_SIZE,SCREEN_SIZE))
             return(false);
 
         if(!InitUBO())
