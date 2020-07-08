@@ -1,5 +1,5 @@
-﻿// 2.texture_rect
-// 该示例是1.indices_rect的进化，演示在矩形上贴上贴图
+// 2.RectanglePrimivate
+// 该示例是texture_rect的进化，演示使用GeometryShader画矩形
 
 #include"VulkanAppFramework.h"
 #include<hgl/graph/vulkan/VKTexture.h>
@@ -13,33 +13,20 @@ VK_NAMESPACE_BEGIN
 Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=512;
+constexpr uint32_t SCREEN_HEIGHT=512;
 
-constexpr uint32_t VERTEX_COUNT=4;
+constexpr uint32_t VERTEX_COUNT=1;
 
-constexpr float vertex_data[VERTEX_COUNT][2]=
+constexpr float vertex_data[4]=
 {
-    {0,             0},
-    {SCREEN_WIDTH,  0},
-    {0,             SCREEN_HEIGHT},
-    {SCREEN_WIDTH,  SCREEN_HEIGHT}
+    128,             128,
+    384,  384
 };
 
-constexpr float tex_coord_data[VERTEX_COUNT][2]=
+constexpr float tex_coord_data[4]=
 {
-    {0,0},
-    {1,0},
-    {0,1},
-    {1,1}
-};
-
-constexpr uint32_t INDEX_COUNT=6;
-
-constexpr uint16 index_data[INDEX_COUNT]=
-{
-    0,1,3,
-    0,3,2
+    0,0,1,1
 };
 
 class TestApp:public VulkanApplicationFramework
@@ -59,13 +46,11 @@ private:
 
     vulkan::VertexBuffer *      vertex_buffer       =nullptr;
     vulkan::VertexBuffer *      tex_coord_buffer    =nullptr;
-    vulkan::IndexBuffer *       index_buffer        =nullptr;
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(index_buffer);
         SAFE_CLEAR(tex_coord_buffer);
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR(pipeline);
@@ -81,8 +66,9 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatTexture.vert"),
-                                               OS_TEXT("res/shader/FlatTexture.frag"));
+        material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
+                                                OS_TEXT("res/shader/DrawRect2D.geom"),
+                                                OS_TEXT("res/shader/FlatTexture.frag"));
         if(!material)
             return(false);
 
@@ -119,13 +105,11 @@ private:
 
     void InitVBO()
     {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=device->CreateVBO(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
-        index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
+        vertex_buffer   =device->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,vertex_data);
+        tex_coord_buffer=device->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,tex_coord_data);
 
         render_obj->Set("Vertex",vertex_buffer);
         render_obj->Set("TexCoord",tex_coord_buffer);
-        render_obj->Set(index_buffer);
     }
 
     bool InitPipeline()
@@ -133,7 +117,7 @@ private:
         AutoDelete<vulkan::PipelineCreater>
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
         pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_TRIANGLES);
+        pipeline_creater->Set(PRIM_RECTANGLES);
 
         pipeline=pipeline_creater->Create();
 
