@@ -33,6 +33,7 @@ namespace hgl
 
 			bool MakeCharBitmap(FontBitmap *,u32char) override;					///<产生字体数据
 			int  GetLineHeight()const override{return LineHeight;}				///<取得行高
+			int	 GetCharWidth(const u32char &) override;
 		};//class WinBitmapFont
 	}//namespace graph
 }//namespace hgl
