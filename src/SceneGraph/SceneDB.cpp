@@ -58,9 +58,20 @@ namespace hgl
 
             RenderableInstance *ri=new RenderableInstance(p,mi,r);
 
-            Add(ri);
+            if(ri)
+                Add(ri);
 
             return ri;
+        }
+        
+        vulkan::Sampler *SceneDB::CreateSampler(VkSamplerCreateInfo *sci)
+        {
+            vulkan::Sampler *s=device->CreateSampler(sci);
+
+            if(s)
+                Add(s);
+
+            return s;
         }
     }//namespace graph
 }//namespace hgl

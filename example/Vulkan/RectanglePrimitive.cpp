@@ -17,7 +17,7 @@ constexpr uint32_t SCREEN_SIZE=512;
 
 constexpr uint32_t VERTEX_COUNT=1;
 
-constexpr float BORDER=0.1;
+constexpr float BORDER=0.1f;
 
 constexpr float vertex_data[4]=
 {
@@ -48,21 +48,6 @@ private:
     vulkan::VertexBuffer *      vertex_buffer       =nullptr;
     vulkan::VertexBuffer *      tex_coord_buffer    =nullptr;
 
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(tex_coord_buffer);
-        SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_mvp);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
-        SAFE_CLEAR(sampler);
-        SAFE_CLEAR(texture);
-        SAFE_CLEAR(material);
-    }
-
 private:
 
     bool InitMaterial()
@@ -78,12 +63,16 @@ private:
 
         texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
 
-        sampler=device->CreateSampler();
+        sampler=db->CreateSampler();
 
         material_instance->BindSampler("tex",texture,sampler);
         material_instance->BindUBO("world",ubo_mvp);
         material_instance->Update();
 
+        db->Add(material);
+        db->Add(material_instance);
+        db->Add(texture);
+        db->Add(render_obj);
         return(true);
     }
 
@@ -96,7 +85,7 @@ private:
 
         cam.Refresh();
 
-        ubo_mvp=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_mvp=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
         if(!ubo_mvp)
             return(false);
@@ -106,8 +95,8 @@ private:
 
     void InitVBO()
     {
-        vertex_buffer   =device->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=device->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,tex_coord_data);
+        vertex_buffer   =db->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,vertex_data);
+        tex_coord_buffer=db->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,tex_coord_data);
 
         render_obj->Set("Vertex",vertex_buffer);
         render_obj->Set("TexCoord",tex_coord_buffer);
@@ -122,6 +111,7 @@ private:
 
         pipeline=pipeline_creater->Create();
 
+        db->Add(pipeline);
         return pipeline;
     }
 
@@ -163,11 +153,6 @@ public:
 
 int main(int,char **)
 {
-#ifdef _DEBUG
-    if(!vulkan::CheckStrideBytesByFormat())
-        return 0xff;
-#endif//
-
     TestApp app;
 
     if(!app.Init())
