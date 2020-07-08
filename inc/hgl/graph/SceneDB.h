@@ -6,6 +6,8 @@
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
+#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKMaterialInstance.h>
 #include<hgl/graph/VertexBufferCreater.h>
 #include<hgl/graph/RenderableInstance.h>
@@ -21,6 +23,8 @@ namespace hgl
         using DescriptorSetsID      =int;
         using RenderableID          =int;
         using RenderableInstanceID  =int;
+        using SamplerID             =int;
+        using TextureID             =int;
 
         class VertexBufferCreater;
 
@@ -37,6 +41,8 @@ namespace hgl
             IDResManage<DescriptorSetsID,       vulkan::DescriptorSets>     rm_desc_sets;               ///<描述符合集
             IDResManage<RenderableID,           vulkan::Renderable>         rm_renderables;             ///<可渲染对象合集
             IDResManage<BufferID,               vulkan::Buffer>             rm_buffers;                 ///<顶点缓冲区合集
+            IDResManage<SamplerID,              vulkan::Sampler>            rm_samplers;                ///<采样器合集
+            IDResManage<TextureID,              vulkan::Texture>            rm_textures;                ///<纹理合集
             IDResManage<RenderableInstanceID,   RenderableInstance>         rm_renderable_instances;    ///<渲染实例集合集
 
         public:
@@ -44,13 +50,19 @@ namespace hgl
             SceneDB(vulkan::Device *dev):device(dev){}
             virtual ~SceneDB()=default;
 
+        public: //Add
+
             MaterialID              Add(vulkan::Material *          mtl ){return rm_material.Add(mtl);}
             MaterialInstanceID      Add(vulkan::MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
             PipelineID              Add(vulkan::Pipeline *          p   ){return rm_pipeline.Add(p);}
             DescriptorSetsID        Add(vulkan::DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
             RenderableID            Add(vulkan::Renderable *        r   ){return rm_renderables.Add(r);}
             BufferID                Add(vulkan::Buffer *            buf ){return rm_buffers.Add(buf);}
+            SamplerID               Add(vulkan::Sampler *           s   ){return rm_samplers.Add(s);}
+            TextureID               Add(vulkan::Texture *           t   ){return rm_textures.Add(t);}
             RenderableInstanceID    Add(RenderableInstance *        ri  ){return rm_renderable_instances.Add(ri);}
+
+        public: //Create
 
             vulkan::VertexBuffer *CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
             vulkan::VertexBuffer *CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVBO(format,count,nullptr,sharing_mode);}
@@ -76,12 +88,18 @@ namespace hgl
 
             RenderableInstance *    CreateRenderableInstance(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r);
 
+            vulkan::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr);
+
+        public: //Get
+
             vulkan::Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
             vulkan::MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
             vulkan::Pipeline *          GetPipeline             (const PipelineID           &id){return rm_pipeline.Get(id);}
             vulkan::DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
             vulkan::Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
             vulkan::Buffer *            GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
+            vulkan::Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
+            vulkan::Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
             RenderableInstance *        GetRenderableInstance   (const RenderableInstanceID &id){return rm_renderable_instances.Get(id);}
         };//class SceneDB
     }//namespace graph
