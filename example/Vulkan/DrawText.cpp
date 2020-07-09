@@ -1,6 +1,3 @@
-// 2.RectanglePrimivate
-// 该示例是texture_rect的进化，演示使用GeometryShader画矩形
-
 #include"VulkanAppFramework.h"
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKSampler.h>

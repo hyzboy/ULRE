@@ -28,7 +28,6 @@ VK_NAMESPACE_BEGIN
             const uint32 total_bytes=AccessByPointer(data,uint32);
 
             int basetype;
-            int vec_size;
             int str_len;
 
             ShaderStage *ss;
@@ -39,9 +38,9 @@ VK_NAMESPACE_BEGIN
 
                 ss->location=*data++;
                 basetype=*data++;
-                vec_size=*data++;
+                ss->component=*data++;
 
-                ss->format=VK_NAMESPACE::GetVulkanFormat(basetype,vec_size);
+                ss->format=VK_NAMESPACE::GetVulkanFormat(basetype,ss->component);
 
                 str_len=*data++;
                 ss->name.SetString((char *)data,str_len);
@@ -86,7 +85,23 @@ VK_NAMESPACE_BEGIN
         delete[] data;
     }
 
-    const int ShaderResource::GetStageInputBinding(const AnsiString &name)
+    const ShaderStage *ShaderResource::GetStage(const AnsiString &name) const
+    {
+        const int count=stage_inputs.GetCount();
+        ShaderStage **ss=stage_inputs.GetData();
+
+        for(int i=0;i<count;i++)
+        {
+            if(name==(*ss)->name)
+                return *ss;
+
+            ++ss;
+        }
+
+        return nullptr;
+    }
+
+    const int ShaderResource::GetStageInputBinding(const AnsiString &name) const
     {
         const int count=stage_inputs.GetCount();
         ShaderStage **ss=stage_inputs.GetData();
