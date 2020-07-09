@@ -21,13 +21,13 @@ namespace hgl
                 const vulkan::VertexShaderModule *vsm=nullptr;
 
                 vulkan::Renderable *render_obj=nullptr;
-           
+
                 int vertex_binding  =-1;
                 int color_binding   =-1;
                 int normal_binding  =-1;
                 int tangent_binding =-1;
                 int texcoord_binding=-1;
-            
+
                 VERTEX_VB_FORMAT *vertex    =nullptr;
                 VB4f *color     =nullptr;
                 VB3f *normal    =nullptr;
@@ -41,7 +41,7 @@ namespace hgl
                 GeometryCreater(SceneDB *sdb,vulkan::Material *m):db(sdb),mtl(m)
                 {
                     vsm=mtl->GetVertexShaderModule();
-            
+
                     vertex_binding  =vsm->GetStageInputBinding("Vertex");
                     color_binding   =vsm->GetStageInputBinding("Color");
                     normal_binding  =vsm->GetStageInputBinding("Normal");
@@ -102,7 +102,7 @@ namespace hgl
                 }
 
             private:
-            
+
                 void Finish(int binding,VertexBufferCreater *vb)
                 {
                     render_obj->Set(binding,db->CreateVBO(vb));
@@ -125,11 +125,11 @@ namespace hgl
                     if(tex_coord)Finish(texcoord_binding,   tex_coord);
 
                     if(ibo)
-                    {   
+                    {
                         ibo->Unmap();
                         render_obj->Set(ibo);
                     }
-                    
+
                     vulkan::Renderable *result=render_obj;
 
                     db->Add(render_obj);
@@ -148,7 +148,7 @@ namespace hgl
 
             if(!gc.Init(4))
                 return(nullptr);
-            
+
             VB2f *vertex=gc.GetVertex();
 
             vertex->WriteRectFan(rci->scope);
@@ -173,7 +173,7 @@ namespace hgl
             {
                 if(!gc.Init(4))
                     return(nullptr);
-            
+
                 VB2f *vertex=gc.GetVertex();
 
                 vertex->WriteRectFan(rci->scope);
@@ -187,7 +187,7 @@ namespace hgl
 
                 if(!gc.Init(rci->round_per*4))
                     return(nullptr);
-                    
+
                 VB2f *vertex=gc.GetVertex();
 
                 vec2<float> *coord=new vec2<float>[rci->round_per];
@@ -235,7 +235,7 @@ namespace hgl
 
                 delete[] coord;
             }
-            
+
             return gc.Finish();
         }
 
@@ -254,7 +254,7 @@ namespace hgl
 
                 float x=cci->center.x+sin(hgl_ang2rad(ang))*cci->radius.x;
                 float y=cci->center.y+cos(hgl_ang2rad(ang))*cci->radius.y;
-                    
+
                 vertex->Write(x,y);
             }
 
@@ -341,7 +341,7 @@ namespace hgl
                 {
                     xy_tex_coord[2]=xy_tex_coord[4]=pci->tile.x;
                     xy_tex_coord[5]=xy_tex_coord[7]=pci->tile.y;
-                    
+
                     tex_coord->BufferData(xy_tex_coord);
                 }
             }
@@ -418,10 +418,10 @@ namespace hgl
                 }
             }
 
-            gc.CreateIBO16(6*2*3,indices);            
+            gc.CreateIBO16(6*2*3,indices);
             return gc.Finish();
         }
-        
+
         template<typename T> void CreateSphereIndices(T *tp,uint numberParallels,const uint numberSlices)
         {
             for (uint i = 0; i < numberParallels; i++)
@@ -440,7 +440,7 @@ namespace hgl
         }
 
         namespace
-        {   
+        {
             constexpr uint GLUS_VERTICES_FACTOR =4;
             constexpr uint GLUS_VERTICES_DIVISOR=4;
             constexpr uint GLUS_MAX_VERTICES    =1048576;
@@ -465,7 +465,7 @@ namespace hgl
                 quaternion[2] = sinf(halfAngleRadian);
                 quaternion[3] = cosf(halfAngleRadian);
             }
-            
+
             void glusQuaternionGetMatrix4x4f(float matrix[16], const float quaternion[4])
             {
                 float x = quaternion[0];
@@ -493,7 +493,7 @@ namespace hgl
                 matrix[14] = 0.0f;
                 matrix[15] = 1.0f;
             }
-            
+
             void glusMatrix4x4MultiplyVector3f(float result[3], const float matrix[16], const float vector[3])
             {
                 int i;
@@ -535,7 +535,7 @@ namespace hgl
 
             if(!gc.Init(numberVertices))
                 return(nullptr);
-            
+
             float *vp=gc.GetVertexPointer();
             float *np=gc.GetNormalPointer();
             float *tp=gc.GetTangentPointer();
@@ -548,7 +548,7 @@ namespace hgl
                     float x = sin(angleStep * (double) i) * sin(angleStep * (double) j);
                     float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
                     float z = cos(angleStep * (double) i);
-                    
+
                     *vp=x;++vp;
                     *vp=y;++vp;
                     *vp=z;++vp;
@@ -566,7 +566,7 @@ namespace hgl
 
                         *tc=tex_x;++tc;
                         *tc=1.0f - (float) i / (float) numberParallels;++tc;
-                    
+
                         if(tp)
                         {
                             // use quaternion to get the tangent vector
@@ -579,7 +579,7 @@ namespace hgl
                     }
                 }
             }
-            
+
             if(numberVertices<=0xffff)
                 CreateSphereIndices<uint16>(gc.CreateIBO16(numberIndices),numberParallels,numberSlices);
             else
@@ -587,7 +587,7 @@ namespace hgl
 
             return gc.Finish();
         }
-        
+
         vulkan::Renderable *CreateRenderableDome(SceneDB *db,vulkan::Material *mtl,const DomeCreateInfo *dci)
         {
             GeometryCreater3D gc(db,mtl);
@@ -608,10 +608,10 @@ namespace hgl
 
             if (dci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                 return nullptr;
-                
+
             if(!gc.Init(numberVertices))
                 return(nullptr);
-            
+
             float *vp=gc.GetVertexPointer();
             float *np=gc.GetNormalPointer();
             float *tp=gc.GetTangentPointer();
@@ -658,7 +658,7 @@ namespace hgl
                     }
                 }
             }
-            
+
             if(numberVertices<=0xffff)
                 CreateSphereIndices<uint16>(gc.CreateIBO16(numberIndices),numberParallels,dci->numberSlices);
             else
@@ -677,7 +677,7 @@ namespace hgl
 
                 // used to generate the indices
                 uint v0, v1, v2, v3;
-            
+
                 for (sideCount = 0; sideCount < numberSlices; ++sideCount)
                 {
                     for (faceCount = 0; faceCount < numberStacks; ++faceCount)
@@ -741,7 +741,7 @@ namespace hgl
 
             if(!gc.Init(numberVertices))
                 return(nullptr);
-            
+
             float *vp=gc.GetVertexPointer();
             float *np=gc.GetNormalPointer();
             float *tp=gc.GetTangentPointer();
@@ -794,7 +794,7 @@ namespace hgl
                     }
                 }
             }
-           
+
             if(numberVertices<=0xffff)
                 CreateTorusIndices<uint16>(gc.CreateIBO16(numberIndices),tci->numberSlices,tci->numberStacks);
             else
@@ -871,7 +871,7 @@ namespace hgl
 
             if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                 return nullptr;
-                
+
             float *vp=gc.GetVertexPointer();
             float *np=gc.GetNormalPointer();
             float *tp=gc.GetTangentPointer();
@@ -900,7 +900,7 @@ namespace hgl
                 *tc = 0.0f; ++tc;
                 *tc = 0.0f; ++tc;
             }
-            
+
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
     	        float currentAngle = angleStep * (float)i;
@@ -929,7 +929,7 @@ namespace hgl
                     *tc = 0.0f; ++tc;
                 }
             }
-            
+
             *vp = 0.0f;             ++vp;
             *vp = 0.0f;             ++vp;
             *vp = cci->halfExtend;  ++vp;
@@ -982,7 +982,7 @@ namespace hgl
                     *tc = 1.0f; ++tc;
                 }
             }
-            
+
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
 		        float currentAngle = angleStep * (float)i;
@@ -1018,7 +1018,7 @@ namespace hgl
 			        sign = 1.0f;
                 }
             }
-            
+
             if(numberVertices<=0xffff)
                 CreateCylinderIndices<uint16>(gc.CreateIBO16(numberIndices),cci->numberSlices);
             else
@@ -1055,7 +1055,7 @@ namespace hgl
 			            *tp = indexCounter;                     ++tp;
 			            *tp = indexCounter + numberSlices + 1;  ++tp;
 			            *tp = indexCounter + 1;                 ++tp;
-                        
+
 			            *tp = indexCounter + 1;                 ++tp;
 			            *tp = indexCounter + numberSlices + 1;  ++tp;
 			            *tp = indexCounter + numberSlices + 2;  ++tp;
@@ -1066,7 +1066,7 @@ namespace hgl
                 }
             }
         }//namespace
-        
+
         vulkan::Renderable *CreateRenderableCone(SceneDB *db,vulkan::Material *mtl,const ConeCreateInfo *cci)
         {
             GeometryCreater3D gc(db,mtl);
@@ -1117,7 +1117,7 @@ namespace hgl
                 *tc = 0.0f; ++tc;
                 *tc = 0.0f; ++tc;
             }
-    
+
             for (i = 0; i < cci->numberSlices + 1; i++)
             {
     	        float currentAngle = angleStep * (float)i;
@@ -1180,7 +1180,7 @@ namespace hgl
                     }
                 }
             }
-            
+
             if(numberVertices<=0xffff)
                 CreateConeIndices<uint16>(gc.CreateIBO16(numberIndices),cci->numberSlices,cci->numberStacks);
             else
@@ -1219,16 +1219,16 @@ namespace hgl
             // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
             /*     *------------* */                            -0.5, 0.5, 0.5,     0.5, 0.5,0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5};
-            /*    /|           /| */                            
-            /*  0/ |         1/ | */                            
-            /*  *--+---------*  | */    
-            /*  |  |         |  | */    
-            /*  | 7|         | 6| */    
-            /*  |  *---------+--* */    
-            /*  | /          | /  */    
-            /*  |/          2|/   */    
-            /* 3*------------*    */    
-            
+            /*    /|           /| */
+            /*  0/ |         1/ | */
+            /*  *--+---------*  | */
+            /*  |  |         |  | */
+            /*  | 7|         | 6| */
+            /*  |  *---------+--* */
+            /*  | /          | /  */
+            /*  |/          2|/   */
+            /* 3*------------*    */
+
             const uint16 indices[]=
             {
                 0,1,    1,2,    2,3,    3,0,
@@ -1244,7 +1244,7 @@ namespace hgl
             VB3f *vertex=gc.GetVertex();
 
             if(!vertex)return(nullptr);
-            
+
             if(cci->center  ==Vector3f(0,0,0)
              &&cci->size    ==Vector3f(1,1,1))
             {

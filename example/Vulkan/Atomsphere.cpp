@@ -58,7 +58,7 @@ private:
     {
         ro_sphere=CreateRenderableSphere(db,material,128);
     }
-    
+
     bool InitAtomsphereUBO(vulkan::MaterialInstance *mi,const AnsiString &sun_node_name)
     {
         atomsphere_data.position.Set(0,0.1f,-1.0f);

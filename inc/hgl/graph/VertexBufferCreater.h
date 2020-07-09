@@ -36,8 +36,8 @@ namespace hgl
             }
 
             virtual VkFormat    GetDataType     ()const=0;                                          ///<取得数据类型
-//            const   uint32_t    GetDataBytes    ()const{return comp_stride;}                        ///<取得每数据字节数
-//            const   uint32_t    GetComponent    ()const{return dc_num;  }                           ///<取数缓冲区元数据数量
+            const   uint32_t    GetDataBytes    ()const{return comp_stride;}                        ///<取得每数据字节数
+            const   uint32_t    GetComponent    ()const{return dc_num;  }                           ///<取数缓冲区元数据数量
             const   uint32_t    GetCount        ()const{return count;   }                           ///<取得数据数量
             const   uint32_t    GetStride       ()const{return stride;}                             ///<取得每一组数据字节数
                     void *      GetData         ()const{return mem_data;}                           ///<取得数据指针

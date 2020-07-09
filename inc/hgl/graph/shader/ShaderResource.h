@@ -9,6 +9,7 @@ VK_NAMESPACE_BEGIN
     {
         AnsiString  name;
         uint        location;
+        uint        component;
         VkFormat    format;
     };//struct ShaderStage
 
@@ -60,7 +61,8 @@ VK_NAMESPACE_BEGIN
         ShaderStageList &GetStageInputs(){return stage_inputs;}
         ShaderStageList &GetStageOutputs(){return stage_outputs;}
 
-        const int GetStageInputBinding(const AnsiString &);
+        const ShaderStage *GetStage(const AnsiString &)const;
+        const int GetStageInputBinding(const AnsiString &)const;
 
         const ShaderDescriptorList *GetDescriptorList()const{return descriptor_list;}
               ShaderDescriptorList *GetDescriptorList(VkDescriptorType desc_type)
