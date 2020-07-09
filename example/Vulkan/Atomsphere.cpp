@@ -59,7 +59,7 @@ private:
         ro_sphere=CreateRenderableSphere(db,material,128);
     }
     
-    bool InitAtomsphereUBO(vulkan::MaterialInstance *mi,const UTF8String &sun_node_name)
+    bool InitAtomsphereUBO(vulkan::MaterialInstance *mi,const AnsiString &sun_node_name)
     {
         atomsphere_data.position.Set(0,0.1f,-1.0f);
         atomsphere_data.intensity=22.0f;
@@ -75,7 +75,7 @@ private:
 
     bool InitUBO()
     {
-        if(!InitCameraUBO(material_instance,"world"))
+        if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
 
         if(!InitAtomsphereUBO(material_instance,"sun"))
