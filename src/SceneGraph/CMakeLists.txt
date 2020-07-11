@@ -42,6 +42,11 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         #SceneFile.cpp
                         )
 
+SET(RENDERABLE_FILES    ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableCreater.h
+                        RenderableCreater.cpp)
+
+SOURCE_GROUP("Renderable" FILES ${RENDERABLE_FILES})
+
 file(GLOB FONT_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/font/*.*)
 
 SET(FONT_SOURCE font/Font.cpp
@@ -74,6 +79,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SG_MATERIAL_SOURCE}
 
                                         ${SG_VERTEX_SOURCE}
+
+                                        ${RENDERABLE_FILES}
 
                                         ${FONT_HEADER} 
                                         ${FONT_SOURCE})
