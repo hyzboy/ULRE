@@ -1128,6 +1128,14 @@ namespace hgl
         typedef VertexBuffer4<uint32>   VB4u32  ,VB4ui; template<> inline VkFormat VertexBuffer4<uint32 >::GetDataType()const{return FMT_RGBA32U; }
         typedef VertexBuffer4<float >   VB4f;           template<> inline VkFormat VertexBuffer4<float  >::GetDataType()const{return FMT_RGBA32F; }
         typedef VertexBuffer4<double>   VB4d;           template<> inline VkFormat VertexBuffer4<double >::GetDataType()const{return FMT_RGBA64F; }
+
+        /**
+         * 根据格式要求，创建对应的VBC
+         * @param base_type 基础格式,参见spirv_cross/spirv_common.hpp中的spirv_cross::SPIRType
+         * @param vecsize vec数量
+         * @param vertex_count 顶点数量
+         */
+        VertexBufferCreater *CreateVB(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_BUFFER_INCLUDE
