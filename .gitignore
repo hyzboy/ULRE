@@ -8,3 +8,9 @@
 *.obj
 .vs
 /build
+*.ninja_deps
+*.ninja_log
+*.pdb
+*.lib
+*.ninja
+*.check_cache
