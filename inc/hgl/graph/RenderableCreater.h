@@ -7,6 +7,18 @@ namespace hgl
 {
     namespace graph
     {
+        namespace VertexAttribName
+        {
+            #define VAN_DEFINE(name)    constexpr char name[]=#name;
+            VAN_DEFINE(Vertex)
+            VAN_DEFINE(Normal)
+            VAN_DEFINE(Color)
+            VAN_DEFINE(Tangent)
+            VAN_DEFINE(Bitangent)
+            VAN_DEFINE(TexCoord)
+            #undef VAN_DEFINE
+        }//namespace VertexAttribName
+
         /**
          * 可渲染对象创建器
          */
