@@ -41,7 +41,7 @@ private:
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_mvp             =nullptr;
+    vulkan::Buffer *            ubo_world_matrix             =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
@@ -66,7 +66,7 @@ private:
         sampler=db->CreateSampler();
 
         material_instance->BindSampler("tex",texture,sampler);
-        material_instance->BindUBO("world",ubo_mvp);
+        material_instance->BindUBO("world",ubo_world_matrix);
         material_instance->Update();
 
         db->Add(material);
@@ -85,9 +85,9 @@ private:
 
         cam.Refresh();
 
-        ubo_mvp=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
-        if(!ubo_mvp)
+        if(!ubo_world_matrix)
             return(false);
 
         return(true);
@@ -145,7 +145,7 @@ public:
 
         cam.Refresh();
 
-        ubo_mvp->Write(&cam.matrix);
+        ubo_world_matrix->Write(&cam.matrix);
 
         BuildCommandBuffer(pipeline,material_instance,render_obj);
     }
