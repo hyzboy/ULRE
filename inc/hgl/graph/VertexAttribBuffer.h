@@ -1,11 +1,11 @@
-﻿#ifndef HGL_GRAPH_VERTEX_BUFFER_INCLUDE
-#define HGL_GRAPH_VERTEX_BUFFER_INCLUDE
+﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_BUFFER_INCLUDE
+#define HGL_GRAPH_VERTEX_ATTRIB_BUFFER_INCLUDE
 
 #include<hgl/type/Color3f.h>
 #include<hgl/type/Color4f.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/BaseString.h>
-#include<hgl/graph/VertexBufferCreater.h>
+#include<hgl/graph/VertexAttribBufferCreater.h>
 #include<hgl/log/LogInfo.h>
 namespace hgl
 {
@@ -14,7 +14,7 @@ namespace hgl
         /**
         * 顶点属性数据实际模板
         */
-        template<typename T,int C> class VertexBufferBase:public VertexBufferCreater
+        template<typename T,int C> class VertexAttribBufferBase:public VertexAttribBufferCreater
         {
         protected:
 
@@ -25,7 +25,7 @@ namespace hgl
 
         public:
 
-            VertexBufferBase(uint32_t _size,const T *_data=nullptr):VertexBufferCreater(_size,C,sizeof(T))
+            VertexAttribBufferBase(uint32_t _size,const T *_data=nullptr):VertexAttribBufferCreater(_size,C,sizeof(T))
             {
                 mem_type=(T *)GetData();
                 access=0;
@@ -35,7 +35,7 @@ namespace hgl
                     memcpy(mem_type,_data,total_bytes);
             }
 
-            virtual ~VertexBufferBase()=default;
+            virtual ~VertexAttribBufferBase()=default;
 
             void BufferData(const T *ptr)
             {
@@ -53,7 +53,7 @@ namespace hgl
             {
                 if(!mem_type||offset>=count)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer::Get() out,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Get() out,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -69,7 +69,7 @@ namespace hgl
             {
                 if(access)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer::Begin() access!=0,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Begin() access!=0,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -99,7 +99,7 @@ namespace hgl
             {
                 if(!this->access||this->access+C*number>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer::Write(const T *,number) out,number:")+OSString::valueOf(number));
+                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Write(const T *,number) out,number:")+OSString::valueOf(number));
                     return(false);
                 }
 
@@ -109,16 +109,16 @@ namespace hgl
 
                 return(true);
             }
-        };//class VertexBuffer
+        };//class VertexAttribBuffer
 
         /**
         * 一元数据缓冲区
         */
-        template<typename T> class VertexBuffer1:public VertexBufferBase<T,1>
+        template<typename T> class VertexBuffer1:public VertexAttribBufferBase<T,1>
         {
         public:
 
-            using VertexBufferBase<T,1>::VertexBufferBase;
+            using VertexAttribBufferBase<T,1>::VertexAttribBufferBase;
             virtual ~VertexBuffer1()=default;
 
             VkFormat    GetDataType()const override;
@@ -197,11 +197,11 @@ namespace hgl
         /**
         * 二元数据缓冲区
         */
-        template<typename T> class VertexBuffer2:public VertexBufferBase<T,2>
+        template<typename T> class VertexBuffer2:public VertexAttribBufferBase<T,2>
         {
         public:
 
-            using VertexBufferBase<T,2>::VertexBufferBase;
+            using VertexAttribBufferBase<T,2>::VertexAttribBufferBase;
             virtual ~VertexBuffer2()=default;
 
             VkFormat    GetDataType()const override;
@@ -486,11 +486,11 @@ namespace hgl
         /**
         * 三元数据缓冲区
         */
-        template<typename T> class VertexBuffer3:public VertexBufferBase<T,3>
+        template<typename T> class VertexBuffer3:public VertexAttribBufferBase<T,3>
         {
         public:
 
-            using VertexBufferBase<T,3>::VertexBufferBase;
+            using VertexAttribBufferBase<T,3>::VertexAttribBufferBase;
             virtual ~VertexBuffer3()=default;
 
             VkFormat    GetDataType()const override;
@@ -748,11 +748,11 @@ namespace hgl
         /**
         * 四元数据缓冲区
         */
-        template<typename T> class VertexBuffer4:public VertexBufferBase<T,4>
+        template<typename T> class VertexBuffer4:public VertexAttribBufferBase<T,4>
         {
         public:
 
-            using VertexBufferBase<T,4>::VertexBufferBase;
+            using VertexAttribBufferBase<T,4>::VertexAttribBufferBase;
             virtual ~VertexBuffer4()=default;
 
             VkFormat    GetDataType()const override;
@@ -1135,7 +1135,7 @@ namespace hgl
          * @param vecsize vec数量
          * @param vertex_count 顶点数量
          */
-        VertexBufferCreater *CreateVB(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        VertexAttribBufferCreater *CreateVABCreater(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_VERTEX_BUFFER_INCLUDE
+#endif//HGL_GRAPH_VERTEX_ATTRIB_BUFFER_INCLUDE

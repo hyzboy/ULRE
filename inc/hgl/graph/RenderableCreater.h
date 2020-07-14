@@ -2,7 +2,7 @@
 #define HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 
 #include<hgl/graph/SceneDB.h>
-#include<hgl/graph/VertexBuffer.h>
+#include<hgl/graph/VertexAttribBuffer.h>
 namespace hgl
 {
     namespace graph
@@ -18,6 +18,8 @@ namespace hgl
             VAN_DEFINE(TexCoord)
             #undef VAN_DEFINE
         }//namespace VertexAttribName
+
+        #define VAN VertexAttribName
 
         /**
          * 可渲染对象创建器
@@ -37,10 +39,10 @@ namespace hgl
 
             uint32                  vertices_number;
 
-            VertexBufferCreater *   vb_vertex;
-            vulkan::IndexBuffer *   ibo;
+            VertexAttribBufferCreater *     vabc_vertex;
+            vulkan::IndexBuffer *           ibo;
 
-            Map<AnsiString,VertexBufferCreater *> vb_map;
+            MapObject<AnsiString,VertexAttribBufferCreater> vabc_maps;
 
         public:
 
@@ -49,13 +51,25 @@ namespace hgl
 
             virtual bool                    Init(const uint32 count);
 
-            virtual VertexBufferCreater *   Bind(const AnsiString &name);
+            virtual VertexAttribBufferCreater *   CreateVAB(const AnsiString &name);
+
+            #define PreDefineCreateVAB(name)   \
+            virtual VertexAttribBufferCreater *   Create##name##Buffer(){return CreateVAB(VAN::name));}
+
+            PreDefineCreateVAB(Vertex)
+            PreDefineCreateVAB(Normal)
+            PreDefineCreateVAB(Color)
+            PreDefineCreateVAB(Tangent)
+            PreDefineCreateVAB(Bitangent)
+            PreDefineCreateVAB(TexCoord)
+
+            #undef PreDefineCreateVAB
 
                     uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);
                     uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);
 
             virtual vulkan::Renderable *    Finish();
-        };//class GeometryCreater
+        };//class RenderableCreater
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
