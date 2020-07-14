@@ -11,15 +11,9 @@ namespace hgl
             mtl =m;
             vsm =mtl->GetVertexShaderModule();
 
-            render_obj      =nullptr;
             vertices_number =0;
             vabc_vertex     =nullptr;
             ibo             =nullptr;
-        }
-
-        RenderableCreater::~RenderableCreater()
-        {
-            SAFE_CLEAR(render_obj);
         }
 
         bool RenderableCreater::Init(const uint32 count)
@@ -27,8 +21,6 @@ namespace hgl
             if(count<=0)return(false);
 
             vertices_number=count;
-
-            render_obj=mtl->CreateRenderable(vertices_number);
 
             return(true);
         }
@@ -77,7 +69,13 @@ namespace hgl
             if(vabc_maps.GetCount()!=si_count)
                 return(nullptr);
 
+            vulkan::Renderable *render_obj=mtl->CreateRenderable(vertices_number);
 
+            const auto *sp=vabc_maps.GetDataList();
+            for(uint i=0;i<si_count;i++)
+            {
+                
+            }
         }
     }//namespace graph
 }//namespace hgl
