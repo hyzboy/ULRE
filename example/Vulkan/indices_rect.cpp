@@ -78,7 +78,7 @@ private:
         return(true);
     }
 
-    vulkan::Buffer *CreateUBO(const UTF8String &name,const VkDeviceSize size,void *data)
+    vulkan::Buffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
     {
         vulkan::Buffer *ubo=device->CreateUBO(size,data);
 

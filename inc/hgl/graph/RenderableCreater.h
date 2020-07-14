@@ -7,6 +7,9 @@ namespace hgl
 {
     namespace graph
     {
+        /**
+         * 预定义一些顶点属性名称，可用可不用。但一般默认shader会使用这些名称
+         */
         namespace VertexAttribName
         {
             #define VAN_DEFINE(name)    constexpr char name[]=#name;
@@ -16,10 +19,23 @@ namespace hgl
             VAN_DEFINE(Tangent)
             VAN_DEFINE(Bitangent)
             VAN_DEFINE(TexCoord)
+            VAN_DEFINE(Metallic)
+            VAN_DEFINE(Specular)
+            VAN_DEFINE(Roughness)
+            VAN_DEFINE(Emission)
             #undef VAN_DEFINE
         }//namespace VertexAttribName
 
         #define VAN VertexAttribName
+
+        struct ShaderStageBind
+        {
+            AnsiString  name;
+            uint        binding;
+            VABCreater *vabc;
+        };//struct ShaderStageBind
+
+        using VABCreaterMaps=MapObject<AnsiString,VABCreater>;
 
         /**
          * 可渲染对象创建器
@@ -35,35 +51,19 @@ namespace hgl
 
         protected:
 
-            vulkan::Renderable *    render_obj;
-
             uint32                  vertices_number;
 
-            VertexAttribBufferCreater *     vabc_vertex;
-            vulkan::IndexBuffer *           ibo;
-
-            MapObject<AnsiString,VertexAttribBufferCreater> vabc_maps;
+            vulkan::IndexBuffer *   ibo;
+            VABCreaterMaps          vabc_maps;
 
         public:
 
             RenderableCreater(SceneDB *sdb,vulkan::Material *m);
-            virtual ~RenderableCreater();
+            virtual ~RenderableCreater()=default;
 
             virtual bool                    Init(const uint32 count);
 
-            virtual VertexAttribBufferCreater *   CreateVAB(const AnsiString &name);
-
-            #define PreDefineCreateVAB(name)   \
-            virtual VertexAttribBufferCreater *   Create##name##Buffer(){return CreateVAB(VAN::name));}
-
-            PreDefineCreateVAB(Vertex)
-            PreDefineCreateVAB(Normal)
-            PreDefineCreateVAB(Color)
-            PreDefineCreateVAB(Tangent)
-            PreDefineCreateVAB(Bitangent)
-            PreDefineCreateVAB(TexCoord)
-
-            #undef PreDefineCreateVAB
+            virtual VABCreater *            CreateVAB(const AnsiString &name);
 
                     uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);
                     uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);
