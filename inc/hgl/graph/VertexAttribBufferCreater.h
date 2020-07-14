@@ -46,6 +46,8 @@ namespace hgl
                     void *      GetData         ()const{return mem_data;}                           ///<取得数据指针
             const   uint32_t    GetTotalBytes   ()const{return total_bytes;   }                     ///<取得数据字节数
         };//class VertexAttribBufferCreater
+
+        using VABCreater=VertexAttribBufferCreater;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_BUFFER_CREATER_INCLUDE
