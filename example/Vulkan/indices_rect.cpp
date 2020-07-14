@@ -12,7 +12,7 @@ constexpr uint32_t SCREEN_HEIGHT=128;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
-static Vector4f color(1,1,0,1);
+static Vector4f color(1,1,1,1);
 
 constexpr float SSP=0.25;
 constexpr float SSN=1-SSP;
@@ -42,12 +42,12 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_mvp             =nullptr;
+    vulkan::Buffer *            ubo_world_matrix    =nullptr;
     vulkan::Buffer *            ubo_color_material  =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
-    vulkan::VertexAttribBuffer *      vertex_buffer       =nullptr;
+    vulkan::VertexAttribBuffer *vertex_buffer       =nullptr;
     vulkan::IndexBuffer *       index_buffer        =nullptr;
 
 public:
@@ -58,7 +58,7 @@ public:
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR(pipeline);
         SAFE_CLEAR(ubo_color_material);
-        SAFE_CLEAR(ubo_mvp);
+        SAFE_CLEAR(ubo_world_matrix);
         SAFE_CLEAR(render_obj);
         SAFE_CLEAR(material_instance);
         SAFE_CLEAR(material);
@@ -69,7 +69,7 @@ private:
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert"),
-                                               OS_TEXT("res/shader/FlatColor.frag"));
+                                               OS_TEXT("res/shader/XorColor.frag"));
         if(!material)
             return(false);
 
@@ -78,30 +78,20 @@ private:
         return(true);
     }
 
-    vulkan::Buffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
-    {
-        vulkan::Buffer *ubo=device->CreateUBO(size,data);
-
-        if(!ubo)
-            return(nullptr);
-
-        if(!material_instance->BindUBO(name,ubo))
-        {
-            SAFE_CLEAR(ubo);
-            return(nullptr);
-        }
-
-        return ubo;
-    }
-
     bool InitUBO()
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
         wm.ortho=ortho(extent.width,extent.height);
+        wm.canvas_resolution.x=extent.width;
+        wm.canvas_resolution.y=extent.height;
 
-        ubo_mvp             =CreateUBO("world",         sizeof(WorldMatrix),&wm);
-        ubo_color_material  =CreateUBO("color_material",sizeof(Vector4f),&color);
+        ubo_world_matrix    =device->CreateUBO(sizeof(WorldMatrix),&wm);
+        ubo_color_material  =device->CreateUBO(sizeof(Vector4f),&color);
+
+        material_instance->BindUBO("world",ubo_world_matrix);
+        material_instance->BindUBO("fs_world",ubo_world_matrix);
+        material_instance->BindUBO("color_material",ubo_color_material);
         
         material_instance->Update();
         return(true);
