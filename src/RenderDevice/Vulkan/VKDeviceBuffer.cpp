@@ -44,7 +44,7 @@ bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceS
     return(false);
 }
 
-VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
+VertexAttribBuffer *Device::CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
 
@@ -61,7 +61,7 @@ VertexBuffer *Device::CreateVBO(VkFormat format,uint32_t count,const void *data,
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,data,sharing_mode))
         return(nullptr);
 
-    return(new VertexBuffer(attr->device,buf,format,stride,count));
+    return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
 IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)

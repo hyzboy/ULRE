@@ -9,7 +9,7 @@
 #include<hgl/graph/vulkan/VKSampler.h>
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKMaterialInstance.h>
-#include<hgl/graph/VertexBufferCreater.h>
+#include<hgl/graph/VertexAttribBufferCreater.h>
 #include<hgl/graph/RenderableInstance.h>
 #include<hgl/type/ResManage.h>
 namespace hgl
@@ -26,7 +26,7 @@ namespace hgl
         using SamplerID             =int;
         using TextureID             =int;
 
-        class VertexBufferCreater;
+        class VertexAttribBufferCreater;
 
         /**
          * 场景DB，用于管理场景内所需的所有数据
@@ -64,9 +64,9 @@ namespace hgl
 
         public: //Create
 
-            vulkan::VertexBuffer *CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
-            vulkan::VertexBuffer *CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVBO(format,count,nullptr,sharing_mode);}
-            vulkan::VertexBuffer *CreateVBO(const VertexBufferCreater *vbc,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVBO(vbc->GetDataType(),vbc->GetCount(),vbc->GetData(),sharing_mode);}
+            vulkan::VertexAttribBuffer *CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+            vulkan::VertexAttribBuffer *CreateVBO(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVBO(format,count,nullptr,sharing_mode);}
+            vulkan::VertexAttribBuffer *CreateVBO(const VertexAttribBufferCreater *vbc,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVBO(vbc->GetDataType(),vbc->GetCount(),vbc->GetData(),sharing_mode);}
 
             #define SCENE_DB_CREATE_FUNC(name)  vulkan::Buffer *Create##name(VkDeviceSize size,void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);   \
                                                 vulkan::Buffer *Create##name(VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);

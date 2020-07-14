@@ -2,7 +2,7 @@
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/VertexBuffer.h>
+#include<hgl/graph/VertexAttribBuffer.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/SceneDB.h>
@@ -103,7 +103,7 @@ namespace hgl
 
             private:
 
-                void Finish(int binding,VertexBufferCreater *vb)
+                void Finish(int binding,VertexAttribBufferCreater *vb)
                 {
                     render_obj->Set(binding,db->CreateVBO(vb));
                     delete vb;

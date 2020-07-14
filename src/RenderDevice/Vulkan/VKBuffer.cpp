@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/vulkan/VKBuffer.h>
-#include<hgl/graph/VertexBuffer.h>
+#include<hgl/graph/VertexAttribBuffer.h>
 #include<spirv_cross/spirv_common.hpp>
 
 VK_NAMESPACE_BEGIN
@@ -9,7 +9,7 @@ Buffer::~Buffer()
     vkDestroyBuffer(device,buf.buffer,nullptr);
 }
 
-VertexBufferCreater *CreateVB(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count)
+VertexAttribBufferCreater *CreateVABCreater(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count)
 {
     if(base_type==spirv_cross::SPIRType::SByte)
     {

@@ -42,8 +42,8 @@ private:
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
-    vulkan::VertexBuffer *      vertex_buffer       =nullptr;
-    vulkan::VertexBuffer *      color_buffer        =nullptr;
+    vulkan::VertexAttribBuffer *      vertex_buffer       =nullptr;
+    vulkan::VertexAttribBuffer *      color_buffer        =nullptr;
 
 public:
 

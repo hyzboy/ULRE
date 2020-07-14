@@ -1,12 +1,15 @@
-﻿#ifndef HGL_GRAPH_VERTEX_BUFFER_CREATER_INCLUDE
-#define HGL_GRAPH_VERTEX_BUFFER_CREATER_INCLUDE
+﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_BUFFER_CREATER_INCLUDE
+#define HGL_GRAPH_VERTEX_ATTRIB_BUFFER_CREATER_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
 namespace hgl
 {
     namespace graph
     {
-        class VertexBufferCreater
+        /**
+         * 顶点属性缓冲区创建者
+         */
+        class VertexAttribBufferCreater                                                             ///顶点属性缓冲区创建者
         {
             void *mem_data;                                                                         ///<内存中的数据
 
@@ -23,13 +26,13 @@ namespace hgl
 
         public:
 
-            VertexBufferCreater(uint32_t c,uint32_t dc,uint32_t cs):count(c),dc_num(dc),comp_stride(cs),stride(dc*cs),total_bytes(dc*cs*c)
+            VertexAttribBufferCreater(uint32_t c,uint32_t dc,uint32_t cs):count(c),dc_num(dc),comp_stride(cs),stride(dc*cs),total_bytes(dc*cs*c)
             {
                 mem_data = hgl_malloc(total_bytes);            //在很多情况下，hgl_malloc分配的内存是对齐的，这样有效率上的提升
                 mem_end = ((char *)mem_data) + total_bytes;
             }
 
-            virtual ~VertexBufferCreater()
+            virtual ~VertexAttribBufferCreater()
             {
                 if(mem_data)
                     hgl_free(mem_data);
@@ -42,7 +45,7 @@ namespace hgl
             const   uint32_t    GetStride       ()const{return stride;}                             ///<取得每一组数据字节数
                     void *      GetData         ()const{return mem_data;}                           ///<取得数据指针
             const   uint32_t    GetTotalBytes   ()const{return total_bytes;   }                     ///<取得数据字节数
-        };//class VertexBufferCreater
+        };//class VertexAttribBufferCreater
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_VERTEX_BUFFER_CREATER_INCLUDE
+#endif//HGL_GRAPH_VERTEX_ATTRIB_BUFFER_CREATER_INCLUDE

@@ -21,7 +21,7 @@ protected:
 private:
 
     friend class Device;
-    friend class VertexBuffer;
+    friend class VertexAttribBuffer;
     friend class IndexBuffer;
 
     Buffer(VkDevice d,const BufferData &b)
@@ -46,7 +46,7 @@ public:
     bool    Write(const void *ptr)                              {return buf.memory->Write(ptr);}
 };//class Buffer
 
-class VertexBuffer:public Buffer
+class VertexAttribBuffer:public Buffer
 {
     VkFormat format;                    ///<数据格式
     uint32_t stride;                    ///<单个数据字节数
@@ -56,7 +56,7 @@ private:
 
     friend class Device;
 
-    VertexBuffer(VkDevice d,const BufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):Buffer(d,vb)
+    VertexAttribBuffer(VkDevice d,const BufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):Buffer(d,vb)
     {
         format=fmt;
         stride=_stride;
@@ -65,7 +65,7 @@ private:
 
 public:
 
-    ~VertexBuffer()=default;
+    ~VertexAttribBuffer()=default;
 
     const VkFormat GetFormat()const { return format; }
     const uint32_t GetStride()const { return stride; }
@@ -75,7 +75,7 @@ public:
     {
         return Buffer::Map(start*stride,size*stride);
     }
-};//class VertexBuffer:public Buffer
+};//class VertexAttribBuffer:public Buffer
 
 class IndexBuffer:public Buffer
 {
