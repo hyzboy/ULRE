@@ -32,10 +32,17 @@ namespace hgl
         {
             AnsiString  name;
             uint        binding;
-            VABCreater *vabc;
+            VAD *vabc    =nullptr;
+
+        public:
+
+            ~ShaderStageBind()
+            {
+                SAFE_CLEAR(vabc);
+            }
         };//struct ShaderStageBind
 
-        using VABCreaterMaps=MapObject<AnsiString,VABCreater>;
+        using VABCreaterMaps=MapObject<AnsiString,ShaderStageBind>;
 
         /**
          * 可渲染对象创建器
@@ -61,12 +68,12 @@ namespace hgl
             RenderableCreater(SceneDB *sdb,vulkan::Material *m);
             virtual ~RenderableCreater()=default;
 
-            virtual bool                    Init(const uint32 count);
+            virtual bool                    Init(const uint32 count);                               ///<初始化，参数为顶点数量
 
-            virtual VABCreater *            CreateVAB(const AnsiString &name);
+            virtual VAD *            CreateVAB(const AnsiString &name);                      ///<创建一个顶点属性缓冲区创建器
 
-                    uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);
-                    uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);
+                    uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);     ///<创建16位的索引缓冲区
+                    uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);     ///<创建32位的索引缓冲区
 
             virtual vulkan::Renderable *    Finish();
         };//class RenderableCreater
