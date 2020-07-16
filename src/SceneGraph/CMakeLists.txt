@@ -12,8 +12,8 @@ SOURCE_GROUP("Material" FILES   ${SG_MATERIAL_HEADER}
 SOURCE_GROUP("Material\\Shader" FILES ${SHADER_RESOURCE_FILES})
 
 
-SET(SG_VAB_SOURCE    ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribData.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribBuffer.h)
+SET(SG_VAB_SOURCE   ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribData.h
+                    ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribDataAccess.h)
 
 SOURCE_GROUP("VertexAttribBuffer" FILES   ${SG_VAB_SOURCE})
 

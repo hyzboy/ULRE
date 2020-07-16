@@ -2,7 +2,7 @@
 #define HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 
 #include<hgl/graph/SceneDB.h>
-#include<hgl/graph/VertexAttribBuffer.h>
+#include<hgl/graph/VertexAttribDataAccess.h>
 namespace hgl
 {
     namespace graph
@@ -70,7 +70,7 @@ namespace hgl
 
             virtual bool                    Init(const uint32 count);                               ///<初始化，参数为顶点数量
 
-            virtual VAD *            CreateVAB(const AnsiString &name);                      ///<创建一个顶点属性缓冲区创建器
+            virtual VAD *                   CreateVAD(const AnsiString &name);                      ///<创建一个顶点属性缓冲区创建器
 
                     uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);     ///<创建16位的索引缓冲区
                     uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);     ///<创建32位的索引缓冲区

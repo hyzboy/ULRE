@@ -2,7 +2,7 @@
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/VertexAttribBuffer.h>
+#include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/SceneDB.h>
@@ -107,7 +107,7 @@ namespace hgl
 
                 void Finish(int binding,VertexAttribData *vb)
                 {
-                    render_obj->Set(binding,db->CreateVAB(vb));
+                    render_obj->Set(binding,db->CreateVAD(vb));
                     delete vb;
                 }
 
@@ -151,9 +151,9 @@ namespace hgl
             if(!rc.Init(4))
                 return(nullptr);
 
-            VAD *vertex=rc.CreateVAB(VAN::Vertex);
+            VAD *vertex=rc.CreateVAD(VAN::Vertex);
 
-            if(vertex->GetComponent()!=2)
+            if(vertex->GetVulkanFormat()!=FMT_RG32F)
                 return(nullptr);
 
             vertex->WriteRectFan(rci->scope);

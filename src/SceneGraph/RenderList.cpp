@@ -3,7 +3,7 @@
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
-#include<hgl/graph/VertexAttribBuffer.h>
+#include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/RenderableInstance.h>
 #include<hgl/graph/vulkan/VKMaterialInstance.h>
 

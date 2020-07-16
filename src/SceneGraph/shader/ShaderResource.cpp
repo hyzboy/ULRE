@@ -39,7 +39,7 @@ VK_NAMESPACE_BEGIN
                 ss->base_type=*data++;
                 ss->component=*data++;
 
-                ss->format=VK_NAMESPACE::GetVulkanFormat(ss->base_type,ss->component);
+                ss->format=VK_NAMESPACE::GetVulkanFormatBySPIRType(ss->base_type,ss->component);
 
                 str_len=*data++;
                 ss->name.SetString((char *)data,str_len);
