@@ -5,7 +5,7 @@
 #include<hgl/type/Color4f.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/BaseString.h>
-#include<hgl/graph/VertexAttribBufferCreater.h>
+#include<hgl/graph/VertexAttribData.h>
 #include<hgl/log/LogInfo.h>
 namespace hgl
 {
@@ -14,7 +14,7 @@ namespace hgl
         /**
         * 顶点属性数据实际模板
         */
-        template<typename T,int C> class VertexAttribBufferBase:public VertexAttribBufferCreater
+        template<typename T,int C> class VertexAttribBufferBase:public VertexAttribData
         {
         protected:
 
@@ -25,7 +25,7 @@ namespace hgl
 
         public:
 
-            VertexAttribBufferBase(uint32_t _size,const T *_data=nullptr):VertexAttribBufferCreater(_size,C,sizeof(T))
+            VertexAttribBufferBase(uint32_t _size,const T *_data=nullptr):VertexAttribData(_size,C,sizeof(T))
             {
                 mem_type=(T *)GetData();
                 access=0;
@@ -1135,7 +1135,7 @@ namespace hgl
          * @param vecsize vec数量
          * @param vertex_count 顶点数量
          */
-        VertexAttribBufferCreater *CreateVABCreater(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        VertexAttribData *CreateVABCreater(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_BUFFER_INCLUDE

@@ -12,10 +12,10 @@ SOURCE_GROUP("Material" FILES   ${SG_MATERIAL_HEADER}
 SOURCE_GROUP("Material\\Shader" FILES ${SHADER_RESOURCE_FILES})
 
 
-SET(SG_VERTEX_SOURCE    ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribBufferCreater.h
+SET(SG_VAB_SOURCE    ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribData.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribBuffer.h)
 
-SOURCE_GROUP("VertexBuffer" FILES   ${SG_VERTEX_SOURCE})
+SOURCE_GROUP("VertexAttribBuffer" FILES   ${SG_VAB_SOURCE})
 
 SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneDB.h
@@ -78,7 +78,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SG_MATERIAL_HEADER}
                                         ${SG_MATERIAL_SOURCE}
 
-                                        ${SG_VERTEX_SOURCE}
+                                        ${SG_VAB_SOURCE}
 
                                         ${RENDERABLE_FILES}
 

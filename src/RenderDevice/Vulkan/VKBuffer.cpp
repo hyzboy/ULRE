@@ -9,7 +9,7 @@ Buffer::~Buffer()
     vkDestroyBuffer(device,buf.buffer,nullptr);
 }
 
-VertexAttribBufferCreater *CreateVABCreater(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count)
+VertexAttribData *CreateVABCreater(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count)
 {
     if(base_type==spirv_cross::SPIRType::SByte)
     {

@@ -24,7 +24,7 @@ namespace hgl
             return(true);
         }
 
-        VertexAttribBufferCreater *RenderableCreater::CreateVAB(const AnsiString &name)
+        VertexAttribData *RenderableCreater::CreateVAB(const AnsiString &name)
         {
             if(!vsm)return(false);
 
