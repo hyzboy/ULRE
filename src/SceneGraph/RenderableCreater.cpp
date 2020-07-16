@@ -7,12 +7,11 @@ namespace hgl
     {
         RenderableCreater::RenderableCreater(SceneDB *sdb,vulkan::Material *m)
         {
-            db  =sdb;
-            mtl =m;
-            vsm =mtl->GetVertexShaderModule();
+            db              =sdb;
+            mtl             =m;
+            vsm             =mtl->GetVertexShaderModule();
 
             vertices_number =0;
-            vabc_vertex     =nullptr;
             ibo             =nullptr;
         }
 
@@ -29,21 +28,26 @@ namespace hgl
         {
             if(!vsm)return(false);
 
-            VertexAttribBufferCreater *vabc;
+            ShaderStageBind *ssb;
 
-            if(vabc_maps.Get(name,vabc))
-                return vabc;
+            if(vabc_maps.Get(name,ssb))
+                return ssb->vabc;
 
             const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
 
             if(!ss)
                 return(nullptr);
 
-            vabc=hgl::graph::CreateVABCreater(ss->base_type,ss->component,vertices_number);
+            ssb=new ShaderStageBind;
 
-            vabc_maps.Add(name,vabc);
+            ssb->vabc=hgl::graph::CreateVABCreater(ss->base_type,ss->component,vertices_number);
 
-            return vabc;
+            ssb->name=name;
+            ssb->binding=ss->binding;
+
+            vabc_maps.Add(name,ssb);
+
+            return ssb->vabc;
         }
 
         uint16 *RenderableCreater::CreateIBO16(uint count,const uint16 *data)
@@ -74,8 +78,20 @@ namespace hgl
             const auto *sp=vabc_maps.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
-                
+                render_obj->Set((*sp)->right->binding,db->CreateVAB((*sp)->right->vabc));
+
+                ++sp;
             }
+
+            if(ibo)
+            {
+                ibo->Unmap();
+                render_obj->Set(ibo);
+            }
+
+            db->Add(render_obj);
+
+            return render_obj;
         }
     }//namespace graph
 }//namespace hgl

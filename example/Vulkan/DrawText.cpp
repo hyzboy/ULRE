@@ -28,12 +28,12 @@ private:
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_world_matrix             =nullptr;
+    vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
-    vulkan::VertexAttribBuffer *      vertex_buffer       =nullptr;
-    vulkan::VertexAttribBuffer *      tex_coord_buffer    =nullptr;
+    vulkan::VertexAttribBuffer *vertex_buffer       =nullptr;
+    vulkan::VertexAttribBuffer *tex_coord_buffer    =nullptr;
 
 private:
 

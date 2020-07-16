@@ -80,7 +80,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
 
                                         ${SG_VERTEX_SOURCE}
 
-                                        #${RENDERABLE_FILES}
+                                        ${RENDERABLE_FILES}
 
                                         ${FONT_HEADER} 
                                         ${FONT_SOURCE})
