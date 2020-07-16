@@ -24,7 +24,7 @@ namespace hgl
             return(true);
         }
 
-        VertexAttribData *RenderableCreater::CreateVAB(const AnsiString &name)
+        VertexAttribData *RenderableCreater::CreateVAD(const AnsiString &name)
         {
             if(!vsm)return(false);
 
@@ -40,7 +40,7 @@ namespace hgl
 
             ssb=new ShaderStageBind;
 
-            ssb->vabc=hgl::graph::CreateVABCreater(ss->base_type,ss->component,vertices_number);
+            ssb->vabc=hgl::graph::CreateVertexAttribData(ss->base_type,ss->component,vertices_number);
 
             ssb->name=name;
             ssb->binding=ss->binding;

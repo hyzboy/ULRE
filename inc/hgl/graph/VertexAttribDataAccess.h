@@ -1,5 +1,5 @@
-﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_BUFFER_INCLUDE
-#define HGL_GRAPH_VERTEX_ATTRIB_BUFFER_INCLUDE
+﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
+#define HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
 
 #include<hgl/type/Color3f.h>
 #include<hgl/type/Color4f.h>
@@ -12,9 +12,9 @@ namespace hgl
     namespace graph
     {
         /**
-        * 顶点属性数据实际模板
+        * 顶点属性数据访问模板
         */
-        template<typename T,int C> class VertexAttribBufferBase:public VertexAttribData
+        template<typename T,int C> class VertexAttribDataAccess
         {
         protected:
 
@@ -25,7 +25,7 @@ namespace hgl
 
         public:
 
-            VertexAttribBufferBase(uint32_t _size,const T *_data=nullptr):VertexAttribData(_size,C,sizeof(T))
+            VertexAttribDataAccess(uint32_t _size,const T *_data=nullptr)
             {
                 mem_type=(T *)GetData();
                 access=0;
@@ -35,7 +35,7 @@ namespace hgl
                     memcpy(mem_type,_data,total_bytes);
             }
 
-            virtual ~VertexAttribBufferBase()=default;
+            virtual ~VertexAttribDataAccess()=default;
 
             void BufferData(const T *ptr)
             {
@@ -114,14 +114,25 @@ namespace hgl
         /**
         * 一元数据缓冲区
         */
-        template<typename T> class VertexBuffer1:public VertexAttribBufferBase<T,1>
+        template<typename T,VkFormat VKFMT> class VertexAttribDataAccess1:public VertexAttribDataAccess<T,1>
         {
         public:
 
-            using VertexAttribBufferBase<T,1>::VertexAttribBufferBase;
-            virtual ~VertexBuffer1()=default;
+            using VertexAttribDataAccess<T,1>::VertexAttribDataAccess;
+            virtual ~VertexAttribDataAccess1()=default;
 
-            VkFormat    GetDataType()const override;
+            static VertexAttribDataAccess1<T,VKFMT> *   Create(VertexAttribData *vad)
+            {
+                if(!vad)return(nullptr);
+
+                if(vad->GetComponent()!=1)
+                    return(nullptr);
+
+                if(vad->GetDataType()!=VKFMT)
+                    return(nullptr);
+
+                return(new VertexAttribDataAccess1<T,VKFMT>(vad->GetCount(),vad->GetData()));
+            }
 
             /**
             * 计算绑定盒
@@ -167,7 +178,7 @@ namespace hgl
             {
                 if(!this->access||this->access+1>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const T) out"));
                     return(false);
                 }
 
@@ -184,7 +195,7 @@ namespace hgl
             {
                 if(!this->access||this->access+count>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer1::Write(const T,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const T,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -192,19 +203,30 @@ namespace hgl
                 this->access+=count;
                 return(true);
             }
-        };//class VertexBuffer1
+        };//class VertexAttribDataAccess1
 
         /**
         * 二元数据缓冲区
         */
-        template<typename T> class VertexBuffer2:public VertexAttribBufferBase<T,2>
+        template<typename T,VkFormat VKFMT> class VertexAttribDataAccess2:public VertexAttribDataAccess<T,2>
         {
         public:
 
-            using VertexAttribBufferBase<T,2>::VertexAttribBufferBase;
-            virtual ~VertexBuffer2()=default;
+            using VertexAttribDataAccess<T,2>::VertexAttribDataAccess;
+            virtual ~VertexAttribDataAccess2()=default;            
 
-            VkFormat    GetDataType()const override;
+            static VertexAttribDataAccess2<T,VKFMT> *   Create(VertexAttribData *vad)
+            {
+                if(!vad)return(nullptr);
+
+                if(vad->GetComponent()!=2)
+                    return(nullptr);
+
+                if(vad->GetDataType()!=VKFMT)
+                    return(nullptr);
+
+                return(new VertexAttribDataAccess2<T,VKFMT>(vad->GetCount(),vad->GetData()));
+            }
 
             /**
             * 计算绑定盒
@@ -252,7 +274,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::Write(const T ,const T) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::Write(const T ,const T) out"));
                     return(false);
                 }
 
@@ -266,7 +288,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::Write(T *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::Write(T *) out"));
                     return(false);
                 }
 
@@ -281,7 +303,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::Write(vec2 &) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::Write(vec2 &) out"));
                     return(false);
                 }
 
@@ -301,7 +323,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<1)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer1::Write(const Vector2f &,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const Vector2f &,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -318,7 +340,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteLine(T,T,T,T) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteLine(T,T,T,T) out"));
                     return(false);
                 }
 
@@ -335,7 +357,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteLine(vec2,vec2) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteLine(vec2,vec2) out"));
                     return(false);
                 }
 
@@ -355,7 +377,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteTriangle(vec2,vec2,vec2) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2,vec2,vec2) out"));
                     return(false);
                 }
 
@@ -379,7 +401,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteTriangle(vec2 *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2 *) out"));
                     return(false);
                 }
 
@@ -407,7 +429,7 @@ namespace hgl
                 if(WriteTriangle(lt,rb,rt))
                     return(true);
 
-                LOG_HINT(OS_TEXT("VertexBuffer2::WriteQuad(vec2 &,vec2 &,vec2 &,vec2 &) error"));
+                LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteQuad(vec2 &,vec2 &,vec2 &,vec2 &) error"));
                 return(false);
             }
 
@@ -439,7 +461,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteRectFan(RectScope2 *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteRectFan(RectScope2 *) out"));
                     return(false);
                 }
                 
@@ -463,7 +485,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer2::WriteRectTriangleStrip(RectScope2 *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteRectTriangleStrip(RectScope2 *) out"));
                     return(false);
                 }
 
@@ -481,19 +503,30 @@ namespace hgl
 
                 return(true);
             }
-        };//class VertexBuffer2
+        };//class VertexAttribDataAccess2
 
         /**
         * 三元数据缓冲区
         */
-        template<typename T> class VertexBuffer3:public VertexAttribBufferBase<T,3>
+        template<typename T,VkFormat VKFMT> class VertexAttribDataAccess3:public VertexAttribDataAccess<T,3>
         {
         public:
 
-            using VertexAttribBufferBase<T,3>::VertexAttribBufferBase;
-            virtual ~VertexBuffer3()=default;
+            using VertexAttribDataAccess<T,3>::VertexAttribDataAccess;
+            virtual ~VertexAttribDataAccess3()=default;
 
-            VkFormat    GetDataType()const override;
+            static VertexAttribDataAccess3<T,VKFMT> *   Create(VertexAttribData *vad)
+            {
+                if(!vad)return(nullptr);
+
+                if(vad->GetComponent()!=3)
+                    return(nullptr);
+
+                if(vad->GetDataType()!=VMFKT)
+                    return(nullptr);
+
+                return(new VertexAttribDataAccess3<T,VKFMT>(vad->GetCount(),vad->GetData()));
+            }
 
             /**
             * 计算绑定盒
@@ -544,7 +577,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(T,T,T) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(T,T,T) out"));
                     return(false);
                 }
 
@@ -559,7 +592,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(T *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(T *) out"));
                     return(false);
                 }
 
@@ -575,7 +608,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(vec3 &) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(vec3 &) out"));
                     return(false);
                 }
 
@@ -596,7 +629,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -620,7 +653,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -640,7 +673,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::Write(color3f &) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(color3f &) out"));
                     return(false);
                 }
 
@@ -655,7 +688,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::WriteLine(T,T,T,T,T,T) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
                 }
 
@@ -674,7 +707,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::WriteLine(vec3,vec3) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteLine(vec3,vec3) out"));
                     return(false);
                 }
 
@@ -696,7 +729,7 @@ namespace hgl
             {
                 if(!this->access||this->access+9>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::WriteTriangle(vec3,vec3,vec3) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
                 }
 
@@ -723,7 +756,7 @@ namespace hgl
             {
                 if(!this->access||this->access+9>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer3::WriteTriangle(vec3 *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3 *) out"));
                     return(false);
                 }
 
@@ -743,19 +776,30 @@ namespace hgl
 
                 return(true);
             }
-        };//class VertexBuffer3
+        };//class VertexAttribDataAccess3
 
         /**
         * 四元数据缓冲区
         */
-        template<typename T> class VertexBuffer4:public VertexAttribBufferBase<T,4>
+        template<typename T,VkFormat VKFMT> class VertexAttribDataAccess4:public VertexAttribDataAccess<T,4>
         {
         public:
 
-            using VertexAttribBufferBase<T,4>::VertexAttribBufferBase;
-            virtual ~VertexBuffer4()=default;
+            using VertexAttribDataAccess<T,4>::VertexAttribDataAccess;
+            virtual ~VertexAttribDataAccess4()=default;
 
-            VkFormat    GetDataType()const override;
+            static VertexAttribDataAccess4<T,VKFMT> *   Create(VertexAttribData *vad)
+            {
+                if(!vad)return(nullptr);
+
+                if(vad->GetComponent()!=4)
+                    return(nullptr);
+
+                if(vad->GetDataType()!=VMFMT)
+                    return(nullptr);
+
+                return(new VertexAttribDataAccess4<T,VKFMT>(vad->GetCount(),vad->GetData()));
+            }
 
             /**
             * 计算绑定盒
@@ -809,7 +853,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(T,T,T,T) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(T,T,T,T) out"));
                     return(false);
                 }
 
@@ -825,7 +869,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(T *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(T *) out"));
                     return(false);
                 }
 
@@ -842,7 +886,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(color4 &) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
                     return(false);
                 }
 
@@ -858,7 +902,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(color4 &) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
                     return(false);
                 }
 
@@ -876,7 +920,7 @@ namespace hgl
 
                 if(!this->access||this->access+(4*count)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(color4 &,count) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(color4 &,count) out"));
                     return(false);
                 }
 
@@ -901,7 +945,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -926,7 +970,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -947,7 +991,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::WriteLine(T,T,T,T,T,T) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
                 }
 
@@ -968,7 +1012,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::WriteLine(vec3,vec3) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteLine(vec3,vec3) out"));
                     return(false);
                 }
 
@@ -992,7 +1036,7 @@ namespace hgl
             {
                 if(!this->access||this->access+12>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::WriteTriangle(vec3,vec3,vec3) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
                 }
 
@@ -1022,7 +1066,7 @@ namespace hgl
             {
                 if(!this->access||this->access+12>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::WriteTriangle(vec3 *) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3 *) out"));
                     return(false);
                 }
 
@@ -1054,7 +1098,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::WriteRectangle2D(RectScope2 ) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 ) out"));
                     return(false);
                 }
 
@@ -1074,7 +1118,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(4*count)>this->mem_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexBuffer4::WriteRectangle2D(RectScope2 *,count) out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 *,count) out"));
                     return(false);
                 }
 
@@ -1090,52 +1134,54 @@ namespace hgl
 
                 return(true);
             }
-        };//class VertexBuffer4
+        };//class VertexAttribDataAccess4
 
         //缓冲区具体数据类型定义
-        typedef VertexBuffer1<int8  >   VB1i8   ,VB1b;  template<> inline VkFormat VertexBuffer1<int8   >::GetDataType()const{return FMT_R8I;   }
-        typedef VertexBuffer1<int16 >   VB1i16  ,VB1s;  template<> inline VkFormat VertexBuffer1<int16  >::GetDataType()const{return FMT_R16I;  }
-        typedef VertexBuffer1<int32 >   VB1i32  ,VB1i;  template<> inline VkFormat VertexBuffer1<int32  >::GetDataType()const{return FMT_R32I;  }
-        typedef VertexBuffer1<uint8 >   VB1u8   ,VB1ub; template<> inline VkFormat VertexBuffer1<uint8  >::GetDataType()const{return FMT_R8U;   }
-        typedef VertexBuffer1<uint16>   VB1u16  ,VB1us; template<> inline VkFormat VertexBuffer1<uint16 >::GetDataType()const{return FMT_R16U;  }
-        typedef VertexBuffer1<uint32>   VB1u32  ,VB1ui; template<> inline VkFormat VertexBuffer1<uint32 >::GetDataType()const{return FMT_R32U;  }
-        typedef VertexBuffer1<float >   VB1f;           template<> inline VkFormat VertexBuffer1<float  >::GetDataType()const{return FMT_R32F;  }
-        typedef VertexBuffer1<double>   VB1d;           template<> inline VkFormat VertexBuffer1<double >::GetDataType()const{return FMT_R64F;  }
+        typedef VertexAttribDataAccess1<int8  ,FMT_R8I    >   VB1i8   ,VB1b;  
+        typedef VertexAttribDataAccess1<int16 ,FMT_R16I   >   VB1i16  ,VB1s;  
+        typedef VertexAttribDataAccess1<int32 ,FMT_R32I   >   VB1i32  ,VB1i;  
+        typedef VertexAttribDataAccess1<uint8 ,FMT_R8U    >   VB1u8   ,VB1ub; 
+        typedef VertexAttribDataAccess1<uint16,FMT_R16U   >   VB1u16  ,VB1us; 
+        typedef VertexAttribDataAccess1<uint32,FMT_R32U   >   VB1u32  ,VB1ui; 
+        typedef VertexAttribDataAccess1<float ,FMT_R32F   >   VB1f;           
+        typedef VertexAttribDataAccess1<double,FMT_R64F   >   VB1d;           
 
-        typedef VertexBuffer2<int8  >   VB2i8   ,VB2b;  template<> inline VkFormat VertexBuffer2<int8   >::GetDataType()const{return FMT_RG8I;  }
-        typedef VertexBuffer2<int16 >   VB2i16  ,VB2s;  template<> inline VkFormat VertexBuffer2<int16  >::GetDataType()const{return FMT_RG16I; }
-        typedef VertexBuffer2<int32 >   VB2i32  ,VB2i;  template<> inline VkFormat VertexBuffer2<int32  >::GetDataType()const{return FMT_RG32I; }
-        typedef VertexBuffer2<uint8 >   VB2u8   ,VB2ub; template<> inline VkFormat VertexBuffer2<uint8  >::GetDataType()const{return FMT_RG8U;  }
-        typedef VertexBuffer2<uint16>   VB2u16  ,VB2us; template<> inline VkFormat VertexBuffer2<uint16 >::GetDataType()const{return FMT_RG16U; }
-        typedef VertexBuffer2<uint32>   VB2u32  ,VB2ui; template<> inline VkFormat VertexBuffer2<uint32 >::GetDataType()const{return FMT_RG32U; }
-        typedef VertexBuffer2<float >   VB2f;           template<> inline VkFormat VertexBuffer2<float  >::GetDataType()const{return FMT_RG32F; }
-        typedef VertexBuffer2<double>   VB2d;           template<> inline VkFormat VertexBuffer2<double >::GetDataType()const{return FMT_RG64F; }
+        typedef VertexAttribDataAccess2<int8  ,FMT_RG8I   >   VB2i8   ,VB2b;  
+        typedef VertexAttribDataAccess2<int16 ,FMT_RG16I  >   VB2i16  ,VB2s;  
+        typedef VertexAttribDataAccess2<int32 ,FMT_RG32I  >   VB2i32  ,VB2i;  
+        typedef VertexAttribDataAccess2<uint8 ,FMT_RG8U   >   VB2u8   ,VB2ub; 
+        typedef VertexAttribDataAccess2<uint16,FMT_RG16U  >   VB2u16  ,VB2us; 
+        typedef VertexAttribDataAccess2<uint32,FMT_RG32U  >   VB2u32  ,VB2ui; 
+        typedef VertexAttribDataAccess2<float ,FMT_RG32F  >   VB2f;           
+        typedef VertexAttribDataAccess2<double,FMT_RG64F  >   VB2d;           
 
-//        typedef VertexBuffer3<int8  >   VB3i8   ,VB3b;  template<> inline VkFormat VertexBuffer3<int8   >::GetDataType()const{return FMT_RGB8I;  }
-//        typedef VertexBuffer3<int16 >   VB3i16  ,VB3s;  template<> inline VkFormat VertexBuffer3<int16  >::GetDataType()const{return FMT_RGB16I; }
-        typedef VertexBuffer3<int32 >   VB3i32  ,VB3i;  template<> inline VkFormat VertexBuffer3<int32  >::GetDataType()const{return FMT_RGB32I; }
-//        typedef VertexBuffer3<uint8 >   VB3u8   ,VB3ub; template<> inline VkFormat VertexBuffer3<uint8  >::GetDataType()const{return FMT_RGB8U;  }
-//        typedef VertexBuffer3<uint16>   VB3u16  ,VB3us; template<> inline VkFormat VertexBuffer3<uint16 >::GetDataType()const{return FMT_RGB16U; }
-        typedef VertexBuffer3<uint32>   VB3u32  ,VB3ui; template<> inline VkFormat VertexBuffer3<uint32 >::GetDataType()const{return FMT_RGB32U; }
-        typedef VertexBuffer3<float >   VB3f;           template<> inline VkFormat VertexBuffer3<float  >::GetDataType()const{return FMT_RGB32F; }
-        typedef VertexBuffer3<double>   VB3d;           template<> inline VkFormat VertexBuffer3<double >::GetDataType()const{return FMT_RGB64F; }
+//        typedef VertexAttribDataAccess3<int8  ,FMT_RGB8I  >   VB3i8   ,VB3b;  
+//        typedef VertexAttribDataAccess3<int16 ,FMT_RGB16I >   VB3i16  ,VB3s;  
+        typedef VertexAttribDataAccess3<int32 ,FMT_RGB32I >   VB3i32  ,VB3i;  
+//        typedef VertexAttribDataAccess3<uint8 ,FMT_RGB8U  >   VB3u8   ,VB3ub; 
+//        typedef VertexAttribDataAccess3<uint16,FMT_RGB16U >   VB3u16  ,VB3us; 
+        typedef VertexAttribDataAccess3<uint32,FMT_RGB32U >   VB3u32  ,VB3ui; 
+        typedef VertexAttribDataAccess3<float ,FMT_RGB32F >   VB3f;           
+        typedef VertexAttribDataAccess3<double,FMT_RGB64F >   VB3d;           
 
-        typedef VertexBuffer4<int8  >   VB4i8   ,VB4b;  template<> inline VkFormat VertexBuffer4<int8   >::GetDataType()const{return FMT_RGBA8I;  }
-        typedef VertexBuffer4<int16 >   VB4i16  ,VB4s;  template<> inline VkFormat VertexBuffer4<int16  >::GetDataType()const{return FMT_RGBA16I; }
-        typedef VertexBuffer4<int32 >   VB4i32  ,VB4i;  template<> inline VkFormat VertexBuffer4<int32  >::GetDataType()const{return FMT_RGBA32I; }
-        typedef VertexBuffer4<uint8 >   VB4u8   ,VB4ub; template<> inline VkFormat VertexBuffer4<uint8  >::GetDataType()const{return FMT_RGBA8U;  }
-        typedef VertexBuffer4<uint16>   VB4u16  ,VB4us; template<> inline VkFormat VertexBuffer4<uint16 >::GetDataType()const{return FMT_RGBA16U; }
-        typedef VertexBuffer4<uint32>   VB4u32  ,VB4ui; template<> inline VkFormat VertexBuffer4<uint32 >::GetDataType()const{return FMT_RGBA32U; }
-        typedef VertexBuffer4<float >   VB4f;           template<> inline VkFormat VertexBuffer4<float  >::GetDataType()const{return FMT_RGBA32F; }
-        typedef VertexBuffer4<double>   VB4d;           template<> inline VkFormat VertexBuffer4<double >::GetDataType()const{return FMT_RGBA64F; }
+        typedef VertexAttribDataAccess4<int8  ,FMT_RGBA8I >   VB4i8   ,VB4b;  
+        typedef VertexAttribDataAccess4<int16 ,FMT_RGBA16I>   VB4i16  ,VB4s;  
+        typedef VertexAttribDataAccess4<int32 ,FMT_RGBA32I>   VB4i32  ,VB4i;  
+        typedef VertexAttribDataAccess4<uint8 ,FMT_RGBA8U >   VB4u8   ,VB4ub; 
+        typedef VertexAttribDataAccess4<uint16,FMT_RGBA16U>   VB4u16  ,VB4us; 
+        typedef VertexAttribDataAccess4<uint32,FMT_RGBA32U>   VB4u32  ,VB4ui; 
+        typedef VertexAttribDataAccess4<float ,FMT_RGBA32F>   VB4f;           
+        typedef VertexAttribDataAccess4<double,FMT_RGBA64F>   VB4d;           
 
         /**
-         * 根据格式要求，创建对应的VBC
+         * 根据格式要求，创建对应的顶点属性数据区(VAD)
          * @param base_type 基础格式,参见spirv_cross/spirv_common.hpp中的spirv_cross::SPIRType
          * @param vecsize vec数量
          * @param vertex_count 顶点数量
          */
-        VertexAttribData *CreateVABCreater(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        VertexAttribData *CreateVertexAttribData(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
+
+        
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_VERTEX_ATTRIB_BUFFER_INCLUDE
+#endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
