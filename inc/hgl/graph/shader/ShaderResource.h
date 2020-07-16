@@ -14,6 +14,8 @@ VK_NAMESPACE_BEGIN
         uint        component;
 
         VkFormat    format;
+
+        uint        binding;
     };//struct ShaderStage
 
     using ShaderStageList=ObjectList<ShaderStage>;

@@ -45,6 +45,8 @@ VK_NAMESPACE_BEGIN
                 ss->name.SetString((char *)data,str_len);
                 data+=str_len;
 
+                ss->binding=i;
+
                 ss_list.Add(ss);
             }
 
