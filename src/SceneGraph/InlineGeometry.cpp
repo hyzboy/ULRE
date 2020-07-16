@@ -105,7 +105,7 @@ namespace hgl
 
                 void Finish(int binding,VertexAttribBufferCreater *vb)
                 {
-                    render_obj->Set(binding,db->CreateVBO(vb));
+                    render_obj->Set(binding,db->CreateVAB(vb));
                     delete vb;
                 }
 

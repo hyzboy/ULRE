@@ -82,8 +82,8 @@ private:
 
     void InitVBO()
     {
-        vertex_buffer   =db->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=db->CreateVBO(FMT_RGBA32F,VERTEX_COUNT,tex_coord_data);
+        vertex_buffer   =db->CreateVAB(FMT_RGBA32F,VERTEX_COUNT,vertex_data);
+        tex_coord_buffer=db->CreateVAB(FMT_RGBA32F,VERTEX_COUNT,tex_coord_data);
 
         render_obj->Set("Vertex",vertex_buffer);
         render_obj->Set("TexCoord",tex_coord_buffer);

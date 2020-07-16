@@ -56,7 +56,7 @@ vulkan::Instance *InitVulkanInstance()
     cili.lunarg.standard_validation=true;
     cili.khronos.validation=true;
 
-    return vulkan::CreateInstance(U8_TEXT("VulkanTest"),nullptr,&cili);
+    return vulkan::CreateInstance("VulkanTest",nullptr,&cili);
 }
 
 int main(int,char **)
