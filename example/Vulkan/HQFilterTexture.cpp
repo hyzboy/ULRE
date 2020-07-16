@@ -91,10 +91,10 @@ private:
 
     bool InitVBO()
     {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,VERTEX_COUNT,vertex_data);
+        vertex_buffer   =device->CreateVAB(FMT_RG32F,VERTEX_COUNT,vertex_data);
         if(!vertex_buffer)return(false);
 
-        tex_coord_buffer=device->CreateVBO(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
+        tex_coord_buffer=device->CreateVAB(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
         if(!tex_coord_buffer)return(false);
 
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);

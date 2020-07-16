@@ -87,7 +87,7 @@ private:
 
     void InitVBO()
     {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
+        vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
 
         render_obj->Set("Vertex",   vertex_buffer);
     }

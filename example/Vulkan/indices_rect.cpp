@@ -24,7 +24,7 @@ constexpr float vertex_data[VERTEX_COUNT][2]=
     {SCREEN_WIDTH*SSP,  SCREEN_HEIGHT*SSN},
     {SCREEN_WIDTH*SSN,  SCREEN_HEIGHT*SSN}
 };
-
+ 
 constexpr uint32_t INDEX_COUNT=6;
 
 constexpr uint16 index_data[INDEX_COUNT]=
@@ -69,7 +69,7 @@ private:
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert"),
-                                               OS_TEXT("res/shader/XorColor.frag"));
+                                               OS_TEXT("res/shader/HexGrid.frag"));
         if(!material)
             return(false);
 
@@ -99,7 +99,7 @@ private:
 
     void InitVBO()
     {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,VERTEX_COUNT,vertex_data);
+        vertex_buffer   =device->CreateVAB(FMT_RG32F,VERTEX_COUNT,vertex_data);
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
 
         render_obj->Set("Vertex",vertex_buffer);

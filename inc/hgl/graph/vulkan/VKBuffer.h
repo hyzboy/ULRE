@@ -9,7 +9,7 @@ struct BufferData
     VkBuffer                buffer;
     Memory *                memory=nullptr;
     VkDescriptorBufferInfo  info;
-};//struct VulkanBuffer
+};//struct BufferData
 
 class Buffer
 {

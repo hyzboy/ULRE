@@ -119,8 +119,8 @@ private:
 
     void InitVBO()
     {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=device->CreateVBO(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
+        vertex_buffer   =device->CreateVAB(FMT_RG32F,VERTEX_COUNT,vertex_data);
+        tex_coord_buffer=device->CreateVAB(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
 
         render_obj->Set("Vertex",vertex_buffer);

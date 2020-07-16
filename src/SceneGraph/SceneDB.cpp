@@ -6,9 +6,9 @@ namespace hgl
 {
     namespace graph
     {
-        vulkan::VertexAttribBuffer *SceneDB::CreateVBO(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
+        vulkan::VertexAttribBuffer *SceneDB::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
         {
-            vulkan::VertexAttribBuffer *vb=device->CreateVBO(format,count,data,sharing_mode);
+            vulkan::VertexAttribBuffer *vb=device->CreateVAB(format,count,data,sharing_mode);
 
             if(!vb)
                 return(nullptr);

@@ -93,8 +93,8 @@ private:
     
     bool InitVBO()
     {
-        vertex_buffer   =device->CreateVBO(FMT_RG32F,  VERTEX_COUNT,vertex_data);
-        color_buffer    =device->CreateVBO(FMT_RGB32F, VERTEX_COUNT,color_data);
+        vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
+        color_buffer    =device->CreateVAB(FMT_RGB32F, VERTEX_COUNT,color_data);
 
         if(!render_obj->Set("Vertex",   vertex_buffer))return(false);
         if(!render_obj->Set("Color",    color_buffer))return(false);
