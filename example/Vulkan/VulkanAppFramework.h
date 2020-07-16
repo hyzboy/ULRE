@@ -173,7 +173,7 @@ public:
 
             cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
 
-            for(uint i=0;i<swap_chain_count;i++)
+            for(int32_t i=0;i<swap_chain_count;i++)
                 cmd_buf[i]=device->CreateCommandBuffer(extent,2);
         }
     }
@@ -204,7 +204,7 @@ public:
 
     void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
     {
-        for(uint32_t i=0;i<swap_chain_count;i++)
+        for(int32_t i=0;i<swap_chain_count;i++)
             BuildCommandBuffer(i,p,mi,r);
     }
 
@@ -228,7 +228,7 @@ public:
 
     void BuildCommandBuffer(RenderList *rl)
     {
-        for(uint32_t i=0;i<swap_chain_count;i++)
+        for(int32_t i=0;i<swap_chain_count;i++)
             BuildCommandBuffer(i,rl);
     }
 
