@@ -9,7 +9,7 @@
 #include<hgl/graph/vulkan/VKDeviceAttribute.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
 #include<hgl/graph/vulkan/VKRenderTarget.h>
-#include<hgl/graph/VertexAttribBufferCreater.h>
+#include<hgl/graph/VertexAttribData.h>
 
 namespace hgl
 {
@@ -89,7 +89,7 @@ public: //Buffer相关
 
     VertexAttribBuffer *      CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
     VertexAttribBuffer *      CreateVAB(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(format,count,nullptr,sharing_mode);}
-    VertexAttribBuffer *      CreateVAB(const VertexAttribBufferCreater *vbc,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(vbc->GetDataType(),vbc->GetCount(),vbc->GetData(),sharing_mode);}
+    VertexAttribBuffer *      CreateVAB(const VertexAttribData *vbc,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(vbc->GetDataType(),vbc->GetCount(),vbc->GetData(),sharing_mode);}
 
     IndexBuffer *       CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
     IndexBuffer *       CreateIBO16(uint32_t count,const uint16 *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,(void *)data,sharing_mode);}

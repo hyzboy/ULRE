@@ -6,11 +6,13 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/SceneDB.h>
+#include<hgl/graph/RenderableCreater.h>
+
 namespace hgl
 {
     namespace graph
     {
-        namespace
+/*        namespace
         {
             template<typename VERTEX_VB_FORMAT>
             struct GeometryCreater
@@ -103,7 +105,7 @@ namespace hgl
 
             private:
 
-                void Finish(int binding,VertexAttribBufferCreater *vb)
+                void Finish(int binding,VertexAttribData *vb)
                 {
                     render_obj->Set(binding,db->CreateVAB(vb));
                     delete vb;
@@ -141,15 +143,18 @@ namespace hgl
             using GeometryCreater3D=GeometryCreater<VB3f>;
             using GeometryCreater2D=GeometryCreater<VB2f>;
         }//namespace
-
+        */
         vulkan::Renderable *CreateRenderableRectangle(SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
         {
-            GeometryCreater2D gc(db,mtl);
+            RenderableCreater rc(db,mtl);
 
-            if(!gc.Init(4))
+            if(!rc.Init(4))
                 return(nullptr);
 
-            VB2f *vertex=gc.GetVertex();
+            VAD *vertex=rc.CreateVAB(VAN::Vertex);
+
+            if(vertex->GetComponent()!=2)
+                return(nullptr);
 
             vertex->WriteRectFan(rci->scope);
 

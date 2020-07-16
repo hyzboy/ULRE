@@ -1,5 +1,5 @@
-﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_BUFFER_CREATER_INCLUDE
-#define HGL_GRAPH_VERTEX_ATTRIB_BUFFER_CREATER_INCLUDE
+﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
+#define HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
 namespace hgl
@@ -7,7 +7,7 @@ namespace hgl
     namespace graph
     {
         /**
-         * 顶点属性缓冲区创建者
+         * 顶点属性数据
          */
         class VertexAttribData                                                             ///顶点属性缓冲区创建者
         {
@@ -50,4 +50,4 @@ namespace hgl
         using VAD=VertexAttribData;
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_VERTEX_ATTRIB_BUFFER_CREATER_INCLUDE
+#endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
