@@ -18,6 +18,8 @@ class CommandBuffer
     VkRect2D render_area;
     VkViewport viewport;
 
+    float default_line_width;
+
     VkPipelineLayout pipeline_layout;
 
 public:
