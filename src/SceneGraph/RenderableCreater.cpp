@@ -24,30 +24,37 @@ namespace hgl
             return(true);
         }
 
-        VertexAttribData *RenderableCreater::CreateVAD(const AnsiString &name)
+        VAD *RenderableCreater::CreateVAD(const AnsiString &name,const vulkan::ShaderStage *ss)
         {
-            if(!vsm)return(false);
+            if(!ss)return(nullptr);
 
             ShaderStageBind *ssb;
 
             if(vabc_maps.Get(name,ssb))
-                return ssb->vabc;
+                return ssb->data;
+
+            ssb=new ShaderStageBind;
+
+            ssb->data   =hgl::graph::CreateVertexAttribData(ss->base_type,ss->component,vertices_number);
+            ssb->name   =name;
+            ssb->binding=ss->binding;
+
+            vabc_maps.Add(name,ssb);
+
+            return ssb->data;
+        }
+
+        VertexAttribData *RenderableCreater::CreateVAD(const AnsiString &name)
+        {
+            if(!vsm)return(nullptr);
+            if(name.IsEmpty())return(nullptr);
 
             const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
 
             if(!ss)
                 return(nullptr);
 
-            ssb=new ShaderStageBind;
-
-            ssb->vabc=hgl::graph::CreateVertexAttribData(ss->base_type,ss->component,vertices_number);
-
-            ssb->name=name;
-            ssb->binding=ss->binding;
-
-            vabc_maps.Add(name,ssb);
-
-            return ssb->vabc;
+            return this->CreateVAD(name,ss);
         }
 
         uint16 *RenderableCreater::CreateIBO16(uint count,const uint16 *data)
@@ -78,7 +85,7 @@ namespace hgl
             const auto *sp=vabc_maps.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
-                render_obj->Set((*sp)->right->binding,db->CreateVAB((*sp)->right->vabc));
+                render_obj->Set((*sp)->right->binding,db->CreateVAB((*sp)->right->data));
 
                 ++sp;
             }
