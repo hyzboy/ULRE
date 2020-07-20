@@ -66,7 +66,7 @@ namespace hgl
 
             vulkan::VertexAttribBuffer *CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
             vulkan::VertexAttribBuffer *CreateVAB(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(format,count,nullptr,sharing_mode);}
-            vulkan::VertexAttribBuffer *CreateVAB(const VertexAttribData *vbc,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(vbc->GetDataType(),vbc->GetCount(),vbc->GetData(),sharing_mode);}
+            vulkan::VertexAttribBuffer *CreateVAB(const VertexAttribData *vad,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sharing_mode);}
 
             #define SCENE_DB_CREATE_FUNC(name)  vulkan::Buffer *Create##name(VkDeviceSize size,void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);   \
                                                 vulkan::Buffer *Create##name(VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
