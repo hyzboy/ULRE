@@ -15,6 +15,8 @@ VK_NAMESPACE_BEGIN
 
         VkFormat    format;     ///<对应的Vulkan格式(如vec4对应的FMT_RGBA32F)
 
+        uint32_t    stride;     ///<对应Vulkan格式的每数据字节数
+
         uint        binding;
     };//struct ShaderStage
 
