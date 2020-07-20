@@ -30,7 +30,7 @@ namespace hgl
 
             ShaderStageBind *ssb;
 
-            if(vabc_maps.Get(name,ssb))
+            if(vab_maps.Get(name,ssb))
                 return ssb->data;
 
             ssb=new ShaderStageBind;
@@ -39,7 +39,7 @@ namespace hgl
             ssb->name   =name;
             ssb->binding=ss->binding;
 
-            vabc_maps.Add(name,ssb);
+            vab_maps.Add(name,ssb);
 
             return ssb->data;
         }
@@ -77,12 +77,12 @@ namespace hgl
         {
             const uint si_count=vsm->GetStageInputCount();
 
-            if(vabc_maps.GetCount()!=si_count)
+            if(vab_maps.GetCount()!=si_count)
                 return(nullptr);
 
             vulkan::Renderable *render_obj=mtl->CreateRenderable(vertices_number);
 
-            const auto *sp=vabc_maps.GetDataList();
+            const auto *sp=vab_maps.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
                 render_obj->Set((*sp)->right->binding,db->CreateVAB((*sp)->right->data));

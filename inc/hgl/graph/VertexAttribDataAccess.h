@@ -83,7 +83,7 @@ namespace hgl
                 access=Get(offset);
 
                 if(access)
-                    start=access;
+                    start_access=access;
 
                 return access;
             }
@@ -94,7 +94,7 @@ namespace hgl
             void End()
             {
                 access=nullptr;
-                start=nullptr;
+                start_access=nullptr;
             }
 
             /**
@@ -104,7 +104,7 @@ namespace hgl
             */
             bool WriteData(const T *vp,const uint32_t number)
             {
-                if(!this->access||this->access+C*number>=this->data_end)
+                if(!this->access||this->access+C*number>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribBuffer::Write(const T *,number) out,number:")+OSString::valueOf(number));
                     return(false);
@@ -182,7 +182,7 @@ namespace hgl
 
             bool Write(const T v1)
             {
-                if(!this->access||this->access+1>=this->data_end)
+                if(!this->access||this->access+1>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const T) out"));
                     return(false);
@@ -199,7 +199,7 @@ namespace hgl
              */
             bool Write(const T v,const uint32_t count)
             {
-                if(!this->access||this->access+count>=this->data_end)
+                if(!this->access||this->access+count>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const T,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
@@ -277,7 +277,7 @@ namespace hgl
 
             bool Write(const T v1,const T v2)
             {
-                if(!this->access||this->access+2>=this->data_end)
+                if(!this->access||this->access+2>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::Write(const T ,const T) out"));
                     return(false);
@@ -291,7 +291,7 @@ namespace hgl
 
             bool Write(const T *v)
             {
-                if(!this->access||this->access+2>=this->data_end)
+                if(!this->access||this->access+2>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::Write(T *) out"));
                     return(false);
@@ -306,7 +306,7 @@ namespace hgl
             template<typename V2>
             bool Write(const V2 &v)
             {
-                if(!this->access||this->access+2>=this->data_end)
+                if(!this->access||this->access+2>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::Write(vec2 &) out"));
                     return(false);
@@ -326,7 +326,7 @@ namespace hgl
             template<typename V2>
             bool Fill(const V2 &v,const uint32_t count)
             {
-                if(!this->access||this->access+(count<<1)>=this->data_end)
+                if(!this->access||this->access+(count<<1)>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const Vector2f &,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
@@ -343,7 +343,7 @@ namespace hgl
 
             bool WriteLine(const T start_x,const T start_y,const T end_x,const T end_y)
             {
-                if(!this->access||this->access+4>=this->data_end)
+                if(!this->access||this->access+4>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteLine(T,T,T,T) out"));
                     return(false);
@@ -360,7 +360,7 @@ namespace hgl
             template<typename V2>
             bool WriteLine(const V2 &start,const V2 &end)
             {
-                if(!this->access||this->access+4>=this->data_end)
+                if(!this->access||this->access+4>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteLine(vec2,vec2) out"));
                     return(false);
@@ -380,7 +380,7 @@ namespace hgl
             template<typename V2>
             bool WriteTriangle(const V2 &v1,const V2 &v2,const V2 &v3)
             {
-                if(!this->access||this->access+6>=this->data_end)
+                if(!this->access||this->access+6>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2,vec2,vec2) out"));
                     return(false);
@@ -404,7 +404,7 @@ namespace hgl
             template<typename V2>
             bool WriteTriangle(const V2 *v)
             {
-                if(!this->access||this->access+6>=this->data_end)
+                if(!this->access||this->access+6>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2 *) out"));
                     return(false);
@@ -464,7 +464,7 @@ namespace hgl
             template<typename V>
             bool WriteRectFan(const RectScope2<V> &scope)
             {
-                if(!this->access||this->access+8>=this->data_end)
+                if(!this->access||this->access+8>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteRectFan(RectScope2 *) out"));
                     return(false);
@@ -488,7 +488,7 @@ namespace hgl
             template<typename V>
             bool WriteRectTriangleStrip(const RectScope2<V> &scope)
             {
-                if(!this->access||this->access+8>=this->data_end)
+                if(!this->access||this->access+8>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteRectTriangleStrip(RectScope2 *) out"));
                     return(false);
@@ -579,7 +579,7 @@ namespace hgl
 
             bool Write(const T v1,const T v2,const T v3)
             {
-                if(!this->access||this->access+3>=this->data_end)
+                if(!this->access||this->access+3>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(T,T,T) out"));
                     return(false);
@@ -594,7 +594,7 @@ namespace hgl
 
             bool Write3(const T *v)
             {
-                if(!this->access||this->access+3>=this->data_end)
+                if(!this->access||this->access+3>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(T *) out"));
                     return(false);
@@ -610,7 +610,7 @@ namespace hgl
             template<typename V3>
             bool Write(const V3 &v)
             {
-                if(!this->access||this->access+3>=this->data_end)
+                if(!this->access||this->access+3>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(vec3 &) out"));
                     return(false);
@@ -631,7 +631,7 @@ namespace hgl
             template<typename V3>
             bool Fill(const V3 &v,const uint32_t count)
             {
-                if(!this->access||this->access+(count*3)>=this->data_end)
+                if(!this->access||this->access+(count*3)>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
@@ -655,7 +655,7 @@ namespace hgl
             template<typename V3>
             bool Write(const V3 *v,const uint32_t count)
             {
-                if(!this->access||this->access+(count*3)>=this->data_end)
+                if(!this->access||this->access+(count*3)>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
@@ -675,7 +675,7 @@ namespace hgl
 
             bool Write(const Color3f &v)
             {
-                if(!this->access||this->access+3>=this->data_end)
+                if(!this->access||this->access+3>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(color3f &) out"));
                     return(false);
@@ -690,7 +690,7 @@ namespace hgl
 
             bool WriteLine(const T start_x,const T start_y,const T start_z,const T end_x,const T end_y,const T end_z)
             {
-                if(!this->access||this->access+6>=this->data_end)
+                if(!this->access||this->access+6>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
@@ -709,7 +709,7 @@ namespace hgl
             template<typename V3>
             bool WriteLine(const V3 &start,const V3 &end)
             {
-                if(!this->access||this->access+6>=this->data_end)
+                if(!this->access||this->access+6>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteLine(vec3,vec3) out"));
                     return(false);
@@ -731,7 +731,7 @@ namespace hgl
             template<typename V3>
             bool WriteTriangle(const V3 &v1,const V3 &v2,const V3 &v3)
             {
-                if(!this->access||this->access+9>=this->data_end)
+                if(!this->access||this->access+9>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
@@ -758,7 +758,7 @@ namespace hgl
             template<typename V3>
             bool WriteTriangle(const V3 *v)
             {
-                if(!this->access||this->access+9>=this->data_end)
+                if(!this->access||this->access+9>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3 *) out"));
                     return(false);
@@ -854,7 +854,7 @@ namespace hgl
 
             bool Write(const T v1,const T v2,const T v3,const T v4)
             {
-                if(!this->access||this->access+4>=this->data_end)
+                if(!this->access||this->access+4>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(T,T,T,T) out"));
                     return(false);
@@ -870,7 +870,7 @@ namespace hgl
 
             bool Write(const T *v)
             {
-                if(!this->access||this->access+4>=this->data_end)
+                if(!this->access||this->access+4>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(T *) out"));
                     return(false);
@@ -887,7 +887,7 @@ namespace hgl
             template<typename V4>
             bool Write(const V4 &v)
             {
-                if(!this->access||this->access+4>=this->data_end)
+                if(!this->access||this->access+4>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
                     return(false);
@@ -903,7 +903,7 @@ namespace hgl
 
             bool Write(const Color4f &v)
             {
-                if(!this->access||this->access+4>=this->data_end)
+                if(!this->access||this->access+4>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
                     return(false);
@@ -921,7 +921,7 @@ namespace hgl
             {
                 if(count<=0)return(false);
 
-                if(!this->access||this->access+(4*count)>=this->data_end)
+                if(!this->access||this->access+(4*count)>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(color4 &,count) out"));
                     return(false);
@@ -946,7 +946,7 @@ namespace hgl
             template<typename V4>
             bool Fill(const V4 &v,const uint32_t count)
             {
-                if(!this->access||this->access+(count<<2)>=this->data_end)
+                if(!this->access||this->access+(count<<2)>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
@@ -971,7 +971,7 @@ namespace hgl
             template<typename V4>
             bool Write(const V4 *v,const uint32_t count)
             {
-                if(!this->access||this->access+(count<<2)>=this->data_end)
+                if(!this->access||this->access+(count<<2)>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
                     return(false);
@@ -992,7 +992,7 @@ namespace hgl
 
             bool WriteLine(const T start_x,const T start_y,const T start_z,const T end_x,const T end_y,const T end_z)
             {
-                if(!this->access||this->access+8>=this->data_end)
+                if(!this->access||this->access+8>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
@@ -1013,7 +1013,7 @@ namespace hgl
             template<typename V4>
             bool WriteLine(const V4 &start,const V4 &end)
             {
-                if(!this->access||this->access+8>=this->data_end)
+                if(!this->access||this->access+8>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteLine(vec3,vec3) out"));
                     return(false);
@@ -1037,7 +1037,7 @@ namespace hgl
             template<typename V4>
             bool WriteTriangle(const V4 &v1,const V4 &v2,const V4 &v3)
             {
-                if(!this->access||this->access+12>=this->data_end)
+                if(!this->access||this->access+12>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
@@ -1067,7 +1067,7 @@ namespace hgl
             template<typename V4>
             bool WriteTriangle(const V4 *v)
             {
-                if(!this->access||this->access+12>=this->data_end)
+                if(!this->access||this->access+12>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3 *) out"));
                     return(false);
@@ -1099,7 +1099,7 @@ namespace hgl
             template<typename V>
             bool WriteRectangle2D(const RectScope2<V> &rect)
             {
-                if(!this->access||this->access+4>=this->data_end)
+                if(!this->access||this->access+4>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 ) out"));
                     return(false);
@@ -1119,7 +1119,7 @@ namespace hgl
             template<typename V>
             bool WriteRectangle2D(const RectScope2<V> *rect,const uint32_t count)
             {
-                if(!this->access||this->access+(4*count)>=this->data_end)
+                if(!this->access||this->access+(4*count)>this->data_end)
                 {
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 *,count) out"));
                     return(false);

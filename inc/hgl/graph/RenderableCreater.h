@@ -42,7 +42,7 @@ namespace hgl
             }
         };//struct ShaderStageBind
 
-        using VABCreaterMaps=MapObject<AnsiString,ShaderStageBind>;
+        using VADMaps=MapObject<AnsiString,ShaderStageBind>;
 
         /**
          * 可渲染对象创建器
@@ -61,7 +61,7 @@ namespace hgl
             uint32                  vertices_number;
 
             vulkan::IndexBuffer *   ibo;
-            VABCreaterMaps          vabc_maps;
+            VADMaps                 vab_maps;
 
             virtual VAD *CreateVAD(const AnsiString &name,const vulkan::ShaderStage *ss);           ///<创建一个顶点属性缓冲区
 
@@ -90,7 +90,11 @@ namespace hgl
                         if(!vad)
                             return(nullptr);
 
-                        return T::Create(vad);
+                        T *vada=T::Create(vad);
+
+                        vada->Begin();
+
+                        return vada;
                     }
 
                     uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);     ///<创建16位的索引缓冲区
