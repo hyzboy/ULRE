@@ -72,7 +72,7 @@ namespace hgl
             * @param offset 从第几个数据开始访问
             * @return 访问地址
             */
-            void *Begin(uint32_t offset=0)
+            T *Begin(uint32_t offset=0)
             {
                 if(access)
                 {
@@ -526,7 +526,7 @@ namespace hgl
             {
                 if(!vad)return(nullptr);
 
-                if(vad->GetVulkanFormat()!=VMFKT)
+                if(vad->GetVulkanFormat()!=VKFMT)
                     return(nullptr);
 
                 return(new VertexAttribDataAccess3<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
@@ -798,7 +798,7 @@ namespace hgl
             {
                 if(!vad)return(nullptr);
 
-                if(vad->GetVulkanFormat()!=VMFMT)
+                if(vad->GetVulkanFormat()!=VKFMT)
                     return(nullptr);
 
                 return(new VertexAttribDataAccess4<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
