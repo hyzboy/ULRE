@@ -33,6 +33,8 @@ CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_
     render_area.offset.y=0;
     render_area.extent=extent;
 
+    default_line_width=1.0;
+
     pipeline_layout=VK_NULL_HANDLE;
 }
 
@@ -88,6 +90,7 @@ bool CommandBuffer::BeginRenderPass(VkRenderPass rp,VkFramebuffer fb)
 
     vkCmdSetViewport(cmd_buf,0,1,&viewport);
     vkCmdSetScissor(cmd_buf,0,1,&render_area);
+    vkCmdSetLineWidth(cmd_buf,default_line_width);
 
     pipeline_layout=VK_NULL_HANDLE;
 
