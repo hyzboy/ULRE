@@ -44,6 +44,8 @@ class RenderPass;
 class Fence;
 class Semaphore;
 
+struct ShaderStage;
+
 class ShaderModule;
 class ShaderModuleManage;
 class VertexShaderModule;
