@@ -1,4 +1,3 @@
-#include<hgl/graph/vulkan/VKFormat.h>
 #include<hgl/graph/VertexAttribData.h>
 #include<spirv_cross/spirv_common.hpp>
 
