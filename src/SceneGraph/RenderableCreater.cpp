@@ -38,6 +38,8 @@ namespace hgl
             ssb->data   =hgl::graph::CreateVertexAttribData(ss->base_type,ss->component,vertices_number);
             ssb->name   =name;
             ssb->binding=ss->binding;
+            
+            ssb->vab    =nullptr;
 
             vab_maps.Add(name,ssb);
 
@@ -55,6 +57,39 @@ namespace hgl
                 return(nullptr);
 
             return this->CreateVAD(name,ss);
+        }
+
+        bool RenderableCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
+        {
+            if(!vsm)return(false);
+            if(name.IsEmpty())return(false);
+            if(!data)return(false);
+            if(!bytes)return(false);
+            
+            ShaderStageBind *ssb;
+
+            if(vab_maps.Get(name,ssb))
+                return false;
+
+            const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
+
+            if(!ss)
+                return(nullptr);
+
+            if(ss->stride*vertices_number!=bytes)
+                return(nullptr);
+               
+            ssb=new ShaderStageBind;
+
+            ssb->data   =nullptr;
+            ssb->name   =name;
+            ssb->binding=ss->binding;
+
+            ssb->vab    =db->CreateVAB(ss->format,vertices_number,data);
+
+            vab_maps.Add(name,ssb);
+
+            return true;
         }
 
         uint16 *RenderableCreater::CreateIBO16(uint count,const uint16 *data)
@@ -85,7 +120,10 @@ namespace hgl
             const auto *sp=vab_maps.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
-                render_obj->Set((*sp)->right->binding,db->CreateVAB((*sp)->right->data));
+                if((*sp)->right->vab)
+                    render_obj->Set((*sp)->right->binding,(*sp)->right->vab);                    
+                else
+                    render_obj->Set((*sp)->right->binding,db->CreateVAB((*sp)->right->data));
 
                 ++sp;
             }

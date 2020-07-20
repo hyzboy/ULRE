@@ -30,9 +30,10 @@ namespace hgl
 
         struct ShaderStageBind
         {
-            AnsiString  name;
-            uint        binding;
-            VAD *       data    =nullptr;
+            AnsiString      name;
+            uint            binding;
+            VAD *           data    =nullptr;
+            vulkan::VAB *   vab     =nullptr;
 
         public:
 
@@ -63,19 +64,21 @@ namespace hgl
             vulkan::IndexBuffer *   ibo;
             VADMaps                 vab_maps;
 
-            virtual VAD *CreateVAD(const AnsiString &name,const vulkan::ShaderStage *ss);           ///<创建一个顶点属性缓冲区
+        protected:
+
+            virtual VAD *CreateVAD(const AnsiString &name,const vulkan::ShaderStage *ss);                               ///<创建一个顶点属性缓冲区
 
         public:
 
             RenderableCreater(SceneDB *sdb,vulkan::Material *m);
             virtual ~RenderableCreater()=default;
 
-            virtual bool                    Init(const uint32 count);                               ///<初始化，参数为顶点数量
+            virtual bool                    Init(const uint32 count);                                                   ///<初始化，参数为顶点数量
 
-                    VAD *                   CreateVAD(const AnsiString &name);                      ///<创建一个顶点属性缓冲区
+                    VAD *                   CreateVAD(const AnsiString &name);                                          ///<创建一个顶点属性缓冲区
 
             template<typename T> 
-                    T *                     CreateVADA(const AnsiString &name)                      ///<创建一个顶点属性缓冲区以及访问器
+                    T *                     CreateVADA(const AnsiString &name)                                          ///<创建一个顶点属性缓冲区以及访问器
                     {
                         const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
 
@@ -97,10 +100,12 @@ namespace hgl
                         return vada;
                     }
 
-                    uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);     ///<创建16位的索引缓冲区
-                    uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);     ///<创建32位的索引缓冲区
+                    bool                    WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
 
-            virtual vulkan::Renderable *    Finish();                                               ///<结束并创建可渲染对象
+                    uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);                         ///<创建16位的索引缓冲区
+                    uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);                         ///<创建32位的索引缓冲区
+
+            virtual vulkan::Renderable *    Finish();                                                                   ///<结束并创建可渲染对象
         };//class RenderableCreater
     }//namespace graph
 }//namespace hgl

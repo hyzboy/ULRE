@@ -77,6 +77,8 @@ public:
     }
 };//class VertexAttribBuffer:public Buffer
 
+using VAB=VertexAttribBuffer;
+
 class IndexBuffer:public Buffer
 {
     VkIndexType index_type;

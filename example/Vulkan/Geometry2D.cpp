@@ -34,9 +34,9 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
 
-    vulkan::Renderable          *ro_rectangle       =nullptr;/*,
+    vulkan::Renderable          *ro_rectangle       =nullptr,
                                 *ro_circle          =nullptr,
-                                *ro_round_rectangle =nullptr;*/
+                                *ro_round_rectangle =nullptr;
 
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
     vulkan::Buffer *            ubo_color_material  =nullptr;
@@ -69,29 +69,29 @@ private:
             ro_rectangle=CreateRenderableRectangle(db,material,&rci);
         }
 
-        //{
-        //    struct RoundRectangleCreateInfo rrci;
+        {
+            struct RoundRectangleCreateInfo rrci;
 
-        //    rrci.scope.Set(SCREEN_WIDTH-30,10,20,20);
-        //    rrci.radius=5;
-        //    rrci.round_per=5;
+            rrci.scope.Set(SCREEN_WIDTH-30,10,20,20);
+            rrci.radius=5;
+            rrci.round_per=5;
 
-        //    ro_round_rectangle=CreateRenderableRoundRectangle(db,material,&rrci);
-        //}
+            ro_round_rectangle=CreateRenderableRoundRectangle(db,material,&rrci);
+        }
 
-        //{
-        //    struct CircleCreateInfo cci;
+        {
+            struct CircleCreateInfo cci;
 
-        //    cci.center.x=SCREEN_WIDTH/2;
-        //    cci.center.y=SCREEN_HEIGHT/2;
+            cci.center.x=SCREEN_WIDTH/2;
+            cci.center.y=SCREEN_HEIGHT/2;
 
-        //    cci.radius.x=SCREEN_WIDTH*0.35;
-        //    cci.radius.y=SCREEN_HEIGHT*0.35;
+            cci.radius.x=SCREEN_WIDTH*0.35;
+            cci.radius.y=SCREEN_HEIGHT*0.35;
 
-        //    cci.field_count=8;
+            cci.field_count=8;
 
-        //    ro_circle=CreateRenderableCircle(db,material,&cci);
-        //}
+            ro_circle=CreateRenderableCircle(db,material,&cci);
+        }
     }
 
     vulkan::Buffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
@@ -145,8 +145,8 @@ private:
     bool InitScene()
     {
         render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_rectangle));
-//        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_round_rectangle));
-//        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_circle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_round_rectangle));
+        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_circle));
 
         render_root.ExpendToList(&render_list);
         BuildCommandBuffer(&render_list);
