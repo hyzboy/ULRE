@@ -1,6 +1,7 @@
 #ifndef HGL_GRAPH_TEXT_LAYOUT_INCLUDE
 #define HGL_GRAPH_TEXT_LAYOUT_INCLUDE
 
+#include<hgl/type/StringList.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/RenderableCreater.h>
 namespace hgl
@@ -60,7 +61,8 @@ namespace hgl
         {
             HorizontalLeftToRight=0,    ///<横排从左到右
             HorizontalRightToLeft,      ///<横排从右到左
-            VerticalRightToLeft,        ///<坚排从上到下从右到左
+            VerticalRightToLeft,        ///<坚排从上到下从右到左(一般用于中文)
+            VerticalRightToLeftRotate90,///<坚排从上到下从右到左字符旋转90度(一般用于英文)
         };//enum class Direction
 
         struct TextAttributes
@@ -89,11 +91,11 @@ namespace hgl
             TextAttributes          attributes;                     ///<文本属性
         };//struct TextLayoutAttributes
 
-        uint TextLayout(vulkan::Renderable *,const uint max_chars,const UTF16String &);
-        uint TextLayout(vulkan::Renderable *,const uint max_chars,const UTF16StringList &);
+        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF16String &);
+//        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF16StringList &);
 
-        uint TextLayout(vulkan::Renderable *,const uint max_chars,const UTF32String &);
-        uint TextLayout(vulkan::Renderable *,const uint max_chars,const UTF32StringList &);
+        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF32String &);
+//        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF32StringList &);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_LAYOUT_INCLUDE
