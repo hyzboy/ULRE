@@ -21,18 +21,12 @@ namespace hgl
 			uint8 *buffer;
 			int buffer_size;
 
-		protected:
-
-			int LineHeight;
-			int LineDistance;
-
 		public:
 
 			WinBitmapFont(const Font &);
 			~WinBitmapFont();
 
 			bool MakeCharBitmap(FontBitmap *,u32char) override;					///<产生字体数据
-			int  GetLineHeight()const override{return LineHeight;}				///<取得行高
 			int	 GetCharAdvWidth(const u32char &) override;
 		};//class WinBitmapFont
 	}//namespace graph

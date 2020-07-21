@@ -61,8 +61,7 @@ namespace hgl
 		{
 			hdc=CreateCompatibleDC(0);
 
-			LineHeight=(fnt.height*GetDeviceCaps(hdc,LOGPIXELSY))/72;
-			LineDistance=(LineHeight-fnt.height)/2;
+			CharHeight=fnt.height;
 
 			hfont=CreateFont(  -fnt.height,
 								fnt.width,
