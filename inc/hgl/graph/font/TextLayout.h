@@ -20,82 +20,66 @@ namespace hgl
             Color4f CharColor;          ///<字符颜色
             Color4f BackgroundColor;    ///<背影颜色
         };//struct CharAttributes
+       
+        /**
+         * 文本排列方向
+         */
+        union TextDirection
+        {
+            uint8 text_direction;
+
+            struct
+            {
+                uint vertical:1;            ///<是否竖排
+                uint right_to_left:1;       ///<是否从右往左
+                uint bottom_to_top:1;       ///<是否从下到上
+            };
+        };//union TextDirection
 
         /**
-         * 段落对齐
+         * 文本对齐
          */
-        enum class ParagraphAlign
+        enum class TextAlign
         {
             Left=0,                     ///<左对齐
             Right,                      ///<右对齐
             Center,                     ///<居中
+            Fill,                       ///<排满整行/列
 
             Top     =Left,              ///<上对齐
             Bottom  =Right              ///<下对齐
-        };//enum class ParagraphAlign
+        };//enum class TextAlign
 
         /**
-         * 段落属性
-         */
-        struct ParagraphAttributes
-        {
-            ParagraphAlign  align                   =ParagraphAlign::Left;      ///<段落对齐
-            float           char_gap                =0.0f;                      ///<字间距
-            float           line_gap                =0.1f;                      ///<行间距(相对于字符高度)
-
-            uint32          char_attributes         =0;                         ///<缺省字符属性
-
-            bool            border_symbols_disable  =true;                      ///<边界符号禁用(如行首禁用逗号)
-            bool            auto_symbols_convert    =true;                      ///<自动符号转换(如tm/(r)/(c)等)
-
-            float           space_size              =0.5f;                      ///<空格符尺寸(对应字符高度的系数)
-            float           tab_size                =2.0f;                      ///<Tab符号尺寸(对应字符高度的系数)
-
-            bool            auto_spaces_size        =false;                     ///<自动空白字符尺寸(用于将每行/列文本长度拉至一样)
-        };//struct ParagraphAttributes
-
-        /**
-         * 文本排列方向
-         */
-        enum class TextDirection
-        {
-            HorizontalLeftToRight=0,    ///<横排从左到右
-            HorizontalRightToLeft,      ///<横排从右到左
-            VerticalRightToLeft,        ///<坚排从上到下从右到左(一般用于中文)
-            VerticalRightToLeftRotate90,///<坚排从上到下从右到左字符旋转90度(一般用于英文)
-        };//enum class Direction
-
-        struct TextAttributes
-        {
-            TextDirection   direction               =TextDirection::HorizontalLeftToRight;      ///<文本排列方向            
-            uint32_t        paragraph_attribute     =0;                                         ///<缺省段落属性
-            float           paragraph_gap           =1.0f;                                      ///<段间距
-        };//struct TextAttributes
-
-        using CharAttributesList=Map<UTF16String,CharAttributes>;
-        using ParagraphAttributesList=Map<UTF16String,ParagraphAttributes>;
-
-        /**
-         * 文本排版处理配置
+         * 文本排版属性
          */
         struct TextLayoutAttributes
         {
-            FontSource *            source              =nullptr;   ///字符源
+            FontSource *    font_source             =nullptr;                                       ///<字符源
+            CharAttributes *char_attributes         =nullptr;                                       ///<缺省字符属性
 
-            CharAttributesList      char_attributes;                ///<文本属性
-            ParagraphAttributesList paragraph_attributes;           ///<段落属性
-    
-            float                   max_width           =0.0f;      ///<最大宽度(<=0代表无限制)
-            float                   max_height          =0.0f;      ///<最大高度(<=0代表无限制)
+            uint8           text_direction          =0;                                             ///<文本排列方向
+            TextAlign       align                   =TextAlign::Left;                               ///<段落对齐
+            float           char_gap                =0.0f;                                          ///<字间距
+            float           line_gap                =0.1f;                                          ///<行间距(相对于字符高度)
+            float           paragraph_gap           =1.0f;                                          ///<段间距(相对于字符高度)
 
-            TextAttributes          attributes;                     ///<文本属性
+            float           max_width               =0.0f;                                          ///<最大宽度(<=0代表无限制)
+            float           max_height              =0.0f;                                          ///<最大高度(<=0代表无限制)
+
+            bool            border_symbols_disable  =true;                                          ///<边界符号禁用(如行首禁用逗号)
+//            bool            auto_symbols_convert    =true;                                          ///<自动符号转换(如tm/(r)/(c)等)
+
+            float           space_size              =0.5f;                                          ///<半角空格尺寸(对应字符高度的系数)
+            float           full_space_size         =1.0f;                                          ///<全角空格尺寸(对应字符高度的系数)
+            float           tab_size                =4.0f;                                          ///<Tab符号尺寸(对应字符高度的系数)
+
+            bool            compress_punctuation    =false;                                         ///<压缩标点符号
         };//struct TextLayoutAttributes
 
-        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF16String &);
-//        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF16StringList &);
+        int TextLayout(RenderableCreater *,const TextLayoutAttributes *,const int max_chars,const UTF16String &);
 
-        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF32String &);
-//        uint TextLayout(vulkan::Renderable *,const TextLayoutAttributes *,const uint max_chars,const UTF32StringList &);
+        int PlaneTextLayout(RenderableCreater *,FontSource *font_source,const int max_chars,const UTF16String &);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_LAYOUT_INCLUDE

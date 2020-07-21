@@ -61,8 +61,6 @@ namespace hgl
 		{
 			hdc=CreateCompatibleDC(0);
 
-			CharHeight=fnt.height;
-
 			hfont=CreateFont(  -fnt.height,
 								fnt.width,
 								0,
@@ -126,7 +124,7 @@ namespace hgl
 			bmp->h=gm.gmBlackBoxY;
 
 			bmp->x=gm.gmptGlyphOrigin.x;
-			bmp->y=fnt.height-gm.gmptGlyphOrigin.y-LineDistance;
+			bmp->y=gm.gmptGlyphOrigin.y;
 
 			bmp->adv_x=gm.gmCellIncX;
 			bmp->adv_y=gm.gmCellIncY;

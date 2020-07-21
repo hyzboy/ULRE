@@ -48,24 +48,33 @@ SET(RENDERABLE_FILES    ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableCreater.h
 
 SOURCE_GROUP("Renderable" FILES ${RENDERABLE_FILES})
 
-file(GLOB FONT_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/font/*.*)
+SET(FONT_MANAGE_SOURCE ${ROOT_INCLUDE_PATH}/hgl/graph/font/Font.h
+                ${ROOT_INCLUDE_PATH}/hgl/graph/font/FontManage.h
+                font/Font.cpp)
 
-SET(FONT_SOURCE font/Font.cpp
+SET(FONT_SOURCE ${ROOT_INCLUDE_PATH}/hgl/graph/font/FontSource.h
                 font/FontSource.cpp
                 font/FontSourceSingle.cpp
                 font/FontSourceMulti.cpp
-                font/FontSourceManage.cpp
-                font/TileFont.cpp)
+                font/FontSourceManage.cpp)
 
-SOURCE_GROUP("Font" FILES ${FONT_HEADER} ${FONT_SOURCE})
+SET(TILE_FONT_SOURCE    ${ROOT_INCLUDE_PATH}/hgl/graph/font/TileFont.h
+                        font/TileFont.cpp)
+
+SET(FONT_LAYOUT_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/font/TextLayout.h
+                        font/TextLayout.cpp
+                        font/TextLayoutPlane.cpp)
+
+SOURCE_GROUP("Font"             FILES ${FONT_MANAGE_SOURCE})
+SOURCE_GROUP("Font\\Source"     FILES ${FONT_SOURCE})
+SOURCE_GROUP("Font\\TileFont"   FILES ${TILE_FONT_SOURCE})
+SOURCE_GROUP("Font\\Layout"     FILES ${FONT_LAYOUT_SOURCE})
 
 IF(WIN32)
     SET(FONT_SOURCE_OS  font/FontSourceWin.cpp
                         font/FontSourceWin.h)
 
-    SOURCE_GROUP("Font\\Windows" FILES ${FONT_SOURCE_OS})
-
-    SET(FONT_SOURCE ${FONT_SOURCE} ${FONT_SOURCE_OS})
+    SOURCE_GROUP("Font\\Source\\Windows" FILES ${FONT_SOURCE_OS})
 ENDIF(WIN32)
 
 SOURCE_GROUP("Header Files" FILES ${SCENE_GRAPH_HEADER})
@@ -83,5 +92,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
 
                                         ${RENDERABLE_FILES}
 
-                                        ${FONT_HEADER} 
-                                        ${FONT_SOURCE})
+                                        ${FONT_MANAGE_SOURCE}
+                                        ${FONT_SOURCE}
+                                        ${FONT_SOURCE_OS}
+                                        ${TILE_FONT_SOURCE}
+                                        ${FONT_LAYOUT_SOURCE})
