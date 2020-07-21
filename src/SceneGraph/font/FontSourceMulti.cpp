@@ -10,6 +10,8 @@ namespace hgl
 
 			if(fs)
 				fs->RefAcquire(this);
+
+			max_char_height=fs->GetCharHeight();
 		}
 
 		FontSourceMulti::~FontSourceMulti()
@@ -25,7 +27,27 @@ namespace hgl
 			 ||!fs
 			 ||fs==default_source)return;
 
+			 if(fs->GetCharHeight()>max_char_height)
+				max_char_height=fs->GetCharHeight();
+
 			source_map.Update(ub,fs);
+		}
+
+		void FontSourceMulti::RefreshMaxCharHeight()
+		{
+			max_char_height=0;
+
+			const int count=source_map.GetCount();
+
+			const auto **fsp=source_map.GetDataList();
+
+			for(int i=0;i<count;i++)
+			{
+				if((*fsp)->right->GetCharHeight()>max_char_height)
+					max_char_height=(*fsp)->right->GetCharHeight();
+
+				++fsp;
+			}
 		}
 		
 		void FontSourceMulti::Remove(UnicodeBlock ub)
@@ -34,8 +56,13 @@ namespace hgl
 
 			if(source_map.Get(ub,fsp))
 			{
+				const bool refresh=(fsp->GetCharHeight()==max_char_height);
+
 				fsp->RefRelease(this);
 				source_map.DeleteByKey(ub);
+
+				if(refresh)
+					RefreshMaxCharHeight();
 			}
 		}
 
@@ -46,8 +73,13 @@ namespace hgl
 
 			if(source_map.ValueExist(fs))
 			{
+				const bool refresh=(fs->GetCharHeight()==max_char_height);
+
 				fs->RefRelease(this);
 				source_map.DeleteByValue(fs);
+
+				if(refresh)
+					RefreshMaxCharHeight();
 			}
 		}
 		

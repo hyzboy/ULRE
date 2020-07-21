@@ -43,6 +43,7 @@ namespace hgl
 
 			virtual FontBitmap *GetCharBitmap(const u32char &)=0;									///<取得字符位图数据
 			virtual int			GetCharAdvWidth(const u32char &)=0;									///<取得字符绘制宽度
+			virtual int			GetCharHeight()const=0;												///<取得字符高度
 
 			void RefAcquire(void *);																///<引用请求
 			void RefRelease(void *);																///<引用释放
@@ -69,9 +70,9 @@ namespace hgl
 			FontSourceSingle(const Font &f){fnt=f;}
 			virtual ~FontSourceSingle()=default;
 
-			FontBitmap * GetCharBitmap(const u32char &ch) override;									///<取得字符位图数据
-			virtual int	 GetCharAdvWidth(const u32char &)=0;										///<取得字符绘制宽度
-			virtual int  GetLineHeight()const=0;													///<取得行高
+			FontBitmap *GetCharBitmap(const u32char &ch) override;									///<取得字符位图数据
+			virtual int	GetCharAdvWidth(const u32char &)=0;											///<取得字符绘制宽度
+			virtual int	GetCharHeight()const override{return fnt.height;}							///<取得字符高度
 		};//class FontSourceSingle:public FontSource
 
 		/**
@@ -83,6 +84,10 @@ namespace hgl
 
 			FontSource *default_source;
 			Map<UnicodeBlock,FontSourcePointer> source_map;
+
+			int max_char_height;
+
+			void RefreshMaxCharHeight();
 
 		protected:
 
@@ -102,6 +107,7 @@ namespace hgl
 
 			FontBitmap *GetCharBitmap(const u32char &ch) override;
 			int			GetCharAdvWidth(const u32char &) override;
+			int			GetCharHeight()const override;												///<取得字符高度
         };//class FontSourceMulti:public FontSource
 	}//namespace graph
 }//namespace hgl
