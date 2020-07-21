@@ -39,7 +39,7 @@ namespace hgl
 
 			const int count=source_map.GetCount();
 
-			const auto **fsp=source_map.GetDataList();
+			auto **fsp=source_map.GetDataList();
 
 			for(int i=0;i<count;i++)
 			{
