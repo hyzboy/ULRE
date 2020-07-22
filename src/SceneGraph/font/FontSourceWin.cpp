@@ -120,21 +120,21 @@ namespace hgl
 
 			GetGlyphOutlineW(hdc,ch,ggo,&gm,buffer_size,buffer,&mat);
 
-			bmp->w=gm.gmBlackBoxX;
-			bmp->h=gm.gmBlackBoxY;
+			bmp->adv_info.w		=gm.gmBlackBoxX;
+			bmp->adv_info.h		=gm.gmBlackBoxY;
 
-			bmp->x=gm.gmptGlyphOrigin.x;
-			bmp->y=gm.gmptGlyphOrigin.y;
+			bmp->adv_info.x		=gm.gmptGlyphOrigin.x;
+			bmp->adv_info.y		=gm.gmptGlyphOrigin.y;
 
-			bmp->adv_x=gm.gmCellIncX;
-			bmp->adv_y=gm.gmCellIncY;
+			bmp->adv_info.adv_x	=gm.gmCellIncX;
+			bmp->adv_info.adv_y	=gm.gmCellIncY;
 
-			bmp->data=new uint8[bmp->w*bmp->h];
+			bmp->data=new uint8[bmp->adv_info.w*bmp->adv_info.h];
 
 			if(ggo==GGO_GRAY8_BITMAP)
-				Convert8BitGrey(bmp->data,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/bmp->h);
+				Convert8BitGrey(bmp->data,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/bmp->adv_info.h);
 			else
-				ConvertBitmap(bmp->data,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/bmp->h);
+				ConvertBitmap(bmp->data,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/bmp->adv_info.h);
 
 			return(true);
 		}

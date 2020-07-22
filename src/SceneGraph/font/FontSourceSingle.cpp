@@ -29,5 +29,16 @@ namespace hgl
 				return bmp;
 			}
 		}
+		
+		const bool FontSourceSingle::GetCharAdvInfo(FontAdvInfo &adv_info,const u32char &ch)
+		{		
+            FontBitmap *bmp=GetCharBitmap(ch);
+			
+			if(!bmp)
+				return false;
+
+			adv_info=bmp->adv_info;
+			return(true);
+		}
 	}//namespace graph
 }//namespace hgl

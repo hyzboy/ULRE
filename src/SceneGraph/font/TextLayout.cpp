@@ -37,6 +37,8 @@ namespace hgl
                 bool begin_disable;     ///<是否行首禁用符号
                 bool end_disable;       ///<是否行尾禁用符号
                 bool vrotate;           ///<竖排时是否需要旋转
+
+                FontAdvInfo adv_info;   ///<字符绘制信息
             };//struct CharLayoutAttributes
 
             /**
@@ -79,7 +81,20 @@ namespace hgl
                 TEXT_COORD_TYPE line_height;
                 TEXT_COORD_TYPE paragraph_gap;
 
+            protected:
+
+                AutoDelete<VB4f> vertex;
+
             public:
+
+                TextLayoutEngine()
+                {
+                    rc=nullptr;
+                    tla=nullptr;
+                    direction.text_direction=0;
+                    max_chars=0;
+                    vertex=nullptr;
+                }
 
                 virtual ~TextLayoutEngine()=default;
                 
@@ -167,6 +182,9 @@ namespace hgl
                             cla->is_emoji       =isEmoji(*cp);
 
                             cla->is_punctuation =isPunctuation(*cp);
+                        
+                            if(!tla->font_source->GetCharAdvInfo(cla->adv_info,*cp))
+                                hgl_zero(cla->adv_info);
                         }
 
                         ++cp;
@@ -223,6 +241,81 @@ namespace hgl
                     {
                         if(!h_splite_to_lines(tla->max_width))
                             return(-4);
+                    }
+
+                    return 0;
+                }
+
+            protected:
+
+                int pl_h_l2r()
+                {
+                    const int count=chars_attributes.GetCount();
+                    const CLA *cla=chars_attributes.GetData();
+
+                    int cur_size=0;
+
+                    for(int i=0;i<count;i++)
+                    {
+                        vertex->Write(x,y
+                    }
+                }
+
+                int pl_h_r2l()
+                {
+                    return 0;
+                }
+
+                int pl_v_r2l()
+                {
+                    return 0;
+                }
+
+                int pl_v_l2r()
+                {
+                    return 0;
+                }
+
+            public:
+
+                /**
+                 * 平面文本排版<br>
+                 * 不处理自动换行，仅支持\r\n换行。无任何特殊处理
+                 */
+                int plane_layout(const int mc,const BaseString<T> &str)
+                {
+                    if(mc<=0
+                     ||!str
+                     ||!(*str))
+                        return(-1);
+
+                    max_chars=hgl_min(mc,str.Length());
+                    origin_string=str;
+
+                    if(preprocess()<=0)
+                        return(-3);
+
+                    if(!rc->Init(ch_count))
+                        return(-4);
+
+                    vertex=rc->CreateVADA<VB4f>(VAN::Vertex);
+
+                    if(!vertex)
+                        return(-5);
+
+                    if(direction.vertical)
+                    {
+                        if(direction.right_to_left)
+                            return pl_v_r2l();
+                        else
+                            return pl_v_l2r();
+                    }
+                    else
+                    {
+                        if(direction.right_to_left)
+                            return pl_h_r2l();
+                        else
+                            return pl_h_l2r();
                     }
 
                     return 0;

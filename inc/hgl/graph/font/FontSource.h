@@ -13,6 +13,14 @@ namespace hgl
 {
 	namespace graph
 	{
+		struct FontAdvInfo
+		{
+    		int x,y;		//图像显示偏移
+			int w,h;		//图像尺寸
+
+			int adv_x,adv_y;//字符尺寸
+		};//struct FontAdvInfo
+
 		/**
 		* 字体位图数据
 		*/
@@ -20,10 +28,7 @@ namespace hgl
 		{
 			int count;		//使用次数
 
-    		int x,y;		//图像显示偏移
-			int w,h;		//图像尺寸
-
-			int adv_x,adv_y;//字符尺寸
+			FontAdvInfo adv_info;
 
 			uint8 *data;
 		};//struct FontBitmap
@@ -41,9 +46,9 @@ namespace hgl
 
 			virtual ~FontSource()=default;
 
-			virtual FontBitmap *GetCharBitmap(const u32char &)=0;									///<取得字符位图数据
-			virtual int			GetCharAdvWidth(const u32char &)=0;									///<取得字符绘制宽度
-			virtual int			GetCharHeight()const=0;												///<取得字符高度
+			virtual			FontBitmap *GetCharBitmap	(const u32char &)=0;						///<取得字符位图数据
+			virtual const	bool		GetCharAdvInfo	(FontAdvInfo &,const u32char &);			///<取得字符绘制信息
+			virtual			int			GetCharHeight	()const=0;									///<取得字符高度
 
 			void RefAcquire(void *);																///<引用请求
 			void RefRelease(void *);																///<引用释放
@@ -70,9 +75,9 @@ namespace hgl
 			FontSourceSingle(const Font &f){fnt=f;}
 			virtual ~FontSourceSingle()=default;
 
-			FontBitmap *GetCharBitmap(const u32char &ch) override;									///<取得字符位图数据
-			virtual int	GetCharAdvWidth(const u32char &)=0;											///<取得字符绘制宽度
-			virtual int	GetCharHeight()const override{return fnt.height;}							///<取得字符高度
+							FontBitmap *GetCharBitmap	(const u32char &ch) override;				///<取得字符位图数据
+					const	bool		GetCharAdvInfo	(FontAdvInfo &,const u32char &);			///<取得字符绘制信息
+			virtual			int			GetCharHeight	()const override{return fnt.height;}		///<取得字符高度
 		};//class FontSourceSingle:public FontSource
 
 		/**
@@ -105,9 +110,9 @@ namespace hgl
 			void Remove(UnicodeBlock);
 			void Remove(FontSource *);
 
-			FontBitmap *GetCharBitmap(const u32char &ch) override;
-			int			GetCharAdvWidth(const u32char &) override;
-			int			GetCharHeight()const override;												///<取得字符高度
+					FontBitmap *GetCharBitmap	(const u32char &ch) override;
+			const	bool		GetCharAdvInfo	(FontAdvInfo &,const u32char &);					///<取得字符绘制信息
+					int			GetCharHeight	()const override;									///<取得字符高度
         };//class FontSourceMulti:public FontSource
 	}//namespace graph
 }//namespace hgl

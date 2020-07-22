@@ -27,7 +27,6 @@ namespace hgl
 			~WinBitmapFont();
 
 			bool MakeCharBitmap(FontBitmap *,u32char) override;					///<产生字体数据
-			int	 GetCharAdvWidth(const u32char &) override;
 		};//class WinBitmapFont
 	}//namespace graph
 }//namespace hgl

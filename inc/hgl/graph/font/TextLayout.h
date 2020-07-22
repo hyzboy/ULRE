@@ -32,7 +32,6 @@ namespace hgl
             {
                 uint vertical:1;            ///<是否竖排
                 uint right_to_left:1;       ///<是否从右往左
-                uint bottom_to_top:1;       ///<是否从下到上
             };
         };//union TextDirection
 
@@ -79,7 +78,7 @@ namespace hgl
 
         int TextLayout(RenderableCreater *,const TextLayoutAttributes *,const int max_chars,const UTF16String &);
 
-        int PlaneTextLayout(RenderableCreater *,FontSource *font_source,const int max_chars,const UTF16String &);
+        int PlaneTextLayout(RenderableCreater *,FontSource *font_source,const int max_chars,const UTF16String &,const uint8 text_direction=0);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_LAYOUT_INCLUDE
