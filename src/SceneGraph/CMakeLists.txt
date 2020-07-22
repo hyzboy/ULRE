@@ -62,8 +62,7 @@ SET(TILE_FONT_SOURCE    ${ROOT_INCLUDE_PATH}/hgl/graph/font/TileFont.h
                         font/TileFont.cpp)
 
 SET(FONT_LAYOUT_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/font/TextLayout.h
-                        font/TextLayout.cpp
-                        font/TextLayoutPlane.cpp)
+                        font/TextLayout.cpp)
 
 SOURCE_GROUP("Font"             FILES ${FONT_MANAGE_SOURCE})
 SOURCE_GROUP("Font\\Source"     FILES ${FONT_SOURCE})
