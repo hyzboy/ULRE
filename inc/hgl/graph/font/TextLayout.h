@@ -75,10 +75,114 @@ namespace hgl
 
             bool            compress_punctuation    =false;                                         ///<压缩标点符号
         };//struct TextLayoutAttributes
+        
+        using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
 
-        int TextLayout(RenderableCreater *,const TextLayoutAttributes *,const int max_chars,const UTF16String &);
+        class TextLayout
+        {
+        protected:        
 
-        int PlaneTextLayout(RenderableCreater *,FontSource *font_source,const int max_chars,const UTF16String &,const uint8 text_direction=0);
+            struct CharLayoutAttributes
+            {
+                u32char ch;             ///<字符
+                
+                int size;               ///<字符排版尺寸(一般为宽)
+
+                bool visible;           ///<是否可显示字符
+
+                bool is_cjk;            ///<是否是中日韩文字
+                bool is_emoji;          ///<是否是表情符号
+
+                bool is_punctuation;    ///<是否是标点符号
+
+                bool begin_disable;     ///<是否行首禁用符号
+                bool end_disable;       ///<是否行尾禁用符号
+                bool vrotate;           ///<竖排时是否需要旋转
+
+                FontAdvInfo adv_info;   ///<字符绘制信息
+            };//struct CharLayoutAttributes
+
+            using CLA=CharLayoutAttributes;
+
+        protected:
+
+            RenderableCreater *rc;
+            TextLayoutAttributes tla;
+
+        protected:
+
+            TextDirection direction;
+
+            bool endless;
+            float splite_line_max_limit;
+
+            int max_chars;                              ///<总字符数量
+            int draw_chars_count;                       ///<可绘制字符数量
+
+            List<CLA> chars_attributes;
+
+        protected:
+        
+            template<typename T> int preprocess(const BaseString<T> &origin_string);
+            template<typename T> int plane_preprocess(const BaseString<T> &origin_string);
+            
+            bool h_splite_to_lines(float view_limit);
+            bool v_splite_to_lines(float view_limit);
+
+            
+            int pl_h_l2r();
+            int pl_h_r2l();
+            int pl_v_r2l();
+            int pl_v_l2r();
+
+        protected:  
+
+            TEXT_COORD_TYPE x,y;
+            TEXT_COORD_TYPE char_height;
+            TEXT_COORD_TYPE space_size;
+            TEXT_COORD_TYPE full_space_size;
+            TEXT_COORD_TYPE tab_size;
+            TEXT_COORD_TYPE char_gap;
+            TEXT_COORD_TYPE line_gap;
+            TEXT_COORD_TYPE line_height;
+            TEXT_COORD_TYPE paragraph_gap;
+
+        protected:
+
+            AutoDelete<VB4f>    vertex,
+                                tex_coord;
+
+        public:
+
+            TextLayout()
+            {
+                rc=nullptr;
+                
+                direction.text_direction=0;
+                max_chars               =0;
+                draw_chars_count        =0;
+
+                vertex      =nullptr;
+                tex_coord   =nullptr;
+            }
+
+            virtual ~TextLayout()=default;
+
+            bool Set(RenderableCreater *_rc)            {if(_rc)rc=_rc;}
+            bool Set(const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
+            bool Set(FontSource *fs)                    {if(fs)tla.font_source=fs;}
+            bool SetTextDirection(const uint8 &td)      {tla.text_direction=td;}
+            bool Set(const TextAlign &ta)               {tla.align=ta;}
+            bool SetMaxWidth(const float mw)            {tla.max_width=mw;}
+            bool SetMaxHeight(const float mh)           {tla.max_height=mh;}
+
+            virtual bool    Init        ();                                                       ///<初始化排版
+
+//            virtual int     Layout      (const int max_chars,const BaseString<T> &)=0;              ///<排版
+
+            template<typename T>
+            int     PlaneLayout (const int max_chars,const BaseString<T> &)=0;                ///<简易排版
+        };//class TextLayout
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_LAYOUT_INCLUDE
