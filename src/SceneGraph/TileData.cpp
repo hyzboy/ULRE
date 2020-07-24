@@ -25,18 +25,21 @@ namespace hgl
             to_pool.PreMalloc(tile_max_count);
             {
                 int col=0,row=0;
-                TileData::Object **to=to_pool.GetInactiveData();
+                TileObject **to=to_pool.GetInactiveData();
 
                 for(uint i=0;i<tile_max_count;i++)
                 {
                     (*to)->col  =col;
                     (*to)->row  =row;
-                    (*to)->left =col*tile_width;
-                    (*to)->top  =row*tile_height;
+
+                    (*to)->uv_pixel.Set(col*tile_width,
+                                        row*tile_height,
+                                        0,
+                                        0);
 
                     ++to;
-
                     ++col;
+
                     if(col==tile_cols)
                     {
                         ++row;
@@ -56,9 +59,9 @@ namespace hgl
             SAFE_CLEAR(tile_texture);
         }
 
-        TileData::Object *TileData::FindSpace()
+        TileObject *TileData::FindSpace()
         {
-            TileData::Object *obj;
+            TileObject *obj;
 
             if(!to_pool.Get(obj))
                 return(nullptr);
@@ -66,39 +69,27 @@ namespace hgl
             return obj;
         }
         
-        bool TileData::WriteTile(TileData::Object *obj,const void *data,const uint bytes,int ctw,int cth)
+        bool TileData::WriteTile(TileObject *obj,const void *data,const uint bytes,int ctw,int cth)
         {
             if(!obj||!data||!bytes||ctw<=0||cth<=0)
                 return(false);
 
-            obj->width    =(ctw==-1)?tile_width:ctw;
-            obj->height   =(cth==-1)?tile_height:cth;
+            obj->uv_pixel.SetSize(  (ctw==-1)?tile_width:ctw,
+                                    (cth==-1)?tile_height:cth);
 
-            obj->fl=obj->left/double(tile_texture->GetWidth());
-            obj->ft=obj->top /double(tile_texture->GetHeight());
-            obj->fw=double(obj->width)/double(tile_texture->GetWidth());
-            obj->fh=double(obj->height)/double(tile_texture->GetHeight());
+            UVFloatFromPixel(   obj->uv_float,
+                                obj->uv_pixel,
+                                tile_texture->GetWidth(),
+                                tile_texture->GetHeight());
 
             tile_buffer->Write(data,0,bytes);
 
             device->ChangeTexture2D(tile_texture,
                                     tile_buffer,
-                                    obj->left,
-                                    obj->top,
+                                    obj->uv_pixel.GetLeft(),
+                                    obj->uv_pixel.GetTop(),
                                     tile_width,
                                     tile_height);
-
-            //请保留这段代码，以便未来使用时该数据时不会使用
-            //{
-            //    vertex->Begin(index*6);
-            //    texcoord->Begin(index*6);
-
-            //        texcoord->WriteRect(obj->fl,obj->ft,obj->fw,obj->fh);
-            //        vertex->WriteRect(0,0,obj->width,obj->height);
-
-            //    texcoord->End();
-            //    vertex->End();
-            //}
 
             return(true);
         }
@@ -111,12 +102,12 @@ namespace hgl
         * @param cth 当前tile高度,-1表示等同全局设置
         * @return 为增加的Tile创建的对象
         */
-        TileData::Object *TileData::Add(const void *data,const uint bytes,const int ctw,const int cth)
+        TileObject *TileData::Add(const void *data,const uint bytes,const int ctw,const int cth)
         {
             if(!data||!bytes||ctw<=0||cth<=0)
                 return(nullptr);
 
-            TileData::Object *obj=FindSpace();
+            TileObject *obj=FindSpace();
 
             if(!obj)
                 return(nullptr);
@@ -132,7 +123,7 @@ namespace hgl
         * @param obj 要删除的Tile的对象指针
         * @return 删除是否成功
         */
-        bool TileData::Delete(TileData::Object *obj)
+        bool TileData::Delete(TileObject *obj)
         {
             if(!obj)return(false);
 
@@ -148,7 +139,7 @@ namespace hgl
         * @param cth 当前tile高度,-1表示等同全局设置
         * @return 更改是否成功
         */
-        bool TileData::Change(TileData::Object *obj,const void *data,const uint bytes,const int ctw,const int cth)
+        bool TileData::Change(TileObject *obj,const void *data,const uint bytes,const int ctw,const int cth)
         {
             if(!obj||!data||!bytes||ctw<=0||cth<=0)
                 return(false);
@@ -164,7 +155,7 @@ namespace hgl
         */
         void TileData::Clear()
         {
-            to_pool.ClearAll();
+            to_pool.ClearActive();
         }
     }//namespace graph
 }//namespace hgl
