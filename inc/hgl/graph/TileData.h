@@ -42,7 +42,6 @@ namespace hgl
 
         protected:
         
-			TileObject *FindSpace();																		            ///<寻找一个空位
 			bool WriteTile(TileObject *,const void *,const uint,const int,const int);	                                ///<写入一个Tile数据
             
 		public:
