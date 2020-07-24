@@ -101,7 +101,7 @@ namespace hgl
                 bool end_disable;       ///<是否行尾禁用符号
                 bool vrotate;           ///<竖排时是否需要旋转
 
-                FontAdvInfo adv_info;   ///<字符绘制信息
+                CharMetricsInfo adv_info;   ///<字符绘制信息
             };//struct CharLayoutAttributes
 
             using CLA=CharLayoutAttributes;

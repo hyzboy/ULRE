@@ -30,14 +30,14 @@ namespace hgl
 			}
 		}
 		
-		const bool FontSourceSingle::GetCharAdvInfo(FontAdvInfo &adv_info,const u32char &ch)
+		const bool FontSourceSingle::GetCharMetrics(CharMetricsInfo &adv_info,const u32char &ch)
 		{		
             FontBitmap *bmp=GetCharBitmap(ch);
 			
 			if(!bmp)
 				return false;
 
-			adv_info=bmp->adv_info;
+			adv_info=bmp->metrics_info;
 			return(true);
 		}
 	}//namespace graph

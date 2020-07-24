@@ -13,7 +13,7 @@ namespace hgl
 		*/
 		struct Font
 		{
-			char name[128];						///<字体名称(utf8)
+			os_char name[128];					///<字体名称
 
 			int width;							///<宽度
 			int height;							///<高度

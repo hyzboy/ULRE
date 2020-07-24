@@ -61,7 +61,7 @@ namespace hgl
 		{
 			hdc=CreateCompatibleDC(0);
 
-			hfont=CreateFont(  -fnt.height,
+			hfont=CreateFontW( -fnt.height,
 								fnt.width,
 								0,
 								0,
