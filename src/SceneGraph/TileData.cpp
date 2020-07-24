@@ -22,7 +22,28 @@ namespace hgl
             tile_max_count=tile_rows*tile_cols;
             tile_count=0;
 
-            NEW_NULL_ARRAY(tile_object,TileData::Object *,tile_max_count);
+            to_pool.PreMalloc(tile_max_count);
+            {
+                int col=0,row=0;
+                TileData::Object **to=to_pool.GetInactiveData();
+
+                for(uint i=0;i<tile_max_count;i++)
+                {
+                    (*to)->col  =col;
+                    (*to)->row  =row;
+                    (*to)->left =col*tile_width;
+                    (*to)->top  =row*tile_height;
+
+                    ++to;
+
+                    ++col;
+                    if(col==tile_cols)
+                    {
+                        ++row;
+                        col=0;
+                    }
+                }
+            }
 
             tile_bytes=tile_width*tile_height*GetStrideByFormat(tile_texture->GetFormat());
 
@@ -33,53 +54,37 @@ namespace hgl
         {
             SAFE_CLEAR(tile_buffer);
             SAFE_CLEAR(tile_texture);
-            SAFE_CLEAR_OBJECT_ARRAY(tile_object,tile_max_count);
         }
 
-        int TileData::FindSpace()
+        TileData::Object *TileData::FindSpace()
         {
-            if(!tile_object)return(-1);
-            if(tile_count>=tile_max_count)return(-1);
+            TileData::Object *obj;
 
-            int n=tile_max_count;
+            if(!to_pool.Get(obj))
+                return(nullptr);
 
-            while(n--)
-                if(!(tile_object[n]))
-                    return(n);
-
-            LOG_PROBLEM(OS_TEXT("无法在Tile数据区内找到足够的空间！"));
-            return(-1);
+            return obj;
         }
         
-        void TileData::WriteTile(const int index,TileData::Object *obj,const void *data,const uint bytes,int ctw,int cth)
+        bool TileData::WriteTile(TileData::Object *obj,const void *data,const uint bytes,int ctw,int cth)
         {
-            int col,row;
-            double left,top;
-
-            col=index%tile_cols;
-            row=index/tile_cols;
-
-            left=tile_width *col;
-            top =tile_height*row;
-
-            obj->index  =index;
+            if(!obj||!data||!bytes||ctw<=0||cth<=0)
+                return(false);
 
             obj->width    =(ctw==-1)?tile_width:ctw;
             obj->height   =(cth==-1)?tile_height:cth;
 
-            obj->fl=left/double(tile_texture->GetWidth());
-            obj->ft=top /double(tile_texture->GetHeight());
+            obj->fl=obj->left/double(tile_texture->GetWidth());
+            obj->ft=obj->top /double(tile_texture->GetHeight());
             obj->fw=double(obj->width)/double(tile_texture->GetWidth());
             obj->fh=double(obj->height)/double(tile_texture->GetHeight());
-
-            tile_object[index]=obj;
 
             tile_buffer->Write(data,0,bytes);
 
             device->ChangeTexture2D(tile_texture,
                                     tile_buffer,
-                                    left,
-                                    top,
+                                    obj->left,
+                                    obj->top,
                                     tile_width,
                                     tile_height);
 
@@ -94,6 +99,8 @@ namespace hgl
             //    texcoord->End();
             //    vertex->End();
             //}
+
+            return(true);
         }
 
         /**
@@ -106,20 +113,15 @@ namespace hgl
         */
         TileData::Object *TileData::Add(const void *data,const uint bytes,const int ctw,const int cth)
         {
-            if(!tile_object)return(nullptr);
-
-            int index;
-
-            index=FindSpace();
-            if(index==-1)
-            {
-                LOG_PROBLEM(OS_TEXT("找不到空的Tile数据区!"));
+            if(!data||!bytes||ctw<=0||cth<=0)
                 return(nullptr);
-            }
 
-               TileData::Object *obj=new TileData::Object;
+            TileData::Object *obj=FindSpace();
 
-            WriteTile(index,obj,data,bytes,ctw,cth);
+            if(!obj)
+                return(nullptr);
+
+            WriteTile(obj,data,bytes,ctw,cth);
 
             tile_count++;
             return(obj);
@@ -132,30 +134,9 @@ namespace hgl
         */
         bool TileData::Delete(TileData::Object *obj)
         {
-            if(!tile_object)return(false);
+            if(!obj)return(false);
 
-            if(tile_object[obj->index])
-            {
-                if(tile_object[obj->index]!=obj)
-                {
-                    LOG_PROBLEM(OS_TEXT("要删除的TileData::Object和TileData中的不对应！"));
-                    return(false);
-                }
-                else
-                {
-                    tile_object[obj->index]=nullptr;
-                    tile_count--;
-
-                    delete obj;
-
-                    return(true);
-                }
-            }
-            else
-            {
-                LOG_PROBLEM(OS_TEXT("要删除的TileData::Object对象在TileData中不存在！"));
-                return(false);
-            }
+            return to_pool.Release(obj);
         }
 
         /**
@@ -169,27 +150,13 @@ namespace hgl
         */
         bool TileData::Change(TileData::Object *obj,const void *data,const uint bytes,const int ctw,const int cth)
         {
-            if(!tile_object)return(false);
-
-            if(tile_object[obj->index])
-            {
-                if(tile_object[obj->index]!=obj)
-                {
-                    LOG_PROBLEM(OS_TEXT("要更改的TileData::Object和TileData中的不对应！"));
-                    return(false);
-                }
-                else
-                {
-                    WriteTile(obj->index,obj,data,bytes,ctw,cth);
-
-                    return(true);
-                }
-            }
-            else
-            {
-                LOG_PROBLEM(OS_TEXT("要更改的TileData::Object对象在TileData中不存在！"));
+            if(!obj||!data||!bytes||ctw<=0||cth<=0)
                 return(false);
-            }
+
+            if(!to_pool.IsActive(obj))
+                return(false);
+
+            return WriteTile(obj,data,bytes,ctw,cth);
         }
 
         /**
@@ -197,16 +164,7 @@ namespace hgl
         */
         void TileData::Clear()
         {
-            if(!tile_object)return;
-
-            int n=tile_max_count;
-
-            while(n--)
-                if(tile_object[n])
-                {
-                    delete tile_object[n];
-                    tile_object[n]=nullptr;
-                }
+            to_pool.ClearAll();
         }
     }//namespace graph
 }//namespace hgl
