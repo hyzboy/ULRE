@@ -2,6 +2,7 @@
 #define HGL_GRAPH_TILE_DATA_INCLUDE
 
 #include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/type/Pool.h>
 
 VK_NAMESPACE_USING
 
@@ -21,12 +22,13 @@ namespace hgl
 
             struct Object
             {
-                int index;
+                int col,row;
 
+                double left,top;
                 double fl,ft,fw,fh;
 
                 int width,height;
-            };//struct TileObject
+            };//struct Object
 
         protected:
 
@@ -34,7 +36,7 @@ namespace hgl
 
             Texture2D *tile_texture;                                                                                    ///<TileData所用的纹理对象
 
-            TileData::Object **tile_object;                                                                             ///<所有的Tile对象
+            ObjectPool<TileData::Object> to_pool;                                                                       ///<Tile对象池
 
             uint tile_width,tile_height;                                                                                ///<Tile的宽和高
             uint32_t tile_bytes;                                                                                        ///<一个tile字节数
@@ -43,8 +45,8 @@ namespace hgl
 
         protected:
         
-			int FindSpace();																		                    ///<寻找一个空位
-			void WriteTile(const int,TileData::Object *,const void *,const uint,const int,const int);	                ///<写入一个Tile数据
+			TileData::Object *FindSpace();																		        ///<寻找一个空位
+			bool WriteTile(TileData::Object *,const void *,const uint,const int,const int);	                            ///<写入一个Tile数据
             
 		public:
 
