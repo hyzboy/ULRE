@@ -58,16 +58,6 @@ namespace hgl
             SAFE_CLEAR(tile_buffer);
             SAFE_CLEAR(tile_texture);
         }
-
-        TileObject *TileData::FindSpace()
-        {
-            TileObject *obj;
-
-            if(!to_pool.Get(obj))
-                return(nullptr);
-
-            return obj;
-        }
         
         bool TileData::WriteTile(TileObject *obj,const void *data,const uint bytes,int ctw,int cth)
         {
@@ -106,10 +96,10 @@ namespace hgl
         {
             if(!data||!bytes||ctw<=0||cth<=0)
                 return(nullptr);
+                
+            TileObject *obj;
 
-            TileObject *obj=FindSpace();
-
-            if(!obj)
+            if(!to_pool.Get(obj))
                 return(nullptr);
 
             WriteTile(obj,data,bytes,ctw,cth);
