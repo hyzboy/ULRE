@@ -8,6 +8,8 @@ namespace hgl
 {
     namespace graph
     {
+        class TileFont;
+
         /**
          * 字符属性，可精确到字也可精确到段落或是全文
          */
@@ -181,7 +183,7 @@ namespace hgl
 //            virtual int     Layout      (const int max_chars,const BaseString<T> &)=0;              ///<排版
 
             template<typename T>
-            int     PlaneLayout (const int max_chars,const BaseString<T> &)=0;                ///<简易排版
+            int     PlaneLayout (TileFont *,const int max_chars,const BaseString<T> &)=0;                ///<简易排版
         };//class TextLayout
     }//namespace graph
 }//namespace hgl

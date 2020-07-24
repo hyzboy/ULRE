@@ -108,7 +108,7 @@ namespace hgl
 
                     cla->is_punctuation =isPunctuation(*cp);
                         
-                    if(!tla->font_source->GetCharAdvInfo(cla->adv_info,*cp))
+                    if(!tla->font_source->GetCharMetrics(cla->adv_info,*cp))
                         hgl_zero(cla->adv_info);
                     else
                     if(cla->adv_info.w>0&&cla->adv_info.h>0)
@@ -157,7 +157,7 @@ namespace hgl
 
                     cla->vrotate        =hgl::strchr(VRotateSymbols,*cp,VRotateSymbolsCount     );
                         
-                    if(!tla->font_source->GetCharAdvInfo(cla->adv_info,*cp))
+                    if(!tla->font_source->GetCharMetrics(cla->adv_info,*cp))
                         hgl_zero(cla->adv_info);
                     else
                     if(cla->adv_info.w>0&&cla->adv_info.h>0)
@@ -253,7 +253,7 @@ namespace hgl
          * 不处理自动换行，仅支持\r\n换行。无任何特殊处理
          */
         template<typename T>
-        int TextLayout::PlaneLayout(const int mc,const BaseString<T> &str)
+        int TextLayout::PlaneLayout(TileFont *tf,const int mc,const BaseString<T> &str)
         {
             if(mc<=0||str.IsEmpty()
                 return(-1);
