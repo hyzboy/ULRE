@@ -10,17 +10,17 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
 {
     VkImageViewCreateInfo iv_createinfo={};
 
-    iv_createinfo.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    iv_createinfo.pNext=nullptr;
-    iv_createinfo.flags=0;
-    iv_createinfo.image=img;
-    iv_createinfo.format=format;
-    iv_createinfo.viewType=type;
-    iv_createinfo.subresourceRange.aspectMask=aspectMask;
-    iv_createinfo.subresourceRange.baseMipLevel=0;
-    iv_createinfo.subresourceRange.levelCount=ext.depth;
-    iv_createinfo.subresourceRange.baseArrayLayer=0;
-    iv_createinfo.subresourceRange.layerCount=ext.depth;
+    iv_createinfo.sType     =VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    iv_createinfo.pNext     =nullptr;
+    iv_createinfo.flags     =0;
+    iv_createinfo.image     =img;
+    iv_createinfo.format    =format;
+    iv_createinfo.viewType  =type;
+    iv_createinfo.subresourceRange.aspectMask       =aspectMask;
+    iv_createinfo.subresourceRange.baseMipLevel     =0;
+    iv_createinfo.subresourceRange.levelCount       =ext.depth;
+    iv_createinfo.subresourceRange.baseArrayLayer   =0;
+    iv_createinfo.subresourceRange.layerCount       =ext.depth;
 
     if(aspectMask&VK_IMAGE_ASPECT_DEPTH_BIT)
     {
