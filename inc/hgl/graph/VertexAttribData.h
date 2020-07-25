@@ -48,11 +48,11 @@ namespace hgl
 
         /**
          * 根据格式要求，创建对应的顶点属性数据区(VAD)
-         * @param base_type 基础格式,参见spirv_cross/spirv_common.hpp中的spirv_cross::SPIRType
+         * @param base_type 基础格式
          * @param vecsize vec数量
          * @param vertex_count 顶点数量
          */
-        VertexAttribData *CreateVertexAttribData(const uint32_t base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        VertexAttribData *CreateVertexAttribData(const vulkan::SPIRBaseType base_type,const uint32_t vecsize,const uint32_t vertex_count);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
