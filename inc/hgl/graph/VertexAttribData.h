@@ -52,7 +52,7 @@ namespace hgl
          * @param vecsize vec数量
          * @param vertex_count 顶点数量
          */
-        VertexAttribData *CreateVertexAttribData(const vulkan::SPIRBaseType base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        VertexAttribData *CreateVertexAttribData(const vulkan::BaseType base_type,const uint32_t vecsize,const uint32_t vertex_count);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
