@@ -46,7 +46,12 @@ public:
 
 ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img);
 
-#define CREATE_IMAGE_VIEW(short_name,larget_name) inline ImageView *CreateImageView##short_name(VkDevice device,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img=VK_NULL_HANDLE){return CreateImageView(device,VK_IMAGE_VIEW_TYPE_##larget_name,format,ext,aspectMask,img);}
+#define CREATE_IMAGE_VIEW(short_name,larget_name) \
+    inline ImageView *CreateImageView##short_name(VkDevice device,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img=VK_NULL_HANDLE)   \
+    {   \
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_##larget_name,format,ext,aspectMask,img);  \
+    }
+
     CREATE_IMAGE_VIEW(1D,1D);
     CREATE_IMAGE_VIEW(2D,2D);
     CREATE_IMAGE_VIEW(3D,3D);

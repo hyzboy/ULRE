@@ -157,7 +157,7 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
         return tex;
     }
 }
-/*
+
 struct Texture2DData
 {
     uint32 width;
@@ -219,5 +219,5 @@ void *LoadTextureFromFile(const OSString &filename)
         delete buf;
         return tex;
     }    
-}*/
+}
 VK_NAMESPACE_END

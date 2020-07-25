@@ -24,23 +24,23 @@ protected:
 
 public:
 
-    TextureData *               GetData             (){return data;}
+    TextureData *               GetData             ()      {return data;}
 
-    VkDeviceMemory              GetDeviceMemory     (){return data?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE;}
-    VkImage                     GetImage            (){return data?data->image:VK_NULL_HANDLE;}
-    VkImageLayout               GetImageLayout      (){return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
-    VkImageView                 GetVulkanImageView  (){return data?data->image_view->operator VkImageView():VK_NULL_HANDLE;}
+    VkDeviceMemory              GetDeviceMemory     ()      {return data?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE;}
+    VkImage                     GetImage            ()      {return data?data->image:VK_NULL_HANDLE;}
+    VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
+    VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->operator VkImageView():VK_NULL_HANDLE;}
 
-    Memory *                    GetMemory           (){return data?data->memory:nullptr;}
-    ImageView *                 GetImageView        (){return data?data->image_view:nullptr;}
+    Memory *                    GetMemory           ()      {return data?data->memory:nullptr;}
+    ImageView *                 GetImageView        ()      {return data?data->image_view:nullptr;}
 
-    const uint32                GetMipLevels()const{return data?data->mip_levels:0;}
-    const bool                  IsOptimal   ()const{return data?data->tiling==VK_IMAGE_TILING_OPTIMAL:false;}
-    const bool                  IsLinear    ()const{return data?data->tiling==VK_IMAGE_TILING_LINEAR:false;}
+    const uint32                GetMipLevels        ()const {return data?data->mip_levels:0;}
+    const bool                  IsOptimal           ()const {return data?data->tiling==VK_IMAGE_TILING_OPTIMAL:false;}
+    const bool                  IsLinear            ()const {return data?data->tiling==VK_IMAGE_TILING_LINEAR:false;}
 
-    const VkFormat              GetFormat   ()const{return data?data->image_view->GetFormat():VK_FORMAT_UNDEFINED;}
-    const VkImageAspectFlags    GetAspect   ()const{return data?data->image_view->GetAspectFlags():0;}
-    const VkExtent3D *          GetExtent   ()const{return data?&data->image_view->GetExtent():nullptr;}
+    const VkFormat              GetFormat           ()const {return data?data->image_view->GetFormat():VK_FORMAT_UNDEFINED;}
+    const VkImageAspectFlags    GetAspect           ()const {return data?data->image_view->GetAspectFlags():0;}
+    const VkExtent3D *          GetExtent           ()const {return data?&data->image_view->GetExtent():nullptr;}
 
 public:
 
@@ -70,7 +70,7 @@ public:
     Texture2D(VkDevice dev,TextureData *td):Texture(dev,td){}
     ~Texture2D()=default;
 
-    const uint32_t GetWidth()const{return data?data->image_view->GetExtent().width:0;}
+    const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
     const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
 };//class Texture2D:public Texture
 
