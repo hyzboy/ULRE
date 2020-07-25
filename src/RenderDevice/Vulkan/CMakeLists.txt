@@ -1,6 +1,19 @@
-﻿file(GLOB RENDER_DEVICE_VULKAN_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan/*.h)
+﻿set(RD_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan)
 
-SET(VK_DEVICE_SOURCE    VKDeviceAttribute.cpp
+SET(VK_INST_SOURCE      ${RD_INCLUDE_PATH}/VKInstance.h
+                        VKInstance.cpp)
+
+SET(VK_DEBUG_SOURCE     ${RD_INCLUDE_PATH}/VKDebugOut.h
+                        VKDebugOut.cpp)
+
+SET(VK_MEMORY_SOURCE    ${RD_INCLUDE_PATH}/VKMemory.h
+                        ${RD_INCLUDE_PATH}/VKBuffer.h
+                        VKMemory.cpp
+                        VKBuffer.cpp)
+
+SET(VK_DEVICE_SOURCE    ${RD_INCLUDE_PATH}/VKDevice.h
+                        ${RD_INCLUDE_PATH}/VKDeviceAttribute.h
+                        VKDeviceAttribute.cpp
                         VKDeviceCreater.cpp
                         VKDevice.cpp
                         VKDeviceBuffer.cpp
@@ -9,52 +22,72 @@ SET(VK_DEVICE_SOURCE    VKDeviceAttribute.cpp
                         VKDeviceSwapchain.cpp
                         VKDeviceRenderPass.cpp)
 
-SET(VK_DESCRIPTOR_SETS_SOURCE   VKDescriptorSets.cpp
+SET(VK_PHYSICAL_DEVICE_SOURCE ${RD_INCLUDE_PATH}/VKPhysicalDevice.h
+                              VKPhysicalDevice.cpp
+                              VKProperties.cpp)
+
+SOURCE_GROUP("Device"                   FILES ${VK_DEVICE_SOURCE})
+SOURCE_GROUP("Device\\Debug"            FILES ${VK_DEBUG_SOURCE})
+SOURCE_GROUP("Device\\Instance"         FILES ${VK_INST_SOURCE})
+SOURCE_GROUP("Device\\Physical Device"  FILES ${VK_PHYSICAL_DEVICE_SOURCE})
+SOURCE_GROUP("Device\\Memory"           FILES ${VK_MEMORY_SOURCE})
+
+SET(VK_DESCRIPTOR_SETS_SOURCE   ${RD_INCLUDE_PATH}/VKDescriptorSets.h
+                                VKDescriptorSets.cpp
                                 VKDescriptorSetLayoutCreater.cpp
                                 VKDescriptorSetLayoutCreater.h)
 
-SET(VK_SHADER_SOURCE    VKShaderModule.cpp
+SOURCE_GROUP("Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})
+
+SET(VK_SHADER_SOURCE    ${RD_INCLUDE_PATH}/VKShaderModule.h
+                        ${RD_INCLUDE_PATH}/VKShaderModuleManage.h
+                        VKShaderModule.cpp
                         VKShaderModuleManage.cpp)
 
-SET(VK_MATERIAL_SOURCE  VKImageView.cpp
+SET(VK_TEXTURE_SOURCE   ${RD_INCLUDE_PATH}/VKImageView.h
+                        ${RD_INCLUDE_PATH}/VKTexture.h
+                        ${RD_INCLUDE_PATH}/VKSampler.h
+                        VKSampler.cpp
+                        VKImageView.cpp
                         VKTexture.cpp
+                        POD/VKTextureLoader.cpp)
+
+SET(VK_MATERIAL_SOURCE  ${RD_INCLUDE_PATH}/VKMaterial.h
+                        ${RD_INCLUDE_PATH}/VKMaterialInstance.h
                         VKMaterial.cpp
                         VKMaterialInstance.cpp)
 
-SET(VK_RENDER_PASS_SOURCE   VKFramebuffer.cpp
+SOURCE_GROUP("Material" FILES ${VK_MATERIAL_SOURCE})
+SOURCE_GROUP("Material\\Texture" FILES ${VK_TEXTURE_SOURCE})
+SOURCE_GROUP("Material\\Shader" FILES ${VK_SHADER_SOURCE})
+
+SET(VK_RENDER_PASS_SOURCE   ${RD_INCLUDE_PATH}/VKFramebuffer.h
+                            ${RD_INCLUDE_PATH}/VKPipeline.h
+                            ${RD_INCLUDE_PATH}/VKRenderPass.h
+                            ${RD_INCLUDE_PATH}/VKRenderTarget.h
+                            ${RD_INCLUDE_PATH}/VKSwapchain.h
+                            ${RD_INCLUDE_PATH}/VKCommandBuffer.h
+                            ${RD_INCLUDE_PATH}/VKSemaphore.h
+                            ${RD_INCLUDE_PATH}/VKFence.h
+                            VKSemaphore.cpp
+                            VKFence.cpp
+                            VKFramebuffer.cpp
                             VKPipeline.cpp
                             VKRenderPass.cpp
                             VKRenderTarget.cpp
                             VKSwapchain.cpp
-                            VKCommandBuffer.cpp)
-
-SET(RENDER_DEVICE_VULKAN_SOURCE VKMemory.cpp
-                                VKProperties.cpp
-                                VKDebugOut.cpp
-                                VKInstance.cpp
-                                VKPhysicalDevice.cpp
-                                VKBuffer.cpp
-                                VKVertexAttributeBinding.cpp
-                                VKSemaphore.cpp
-                                VKFence.cpp
-                                VKRenderable.cpp
-                                VKSampler.cpp
-                                VKTileData.cpp)
-
-SET(RENDER_DEVICE_VULKAN_POD_SOURCE POD/VKPipelineCreateInfo.POD.cpp
-                                    POD/VKTextureLoader.cpp)
-
-SOURCE_GROUP("Device" FILES ${VK_DEVICE_SOURCE})
-SOURCE_GROUP("Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})
-
-SOURCE_GROUP("Material\\Shader" FILES ${VK_SHADER_SOURCE})
-SOURCE_GROUP("Material" FILES ${VK_MATERIAL_SOURCE})
+                            VKCommandBuffer.cpp
+                            POD/VKPipelineCreateInfo.POD.cpp)
 
 SOURCE_GROUP("Render Pass" FILES ${VK_RENDER_PASS_SOURCE})
 
-SOURCE_GROUP("Header Files" FILES ${RENDER_DEVICE_VULKAN_HEADER})
-SOURCE_GROUP("Source Files" FILES ${RENDER_DEVICE_VULKAN_SOURCE})
-SOURCE_GROUP("POD Source Files" FILES ${RENDER_DEVICE_VULKAN_POD_SOURCE})
+SET(VK_RENDERABLE_SOURCE    ${RD_INCLUDE_PATH}/VKVertexAttributeBinding.h
+                            ${RD_INCLUDE_PATH}/VKRenderable.h
+                            VKVertexAttributeBinding.cpp
+                            VKRenderable.cpp
+                            VKTileData.cpp)
+
+SOURCE_GROUP("Renderable" FILES ${VK_RENDERABLE_SOURCE})
 
 IF(WIN32)
     OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
@@ -64,14 +97,12 @@ IF(WIN32)
     ENDIF()
 ENDIF(WIN32)
 
-add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${RENDER_DEVICE_SOURCE}
-                                                ${RENDER_DEVICE_VULKAN_HEADER}
-                                                ${RENDER_DEVICE_VULKAN_SOURCE}
-                                                ${RENDER_DEVICE_VULKAN_POD_SOURCE}
-
+add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${VK_RENDERABLE_SOURCE}
                                                 ${VK_DEVICE_SOURCE}
+                                                ${VK_PHYSICAL_DEVICE_SOURCE}
                                                 ${VK_DESCRIPTOR_SETS_SOURCE}
+                                                ${VK_TEXTURE_SOURCE}
                                                 ${VK_SHADER_SOURCE}
                                                 ${VK_MATERIAL_SOURCE}
                                                 ${VK_RENDER_PASS_SOURCE}
-                                                ${RENDER_DEVICE_VULKAN_SOURCE})
+                                                ${VK_RENDER_DEVICE_SOURCE})
