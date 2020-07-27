@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
-#include<hgl/graph/Bitmap.h>
+#include<hgl/graph/TextureLoader.h>
 #include<hgl/io/FileInputStream.h>
 #include<hgl/log/LogInfo.h>
 
@@ -54,166 +54,95 @@ namespace
 
     constexpr uint PixelFormatCount=sizeof(pf_list)/sizeof(PixelFormat);
 
-    #pragma pack(push,1)
-    struct Tex2DFileHeader
+    const VkFormat GetVulkanFormat(const Tex2DFileHeader &fh)
     {
-        uint8   id[6];                  ///<Tex2D\x1A
-        uint8   version;                ///<必须为2
-        bool    mipmaps;
-        uint32  width;
-        uint32  height;
-        uint8   channels;
-        char    colors[4];
-        uint8   bits[4];
-        uint8   datatype;
+        const PixelFormat *pf=pf_list;
+
+        for(uint i=0;i<PixelFormatCount;i++,++pf)
+        {
+            if(fh.channels!=pf->channels)continue;
+            if(fh.datatype!=(uint8)pf->type)continue;
+
+            if(fh.colors[0]!=pf->colors[0])continue;
+            if(fh.colors[1]!=pf->colors[1])continue;
+            if(fh.colors[2]!=pf->colors[2])continue;
+            if(fh.colors[3]!=pf->colors[3])continue;
+
+            if(fh.bits[0]!=pf->bits[0])continue;
+            if(fh.bits[1]!=pf->bits[1])continue;
+            if(fh.bits[2]!=pf->bits[2])continue;
+            if(fh.bits[3]!=pf->bits[3])continue;
+
+            return pf->format;
+        }
+
+        return VK_FORMAT_UNDEFINED;
+    }
+
+    class VkTexture2DLoader:public Texture2DLoader
+    {
+    protected:
+
+        Device *device;
+
+        VkFormat format;
+        vulkan::Buffer *buf;
+
+        Texture2D *tex;
 
     public:
 
-        const uint pixel_count()const{return width*height;}
-        const uint pixel_bytes()const{return (bits[0]+bits[1]+bits[2]+bits[3])>>3;}
-        const uint total_bytes()const{return pixel_count()*pixel_bytes();}
-
-        const VkFormat vk_format()const
+        VkTexture2DLoader(Device *dev):device(dev)
         {
-            const PixelFormat *pf=pf_list;
-
-            for(uint i=0;i<PixelFormatCount;i++,++pf)
-            {
-                if(channels!=pf->channels)continue;
-                if(datatype!=(uint8)pf->type)continue;
-
-                if(colors[0]!=pf->colors[0])continue;
-                if(colors[1]!=pf->colors[1])continue;
-                if(colors[2]!=pf->colors[2])continue;
-                if(colors[3]!=pf->colors[3])continue;
-
-                if(bits[0]!=pf->bits[0])continue;
-                if(bits[1]!=pf->bits[1])continue;
-                if(bits[2]!=pf->bits[2])continue;
-                if(bits[3]!=pf->bits[3])continue;
-
-                return pf->format;
-            }
-
-            return VK_FORMAT_UNDEFINED;
+            buf=nullptr;
+            format=VK_FORMAT_UNDEFINED;
+            tex=nullptr;
         }
-    };//
-    #pragma pack(pop)
+
+        virtual ~VkTexture2DLoader()
+        {
+            SAFE_CLEAR(buf);
+            SAFE_CLEAR(tex);
+        }
+
+        void *OnBegin(uint32 total_bytes) override
+        {
+            const VkFormat format=GetVulkanFormat(file_header);
+
+            if(!CheckVulkanFormat(format))
+                return(nullptr);
+
+            vulkan::Buffer *buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
+
+            if(!buf)
+                return(nullptr);
+
+            return buf->Map();
+        }
+
+        void OnEnd() override
+        {
+            buf->Unmap();
+
+            tex=device->CreateTexture2D(format,buf,file_header.width,file_header.height);
+        }
+
+        Texture2D *GetTexture()
+        {
+            Texture2D *result=tex;
+            tex=nullptr;
+            return result;
+        }
+    };//class VkTexture2DLoader
 }//namespace
 
 Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
 {
-    if(!device)
-        return(nullptr);
+    VkTexture2DLoader loader(device);
 
-    io::OpenFileInputStream fis(filename);
+    if(!loader.Load(filename))
+        return(false);
 
-    if(!fis)
-    {
-        LOG_ERROR(OS_TEXT("[ERROR] open texture file<")+filename+OS_TEXT("> failed."));
-        return(nullptr);
-    }
-
-    const int64 file_length=fis->GetSize();
-
-    if(file_length<sizeof(Tex2DFileHeader))
-        return(nullptr);
-
-    Tex2DFileHeader file_header;
-
-    if(fis->Read(&file_header,sizeof(Tex2DFileHeader))!=sizeof(Tex2DFileHeader))
-        return(nullptr);
-
-    if(file_header.version!=2)
-        return(nullptr);
-
-    if(file_header.total_bytes()==0)
-        return(nullptr);
-
-    const VkFormat format=file_header.vk_format();
-
-    if(!CheckVulkanFormat(format))
-        return(nullptr);
-
-    const uint total_bytes=file_header.total_bytes();
-
-    if(file_length<sizeof(Tex2DFileHeader)+total_bytes)
-        return(nullptr);
-
-    {
-        vulkan::Buffer *buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
-
-        if(!buf)
-            return(nullptr);
-
-        void *pixel_data=buf->Map();
-
-        fis->Read(pixel_data,total_bytes);
-
-        buf->Unmap();
-
-        Texture2D *tex=device->CreateTexture2D(format,buf,file_header.width,file_header.height);
-
-        delete buf;
-        return tex;
-    }
-}
-
-BitmapData *LoadBitmapFromFile(const OSString &filename)
-{
-    io::OpenFileInputStream fis(filename);
-
-    if(!fis)
-    {
-        LOG_ERROR(OS_TEXT("[ERROR] open texture file<")+filename+OS_TEXT("> failed."));
-        return(nullptr);
-    }
-
-    const int64 file_length=fis->GetSize();
-
-    if(file_length<sizeof(Tex2DFileHeader))
-        return(nullptr);
-
-    Tex2DFileHeader file_header;
-
-    if(fis->Read(&file_header,sizeof(Tex2DFileHeader))!=sizeof(Tex2DFileHeader))
-        return(nullptr);
-
-    if(file_header.version!=2)
-        return(nullptr);
-
-    if(file_header.total_bytes()==0)
-        return(nullptr);
-
-    const VkFormat format=file_header.vk_format();
-
-    if(!CheckVulkanFormat(format))
-        return(nullptr);
-
-    const uint total_bytes=file_header.total_bytes();
-
-    if(file_length<sizeof(Tex2DFileHeader)+total_bytes)
-        return(nullptr);
-
-    {
-        BitmapData *bmp=new BitmapData;
-
-        bmp->data=new char[total_bytes];
-
-        if(!bmp->data)
-        {
-            delete bmp;
-            return(nullptr);
-        }
-
-        fis->Read(bmp->data,total_bytes);
-
-        bmp->width          =file_header.width;
-        bmp->height         =file_header.height;
-        bmp->vulkan_format  =format;
-        bmp->total_bytes    =total_bytes;
-
-        return bmp;
-    }    
+    return loader.GetTexture();
 }
 VK_NAMESPACE_END
