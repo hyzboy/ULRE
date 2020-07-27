@@ -4,7 +4,11 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKMemory.h>
 #include<hgl/graph/vulkan/VKImageView.h>
+#include<hgl/graph/Bitmap.h>
 VK_NAMESPACE_BEGIN
+
+BitmapData *LoadBitmapFromFile(const OSString &filename);
+
 struct TextureData
 {
     Memory *            memory      =nullptr;
