@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
+#include<hgl/graph/Bitmap.h>
 #include<hgl/io/FileInputStream.h>
 #include<hgl/log/LogInfo.h>
 
@@ -158,15 +159,7 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
     }
 }
 
-struct Texture2DData
-{
-    uint32 width;
-    uint32 height;
-    VkFormat format;
-    uint32 bytes;
-};//
-
-void *LoadTextureFromFile(const OSString &filename)
+BitmapData *LoadBitmapFromFile(const OSString &filename)
 {
     io::OpenFileInputStream fis(filename);
 
@@ -203,21 +196,24 @@ void *LoadTextureFromFile(const OSString &filename)
         return(nullptr);
 
     {
-        vulkan::Buffer *buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
+        BitmapData *bmp=new BitmapData;
 
-        if(!buf)
+        bmp->data=new char[total_bytes];
+
+        if(!bmp->data)
+        {
+            delete bmp;
             return(nullptr);
+        }
 
-        void *pixel_data=buf->Map();
+        fis->Read(bmp->data,total_bytes);
 
-        fis->Read(pixel_data,total_bytes);
+        bmp->width          =file_header.width;
+        bmp->height         =file_header.height;
+        bmp->vulkan_format  =format;
+        bmp->total_bytes    =total_bytes;
 
-        buf->Unmap();
-
-        Texture2D *tex=device->CreateTexture2D(format,buf,file_header.width,file_header.height);
-
-        delete buf;
-        return tex;
+        return bmp;
     }    
 }
 VK_NAMESPACE_END
