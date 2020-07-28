@@ -3,6 +3,7 @@
 
 #include<hgl/io/InputStream.h>
 #include<hgl/type/BaseString.h>
+#include<hgl/graph/Bitmap.h>
 namespace hgl
 {
     namespace graph
@@ -54,6 +55,27 @@ namespace hgl
             bool Load(io::InputStream *is);
             bool Load(const OSString &filename);
         };//class Texture2DLoader
+        
+        /**
+         * 2D位图加载
+         */
+        class Bitmap2DLoader:public Texture2DLoader
+        {
+        protected:
+
+            BitmapData *bmp=nullptr;
+
+        public:
+
+            ~Bitmap2DLoader();
+
+            void *OnBegin(uint32 total_bytes) override;
+            void OnEnd() override {}
+
+            BitmapData *GetBitmap();
+        };//class Bitmap2DLoader
+    
+        BitmapData *LoadBitmapFromFile(const OSString &filename);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXTURE_LOADER_INCLUDE
