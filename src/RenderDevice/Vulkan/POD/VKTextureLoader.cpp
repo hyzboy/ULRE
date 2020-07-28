@@ -107,12 +107,12 @@ namespace
 
         void *OnBegin(uint32 total_bytes) override
         {
-            const VkFormat format=GetVulkanFormat(file_header);
+            format=GetVulkanFormat(file_header);
 
             if(!CheckVulkanFormat(format))
                 return(nullptr);
 
-            vulkan::Buffer *buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
+            buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
 
             if(!buf)
                 return(nullptr);
