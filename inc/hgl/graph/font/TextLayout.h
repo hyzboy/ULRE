@@ -183,7 +183,7 @@ namespace hgl
 //            virtual int     Layout      (const int max_chars,const BaseString<T> &)=0;              ///<排版
 
             template<typename T>
-            int     PlaneLayout (TileFont *,const int max_chars,const BaseString<T> &)=0;                ///<简易排版
+            int     PlaneLayout (TileFont *,const int max_chars,const BaseString<T> &);                ///<简易排版
         };//class TextLayout
     }//namespace graph
 }//namespace hgl

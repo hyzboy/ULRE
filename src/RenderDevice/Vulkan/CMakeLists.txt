@@ -97,12 +97,15 @@ IF(WIN32)
     ENDIF()
 ENDIF(WIN32)
 
-add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${VK_RENDERABLE_SOURCE}
+add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${VK_INST_SOURCE}
+                                                ${VK_DEBUG_SOURCE}
+                                                ${VK_MEMORY_SOURCE}
                                                 ${VK_DEVICE_SOURCE}
                                                 ${VK_PHYSICAL_DEVICE_SOURCE}
                                                 ${VK_DESCRIPTOR_SETS_SOURCE}
-                                                ${VK_TEXTURE_SOURCE}
                                                 ${VK_SHADER_SOURCE}
+                                                ${VK_TEXTURE_SOURCE}
                                                 ${VK_MATERIAL_SOURCE}
                                                 ${VK_RENDER_PASS_SOURCE}
+                                                ${VK_RENDERABLE_SOURCE}
                                                 ${VK_RENDER_DEVICE_SOURCE})
