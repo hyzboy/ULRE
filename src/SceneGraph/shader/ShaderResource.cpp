@@ -36,7 +36,7 @@ VK_NAMESPACE_BEGIN
                 ss=new ShaderStage;
 
                 ss->location=*data++;
-                ss->base_type=*data++;
+                ss->base_type=(VK_NAMESPACE::BaseType)*data++;
                 ss->component=*data++;
 
                 VK_NAMESPACE::GetVulkanFormatStride(ss->format,ss->stride,ss->base_type,ss->component);
