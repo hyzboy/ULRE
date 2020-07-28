@@ -1,9 +1,9 @@
-#include<hgl/graph/font/FontSource.h>
+﻿#include<hgl/graph/font/FontSource.h>
 namespace hgl
 {
     namespace graph
     {        
-		FontSource *CreateFontSource(const Font &f);        //各平台独立提供
+        FontSource *CreateFontSource(const Font &f);        //各平台独立提供
 
         static MapObject<Font,FontSource> FontStorage;
 

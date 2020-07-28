@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_FONT_SOURCE_INCLUDE
+﻿#ifndef HGL_GRAPH_FONT_SOURCE_INCLUDE
 #define HGL_GRAPH_FONT_SOURCE_INCLUDE
 
 #include<hgl/type/StrChar.h>

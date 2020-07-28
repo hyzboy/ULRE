@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_TEXT_LAYOUT_INCLUDE
+﻿#ifndef HGL_GRAPH_TEXT_LAYOUT_INCLUDE
 #define HGL_GRAPH_TEXT_LAYOUT_INCLUDE
 
 #include<hgl/type/StringList.h>

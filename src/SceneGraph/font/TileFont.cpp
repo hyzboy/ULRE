@@ -1,4 +1,4 @@
-#include<hgl/graph/font/TileFont.h>
+﻿#include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKFormat.h>
 
@@ -6,7 +6,7 @@ namespace hgl
 {
     namespace graph
     {
-		FontSource *AcquireFontSource(const Font &f);
+        FontSource *AcquireFontSource(const Font &f);
         
         TileFont::TileFont(TileData *td,FontSource *fs)
         {

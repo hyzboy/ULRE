@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_TILE_FONT_INCLUDE
+﻿#ifndef HGL_GRAPH_TILE_FONT_INCLUDE
 #define HGL_GRAPH_TILE_FONT_INCLUDE
 
 #include<hgl/graph/TileData.h>
