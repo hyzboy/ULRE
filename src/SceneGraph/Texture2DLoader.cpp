@@ -53,41 +53,32 @@ namespace hgl
 
     namespace graph
     {
-        class Bitmap2DLoader:public Texture2DLoader
+        Bitmap2DLoader::~Bitmap2DLoader()
         {
-        protected:
+            SAFE_CLEAR(bmp);
+        }
 
-            BitmapData *bmp=nullptr;
+        void *Bitmap2DLoader::OnBegin(uint32 total_bytes)
+        {
+            SAFE_CLEAR(bmp);
 
-        public:
+            bmp=new BitmapData;
 
-            ~Bitmap2DLoader()
-            {
-                SAFE_CLEAR(bmp);
-            }
+            bmp->width      =file_header.width;
+            bmp->height     =file_header.height;
+            bmp->total_bytes=total_bytes;
 
-            void *OnBegin(uint32 total_bytes) override
-            {
-                bmp=new BitmapData;
+            bmp->data=new char[total_bytes];
 
-                bmp->width      =file_header.width;
-                bmp->height     =file_header.height;
-                bmp->total_bytes=total_bytes;
+            return bmp->data;
+        }
 
-                bmp->data=new char[total_bytes];
-
-                return bmp->data;
-            }
-
-            void OnEnd() override {}
-
-            BitmapData *GetBitmap()
-            {
-                BitmapData *result=bmp;
-                bmp=nullptr;
-                return result;
-            }
-        };//class Bitmap2DLoader
+        BitmapData *Bitmap2DLoader::GetBitmap()
+        {
+            BitmapData *result=bmp;
+            bmp=nullptr;
+            return result;
+        }
     
         BitmapData *LoadBitmapFromFile(const OSString &filename)
         {
