@@ -29,6 +29,10 @@ namespace
 
         VkDeviceCreateInfo create_info={};
         const char *ext_list[1]={VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+        VkPhysicalDeviceFeatures features={};
+        features.geometryShader=true;
+
         create_info.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         create_info.pNext=nullptr;
         create_info.queueCreateInfoCount=1;
@@ -37,7 +41,7 @@ namespace
         create_info.ppEnabledExtensionNames=ext_list;
         create_info.enabledLayerCount=0;
         create_info.ppEnabledLayerNames=nullptr;
-        create_info.pEnabledFeatures=nullptr;
+        create_info.pEnabledFeatures=&features;
 
         VkDevice device;
 
