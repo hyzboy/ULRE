@@ -2,7 +2,7 @@
 #include<hgl/type/BaseString.h>
 #include<hgl/type/List.h>
 #include<hgl/type/StringList.h>
-#include<hgl/graph/vulkan/VKNamespace.h>
+#include<hgl/graph/vulkan/VKFormat.h>
 
 VK_NAMESPACE_BEGIN
     struct ShaderStage
@@ -10,7 +10,7 @@ VK_NAMESPACE_BEGIN
         AnsiString  name;
         uint        location;
 
-        uint        base_type;  ///<基本类型(如vec4中的vec)
+        BaseType    base_type;  ///<基本类型(如vec4中的vec)
         uint        component;  ///<成份数量(如vec4中的4)
 
         VkFormat    format;     ///<对应的Vulkan格式(如vec4对应的FMT_RGBA32F)
