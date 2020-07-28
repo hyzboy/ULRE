@@ -4,6 +4,7 @@
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/type/Pool.h>
 #include<hgl/type/RectScope.h>
+#include<hgl/graph/Bitmap.h>
 
 VK_NAMESPACE_USING
 
@@ -60,7 +61,7 @@ namespace hgl
 			virtual ~TileData();
 
 			TileObject *Add(const void *,const uint,const int=-1,const int=-1);                                         ///<增加一个Tile
-//			TileObject *Add(Bitmap2D *,int=-1,int=-1);										                            ///<增加一个Tile
+			TileObject *Add(BitmapData *bmp){return this->Add(bmp->data,bmp->total_bytes,bmp->width,bmp->height);}		///<增加一个Tile
 
 			bool Delete(TileObject *);														                            ///<删除一个Tile
 			bool Change(TileObject *,const void *,const uint,const int=-1,const int=-1);	                            ///<更改一个Tile的数据内容
