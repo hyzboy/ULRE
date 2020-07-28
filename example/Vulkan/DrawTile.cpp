@@ -180,8 +180,8 @@ private:
 
         render_obj=material->CreateRenderable(tile_count);
 
-        vertex_buffer   =db->CreateVAB(FMT_RGBA32F,tile_count,vertex_data);
-        tex_coord_buffer=db->CreateVAB(FMT_RGBA32F,tile_count,tex_coord_data);
+        vertex_buffer   =db->CreateVAB(VAF_VEC4,tile_count,vertex_data);
+        tex_coord_buffer=db->CreateVAB(VAF_VEC4,tile_count,tex_coord_data);
 
         render_obj->Set("Vertex",vertex_buffer);
         render_obj->Set("TexCoord",tex_coord_buffer);
