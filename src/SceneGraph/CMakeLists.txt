@@ -1,7 +1,6 @@
 ﻿SET(SHADER_RESOURCE_FILES   ${ROOT_INCLUDE_PATH}/hgl/graph/shader/ShaderResource.h
                             shader/ShaderResource.cpp)
 
-
 file(GLOB SG_MATERIAL_HEADER ${ROOT_INCLUDE_PATH}/hgl/graph/material/*.*)
 
 file(GLOB SG_MATERIAL_SOURCE material/*.*)
@@ -11,6 +10,10 @@ SOURCE_GROUP("Material" FILES   ${SG_MATERIAL_HEADER}
 
 SOURCE_GROUP("Material\\Shader" FILES ${SHADER_RESOURCE_FILES})
 
+SET(SG_TEXTURE_SOURCE   ${ROOT_INCLUDE_PATH}/hgl/graph/TextureLoader.h
+                        Texture2DLoader.cpp)
+
+SOURCE_GROUP("Material\\Texture" FILES ${SG_TEXTURE_SOURCE})
 
 SET(SG_VAD_SOURCE   ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribData.h
                     ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribDataAccess.h
@@ -48,9 +51,9 @@ SET(RENDERABLE_FILES    ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableCreater.h
 
 SOURCE_GROUP("Renderable" FILES ${RENDERABLE_FILES})
 
-SET(FONT_MANAGE_SOURCE ${ROOT_INCLUDE_PATH}/hgl/graph/font/Font.h
-                ${ROOT_INCLUDE_PATH}/hgl/graph/font/FontManage.h
-                font/Font.cpp)
+SET(FONT_MANAGE_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/font/Font.h
+                        ${ROOT_INCLUDE_PATH}/hgl/graph/font/FontManage.h
+                        font/Font.cpp)
 
 SET(FONT_SOURCE ${ROOT_INCLUDE_PATH}/hgl/graph/font/FontSource.h
                 font/FontSource.cpp
@@ -84,6 +87,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
 
                                         ${SHADER_RESOURCE_FILES}
 
+                                        ${SG_TEXTURE_SOURCE}
                                         ${SG_MATERIAL_HEADER}
                                         ${SG_MATERIAL_SOURCE}
 

@@ -240,8 +240,10 @@ namespace hgl
 
             for(int i=0;i<count;i++)
             {
-                vertex->Write(
+                //vertex->Write(
             }
+
+            return 0;
         }
 
         int TextLayout::pl_h_r2l(){return 0;}
@@ -255,7 +257,7 @@ namespace hgl
         template<typename T>
         int TextLayout::PlaneLayout(TileFont *tf,const int mc,const BaseString<T> &str)
         {
-            if(mc<=0||str.IsEmpty()
+            if(mc<=0||str.IsEmpty())
                 return(-1);
 
             max_chars=hgl_min(mc,str.Length());

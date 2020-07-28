@@ -114,15 +114,15 @@ namespace hgl
 
 			return s->GetCharBitmap(ch);
 		}
-
-		int FontSourceMulti::GetCharAdvWidth(const u32char &ch)
+		
+		const bool FontSourceMulti::GetCharMetrics(CharMetricsInfo &cmi,const u32char &ch)
 		{
 			FontSource *s=GetFontSource(ch);
 
 			if(!s)
 				return(0);
 
-			return s->GetCharAdvWidth(ch);
+			return s->GetCharMetrics(cmi,ch);
 		}
 	}//namespace graph
 }//namespace hgl
