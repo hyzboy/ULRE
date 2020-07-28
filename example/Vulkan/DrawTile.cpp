@@ -107,27 +107,33 @@ private:
         int col=0;
         int row=0;
 
-        float size=SCREEN_WIDTH/10;
+        float size      =SCREEN_WIDTH/10;
+        float view_size =size-BORDER*2;
+        float left      =0;
+        float top       =0;
 
         for(int i=0;i<count;i++)
         {
             (*tb)->to=tile_data->Add((*tb)->bmp);
 
-            *vp++=float(col)*size+BORDER;
-            *vp++=float(row)*size+BORDER;
-            *vp++=float(col+1)*size-BORDER*2;
-            *vp++=float(row+1)*size-BORDER*2;
+            vp=WriteRect(vp,left+BORDER,
+                            top +BORDER,
+                            view_size,
+                            view_size);
 
-            *tp++=(*tb)->to->uv_float.GetLeft();
-            *tp++=(*tb)->to->uv_float.GetTop();
-            *tp++=(*tb)->to->uv_float.GetRight();
-            *tp++=(*tb)->to->uv_float.GetBottom();
+            tp=WriteRect(tp,(*tb)->to->uv_float);
 
             ++col;
             if(col==10)
             {
+                left=0;
+                top+=size;
                 ++row;
                 col=0;
+            }
+            else
+            {
+                left+=size;
             }
 
             ++tb;
