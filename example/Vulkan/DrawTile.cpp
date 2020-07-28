@@ -3,44 +3,41 @@
 
 #include<hgl/type/StringList.h>
 #include<hgl/graph/TextureLoader.h>
+#include<hgl/graph/TileData.h>
 
-//#include"VulkanAppFramework.h"
-//#include<hgl/graph/vulkan/VKTexture.h>
-//#include<hgl/graph/vulkan/VKSampler.h>
-//#include<hgl/math/Math.h>
+#include"VulkanAppFramework.h"
+#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/math/Math.h>
 
 using namespace hgl;
 using namespace hgl::graph;
-/*
-VK_NAMESPACE_BEGIN
-Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
-VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_SIZE=512;
+constexpr uint32_t SCREEN_WIDTH =1024;
+constexpr uint32_t SCREEN_HEIGHT=512;
 
-constexpr uint32_t VERTEX_COUNT=1;
+constexpr float BORDER=2;
 
-constexpr float BORDER=0.1f;
-
-constexpr float vertex_data[4]=
+struct TileBitmap
 {
-    SCREEN_SIZE*BORDER,         SCREEN_SIZE*BORDER,
-    SCREEN_SIZE*(1.0-BORDER),   SCREEN_SIZE*(1.0-BORDER)
-};
-
-constexpr float tex_coord_data[4]=
-{
-    0,0,1,1
+    BitmapData *bmp;
+    TileObject *to;
 };
 
 class TestApp:public VulkanApplicationFramework
 {
     Camera cam;
+    
+    ObjectList<TileBitmap> tile_list;
+
+    TileData *tile_data;
+
+    float *vertex_data=nullptr;
+    float *tex_coord_data=nullptr;
 
 private:
 
     vulkan::Material *          material            =nullptr;
-    vulkan::Texture2D *         texture             =nullptr;
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
@@ -51,7 +48,93 @@ private:
     vulkan::VertexAttribBuffer *vertex_buffer       =nullptr;
     vulkan::VertexAttribBuffer *tex_coord_buffer    =nullptr;
 
+public:
+
+    ~TestApp()
+    {
+        SAFE_CLEAR_ARRAY(vertex_data);
+        SAFE_CLEAR_ARRAY(tex_coord_data);
+        SAFE_CLEAR(tile_data);
+    }
+
 private:
+
+    int LoadIcons()
+    {
+        const OSString icon_path=OS_TEXT("res/image/icon/freepik/");
+
+        UTF8StringList sl;
+
+        const int count=LoadStringListFromTextFile(sl,icon_path+OS_TEXT("list.txt"));
+
+        Bitmap2DLoader loader;
+        
+        int result=0;
+
+        for(int i=0;i<count;i++)
+        {
+            if(loader.Load(icon_path+ToOSString(sl[i])+OS_TEXT(".Tex2D")))
+            {
+                TileBitmap *tb=new TileBitmap;
+
+                tb->bmp =loader.GetBitmap();
+                tb->to  =nullptr;
+
+                tile_list.Add(tb);
+                ++result;
+            }
+        }
+
+        return result;
+    }
+
+    bool InitTileTexture()
+    {
+        tile_data=device->CreateTileData(FMT_A1RGB5,512,512,tile_list.GetCount());
+
+        if(!tile_data)
+            return(false);
+
+        const int count=tile_list.GetCount();
+        TileBitmap **tb=tile_list.GetData();
+
+        vertex_data=new float[count*4];
+        tex_coord_data=new float[count*4];
+
+        float *vp=vertex_data;
+        float *tp=tex_coord_data;
+
+        int col=0;
+        int row=0;
+
+        float size=SCREEN_WIDTH/10;
+
+        for(int i=0;i<count;i++)
+        {
+            (*tb)->to=tile_data->Add((*tb)->bmp);
+
+            *vp++=float(col)*size+BORDER;
+            *vp++=float(row)*size+BORDER;
+            *vp++=float(col+1)*size-BORDER*2;
+            *vp++=float(row+1)*size-BORDER*2;
+
+            *tp++=(*tb)->to->uv_float.GetLeft();
+            *tp++=(*tb)->to->uv_float.GetTop();
+            *tp++=(*tb)->to->uv_float.GetRight();
+            *tp++=(*tb)->to->uv_float.GetBottom();
+
+            ++col;
+            if(col==10)
+            {
+                ++row;
+                col=0;
+            }
+
+            ++tb;
+        }
+
+        return(true);
+    }
 
     bool InitMaterial()
     {
@@ -61,21 +144,16 @@ private:
         if(!material)
             return(false);
 
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
         material_instance=material->CreateInstance();
-
-        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
 
         sampler=db->CreateSampler();
 
-        material_instance->BindSampler("tex",texture,sampler);
+        material_instance->BindSampler("tex",tile_data->GetTexture(),sampler);
         material_instance->BindUBO("world",ubo_world_matrix);
         material_instance->Update();
 
         db->Add(material);
         db->Add(material_instance);
-        db->Add(texture);
-        db->Add(render_obj);
         return(true);
     }
 
@@ -98,11 +176,17 @@ private:
 
     void InitVBO()
     {
-        vertex_buffer   =db->CreateVAB(FMT_RGBA32F,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=db->CreateVAB(FMT_RGBA32F,VERTEX_COUNT,tex_coord_data);
+        const int tile_count=tile_list.GetCount();
+
+        render_obj=material->CreateRenderable(tile_count);
+
+        vertex_buffer   =db->CreateVAB(FMT_RGBA32F,tile_count,vertex_data);
+        tex_coord_buffer=db->CreateVAB(FMT_RGBA32F,tile_count,tex_coord_data);
 
         render_obj->Set("Vertex",vertex_buffer);
         render_obj->Set("TexCoord",tex_coord_buffer);
+
+        db->Add(render_obj);
     }
 
     bool InitPipeline()
@@ -110,7 +194,7 @@ private:
         AutoDelete<vulkan::PipelineCreater>
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
         pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_RECTANGLES);
+        pipeline_creater->Set(PRIM_2D_RECTANGLES);
 
         pipeline=pipeline_creater->Create();
 
@@ -122,7 +206,13 @@ public:
 
     bool Init()
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_SIZE,SCREEN_SIZE))
+        if(LoadIcons()<=0)
+            return(false);
+
+        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+            return(false);
+
+        if(!InitTileTexture())
             return(false);
 
         if(!InitUBO())
@@ -164,14 +254,4 @@ int main(int,char **)
     while(app.Run());
 
     return 0;
-}
-*/
-
-void main()
-{
-    UTF8StringList sl;
-
-    int line=LoadStringListFromTextFile(sl,OS_TEXT("res/image/icon/freepik/list.txt"));
-
-    ObjectList<BitmapData> bmp_list;
 }

@@ -107,6 +107,9 @@ namespace
 
         void *OnBegin(uint32 total_bytes) override
         {
+            SAFE_CLEAR(buf);
+            SAFE_CLEAR(tex);
+
             format=GetVulkanFormat(file_header);
 
             if(!CheckVulkanFormat(format))
