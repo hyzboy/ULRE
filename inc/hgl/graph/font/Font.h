@@ -1,19 +1,20 @@
 #ifndef HGL_GRAPH_FONT_INCLUDE
 #define HGL_GRAPH_FONT_INCLUDE
 
-#include<hgl/CompOperator.h>
-#include<string.h>
+#include<hgl/type/DataType.h>
 
 namespace hgl
 {
 	namespace graph
 	{
+		constexpr size_t MAX_FONT_NAME_LENGTH=128;
+		
 		/**
 		* 字体信息
 		*/
 		struct Font
 		{
-			os_char name[128];					///<字体名称
+			os_char name[MAX_FONT_NAME_LENGTH];	///<字体名称
 
 			int width;							///<宽度
 			int height;							///<高度
@@ -26,7 +27,7 @@ namespace hgl
 		public:
 
 			Font();
-			Font(const char *,int,int,bool,bool,bool=true);
+			Font(const os_char *,int,int,bool,bool,bool=true);
 
 			CompOperatorMemcmp(const Font &);	///<比较操作符重载
 		};//struct Font
