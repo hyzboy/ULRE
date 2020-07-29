@@ -38,34 +38,34 @@ namespace hgl
 
             uint tile_width,tile_height;                                                                                ///<Tile的宽和高
             uint32_t tile_bytes;                                                                                        ///<一个tile字节数
-			uint tile_count,tile_max_count;														                        ///<当前Tile数量与最大数量
-			uint tile_rows,tile_cols;																                    ///<贴图中可用的Tile行数和列数
+            uint tile_count,tile_max_count;														                        ///<当前Tile数量与最大数量
+            uint tile_rows,tile_cols;																                    ///<贴图中可用的Tile行数和列数
 
         protected:
         
-			bool WriteTile(TileObject *,const void *,const uint,const int,const int);	                                ///<写入一个Tile数据
+            bool WriteTile(TileObject *,const void *,const uint,const int,const int);	                                ///<写入一个Tile数据
             
-		public:
+        public:
 
-			int			GetWidth	()const{return tile_width;}										                    ///<取得Tile宽
-			int			GetHeight	()const{return tile_height;}									                    ///<取得Tile高
-			int			GetCount	()const{return tile_count;}										                    ///<取得Tile数量
-			int			GetMaxCount	()const{return tile_max_count;}									                    ///<取得Tile最大数量
-			int			GetFreeCount()const{return tile_max_count-tile_count;}						                    ///<取得空余Tile数量
+            int			GetWidth	()const{return tile_width;}										                    ///<取得Tile宽
+            int			GetHeight	()const{return tile_height;}									                    ///<取得Tile高
+            int			GetCount	()const{return tile_count;}										                    ///<取得Tile数量
+            int			GetMaxCount	()const{return tile_max_count;}									                    ///<取得Tile最大数量
+            int			GetFreeCount()const{return tile_max_count-tile_count;}						                    ///<取得空余Tile数量
 
-			Texture2D *	GetTexture	()const{return tile_texture;}									                    ///<取得贴图
+            Texture2D *	GetTexture	()const{return tile_texture;}									                    ///<取得贴图
 
         public:
 
-			TileData(Device *,Texture2D *,const uint tw,const uint th);
-			virtual ~TileData();
+            TileData(Device *,Texture2D *,const uint tw,const uint th);
+            virtual ~TileData();
 
-			TileObject *Add(const void *,const uint,const int=-1,const int=-1);                                         ///<增加一个Tile
-			TileObject *Add(BitmapData *bmp){return this->Add(bmp->data,bmp->total_bytes,bmp->width,bmp->height);}		///<增加一个Tile
+            TileObject *Add(const void *,const uint,const int=-1,const int=-1);                                         ///<增加一个Tile
+            TileObject *Add(BitmapData *bmp){return this->Add(bmp->data,bmp->total_bytes,bmp->width,bmp->height);}		///<增加一个Tile
 
-			bool Delete(TileObject *);														                            ///<删除一个Tile
-			bool Change(TileObject *,const void *,const uint,const int=-1,const int=-1);	                            ///<更改一个Tile的数据内容
-			void Clear();                                                                                               ///<清除Tile数据
+            bool Delete(TileObject *);														                            ///<删除一个Tile
+            bool Change(TileObject *,const void *,const uint,const int=-1,const int=-1);	                            ///<更改一个Tile的数据内容
+            void Clear();                                                                                               ///<清除Tile数据
         };//class TileData
     }//namespace graph
 }//namespace hgl
