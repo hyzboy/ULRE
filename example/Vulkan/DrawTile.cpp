@@ -114,9 +114,11 @@ private:
         float left      =0;
         float top       =0;
 
+        tile_data->BeginCommit();
+
         for(int i=0;i<count;i++)
         {
-            (*tb)->to=tile_data->Add((*tb)->bmp);           //添加一个tile图片
+            (*tb)->to=tile_data->Commit((*tb)->bmp);           //添加一个tile图片
 
             vp=WriteRect(vp,left+BORDER,                    //产生绘制顶点信息
                             top +BORDER,
@@ -140,6 +142,8 @@ private:
 
             ++tb;
         }
+
+        tile_data->EndCommit();
 
         return(true);
     }
@@ -202,7 +206,7 @@ private:
         AutoDelete<vulkan::PipelineCreater>
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
         pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_2D_RECTANGLES);
+        pipeline_creater->Set(PRIM_RECTANGLES);
 
         pipeline=pipeline_creater->Create();
 

@@ -48,9 +48,13 @@ namespace hgl
                 }
             }
 
-            tile_bytes=tile_width*tile_height*GetStrideByFormat(tile_texture->GetFormat());
+            pixel_bytes =GetStrideByFormat(tile_texture->GetFormat());
+            tile_bytes  =tile_width*tile_height*pixel_bytes;
 
-            tile_buffer=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tile_bytes,nullptr);
+            tile_buffer=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tile_bytes*tile_max_count,nullptr);
+
+            commit_offset=0;
+            commit_ptr=nullptr;
         }
 
         TileData::~TileData()
@@ -58,9 +62,36 @@ namespace hgl
             SAFE_CLEAR(tile_buffer);
             SAFE_CLEAR(tile_texture);
         }
-        
-        bool TileData::WriteTile(TileObject *obj,const void *data,const uint bytes,int ctw,int cth)
+
+        void TileData::BeginCommit()
         {
+            commit_list.ClearData();
+            commit_offset=0;
+            commit_ptr=(uint8 *)tile_buffer->Map();
+        }
+
+        int TileData::EndCommit()
+        {
+            const int commit_count=commit_list.GetCount();
+
+            if(commit_count<=0)
+                return -1;
+
+            tile_buffer->Unmap();
+            commit_ptr=nullptr;
+
+            if(!device->ChangeTexture2D(tile_texture,tile_buffer,commit_list))
+                return -2;
+
+            const int result=commit_list.GetCount();
+
+            commit_list.ClearData();
+            return result; 
+        }
+        
+        bool TileData::CommitTile(TileObject *obj,const void *data,const uint bytes,int ctw,int cth)
+        {
+            if(!commit_ptr)return(false);
             if(!obj||!data||!bytes||ctw<=0||cth<=0)
                 return(false);
 
@@ -72,14 +103,23 @@ namespace hgl
                                 tile_texture->GetWidth(),
                                 tile_texture->GetHeight());
 
-            tile_buffer->Write(data,0,bytes);
+            const int commit_count=commit_list.GetCount();
 
-            device->ChangeTexture2D(tile_texture,
-                                    tile_buffer,
-                                    obj->uv_pixel.GetLeft(),
-                                    obj->uv_pixel.GetTop(),
-                                    tile_width,
-                                    tile_height);
+            if(commit_count>=tile_max_count)      //理论上不可能
+                return(false);
+
+            memcpy(commit_ptr,data,bytes);
+            commit_ptr+=bytes;
+
+            ImageRegion ir;
+
+            ir.left     =obj->uv_pixel.GetLeft();
+            ir.top      =obj->uv_pixel.GetTop();
+            ir.width    =obj->uv_pixel.GetWidth();
+            ir.height   =obj->uv_pixel.GetHeight();
+            ir.bytes    =bytes;
+
+            commit_list.Add(ir);
 
             return(true);
         }
@@ -92,8 +132,9 @@ namespace hgl
         * @param cth 当前tile高度,-1表示等同全局设置
         * @return 为增加的Tile创建的对象
         */
-        TileObject *TileData::Add(const void *data,const uint bytes,const int ctw,const int cth)
+        TileObject *TileData::Commit(const void *data,const uint bytes,const int ctw,const int cth)
         {
+            if(!commit_ptr)return(false);
             if(!data||!bytes||ctw<=0||cth<=0)
                 return(nullptr);
                 
@@ -102,7 +143,7 @@ namespace hgl
             if(!to_pool.Get(obj))
                 return(nullptr);
 
-            WriteTile(obj,data,bytes,ctw,cth);
+            CommitTile(obj,data,bytes,ctw,cth);
 
             tile_count++;
             return(obj);
@@ -131,13 +172,14 @@ namespace hgl
         */
         bool TileData::Change(TileObject *obj,const void *data,const uint bytes,const int ctw,const int cth)
         {
+            if(!commit_ptr)return(false);
             if(!obj||!data||!bytes||ctw<=0||cth<=0)
                 return(false);
 
             if(!to_pool.IsActive(obj))
                 return(false);
 
-            return WriteTile(obj,data,bytes,ctw,cth);
+            return CommitTile(obj,data,bytes,ctw,cth);
         }
 
         /**

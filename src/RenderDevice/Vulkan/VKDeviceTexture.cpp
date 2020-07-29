@@ -109,28 +109,10 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t wid
     return(tex);
 }
 
-bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height)
+bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count)
 {
-    if(!tex||!buf
-     ||left<0||left+width>tex->GetWidth()
-     ||top<0||top+height>tex->GetHeight()
-     ||width<=0||height<=0)
+    if(!tex||!buf)
         return(false);
-
-    VkBufferImageCopy buffer_image_copy;
-    buffer_image_copy.bufferOffset      = 0;
-    buffer_image_copy.bufferRowLength   = 0;
-    buffer_image_copy.bufferImageHeight = 0;
-    buffer_image_copy.imageSubresource.aspectMask       = tex->GetAspect();
-    buffer_image_copy.imageSubresource.mipLevel         = 0;
-    buffer_image_copy.imageSubresource.baseArrayLayer   = 0;
-    buffer_image_copy.imageSubresource.layerCount       = 1;
-    buffer_image_copy.imageOffset.x     = left;
-    buffer_image_copy.imageOffset.y     = top;
-    buffer_image_copy.imageOffset.z     = 0;
-    buffer_image_copy.imageExtent.width = width;
-    buffer_image_copy.imageExtent.height= height;
-    buffer_image_copy.imageExtent.depth = 1;
 
     VkImageSubresourceRange subresourceRange;
     subresourceRange.aspectMask     = tex->GetAspect();
@@ -164,8 +146,8 @@ bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,uint32_t left,uint32_t t
         buf->GetBuffer(),
         tex->GetImage(),
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &buffer_image_copy);
+        count,
+        buffer_image_copy);
 
     imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -184,6 +166,70 @@ bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,uint32_t left,uint32_t t
 
     SubmitTexture(*texture_cmd_buf);
     return(true);
+}
+
+bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,const List<ImageRegion> &ir_list)
+{
+    if(!tex||!buf||ir_list.GetCount()<=0)
+        return(false);
+
+    const int ir_count=ir_list.GetCount();
+    int count=0;
+
+    AutoDeleteArray<VkBufferImageCopy> buffer_image_copy=new VkBufferImageCopy[ir_count];
+    VkBufferImageCopy *tp=buffer_image_copy;
+    const ImageRegion *sp=ir_list.GetData();
+
+    VkDeviceSize offset=0;
+
+    for(int i=0;i<ir_list.GetCount();i++)
+    {
+        tp->bufferOffset      = offset;
+        tp->bufferRowLength   = 0;
+        tp->bufferImageHeight = 0;
+        tp->imageSubresource.aspectMask       = tex->GetAspect();
+        tp->imageSubresource.mipLevel         = 0;
+        tp->imageSubresource.baseArrayLayer   = 0;
+        tp->imageSubresource.layerCount       = 1;
+        tp->imageOffset.x     = sp->left;
+        tp->imageOffset.y     = sp->top;
+        tp->imageOffset.z     = 0;
+        tp->imageExtent.width = sp->width;
+        tp->imageExtent.height= sp->height;
+        tp->imageExtent.depth = 1;
+
+        offset+=sp->bytes;
+        ++sp;
+        ++tp;
+    }
+
+    return ChangeTexture2D(tex,buf,buffer_image_copy,ir_count);
+}
+
+bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height)
+{
+    if(!tex||!buf
+     ||left<0||left+width>tex->GetWidth()
+     ||top<0||top+height>tex->GetHeight()
+     ||width<=0||height<=0)
+        return(false);
+
+    VkBufferImageCopy buffer_image_copy;
+    buffer_image_copy.bufferOffset      = 0;
+    buffer_image_copy.bufferRowLength   = 0;
+    buffer_image_copy.bufferImageHeight = 0;
+    buffer_image_copy.imageSubresource.aspectMask       = tex->GetAspect();
+    buffer_image_copy.imageSubresource.mipLevel         = 0;
+    buffer_image_copy.imageSubresource.baseArrayLayer   = 0;
+    buffer_image_copy.imageSubresource.layerCount       = 1;
+    buffer_image_copy.imageOffset.x     = left;
+    buffer_image_copy.imageOffset.y     = top;
+    buffer_image_copy.imageOffset.z     = 0;
+    buffer_image_copy.imageExtent.width = width;
+    buffer_image_copy.imageExtent.height= height;
+    buffer_image_copy.imageExtent.depth = 1;
+    
+    return ChangeTexture2D(tex,buf,&buffer_image_copy,1);
 }
 
 bool Device::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size)

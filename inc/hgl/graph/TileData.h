@@ -16,7 +16,7 @@ namespace hgl
         {
             int col,row;            //当前tile在整个纹理中的tile位置
 
-            RectScope2d uv_pixel;   //以象素为单位的tile位置和尺寸
+            RectScope2i uv_pixel;   //以象素为单位的tile位置和尺寸
             RectScope2d uv_float;   //以浮点为单位的tile位置和尺寸
         };//struct TileObject
 
@@ -30,20 +30,26 @@ namespace hgl
 
         protected:
 
-            vulkan::Buffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
+            uint pixel_bytes;                                                                                           ///<单个象素字节数
 
             Texture2D *tile_texture;                                                                                    ///<TileData所用的纹理对象
 
             ObjectPool<TileObject> to_pool;                                                                             ///<Tile对象池
 
             uint tile_width,tile_height;                                                                                ///<Tile的宽和高
-            uint32_t tile_bytes;                                                                                        ///<一个tile字节数
+            uint tile_bytes;                                                                                            ///<一个tile字节数
             uint tile_count,tile_max_count;														                        ///<当前Tile数量与最大数量
             uint tile_rows,tile_cols;																                    ///<贴图中可用的Tile行数和列数
 
         protected:
         
-            bool WriteTile(TileObject *,const void *,const uint,const int,const int);	                                ///<写入一个Tile数据
+            vulkan::Buffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
+
+            List<ImageRegion> commit_list;
+            uint commit_offset;
+            uint8 *commit_ptr;
+
+            bool CommitTile(TileObject *,const void *,const uint,const int,const int);	                                ///<提交一个Tile数据
             
         public:
 
@@ -60,11 +66,15 @@ namespace hgl
             TileData(Device *,Texture2D *,const uint tw,const uint th);
             virtual ~TileData();
 
-            TileObject *Add(const void *,const uint,const int=-1,const int=-1);                                         ///<增加一个Tile
-            TileObject *Add(BitmapData *bmp){return this->Add(bmp->data,bmp->total_bytes,bmp->width,bmp->height);}		///<增加一个Tile
+            void BeginCommit();
+
+            TileObject *Commit(const void *,const uint,const int=-1,const int=-1);                                      ///<提交一个Tile
+            TileObject *Commit(BitmapData *bmp){return this->Commit(bmp->data,bmp->total_bytes,bmp->width,bmp->height);}///<提交一个Tile
+            bool        Change(TileObject *,const void *,const uint,const int=-1,const int=-1);	                        ///<更改一个Tile的数据内容
+
+            int  EndCommit();
 
             bool Delete(TileObject *);														                            ///<删除一个Tile
-            bool Change(TileObject *,const void *,const uint,const int=-1,const int=-1);	                            ///<更改一个Tile的数据内容
             void Clear();                                                                                               ///<清除Tile数据
         };//class TileData
     }//namespace graph

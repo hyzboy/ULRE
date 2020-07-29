@@ -4,7 +4,9 @@
 #include<hgl/type/List.h>
 #include<hgl/type/BaseString.h>
 #include<hgl/type/Map.h>
+#include<hgl/type/RectScope.h>
 #include<hgl/platform/Window.h>
+#include<hgl/graph/Bitmap.h>
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDeviceAttribute.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
@@ -179,8 +181,34 @@ public: //Texture
                                 const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 const VkImageTiling         tiling      =VK_IMAGE_TILING_OPTIMAL);
 
+    bool ChangeTexture2D(Texture2D *,Buffer *buf,const VkBufferImageCopy *,const int count);
+    bool ChangeTexture2D(Texture2D *,Buffer *buf,const List<ImageRegion> &);
+
     bool ChangeTexture2D(Texture2D *,Buffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height);
     bool ChangeTexture2D(Texture2D *,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size);
+
+    template<typename T>
+    bool ChangeTexture2D(Texture2D *tex,Buffer *buf,const RectScope2<T> &rs)
+    {
+        return ChangeTexture2D( tex,
+                                buf,
+                                rs.GetLeft(),
+                                rs.GetTop(),
+                                rs.GetWidth(),
+                                rs.GetHeight());
+    }
+    
+    template<typename T>
+    bool ChangeTexture2D(Texture2D *tex,void *data,const RectScope2<T> &rs,uint32_t size)
+    {
+        return ChangeTexture2D( tex,
+                                buf,
+                                rs.GetLeft(),
+                                rs.GetTop(),
+                                rs.GetWidth(),
+                                rs.GetHeight(),
+                                size);
+    }
 
 public: //
 
