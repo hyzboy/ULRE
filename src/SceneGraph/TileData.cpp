@@ -53,7 +53,6 @@ namespace hgl
 
             tile_buffer=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tile_bytes*tile_max_count,nullptr);
 
-            commit_offset=0;
             commit_ptr=nullptr;
         }
 
@@ -66,7 +65,6 @@ namespace hgl
         void TileData::BeginCommit()
         {
             commit_list.ClearData();
-            commit_offset=0;
             commit_ptr=(uint8 *)tile_buffer->Map();
         }
 

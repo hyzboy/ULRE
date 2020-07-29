@@ -40,7 +40,7 @@ CreateProject(12.RectanglePrimitive RectanglePrimitive.cpp)
 
 CreateProject(13.DrawTile DrawTile.cpp)
 
-CreateProject(13.DrawText DrawText.cpp)
+CreateProject(14.DrawText DrawText.cpp)
 
 IF(SUPPORT_QT_VULKAN)
 include(QtCommon)
