@@ -46,7 +46,6 @@ namespace hgl
             vulkan::Buffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
 
             List<ImageRegion> commit_list;
-            uint commit_offset;
             uint8 *commit_ptr;
 
             bool CommitTile(TileObject *,const void *,const uint,const int,const int);	                                ///<提交一个Tile数据
