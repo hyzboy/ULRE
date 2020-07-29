@@ -90,7 +90,9 @@ private:
 
     bool InitTileTexture()
     {
-        tile_data=device->CreateTileData(FMT_A1RGB5,512,512,tile_list.GetCount());
+        tile_data=device->CreateTileData(   FMT_A1RGB5,             //纹理格式，因VK不支持实时转换，所以提交的数据格式必须与此一致
+                                            512,512,                //TILE大小
+                                            tile_list.GetCount());  //TILE需求数量
 
         if(!tile_data)
             return(false);
@@ -114,14 +116,14 @@ private:
 
         for(int i=0;i<count;i++)
         {
-            (*tb)->to=tile_data->Add((*tb)->bmp);
+            (*tb)->to=tile_data->Add((*tb)->bmp);           //添加一个tile图片
 
-            vp=WriteRect(vp,left+BORDER,
+            vp=WriteRect(vp,left+BORDER,                    //产生绘制顶点信息
                             top +BORDER,
                             view_size,
                             view_size);
 
-            tp=WriteRect(tp,(*tb)->to->uv_float);
+            tp=WriteRect(tp,(*tb)->to->uv_float);           //产生绘制纹理坐标信息
 
             ++col;
             if(col==10)
