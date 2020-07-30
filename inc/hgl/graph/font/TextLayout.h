@@ -170,13 +170,13 @@ namespace hgl
 
             virtual ~TextLayout()=default;
 
-            bool Set(RenderableCreater *_rc)            {if(_rc)rc=_rc;}
-            bool Set(const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
-            bool Set(FontSource *fs)                    {if(fs)tla.font_source=fs;}
-            bool SetTextDirection(const uint8 &td)      {tla.text_direction=td;}
-            bool Set(const TextAlign &ta)               {tla.align=ta;}
-            bool SetMaxWidth(const float mw)            {tla.max_width=mw;}
-            bool SetMaxHeight(const float mh)           {tla.max_height=mh;}
+            bool Set                (RenderableCreater *_rc)            {if(_rc)rc=_rc;}
+            bool Set                (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
+            bool Set                (FontSource *fs)                    {if(fs)tla.font_source=fs;}
+            bool SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
+            bool Set                (const TextAlign &ta)               {tla.align=ta;}
+            bool SetMaxWidth        (const float mw)                    {tla.max_width=mw;}
+            bool SetMaxHeight       (const float mh)                    {tla.max_height=mh;}
 
             virtual bool    Init        ();                                                       ///<初始化排版
 
