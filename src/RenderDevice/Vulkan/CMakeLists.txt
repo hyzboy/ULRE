@@ -85,7 +85,8 @@ SET(VK_RENDERABLE_SOURCE    ${RD_INCLUDE_PATH}/VKVertexAttributeBinding.h
                             ${RD_INCLUDE_PATH}/VKRenderable.h
                             VKVertexAttributeBinding.cpp
                             VKRenderable.cpp
-                            VKTileData.cpp)
+                            VKTileData.cpp
+                            VKTileFont.cpp)
 
 SOURCE_GROUP("Renderable" FILES ${VK_RENDERABLE_SOURCE})
 

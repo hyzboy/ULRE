@@ -34,7 +34,7 @@ namespace hgl
                 data    =_data;
                 count   =_size;
                 data_end=_data+_size*C;
-                
+
                 total_bytes =_size*C*sizeof(T);
 
                 access      =nullptr;
@@ -469,10 +469,10 @@ namespace hgl
                     LOG_HINT(OS_TEXT("VertexAttribDataAccess2::WriteRectFan(RectScope2 *) out"));
                     return(false);
                 }
-                
+
                 *this->access++=scope.GetLeft();
                 *this->access++=scope.GetBottom();
-                
+
                 *this->access++=scope.GetRight();
                 *this->access++=scope.GetBottom();
 
@@ -1140,41 +1140,41 @@ namespace hgl
         };//class VertexAttribDataAccess4
 
         //缓冲区具体数据类型定义
-        typedef VertexAttribDataAccess1<int8  ,FMT_R8I    >   VB1i8   ,VB1b;  
-        typedef VertexAttribDataAccess1<int16 ,FMT_R16I   >   VB1i16  ,VB1s;  
-        typedef VertexAttribDataAccess1<int32 ,FMT_R32I   >   VB1i32  ,VB1i;  
-        typedef VertexAttribDataAccess1<uint8 ,FMT_R8U    >   VB1u8   ,VB1ub; 
-        typedef VertexAttribDataAccess1<uint16,FMT_R16U   >   VB1u16  ,VB1us; 
-        typedef VertexAttribDataAccess1<uint32,FMT_R32U   >   VB1u32  ,VB1ui; 
-        typedef VertexAttribDataAccess1<float ,FMT_R32F   >   VB1f;           
-        typedef VertexAttribDataAccess1<double,FMT_R64F   >   VB1d;           
+        typedef VertexAttribDataAccess1<int8  ,FMT_R8I    >   VB1i8   ,VB1b;
+        typedef VertexAttribDataAccess1<int16 ,FMT_R16I   >   VB1i16  ,VB1s;
+        typedef VertexAttribDataAccess1<int32 ,FMT_R32I   >   VB1i32  ,VB1i;
+        typedef VertexAttribDataAccess1<uint8 ,FMT_R8U    >   VB1u8   ,VB1ub;
+        typedef VertexAttribDataAccess1<uint16,FMT_R16U   >   VB1u16  ,VB1us;
+        typedef VertexAttribDataAccess1<uint32,FMT_R32U   >   VB1u32  ,VB1ui;
+        typedef VertexAttribDataAccess1<float ,FMT_R32F   >   VB1f;
+        typedef VertexAttribDataAccess1<double,FMT_R64F   >   VB1d;
 
-        typedef VertexAttribDataAccess2<int8  ,FMT_RG8I   >   VB2i8   ,VB2b;  
-        typedef VertexAttribDataAccess2<int16 ,FMT_RG16I  >   VB2i16  ,VB2s;  
-        typedef VertexAttribDataAccess2<int32 ,FMT_RG32I  >   VB2i32  ,VB2i;  
-        typedef VertexAttribDataAccess2<uint8 ,FMT_RG8U   >   VB2u8   ,VB2ub; 
-        typedef VertexAttribDataAccess2<uint16,FMT_RG16U  >   VB2u16  ,VB2us; 
-        typedef VertexAttribDataAccess2<uint32,FMT_RG32U  >   VB2u32  ,VB2ui; 
-        typedef VertexAttribDataAccess2<float ,FMT_RG32F  >   VB2f;           
-        typedef VertexAttribDataAccess2<double,FMT_RG64F  >   VB2d;           
+        typedef VertexAttribDataAccess2<int8  ,FMT_RG8I   >   VB2i8   ,VB2b;
+        typedef VertexAttribDataAccess2<int16 ,FMT_RG16I  >   VB2i16  ,VB2s;
+        typedef VertexAttribDataAccess2<int32 ,FMT_RG32I  >   VB2i32  ,VB2i;
+        typedef VertexAttribDataAccess2<uint8 ,FMT_RG8U   >   VB2u8   ,VB2ub;
+        typedef VertexAttribDataAccess2<uint16,FMT_RG16U  >   VB2u16  ,VB2us;
+        typedef VertexAttribDataAccess2<uint32,FMT_RG32U  >   VB2u32  ,VB2ui;
+        typedef VertexAttribDataAccess2<float ,FMT_RG32F  >   VB2f;
+        typedef VertexAttribDataAccess2<double,FMT_RG64F  >   VB2d;
 
-//        typedef VertexAttribDataAccess3<int8  ,FMT_RGB8I  >   VB3i8   ,VB3b;  
-//        typedef VertexAttribDataAccess3<int16 ,FMT_RGB16I >   VB3i16  ,VB3s;  
-        typedef VertexAttribDataAccess3<int32 ,FMT_RGB32I >   VB3i32  ,VB3i;  
-//        typedef VertexAttribDataAccess3<uint8 ,FMT_RGB8U  >   VB3u8   ,VB3ub; 
-//        typedef VertexAttribDataAccess3<uint16,FMT_RGB16U >   VB3u16  ,VB3us; 
-        typedef VertexAttribDataAccess3<uint32,FMT_RGB32U >   VB3u32  ,VB3ui; 
-        typedef VertexAttribDataAccess3<float ,FMT_RGB32F >   VB3f;           
-        typedef VertexAttribDataAccess3<double,FMT_RGB64F >   VB3d;           
+//        typedef VertexAttribDataAccess3<int8  ,FMT_RGB8I  >   VB3i8   ,VB3b;
+//        typedef VertexAttribDataAccess3<int16 ,FMT_RGB16I >   VB3i16  ,VB3s;
+        typedef VertexAttribDataAccess3<int32 ,FMT_RGB32I >   VB3i32  ,VB3i;
+//        typedef VertexAttribDataAccess3<uint8 ,FMT_RGB8U  >   VB3u8   ,VB3ub;
+//        typedef VertexAttribDataAccess3<uint16,FMT_RGB16U >   VB3u16  ,VB3us;
+        typedef VertexAttribDataAccess3<uint32,FMT_RGB32U >   VB3u32  ,VB3ui;
+        typedef VertexAttribDataAccess3<float ,FMT_RGB32F >   VB3f;
+        typedef VertexAttribDataAccess3<double,FMT_RGB64F >   VB3d;
 
-        typedef VertexAttribDataAccess4<int8  ,FMT_RGBA8I >   VB4i8   ,VB4b;  
-        typedef VertexAttribDataAccess4<int16 ,FMT_RGBA16I>   VB4i16  ,VB4s;  
-        typedef VertexAttribDataAccess4<int32 ,FMT_RGBA32I>   VB4i32  ,VB4i;  
-        typedef VertexAttribDataAccess4<uint8 ,FMT_RGBA8U >   VB4u8   ,VB4ub; 
-        typedef VertexAttribDataAccess4<uint16,FMT_RGBA16U>   VB4u16  ,VB4us; 
-        typedef VertexAttribDataAccess4<uint32,FMT_RGBA32U>   VB4u32  ,VB4ui; 
-        typedef VertexAttribDataAccess4<float ,FMT_RGBA32F>   VB4f;           
-        typedef VertexAttribDataAccess4<double,FMT_RGBA64F>   VB4d;   
+        typedef VertexAttribDataAccess4<int8  ,FMT_RGBA8I >   VB4i8   ,VB4b;
+        typedef VertexAttribDataAccess4<int16 ,FMT_RGBA16I>   VB4i16  ,VB4s;
+        typedef VertexAttribDataAccess4<int32 ,FMT_RGBA32I>   VB4i32  ,VB4i;
+        typedef VertexAttribDataAccess4<uint8 ,FMT_RGBA8U >   VB4u8   ,VB4ub;
+        typedef VertexAttribDataAccess4<uint16,FMT_RGBA16U>   VB4u16  ,VB4us;
+        typedef VertexAttribDataAccess4<uint32,FMT_RGBA32U>   VB4u32  ,VB4ui;
+        typedef VertexAttribDataAccess4<float ,FMT_RGBA32F>   VB4f;
+        typedef VertexAttribDataAccess4<double,FMT_RGBA64F>   VB4d;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE

@@ -139,7 +139,7 @@ namespace hgl
 			return(true);
 		}
 
-		FontSource *CreateFontSource(const Font &f)
+		FontSourceSingle *CreateFontSource(const Font &f)
 		{
 			return(new WinBitmapFont(f));
 		}

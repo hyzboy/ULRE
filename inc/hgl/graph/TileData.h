@@ -42,14 +42,14 @@ namespace hgl
             uint tile_rows,tile_cols;																                    ///<贴图中可用的Tile行数和列数
 
         protected:
-        
+
             vulkan::Buffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
 
             List<ImageRegion> commit_list;
             uint8 *commit_ptr;
 
             bool CommitTile(TileObject *,const void *,const uint,const int,const int);	                                ///<提交一个Tile数据
-            
+
         public:
 
             int			GetWidth	()const{return tile_width;}										                    ///<取得Tile宽

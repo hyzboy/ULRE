@@ -82,30 +82,6 @@ namespace hgl
 
         class TextLayout
         {
-        protected:        
-
-            struct CharLayoutAttributes
-            {
-                u32char ch;             ///<字符
-                
-                int size;               ///<字符排版尺寸(一般为宽)
-
-                bool visible;           ///<是否可显示字符
-
-                bool is_cjk;            ///<是否是中日韩文字
-                bool is_emoji;          ///<是否是表情符号
-
-                bool is_punctuation;    ///<是否是标点符号
-
-                bool begin_disable;     ///<是否行首禁用符号
-                bool end_disable;       ///<是否行尾禁用符号
-                bool vrotate;           ///<竖排时是否需要旋转
-
-                CharMetricsInfo adv_info;   ///<字符绘制信息
-            };//struct CharLayoutAttributes
-
-            using CLA=CharLayoutAttributes;
-
         protected:
 
             RenderableCreater *rc;
@@ -119,14 +95,15 @@ namespace hgl
             float splite_line_max_limit;
 
             int max_chars;                              ///<总字符数量
-            int draw_chars_count;                       ///<可绘制字符数量
 
-            List<CLA> chars_attributes;
+            Set<u32char> alone_chars;                   ///<不重复字符统计缓冲区
+
+            List<CLA *> cla_list;                       ///<所有字符属性列表
 
         protected:
         
-            template<typename T> int preprocess(const BaseString<T> &origin_string);
-            template<typename T> int plane_preprocess(const BaseString<T> &origin_string);
+            template<typename T> int stat_chars(const T *,const int);
+            template<typename T> int preprocess(const T *,const int);
             
             bool h_splite_to_lines(float view_limit);
             bool v_splite_to_lines(float view_limit);
@@ -162,7 +139,6 @@ namespace hgl
                 
                 direction.text_direction=0;
                 max_chars               =0;
-                draw_chars_count        =0;
 
                 vertex      =nullptr;
                 tex_coord   =nullptr;

@@ -27,7 +27,7 @@ namespace hgl
         public:
 
             Font();
-            Font(const os_char *,int,int,bool,bool,bool=true);
+            Font(const os_char *,int,int,bool b=false,bool i=false,bool=true);
 
             CompOperatorMemcmp(const Font &);	///<比较操作符重载
         };//struct Font
