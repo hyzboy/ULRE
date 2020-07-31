@@ -12,12 +12,15 @@ namespace hgl
 {
     namespace graph
     {
+        using TileUVPixel=RectScope2i;
+        using TileUVFloat=RectScope2d;
+
         struct TileObject
         {
             int col,row;            //当前tile在整个纹理中的tile位置
 
-            RectScope2i uv_pixel;   //以象素为单位的tile位置和尺寸
-            RectScope2d uv_float;   //以浮点为单位的tile位置和尺寸
+            TileUVPixel uv_pixel;   //以象素为单位的tile位置和尺寸
+            TileUVFloat uv_float;   //以浮点为单位的tile位置和尺寸
         };//struct TileObject
 
         /**
@@ -69,6 +72,8 @@ namespace hgl
 
             TileObject *Commit(const void *,const uint,const int=-1,const int=-1);                                      ///<提交一个Tile
             TileObject *Commit(BitmapData *bmp){return this->Commit(bmp->data,bmp->total_bytes,bmp->width,bmp->height);}///<提交一个Tile
+
+            TileObject *Acquire();                                                                                      ///<请求一个Tile
             bool        Change(TileObject *,const void *,const uint,const int=-1,const int=-1);	                        ///<更改一个Tile的数据内容
 
             int  EndCommit();
