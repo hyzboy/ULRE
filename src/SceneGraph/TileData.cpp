@@ -147,6 +147,16 @@ namespace hgl
             return(obj);
         }
 
+        TileObject *TileData::Acquire()
+        {
+            TileObject *obj;
+
+            if(!to_pool.Get(obj))
+                return(nullptr);
+
+            return obj;
+        }
+
         /**
         * 删除一个Tile
         * @param obj 要删除的Tile的对象指针
