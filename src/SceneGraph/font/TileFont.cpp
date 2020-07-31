@@ -6,8 +6,14 @@ namespace hgl
 {
     namespace graph
     {
-        FontSource *AcquireFontSource(const Font &f);
-        
+        TileObject *TileObjectPool::Acquire()
+        {
+        }
+
+        void TileObjectPool::Release(TileObject *)
+        {
+        }
+
         TileFont::TileFont(TileData *td,FontSource *fs)
         {
             tile_data=td;
@@ -17,10 +23,16 @@ namespace hgl
                 source=fs;
                 source->RefAcquire(this);                
             }
+
+            tile_pool=new TileObjectPool(tile_data);
+            ch_tile_pool=new TileObjectManage(tile_pool);
         }
 
         TileFont::~TileFont()
         {
+            delete ch_tile_pool;
+            delete tile_pool;
+
             if(source)
                 source->RefRelease(this);
 
@@ -28,35 +40,21 @@ namespace hgl
         }
         
         /**
-         * 创建只使用一种字符的Tile字符管理对象
-         * @param f 字体需求信息
-         * @param limit_count 缓冲字符数量上限
+         * 注册要使用的字符
+         * @param rs 每个字符在纹理中的UV坐标
+         * @param ch_list 要注册的字符列表
          */
-        TileFont *CreateTileFont(VK_NAMESPACE::Device *device,const Font &f,int limit_count=-1)
+        bool TileFont::Registry(List<RectScope2f> &rs,const List<u32char> &ch_list)
         {
-            int height=(f.height+3)>>2;
             
-            height<<=2;     //保证可以被4整除
-            height+=2;      //上下左右各空一个象素
+        }
 
-            if(limit_count<=0)
-            {
-                const VkExtent2D &ext=device->GetSwapchainSize();
-
-                limit_count=(ext.width/height)*(ext.height/height);     //按全屏幕放满不一样的字符为上限
-            }
-
-            FontSource *fs=AcquireFontSource(f);
-
-            if(!fs)
-                return(nullptr);
-
-            TileData *td=device->CreateTileData(UFMT_R8,height,height,limit_count);
-
-            if(!td)
-                return nullptr;
-
-            return(new TileFont(td,fs));
+        /**
+         * 注销要使用的字符
+         * @param ch_list 要注销的字符列表
+         */
+        void TileFont::Unregistry(const List<u32char> &ch_list)
+        {
         }
     }//namespace graph
 }//namespace hgl

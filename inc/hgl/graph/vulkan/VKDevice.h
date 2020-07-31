@@ -7,6 +7,7 @@
 #include<hgl/type/RectScope.h>
 #include<hgl/platform/Window.h>
 #include<hgl/graph/Bitmap.h>
+#include<hgl/graph/font/Font.h>
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKDeviceAttribute.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
@@ -18,6 +19,7 @@ namespace hgl
     namespace graph
     {
         class TileData;
+        class TileFont;
     }//namespace graph
 }//namespace hgl
 
@@ -261,7 +263,9 @@ public:
 
     RenderTarget *CreateRenderTarget(Framebuffer *);
 
-    TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);               ///<创建一个Tile数据集
+    TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
+    
+    TileFont *CreateTileFont(const Font &f,int limit_count=-1);                                                         ///<创建一个Tile字体
 };//class Device
 
 Device *CreateRenderDevice(Instance *inst,Window *win,const PhysicalDevice *physical_device=nullptr);

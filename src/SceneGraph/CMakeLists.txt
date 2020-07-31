@@ -19,7 +19,12 @@ SET(SG_VAD_SOURCE   ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribData.h
                     ${ROOT_INCLUDE_PATH}/hgl/graph/VertexAttribDataAccess.h
                     VertexAttribData.cpp)
 
-SOURCE_GROUP("VertexAttribData" FILES   ${SG_VAD_SOURCE})
+SOURCE_GROUP("VertexAttribData" FILES ${SG_VAD_SOURCE})
+
+SET(TILE_SOURCE ${ROOT_INCLUDE_PATH}/hgl/graph/TileData.h
+                TileData.cpp)
+
+SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 
 SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneDB.h
@@ -28,7 +33,6 @@ SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableInstance.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/RenderList.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/InlineGeometry.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/TileData.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Mesh.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Material.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Spline.h
@@ -39,7 +43,6 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         SceneNode.cpp
                         SceneOrient.cpp
                         InlineGeometry.cpp
-                        TileData.cpp
                         #InlinePipeline.cpp
                         #Material.cpp
                         #Mesh.cpp
@@ -90,7 +93,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SG_TEXTURE_SOURCE}
                                         ${SG_MATERIAL_HEADER}
                                         ${SG_MATERIAL_SOURCE}
-
+                                        ${TILE_SOURCE}
                                         ${SG_VAD_SOURCE}
 
                                         ${RENDERABLE_FILES}
