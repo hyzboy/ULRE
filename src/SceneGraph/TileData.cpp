@@ -147,6 +147,9 @@ namespace hgl
             return(obj);
         }
 
+        /**
+         * 获取一个TileObject
+         */
         TileObject *TileData::Acquire()
         {
             TileObject *obj;

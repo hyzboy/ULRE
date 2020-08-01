@@ -37,16 +37,26 @@ namespace hgl
 
             List<u32char> new_chars;
 
-            for(uint i=0;i<ch_list.GetCount();i++)
+            int in_active_count;
+            int in_idle_count;
+            int out_count;
+            int idle_left_count;
+
+            int exist_count;
+
+            to_res.Stats(ch_list.GetData(),ch_list.GetCount(),&in_active_count,&in_idle_count,&out_count,&idle_left_count);
+
+            exist_count=in_active_count+in_idle_count;
+
+            if(exist_count>tile_data->GetFreeCount())                       //剩余空间不够了
             {
-                if(!to_res.KeyExist(*cp))
-                    new_chars.Add(*cp);
+                int need=new_chars.GetCount()-tile_data->GetFreeCount();    //计算需要的tile数量差值
 
-                cp++;
+                to_res.Get
+
+                if(need>to_res.GetIdleCount())                              //闲置项都不够，那没戏了
+                    return(false);
             }
-
-            if(new_chars.GetCount()>tile_data->GetFreeCount())      //剩余空间不够了
-                return(false);
 
             rs.ClearData();
             rs.SetCount(ch_list.GetCount());
