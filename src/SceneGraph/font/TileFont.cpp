@@ -6,31 +6,6 @@ namespace hgl
 {
     namespace graph
     {
-        namespace
-        {
-            using TileObjectPointer=TileObject *;
-
-            class TileObjectPool:public DataPool<TileObjectPointer>
-            {
-                TileData *tile_data;
-
-            public:
-
-                TileObjectPool(TileData *td):tile_data(td){}
-
-                bool Acquire(TileObjectPointer &top) override
-                {
-                    top=tile_data->Acquire();
-                
-                    return(top);
-                }
-
-                void Release(TileObjectPointer) override 
-                {
-                }
-            };//class TileObjectPool:public DataPool<TileObjectPointer>
-        }//namespace
-
         TileFont::TileFont(TileData *td,FontSource *fs)
         {
             tile_data=td;
@@ -40,16 +15,10 @@ namespace hgl
                 source=fs;
                 source->RefAcquire(this);
             }
-
-            to_pool=new TileObjectPool(tile_data);
-            to_res=new TileResPool(to_pool);
         }
 
         TileFont::~TileFont()
         {
-            delete to_res;
-            delete to_pool;
-
             if(source)
                 source->RefRelease(this);
 
@@ -70,14 +39,57 @@ namespace hgl
 
             for(uint i=0;i<ch_list.GetCount();i++)
             {
-                if(!to_res->Get(*cp,to))
+                if(!to_res.KeyExist(*cp))
                     new_chars.Add(*cp);
 
                 cp++;
             }
 
-            tile_data->BeginCommit();
-            tile_data->EndCommit();
+            if(new_chars.GetCount()>tile_data->GetFreeCount())      //剩余空间不够了
+                return(false);
+
+            rs.ClearData();
+            rs.SetCount(ch_list.GetCount());
+
+            FontBitmap *bmp;
+            TileUVFloat *tp=rs.GetData();
+            cp=ch_list.GetData();
+
+            if(new_chars.GetCount())
+            {
+                tile_data->BeginCommit();
+                for(uint i=0;i<ch_list.GetCount();i++)
+                {
+                    if(!to_res.Get(*cp,to))
+                    {
+                        bmp=source->GetCharBitmap(*cp);
+                        to=tile_data->Commit(   bmp->data,
+                                                bmp->metrics_info.w*bmp->metrics_info.h,
+                                                bmp->metrics_info.w,bmp->metrics_info.h);
+
+                        to_res.Add(*cp,to);
+                    }
+
+                    ++cp;
+
+                    *tp=to->uv_float;
+                    ++tp;
+                }
+                tile_data->EndCommit();
+            }
+            else
+            {
+                for(uint i=0;i<ch_list.GetCount();i++)
+                {
+                    to_res.Get(*cp,to);
+                    ++cp;
+
+                    *tp=to->uv_float;
+                    ++tp;
+                }
+            }
+
+            return(true);
         }
 
         /**
@@ -86,6 +98,13 @@ namespace hgl
          */
         void TileFont::Unregistry(const List<u32char> &ch_list)
         {
+            const u32char *cp=ch_list.GetData();
+
+            for(uint i=0;i<ch_list.GetCount();i++)
+            {
+                to_res.Release(*cp);
+                ++cp;
+            }
         }
     }//namespace graph
 }//namespace hgl
