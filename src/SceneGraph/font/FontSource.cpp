@@ -31,6 +31,8 @@ namespace hgl
 		    constexpr int 		EndSymbolsCount	    =(sizeof(EndSymbols)     /sizeof(u16char))-1;
             constexpr int 		CurrencySymbolsCount=(sizeof(CurrencySymbols)/sizeof(u16char))-1;
             constexpr int       VRotateSymbolsCount =(sizeof(VRotateSymbols) /sizeof(u16char))-1;
+
+            MapObject<u32char,CharAttributes> all_char_attrs;
         }//namespace
 		
 		const CLA *FontSource::GetCLA(const u32char &ch)
@@ -40,37 +42,50 @@ namespace hgl
             if(cla_cache.Get(ch,cla))
                 return cla;
 
-            cla=new CLA;
+            CharAttributes *attr;
 
-            cla->ch=ch;
+            const int pos=all_char_attrs.GetValueAndSerial(ch,attr);
 
-            if(hgl::isspace(ch))
+            if(pos<0)
             {
-                cla->visible=false;
-            }
-            else
-            {
-                cla->visible=true;
+                attr=new CharAttributes;
+                
+                attr->ch=ch;
 
-                cla->begin_disable  =hgl::strchr(BeginSymbols,      ch,BeginSymbolsCount    );
-                cla->end_disable    =hgl::strchr(EndSymbols,        ch,EndSymbolsCount      );
+                attr->space=hgl::isspace(ch);
 
-                if(!cla->end_disable)       //货币符号同样行尾禁用
-                cla->end_disable    =hgl::strchr(CurrencySymbols,   ch,CurrencySymbolsCount );
-
-                cla->vrotate        =hgl::strchr(VRotateSymbols,    ch,VRotateSymbolsCount  );
-
-                cla->is_cjk         =isCJK(ch);
-                cla->is_emoji       =isEmoji(ch);
-
-                cla->is_punctuation =isPunctuation(ch);
-                        
-                if(!GetCharMetrics(cla->adv_info,ch))
-                    hgl_zero(cla->adv_info);
-                else
-                if(cla->adv_info.w>0&&cla->adv_info.h>0)
+                if(!attr->space)
                 {
-                    cla->size=ceil(cla->adv_info.adv_x);
+                    attr->begin_disable =hgl::strchr(BeginSymbols,      ch,BeginSymbolsCount    );
+                    attr->end_disable   =hgl::strchr(EndSymbols,        ch,EndSymbolsCount      );
+
+                    if(!attr->end_disable)       //货币符号同样行尾禁用
+                    attr->end_disable   =hgl::strchr(CurrencySymbols,   ch,CurrencySymbolsCount );
+
+                    attr->vrotate       =hgl::strchr(VRotateSymbols,    ch,VRotateSymbolsCount  );
+
+                    attr->is_cjk        =isCJK(ch);
+                    attr->is_emoji      =isEmoji(ch);
+
+                    attr->is_punctuation=isPunctuation(ch);
+                }
+
+                all_char_attrs.Add(ch,attr);
+            }
+
+            cla=new CLA;
+            cla->attr=attr;
+
+            if(!attr->space)
+            {                        
+                if(!GetCharMetrics(cla->metrics,ch))
+                {
+                    cla->visible=false;
+                    hgl_zero(cla->metrics);
+                }
+                else
+                {
+                    cla->visible=(cla->metrics.w>0&&cla->metrics.h>0);
                 }
             }
 
