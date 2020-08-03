@@ -85,6 +85,7 @@ namespace hgl
         {
         protected:
 
+            FontSource *font_source;
             RenderableCreater *rc;
             TextLayoutAttributes tla;
 
@@ -102,13 +103,13 @@ namespace hgl
 
             struct CharDrawAttr
             {
-                CLA *cla;
+                const CLA *cla;
                 TileUVFloat uv;
             };
             
             ObjectList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
 
-            template<typename T> int preprocess(const T *,const int);
+            template<typename T> bool preprocess(TileFont *,const T *,const int);
 
         protected:        
 
@@ -119,6 +120,9 @@ namespace hgl
             int sl_h_r2l();
             int sl_v_r2l();
             int sl_v_l2r();
+
+            template<typename T>
+            int     SimpleLayout (TileFont *,const BaseString<T> &);                                ///<简易排版
 
         protected:  
 
@@ -134,8 +138,8 @@ namespace hgl
 
         protected:
 
-            AutoDelete<VB4f>    vertex,
-                                tex_coord;
+            VB4f    *vertex;
+            VB4f    *tex_coord;
 
         public:
 
@@ -154,7 +158,7 @@ namespace hgl
 
             void Set                (RenderableCreater *_rc)            {if(_rc)rc=_rc;}
             void Set                (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
-            void Set                (FontSource *fs)                    {if(fs)tla.font_source=fs;}
+            void Set                (FontSource *fs)                    {if(fs)font_source=fs;}
             void SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
             void Set                (const TextAlign &ta)               {tla.align=ta;}
             void SetMaxWidth        (const float mw)                    {tla.max_width=mw;}
@@ -162,10 +166,8 @@ namespace hgl
 
             virtual bool    Init        ();                                                       ///<初始化排版
 
-//            virtual int     Layout      (const int max_chars,const BaseString<T> &)=0;              ///<排版
-
-            template<typename T>
-            int     SimpleLayout (TileFont *,const BaseString<T> &);                                ///<简易排版
+            int     SimpleLayout (TileFont *,const UTF16String &);                                ///<简易排版
+            int     SimpleLayout (TileFont *,const UTF32String &);                                ///<简易排版
         };//class TextLayout
     }//namespace graph
 }//namespace hgl

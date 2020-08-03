@@ -426,7 +426,7 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     if(!device_attr->pipeline_cache)
         return(nullptr);
 
-    auto_delete.Clear();
+    auto_delete.Discard();
 
     return(new Device(device_attr));
 }

@@ -1,4 +1,4 @@
-// DrawTile
+﻿// DrawTile
 // 该示例使用TileData，演示多个tile图片在一张纹理上
 
 #include<hgl/type/StringList.h>
@@ -15,13 +15,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-/**
- * 文本绘制技术流程：
- *
- * 1.由TextLayout模块排版所有的字符，并向FontSource获取所有字符的Bitmap。生成文本可渲染对象的vertex position数据
- * 2.由TextLayout向TileData提交需要渲染的所有字符的Bitmap，并得到每个Bitmap对应的UV数据。生成文本可渲染对象的uv数据
- */
-
 constexpr uint32_t SCREEN_WIDTH =1280;
 constexpr uint32_t SCREEN_HEIGHT=960;
 
@@ -31,6 +24,8 @@ constexpr uint CHAR_BITMAP_BORDER=1;        //边界象素尺寸
 class TestApp:public VulkanApplicationFramework
 {
     Camera cam;
+
+    Color4f color;
     
 private:
 
@@ -39,6 +34,7 @@ private:
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
+    vulkan::Buffer *            ubo_color           =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
@@ -71,7 +67,7 @@ private:
     {
         material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
                                                 OS_TEXT("res/shader/DrawRect2D.geom"),
-                                                OS_TEXT("res/shader/FlatTexture.frag"));
+                                                OS_TEXT("res/shader/FlatLumTexture.frag"));
         if(!material)
             return(false);
 
@@ -81,6 +77,7 @@ private:
 
         material_instance->BindSampler("tex",tile_font->GetTexture(),sampler);
         material_instance->BindUBO("world",ubo_world_matrix);
+        material_instance->BindUBO("color_material",ubo_color);
         material_instance->Update();
 
         db->Add(material);
@@ -100,6 +97,13 @@ private:
         ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
         if(!ubo_world_matrix)
+            return(false);
+
+        color.One();
+
+        ubo_color=db->CreateUBO(sizeof(Color4f),&color);
+
+        if(!ubo_color)
             return(false);
 
         return(true);
@@ -130,6 +134,7 @@ private:
 
         text_rc=new RenderableCreater(db,material);
 
+        tl_engine.Set(tile_font->GetFontSource());
         tl_engine.Set(text_rc);
         tl_engine.Set(&tla);
         tl_engine.SetTextDirection(0);

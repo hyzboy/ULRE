@@ -79,7 +79,7 @@ namespace hgl
             virtual ~FontSource()=default;
 
             virtual			FontBitmap *GetCharBitmap	(const u32char &)=0;						///<取得字符位图数据
-            virtual const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &);		///<取得字符绘制信息
+            virtual const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)=0;		///<取得字符绘制信息
                     const	CLA *		GetCLA			(const u32char &);							///<取得字符排版信息
             virtual			int			GetCharHeight	()const=0;									///<取得字符高度
 
@@ -109,11 +109,11 @@ namespace hgl
             virtual ~FontSourceSingle()=default;
 
                             FontBitmap *GetCharBitmap	(const u32char &ch) override;				///<取得字符位图数据
-                    const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &);		///<取得字符绘制信息
+                    const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;///<取得字符绘制信息
             virtual			int			GetCharHeight	()const override{return fnt.height;}		///<取得字符高度
         };//class FontSourceSingle:public FontSource
 
-        FontSourceSingle *CreateFontSource(const Font &f);
+        FontSource *CreateFontSource(const Font &f);
 
         /**
          * 文字位图多重数据源
@@ -148,7 +148,7 @@ namespace hgl
         public:
 
                     FontBitmap *GetCharBitmap	(const u32char &ch) override;
-            const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &);				///<取得字符绘制信息
+            const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;		///<取得字符绘制信息
                     int			GetCharHeight	()const override;									///<取得字符高度
         };//class FontSourceMulti:public FontSource
     }//namespace graph

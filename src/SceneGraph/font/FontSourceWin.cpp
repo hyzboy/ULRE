@@ -6,43 +6,48 @@ namespace hgl
 	{
 		namespace
 		{
-			void Convert8BitGrey(uint8 *dst,uint8 *src,int w,int h,int line_bytes)
+			void Convert8BitGrey(uint8 *dst,int dst_w,uint8 *src,int src_w,int src_h,int src_line_bytes)
 			{
 				int pos;
 				uint8 *sp=src,*p;
+				uint8 *tp;
 
-				while(h--)
+				while(src_h--)
 				{
-					pos=w;
+					pos=src_w;
 					p=sp;
+					tp=dst;
 
 					while(pos--)
 					{
-						if(*p==64)*dst=255;
-							else *dst=(*p)<<2;
+						if(*p==64)*tp=255;
+							else *tp=(*p)<<2;
 
-						dst++;
+						tp++;
 						p++;
 					}
 
-					sp+=line_bytes;
+					sp+=src_line_bytes;
+					dst+=dst_w;
 				}
 			}
 
-			void ConvertBitmap(uint8 *dst,uint8 *src,int w,int h,int line_bytes)
+			void ConvertBitmap(uint8 *dst,int dst_w,uint8 *src,int src_w,int src_h,int src_line_bytes)
 			{
 				uint8 *sp=src,*p;
+				uint8 *tp;
 				uint8 bit;
 
-				while(h--)
+				while(src_h--)
 				{
 					p=sp;
+					tp=dst;
 
 					bit=1<<7;
 
-					for(int i=0;i<w;i++)
+					for(int i=0;i<src_w;i++)
 					{
-						*dst++=(*p&bit)?255:0;
+						*tp++=(*p&bit)?255:0;
 
 						if(bit==0x01)
 						{
@@ -52,7 +57,8 @@ namespace hgl
 						else bit>>=1;
 					}
 
-					sp+=line_bytes;				
+					sp+=src_line_bytes;
+					dst+=dst_w;
 				}//while(h--)
 			}
 		}//namespace
@@ -120,8 +126,8 @@ namespace hgl
 
 			GetGlyphOutlineW(hdc,ch,ggo,&gm,buffer_size,buffer,&mat);
 
-			bmp->metrics_info.w		=gm.gmBlackBoxX;
-			bmp->metrics_info.h		=gm.gmBlackBoxY;
+			bmp->metrics_info.w		=((gm.gmBlackBoxX+3)>>2)<<2;
+			bmp->metrics_info.h		=((gm.gmBlackBoxY+3)>>2)<<2;
 
 			bmp->metrics_info.x		=gm.gmptGlyphOrigin.x;
 			bmp->metrics_info.y		=gm.gmptGlyphOrigin.y;
@@ -132,14 +138,14 @@ namespace hgl
 			bmp->data=new uint8[bmp->metrics_info.w*bmp->metrics_info.h];
 
 			if(ggo==GGO_GRAY8_BITMAP)
-				Convert8BitGrey(bmp->data,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/bmp->metrics_info.h);
+				Convert8BitGrey(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/gm.gmBlackBoxY);
 			else
-				ConvertBitmap(bmp->data,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/bmp->metrics_info.h);
+				ConvertBitmap(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/gm.gmBlackBoxY);
 
 			return(true);
 		}
 
-		FontSourceSingle *CreateFontSource(const Font &f)
+		FontSource *CreateFontSource(const Font &f)
 		{
 			return(new WinBitmapFont(f));
 		}
