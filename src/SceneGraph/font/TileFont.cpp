@@ -35,8 +35,6 @@ namespace hgl
             const u32char *cp=ch_list;
             TileObject *to;
 
-            List<u32char> new_chars;
-
             int in_active_count;    //在活跃列表中的数量
             int in_idle_count;      //在闲置列表中的数量
             int out_count;          //不存在的字符数量
@@ -52,7 +50,7 @@ namespace hgl
             FontBitmap *bmp;
             cp=ch_list;
 
-            if(new_chars.GetCount())
+            if(out_count>0)
             {
                 tile_data->BeginCommit();
                 for(uint i=0;i<ch_count;i++)
@@ -77,10 +75,9 @@ namespace hgl
                 for(uint i=0;i<ch_count;i++)
                 {
                     to_res.Get(*cp,to);
-                    ++cp;
 
-                    *tp=to->uv_float;
-                    ++tp;
+                    uv_map.Add(*cp,to->uv_float);
+                    ++cp;
                 }
             }
 
