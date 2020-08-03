@@ -57,7 +57,7 @@ private:
 
     bool InitTileFont()
     {
-        Font fnt(OS_TEXT("Consolas"),0,CHAR_BITMAP_SIZE);
+        Font fnt(OS_TEXT("微软雅黑"),0,CHAR_BITMAP_SIZE);
 
         tile_font=device->CreateTileFont(fnt);
         return(true);
@@ -145,7 +145,8 @@ private:
         if(!tl_engine.Init())
             return(false);
 
-        UTF16String str=U16_TEXT("道可道，非常道。名可名，非常名。无名天地之始。有名万物之母。故常无欲以观其妙。常有欲以观其徼。此两者同出而异名，同谓之玄。玄之又玄，众妙之门。");
+        UTF16String str;
+        LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 
         if(tl_engine.SimpleLayout(tile_font,str)>0)
         {

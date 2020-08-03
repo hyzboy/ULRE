@@ -88,6 +88,10 @@ namespace hgl
                     cla->visible=(cla->metrics.w>0&&cla->metrics.h>0);
                 }
             }
+            else
+            {
+                cla->visible=false;
+            }
 
             cla_cache.Add(ch,cla);
             return cla;
