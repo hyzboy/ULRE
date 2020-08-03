@@ -30,45 +30,32 @@ namespace hgl
          * @param rs 每个字符在纹理中的UV坐标
          * @param ch_list 要注册的字符列表
          */
-        bool TileFont::Registry(List<TileUVFloat> &rs,const List<u32char> &ch_list)
+        bool TileFont::Registry(TileUVFloatMap &uv_map,const u32char *ch_list,const int ch_count)
         {
-            const u32char *cp=ch_list.GetData();
+            const u32char *cp=ch_list;
             TileObject *to;
 
             List<u32char> new_chars;
 
-            int in_active_count;
-            int in_idle_count;
-            int out_count;
-            int idle_left_count;
+            int in_active_count;    //在活跃列表中的数量
+            int in_idle_count;      //在闲置列表中的数量
+            int out_count;          //不存在的字符数量
+            int idle_left_count;    //闲置列表中可释放的数量
 
-            int exist_count;
+            to_res.Stats(ch_list,ch_count,&in_active_count,&in_idle_count,&out_count,&idle_left_count);
 
-            to_res.Stats(ch_list.GetData(),ch_list.GetCount(),&in_active_count,&in_idle_count,&out_count,&idle_left_count);
+            if(out_count>idle_left_count+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
+                return(false);
 
-            exist_count=in_active_count+in_idle_count;
-
-            if(exist_count>tile_data->GetFreeCount())                       //剩余空间不够了
-            {
-                int need=new_chars.GetCount()-tile_data->GetFreeCount();    //计算需要的tile数量差值
-
-                to_res.Get
-
-                if(need>to_res.GetIdleCount())                              //闲置项都不够，那没戏了
-                    return(false);
-            }
-
-            rs.ClearData();
-            rs.SetCount(ch_list.GetCount());
+            uv_map.ClearData();
 
             FontBitmap *bmp;
-            TileUVFloat *tp=rs.GetData();
-            cp=ch_list.GetData();
+            cp=ch_list;
 
             if(new_chars.GetCount())
             {
                 tile_data->BeginCommit();
-                for(uint i=0;i<ch_list.GetCount();i++)
+                for(uint i=0;i<ch_count;i++)
                 {
                     if(!to_res.Get(*cp,to))
                     {
@@ -80,16 +67,14 @@ namespace hgl
                         to_res.Add(*cp,to);
                     }
 
+                    uv_map.Add(*cp,to->uv_float);
                     ++cp;
-
-                    *tp=to->uv_float;
-                    ++tp;
                 }
                 tile_data->EndCommit();
             }
             else
             {
-                for(uint i=0;i<ch_list.GetCount();i++)
+                for(uint i=0;i<ch_count;i++)
                 {
                     to_res.Get(*cp,to);
                     ++cp;

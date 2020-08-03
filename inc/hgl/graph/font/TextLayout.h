@@ -4,6 +4,7 @@
 #include<hgl/type/StringList.h>
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/RenderableCreater.h>
+#include<hgl/graph/TileData.h>
 namespace hgl
 {
     namespace graph
@@ -13,7 +14,7 @@ namespace hgl
         /**
          * 字符属性，可精确到字也可精确到段落或是全文
          */
-        struct CharAttributes
+        struct CharLayoutAttr
         {
             bool    bold        =false; ///<加粗
             bool    italic      =false; ///<右斜
@@ -21,7 +22,7 @@ namespace hgl
 
             Color4f CharColor;          ///<字符颜色
             Color4f BackgroundColor;    ///<背影颜色
-        };//struct CharAttributes
+        };//struct CharLayoutAttr
        
         /**
          * 文本排列方向
@@ -57,7 +58,7 @@ namespace hgl
         struct TextLayoutAttributes
         {
             FontSource *    font_source             =nullptr;                                       ///<字符源
-            CharAttributes *char_attributes         =nullptr;                                       ///<缺省字符属性
+            CharLayoutAttr *char_layout_attr        =nullptr;                                       ///<缺省字符排版属性
 
             uint8           text_direction          =0;                                             ///<文本排列方向
             TextAlign       align                   =TextAlign::Left;                               ///<段落对齐
@@ -94,25 +95,30 @@ namespace hgl
             bool endless;
             float splite_line_max_limit;
 
-            int max_chars;                              ///<总字符数量
+            int draw_chars_count;                       ///<要绘制字符列表
 
             Set<u32char> alone_chars;                   ///<不重复字符统计缓冲区
+            TileUVFloatMap alone_chars_uv;              ///<所有要绘制字符的uv
 
-            List<CLA *> cla_list;                       ///<所有字符属性列表
-
-        protected:
-        
-            template<typename T> int stat_chars(const T *,const int);
-            template<typename T> int preprocess(const T *,const int);
+            struct CharDrawAttr
+            {
+                CLA *cla;
+                TileUVFloat uv;
+            };
             
+            ObjectList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
+
+            template<typename T> int preprocess(const T *,const int);
+
+        protected:        
+
             bool h_splite_to_lines(float view_limit);
             bool v_splite_to_lines(float view_limit);
-
             
-            int pl_h_l2r();
-            int pl_h_r2l();
-            int pl_v_r2l();
-            int pl_v_l2r();
+            int sl_h_l2r();
+            int sl_h_r2l();
+            int sl_v_r2l();
+            int sl_v_l2r();
 
         protected:  
 
@@ -138,7 +144,7 @@ namespace hgl
                 rc=nullptr;
                 
                 direction.text_direction=0;
-                max_chars               =0;
+                draw_chars_count=0;
 
                 vertex      =nullptr;
                 tex_coord   =nullptr;
@@ -146,20 +152,20 @@ namespace hgl
 
             virtual ~TextLayout()=default;
 
-            bool Set                (RenderableCreater *_rc)            {if(_rc)rc=_rc;}
-            bool Set                (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
-            bool Set                (FontSource *fs)                    {if(fs)tla.font_source=fs;}
-            bool SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
-            bool Set                (const TextAlign &ta)               {tla.align=ta;}
-            bool SetMaxWidth        (const float mw)                    {tla.max_width=mw;}
-            bool SetMaxHeight       (const float mh)                    {tla.max_height=mh;}
+            void Set                (RenderableCreater *_rc)            {if(_rc)rc=_rc;}
+            void Set                (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
+            void Set                (FontSource *fs)                    {if(fs)tla.font_source=fs;}
+            void SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
+            void Set                (const TextAlign &ta)               {tla.align=ta;}
+            void SetMaxWidth        (const float mw)                    {tla.max_width=mw;}
+            void SetMaxHeight       (const float mh)                    {tla.max_height=mh;}
 
             virtual bool    Init        ();                                                       ///<初始化排版
 
 //            virtual int     Layout      (const int max_chars,const BaseString<T> &)=0;              ///<排版
 
             template<typename T>
-            int     PlaneLayout (TileFont *,const int max_chars,const BaseString<T> &);                ///<简易排版
+            int     SimpleLayout (TileFont *,const BaseString<T> &);                                ///<简易排版
         };//class TextLayout
     }//namespace graph
 }//namespace hgl

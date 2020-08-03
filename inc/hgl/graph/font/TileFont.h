@@ -26,13 +26,14 @@ namespace hgl
 
             FontSource *GetFontSource   (){return source;}
             TileData *  GetTileData     (){return tile_data;}
+            Texture2D * GetTexture      (){return tile_data->GetTexture();}
 
         public:
 
             TileFont(TileData *td,FontSource *fs);
             virtual ~TileFont();
 
-            bool Registry(List<TileUVFloat> &,const List<u32char> &);                               ///<注册要使用的字符
+            bool Registry(TileUVFloatMap &,const u32char *ch_list,const int ch_count);              ///<注册要使用的字符
             void Unregistry(const List<u32char> &);                                                 ///<注销要使用的字符
         };//class TileFont
     }//namespace graph

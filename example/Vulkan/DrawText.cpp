@@ -48,13 +48,11 @@ private:
     TextLayout                  tl_engine;                                      ///<文本排版引擎
 
     RenderableCreater *         text_rc             =nullptr;
-    Renderable *                text_renderable     =nullptr;                   ///<文本渲染对象列表
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(text_renderable);
         SAFE_CLEAR(text_rc);
         SAFE_CLEAR(tile_font);
     }
@@ -69,33 +67,6 @@ private:
         return(true);
     }
 
-    bool InitTextRenderable()
-    {
-        CharAttributes ca;
-        TextLayoutAttributes tla;
-
-        ca.CharColor=Color4f(COLOR::White);
-        ca.BackgroundColor=Color4f(COLOR::Black);
-
-        tla.char_attributes=&ca;
-
-        text_rc=new RenderableCreater(db,material);
-
-        tl_engine.Set(text_rc);
-        tl_engine.Set(&tla);
-        tl_engine.SetTextDirection(0);
-        tl_engine.Set(TextAlign::Left);
-        tl_engine.SetMaxWidth(0);
-        tl_engine.SetMaxHeight(0);
-
-        if(!tl_engine.Init())
-            return(false);
-
-        UTF16String str=U16_TEXT("道可道，非常道。名可名，非常名。无名天地之始。有名万物之母。故常无欲以观其妙。常有欲以观其徼。此两者同出而异名，同谓之玄。玄之又玄，众妙之门。");
-
-        tl_engine.PlaneLayout(tile_font,0,str);
-    }
-
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
@@ -108,7 +79,7 @@ private:
 
         sampler=db->CreateSampler();
 
-        material_instance->BindSampler("tex",tile_data->GetTexture(),sampler);
+        material_instance->BindSampler("tex",tile_font->GetTexture(),sampler);
         material_instance->BindUBO("world",ubo_world_matrix);
         material_instance->Update();
 
@@ -134,21 +105,6 @@ private:
         return(true);
     }
 
-    void InitVBO()
-    {
-        const int tile_count=tile_list.GetCount();
-
-        render_obj=material->CreateRenderable(tile_count);
-
-        vertex_buffer   =db->CreateVAB(VAF_VEC4,tile_count,vertex_data);
-        tex_coord_buffer=db->CreateVAB(VAF_VEC4,tile_count,tex_coord_data);
-
-        render_obj->Set("Vertex",vertex_buffer);
-        render_obj->Set("TexCoord",tex_coord_buffer);
-
-        db->Add(render_obj);
-    }
-
     bool InitPipeline()
     {
         AutoDelete<vulkan::PipelineCreater>
@@ -162,14 +118,44 @@ private:
         return pipeline;
     }
 
+    bool InitTextRenderable()
+    {
+        CharLayoutAttr cla;
+        TextLayoutAttributes tla;
+
+        cla.CharColor=Color4f(COLOR::White);
+        cla.BackgroundColor=Color4f(COLOR::Black);
+
+        tla.char_layout_attr=&cla;
+
+        text_rc=new RenderableCreater(db,material);
+
+        tl_engine.Set(text_rc);
+        tl_engine.Set(&tla);
+        tl_engine.SetTextDirection(0);
+        tl_engine.Set(TextAlign::Left);
+        tl_engine.SetMaxWidth(0);
+        tl_engine.SetMaxHeight(0);
+
+        if(!tl_engine.Init())
+            return(false);
+
+        UTF16String str=U16_TEXT("道可道，非常道。名可名，非常名。无名天地之始。有名万物之母。故常无欲以观其妙。常有欲以观其徼。此两者同出而异名，同谓之玄。玄之又玄，众妙之门。");
+
+        if(tl_engine.SimpleLayout(tile_font,str)>0)
+        {
+            render_obj=text_rc->Finish();
+            return(true);
+        }
+
+        return(false);
+    }
+
 public:
 
     bool Init()
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
-            return(false);
-
-        if(!InitTileData())
             return(false);
 
         if(!InitTileFont())
@@ -181,9 +167,10 @@ public:
         if(!InitMaterial())
             return(false);
 
-        InitVBO();
-
         if(!InitPipeline())
+            return(false);
+
+        if(!InitTextRenderable())
             return(false);
             
         BuildCommandBuffer(pipeline,material_instance,render_obj);
