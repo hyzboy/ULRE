@@ -40,47 +40,55 @@ namespace hgl
 
             return(true);
         }
-
-        template<typename T> 
-        int TextLayout::stat_chars(const T *str,const int str_length)
-        {
-            if(!str||!*str||str_length<=0)
-                return 0;
-
-            alone_chars.ClearData();
-
-            for(int i=0;i<str_length;i++)
-            {
-                alone_chars.Add(*str);
-                ++str;
-            }
-
-            return alone_chars.GetCount();
-        }
-
+        
         /**
          * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
          */
-        template<typename T>
+        template<typename T> 
         int TextLayout::preprocess(const T *str,const int str_length)
         {
-            const int count=hgl_min(max_chars,str_length);
-
-            if(count<=0)
+            if(!str||!*str||str_length<=0)
                 return 0;
+                
+            draw_chars_count=0;
+            alone_chars.ClearData();
 
-            cla_list.ClearData();
-            cla_list.SetCount(count);
+            draw_chars_list.ClearData();
+            draw_chars_list.SetCount(str_length);
 
-            CLA **cla=cla.GetData();
+            CharDrawAttr **cda=draw_chars_list.GetData();
             const T *cp=str;
 
             for(int i=0;i<count;i++)
             {
-                *cla=tla->font_source.GetCLA(*cp);
+                (*cda)->cla=tla->font_source.GetCLA(*cp);
+
+                if((*cda)->cla->visible)
+                {
+                    alone_chars.Add(*cp);              //统计所有不重复字符
+                    ++draw_chars_count;
+                }
 
                 ++cp;
-                ++cla;
+                ++cda;
+            }
+            
+            //注册不重复字符给tile font系统，获取所有字符的UV
+            if(!tf->Registry(alone_chars_uv,alone_chars.GetData(),alone_chars.GetCount()))
+            {
+                draw_chars_list.ClearData();
+                alone_chars.ClearData();
+
+                return(false);
+            }
+
+            //为可绘制字符列表中的字符获取UV
+            cda=draw_chars_list.GetData();
+            for(int i=0;i<count;i++)
+            {
+                alone_chars_uv.Get((*cda)->cla->ch,(*cda)->uv);
+
+                ++cda;
             }
 
             return count;
@@ -91,14 +99,14 @@ namespace hgl
          */
         bool TextLayout::h_splite_to_lines(float view_limit)
         {
-            const int count=cla_list.GetCount();
-            const CLA **cla=cla_list.GetData();
+            //const int count=cla_list.GetCount();
+            //const CLA **cla=cla_list.GetData();
 
-            int cur_size=0;
+            //int cur_size=0;
 
-            for(int i=0;i<count;i++)
-            {
-            }
+            //for(int i=0;i<count;i++)
+            //{
+            //}
 
             return(true);
         }
@@ -145,53 +153,65 @@ namespace hgl
         //    return 0;
         //}
 
-        int TextLayout::pl_h_l2r()
+        int TextLayout::sl_h_l2r()
         {
-            const int count=cla_list.GetCount();
-            const CLA **cla=cla_list.GetData();
+            const int count=draw_chars_list.GetCount();
+            CharDrawAttr **cda=draw_chars_list.GetData();
 
             int cur_size=0;
             int left=0,top=0;
 
             float *tp=vertex->Begin();
+            float *tcp=tex_coord->Begin();
 
             for(int i=0;i<count;i++)
             {
-                *tp=left;   ++tp;
-                *tp=top;    ++tp;
-                *tp=left+(*cla)->adv_info.w;++tp;
-                *tp=top +(*cla)->adv_info.h;++tp;
+                if((*cda)->cla->visible)
+                {
+                    tp=WriteRect(   tp,
+                                    left,
+                                    top,
+                                    (*cda)->cla->metrics.w,
+                                    (*cda)->cla->metrics.h);
+
+                    tcp=WriteRect(tcp,(*cda)->uv);
+                }
+                else
+                {   
+                }
+
+                left+=(*cda)->cla->metrics.adv_x;
+
+                ++cda;
             }
 
+            tex_coord->End();
             vertex->End();
 
-            return 0;
+            return count;
         }
 
-        int TextLayout::pl_h_r2l(){return 0;}
-        int TextLayout::pl_v_r2l(){return 0;}
-        int TextLayout::pl_v_l2r(){return 0;}
+        int TextLayout::sl_h_r2l(){return 0;}
+        int TextLayout::sl_v_r2l(){return 0;}
+        int TextLayout::sl_v_l2r(){return 0;}
 
         /**
-         * 平面文本排版<br>
-         * 不处理自动换行，仅支持\r\n换行。无任何特殊处理
+         * 简易文本排版。无任何特殊处理，不支持任何转义符，不支持\r\n
          */
         template<typename T>
-        int TextLayout::PlaneLayout(TileFont *tf,const int mc,const BaseString<T> &str)
+        int TextLayout::SimpleLayout(TileFont *tf,const BaseString<T> &str)
         {
-            if(mc<=0||str.IsEmpty())
+            if(!tf||str.IsEmpty())
                 return(-1);
-
-            max_chars=hgl_min(mc,str.Length());
-
-            if(stat_chars<T>(str.c_str(),str.Length())<=0)
-                return(-2);
 
             if(preprocess<T>(str.c_str(),str.Length())<=0)
                 return(-3);
 
-            if(!rc->Init(draw_chars_count))
+            if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
                 return(-4);
+
+            if(!rc->Init(draw_chars_count))     //创建
+                return(-5);
 
             vertex      =rc->CreateVADA<VB4f>(VAN::Vertex);
             tex_coord   =rc->CreateVADA<VB4f>(VAN::TexCoord);
