@@ -32,18 +32,13 @@ namespace hgl
 
             uint8 *data;
         };//struct FontBitmap
-        
-        /**
-         * 字符排版属性
-         */
-        struct CharLayoutAttributes
+
+        struct CharAttributes
         {
             u32char ch;             ///<字符
 
-            bool visible;			///<是否可显示字符
+            bool space;			    ///<是否属于空格
                 
-            int size;               ///<字符排版尺寸(一般为宽)
-
             bool is_cjk;            ///<是否是中日韩文字
             bool is_emoji;          ///<是否是表情符号
 
@@ -51,9 +46,19 @@ namespace hgl
 
             bool begin_disable;     ///<是否行首禁用符号
             bool end_disable;       ///<是否行尾禁用符号
-            bool vrotate;           ///<竖排时是否需要旋转
+            bool vrotate;           ///<竖排时是否需要旋转           
+        };//
+        
+        /**
+         * 字符排版属性
+         */
+        struct CharLayoutAttributes:public CharAttributes
+        {
+            CharAttributes *attr;       ///<字符基本信息
 
-            CharMetricsInfo adv_info;   ///<字符绘制信息
+            bool visible;               ///<在当前字体下是否需要绘制
+
+            CharMetricsInfo metrics;    ///<字符绘制信息
         };//struct CharLayoutAttributes
 
         using CLA=CharLayoutAttributes;
