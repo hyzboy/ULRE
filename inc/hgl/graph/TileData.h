@@ -1,10 +1,11 @@
 ﻿#ifndef HGL_GRAPH_TILE_DATA_INCLUDE
 #define HGL_GRAPH_TILE_DATA_INCLUDE
 
-#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/type/Map.h>
 #include<hgl/type/Pool.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/Bitmap.h>
+#include<hgl/graph/vulkan/VKTexture.h>
 
 VK_NAMESPACE_USING
 
@@ -14,6 +15,9 @@ namespace hgl
     {
         using TileUVPixel=RectScope2i;
         using TileUVFloat=RectScope2d;
+
+        using TileUVFloatList=List<TileUVFloat>;
+        using TileUVFloatMap=Map<u32char,TileUVFloat>;
 
         struct TileObject
         {
