@@ -3,6 +3,7 @@
 
 #include<hgl/graph/SceneDB.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
+#include<hgl/graph/vulkan/VKShaderModule.h>
 namespace hgl
 {
     namespace graph

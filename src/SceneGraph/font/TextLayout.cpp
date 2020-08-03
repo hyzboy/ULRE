@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
+#include<hgl/graph/font/TileFont.h>
 #include<hgl/type/Extent.h>
-#include<hgl/type/UnicodeBlocks.h>
 
 namespace hgl
 {
@@ -9,8 +9,8 @@ namespace hgl
         bool TextLayout::Init()
         {
             if(!rc
-                ||!tla.font_source
-                ||!tla.char_attributes)
+                ||(!tla.font_source&&!font_source)
+                ||!tla.char_layout_attr)
                 return(false);
 
             direction.text_direction=tla.text_direction;
@@ -26,7 +26,10 @@ namespace hgl
                 splite_line_max_limit   = tla.max_height;
             }
 
-            const float origin_char_height=tla.font_source->GetCharHeight();
+            if(!font_source)
+                font_source=tla.font_source;
+
+            const float origin_char_height=font_source->GetCharHeight();
 
             x=y=0;
             char_height     =ceil(origin_char_height);
@@ -45,36 +48,42 @@ namespace hgl
          * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
          */
         template<typename T> 
-        int TextLayout::preprocess(const T *str,const int str_length)
+        bool TextLayout::preprocess(TileFont *tile_font,const T *str,const int str_length)
         {
-            if(!str||!*str||str_length<=0)
-                return 0;
-                
-            draw_chars_count=0;
-            alone_chars.ClearData();
+            if(!tile_font
+             ||!str||!*str||str_length<=0
+             ||!font_source)
+                return(false);
 
-            draw_chars_list.ClearData();
-            draw_chars_list.SetCount(str_length);
-
-            CharDrawAttr **cda=draw_chars_list.GetData();
-            const T *cp=str;
-
-            for(int i=0;i<count;i++)
+            //遍历所有字符，取得每一个字符的基本绘制信息
             {
-                (*cda)->cla=tla->font_source.GetCLA(*cp);
+                draw_chars_count=0;
+                alone_chars.ClearData();
+                draw_chars_list.ClearData();
 
-                if((*cda)->cla->visible)
+                const T *cp=str;
+                CharDrawAttr *cda;
+
+                for(int i=0;i<str_length;i++)
                 {
-                    alone_chars.Add(*cp);              //统计所有不重复字符
-                    ++draw_chars_count;
-                }
+                    cda=new CharDrawAttr;
 
-                ++cp;
-                ++cda;
+                    cda->cla=font_source->GetCLA(*cp);
+
+                    if(cda->cla->visible)
+                    {
+                        alone_chars.Add(*cp);              //统计所有不重复字符
+                        ++draw_chars_count;
+                    }
+
+                    draw_chars_list.Add(cda);
+
+                    ++cp;
+                }
             }
             
             //注册不重复字符给tile font系统，获取所有字符的UV
-            if(!tf->Registry(alone_chars_uv,alone_chars.GetData(),alone_chars.GetCount()))
+            if(!tile_font->Registry(alone_chars_uv,alone_chars.GetData(),alone_chars.GetCount()))
             {
                 draw_chars_list.ClearData();
                 alone_chars.ClearData();
@@ -83,15 +92,18 @@ namespace hgl
             }
 
             //为可绘制字符列表中的字符获取UV
-            cda=draw_chars_list.GetData();
-            for(int i=0;i<count;i++)
             {
-                alone_chars_uv.Get((*cda)->cla->ch,(*cda)->uv);
+                CharDrawAttr **cda=draw_chars_list.GetData();
 
-                ++cda;
+                for(int i=0;i<str_length;i++)
+                {
+                    alone_chars_uv.Get((*cda)->cla->ch,(*cda)->uv);
+
+                    ++cda;
+                }
             }
 
-            return count;
+            return(true);
         }
 
         /**
@@ -161,8 +173,8 @@ namespace hgl
             int cur_size=0;
             int left=0,top=0;
 
-            float *tp=vertex->Begin();
-            float *tcp=tex_coord->Begin();
+            float *tp=vertex->Get();
+            float *tcp=tex_coord->Get();
 
             for(int i=0;i<count;i++)
             {
@@ -204,14 +216,14 @@ namespace hgl
             if(!tf||str.IsEmpty())
                 return(-1);
 
-            if(preprocess<T>(str.c_str(),str.Length())<=0)
-                return(-3);
+            if(!preprocess<T>(tf,str.c_str(),str.Length()))
+                return(-2);
 
             if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
-                return(-4);
+                return(-3);
 
             if(!rc->Init(draw_chars_count))     //创建
-                return(-5);
+                return(-4);
 
             vertex      =rc->CreateVADA<VB4f>(VAN::Vertex);
             tex_coord   =rc->CreateVADA<VB4f>(VAN::TexCoord);
@@ -222,19 +234,22 @@ namespace hgl
             if(direction.vertical)
             {
                 if(direction.right_to_left)
-                    return pl_v_r2l();
+                    return sl_v_r2l();
                 else
-                    return pl_v_l2r();
+                    return sl_v_l2r();
             }
             else
             {
                 if(direction.right_to_left)
-                    return pl_h_r2l();
+                    return sl_h_r2l();
                 else
-                    return pl_h_l2r();
+                    return sl_h_l2r();
             }
 
             return 0;
         }
+        
+        int TextLayout::SimpleLayout(TileFont *tf,const UTF16String &str){return this->SimpleLayout<u16char>(tf,str);}
+        int TextLayout::SimpleLayout(TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tf,str);}
     }//namespace graph
 }//namespace hgl
