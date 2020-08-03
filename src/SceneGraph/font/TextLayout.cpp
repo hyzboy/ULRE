@@ -97,7 +97,7 @@ namespace hgl
 
                 for(int i=0;i<str_length;i++)
                 {
-                    alone_chars_uv.Get((*cda)->cla->ch,(*cda)->uv);
+                    alone_chars_uv.Get((*cda)->cla->attr->ch,(*cda)->uv);
 
                     ++cda;
                 }
@@ -181,18 +181,36 @@ namespace hgl
                 if((*cda)->cla->visible)
                 {
                     tp=WriteRect(   tp,
-                                    left,
-                                    top,
+                                    left+(*cda)->cla->metrics.x,
+                                    top -(*cda)->cla->metrics.y+font_source->GetCharHeight(),
                                     (*cda)->cla->metrics.w,
                                     (*cda)->cla->metrics.h);
 
                     tcp=WriteRect(tcp,(*cda)->uv);
+                    
+                    left+=(*cda)->cla->metrics.adv_x;
                 }
                 else
-                {   
+                {
+                    if((*cda)->cla->attr->ch==' ')
+                        left+=tla.space_size;
+                    else
+                    if((*cda)->cla->attr->ch==HGL_FULL_SPACE)
+                        left+=tla.full_space_size;
+                    else
+                    if((*cda)->cla->attr->ch=='\t')
+                        left+=tla.tab_size;
+                    else
+                    if((*cda)->cla->attr->ch=='\n')
+                    {
+                        left=0;
+                        top+=font_source->GetCharHeight()+tla.line_gap;
+                    }
+                    else
+                    {
+                        left+=(*cda)->cla->metrics.adv_x;
+                    }
                 }
-
-                left+=(*cda)->cla->metrics.adv_x;
 
                 ++cda;
             }
@@ -251,5 +269,13 @@ namespace hgl
         
         int TextLayout::SimpleLayout(TileFont *tf,const UTF16String &str){return this->SimpleLayout<u16char>(tf,str);}
         int TextLayout::SimpleLayout(TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tf,str);}
+
+        //template<typename T>
+        //int TextLayout::SimpleLayout(TileFont *tf,const StringList<BaseString<T>> &sl)
+        //{
+        //}
+
+        //int TextLayout::SimpleLayout(TileFont *tf,const UTF16StringList &sl){return this->SimpleLayout<u16char>(tf,sl);}
+        //int TextLayout::SimpleLayout(TileFont *tf,const UTF32StringList &sl){return this->SimpleLayout<u32char>(tf,sl);}
     }//namespace graph
 }//namespace hgl

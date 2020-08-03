@@ -136,6 +136,7 @@ namespace hgl
 			bmp->metrics_info.adv_y	=gm.gmCellIncY;
 
 			bmp->data=new uint8[bmp->metrics_info.w*bmp->metrics_info.h];
+			memset(bmp->data,0,bmp->metrics_info.w*bmp->metrics_info.h);
 
 			if(ggo==GGO_GRAY8_BITMAP)
 				Convert8BitGrey(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/gm.gmBlackBoxY);

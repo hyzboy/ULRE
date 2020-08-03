@@ -121,8 +121,9 @@ namespace hgl
             int sl_v_r2l();
             int sl_v_l2r();
 
-            template<typename T>
-            int     SimpleLayout (TileFont *,const BaseString<T> &);                                ///<简易排版
+            template<typename T> int SimpleLayout(TileFont *,const BaseString<T> &);                                 ///<简易排版
+
+//            template<typename T> int SimpleLayout(TileFont *,const StringList<BaseString<T>> &);                     ///<简易排版
 
         protected:  
 
@@ -168,6 +169,9 @@ namespace hgl
 
             int     SimpleLayout (TileFont *,const UTF16String &);                                ///<简易排版
             int     SimpleLayout (TileFont *,const UTF32String &);                                ///<简易排版
+
+//            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
+//            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
         };//class TextLayout
     }//namespace graph
 }//namespace hgl

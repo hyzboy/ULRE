@@ -58,11 +58,19 @@ namespace hgl
                     if(!to_res.Get(*cp,to))
                     {
                         bmp=source->GetCharBitmap(*cp);
-                        to=tile_data->Commit(   bmp->data,
-                                                bmp->metrics_info.w*bmp->metrics_info.h,
-                                                bmp->metrics_info.w,bmp->metrics_info.h);
 
-                        to_res.Add(*cp,to);
+                        if(bmp)
+                        {
+                            to=tile_data->Commit(   bmp->data,
+                                                    bmp->metrics_info.w*bmp->metrics_info.h,
+                                                    bmp->metrics_info.w,bmp->metrics_info.h);
+
+                            to_res.Add(*cp,to);
+                        }
+                        else
+                        {
+                            
+                        }
                     }
 
                     uv_map.Add(*cp,to->uv_float);

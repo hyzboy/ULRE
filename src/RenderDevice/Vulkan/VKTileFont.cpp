@@ -17,10 +17,7 @@ VK_NAMESPACE_BEGIN
  */
 TileFont *Device::CreateTileFont(const Font &f,int limit_count)
 {
-    int height=(f.height+3)>>2;
-            
-    height<<=2;     //保证可以被4整除
-    height+=2;      //上下左右各空一个象素
+    int height=((f.height+2+3)>>2)<<2;  //上下左右各空一个象素，并保证可以被4整除
 
     if(limit_count<=0)
     {

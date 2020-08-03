@@ -52,7 +52,7 @@ namespace hgl
         /**
          * 字符排版属性
          */
-        struct CharLayoutAttributes:public CharAttributes
+        struct CharLayoutAttributes
         {
             CharAttributes *attr;       ///<字符基本信息
 
