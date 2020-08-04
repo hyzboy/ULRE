@@ -1,4 +1,5 @@
 ﻿#include"FontSourceWin.h"
+#include<hgl/graph/ColorSpace.h>
 
 namespace hgl
 {
@@ -20,8 +21,7 @@ namespace hgl
 
 					while(pos--)
 					{
-						if(*p==64)*tp=255;
-							else *tp=(*p)<<2;
+						*tp=uint8(Clamp(Linear2sRGB(double(*p)/64.0f))*255.0f);
 
 						tp++;
 						p++;
