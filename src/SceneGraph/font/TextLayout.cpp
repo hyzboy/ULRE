@@ -193,18 +193,18 @@ namespace hgl
                 else
                 {
                     if((*cda)->cla->attr->ch==' ')
-                        left+=tla.space_size;
+                        left+=space_size;
                     else
                     if((*cda)->cla->attr->ch==HGL_FULL_SPACE)
-                        left+=tla.full_space_size;
+                        left+=full_space_size;
                     else
                     if((*cda)->cla->attr->ch=='\t')
-                        left+=tla.tab_size;
+                        left+=tab_size;
                     else
                     if((*cda)->cla->attr->ch=='\n')
                     {
                         left=0;
-                        top+=font_source->GetCharHeight()+tla.line_gap;
+                        top+=font_source->GetCharHeight()+line_gap;
                     }
                     else
                     {
