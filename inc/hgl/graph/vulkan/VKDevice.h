@@ -20,6 +20,7 @@ namespace hgl
     {
         class TileData;
         class TileFont;
+        class FontSource;
     }//namespace graph
 }//namespace hgl
 
@@ -265,7 +266,7 @@ public:
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
-    TileFont *CreateTileFont(const Font &f,int limit_count=-1);                                                         ///<创建一个Tile字体
+    TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体
 };//class Device
 
 Device *CreateRenderDevice(Instance *inst,Window *win,const PhysicalDevice *physical_device=nullptr);

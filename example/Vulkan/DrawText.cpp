@@ -16,10 +16,9 @@ using namespace hgl;
 using namespace hgl::graph;
 
 constexpr uint32_t SCREEN_WIDTH =1280;
-constexpr uint32_t SCREEN_HEIGHT=960;
+constexpr uint32_t SCREEN_HEIGHT=SCREEN_WIDTH/16*9;
 
-constexpr uint CHAR_BITMAP_SIZE=16;         //字符尺寸
-constexpr uint CHAR_BITMAP_BORDER=1;        //边界象素尺寸
+constexpr uint CHAR_BITMAP_SIZE=14;         //字符尺寸
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -40,6 +39,8 @@ private:
 
 private:
 
+    FontSource *                font_source         =nullptr;
+
     TileFont *                  tile_font;
     TextLayout                  tl_engine;                                      ///<文本排版引擎
 
@@ -57,9 +58,11 @@ private:
 
     bool InitTileFont()
     {
-        Font fnt(OS_TEXT("微软雅黑"),0,CHAR_BITMAP_SIZE);
+        Font chs_fnt(OS_TEXT("微软雅黑"),0,CHAR_BITMAP_SIZE);
 
-        tile_font=device->CreateTileFont(fnt);
+        font_source=AcquireFontSource(chs_fnt);
+
+        tile_font=device->CreateTileFont(font_source);
         return(true);
     }
 
@@ -131,6 +134,7 @@ private:
         cla.BackgroundColor=Color4f(COLOR::Black);
 
         tla.char_layout_attr=&cla;
+        tla.line_gap=0.2f;
 
         text_rc=new RenderableCreater(db,material);
 
