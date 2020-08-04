@@ -113,7 +113,7 @@ namespace hgl
             virtual			int			GetCharHeight	()const override{return fnt.height;}		///<取得字符高度
         };//class FontSourceSingle:public FontSource
 
-        FontSource *CreateFontSource(const Font &f);
+        FontSource *AcquireFontSource(const Font &f);
 
         /**
          * 文字位图多重数据源
@@ -142,6 +142,27 @@ namespace hgl
             virtual ~FontSourceMulti();
 
             void Add(UnicodeBlock,FontSource *);
+
+            void AddCJK(FontSource *chs_fs)
+            {
+                Add(UnicodeBlock::cjk_radicals_supplement,chs_fs);
+                Add(UnicodeBlock::cjk_symbols_and_punctuation,chs_fs);
+                Add(UnicodeBlock::cjk_strokes,chs_fs);
+                Add(UnicodeBlock::enclosed_cjk_letters_and_months,chs_fs);
+                Add(UnicodeBlock::cjk_compatibility,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs_extension_a,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs,chs_fs);
+                Add(UnicodeBlock::cjk_compatibility_ideographs,chs_fs);
+                Add(UnicodeBlock::cjk_compatibility_forms,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs_extension_b,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs_extension_c,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs_extension_d,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs_extension_e,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs_extension_f,chs_fs);
+                Add(UnicodeBlock::cjk_compatibility_ideographs_supplement,chs_fs);
+                Add(UnicodeBlock::cjk_unified_ideographs_extension_g,chs_fs);
+            }
+
             void Remove(UnicodeBlock);
             void Remove(FontSource *);
 
@@ -149,7 +170,7 @@ namespace hgl
 
                     FontBitmap *GetCharBitmap	(const u32char &ch) override;
             const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;		///<取得字符绘制信息
-                    int			GetCharHeight	()const override;									///<取得字符高度
+                    int			GetCharHeight	()const override{return max_char_height;}			///<取得字符高度
         };//class FontSourceMulti:public FontSource
     }//namespace graph
 }//namespace hgl
