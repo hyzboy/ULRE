@@ -54,24 +54,24 @@ namespace
 
     constexpr uint PixelFormatCount=sizeof(pf_list)/sizeof(PixelFormat);
 
-    const VkFormat GetVulkanFormat(const Tex2DFileHeader &fh)
+    const VkFormat GetVulkanFormat(const int channels,const TexPixelFormat &tpf)
     {
         const PixelFormat *pf=pf_list;
 
         for(uint i=0;i<PixelFormatCount;i++,++pf)
         {
-            if(fh.channels!=pf->channels)continue;
-            if(fh.datatype!=(uint8)pf->type)continue;
+            if(channels!=pf->channels)continue;
+            if(tpf.datatype!=(uint8)pf->type)continue;
 
-            if(fh.colors[0]!=pf->colors[0])continue;
-            if(fh.colors[1]!=pf->colors[1])continue;
-            if(fh.colors[2]!=pf->colors[2])continue;
-            if(fh.colors[3]!=pf->colors[3])continue;
+            if(tpf.colors[0]!=pf->colors[0])continue;
+            if(tpf.colors[1]!=pf->colors[1])continue;
+            if(tpf.colors[2]!=pf->colors[2])continue;
+            if(tpf.colors[3]!=pf->colors[3])continue;
 
-            if(fh.bits[0]!=pf->bits[0])continue;
-            if(fh.bits[1]!=pf->bits[1])continue;
-            if(fh.bits[2]!=pf->bits[2])continue;
-            if(fh.bits[3]!=pf->bits[3])continue;
+            if(tpf.bits[0]!=pf->bits[0])continue;
+            if(tpf.bits[1]!=pf->bits[1])continue;
+            if(tpf.bits[2]!=pf->bits[2])continue;
+            if(tpf.bits[3]!=pf->bits[3])continue;
 
             return pf->format;
         }
@@ -107,10 +107,33 @@ namespace
 
         void *OnBegin(uint32 total_bytes) override
         {
+            constexpr VkFormat CompressFormatList[]=
+            {
+                FMT_BC1_RGBUN,
+                FMT_BC1_RGBAUN,
+                FMT_BC2UN,
+                FMT_BC3UN,
+                FMT_BC4UN,
+                FMT_BC5UN,
+                FMT_BC6UF,
+                FMT_BC6SF,
+                FMT_BC7UN
+            };
+
+            constexpr size_t CompressFormatCount=sizeof(CompressFormatList)/sizeof(VkFormat);
+
             SAFE_CLEAR(buf);
             SAFE_CLEAR(tex);
 
-            format=GetVulkanFormat(file_header);
+            if(file_header.channels==0)
+            {
+                if(compress_format<0||compress_format>=CompressFormatCount)
+                    return(nullptr);
+
+                format=CompressFormatList[compress_format];
+            }
+            else
+                format=GetVulkanFormat(file_header.channels,pixel_format);
 
             if(!CheckVulkanFormat(format))
                 return(nullptr);

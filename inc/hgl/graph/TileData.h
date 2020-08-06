@@ -37,8 +37,6 @@ namespace hgl
 
         protected:
 
-            uint pixel_bytes;                                                                                           ///<单个象素字节数
-
             Texture2D *tile_texture;                                                                                    ///<TileData所用的纹理对象
 
             ObjectPool<TileObject> to_pool;                                                                             ///<Tile对象池
