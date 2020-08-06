@@ -17,10 +17,23 @@ namespace hgl
             if(file_header.version!=2)
                 return(false);
 
-            if(file_header.total_bytes()==0)
-                return(false);
+            total_bytes=0;
 
-            const uint total_bytes=file_header.total_bytes();
+            if(file_header.channels==0)     //压缩格式
+            {
+                if(is->Read(&compress_format,sizeof(uint16))!=sizeof(uint16))
+                    return(false);
+
+                if(is->Read(&total_bytes,sizeof(uint32))!=sizeof(uint32))
+                    return(false);
+            }
+            else
+            {
+                if(is->Read(&pixel_format,sizeof(TexPixelFormat))!=sizeof(TexPixelFormat))
+                    return(false);
+
+                total_bytes=file_header.pixel_count()*pixel_format.pixel_bytes();
+            }
 
             if(is->Available()<total_bytes)
                 return(false);

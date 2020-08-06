@@ -48,8 +48,7 @@ namespace hgl
                 }
             }
 
-            pixel_bytes =GetStrideByFormat(tile_texture->GetFormat());
-            tile_bytes  =tile_width*tile_height*pixel_bytes;
+            tile_bytes=GetImageBytes(tile_texture->GetFormat(),tile_width*tile_height);
 
             tile_buffer=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tile_bytes*tile_max_count,nullptr);
 

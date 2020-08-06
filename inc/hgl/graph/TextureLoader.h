@@ -13,20 +13,26 @@ namespace hgl
         {
             uint8   id[6];                  ///<Tex2D\x1A
             uint8   version;                ///<必须为2
-            bool    mipmaps;
+            uint8   mipmaps;
             uint32  width;
             uint32  height;
             uint8   channels;
+
+        public:
+
+            const uint pixel_count()const{return width*height;}
+        };//struct Tex2DFileHeader
+
+        struct TexPixelFormat
+        {
             char    colors[4];
             uint8   bits[4];
             uint8   datatype;
 
         public:
 
-            const uint pixel_count()const{return width*height;}
             const uint pixel_bytes()const{return (bits[0]+bits[1]+bits[2]+bits[3])>>3;}
-            const uint total_bytes()const{return pixel_count()*pixel_bytes();}
-        };//
+        };//struct TexPixelFormat
         #pragma pack(pop)
 
         /**
@@ -37,6 +43,14 @@ namespace hgl
         protected:
 
             Tex2DFileHeader file_header;
+
+            union
+            {
+                TexPixelFormat  pixel_format;
+                uint16          compress_format;
+            };
+
+            uint32 total_bytes;
 
         protected:        
 
