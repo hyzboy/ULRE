@@ -52,7 +52,8 @@ namespace hgl
          * @param vecsize vec数量
          * @param vertex_count 顶点数量
          */
-        VertexAttribData *CreateVertexAttribData(const vulkan::BaseType base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        VAD *CreateVertexAttribData(const vulkan::BaseType base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        //这个函数比较重要，就不搞成CreateVAD的简写了
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE

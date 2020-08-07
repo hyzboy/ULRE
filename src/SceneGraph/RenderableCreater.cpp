@@ -46,7 +46,7 @@ namespace hgl
             return ssb->data;
         }
 
-        VertexAttribData *RenderableCreater::CreateVAD(const AnsiString &name)
+        VAD *RenderableCreater::CreateVAD(const AnsiString &name)
         {
             if(!vsm)return(nullptr);
             if(name.IsEmpty())return(nullptr);

@@ -69,8 +69,8 @@ private:
     vulkan::Sampler *           sampler_linear      =nullptr;
     vulkan::Sampler *           sampler_nearest     =nullptr;
 
-    vulkan::VertexAttribBuffer *      vertex_buffer       =nullptr;
-    vulkan::VertexAttribBuffer *      tex_coord_buffer    =nullptr;
+    vulkan::VAB *      vertex_buffer       =nullptr;
+    vulkan::VAB *      tex_coord_buffer    =nullptr;
     vulkan::IndexBuffer *       index_buffer        =nullptr;
     
             SceneNode           render_root;
