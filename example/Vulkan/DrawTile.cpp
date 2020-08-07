@@ -90,7 +90,7 @@ private:
 
     bool InitTileTexture()
     {
-        tile_data=device->CreateTileData(   FMT_BC1_RGBAUN,             //纹理格式，因VK不支持实时转换，所以提交的数据格式必须与此一致
+        tile_data=device->CreateTileData(   FMT_BC1_RGBAUN,         //纹理格式，因VK不支持实时转换，所以提交的数据格式必须与此一致
                                             512,512,                //TILE大小
                                             tile_list.GetCount());  //TILE需求数量
 
