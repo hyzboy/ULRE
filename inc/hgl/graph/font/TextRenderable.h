@@ -11,21 +11,23 @@ namespace hgl
          */
         class TextRenderable:public vulkan::Renderable
         {
-            vulkan::Renderable *        render_obj;
+            vulkan::Device *device;
+
+            vulkan::Renderable *render_obj;
 
             uint32 max_count;                                                   ///<缓冲区最大容量
             uint32 cur_count;                                                   ///<当前容量
 
-            vulkan::VertexAttribBuffer *vertex_buffer;
-            vulkan::VertexAttribBuffer *tex_coord_buffer;
+            vulkan::VAB *vab_vertex;
+            vulkan::VAB *vab_tex_coord;
 
         public:
 
-            TextRenderable();
+            TextRenderable(vulkan::Device *,int mc=1024);
             virtual ~TextRenderable();
+
+            void SetMaxCount(int);
         };//class TextRenderable:public vulkan::Renderable
-
-
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_RENDERABLE_INCLUDE
