@@ -4,7 +4,7 @@ namespace hgl
 {
     namespace graph
     {
-        VertexAttribData *CreateVertexAttribData(const vulkan::BaseType base_type,const uint32_t vecsize,const uint32_t vertex_count)
+        VAD *CreateVertexAttribData(const vulkan::BaseType base_type,const uint32_t vecsize,const uint32_t vertex_count)
         {
             VkFormat fmt;
             uint32_t stride;

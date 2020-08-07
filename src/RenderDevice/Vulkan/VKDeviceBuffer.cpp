@@ -44,7 +44,7 @@ bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceS
     return(false);
 }
 
-VertexAttribBuffer *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
+VAB *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
 

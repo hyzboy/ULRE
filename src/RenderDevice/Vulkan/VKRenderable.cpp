@@ -20,7 +20,7 @@ Renderable::~Renderable()
     delete[] buf_list;
 }
 
-bool Renderable::Set(const int stage_input_binding,VertexAttribBuffer *vab,VkDeviceSize offset)
+bool Renderable::Set(const int stage_input_binding,VAB *vab,VkDeviceSize offset)
 {
     if(stage_input_binding<0||stage_input_binding>=buf_count||!vab)return(false);
 
@@ -38,7 +38,7 @@ bool Renderable::Set(const int stage_input_binding,VertexAttribBuffer *vab,VkDev
     return(true);
 }
 
-bool Renderable::Set(const AnsiString &name,VertexAttribBuffer *vab,VkDeviceSize offset)
+bool Renderable::Set(const AnsiString &name,VAB *vab,VkDeviceSize offset)
 {
     return Set(vertex_sm->GetStageInputBinding(name),vab,offset);
 }

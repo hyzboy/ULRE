@@ -130,7 +130,7 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess1<T,VKFMT> *   Create(VertexAttribData *vad)
+            static VertexAttribDataAccess1<T,VKFMT> *   Create(VAD *vad)
             {
                 if(!vad)return(nullptr);
 
@@ -223,7 +223,7 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess2<T,VKFMT> *   Create(VertexAttribData *vad)
+            static VertexAttribDataAccess2<T,VKFMT> *   Create(VAD *vad)
             {
                 if(!vad)return(nullptr);
 
@@ -522,7 +522,7 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess3<T,VKFMT> *   Create(VertexAttribData *vad)
+            static VertexAttribDataAccess3<T,VKFMT> *   Create(VAD *vad)
             {
                 if(!vad)return(nullptr);
 
@@ -794,7 +794,7 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess4<T,VKFMT> *   Create(VertexAttribData *vad)
+            static VertexAttribDataAccess4<T,VKFMT> *   Create(VAD *vad)
             {
                 if(!vad)return(nullptr);
 

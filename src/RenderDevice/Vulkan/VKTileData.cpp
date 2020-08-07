@@ -8,7 +8,7 @@ namespace
 
     void AnalyseSize(uint &fw,uint &fh,const uint w,const uint h,const uint count,const uint32_t max_texture_size)
     {
-        int total,tw,th,t;
+        uint total,tw,th,t;
 
         fw=fh=0;
 

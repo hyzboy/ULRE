@@ -36,7 +36,10 @@ class Sampler;
 class Memory;
 class Buffer;
 struct BufferData;
+
 class VertexAttribBuffer;
+using VAB=VertexAttribBuffer;
+
 class IndexBuffer;
 
 class CommandBuffer;

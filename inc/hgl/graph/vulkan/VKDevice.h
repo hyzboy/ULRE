@@ -82,27 +82,28 @@ public:
 public: //内存相关
 
     Memory *CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
+    Memory *CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 private: //Buffer相关
 
-    bool                CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode);
+    bool            CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode);
 
 public: //Buffer相关
 
-    Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
-    Buffer *            CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
+    Buffer *        CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,   VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+    Buffer *        CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,                    VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
 
-    VertexAttribBuffer *CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
-    VertexAttribBuffer *CreateVAB(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(format,count,nullptr,sharing_mode);}
-    VertexAttribBuffer *CreateVAB(const VertexAttribData *vad,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sharing_mode);}
+    VAB *           CreateVAB   (VkFormat format,uint32_t count,const void *data,   VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+    VAB *           CreateVAB   (VkFormat format,uint32_t count,                    VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(format,count,nullptr,sharing_mode);}
+    VAB *           CreateVAB   (const VAD *vad,                                    VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sharing_mode);}
 
-    IndexBuffer *       CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
-    IndexBuffer *       CreateIBO16(uint32_t count,const uint16 *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,(void *)data,sharing_mode);}
-    IndexBuffer *       CreateIBO32(uint32_t count,const uint32 *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,(void *)data,sharing_mode);}
+    IndexBuffer *   CreateIBO   (VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+    IndexBuffer *   CreateIBO16 (                       uint32_t count,const uint16 *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,(void *)data,sharing_mode);}
+    IndexBuffer *   CreateIBO32 (                       uint32_t count,const uint32 *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,(void *)data,sharing_mode);}
 
-    IndexBuffer *       CreateIBO(VkIndexType index_type,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(index_type,count,nullptr,sharing_mode);}
-    IndexBuffer *       CreateIBO16(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sharing_mode);}
-    IndexBuffer *       CreateIBO32(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sharing_mode);}
+    IndexBuffer *   CreateIBO   (VkIndexType index_type,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(index_type,count,nullptr,sharing_mode);}
+    IndexBuffer *   CreateIBO16 (                       uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sharing_mode);}
+    IndexBuffer *   CreateIBO32 (                       uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sharing_mode);}
 
 #define CREATE_BUFFER_OBJECT(LargeName,type)    Buffer *Create##LargeName(VkDeviceSize size,void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,sharing_mode);}  \
                                                 Buffer *Create##LargeName(VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,sharing_mode);}
@@ -115,16 +116,15 @@ public: //Buffer相关
 
 public: //Image
 
-    VkImage CreateImage1D           (const VkFormat format,const uint32_t width,const uint usage,const VkImageTiling tiling);
-    VkImage CreateImage1DArray      (const VkFormat format,const uint32_t width,const uint32_t layer,const uint usage,const VkImageTiling tiling);
-    VkImage CreateImage2D           (const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling);
-    VkImage CreateImage2DArray      (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t layer,const uint usage,const VkImageTiling tiling);
-    VkImage CreateImage3D           (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t depth,const uint usage,const VkImageTiling tiling);
-    VkImage CreateImageCubemap      (const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage1D       (const VkFormat format,const uint32_t width,                                            const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage1DArray  (const VkFormat format,const uint32_t width,const uint32_t layer,                       const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage2D       (const VkFormat format,const uint32_t width,const uint32_t height,                      const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage2DArray  (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t layer, const uint usage,const VkImageTiling tiling);
+    VkImage CreateImage3D       (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t depth, const uint usage,const VkImageTiling tiling);
+    VkImage CreateCubemap       (const VkFormat format,const uint32_t width,const uint32_t height,                      const uint usage,const VkImageTiling tiling);
+//    VkImage CreateCubemapArray  (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t count, const uint usage,const VkImageTiling tiling);
 
-    void DestoryImage(VkImage);
-
-    Memory *CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    void    DestoryImage            (VkImage);
 
 public: //Texture
 

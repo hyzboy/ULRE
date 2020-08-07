@@ -183,7 +183,7 @@ VkImage Device::CreateImage3D(const VkFormat format,const uint32_t width,const u
     return image;
 }
 
-VkImage Device::CreateImageCubemap(const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling)
+VkImage Device::CreateCubemap(const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling)
 {
     if(!CheckVulkanFormat(format))return(nullptr);
     if(width<1||height<1)return(nullptr);
