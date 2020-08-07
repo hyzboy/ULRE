@@ -61,6 +61,8 @@ public:
 
 public:
 
+    void                    SetDrawCount    (const uint32_t dc){draw_count=dc;} ///<设置当前对象绘制需要多少个顶点
+
     const uint32_t          GetDrawCount    ()const                             ///<取得当前对象绘制需要多少个顶点
     {
         if(indices_buffer)
