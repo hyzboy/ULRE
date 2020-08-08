@@ -50,6 +50,42 @@ namespace hgl
             rm_buffers.Add(buf);
             return(buf);
         }
+        
+        vulkan::MaterialInstance *SceneDB::CreateMaterialInstance(vulkan::Material *mtl)
+        {
+            if(!mtl)return(nullptr);
+
+            vulkan::MaterialInstance *mi=mtl->CreateInstance();
+
+            if(mi)
+                Add(mi);
+
+            return mi;
+        }
+
+        vulkan::Renderable *SceneDB::CreateRenderable(vulkan::Material *mtl,const uint32_t vertex_count)
+        {
+            if(!mtl)return(nullptr);
+
+            vulkan::Renderable *ro=mtl->CreateRenderable(vertex_count);
+
+            if(ro)
+                Add(ro);
+
+            return ro;
+        }
+
+        TextRenderable *SceneDB::CreateTextRenderable(vulkan::Material *mtl)
+        {
+            if(!mtl)return(nullptr);
+            
+            TextRenderable *tr=new TextRenderable(device,mtl);
+
+            if(tr)
+                Add(tr);
+
+            return tr;
+        }
 
         RenderableInstance *SceneDB::CreateRenderableInstance(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
         {
