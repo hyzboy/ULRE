@@ -11,22 +11,25 @@ namespace hgl
          */
         class TextRenderable:public vulkan::Renderable
         {
-            vulkan::Device *device;
+            vulkan::Device *    device;
+            vulkan::Material *  mtl;
 
-            vulkan::Renderable *render_obj;
+                    uint        max_count;                                      ///<缓冲区最大容量
 
-            uint32 max_count;                                                   ///<缓冲区最大容量
-            uint32 cur_count;                                                   ///<当前容量
-
-            vulkan::VAB *vab_vertex;
-            vulkan::VAB *vab_tex_coord;
+            vulkan::VAB *       vab_vertex;
+            vulkan::VAB *       vab_tex_coord;
 
         public:
 
-            TextRenderable(vulkan::Device *,int mc=1024);
+            TextRenderable(vulkan::Device *,vulkan::Material *,uint mc=1024);
             virtual ~TextRenderable();
 
-            void SetMaxCount(int);
+        public:
+
+            void SetCharCount   (const uint);
+
+            bool WriteVertex    (const float *fp);
+            bool WriteTexCoord  (const float *fp);
         };//class TextRenderable:public vulkan::Renderable
     }//namespace graph
 }//namespace hgl

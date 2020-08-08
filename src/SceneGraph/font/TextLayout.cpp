@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/font/TileFont.h>
+#include<hgl/graph/font/TextRenderable.h>
 #include<hgl/type/Extent.h>
 
 namespace hgl
@@ -8,9 +9,8 @@ namespace hgl
     {
         bool TextLayout::Init()
         {
-            if(!rc
-                ||(!tla.font_source&&!font_source)
-                ||!tla.char_layout_attr)
+            if((!tla.font_source&&!font_source)
+             ||!tla.char_layout_attr)
                 return(false);
 
             direction.text_direction=tla.text_direction;
@@ -173,8 +173,8 @@ namespace hgl
             int cur_size=0;
             int left=0,top=0;
 
-            float *tp=vertex->Get();
-            float *tcp=tex_coord->Get();
+            float *tp=vertex;
+            float *tcp=tex_coord;
 
             for(int i=0;i<count;i++)
             {
@@ -215,9 +215,6 @@ namespace hgl
                 ++cda;
             }
 
-            tex_coord->End();
-            vertex->End();
-
             return count;
         }
 
@@ -229,46 +226,57 @@ namespace hgl
          * 简易文本排版。无任何特殊处理，不支持任何转义符，不支持\r\n
          */
         template<typename T>
-        int TextLayout::SimpleLayout(TileFont *tf,const BaseString<T> &str)
+        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const BaseString<T> &str)
         {
+            if(!tr)
+                return(-1);
+
             if(!tf||str.IsEmpty())
                 return(-1);
 
-            if(!preprocess<T>(tf,str.c_str(),str.Length()))
+            int max_chars=str.Length();
+
+            if(!preprocess<T>(tf,str.c_str(),max_chars))
                 return(-2);
 
             if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
                 return(-3);
 
-            if(!rc->Init(draw_chars_count))     //创建
-                return(-4);
-
-            vertex      =rc->CreateVADA<VB4f>(VAN::Vertex);
-            tex_coord   =rc->CreateVADA<VB4f>(VAN::TexCoord);
+            vertex      .SetLength(max_chars*4);
+            tex_coord   .SetLength(max_chars*4);
 
             if(!vertex||!tex_coord)
                 return(-5);
 
+            int result;
+
             if(direction.vertical)
             {
                 if(direction.right_to_left)
-                    return sl_v_r2l();
+                    result=sl_v_r2l();
                 else
-                    return sl_v_l2r();
+                    result=sl_v_l2r();
             }
             else
             {
                 if(direction.right_to_left)
-                    return sl_h_r2l();
+                    result=sl_h_r2l();
                 else
-                    return sl_h_l2r();
+                    result=sl_h_l2r();
             }
 
-            return 0;
+            if(result>0)
+            {
+                tr->SetCharCount(result);
+                tr->WriteVertex(vertex);
+                tr->WriteTexCoord(tex_coord);
+            }
+
+            return result;
         }
         
-        int TextLayout::SimpleLayout(TileFont *tf,const UTF16String &str){return this->SimpleLayout<u16char>(tf,str);}
-        int TextLayout::SimpleLayout(TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tf,str);}
+        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const UTF16String &str){return this->SimpleLayout<u16char>(tr,tf,str);}
+        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tr,tf,str);}
 
         //template<typename T>
         //int TextLayout::SimpleLayout(TileFont *tf,const StringList<BaseString<T>> &sl)

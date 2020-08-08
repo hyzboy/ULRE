@@ -38,12 +38,13 @@ public:
             Memory *                   GetMemory    (){return buf.memory;}
     const   VkDescriptorBufferInfo *   GetBufferInfo()const{return &buf.info;}
 
-            void *  Map()                                       {return buf.memory->Map();}
-    virtual void *  Map(VkDeviceSize start,VkDeviceSize size)   {return buf.memory->Map(start,size);}
-            void    Unmap()                                     {return buf.memory->Unmap();}
+            void *  Map     ()                                              {return buf.memory->Map();}
+    virtual void *  Map     (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Map(start,size);}
+            void    Unmap   ()                                              {return buf.memory->Unmap();}
 
-    bool    Write(const void *ptr,uint32_t start,uint32_t size) {return buf.memory->Write(ptr,start,size);}
-    bool    Write(const void *ptr)                              {return buf.memory->Write(ptr);}
+            bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
+            bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
+            bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
 };//class Buffer
 
 class VertexAttribBuffer:public Buffer

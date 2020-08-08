@@ -38,15 +38,16 @@ public:
     const uint32_t              GetTypeIndex    ()const{return index;}
     const uint32_t              GetProperties   ()const{return properties;}
     
-    void *Map();
-    void *Map(VkDeviceSize offset,VkDeviceSize size);
-    void Unmap();
+    void *  Map         ();
+    void *  Map         (VkDeviceSize offset,VkDeviceSize size);
+    void    Unmap       ();
 
-    bool Write(const void *ptr,VkDeviceSize start,VkDeviceSize size);
-    bool Write(const void *ptr){return Write(ptr,0,req.size);}
+    bool    Write       (const void *ptr,VkDeviceSize start,  VkDeviceSize size);
+    bool    Write       (const void *ptr,                     VkDeviceSize size)  {return Write(ptr,0,size);}
+    bool    Write       (const void *ptr)                                         {return Write(ptr,0,req.size);}
 
-    bool BindBuffer(VkBuffer buffer);
-    bool BindImage(VkImage image);
+    bool    BindBuffer  (VkBuffer buffer);
+    bool    BindImage   (VkImage image);
 };//class Memory
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MEMORY_INCLUDE

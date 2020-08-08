@@ -6,6 +6,7 @@
 #include<hgl/graph/TileData.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
+#include<hgl/graph/font/TextRenderable.h>
 
 #include"VulkanAppFramework.h"
 #include<hgl/graph/vulkan/VKTexture.h>
@@ -31,7 +32,6 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
     vulkan::Buffer *            ubo_color           =nullptr;
 
@@ -41,16 +41,15 @@ private:
 
     FontSource *                font_source         =nullptr;
 
-    TileFont *                  tile_font;
+    TileFont *                  tile_font           =nullptr;
     TextLayout                  tl_engine;                                      ///<文本排版引擎
 
-    RenderableCreater *         text_rc             =nullptr;
+    TextRenderable *            text_render_obj     =nullptr;
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(text_rc);
         SAFE_CLEAR(tile_font);
     }
 
@@ -136,10 +135,11 @@ private:
         tla.char_layout_attr=&cla;
         tla.line_gap=0.2f;
 
-        text_rc=new RenderableCreater(db,material);
+        text_render_obj=new TextRenderable(device,material);
+
+        db->Add(text_render_obj);
 
         tl_engine.Set(tile_font->GetFontSource());
-        tl_engine.Set(text_rc);
         tl_engine.Set(&tla);
         tl_engine.SetTextDirection(0);
         tl_engine.Set(TextAlign::Left);
@@ -152,13 +152,7 @@ private:
         UTF16String str;
         LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 
-        if(tl_engine.SimpleLayout(tile_font,str)>0)
-        {
-            render_obj=text_rc->Finish();
-            return(true);
-        }
-
-        return(false);
+        return(tl_engine.SimpleLayout(text_render_obj,tile_font,str)>0);
     }
 
 public:
@@ -183,7 +177,7 @@ public:
         if(!InitTextRenderable())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(pipeline,material_instance,text_render_obj);
 
         return(true);
     }
@@ -197,7 +191,7 @@ public:
 
         ubo_world_matrix->Write(&cam.matrix);
 
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(pipeline,material_instance,text_render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

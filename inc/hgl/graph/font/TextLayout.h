@@ -5,11 +5,13 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/RenderableCreater.h>
 #include<hgl/graph/TileData.h>
+#include<hgl/type/MemBlock.h>
 namespace hgl
 {
     namespace graph
     {
         class TileFont;
+        class TextRenderable;
 
         /**
          * 字符属性，可精确到字也可精确到段落或是全文
@@ -86,7 +88,6 @@ namespace hgl
         protected:
 
             FontSource *font_source;
-            RenderableCreater *rc;
             TextLayoutAttributes tla;
 
         protected:
@@ -121,9 +122,9 @@ namespace hgl
             int sl_v_r2l();
             int sl_v_l2r();
 
-            template<typename T> int SimpleLayout(TileFont *,const BaseString<T> &);                                 ///<简易排版
+            template<typename T> int SimpleLayout(TextRenderable *,TileFont *,const BaseString<T> &);                   ///<简易排版
 
-//            template<typename T> int SimpleLayout(TileFont *,const StringList<BaseString<T>> &);                     ///<简易排版
+//            template<typename T> int SimpleLayout(TileFont *,const StringList<BaseString<T>> &);                      ///<简易排版
 
         protected:  
 
@@ -138,26 +139,23 @@ namespace hgl
             TEXT_COORD_TYPE paragraph_gap;
 
         protected:
-
-            VB4f    *vertex;
-            VB4f    *tex_coord;
+        
+            TextRenderable *text_render_obj;
+            MemBlock<float> vertex;
+            MemBlock<float> tex_coord;
 
         public:
 
             TextLayout()
             {
-                rc=nullptr;
-                
                 direction.text_direction=0;
                 draw_chars_count=0;
 
-                vertex      =nullptr;
-                tex_coord   =nullptr;
+                text_render_obj =nullptr;
             }
 
             virtual ~TextLayout()=default;
 
-            void Set                (RenderableCreater *_rc)            {if(_rc)rc=_rc;}
             void Set                (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
             void Set                (FontSource *fs)                    {if(fs)font_source=fs;}
             void SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
@@ -165,10 +163,10 @@ namespace hgl
             void SetMaxWidth        (const float mw)                    {tla.max_width=mw;}
             void SetMaxHeight       (const float mh)                    {tla.max_height=mh;}
 
-            virtual bool    Init        ();                                                       ///<初始化排版
+            virtual bool    Init        ();                                                         ///<初始化排版
 
-            int     SimpleLayout (TileFont *,const UTF16String &);                                ///<简易排版
-            int     SimpleLayout (TileFont *,const UTF32String &);                                ///<简易排版
+            int     SimpleLayout (TextRenderable *,TileFont *,const UTF16String &);                 ///<简易排版
+            int     SimpleLayout (TextRenderable *,TileFont *,const UTF32String &);                 ///<简易排版
 
 //            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
 //            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
