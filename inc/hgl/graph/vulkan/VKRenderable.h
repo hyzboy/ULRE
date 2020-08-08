@@ -19,12 +19,14 @@ class Renderable
     VkBuffer *buf_list=nullptr;
     VkDeviceSize *buf_offset=nullptr;
 
+protected:
+
     uint32_t draw_count;
 
     IndexBuffer *indices_buffer=nullptr;
     VkDeviceSize indices_offset=0;
 
-private:
+protected:
 
     AABB BoundingBox;
 
@@ -61,9 +63,8 @@ public:
 
 public:
 
-    void                    SetDrawCount    (const uint32_t dc){draw_count=dc;} ///<设置当前对象绘制需要多少个顶点
-
-    const uint32_t          GetDrawCount    ()const                             ///<取得当前对象绘制需要多少个顶点
+                    void        SetDrawCount(const uint32_t dc){draw_count=dc;} ///<设置当前对象绘制需要多少个顶点
+    virtual const   uint32_t    GetDrawCount()const                             ///<取得当前对象绘制需要多少个顶点
     {
         if(indices_buffer)
             return indices_buffer->GetCount();

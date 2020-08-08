@@ -70,10 +70,13 @@ SET(TILE_FONT_SOURCE    ${ROOT_INCLUDE_PATH}/hgl/graph/font/TileFont.h
 SET(FONT_LAYOUT_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/font/TextLayout.h
                         font/TextLayout.cpp)
 
+SET(TEXT_RENDERABLE_SOURCE  ${ROOT_INCLUDE_PATH}/hgl/graph/font/TextRenderable.h
+                            font/TextRenderable.cpp)
+
 SOURCE_GROUP("Font"             FILES ${FONT_MANAGE_SOURCE})
 SOURCE_GROUP("Font\\Source"     FILES ${FONT_SOURCE})
 SOURCE_GROUP("Font\\TileFont"   FILES ${TILE_FONT_SOURCE})
-SOURCE_GROUP("Font\\Layout"     FILES ${FONT_LAYOUT_SOURCE})
+SOURCE_GROUP("Font\\Layout"     FILES ${FONT_LAYOUT_SOURCE} ${TEXT_RENDERABLE_SOURCE})
 
 IF(WIN32)
     SET(FONT_SOURCE_OS  font/FontSourceWin.cpp
@@ -102,4 +105,5 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${FONT_SOURCE}
                                         ${FONT_SOURCE_OS}
                                         ${TILE_FONT_SOURCE}
-                                        ${FONT_LAYOUT_SOURCE})
+                                        ${FONT_LAYOUT_SOURCE}
+                                        ${TEXT_RENDERABLE_SOURCE})

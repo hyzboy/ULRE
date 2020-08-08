@@ -7,6 +7,27 @@ namespace hgl
     namespace graph
     {
         /**
+         * 预定义一些顶点属性名称，可用可不用。但一般默认shader会使用这些名称
+         */
+        namespace VertexAttribName
+        {
+            #define VAN_DEFINE(name)    constexpr char name[]=#name;
+            VAN_DEFINE(Vertex)
+            VAN_DEFINE(Normal)
+            VAN_DEFINE(Color)
+            VAN_DEFINE(Tangent)
+            VAN_DEFINE(Bitangent)
+            VAN_DEFINE(TexCoord)
+            VAN_DEFINE(Metallic)
+            VAN_DEFINE(Specular)
+            VAN_DEFINE(Roughness)
+            VAN_DEFINE(Emission)
+            #undef VAN_DEFINE
+        }//namespace VertexAttribName
+
+        #define VAN VertexAttribName
+
+        /**
          * 顶点属性数据
          */
         class VertexAttribData                                                                      ///顶点属性数据
