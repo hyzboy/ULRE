@@ -58,8 +58,8 @@ private:
         if(!material)
             return(false);
 
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
-        material_instance=material->CreateInstance();
+        render_obj=db->CreateRenderable(material,VERTEX_COUNT);
+        material_instance=db->CreateMaterialInstance(material);
 
         texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
 
@@ -70,9 +70,7 @@ private:
         material_instance->Update();
 
         db->Add(material);
-        db->Add(material_instance);
         db->Add(texture);
-        db->Add(render_obj);
         return(true);
     }
 

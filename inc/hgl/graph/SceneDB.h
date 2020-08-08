@@ -11,6 +11,7 @@
 #include<hgl/graph/vulkan/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/font/TextRenderable.h>
 #include<hgl/type/ResManage.h>
 namespace hgl
 {
@@ -86,7 +87,11 @@ namespace hgl
             vulkan::IndexBuffer *CreateIBO16(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sharing_mode);}
             vulkan::IndexBuffer *CreateIBO32(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sharing_mode);}
 
-            RenderableInstance *    CreateRenderableInstance(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r);
+            vulkan::MaterialInstance *CreateMaterialInstance(vulkan::Material *);
+            vulkan::Renderable *CreateRenderable(vulkan::Material *,const uint32_t vertex_count=0);
+            TextRenderable *    CreateTextRenderable(vulkan::Material *);
+
+            RenderableInstance *CreateRenderableInstance(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r);
 
             vulkan::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr);
 

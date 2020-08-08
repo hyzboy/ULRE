@@ -41,7 +41,7 @@ protected:
 
 public:
 
-    Renderable(const VertexShaderModule *,const uint32_t dc);
+    Renderable(const VertexShaderModule *,const uint32_t dc=0);
     virtual ~Renderable();
 
     const uint GetRefCount()const{return ref_count;}

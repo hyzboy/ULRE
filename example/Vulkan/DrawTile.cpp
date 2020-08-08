@@ -190,15 +190,13 @@ private:
     {
         const int tile_count=tile_list.GetCount();
 
-        render_obj=material->CreateRenderable(tile_count);
+        render_obj=db->CreateRenderable(material,tile_count);
 
         vertex_buffer   =db->CreateVAB(VAF_VEC4,tile_count,vertex_data);
         tex_coord_buffer=db->CreateVAB(VAF_VEC4,tile_count,tex_coord_data);
 
         render_obj->Set("Vertex",vertex_buffer);
         render_obj->Set("TexCoord",tex_coord_buffer);
-
-        db->Add(render_obj);
     }
 
     bool InitPipeline()

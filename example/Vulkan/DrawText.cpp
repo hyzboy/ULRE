@@ -55,16 +55,6 @@ public:
 
 private:
 
-    bool InitTileFont()
-    {
-        Font chs_fnt(OS_TEXT("微软雅黑"),0,CHAR_BITMAP_SIZE);
-
-        font_source=AcquireFontSource(chs_fnt);
-
-        tile_font=device->CreateTileFont(font_source);
-        return(true);
-    }
-
     bool InitMaterial()
     {
         material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
@@ -124,7 +114,17 @@ private:
         return pipeline;
     }
 
-    bool InitTextRenderable()
+    bool InitTileFont()
+    {
+        Font chs_fnt(OS_TEXT("微软雅黑"),0,CHAR_BITMAP_SIZE);
+
+        font_source=AcquireFontSource(chs_fnt);
+
+        tile_font=device->CreateTileFont(font_source);
+        return(true);
+    }
+
+    bool InitTextLayoutEngine()
     {
         CharLayoutAttr cla;
         TextLayoutAttributes tla;
@@ -135,10 +135,6 @@ private:
         tla.char_layout_attr=&cla;
         tla.line_gap=0.2f;
 
-        text_render_obj=new TextRenderable(device,material);
-
-        db->Add(text_render_obj);
-
         tl_engine.Set(tile_font->GetFontSource());
         tl_engine.Set(&tla);
         tl_engine.SetTextDirection(0);
@@ -146,11 +142,16 @@ private:
         tl_engine.SetMaxWidth(0);
         tl_engine.SetMaxHeight(0);
 
-        if(!tl_engine.Init())
-            return(false);
-
+        return tl_engine.Init();
+    }
+    
+    bool InitTextRenderable()
+    {
         UTF16String str;
+
         LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
+
+        text_render_obj=db->CreateTextRenderable(material);
 
         return(tl_engine.SimpleLayout(text_render_obj,tile_font,str)>0);
     }
@@ -162,9 +163,6 @@ public:
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        if(!InitTileFont())
-            return(false);
-
         if(!InitUBO())
             return(false);
 
@@ -172,6 +170,12 @@ public:
             return(false);
 
         if(!InitPipeline())
+            return(false);
+
+        if(!InitTileFont())
+            return(false);
+
+        if(!InitTextLayoutEngine())
             return(false);
 
         if(!InitTextRenderable())
