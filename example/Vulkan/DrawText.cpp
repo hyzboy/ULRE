@@ -19,7 +19,7 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH =1280;
 constexpr uint32_t SCREEN_HEIGHT=SCREEN_WIDTH/16*9;
 
-constexpr uint CHAR_BITMAP_SIZE=14;         //字符尺寸
+constexpr uint CHAR_BITMAP_SIZE=12;         //字符尺寸
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -39,7 +39,9 @@ private:
 
 private:
 
-    FontSource *                font_source         =nullptr;
+    FontSource *                eng_fs              =nullptr;
+    FontSource *                chs_fs              =nullptr;
+    FontSourceMulti *           font_source         =nullptr;
 
     TileFont *                  tile_font           =nullptr;
     TextLayout                  tl_engine;                                      ///<文本排版引擎
@@ -116,9 +118,14 @@ private:
 
     bool InitTileFont()
     {
+        Font eng_fnt(OS_TEXT("Source Code Pro"),0,CHAR_BITMAP_SIZE);
         Font chs_fnt(OS_TEXT("微软雅黑"),0,CHAR_BITMAP_SIZE);
 
-        font_source=AcquireFontSource(chs_fnt);
+        eng_fs=AcquireFontSource(eng_fnt);
+        chs_fs=AcquireFontSource(chs_fnt);
+
+        font_source=new FontSourceMulti(eng_fs);
+        font_source->AddCJK(chs_fs);
 
         tile_font=device->CreateTileFont(font_source);
         return(true);
@@ -133,7 +140,7 @@ private:
         cla.BackgroundColor=Color4f(COLOR::Black);
 
         tla.char_layout_attr=&cla;
-        tla.line_gap=0.2f;
+        tla.line_gap=0.1f;
 
         tl_engine.Set(tile_font->GetFontSource());
         tl_engine.Set(&tla);
@@ -149,7 +156,7 @@ private:
     {
         UTF16String str;
 
-        LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
+        LoadStringFromTextFile(str,OS_TEXT("README.md"));
 
         text_render_obj=db->CreateTextRenderable(material);
 
@@ -162,6 +169,9 @@ public:
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+            
+        if(!InitTileFont())
+            return(false);
 
         if(!InitUBO())
             return(false);
@@ -170,9 +180,6 @@ public:
             return(false);
 
         if(!InitPipeline())
-            return(false);
-
-        if(!InitTileFont())
             return(false);
 
         if(!InitTextLayoutEngine())
