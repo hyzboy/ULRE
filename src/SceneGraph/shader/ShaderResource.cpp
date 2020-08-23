@@ -53,7 +53,7 @@ VK_NAMESPACE_BEGIN
             return data;
         }
 
-        const uint8 *LoadShaderDescriptor(ShaderDescriptorList *sd_list,const uint8 *data)
+        const uint8 *LoadShaderDescriptor(const uint8_t version,ShaderDescriptorList *sd_list,const uint8 *data)
         {   
             const uint32 total_bytes=AccessByPointer(data,uint32);
 
@@ -63,6 +63,9 @@ VK_NAMESPACE_BEGIN
 
             for(uint i=0;i<count;i++)
             {
+                if(version>=1)
+                    sd_list->set_list.Add(*data++);
+
                 sd_list->binding_list.Add(*data++);
                 str_len=*data++;
                 sd_list->name_list.Add(AnsiString((char *)data,str_len));
@@ -174,7 +177,7 @@ VK_NAMESPACE_BEGIN
         {
             desc_type=AccessByPointer(filedata,uint32);
 
-            filedata=LoadShaderDescriptor(sr->GetDescriptorList((VkDescriptorType)desc_type),filedata);
+            filedata=LoadShaderDescriptor(version,sr->GetDescriptorList((VkDescriptorType)desc_type),filedata);
         }
 
         return sr;

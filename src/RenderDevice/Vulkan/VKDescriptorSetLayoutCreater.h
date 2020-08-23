@@ -26,10 +26,10 @@ public:
 
     void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);
     void Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType type,VkShaderStageFlagBits stage);
-    void Bind(const ShaderBindingList &sbl,VkDescriptorType type,VkShaderStageFlagBits stage)
+    void Bind(const DescriptorBindingList &dbl,VkDescriptorType type,VkShaderStageFlagBits stage)
     {
-        if(sbl.GetCount()>0)
-            Bind(sbl.GetData(),sbl.GetCount(),type,stage);
+        if(dbl.GetCount()>0)
+            Bind(dbl.GetData(),dbl.GetCount(),type,stage);
     }
 
     void Bind(const ShaderDescriptorList *sdl,VkShaderStageFlagBits stage)

@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderableInstance.h>
-#include<hgl/graph/VertexBuffer.h>
+#include<hgl/graph/VertexBufferData.h>
 
 #include<hgl/graph/data/SceneNodeData.h>
 

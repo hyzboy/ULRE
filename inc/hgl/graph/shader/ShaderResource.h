@@ -20,13 +20,15 @@ VK_NAMESPACE_BEGIN
         uint        binding;
     };//struct ShaderStage
 
-    using ShaderStageList   =ObjectList<ShaderStage>;
-    using ShaderBindingList =List<uint32_t>;
+    using ShaderStageList       =ObjectList<ShaderStage>;
+    using DescriptorSetList     =List<uint32_t>;
+    using DescriptorBindingList =List<uint32_t>;
 
     struct ShaderDescriptorList
     {
-        AnsiStringList      name_list;
-        ShaderBindingList   binding_list;
+        AnsiStringList          name_list;
+        DescriptorSetList       set_list;
+        DescriptorBindingList   binding_list;
     };
 
     #ifndef VK_DESCRIPTOR_TYPE_BEGIN_RANGE
@@ -88,7 +90,7 @@ VK_NAMESPACE_BEGIN
         ShaderDescriptorList &GetSampler(){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
 
         const int                   GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;
-        const ShaderBindingList *   GetBindingList  (VkDescriptorType desc_type)const
+        const DescriptorBindingList *   GetBindingList  (VkDescriptorType desc_type)const
         {
             if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
              ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
