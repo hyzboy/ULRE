@@ -151,7 +151,7 @@ private:
 
         return tl_engine.Init();
     }
-    
+
     bool InitTextRenderable()
     {
         UTF16String str;
