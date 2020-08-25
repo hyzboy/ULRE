@@ -7,17 +7,13 @@
 VK_NAMESPACE_BEGIN
     struct ShaderStage
     {
-        AnsiString  name;
-        uint        location;
+        AnsiString          name;
+        uint                location;
 
-        BaseType    base_type;  ///<基本类型(如vec4中的vec)
-        uint        component;  ///<成份数量(如vec4中的4)
+        VertexAttribType    type;       ///<成份数量(如vec4中的4)
+        VkFormat            format;     ///<对应的Vulkan格式(如vec4对应的FMT_RGBA32F)
 
-        VkFormat    format;     ///<对应的Vulkan格式(如vec4对应的FMT_RGBA32F)
-
-        uint32_t    stride;     ///<对应Vulkan格式的每数据字节数
-
-        uint        binding;
+        uint                binding;
     };//struct ShaderStage
 
     using ShaderStageList       =ObjectList<ShaderStage>;
@@ -89,7 +85,7 @@ VK_NAMESPACE_BEGIN
         ShaderDescriptorList &GetSSBO   (){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];}
         ShaderDescriptorList &GetSampler(){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
 
-        const int                   GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;
+        const int                       GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;
         const DescriptorBindingList *   GetBindingList  (VkDescriptorType desc_type)const
         {
             if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE

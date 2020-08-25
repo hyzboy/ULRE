@@ -35,7 +35,7 @@ namespace hgl
 
             ssb=new ShaderStageBind;
 
-            ssb->data   =hgl::graph::CreateVertexAttribData(ss->base_type,ss->component,vertices_number);
+            ssb->data   =hgl::graph::CreateVertexAttribData(&(ss->type),vertices_number);
             ssb->name   =name;
             ssb->binding=ss->binding;
             
@@ -76,7 +76,7 @@ namespace hgl
             if(!ss)
                 return(nullptr);
 
-            if(ss->stride*vertices_number!=bytes)
+            if(ss->type.GetStride()*vertices_number!=bytes)
                 return(nullptr);
                
             ssb=new ShaderStageBind;

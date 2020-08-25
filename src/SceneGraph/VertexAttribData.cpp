@@ -4,15 +4,14 @@ namespace hgl
 {
     namespace graph
     {
-        VAD *CreateVertexAttribData(const vulkan::BaseType base_type,const uint32_t vecsize,const uint32_t vertex_count)
+        VAD *CreateVertexAttribData(const VertexAttribType *type,const uint32_t vertex_count)
         {
-            VkFormat fmt;
-            uint32_t stride;
-
-            if(!vulkan::GetVulkanFormatStride(fmt,stride,base_type,vecsize))
+            if(!type||!type->Check())
                 return(nullptr);
 
-            return(new VertexAttribData(vertex_count,vecsize,stride,fmt));
+            VkFormat fmt=vulkan::GetVulkanFormat(type);
+
+            return(new VertexAttribData(vertex_count,type->vec_size,type->GetStride(),fmt));
         }
     }//namespace graph
 }//namespace hgl
