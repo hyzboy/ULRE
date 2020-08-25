@@ -36,7 +36,7 @@ namespace hgl
 
         protected:
 
-            const uint32_t dc_num;                                                                  ///<每个数据成员数(比如二维坐标为2、三维坐标为3)
+            const uint32_t vec_size;                                                                ///<每个数据成员数(比如二维坐标为2、三维坐标为3)
                   uint32_t count;                                                                   ///<数据个数
 
             const uint32_t stride;                                                                  ///<每组数据字节数
@@ -46,7 +46,7 @@ namespace hgl
 
         public:
 
-            VertexAttribData(uint32_t c,uint32_t dc,uint32_t cs,VkFormat fmt):count(c),dc_num(dc),stride(cs),total_bytes(cs*c),vk_format(fmt)
+            VertexAttribData(uint32_t c,uint32_t dc,uint32_t cs,VkFormat fmt):count(c),vec_size(dc),stride(cs),total_bytes(cs*c),vk_format(fmt)
             {
                 mem_data = hgl_malloc(total_bytes);            //在很多情况下，hgl_malloc分配的内存是对齐的，这样有效率上的提升
             }
@@ -58,7 +58,7 @@ namespace hgl
             }
 
             const   VkFormat    GetVulkanFormat ()const{return vk_format;}                          ///<取得数据类型
-            const   uint32_t    GetComponent    ()const{return dc_num;}                             ///<取数缓冲区元数据数量
+            const   uint32_t    GetVecSize      ()const{return vec_size;}                           ///<取数缓冲区元数据成份数量
             const   uint32_t    GetCount        ()const{return count;}                              ///<取得数据数量
             const   uint32_t    GetStride       ()const{return stride;}                             ///<取得每一组数据字节数
                     void *      GetData         ()const{return mem_data;}                           ///<取得数据指针
@@ -73,7 +73,7 @@ namespace hgl
          * @param vecsize vec数量
          * @param vertex_count 顶点数量
          */
-        VAD *CreateVertexAttribData(const vulkan::BaseType base_type,const uint32_t vecsize,const uint32_t vertex_count);
+        VAD *CreateVertexAttribData(const VertexAttribType *,const uint32_t vertex_count);
         //这个函数比较重要，就不搞成CreateVAD的简写了
     }//namespace graph
 }//namespace hgl

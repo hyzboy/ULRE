@@ -36,10 +36,10 @@ VK_NAMESPACE_BEGIN
                 ss=new ShaderStage;
 
                 ss->location=*data++;
-                ss->base_type=(VK_NAMESPACE::BaseType)*data++;
-                ss->component=*data++;
+                ss->type.basetype=(VertexAttribBaseType)*data++;
+                ss->type.vec_size=*data++;
 
-                VK_NAMESPACE::GetVulkanFormatStride(ss->format,ss->stride,ss->base_type,ss->component);
+                ss->format=VK_NAMESPACE::GetVulkanFormat(&(ss->type));
 
                 str_len=*data++;
                 ss->name.SetString((char *)data,str_len);
@@ -61,10 +61,15 @@ VK_NAMESPACE_BEGIN
 
             uint str_len;
 
+            sd_list->binding_list.PreMalloc(count);
+            sd_list->set_list.PreMalloc(count);
+
             for(uint i=0;i<count;i++)
             {
                 if(version>=1)
                     sd_list->set_list.Add(*data++);
+                else
+                    sd_list->set_list.Add(0);
 
                 sd_list->binding_list.Add(*data++);
                 str_len=*data++;
