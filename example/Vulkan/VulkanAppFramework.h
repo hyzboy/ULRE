@@ -18,7 +18,7 @@
 #include<hgl/graph/vulkan/VKMaterial.h>
 #include<hgl/graph/vulkan/VKMaterialInstance.h>
 #include<hgl/graph/vulkan/VKRenderTarget.h>
-#include<hgl/graph/SceneDB.h>
+#include<hgl/graph/vulkan/VKDatabase.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;

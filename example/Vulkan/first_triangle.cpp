@@ -38,12 +38,12 @@ private:
     vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_world_matrix             =nullptr;
+    vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
-    vulkan::VAB *      vertex_buffer       =nullptr;
-    vulkan::VAB *      color_buffer        =nullptr;
+    vulkan::VAB *               vertex_buffer       =nullptr;
+    vulkan::VAB *               color_buffer        =nullptr;
 
 public:
 

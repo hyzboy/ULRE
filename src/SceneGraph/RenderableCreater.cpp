@@ -5,7 +5,7 @@ namespace hgl
 {
     namespace graph
     {
-        RenderableCreater::RenderableCreater(SceneDB *sdb,vulkan::Material *m)
+        RenderableCreater::RenderableCreater(vulkan::SceneDB *sdb,vulkan::Material *m)
         {
             db              =sdb;
             mtl             =m;
