@@ -23,7 +23,7 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
-vulkan::Renderable *CreateMeshRenderable(SceneDB *db,vulkan::Material *mtl,const MeshData *mesh)
+vulkan::Renderable *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const MeshData *mesh)
 {
     const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 

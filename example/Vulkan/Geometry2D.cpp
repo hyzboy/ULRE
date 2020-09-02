@@ -2,7 +2,7 @@
 // 该范例有两个作用：
 //  一、测试绘制2D几何体
 //  二、试验动态合并材质渲染机制
-//  三、试验SceneDB/SceneGraph
+//  三、试验Database/SceneGraph
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>

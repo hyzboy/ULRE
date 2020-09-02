@@ -63,7 +63,7 @@ protected:
 
 protected:
 
-            SceneDB *           db                              =nullptr;
+            Database *           db                              =nullptr;
 
             bool                key_status[kbRangeSize];
 
@@ -127,7 +127,7 @@ public:
         render_complete_semaphore   =device->CreateSem();
 
         shader_manage=device->CreateShaderModuleManage();
-        db=new SceneDB(device);
+        db=new Database(device);
 
         InitCommandBuffer();
 

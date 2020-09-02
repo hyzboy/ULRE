@@ -32,7 +32,7 @@ namespace hgl
         {
         protected:
 
-            vulkan::SceneDB *db;
+            vulkan::Database *db;
             vulkan::Material *mtl;
 
             const vulkan::VertexShaderModule *vsm;
@@ -50,7 +50,7 @@ namespace hgl
 
         public:
 
-            RenderableCreater(vulkan::SceneDB *sdb,vulkan::Material *m);
+            RenderableCreater(vulkan::Database *sdb,vulkan::Material *m);
             virtual ~RenderableCreater()=default;
 
             virtual bool                    Init(const uint32 count);                                                   ///<初始化，参数为顶点数量

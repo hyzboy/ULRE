@@ -12,7 +12,7 @@ namespace hgl
 {
     namespace graph
     {
-        vulkan::Renderable *CreateRenderableRectangle(vulkan::SceneDB *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
+        vulkan::Renderable *CreateRenderableRectangle(vulkan::Database *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -29,7 +29,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableGBufferComposition(vulkan::SceneDB *db,vulkan::Material *mtl)
+        vulkan::Renderable *CreateRenderableGBufferComposition(vulkan::Database *db,vulkan::Material *mtl)
         {
             RectangleCreateInfo rci;
 
@@ -38,7 +38,7 @@ namespace hgl
             return CreateRenderableRectangle(db,mtl,&rci);
         }
 
-        vulkan::Renderable *CreateRenderableRoundRectangle(vulkan::SceneDB *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
+        vulkan::Renderable *CreateRenderableRoundRectangle(vulkan::Database *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -112,7 +112,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableCircle(vulkan::SceneDB *db,vulkan::Material *mtl,const CircleCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCircle(vulkan::Database *db,vulkan::Material *mtl,const CircleCreateInfo *cci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -137,7 +137,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderablePlaneGrid(vulkan::SceneDB *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci)
+        vulkan::Renderable *CreateRenderablePlaneGrid(vulkan::Database *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -184,7 +184,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderablePlane(vulkan::SceneDB *db,vulkan::Material *mtl,const PlaneCreateInfo *pci)
+        vulkan::Renderable *CreateRenderablePlane(vulkan::Database *db,vulkan::Material *mtl,const PlaneCreateInfo *pci)
         {
             const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                     float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
@@ -225,7 +225,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableCube(vulkan::SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCube(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
         {                              // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    -0.5f, +0.5f, +0.5f,
             /*     *------------* */                            +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f,    -0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,
@@ -396,7 +396,7 @@ namespace hgl
         * @param numberSlices 切片数
         * @return 可渲染数据
         */
-        vulkan::Renderable *CreateRenderableSphere(vulkan::SceneDB *db,vulkan::Material *mtl,const uint numberSlices)
+        vulkan::Renderable *CreateRenderableSphere(vulkan::Database *db,vulkan::Material *mtl,const uint numberSlices)
         {
             RenderableCreater rc(db,mtl);
 
@@ -472,7 +472,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableDome(vulkan::SceneDB *db,vulkan::Material *mtl,const DomeCreateInfo *dci)
+        vulkan::Renderable *CreateRenderableDome(vulkan::Database *db,vulkan::Material *mtl,const DomeCreateInfo *dci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -591,7 +591,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableTorus(vulkan::SceneDB *db,vulkan::Material *mtl,const TorusCreateInfo *tci)
+        vulkan::Renderable *CreateRenderableTorus(vulkan::Database *db,vulkan::Material *mtl,const TorusCreateInfo *tci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -747,7 +747,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableCylinder(vulkan::SceneDB *db,vulkan::Material *mtl,const CylinderCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCylinder(vulkan::Database *db,vulkan::Material *mtl,const CylinderCreateInfo *cci)
         {
             uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
@@ -966,7 +966,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableCone(vulkan::SceneDB *db,vulkan::Material *mtl,const ConeCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableCone(vulkan::Database *db,vulkan::Material *mtl,const ConeCreateInfo *cci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -1093,7 +1093,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableAxis(vulkan::SceneDB *db,vulkan::Material *mtl,const AxisCreateInfo *aci)
+        vulkan::Renderable *CreateRenderableAxis(vulkan::Database *db,vulkan::Material *mtl,const AxisCreateInfo *aci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -1118,7 +1118,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableBoundingBox(vulkan::SceneDB *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
+        vulkan::Renderable *CreateRenderableBoundingBox(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
         {
             // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
