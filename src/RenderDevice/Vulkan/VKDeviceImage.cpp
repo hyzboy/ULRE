@@ -18,7 +18,7 @@ namespace
     }
 }//namespace
 
-VkImage Device::CreateImage1D(const VkFormat format,const uint32_t length,const uint usage,const VkImageTiling tiling)
+VkImage Device::CreateImage1D(const VkFormat format,const uint32_t length,const uint usage,const ImageTiling tiling)
 {
     if(!CheckVulkanFormat(format))return(nullptr);
     if(length<1)return(nullptr);
@@ -41,7 +41,7 @@ VkImage Device::CreateImage1D(const VkFormat format,const uint32_t length,const 
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.tiling                  = tiling;
+    imageCreateInfo.tiling                  = VkImageTiling(tiling);
 
     VkImage image;
 
@@ -51,7 +51,7 @@ VkImage Device::CreateImage1D(const VkFormat format,const uint32_t length,const 
     return image;
 }
 
-VkImage Device::CreateImage1DArray(const VkFormat format,const uint32_t length,const uint32_t layer,const uint usage,const VkImageTiling tiling)
+VkImage Device::CreateImage1DArray(const VkFormat format,const uint32_t length,const uint32_t layer,const uint usage,const ImageTiling tiling)
 {
     if(!CheckVulkanFormat(format))return(nullptr);
     if(length<1||layer<1)return(nullptr);
@@ -74,7 +74,7 @@ VkImage Device::CreateImage1DArray(const VkFormat format,const uint32_t length,c
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.tiling                  = tiling;
+    imageCreateInfo.tiling                  = VkImageTiling(tiling);
 
     VkImage image;
 
@@ -84,7 +84,7 @@ VkImage Device::CreateImage1DArray(const VkFormat format,const uint32_t length,c
     return image;
 }
 
-VkImage Device::CreateImage2D(const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling)
+VkImage Device::CreateImage2D(const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const ImageTiling tiling)
 {
     if(!CheckVulkanFormat(format))return(nullptr);
     if(width<1||height<1)return(nullptr);
@@ -107,7 +107,7 @@ VkImage Device::CreateImage2D(const VkFormat format,const uint32_t width,const u
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.tiling                  = tiling;
+    imageCreateInfo.tiling                  = VkImageTiling(tiling);
 
     VkImage image;
 
@@ -117,7 +117,7 @@ VkImage Device::CreateImage2D(const VkFormat format,const uint32_t width,const u
     return image;
 }
 
-VkImage Device::CreateImage2DArray(const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t layer,const uint usage,const VkImageTiling tiling)
+VkImage Device::CreateImage2DArray(const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t layer,const uint usage,const ImageTiling tiling)
 {
     if(!CheckVulkanFormat(format))return(nullptr);
     if(width<1||height<1)return(nullptr);
@@ -140,7 +140,7 @@ VkImage Device::CreateImage2DArray(const VkFormat format,const uint32_t width,co
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.tiling                  = tiling;
+    imageCreateInfo.tiling                  = VkImageTiling(tiling);
 
     VkImage image;
 
@@ -150,7 +150,7 @@ VkImage Device::CreateImage2DArray(const VkFormat format,const uint32_t width,co
     return image;
 }
 
-VkImage Device::CreateImage3D(const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t depth,const uint usage,const VkImageTiling tiling)
+VkImage Device::CreateImage3D(const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t depth,const uint usage,const ImageTiling tiling)
 {
     if(!CheckVulkanFormat(format))return(nullptr);
     if(width<1||height<1)return(nullptr);
@@ -173,7 +173,7 @@ VkImage Device::CreateImage3D(const VkFormat format,const uint32_t width,const u
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.tiling                  = tiling;
+    imageCreateInfo.tiling                  = VkImageTiling(tiling);
 
     VkImage image;
 
@@ -183,7 +183,7 @@ VkImage Device::CreateImage3D(const VkFormat format,const uint32_t width,const u
     return image;
 }
 
-VkImage Device::CreateCubemap(const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const VkImageTiling tiling)
+VkImage Device::CreateCubemap(const VkFormat format,const uint32_t width,const uint32_t height,const uint usage,const ImageTiling tiling)
 {
     if(!CheckVulkanFormat(format))return(nullptr);
     if(width<1||height<1)return(nullptr);
@@ -206,7 +206,7 @@ VkImage Device::CreateCubemap(const VkFormat format,const uint32_t width,const u
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.tiling                  = tiling;
+    imageCreateInfo.tiling                  = VkImageTiling(tiling);
 
     VkImage image;
 
