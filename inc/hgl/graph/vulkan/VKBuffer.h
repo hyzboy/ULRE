@@ -82,14 +82,14 @@ using VAB=VertexAttribBuffer;
 
 class IndexBuffer:public Buffer
 {
-    VkIndexType index_type;
+    IndexType index_type;
     uint32_t count;
 
 private:
 
     friend class Device;
 
-    IndexBuffer(VkDevice d,const BufferData &vb,VkIndexType it,uint32_t _count):Buffer(d,vb)
+    IndexBuffer(VkDevice d,const BufferData &vb,IndexType it,uint32_t _count):Buffer(d,vb)
     {
         index_type=it;
         count=_count;
@@ -99,8 +99,8 @@ public:
 
     ~IndexBuffer()=default;
 
-    const VkIndexType   GetType ()const{return index_type;}
-    const uint32        GetCount()const{return count;}
+    const IndexType GetType ()const{return index_type;}
+    const uint32    GetCount()const{return count;}
 };//class IndexBuffer:public Buffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_BUFFER_INCLUDE

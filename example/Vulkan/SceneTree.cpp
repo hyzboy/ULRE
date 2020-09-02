@@ -104,7 +104,7 @@ private:
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->CloseCullFace();
         pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
-        pipeline_creater->Set(PRIM_TRIANGLES);
+        pipeline_creater->Set(Prim::Triangles);
 
         pipeline_line=pipeline_creater->Create();
         if(!pipeline_line)

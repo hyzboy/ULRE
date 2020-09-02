@@ -217,15 +217,15 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const Rend
     }
 }
 
-bool PipelineCreater::Set(const uint topology,bool restart)
+bool PipelineCreater::Set(const Prim topology,bool restart)
 {
-    if(topology<PRIM_BEGIN||topology>PRIM_END)
-        if(topology!=PRIM_RECTANGLES)return(false);
+    if(topology<Prim::BEGIN_RANGE||topology>Prim::END_RANGE)
+        if(topology!=Prim::Rectangles)return(false);
 
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssembly.pNext = nullptr;
     inputAssembly.flags = 0;
-    inputAssembly.topology = VkPrimitiveTopology(topology==PRIM_RECTANGLES?VK_PRIMITIVE_TOPOLOGY_POINT_LIST:topology);
+    inputAssembly.topology = VkPrimitiveTopology(topology==Prim::Rectangles?Prim::Points:topology);
     inputAssembly.primitiveRestartEnable = restart;
 
     pipelineInfo.pInputAssemblyState = &inputAssembly;

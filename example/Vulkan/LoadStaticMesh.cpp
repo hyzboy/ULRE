@@ -272,11 +272,11 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))//,model_data->bounding_box))
             return(false);
         
-        if(!InitMP(&mp_solid, PRIM_TRIANGLES,   OS_TEXT("res/shader/pbr_Light.vert"),
+        if(!InitMP(&mp_solid, Prim::Triangles,   OS_TEXT("res/shader/pbr_Light.vert"),
                                                 OS_TEXT("res/shader/pbr_DirectionLight.frag")))
             return(false);
 
-        if(!InitMP(&mp_line,  PRIM_LINES,       OS_TEXT("res/shader/PositionColor3D.vert"),
+        if(!InitMP(&mp_line,  Prim::Lines,       OS_TEXT("res/shader/PositionColor3D.vert"),
                                                 OS_TEXT("res/shader/VertexColor.frag")))
             return(false);
 

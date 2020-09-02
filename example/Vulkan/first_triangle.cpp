@@ -110,7 +110,7 @@ private:
             AutoDelete<vulkan::PipelineCreater> 
             pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
             pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(PRIM_TRIANGLES);
+            pipeline_creater->Set(Prim::Triangles);
 
             SaveToFile(PIPELINE_FILENAME,pipeline_creater);
         }

@@ -149,7 +149,7 @@ private:
     {
         AutoDelete<vulkan::PipelineCreater> 
         pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->Set(PRIM_LINES);
+        pipeline_creater->Set(Prim::Lines);
 
         pipeline_line=pipeline_creater->Create();
 
@@ -158,7 +158,7 @@ private:
 
         db->Add(pipeline_line);
 
-        pipeline_creater->Set(PRIM_TRIANGLES);
+        pipeline_creater->Set(Prim::Triangles);
         pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
         pipeline_solid=pipeline_creater->Create();
 
