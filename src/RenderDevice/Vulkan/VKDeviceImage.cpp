@@ -11,7 +11,7 @@ namespace
         imageCreateInfo.mipLevels               = 1;
         imageCreateInfo.arrayLayers             = 1;
         imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
-        imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
+        imageCreateInfo.sharingMode             = VkSharingMode(SharingMode::Exclusive);
         imageCreateInfo.queueFamilyIndexCount   = 0;
         imageCreateInfo.pQueueFamilyIndices     = nullptr;
         imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -37,7 +37,7 @@ VkImage Device::CreateImage1D(const VkFormat format,const uint32_t length,const 
     imageCreateInfo.arrayLayers             = 1;
     imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.usage                   = usage;
-    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sharingMode             = VkSharingMode(SharingMode::Exclusive);
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -70,7 +70,7 @@ VkImage Device::CreateImage1DArray(const VkFormat format,const uint32_t length,c
     imageCreateInfo.arrayLayers             = layer;
     imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.usage                   = usage;
-    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sharingMode             = VkSharingMode(SharingMode::Exclusive);
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -103,7 +103,7 @@ VkImage Device::CreateImage2D(const VkFormat format,const uint32_t width,const u
     imageCreateInfo.arrayLayers             = 1;
     imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.usage                   = usage;
-    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sharingMode             = VkSharingMode(SharingMode::Exclusive);
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -136,7 +136,7 @@ VkImage Device::CreateImage2DArray(const VkFormat format,const uint32_t width,co
     imageCreateInfo.arrayLayers             = layer;
     imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.usage                   = usage;
-    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sharingMode             = VkSharingMode(SharingMode::Exclusive);
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -169,7 +169,7 @@ VkImage Device::CreateImage3D(const VkFormat format,const uint32_t width,const u
     imageCreateInfo.arrayLayers             = 1;
     imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.usage                   = usage;
-    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sharingMode             = VkSharingMode(SharingMode::Exclusive);
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -202,7 +202,7 @@ VkImage Device::CreateCubemap(const VkFormat format,const uint32_t width,const u
     imageCreateInfo.arrayLayers             = 6;
     imageCreateInfo.samples                 = VK_SAMPLE_COUNT_1_BIT;
     imageCreateInfo.usage                   = usage;
-    imageCreateInfo.sharingMode             = VK_SHARING_MODE_EXCLUSIVE;
+    imageCreateInfo.sharingMode             = VkSharingMode(SharingMode::Exclusive);
     imageCreateInfo.queueFamilyIndexCount   = 0;
     imageCreateInfo.pQueueFamilyIndices     = nullptr;
     imageCreateInfo.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;

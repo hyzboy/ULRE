@@ -61,6 +61,12 @@ class VertexAttributeBinding;
 
 class Renderable;
 
+enum class SharingMode
+{
+    Exclusive = 0,
+    Concurrent
+};//
+
 enum class ShaderStageBit
 {
     Vertex      =VK_SHADER_STAGE_VERTEX_BIT,
