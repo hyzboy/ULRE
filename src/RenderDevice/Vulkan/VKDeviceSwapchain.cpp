@@ -56,7 +56,7 @@ namespace
         }
         else
         {
-            swapchain_ci.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+            swapchain_ci.imageSharingMode = VkSharingMode(SharingMode::Exclusive);
         }
 
         VkSwapchainKHR swap_chain;
