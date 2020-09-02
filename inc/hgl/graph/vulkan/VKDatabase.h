@@ -62,12 +62,12 @@ public: //Add
 
 public: //Create
 
-    VAB *CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
-    VAB *CreateVAB(VkFormat format,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(format,count,nullptr,sharing_mode);}
-    VAB *CreateVAB(const VAD *vad,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sharing_mode);}
+    VAB *CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sm=SharingMode::Exclusive);
+    VAB *CreateVAB(VkFormat format,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sm);}
+    VAB *CreateVAB(const VAD *vad,SharingMode sm=SharingMode::Exclusive){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sm);}
 
-    #define SCENE_DB_CREATE_FUNC(name)  Buffer *Create##name(VkDeviceSize size,void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);   \
-                                        Buffer *Create##name(VkDeviceSize size,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
+    #define SCENE_DB_CREATE_FUNC(name)  Buffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
+                                        Buffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive);
 
             SCENE_DB_CREATE_FUNC(UBO)
             SCENE_DB_CREATE_FUNC(SSBO)
@@ -75,13 +75,13 @@ public: //Create
 
     #undef SCENE_DB_CREATE_FUNC
 
-    IndexBuffer *CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE);
-    IndexBuffer *CreateIBO16(uint32_t count,const uint16 *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,(void *)data,sharing_mode);}
-    IndexBuffer *CreateIBO32(uint32_t count,const uint32 *data,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,(void *)data,sharing_mode);}
+    IndexBuffer *CreateIBO(VkIndexType index_type,uint32_t count,const void *data,SharingMode sm=SharingMode::Exclusive);
+    IndexBuffer *CreateIBO16(uint32_t count,const uint16 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT16,count,(void *)data,sm);}
+    IndexBuffer *CreateIBO32(uint32_t count,const uint32 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT32,count,(void *)data,sm);}
 
-    IndexBuffer *CreateIBO(VkIndexType index_type,uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(index_type,count,nullptr,sharing_mode);}
-    IndexBuffer *CreateIBO16(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sharing_mode);}
-    IndexBuffer *CreateIBO32(uint32_t count,VkSharingMode sharing_mode=VK_SHARING_MODE_EXCLUSIVE){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sharing_mode);}
+    IndexBuffer *CreateIBO(VkIndexType index_type,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(index_type,count,nullptr,sm);}
+    IndexBuffer *CreateIBO16(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sm);}
+    IndexBuffer *CreateIBO32(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sm);}
 
     MaterialInstance *  CreateMaterialInstance(Material *);
     Renderable *        CreateRenderable(Material *,const uint32_t vertex_count=0);

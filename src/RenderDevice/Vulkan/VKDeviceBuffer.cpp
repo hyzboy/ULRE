@@ -2,17 +2,17 @@
 #include<hgl/graph/vulkan/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode)
+bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     VkBufferCreateInfo buf_info={};
-    buf_info.sType                  =VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buf_info.pNext                  =nullptr;
-    buf_info.usage                  =buf_usage;
-    buf_info.size                   =size;
-    buf_info.queueFamilyIndexCount  =0;
-    buf_info.pQueueFamilyIndices    =nullptr;
-    buf_info.sharingMode            =sharing_mode;
-    buf_info.flags                  =0;
+    buf_info.sType                  = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buf_info.pNext                  = nullptr;
+    buf_info.usage                  = buf_usage;
+    buf_info.size                   = size;
+    buf_info.queueFamilyIndexCount  = 0;
+    buf_info.pQueueFamilyIndices    = nullptr;
+    buf_info.sharingMode            = VkSharingMode(sharing_mode);
+    buf_info.flags                  = 0;
 
     if(vkCreateBuffer(attr->device,&buf_info,nullptr,&buf->buffer)!=VK_SUCCESS)
         return(false);
@@ -44,7 +44,7 @@ bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceS
     return(false);
 }
 
-VAB *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
+VAB *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
 
@@ -64,7 +64,7 @@ VAB *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharing
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
-IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)
+IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     uint32_t stride;
 
@@ -82,7 +82,7 @@ IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void 
     return(new IndexBuffer(attr->device,buf,index_type,count));
 }
 
-Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,VkSharingMode sharing_mode)
+Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     BufferData buf;
 

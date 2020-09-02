@@ -3,7 +3,7 @@
 #include<hgl/graph/RenderableInstance.h>
 
 VK_NAMESPACE_BEGIN
-VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
+VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     VAB *vb=device->CreateVAB(format,count,data,sharing_mode);
 
@@ -15,7 +15,7 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,VkShari
     return vb;
 }
 
-#define SCENE_DB_CREATE_BUFFER(name)    Buffer *Database::Create##name(VkDeviceSize size,void *data,VkSharingMode sharing_mode) \
+#define SCENE_DB_CREATE_BUFFER(name)    Buffer *Database::Create##name(VkDeviceSize size,void *data,SharingMode sharing_mode) \
                                         {   \
                                             Buffer *buf=device->Create##name(size,data,sharing_mode);   \
                                             \
@@ -24,7 +24,7 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,VkShari
                                             return(buf);    \
                                         }   \
                                         \
-                                        Buffer *Database::Create##name(VkDeviceSize size,VkSharingMode sharing_mode)    \
+                                        Buffer *Database::Create##name(VkDeviceSize size,SharingMode sharing_mode)    \
                                         {   \
                                             Buffer *buf=device->Create##name(size,sharing_mode);    \
                                             \
@@ -39,7 +39,7 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,VkShari
 
 #undef SCENE_DB_CREATE_BUFFER
 
-IndexBuffer *Database::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)
+IndexBuffer *Database::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     IndexBuffer *buf=device->CreateIBO(index_type,count,data,sharing_mode);
 

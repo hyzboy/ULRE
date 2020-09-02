@@ -110,7 +110,7 @@ bool Device::CreateSwapchainDepthTexture()
         VK_IMAGE_ASPECT_DEPTH_BIT,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         VK_IMAGE_LAYOUT_UNDEFINED,
-        (props.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?VK_IMAGE_TILING_OPTIMAL:VK_IMAGE_TILING_LINEAR);
+        (props.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?ImageTiling::Optimal:ImageTiling::Linear);
 
     return swapchain->sc_depth;
 }

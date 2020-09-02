@@ -67,6 +67,12 @@ enum class SharingMode
     Concurrent
 };//
 
+enum ImageTiling
+{
+    Optimal=0,
+    Linear
+};//
+
 enum class ShaderStageBit
 {
     Vertex      =VK_SHADER_STAGE_VERTEX_BIT,
