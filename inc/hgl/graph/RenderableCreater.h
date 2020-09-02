@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 #define HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 
-#include<hgl/graph/SceneDB.h>
+#include<hgl/graph/vulkan/VKDatabase.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
 namespace hgl
@@ -32,7 +32,7 @@ namespace hgl
         {
         protected:
 
-            SceneDB *db;
+            vulkan::SceneDB *db;
             vulkan::Material *mtl;
 
             const vulkan::VertexShaderModule *vsm;
@@ -50,7 +50,7 @@ namespace hgl
 
         public:
 
-            RenderableCreater(SceneDB *sdb,vulkan::Material *m);
+            RenderableCreater(vulkan::SceneDB *sdb,vulkan::Material *m);
             virtual ~RenderableCreater()=default;
 
             virtual bool                    Init(const uint32 count);                                                   ///<初始化，参数为顶点数量

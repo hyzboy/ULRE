@@ -1,5 +1,10 @@
 ﻿set(RD_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan)
 
+SET(VK_DB_SOURCE        ${RD_INCLUDE_PATH}/VKDatabase.h
+                        VKDatabase.cpp)
+
+SOURCE_GROUP("Database" FILES ${VK_DB_SOURCE})
+
 SET(VK_INST_SOURCE      ${RD_INCLUDE_PATH}/VKInstance.h
                         VKInstance.cpp)
 
@@ -98,7 +103,8 @@ IF(WIN32)
     ENDIF()
 ENDIF(WIN32)
 
-add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${VK_INST_SOURCE}
+add_cm_library(ULRE.RenderDevice.Vulkan "ULRE"  ${VK_DB_SOURCE}
+                                                ${VK_INST_SOURCE}
                                                 ${VK_DEBUG_SOURCE}
                                                 ${VK_MEMORY_SOURCE}
                                                 ${VK_DEVICE_SOURCE}

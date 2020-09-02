@@ -4,8 +4,6 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/io/DataOutputStream.h>
 VK_NAMESPACE_BEGIN
-using PipelineID=uint64;
-
 class Pipeline
 {
     VkDevice device;

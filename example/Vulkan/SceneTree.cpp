@@ -4,7 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/SceneDB.h>
+#include<hgl/graph/vulkan/VKDatabase.h>
 #include<hgl/graph/RenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/Time.h>

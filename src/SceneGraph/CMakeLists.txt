@@ -27,7 +27,6 @@ SET(TILE_SOURCE ${ROOT_INCLUDE_PATH}/hgl/graph/TileData.h
 SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 
 SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/SceneDB.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneNode.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneOrient.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableInstance.h
@@ -39,7 +38,6 @@ SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         )
 
 SET(SCENE_GRAPH_SOURCE  RenderList.cpp
-                        SceneDB.cpp
                         SceneNode.cpp
                         SceneOrient.cpp
                         InlineGeometry.cpp
