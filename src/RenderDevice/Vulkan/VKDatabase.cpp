@@ -3,7 +3,7 @@
 #include<hgl/graph/RenderableInstance.h>
 
 VK_NAMESPACE_BEGIN
-VAB *SceneDB::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
+VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharingMode sharing_mode)
 {
     VAB *vb=device->CreateVAB(format,count,data,sharing_mode);
 
@@ -15,7 +15,7 @@ VAB *SceneDB::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharin
     return vb;
 }
 
-#define SCENE_DB_CREATE_BUFFER(name)    Buffer *SceneDB::Create##name(VkDeviceSize size,void *data,VkSharingMode sharing_mode) \
+#define SCENE_DB_CREATE_BUFFER(name)    Buffer *Database::Create##name(VkDeviceSize size,void *data,VkSharingMode sharing_mode) \
                                         {   \
                                             Buffer *buf=device->Create##name(size,data,sharing_mode);   \
                                             \
@@ -24,7 +24,7 @@ VAB *SceneDB::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharin
                                             return(buf);    \
                                         }   \
                                         \
-                                        Buffer *SceneDB::Create##name(VkDeviceSize size,VkSharingMode sharing_mode)    \
+                                        Buffer *Database::Create##name(VkDeviceSize size,VkSharingMode sharing_mode)    \
                                         {   \
                                             Buffer *buf=device->Create##name(size,sharing_mode);    \
                                             \
@@ -39,7 +39,7 @@ VAB *SceneDB::CreateVAB(VkFormat format,uint32_t count,const void *data,VkSharin
 
 #undef SCENE_DB_CREATE_BUFFER
 
-IndexBuffer *SceneDB::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)
+IndexBuffer *Database::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,VkSharingMode sharing_mode)
 {
     IndexBuffer *buf=device->CreateIBO(index_type,count,data,sharing_mode);
 
@@ -48,7 +48,7 @@ IndexBuffer *SceneDB::CreateIBO(VkIndexType index_type,uint32_t count,const void
     return(buf);
 }
         
-MaterialInstance *SceneDB::CreateMaterialInstance(Material *mtl)
+MaterialInstance *Database::CreateMaterialInstance(Material *mtl)
 {
     if(!mtl)return(nullptr);
 
@@ -60,7 +60,7 @@ MaterialInstance *SceneDB::CreateMaterialInstance(Material *mtl)
     return mi;
 }
 
-Renderable *SceneDB::CreateRenderable(Material *mtl,const uint32_t vertex_count)
+Renderable *Database::CreateRenderable(Material *mtl,const uint32_t vertex_count)
 {
     if(!mtl)return(nullptr);
 
@@ -72,7 +72,7 @@ Renderable *SceneDB::CreateRenderable(Material *mtl,const uint32_t vertex_count)
     return ro;
 }
 
-TextRenderable *SceneDB::CreateTextRenderable(Material *mtl)
+TextRenderable *Database::CreateTextRenderable(Material *mtl)
 {
     if(!mtl)return(nullptr);
             
@@ -84,7 +84,7 @@ TextRenderable *SceneDB::CreateTextRenderable(Material *mtl)
     return tr;
 }
 
-RenderableInstance *SceneDB::CreateRenderableInstance(Pipeline *p,MaterialInstance *mi,Renderable *r)
+RenderableInstance *Database::CreateRenderableInstance(Pipeline *p,MaterialInstance *mi,Renderable *r)
 {
     if(!p||!mi||!r)
         return(nullptr);
@@ -97,7 +97,7 @@ RenderableInstance *SceneDB::CreateRenderableInstance(Pipeline *p,MaterialInstan
     return ri;
 }
         
-Sampler *SceneDB::CreateSampler(VkSamplerCreateInfo *sci)
+Sampler *Database::CreateSampler(VkSamplerCreateInfo *sci)
 {
     Sampler *s=device->CreateSampler(sci);
 
