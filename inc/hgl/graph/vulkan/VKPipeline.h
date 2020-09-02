@@ -78,10 +78,10 @@ class PipelineCreater
 public:
 
     PipelineCreater(Device *dev,const Material *,const RenderTarget *);
-    PipelineCreater(Device *dev,const Material *,const RenderTarget *,uchar *,uint);
+    PipelineCreater(Device *dev,const Material *,const RenderTarget *,uchar *data,uint size);
     ~PipelineCreater()=default;
 
-    bool Set(const uint prim,bool=false);
+    bool Set(const Prim prim,bool=false);
 
     void SetViewport(       float x,float y,float w,float h){viewport.x=x;viewport.y=y;viewport.width=w;viewport.height=h;}
     void SetDepthRange(     float min_depth,float max_depth){viewport.minDepth=min_depth;viewport.maxDepth=max_depth;}

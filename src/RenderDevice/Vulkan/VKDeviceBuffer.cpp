@@ -64,12 +64,12 @@ VAB *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMo
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
-IndexBuffer *Device::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
+IndexBuffer *Device::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     uint32_t stride;
 
-    if(index_type==VK_INDEX_TYPE_UINT16)stride=2;else
-    if(index_type==VK_INDEX_TYPE_UINT32)stride=4;else
+    if(index_type==IndexType::U16)stride=2;else
+    if(index_type==IndexType::U32)stride=4;else
         return(nullptr);
 
     const VkDeviceSize size=stride*count;

@@ -92,7 +92,7 @@ private:
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
-        pipeline_creater->Set(PRIM_TRIANGLES);
+        pipeline_creater->Set(Prim::Triangles);
         pipeline_solid=pipeline_creater->Create();
         
         if(!pipeline_solid)

@@ -75,13 +75,13 @@ public: //Create
 
     #undef SCENE_DB_CREATE_FUNC
 
-    IndexBuffer *CreateIBO(VkIndexType index_type,uint32_t count,const void *data,SharingMode sm=SharingMode::Exclusive);
-    IndexBuffer *CreateIBO16(uint32_t count,const uint16 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT16,count,(void *)data,sm);}
-    IndexBuffer *CreateIBO32(uint32_t count,const uint32 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT32,count,(void *)data,sm);}
+    IndexBuffer *CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sm=SharingMode::Exclusive);
+    IndexBuffer *CreateIBO16(uint32_t count,const uint16 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,(void *)data,sm);}
+    IndexBuffer *CreateIBO32(uint32_t count,const uint32 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,(void *)data,sm);}
 
-    IndexBuffer *CreateIBO(VkIndexType index_type,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(index_type,count,nullptr,sm);}
-    IndexBuffer *CreateIBO16(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sm);}
-    IndexBuffer *CreateIBO32(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sm);}
+    IndexBuffer *CreateIBO(IndexType index_type,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(index_type,count,nullptr,sm);}
+    IndexBuffer *CreateIBO16(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sm);}
+    IndexBuffer *CreateIBO32(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sm);}
 
     MaterialInstance *  CreateMaterialInstance(Material *);
     Renderable *        CreateRenderable(Material *,const uint32_t vertex_count=0);

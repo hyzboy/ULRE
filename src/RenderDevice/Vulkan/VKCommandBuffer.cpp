@@ -117,7 +117,7 @@ bool CommandBuffer::Bind(Renderable *render_obj)
     IndexBuffer *indices_buffer=render_obj->GetIndexBuffer();
 
     if(indices_buffer)
-        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),render_obj->GetIndexOffset(),indices_buffer->GetType());
+        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),render_obj->GetIndexOffset(),VkIndexType(indices_buffer->GetType()));
 
     return(true);
 }

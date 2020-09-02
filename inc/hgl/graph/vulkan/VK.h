@@ -61,6 +61,8 @@ class VertexAttributeBinding;
 
 class Renderable;
 
+class Database;
+
 enum class SharingMode
 {
     Exclusive = 0,
@@ -72,6 +74,12 @@ enum ImageTiling
     Optimal=0,
     Linear
 };//
+
+enum IndexType
+{
+    U16=0,
+    U32
+};
 
 enum class ShaderStageBit
 {

@@ -97,13 +97,13 @@ public: //Buffer相关
     VAB *           CreateVAB   (VkFormat format,uint32_t count,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sharing_mode);}
     VAB *           CreateVAB   (const VAD *vad,                                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sharing_mode);}
 
-    IndexBuffer *   CreateIBO   (VkIndexType index_type,uint32_t count,const void *  data,SharingMode sharing_mode=SharingMode::Exclusive);
-    IndexBuffer *   CreateIBO16 (                       uint32_t count,const uint16 *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT16,count,(void *)data,sharing_mode);}
-    IndexBuffer *   CreateIBO32 (                       uint32_t count,const uint32 *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT32,count,(void *)data,sharing_mode);}
+    IndexBuffer *   CreateIBO   (IndexType index_type,uint32_t count,const void *  data,SharingMode sharing_mode=SharingMode::Exclusive);
+    IndexBuffer *   CreateIBO16 (                     uint32_t count,const uint16 *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,(void *)data,sharing_mode);}
+    IndexBuffer *   CreateIBO32 (                     uint32_t count,const uint32 *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,(void *)data,sharing_mode);}
 
-    IndexBuffer *   CreateIBO   (VkIndexType index_type,uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(index_type,count,nullptr,sharing_mode);}
-    IndexBuffer *   CreateIBO16 (                       uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT16,count,nullptr,sharing_mode);}
-    IndexBuffer *   CreateIBO32 (                       uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(VK_INDEX_TYPE_UINT32,count,nullptr,sharing_mode);}
+    IndexBuffer *   CreateIBO   (IndexType index_type,uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(index_type,count,nullptr,sharing_mode);}
+    IndexBuffer *   CreateIBO16 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sharing_mode);}
+    IndexBuffer *   CreateIBO32 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sharing_mode);}
 
 #define CREATE_BUFFER_OBJECT(LargeName,type)    Buffer *Create##LargeName(VkDeviceSize size,void *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,sharing_mode);}  \
                                                 Buffer *Create##LargeName(VkDeviceSize size,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,sharing_mode);}
@@ -124,7 +124,7 @@ public: //Image
     VkImage CreateCubemap       (const VkFormat format,const uint32_t width,const uint32_t height,                      const uint usage,const ImageTiling tiling);
 //    VkImage CreateCubemapArray  (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t count, const uint usage,const ImageTiling tiling);
 
-    void    DestoryImage            (VkImage);
+    void    DestoryImage        (VkImage);
 
 public: //Texture
 
@@ -176,13 +176,13 @@ public: //Texture
                                 const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
                                 const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
                                 const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                const ImageTiling         tiling      =ImageTiling::Optimal);
+                                const ImageTiling           tiling      =ImageTiling::Optimal);
 
     Texture2D *CreateTexture2D( const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,
                                 const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
                                 const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
                                 const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                const ImageTiling         tiling      =ImageTiling::Optimal);
+                                const ImageTiling           tiling      =ImageTiling::Optimal);
 
     bool ChangeTexture2D(Texture2D *,Buffer *buf,const VkBufferImageCopy *,const int count);
     bool ChangeTexture2D(Texture2D *,Buffer *buf,const List<ImageRegion> &);

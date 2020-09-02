@@ -39,7 +39,7 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharing
 
 #undef SCENE_DB_CREATE_BUFFER
 
-IndexBuffer *Database::CreateIBO(VkIndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
+IndexBuffer *Database::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     IndexBuffer *buf=device->CreateIBO(index_type,count,data,sharing_mode);
 

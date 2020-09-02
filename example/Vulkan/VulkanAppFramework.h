@@ -63,9 +63,9 @@ protected:
 
 protected:
 
-            Database *           db                              =nullptr;
+    vulkan::Database *              db                          =nullptr;
 
-            bool                key_status[kbRangeSize];
+            bool                    key_status[kbRangeSize];
 
 public:
 
@@ -127,7 +127,7 @@ public:
         render_complete_semaphore   =device->CreateSem();
 
         shader_manage=device->CreateShaderModuleManage();
-        db=new Database(device);
+        db=new vulkan::Database(device);
 
         InitCommandBuffer();
 

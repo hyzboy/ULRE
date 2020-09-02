@@ -59,7 +59,7 @@ private:
         return(true);
     }
 
-    bool InitPipeline(MDP *mdp,const VkPrimitiveTopology primitive)
+    bool InitPipeline(MDP *mdp,const Prim primitive)
     {
         AutoDelete<vulkan::PipelineCreater> 
         pipeline_creater=new vulkan::PipelineCreater(device,mdp->material,sc_render_target);
@@ -75,7 +75,7 @@ private:
         return(true);
     }
 
-    bool InitMDP(MDP *mdp,const VkPrimitiveTopology primitive,const OSString &vs,const OSString &fs)
+    bool InitMDP(MDP *mdp,const Prim primitive,const OSString &vs,const OSString &fs)
     {
         if(!InitMaterial(mdp,vs,fs))
             return(false);
@@ -152,11 +152,11 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        if(!InitMDP(&m3d,PRIM_LINES,OS_TEXT("res/shader/PositionColor3D.vert"),
+        if(!InitMDP(&m3d,Prim::Lines,OS_TEXT("res/shader/PositionColor3D.vert"),
                                     OS_TEXT("res/shader/VertexColor.frag")))
             return(false);
 
-        if(!InitMDP(&m2d,PRIM_TRIANGLE_FAN, OS_TEXT("res/shader/OnlyPosition.vert"),
+        if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/shader/OnlyPosition.vert"),
                                             OS_TEXT("res/shader/FlatColor.frag")))
             return(false);
 
