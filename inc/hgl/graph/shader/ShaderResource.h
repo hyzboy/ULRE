@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 #include<hgl/type/List.h>
 #include<hgl/type/StringList.h>
 #include<hgl/graph/vulkan/VKFormat.h>

@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
 #define HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
 
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 #include<hgl/type/List.h>
 #include<hgl/platform/Window.h>
 #include<hgl/graph/vulkan/VKPhysicalDevice.h>

@@ -129,7 +129,7 @@ namespace hgl
             return(true);
         }
 
-        //int TextLayout::Layout(const int mc,const BaseString<T> &str)
+        //int TextLayout::Layout(const int mc,const String<T> &str)
         //{
         //    if(mc<=0
         //        ||!str
@@ -226,7 +226,7 @@ namespace hgl
          * 简易文本排版。无任何特殊处理，不支持任何转义符，不支持\r\n
          */
         template<typename T>
-        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const BaseString<T> &str)
+        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const String<T> &str)
         {
             if(!tr)
                 return(-1);
@@ -279,7 +279,7 @@ namespace hgl
         int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tr,tf,str);}
 
         //template<typename T>
-        //int TextLayout::SimpleLayout(TileFont *tf,const StringList<BaseString<T>> &sl)
+        //int TextLayout::SimpleLayout(TileFont *tf,const StringList<String<T>> &sl)
         //{
         //}
 

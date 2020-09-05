@@ -2,7 +2,7 @@
 #define HGL_GRAPH_TEXTURE_LOADER_INCLUDE
 
 #include<hgl/io/InputStream.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 #include<hgl/graph/Bitmap.h>
 namespace hgl
 {

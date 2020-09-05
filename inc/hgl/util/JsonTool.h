@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include<string>
 #include<json/json.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 
 const std::string JsonToString(const Json::Value &jv_root);
 

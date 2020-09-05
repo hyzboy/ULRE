@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 VK_NAMESPACE_BEGIN
 class MaterialInstance
 {

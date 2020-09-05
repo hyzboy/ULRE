@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/vulkan/VKPipeline.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 #include<hgl/io/MemoryOutputStream.h>
 #include<hgl/io/DataOutputStream.h>
 #include<hgl/io/MemoryInputStream.h>

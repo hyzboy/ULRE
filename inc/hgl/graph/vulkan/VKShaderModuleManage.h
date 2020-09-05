@@ -3,7 +3,7 @@
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 VK_NAMESPACE_BEGIN
 
 class ShaderResource;
