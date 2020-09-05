@@ -2,11 +2,9 @@
 #include<hgl/graph/vulkan/VKShaderModule.h>
 
 VK_NAMESPACE_BEGIN
-VertexAttributeBinding::VertexAttributeBinding(VertexShaderModule *s)
+VertexAttributeBinding::VertexAttributeBinding(const uint32_t count,const VkVertexInputBindingDescription *bind_list,const VkVertexInputAttributeDescription *attr_list)
 {
-    vsm=s;
-
-    attr_count=vsm->GetAttrCount();
+    attr_count=count;
 
     if(attr_count<=0)
     {
@@ -15,21 +13,14 @@ VertexAttributeBinding::VertexAttributeBinding(VertexShaderModule *s)
         return;
     }
 
-    binding_list=hgl_copy_new(attr_count,vsm->GetDescList());
-    attribute_list=hgl_copy_new(attr_count,vsm->GetAttrList());
+    binding_list=hgl_copy_new(attr_count,bind_list);
+    attribute_list=hgl_copy_new(attr_count,attr_list);
 }
 
 VertexAttributeBinding::~VertexAttributeBinding()
 {
     delete[] attribute_list;
     delete[] binding_list;
-
-    vsm->Release(this);
-}
-
-const uint VertexAttributeBinding::GetStageInputBinding(const AnsiString &name)
-{
-    return vsm->GetStageInputBinding(name);
 }
 
 bool VertexAttributeBinding::SetInstance(const uint index,bool instance)
@@ -70,12 +61,10 @@ bool VertexAttributeBinding::SetOffset(const uint index,const uint32_t offset)
 
 void VertexAttributeBinding::Write(VkPipelineVertexInputStateCreateInfo &vis_create_info) const
 {
-    const uint32_t count=vsm->GetAttrCount();
-
-    vis_create_info.vertexBindingDescriptionCount = count;
+    vis_create_info.vertexBindingDescriptionCount = attr_count;
     vis_create_info.pVertexBindingDescriptions = binding_list;
 
-    vis_create_info.vertexAttributeDescriptionCount = count;
+    vis_create_info.vertexAttributeDescriptionCount = attr_count;
     vis_create_info.pVertexAttributeDescriptions = attribute_list;
 }
 VK_NAMESPACE_END

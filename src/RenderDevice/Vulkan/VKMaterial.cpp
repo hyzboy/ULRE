@@ -14,9 +14,9 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
     if(shader_count<2)
         return(nullptr);
 
-    const ShaderModule *vsm;
+    const ShaderModule *sm;
 
-    if(!shader_maps->Get(VK_SHADER_STAGE_VERTEX_BIT,vsm))
+    if(!shader_maps->Get(VK_SHADER_STAGE_VERTEX_BIT,sm))
         return(nullptr);
 
     DescriptorSetLayoutCreater *dsl_creater=new DescriptorSetLayoutCreater(dev);
@@ -29,16 +29,20 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
     auto **itp=shader_maps->GetDataList();
     for(int i=0;i<shader_count;i++)
     {
-        vsm=(*itp)->right;
-        memcpy(p,vsm->GetCreateInfo(),sizeof(VkPipelineShaderStageCreateInfo));
+        sm=(*itp)->right;
+        memcpy(p,sm->GetCreateInfo(),sizeof(VkPipelineShaderStageCreateInfo));
 
-        dsl_creater->Bind(vsm->GetDescriptorList(),vsm->GetStage());
+        dsl_creater->Bind(sm->GetDescriptorList(),sm->GetStage());
 
         ++p;
         ++itp;
     }
 
-    dsl_creater->CreatePipelineLayout();
+    if(!dsl_creater->CreatePipelineLayout())
+    {
+        delete shader_maps;
+        return(nullptr);
+    }
 
     return(new Material(dev,shader_maps,shader_stage_list,dsl_creater));
 }
@@ -68,8 +72,11 @@ Material::~Material()
 {
     delete dsl_creater;
 
-    vertex_sm->Release(vab);
-    delete vab;
+    if(vab)
+    {
+        vertex_sm->Release(vab);
+        delete vab;
+    }
 
     delete shader_stage_list;
     delete shader_maps;
