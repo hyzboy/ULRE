@@ -59,6 +59,8 @@ SET(VK_TEXTURE_SOURCE   ${RD_INCLUDE_PATH}/VKImageView.h
 
 SET(VK_MATERIAL_SOURCE  ${RD_INCLUDE_PATH}/VKMaterial.h
                         ${RD_INCLUDE_PATH}/VKMaterialInstance.h
+                        ${RD_INCLUDE_PATH}/ShaderModuleMap.h
+                        ShaderModuleMap.cpp
                         VKMaterial.cpp
                         VKMaterialInstance.cpp)
 

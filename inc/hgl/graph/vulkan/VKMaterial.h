@@ -6,7 +6,6 @@
 #include<hgl/type/String.h>
 VK_NAMESPACE_BEGIN
 class DescriptorSetLayoutCreater;
-using ShaderModuleMap=hgl::Map<VkShaderStageFlagBits,const ShaderModule *>;
 
 /**
  * 材质类<br>

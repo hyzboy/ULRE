@@ -2,6 +2,7 @@
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/VKMaterial.h>
 #include<hgl/graph/vulkan/VKDevice.h>
+#include<hgl/graph/vulkan/ShaderModuleMap.h>
 #include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/filesystem/FileSystem.h>
 
@@ -104,13 +105,13 @@ Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_sh
     if(!vertex_shader_module||!fragment_shader_module)
         return(nullptr);
 
-    if(vertex_shader_module->GetStage()!=VK_SHADER_STAGE_VERTEX_BIT)return(nullptr);
-    if(fragment_shader_module->GetStage()!=VK_SHADER_STAGE_FRAGMENT_BIT)return(nullptr);
+    if(!vertex_shader_module->IsVertex())return(nullptr);
+    if(!fragment_shader_module->IsFragment())return(nullptr);
 
     ShaderModuleMap *smm=new ShaderModuleMap;
 
-    smm->Add(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_module);
-    smm->Add(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_module);
+    smm->Add(vertex_shader_module);
+    smm->Add(fragment_shader_module);
 
     return(VK_NAMESPACE::CreateMaterial(device,smm));
 }
@@ -122,15 +123,15 @@ Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_sh
      ||!fragment_shader_module)
         return(nullptr);
 
-    if(vertex_shader_module->GetStage()!=VK_SHADER_STAGE_VERTEX_BIT)return(nullptr);
-    if(geometry_shader_module->GetStage()!=VK_SHADER_STAGE_GEOMETRY_BIT)return(nullptr);
-    if(fragment_shader_module->GetStage()!=VK_SHADER_STAGE_FRAGMENT_BIT)return(nullptr);
+    if(!vertex_shader_module->IsVertex())return(nullptr);
+    if(!geometry_shader_module->IsGeometry())return(nullptr);
+    if(!fragment_shader_module->IsFragment())return(nullptr);
 
     ShaderModuleMap *smm=new ShaderModuleMap;
 
-    smm->Add(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_module);
-    smm->Add(VK_SHADER_STAGE_GEOMETRY_BIT,geometry_shader_module);
-    smm->Add(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_module);
+    smm->Add(vertex_shader_module);
+    smm->Add(geometry_shader_module);
+    smm->Add(fragment_shader_module);
 
     return(VK_NAMESPACE::CreateMaterial(device,smm));
 }

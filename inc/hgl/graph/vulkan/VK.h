@@ -49,6 +49,7 @@ class Semaphore;
 
 struct ShaderStage;
 
+class ShaderModuleMap;
 class ShaderModule;
 class ShaderModuleManage;
 class VertexShaderModule;
