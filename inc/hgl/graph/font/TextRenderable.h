@@ -16,7 +16,7 @@ namespace hgl
 
                     uint        max_count;                                      ///<缓冲区最大容量
 
-            vulkan::VAB *       vab_vertex;
+            vulkan::VAB *       vab_position;
             vulkan::VAB *       vab_tex_coord;
 
         public:

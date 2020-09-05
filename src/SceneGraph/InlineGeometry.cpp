@@ -19,7 +19,7 @@ namespace hgl
             if(!rc.Init(4))
                 return(nullptr);
 
-            AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Vertex);
+            AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
 
             if(!vertex)
                 return(nullptr);
@@ -47,7 +47,7 @@ namespace hgl
                 if(!rc.Init(4))
                     return(nullptr);
                     
-                AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Vertex);
+                AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
 
                 vertex->WriteRectFan(rci->scope);
             }
@@ -61,7 +61,7 @@ namespace hgl
                 if(!rc.Init(rci->round_per*4))
                     return(nullptr);
                 
-                AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Vertex);
+                AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
 
                 vec2<float> *coord=new vec2<float>[rci->round_per];
 
@@ -119,7 +119,7 @@ namespace hgl
             if(!rc.Init(cci->field_count))
                 return(nullptr);
 
-            AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Vertex);
+            AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
 
             if(!vertex)
                 return(nullptr);
@@ -144,7 +144,7 @@ namespace hgl
             if(!rc.Init(((pgci->step.u+1)+(pgci->step.v+1))*2))
                 return(nullptr);
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
             for(uint row=0;row<=pgci->step.u;row++)
             {
                 float pos=float(row)/float(pgci->step.u);
@@ -196,7 +196,7 @@ namespace hgl
             if(!rc.Init(4))
                 return(nullptr);
             
-            rc.WriteVAD(VAN::Vertex,xy_vertices,sizeof(xy_vertices));
+            rc.WriteVAD(VAN::Position,xy_vertices,sizeof(xy_vertices));
 
             {
                 AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
@@ -256,12 +256,12 @@ namespace hgl
             if(cci->center  ==Vector3f(0,0,0)
              &&cci->size    ==Vector3f(1,1,1))
             {
-                rc.WriteVAD(VAN::Vertex,points,sizeof(points));
+                rc.WriteVAD(VAN::Position,points,sizeof(points));
             }
             else
             {
                 const float *sp=points;
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
                 float *vp=vertex->Get();
 
                 for(uint i=0;i<24;i++)
@@ -330,9 +330,9 @@ namespace hgl
                 float halfAngleRadian = hgl_ang2rad(angle) * 0.5f;
 
                 quaternion[0] = 0.0f;
-                quaternion[1] = sinf(halfAngleRadian);
+                quaternion[1] = sin(halfAngleRadian);
                 quaternion[2] = 0.0f;
-                quaternion[3] = cosf(halfAngleRadian);
+                quaternion[3] = cos(halfAngleRadian);
             }
 
             void glusQuaternionRotateRzf(float quaternion[4], const float angle)
@@ -341,8 +341,8 @@ namespace hgl
 
                 quaternion[0] = 0.0f;
                 quaternion[1] = 0.0f;
-                quaternion[2] = sinf(halfAngleRadian);
-                quaternion[3] = cosf(halfAngleRadian);
+                quaternion[2] = sin(halfAngleRadian);
+                quaternion[3] = cos(halfAngleRadian);
             }
 
             void glusQuaternionGetMatrix4x4f(float matrix[16], const float quaternion[4])
@@ -415,7 +415,7 @@ namespace hgl
             if(!rc.Init(numberVertices))
                 return(nullptr);
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
             AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
             AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
@@ -496,7 +496,7 @@ namespace hgl
             if(!rc.Init(numberVertices))
                 return(nullptr);
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
             AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
             AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
@@ -515,9 +515,9 @@ namespace hgl
                     uint tangentIndex = (i * (dci->numberSlices + 1) + j) * 3;
                     uint texCoordsIndex = (i * (dci->numberSlices + 1) + j) * 2;
 
-                    float x= dci->radius * sinf(angleStep * (float) i) * sinf(angleStep * (float) j);
-                    float y= dci->radius * sinf(angleStep * (float) i) * cosf(angleStep * (float) j);
-                    float z= dci->radius * cosf(angleStep * (float) i);
+                    float x= dci->radius * sin(angleStep * (double) i) * sin(angleStep * (double) j);
+                    float y= dci->radius * sin(angleStep * (double) i) * cos(angleStep * (double) j);
+                    float z= dci->radius * cos(angleStep * (double) i);
 
                     *vp=x;++vp;
                     *vp=y;++vp;
@@ -631,7 +631,7 @@ namespace hgl
             if(!rc.Init(numberVertices))
                 return(nullptr);
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
             AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
             AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
@@ -645,15 +645,15 @@ namespace hgl
             for (sideCount = 0; sideCount <= tci->numberSlices; ++sideCount, s += sIncr)
             {
                 // precompute some values
-                cos2PIs = (float) cosf(2.0f * HGL_PI * s);
-                sin2PIs = (float) sinf(2.0f * HGL_PI * s);
+                cos2PIs = cos(2.0f * HGL_PI * s);
+                sin2PIs = sin(2.0f * HGL_PI * s);
 
                 t = 0.0f;
                 for (faceCount = 0; faceCount <= tci->numberStacks; ++faceCount, t += tIncr)
                 {
                     // precompute some values
-                    cos2PIt = (float) cosf(2.0f * HGL_PI * t);
-                    sin2PIt = (float) sinf(2.0f * HGL_PI * t);
+                    cos2PIt = cos(2.0f * HGL_PI * t);
+                    sin2PIt = sin(2.0f * HGL_PI * t);
 
                     // generate vertex and stores it in the right position
                     *vp = (centerRadius + torusRadius * cos2PIt) * cos2PIs; ++vp;
@@ -766,7 +766,7 @@ namespace hgl
             if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                 return nullptr;
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
             AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
             AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
@@ -804,8 +804,8 @@ namespace hgl
             {
     	        float currentAngle = angleStep * (float)i;
 
-		        *vp =  cosf(currentAngle) * cci->radius;++vp;
-		        *vp = -sinf(currentAngle) * cci->radius;++vp;
+		        *vp =  cos(currentAngle) * cci->radius; ++vp;
+		        *vp = -sin(currentAngle) * cci->radius; ++vp;
 		        *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
@@ -817,8 +817,8 @@ namespace hgl
 
                 if(tp)
                 {
-                    *tp = sinf(currentAngle);   ++tp;
-                    *tp = cosf(currentAngle);   ++tp;
+                    *tp = sin(currentAngle);    ++tp;
+                    *tp = cos(currentAngle);    ++tp;
                     *tp = 0.0f;                 ++tp;
                 }
 
@@ -857,8 +857,8 @@ namespace hgl
             {
     	        float currentAngle = angleStep * (float)i;
 
-		        *vp =  cosf(currentAngle) * cci->radius;++vp;
-		        *vp = -sinf(currentAngle) * cci->radius;++vp;
+		        *vp =  cos(currentAngle) * cci->radius; ++vp;
+		        *vp = -sin(currentAngle) * cci->radius; ++vp;
 		        *vp =  cci->halfExtend;                 ++vp;
 
                 if(np)
@@ -870,8 +870,8 @@ namespace hgl
 
                 if(tp)
                 {
-                    *tp = -sinf(currentAngle);  ++tp;
-                    *tp = -cosf(currentAngle);  ++tp;
+                    *tp = -sin(currentAngle);   ++tp;
+                    *tp = -cos(currentAngle);   ++tp;
                     *tp = 0.0f;                 ++tp;
                 }
 
@@ -890,21 +890,21 @@ namespace hgl
 
 		        for (uint j = 0; j < 2; j++)
                 {
-			        *vp =  cosf(currentAngle) * cci->radius;    ++vp;
-			        *vp = -sinf(currentAngle) * cci->radius;    ++vp;
+			        *vp =  cos(currentAngle) * cci->radius;     ++vp;
+			        *vp = -sin(currentAngle) * cci->radius;     ++vp;
 			        *vp =  cci->halfExtend * sign;              ++vp;
 
                     if(np)
                     {
-			            *np = cosf(currentAngle);   ++np;
-			            *np = -sinf(currentAngle);  ++np;
+			            *np =  cos(currentAngle);   ++np;
+			            *np = -sin(currentAngle);   ++np;
 			            *np = 0.0f;                 ++np;
                     }
 
                     if(tp)
                     {
-			            *tp = -sinf(currentAngle);  ++tp;
-			            *tp = -cosf(currentAngle);  ++tp;
+			            *tp = -sin(currentAngle);   ++tp;
+			            *tp = -cos(currentAngle);   ++tp;
 			            *tp = 0.0f;                 ++tp;
                     }
 
@@ -988,7 +988,7 @@ namespace hgl
             if (cci->numberSlices < 3 || cci->numberStacks < 1 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                 return nullptr;
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
             AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
             AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
@@ -1026,8 +1026,8 @@ namespace hgl
             {
     	        float currentAngle = angleStep * (float)i;
 
-		        *vp =  cosf(currentAngle) * cci->radius;++vp;
-		        *vp = -sinf(currentAngle) * cci->radius;++vp;
+		        *vp =  cos(currentAngle) * cci->radius; ++vp;
+		        *vp = -sin(currentAngle) * cci->radius; ++vp;
 		        *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
@@ -1039,8 +1039,8 @@ namespace hgl
 
                 if(tp)
                 {
-		            *tp = sinf(currentAngle);   ++tp;
-		            *tp = cosf(currentAngle);   ++tp;
+		            *tp = sin(currentAngle);    ++tp;
+		            *tp = cos(currentAngle);    ++tp;
 		            *tp = 0.0f;                 ++tp;
                 }
 
@@ -1059,21 +1059,21 @@ namespace hgl
 		        {
 			        float currentAngle = angleStep * (float)i;
 
-			        *vp =  cosf(currentAngle) * cci->radius * (1.0f - level);   ++vp;
-			        *vp = -sinf(currentAngle) * cci->radius * (1.0f - level);   ++vp;
+			        *vp =  cos(currentAngle) * cci->radius * (1.0f - level);    ++vp;
+			        *vp = -sin(currentAngle) * cci->radius * (1.0f - level);    ++vp;
 			        *vp = -cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
 
                     if(np)
                     {
-			            *np = h / l *  cosf(currentAngle);  ++np;
-			            *np = h / l * -sinf(currentAngle);  ++np;
+			            *np = h / l *  cos(currentAngle);   ++np;
+			            *np = h / l * -sin(currentAngle);   ++np;
 			            *np = r / l;                        ++np;
                     }
 
                     if(tp)
                     {
-			            *tp = -sinf(currentAngle);  ++tp;
-			            *tp = -cosf(currentAngle);  ++tp;
+			            *tp = -sin(currentAngle);   ++tp;
+			            *tp = -cos(currentAngle);   ++tp;
 			            *tp = 0.0f;                 ++tp;
                     }
 
@@ -1100,7 +1100,7 @@ namespace hgl
             if(!rc.Init(6))
                 return(nullptr);
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
             AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
             if(!vertex||!color)
@@ -1145,14 +1145,14 @@ namespace hgl
             if(!rc.Init(8))
                 return(nullptr);
 
-            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Vertex);
+            AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
 
             if(!vertex)return(nullptr);
 
             if(cci->center  ==Vector3f(0,0,0)
              &&cci->size    ==Vector3f(1,1,1))
             {
-                rc.WriteVAD(VAN::Vertex,points,sizeof(points));
+                rc.WriteVAD(VAN::Position,points,sizeof(points));
             }
             else
             {

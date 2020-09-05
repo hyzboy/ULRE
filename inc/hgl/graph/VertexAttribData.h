@@ -12,7 +12,7 @@ namespace hgl
         namespace VertexAttribName
         {
             #define VAN_DEFINE(name)    constexpr char name[]=#name;
-            VAN_DEFINE(Vertex)
+            VAN_DEFINE(Position)
             VAN_DEFINE(Normal)
             VAN_DEFINE(Color)
             VAN_DEFINE(Tangent)
