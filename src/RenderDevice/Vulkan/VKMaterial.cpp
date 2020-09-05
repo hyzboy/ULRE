@@ -2,6 +2,7 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
+#include<hgl/graph/vulkan/ShaderModuleMap.h>
 #include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
