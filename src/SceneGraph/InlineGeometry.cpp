@@ -502,9 +502,9 @@ namespace hgl
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
             
             float *vp=vertex->Get();
-            float *np=normal->Get();
-            float *tp=tangent->Get();
-            float *tcp=tex_coord->Get();
+            float *np=normal?normal->Get():nullptr;
+            float *tp=tangent?tangent->Get():nullptr;
+            float *tcp=tex_coord?tex_coord->Get():nullptr;
 
             for (i = 0; i < numberParallels + 1; i++)
             {
@@ -637,9 +637,9 @@ namespace hgl
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
 
             float *vp=vertex->Get();
-            float *np=normal->Get();
-            float *tp=tangent->Get();
-            float *tcp=tex_coord->Get();
+            float *np=normal?normal->Get():nullptr;
+            float *tp=tangent?tangent->Get():nullptr;
+            float *tcp=tex_coord?tex_coord->Get():nullptr;
 
             // generate vertices and its attributes
             for (sideCount = 0; sideCount <= tci->numberSlices; ++sideCount, s += sIncr)
@@ -772,9 +772,9 @@ namespace hgl
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
 
             float *vp=vertex->Get();
-            float *np=normal->Get();
-            float *tp=tangent->Get();
-            float *tcp=tex_coord->Get();
+            float *np=normal?normal->Get():nullptr;
+            float *tp=tangent?tangent->Get():nullptr;
+            float *tcp=tex_coord?tex_coord->Get():nullptr;
 
             *vp =  0.0f;             ++vp;
             *vp =  0.0f;             ++vp;
@@ -994,9 +994,9 @@ namespace hgl
             AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
 
             float *vp=vertex->Get();
-            float *np=normal->Get();
-            float *tp=tangent->Get();
-            float *tcp=tex_coord->Get();
+            float *np=normal?normal->Get():nullptr;
+            float *tp=tangent?tangent->Get():nullptr;
+            float *tcp=tex_coord?tex_coord->Get():nullptr;
 
             *vp =  0.0f;            ++vp;
             *vp =  0.0f;            ++vp;
