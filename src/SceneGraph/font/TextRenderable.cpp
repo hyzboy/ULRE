@@ -13,14 +13,14 @@ namespace hgl
 
             max_count=0;
 
-            vab_vertex=nullptr;
+            vab_position=nullptr;
             vab_tex_coord=nullptr;
         }
 
         TextRenderable::~TextRenderable()
         {
             SAFE_CLEAR(vab_tex_coord);
-            SAFE_CLEAR(vab_vertex);
+            SAFE_CLEAR(vab_position);
         }
 
         void TextRenderable::SetCharCount(const uint cc)
@@ -31,11 +31,11 @@ namespace hgl
             max_count=power_to_2(cc);
 
             {
-                if(vab_vertex)
-                    delete vab_vertex;
+                if(vab_position)
+                    delete vab_position;
 
-                vab_vertex      =device->CreateVAB(VAF_VEC4,max_count);
-                Set(VAN::Vertex,vab_vertex);
+                vab_position      =device->CreateVAB(VAF_VEC4,max_count);
+                Set(VAN::Position,vab_position);
             }
 
             {
@@ -47,7 +47,7 @@ namespace hgl
             }
         }
 
-        bool TextRenderable::WriteVertex    (const float *fp){if(!fp)return(false);if(!vab_vertex   )return(false);return vab_vertex    ->Write(fp,draw_count*4*sizeof(float));}
+        bool TextRenderable::WriteVertex    (const float *fp){if(!fp)return(false);if(!vab_position   )return(false);return vab_position    ->Write(fp,draw_count*4*sizeof(float));}
         bool TextRenderable::WriteTexCoord  (const float *fp){if(!fp)return(false);if(!vab_tex_coord)return(false);return vab_tex_coord ->Write(fp,draw_count*4*sizeof(float));}
     }//namespace graph
 }//namespace hgl

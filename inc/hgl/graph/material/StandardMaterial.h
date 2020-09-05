@@ -15,7 +15,7 @@ public:
         Const,
         Param,
         Texture,
-        Vertex,
+        Position,
     };//
 
     struct
