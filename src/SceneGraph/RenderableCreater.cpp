@@ -94,7 +94,7 @@ namespace hgl
 
         uint16 *RenderableCreater::CreateIBO16(uint count,const uint16 *data)
         {
-            if(!ibo)return(nullptr);
+            if(ibo)return(nullptr);
 
             ibo=db->CreateIBO16(count,data);
             return (uint16 *)ibo->Map();
@@ -102,7 +102,7 @@ namespace hgl
 
         uint32 *RenderableCreater::CreateIBO32(uint count,const uint32 *data)
         {
-            if(!ibo)return(nullptr);
+            if(ibo)return(nullptr);
 
             ibo=db->CreateIBO32(count,data);
             return (uint32 *)ibo->Map();
