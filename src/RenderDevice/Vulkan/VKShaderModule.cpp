@@ -69,7 +69,7 @@ VertexShaderModule::~VertexShaderModule()
 
 VertexAttributeBinding *VertexShaderModule::CreateVertexAttributeBinding()
 {
-    VertexAttributeBinding *vab=new VertexAttributeBinding(this);
+    VertexAttributeBinding *vab=new VertexAttributeBinding(attr_count,binding_list,attribute_list);
 
     vab_sets.Add(vab);
 
