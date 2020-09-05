@@ -5,7 +5,7 @@
 #include<hgl/graph/vulkan/VKMemory.h>
 #include<hgl/graph/vulkan/VKImageView.h>
 #include<hgl/graph/Bitmap.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 VK_NAMESPACE_BEGIN
 
 BitmapData *LoadBitmapFromFile(const OSString &filename);

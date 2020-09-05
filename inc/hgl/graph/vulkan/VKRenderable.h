@@ -3,7 +3,7 @@
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 #include<hgl/math/Math.h>
 VK_NAMESPACE_BEGIN
 /**

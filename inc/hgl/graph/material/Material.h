@@ -2,7 +2,7 @@
 #define HGL_GRAPH_MATERIAL_INCLUDE
 
 #include<hgl/graph/material/Component.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 
 MATERIAL_NAMESPACE_BEGIN
     enum class BlendMode

@@ -2,7 +2,7 @@
 #define HGL_GRAPH_RENDER_SURFACE_INCLUDE
 
 #include<hgl/type/List.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/platform/Window.h>

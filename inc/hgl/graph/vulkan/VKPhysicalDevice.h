@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/vulkan/VK.h>
-#include<hgl/type/BaseString.h>
+#include<hgl/type/String.h>
 #include<hgl/type/Set.h>
 
 VK_NAMESPACE_BEGIN

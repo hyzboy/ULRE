@@ -122,9 +122,9 @@ namespace hgl
             int sl_v_r2l();
             int sl_v_l2r();
 
-            template<typename T> int SimpleLayout(TextRenderable *,TileFont *,const BaseString<T> &);                   ///<简易排版
+            template<typename T> int SimpleLayout(TextRenderable *,TileFont *,const String<T> &);                   ///<简易排版
 
-//            template<typename T> int SimpleLayout(TileFont *,const StringList<BaseString<T>> &);                      ///<简易排版
+//            template<typename T> int SimpleLayout(TileFont *,const StringList<String<T>> &);                      ///<简易排版
 
         protected:  
 
