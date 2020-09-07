@@ -41,6 +41,8 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
 
     if(!dsl_creater->CreatePipelineLayout())
     {
+        delete shader_stage_list;
+        delete dsl_creater;
         delete shader_maps;
         return(nullptr);
     }
