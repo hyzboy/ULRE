@@ -17,7 +17,7 @@ class DescriptorSets
     VkPipelineLayout pipeline_layout;
 
     ObjectList<VkDescriptorImageInfo> desc_image_info;
-    List<VkWriteDescriptorSet> write_desc_sets;
+    List<VkWriteDescriptorSet> wds_list;
 
 private:
 

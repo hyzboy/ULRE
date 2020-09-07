@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 void DescriptorSets::Clear()
 {
-    write_desc_sets.ClearData();
+    wds_list.ClearData();
     desc_image_info.ClearData();
 }
 
@@ -16,20 +16,20 @@ bool DescriptorSets::BindUBO(const int binding,const Buffer *buf)
     if(binding<0||!buf)
         return(false);
 
-    VkWriteDescriptorSet writeDescriptorSet;
+    VkWriteDescriptorSet wds;
 
-    writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.pNext            = nullptr;
-    writeDescriptorSet.dstSet           = desc_set;
-    writeDescriptorSet.dstBinding       = binding;
-    writeDescriptorSet.dstArrayElement  = 0;
-    writeDescriptorSet.descriptorCount  = 1;
-    writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    writeDescriptorSet.pImageInfo       = nullptr;
-    writeDescriptorSet.pBufferInfo      = buf->GetBufferInfo();
-    writeDescriptorSet.pTexelBufferView = nullptr;
+    wds.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wds.pNext            = nullptr;
+    wds.dstSet           = desc_set;
+    wds.dstBinding       = binding;
+    wds.dstArrayElement  = 0;
+    wds.descriptorCount  = 1;
+    wds.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    wds.pImageInfo       = nullptr;
+    wds.pBufferInfo      = buf->GetBufferInfo();
+    wds.pTexelBufferView = nullptr;
 
-    write_desc_sets.Add(writeDescriptorSet);
+    wds_list.Add(wds);
     return(true);
 }
 
@@ -38,20 +38,20 @@ bool DescriptorSets::BindUBODynamic(const int binding,const Buffer *buf)
     if(binding<0||!buf)
         return(false);
 
-    VkWriteDescriptorSet writeDescriptorSet;
+    VkWriteDescriptorSet wds;
 
-    writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.pNext            = nullptr;
-    writeDescriptorSet.dstSet           = desc_set;
-    writeDescriptorSet.dstBinding       = binding;
-    writeDescriptorSet.dstArrayElement  = 0;
-    writeDescriptorSet.descriptorCount  = 1;
-    writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    writeDescriptorSet.pImageInfo       = nullptr;
-    writeDescriptorSet.pBufferInfo      = buf->GetBufferInfo();
-    writeDescriptorSet.pTexelBufferView = nullptr;
+    wds.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wds.pNext            = nullptr;
+    wds.dstSet           = desc_set;
+    wds.dstBinding       = binding;
+    wds.dstArrayElement  = 0;
+    wds.descriptorCount  = 1;
+    wds.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    wds.pImageInfo       = nullptr;
+    wds.pBufferInfo      = buf->GetBufferInfo();
+    wds.pTexelBufferView = nullptr;
 
-    write_desc_sets.Add(writeDescriptorSet);
+    wds_list.Add(wds);
     return(true);
 }
 
@@ -68,25 +68,25 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
 
     desc_image_info.Add(image_info);
 
-    VkWriteDescriptorSet writeDescriptorSet;
+    VkWriteDescriptorSet wds;
 
-    writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    writeDescriptorSet.pNext            = nullptr;
-    writeDescriptorSet.dstSet           = desc_set;
-    writeDescriptorSet.dstBinding       = binding;
-    writeDescriptorSet.dstArrayElement  = 0;
-    writeDescriptorSet.descriptorCount  = 1;
-    writeDescriptorSet.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    writeDescriptorSet.pImageInfo       = image_info;
-    writeDescriptorSet.pBufferInfo      = nullptr;
-    writeDescriptorSet.pTexelBufferView = nullptr;
+    wds.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wds.pNext            = nullptr;
+    wds.dstSet           = desc_set;
+    wds.dstBinding       = binding;
+    wds.dstArrayElement  = 0;
+    wds.descriptorCount  = 1;
+    wds.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    wds.pImageInfo       = image_info;
+    wds.pBufferInfo      = nullptr;
+    wds.pTexelBufferView = nullptr;
 
-    write_desc_sets.Add(writeDescriptorSet);
+    wds_list.Add(wds);
     return(true);
 }
 
 void DescriptorSets::Update()
 {
-    vkUpdateDescriptorSets(*device,write_desc_sets.GetCount(),write_desc_sets.GetData(),0,nullptr);
+    vkUpdateDescriptorSets(*device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
 }
 VK_NAMESPACE_END
