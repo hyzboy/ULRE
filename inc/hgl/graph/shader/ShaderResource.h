@@ -41,7 +41,7 @@ VK_NAMESPACE_BEGIN
 
     class ShaderResource
     {
-        const void *data;
+        const uint8 *data;
 
         VkShaderStageFlagBits stage_flag;
 
@@ -55,7 +55,7 @@ VK_NAMESPACE_BEGIN
 
     public:
 
-        ShaderResource(const void *,const VkShaderStageFlagBits &,const void *,const uint32);
+        ShaderResource(const uint8 *,const VkShaderStageFlagBits &,const void *,const uint32);
         virtual ~ShaderResource();
 
         const   VkShaderStageFlagBits   GetStage            ()const {return stage_flag;}
