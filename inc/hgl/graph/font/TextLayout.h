@@ -156,10 +156,10 @@ namespace hgl
 
             virtual ~TextLayout()=default;
 
-            void Set                (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
-            void Set                (FontSource *fs)                    {if(fs)font_source=fs;}
+            void SetTLA             (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
+            void SetFont            (FontSource *fs)                    {if(fs)font_source=fs;}
             void SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
-            void Set                (const TextAlign &ta)               {tla.align=ta;}
+            void SetAlign           (const TextAlign &ta)               {tla.align=ta;}
             void SetMaxWidth        (const float mw)                    {tla.max_width=mw;}
             void SetMaxHeight       (const float mh)                    {tla.max_height=mh;}
 

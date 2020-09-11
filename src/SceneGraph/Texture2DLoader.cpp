@@ -98,7 +98,7 @@ namespace hgl
             Bitmap2DLoader loader;
 
             if(!loader.Load(filename))
-                return(false);
+                return(nullptr);
 
             return loader.GetBitmap();
         }
