@@ -81,7 +81,7 @@ VK_NAMESPACE_BEGIN
         }
     }//namespcae
 
-    ShaderResource::ShaderResource(const void *fd,const VkShaderStageFlagBits &flag,const void *sd,const uint32 size)
+    ShaderResource::ShaderResource(const uint8 *fd,const VkShaderStageFlagBits &flag,const void *sd,const uint32 size)
     {
         data=fd;
         stage_flag=flag;

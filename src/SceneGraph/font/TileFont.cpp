@@ -53,7 +53,7 @@ namespace hgl
             if(out_count>0)
             {
                 tile_data->BeginCommit();
-                for(uint i=0;i<ch_count;i++)
+                for(int i=0;i<ch_count;i++)
                 {
                     if(!to_res.Get(*cp,to))
                     {
@@ -80,7 +80,7 @@ namespace hgl
             }
             else
             {
-                for(uint i=0;i<ch_count;i++)
+                for(int i=0;i<ch_count;i++)
                 {
                     to_res.Get(*cp,to);
 
@@ -100,7 +100,7 @@ namespace hgl
         {
             const u32char *cp=ch_list.GetData();
 
-            for(uint i=0;i<ch_list.GetCount();i++)
+            for(int i=0;i<ch_list.GetCount();i++)
             {
                 to_res.Release(*cp);
                 ++cp;
