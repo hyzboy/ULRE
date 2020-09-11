@@ -74,10 +74,10 @@ namespace hgl
             const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
 
             if(!ss)
-                return(nullptr);
+                return(false);
 
             if(ss->type.GetStride()*vertices_number!=bytes)
-                return(nullptr);
+                return(false);
                
             ssb=new ShaderStageBind;
 

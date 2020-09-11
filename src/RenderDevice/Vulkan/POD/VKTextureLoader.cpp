@@ -167,7 +167,7 @@ Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
     VkTexture2DLoader loader(device);
 
     if(!loader.Load(filename))
-        return(false);
+        return(nullptr);
 
     return loader.GetTexture();
 }

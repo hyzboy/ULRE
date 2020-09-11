@@ -154,7 +154,7 @@ VK_NAMESPACE_BEGIN
          ||memcmp(origin_filedata,SHADER_FILE_HEADER,SHADER_FILE_HEADER_BYTES))
         {
             delete[] origin_filedata;
-            return(false);
+            return(nullptr);
         }
 
         const uint8 *filedata=origin_filedata;

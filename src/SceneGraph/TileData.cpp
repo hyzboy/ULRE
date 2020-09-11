@@ -131,7 +131,7 @@ namespace hgl
         */
         TileObject *TileData::Commit(const void *data,const uint bytes,const int ctw,const int cth)
         {
-            if(!commit_ptr)return(false);
+            if(!commit_ptr)return(nullptr);
             if(!data||!bytes||ctw<=0||cth<=0)
                 return(nullptr);
                 

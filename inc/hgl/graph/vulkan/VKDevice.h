@@ -205,7 +205,7 @@ public: //Texture
     bool ChangeTexture2D(Texture2D *tex,void *data,const RectScope2<T> &rs,uint32_t size)
     {
         return ChangeTexture2D( tex,
-                                buf,
+                                data,
                                 rs.GetLeft(),
                                 rs.GetTop(),
                                 rs.GetWidth(),
