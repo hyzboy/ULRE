@@ -42,7 +42,7 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/material/Atmosphere"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/material/Atmosphere")); //不需要写.material的扩展名
         if(!material)
             return(false);
 

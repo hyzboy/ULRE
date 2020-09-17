@@ -231,6 +231,9 @@ Material *ShaderModuleManage::CreateMaterial(const OSString &filename)
     ++sp;
     --left;
 
+    if(ver!=1)
+        return(nullptr);
+
     const uint32_t shader_bits=*(uint32_t *)sp;
     sp+=sizeof(uint32_t);
     left-=sizeof(uint32_t);

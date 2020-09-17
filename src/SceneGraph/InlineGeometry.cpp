@@ -709,7 +709,7 @@ namespace hgl
 
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = centerIndex;      ++tp;
+                    *tp = centerIndex;      ++tp;
                     *tp = indexCounter;     ++tp;
                     *tp = indexCounter + 1; ++tp;
 
@@ -723,7 +723,7 @@ namespace hgl
 
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = centerIndex;      ++tp;
+                    *tp = centerIndex;      ++tp;
                     *tp = indexCounter + 1; ++tp;
                     *tp = indexCounter;     ++tp;
 
@@ -734,11 +734,11 @@ namespace hgl
                 // Sides
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = indexCounter;     ++tp;
+                    *tp = indexCounter;     ++tp;
                     *tp = indexCounter + 1; ++tp;
                     *tp = indexCounter + 2; ++tp;
 
-    	            *tp = indexCounter + 2; ++tp;
+                    *tp = indexCounter + 2; ++tp;
                     *tp = indexCounter + 1; ++tp;
                     *tp = indexCounter + 3; ++tp;
 
@@ -802,11 +802,11 @@ namespace hgl
 
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
-    	        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        *vp =  cos(currentAngle) * cci->radius; ++vp;
-		        *vp = -sin(currentAngle) * cci->radius; ++vp;
-		        *vp = -cci->halfExtend;                 ++vp;
+                *vp =  cos(currentAngle) * cci->radius; ++vp;
+                *vp = -sin(currentAngle) * cci->radius; ++vp;
+                *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
@@ -855,11 +855,11 @@ namespace hgl
 
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
-    	        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        *vp =  cos(currentAngle) * cci->radius; ++vp;
-		        *vp = -sin(currentAngle) * cci->radius; ++vp;
-		        *vp =  cci->halfExtend;                 ++vp;
+                *vp =  cos(currentAngle) * cci->radius; ++vp;
+                *vp = -sin(currentAngle) * cci->radius; ++vp;
+                *vp =  cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
@@ -884,37 +884,37 @@ namespace hgl
 
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
-		        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        float sign = -1.0f;
+                float sign = -1.0f;
 
-		        for (uint j = 0; j < 2; j++)
+                for (uint j = 0; j < 2; j++)
                 {
-			        *vp =  cos(currentAngle) * cci->radius;     ++vp;
-			        *vp = -sin(currentAngle) * cci->radius;     ++vp;
-			        *vp =  cci->halfExtend * sign;              ++vp;
+                    *vp =  cos(currentAngle) * cci->radius;     ++vp;
+                    *vp = -sin(currentAngle) * cci->radius;     ++vp;
+                    *vp =  cci->halfExtend * sign;              ++vp;
 
                     if(np)
                     {
-			            *np =  cos(currentAngle);   ++np;
-			            *np = -sin(currentAngle);   ++np;
-			            *np = 0.0f;                 ++np;
+                        *np =  cos(currentAngle);   ++np;
+                        *np = -sin(currentAngle);   ++np;
+                        *np = 0.0f;                 ++np;
                     }
 
                     if(tp)
                     {
-			            *tp = -sin(currentAngle);   ++tp;
-			            *tp = -cos(currentAngle);   ++tp;
-			            *tp = 0.0f;                 ++tp;
+                        *tp = -sin(currentAngle);   ++tp;
+                        *tp = -cos(currentAngle);   ++tp;
+                        *tp = 0.0f;                 ++tp;
                     }
 
                     if(tcp)
                     {
-			            *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
-			            *tcp = (sign + 1.0f) / 2.0f;                 ++tcp;
+                        *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
+                        *tcp = (sign + 1.0f) / 2.0f;                 ++tcp;
                     }
 
-			        sign = 1.0f;
+                    sign = 1.0f;
                 }
             }
 
@@ -938,7 +938,7 @@ namespace hgl
 
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = centerIndex;      ++tp;
+                    *tp = centerIndex;      ++tp;
                     *tp = indexCounter;     ++tp;
                     *tp = indexCounter + 1; ++tp;
 
@@ -947,21 +947,21 @@ namespace hgl
                 indexCounter++;
 
                 // Sides
-	            for (j = 0; j < numberStacks; j++)
-	            {
-		            for (i = 0; i < numberSlices; i++)
-		            {
-			            *tp = indexCounter;                     ++tp;
-			            *tp = indexCounter + numberSlices + 1;  ++tp;
-			            *tp = indexCounter + 1;                 ++tp;
+                for (j = 0; j < numberStacks; j++)
+                {
+                    for (i = 0; i < numberSlices; i++)
+                    {
+                        *tp = indexCounter;                     ++tp;
+                        *tp = indexCounter + numberSlices + 1;  ++tp;
+                        *tp = indexCounter + 1;                 ++tp;
 
-			            *tp = indexCounter + 1;                 ++tp;
-			            *tp = indexCounter + numberSlices + 1;  ++tp;
-			            *tp = indexCounter + numberSlices + 2;  ++tp;
+                        *tp = indexCounter + 1;                 ++tp;
+                        *tp = indexCounter + numberSlices + 1;  ++tp;
+                        *tp = indexCounter + numberSlices + 2;  ++tp;
 
-	                    indexCounter++;
-    	            }
-		            indexCounter++;
+                        indexCounter++;
+                    }
+                    indexCounter++;
                 }
             }
         }//namespace
@@ -1024,63 +1024,63 @@ namespace hgl
 
             for (i = 0; i < cci->numberSlices + 1; i++)
             {
-    	        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        *vp =  cos(currentAngle) * cci->radius; ++vp;
-		        *vp = -sin(currentAngle) * cci->radius; ++vp;
-		        *vp = -cci->halfExtend;                 ++vp;
+                *vp =  cos(currentAngle) * cci->radius; ++vp;
+                *vp = -sin(currentAngle) * cci->radius; ++vp;
+                *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
-		            *np = 0.0f;++np;
-		            *np = 0.0f;++np;
-		            *np =-1.0f;++np;
+                    *np = 0.0f;++np;
+                    *np = 0.0f;++np;
+                    *np =-1.0f;++np;
                 }
 
                 if(tp)
                 {
-		            *tp = sin(currentAngle);    ++tp;
-		            *tp = cos(currentAngle);    ++tp;
-		            *tp = 0.0f;                 ++tp;
+                    *tp = sin(currentAngle);    ++tp;
+                    *tp = cos(currentAngle);    ++tp;
+                    *tp = 0.0f;                 ++tp;
                 }
 
                 if(tcp)
                 {
-		            *tcp = 0.0f; ++tcp;
-		            *tcp = 0.0f; ++tcp;
+                    *tcp = 0.0f; ++tcp;
+                    *tcp = 0.0f; ++tcp;
                 }
             }
 
-	        for (j = 0; j < cci->numberStacks + 1; j++)
+            for (j = 0; j < cci->numberStacks + 1; j++)
             {
-		        float level = (float)j / (float)cci->numberStacks;
+                float level = (float)j / (float)cci->numberStacks;
 
-		        for (i = 0; i < cci->numberSlices + 1; i++)
-		        {
-			        float currentAngle = angleStep * (float)i;
+                for (i = 0; i < cci->numberSlices + 1; i++)
+                {
+                    float currentAngle = angleStep * (float)i;
 
-			        *vp =  cos(currentAngle) * cci->radius * (1.0f - level);    ++vp;
-			        *vp = -sin(currentAngle) * cci->radius * (1.0f - level);    ++vp;
-			        *vp = -cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
+                    *vp =  cos(currentAngle) * cci->radius * (1.0f - level);    ++vp;
+                    *vp = -sin(currentAngle) * cci->radius * (1.0f - level);    ++vp;
+                    *vp = -cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
 
                     if(np)
                     {
-			            *np = h / l *  cos(currentAngle);   ++np;
-			            *np = h / l * -sin(currentAngle);   ++np;
-			            *np = r / l;                        ++np;
+                        *np = h / l *  cos(currentAngle);   ++np;
+                        *np = h / l * -sin(currentAngle);   ++np;
+                        *np = r / l;                        ++np;
                     }
 
                     if(tp)
                     {
-			            *tp = -sin(currentAngle);   ++tp;
-			            *tp = -cos(currentAngle);   ++tp;
-			            *tp = 0.0f;                 ++tp;
+                        *tp = -sin(currentAngle);   ++tp;
+                        *tp = -cos(currentAngle);   ++tp;
+                        *tp = 0.0f;                 ++tp;
                     }
 
                     if(tcp)
                     {
-			            *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
-			            *tcp = level;                                ++tcp;
+                        *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
+                        *tcp = level;                                ++tcp;
                     }
                 }
             }
