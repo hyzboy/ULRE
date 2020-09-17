@@ -81,17 +81,11 @@ VK_NAMESPACE_BEGIN
         }
     }//namespcae
 
-    ShaderResource::ShaderResource(const uint8 *fd,const VkShaderStageFlagBits &flag,const void *sd,const uint32 size)
+    ShaderResource::ShaderResource(const VkShaderStageFlagBits &flag,const void *sd,const uint32 size)
     {
-        data=fd;
         stage_flag=flag;
         spv_data=sd;
         spv_size=size;            
-    }
-
-    ShaderResource::~ShaderResource()
-    {
-        delete[] data;
     }
 
     const ShaderStage *ShaderResource::GetStageInput(const AnsiString &name) const
@@ -143,24 +137,24 @@ VK_NAMESPACE_BEGIN
             return -1;
     }
 
-    ShaderResource *LoadShaderResoruce(const OSString &filename)
+    ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize,bool include_file_header)
     {
-        int64 filesize;
-        uint8 *origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".shader"),filesize);
-
         if(!origin_filedata)return(nullptr);
-
-        if(filesize<SHADER_FILE_MIN_SIZE
-         ||memcmp(origin_filedata,SHADER_FILE_HEADER,SHADER_FILE_HEADER_BYTES))
-        {
-            delete[] origin_filedata;
-            return(nullptr);
-        }
 
         const uint8 *filedata=origin_filedata;
         const uint8 *file_end=filedata+filesize;
 
-        filedata+=SHADER_FILE_HEADER_BYTES;
+        if(include_file_header)
+        {
+            if(filesize<SHADER_FILE_MIN_SIZE
+             ||memcmp(origin_filedata,SHADER_FILE_HEADER,SHADER_FILE_HEADER_BYTES))
+            {
+                delete[] origin_filedata;
+                return(nullptr);
+            }
+
+            filedata+=SHADER_FILE_HEADER_BYTES;
+        }
 
         uint8                   version;
         VkShaderStageFlagBits   flag;
@@ -171,7 +165,7 @@ VK_NAMESPACE_BEGIN
         flag    =(const VkShaderStageFlagBits)AccessByPointer(filedata,uint32);
         spv_size=AccessByPointer(filedata,uint32);
 
-        ShaderResource *sr=new ShaderResource(origin_filedata,flag,filedata,spv_size);
+        ShaderResource *sr=new ShaderResource(flag,filedata,spv_size);
 
         filedata+=spv_size;
 
@@ -186,5 +180,13 @@ VK_NAMESPACE_BEGIN
         }
 
         return sr;
+    }
+
+    ShaderResource *LoadShaderResoruce(const OSString &filename)
+    {
+        int64 filesize;
+        AutoDeleteArray<uint8> origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".shader"),filesize);
+
+        return LoadShaderResource(origin_filedata,filesize,true);
     }
 VK_NAMESPACE_END

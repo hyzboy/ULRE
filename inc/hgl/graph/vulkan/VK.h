@@ -92,6 +92,22 @@ enum class ShaderStageBit
     Compute     =VK_SHADER_STAGE_COMPUTE_BIT
 };//enum class ShaderStageBit
 
+inline const uint GetShaderCountByBits(const uint32_t bits)
+{
+    uint comp=(uint)VK_SHADER_STAGE_VERTEX_BIT;
+    uint result=0;
+
+    for(uint i=0;i<6;i++)
+    {
+        if(bits&comp)
+            ++result;
+
+        comp<<=1;
+    }
+
+    return result;
+}
+
 /**
  * max-lengths:
  *
