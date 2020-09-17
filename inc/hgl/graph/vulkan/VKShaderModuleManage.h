@@ -20,6 +20,11 @@ class ShaderModuleManage
     int shader_count;
     Map<int,ShaderModule *> shader_list;
 
+protected:
+
+    void Free(ShaderModuleMap *);
+    Material *CreateMaterial(ShaderModuleMap *);
+
 public:
 
     ShaderModuleManage(Device *dev)
@@ -56,53 +61,13 @@ public:
     const ShaderModule *GetShader       (int);
     bool                ReleaseShader   (const ShaderModule *);
 
-    Material *    CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const;
-    Material *    CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)const;
+    Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module);
+    Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module);
 
-    Material *    CreateMaterial(const OSString &vertex_shader_filename,const OSString &fragment_shader_filename)
-    {
-        const ShaderModule *vs=CreateShader(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_filename);
+    Material *CreateMaterial(const OSString &vertex_shader_filename,const OSString &fragment_shader_filename);
+    Material *CreateMaterial(const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename);
 
-        if(!vs)
-            return(nullptr);
-
-        const ShaderModule *fs=CreateShader(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_filename);
-
-        if(!fs)
-        {
-            ReleaseShader(vs);
-            return(nullptr);
-        }
-
-        return(CreateMaterial((VertexShaderModule *)vs,fs));
-    }
-
-    Material *    CreateMaterial(const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename)
-    {
-        const ShaderModule *vs=CreateShader(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_filename);
-
-        if(!vs)
-            return(nullptr);
-
-        const ShaderModule *gs=CreateShader(VK_SHADER_STAGE_GEOMETRY_BIT,geometry_shader_filename);
-
-        if(!gs)
-        {
-            ReleaseShader(vs);
-            return(nullptr);
-        }
-
-        const ShaderModule *fs=CreateShader(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_filename);
-
-        if(!fs)
-        {
-            ReleaseShader(gs);
-            ReleaseShader(vs);
-            return(nullptr);
-        }
-
-        return(CreateMaterial((VertexShaderModule *)vs,gs,fs));
-    }
+    Material *CreateMaterial(const OSString &filename);
 };//class ShaderModuleManage
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SHADER_MODULE_MANAGE_INCLUDE

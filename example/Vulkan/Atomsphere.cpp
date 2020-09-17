@@ -42,8 +42,7 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/Atomsphere.vert"),
-                                               OS_TEXT("res/shader/Atomsphere.frag"));
+        material=shader_manage->CreateMaterial(OS_TEXT("res/material/Atmosphere"));
         if(!material)
             return(false);
 

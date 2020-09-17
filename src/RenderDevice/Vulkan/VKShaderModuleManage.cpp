@@ -100,7 +100,33 @@ bool ShaderModuleManage::ReleaseShader(const ShaderModule *const_sm)
     return(true);
 }
 
-Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)const
+void ShaderModuleManage::Free(ShaderModuleMap *smm)
+{
+    const int count=smm->GetCount();
+    
+    auto **it=smm->GetDataList();
+
+    for(int i=0;i<count;i++)
+    {
+        ReleaseShader((*it)->right);
+
+        ++it;
+    }
+
+    delete smm;
+}
+
+Material *ShaderModuleManage::CreateMaterial(ShaderModuleMap *smm)
+{
+    Material *mtl=VK_NAMESPACE::CreateMaterial(device,smm);
+
+    if(mtl)return(mtl);
+
+    Free(smm);
+    return(nullptr);
+}
+
+Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
 {
     if(!vertex_shader_module||!fragment_shader_module)
         return(nullptr);
@@ -113,10 +139,10 @@ Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_sh
     smm->Add(vertex_shader_module);
     smm->Add(fragment_shader_module);
 
-    return(VK_NAMESPACE::CreateMaterial(device,smm));
+    return CreateMaterial(smm);
 }
 
-Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)const
+Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
 {
     if(!vertex_shader_module
      ||!geometry_shader_module
@@ -133,6 +159,120 @@ Material *ShaderModuleManage::CreateMaterial(const VertexShaderModule *vertex_sh
     smm->Add(geometry_shader_module);
     smm->Add(fragment_shader_module);
 
-    return(VK_NAMESPACE::CreateMaterial(device,smm));
+    return CreateMaterial(smm);
+}
+
+Material *ShaderModuleManage::CreateMaterial(const OSString &vertex_shader_filename,const OSString &fragment_shader_filename)
+{
+    const ShaderModule *vs=CreateShader(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_filename);
+
+    if(!vs)
+        return(nullptr);
+
+    const ShaderModule *fs=CreateShader(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_filename);
+
+    if(!fs)
+    {
+        ReleaseShader(vs);
+        return(nullptr);
+    }
+
+    return(CreateMaterial((VertexShaderModule *)vs,fs));
+}
+
+Material *ShaderModuleManage::CreateMaterial(const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename)
+{
+    const ShaderModule *vs=CreateShader(VK_SHADER_STAGE_VERTEX_BIT,vertex_shader_filename);
+
+    if(!vs)
+        return(nullptr);
+
+    const ShaderModule *gs=CreateShader(VK_SHADER_STAGE_GEOMETRY_BIT,geometry_shader_filename);
+
+    if(!gs)
+    {
+        ReleaseShader(vs);
+        return(nullptr);
+    }
+
+    const ShaderModule *fs=CreateShader(VK_SHADER_STAGE_FRAGMENT_BIT,fragment_shader_filename);
+
+    if(!fs)
+    {
+        ReleaseShader(gs);
+        ReleaseShader(vs);
+        return(nullptr);
+    }
+
+    return(CreateMaterial((VertexShaderModule *)vs,gs,fs));
+}
+
+Material *ShaderModuleManage::CreateMaterial(const OSString &filename)
+{
+    constexpr char MaterialFileHeader[]=u8"Material\x1A";
+    constexpr uint MaterialFileHeaderLength=sizeof(MaterialFileHeader)-1;
+
+    int64 filesize;
+    AutoDeleteArray<uint8> origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".material"),filesize);
+
+    if(filesize<MaterialFileHeaderLength)
+        return(nullptr);
+
+    const uint8 *sp=origin_filedata;
+    int64 left=filesize;
+
+    if(memcmp(sp,MaterialFileHeader,MaterialFileHeaderLength)!=0)
+        return(nullptr);
+
+    sp+=MaterialFileHeaderLength;
+    left-=MaterialFileHeaderLength;
+
+    const uint8 ver=*sp;
+    ++sp;
+    --left;
+
+    const uint32_t shader_bits=*(uint32_t *)sp;
+    sp+=sizeof(uint32_t);
+    left-=sizeof(uint32_t);
+
+    const uint count=GetShaderCountByBits(shader_bits);
+    uint32_t size;
+
+    ShaderResource *sr;
+    const ShaderModule *sm;
+    
+    bool result=true;
+    ShaderModuleMap *smm=new ShaderModuleMap;
+
+    for(uint i=0;i<count;i++)
+    {
+        size=*(uint32_t *)sp;
+        sp+=sizeof(uint32_t);
+        left-=sizeof(uint32_t);
+
+        sr=LoadShaderResource(sp,size,false);
+        sp+=size;
+        left-=size;
+
+        if(sr)
+        {
+            sm=CreateShader(sr);
+
+            if(sm)
+            {
+                if(smm->Add(sm))
+                    continue;
+            }
+        }
+
+        result=false;
+        break;
+    }
+
+    if(result)
+        return CreateMaterial(smm);
+    
+    Free(smm);
+    return(nullptr);
 }
 VK_NAMESPACE_END
