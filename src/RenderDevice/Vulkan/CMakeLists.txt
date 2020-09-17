@@ -46,6 +46,8 @@ SOURCE_GROUP("Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})
 
 SET(VK_SHADER_SOURCE    ${RD_INCLUDE_PATH}/VKShaderModule.h
                         ${RD_INCLUDE_PATH}/VKShaderModuleManage.h
+                        ${RD_INCLUDE_PATH}/ShaderModuleMap.h
+                        ShaderModuleMap.cpp
                         VKShaderModule.cpp
                         VKShaderModuleManage.cpp)
 
@@ -59,8 +61,6 @@ SET(VK_TEXTURE_SOURCE   ${RD_INCLUDE_PATH}/VKImageView.h
 
 SET(VK_MATERIAL_SOURCE  ${RD_INCLUDE_PATH}/VKMaterial.h
                         ${RD_INCLUDE_PATH}/VKMaterialInstance.h
-                        ${RD_INCLUDE_PATH}/ShaderModuleMap.h
-                        ShaderModuleMap.cpp
                         VKMaterial.cpp
                         VKMaterialInstance.cpp)
 
