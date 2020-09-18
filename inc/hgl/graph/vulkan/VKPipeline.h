@@ -40,7 +40,6 @@ constexpr size_t VK_DYNAMIC_STATE_RANGE_SIZE=VK_DYNAMIC_STATE_END_RANGE-VK_DYNAM
 class PipelineCreater
 {
     VkDevice device;
-    VkExtent2D extent;
     VkPipelineCache cache;
     VkGraphicsPipelineCreateInfo pipelineInfo;
 
@@ -55,7 +54,7 @@ class PipelineCreater
     VkRect2D scissor;
     VkPipelineViewportStateCreateInfo viewportState;
 
-    void InitViewportState();
+    void InitViewportState(const VkExtent2D &);
 
     VkPipelineRasterizationStateCreateInfo rasterizer;
 
@@ -77,8 +76,8 @@ class PipelineCreater
 
 public:
 
-    PipelineCreater(Device *dev,const Material *,const RenderTarget *);
-    PipelineCreater(Device *dev,const Material *,const RenderTarget *,uchar *data,uint size);
+    PipelineCreater(Device *dev,const Material *,const uint32_t color_attachment_count=1);
+    PipelineCreater(Device *dev,const Material *,uchar *data,uint size);
     ~PipelineCreater()=default;
 
     bool Set(const Prim prim,bool=false);
@@ -193,7 +192,7 @@ public:
     bool SaveToStream(io::DataOutputStream *dos);
     bool LoadFromMemory(uchar *,uint);
     
-    Pipeline *Create();
+    Pipeline *Create(const RenderTarget *);
 };//class PipelineCreater
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PIPELINE_INCLUDE

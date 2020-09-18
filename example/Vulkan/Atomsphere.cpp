@@ -87,12 +87,12 @@ private:
     bool InitPipeline()
     {
         AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
+        pipeline_creater=new vulkan::PipelineCreater(device,material);
         pipeline_creater->SetDepthTest(true);
         pipeline_creater->SetDepthWrite(true);
         pipeline_creater->SetCullMode(VK_CULL_MODE_NONE);
         pipeline_creater->Set(Prim::Triangles);
-        pipeline_solid=pipeline_creater->Create();
+        pipeline_solid=pipeline_creater->Create(sc_render_target);
         
         if(!pipeline_solid)
             return(false);
