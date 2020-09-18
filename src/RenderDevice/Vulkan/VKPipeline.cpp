@@ -27,7 +27,7 @@ void PipelineCreater::InitVertexInputState(const Material *material)
     }
 }
 
-void PipelineCreater::InitViewportState()
+void PipelineCreater::InitViewportState(const VkExtent2D &extent)
 {
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -70,10 +70,9 @@ void PipelineCreater::InitDynamicState()
 
 //为什么一定要把ext放在这里，因为如果不放在这里，总是会让人遗忘它的重要性
 
-PipelineCreater::PipelineCreater(Device *dev,const Material *material,const RenderTarget *rt)
+PipelineCreater::PipelineCreater(Device *dev,const Material *material,const uint32_t color_attachment_count)
 {
     device=dev->GetDevice();
-    extent=rt->GetExtent();
     cache=dev->GetPipelineCache();
 
     //未来这里需要增加是否有vs/fs的检测
@@ -88,8 +87,6 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const Rend
     tessellation.patchControlPoints=0;
 
     pipelineInfo.pTessellationState=&tessellation;
-
-    InitViewportState();
 
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.pNext = nullptr;
@@ -151,7 +148,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const Rend
     cba.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
     cba.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 
-    colorBlendAttachments.Add(cba,rt->GetColorCount());     //这个需要和subpass中的color attachment数量相等，所以添加多份
+    colorBlendAttachments.Add(cba,color_attachment_count);     //这个需要和subpass中的color attachment数量相等，所以添加多份
 
     alpha_blend=false;
 
@@ -172,10 +169,6 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const Rend
     InitDynamicState();
 
     pipelineInfo.layout = material->GetPipelineLayout();
-    {
-        pipelineInfo.renderPass = rt->GetRenderPass();
-        pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
-    }
 
     {
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -183,21 +176,17 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const Rend
     }
 }
 
-PipelineCreater::PipelineCreater(Device *dev,const Material *material,const RenderTarget *rt,uchar *data,uint size)
+PipelineCreater::PipelineCreater(Device *dev,const Material *material,uchar *data,uint size)
 {
     LoadFromMemory(data,size);
 
     device=dev->GetDevice();
-    extent=rt->GetExtent();
     cache=dev->GetPipelineCache();
 
     InitVertexInputState(material);
 
     pipelineInfo.pInputAssemblyState=&inputAssembly;
     pipelineInfo.pTessellationState =&tessellation;
-
-    InitViewportState();
-
     pipelineInfo.pRasterizationState=&rasterizer;
     pipelineInfo.pMultisampleState  =&multisampling;
     pipelineInfo.pDepthStencilState =&depthStencilState;
@@ -206,10 +195,6 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const Rend
     InitDynamicState();
 
     pipelineInfo.layout = material->GetPipelineLayout();
-    {
-        pipelineInfo.renderPass = rt->GetRenderPass();
-        pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
-    }
 
     {
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -232,9 +217,16 @@ bool PipelineCreater::Set(const Prim topology,bool restart)
     return(true);
 }
 
-Pipeline *PipelineCreater::Create()
+Pipeline *PipelineCreater::Create(const RenderTarget *rt)
 {
     VkPipeline graphicsPipeline;
+
+    InitViewportState(rt->GetExtent());
+
+    {
+        pipelineInfo.renderPass = rt->GetRenderPass();
+        pipelineInfo.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
+    }
 
     if (vkCreateGraphicsPipelines(device, cache, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
         return(nullptr);
