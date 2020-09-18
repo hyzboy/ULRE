@@ -66,7 +66,7 @@ bool PipelineCreater::LoadFromMemory(uchar *data,uint size)
     CHECK_SIZE_AND_COPY(tessellation,VkPipelineTessellationStateCreateInfo);
     CHECK_SIZE_AND_COPY(rasterizer,VkPipelineRasterizationStateCreateInfo);
 
-    CHECK_SIZE_AND_COPY(multisampling,VkPipelineMultisampleStateCreateInfo);
+    CHECK_SIZE_AND_COPY(multisample,VkPipelineMultisampleStateCreateInfo);
 
     const uint8 count=*(uint8 *)data;
     ++data;
@@ -74,13 +74,13 @@ bool PipelineCreater::LoadFromMemory(uchar *data,uint size)
     if(count>0)
     {
         memcpy(sample_mask,data,count);
-        multisampling.pSampleMask=sample_mask;
+        multisample.pSampleMask=sample_mask;
         data+=count;
         size=count;
     }
     else
     {
-        multisampling.pSampleMask=nullptr;
+        multisample.pSampleMask=nullptr;
     }
 
     CHECK_SIZE_AND_COPY(depthStencilState,VkPipelineDepthStencilStateCreateInfo);
