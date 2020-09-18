@@ -87,10 +87,10 @@ private:
     bool InitPipeline()
     {
         vulkan::VKPipelineData pd;
-        
-        pd.SetDepthTest(true);
-        pd.SetDepthWrite(true);
-        pd.SetCullMode(VK_CULL_MODE_NONE);
+
+        if(!vulkan::LoadFromFile(OS_TEXT("res/pipeline/sky.pipeline"),&pd))
+            return(false);
+
         pd.Set(Prim::Triangles);
 
         pipeline_solid=CreatePipeline(device,&pd,material,sc_render_target);
