@@ -57,7 +57,7 @@ SET(VK_TEXTURE_SOURCE   ${RD_INCLUDE_PATH}/VKImageView.h
                         VKSampler.cpp
                         VKImageView.cpp
                         VKTexture.cpp
-                        POD/VKTextureLoader.cpp)
+                       	VKTextureLoader.cpp)
 
 SET(VK_MATERIAL_SOURCE  ${RD_INCLUDE_PATH}/VKMaterial.h
                         ${RD_INCLUDE_PATH}/VKMaterialInstance.h
@@ -83,8 +83,7 @@ SET(VK_RENDER_PASS_SOURCE   ${RD_INCLUDE_PATH}/VKFramebuffer.h
                             VKRenderPass.cpp
                             VKRenderTarget.cpp
                             VKSwapchain.cpp
-                            VKCommandBuffer.cpp
-                            POD/VKPipelineCreateInfo.POD.cpp)
+                            VKCommandBuffer.cpp)
 
 SOURCE_GROUP("Render Pass" FILES ${VK_RENDER_PASS_SOURCE})
 
