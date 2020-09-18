@@ -58,7 +58,7 @@ class PipelineCreater
 
     VkPipelineRasterizationStateCreateInfo rasterizer;
 
-    VkPipelineMultisampleStateCreateInfo multisampling;
+    VkPipelineMultisampleStateCreateInfo multisample;
     VkSampleMask sample_mask[MAX_SAMPLE_MASK_COUNT];
 
     VkPipelineDepthStencilStateCreateInfo depthStencilState;
@@ -118,8 +118,8 @@ public:
 
     void SetSamleCount(     VkSampleCountFlagBits sc)
     {
-        multisampling.sampleShadingEnable=(sc==VK_SAMPLE_COUNT_1_BIT?VK_FALSE:VK_TRUE);
-        multisampling.rasterizationSamples=sc;
+        multisample.sampleShadingEnable=(sc==VK_SAMPLE_COUNT_1_BIT?VK_FALSE:VK_TRUE);
+        multisample.rasterizationSamples=sc;
     }
 
     bool SetColorWriteMask(uint index,bool r,bool g,bool b,bool a)

@@ -104,17 +104,17 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,const uint
 
     pipelineInfo.pRasterizationState = &rasterizer;
 
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.pNext = nullptr;
-    multisampling.flags = 0;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.minSampleShading = 0.0;
-    multisampling.pSampleMask = nullptr;
-    multisampling.alphaToCoverageEnable = VK_FALSE;
-    multisampling.alphaToOneEnable = VK_FALSE;
+    multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisample.pNext = nullptr;
+    multisample.flags = 0;
+    multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisample.sampleShadingEnable = VK_FALSE;
+    multisample.minSampleShading = 0.0;
+    multisample.pSampleMask = nullptr;
+    multisample.alphaToCoverageEnable = VK_FALSE;
+    multisample.alphaToOneEnable = VK_FALSE;
 
-    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pMultisampleState = &multisample;
 
     depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencilState.pNext = nullptr;
@@ -188,7 +188,7 @@ PipelineCreater::PipelineCreater(Device *dev,const Material *material,uchar *dat
     pipelineInfo.pInputAssemblyState=&inputAssembly;
     pipelineInfo.pTessellationState =&tessellation;
     pipelineInfo.pRasterizationState=&rasterizer;
-    pipelineInfo.pMultisampleState  =&multisampling;
+    pipelineInfo.pMultisampleState  =&multisample;
     pipelineInfo.pDepthStencilState =&depthStencilState;
     pipelineInfo.pColorBlendState   =&colorBlending;
 
