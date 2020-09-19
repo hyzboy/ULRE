@@ -31,7 +31,7 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
     for(int i=0;i<shader_count;i++)
     {
         sm=(*itp)->right;
-        memcpy(p,sm->GetCreateInfo(),sizeof(VkPipelineShaderStageCreateInfo));
+        hgl_cpy(p,sm->GetCreateInfo());
 
         dsl_creater->Bind(sm->GetDescriptorList(),sm->GetStage());
 
