@@ -46,23 +46,5 @@ public:
     const List<VkFormat> &  GetColorFormat()const{return color_formats;}
     const VkFormat          GetDepthFormat()const{return depth_format;}
 };//class RenderPass
-
-class RenderpassCreater
-{
-    Device *device;
-
-    List<VkAttachmentDescription> atta_desc_list;
-
-public:
-
-    RenderpassCreater(Device *d)
-    {
-        device=d;
-    }
-
-    ~RenderpassCreater()=default;
-
-    int AddSwapchainImage();
-};//class RenderpassCreater
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE

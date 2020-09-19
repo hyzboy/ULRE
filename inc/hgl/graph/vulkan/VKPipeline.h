@@ -27,6 +27,7 @@ public:
     const bool IsAlphaBlend()const{return data->alpha_blend;}
 };//class GraphicsPipeline
 
-Pipeline *CreatePipeline(Device *dev,PipelineData *,const Material *material,const RenderTarget *);
+Pipeline *CreatePipeline(Device *,PipelineData *,const Material *,const RenderTarget *);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
+ 
