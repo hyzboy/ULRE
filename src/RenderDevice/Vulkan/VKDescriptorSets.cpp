@@ -87,6 +87,6 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
 
 void DescriptorSets::Update()
 {
-    vkUpdateDescriptorSets(*device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
+    vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
 }
 VK_NAMESPACE_END

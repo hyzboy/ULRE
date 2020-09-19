@@ -13,7 +13,6 @@ VK_NAMESPACE_BEGIN
 class ShaderModule
 {
     VkDevice device;
-    int shader_id;
     int ref_count;
 
 private:
@@ -26,10 +25,8 @@ protected:
 
 public:
 
-    ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *);
+    ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *);
     virtual ~ShaderModule();
-
-    const int GetID()const{return shader_id;}
 
     const int IncRef(){return ++ref_count;}
     const int DecRef(){return --ref_count;}
@@ -75,7 +72,7 @@ private:
 
 public:
 
-    VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr);
+    VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr);
     virtual ~VertexShaderModule();
 
     /**

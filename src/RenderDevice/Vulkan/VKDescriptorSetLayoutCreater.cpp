@@ -3,13 +3,18 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
+DescriptorSetLayoutCreater *Device::CreateDescriptorSetLayoutCreater()
+{
+    return(new DescriptorSetLayoutCreater(attr->device,attr->desc_pool));
+}
+
 DescriptorSetLayoutCreater::~DescriptorSetLayoutCreater()
 {
     if(pipeline_layout)
-        vkDestroyPipelineLayout(*device,pipeline_layout,nullptr);
+        vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
 
     if(dsl)
-        vkDestroyDescriptorSetLayout(*device,dsl,nullptr);
+        vkDestroyDescriptorSetLayout(device,dsl,nullptr);
 }
 
 void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
@@ -83,9 +88,9 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     descriptor_layout.pBindings     = layout_binding_list.GetData();
 
     if(dsl)
-        vkDestroyDescriptorSetLayout(*device,dsl,nullptr);
+        vkDestroyDescriptorSetLayout(device,dsl,nullptr);
 
-    if(vkCreateDescriptorSetLayout(*device,&descriptor_layout,nullptr,&dsl)!=VK_SUCCESS)
+    if(vkCreateDescriptorSetLayout(device,&descriptor_layout,nullptr,&dsl)!=VK_SUCCESS)
         return(false);
 
     VkPushConstantRange push_constant_range;
@@ -103,7 +108,7 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     pPipelineLayoutCreateInfo.pushConstantRangeCount    = 1;
     pPipelineLayoutCreateInfo.pPushConstantRanges       = &push_constant_range;
 
-    if(vkCreatePipelineLayout(*device,&pPipelineLayoutCreateInfo,nullptr,&pipeline_layout)!=VK_SUCCESS)
+    if(vkCreatePipelineLayout(device,&pPipelineLayoutCreateInfo,nullptr,&pipeline_layout)!=VK_SUCCESS)
         return(false);
 
     return(true);
@@ -122,13 +127,13 @@ DescriptorSets *DescriptorSetLayoutCreater::Create()
     VkDescriptorSetAllocateInfo alloc_info;
     alloc_info.sType                = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.pNext                = nullptr;
-    alloc_info.descriptorPool       = device->GetDescriptorPool();
+    alloc_info.descriptorPool       = pool;
     alloc_info.descriptorSetCount   = 1;
     alloc_info.pSetLayouts          = &dsl;
 
     VkDescriptorSet desc_set;
 
-    if(vkAllocateDescriptorSets(*device,&alloc_info,&desc_set)!=VK_SUCCESS)
+    if(vkAllocateDescriptorSets(device,&alloc_info,&desc_set)!=VK_SUCCESS)
         return(nullptr);
 
     return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding));

@@ -13,6 +13,7 @@
 #include<hgl/graph/vulkan/VKSwapchain.h>
 #include<hgl/graph/vulkan/VKRenderTarget.h>
 #include<hgl/graph/VertexAttribData.h>
+#include<hgl/graph/vulkan/ShaderModuleMap.h>
 
 namespace hgl
 {
@@ -217,7 +218,15 @@ public: //
 
     Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr);
 
-    ShaderModuleManage *CreateShaderModuleManage();
+public: //shader & material
+
+    DescriptorSetLayoutCreater *CreateDescriptorSetLayoutCreater();
+    
+    ShaderModule *CreateShaderModule(ShaderResource *);
+    
+    Material *CreateMaterial(ShaderModuleMap *shader_maps);    
+    Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module);
+    Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module);
 
 public: //Command Buffer 相关
 
@@ -263,6 +272,8 @@ public:
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
 
     RenderTarget *CreateRenderTarget(Framebuffer *);
+
+    Pipeline *CreatePipeline(PipelineData *,const Material *,const RenderTarget *);
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     

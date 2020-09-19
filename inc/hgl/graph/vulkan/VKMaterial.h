@@ -4,6 +4,7 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
+#include<hgl/graph/vulkan/ShaderModuleMap.h>
 VK_NAMESPACE_BEGIN
 class DescriptorSetLayoutCreater;
 
@@ -13,7 +14,6 @@ class DescriptorSetLayoutCreater;
  */
 class Material
 {
-    Device *device;
     ShaderModuleMap *shader_maps;
     VertexShaderModule *vertex_sm;
     List<VkPipelineShaderStageCreateInfo> *shader_stage_list;
@@ -24,7 +24,7 @@ class Material
 
 public:
 
-    Material(Device *dev,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc);
+    Material(ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc);
     ~Material();
 
     const VertexShaderModule *GetVertexShaderModule()const{return vertex_sm;}

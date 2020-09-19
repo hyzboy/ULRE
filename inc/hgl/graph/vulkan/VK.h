@@ -47,15 +47,17 @@ class RenderPass;
 class Fence;
 class Semaphore;
 
+class DescriptorSetLayoutCreater;
+
 struct ShaderStage;
 
-class ShaderModuleMap;
+class ShaderResource;
 class ShaderModule;
-class ShaderModuleManage;
 class VertexShaderModule;
 class Material;
 class MaterialInstance;
 class PipelineLayout;
+struct PipelineData;
 class Pipeline;
 class DescriptorSets;
 class VertexAttributeBinding;

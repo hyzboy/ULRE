@@ -1,6 +1,7 @@
 #include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/vulkan/VKFormat.h>
+#include<hgl/type/Map.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -8,6 +9,8 @@ VK_NAMESPACE_BEGIN
 
     namespace
     {
+        MapObject<OSString,ShaderResource> shader_resource_by_filename;
+
         constexpr char      SHADER_FILE_HEADER[]    ="Shader\x1A";
         constexpr uint      SHADER_FILE_HEADER_BYTES=sizeof(SHADER_FILE_HEADER)-1;
 
@@ -86,6 +89,34 @@ VK_NAMESPACE_BEGIN
         stage_flag=flag;
         spv_data=sd;
         spv_size=size;            
+    }
+
+    const os_char *ShaderStageName[]=
+    {
+        OS_TEXT("vert"),
+        OS_TEXT("tesc"),
+        OS_TEXT("tese"),
+        OS_TEXT("geom"),
+        OS_TEXT("frag"),
+        OS_TEXT("comp"),
+        OS_TEXT("task"),
+        OS_TEXT("mesh")
+    };
+    
+    const os_char *ShaderResource::GetStageName() const
+    {
+        switch(stage_flag)
+        {
+            case VK_SHADER_STAGE_VERTEX_BIT:                    return ShaderStageName[0];
+            case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:      return ShaderStageName[1];
+            case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:   return ShaderStageName[2];
+            case VK_SHADER_STAGE_GEOMETRY_BIT:                  return ShaderStageName[3];
+            case VK_SHADER_STAGE_FRAGMENT_BIT:                  return ShaderStageName[4];
+            case VK_SHADER_STAGE_COMPUTE_BIT:                   return ShaderStageName[5];
+            case VK_SHADER_STAGE_TASK_BIT_NV:                   return ShaderStageName[6];
+            case VK_SHADER_STAGE_MESH_BIT_NV:                   return ShaderStageName[7];
+            default:                                            return nullptr;
+        }
     }
 
     const ShaderStage *ShaderResource::GetStageInput(const AnsiString &name) const
@@ -184,9 +215,17 @@ VK_NAMESPACE_BEGIN
 
     ShaderResource *LoadShaderResoruce(const OSString &filename)
     {
+        ShaderResource *sr;
+
+        if(shader_resource_by_filename.Get(filename,sr))
+            return sr;
+
         int64 filesize;
         AutoDeleteArray<uint8> origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".shader"),filesize);
 
-        return LoadShaderResource(origin_filedata,filesize,true);
+        sr=LoadShaderResource(origin_filedata,filesize,true);
+
+        shader_resource_by_filename.Add(filename,sr);
+        return sr;
     }
 VK_NAMESPACE_END

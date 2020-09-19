@@ -8,7 +8,7 @@
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include"VKDescriptorSetLayoutCreater.h"
 VK_NAMESPACE_BEGIN
-Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
+Material *Device::CreateMaterial(ShaderModuleMap *shader_maps)
 {
     const int shader_count=shader_maps->GetCount();
 
@@ -20,7 +20,7 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
     if(!shader_maps->Get(VK_SHADER_STAGE_VERTEX_BIT,sm))
         return(nullptr);
 
-    DescriptorSetLayoutCreater *dsl_creater=new DescriptorSetLayoutCreater(dev);
+    DescriptorSetLayoutCreater *dsl_creater=CreateDescriptorSetLayoutCreater();
     List<VkPipelineShaderStageCreateInfo> *shader_stage_list=new List<VkPipelineShaderStageCreateInfo>;
 
     shader_stage_list->SetCount(shader_count);
@@ -47,12 +47,47 @@ Material *CreateMaterial(Device *dev,ShaderModuleMap *shader_maps)
         return(nullptr);
     }
 
-    return(new Material(dev,shader_maps,shader_stage_list,dsl_creater));
+    return(new Material(shader_maps,shader_stage_list,dsl_creater));
 }
 
-Material::Material(Device *dev,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc)
+Material *Device::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
 {
-    device=dev;
+    if(!vertex_shader_module||!fragment_shader_module)
+        return(nullptr);
+
+    if(!vertex_shader_module->IsVertex())return(nullptr);
+    if(!fragment_shader_module->IsFragment())return(nullptr);
+
+    ShaderModuleMap *smm=new ShaderModuleMap;
+
+    smm->Add(vertex_shader_module);
+    smm->Add(fragment_shader_module);
+
+    return CreateMaterial(smm);
+}
+
+Material *Device::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
+{
+    if(!vertex_shader_module
+     ||!geometry_shader_module
+     ||!fragment_shader_module)
+        return(nullptr);
+
+    if(!vertex_shader_module->IsVertex())return(nullptr);
+    if(!geometry_shader_module->IsGeometry())return(nullptr);
+    if(!fragment_shader_module->IsFragment())return(nullptr);
+
+    ShaderModuleMap *smm=new ShaderModuleMap;
+
+    smm->Add(vertex_shader_module);
+    smm->Add(geometry_shader_module);
+    smm->Add(fragment_shader_module);
+
+    return CreateMaterial(smm);
+}
+
+Material::Material(ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc)
+{
     shader_maps=smm;
     shader_stage_list=psci_list;
     dsl_creater=dslc;
