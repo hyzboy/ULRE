@@ -86,7 +86,7 @@ private:
 
     bool InitPipeline()
     {
-        vulkan::VKPipelineData pd;
+        vulkan::PipelineData pd;
 
         if(!vulkan::LoadFromFile(OS_TEXT("res/pipeline/sky.pipeline"),&pd))
             return(false);

@@ -9,21 +9,24 @@ class Pipeline
 {
     VkDevice device;
     VkPipeline pipeline;
+    PipelineData *data;
 
     bool alpha_test;
     bool alpha_blend;
 
 public:
 
-    Pipeline(VkDevice dev,VkPipeline p,bool at,bool ab):device(dev),pipeline(p),alpha_test(at),alpha_blend(ab){}
+    Pipeline(VkDevice dev,VkPipeline p,PipelineData *pd):device(dev),pipeline(p),data(pd){}
     virtual ~Pipeline();
 
     operator VkPipeline(){return pipeline;}
 
-    const bool IsAlphaTest()const{return alpha_test;}
-    const bool IsAlphaBlend()const{return alpha_blend;}
+    const PipelineData *GetData()const{return data;}
+
+    const bool IsAlphaTest()const{return data->alpha_test>0;}
+    const bool IsAlphaBlend()const{return data->alpha_blend;}
 };//class GraphicsPipeline
 
-Pipeline *CreatePipeline(Device *dev,VKPipelineData *,const Material *material,const RenderTarget *);
+Pipeline *CreatePipeline(Device *dev,PipelineData *,const Material *material,const RenderTarget *);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
