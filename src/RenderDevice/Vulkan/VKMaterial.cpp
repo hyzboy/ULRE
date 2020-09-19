@@ -155,11 +155,6 @@ DescriptorSets *Material::CreateDescriptorSets()const
     return dsl_creater->Create();
 }
 
-void Material::Write(VkPipelineVertexInputStateCreateInfo &vis)const
-{
-    return vab->Write(vis);
-}
-
 Renderable *Material::CreateRenderable(const uint32_t draw_count)
 {
     return(new Renderable(vertex_sm,draw_count));

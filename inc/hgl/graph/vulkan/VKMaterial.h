@@ -5,6 +5,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/vulkan/ShaderModuleMap.h>
+#include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
 VK_NAMESPACE_BEGIN
 class DescriptorSetLayoutCreater;
 
@@ -48,16 +49,21 @@ public:
         GET_BO_BINDING(InputAttachment,     INPUT_ATTACHMENT)
     #undef GET_BO_BINDING
 
-    const uint32_t                          GetStageCount       ()const{return shader_stage_list->GetCount();}
-    const VkPipelineShaderStageCreateInfo * GetStages           ()const{return shader_stage_list->GetData();}
+    const   uint32_t                            GetStageCount           ()const{return shader_stage_list->GetCount();}
+    const   VkPipelineShaderStageCreateInfo *   GetStages               ()const{return shader_stage_list->GetData();}
 
-    const VkPipelineLayout                  GetPipelineLayout   ()const;
-    DescriptorSets *                        CreateDescriptorSets()const;
+    const   VkPipelineLayout                    GetPipelineLayout       ()const;
+            DescriptorSets *                    CreateDescriptorSets    ()const;
+    
+    const   VertexAttributeBinding *            GetVAB                  ()const{return vab;}
+    const   uint32_t                            GetVertexAttrCount      ()const{return vab->GetVertexAttrCount();}    
+    const   VkVertexInputBindingDescription *   GetVertexBindingList    ()const{return vab->GetVertexBindingList();}
+    const   VkVertexInputAttributeDescription * GetVertexAttributeList  ()const{return vab->GetVertexAttributeList();}
 
-    void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
+public:
 
-    Renderable *CreateRenderable(const uint32_t draw_count=0);
-    MaterialInstance *CreateInstance();
+            Renderable *                        CreateRenderable        (const uint32_t draw_count=0);
+            MaterialInstance *                  CreateInstance          ();
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
