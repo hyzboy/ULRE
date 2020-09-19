@@ -15,9 +15,11 @@ Pipeline *CreatePipeline(VkDevice device,VkPipelineCache pipeline_cache,Pipeline
 {
     VkPipeline graphicsPipeline;
     
-    data->InitVertexInputState(material->GetStageCount(),material->GetStages());
-
-    material->Write(data->vis_create_info);
+    data->InitVertexInputState( material->GetStageCount(),
+                                material->GetStages(),
+                                material->GetVertexAttrCount(),
+                                material->GetVertexBindingList(),
+                                material->GetVertexAttributeList());
 
     data->InitViewportState(rt->GetExtent());
 

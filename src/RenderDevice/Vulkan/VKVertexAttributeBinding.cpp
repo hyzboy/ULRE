@@ -58,13 +58,4 @@ bool VertexAttributeBinding::SetOffset(const uint index,const uint32_t offset)
 
     return(true);
 }
-
-void VertexAttributeBinding::Write(VkPipelineVertexInputStateCreateInfo &vis_create_info) const
-{
-    vis_create_info.vertexBindingDescriptionCount = attr_count;
-    vis_create_info.pVertexBindingDescriptions = binding_list;
-
-    vis_create_info.vertexAttributeDescriptionCount = attr_count;
-    vis_create_info.pVertexAttributeDescriptions = attribute_list;
-}
 VK_NAMESPACE_END

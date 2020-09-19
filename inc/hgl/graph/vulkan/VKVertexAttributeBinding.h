@@ -29,7 +29,9 @@ public:
     bool SetFormat  (const uint binding,const VkFormat &  format);
     bool SetOffset  (const uint binding,const uint32_t    offset);
 
-    void Write(VkPipelineVertexInputStateCreateInfo &vis)const;
+    const uint32_t                              GetVertexAttrCount      ()const{return attr_count;}    
+    const VkVertexInputBindingDescription *     GetVertexBindingList    ()const{return binding_list;}
+    const VkVertexInputAttributeDescription *   GetVertexAttributeList  ()const{return attribute_list;}
 };//class VertexAttributeBinding
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_VERTEX_ATTRIBUTE_BINDING_INCLUDE
