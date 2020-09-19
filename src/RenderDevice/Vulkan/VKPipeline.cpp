@@ -11,7 +11,7 @@ Pipeline::~Pipeline()
     vkDestroyPipeline(device,pipeline,nullptr);
 }
 
-Pipeline *CreatePipeline(Device *dev,PipelineData *data,const Material *material,const RenderTarget *rt)
+Pipeline *CreatePipeline(VkDevice device,VkPipelineCache pipeline_cache,PipelineData *data,const Material *material,const RenderTarget *rt)
 {
     VkPipeline graphicsPipeline;
     
@@ -28,13 +28,13 @@ Pipeline *CreatePipeline(Device *dev,PipelineData *data,const Material *material
         data->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
     }
 
-    if (vkCreateGraphicsPipelines(  dev->GetDevice(), 
-                                    dev->GetPipelineCache(),
+    if (vkCreateGraphicsPipelines(  device,
+                                    pipeline_cache,
                                     1,&data->pipeline_info,
                                     nullptr,
                                     &graphicsPipeline) != VK_SUCCESS)
         return(nullptr);
 
-    return(new Pipeline(dev->GetDevice(),graphicsPipeline,data));
+    return(new Pipeline(device,graphicsPipeline,data));
 }
 VK_NAMESPACE_END

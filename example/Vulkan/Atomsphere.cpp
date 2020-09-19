@@ -14,12 +14,21 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
-struct AtomsphereData
+struct AtmosphereData
 {
     Vector3f position;
     float intensity;
     float scattering_direction;
-};//
+
+public:
+
+    AtmosphereData()
+    {    
+        position.Set(0,0.1f,-1.0f);
+        intensity=22.0f;
+        scattering_direction=0.758f;
+    }
+};//struct AtmosphereData
 
 class TestApp:public CameraAppFramework
 {
@@ -28,48 +37,25 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
-
-    vulkan::Renderable *        ro_sphere           =nullptr;
-
     vulkan::Pipeline *          pipeline_solid      =nullptr;
     
     vulkan::Buffer *            ubo_atomsphere      =nullptr;
-    AtomsphereData              atomsphere_data;
+    AtmosphereData              atomsphere_data;
+
+    vulkan::Renderable *        ro_sphere           =nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/material/Atmosphere")); //不需要写.material的扩展名
-        if(!material)
-            return(false);
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Atmosphere"));       //不需要优先创建Material，也不需要写扩展名        
+        if(!material_instance)return(false);
 
-        material_instance=material->CreateInstance();
+        pipeline_solid=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/sky"));        
+        if(!pipeline_solid)return(false);
 
-        db->Add(material);
-        db->Add(material_instance);
         return(true);
-    }
-
-    void CreateRenderObject()
-    {
-        ro_sphere=CreateRenderableSphere(db,material,128);
-    }
-
-    bool InitAtomsphereUBO(vulkan::MaterialInstance *mi,const AnsiString &sun_node_name)
-    {
-        atomsphere_data.position.Set(0,0.1f,-1.0f);
-        atomsphere_data.intensity=22.0f;
-        atomsphere_data.scattering_direction=0.758f;
-
-        ubo_atomsphere=db->CreateUBO(sizeof(AtomsphereData),&atomsphere_data);
-
-        if(!ubo_atomsphere)
-            return(false);
-
-        return mi->BindUBO(sun_node_name,ubo_atomsphere);
     }
 
     bool InitUBO()
@@ -77,33 +63,22 @@ private:
         if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
 
-        if(!InitAtomsphereUBO(material_instance,"sun"))
+        ubo_atomsphere=db->CreateUBO(sizeof(AtmosphereData),&atomsphere_data);
+
+        if(!ubo_atomsphere)
+            return(false);
+
+        if(!material_instance->BindUBO("sun",ubo_atomsphere))
             return(false);
 
         material_instance->Update();
         return(true);
     }
 
-    bool InitPipeline()
-    {
-        vulkan::PipelineData pd;
-
-        if(!vulkan::LoadFromFile(OS_TEXT("res/pipeline/sky.pipeline"),&pd))
-            return(false);
-
-        pd.Set(Prim::Triangles);
-
-        pipeline_solid=CreatePipeline(device,&pd,material,sc_render_target);
-        
-        if(!pipeline_solid)
-            return(false);
-
-        db->Add(pipeline_solid);
-        return(true);
-    }
-
     bool InitScene()
     {
+        ro_sphere=CreateRenderableSphere(db,material_instance->GetMaterial(),128);
+
         render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_sphere),scale(100));
 
         render_root.RefreshMatrix();
@@ -122,12 +97,7 @@ public:
         if(!InitMaterial())
             return(false);
 
-        CreateRenderObject();
-
         if(!InitUBO())
-            return(false);
-
-        if(!InitPipeline())
             return(false);
 
         if(!InitScene())

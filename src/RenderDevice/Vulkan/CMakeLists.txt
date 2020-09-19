@@ -1,7 +1,8 @@
 ﻿set(RD_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph/vulkan)
 
 SET(VK_DB_SOURCE        ${RD_INCLUDE_PATH}/VKDatabase.h
-                        VKDatabase.cpp)
+                        VKDatabase.cpp
+                        VKDatabaseMaterial.cpp)
 
 SOURCE_GROUP("Database" FILES ${VK_DB_SOURCE})
 
@@ -45,11 +46,9 @@ SET(VK_DESCRIPTOR_SETS_SOURCE   ${RD_INCLUDE_PATH}/VKDescriptorSets.h
 SOURCE_GROUP("Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})
 
 SET(VK_SHADER_SOURCE    ${RD_INCLUDE_PATH}/VKShaderModule.h
-                        ${RD_INCLUDE_PATH}/VKShaderModuleManage.h
                         ${RD_INCLUDE_PATH}/ShaderModuleMap.h
                         ShaderModuleMap.cpp
-                        VKShaderModule.cpp
-                        VKShaderModuleManage.cpp)
+                        VKShaderModule.cpp)
 
 SET(VK_TEXTURE_SOURCE   ${RD_INCLUDE_PATH}/VKImageView.h
                         ${RD_INCLUDE_PATH}/VKTexture.h

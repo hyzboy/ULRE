@@ -3,12 +3,11 @@
 
 #include<hgl/type/Map.h>
 #include<hgl/graph/vulkan/VKNamespace.h>
+#include<hgl/graph/vulkan/VKShaderModule.h>
 
 VK_NAMESPACE_BEGIN
 
 using namespace hgl;
-
-class ShaderModule;
 
 class ShaderModuleMap:public Map<VkShaderStageFlagBits,const ShaderModule *>
 {

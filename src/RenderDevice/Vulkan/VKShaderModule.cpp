@@ -1,11 +1,43 @@
 ﻿#include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
+#include<hgl/graph/vulkan/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-ShaderModule::ShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *sci,ShaderResource *sr)
+ShaderModule *Device::CreateShaderModule(ShaderResource *sr)
+{
+    if(!sr)return(nullptr);
+
+    VkPipelineShaderStageCreateInfo *shader_stage=new VkPipelineShaderStageCreateInfo;
+    shader_stage->sType                 =VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shader_stage->pNext                 =nullptr;
+    shader_stage->pSpecializationInfo   =nullptr;
+    shader_stage->flags                 =0;
+    shader_stage->stage                 =sr->GetStage();
+    shader_stage->pName                 ="main";
+
+    VkShaderModuleCreateInfo moduleCreateInfo;
+    moduleCreateInfo.sType      =VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleCreateInfo.pNext      =nullptr;
+    moduleCreateInfo.flags      =0;
+    moduleCreateInfo.codeSize   =sr->GetCodeSize();
+    moduleCreateInfo.pCode      =sr->GetCode();
+
+    if(vkCreateShaderModule(attr->device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
+        return(nullptr);
+
+    ShaderModule *sm;
+
+    if(sr->GetStage()==VK_SHADER_STAGE_VERTEX_BIT)
+        sm=new VertexShaderModule(attr->device,shader_stage,sr);
+    else
+        sm=new ShaderModule(attr->device,shader_stage,sr);
+
+    return sm;
+}
+
+ShaderModule::ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *sci,ShaderResource *sr)
 {
     device=dev;
-    shader_id=id;
     ref_count=0;
 
     stage_create_info=sci;
@@ -19,7 +51,7 @@ ShaderModule::~ShaderModule()
     delete stage_create_info;
 }
 
-VertexShaderModule::VertexShaderModule(VkDevice dev,int id,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,id,pssci,sr)
+VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,pssci,sr)
 {
     const ShaderStageList &stage_inputs=sr->GetStageInputs();
 

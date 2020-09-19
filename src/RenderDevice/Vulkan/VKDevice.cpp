@@ -3,11 +3,11 @@
 #include<hgl/graph/vulkan/VKSemaphore.h>
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKImageView.h>
+#include<hgl/graph/vulkan/VKPipeline.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 //#include<hgl/graph/vulkan/VKDescriptorSet.h>
 #include<hgl/graph/vulkan/VKRenderPass.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
-#include<hgl/graph/vulkan/VKShaderModuleManage.h>
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
@@ -110,13 +110,15 @@ vulkan::Semaphore *Device::CreateSem()
     return(new vulkan::Semaphore(attr->device,sem));
 }
 
-ShaderModuleManage *Device::CreateShaderModuleManage()
-{
-    return(new ShaderModuleManage(this));
-}
-
 RenderTarget *Device::CreateRenderTarget(Framebuffer *fb)
 {
     return(new RenderTarget(this,fb));
+}
+
+Pipeline *CreatePipeline(VkDevice device,VkPipelineCache pipeline_cache,PipelineData *data,const Material *material,const RenderTarget *rt);
+
+Pipeline *Device::CreatePipeline(PipelineData *pd,const Material *mtl,const RenderTarget *rt)
+{
+    return VK_NAMESPACE::CreatePipeline(attr->device,attr->pipeline_cache,pd,mtl,rt);
 }
 VK_NAMESPACE_END

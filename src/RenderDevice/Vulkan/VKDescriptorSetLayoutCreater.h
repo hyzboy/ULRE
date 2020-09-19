@@ -3,7 +3,6 @@
 #include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/type/Map.h>
 VK_NAMESPACE_BEGIN
-class Device;
 class DescriptorSets;
 
 /**
@@ -11,7 +10,8 @@ class DescriptorSets;
 */
 class DescriptorSetLayoutCreater
 {
-    Device *device;
+    VkDevice device;
+    VkDescriptorPool pool;
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
     VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
@@ -21,7 +21,7 @@ class DescriptorSetLayoutCreater
 
 public:
 
-    DescriptorSetLayoutCreater(Device *dev):device(dev){}
+    DescriptorSetLayoutCreater(VkDevice dev,VkDescriptorPool dp){device=dev;pool=dp;}
     ~DescriptorSetLayoutCreater();
 
     void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);

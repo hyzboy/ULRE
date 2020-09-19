@@ -57,6 +57,7 @@ public:
     virtual ~ShaderResource()=default;
 
     const   VkShaderStageFlagBits   GetStage            ()const {return stage_flag;}
+    const   os_char *               GetStageName        ()const;
 
     const   uint32_t *              GetCode             ()const {return (uint32_t *)spv_data;}
     const   uint32_t                GetCodeSize         ()const {return spv_size;}

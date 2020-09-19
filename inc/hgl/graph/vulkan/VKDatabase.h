@@ -32,7 +32,10 @@ class VertexAttribData;
 class Database
 {
     Device *device;
-
+    
+    MapObject<OSString,ShaderModule> shader_module_by_name;
+    Map<OSString,Material *> material_by_name;
+    
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
     IDResManage<PipelineID,             Pipeline>           rm_pipeline;                ///<管线合集
@@ -60,7 +63,7 @@ public: //Add
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableInstanceID    Add(RenderableInstance *ri  ){return rm_renderable_instances.Add(ri);}
 
-public: //Create
+public: // VBO/VAO
 
     VAB *CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sm=SharingMode::Exclusive);
     VAB *CreateVAB(VkFormat format,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sm);}
@@ -83,7 +86,21 @@ public: //Create
     IndexBuffer *CreateIBO16(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sm);}
     IndexBuffer *CreateIBO32(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sm);}
 
+public: //Material
+
+    const ShaderModule *CreateShaderModule(const OSString &filename,ShaderResource *shader_resource);
+    const ShaderModule *CreateShaderModule(const OSString &filename);
+    
+    Material *          CreateMaterial(const OSString &vertex_shader_filename,const OSString &fragment_shader_filename);    
+    Material *          CreateMaterial(const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename);
+
+    Material *          CreateMaterial(const OSString &);
     MaterialInstance *  CreateMaterialInstance(Material *);
+    MaterialInstance *  CreateMaterialInstance(const OSString &);
+
+    Pipeline *          CreatePipeline(Material *,RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(MaterialInstance *,RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+
     Renderable *        CreateRenderable(Material *,const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);
 

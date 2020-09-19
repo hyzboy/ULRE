@@ -6,7 +6,6 @@
 #include<hgl/graph/vulkan/VKSemaphore.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKShaderModule.h>
-#include<hgl/graph/vulkan/VKShaderModuleManage.h>
 #include<hgl/graph/vulkan/VKImageView.h>
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
@@ -53,8 +52,6 @@ protected:
     vulkan::Semaphore *             present_complete_semaphore  =nullptr,
                       *             render_complete_semaphore   =nullptr;
 
-    vulkan::ShaderModuleManage *    shader_manage               =nullptr;
-
 protected:
 
             int32_t                 swap_chain_count            =0;
@@ -77,7 +74,6 @@ public:
         SAFE_CLEAR(db);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
-        SAFE_CLEAR(shader_manage);
         SAFE_CLEAR(device);
         SAFE_CLEAR(win);
         SAFE_CLEAR(inst);
@@ -126,7 +122,6 @@ public:
         present_complete_semaphore  =device->CreateSem();
         render_complete_semaphore   =device->CreateSem();
 
-        shader_manage=device->CreateShaderModuleManage();
         db=new vulkan::Database(device);
 
         InitCommandBuffer();

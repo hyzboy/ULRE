@@ -60,6 +60,37 @@ MaterialInstance *Database::CreateMaterialInstance(Material *mtl)
     return mi;
 }
 
+MaterialInstance *Database::CreateMaterialInstance(const OSString &mtl_filename)
+{
+    Material *mtl=this->CreateMaterial(mtl_filename);
+
+    if(!mtl)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl);
+}
+
+Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
+{
+    PipelineData *pd=vulkan::GetPipelineData(pipeline_filename);
+
+    if(!pd)return(nullptr);
+
+    pd->Set(prim,prim_restart);
+
+    Pipeline *p=device->CreatePipeline(pd,mtl,rt);
+
+    if(p)
+        Add(p);
+
+    return(p);
+}
+
+Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const OSString &filename,const Prim &prim,const bool prim_restart)
+{
+    return CreatePipeline(mi->GetMaterial(),rt,filename,prim,prim_restart);
+}
+
 Renderable *Database::CreateRenderable(Material *mtl,const uint32_t vertex_count)
 {
     if(!mtl)return(nullptr);

@@ -4,12 +4,11 @@
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/type/Map.h>
 VK_NAMESPACE_BEGIN
-class Device;
 class Buffer;
 
 class DescriptorSets
 {
-    Device *device;
+    VkDevice device;
     int count;
     VkDescriptorSet desc_set;
     const Map<uint32_t,int> *index_by_binding;
@@ -23,7 +22,7 @@ private:
 
     friend class DescriptorSetLayoutCreater;
 
-    DescriptorSets(Device *dev,const int c,VkPipelineLayout pl,VkDescriptorSet ds,const Map<uint32_t,int> *bi):index_by_binding(bi)
+    DescriptorSets(VkDevice dev,const int c,VkPipelineLayout pl,VkDescriptorSet ds,const Map<uint32_t,int> *bi):index_by_binding(bi)
     {
         device=dev;
         count=c;
