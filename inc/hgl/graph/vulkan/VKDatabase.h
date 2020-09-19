@@ -102,6 +102,7 @@ public: //Material
     Pipeline *          CreatePipeline(MaterialInstance *,RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
     Renderable *        CreateRenderable(Material *,const uint32_t vertex_count=0);
+    Renderable *        CreateRenderable(MaterialInstance *,const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);
 
     RenderableInstance *CreateRenderableInstance(Pipeline *p,MaterialInstance *mi,Renderable *r);

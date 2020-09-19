@@ -103,6 +103,13 @@ Renderable *Database::CreateRenderable(Material *mtl,const uint32_t vertex_count
     return ro;
 }
 
+Renderable *Database::CreateRenderable(MaterialInstance *mi,const uint32_t vertex_count)
+{
+    if(!mi)return(nullptr);
+
+    return CreateRenderable(mi->GetMaterial(),vertex_count);
+}
+
 TextRenderable *Database::CreateTextRenderable(Material *mtl)
 {
     if(!mtl)return(nullptr);

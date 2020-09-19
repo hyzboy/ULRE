@@ -8,9 +8,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
@@ -35,7 +32,6 @@ private:
 
     Camera cam;
 
-    vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
@@ -51,24 +47,19 @@ public:
     {
         SAFE_CLEAR(color_buffer);
         SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_world_matrix);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
-        SAFE_CLEAR(material);
     }
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatColor.vert"),
-                                               OS_TEXT("res/shader/VertexColor.frag"));
-        if(!material)
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
+
+        if(!material_instance)
             return(false);
 
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
-        material_instance=material->CreateInstance();
+        render_obj=db->CreateRenderable(material_instance,VERTEX_COUNT);
+        
         return(true);
     }
 
@@ -81,7 +72,7 @@ private:
 
         cam.Refresh();
 
-        ubo_world_matrix=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
         if(!ubo_world_matrix)
             return(false);
@@ -96,33 +87,15 @@ private:
         vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
         color_buffer    =device->CreateVAB(FMT_RGB32F, VERTEX_COUNT,color_data);
 
-        if(!render_obj->Set("Vertex",   vertex_buffer))return(false);
-        if(!render_obj->Set("Color",    color_buffer))return(false);
+        if(!render_obj->Set(VAN::Position,  vertex_buffer))return(false);
+        if(!render_obj->Set(VAN::Color,     color_buffer))return(false);
 
         return(true);
     }
 
     bool InitPipeline()
     {
-        constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
-
-        {
-            AutoDelete<vulkan::PipelineCreater> 
-            pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-            pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(Prim::Triangles);
-
-            SaveToFile(PIPELINE_FILENAME,pipeline_creater);
-        }
-
-        {
-            void *data;
-            uint size=filesystem::LoadFileToMemory(PIPELINE_FILENAME,(void **)&data);
-
-            AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target,(uchar *)data,size);
-
-            pipeline=pipeline_creater->Create();
-        }
+        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
 
         return pipeline;
     }
