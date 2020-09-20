@@ -57,8 +57,12 @@ private:
 
         if(!material_instance)
             return(false);
+            
+//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
+        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/solid2d"));     //等同上一行，为Framework重载，默认使用swapchain的render target
 
-        render_obj=db->CreateRenderable(material_instance,VERTEX_COUNT);
+        if(!pipeline)
+            return(false);
         
         return(true);
     }
@@ -84,6 +88,9 @@ private:
     
     bool InitVBO()
     {
+        render_obj  =db->CreateRenderable(material_instance,VERTEX_COUNT);
+        if(!render_obj)return(false);
+
         vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
         color_buffer    =device->CreateVAB(FMT_RGB32F, VERTEX_COUNT,color_data);
 
@@ -91,13 +98,6 @@ private:
         if(!render_obj->Set(VAN::Color,     color_buffer))return(false);
 
         return(true);
-    }
-
-    bool InitPipeline()
-    {
-        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-
-        return pipeline;
     }
 
 public:
@@ -114,9 +114,6 @@ public:
             return(false);
 
         if(!InitVBO())
-            return(false);
-
-        if(!InitPipeline())
             return(false);
 
         BuildCommandBuffer(pipeline,material_instance,render_obj);

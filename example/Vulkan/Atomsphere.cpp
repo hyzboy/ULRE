@@ -51,8 +51,9 @@ private:
     {
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Atmosphere"));       //不需要优先创建Material，也不需要写扩展名        
         if(!material_instance)return(false);
-
-        pipeline_solid=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/sky"));        
+        
+//        pipeline_solid=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/sky"));
+        pipeline_solid=CreatePipeline(material_instance,OS_TEXT("res/pipeline/sky"));       //等同上一行，为Framework重载，默认使用swapchain的render target
         if(!pipeline_solid)return(false);
 
         return(true);

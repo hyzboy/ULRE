@@ -266,6 +266,18 @@ public:
 
         return(true);
     }
+
+public:
+
+    vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,const OSString &pipeline_name)
+    {
+        return db->CreatePipeline(mtl,sc_render_target,pipeline_name);
+    }
+
+    vulkan::Pipeline *CreatePipeline(vulkan::MaterialInstance *mi,const OSString &pipeline_name)
+    {
+        return db->CreatePipeline(mi,sc_render_target,pipeline_name);
+    }
 };//class VulkanApplicationFramework
 
 class CameraAppFramework:public VulkanApplicationFramework
