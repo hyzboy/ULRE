@@ -29,7 +29,6 @@ SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 SET(SCENE_GRAPH_HEADER  ${ROOT_INCLUDE_PATH}/hgl/graph/Light.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneNode.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/SceneOrient.h
-                        ${ROOT_INCLUDE_PATH}/hgl/graph/RenderableInstance.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/RenderList.h
                         ${ROOT_INCLUDE_PATH}/hgl/graph/InlineGeometry.h
                         #${ROOT_INCLUDE_PATH}/hgl/graph/Mesh.h

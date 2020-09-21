@@ -63,6 +63,7 @@ class DescriptorSets;
 class VertexAttributeBinding;
 
 class Renderable;
+class RenderableInstance;
 
 class Database;
 

@@ -88,8 +88,10 @@ SOURCE_GROUP("Render Pass" FILES ${VK_RENDER_PASS_SOURCE})
 
 SET(VK_RENDERABLE_SOURCE    ${RD_INCLUDE_PATH}/VKVertexAttributeBinding.h
                             ${RD_INCLUDE_PATH}/VKRenderable.h
+                            ${RD_INCLUDE_PATH}/VKRenderableInstance.h
                             VKVertexAttributeBinding.cpp
                             VKRenderable.cpp
+                            VKRenderableInstance.cpp
                             VKTileData.cpp
                             VKTileFont.cpp)
 

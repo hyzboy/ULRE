@@ -4,7 +4,6 @@
 #include<hgl/graph/vulkan/VKShaderModule.h>
 #include<hgl/graph/vulkan/ShaderModuleMap.h>
 #include<hgl/graph/vulkan/VKVertexAttributeBinding.h>
-#include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include"VKDescriptorSetLayoutCreater.h"
 VK_NAMESPACE_BEGIN
@@ -153,10 +152,5 @@ const VkPipelineLayout Material::GetPipelineLayout()const
 DescriptorSets *Material::CreateDescriptorSets()const
 {
     return dsl_creater->Create();
-}
-
-Renderable *Material::CreateRenderable(const uint32_t draw_count)
-{
-    return(new Renderable(vertex_sm,draw_count));
 }
 VK_NAMESPACE_END

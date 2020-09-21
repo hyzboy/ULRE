@@ -11,7 +11,6 @@ namespace hgl
         class SceneNode;
         struct Camera;
         class RenderList;
-        class RenderableInstance;
         
         using RenderListCompFunc=float (*)(Camera *,SceneNode *,SceneNode *);                       ///<渲染列表排序比较函数
 
@@ -41,7 +40,7 @@ namespace hgl
 
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
 
-            List<RenderableInstance *> renderable_instances;                                                            ///<可渲染实例
+            List<vulkan::RenderableInstance *> renderable_instances;                                                    ///<可渲染实例
 
         public:
 
@@ -75,9 +74,9 @@ namespace hgl
             void Add(SceneNode *n){if(n)SubNode.Add(n);}                                                                ///<增加一个子节点
             void ClearSubNode(){SubNode.ClearData();}                                                                   ///<清除子节点
 
-            void Add(RenderableInstance *ri){if(ri)renderable_instances.Add(ri);}                                       ///<增加渲染实例
+            void Add(vulkan::RenderableInstance *ri){if(ri)renderable_instances.Add(ri);}                               ///<增加渲染实例
 
-            void Add(RenderableInstance *ri,const Matrix4f &mat)
+            void Add(vulkan::RenderableInstance *ri,const Matrix4f &mat)
             {
                 SceneNode *sn=new SceneNode(mat);
 

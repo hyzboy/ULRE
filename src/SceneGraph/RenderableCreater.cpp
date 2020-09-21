@@ -115,15 +115,15 @@ namespace hgl
             if(vab_maps.GetCount()!=si_count)
                 return(nullptr);
 
-            vulkan::Renderable *render_obj=mtl->CreateRenderable(vertices_number);
+            vulkan::Renderable *render_obj=db->CreateRenderable(vertices_number);
 
             const auto *sp=vab_maps.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
                 if((*sp)->right->vab)
-                    render_obj->Set((*sp)->right->binding,(*sp)->right->vab);                    
+                    render_obj->Set((*sp)->left,(*sp)->right->vab);                    
                 else
-                    render_obj->Set((*sp)->right->binding,db->CreateVAB((*sp)->right->data));
+                    render_obj->Set((*sp)->left,db->CreateVAB((*sp)->right->data));
 
                 ++sp;
             }

@@ -80,7 +80,8 @@ public:
      */
     const int                                   GetStageInputBinding(const AnsiString &name)const{return shader_resource->GetStageInputBinding(name);}
     const ShaderStage *                         GetStageInput       (const AnsiString &name)const{return shader_resource->GetStageInput(name);}
-    const uint                                  GetStageInputCount  ()                      const{return shader_resource->GetStageInputCount();}
+    const uint                                  GetStageInputCount  ()                      const{return shader_resource->GetStageInputCount();}    
+    const ShaderStageList &                     GetStageInputs      ()                      const{return shader_resource->GetStageInputs();}
 
     const uint32_t                              GetAttrCount()const{return attr_count;}
 

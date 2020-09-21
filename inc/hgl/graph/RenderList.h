@@ -9,8 +9,6 @@ namespace hgl
 {
     namespace graph
     {
-        class RenderableInstance;
-
         class RenderList
         {
             vulkan::CommandBuffer *cmd_buf;
@@ -22,10 +20,10 @@ namespace hgl
             vulkan::PushConstant *      last_pc;
             vulkan::Pipeline *          last_pipeline;
             vulkan::MaterialInstance *  last_mat_inst;
-            vulkan::Renderable *        last_renderable;
+            vulkan::RenderableInstance *last_ri;
 
-            void Render(SceneNode *,RenderableInstance *);
-            void Render(SceneNode *,List<RenderableInstance *> &);
+            void Render(SceneNode *,vulkan::RenderableInstance *);
+            void Render(SceneNode *,List<vulkan::RenderableInstance *> &);
 
         public:
 
@@ -35,7 +33,7 @@ namespace hgl
                 last_pc=nullptr;
                 last_pipeline=nullptr;
                 last_mat_inst=nullptr;
-                last_renderable=nullptr;
+                last_ri=nullptr;
             }
 
             ~RenderList()=default;
