@@ -6,6 +6,7 @@
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKMaterial.h>
 #include<hgl/graph/vulkan/VKRenderable.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 #include<hgl/graph/vulkan/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
@@ -102,22 +103,22 @@ bool CommandBuffer::BeginRenderPass(RenderTarget *rt)
     return BeginRenderPass(rt->GetRenderPass(),rt->GetFramebuffer());
 }
 
-bool CommandBuffer::Bind(Renderable *render_obj)
+bool CommandBuffer::BindVAB(RenderableInstance *ri)
 {
-    if(!render_obj)
+    if(!ri)
         return(false);
 
-    const uint count=render_obj->GetBufferCount();
+    const uint count=ri->GetBufferCount();
 
     if(count<=0)
         return(false);
 
-    vkCmdBindVertexBuffers(cmd_buf,0,count,render_obj->GetBuffer(),render_obj->GetOffset());
+    vkCmdBindVertexBuffers(cmd_buf,0,count,ri->GetBuffer(),ri->GetBufferSize());
 
-    IndexBuffer *indices_buffer=render_obj->GetIndexBuffer();
+    IndexBuffer *indices_buffer=ri->GetIndexBuffer();
 
     if(indices_buffer)
-        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),render_obj->GetIndexOffset(),VkIndexType(indices_buffer->GetType()));
+        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),ri->GetIndexBufferOffset(),VkIndexType(indices_buffer->GetType()));
 
     return(true);
 }

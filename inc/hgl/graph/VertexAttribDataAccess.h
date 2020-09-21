@@ -60,7 +60,7 @@ namespace hgl
             {
                 if(!data||offset>=count)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Get() out,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Get() out,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -76,7 +76,7 @@ namespace hgl
             {
                 if(access)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Begin() access!=0,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -106,7 +106,7 @@ namespace hgl
             {
                 if(!this->access||this->access+C*number>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Write(const T *,number) out,number:")+OSString::valueOf(number));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Write(const T *,number) out,number:")+OSString::valueOf(number));
                     return(false);
                 }
 
@@ -116,7 +116,7 @@ namespace hgl
 
                 return(true);
             }
-        };//class VertexAttribBuffer
+        };//class VertexAttribDataAccess
 
         /**
         * 一元数据缓冲区

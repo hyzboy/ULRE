@@ -46,18 +46,19 @@ class TestApp:public VulkanApplicationFramework
 private:
 
         vulkan::PipelineData *      pipeline_data       =nullptr;;
+        vulkan::Renderable *        render_obj          =nullptr;
 
     struct MP
     {
         vulkan::Material *          material            =nullptr;
         vulkan::Pipeline *          pipeline            =nullptr;
-        vulkan::Renderable *        render_obj          =nullptr;
     }mp_normal,mp_hq;
 
     struct MIR
     {
         MP *                        mp                  =nullptr;
         vulkan::MaterialInstance *  material_instance   =nullptr;
+        vulkan::RenderableInstance *renderable_instance =nullptr;
     }mir_nearest,mir_linear,mir_nearest_hq,mir_linear_hq;
     
     vulkan::Texture2D *         texture             =nullptr;
@@ -95,6 +96,18 @@ private:
 
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
         if(!index_buffer)return(false);
+
+        return(true);
+    }
+
+    bool InitRenderObject()
+    {
+        render_obj=db->CreateRenderable(VERTEX_COUNT);
+        if(!render_obj)return(false);
+
+        render_obj->Set(VAN::Position,vertex_buffer);
+        render_obj->Set(VAN::TexCoord,tex_coord_buffer);
+        render_obj->Set(index_buffer);
 
         return(true);
     }
@@ -139,11 +152,6 @@ private:
         mp->pipeline=CreatePipeline(mp->material,pipeline_data);
         if(!mp->pipeline)return(false);
 
-        mp->render_obj=db->CreateRenderable(mp->material,VERTEX_COUNT);
-        mp->render_obj->Set(VAN::Position,vertex_buffer);
-        mp->render_obj->Set(VAN::TexCoord,tex_coord_buffer);
-        mp->render_obj->Set(index_buffer);
-
         return(true);
     }
 
@@ -168,18 +176,17 @@ private:
 
         mir->mp=mp;
 
+        mir->renderable_instance=db->CreateRenderableInstance(render_obj,mir->material_instance,mp->pipeline);
+
+        if(!mir->renderable_instance)
+            return(false);
+
         return(true);
     }
 
     bool Add(struct MIR *mir,const Matrix4f &offset)
     {
-        RenderableInstance *ri=db->CreateRenderableInstance(mir->mp->pipeline,
-                                                            mir->material_instance,
-                                                            mir->mp->render_obj);
-
-        if(!ri)return(false);
-
-        render_root.Add(ri,offset);
+        render_root.Add(mir->renderable_instance,offset);
 
         return(true);
     }
@@ -205,6 +212,9 @@ public:
             return(false);
 
         if(!InitVBO())
+            return(false);
+
+        if(!InitRenderObject())
             return(false);
 
         if(!InitTexture())

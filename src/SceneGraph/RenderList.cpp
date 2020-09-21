@@ -4,8 +4,8 @@
 #include<hgl/graph/vulkan/VKRenderable.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/RenderableInstance.h>
 #include<hgl/graph/vulkan/VKMaterialInstance.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 
 namespace hgl
 {
@@ -27,13 +27,13 @@ namespace hgl
         //    return (((Frustum *)fc)->BoxIn(node->GetWorldBoundingBox())!=Frustum::OUTSIDE);
         //}
 
-        void RenderList::Render(SceneNode *node,RenderableInstance *ri)
+        void RenderList::Render(SceneNode *node,vulkan::RenderableInstance *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
                 last_pipeline=ri->GetPipeline();
 
-                cmd_buf->Bind(last_pipeline);
+                cmd_buf->BindPipeline(last_pipeline);
 
                 last_mat_inst=nullptr;
             }
@@ -42,7 +42,7 @@ namespace hgl
             {
                 last_mat_inst=ri->GetMaterialInstance();
 
-                cmd_buf->Bind(last_mat_inst->GetDescriptorSets());
+                cmd_buf->BindDescriptorSets(last_mat_inst->GetDescriptorSets());
             }
 
             if(last_pc!=node->GetPushConstant())
@@ -54,16 +54,14 @@ namespace hgl
 
             //更新fin_mvp
 
-            vulkan::Renderable *obj=ri->GetRenderable();
-
-            if(obj!=last_renderable)
+            if(ri!=last_ri)
             {
-                cmd_buf->Bind(obj);
+                cmd_buf->BindVAB(ri);
 
-                last_renderable=obj;
+                last_ri=ri;
             }
 
-            const vulkan::IndexBuffer *ib=obj->GetIndexBuffer();
+            const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
 
             if(ib)
             {
@@ -71,14 +69,14 @@ namespace hgl
             }
             else
             {
-                cmd_buf->Draw(obj->GetDrawCount());
+                cmd_buf->Draw(ri->GetDrawCount());
             }
         }
 
-        void RenderList::Render(SceneNode *node,List<RenderableInstance *> &ri_list)
+        void RenderList::Render(SceneNode *node,List<vulkan::RenderableInstance *> &ri_list)
         {
             const int count=ri_list.GetCount();
-            RenderableInstance **ri=ri_list.GetData();
+            vulkan::RenderableInstance **ri=ri_list.GetData();
 
             for(int i=0;i<count;i++)
             {
@@ -96,7 +94,7 @@ namespace hgl
 
             last_pipeline=nullptr;
             last_mat_inst=nullptr;
-            last_renderable=nullptr;
+            last_ri=nullptr;
             last_pc=nullptr;
 
             const int count=scene_node_list.GetCount();

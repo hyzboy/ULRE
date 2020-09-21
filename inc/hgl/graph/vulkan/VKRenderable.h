@@ -3,6 +3,7 @@
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKBuffer.h>
+#include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/math/Math.h>
 VK_NAMESPACE_BEGIN
@@ -13,12 +14,18 @@ VK_NAMESPACE_BEGIN
  */
 class Renderable
 {
-    const VertexShaderModule *vertex_sm;
+    struct BufferData
+    {
+        VAB *buf;
+        VkDeviceSize offset;
 
-    int buf_count;
-    VkBuffer *buf_list=nullptr;
-    VkDeviceSize *buf_offset=nullptr;
+    public:
 
+        CompOperatorMemcmp(const BufferData &);
+    };
+
+    Map<UTF8String,BufferData> buffer_list;
+    
 protected:
 
     uint32_t draw_count;
@@ -41,16 +48,15 @@ protected:
 
 public:
 
-    Renderable(const VertexShaderModule *,const uint32_t dc=0);
-    virtual ~Renderable();
+    Renderable(const uint32_t dc=0):draw_count(dc){}
+    virtual ~Renderable()=default;
 
     const uint GetRefCount()const{return ref_count;}
 
     void        SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
     const AABB &GetBoundingBox()const           {return BoundingBox;}
 
-    bool Set(const int stage_input_binding, VAB *vb,VkDeviceSize offset=0);
-    bool Set(const AnsiString &name,        VAB *vb,VkDeviceSize offset=0);
+    bool Set(const UTF8String &name,VAB *vb,VkDeviceSize offset=0);
 
     bool Set(IndexBuffer *ib,VkDeviceSize offset=0)
     {
@@ -72,12 +78,12 @@ public:
         return draw_count;
     }
 
-    const int               GetBufferCount  ()const{return buf_count;}
-    const VkBuffer *        GetBuffer       ()const{return buf_list;}
-    const VkDeviceSize *    GetOffset       ()const{return buf_offset;}
+            VAB *           GetVAB(const UTF8String &,VkDeviceSize *);
+            VkBuffer        GetBuffer(const UTF8String &,VkDeviceSize *);
+    const   int             GetBufferCount()const{return buffer_list.GetCount();}
 
-    IndexBuffer *           GetIndexBuffer()     {return indices_buffer;}
-    const VkDeviceSize      GetIndexOffset()const{return indices_offset;}
+    IndexBuffer *           GetIndexBuffer()            {return indices_buffer;}
+    const VkDeviceSize      GetIndexBufferOffset()const   {return indices_offset;}
 };//class Renderable
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE

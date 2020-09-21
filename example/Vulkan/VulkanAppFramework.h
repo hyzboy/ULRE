@@ -173,39 +173,39 @@ public:
         }
     }
 
-    void BuildCommandBuffer(uint32_t index,vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
+    void BuildCommandBuffer(uint32_t index,vulkan::RenderableInstance *ri)
     {
-        if(!p||!mi||!r)
+        if(!ri)
             return;
 
-        const vulkan::IndexBuffer *ib=r->GetIndexBuffer();
+        const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
 
         vulkan::CommandBuffer *cb=cmd_buf[index];
 
         cb->Begin();
-        cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
-        cb->Bind(p);
-        cb->Bind(mi->GetDescriptorSets());
-        cb->Bind(r);
+            cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
+                cb->BindPipeline(ri->GetPipeline());
+                cb->BindDescriptorSets(ri->GetDescriptorSets());
+                cb->BindVAB(ri);
 
-        if (ib)
-            cb->DrawIndexed(ib->GetCount());
-        else
-            cb->Draw(r->GetDrawCount());
+                    if (ib)
+                        cb->DrawIndexed(ib->GetCount());
+                    else
+                        cb->Draw(ri->GetDrawCount());
 
-        cb->EndRenderPass();
+            cb->EndRenderPass();
         cb->End();
     }
 
-    void BuildCommandBuffer(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
+    void BuildCommandBuffer(vulkan::RenderableInstance *ri)
     {
         for(int32_t i=0;i<swap_chain_count;i++)
-            BuildCommandBuffer(i,p,mi,r);
+            BuildCommandBuffer(i,ri);
     }
 
-    void BuildCurrentCommandBuffer(vulkan::Pipeline *p,vulkan::MaterialInstance *mi,vulkan::Renderable *r)
+    void BuildCurrentCommandBuffer(vulkan::RenderableInstance *ri)
     {
-        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),p,mi,r);
+        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),ri);
     }
 
     void BuildCommandBuffer(uint32_t index,RenderList *rl)

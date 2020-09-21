@@ -62,7 +62,6 @@ public:
 
 public:
 
-            Renderable *                        CreateRenderable        (const uint32_t draw_count=0);
             MaterialInstance *                  CreateInstance          ();
 };//class Material
 VK_NAMESPACE_END

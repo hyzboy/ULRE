@@ -98,7 +98,7 @@ public:
     bool BeginRenderPass(VkRenderPass rp,VkFramebuffer fb);
     bool BeginRenderPass(RenderTarget *rt);
 
-    bool Bind(Pipeline *p)
+    bool BindPipeline(Pipeline *p)
     {
         if(!p)return(false);
 
@@ -106,7 +106,7 @@ public:
         return(true);
     }
 
-    bool Bind(DescriptorSets *dsl)
+    bool BindDescriptorSets(DescriptorSets *dsl)
     {
         if(!dsl)return(false);
 
@@ -124,7 +124,7 @@ public:
 
     void PushConstants(const void *data,const uint32_t size){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,size,data);}
 
-    bool Bind(Renderable *);
+    bool BindVAB(RenderableInstance *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}

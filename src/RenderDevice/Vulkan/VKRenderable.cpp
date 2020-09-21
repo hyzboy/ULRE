@@ -3,43 +3,60 @@
 #include<hgl/graph/vulkan/VKShaderModule.h>
 
 VK_NAMESPACE_BEGIN
-Renderable::Renderable(const VertexShaderModule *vsm,const uint32_t dc)
+//bool Renderable::Set(const int stage_input_binding,VAB *vab,VkDeviceSize offset)
+//{
+//    if(stage_input_binding<0||stage_input_binding>=buf_count||!vab)return(false);
+//
+//    const VkVertexInputBindingDescription *desc=vertex_sm->GetDesc(stage_input_binding);
+//    const VkVertexInputAttributeDescription *attr=vertex_sm->GetAttr(stage_input_binding);
+//
+//    if(vab->GetFormat()!=attr->format)return(false);
+//    if(vab->GetStride()!=desc->stride)return(false);
+//
+//    //format信息来自于shader，实际中可以不一样。但那样需要为每一个格式产生一个同样shader的material instance，不同的格式又需要不同的pipeline，我们不支持这种行为
+//
+//    buf_list[stage_input_binding]=vab->GetBuffer();
+//    buf_offset[stage_input_binding]=offset;
+//
+//    return(true);
+//}
+
+bool Renderable::Set(const UTF8String &name,VAB *vab,VkDeviceSize offset)
 {
-    vertex_sm=vsm;
-    draw_count=dc;
+    if(!vab)return(false);
+    if(buffer_list.KeyExist(name))return(false);
 
-    buf_count=vertex_sm->GetAttrCount();
+    BufferData bd;
+    
+    bd.buf=vab;
+    bd.offset=offset;
 
-    buf_list=hgl_zero_new<VkBuffer>(buf_count);
-    buf_offset=hgl_zero_new<VkDeviceSize>(buf_count);
-}
-
-Renderable::~Renderable()
-{
-    delete[] buf_offset;
-    delete[] buf_list;
-}
-
-bool Renderable::Set(const int stage_input_binding,VAB *vab,VkDeviceSize offset)
-{
-    if(stage_input_binding<0||stage_input_binding>=buf_count||!vab)return(false);
-
-    const VkVertexInputBindingDescription *desc=vertex_sm->GetDesc(stage_input_binding);
-    const VkVertexInputAttributeDescription *attr=vertex_sm->GetAttr(stage_input_binding);
-
-    if(vab->GetFormat()!=attr->format)return(false);
-    if(vab->GetStride()!=desc->stride)return(false);
-
-    //format信息来自于shader，实际中可以不一样。但那样需要为每一个格式产生一个同样shader的material instance，不同的格式又需要不同的pipeline，我们不支持这种行为
-
-    buf_list[stage_input_binding]=vab->GetBuffer();
-    buf_offset[stage_input_binding]=offset;
-
+    buffer_list.Add(name,bd);
     return(true);
 }
 
-bool Renderable::Set(const AnsiString &name,VAB *vab,VkDeviceSize offset)
+VAB *Renderable::GetVAB(const UTF8String &name,VkDeviceSize *offset)
 {
-    return Set(vertex_sm->GetStageInputBinding(name),vab,offset);
+    if(!offset)return(nullptr);
+    if(name.IsEmpty())return(nullptr);
+
+    BufferData bd;
+
+    if(buffer_list.Get(name,bd))
+    {
+        *offset=bd.offset;
+        return bd.buf;
+    }
+
+    return(nullptr);
+}
+
+VkBuffer Renderable::GetBuffer(const UTF8String &name,VkDeviceSize *offset)
+{
+    VAB *vab=GetVAB(name,offset);
+
+    if(vab)return vab->GetBuffer();
+
+    return(VK_NULL_HANDLE);
 }
 VK_NAMESPACE_END

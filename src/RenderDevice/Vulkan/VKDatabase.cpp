@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/vulkan/VKDatabase.h>
 #include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 
 VK_NAMESPACE_BEGIN
 VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
@@ -101,23 +101,16 @@ Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const O
     return CreatePipeline(mi->GetMaterial(),rt,filename,prim,prim_restart);
 }
 
-Renderable *Database::CreateRenderable(Material *mtl,const uint32_t vertex_count)
+Renderable *Database::CreateRenderable(const uint32_t vertex_count)
 {
-    if(!mtl)return(nullptr);
+    if(!vertex_count)return(nullptr);
 
-    Renderable *ro=mtl->CreateRenderable(vertex_count);
+    Renderable *ro=new Renderable(vertex_count);
 
     if(ro)
         Add(ro);
 
     return ro;
-}
-
-Renderable *Database::CreateRenderable(MaterialInstance *mi,const uint32_t vertex_count)
-{
-    if(!mi)return(nullptr);
-
-    return CreateRenderable(mi->GetMaterial(),vertex_count);
 }
 
 TextRenderable *Database::CreateTextRenderable(Material *mtl)
@@ -132,12 +125,12 @@ TextRenderable *Database::CreateTextRenderable(Material *mtl)
     return tr;
 }
 
-RenderableInstance *Database::CreateRenderableInstance(Pipeline *p,MaterialInstance *mi,Renderable *r)
+RenderableInstance *Database::CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
 
-    RenderableInstance *ri=new RenderableInstance(p,mi,r);
+    RenderableInstance *ri=VK_NAMESPACE::CreateRenderableInstance(r,mi,p);
 
     if(ri)
         Add(ri);

@@ -10,7 +10,7 @@
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttribData.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 #include<hgl/graph/font/TextRenderable.h>
 #include<hgl/type/ResManage.h>
 VK_NAMESPACE_BEGIN
@@ -103,11 +103,10 @@ public: //Material
     Pipeline *          CreatePipeline(Material *,RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
     Pipeline *          CreatePipeline(MaterialInstance *,RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
-    Renderable *        CreateRenderable(Material *,const uint32_t vertex_count=0);
-    Renderable *        CreateRenderable(MaterialInstance *,const uint32_t vertex_count=0);
+    Renderable *        CreateRenderable(const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);
 
-    RenderableInstance *CreateRenderableInstance(Pipeline *p,MaterialInstance *mi,Renderable *r);
+    RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
 
