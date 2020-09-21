@@ -14,15 +14,12 @@ constexpr uint32_t VERTEX_COUNT=4;
 
 static Vector4f color(1,1,1,1);
 
-constexpr float SSP=0.25;
-constexpr float SSN=1-SSP;
-
 constexpr float vertex_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*SSP,  SCREEN_HEIGHT*SSP},
-    {SCREEN_WIDTH*SSN,  SCREEN_HEIGHT*SSP},
-    {SCREEN_WIDTH*SSP,  SCREEN_HEIGHT*SSN},
-    {SCREEN_WIDTH*SSN,  SCREEN_HEIGHT*SSN}
+    {0,0},
+    {SCREEN_WIDTH,0},
+    {0,SCREEN_HEIGHT},
+    {SCREEN_WIDTH,SCREEN_HEIGHT}
 };
  
 constexpr uint32_t INDEX_COUNT=6;
@@ -37,17 +34,15 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    WorldMatrix                 wm;
+    Camera cam;
 
-    vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
-    vulkan::Buffer *            ubo_color_material  =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
-    vulkan::VAB *vertex_buffer       =nullptr;
+    vulkan::VAB *               vertex_buffer       =nullptr;
     vulkan::IndexBuffer *       index_buffer        =nullptr;
 
 public:
@@ -56,66 +51,52 @@ public:
     {
         SAFE_CLEAR(index_buffer);
         SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_color_material);
-        SAFE_CLEAR(ubo_world_matrix);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
-        SAFE_CLEAR(material);
     }
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert"),
-                                               OS_TEXT("res/shader/HexGrid.frag"));
-        if(!material)
-            return(false);
-
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
-        material_instance=material->CreateInstance();
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/FragColor"));
+        if(!material_instance)return(false);
+        
+        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/solid2d"));     //等同上一行，为Framework重载，默认使用swapchain的render target
         return(true);
     }
-
+    
     bool InitUBO()
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        wm.ortho=ortho(extent.width,extent.height);
-        wm.canvas_resolution.x=extent.width;
-        wm.canvas_resolution.y=extent.height;
+        cam.vp_width=cam.width=extent.width;
+        cam.vp_height=cam.height=extent.height;        
 
-        ubo_world_matrix    =device->CreateUBO(sizeof(WorldMatrix),&wm);
-        ubo_color_material  =device->CreateUBO(sizeof(Vector4f),&color);
+        cam.Refresh();
 
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->BindUBO("fs_world",ubo_world_matrix);
-        material_instance->BindUBO("color_material",ubo_color_material);
-        
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+
+        if(!ubo_world_matrix)
+            return(false);
+
+        if(!material_instance->BindUBO("world",ubo_world_matrix))return(false);
+        if(!material_instance->BindUBO("frag_world",ubo_world_matrix))return(false);
+
         material_instance->Update();
         return(true);
     }
 
-    void InitVBO()
-    {
-        vertex_buffer   =device->CreateVAB(FMT_RG32F,VERTEX_COUNT,vertex_data);
+    bool InitVBO()
+    {        
+        render_obj=db->CreateRenderable(material_instance,VERTEX_COUNT);
+        if(!render_obj)return(false);
+
+        vertex_buffer   =device->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data);
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
 
-        render_obj->Set("Vertex",vertex_buffer);
-        render_obj->Set(index_buffer);
-    }
+        if(!render_obj->Set(VAN::Position,vertex_buffer))return(false);
+        if(!render_obj->Set(index_buffer))return(false);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Triangles);
-
-        pipeline=pipeline_creater->Create();
-
-        return pipeline;
+        return(true);
     }
 
 public:
@@ -131,9 +112,7 @@ public:
         if(!InitUBO())
             return(false);
 
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
             
         BuildCommandBuffer(pipeline,material_instance,render_obj);

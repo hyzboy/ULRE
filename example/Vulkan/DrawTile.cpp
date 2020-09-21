@@ -195,8 +195,8 @@ private:
         vertex_buffer   =db->CreateVAB(VAF_VEC4,tile_count,vertex_data);
         tex_coord_buffer=db->CreateVAB(VAF_VEC4,tile_count,tex_coord_data);
 
-        render_obj->Set("Vertex",vertex_buffer);
-        render_obj->Set("TexCoord",tex_coord_buffer);
+        render_obj->Set(VAN::Position,vertex_buffer);
+        render_obj->Set(VAN::TexCoord,tex_coord_buffer);
     }
 
     bool InitPipeline()

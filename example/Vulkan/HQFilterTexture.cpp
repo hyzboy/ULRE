@@ -13,17 +13,16 @@ VK_NAMESPACE_BEGIN
 Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=512;
-constexpr uint32_t SCREEN_HEIGHT=512;
+constexpr uint32_t SCREEN_SIZE=512;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
 constexpr float vertex_data[VERTEX_COUNT][2]=
 {
-    {0,0},
-    {1,0},
-    {0,1},
-    {1,1}
+    {0,  0},
+    {1,  0},
+    {0,  1},
+    {1,  1}
 };
 
 constexpr float tex_coord_data[VERTEX_COUNT][2]=
@@ -46,31 +45,28 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    struct MPD
+        vulkan::PipelineData *      pipeline_data       =nullptr;;
+
+    struct MP
     {
         vulkan::Material *          material            =nullptr;
         vulkan::Pipeline *          pipeline            =nullptr;
-        vulkan::MaterialInstance *  material_instance   =nullptr;
         vulkan::Renderable *        render_obj          =nullptr;
+    }mp_normal,mp_hq;
 
-    public:
-
-        ~MPD()
-        {
-            delete material;
-            delete render_obj;
-            delete material_instance;
-            delete pipeline;
-        }
-    }nearest,linear,nearest_hq,linear_hq;
+    struct MIR
+    {
+        MP *                        mp                  =nullptr;
+        vulkan::MaterialInstance *  material_instance   =nullptr;
+    }mir_nearest,mir_linear,mir_nearest_hq,mir_linear_hq;
     
     vulkan::Texture2D *         texture             =nullptr;
 
     vulkan::Sampler *           sampler_linear      =nullptr;
     vulkan::Sampler *           sampler_nearest     =nullptr;
 
-    vulkan::VAB *      vertex_buffer       =nullptr;
-    vulkan::VAB *      tex_coord_buffer    =nullptr;
+    vulkan::VAB *               vertex_buffer       =nullptr;
+    vulkan::VAB *               tex_coord_buffer    =nullptr;
     vulkan::IndexBuffer *       index_buffer        =nullptr;
     
             SceneNode           render_root;
@@ -91,10 +87,10 @@ private:
 
     bool InitVBO()
     {
-        vertex_buffer   =device->CreateVAB(FMT_RG32F,VERTEX_COUNT,vertex_data);
+        vertex_buffer   =device->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data);
         if(!vertex_buffer)return(false);
 
-        tex_coord_buffer=device->CreateVAB(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
+        tex_coord_buffer=device->CreateVAB(VAF_VEC2,VERTEX_COUNT,tex_coord_data);
         if(!tex_coord_buffer)return(false);
 
         index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
@@ -135,36 +131,51 @@ private:
         return texture;
     }
 
-    bool InitMaterial(struct MPD *mpd,vulkan::Sampler *sampler,const OSString &fragment_shader)
+    bool InitMaterial(MP *mp,const OSString &mtl_name)
     {
-        mpd->material=shader_manage->CreateMaterial(OS_TEXT("res/shader/Texture2D.vert"),
-                                                    OS_TEXT("res/shader/")+fragment_shader+OS_TEXT(".frag"));
-        if(!mpd->material)
-            return(false);
+        mp->material=db->CreateMaterial(mtl_name);
+        if(!mp->material)return(false);
 
-        mpd->material_instance=mpd->material->CreateInstance();
+        mp->pipeline=CreatePipeline(mp->material,pipeline_data);
+        if(!mp->pipeline)return(false);
 
-        mpd->material_instance->BindSampler("tex",texture,sampler);
-        mpd->material_instance->Update();
-        
-        mpd->render_obj=mpd->material->CreateRenderable(VERTEX_COUNT);
-        mpd->render_obj->Set("Vertex",vertex_buffer);
-        mpd->render_obj->Set("TexCoord",tex_coord_buffer);
-        mpd->render_obj->Set(index_buffer);
-        
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,mpd->material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Triangles);
+        mp->render_obj=db->CreateRenderable(mp->material,VERTEX_COUNT);
+        mp->render_obj->Set(VAN::Position,vertex_buffer);
+        mp->render_obj->Set(VAN::TexCoord,tex_coord_buffer);
+        mp->render_obj->Set(index_buffer);
 
-        mpd->pipeline=pipeline_creater->Create();
-
-        return mpd->pipeline;
+        return(true);
     }
 
-    bool Add(struct MPD *mpd,const Matrix4f &offset)
+    bool InitMaterial()
     {
-        RenderableInstance *ri=db->CreateRenderableInstance(mpd->pipeline,mpd->material_instance,mpd->render_obj);
+        pipeline_data=vulkan::GetPipelineData(OS_TEXT("res/pipeline/solid2d"));
+        if(!pipeline_data)return(false);
+
+        if(!InitMaterial(&mp_normal,OS_TEXT("res/material/Texture2DPC")))return(false);
+        if(!InitMaterial(&mp_hq,    OS_TEXT("res/material/Texture2DHQPC")))return(false);
+
+        return(true);
+    }
+
+    bool InitMIR(struct MIR *mir,vulkan::Sampler *sampler,MP *mp)
+    {
+        mir->material_instance=db->CreateMaterialInstance(mp->material);
+        if(!mir->material_instance)return(false);
+            
+        if(!mir->material_instance->BindSampler("tex",texture,sampler))return(false);
+        mir->material_instance->Update();
+
+        mir->mp=mp;
+
+        return(true);
+    }
+
+    bool Add(struct MIR *mir,const Matrix4f &offset)
+    {
+        RenderableInstance *ri=db->CreateRenderableInstance(mir->mp->pipeline,
+                                                            mir->material_instance,
+                                                            mir->mp->render_obj);
 
         if(!ri)return(false);
 
@@ -175,10 +186,10 @@ private:
 
     bool InitScene()
     {
-        Add(&nearest,   translate(-1,-1,0));
-        Add(&linear,    translate( 0,-1,0));
-        Add(&nearest_hq,translate(-1, 0,0));
-        Add(&linear_hq, translate( 0, 0,0));
+        Add(&mir_nearest,   translate(-1,-1,0));
+        Add(&mir_linear,    translate( 0,-1,0));
+        Add(&mir_nearest_hq,translate(-1, 0,0));
+        Add(&mir_linear_hq, translate( 0, 0,0));
         
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -190,22 +201,25 @@ public:
 
     bool Init()
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!VulkanApplicationFramework::Init(SCREEN_SIZE,SCREEN_SIZE))
             return(false);
 
         if(!InitVBO())
             return(false);
 
-        sampler_nearest=InitSampler(VK_FILTER_NEAREST);
-        sampler_linear=InitSampler(VK_FILTER_LINEAR);
-
         if(!InitTexture())
             return(false);
 
-        if(!InitMaterial(&nearest,      sampler_nearest ,OS_TEXT("FlatTexture")))return(false);
-        if(!InitMaterial(&linear,       sampler_linear  ,OS_TEXT("FlatTexture")))return(false);
-        if(!InitMaterial(&nearest_hq,   sampler_nearest ,OS_TEXT("hqfilter")))return(false);
-        if(!InitMaterial(&linear_hq,    sampler_linear  ,OS_TEXT("hqfilter")))return(false);
+        if(!InitMaterial())
+            return(false);
+
+        sampler_nearest=InitSampler(VK_FILTER_NEAREST);
+        sampler_linear=InitSampler(VK_FILTER_LINEAR);
+
+        if(!InitMIR(&mir_nearest,      sampler_nearest ,&mp_normal  ))return(false);
+        if(!InitMIR(&mir_linear,       sampler_linear  ,&mp_normal  ))return(false);
+        if(!InitMIR(&mir_nearest_hq,   sampler_nearest ,&mp_hq      ))return(false);
+        if(!InitMIR(&mir_linear_hq,    sampler_linear  ,&mp_hq      ))return(false);
         
         if(!InitScene())
             return(false);
