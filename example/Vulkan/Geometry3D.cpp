@@ -4,7 +4,6 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/RenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;
@@ -36,66 +35,44 @@ private:
 
 private:
 
-    bool InitMaterial(MDP *mdp,const OSString &vs,const OSString &fs)
+
+    bool InitMDP(MDP *mdp,const Prim primitive,const OSString &mtl_name)
     {
-        mdp->material=shader_manage->CreateMaterial(vs,fs);
-        
-        if(!mdp->material)
-            return(false);
+        mdp->material=db->CreateMaterial(mtl_name);
+        if(!mdp->material)return(false);
 
-        mdp->material_instance=mdp->material->CreateInstance();
+        mdp->material_instance=db->CreateMaterialInstance(mdp->material);
+        if(!mdp->material_instance)return(false);
 
-        db->Add(mdp->material);
-        db->Add(mdp->material_instance);
-        return(true);
-    }
+        mdp->pipeline=CreatePipeline(mdp->material_instance,OS_TEXT("res/pipeline/solid2d"),primitive);
 
-    bool InitUBO(MDP *mdp)
-    {
         if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
 
         mdp->material_instance->Update();
         return(true);
     }
-
-    bool InitPipeline(MDP *mdp,const Prim primitive)
+    
+    void Add(vulkan::Renderable *r,MDP &mdp)
     {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,mdp->material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(primitive);
+        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
 
-        mdp->pipeline=pipeline_creater->Create();
-
-        if(!mdp->pipeline)
-            return(false);
-
-        db->Add(mdp->pipeline);
-        return(true);
+        render_root.Add(ri);
     }
 
-    bool InitMDP(MDP *mdp,const Prim primitive,const OSString &vs,const OSString &fs)
+    void Add(vulkan::Renderable *r,MDP &mdp,const Matrix4f &mat)
     {
-        if(!InitMaterial(mdp,vs,fs))
-            return(false);
+        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
 
-        if(!InitUBO(mdp))
-            return(false);
-
-        if(!InitPipeline(mdp,primitive))
-            return(false);
-
-        return(true);
+        render_root.Add(ri,mat);
     }
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(m2d.pipeline,m2d.material_instance,ro_round_rectangle));
-
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.material_instance,ro_plane_grid[0]));
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.material_instance,ro_plane_grid[1]),rotate(HGL_RAD_90,0,1,0));
-        render_root.Add(db->CreateRenderableInstance(m3d.pipeline,m3d.material_instance,ro_plane_grid[2]),rotate(HGL_RAD_90,1,0,0));
+        Add(ro_round_rectangle,m2d);
+        Add(ro_plane_grid[0],m3d);
+        Add(ro_plane_grid[1],m3d,rotate(HGL_RAD_90,0,1,0));
+        Add(ro_plane_grid[2],m3d,rotate(HGL_RAD_90,1,0,0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -152,12 +129,10 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        if(!InitMDP(&m3d,Prim::Lines,OS_TEXT("res/shader/PositionColor3D.vert"),
-                                    OS_TEXT("res/shader/VertexColor.frag")))
+        if(!InitMDP(&m3d,Prim::Lines,OS_TEXT("res/material/VertexColor3D")))
             return(false);
 
-        if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/shader/OnlyPosition.vert"),
-                                            OS_TEXT("res/shader/FlatColor.frag")))
+        if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/material/PureColor2D")))
             return(false);
 
         {

@@ -8,17 +8,14 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 static Vector4f color(1,1,0,1);
 
@@ -47,16 +44,17 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert"),
-                                               OS_TEXT("res/shader/FlatColor.frag"));
-        if(!material)
-            return(false);
-            
-        material_instance=material->CreateInstance();
+        material=db->CreateMaterial(OS_TEXT("res/material/PureColor2D"));
 
-        db->Add(material);
-        db->Add(material_instance);
-        return(true);
+        if(!material)return(false);
+
+        material_instance=db->CreateMaterialInstance(material);
+
+        if(!material_instance)return(false);
+
+        pipeline=CreatePipeline(material,OS_TEXT("res/pipeline/solid2d"),Prim::Fan);
+
+        return pipeline;
     }
 
     void CreateRenderObject()
@@ -96,7 +94,7 @@ private:
 
     vulkan::Buffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
     {
-        vulkan::Buffer *ubo=device->CreateUBO(size,data);
+        vulkan::Buffer *ubo=db->CreateUBO(size,data);
 
         if(!ubo)
             return(nullptr);
@@ -128,25 +126,11 @@ private:
         return(true);
     }
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Fan);
-
-        pipeline=pipeline_creater->Create();
-        if(!pipeline)return(false);
-
-        db->Add(pipeline);
-        return(true);
-    }
-
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_rectangle));
-        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_round_rectangle));
-        render_root.Add(db->CreateRenderableInstance(pipeline,material_instance,ro_circle));
+        render_root.Add(db->CreateRenderableInstance(ro_rectangle,      material_instance,pipeline));
+        render_root.Add(db->CreateRenderableInstance(ro_round_rectangle,material_instance,pipeline));
+        render_root.Add(db->CreateRenderableInstance(ro_circle,         material_instance,pipeline));
 
         render_root.ExpendToList(&render_list);
         BuildCommandBuffer(&render_list);
@@ -166,9 +150,6 @@ public:
         CreateRenderObject();
 
         if(!InitUBO())
-            return(false);
-
-        if(!InitPipeline())
             return(false);
 
         if(!InitScene())
