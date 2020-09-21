@@ -269,14 +269,14 @@ public:
 
 public:
 
-    vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,const OSString &pipeline_name)
+    vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
-        return db->CreatePipeline(mtl,sc_render_target,pipeline_name);
+        return db->CreatePipeline(mtl,sc_render_target,pipeline_name,prim,prim_restart);
     }
 
-    vulkan::Pipeline *CreatePipeline(vulkan::MaterialInstance *mi,const OSString &pipeline_name)
+    vulkan::Pipeline *CreatePipeline(vulkan::MaterialInstance *mi,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
-        return db->CreatePipeline(mi,sc_render_target,pipeline_name);
+        return db->CreatePipeline(mi,sc_render_target,pipeline_name,prim,prim_restart);
     }
 };//class VulkanApplicationFramework
 
