@@ -22,9 +22,14 @@ private:
 
     SceneNode   render_root;
     RenderList  render_list;
+    
+    struct MDP
+    {
+        vulkan::Material *          material            =nullptr;
+        vulkan::MaterialInstance *  material_instance   =nullptr;
+        vulkan::Pipeline *          pipeline            =nullptr;
+    }m3d,m2d;
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Buffer *            ubo_color           =nullptr;
 
     vulkan::Renderable          *ro_plane_grid,
@@ -40,17 +45,20 @@ private:
 
 private:
 
-    bool InitMaterial()
+    bool InitMDP(MDP *mdp,const Prim primitive,const OSString &mtl_name)
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert"),
-                                               OS_TEXT("res/shader/FlatColor.frag"));
-        if(!material)
+        mdp->material=db->CreateMaterial(mtl_name);
+        if(!mdp->material)return(false);
+
+        mdp->material_instance=db->CreateMaterialInstance(mdp->material);
+        if(!mdp->material_instance)return(false);
+
+        mdp->pipeline=CreatePipeline(mdp->material_instance,OS_TEXT("res/pipeline/solid2d"),primitive);
+
+        if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
 
-        material_instance=material->CreateInstance();
-
-        db->Add(material);
-        db->Add(material_instance);
+        mdp->material_instance->Update();
         return(true);
     }
 
@@ -168,6 +176,20 @@ private:
         db->Add(pipeline_solid);
         return(true);
     }
+    
+    void Add(vulkan::Renderable *r,MDP &mdp)
+    {
+        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
+
+        render_root.Add(ri);
+    }
+
+    void Add(vulkan::Renderable *r,MDP &mdp,const Matrix4f &mat)
+    {
+        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
+
+        render_root.Add(ri,mat);
+    }
 
     bool InitScene()
     {
@@ -191,8 +213,11 @@ public:
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+            
+        if(!InitMDP(&m3d,Prim::Lines,OS_TEXT("res/material/VertexColor3D")))
+            return(false);
 
-        if(!InitMaterial())
+        if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/material/PureColor2D")))
             return(false);
 
         CreateRenderObject();
