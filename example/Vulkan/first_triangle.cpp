@@ -91,8 +91,8 @@ private:
         render_obj  =db->CreateRenderable(material_instance,VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
-        color_buffer    =device->CreateVAB(FMT_RGB32F, VERTEX_COUNT,color_data);
+        vertex_buffer   =device->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data);
+        color_buffer    =device->CreateVAB(VAF_VEC3,VERTEX_COUNT,color_data);
 
         if(!render_obj->Set(VAN::Position,  vertex_buffer))return(false);
         if(!render_obj->Set(VAN::Color,     color_buffer))return(false);
