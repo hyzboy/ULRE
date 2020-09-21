@@ -37,21 +37,10 @@ private:
     Camera cam;
 
     vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::RenderableInstance *renderable_instance =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *               vertex_buffer       =nullptr;
-    vulkan::IndexBuffer *       index_buffer        =nullptr;
-
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(index_buffer);
-        SAFE_CLEAR(vertex_buffer);
-    }
 
 private:
 
@@ -87,14 +76,13 @@ private:
 
     bool InitVBO()
     {        
-        render_obj=db->CreateRenderable(material_instance,VERTEX_COUNT);
+        auto render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        vertex_buffer   =device->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data);
-        index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
+        if(!render_obj->Set(VAN::Position,db->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
 
-        if(!render_obj->Set(VAN::Position,vertex_buffer))return(false);
-        if(!render_obj->Set(index_buffer))return(false);
+        renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
         return(true);
     }
@@ -115,14 +103,21 @@ public:
         if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(renderable_instance);
 
         return(true);
     }
 
-    void Resize(int,int)override
+    void Resize(int w,int h)override
     {
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        cam.vp_width=w;
+        cam.vp_height=h;
+
+        cam.Refresh();
+
+        ubo_world_matrix->Write(&cam.matrix);
+
+        BuildCommandBuffer(renderable_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 

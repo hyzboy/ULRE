@@ -13,8 +13,8 @@ VK_NAMESPACE_BEGIN
 Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
@@ -51,24 +51,9 @@ private:
     vulkan::Texture2D *         texture             =nullptr;
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::RenderableInstance *renderable_instance =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
-
     vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *               vertex_buffer       =nullptr;
-    vulkan::VAB *               tex_coord_buffer    =nullptr;
-    vulkan::IndexBuffer *       index_buffer        =nullptr;
-
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(index_buffer);
-        SAFE_CLEAR(tex_coord_buffer);
-        SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(texture);
-    }
 
 private:
 
@@ -82,6 +67,8 @@ private:
 
         texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
         if(!texture)return(false);
+
+        db->Add(texture);
 
         sampler=db->CreateSampler();
 
@@ -111,16 +98,14 @@ private:
 
     bool InitVBO()
     {
-        render_obj=db->CreateRenderable(material_instance,VERTEX_COUNT);
+        auto render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        vertex_buffer   =device->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=device->CreateVAB(VAF_VEC2,VERTEX_COUNT,tex_coord_data);
-        index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
+        if(!render_obj->Set(VAN::Position,db->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::TexCoord,db->CreateVAB(VAF_VEC2,VERTEX_COUNT,tex_coord_data)))return(false);
+        if(!render_obj->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
 
-        if(!render_obj->Set(VAN::Position,vertex_buffer))return(false);
-        if(!render_obj->Set(VAN::TexCoord,tex_coord_buffer))return(false);
-        if(!render_obj->Set(index_buffer))return(false);
+        renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
         return(true);
     }
@@ -141,7 +126,7 @@ public:
         if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(renderable_instance);
 
         return(true);
     }
@@ -154,8 +139,8 @@ public:
         cam.Refresh();
 
         ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        
+        BuildCommandBuffer(renderable_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 
