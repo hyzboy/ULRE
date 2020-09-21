@@ -70,12 +70,8 @@ MaterialInstance *Database::CreateMaterialInstance(const OSString &mtl_filename)
     return CreateMaterialInstance(mtl);
 }
 
-Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
+Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
 {
-    PipelineData *pd=vulkan::GetPipelineData(pipeline_filename);
-
-    if(!pd)return(nullptr);
-
     pd->Set(prim,prim_restart);
 
     Pipeline *p=device->CreatePipeline(pd,mtl,rt);
@@ -84,6 +80,20 @@ Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString
         Add(p);
 
     return(p);
+}
+
+Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
+{
+    return CreatePipeline(mi->GetMaterial(),rt,pd,prim,prim_restart);
+}
+
+Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
+{
+    PipelineData *pd=vulkan::GetPipelineData(pipeline_filename);
+
+    if(!pd)return(nullptr);
+
+    return CreatePipeline(mtl,rt,pd,prim,prim_restart);
 }
 
 Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const OSString &filename,const Prim &prim,const bool prim_restart)
