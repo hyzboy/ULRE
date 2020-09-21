@@ -33,21 +33,10 @@ private:
     Camera cam;
 
     vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::RenderableInstance *render_instance     =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *               vertex_buffer       =nullptr;
-    vulkan::VAB *               color_buffer        =nullptr;
-
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(color_buffer);
-        SAFE_CLEAR(vertex_buffer);
-    }
 
 private:
 
@@ -88,15 +77,13 @@ private:
     
     bool InitVBO()
     {
-        render_obj  =db->CreateRenderable(material_instance,VERTEX_COUNT);
+        vulkan::Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        vertex_buffer   =device->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data);
-        color_buffer    =device->CreateVAB(VAF_VEC3,VERTEX_COUNT,color_data);
-
-        if(!render_obj->Set(VAN::Position,  vertex_buffer))return(false);
-        if(!render_obj->Set(VAN::Color,     color_buffer))return(false);
-
+        if(!render_obj->Set(VAN::Position,  db->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::Color,     db->CreateVAB(VAF_VEC3,VERTEX_COUNT,color_data)))return(false);
+        
+        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
         return(true);
     }
 
@@ -116,7 +103,7 @@ public:
         if(!InitVBO())
             return(false);
 
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(render_instance);
 
         return(true);
     }
@@ -130,7 +117,7 @@ public:
 
         ubo_world_matrix->Write(&cam.matrix);
 
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 
