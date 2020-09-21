@@ -45,8 +45,10 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-        vulkan::PipelineData *      pipeline_data       =nullptr;;
+        vulkan::PipelineData *      pipeline_data       =nullptr;
         vulkan::Renderable *        render_obj          =nullptr;
+        vulkan::Sampler *           sampler_linear      =nullptr;
+        vulkan::Sampler *           sampler_nearest     =nullptr;
 
     struct MP
     {
@@ -56,15 +58,11 @@ private:
 
     struct MIR
     {
-        MP *                        mp                  =nullptr;
         vulkan::MaterialInstance *  material_instance   =nullptr;
         vulkan::RenderableInstance *renderable_instance =nullptr;
     }mir_nearest,mir_linear,mir_nearest_hq,mir_linear_hq;
     
     vulkan::Texture2D *         texture             =nullptr;
-
-    vulkan::Sampler *           sampler_linear      =nullptr;
-    vulkan::Sampler *           sampler_nearest     =nullptr;
 
     vulkan::VAB *               vertex_buffer       =nullptr;
     vulkan::VAB *               tex_coord_buffer    =nullptr;
@@ -173,8 +171,6 @@ private:
             
         if(!mir->material_instance->BindSampler("tex",texture,sampler))return(false);
         mir->material_instance->Update();
-
-        mir->mp=mp;
 
         mir->renderable_instance=db->CreateRenderableInstance(render_obj,mir->material_instance,mp->pipeline);
 
