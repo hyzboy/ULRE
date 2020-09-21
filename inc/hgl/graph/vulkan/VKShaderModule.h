@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
 #include<hgl/graph/shader/ShaderResource.h>
-#include<hgl/type/Set.h>
+#include<hgl/type/Sets.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -68,7 +68,7 @@ class VertexShaderModule:public ShaderModule
 
 private:
 
-    Set<VertexAttributeBinding *> vab_sets;
+    Sets<VertexAttributeBinding *> vab_sets;
 
 public:
 

@@ -99,7 +99,7 @@ namespace hgl
 
             int draw_chars_count;                       ///<要绘制字符列表
 
-            Set<u32char> alone_chars;                   ///<不重复字符统计缓冲区
+            Sets<u32char> alone_chars;                   ///<不重复字符统计缓冲区
             TileUVFloatMap alone_chars_uv;              ///<所有要绘制字符的uv
 
             struct CharDrawAttr
