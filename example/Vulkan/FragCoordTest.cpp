@@ -7,9 +7,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-
 constexpr uint32_t SCREEN_WIDTH=128;
 constexpr uint32_t SCREEN_HEIGHT=128;
 
@@ -29,7 +26,6 @@ private:
 
     Camera cam;
 
-    vulkan::Material *          material            =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
@@ -43,24 +39,22 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_world_matrix);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
-        SAFE_CLEAR(material);
     }
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert"),
-                                               OS_TEXT("res/shader/FragCoord.frag"));
-        if(!material)
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/FragColor"));
+
+        if(!material_instance)
+            return(false);
+            
+        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/solid2d"),Prim::TriangleStrip);
+
+        if(!pipeline)
             return(false);
 
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
-        material_instance=material->CreateInstance();
         return(true);
     }
 
@@ -73,35 +67,29 @@ private:
 
         cam.Refresh();
 
-        ubo_world_matrix=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
         if(!ubo_world_matrix)
             return(false);
 
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->BindUBO("fragment_world",ubo_world_matrix);
+        if(!material_instance->BindUBO("world",ubo_world_matrix))return(false);
+        if(!material_instance->BindUBO("frag_world",ubo_world_matrix))return(false);
 
         material_instance->Update();
         return(true);
     }
 
-    void InitVBO()
+    bool InitVBO()
     {
-        vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
+        render_obj=db->CreateRenderable(material_instance,VERTEX_COUNT);
+        if(!render_obj)return(false);
 
-        render_obj->Set("Vertex",   vertex_buffer);
-    }
+        vertex_buffer=device->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data);
+        if(!vertex_buffer)return(false);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_TRIANGLE_STRIP);
+        if(!render_obj->Set(VAN::Position,vertex_buffer))return(false);
 
-        pipeline=pipeline_creater->Create();
-
-        return pipeline;
+        return(true);
     }
 
 public:
@@ -117,9 +105,7 @@ public:
         if(!InitUBO())
             return(false);
 
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
 
         BuildCommandBuffer(pipeline,material_instance,render_obj);
