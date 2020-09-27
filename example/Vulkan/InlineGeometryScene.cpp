@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;
@@ -23,12 +23,12 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
     
-    struct MDP
-    {
-        vulkan::Material *          material            =nullptr;
-        vulkan::MaterialInstance *  material_instance   =nullptr;
-        vulkan::Pipeline *          pipeline            =nullptr;
-    }m3d,m2d;
+    vulkan::Material *          material            =nullptr;
+    vulkan::MaterialInstance *  material_instance   =nullptr;
+
+    vulkan::PipelineData *      pipeline_data       =nullptr;
+    vulkan::Pipeline *          pipeline_line       =nullptr;
+    vulkan::Pipeline *          pipeline_solid      =nullptr;
 
     vulkan::Buffer *            ubo_color           =nullptr;
 
@@ -40,25 +40,25 @@ private:
                                 *ro_cylinder,
                                 *ro_cone;
 
-    vulkan::Pipeline            *pipeline_line      =nullptr,
-                                *pipeline_solid     =nullptr;
-
 private:
 
-    bool InitMDP(MDP *mdp,const Prim primitive,const OSString &mtl_name)
+    bool InitMaterial()
     {
-        mdp->material=db->CreateMaterial(mtl_name);
-        if(!mdp->material)return(false);
+        material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
+        if(!material)return(false);
 
-        mdp->material_instance=db->CreateMaterialInstance(mdp->material);
-        if(!mdp->material_instance)return(false);
+        material_instance=db->CreateMaterialInstance(material);
+        if(!material_instance)return(false);
 
-        mdp->pipeline=CreatePipeline(mdp->material_instance,OS_TEXT("res/pipeline/solid2d"),primitive);
+        pipeline_data=vulkan::GetPipelineData(OS_TEXT("res/pipeline/default"));
+        if(!pipeline_data)return(false);
 
-        if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
-            return(false);
+        pipeline_line=CreatePipeline(material,pipeline_data,Prim::Lines);
+        if(!pipeline_line)return(false);
 
-        mdp->material_instance->Update();
+        pipeline_solid=CreatePipeline(material,pipeline_data,Prim::Triangles);
+        if(!pipeline_solid)return(false);
+
         return(true);
     }
 
@@ -85,7 +85,9 @@ private:
         }
         
         {
-            struct CubeCreateInfo cci;            
+            struct CubeCreateInfo cci;
+            cci.has_color=true;
+            cci.color.Set(1,1,1,1);
             ro_cube=CreateRenderableCube(db,material,&cci);
         }
         
@@ -152,54 +154,30 @@ private:
         material_instance->Update();
         return(true);
     }
-
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->Set(Prim::Lines);
-
-        pipeline_line=pipeline_creater->Create();
-
-        if(!pipeline_line)
-            return(false);
-
-        db->Add(pipeline_line);
-
-        pipeline_creater->Set(Prim::Triangles);
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
-        pipeline_solid=pipeline_creater->Create();
-
-        if(!pipeline_solid)
-            return(false);
-
-        db->Add(pipeline_solid);
-        return(true);
-    }
     
-    void Add(vulkan::Renderable *r,MDP &mdp)
+    void Add(vulkan::Renderable *r,vulkan::Pipeline *pl)
     {
-        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
+        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
         render_root.Add(ri);
     }
 
-    void Add(vulkan::Renderable *r,MDP &mdp,const Matrix4f &mat)
+    void Add(vulkan::Renderable *r,vulkan::Pipeline *pl,const Matrix4f &mat)
     {
-        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
+        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
         render_root.Add(ri,mat);
     }
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,material_instance,ro_plane_grid));
-        //render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_dome));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_torus));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cylinder ),translate(  0, 16, 0));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cone     ),translate(  0,-16, 0));
+        Add(ro_plane_grid,pipeline_line);
+//        Add(ro_dome,pipeline_solid);
+        Add(ro_torus    ,pipeline_solid);
+        Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));
+        Add(ro_sphere   ,pipeline_solid,translate( 10,  0, 5)*scale(10,10,10));
+        Add(ro_cylinder ,pipeline_solid,translate(  0, 16, 0));
+        Add(ro_cone     ,pipeline_solid,translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
@@ -214,19 +192,13 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
             
-        if(!InitMDP(&m3d,Prim::Lines,OS_TEXT("res/material/VertexColor3D")))
+        if(!InitMaterial())
             return(false);
-
-        if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/material/PureColor2D")))
-            return(false);
-
-        CreateRenderObject();
 
         if(!InitUBO())
             return(false);
 
-        if(!InitPipeline())
-            return(false);
+        CreateRenderObject();
 
         if(!InitScene())
             return(false);

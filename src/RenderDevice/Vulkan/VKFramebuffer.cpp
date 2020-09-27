@@ -49,10 +49,8 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
 
     const VkExtent3D extent=depth->GetExtent();
 
-    VkFramebufferCreateInfo *fb_info=new VkFramebufferCreateInfo;
-    fb_info->sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    fb_info->pNext           = nullptr;
-    fb_info->flags           = 0;
+    FramebufferCreateInfo *fb_info=new FramebufferCreateInfo;
+
     fb_info->renderPass      = *rp;
     fb_info->attachmentCount = att_count;
     fb_info->pAttachments    = attachments;

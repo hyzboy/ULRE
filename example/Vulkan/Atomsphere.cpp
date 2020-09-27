@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;

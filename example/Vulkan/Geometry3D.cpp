@@ -35,7 +35,6 @@ private:
 
 private:
 
-
     bool InitMDP(MDP *mdp,const Prim primitive,const OSString &mtl_name)
     {
         mdp->material=db->CreateMaterial(mtl_name);
@@ -44,7 +43,7 @@ private:
         mdp->material_instance=db->CreateMaterialInstance(mdp->material);
         if(!mdp->material_instance)return(false);
 
-        mdp->pipeline=CreatePipeline(mdp->material_instance,OS_TEXT("res/pipeline/solid2d"),primitive);
+        mdp->pipeline=CreatePipeline(mdp->material_instance,OS_TEXT("res/pipeline/default"),primitive);
 
         if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);

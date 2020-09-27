@@ -16,10 +16,8 @@ bool DescriptorSets::BindUBO(const int binding,const Buffer *buf)
     if(binding<0||!buf)
         return(false);
 
-    VkWriteDescriptorSet wds;
+    WriteDescriptorSet wds;
 
-    wds.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wds.pNext            = nullptr;
     wds.dstSet           = desc_set;
     wds.dstBinding       = binding;
     wds.dstArrayElement  = 0;
@@ -37,11 +35,9 @@ bool DescriptorSets::BindUBODynamic(const int binding,const Buffer *buf)
 {
     if(binding<0||!buf)
         return(false);
+        
+    WriteDescriptorSet wds;
 
-    VkWriteDescriptorSet wds;
-
-    wds.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wds.pNext            = nullptr;
     wds.dstSet           = desc_set;
     wds.dstBinding       = binding;
     wds.dstArrayElement  = 0;
@@ -67,11 +63,9 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
     image_info->sampler      =*sampler;
 
     desc_image_info.Add(image_info);
+    
+    WriteDescriptorSet wds;
 
-    VkWriteDescriptorSet wds;
-
-    wds.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wds.pNext            = nullptr;
     wds.dstSet           = desc_set;
     wds.dstBinding       = binding;
     wds.dstArrayElement  = 0;

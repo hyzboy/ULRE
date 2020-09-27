@@ -17,7 +17,7 @@ protected:
     uint32_t current_fence;
     ObjectList<Fence> fence_list;
 
-    VkSubmitInfo submit_info;
+    SubmitInfo submit_info;
 
 public:
 
@@ -63,7 +63,7 @@ class SwapchainRenderTarget:public RenderTarget
 {
     Swapchain *swapchain;
     VkSwapchainKHR vk_swapchain;
-    VkPresentInfoKHR present_info;
+    PresentInfo present_info;
 
     RenderPass *main_rp=nullptr;
 
