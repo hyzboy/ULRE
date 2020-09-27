@@ -6,6 +6,7 @@
 #include<hgl/graph/vulkan/VKBuffer.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
 #include<hgl/graph/vulkan/VKMemory.h>
+#include<hgl/graph/vulkan/VKImageCreateInfo.h>
 VK_NAMESPACE_BEGIN
 namespace
 {
@@ -64,7 +65,8 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t
             return(nullptr);
     }
 
-    VkImage img=CreateImage2D(format,width,height,usage,tiling);
+    Image2DCreateInfo ici(usage,tiling,format,width,height);
+    VkImage img=CreateImage(&ici);
 
     if(!img)return(nullptr);
 
@@ -121,9 +123,7 @@ bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,const VkBufferImageCopy 
     subresourceRange.baseArrayLayer = 0;
     subresourceRange.layerCount     = 1;
 
-    VkImageMemoryBarrier imageMemoryBarrier;
-    imageMemoryBarrier.sType                = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageMemoryBarrier.pNext                = nullptr;
+    ImageMemoryBarrier imageMemoryBarrier;
     imageMemoryBarrier.srcAccessMask        = 0;
     imageMemoryBarrier.dstAccessMask        = VK_ACCESS_TRANSFER_WRITE_BIT;
     imageMemoryBarrier.oldLayout            = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -176,7 +176,7 @@ bool Device::ChangeTexture2D(Texture2D *tex,Buffer *buf,const List<ImageRegion> 
     const int ir_count=ir_list.GetCount();
     int count=0;
 
-    AutoDeleteArray<VkBufferImageCopy> buffer_image_copy=new VkBufferImageCopy[ir_count];
+    AutoDeleteArray<VkBufferImageCopy> buffer_image_copy(ir_count);
     VkBufferImageCopy *tp=buffer_image_copy;
     const ImageRegion *sp=ir_list.GetData();
 
