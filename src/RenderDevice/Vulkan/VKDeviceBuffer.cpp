@@ -4,15 +4,13 @@
 VK_NAMESPACE_BEGIN
 bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
-    VkBufferCreateInfo buf_info={};
-    buf_info.sType                  = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buf_info.pNext                  = nullptr;
+    BufferCreateInfo buf_info;
+
     buf_info.usage                  = buf_usage;
     buf_info.size                   = size;
     buf_info.queueFamilyIndexCount  = 0;
     buf_info.pQueueFamilyIndices    = nullptr;
     buf_info.sharingMode            = VkSharingMode(sharing_mode);
-    buf_info.flags                  = 0;
 
     if(vkCreateBuffer(attr->device,&buf_info,nullptr,&buf->buffer)!=VK_SUCCESS)
         return(false);

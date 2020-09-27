@@ -55,11 +55,8 @@ void CommandBuffer::SetRenderArea(const VkExtent2D &ext2d)
 
 bool CommandBuffer::Begin()
 {
-    VkCommandBufferBeginInfo cmd_buf_info;
-
-    cmd_buf_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cmd_buf_info.pNext = nullptr;
-    cmd_buf_info.flags = 0;
+    CommandBufferBeginInfo cmd_buf_info;
+    
     cmd_buf_info.pInheritanceInfo = nullptr;
 
     if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)
@@ -70,10 +67,8 @@ bool CommandBuffer::Begin()
 
 bool CommandBuffer::BeginRenderPass(VkRenderPass rp,VkFramebuffer fb)
 {
-    VkRenderPassBeginInfo rp_begin;
+    RenderPassBeginInfo rp_begin;
 
-    rp_begin.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rp_begin.pNext              = nullptr;
     rp_begin.renderPass         = rp;
     rp_begin.framebuffer        = fb;
     rp_begin.renderArea         = render_area;

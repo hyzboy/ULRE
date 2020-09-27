@@ -46,7 +46,7 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
     const VkVertexInputBindingDescription *desc;
     const VkVertexInputAttributeDescription *attr;
 
-    for(uint i=0;i<input_count;i++)
+    for(int i=0;i<input_count;i++)
     {
         desc=vsm->GetDesc(i);
         attr=vsm->GetAttr(i);

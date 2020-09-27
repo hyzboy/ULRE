@@ -297,6 +297,13 @@ namespace hgl
                 }
             }
 
+            if(cci->has_color)
+            {                
+                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+
+                if(color)color->Fill(cci->color,24);
+            }
+
             rc.CreateIBO16(6*2*3,indices);
             return rc.Finish();
         }

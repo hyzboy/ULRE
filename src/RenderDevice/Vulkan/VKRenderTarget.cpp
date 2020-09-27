@@ -19,8 +19,6 @@ SubmitQueue::SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count)
 
     current_fence=0;
 
-    submit_info.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.pNext                   = nullptr;
     submit_info.pWaitDstStageMask       = &pipe_stage_flags;
 }
 
@@ -102,8 +100,6 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
     swapchain=sc;
     vk_swapchain=swapchain->GetSwapchain();
 
-    present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.pNext              = nullptr;
     present_info.waitSemaphoreCount = 0;
     present_info.pWaitSemaphores    = nullptr;
     present_info.swapchainCount     = 1;

@@ -7,6 +7,7 @@
 #include<hgl/graph/vulkan/VKNamespace.h>
 #include<hgl/graph/vulkan/VKFormat.h>
 #include<hgl/graph/vulkan/VKPrimivate.h>
+#include<hgl/graph/vulkan/VKStruct.h>
 
 VK_NAMESPACE_BEGIN
 

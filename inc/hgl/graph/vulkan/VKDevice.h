@@ -121,9 +121,9 @@ public: //Image
     VkImage CreateImage1DArray  (const VkFormat format,const uint32_t width,const uint32_t layer,                       const uint usage,const ImageTiling tiling);
     VkImage CreateImage2D       (const VkFormat format,const uint32_t width,const uint32_t height,                      const uint usage,const ImageTiling tiling);
     VkImage CreateImage2DArray  (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t layer, const uint usage,const ImageTiling tiling);
-    VkImage CreateImage3D       (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t depth, const uint usage,const ImageTiling tiling);
+    VkImage CreateImage3D       (const VkFormat format,const VkExtent3D &extent,                                        const uint usage,const ImageTiling tiling);
     VkImage CreateCubemap       (const VkFormat format,const uint32_t width,const uint32_t height,                      const uint usage,const ImageTiling tiling);
-//    VkImage CreateCubemapArray  (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t count, const uint usage,const ImageTiling tiling);
+//    VkImage CreateCubemapArray  (const VkFormat format,const uint32_t width,const uint32_t height,const uint32_t layer, const uint usage,const ImageTiling tiling);
 
     void    DestoryImage        (VkImage);
 

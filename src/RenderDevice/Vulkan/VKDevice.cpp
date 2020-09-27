@@ -60,9 +60,8 @@ CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D &extent,const uint32
     if(!attr->cmd_pool)
         return(nullptr);
 
-    VkCommandBufferAllocateInfo cmd;
-    cmd.sType               =VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmd.pNext               =nullptr;
+    CommandBufferAllocateInfo cmd;
+
     cmd.commandPool         =attr->cmd_pool;
     cmd.level               =VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmd.commandBufferCount  =1;
@@ -83,10 +82,7 @@ CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D &extent,const uint32
  */
 Fence *Device::CreateFence(bool create_signaled)
 {
-    VkFenceCreateInfo fenceInfo;
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.pNext = nullptr;
-    fenceInfo.flags = create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0;
+    FenceCreateInfo fenceInfo(create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0);
 
     VkFence fence;
 
@@ -98,12 +94,10 @@ Fence *Device::CreateFence(bool create_signaled)
 
 vulkan::Semaphore *Device::CreateSem()
 {
-    VkSemaphoreCreateInfo SemaphoreCreateInfo;
-    SemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    SemaphoreCreateInfo.pNext = nullptr;
-    SemaphoreCreateInfo.flags = 0;
+    SemaphoreCreateInfo SemaphoreCreateInfo;
 
     VkSemaphore sem;
+
     if(vkCreateSemaphore(attr->device, &SemaphoreCreateInfo, nullptr, &sem)!=VK_SUCCESS)
         return(nullptr);
 

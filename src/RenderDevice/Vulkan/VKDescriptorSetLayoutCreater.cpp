@@ -79,11 +79,8 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     if(count<=0)
         return(false);
 
-    VkDescriptorSetLayoutCreateInfo descriptor_layout;
+    DescriptorSetLayoutCreateInfo descriptor_layout;
 
-    descriptor_layout.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptor_layout.pNext         = nullptr;
-    descriptor_layout.flags         = 0;
     descriptor_layout.bindingCount  = count;
     descriptor_layout.pBindings     = layout_binding_list.GetData();
 
@@ -99,10 +96,8 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     push_constant_range.size         = MAX_PUSH_CONSTANT_BYTES;
     push_constant_range.offset       = 0;
     
-    VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
-    pPipelineLayoutCreateInfo.sType                     = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pPipelineLayoutCreateInfo.pNext                     = nullptr;
-    pPipelineLayoutCreateInfo.flags                     = 0;
+    PipelineLayoutCreateInfo pPipelineLayoutCreateInfo;
+
     pPipelineLayoutCreateInfo.setLayoutCount            = 1;
     pPipelineLayoutCreateInfo.pSetLayouts               = &dsl;
     pPipelineLayoutCreateInfo.pushConstantRangeCount    = 1;
@@ -124,9 +119,8 @@ DescriptorSets *DescriptorSetLayoutCreater::Create()
     if(count<=0)
         return(nullptr);
 
-    VkDescriptorSetAllocateInfo alloc_info;
-    alloc_info.sType                = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.pNext                = nullptr;
+    DescriptorSetAllocateInfo alloc_info;
+
     alloc_info.descriptorPool       = pool;
     alloc_info.descriptorSetCount   = 1;
     alloc_info.pSetLayouts          = &dsl;

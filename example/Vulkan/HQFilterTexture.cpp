@@ -112,11 +112,8 @@ private:
 
     vulkan::Sampler *InitSampler(VkFilter filter)
     {
-        VkSamplerCreateInfo sampler_create_info;
+        vulkan::SamplerCreateInfo sampler_create_info;
 
-        sampler_create_info.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        sampler_create_info.pNext                   = nullptr;
-        sampler_create_info.flags                   = 0;
         sampler_create_info.magFilter               = filter;
         sampler_create_info.minFilter               = filter;
         sampler_create_info.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;

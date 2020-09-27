@@ -8,11 +8,8 @@ ImageView::~ImageView()
 
 ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img)
 {
-    VkImageViewCreateInfo iv_createinfo={};
+    ImageViewCreateInfo iv_createinfo;
 
-    iv_createinfo.sType     =VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    iv_createinfo.pNext     =nullptr;
-    iv_createinfo.flags     =0;
     iv_createinfo.image     =img;
     iv_createinfo.format    =format;
     iv_createinfo.viewType  =type;
