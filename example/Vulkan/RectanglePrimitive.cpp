@@ -36,30 +36,24 @@ class TestApp:public VulkanApplicationFramework
 
 private:
 
-    vulkan::Material *          material            =nullptr;
     vulkan::Texture2D *         texture             =nullptr;
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::RenderableInstance *render_instance     =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *vertex_buffer       =nullptr;
-    vulkan::VAB *tex_coord_buffer    =nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
-                                                OS_TEXT("res/shader/DrawRect2D.geom"),
-                                                OS_TEXT("res/shader/FlatTexture.frag"));
-        if(!material)
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureRect2D"));
+        if(!material_instance)
             return(false);
 
-        render_obj=db->CreateRenderable(material,VERTEX_COUNT);
-        material_instance=db->CreateMaterialInstance(material);
+        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/default"),Prim::Rectangles);
 
         texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
 
@@ -69,7 +63,6 @@ private:
         material_instance->BindUBO("world",ubo_world_matrix);
         material_instance->Update();
 
-        db->Add(material);
         db->Add(texture);
         return(true);
     }
@@ -91,26 +84,18 @@ private:
         return(true);
     }
 
-    void InitVBO()
-    {
-        vertex_buffer   =db->CreateVAB(VAF_VEC4,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=db->CreateVAB(VAF_VEC4,VERTEX_COUNT,tex_coord_data);
+    bool InitVBO()
+    {        
+        render_obj=db->CreateRenderable(VERTEX_COUNT);
 
-        render_obj->Set(VAN::Position,vertex_buffer);
-        render_obj->Set(VAN::TexCoord,tex_coord_buffer);
-    }
+        if(!render_obj)return(false);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Rectangles);
+        render_obj->Set(VAN::Position,db->CreateVAB(VAF_VEC4,VERTEX_COUNT,vertex_data));
+        render_obj->Set(VAN::TexCoord,db->CreateVAB(VAF_VEC4,VERTEX_COUNT,tex_coord_data));
+        
+        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
-        pipeline=pipeline_creater->Create();
-
-        db->Add(pipeline);
-        return pipeline;
+        return(render_instance);
     }
 
 public:
@@ -126,12 +111,10 @@ public:
         if(!InitMaterial())
             return(false);
 
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(render_instance);
 
         return(true);
     }
@@ -144,8 +127,8 @@ public:
         cam.Refresh();
 
         ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 

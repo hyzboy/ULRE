@@ -79,8 +79,8 @@ private:
     bool InitScene()
     {
         ro_sphere=CreateRenderableSphere(db,material_instance->GetMaterial(),128);
-
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_sphere),scale(100));
+        
+        render_root.Add(db->CreateRenderableInstance(ro_sphere,material_instance,pipeline_solid),scale(100));
 
         render_root.RefreshMatrix();
         render_root.ExpendToList(&render_list);
