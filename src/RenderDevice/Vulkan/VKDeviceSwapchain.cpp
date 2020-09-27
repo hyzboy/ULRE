@@ -73,7 +73,7 @@ bool Device::CreateSwapchainColorTexture()
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->swap_chain_count),nullptr)!=VK_SUCCESS)
         return(false);
 
-    AutoDeleteArray<VkImage> sc_images=new VkImage[swapchain->swap_chain_count];
+    AutoDeleteArray<VkImage> sc_images(swapchain->swap_chain_count);
 
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->swap_chain_count),sc_images)!=VK_SUCCESS)
         return(false);

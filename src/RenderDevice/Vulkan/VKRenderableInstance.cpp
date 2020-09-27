@@ -37,8 +37,8 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
     if(r->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
         return(nullptr);
 
-    AutoDeleteArray<VkBuffer> buffer_list=new VkBuffer[input_count];
-    AutoDeleteArray<VkDeviceSize> buffer_size=new VkDeviceSize[input_count];
+    AutoDeleteArray<VkBuffer> buffer_list(input_count);
+    AutoDeleteArray<VkDeviceSize> buffer_size(input_count);
 
     ShaderStage **ss=ssl.GetData();
 
