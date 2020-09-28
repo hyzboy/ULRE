@@ -17,6 +17,7 @@ constexpr uint32_t SCREEN_WIDTH =1024;
 constexpr uint32_t SCREEN_HEIGHT=512;
 
 constexpr float BORDER=2;
+constexpr uint TILE_COLS=10;
 
 struct TileBitmap
 {
@@ -37,23 +38,18 @@ class TestApp:public VulkanApplicationFramework
 
 private:
 
-    vulkan::Material *          material            =nullptr;
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Renderable *        render_obj          =nullptr;
+    vulkan::RenderableInstance *render_instance     =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *vertex_buffer       =nullptr;
-    vulkan::VAB *tex_coord_buffer    =nullptr;
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR_ARRAY(vertex_data);
-        SAFE_CLEAR_ARRAY(tex_coord_data);
         SAFE_CLEAR(tile_data);
     }
 
@@ -109,7 +105,7 @@ private:
         int col=0;
         int row=0;
 
-        float size      =SCREEN_WIDTH/10;
+        float size      =SCREEN_WIDTH/TILE_COLS;
         float view_size =size-BORDER*2;
         float left      =0;
         float top       =0;
@@ -118,7 +114,7 @@ private:
 
         for(int i=0;i<count;i++)
         {
-            (*tb)->to=tile_data->Commit((*tb)->bmp);           //添加一个tile图片
+            (*tb)->to=tile_data->Commit((*tb)->bmp);        //添加一个tile图片
 
             vp=WriteRect(vp,left+BORDER,                    //产生绘制顶点信息
                             top +BORDER,
@@ -128,7 +124,7 @@ private:
             tp=WriteRect(tp,(*tb)->to->uv_float);           //产生绘制纹理坐标信息
 
             ++col;
-            if(col==10)
+            if(col==TILE_COLS)
             {
                 left=0;
                 top+=size;
@@ -150,13 +146,11 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
-                                                OS_TEXT("res/shader/DrawRect2D.geom"),
-                                                OS_TEXT("res/shader/FlatTexture.frag"));
-        if(!material)
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureRect2D"));
+        if(!material_instance)
             return(false);
 
-        material_instance=material->CreateInstance();
+        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/default"),Prim::Rectangles);
 
         sampler=db->CreateSampler();
 
@@ -164,8 +158,6 @@ private:
         material_instance->BindUBO("world",ubo_world_matrix);
         material_instance->Update();
 
-        db->Add(material);
-        db->Add(material_instance);
         return(true);
     }
 
@@ -186,30 +178,19 @@ private:
         return(true);
     }
 
-    void InitVBO()
+    bool InitVBO()
     {
-        const int tile_count=tile_list.GetCount();
+        const uint tile_count=tile_list.GetCount();
 
-        render_obj=db->CreateRenderable(material,tile_count);
+        render_obj=db->CreateRenderable(tile_count);
+        if(!render_obj)return(false);
 
-        vertex_buffer   =db->CreateVAB(VAF_VEC4,tile_count,vertex_data);
-        tex_coord_buffer=db->CreateVAB(VAF_VEC4,tile_count,tex_coord_data);
+        render_obj->Set(VAN::Position,db->CreateVAB(VAF_VEC4,tile_count,vertex_data));
+        render_obj->Set(VAN::TexCoord,db->CreateVAB(VAF_VEC4,tile_count,tex_coord_data));
 
-        render_obj->Set(VAN::Position,vertex_buffer);
-        render_obj->Set(VAN::TexCoord,tex_coord_buffer);
-    }
+        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Rectangles);
-
-        pipeline=pipeline_creater->Create();
-
-        db->Add(pipeline);
-        return pipeline;
+        return(render_instance);
     }
 
 public:
@@ -231,12 +212,10 @@ public:
         if(!InitMaterial())
             return(false);
 
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(render_instance);
 
         return(true);
     }
@@ -249,8 +228,8 @@ public:
         cam.Refresh();
 
         ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 

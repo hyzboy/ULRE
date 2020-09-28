@@ -29,7 +29,6 @@ class TestApp:public VulkanApplicationFramework
     
 private:
 
-    vulkan::Material *          material            =nullptr;
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Buffer *            ubo_world_matrix    =nullptr;
@@ -47,6 +46,7 @@ private:
     TextLayout                  tl_engine;                                      ///<文本排版引擎
 
     TextRenderable *            text_render_obj     =nullptr;
+    RenderableInstance *        render_instance     =nullptr;
 
 public:
 
@@ -59,23 +59,19 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
-                                                OS_TEXT("res/shader/DrawRect2D.geom"),
-                                                OS_TEXT("res/shader/FlatLumTexture.frag"));
-        if(!material)
-            return(false);
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/LumTextureRect2D"));
+        if(!material_instance)return(false);
 
-        material_instance=material->CreateInstance();
+        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/default"),Prim::Rectangles);
+        if(!pipeline)return(false);
 
         sampler=db->CreateSampler();
 
-        material_instance->BindSampler("tex",tile_font->GetTexture(),sampler);
+        material_instance->BindSampler("lum_texture",tile_font->GetTexture(),sampler);
         material_instance->BindUBO("world",ubo_world_matrix);
         material_instance->BindUBO("color_material",ubo_color);
         material_instance->Update();
 
-        db->Add(material);
-        db->Add(material_instance);
         return(true);
     }
 
@@ -101,19 +97,6 @@ private:
             return(false);
 
         return(true);
-    }
-
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Rectangles);
-
-        pipeline=pipeline_creater->Create();
-
-        db->Add(pipeline);
-        return pipeline;
     }
 
     bool InitTileFont()
@@ -158,9 +141,13 @@ private:
 
         LoadStringFromTextFile(str,OS_TEXT("README.md"));
 
-        text_render_obj=db->CreateTextRenderable(material);
+        text_render_obj=db->CreateTextRenderable(material_instance->GetMaterial());
+        
+        if(tl_engine.SimpleLayout(text_render_obj,tile_font,str)<=0)return(false);
 
-        return(tl_engine.SimpleLayout(text_render_obj,tile_font,str)>0);
+        render_instance=db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
+
+        return(render_instance);
     }
 
 public:
@@ -179,16 +166,13 @@ public:
         if(!InitMaterial())
             return(false);
 
-        if(!InitPipeline())
-            return(false);
-
         if(!InitTextLayoutEngine())
             return(false);
 
         if(!InitTextRenderable())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,text_render_obj);
+        BuildCommandBuffer(render_instance);
 
         return(true);
     }
@@ -201,8 +185,8 @@ public:
         cam.Refresh();
 
         ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,text_render_obj);
+        
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 
