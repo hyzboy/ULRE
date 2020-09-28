@@ -11,13 +11,11 @@ void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *lay
 
 Instance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
 {
-    VkApplicationInfo app_info;
-    VkInstanceCreateInfo inst_info;
+    ApplicationInfo app_info;
+    InstanceCreateInfo inst_info(&app_info);
     CharPointerList ext_list;
     CharPointerList layer_list;
 
-    app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app_info.pNext              = nullptr;
     app_info.pApplicationName   = app_name.c_str();
     app_info.applicationVersion = 1;
     app_info.pEngineName        = "CMGameEngine/ULRE";
@@ -35,10 +33,6 @@ Instance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstan
     if(layer_info)
         CheckInstanceLayer(layer_list,layer_info);
 
-    inst_info.sType                     = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    inst_info.pNext                     = nullptr;
-    inst_info.flags                     = 0;
-    inst_info.pApplicationInfo          = &app_info;
     inst_info.enabledExtensionCount     = ext_list.GetCount();
     inst_info.ppEnabledExtensionNames   = ext_list.GetData();
     inst_info.enabledLayerCount         = layer_list.GetCount();

@@ -102,7 +102,7 @@ public:
         {
             VK_NAMESPACE::CreateInstanceLayerInfo cili;
 
-            memset(&cili, 0, sizeof(VK_NAMESPACE::CreateInstanceLayerInfo));
+            hgl_zero(cili);
 
             cili.lunarg.standard_validation = true;
             cili.khronos.validation = true;
