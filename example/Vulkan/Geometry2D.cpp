@@ -101,11 +101,10 @@ private:
 
         if(!material_instance->BindUBO(name,ubo))
         {
+            std::cerr<<"Bind UBO<"<<name.c_str()<<"> to material failed!"<<std::endl;
             SAFE_CLEAR(ubo);
             return(nullptr);
         }
-
-        db->Add(ubo);
 
         return ubo;
     }
