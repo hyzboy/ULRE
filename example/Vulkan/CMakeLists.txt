@@ -1,5 +1,5 @@
 ﻿macro(CreateProject name)
-    add_executable(${name} ${ARGN} VulkanAppFramework.h)
+    add_executable(${name} ${ARGN})
     target_link_libraries(${name} ${ULRE})
 
     IF(WIN32)
@@ -44,7 +44,7 @@ CreateProject(14.DrawText DrawText.cpp)
 
 IF(SUPPORT_QT_VULKAN)
 include(QtCommon)
-CreateQtProject(14.VulkanQT VulkanQtApp.cpp 
+CreateQtProject(14.VulkanQT VulkanQtApp.cpp
                             QtVulkanWindow.cpp
                             QtVulkanWindow.h
                             QtVulkanMainWindow.h
