@@ -26,15 +26,11 @@ static Vector4f color(1,1,1,1);
 
 struct Line2DConfig
 {
-    float width;
-    float border;
+    float width=2.0f;
+    float border=0.75f;
 };
 
-static Line2DConfig line_2d_config
-{
-    10,
-    2.5
-};
+static Line2DConfig line_2d_config;
 
 class TestApp:public VulkanApplicationFramework
 {

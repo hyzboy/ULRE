@@ -1,7 +1,4 @@
-﻿// DrawTile
-// 该示例使用TileData，演示多个tile图片在一张纹理上
-
-#include<hgl/type/StringList.h>
+﻿#include<hgl/type/StringList.h>
 #include<hgl/graph/TextureLoader.h>
 #include<hgl/graph/TileData.h>
 #include<hgl/graph/font/TileFont.h>
@@ -142,7 +139,7 @@ private:
         LoadStringFromTextFile(str,OS_TEXT("README.md"));
 
         text_render_obj=db->CreateTextRenderable(material_instance->GetMaterial());
-        
+
         if(tl_engine.SimpleLayout(text_render_obj,tile_font,str)<=0)return(false);
 
         render_instance=db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
