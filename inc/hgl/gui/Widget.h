@@ -7,6 +7,8 @@ namespace hgl
 {
     namespace gui
     {
+        class ThemeEngine;
+
         enum Alignment
         {
             None    =0x00,
@@ -27,6 +29,7 @@ namespace hgl
         private:
 
             Widget *parent_widget;
+            ThemeEngine *theme_engine;
 
             bool visible;                                                       ///<控件是否可看见
             bool recv_event;                                                    ///<控件是否接收事件
@@ -46,14 +49,16 @@ namespace hgl
             void                SetVisible  (const bool);
             void                SetRecvEvent(const bool);
             void                SetAlign    (const uint8);
-            void                SetPosition (const Rectscope2i &);
+            void                SetPosition (const RectScope2i &);
             void                SetSize     (const Vector2f &);
 
         public:
 
-            Widget(Widget *parent=nullptr)
+            Widget(Widget *parent=nullptr,ThemeEngine *te=nullptr)
             {
                 parent_widget=parent;
+                theme_engine=te;
+
                                     //默认值
                 visible=false;      //不显示
                 recv_event=false;   //不接收事件
@@ -61,6 +66,8 @@ namespace hgl
                 position.Clear();
             }
             virtual ~Widget();
+
+            virtual void Draw(){}
         };//class Widget
     }//namespace gui
 }//namespace hgl
