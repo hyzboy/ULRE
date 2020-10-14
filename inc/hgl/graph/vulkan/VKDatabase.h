@@ -78,13 +78,13 @@ public: // VBO/VAO
 
     #undef SCENE_DB_CREATE_FUNC
 
-    IndexBuffer *CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sm=SharingMode::Exclusive);
-    IndexBuffer *CreateIBO16(uint32_t count,const uint16 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,(void *)data,sm);}
-    IndexBuffer *CreateIBO32(uint32_t count,const uint32 *data,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,(void *)data,sm);}
+    IndexBuffer *CreateIBO(IndexType index_type,uint32_t count,const void *  data,  SharingMode sm=SharingMode::Exclusive);
+    IndexBuffer *CreateIBO16(                   uint32_t count,const uint16 *data,  SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,(void *)data,sm);}
+    IndexBuffer *CreateIBO32(                   uint32_t count,const uint32 *data,  SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,(void *)data,sm);}
 
     IndexBuffer *CreateIBO(IndexType index_type,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(index_type,count,nullptr,sm);}
-    IndexBuffer *CreateIBO16(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sm);}
-    IndexBuffer *CreateIBO32(uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sm);}
+    IndexBuffer *CreateIBO16(                   uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sm);}
+    IndexBuffer *CreateIBO32(                   uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sm);}
 
 public: //Material
 
@@ -98,10 +98,10 @@ public: //Material
     MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(const OSString &);
 
-    Pipeline *          CreatePipeline(Material *,RenderTarget *,PipelineData *,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(MaterialInstance *,RenderTarget *,PipelineData *,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(Material *,RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(MaterialInstance *,RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(Material *,          RenderTarget *,PipelineData *,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,PipelineData *,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(Material *,          RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
     Renderable *        CreateRenderable(const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);
