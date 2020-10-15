@@ -90,7 +90,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &ima
         return CreateFramebuffer(dev,rp,image_view_list.GetData(),count,nullptr);
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *color,ImageView *depth)
+Framebuffer *CreateColorFramebuffer(Device *dev,RenderPass *rp,ImageView *color,ImageView *depth)
 {
     if(!dev)return(nullptr);
     if(!rp)return(nullptr);
@@ -99,7 +99,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *color,Image
     return CreateFramebuffer(dev,rp,&color,1,depth);
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView *depth)
+Framebuffer *CreateDepthFramebuffer(Device *dev,RenderPass *rp,ImageView *depth)
 {
     if(!dev)return(nullptr);
     if(!rp)return(nullptr);

@@ -49,7 +49,7 @@ public:
 
 Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> &color,ImageView *depth);
 Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> &image_view_list);
-Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth=nullptr);
-Framebuffer *CreateFramebuffer(Device *,RenderPass *,ImageView *depth);
+Framebuffer *CreateColorFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth=nullptr);
+Framebuffer *CreateDepthFramebuffer(Device *,RenderPass *,ImageView *depth);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
