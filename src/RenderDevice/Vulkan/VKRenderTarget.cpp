@@ -90,9 +90,10 @@ bool SubmitQueue::Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_
     return Submit(&cmd_buf,1,wait_sem,complete_sem);
 }
 
-RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
+RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
 {
     fb=_fb;
+    command_buffer=_cb;
 }
 
 SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTarget(dev,nullptr,sc->GetImageCount())
@@ -117,7 +118,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame.Add(vulkan::CreateFramebuffer(device,main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView()));
+        render_frame.Add(vulkan::CreateColorFramebuffer(device,main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView()));
         ++sc_color;
     }
 
