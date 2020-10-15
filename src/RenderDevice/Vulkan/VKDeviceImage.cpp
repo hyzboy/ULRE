@@ -29,6 +29,16 @@ Memory *Device::CreateMemory(VkImage image,const uint32_t flag)
 
     vkGetImageMemoryRequirements(attr->device,image,&memReqs);
 
-    return CreateMemory(memReqs,flag);
+    Memory *mem=CreateMemory(memReqs,flag);
+    
+    if(!mem)return(nullptr);
+
+    if(!mem->BindImage(image))
+    {
+        delete mem;
+        return(nullptr);
+    }
+
+    return(mem);
 }
 VK_NAMESPACE_END
