@@ -40,20 +40,23 @@ protected:
     
     VkExtent2D extent;
 
+    CommandBuffer *command_buffer;
+
 protected:
 
     friend class Device;
 
-    RenderTarget(Device *dev,Framebuffer *_fb,const uint32_t fence_count=1);
+    RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count=1);
 
 public:
 
     virtual ~RenderTarget()=default;
     
-            const VkExtent2D &  GetExtent()const{return extent;}
-    virtual const VkRenderPass  GetRenderPass()const{return fb->GetRenderPass();}
-    virtual const uint32_t      GetColorCount()const{return fb->GetColorCount();}
-    virtual const VkFramebuffer GetFramebuffer()const{return fb->GetFramebuffer();}
+            const   VkExtent2D &    GetExtent       ()const {return extent;}
+                    CommandBuffer * GetCommandBuffer()      {return command_buffer;}
+    virtual const   VkRenderPass    GetRenderPass   ()const {return fb->GetRenderPass();}
+    virtual const   uint32_t        GetColorCount   ()const {return fb->GetColorCount();}
+    virtual const   VkFramebuffer   GetFramebuffer  ()const {return fb->GetFramebuffer();}
 };//class RenderTarget
 
 /**
