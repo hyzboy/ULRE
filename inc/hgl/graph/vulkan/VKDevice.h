@@ -122,8 +122,17 @@ public: //Image
 
 public: //Texture
 
+    bool CheckFormatSupport(const VkFormat,const uint32_t bits,ImageTiling tiling=ImageTiling::Optimal);
+
+    bool CheckTextureFormatSupport(const VkFormat fmt,ImageTiling tiling=ImageTiling::Optimal){return CheckFormatSupport(fmt,VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT,tiling);}
+
+    Texture2D *CreateTexture2D(TextureData *);
+    Texture2D *CreateTexture2D(TextureCreateInfo *ci);
+
+    void Clear(TextureCreateInfo *);
+
     Texture2D *CreateTexture2D(Memory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,ImageTiling tiling);
-    Texture2D *CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
+    Texture2D *CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,VkImage image,VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
 
     Texture2D *CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
 
@@ -161,7 +170,15 @@ public: //Texture
     Texture2D *CreateAttachmentTextureDepth(const VkFormat video_format,uint32_t width,uint32_t height)
     {
         return CreateAttachmentTexture( video_format,width,height,
-                                        VK_IMAGE_ASPECT_DEPTH_BIT,//|VK_IMAGE_ASPECT_STENCIL_BIT,
+                                        VK_IMAGE_ASPECT_DEPTH_BIT,
+                                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT|VK_IMAGE_USAGE_TRANSFER_SRC_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    }
+
+    Texture2D *CreateAttachmentTextureDepthStencil(const VkFormat video_format,uint32_t width,uint32_t height)
+    {
+        return CreateAttachmentTexture( video_format,width,height,
+                                        VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
                                         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT|VK_IMAGE_USAGE_TRANSFER_SRC_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
@@ -265,6 +282,10 @@ public:
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
 
     RenderTarget *CreateRenderTarget(Framebuffer *);
+
+    RenderTarget *CreateRenderTarget(const uint,const uint,const List<VkFormat> &);
+    RenderTarget *CreateRenderTarget(const uint,const uint,const VkFormat);
+    RenderTarget *CreateRenderTarget(const uint,const uint,const VkFormat,const VkFormat);
 
     Pipeline *CreatePipeline(PipelineData *,const Material *,const RenderTarget *);
 
