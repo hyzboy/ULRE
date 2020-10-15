@@ -42,6 +42,11 @@ public:
     const VkFormat              GetFormat       ()const{return format;}
     const VkExtent3D &          GetExtent       ()const{return extent;}
     const VkImageAspectFlags    GetAspectFlags  ()const{return aspect_mask;}
+
+    const bool                  hasColor        ()const{return aspect_mask&VK_IMAGE_ASPECT_COLOR_BIT;}
+    const bool                  hasDepth        ()const{return aspect_mask&VK_IMAGE_ASPECT_DEPTH_BIT;}
+    const bool                  hasStencil      ()const{return aspect_mask&VK_IMAGE_ASPECT_STENCIL_BIT;}
+    const bool                  hasDepthStencil ()const{return aspect_mask&(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT);}
 };//class ImageView
 
 ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img);
