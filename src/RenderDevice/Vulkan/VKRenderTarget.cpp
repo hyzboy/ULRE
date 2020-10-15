@@ -2,6 +2,7 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
 #include<hgl/graph/vulkan/VKSemaphore.h>
+#include<hgl/graph/vulkan/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
 namespace 
@@ -96,7 +97,12 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const
     command_buffer=_cb;
 }
 
-SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTarget(dev,nullptr,sc->GetImageCount())
+RenderTarget::~RenderTarget()
+{
+    SAFE_CLEAR(command_buffer);
+}
+
+SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTarget(dev,nullptr,nullptr,sc->GetImageCount())
 {
     swapchain=sc;
     vk_swapchain=swapchain->GetSwapchain();
@@ -118,7 +124,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame.Add(vulkan::CreateColorFramebuffer(device,main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView()));
+        render_frame.Add(vulkan::CreateFramebuffer(device->GetDevice(),main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView()));
         ++sc_color;
     }
 

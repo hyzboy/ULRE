@@ -13,25 +13,14 @@ class Framebuffer
     uint32_t color_count;
     bool has_depth;
 
+    ObjectList<Texture2D> color_texture;
+    Texture2D *depth_texture;
+
 private:
 
-    friend Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
+    friend Framebuffer *CreateFramebuffer(VkDevice dev,RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
 
-    Framebuffer(VkDevice dev,VkFramebuffer fb,VkFramebufferCreateInfo *fb_create_info,bool depth)
-    {
-        device=dev;
-        frame_buffer=fb;
-        fb_info=fb_create_info;
-
-        extent.width=fb_info->width;
-        extent.height=fb_info->height;
-
-        has_depth=depth;
-        if(has_depth)
-            color_count=fb_info->attachmentCount-1;
-        else
-            color_count=fb_info->attachmentCount;
-    }
+    Framebuffer(VkDevice dev,VkFramebuffer fb,VkFramebufferCreateInfo *fb_create_info,bool depth);
 
 public:
 
@@ -45,11 +34,13 @@ public:
     const   uint32_t        GetAttachmentCount  ()const{return fb_info->attachmentCount;}           ///<获取渲染目标成分数量
     const   uint32_t        GetColorCount       ()const{return color_count;}                        ///<取得颜色成分数量
     const   bool            HasDepth            ()const{return has_depth;}                          ///<是否包含深度成分
+
+            Texture2D *     GetColorTexture     (const int index=0){return color_texture[index];}
+            Texture2D *     GetDepthTexture     (){return depth_texture;}
 };//class Framebuffer
 
-Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> &color,ImageView *depth);
-Framebuffer *CreateFramebuffer(Device *,RenderPass *,List<ImageView *> &image_view_list);
-Framebuffer *CreateColorFramebuffer(Device *,RenderPass *,ImageView *color,ImageView *depth=nullptr);
-Framebuffer *CreateDepthFramebuffer(Device *,RenderPass *,ImageView *depth);
+Framebuffer *CreateFramebuffer(VkDevice,RenderPass *,List<ImageView *> &color,ImageView *depth);
+Framebuffer *CreateFramebuffer(VkDevice,RenderPass *,ImageView *color,ImageView *depth);
+Framebuffer *CreateFramebuffer(VkDevice,RenderPass *,ImageView *);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE

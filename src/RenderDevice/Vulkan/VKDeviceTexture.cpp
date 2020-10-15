@@ -21,7 +21,7 @@ namespace
     }
 }//namespace
 
-bool Device::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling)
+bool Device::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling) const
 {
     const VkFormatProperties fp=attr->physical_device->GetFormatProperties(format);
     

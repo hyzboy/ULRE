@@ -42,17 +42,11 @@ CreateProject(13.DrawTile DrawTile.cpp)
 
 CreateProject(14.DrawText DrawText.cpp)
 
-IF(SUPPORT_QT_VULKAN)
-include(QtCommon)
-CreateQtProject(14.VulkanQT VulkanQtApp.cpp
-                            QtVulkanWindow.cpp
-                            QtVulkanWindow.h
-                            QtVulkanMainWindow.h
-                            QtVulkanMainWindow.cpp)
-ENDIF(SUPPORT_QT_VULKAN)
+CreateProject(15.OffscreenRender OffscreenRender.cpp)
+
 
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
-#CreateProject(13.DeferredModel DeferredModel.cpp)
+CreateProject(16.DeferredModel DeferredModel.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
 

@@ -1,6 +1,3 @@
-// 0.triangle
-// 该范例主要演示直接绘制一个渐变色的三角形
-
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>

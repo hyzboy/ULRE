@@ -103,16 +103,4 @@ vulkan::Semaphore *Device::CreateSem()
 
     return(new vulkan::Semaphore(attr->device,sem));
 }
-
-RenderTarget *Device::CreateRenderTarget(Framebuffer *fb)
-{
-    return(new RenderTarget(this,fb));
-}
-
-Pipeline *CreatePipeline(VkDevice device,VkPipelineCache pipeline_cache,PipelineData *data,const Material *material,const RenderTarget *rt);
-
-Pipeline *Device::CreatePipeline(PipelineData *pd,const Material *mtl,const RenderTarget *rt)
-{
-    return VK_NAMESPACE::CreatePipeline(attr->device,attr->pipeline_cache,pd,mtl,rt);
-}
 VK_NAMESPACE_END

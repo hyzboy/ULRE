@@ -50,7 +50,7 @@ protected:
 
 public:
 
-    virtual ~RenderTarget()=default;
+    virtual ~RenderTarget();
     
             const   VkExtent2D &    GetExtent       ()const {return extent;}
                     CommandBuffer * GetCommandBuffer()      {return command_buffer;}

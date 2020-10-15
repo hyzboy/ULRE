@@ -55,7 +55,7 @@ public:
                 DeviceAttribute *   GetDeviceAttribute  ()      {return attr;}
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
-                VkDevice            GetDevice           ()      {return attr->device;}
+                VkDevice            GetDevice           ()const {return attr->device;}
     const       PhysicalDevice *    GetPhysicalDevice   ()const {return attr->physical_device;}
 
                 VkDescriptorPool    GetDescriptorPool   ()      {return attr->desc_pool;}
@@ -122,9 +122,9 @@ public: //Image
 
 public: //Texture
 
-    bool CheckFormatSupport(const VkFormat,const uint32_t bits,ImageTiling tiling=ImageTiling::Optimal);
+    bool CheckFormatSupport(const VkFormat,const uint32_t bits,ImageTiling tiling=ImageTiling::Optimal)const;
 
-    bool CheckTextureFormatSupport(const VkFormat fmt,ImageTiling tiling=ImageTiling::Optimal){return CheckFormatSupport(fmt,VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT,tiling);}
+    bool CheckTextureFormatSupport(const VkFormat fmt,ImageTiling tiling=ImageTiling::Optimal)const{return CheckFormatSupport(fmt,VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT,tiling);}
 
     Texture2D *CreateTexture2D(TextureData *);
     Texture2D *CreateTexture2D(TextureCreateInfo *ci);
@@ -242,37 +242,18 @@ public: //Command Buffer 相关
 
     CommandBuffer * CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count);
     
-    void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint count,VkImageLayout layout)const;
-
-    void CreateColorAttachmentReference(List<VkAttachmentReference> &ref_list,  uint start,uint count )const{ref_list.SetCount(count);  CreateAttachmentReference(ref_list.GetData(),  start,count,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);}
-    void CreateDepthAttachmentReference(     VkAttachmentReference  *depth_ref, uint index            )const{                           CreateAttachmentReference(depth_ref,           index,1    ,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);}
-    void CreateInputAttachment(         List<VkAttachmentReference> &ref_list,  uint start,uint count )const{ref_list.SetCount(count);  CreateAttachmentReference(ref_list.GetData(),  start,count,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);}
-
-    bool CreateAttachment(      List<VkAttachmentDescription> &color_output_desc_list,
-                                const List<VkFormat> &color_format,
-                                const VkFormat depth_format,
-                                const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)const;
-
-    bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)const;
-    bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)const;
-
-    void CreateSubpassDependency(VkSubpassDependency *);
-    void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count)const;
-    void CreateSubpassDescription(VkSubpassDescription &,const List<VkAttachmentReference> &color_ref_list,VkAttachmentReference *depth_ref=nullptr)const;
-
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
                                         const List<VkFormat> &color_format,
                                         const VkFormat depth_format,
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)const;
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     RenderPass *    CreateRenderPass(   const VkFormat color_format,
                                         const VkFormat depth_format,
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)const;
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     Fence *             CreateFence(bool);
     vulkan::Semaphore * CreateSem();
@@ -283,9 +264,17 @@ public:
 
     RenderTarget *CreateRenderTarget(Framebuffer *);
 
-    RenderTarget *CreateRenderTarget(const uint,const uint,const List<VkFormat> &);
-    RenderTarget *CreateRenderTarget(const uint,const uint,const VkFormat);
-    RenderTarget *CreateRenderTarget(const uint,const uint,const VkFormat,const VkFormat);
+    RenderTarget *CreateRenderTarget(   const uint,const uint,const List<VkFormat> &,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    RenderTarget *CreateRenderTarget(   const uint,const uint,const VkFormat,const VkImageLayout final_layout);
+
+    RenderTarget *CreateRenderTarget(   const uint,const uint,
+                                        const VkFormat color_format,
+                                        const VkFormat depth_format,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     Pipeline *CreatePipeline(PipelineData *,const Material *,const RenderTarget *);
 
@@ -293,6 +282,25 @@ public:
     
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体
 };//class Device
+
+void CreateSubpassDependency(VkSubpassDependency *);
+void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count);
+
+void CreateAttachmentReference(VkAttachmentReference *ref_list,uint count,VkImageLayout layout);
+
+inline void CreateColorAttachmentReference(VkAttachmentReference *ref_list,uint count ){CreateAttachmentReference(ref_list,    count,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);}
+inline void CreateDepthAttachmentReference(VkAttachmentReference *depth_ref)           {CreateAttachmentReference(depth_ref,   1    ,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);}
+inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list,uint count ){CreateAttachmentReference(ref_list,    count,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);}
+
+    
+bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+bool CreateAttachment(      List<VkAttachmentDescription> &color_output_desc_list,
+                            const List<VkFormat> &color_format,
+                            const VkFormat depth_format,
+                            const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 Device *CreateRenderDevice(Instance *inst,Window *win,const PhysicalDevice *physical_device=nullptr);
 VK_NAMESPACE_END
