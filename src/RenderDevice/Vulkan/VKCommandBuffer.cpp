@@ -93,9 +93,9 @@ bool CommandBuffer::BeginRenderPass(VkRenderPass rp,VkFramebuffer fb)
     return(true);
 }
 
-bool CommandBuffer::BeginRenderPass(RenderTarget *rt)
+bool CommandBuffer::BeginRenderPass(Framebuffer *fbo)
 {
-    return BeginRenderPass(rt->GetRenderPass(),rt->GetFramebuffer());
+    return BeginRenderPass(fbo->GetRenderPass(),fbo->GetFramebuffer());
 }
 
 bool CommandBuffer::BindVAB(RenderableInstance *ri)
