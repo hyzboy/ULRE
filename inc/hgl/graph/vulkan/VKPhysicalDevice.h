@@ -67,6 +67,8 @@ public:
     {
         VkFormatProperties fp;
 
+        hgl_zero(fp);
+
         vkGetPhysicalDeviceFormatProperties(physical_device,format,&fp);
 
         return fp;
