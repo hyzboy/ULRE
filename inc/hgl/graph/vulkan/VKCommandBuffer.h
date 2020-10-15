@@ -96,7 +96,7 @@ public:
     }
 
     bool BeginRenderPass(VkRenderPass rp,VkFramebuffer fb);
-    bool BeginRenderPass(RenderTarget *rt);
+    bool BeginRenderPass(Framebuffer *);
 
     bool BindPipeline(Pipeline *p)
     {
