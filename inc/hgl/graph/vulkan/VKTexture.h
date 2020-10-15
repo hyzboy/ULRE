@@ -20,6 +20,27 @@ struct TextureData
     VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
 };//struct TextureData
 
+struct TextureCreateInfo
+{
+    VkExtent3D              extent;
+    VkFormat                format;
+    uint                    usage;
+    VkImageAspectFlags      aspect;
+    ImageTiling             tiling;
+
+    VkImage                 image;
+    Memory *                memory;
+    ImageView *             image_view;
+    VkImageLayout           image_layout;
+
+public:
+
+    TextureCreateInfo()
+    {
+        hgl_zero(*this);
+    }
+};//struct TextureCreateInfo
+
 class Texture
 {
 protected:
