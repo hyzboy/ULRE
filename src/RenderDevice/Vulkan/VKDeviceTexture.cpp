@@ -21,6 +21,24 @@ namespace
     }
 }//namespace
 
+bool Device::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling)
+{
+    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(format);
+    
+    if(tiling==ImageTiling::Optimal)
+        return(fp.optimalTilingFeatures&bits);
+    else
+        return(fp.linearTilingFeatures&bits);
+}
+
+Texture2D *Device::CreateTexture2D(TextureData *tex_data)
+{
+    if(!tex_data)
+        return(nullptr);
+
+    return(new Texture2D(attr->device,tex_data));
+}
+
 Texture2D *Device::CreateTexture2D(Memory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,ImageTiling tiling)
 {
     TextureData *tex_data=new TextureData;
@@ -33,57 +51,89 @@ Texture2D *Device::CreateTexture2D(Memory *mem,VkImage image,ImageView *image_vi
     tex_data->mip_levels    = 0;
     tex_data->tiling        = VkImageTiling(tiling);
 
-    return(new Texture2D(attr->device,tex_data));
+    return CreateTexture2D(tex_data);
 }
 
-Texture2D *Device::CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlagBits aspectMask,VkImage image,VkImageLayout image_layout,ImageTiling tiling)
+void Device::Clear(TextureCreateInfo *tci)
 {
-    VkExtent3D extent={width,height,1};
+    if(!tci)return;
 
-    ImageView *iv=CreateImageView(attr->device,VK_IMAGE_VIEW_TYPE_2D,format,extent,aspectMask,image);
+    if(tci->image)DestoryImage(tci->image);
+    if(tci->image_view)delete tci->image_view;
+    if(tci->memory)delete tci->memory;
 
-    return this->CreateTexture2D(nullptr,image,iv,image_layout,tiling);
+    delete tci;
+}
+
+Texture2D *Device::CreateTexture2D(TextureCreateInfo *tci)
+{
+    if(!tci)return(nullptr);
+
+    if(!tci->image)
+    {        
+        Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent.width,tci->extent.height);
+        tci->image=CreateImage(&ici);
+
+        if(!tci->image)
+        {
+            Clear(tci);
+            return(nullptr);
+        }
+
+        tci->memory=CreateMemory(tci->image);
+    }
+
+    if(!tci->image_view)
+        tci->image_view=CreateImageView2D(attr->device,tci->format,tci->extent,tci->aspect,tci->image);
+
+    Texture2D *tex=CreateTexture2D(tci->memory,tci->image,tci->image_view,tci->image_layout,tci->tiling);
+
+    if(!tex)
+    {
+        Clear(tci);
+        return(nullptr);
+    }
+
+    delete tci;
+    return tex;
+}
+
+Texture2D *Device::CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,VkImage image,VkImageLayout image_layout,ImageTiling tiling)
+{
+    if(!CheckTextureFormatSupport(format,tiling))return(nullptr);
+ 
+    TextureCreateInfo *tci=new TextureCreateInfo;
+    
+    tci->extent.width   =width;
+    tci->extent.height  =height;
+    tci->extent.depth   =1;
+
+    tci->format         =format;
+    tci->aspect         =aspectMask;
+    tci->image          =image;
+    tci->image_layout   =image_layout;
+    tci->tiling         =tiling;
+
+    return CreateTexture2D(tci);
 }
 
 Texture2D *Device::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,ImageTiling tiling)
 {
-    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(format);
+    if(!CheckTextureFormatSupport(format,tiling))return(nullptr);
+    
+    TextureCreateInfo *tci=new TextureCreateInfo;
 
-    if(tiling==ImageTiling::Optimal)
-    {
-        if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-            tiling=ImageTiling::Optimal;
-        else
-            tiling=ImageTiling::Linear;
-    }
+    tci->extent.width   =width;
+    tci->extent.height  =height;
+    tci->extent.depth   =1;
 
-    if(tiling==ImageTiling::Linear)
-    {
-        if(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-            tiling=ImageTiling::Linear;
-        else 
-            return(nullptr);
-    }
+    tci->format         =format;
+    tci->aspect         =aspectMask;
+    tci->usage          =usage;
+    tci->image_layout   =image_layout;
+    tci->tiling         =tiling;
 
-    Image2DCreateInfo ici(usage,tiling,format,width,height);
-    VkImage img=CreateImage(&ici);
-
-    if(!img)return(nullptr);
-
-    Memory *mem=CreateMemory(img);
-
-    if(!mem->BindImage(img))
-    {
-        delete mem;
-        DestoryImage(img);
-        return(nullptr);
-    }
-
-    const VkExtent3D ext={width,height,1};
-
-    ImageView *iv=CreateImageView2D(attr->device,format,ext,aspectMask,img);
-
-    return CreateTexture2D(mem,img,iv,image_layout,tiling);
+    return CreateTexture2D(tci);
 }
 
 Texture2D *Device::CreateTexture2D(const VkFormat format,Buffer *buf,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const ImageTiling tiling)
@@ -101,13 +151,21 @@ Texture2D *Device::CreateTexture2D(const VkFormat format,Buffer *buf,uint32_t wi
 
 Texture2D *Device::CreateTexture2D(const VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const ImageTiling tiling)
 {
-    Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+    Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout,tiling);
 
-    if(!buf)return(nullptr);
+    if(!tex)return(nullptr);
 
-    Texture2D *tex=CreateTexture2D(format,buf,width,height,aspectMask,image_layout,tiling);
+    if(data)
+    {
+        Buffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
-    delete buf;
+        if(buf)
+        {    
+            ChangeTexture2D(tex,buf,0,0,width,height);
+            delete buf;
+        }
+    }
+
     return(tex);
 }
 
