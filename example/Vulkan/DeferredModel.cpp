@@ -4,8 +4,8 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/SceneDB.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/vulkan/VKDatabase.h>
+#include<hgl/graph/vulkan/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKImageView.h>
@@ -70,7 +70,7 @@ private:
         struct
         {
             List<VkAttachmentDescription> desc_list;
-            List<VkAttachmentReference> color_ref_list;
+            VkAttachmentReference *color_ref_list;
             VkAttachmentReference depth_ref;
         }attachment;
         
@@ -187,23 +187,21 @@ private:
             gbuffer.image_view_list.Add(gbuffer.texture_list[i]->GetImageView());
         }
 
-        device->CreateColorAttachmentReference(gbuffer.attachment.color_ref_list,0,3);
-        device->CreateDepthAttachmentReference(&gbuffer.attachment.depth_ref,3);
+        gbuffer.attachment.color_ref_list=new VkAttachmentReference[3];
 
-        if(!device->CreateAttachment(   gbuffer.attachment.desc_list,
-                                        gbuffer.gbuffer_format_list,
-                                        gbuffer.depth->GetFormat()))
+        vulkan::CreateColorAttachmentReference(gbuffer.attachment.color_ref_list,3);
+        vulkan::CreateDepthAttachmentReference(&gbuffer.attachment.depth_ref);
+
+        if(!vulkan::CreateAttachment(   gbuffer.attachment.desc_list,
+                                gbuffer.gbuffer_format_list,
+                                gbuffer.depth->GetFormat()))
             return(false);
 
-        VkSubpassDescription desc;
-
-        device->CreateSubpassDescription(desc,
-                                        gbuffer.attachment.color_ref_list,
-                                        &gbuffer.attachment.depth_ref);
+        vulkan::SubpassDescription desc(gbuffer.attachment.color_ref_list,3,&gbuffer.attachment.depth_ref);
 
         gbuffer.subpass.desc.Add(desc);
 
-        device->CreateSubpassDependency(gbuffer.subpass.dependency,2);          //为啥要2个还不清楚
+        vulkan::CreateSubpassDependency(gbuffer.subpass.dependency,2);          //为啥要2个还不清楚
 
         gbuffer.renderpass=device->CreateRenderPass(gbuffer.attachment.desc_list,
                                                     gbuffer.subpass.desc,
@@ -214,7 +212,7 @@ private:
         if(!gbuffer.renderpass)
             return(false);
 
-        gbuffer.framebuffer=vulkan::CreateFramebuffer(device,gbuffer.renderpass,gbuffer.image_view_list,gbuffer.depth->GetImageView());
+        gbuffer.framebuffer=vulkan::CreateFramebuffer(device->GetDevice(),gbuffer.renderpass,gbuffer.image_view_list,gbuffer.depth->GetImageView());
 
         if(!gbuffer.framebuffer)
             return(false);
@@ -226,15 +224,12 @@ private:
 
     bool InitSubpass(SubpassParam *sp,const OSString &vs,const OSString &fs)
     {
-        sp->material=shader_manage->CreateMaterial(vs,fs);
+        sp->material=db->CreateMaterial(vs,fs);
 
         if(!sp->material)
             return(false);
 
-        sp->material_instance=sp->material->CreateInstance();
-
-        db->Add(sp->material);
-        db->Add(sp->material_instance);
+        sp->material_instance=db->CreateMaterialInstance(sp->material);
         return(true);
     }
 

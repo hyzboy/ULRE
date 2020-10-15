@@ -2,15 +2,38 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKImageView.h>
 #include<hgl/graph/vulkan/VKRenderPass.h>
+#include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/type/Smart.h>
 
 VK_NAMESPACE_BEGIN
+
+Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,VkFramebufferCreateInfo *fb_create_info,bool depth)
+{
+    device=dev;
+    frame_buffer=fb;
+    fb_info=fb_create_info;
+
+    extent.width=fb_info->width;
+    extent.height=fb_info->height;
+
+    has_depth=depth;
+    if(has_depth)
+        color_count=fb_info->attachmentCount-1;
+    else
+        color_count=fb_info->attachmentCount;
+
+    depth_texture=nullptr;
+}
+
 Framebuffer::~Framebuffer()
 {
+    SAFE_CLEAR(depth_texture);
+    color_texture.Clear();
+
     vkDestroyFramebuffer(device,frame_buffer,nullptr);
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
+Framebuffer *CreateFramebuffer(VkDevice dev,RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
 {    
     uint att_count=color_count;
 
@@ -60,13 +83,13 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,ImageView **color_list
 
     VkFramebuffer fb;
 
-    if(vkCreateFramebuffer(dev->GetDevice(),fb_info,nullptr,&fb)!=VK_SUCCESS)
+    if(vkCreateFramebuffer(dev,fb_info,nullptr,&fb)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new Framebuffer(dev->GetDevice(),fb,fb_info,depth));
+    return(new Framebuffer(dev,fb,fb_info,depth));
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &color,ImageView *depth)
+Framebuffer *CreateFramebuffer(VkDevice dev,RenderPass *rp,List<ImageView *> &color,ImageView *depth)
 {    
     if(!dev)return(nullptr);
     if(!rp)return(nullptr);
@@ -78,19 +101,7 @@ Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &col
     return CreateFramebuffer(dev,rp,color.GetData(),color.GetCount(),depth);
 }
 
-Framebuffer *CreateFramebuffer(Device *dev,RenderPass *rp,List<ImageView *> &image_view_list)
-{
-    const int count=image_view_list.GetCount();
-
-    ImageView *last_iv=*(image_view_list.GetData()+count-1);
-
-    if(last_iv->GetAspectFlags()&VK_IMAGE_ASPECT_DEPTH_BIT)
-        return CreateFramebuffer(dev,rp,image_view_list.GetData(),count-1,last_iv);
-    else
-        return CreateFramebuffer(dev,rp,image_view_list.GetData(),count,nullptr);
-}
-
-Framebuffer *CreateColorFramebuffer(Device *dev,RenderPass *rp,ImageView *color,ImageView *depth)
+Framebuffer *CreateFramebuffer(VkDevice dev,RenderPass *rp,ImageView *color,ImageView *depth)
 {
     if(!dev)return(nullptr);
     if(!rp)return(nullptr);
@@ -99,12 +110,18 @@ Framebuffer *CreateColorFramebuffer(Device *dev,RenderPass *rp,ImageView *color,
     return CreateFramebuffer(dev,rp,&color,1,depth);
 }
 
-Framebuffer *CreateDepthFramebuffer(Device *dev,RenderPass *rp,ImageView *depth)
+Framebuffer *CreateFramebuffer(VkDevice dev,RenderPass *rp,ImageView *iv)
 {
     if(!dev)return(nullptr);
     if(!rp)return(nullptr);
-    if(!depth)return(nullptr);
+    if(!iv)return(nullptr);
 
-    return CreateFramebuffer(dev,rp,nullptr,0,depth);
+    if(iv->hasColor())
+        return CreateFramebuffer(dev,rp,&iv,1,nullptr);
+    else
+    if(iv->hasDepth())
+        return CreateFramebuffer(dev,rp,nullptr,0,iv);
+    else
+        return nullptr;
 }
 VK_NAMESPACE_END

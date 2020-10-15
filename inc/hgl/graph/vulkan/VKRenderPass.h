@@ -44,6 +44,12 @@ public:
 
     const uint              GetColorCount()const{return color_formats.GetCount();}
     const List<VkFormat> &  GetColorFormat()const{return color_formats;}
+    const VkFormat          GetColorFormat(int index)const
+    {
+        if(index<0||index>=color_formats.GetCount())return VK_FORMAT_UNDEFINED;
+
+        return color_formats.GetData()[index];
+    }
     const VkFormat          GetDepthFormat()const{return depth_format;}
 };//class RenderPass
 VK_NAMESPACE_END

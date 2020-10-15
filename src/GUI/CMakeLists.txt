@@ -1,6 +1,7 @@
 ﻿file(GLOB GUI_HEADER ${ROOT_INCLUDE_PATH}/hgl/gui/*.*)
 
 set(GUI_SOURCE  Widget.cpp
+                Form.cpp
                 Panel.cpp
                 ThemeEngine.cpp
                 DefaultThemeEngine.h
