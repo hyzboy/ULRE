@@ -150,7 +150,7 @@ private:
         if(!material_instance)
             return(false);
 
-        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/default"),Prim::Rectangles);
+        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D,Prim::Rectangles);
 
         sampler=db->CreateSampler();
 

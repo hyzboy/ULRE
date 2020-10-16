@@ -152,7 +152,7 @@ private:
 
     bool InitMaterial()
     {
-        pipeline_data=vulkan::GetPipelineData(OS_TEXT("res/pipeline/solid2d"));
+        pipeline_data=vulkan::GetPipelineData(vulkan::InlinePipeline::Solid2D);
         if(!pipeline_data)return(false);
 
         if(!InitMaterial(&mp_normal,OS_TEXT("res/material/Texture2DPC")))return(false);

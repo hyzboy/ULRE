@@ -48,7 +48,7 @@ private:
             return(false);
             
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/solid2d"));     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);

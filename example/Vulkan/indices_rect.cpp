@@ -49,7 +49,7 @@ private:
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/FragColor"));
         if(!material_instance)return(false);
         
-        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/solid2d"));     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D);
         return(true);
     }
     

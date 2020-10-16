@@ -50,7 +50,7 @@ private:
         material_instance=db->CreateMaterialInstance(material);
         if(!material_instance)return(false);
 
-        pipeline_data=vulkan::GetPipelineData(OS_TEXT("res/pipeline/default"));
+        pipeline_data=vulkan::GetPipelineData(vulkan::InlinePipeline::Solid3D);
         if(!pipeline_data)return(false);
 
         pipeline_line=CreatePipeline(material,pipeline_data,Prim::Lines);
@@ -78,7 +78,7 @@ private:
             pgci.side_step.u=10;
             pgci.side_step.v=10;
 
-            pgci.color.Set(0.75,0,0,1);
+            pgci.color.Set(0.5,0,0,1);
             pgci.side_color.Set(1,0,0,1);
 
             ro_plane_grid=CreateRenderablePlaneGrid(db,material,&pgci);

@@ -53,7 +53,7 @@ private:
         if(!material_instance)return(false);
         
 //        pipeline_solid=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/sky"));
-        pipeline_solid=CreatePipeline(material_instance,OS_TEXT("res/pipeline/sky"));       //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline_solid=CreatePipeline(material_instance,vulkan::InlinePipeline::Sky);       //等同上一行，为Framework重载，默认使用swapchain的render target
         if(!pipeline_solid)return(false);
 
         return(true);
