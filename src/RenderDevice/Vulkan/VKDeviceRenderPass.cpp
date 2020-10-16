@@ -3,16 +3,16 @@
 #include<hgl/graph/vulkan/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN
-void CreateSubpassDependency(VkSubpassDependency *dependency)
-{   
-    dependency->srcSubpass      = VK_SUBPASS_EXTERNAL;
-    dependency->dstSubpass      = 0;
-    dependency->srcStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;            
-    dependency->srcAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
-    dependency->dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-    dependency->dstStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    dependency->dstAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
-}
+//void CreateSubpassDependency(VkSubpassDependency *dependency)
+//{   
+//    dependency->srcSubpass      = VK_SUBPASS_EXTERNAL;
+//    dependency->dstSubpass      = 0;
+//    dependency->srcStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;            
+//    dependency->srcAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
+//    dependency->dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+//    dependency->dstStageMask    = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+//    dependency->dstAccessMask   = VK_ACCESS_MEMORY_READ_BIT;
+//}
 
 void CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)
 {
@@ -80,7 +80,7 @@ void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint c
     }
 }
 
-bool CreateAttachment(List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
     const uint color_count=color_format.GetCount();
 
@@ -224,35 +224,42 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
     return(new RenderPass(attr->device,render_pass,color_format_list,depth_format));
 }
 
-RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+RenderPass *Device::CreateRenderPass(const List<VkFormat> &color_format_list,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
-    if(!attr->physical_device->IsColorAttachmentOptimal(color_format))
-        return(nullptr);
+    for(const VkFormat &fmt:color_format_list)
+        if(!attr->physical_device->IsColorAttachmentOptimal(fmt))
+            return(nullptr);
 
     if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
         return(nullptr);
 
-    VkAttachmentReference color_ref;
+    List<VkAttachmentReference> color_ref_list;
     VkAttachmentReference depth_ref;
-    List<VkAttachmentDescription> desc_list;
+    List<VkAttachmentDescription> atta_desc_list;
 
+    color_ref_list.SetCount(color_format_list.GetCount());
+    CreateColorAttachmentReference(color_ref_list.GetData(),0,color_format_list.GetCount());
+    CreateDepthAttachmentReference(&depth_ref,color_format_list.GetCount());
+
+    CreateAttachmentDescription(atta_desc_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
+
+    List<VkSubpassDescription> subpass_desc_list;
+
+    subpass_desc_list.Add(SubpassDescription(color_ref_list.GetData(),color_ref_list.GetCount(),&depth_ref));
+
+    List<VkSubpassDependency> subpass_dependency_list;
+
+    CreateSubpassDependency(subpass_dependency_list,2);
+
+    return CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
+}
+
+RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+{
     List<VkFormat> color_format_list;
 
     color_format_list.Add(color_format);
 
-    CreateColorAttachmentReference(&color_ref,0,1);
-    CreateDepthAttachmentReference(&depth_ref,1);
-
-    CreateAttachment(desc_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
-
-    List<VkSubpassDescription> subpass_desc_list;
-
-    subpass_desc_list.Add(SubpassDescription(&color_ref,&depth_ref));
-
-    List<VkSubpassDependency> subpass_dependency_list;
-
-    CreateSubpassDependency(subpass_dependency_list,1);
-
-    return CreateRenderPass(desc_list,subpass_desc_list,subpass_dependency_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
+    return CreateRenderPass(color_format_list,depth_format,color_final_layout,depth_final_layout);
 }
 VK_NAMESPACE_END
