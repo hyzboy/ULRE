@@ -59,6 +59,7 @@ class Material;
 class MaterialInstance;
 class PipelineLayout;
 struct PipelineData;
+enum class InlinePipeline;
 class Pipeline;
 class DescriptorSets;
 class VertexAttributeBinding;

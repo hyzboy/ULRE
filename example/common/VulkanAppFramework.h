@@ -269,6 +269,16 @@ public:
 
 public: //pipeline
 
+    vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,const vulkan::InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    {
+        return db->CreatePipeline(mtl,sc_render_target,ip,prim,prim_restart);
+    }
+
+    vulkan::Pipeline *CreatePipeline(vulkan::MaterialInstance *mi,const vulkan::InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    {
+        return db->CreatePipeline(mi,sc_render_target,ip,prim,prim_restart);
+    }
+
     vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,vulkan::PipelineData *pd,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
         return db->CreatePipeline(mtl,sc_render_target,pd,prim,prim_restart);

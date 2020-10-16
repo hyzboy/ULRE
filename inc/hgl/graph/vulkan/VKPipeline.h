@@ -3,6 +3,7 @@
 
 #include<hgl/graph/vulkan/VK.h>
 #include<hgl/graph/vulkan/VKPipelineData.h>
+#include<hgl/graph/vulkan/VKInlinePipeline.h>
 #include<hgl/io/DataOutputStream.h>
 VK_NAMESPACE_BEGIN
 class Pipeline
