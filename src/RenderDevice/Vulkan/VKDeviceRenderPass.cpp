@@ -201,9 +201,12 @@ RenderPass *Device::CreateRenderPass(   const List<VkAttachmentDescription> &des
             return(nullptr);
     }
 
-    if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format)
-     &&!attr->physical_device->IsDepthAttachmentLinear(depth_format))
-        return(nullptr);
+    if(depth_format!=FMT_UNDEFINED)
+    {
+        if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format)
+         &&!attr->physical_device->IsDepthAttachmentLinear(depth_format))
+            return(nullptr);
+    }
 
     VkRenderPassCreateInfo rp_info;
     rp_info.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -230,24 +233,29 @@ RenderPass *Device::CreateRenderPass(const List<VkFormat> &color_format_list,VkF
         if(!attr->physical_device->IsColorAttachmentOptimal(fmt))
             return(nullptr);
 
-    if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
-        return(nullptr);
-
     List<VkAttachmentReference> color_ref_list;
     VkAttachmentReference depth_ref;
     List<VkAttachmentDescription> atta_desc_list;
+    List<VkSubpassDescription> subpass_desc_list;
+    List<VkSubpassDependency> subpass_dependency_list;
 
     color_ref_list.SetCount(color_format_list.GetCount());
     CreateColorAttachmentReference(color_ref_list.GetData(),0,color_format_list.GetCount());
-    CreateDepthAttachmentReference(&depth_ref,color_format_list.GetCount());
-
+    
     CreateAttachmentDescription(atta_desc_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
 
-    List<VkSubpassDescription> subpass_desc_list;
-
-    subpass_desc_list.Add(SubpassDescription(color_ref_list.GetData(),color_ref_list.GetCount(),&depth_ref));
-
-    List<VkSubpassDependency> subpass_dependency_list;
+    if(depth_format!=FMT_UNDEFINED)
+    {
+        if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
+            return(nullptr);
+            
+        CreateDepthAttachmentReference(&depth_ref,color_format_list.GetCount());
+        subpass_desc_list.Add(SubpassDescription(color_ref_list.GetData(),color_ref_list.GetCount(),&depth_ref));
+    }
+    else
+    {
+        subpass_desc_list.Add(SubpassDescription(color_ref_list.GetData(),color_ref_list.GetCount()));
+    }
 
     CreateSubpassDependency(subpass_dependency_list,2);
 
