@@ -25,6 +25,7 @@ SET(VK_DEVICE_SOURCE    ${RD_INCLUDE_PATH}/VKDevice.h
                         VKDeviceBuffer.cpp
                         VKDeviceImage.cpp
                         VKDeviceTexture.cpp
+                        VKDeviceFramebuffer.cpp
                         VKDeviceSwapchain.cpp
                         VKDeviceRenderPass.cpp
                         VKDeviceRenderTarget.cpp)

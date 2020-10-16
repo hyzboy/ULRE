@@ -15,8 +15,8 @@ RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
                                             const VkImageLayout depth_layout)
 {
     if(w<=0||h<=0)return(nullptr);
-    if(IsDepthStencilFormat(color_format))return(nullptr);
-    if(!IsDepthFormat(depth_format))return(nullptr);
+
+    RenderPass *rp=CreateRenderPass(color_format,depth_format,color_layout,depth_layout);       //Renderpass内部会验证格式，所以不需要自己处理
 
     if(!CheckTextureFormatSupport(color_format))return(nullptr);
     if(!CheckTextureFormatSupport(depth_format))return(nullptr);
@@ -24,9 +24,7 @@ RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
     Texture2D *color_texture=CreateAttachmentTextureColor(color_format,w,h);
     Texture2D *depth_texture=CreateAttachmentTextureDepth(depth_format,w,h);
 
-    RenderPass *rp=CreateRenderPass(color_format,depth_format,color_layout,depth_layout);
-
-    Framebuffer *fb=CreateFramebuffer(GetDevice(),rp,color_texture->GetImageView(),depth_texture->GetImageView());
+    Framebuffer *fb=CreateFramebuffer(rp,color_texture->GetImageView(),depth_texture->GetImageView());
 
     return(CreateRenderTarget(fb));
 }
@@ -83,7 +81,7 @@ RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
 //    if(depth_count>0)CreateDepthAttachmentReference(&depth_ref,color_count);
 //    if(color_count>0)CreateColorAttachmentReference(color_ref_list,0,color_count);
 //
-//    CreateAttachment(desc_list,color_format_list,depth_format,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+//    CreateAttachmentDescription(desc_list,color_format_list,depth_format,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 //
 //    VkSubpassDescription sd;
 //
