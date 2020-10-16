@@ -276,7 +276,8 @@ public:
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                         const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    Pipeline *CreatePipeline(PipelineData *,const Material *,const RenderTarget *);
+    Pipeline *CreatePipeline(const InlinePipeline &,const Material *,const RenderTarget *);
+    Pipeline *CreatePipeline(      PipelineData *,  const Material *,const RenderTarget *);
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
@@ -286,11 +287,11 @@ public:
 void CreateSubpassDependency(VkSubpassDependency *);
 void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count);
 
-void CreateAttachmentReference(VkAttachmentReference *ref_list,uint count,VkImageLayout layout);
+void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint count,VkImageLayout layout);
 
-inline void CreateColorAttachmentReference(VkAttachmentReference *ref_list,uint count ){CreateAttachmentReference(ref_list,    count,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);}
-inline void CreateDepthAttachmentReference(VkAttachmentReference *depth_ref)           {CreateAttachmentReference(depth_ref,   1    ,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);}
-inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list,uint count ){CreateAttachmentReference(ref_list,    count,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);}
+inline void CreateColorAttachmentReference(VkAttachmentReference *ref_list, uint start,uint count)  {CreateAttachmentReference(ref_list,    start,count,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);}
+inline void CreateDepthAttachmentReference(VkAttachmentReference *depth_ref,uint index)             {CreateAttachmentReference(depth_ref,   index,1    ,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);}
+inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list, uint start,uint count)  {CreateAttachmentReference(ref_list,    start,count,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);}
 
     
 bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

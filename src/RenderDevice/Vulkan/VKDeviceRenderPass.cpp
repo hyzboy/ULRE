@@ -67,11 +67,11 @@ void CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependency_list,
     }
 }
 
-void CreateAttachmentReference(VkAttachmentReference *ref_list,uint count,VkImageLayout layout)
+void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint count,VkImageLayout layout)
 {
     VkAttachmentReference *ref=ref_list;
 
-    for(uint i=0;i<count;i++)
+    for(uint i=start;i<start+count;i++)
     {
         ref->attachment =i;
         ref->layout     =layout;
@@ -240,8 +240,8 @@ RenderPass *Device::CreateRenderPass(VkFormat color_format,VkFormat depth_format
 
     color_format_list.Add(color_format);
 
-    CreateColorAttachmentReference(&color_ref,1);
-    CreateDepthAttachmentReference(&depth_ref);
+    CreateColorAttachmentReference(&color_ref,0,1);
+    CreateDepthAttachmentReference(&depth_ref,1);
 
     CreateAttachment(desc_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
 
