@@ -4,6 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/graph/vulkan/VKTexture.h>
 #include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/vulkan/VKInlinePipeline.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
@@ -62,7 +63,7 @@ private:
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Texture2D"));        
         if(!material_instance)return(false);
 
-        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/solid2d"));
+        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
         texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));

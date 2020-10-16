@@ -40,6 +40,15 @@ Pipeline *CreatePipeline(VkDevice device,VkPipelineCache pipeline_cache,Pipeline
     return(new Pipeline(device,graphicsPipeline,data));
 }
 
+Pipeline *Device::CreatePipeline(const InlinePipeline &ip,const Material *mtl,const RenderTarget *rt)
+{
+    PipelineData *pd=GetPipelineData(ip);
+
+    if(!pd)return(nullptr);
+
+    return VK_NAMESPACE::CreatePipeline(attr->device,attr->pipeline_cache,pd,mtl,rt);
+}
+
 Pipeline *Device::CreatePipeline(PipelineData *pd,const Material *mtl,const RenderTarget *rt)
 {
     return VK_NAMESPACE::CreatePipeline(attr->device,attr->pipeline_cache,pd,mtl,rt);

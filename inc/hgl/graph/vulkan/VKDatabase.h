@@ -97,11 +97,13 @@ public: //Material
     Material *          CreateMaterial(const OSString &);
     MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(const OSString &);
-
-    Pipeline *          CreatePipeline(Material *,          RenderTarget *,PipelineData *,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,PipelineData *,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(Material *,          RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,const OSString &,const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    
+    Pipeline *          CreatePipeline(Material *,          RenderTarget *,const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(Material *,          RenderTarget *,      PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,      PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(Material *,          RenderTarget *,const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
     Renderable *        CreateRenderable(const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);

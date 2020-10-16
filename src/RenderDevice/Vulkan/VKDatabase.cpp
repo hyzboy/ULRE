@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/vulkan/VKDatabase.h>
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKRenderableInstance.h>
+#include<hgl/graph/vulkan/VKInlinePipeline.h>
 
 VK_NAMESPACE_BEGIN
 VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
@@ -68,6 +69,25 @@ MaterialInstance *Database::CreateMaterialInstance(const OSString &mtl_filename)
         return(nullptr);
 
     return CreateMaterialInstance(mtl);
+}
+
+Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+{
+    PipelineData *pd=GetPipelineData(ip);
+
+    pd->Set(prim,prim_restart);
+
+    Pipeline *p=device->CreatePipeline(pd,mtl,rt);
+
+    if(p)
+        Add(p);
+
+    return(p);
+}
+
+Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+{
+    return CreatePipeline(mi->GetMaterial(),rt,ip,prim,prim_restart);
 }
 
 Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
