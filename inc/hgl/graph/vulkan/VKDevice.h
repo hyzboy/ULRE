@@ -250,6 +250,11 @@ public: //Command Buffer 相关
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                         const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
+    RenderPass *    CreateRenderPass(   const List<VkFormat> &color_format,
+                                        const VkFormat depth_format,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
     RenderPass *    CreateRenderPass(   const VkFormat color_format,
                                         const VkFormat depth_format,
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
@@ -258,10 +263,17 @@ public: //Command Buffer 相关
     Fence *             CreateFence(bool);
     vulkan::Semaphore * CreateSem();
 
+public: //FrameBuffer相关
+
+    Framebuffer *CreateFramebuffer(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
+    Framebuffer *CreateFramebuffer(RenderPass *,List<ImageView *> &color,ImageView *depth);
+    Framebuffer *CreateFramebuffer(RenderPass *,ImageView *color,ImageView *depth);
+    Framebuffer *CreateFramebuffer(RenderPass *,ImageView *);
+
 public:
 
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
-
+    
     RenderTarget *CreateRenderTarget(Framebuffer *);
 
     RenderTarget *CreateRenderTarget(   const uint,const uint,const List<VkFormat> &,
@@ -284,7 +296,7 @@ public:
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体
 };//class Device
 
-void CreateSubpassDependency(VkSubpassDependency *);
+//void CreateSubpassDependency(VkSubpassDependency *);
 void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count);
 
 void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint count,VkImageLayout layout);
@@ -297,7 +309,7 @@ inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list, uint
 bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-bool CreateAttachment(      List<VkAttachmentDescription> &color_output_desc_list,
+bool CreateAttachmentDescription(      List<VkAttachmentDescription> &color_output_desc_list,
                             const List<VkFormat> &color_format,
                             const VkFormat depth_format,
                             const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
