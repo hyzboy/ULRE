@@ -41,7 +41,7 @@ private:
         if(!material_instance)
             return(false);
             
-        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/solid2d"),Prim::TriangleStrip);
+        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D,Prim::TriangleStrip);
 
         if(!pipeline)
             return(false);

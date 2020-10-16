@@ -43,7 +43,7 @@ private:
         mdp->material_instance=db->CreateMaterialInstance(mdp->material);
         if(!mdp->material_instance)return(false);
 
-        mdp->pipeline=CreatePipeline(mdp->material_instance,OS_TEXT("res/pipeline/default"),primitive);
+        mdp->pipeline=CreatePipeline(mdp->material_instance,vulkan::InlinePipeline::Solid3D,primitive);
 
         if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);

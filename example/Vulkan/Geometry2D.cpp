@@ -52,7 +52,7 @@ private:
 
         if(!material_instance)return(false);
 
-        pipeline=CreatePipeline(material,OS_TEXT("res/pipeline/solid2d"),Prim::Fan);
+        pipeline=CreatePipeline(material,vulkan::InlinePipeline::Solid2D,Prim::Fan);
 
         return pipeline;
     }
