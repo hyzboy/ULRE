@@ -124,7 +124,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame.Add(vulkan::CreateFramebuffer(device->GetDevice(),main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView()));
+        render_frame.Add(device->CreateFramebuffer(main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView()));
         ++sc_color;
     }
 
