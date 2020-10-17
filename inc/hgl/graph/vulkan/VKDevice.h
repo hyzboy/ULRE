@@ -266,7 +266,7 @@ public: //Command Buffer 相关
 public: //FrameBuffer相关
 
     Framebuffer *CreateFramebuffer(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
-    Framebuffer *CreateFramebuffer(RenderPass *,List<ImageView *> &color,ImageView *depth);
+//    Framebuffer *CreateFramebuffer(RenderPass *,List<ImageView *> &color,ImageView *depth);
     Framebuffer *CreateFramebuffer(RenderPass *,ImageView *color,ImageView *depth);
     Framebuffer *CreateFramebuffer(RenderPass *,ImageView *);
 
@@ -274,25 +274,26 @@ public:
 
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
     
-    RenderTarget *CreateRenderTarget(Framebuffer *);
-
-    RenderTarget *CreateRenderTarget(   const uint,const uint,const List<VkFormat> &,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-    RenderTarget *CreateRenderTarget(   const uint,const uint,const VkFormat,const VkImageLayout final_layout);
-
-    RenderTarget *CreateRenderTarget(   const uint,const uint,
-                                        const VkFormat color_format,
-                                        const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    RenderTarget *CreateRenderTarget(   Framebuffer *,const uint32_t fence_count=1);
 
     RenderTarget *CreateRenderTarget(   const uint,const uint,
                                         const List<VkFormat> &color_format_list,
                                         const VkFormat depth_format,
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        const uint32_t fence_count=1);
+
+    RenderTarget *CreateRenderTarget(   const uint,const uint,
+                                        const VkFormat color_format,
+                                        const VkFormat depth_format,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                        const uint32_t fence_count=1);
+
+    RenderTarget *CreateRenderTarget(   const uint,const uint,const VkFormat,const VkImageLayout final_layout,const uint32_t fence_count=1);
+
+    
+public:
 
     Pipeline *CreatePipeline(const InlinePipeline &,const Material *,const RenderTarget *);
     Pipeline *CreatePipeline(      PipelineData *,  const Material *,const RenderTarget *);
