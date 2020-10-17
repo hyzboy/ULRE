@@ -1,13 +1,33 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
+VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExtent2D &extent,VkImageView *attachments,const uint attachmentCount)
+{
+    FramebufferCreateInfo fb_info;
+
+    fb_info.renderPass      = *rp;
+    fb_info.attachmentCount = attachmentCount;
+    fb_info.pAttachments    = attachments;
+    fb_info.width           = extent.width;
+    fb_info.height          = extent.height;
+    fb_info.layers          = 1;
+
+    VkFramebuffer fb;
+
+    if(vkCreateFramebuffer(device,&fb_info,nullptr,&fb)!=VK_SUCCESS)
+        return(nullptr);
+
+    return fb;
+}
+
 Framebuffer *Device::CreateFramebuffer(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
-{    
+{
     uint att_count=color_count;
 
     if(depth)++att_count;
     
-    VkImageView *attachments=new VkImageView[att_count];
+    AutoDeleteArray<VkImageView> attachments=new VkImageView[att_count];
+    VkImageView *ap=attachments;
 
     if(color_count)
     {
@@ -15,6 +35,7 @@ Framebuffer *Device::CreateFramebuffer(RenderPass *rp,ImageView **color_list,con
 
         const VkFormat *cf=cf_list.GetData();
         ImageView **iv=color_list;
+
         for(uint i=0;i<color_count;i++)
         {
             if(*cf!=(*iv)->GetFormat())
@@ -38,35 +59,28 @@ Framebuffer *Device::CreateFramebuffer(RenderPass *rp,ImageView **color_list,con
         attachments[color_count]=*depth;
     }
 
-    const VkExtent3D extent=depth->GetExtent();
+    VkExtent2D extent;
+    extent.width=depth->GetExtent().width;
+    extent.height=depth->GetExtent().height;
 
-    FramebufferCreateInfo *fb_info=new FramebufferCreateInfo;
+    VkFramebuffer fbo=CreateVulkanFramebuffer(GetDevice(),rp,extent,attachments,att_count);
 
-    fb_info->renderPass      = *rp;
-    fb_info->attachmentCount = att_count;
-    fb_info->pAttachments    = attachments;
-    fb_info->width           = extent.width;
-    fb_info->height          = extent.height;
-    fb_info->layers          = 1;
-
-    VkFramebuffer fb;
-
-    if(vkCreateFramebuffer(GetDevice(),fb_info,nullptr,&fb)!=VK_SUCCESS)
+    if(!fbo)
         return(nullptr);
 
-    return(new Framebuffer(GetDevice(),fb,fb_info,depth));
+    return(new Framebuffer(GetDevice(),fbo,extent,*rp,color_count,depth));
 }
-
-Framebuffer *Device::CreateFramebuffer(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
-{    
-    if(!rp)return(nullptr);
-
-    if(rp->GetColorFormat().GetCount()!=color.GetCount())return(nullptr);
-
-    if(color.GetCount()==0&&!depth)return(nullptr);
-
-    return CreateFramebuffer(rp,color.GetData(),color.GetCount(),depth);
-}
+//
+//Framebuffer *Device::CreateFramebuffer(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
+//{    
+//    if(!rp)return(nullptr);
+//
+//    if(rp->GetColorFormat().GetCount()!=color.GetCount())return(nullptr);
+//
+//    if(color.GetCount()==0&&!depth)return(nullptr);
+//
+//    return CreateFramebuffer(rp,color.GetData(),color.GetCount(),depth);
+//}
 
 Framebuffer *Device::CreateFramebuffer(RenderPass *rp,ImageView *color,ImageView *depth)
 {

@@ -2,33 +2,11 @@
 #define HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE
 
 #include<hgl/graph/vulkan/VK.h>
-#include<hgl/graph/vulkan/VKFence.h>
 #include<hgl/graph/vulkan/VKRenderPass.h>
 #include<hgl/graph/vulkan/VKFramebuffer.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
+#include<hgl/graph/vulkan/VKSubmitQueue.h>
 VK_NAMESPACE_BEGIN
-class SubmitQueue
-{
-protected:
-
-    Device *device;
-    VkQueue queue;
-    
-    uint32_t current_fence;
-    ObjectList<Fence> fence_list;
-
-    SubmitInfo submit_info;
-
-public:
-
-    SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count=1);
-    virtual ~SubmitQueue();
-    
-    bool Wait(const bool wait_wall=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
-    bool Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
-    bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
-};//class SumbitQueue
-
 /**
  * 渲染目标
  */
@@ -44,9 +22,15 @@ protected:
 
 protected:
 
+    ObjectList<Texture2D> color_texture;
+    Texture2D *depth_texture;
+
+protected:
+
     friend class Device;
 
     RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count=1);
+    RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
 
 public:
 
@@ -57,6 +41,9 @@ public:
     virtual const   VkRenderPass    GetRenderPass   ()const {return fb->GetRenderPass();}
     virtual const   uint32_t        GetColorCount   ()const {return fb->GetColorCount();}
     virtual const   VkFramebuffer   GetFramebuffer  ()const {return fb->GetFramebuffer();}
+
+    virtual         Texture2D *     GetColorTexture (const int index=0){return color_texture[index];}
+    virtual         Texture2D *     GetDepthTexture (){return depth_texture;}
 };//class RenderTarget
 
 /**
@@ -80,14 +67,17 @@ public:
     SwapchainRenderTarget(Device *dev,Swapchain *sc);
     ~SwapchainRenderTarget();
 
-    const   VkRenderPass  GetRenderPass()const override{return *main_rp;}
-    const   VkFramebuffer GetFramebuffer()const override{return render_frame[current_frame]->GetFramebuffer();}
-            VkFramebuffer GetFramebuffer(const uint32_t index){return render_frame[index]->GetFramebuffer();}
+            const   VkRenderPass    GetRenderPass   ()const override        {return *main_rp;}
+            const   VkFramebuffer   GetFramebuffer  ()const override        {return render_frame[current_frame]->GetFramebuffer();}
+                    VkFramebuffer   GetFramebuffer  (const uint32_t index)  {return render_frame[index]->GetFramebuffer();}
 
-    const   uint32_t      GetColorCount()const override{return 1;}
-    const   uint32_t      GetImageCount()const{return swap_chain_count;}
+            const   uint32_t        GetColorCount   ()const override   {return 1;}
+            const   uint32_t        GetImageCount   ()const            {return swap_chain_count;}
 
-    const   uint32_t      GetCurrentFrameIndices()const{return current_frame;}
+            const   uint32_t        GetCurrentFrameIndices()const{return current_frame;}
+
+    virtual         Texture2D *     GetColorTexture(const int index=0)  override{return swapchain->GetColorTexture(index);}
+    virtual         Texture2D *     GetDepthTexture()                   override{return swapchain->GetDepthTexture();}
 
 public:
 
@@ -95,13 +85,18 @@ public:
      * 请求下一帧画面的索引
      * @param present_complete_semaphore 推送完成信号
      */
-    int AcquireNextImage(vulkan::Semaphore *present_complete_semaphore);
+    int AcquireNextImage(VkSemaphore present_complete_semaphore);
 
     /**
      * 推送后台画面到前台
      * @param render_complete_semaphore 渲染完成信号
      */
-    bool PresentBackbuffer(vulkan::Semaphore *render_complete_semaphore);
+    bool PresentBackbuffer(VkSemaphore *render_complete_semaphore,const uint32_t count);
+
+    bool PresentBackbuffer(VkSemaphore render_complete_semaphore)
+    {
+        return PresentBackbuffer(&render_complete_semaphore,1);
+    }
 };//class SwapchainRenderTarget:public RenderTarget
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE
