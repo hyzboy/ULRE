@@ -31,8 +31,8 @@ SET(VK_DEVICE_SOURCE    ${RD_INCLUDE_PATH}/VKDevice.h
                         VKDeviceRenderTarget.cpp)
 
 SET(VK_PHYSICAL_DEVICE_SOURCE ${RD_INCLUDE_PATH}/VKPhysicalDevice.h
-                              VKPhysicalDevice.cpp
-                              VKProperties.cpp)
+                            VKPhysicalDevice.cpp
+                            VKProperties.cpp)
 
 SOURCE_GROUP("Device"                   FILES ${VK_DEVICE_SOURCE})
 SOURCE_GROUP("Device\\Debug"            FILES ${VK_DEBUG_SOURCE})
@@ -58,7 +58,7 @@ SET(VK_TEXTURE_SOURCE   ${RD_INCLUDE_PATH}/VKImageView.h
                         VKSampler.cpp
                         VKImageView.cpp
                         VKTexture.cpp
-                       	VKTextureLoader.cpp)
+                        VKTextureLoader.cpp)
 
 SET(VK_MATERIAL_SOURCE  ${RD_INCLUDE_PATH}/VKMaterial.h
                         ${RD_INCLUDE_PATH}/VKMaterialInstance.h
@@ -77,6 +77,7 @@ SET(VK_RENDER_PASS_SOURCE   ${RD_INCLUDE_PATH}/VKFramebuffer.h
                             ${RD_INCLUDE_PATH}/VKCommandBuffer.h
                             ${RD_INCLUDE_PATH}/VKSemaphore.h
                             ${RD_INCLUDE_PATH}/VKFence.h
+                            VKSubmitQueue.cpp
                             VKSemaphore.cpp
                             VKFence.cpp
                             VKFramebuffer.cpp
