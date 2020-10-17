@@ -26,11 +26,20 @@ SubmitQueue::~SubmitQueue()
     fence_list.Clear();
 }
 
+bool SubmitQueue::QueueWaitIdle()
+{
+    VkResult result=vkQueueWaitIdle(queue);
+    
+    if(result!=VK_SUCCESS)
+        return(false);
+
+    return(true);
+}
+
 bool SubmitQueue::Wait(const bool wait_all,uint64_t time_out)
 {
-    VkFence fence=*fence_list[current_fence];
-    
     VkResult result;
+    VkFence fence=*fence_list[current_fence];
 
     result=vkWaitForFences(device->GetDevice(),1,&fence,wait_all,time_out);
     result=vkResetFences(device->GetDevice(),1,&fence);

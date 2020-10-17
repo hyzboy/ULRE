@@ -21,6 +21,7 @@ public:
     SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count=1);
     virtual ~SubmitQueue();
     
+    bool QueueWaitIdle();
     bool Wait(const bool wait_wall=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
     bool Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
     bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);

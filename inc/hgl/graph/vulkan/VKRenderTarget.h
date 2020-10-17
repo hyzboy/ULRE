@@ -17,8 +17,9 @@ protected:
     Framebuffer *fb;
     
     VkExtent2D extent;
-
-    CommandBuffer *command_buffer;
+    
+    Semaphore *     render_complete_semaphore   =nullptr;
+    CommandBuffer * command_buffer              =nullptr;
 
 protected:
 
@@ -36,14 +37,17 @@ public:
 
     virtual ~RenderTarget();
     
-            const   VkExtent2D &    GetExtent       ()const {return extent;}
-                    CommandBuffer * GetCommandBuffer()      {return command_buffer;}
-    virtual const   VkRenderPass    GetRenderPass   ()const {return fb->GetRenderPass();}
-    virtual const   uint32_t        GetColorCount   ()const {return fb->GetColorCount();}
-    virtual const   VkFramebuffer   GetFramebuffer  ()const {return fb->GetFramebuffer();}
+            const   VkExtent2D &    GetExtent           ()const {return extent;}
+                    Semaphore *     GetCompleteSemaphore(){return render_complete_semaphore;}
+                    CommandBuffer * GetCommandBuffer    ()      {return command_buffer;}
+    virtual const   VkRenderPass    GetRenderPass       ()const {return fb->GetRenderPass();}
+    virtual const   uint32_t        GetColorCount       ()const {return fb->GetColorCount();}
+    virtual const   VkFramebuffer   GetFramebuffer      ()const {return fb->GetFramebuffer();}
 
-    virtual         Texture2D *     GetColorTexture (const int index=0){return color_texture[index];}
-    virtual         Texture2D *     GetDepthTexture (){return depth_texture;}
+    virtual         Texture2D *     GetColorTexture     (const int index=0){return color_texture[index];}
+    virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
+
+    virtual         bool            Submit              (Semaphore *present_complete_semaphore=nullptr);
 };//class RenderTarget
 
 /**

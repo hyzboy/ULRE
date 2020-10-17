@@ -2,6 +2,7 @@
 #include<hgl/graph/vulkan/VKDevice.h>
 #include<hgl/graph/vulkan/VKSwapchain.h>
 #include<hgl/graph/vulkan/VKCommandBuffer.h>
+#include<hgl/graph/vulkan/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
 namespace 
@@ -14,7 +15,8 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const
     fb=_fb;
     command_buffer=_cb;
 
-    depth_texture=nullptr;
+    depth_texture=nullptr;    
+    render_complete_semaphore=dev->CreateSem();
 }
 
 RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
@@ -24,14 +26,21 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Textu
 
     color_texture.Add(ctl,cc);
     depth_texture=dt;
+    render_complete_semaphore=dev->CreateSem();
 }
 
 RenderTarget::~RenderTarget()
-{
+{    
     SAFE_CLEAR(depth_texture);
     color_texture.Clear();
-
+    
+    SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(command_buffer);
+}
+
+bool RenderTarget::Submit(Semaphore *present_complete_semaphore)
+{
+    return this->SubmitQueue::Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
 }
 
 SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTarget(dev,nullptr,nullptr,sc->GetImageCount())
@@ -94,11 +103,6 @@ bool SwapchainRenderTarget::PresentBackbuffer(VkSemaphore *render_complete_semap
 			return false;
 		} 
 	}
-
-    result=vkQueueWaitIdle(queue);
-    
-    if(result!=VK_SUCCESS)
-        return(false);
 
     return(true);
 }
