@@ -98,6 +98,13 @@ bool CommandBuffer::BeginRenderPass(Framebuffer *fbo)
     return BeginRenderPass(fbo->GetRenderPass(),fbo->GetFramebuffer());
 }
 
+bool CommandBuffer::BeginRenderPass(RenderTarget *rt)
+{
+    if(!rt)return(false);
+
+    return BeginRenderPass(rt->GetRenderPass(),rt->GetFramebuffer());
+}
+
 bool CommandBuffer::BindVAB(RenderableInstance *ri)
 {
     if(!ri)
