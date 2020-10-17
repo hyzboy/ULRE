@@ -7,29 +7,24 @@
 
 VK_NAMESPACE_BEGIN
 
-Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,VkFramebufferCreateInfo *fb_create_info,bool depth)
+Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,const VkExtent2D &ext,VkRenderPass rp,uint32_t cc,bool depth)
 {
     device=dev;
     frame_buffer=fb;
-    fb_info=fb_create_info;
+    render_pass=rp;
 
-    extent.width=fb_info->width;
-    extent.height=fb_info->height;
-
+    extent=ext;
+    color_count=cc;
     has_depth=depth;
-    if(has_depth)
-        color_count=fb_info->attachmentCount-1;
-    else
-        color_count=fb_info->attachmentCount;
 
-    depth_texture=nullptr;
+    attachment_count=color_count;
+
+    if(has_depth)
+        ++attachment_count;
 }
 
 Framebuffer::~Framebuffer()
 {
-    SAFE_CLEAR(depth_texture);
-    color_texture.Clear();
-
     vkDestroyFramebuffer(device,frame_buffer,nullptr);
 }
 VK_NAMESPACE_END
