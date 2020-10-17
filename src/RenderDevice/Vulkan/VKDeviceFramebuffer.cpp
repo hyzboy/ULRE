@@ -41,12 +41,15 @@ Framebuffer *Device::CreateFramebuffer(RenderPass *rp,ImageView **color_list,con
             if(*cf!=(*iv)->GetFormat())
                 return(nullptr);
 
-            attachments[i]=**iv;
+            *ap=**iv;
 
+            ++ap;
             ++cf;
             ++iv;
         }
     }
+
+    VkExtent2D extent;
 
     if(depth)
     {
@@ -57,11 +60,15 @@ Framebuffer *Device::CreateFramebuffer(RenderPass *rp,ImageView **color_list,con
         }
 
         attachments[color_count]=*depth;
-    }
 
-    VkExtent2D extent;
-    extent.width=depth->GetExtent().width;
-    extent.height=depth->GetExtent().height;
+        extent.width=depth->GetExtent().width;
+        extent.height=depth->GetExtent().height;
+    }
+    else
+    {
+        extent.width=color_list[0]->GetExtent().width;
+        extent.height=color_list[0]->GetExtent().height;
+    }
 
     VkFramebuffer fbo=CreateVulkanFramebuffer(GetDevice(),rp,extent,attachments,att_count);
 
