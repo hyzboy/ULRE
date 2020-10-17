@@ -14,3 +14,4 @@
 *.lib
 *.ninja
 *.check_cache
+/out

@@ -307,6 +307,8 @@ public:
     Pipeline *CreatePipeline(const InlinePipeline &,const Material *,const RenderTarget *);
     Pipeline *CreatePipeline(      PipelineData *,  const Material *,const RenderTarget *);
 
+public:
+
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体

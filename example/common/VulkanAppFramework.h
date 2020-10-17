@@ -173,6 +173,29 @@ public:
         }
     }
 
+    void BuildCommandBuffer(vulkan::RenderTarget *rt,vulkan::RenderableInstance *ri)
+    {
+        if(!rt||!ri)
+            return;
+
+        vulkan::CommandBuffer *cb=rt->GetCommandBuffer();        
+        const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
+
+        cb->Begin();
+            cb->BeginRenderPass(rt->GetRenderPass(),rt->GetFramebuffer());
+                cb->BindPipeline(ri->GetPipeline());
+                cb->BindDescriptorSets(ri->GetDescriptorSets());
+                cb->BindVAB(ri);
+
+                    if (ib)
+                        cb->DrawIndexed(ib->GetCount());
+                    else
+                        cb->Draw(ri->GetDrawCount());
+
+            cb->EndRenderPass();
+        cb->End();
+    }
+
     void BuildCommandBuffer(uint32_t index,vulkan::RenderableInstance *ri)
     {
         if(!ri)
@@ -243,8 +266,9 @@ public:
     {
         VkCommandBuffer cb=*cmd_buf[index];
 
-        sc_render_target->Submit(cb,present_complete_semaphore,render_complete_semaphore);
+        sc_render_target->SubmitQueue::Submit(cb,present_complete_semaphore,render_complete_semaphore);
         sc_render_target->PresentBackbuffer(*render_complete_semaphore);
+        sc_render_target->QueueWaitIdle();
         sc_render_target->Wait();
     }
 
