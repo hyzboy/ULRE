@@ -252,12 +252,12 @@ public: //Command Buffer 相关
 
     RenderPass *    CreateRenderPass(   const List<VkFormat> &color_format,
                                         const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                         const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     RenderPass *    CreateRenderPass(   const VkFormat color_format,
                                         const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                         const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     Fence *             CreateFence(bool);
@@ -292,6 +292,15 @@ public:
 
     RenderTarget *CreateRenderTarget(   const uint,const uint,const VkFormat,const VkImageLayout final_layout,const uint32_t fence_count=1);
 
+    RenderTarget *CreateColorRenderTarget(   const uint w,const uint h,const VkFormat format,const uint32_t fence_count=1)
+    {
+        return CreateRenderTarget(w,h,format,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,fence_count);
+    }
+
+    RenderTarget *CreateDepthRenderTarget(   const uint w,const uint h,const VkFormat format,const uint32_t fence_count=1)
+    {
+        return CreateRenderTarget(w,h,format,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,fence_count);
+    }
     
 public:
 
