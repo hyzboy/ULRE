@@ -48,7 +48,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
     Texture2D **sc_color=swapchain->GetColorTextures();
     Texture2D *sc_depth=swapchain->GetDepthTexture();
 
-    main_rp=device->CreateRenderPass((*sc_color)->GetFormat(),sc_depth->GetFormat());
+    main_rp=device->CreateRenderPass((*sc_color)->GetFormat(),sc_depth->GetFormat(),VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     swap_chain_count=swapchain->GetImageCount();
     
