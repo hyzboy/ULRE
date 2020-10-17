@@ -192,7 +192,7 @@ private:
         vulkan::CreateColorAttachmentReference(gbuffer.attachment.color_ref_list,3);
         vulkan::CreateDepthAttachmentReference(&gbuffer.attachment.depth_ref);
 
-        if(!vulkan::CreateAttachment(   gbuffer.attachment.desc_list,
+        if(!vulkan::CreateAttachmentDescription(   gbuffer.attachment.desc_list,
                                 gbuffer.gbuffer_format_list,
                                 gbuffer.depth->GetFormat()))
             return(false);

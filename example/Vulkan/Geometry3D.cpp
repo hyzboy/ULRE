@@ -94,17 +94,17 @@ private:
         pgci.side_step.u=10;
         pgci.side_step.v=10;
 
-        pgci.color.Set(0.75,0,0,1);
+        pgci.color.Set(0.5,0,0,1);
         pgci.side_color.Set(1,0,0,1);
 
         ro_plane_grid[0]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
 
-        pgci.color.Set(0,0.75,0,1);
+        pgci.color.Set(0,0.5,0,1);
         pgci.side_color.Set(0,1,0,1);
 
         ro_plane_grid[1]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
 
-        pgci.color.Set(0,0,0.75,1);
+        pgci.color.Set(0,0,0.5,1);
         pgci.side_color.Set(0,0,1,1);
         ro_plane_grid[2]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
 
