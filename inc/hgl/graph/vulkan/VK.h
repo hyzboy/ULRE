@@ -46,7 +46,7 @@ class IndexBuffer;
 class CommandBuffer;
 class RenderPass;
 class Fence;
-class Semaphore;
+class GPUSemaphore;
 
 class DescriptorSetLayoutCreater;
 
