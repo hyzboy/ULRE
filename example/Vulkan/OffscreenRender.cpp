@@ -12,9 +12,9 @@ constexpr uint32_t TRIANGLE_VERTEX_COUNT=3;
 
 constexpr float triangle_vertex_data[TRIANGLE_VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
+    {OFFSCREEN_SIZE*0.5,   OFFSCREEN_SIZE*0.25},
+    {OFFSCREEN_SIZE*0.75,  OFFSCREEN_SIZE*0.75},
+    {OFFSCREEN_SIZE*0.25,  OFFSCREEN_SIZE*0.75}
 };
 
 constexpr float triangle_color_data[TRIANGLE_VERTEX_COUNT][3]=
@@ -79,6 +79,11 @@ class TestApp:public VulkanApplicationFramework
 
 public:
 
+    ~TestApp()
+    {
+        delete os.render_taget;
+    }
+
     bool InitUBO(RenderObject *ro,const VkExtent2D &extent)
     {
         ro->cam.width=extent.width;
@@ -125,8 +130,7 @@ public:
         BuildCommandBuffer(os.render_taget,os.renderable_instance);
 
         os.render_taget->Submit(nullptr);
-        os.render_taget->QueueWaitIdle();
-        os.render_taget->Wait();
+        os.render_taget->WaitQueue();
 
         return(true);
     }
@@ -157,6 +161,7 @@ public:
         }
     
         BuildCommandBuffer(rect.renderable_instance);
+
         return(true);
     }
 
