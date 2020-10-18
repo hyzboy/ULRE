@@ -26,19 +26,29 @@ RenderTarget::RenderTarget(Device *dev,RenderPass *_rp,Framebuffer *_fb,CommandB
     rp=_rp;
     fb=_fb;
     command_buffer=_cb;
+    
+    depth_texture=dt;
 
     color_count=cc;
     if(color_count>0)
     {
         color_textures=new Texture2D *[color_count];
         hgl_cpy<Texture2D *>(color_textures,ctl,color_count);
+
+        extent.width=color_textures[0]->GetWidth();
+        extent.height=color_textures[0]->GetHeight();
     }
     else
     {
         color_textures=nullptr;
+
+        if(depth_texture)
+        {
+            extent.width=depth_texture->GetWidth();
+            extent.height=depth_texture->GetHeight();
+        }
     }
 
-    depth_texture=dt;
     render_complete_semaphore=dev->CreateSemaphore();
 }
 
@@ -137,5 +147,10 @@ bool SwapchainRenderTarget::PresentBackbuffer()
 bool SwapchainRenderTarget::Submit(VkCommandBuffer cb)
 {
     return SubmitQueue::Submit(cb,present_complete_semaphore,render_complete_semaphore);
+}
+
+bool SwapchainRenderTarget::Submit(VkCommandBuffer cb,GPUSemaphore *pce)
+{
+    return SubmitQueue::Submit(cb,pce,render_complete_semaphore);
 }
 VK_NAMESPACE_END

@@ -105,6 +105,7 @@ public:
     bool PresentBackbuffer();
 
     bool Submit(VkCommandBuffer);
+    bool Submit(VkCommandBuffer,GPUSemaphore *);
 };//class SwapchainRenderTarget:public RenderTarget
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE
