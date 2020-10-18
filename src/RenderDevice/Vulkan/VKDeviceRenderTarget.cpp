@@ -53,7 +53,7 @@ RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
 
         if(cb)
         {
-            RenderTarget *rt=new RenderTarget(this,fb,cb,color_texture_list,color_count,depth_texture,fence_count);
+            RenderTarget *rt=new RenderTarget(this,rp,fb,cb,color_texture_list,color_count,depth_texture,fence_count);
 
             color_texture_list.DiscardObject();
             return rt;
