@@ -113,7 +113,7 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
 
     desc->finalLayout  = depth_final_layout;
     desc->format       = depth_format;
-    desc->storeOp      = VK_ATTACHMENT_STORE_OP_DONT_CARE;   //深度缓冲区不用于显示也不用于下一帧，所以结束后不用保存
+    desc->storeOp      = VK_ATTACHMENT_STORE_OP_STORE;
     
     return(true);
 }
