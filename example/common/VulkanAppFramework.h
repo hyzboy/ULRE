@@ -55,6 +55,8 @@ protected:
 
     vulkan::CommandBuffer **        cmd_buf                     =nullptr;
 
+            Color4f                 clear_color;
+
 protected:
 
     vulkan::Database *              db                          =nullptr;
@@ -76,6 +78,8 @@ public:
     virtual bool Init(int w,int h)
     {
         hgl_zero(key_status);
+
+        clear_color.Zero();
 
     #ifdef _DEBUG
         if(!vulkan::CheckStrideBytesByFormat())
@@ -187,6 +191,11 @@ public:
         cb->End();
     }
 
+    void SetClearColor(COLOR cc)
+    {
+        clear_color.Use(cc,1.0);
+    }
+
     void BuildCommandBuffer(uint32_t index,vulkan::RenderableInstance *ri)
     {
         if(!ri)
@@ -195,6 +204,8 @@ public:
         const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
 
         vulkan::CommandBuffer *cb=cmd_buf[index];
+
+        cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
 
         cb->Begin();
             cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
