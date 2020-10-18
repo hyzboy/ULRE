@@ -23,7 +23,8 @@ protected:
 
 protected:
 
-    ObjectList<Texture2D> color_texture;
+    uint32_t color_count;
+    Texture2D **color_textures;
     Texture2D *depth_texture;
 
 protected:
@@ -44,7 +45,7 @@ public:
     virtual const   uint32_t        GetColorCount       ()const {return fb->GetColorCount();}
     virtual const   VkFramebuffer   GetFramebuffer      ()const {return fb->GetFramebuffer();}
 
-    virtual         Texture2D *     GetColorTexture     (const int index=0){return color_texture[index];}
+    virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
 
     virtual         bool            Submit              (GPUSemaphore *present_complete_semaphore=nullptr);
@@ -66,7 +67,7 @@ class SwapchainRenderTarget:public RenderTarget
     uint32_t swap_chain_count;
 
     uint32_t current_frame;
-    ObjectList<Framebuffer> render_frame;
+    Framebuffer **render_frame;
 
 public:
 

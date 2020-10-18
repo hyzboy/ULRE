@@ -15,6 +15,12 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const
     fb=_fb;
     command_buffer=_cb;
 
+    if(fb)
+        color_count=fb->GetColorCount();
+    else
+        color_count=0;
+
+    color_textures=nullptr;
     depth_texture=nullptr;    
     render_complete_semaphore=dev->CreateSemaphore();
 }
@@ -24,7 +30,17 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Textu
     fb=_fb;
     command_buffer=_cb;
 
-    color_texture.Add(ctl,cc);
+    color_count=cc;
+    if(color_count>0)
+    {
+        color_textures=new Texture2D *[color_count];
+        hgl_cpy<Texture2D *>(color_textures,ctl,color_count);
+    }
+    else
+    {
+        color_textures=nullptr;
+    }
+
     depth_texture=dt;
     render_complete_semaphore=dev->CreateSemaphore();
 }
@@ -32,7 +48,7 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Textu
 RenderTarget::~RenderTarget()
 {    
     SAFE_CLEAR(depth_texture);
-    color_texture.Clear();
+    SAFE_CLEAR_OBJECT_ARRAY(color_textures,color_count);
     
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(command_buffer);
@@ -63,9 +79,11 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
     
     extent=swapchain->GetExtent();
 
+    render_frame=new Framebuffer *[swap_chain_count];
+
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame.Add(device->CreateFramebuffer(main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView()));
+        render_frame[i]=device->CreateFramebuffer(main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView());
         ++sc_color;
     }
 
@@ -76,7 +94,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
 {
-    render_frame.Clear();
+    SAFE_CLEAR_OBJECT_ARRAY(render_frame,swap_chain_count);
 
     delete present_complete_semaphore;
     delete main_rp;
