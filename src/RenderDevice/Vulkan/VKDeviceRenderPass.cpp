@@ -113,7 +113,7 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
 
     desc->finalLayout  = depth_final_layout;
     desc->format       = depth_format;
-    desc->storeOp      = VK_ATTACHMENT_STORE_OP_STORE;
+    desc->storeOp      = VK_ATTACHMENT_STORE_OP_STORE;      //swapchainRT最后"可能"是不需要保存深度的，，，，想想怎么最后弄成"DONT CARE"
     
     return(true);
 }
