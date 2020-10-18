@@ -18,7 +18,7 @@ protected:
     
     VkExtent2D extent;
     
-    Semaphore *     render_complete_semaphore   =nullptr;
+    GPUSemaphore *  render_complete_semaphore   =nullptr;
     CommandBuffer * command_buffer              =nullptr;
 
 protected:
@@ -38,7 +38,7 @@ public:
     virtual ~RenderTarget();
     
             const   VkExtent2D &    GetExtent           ()const {return extent;}
-                    Semaphore *     GetCompleteSemaphore(){return render_complete_semaphore;}
+                    GPUSemaphore *  GetCompleteSemaphore(){return render_complete_semaphore;}
                     CommandBuffer * GetCommandBuffer    ()      {return command_buffer;}
     virtual const   VkRenderPass    GetRenderPass       ()const {return fb->GetRenderPass();}
     virtual const   uint32_t        GetColorCount       ()const {return fb->GetColorCount();}
@@ -47,7 +47,7 @@ public:
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_texture[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
 
-    virtual         bool            Submit              (Semaphore *present_complete_semaphore=nullptr);
+    virtual         bool            Submit              (GPUSemaphore *present_complete_semaphore=nullptr);
 };//class RenderTarget
 
 /**
@@ -58,6 +58,8 @@ class SwapchainRenderTarget:public RenderTarget
     Swapchain *swapchain;
     VkSwapchainKHR vk_swapchain;
     PresentInfo present_info;
+
+    GPUSemaphore *present_complete_semaphore=nullptr;
 
     RenderPass *main_rp=nullptr;
 
@@ -79,6 +81,7 @@ public:
             const   uint32_t        GetImageCount   ()const            {return swap_chain_count;}
 
             const   uint32_t        GetCurrentFrameIndices()const{return current_frame;}
+                    GPUSemaphore *  GetPresentCompleteSemaphore(){return present_complete_semaphore;}
 
     virtual         Texture2D *     GetColorTexture(const int index=0)  override{return swapchain->GetColorTexture(index);}
     virtual         Texture2D *     GetDepthTexture()                   override{return swapchain->GetDepthTexture();}
@@ -89,18 +92,17 @@ public:
      * 请求下一帧画面的索引
      * @param present_complete_semaphore 推送完成信号
      */
-    int AcquireNextImage(VkSemaphore present_complete_semaphore);
+    int AcquireNextImage();
 
     /**
      * 推送后台画面到前台
      * @param render_complete_semaphore 渲染完成信号
      */
-    bool PresentBackbuffer(VkSemaphore *render_complete_semaphore,const uint32_t count);
+    bool PresentBackbuffer(VkSemaphore *wait_semaphores,const uint32_t wait_semaphore_count);
 
-    bool PresentBackbuffer(VkSemaphore render_complete_semaphore)
-    {
-        return PresentBackbuffer(&render_complete_semaphore,1);
-    }
+    bool PresentBackbuffer();
+
+    bool Submit(VkCommandBuffer);
 };//class SwapchainRenderTarget:public RenderTarget
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE
