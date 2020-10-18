@@ -5,13 +5,9 @@
 #include<hgl/graph/vulkan/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-namespace 
-{
-    const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-}//namespace
-
 RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
 {
+    rp=nullptr;
     fb=_fb;
     command_buffer=_cb;
 
@@ -25,8 +21,9 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const
     render_complete_semaphore=dev->CreateSemaphore();
 }
 
-RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
+RenderTarget::RenderTarget(Device *dev,RenderPass *_rp,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
 {
+    rp=_rp;
     fb=_fb;
     command_buffer=_cb;
 
@@ -52,6 +49,8 @@ RenderTarget::~RenderTarget()
     
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(command_buffer);
+    SAFE_CLEAR(fb);
+    SAFE_CLEAR(rp);
 }
 
 bool RenderTarget::Submit(GPUSemaphore *present_complete_semaphore)

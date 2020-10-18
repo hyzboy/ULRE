@@ -14,6 +14,7 @@ class RenderTarget:public SubmitQueue
 {
 protected:
 
+    RenderPass *rp;
     Framebuffer *fb;
     
     VkExtent2D extent;
@@ -32,7 +33,7 @@ protected:
     friend class Device;
 
     RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count=1);
-    RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
+    RenderTarget(Device *dev,RenderPass *_rp,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
 
 public:
 
