@@ -4,7 +4,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint OFFSCREEN_SIZE   =512;
+constexpr uint OFFSCREEN_SIZE   =64;
 constexpr uint SCREEN_WIDTH     =1024;
 constexpr uint SCREEN_HEIGHT    =(SCREEN_WIDTH/16)*9;
 
