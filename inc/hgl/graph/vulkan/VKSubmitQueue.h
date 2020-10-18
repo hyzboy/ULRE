@@ -21,10 +21,10 @@ public:
     SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count=1);
     virtual ~SubmitQueue();
     
-    bool QueueWaitIdle();
-    bool Wait(const bool wait_wall=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
-    bool Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
-    bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem);
+    bool WaitQueue();
+    bool WaitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
+    bool Submit(const VkCommandBuffer &cmd_buf,vulkan::GPUSemaphore *wait_sem,vulkan::GPUSemaphore *complete_sem);
+    bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,vulkan::GPUSemaphore *wait_sem,vulkan::GPUSemaphore *complete_sem);
 };//class SumbitQueue
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SUBMIT_QUEUE_INCLUDE

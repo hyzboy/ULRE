@@ -26,7 +26,7 @@ SubmitQueue::~SubmitQueue()
     fence_list.Clear();
 }
 
-bool SubmitQueue::QueueWaitIdle()
+bool SubmitQueue::WaitQueue()
 {
     VkResult result=vkQueueWaitIdle(queue);
     
@@ -36,7 +36,7 @@ bool SubmitQueue::QueueWaitIdle()
     return(true);
 }
 
-bool SubmitQueue::Wait(const bool wait_all,uint64_t time_out)
+bool SubmitQueue::WaitFence(const bool wait_all,uint64_t time_out)
 {
     VkResult result;
     VkFence fence=*fence_list[current_fence];
@@ -50,7 +50,7 @@ bool SubmitQueue::Wait(const bool wait_all,uint64_t time_out)
     return(true);
 }
     
-bool SubmitQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem)
+bool SubmitQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,vulkan::GPUSemaphore *wait_sem,vulkan::GPUSemaphore *complete_sem)
 {
     VkSemaphore ws;
     VkSemaphore cs;
@@ -93,7 +93,7 @@ bool SubmitQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     return(result==VK_SUCCESS);
 }
 
-bool SubmitQueue::Submit(const VkCommandBuffer &cmd_buf,vulkan::Semaphore *wait_sem,vulkan::Semaphore *complete_sem)
+bool SubmitQueue::Submit(const VkCommandBuffer &cmd_buf,vulkan::GPUSemaphore *wait_sem,vulkan::GPUSemaphore *complete_sem)
 {
     return Submit(&cmd_buf,1,wait_sem,complete_sem);
 }
