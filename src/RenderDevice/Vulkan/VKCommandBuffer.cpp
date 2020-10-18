@@ -65,7 +65,7 @@ bool CommandBuffer::Begin()
     return(true);
 }
 
-bool CommandBuffer::BeginRenderPass(VkRenderPass rp,VkFramebuffer fb)
+bool CommandBuffer::BindFramebuffer(VkRenderPass rp,VkFramebuffer fb)
 {
     RenderPassBeginInfo rp_begin;
 
@@ -93,16 +93,16 @@ bool CommandBuffer::BeginRenderPass(VkRenderPass rp,VkFramebuffer fb)
     return(true);
 }
 
-bool CommandBuffer::BeginRenderPass(Framebuffer *fbo)
+bool CommandBuffer::BindFramebuffer(Framebuffer *fbo)
 {
-    return BeginRenderPass(fbo->GetRenderPass(),fbo->GetFramebuffer());
+    return BindFramebuffer(fbo->GetRenderPass(),fbo->GetFramebuffer());
 }
 
-bool CommandBuffer::BeginRenderPass(RenderTarget *rt)
+bool CommandBuffer::BindFramebuffer(RenderTarget *rt)
 {
     if(!rt)return(false);
 
-    return BeginRenderPass(rt->GetRenderPass(),rt->GetFramebuffer());
+    return BindFramebuffer(rt->GetRenderPass(),rt->GetFramebuffer());
 }
 
 bool CommandBuffer::BindVAB(RenderableInstance *ri)
