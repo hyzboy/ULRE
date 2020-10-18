@@ -140,7 +140,7 @@ public:
         rect.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Texture2D"));        
         if(!rect.material_instance)return(false);
 
-        rect.pipeline=CreatePipeline(rect.material_instance,vulkan::InlinePipeline::Solid2D);
+        rect.pipeline=CreatePipeline(rect.material_instance,vulkan::InlinePipeline::Alpha2D);
         if(!rect.pipeline)return(false);
 
         rect.sampler=db->CreateSampler();
@@ -159,7 +159,7 @@ public:
 
             rect.renderable_instance=db->CreateRenderableInstance(render_obj,rect.material_instance,rect.pipeline);
         }
-    
+        
         BuildCommandBuffer(rect.renderable_instance);
 
         return(true);
@@ -169,6 +169,8 @@ public:
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+
+        SetClearColor(COLOR::MozillaCharcoal);
 
         if(!InitOffscreen())
             return(false);
