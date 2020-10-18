@@ -16,7 +16,7 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const
     command_buffer=_cb;
 
     depth_texture=nullptr;    
-    render_complete_semaphore=dev->CreateSem();
+    render_complete_semaphore=dev->CreateSemaphore();
 }
 
 RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
@@ -26,7 +26,7 @@ RenderTarget::RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,Textu
 
     color_texture.Add(ctl,cc);
     depth_texture=dt;
-    render_complete_semaphore=dev->CreateSem();
+    render_complete_semaphore=dev->CreateSemaphore();
 }
 
 RenderTarget::~RenderTarget()
@@ -38,7 +38,7 @@ RenderTarget::~RenderTarget()
     SAFE_CLEAR(command_buffer);
 }
 
-bool RenderTarget::Submit(Semaphore *present_complete_semaphore)
+bool RenderTarget::Submit(GPUSemaphore *present_complete_semaphore)
 {
     return this->SubmitQueue::Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
 }
@@ -70,27 +70,30 @@ SwapchainRenderTarget::SwapchainRenderTarget(Device *dev,Swapchain *sc):RenderTa
     }
 
     current_frame=0;
+
+    present_complete_semaphore=dev->CreateSemaphore();
 }
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
 {
     render_frame.Clear();
 
+    delete present_complete_semaphore;
     delete main_rp;
 }
     
-int SwapchainRenderTarget::AcquireNextImage(VkSemaphore present_complete_semaphore)
+int SwapchainRenderTarget::AcquireNextImage()
 {
-    if(vkAcquireNextImageKHR(device->GetDevice(),vk_swapchain,UINT64_MAX,present_complete_semaphore,VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
+    if(vkAcquireNextImageKHR(device->GetDevice(),vk_swapchain,UINT64_MAX,*(this->present_complete_semaphore),VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
         return current_frame;
 
     return -1;
 }
 
-bool SwapchainRenderTarget::PresentBackbuffer(VkSemaphore *render_complete_semaphore,const uint32_t count)
+bool SwapchainRenderTarget::PresentBackbuffer(VkSemaphore *wait_semaphores,const uint32_t count)
 {
     present_info.waitSemaphoreCount =count;
-    present_info.pWaitSemaphores    =render_complete_semaphore;
+    present_info.pWaitSemaphores    =wait_semaphores;
     present_info.pImageIndices      =&current_frame;
 
     VkResult result=vkQueuePresentKHR(queue,&present_info);
@@ -105,5 +108,17 @@ bool SwapchainRenderTarget::PresentBackbuffer(VkSemaphore *render_complete_semap
 	}
 
     return(true);
+}
+
+bool SwapchainRenderTarget::PresentBackbuffer()
+{
+    VkSemaphore sem=*render_complete_semaphore;
+
+    return this->PresentBackbuffer(&sem,1);
+}
+    
+bool SwapchainRenderTarget::Submit(VkCommandBuffer cb)
+{
+    return SubmitQueue::Submit(cb,present_complete_semaphore,render_complete_semaphore);
 }
 VK_NAMESPACE_END

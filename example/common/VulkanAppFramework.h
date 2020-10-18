@@ -49,9 +49,6 @@ protected:
     vulkan::Device *                device                      =nullptr;
     vulkan::SwapchainRenderTarget * sc_render_target            =nullptr;
 
-    vulkan::Semaphore *             present_complete_semaphore  =nullptr,
-                      *             render_complete_semaphore   =nullptr;
-
 protected:
 
             int32_t                 swap_chain_count            =0;
@@ -68,9 +65,6 @@ public:
 
     virtual ~VulkanApplicationFramework()
     {
-        SAFE_CLEAR(present_complete_semaphore);
-        SAFE_CLEAR(render_complete_semaphore);
-
         SAFE_CLEAR(db);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
@@ -118,9 +112,6 @@ public:
 
         if(!device)
             return(false);
-
-        present_complete_semaphore  =device->CreateSem();
-        render_complete_semaphore   =device->CreateSem();
 
         db=new vulkan::Database(device);
 
@@ -182,7 +173,7 @@ public:
         const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
 
         cb->Begin();
-            cb->BeginRenderPass(rt->GetRenderPass(),rt->GetFramebuffer());
+            cb->BindFramebuffer(rt);
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetDescriptorSets());
                 cb->BindVAB(ri);
@@ -206,7 +197,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
 
         cb->Begin();
-            cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
+            cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetDescriptorSets());
                 cb->BindVAB(ri);
@@ -238,7 +229,7 @@ public:
         vulkan::CommandBuffer *cb=cmd_buf[index];
 
         cb->Begin();
-        cb->BeginRenderPass(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
+        cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
         rl->Render(cb);
         cb->EndRenderPass();
         cb->End();
@@ -259,17 +250,17 @@ public:
 
     int AcquireNextImage()
     {
-        return sc_render_target->AcquireNextImage(*present_complete_semaphore);
+        return sc_render_target->AcquireNextImage();
     }
 
     virtual void SubmitDraw(int index)
     {
         VkCommandBuffer cb=*cmd_buf[index];
 
-        sc_render_target->SubmitQueue::Submit(cb,present_complete_semaphore,render_complete_semaphore);
-        sc_render_target->PresentBackbuffer(*render_complete_semaphore);
-        sc_render_target->QueueWaitIdle();
-        sc_render_target->Wait();
+        sc_render_target->Submit(cb);
+        sc_render_target->PresentBackbuffer();
+        sc_render_target->WaitQueue();
+        sc_render_target->WaitFence();
     }
 
     virtual void Draw()

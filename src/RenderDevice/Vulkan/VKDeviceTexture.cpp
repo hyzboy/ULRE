@@ -314,7 +314,7 @@ bool Device::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
         return(false);
 
     textureSQ->Submit(cmd_bufs,count,nullptr,nullptr);
-    textureSQ->Wait();
+    textureSQ->WaitFence();
 
     return(true);
 }

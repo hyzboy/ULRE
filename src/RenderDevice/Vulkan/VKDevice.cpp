@@ -92,7 +92,7 @@ Fence *Device::CreateFence(bool create_signaled)
     return(new Fence(attr->device,fence));
 }
 
-vulkan::Semaphore *Device::CreateSem()
+vulkan::GPUSemaphore *Device::CreateSemaphore()
 {
     SemaphoreCreateInfo SemaphoreCreateInfo;
 
@@ -101,6 +101,6 @@ vulkan::Semaphore *Device::CreateSem()
     if(vkCreateSemaphore(attr->device, &SemaphoreCreateInfo, nullptr, &sem)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new vulkan::Semaphore(attr->device,sem));
+    return(new vulkan::GPUSemaphore(attr->device,sem));
 }
 VK_NAMESPACE_END
