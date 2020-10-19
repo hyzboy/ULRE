@@ -15,8 +15,6 @@ namespace hgl
         {
         protected:  //每个窗体独立一个FBO存在，所以每个窗体会有自己的RenderTarget与pipeline
 
-            vulkan::Buffer *ui_matrix;
-
             struct
             {
                 vulkan::Pipeline *solid;
