@@ -42,13 +42,18 @@ namespace hgl
         {
             Vector2f center;            ///<圆心坐标
             Vector2f radius;            ///<半径
-            uint field_count;           ///<分段次数
+            uint field_count=8;         ///<分段次数
+
+            bool has_color  =false;
+
+            Vector4f center_color;      ///<圆心颜色
+            Vector4f border_color;      ///<边缘颜色
         };//struct CircleCreateInfo
 
         /**
          * 创建一个2D圆形(扇形/线圈)
          */
-        vulkan::Renderable *CreateRenderableCircle(vulkan::Database *db,vulkan::Material *mtl,const CircleCreateInfo *rci);
+        vulkan::Renderable *CreateRenderableCircle(vulkan::Database *db,vulkan::Material *mtl,const CircleCreateInfo *cci);
 
         /**
          * 平面网格创建信息
