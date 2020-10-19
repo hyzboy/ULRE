@@ -238,6 +238,8 @@ public:
         if(!rl)return;
 
         vulkan::CommandBuffer *cb=cmd_buf[index];
+        
+        cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
 
         cb->Begin();
         cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
