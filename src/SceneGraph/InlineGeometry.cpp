@@ -116,15 +116,35 @@ namespace hgl
         {
             RenderableCreater rc(db,mtl);
 
-            if(!rc.Init(cci->field_count))
-                return(nullptr);
+            uint edge;
+
+            if(cci->has_color)
+            {
+                edge=cci->field_count+1;
+                if(!rc.Init(cci->field_count+2))return(nullptr);
+            }
+            else
+            {
+                edge=cci->field_count;
+                if(!rc.Init(cci->field_count))return(nullptr);
+            }
 
             AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
+            AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
             if(!vertex)
                 return(nullptr);
 
-            for(uint i=0;i<cci->field_count;i++)
+            if(cci->has_color)
+            {
+                if(!color)
+                    return(nullptr);
+
+                vertex->Write(cci->center);
+                color->Write(cci->center_color);
+            }
+
+            for(uint i=0;i<edge;i++)
             {
                 float ang=float(i)/float(cci->field_count)*360.0f;
 
@@ -132,6 +152,9 @@ namespace hgl
                 float y=cci->center.y+cos(hgl_ang2rad(ang))*cci->radius.y;
 
                 vertex->Write(x,y);
+                
+                if(cci->has_color)
+                    color->Write(cci->border_color);
             }
 
             return rc.Finish();
