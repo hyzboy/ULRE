@@ -7,20 +7,9 @@ ShaderModule *Device::CreateShaderModule(ShaderResource *sr)
 {
     if(!sr)return(nullptr);
 
-    VkPipelineShaderStageCreateInfo *shader_stage=new VkPipelineShaderStageCreateInfo;
-    shader_stage->sType                 =VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shader_stage->pNext                 =nullptr;
-    shader_stage->pSpecializationInfo   =nullptr;
-    shader_stage->flags                 =0;
-    shader_stage->stage                 =sr->GetStage();
-    shader_stage->pName                 ="main";
+    PipelineShaderStageCreateInfo *shader_stage=new PipelineShaderStageCreateInfo(sr->GetStage());
 
-    VkShaderModuleCreateInfo moduleCreateInfo;
-    moduleCreateInfo.sType      =VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleCreateInfo.pNext      =nullptr;
-    moduleCreateInfo.flags      =0;
-    moduleCreateInfo.codeSize   =sr->GetCodeSize();
-    moduleCreateInfo.pCode      =sr->GetCode();
+    ShaderModuleCreateInfo moduleCreateInfo(sr);
 
     if(vkCreateShaderModule(attr->device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
         return(nullptr);
@@ -48,7 +37,7 @@ ShaderModule::ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *sci,Sha
 ShaderModule::~ShaderModule()
 {
     vkDestroyShaderModule(device,stage_create_info->module,nullptr);
-    delete stage_create_info;
+    //这里不用删除stage_create_info，材质中会删除的
 }
 
 VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,pssci,sr)
