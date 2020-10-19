@@ -61,39 +61,9 @@ public:
 
     bool Begin();
 
-    void PipelineBarrier(
-        VkPipelineStageFlags                        srcStageMask,
-        VkPipelineStageFlags                        dstStageMask,
-        VkDependencyFlags                           dependencyFlags,
-        uint32_t                                    memoryBarrierCount,
-        const VkMemoryBarrier *                     pMemoryBarriers,
-        uint32_t                                    bufferMemoryBarrierCount,
-        const VkBufferMemoryBarrier *               pBufferMemoryBarriers,
-        uint32_t                                    imageMemoryBarrierCount,
-        const VkImageMemoryBarrier *                pImageMemoryBarriers)
-    {
-        vkCmdPipelineBarrier(cmd_buf,srcStageMask,dstStageMask,dependencyFlags,memoryBarrierCount,pMemoryBarriers,bufferMemoryBarrierCount,pBufferMemoryBarriers,imageMemoryBarrierCount,pImageMemoryBarriers);
-    }
-
-    void CopyBufferToImage(
-        VkBuffer                                    srcBuffer,
-        VkImage                                     dstImage,
-        VkImageLayout                               dstImageLayout,
-        uint32_t                                    regionCount,
-        const VkBufferImageCopy *                   pRegions)
-    {
-        vkCmdCopyBufferToImage(cmd_buf,srcBuffer,dstImage,dstImageLayout,regionCount,pRegions);
-    }
-
-    void CopyImageToBuffer( 
-        VkImage                                     srcImage,
-        VkImageLayout                               srcImageLayout,
-        VkBuffer                                    dstBuffer,
-        uint32_t                                    regionCount,
-        const VkBufferImageCopy *                   pRegions)
-    {
-        vkCmdCopyImageToBuffer(cmd_buf,srcImage,srcImageLayout,dstBuffer,regionCount,pRegions);
-    }
+    template<typename ...ARGS> void PipelineBarrier     (ARGS...args){vkCmdPipelineBarrier  (cmd_buf,args...);}
+    template<typename ...ARGS> void CopyBufferToImage   (ARGS...args){vkCmdCopyBufferToImage(cmd_buf,args...);}
+    template<typename ...ARGS> void CopyImageToBuffer   (ARGS...args){vkCmdCopyImageToBuffer(cmd_buf,args...);}
 
     bool BindFramebuffer(VkRenderPass rp,VkFramebuffer fb);
     bool BindFramebuffer(Framebuffer *);
@@ -140,18 +110,13 @@ public:
     void SetStencilWriteMask    (VkStencilFaceFlags faceMask,uint32_t compareMask)  {vkCmdSetStencilWriteMask(cmd_buf,faceMask,compareMask);}
     void SetStencilReference    (VkStencilFaceFlags faceMask,uint32_t compareMask)  {vkCmdSetStencilReference(cmd_buf,faceMask,compareMask);}
 
-    void Draw       (const uint32_t vertex_count){vkCmdDraw(cmd_buf,vertex_count,1,0,0);}
-    void DrawIndexed(const uint32_t index_count ){vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);}
-    
-    void Draw       (const uint32_t vertex_count,   const uint32_t instance_count,const uint32_t first_vertex,  const uint32_t first_instance)
-    {
-        vkCmdDraw(cmd_buf,vertex_count,instance_count,first_vertex,first_instance);
-    }
+public: //draw
 
-    void DrawIndexed(const uint32_t index_count,    const uint32_t instance_count,const uint32_t first_index,   const uint32_t vertex_offset,const uint32_t first_instance)
-    {
-        vkCmdDrawIndexed(cmd_buf,index_count,instance_count,first_index,vertex_offset,first_instance);
-    }
+                                void Draw       (const uint32_t vertex_count)   {vkCmdDraw(cmd_buf,vertex_count,1,0,0);}
+                                void DrawIndexed(const uint32_t index_count )   {vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);}
+    
+    template<typename ...ARGS>  void Draw       (ARGS...args)                   {vkCmdDraw(cmd_buf,args...);}
+    template<typename ...ARGS>  void DrawIndexed(ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
 
     void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
 

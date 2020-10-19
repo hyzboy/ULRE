@@ -23,8 +23,8 @@ static Vector4f color(1,1,1,1);
 
 struct Line2DConfig
 {
-    float width=2.0f;
-    float border=0.75f;
+    float width=20.0f;
+    float border=5.0f;
 };
 
 static Line2DConfig line_2d_config;
