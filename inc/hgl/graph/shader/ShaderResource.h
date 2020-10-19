@@ -3,6 +3,7 @@
 #include<hgl/type/List.h>
 #include<hgl/type/StringList.h>
 #include<hgl/graph/vulkan/VKFormat.h>
+#include<hgl/graph/vulkan/VKStruct.h>
 
 VK_NAMESPACE_BEGIN
 struct ShaderStage
@@ -96,4 +97,15 @@ public:
 
 ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize,bool include_file_header);
 ShaderResource *LoadShaderResoruce(const OSString &filename);
+
+struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
+{
+public:
+
+    ShaderModuleCreateInfo(ShaderResource *sr)
+    {
+        codeSize=sr->GetCodeSize();
+        pCode   =sr->GetCode();
+    }
+};
 VK_NAMESPACE_END
