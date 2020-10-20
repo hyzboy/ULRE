@@ -64,7 +64,7 @@ public:
 
     bool InitOffscreen()
     {
-        os.render_taget=device->CreateRenderTarget(OFFSCREEN_SIZE,OFFSCREEN_SIZE,UFMT_RGBA8,FMT_D16UN);
+        os.render_taget=device->CreateColorRenderTarget(OFFSCREEN_SIZE,OFFSCREEN_SIZE,UFMT_RGBA8);
         if(!os.render_taget)return(false);
         
         os.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
