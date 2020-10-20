@@ -84,10 +84,13 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
 {
     const uint color_count=color_format.GetCount();
 
-    desc_list.SetCount(color_count+1);
+    const uint count=(depth_format!=FMT_UNDEFINED)?color_count+1:color_count;
+
+    desc_list.SetCount(count);
+
     VkAttachmentDescription *desc=desc_list.GetData();
 
-    for(uint i=0;i<color_count+1;i++)
+    for(uint i=0;i<count;i++)
     {
         desc->flags         = 0;
         desc->samples       = VK_SAMPLE_COUNT_1_BIT;
@@ -111,9 +114,12 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
         ++cf;
     }
 
-    desc->finalLayout  = depth_final_layout;
-    desc->format       = depth_format;
-    desc->storeOp      = VK_ATTACHMENT_STORE_OP_STORE;      //swapchainRT最后"可能"是不需要保存深度的，，，，想想怎么最后弄成"DONT CARE"
+    if(depth_format!=FMT_UNDEFINED)
+    {
+        desc->finalLayout  = depth_final_layout;
+        desc->format       = depth_format;
+        desc->storeOp      = VK_ATTACHMENT_STORE_OP_STORE;      //swapchainRT最后"可能"是不需要保存深度的，，，，想想怎么最后弄成"DONT CARE"
+    }
     
     return(true);
 }
