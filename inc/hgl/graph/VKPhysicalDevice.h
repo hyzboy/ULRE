@@ -5,7 +5,7 @@
 #include<hgl/type/Sets.h>
 
 VK_NAMESPACE_BEGIN
-class PhysicalRenderDevice
+class GPUPhysicalDevice
 {
     VkInstance                          instance=nullptr;
     VkPhysicalDevice                    physical_device=nullptr;
@@ -18,8 +18,8 @@ class PhysicalRenderDevice
 
 public:
 
-    PhysicalRenderDevice(VkInstance,VkPhysicalDevice);
-    ~PhysicalRenderDevice()=default;
+    GPUPhysicalDevice(VkInstance,VkPhysicalDevice);
+    ~GPUPhysicalDevice()=default;
 
     operator VkPhysicalDevice(){return physical_device;}
     operator const VkPhysicalDevice()const{return physical_device;}
@@ -119,5 +119,5 @@ public:
         min_width   =properties.limits.lineWidthRange[0];
         max_width   =properties.limits.lineWidthRange[1];
     }
-};//class PhysicalRenderDevice
+};//class GPUPhysicalDevice
 VK_NAMESPACE_END

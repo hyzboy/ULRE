@@ -1,10 +1,10 @@
-﻿#include<hgl/graph/VKDatabase.h>
+﻿#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/VKInlinePipeline.h>
 
 VK_NAMESPACE_BEGIN
-VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
+VAB *RenderResource::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     VAB *vb=device->CreateVAB(format,count,data,sharing_mode);
 
@@ -16,7 +16,7 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharing
     return vb;
 }
 
-#define SCENE_DB_CREATE_BUFFER(name)    GPUBuffer *Database::Create##name(VkDeviceSize size,void *data,SharingMode sharing_mode) \
+#define SCENE_DB_CREATE_BUFFER(name)    GPUBuffer *RenderResource::Create##name(VkDeviceSize size,void *data,SharingMode sharing_mode) \
                                         {   \
                                             GPUBuffer *buf=device->Create##name(size,data,sharing_mode);   \
                                             \
@@ -25,7 +25,7 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharing
                                             return(buf);    \
                                         }   \
                                         \
-                                        GPUBuffer *Database::Create##name(VkDeviceSize size,SharingMode sharing_mode)    \
+                                        GPUBuffer *RenderResource::Create##name(VkDeviceSize size,SharingMode sharing_mode)    \
                                         {   \
                                             GPUBuffer *buf=device->Create##name(size,sharing_mode);    \
                                             \
@@ -40,7 +40,7 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharing
 
 #undef SCENE_DB_CREATE_BUFFER
 
-IndexBuffer *Database::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
+IndexBuffer *RenderResource::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     IndexBuffer *buf=device->CreateIBO(index_type,count,data,sharing_mode);
 
@@ -49,7 +49,7 @@ IndexBuffer *Database::CreateIBO(IndexType index_type,uint32_t count,const void 
     return(buf);
 }
         
-MaterialInstance *Database::CreateMaterialInstance(Material *mtl)
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl)
 {
     if(!mtl)return(nullptr);
 
@@ -61,7 +61,7 @@ MaterialInstance *Database::CreateMaterialInstance(Material *mtl)
     return mi;
 }
 
-MaterialInstance *Database::CreateMaterialInstance(const OSString &mtl_filename)
+MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_filename)
 {
     Material *mtl=this->CreateMaterial(mtl_filename);
 
@@ -71,7 +71,7 @@ MaterialInstance *Database::CreateMaterialInstance(const OSString &mtl_filename)
     return CreateMaterialInstance(mtl);
 }
 
-Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
 {
     PipelineData *pd=GetPipelineData(ip);
 
@@ -85,12 +85,12 @@ Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const InlinePi
     return(p);
 }
 
-Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),rt,ip,prim,prim_restart);
 }
 
-Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
 {
     pd->Set(prim,prim_restart);
 
@@ -102,12 +102,12 @@ Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,PipelineData *
     return(p);
 }
 
-Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),rt,pd,prim,prim_restart);
 }
 
-Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
+Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
 {
     PipelineData *pd=vulkan::GetPipelineData(pipeline_filename);
 
@@ -116,12 +116,12 @@ Pipeline *Database::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString
     return CreatePipeline(mtl,rt,pd,prim,prim_restart);
 }
 
-Pipeline *Database::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const OSString &filename,const Prim &prim,const bool prim_restart)
+Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const OSString &filename,const Prim &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),rt,filename,prim,prim_restart);
 }
 
-Renderable *Database::CreateRenderable(const uint32_t vertex_count)
+Renderable *RenderResource::CreateRenderable(const uint32_t vertex_count)
 {
     if(!vertex_count)return(nullptr);
 
@@ -133,7 +133,7 @@ Renderable *Database::CreateRenderable(const uint32_t vertex_count)
     return ro;
 }
 
-TextRenderable *Database::CreateTextRenderable(Material *mtl)
+TextRenderable *RenderResource::CreateTextRenderable(Material *mtl)
 {
     if(!mtl)return(nullptr);
             
@@ -145,7 +145,7 @@ TextRenderable *Database::CreateTextRenderable(Material *mtl)
     return tr;
 }
 
-RenderableInstance *Database::CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
+RenderableInstance *RenderResource::CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
@@ -158,7 +158,7 @@ RenderableInstance *Database::CreateRenderableInstance(Renderable *r,MaterialIns
     return ri;
 }
         
-Sampler *Database::CreateSampler(VkSamplerCreateInfo *sci)
+Sampler *RenderResource::CreateSampler(VkSamplerCreateInfo *sci)
 {
     Sampler *s=device->CreateSampler(sci);
 

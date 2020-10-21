@@ -4,7 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/VKDatabase.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 
@@ -40,7 +40,7 @@ private:
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Pipeline *          pipeline_solid      =nullptr;
     
-    vulkan::GPUBuffer *            ubo_atomsphere      =nullptr;
+    vulkan::GPUBuffer *         ubo_atomsphere      =nullptr;
     AtmosphereData              atomsphere_data;
 
     vulkan::Renderable *        ro_sphere           =nullptr;

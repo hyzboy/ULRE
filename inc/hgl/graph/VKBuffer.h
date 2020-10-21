@@ -4,27 +4,27 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
 VK_NAMESPACE_BEGIN
-struct BufferData
+struct GPUBufferData
 {
     VkBuffer                buffer;
-    GPUMemory *           memory=nullptr;
+    GPUMemory *             memory=nullptr;
     VkDescriptorBufferInfo  info;
-};//struct BufferData
+};//struct GPUBufferData
 
 class GPUBuffer
 {
 protected:
 
     VkDevice device;
-    BufferData buf;
+    GPUBufferData buf;
 
 private:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
     friend class VertexAttribBuffer;
     friend class IndexBuffer;
 
-    GPUBuffer(VkDevice d,const BufferData &b)
+    GPUBuffer(VkDevice d,const GPUBufferData &b)
     {
         device=d;
         buf=b;
@@ -55,9 +55,9 @@ class VertexAttribBuffer:public GPUBuffer
 
 private:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
 
-    VertexAttribBuffer(VkDevice d,const BufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):GPUBuffer(d,vb)
+    VertexAttribBuffer(VkDevice d,const GPUBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):GPUBuffer(d,vb)
     {
         format=fmt;
         stride=_stride;
@@ -87,9 +87,9 @@ class IndexBuffer:public GPUBuffer
 
 private:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
 
-    IndexBuffer(VkDevice d,const BufferData &vb,IndexType it,uint32_t _count):GPUBuffer(d,vb)
+    IndexBuffer(VkDevice d,const GPUBufferData &vb,IndexType it,uint32_t _count):GPUBuffer(d,vb)
     {
         index_type=it;
         count=_count;

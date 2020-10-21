@@ -4,11 +4,11 @@
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/VKDatabase.h>
+#include<hgl/graph/VKRenderResource.h>
 
 VK_NAMESPACE_BEGIN
 
-const ShaderModule *Database::CreateShaderModule(const OSString &filename,ShaderResource *shader_resource)
+const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,ShaderResource *shader_resource)
 {
     if(!device)return(nullptr);
     if(filename.IsEmpty())return(nullptr);
@@ -26,7 +26,7 @@ const ShaderModule *Database::CreateShaderModule(const OSString &filename,Shader
     return sm;
 }
 
-const ShaderModule *Database::CreateShaderModule(const OSString &filename)
+const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename)
 {
     ShaderModule *sm;
 
@@ -44,7 +44,7 @@ const ShaderModule *Database::CreateShaderModule(const OSString &filename)
     return sm;
 }
 
-Material *Database::CreateMaterial(const OSString &vertex_shader_filename,const OSString &fragment_shader_filename)
+Material *RenderResource::CreateMaterial(const OSString &vertex_shader_filename,const OSString &fragment_shader_filename)
 {
     const ShaderModule *vs=CreateShaderModule(vertex_shader_filename);
 
@@ -59,7 +59,7 @@ Material *Database::CreateMaterial(const OSString &vertex_shader_filename,const 
     return(device->CreateMaterial((VertexShaderModule *)vs,fs));
 }
 
-Material *Database::CreateMaterial(const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename)
+Material *RenderResource::CreateMaterial(const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename)
 {
     const ShaderModule *vs=CreateShaderModule(vertex_shader_filename);
 
@@ -79,7 +79,7 @@ Material *Database::CreateMaterial(const OSString &vertex_shader_filename,const 
     return(device->CreateMaterial((VertexShaderModule *)vs,gs,fs));
 }
 
-Material *Database::CreateMaterial(const OSString &filename)
+Material *RenderResource::CreateMaterial(const OSString &filename)
 {
     Material *mtl;
 

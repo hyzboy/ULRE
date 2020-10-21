@@ -49,35 +49,35 @@ VK_NAMESPACE_BEGIN
     };
     #undef VK_BOOL1BIT
 
-    class Instance
+    class VulkanInstance
     {
         VkInstance inst;
 
         VKDebugOut *debug_out;
 
-        ObjectList<PhysicalRenderDevice> physical_devices;
+        ObjectList<GPUPhysicalDevice> physical_devices;
 
     private:
 
-        friend Instance *CreateInstance(const AnsiString &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
+        friend VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
 
-        Instance(VkInstance,VKDebugOut *);
+        VulkanInstance(VkInstance,VKDebugOut *);
 
     public:
 
-        virtual ~Instance();
+        virtual ~VulkanInstance();
 
                 operator VkInstance (){return inst;}
 
-        const   ObjectList<PhysicalRenderDevice> &GetDeviceList       ()const {return physical_devices;}
-        const   PhysicalRenderDevice *            GetDevice           (VkPhysicalDeviceType)const;
-    };//class Instance
+        const   ObjectList<GPUPhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
+        const   GPUPhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
+    };//class VulkanInstance
     
             void                            InitVulkanProperties();
     const   List<VkLayerProperties> &       GetLayerProperties();
     const   List<VkExtensionProperties> &   GetExtensionProperties();
     const   bool                            CheckLayerSupport(const char *);
 
-    Instance *CreateInstance(const AnsiString &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
+    VulkanInstance *CreateInstance(const AnsiString &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE

@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
-PhysicalRenderDevice::PhysicalRenderDevice(VkInstance inst,VkPhysicalDevice pd)
+GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 {
     instance=inst;
     physical_device=pd;
@@ -31,19 +31,19 @@ PhysicalRenderDevice::PhysicalRenderDevice(VkInstance inst,VkPhysicalDevice pd)
     vkGetPhysicalDeviceFeatures(physical_device,&features);
     vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
 
-    PFN_vkGetPhysicalDeviceProperties2 GetPhysicalRenderDeviceProperties2=nullptr;
+    PFN_vkGetPhysicalDeviceProperties2 GetGPUPhysicalDeviceProperties2=nullptr;
 
     if(GetExtensionSpecVersion(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
-        GetPhysicalRenderDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2KHR");
+        GetGPUPhysicalDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2KHR");
 
-    if(!GetPhysicalRenderDeviceProperties2)
+    if(!GetGPUPhysicalDeviceProperties2)
         if(GetExtensionSpecVersion(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME))
-            GetPhysicalRenderDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2");
+            GetGPUPhysicalDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2");
 
-    if(GetPhysicalRenderDeviceProperties2)
+    if(GetGPUPhysicalDeviceProperties2)
     {
         VkPhysicalDeviceProperties2KHR properties2;
-        GetPhysicalRenderDeviceProperties2(physical_device,&properties2);
+        GetGPUPhysicalDeviceProperties2(physical_device,&properties2);
 
         hgl_cpy(properties,properties2.properties);
 
@@ -58,7 +58,7 @@ PhysicalRenderDevice::PhysicalRenderDevice(VkInstance inst,VkPhysicalDevice pd)
     }
 }
 
-const uint32_t PhysicalRenderDevice::GetExtensionSpecVersion(const AnsiString &name)const
+const uint32_t GPUPhysicalDevice::GetExtensionSpecVersion(const AnsiString &name)const
 {
     const uint count=extension_properties.GetCount();
     const VkExtensionProperties *ep=extension_properties.GetData();
@@ -72,7 +72,7 @@ const uint32_t PhysicalRenderDevice::GetExtensionSpecVersion(const AnsiString &n
     return 0;
 }
 
-const bool PhysicalRenderDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex)const
+const bool GPUPhysicalDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex)const
 {
     // Search memtypes to find first index with those properties
     for(uint32_t i=0; i<memory_properties.memoryTypeCount; i++)
@@ -92,7 +92,7 @@ const bool PhysicalRenderDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPrope
     return false;
 }
 
-VkFormat PhysicalRenderDevice::GetDepthFormat(bool lower_to_high)const
+VkFormat GPUPhysicalDevice::GetDepthFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthFormats[] =
     {
@@ -120,7 +120,7 @@ VkFormat PhysicalRenderDevice::GetDepthFormat(bool lower_to_high)const
     return result;
 }
 
-VkFormat PhysicalRenderDevice::GetDepthStencilFormat(bool lower_to_high)const
+VkFormat GPUPhysicalDevice::GetDepthStencilFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthStencilFormats[] =
     {

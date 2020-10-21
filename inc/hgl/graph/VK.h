@@ -13,10 +13,10 @@ VK_NAMESPACE_BEGIN
 
 using CharPointerList=hgl::List<const char *>;
 
-class Instance;
-class PhysicalRenderDevice;
-class RenderDevice;
-struct RenderDeviceAttribute;
+class VulkanInstance;
+class GPUPhysicalDevice;
+class GPUDevice;
+struct GPUDeviceAttribute;
 class ImageView;
 class Framebuffer;
 struct Swapchain;
@@ -36,14 +36,14 @@ class Sampler;
 
 class GPUMemory;
 class GPUBuffer;
-struct BufferData;
+struct GPUBufferData;
 
 class VertexAttribBuffer;
 using VAB=VertexAttribBuffer;
 
 class IndexBuffer;
 
-class CommandBuffer;
+class GPUCmdBuffer;
 class RenderPass;
 class GPUFence;
 class GPUSemaphore;
@@ -67,7 +67,7 @@ class VertexAttributeBinding;
 class Renderable;
 class RenderableInstance;
 
-class Database;
+class RenderResource;
 
 enum class SharingMode
 {

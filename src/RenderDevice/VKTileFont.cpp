@@ -7,7 +7,7 @@ VK_NAMESPACE_BEGIN
  * @param f 字体需求信息
  * @param limit_count 缓冲字符数量上限
  */
-TileFont *RenderDevice::CreateTileFont(FontSource *fs,int limit_count)
+TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
 {
     if(!fs)return(nullptr);
 

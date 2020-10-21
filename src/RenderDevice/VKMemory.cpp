@@ -2,7 +2,7 @@
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 VK_NAMESPACE_BEGIN
-GPUMemory *RenderDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
+GPUMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
 {
     uint32_t index;
 

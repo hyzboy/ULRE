@@ -5,7 +5,7 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget::RenderTarget(RenderDevice *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
+RenderTarget::RenderTarget(GPUDevice *dev,Framebuffer *_fb,GPUCmdBuffer *_cb,const uint32_t fence_count):GPUQueue(dev,dev->GetGraphicsQueue(),fence_count)
 {
     rp=nullptr;
     fb=_fb;
@@ -21,7 +21,7 @@ RenderTarget::RenderTarget(RenderDevice *dev,Framebuffer *_fb,CommandBuffer *_cb
     render_complete_semaphore=dev->CreateSemaphore();
 }
 
-RenderTarget::RenderTarget(RenderDevice *dev,RenderPass *_rp,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):SubmitQueue(dev,dev->GetGraphicsQueue(),fence_count)
+RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,GPUCmdBuffer *_cb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):GPUQueue(dev,dev->GetGraphicsQueue(),fence_count)
 {
     rp=_rp;
     fb=_fb;
@@ -65,10 +65,10 @@ RenderTarget::~RenderTarget()
 
 bool RenderTarget::Submit(GPUSemaphore *present_complete_semaphore)
 {
-    return this->SubmitQueue::Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
+    return this->GPUQueue::Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
 }
 
-SwapchainRenderTarget::SwapchainRenderTarget(RenderDevice *dev,Swapchain *sc):RenderTarget(dev,nullptr,nullptr,sc->GetImageCount())
+SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):RenderTarget(dev,nullptr,nullptr,sc->GetImageCount())
 {
     swapchain=sc;
     vk_swapchain=swapchain->GetSwapchain();
@@ -146,11 +146,11 @@ bool SwapchainRenderTarget::PresentBackbuffer()
     
 bool SwapchainRenderTarget::Submit(VkCommandBuffer cb)
 {
-    return SubmitQueue::Submit(cb,present_complete_semaphore,render_complete_semaphore);
+    return GPUQueue::Submit(cb,present_complete_semaphore,render_complete_semaphore);
 }
 
 bool SwapchainRenderTarget::Submit(VkCommandBuffer cb,GPUSemaphore *pce)
 {
-    return SubmitQueue::Submit(cb,pce,render_complete_semaphore);
+    return GPUQueue::Submit(cb,pce,render_complete_semaphore);
 }
 VK_NAMESPACE_END

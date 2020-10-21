@@ -5,12 +5,12 @@
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKSwapchain.h>
-#include<hgl/graph/VKSubmitQueue.h>
+#include<hgl/graph/VKQueue.h>
 VK_NAMESPACE_BEGIN
 /**
  * 渲染目标
  */
-class RenderTarget:public SubmitQueue
+class RenderTarget:public GPUQueue
 {
 protected:
 
@@ -20,7 +20,7 @@ protected:
     VkExtent2D extent;
     
     GPUSemaphore *  render_complete_semaphore   =nullptr;
-    CommandBuffer * command_buffer              =nullptr;
+    GPUCmdBuffer * command_buffer              =nullptr;
 
 protected:
 
@@ -30,10 +30,10 @@ protected:
 
 protected:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
 
-    RenderTarget(RenderDevice *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count=1);
-    RenderTarget(RenderDevice *dev,RenderPass *_rp,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
+    RenderTarget(GPUDevice *dev,Framebuffer *_fb,GPUCmdBuffer *_cb,const uint32_t fence_count=1);
+    RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,GPUCmdBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
 
 public:
 
@@ -41,7 +41,7 @@ public:
     
             const   VkExtent2D &    GetExtent           ()const {return extent;}
                     GPUSemaphore *  GetCompleteSemaphore(){return render_complete_semaphore;}
-                    CommandBuffer * GetCommandBuffer    ()      {return command_buffer;}
+                    GPUCmdBuffer * GetCommandBuffer    ()      {return command_buffer;}
     virtual const   VkRenderPass    GetRenderPass       ()const {return fb->GetRenderPass();}
     virtual const   uint32_t        GetColorCount       ()const {return fb->GetColorCount();}
     virtual const   VkFramebuffer   GetFramebuffer      ()const {return fb->GetFramebuffer();}
@@ -72,7 +72,7 @@ class SwapchainRenderTarget:public RenderTarget
 
 public:
 
-    SwapchainRenderTarget(RenderDevice *dev,Swapchain *sc);
+    SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc);
     ~SwapchainRenderTarget();
 
             const   VkRenderPass    GetRenderPass   ()const override        {return *main_rp;}

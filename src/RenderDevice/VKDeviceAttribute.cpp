@@ -5,7 +5,7 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-RenderDeviceAttribute::RenderDeviceAttribute(VkInstance inst,const PhysicalRenderDevice *pd,VkSurfaceKHR s)
+GPUDeviceAttribute::GPUDeviceAttribute(VkInstance inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s)
 {
     instance=inst;
     physical_device=pd;
@@ -14,7 +14,7 @@ RenderDeviceAttribute::RenderDeviceAttribute(VkInstance inst,const PhysicalRende
     Refresh();
 }
 
-RenderDeviceAttribute::~RenderDeviceAttribute()
+GPUDeviceAttribute::~GPUDeviceAttribute()
 {
     if(pipeline_cache)
         vkDestroyPipelineCache(device,pipeline_cache,nullptr);
@@ -32,12 +32,12 @@ RenderDeviceAttribute::~RenderDeviceAttribute()
         vkDestroySurfaceKHR(instance,surface,nullptr);
 }
 
-bool RenderDeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const
+bool GPUDeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const
 {
     return physical_device->CheckMemoryType(typeBits,properties,typeIndex);
 }
 
-void RenderDeviceAttribute::Refresh()
+void GPUDeviceAttribute::Refresh()
 {
     VkPhysicalDevice pdevice = *physical_device;
 

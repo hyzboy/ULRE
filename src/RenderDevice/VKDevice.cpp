@@ -11,7 +11,7 @@
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-RenderDevice::RenderDevice(RenderDeviceAttribute *da)
+GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
 
@@ -23,7 +23,7 @@ RenderDevice::RenderDevice(RenderDeviceAttribute *da)
     Resize(attr->surface_caps.currentExtent);
 }
 
-RenderDevice::~RenderDevice()
+GPUDevice::~GPUDevice()
 {
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
@@ -34,7 +34,7 @@ RenderDevice::~RenderDevice()
     delete attr;
 }
 
-bool RenderDevice::Resize(const VkExtent2D &extent)
+bool GPUDevice::Resize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
@@ -48,14 +48,14 @@ bool RenderDevice::Resize(const VkExtent2D &extent)
         return(false);
 
     texture_cmd_buf=CreateCommandBuffer(extent,0);
-    textureSQ=new SubmitQueue(this,attr->graphics_queue,1);
+    textureSQ=new GPUQueue(this,attr->graphics_queue,1);
 
     swapchainRT=new SwapchainRenderTarget(this,swapchain);
 
     return(true);
 }
 
-CommandBuffer *RenderDevice::CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count)
+GPUCmdBuffer *GPUDevice::CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count)
 {
     if(!attr->cmd_pool)
         return(nullptr);
@@ -73,14 +73,14 @@ CommandBuffer *RenderDevice::CreateCommandBuffer(const VkExtent2D &extent,const 
     if(res!=VK_SUCCESS)
         return(nullptr);
 
-    return(new CommandBuffer(attr->device,extent,atta_count,attr->cmd_pool,cmd_buf));
+    return(new GPUCmdBuffer(attr->device,extent,atta_count,attr->cmd_pool,cmd_buf));
 }
 
 /**
  * 创建栅栏
  * @param create_signaled 是否创建初始信号
  */
-GPUFence *RenderDevice::CreateFence(bool create_signaled)
+GPUFence *GPUDevice::CreateFence(bool create_signaled)
 {
     FenceCreateInfo fenceInfo(create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0);
 
@@ -92,7 +92,7 @@ GPUFence *RenderDevice::CreateFence(bool create_signaled)
     return(new GPUFence(attr->device,fence));
 }
 
-vulkan::GPUSemaphore *RenderDevice::CreateSemaphore()
+vulkan::GPUSemaphore *GPUDevice::CreateSemaphore()
 {
     SemaphoreCreateInfo SemaphoreCreateInfo;
 

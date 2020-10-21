@@ -26,7 +26,7 @@ bool Renderable::Set(const UTF8String &name,VAB *vab,VkDeviceSize offset)
     if(!vab)return(false);
     if(buffer_list.KeyExist(name))return(false);
 
-    BufferData bd;
+    GPUBufferData bd;
     
     bd.buf=vab;
     bd.offset=offset;
@@ -40,7 +40,7 @@ VAB *Renderable::GetVAB(const UTF8String &name,VkDeviceSize *offset)
     if(!offset)return(nullptr);
     if(name.IsEmpty())return(nullptr);
 
-    BufferData bd;
+    GPUBufferData bd;
 
     if(buffer_list.Get(name,bd))
     {

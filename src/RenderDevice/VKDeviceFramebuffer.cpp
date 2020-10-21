@@ -20,7 +20,7 @@ VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExt
     return fb;
 }
 
-Framebuffer *RenderDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
+Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
 {
     uint att_count=color_count;
 
@@ -78,7 +78,7 @@ Framebuffer *RenderDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_li
     return(new Framebuffer(GetDevice(),fbo,extent,*rp,color_count,depth));
 }
 //
-//Framebuffer *RenderDevice::CreateFramebuffer(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
+//Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
 //{    
 //    if(!rp)return(nullptr);
 //
@@ -89,7 +89,7 @@ Framebuffer *RenderDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_li
 //    return CreateFramebuffer(rp,color.GetData(),color.GetCount(),depth);
 //}
 
-Framebuffer *RenderDevice::CreateFramebuffer(RenderPass *rp,ImageView *color,ImageView *depth)
+Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView *color,ImageView *depth)
 {
     if(!rp)return(nullptr);
     if(!color&&!depth)return(nullptr);
@@ -97,7 +97,7 @@ Framebuffer *RenderDevice::CreateFramebuffer(RenderPass *rp,ImageView *color,Ima
     return CreateFramebuffer(rp,&color,1,depth);
 }
 
-Framebuffer *RenderDevice::CreateFramebuffer(RenderPass *rp,ImageView *iv)
+Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView *iv)
 {
     if(!rp)return(nullptr);
     if(!iv)return(nullptr);

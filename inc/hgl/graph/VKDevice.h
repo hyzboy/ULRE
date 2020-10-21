@@ -26,12 +26,12 @@ namespace hgl
 }//namespace hgl
 
 VK_NAMESPACE_BEGIN
-class RenderDevice
+class GPUDevice
 {
-    RenderDeviceAttribute *attr;
+    GPUDeviceAttribute *attr;
 
-    SubmitQueue *textureSQ;
-    CommandBuffer *texture_cmd_buf;
+    GPUQueue *textureSQ;
+    GPUCmdBuffer *texture_cmd_buf;
 
     Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
@@ -43,20 +43,20 @@ class RenderDevice
 
 private:
 
-    friend RenderDevice *CreateRenderDevice(VkInstance inst,const PhysicalRenderDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
+    friend GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
 
-    RenderDevice(RenderDeviceAttribute *da);
+    GPUDevice(GPUDeviceAttribute *da);
 
 public:
 
-    virtual ~RenderDevice();
+    virtual ~GPUDevice();
 
     operator    VkDevice                                ()      {return attr->device;}
-                RenderDeviceAttribute *   GetRenderDeviceAttribute  ()      {return attr;}
+                GPUDeviceAttribute *GetGPUDeviceAttribute  ()      {return attr;}
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}
-    const       PhysicalRenderDevice *    GetPhysicalRenderDevice   ()const {return attr->physical_device;}
+    const       GPUPhysicalDevice * GetGPUPhysicalDevice()const {return attr->physical_device;}
 
                 VkDescriptorPool    GetDescriptorPool   ()      {return attr->desc_pool;}
                 VkPipelineCache     GetPipelineCache    ()      {return attr->pipeline_cache;}
@@ -87,7 +87,7 @@ public: //内存相关
 
 private: //Buffer相关
 
-    bool            CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode);
+    bool            CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode);
 
 public: //Buffer相关
 
@@ -240,7 +240,7 @@ public: //shader & material
 
 public: //Command GPUBuffer 相关
 
-    CommandBuffer * CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count);
+    GPUCmdBuffer * CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count);
     
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
@@ -312,7 +312,7 @@ public:
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体
-};//class RenderDevice
+};//class GPUDevice
 
 //void CreateSubpassDependency(VkSubpassDependency *);
 void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count);
@@ -327,12 +327,12 @@ inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list, uint
 bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-bool CreateAttachmentDescription(      List<VkAttachmentDescription> &color_output_desc_list,
+bool CreateAttachmentDescription( List<VkAttachmentDescription> &color_output_desc_list,
                             const List<VkFormat> &color_format,
                             const VkFormat depth_format,
                             const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-RenderDevice *CreateRenderDevice(Instance *inst,Window *win,const PhysicalRenderDevice *physical_device=nullptr);
+GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *physical_device=nullptr);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE

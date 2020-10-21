@@ -10,7 +10,7 @@ class GPUFence
 
 private:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
 
     GPUFence(VkDevice d,VkFence f)
     {

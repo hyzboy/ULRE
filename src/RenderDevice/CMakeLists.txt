@@ -1,10 +1,10 @@
 ﻿set(VK_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
-SET(VK_DB_SOURCE        ${VK_INCLUDE_PATH}/VKDatabase.h
-                        VKDatabase.cpp
-                        VKDatabaseMaterial.cpp)
+SET(VK_RR_SOURCE        ${VK_INCLUDE_PATH}/VKRenderResource.h
+                        VKRenderResource.cpp
+                        VKRenderResourceMaterial.cpp)
 
-SOURCE_GROUP("Database" FILES ${VK_DB_SOURCE})
+SOURCE_GROUP("RenderResource" FILES ${VK_RR_SOURCE})
 
 SET(VK_INST_SOURCE      ${VK_INCLUDE_PATH}/VKInstance.h
                         VKInstance.cpp)
@@ -77,7 +77,7 @@ SET(VK_RENDER_PASS_SOURCE   ${VK_INCLUDE_PATH}/VKFramebuffer.h
                             ${VK_INCLUDE_PATH}/VKCommandBuffer.h
                             ${VK_INCLUDE_PATH}/VKSemaphore.h
                             ${VK_INCLUDE_PATH}/VKFence.h
-                            VKSubmitQueue.cpp
+                            VKQueue.cpp
                             VKSemaphore.cpp
                             VKFence.cpp
                             VKFramebuffer.cpp
@@ -108,7 +108,7 @@ IF(WIN32)
     ENDIF()
 ENDIF(WIN32)
 
-add_cm_library(ULRE.VulkanRender "ULRE" ${VK_DB_SOURCE}
+add_cm_library(ULRE.VulkanRender "ULRE" ${VK_RR_SOURCE}
                                         ${VK_INST_SOURCE}
                                         ${VK_DEBUG_SOURCE}
                                         ${VK_MEMORY_SOURCE}

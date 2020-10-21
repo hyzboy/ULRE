@@ -61,7 +61,7 @@ namespace
 }//namespace
 
 VK_NAMESPACE_BEGIN
-TileData *RenderDevice::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
+TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
 {
     if(!CheckVulkanFormat(format))
         return(nullptr);

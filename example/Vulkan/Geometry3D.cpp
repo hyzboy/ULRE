@@ -3,7 +3,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/VKDatabase.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;

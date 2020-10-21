@@ -6,10 +6,10 @@ VK_NAMESPACE_BEGIN
 
 constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
-struct RenderDeviceAttribute
+struct GPUDeviceAttribute
 {
     VkInstance                          instance        =VK_NULL_HANDLE;
-    const PhysicalRenderDevice *              physical_device =nullptr;
+    const GPUPhysicalDevice *           physical_device =nullptr;
 
     VkSurfaceKHR                        surface         =VK_NULL_HANDLE;
     VkSurfaceCapabilitiesKHR            surface_caps;
@@ -39,11 +39,11 @@ struct RenderDeviceAttribute
 
 public:
 
-    RenderDeviceAttribute(VkInstance inst,const PhysicalRenderDevice *pd,VkSurfaceKHR s);
-    ~RenderDeviceAttribute();
+    GPUDeviceAttribute(VkInstance inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s);
+    ~GPUDeviceAttribute();
 
     bool CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const;
 
     void Refresh();
-};//class RenderDeviceAttribute
+};//class GPUDeviceAttribute
 VK_NAMESPACE_END

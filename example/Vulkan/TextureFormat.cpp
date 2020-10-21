@@ -35,7 +35,7 @@ constexpr char *data_type_name[]
     "SRGB"
 };//
 
-vulkan::Instance *InitVulkanInstance()
+vulkan::VulkanInstance *InitVulkanInstance()
 {
     #ifdef _DEBUG
         if(!CheckStrideBytesByFormat())
@@ -62,9 +62,9 @@ vulkan::Instance *InitVulkanInstance()
 int main(int,char **)
 {
                     Window *        win             =nullptr;
-            vulkan::Instance *      inst            =nullptr;
-            vulkan::RenderDevice *        device          =nullptr;
-    const   vulkan::PhysicalRenderDevice *physical_device =nullptr;
+            vulkan::VulkanInstance *      inst            =nullptr;
+            vulkan::GPUDevice *        device          =nullptr;
+    const   vulkan::GPUPhysicalDevice *physical_device =nullptr;
 
     inst=InitVulkanInstance();
 
