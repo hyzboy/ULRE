@@ -16,7 +16,7 @@ class TestApp:public CameraAppFramework
         Camera cam;
 
         MaterialInstance *  material_instance   =nullptr;
-        GPUBuffer *            ubo_world_matrix    =nullptr;
+        GPUBuffer *         ubo_world_matrix    =nullptr;
     };
 
     struct:public RenderObject
@@ -34,8 +34,8 @@ class TestApp:public CameraAppFramework
         Pipeline *          pipeline            =nullptr;
         RenderableInstance *renderable_instance =nullptr;
 
-        SceneNode                   scene_root;
-        RenderList                  render_list;
+        SceneNode           scene_root;
+        RenderList          render_list;
     }cube;
 
 public:

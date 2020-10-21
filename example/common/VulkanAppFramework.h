@@ -46,22 +46,22 @@ protected:
 
 protected:
 
-    GPUDevice *          device                      =nullptr;
+    GPUDevice *             device                      =nullptr;
     SwapchainRenderTarget * sc_render_target            =nullptr;
 
 protected:
 
-            int32_t                 swap_chain_count            =0;
+            int32_t         swap_chain_count            =0;
 
-    GPUCmdBuffer **        cmd_buf                     =nullptr;
+    GPUCmdBuffer **         cmd_buf                     =nullptr;
 
-            Color4f                 clear_color;
+            Color4f         clear_color;
 
 protected:
 
-    RenderResource *              db                          =nullptr;
+    RenderResource *        db                          =nullptr;
 
-            bool                    key_status[kbRangeSize];
+            bool            key_status[kbRangeSize];
 
 public:
 
@@ -88,7 +88,7 @@ public:
 
         InitNativeWindowSystem();
 
-        VK_NAMESPACE::InitVulkanProperties();
+        InitVulkanProperties();
 
         win=CreateRenderWindow(OS_TEXT("VulkanTest"));
         if(!win)
@@ -98,7 +98,7 @@ public:
             return(false);
 
         {
-            VK_NAMESPACE::CreateInstanceLayerInfo cili;
+            CreateInstanceLayerInfo cili;
 
             hgl_zero(cili);
 
@@ -332,14 +332,14 @@ class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
 
-    GPUBuffer *            ubo_world_matrix    =nullptr;
+    GPUBuffer *     ubo_world_matrix    =nullptr;
 
 protected:
 
-    ControlCamera               camera;
-    float                       move_speed=1;
+    ControlCamera   camera;
+    float           move_speed=1;
 
-    Vector2f                    mouse_last_pos;
+    Vector2f        mouse_last_pos;
 
 public:
 
