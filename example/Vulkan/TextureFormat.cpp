@@ -1,7 +1,7 @@
 ﻿#include<iostream>
-#include<hgl/graph/vulkan/VK.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKInstance.h>
+#include<hgl/graph/VK.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKInstance.h>
 
 using namespace hgl;
 using namespace hgl::graph;

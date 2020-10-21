@@ -1,8 +1,9 @@
 #pragma once
 
 #include<hgl/gui/ThemeEngine.h>
-#include<hgl/graph/vulkan/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/type/Map.h>
+#include"DTForm.h"
 
 namespace hgl
 {
@@ -12,33 +13,33 @@ namespace hgl
 
         class Form;     ///<窗体
 
-        /**
-         * 缺省GUI主题引擎
-         */
-        class DefaultThemeEngine:public ThemeEngine
+        namespace default_theme
         {
-            struct IForm
+            /**
+             * 缺省GUI主题引擎
+             */
+            class DefaultThemeEngine:public ThemeEngine
             {
-                Form *form;                                 ///<窗体控件
-                vulkan::RenderTarget *rt;                   ///<渲染目标
-            };//
 
-            MapObject<Form *,IForm> form_list;
+                //struct
+                //{
+                //    vulkan::Material *          m;
+                //    vulkan::MaterialInstance *  mi;
+                //}panel;
 
-            struct
-            {
-                vulkan::Material *          m;
-                vulkan::MaterialInstance *  mi;
-            }panel;
+            public:
 
-        public:
+                DefaultThemeEngine(vulkan::Device *dev):ThemeEngine(dev){}
+                virtual ~DefaultThemeEngine() override;
 
-            bool Init() override;
-            void Clear() override;
+                bool Init() override;
+                void Clear() override;
 
-            bool Registry(Form *);
-            void Unregistry(Form *);
-            void Render(Form *);
-        };//class DefaultThemeEngine:public ThemeEngine
+                bool Registry(Form *) override;
+                void Unregistry(Form *) override;
+                void Render(Form *) override;
+                bool Resize(Form *,const uint32_t,const uint32_t) override;
+            };//class DefaultThemeEngine:public ThemeEngine
+        }//namespace default_theme
     }//namespace gui
 }//namespace hgl

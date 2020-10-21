@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
 #define HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
 
-#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/VK.h>
 namespace hgl
 {
     namespace graph

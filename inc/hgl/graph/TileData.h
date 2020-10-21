@@ -5,7 +5,7 @@
 #include<hgl/type/Pool.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/Bitmap.h>
-#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/VKTexture.h>
 
 VK_NAMESPACE_USING
 

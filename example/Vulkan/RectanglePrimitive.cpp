@@ -2,8 +2,8 @@
 // 该示例是texture_rect的进化，演示使用GeometryShader画矩形
 
 #include"VulkanAppFramework.h"
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKSampler.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;

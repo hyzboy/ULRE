@@ -4,8 +4,8 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/vulkan/VKRenderableInstance.h>
+#include<hgl/graph/VKDatabase.h>
+#include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;

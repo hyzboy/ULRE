@@ -1,11 +1,11 @@
 ﻿#include<hgl/graph/RenderList.h>
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/vulkan/VKRenderable.h>
-#include<hgl/graph/vulkan/VKCommandBuffer.h>
+#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/vulkan/VKMaterialInstance.h>
-#include<hgl/graph/vulkan/VKRenderableInstance.h>
+#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKRenderableInstance.h>
 
 namespace hgl
 {

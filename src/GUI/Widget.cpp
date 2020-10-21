@@ -5,7 +5,7 @@ namespace hgl
 {
     namespace gui
     {
-        Widget::Widget(Widget *parent=nullptr,ThemeEngine *te=nullptr)
+        Widget::Widget(Widget *parent,ThemeEngine *te)
         {
             parent_widget=parent;
             

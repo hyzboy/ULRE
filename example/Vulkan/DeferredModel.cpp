@@ -4,13 +4,13 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/vulkan/VKRenderableInstance.h>
+#include<hgl/graph/VKDatabase.h>
+#include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKImageView.h>
-#include<hgl/graph/vulkan/VKSampler.h>
-#include<hgl/graph/vulkan/VKFramebuffer.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKImageView.h>
+#include<hgl/graph/VKSampler.h>
+#include<hgl/graph/VKFramebuffer.h>
 
 using namespace hgl;
 using namespace hgl::graph;

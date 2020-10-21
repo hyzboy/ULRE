@@ -4,21 +4,40 @@ namespace hgl
 {
     namespace gui
     {
-        ThemeEngine *CreateDefaultThemeEngine()
+        ThemeEngine *CreateDefaultThemeEngine(vulkan::Device *dev)
         {
-            return(new DefaultThemeEngine);
+            return(new default_theme::DefaultThemeEngine(dev));
         }
 
-        bool DefaultThemeEngine::Init()
+        namespace default_theme
         {
-        }
+            bool DefaultThemeEngine::Init()
+            {
+                return(true);
+            }
 
-        void DefaultThemeEngine::Clear()
-        {
-        }
+            void DefaultThemeEngine::Clear()
+            {
+            }
 
-        void DefaultThemeEngine::DrawFrame(const Widget *w)
-        {
-        }
+            bool DefaultThemeEngine::Registry(Form *f)
+            {
+                if(!f)return(false);
+                if(form_list.KeyExist(f))return(false);
+
+            
+                return(true);
+            }
+
+            void DefaultThemeEngine::Unregistry(Form *f)
+            {
+                if(!f)return;
+                if(!form_list.KeyExist(f))return;
+            }
+        
+            void DefaultThemeEngine::Render(Form *f)
+            {
+            }
+        }//namespace default_theme
     }//namespace gui
 }//namespace hgl

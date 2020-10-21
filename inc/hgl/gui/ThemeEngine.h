@@ -2,23 +2,37 @@
 #define HGL_GUI_THEME_ENGINE_INCLUDE
 
 #include<hgl/type/RectScope.h>
+#include<hgl/type/Map.h>
+#include<hgl/gui/ThemeForm.h>
 namespace hgl
 {
     namespace gui
     {
-        class Widget;
+        namespace vulkan
+        {
+            class Device;
+        }//namespace vulkan
 
         class ThemeEngine
-        {        
+        {
+        protected:
+
+            vulkan::Device *device;
+
+            MapObject<Form *,ThemeForm> form_list;
+
         public:
+
+            ThemeEngine(vulkan::Device *dev){device=dev;}
+            virtual ~ThemeEngine()=default;
 
             virtual bool Init()=0;
             virtual void Clear()=0;
-
-            virtual void DrawFrame(const Widget *)=0;
-            //virtual void DrawButton(const Widget *)=0;
-            //virtual void DrawCheckBox(const Widget *)=0;
-            //virtual void DrawRadioBox(const Widget *)=0;
+            
+            virtual bool Registry(Form *)=0;
+            virtual void Unregistry(Form *)=0;
+            virtual void Render(Form *)=0;
+            virtual bool Resize(Form *,const uint32_t,const uint32_t);
         };//class ThemeEngine
 
 //        ThemeEngine *CreateThemeEngine();                   
