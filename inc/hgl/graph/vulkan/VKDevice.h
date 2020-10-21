@@ -13,7 +13,7 @@
 #include<hgl/graph/vulkan/VKSwapchain.h>
 #include<hgl/graph/vulkan/VKRenderTarget.h>
 #include<hgl/graph/VertexAttribData.h>
-#include<hgl/graph/vulkan/ShaderModuleMap.h>
+#include<hgl/graph/vulkan/VKShaderModuleMap.h>
 
 namespace hgl
 {
