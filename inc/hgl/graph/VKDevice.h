@@ -52,7 +52,7 @@ public:
     virtual ~GPUDevice();
 
     operator    VkDevice                                ()      {return attr->device;}
-                GPUDeviceAttribute *GetGPUDeviceAttribute  ()      {return attr;}
+                GPUDeviceAttribute *GetDeviceAttribute  ()      {return attr;}
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}
@@ -91,8 +91,8 @@ private: //Buffer相关
 
 public: //Buffer相关
 
-    GPUBuffer *   CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
-    GPUBuffer *   CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
+    GPUBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
+    GPUBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
 
     VAB *           CreateVAB   (VkFormat format,uint32_t count,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
     VAB *           CreateVAB   (VkFormat format,uint32_t count,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sharing_mode);}
