@@ -14,9 +14,25 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
+struct PhongLight
+{
+    Vector4f color;
+    Vector4f position;
+};
+
+struct PhongMaterial
+{
+    Vector4f BaseColor;
+    float ambient;
+    float specular;
+};
+
+constexpr size_t v3flen=sizeof(PhongLight);
+
 class TestApp:public CameraAppFramework
 {
-    Color4f color;
+    PhongLight light;
+    PhongMaterial phong;
 
 private:
 
@@ -33,7 +49,8 @@ private:
     Pipeline *          axis_pipeline       =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
 
-    GPUBuffer *         ubo_color           =nullptr;
+    GPUBuffer *         ubo_light           =nullptr;
+    GPUBuffer *         ubo_phong           =nullptr;
 
     Renderable          *ro_axis,
                         *ro_cube,
@@ -47,6 +64,13 @@ private:
 
     bool InitMaterial()
     {
+        light.color.Set(1,1,1,1);
+        light.position.Set(1000,1000,1000,1.0);
+
+        phong.BaseColor.Set(1,1,1,1);
+        phong.ambient=0.1;
+        phong.specular=0.5;
+
         axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
         if(!axis_material)return(false);
 
@@ -56,7 +80,7 @@ private:
         axis_pipeline=CreatePipeline(axis_material,InlinePipeline::Solid3D,Prim::Lines);
         if(!axis_pipeline)return(false);
 
-        material=db->CreateMaterial(OS_TEXT("res/material/DebugVertexNormal"));
+        material=db->CreateMaterial(OS_TEXT("res/material/VertexNormal"));
         if(!material)return(false);
 
         material_instance=db->CreateMaterialInstance(material);
@@ -90,7 +114,7 @@ private:
         }
         
         {        
-            ro_sphere=CreateRenderableSphere(db,material,16);
+            ro_sphere=CreateRenderableSphere(db,material,64);
         }
 
         {
@@ -108,8 +132,8 @@ private:
             tci.innerRadius=50;
             tci.outerRadius=70;
 
-            tci.numberSlices=32;
-            tci.numberStacks=16;
+            tci.numberSlices=128;
+            tci.numberStacks=32;
 
             ro_torus=CreateRenderableTorus(db,material,&tci);
         }
@@ -119,7 +143,7 @@ private:
 
             cci.halfExtend=10;
             cci.radius=10;
-            cci.numberSlices=16;
+            cci.numberSlices=32;
 
             ro_cylinder=CreateRenderableCylinder(db,material,&cci);
         }
@@ -129,7 +153,7 @@ private:
 
             cci.halfExtend=10;
             cci.radius=10;
-            cci.numberSlices=16;
+            cci.numberSlices=128;
             cci.numberStacks=1;
 
             ro_cone=CreateRenderableCone(db,material,&cci);
@@ -138,15 +162,15 @@ private:
 
     bool InitUBO()
     {
-        color.Set(1,1,1,1);
-        
-        ubo_color=device->CreateUBO(sizeof(Vector4f),&color);
+        ubo_light=db->CreateUBO(sizeof(PhongLight),&light);
+        ubo_phong=db->CreateUBO(sizeof(PhongMaterial),&phong);
 
-        db->Add(ubo_color);
-
-        material_instance->BindUBO("color_material",ubo_color);
+        material_instance->BindUBO("light",ubo_light);
+        material_instance->BindUBO("phong",ubo_phong);
 
         if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
+            return(false);
+        if(!material_instance->BindUBO("fs_world",GetCameraMatrixBuffer()))
             return(false);
 
         material_instance->Update();
@@ -176,7 +200,7 @@ private:
     {
         render_root.Add(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
 //        Add(ro_dome,pipeline_solid);
-        Add(ro_torus    ,pipeline_solid);
+        Add(ro_torus    ,pipeline_solid);//,rotate(90,Vector3f(1,0,0)));
         Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));
         Add(ro_sphere   ,pipeline_solid,translate( 10,  0, 5)*scale(10,10,10));
         Add(ro_cylinder ,pipeline_solid,translate(  0, 16, 0));
