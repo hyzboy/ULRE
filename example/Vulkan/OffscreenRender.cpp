@@ -29,7 +29,7 @@ class TestApp:public CameraAppFramework
     
     struct:public RenderObject
     {
-        Sampler *           sampler             =nullptr;        
+        Sampler *           sampler             =nullptr;
        
         Pipeline *          pipeline            =nullptr;
         RenderableInstance *renderable_instance =nullptr;

@@ -193,36 +193,17 @@ namespace hgl
         
         struct AxisCreateInfo
         {
-            Vector3f root;
-            Vector3f size;
+            float size;
             Color4f color[3];
 
         public:
 
-            void RestartColor()
+            AxisCreateInfo()
             {
+                size=1.0f;
                 color[0].Set(1,0,0,1);
                 color[1].Set(0,1,0,1);
                 color[2].Set(0,0,1,1);
-            }
-
-            void Set(const AABB &box)
-            {
-                root=box.CenterPoint().xyz();
-                size=box.HalfSize().xyz();
-            }
-
-            AxisCreateInfo()
-            {
-                root.Set(0,0,0);
-                size.Set(1,1,1);
-                RestartColor();
-            }
-
-            AxisCreateInfo(const AABB &box)
-            {
-                Set(box);
-                RestartColor();
             }
         };//struct AxisCreateInfo
 

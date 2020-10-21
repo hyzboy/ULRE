@@ -1125,6 +1125,8 @@ namespace hgl
 
         Renderable *CreateRenderableAxis(RenderResource *db,Material *mtl,const AxisCreateInfo *aci)
         {
+            if(!db||!mtl||!aci)return(nullptr);
+
             RenderableCreater rc(db,mtl);
 
             if(!rc.Init(6))
@@ -1136,14 +1138,14 @@ namespace hgl
             if(!vertex||!color)
                 return(nullptr);
 
-            vertex->Write(aci->root);color->Write(aci->color[0]);
-            vertex->Write(aci->root.x+aci->size[0],aci->root.y,aci->root.z);color->Write(aci->color[0]);
+            const float s=aci->size;
 
-            vertex->Write(aci->root);color->Write(aci->color[1]);
-            vertex->Write(aci->root.x,aci->root.y+aci->size[1],aci->root.z);color->Write(aci->color[1]);
-
-            vertex->Write(aci->root);color->Write(aci->color[2]);
-            vertex->Write(aci->root.x,aci->root.y,aci->root.z+aci->size[2]);color->Write(aci->color[2]);
+            vertex->Write(0,0,0);color->Write(aci->color[0]);
+            vertex->Write(s,0,0);color->Write(aci->color[0]);
+            vertex->Write(0,0,0);color->Write(aci->color[1]);
+            vertex->Write(0,s,0);color->Write(aci->color[1]);
+            vertex->Write(0,0,0);color->Write(aci->color[2]);
+            vertex->Write(0,0,s);color->Write(aci->color[2]);
 
             return rc.Finish();
         }

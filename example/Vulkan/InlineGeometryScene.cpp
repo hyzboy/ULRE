@@ -26,25 +26,37 @@ private:
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
 
+    Material *          axis_material       =nullptr;
+    MaterialInstance *  axis_mi             =nullptr;
+
     PipelineData *      pipeline_data       =nullptr;
-    Pipeline *          pipeline_line       =nullptr;
+    Pipeline *          axis_pipeline       =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
 
-    GPUBuffer *            ubo_color           =nullptr;
+    GPUBuffer *         ubo_color           =nullptr;
 
-    Renderable          *ro_plane_grid,
-                                *ro_cube,
-                                *ro_sphere,
-                                *ro_dome,
-                                *ro_torus,
-                                *ro_cylinder,
-                                *ro_cone;
+    Renderable          *ro_axis,
+                        *ro_cube,
+                        *ro_sphere,
+                        *ro_dome,
+                        *ro_torus,
+                        *ro_cylinder,
+                        *ro_cone;
 
 private:
 
     bool InitMaterial()
     {
-        material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
+        axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
+        if(!axis_material)return(false);
+
+        axis_mi=db->CreateMaterialInstance(axis_material);
+        if(!axis_mi)return(false);
+
+        axis_pipeline=CreatePipeline(axis_material,InlinePipeline::Solid3D,Prim::Lines);
+        if(!axis_pipeline)return(false);
+
+        material=db->CreateMaterial(OS_TEXT("res/material/DebugVertexNormal"));
         if(!material)return(false);
 
         material_instance=db->CreateMaterialInstance(material);
@@ -53,8 +65,6 @@ private:
         pipeline_data=GetPipelineData(InlinePipeline::Solid3D);
         if(!pipeline_data)return(false);
 
-        pipeline_line=CreatePipeline(material,pipeline_data,Prim::Lines);
-        if(!pipeline_line)return(false);
 
         pipeline_solid=CreatePipeline(material,pipeline_data,Prim::Triangles);
         if(!pipeline_solid)return(false);
@@ -65,23 +75,11 @@ private:
     void CreateRenderObject()
     {
         {
-            struct PlaneGridCreateInfo pgci;
+            struct AxisCreateInfo aci;
 
-            pgci.coord[0].Set(-100,-100,0);
-            pgci.coord[1].Set( 100,-100,0);
-            pgci.coord[2].Set( 100, 100,0);
-            pgci.coord[3].Set(-100, 100,0);
+            aci.size=200;
 
-            pgci.step.u=20;
-            pgci.step.v=20;
-
-            pgci.side_step.u=10;
-            pgci.side_step.v=10;
-
-            pgci.color.Set(0.5,0,0,1);
-            pgci.side_color.Set(1,0,0,1);
-
-            ro_plane_grid=CreateRenderablePlaneGrid(db,material,&pgci);
+            ro_axis=CreateRenderableAxis(db,axis_material,&aci);
         }
         
         {
@@ -152,6 +150,11 @@ private:
             return(false);
 
         material_instance->Update();
+
+        if(!axis_mi->BindUBO("world",GetCameraMatrixBuffer()))
+            return(false);
+
+        axis_mi->Update();
         return(true);
     }
     
@@ -171,7 +174,7 @@ private:
 
     bool InitScene()
     {
-        Add(ro_plane_grid,pipeline_line);
+        render_root.Add(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
 //        Add(ro_dome,pipeline_solid);
         Add(ro_torus    ,pipeline_solid);
         Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));
