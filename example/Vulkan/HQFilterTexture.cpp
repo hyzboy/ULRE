@@ -2,8 +2,8 @@
 // 测试高质量纹理过滤函数
 
 #include"VulkanAppFramework.h"
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKSampler.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;

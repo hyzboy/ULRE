@@ -1,4 +1,4 @@
-#include<hgl/graph/vulkan/VKRenderTarget.h>
+#include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/InlineGeometry.h>
 #include"VulkanAppFramework.h"
 

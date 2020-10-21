@@ -1,6 +1,6 @@
 #include<hgl/graph/font/TextRenderable.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKMaterial.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKMaterial.h>
 
 namespace hgl
 {

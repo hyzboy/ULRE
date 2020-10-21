@@ -34,7 +34,7 @@ SET(ULRE    CMCore
             CMAssetsManage
             CMSceneGraph
             ULRE.Util
-            ULRE.RenderDevice.Vulkan
+            ULRE.VulkanRender
             ULRE.SceneGraph
             MathGeoLib
             ${JSONCPP_LIBRARY}

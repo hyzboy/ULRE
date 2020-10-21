@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_INLINE_GEOMETRY_INCLUDE
 #define HGL_GRAPH_INLINE_GEOMETRY_INCLUDE
 
-#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/VK.h>
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/Color4f.h>

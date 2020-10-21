@@ -2,9 +2,9 @@
 // 该示例是1.indices_rect的进化，演示在矩形上贴上贴图
 
 #include"VulkanAppFramework.h"
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKSampler.h>
-#include<hgl/graph/vulkan/VKInlinePipeline.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKSampler.h>
+#include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;

@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/TileData.h>
 #include<hgl/log/LogInfo.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKBuffer.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKBuffer.h>
 
 namespace hgl
 {

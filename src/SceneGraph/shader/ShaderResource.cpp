@@ -1,6 +1,6 @@
 #include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/vulkan/VKFormat.h>
+#include<hgl/graph/VKFormat.h>
 #include<hgl/type/Map.h>
 
 VK_NAMESPACE_BEGIN

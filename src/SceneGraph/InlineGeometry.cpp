@@ -3,9 +3,9 @@
 
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKShaderModule.h>
-#include<hgl/graph/vulkan/VKDatabase.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKShaderModule.h>
+#include<hgl/graph/VKDatabase.h>
 #include<hgl/graph/RenderableCreater.h>
 
 namespace hgl

@@ -1,7 +1,7 @@
 #ifndef HGL_GRAPH_TEXT_RENDERABLE_INCLUDE
 #define HGL_GRAPH_TEXT_RENDERABLE_INCLUDE
 
-#include<hgl/graph/vulkan/VKRenderable.h>
+#include<hgl/graph/VKRenderable.h>
 namespace hgl
 {
     namespace graph

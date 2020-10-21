@@ -1,9 +1,9 @@
 ﻿#ifndef HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 #define HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 
-#include<hgl/graph/vulkan/VKDatabase.h>
+#include<hgl/graph/VKDatabase.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/vulkan/VKShaderModule.h>
+#include<hgl/graph/VKShaderModule.h>
 namespace hgl
 {
     namespace graph

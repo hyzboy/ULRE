@@ -2,8 +2,8 @@
 #include<hgl/type/String.h>
 #include<hgl/type/List.h>
 #include<hgl/type/StringList.h>
-#include<hgl/graph/vulkan/VKFormat.h>
-#include<hgl/graph/vulkan/VKStruct.h>
+#include<hgl/graph/VKFormat.h>
+#include<hgl/graph/VKStruct.h>
 
 VK_NAMESPACE_BEGIN
 struct ShaderStage

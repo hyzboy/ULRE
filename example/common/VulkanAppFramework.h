@@ -1,23 +1,23 @@
 ﻿#pragma once
 #include<hgl/platform/Window.h>
-#include<hgl/graph/vulkan/VKInstance.h>
-#include<hgl/graph/vulkan/VKPhysicalDevice.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKSemaphore.h>
-#include<hgl/graph/vulkan/VKBuffer.h>
-#include<hgl/graph/vulkan/VKShaderModule.h>
-#include<hgl/graph/vulkan/VKImageView.h>
-#include<hgl/graph/vulkan/VKRenderable.h>
-#include<hgl/graph/vulkan/VKDescriptorSets.h>
-#include<hgl/graph/vulkan/VKRenderPass.h>
-#include<hgl/graph/vulkan/VKPipeline.h>
-#include<hgl/graph/vulkan/VKCommandBuffer.h>
-#include<hgl/graph/vulkan/VKFormat.h>
-#include<hgl/graph/vulkan/VKFramebuffer.h>
-#include<hgl/graph/vulkan/VKMaterial.h>
-#include<hgl/graph/vulkan/VKMaterialInstance.h>
-#include<hgl/graph/vulkan/VKRenderTarget.h>
-#include<hgl/graph/vulkan/VKDatabase.h>
+#include<hgl/graph/VKInstance.h>
+#include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKSemaphore.h>
+#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKShaderModule.h>
+#include<hgl/graph/VKImageView.h>
+#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/graph/VKRenderPass.h>
+#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKFormat.h>
+#include<hgl/graph/VKFramebuffer.h>
+#include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/VKDatabase.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;

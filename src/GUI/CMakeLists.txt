@@ -2,7 +2,8 @@
 
 SET(THEME_SOURCE    ${GUI_INCLUDE_PATH}/ThemeForm.h
                     ${GUI_INCLUDE_PATH}/ThemeEngine.h
-                    ThemeEngine.cpp)
+                    ThemeEngine.cpp
+                    ThemeForm.cpp)
 
 SET(DEFAULT_THEME_SOURCE    DefaultThemeEngine.h
                             DefaultThemeEngine.cpp
