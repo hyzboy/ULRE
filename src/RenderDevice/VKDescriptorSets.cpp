@@ -11,7 +11,7 @@ void DescriptorSets::Clear()
     desc_image_info.ClearData();
 }
 
-bool DescriptorSets::BindUBO(const int binding,const Buffer *buf)
+bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf)
 {
     if(binding<0||!buf)
         return(false);
@@ -31,7 +31,7 @@ bool DescriptorSets::BindUBO(const int binding,const Buffer *buf)
     return(true);
 }
 
-bool DescriptorSets::BindUBODynamic(const int binding,const Buffer *buf)
+bool DescriptorSets::BindUBODynamic(const int binding,const GPUBuffer *buf)
 {
     if(binding<0||!buf)
         return(false);

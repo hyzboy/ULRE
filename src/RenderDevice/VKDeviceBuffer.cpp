@@ -2,7 +2,7 @@
 #include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+bool RenderDevice::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     BufferCreateInfo buf_info;
 
@@ -19,7 +19,7 @@ bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceS
 
     vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
 
-    Memory *dm=CreateMemory(mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    GPUMemory *dm=CreateMemory(mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     if(dm&&dm->BindBuffer(buf->buffer))
     {
@@ -42,13 +42,13 @@ bool Device::CreateBuffer(BufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceS
     return(false);
 }
 
-VAB *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
+VAB *RenderDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     const uint32_t stride=GetStrideByFormat(format);
 
     if(stride==0)
     {
-        std::cerr<<"format["<<format<<"] stride length is 0,please use \"Device::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
+        std::cerr<<"format["<<format<<"] stride length is 0,please use \"RenderDevice::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
         return(nullptr);
     }
 
@@ -62,7 +62,7 @@ VAB *Device::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMo
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
-IndexBuffer *Device::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
+IndexBuffer *RenderDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     uint32_t stride;
 
@@ -80,13 +80,13 @@ IndexBuffer *Device::CreateIBO(IndexType index_type,uint32_t count,const void *d
     return(new IndexBuffer(attr->device,buf,index_type,count));
 }
 
-Buffer *Device::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+GPUBuffer *RenderDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     BufferData buf;
 
     if(!CreateBuffer(&buf,buf_usage,size,data,sharing_mode))
         return(nullptr);
 
-    return(new Buffer(attr->device,buf));
+    return(new GPUBuffer(attr->device,buf));
 }
 VK_NAMESPACE_END

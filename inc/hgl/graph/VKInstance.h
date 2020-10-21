@@ -55,7 +55,7 @@ VK_NAMESPACE_BEGIN
 
         VKDebugOut *debug_out;
 
-        ObjectList<PhysicalDevice> physical_devices;
+        ObjectList<PhysicalRenderDevice> physical_devices;
 
     private:
 
@@ -69,8 +69,8 @@ VK_NAMESPACE_BEGIN
 
                 operator VkInstance (){return inst;}
 
-        const   ObjectList<PhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
-        const   PhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
+        const   ObjectList<PhysicalRenderDevice> &GetDeviceList       ()const {return physical_devices;}
+        const   PhysicalRenderDevice *            GetDevice           (VkPhysicalDeviceType)const;
     };//class Instance
     
             void                            InitVulkanProperties();

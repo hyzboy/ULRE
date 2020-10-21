@@ -3,7 +3,7 @@
 
 #include<hgl/graph/VK.h>
 VK_NAMESPACE_BEGIN
-class Memory
+class GPUMemory
 {
     VkDevice                device;
     VkDeviceMemory          memory;
@@ -13,9 +13,9 @@ class Memory
 
 private:
 
-    friend class Device;
+    friend class RenderDevice;
 
-    Memory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p)
+    GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p)
     {
         device=dev;
         memory=dm;
@@ -26,7 +26,7 @@ private:
 
 public:
 
-    virtual ~Memory();
+    virtual ~GPUMemory();
 
     operator VkDeviceMemory(){return memory;}
 
@@ -48,6 +48,6 @@ public:
 
     bool    BindBuffer  (VkBuffer buffer);
     bool    BindImage   (VkImage image);
-};//class Memory
+};//class GPUMemory
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MEMORY_INCLUDE

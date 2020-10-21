@@ -16,7 +16,7 @@ class TestApp:public CameraAppFramework
         Camera cam;
 
         vulkan::MaterialInstance *  material_instance   =nullptr;
-        vulkan::Buffer *            ubo_world_matrix    =nullptr;
+        vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
     };
 
     struct:public RenderObject

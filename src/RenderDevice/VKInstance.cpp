@@ -5,7 +5,7 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-Device *CreateRenderDevice(VkInstance,const PhysicalDevice *,Window *);
+RenderDevice *CreateRenderDevice(VkInstance,const PhysicalRenderDevice *,Window *);
 
 void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
 
@@ -70,7 +70,7 @@ Instance::Instance(VkInstance i,VKDebugOut *out)
         vkEnumeratePhysicalDevices(inst, &gpu_count,pd_list);
 
         for(uint32_t i=0;i<gpu_count;i++)
-            physical_devices.Add(new PhysicalDevice(inst,pd_list[i]));
+            physical_devices.Add(new PhysicalRenderDevice(inst,pd_list[i]));
 
         delete[] pd_list;
     }
@@ -84,10 +84,10 @@ Instance::~Instance()
     vkDestroyInstance(inst,nullptr);
 }
 
-const PhysicalDevice *Instance::GetDevice(VkPhysicalDeviceType type)const
+const PhysicalRenderDevice *Instance::GetDevice(VkPhysicalDeviceType type)const
 {
     const uint32_t count=physical_devices.GetCount();
-    PhysicalDevice **pd=physical_devices.GetData();
+    PhysicalRenderDevice **pd=physical_devices.GetData();
 
     for(uint32_t i=0;i<count;i++)
     {

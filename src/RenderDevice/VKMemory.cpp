@@ -2,7 +2,7 @@
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 VK_NAMESPACE_BEGIN
-Memory *Device::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
+GPUMemory *RenderDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
 {
     uint32_t index;
 
@@ -21,15 +21,15 @@ Memory *Device::CreateMemory(const VkMemoryRequirements &req,uint32_t properties
     if(vkAllocateMemory(attr->device,&alloc_info,nullptr,&memory)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new Memory(attr->device,memory,req,index,properties));
+    return(new GPUMemory(attr->device,memory,req,index,properties));
 }
 
-Memory::~Memory()
+GPUMemory::~GPUMemory()
 {
     vkFreeMemory(device,memory,nullptr);
 }
 
-void *Memory::Map()
+void *GPUMemory::Map()
 {
     void *result;
 
@@ -39,7 +39,7 @@ void *Memory::Map()
     return(nullptr);
 }
 
-void *Memory::Map(const VkDeviceSize offset,const VkDeviceSize size)
+void *GPUMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
 {
     if(offset<0||offset+size>=req.size)
         return(nullptr);
@@ -52,12 +52,12 @@ void *Memory::Map(const VkDeviceSize offset,const VkDeviceSize size)
     return(nullptr);
 }
 
-void Memory::Unmap()
+void GPUMemory::Unmap()
 {
     vkUnmapMemory(device,memory);
 }
 
-bool Memory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
+bool GPUMemory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
 {
     if(!ptr)return(false);
 
@@ -71,14 +71,14 @@ bool Memory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
     return(true);
 }
 
-bool Memory::BindBuffer(VkBuffer buffer)
+bool GPUMemory::BindBuffer(VkBuffer buffer)
 {
     if(!buffer)return(false);
 
     return(vkBindBufferMemory(device,buffer,memory,0)==VK_SUCCESS);
 }
 
-bool Memory::BindImage(VkImage image)
+bool GPUMemory::BindImage(VkImage image)
 {
     if(!image)return(false);
 

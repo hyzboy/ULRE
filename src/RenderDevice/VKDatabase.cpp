@@ -16,18 +16,18 @@ VAB *Database::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharing
     return vb;
 }
 
-#define SCENE_DB_CREATE_BUFFER(name)    Buffer *Database::Create##name(VkDeviceSize size,void *data,SharingMode sharing_mode) \
+#define SCENE_DB_CREATE_BUFFER(name)    GPUBuffer *Database::Create##name(VkDeviceSize size,void *data,SharingMode sharing_mode) \
                                         {   \
-                                            Buffer *buf=device->Create##name(size,data,sharing_mode);   \
+                                            GPUBuffer *buf=device->Create##name(size,data,sharing_mode);   \
                                             \
                                             if(!buf)return(nullptr);    \
                                             rm_buffers.Add(buf);    \
                                             return(buf);    \
                                         }   \
                                         \
-                                        Buffer *Database::Create##name(VkDeviceSize size,SharingMode sharing_mode)    \
+                                        GPUBuffer *Database::Create##name(VkDeviceSize size,SharingMode sharing_mode)    \
                                         {   \
-                                            Buffer *buf=device->Create##name(size,sharing_mode);    \
+                                            GPUBuffer *buf=device->Create##name(size,sharing_mode);    \
                                             \
                                             if(!buf)return(nullptr);    \
                                             rm_buffers.Add(buf);    \

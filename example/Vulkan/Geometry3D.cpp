@@ -16,7 +16,7 @@ class TestApp:public CameraAppFramework
 {
     Color4f color;
 
-    vulkan::Buffer *ubo_color=nullptr;
+    vulkan::GPUBuffer *ubo_color=nullptr;
 
 private:
 

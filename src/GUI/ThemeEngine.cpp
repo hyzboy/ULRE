@@ -10,9 +10,9 @@ namespace hgl
             ThemeEngine *default_theme_engine=nullptr;
         }//namespace
 
-        ThemeEngine *CreateDefaultThemeEngine(vulkan::Device *dev);
+        ThemeEngine *CreateDefaultThemeEngine(vulkan::RenderDevice *dev);
 
-        ThemeEngine *GetDefaultThemeEngine(vulkan::Device *dev)
+        ThemeEngine *GetDefaultThemeEngine(vulkan::RenderDevice *dev)
         {
             if(!default_theme_engine)
                 default_theme_engine=CreateDefaultThemeEngine(dev);
@@ -20,7 +20,7 @@ namespace hgl
             return default_theme_engine;
         }
 
-        ThemeEngine *CreateThemeEngine(vulkan::Device *dev)
+        ThemeEngine *CreateThemeEngine(vulkan::RenderDevice *dev)
         {
             return GetDefaultThemeEngine();
         }

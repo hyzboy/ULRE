@@ -3,7 +3,7 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-DescriptorSetLayoutCreater *Device::CreateDescriptorSetLayoutCreater()
+DescriptorSetLayoutCreater *RenderDevice::CreateDescriptorSetLayoutCreater()
 {
     return(new DescriptorSetLayoutCreater(attr->device,attr->desc_pool));
 }

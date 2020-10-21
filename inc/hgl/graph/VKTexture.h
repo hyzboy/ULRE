@@ -12,7 +12,7 @@ BitmapData *LoadBitmapFromFile(const OSString &filename);
 
 struct TextureData
 {
-    Memory *            memory      =nullptr;
+    GPUMemory *            memory      =nullptr;
     VkImage             image       =VK_NULL_HANDLE;
     VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
     ImageView *         image_view  =nullptr;
@@ -29,7 +29,7 @@ struct TextureCreateInfo
     ImageTiling             tiling;
 
     VkImage                 image;
-    Memory *                memory;
+    GPUMemory *                memory;
     ImageView *             image_view;
     VkImageLayout           image_layout;
 
@@ -57,7 +57,7 @@ public:
     VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->operator VkImageView():VK_NULL_HANDLE;}
 
-    Memory *                    GetMemory           ()      {return data?data->memory:nullptr;}
+    GPUMemory *                    GetMemory           ()      {return data?data->memory:nullptr;}
     ImageView *                 GetImageView        ()      {return data?data->image_view:nullptr;}
 
     const uint32                GetMipLevels        ()const {return data?data->mip_levels:0;}

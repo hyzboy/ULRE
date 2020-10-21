@@ -8,7 +8,7 @@ namespace
     const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 }//namespace
 
-SubmitQueue::SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count)
+SubmitQueue::SubmitQueue(RenderDevice *dev,VkQueue q,const uint32_t fence_count)
 {
     device=dev;
     queue=q;

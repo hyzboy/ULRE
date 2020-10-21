@@ -14,9 +14,9 @@ VK_NAMESPACE_BEGIN
 using CharPointerList=hgl::List<const char *>;
 
 class Instance;
-class PhysicalDevice;
-class Device;
-struct DeviceAttribute;
+class PhysicalRenderDevice;
+class RenderDevice;
+struct RenderDeviceAttribute;
 class ImageView;
 class Framebuffer;
 struct Swapchain;
@@ -34,8 +34,8 @@ class TextureCubemapArray;
 
 class Sampler;
 
-class Memory;
-class Buffer;
+class GPUMemory;
+class GPUBuffer;
 struct BufferData;
 
 class VertexAttribBuffer;
@@ -45,7 +45,7 @@ class IndexBuffer;
 
 class CommandBuffer;
 class RenderPass;
-class Fence;
+class GPUFence;
 class GPUSemaphore;
 
 class DescriptorSetLayoutCreater;

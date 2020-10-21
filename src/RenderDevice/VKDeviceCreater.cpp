@@ -11,7 +11,7 @@
 #include<iomanip>
 
 VK_NAMESPACE_BEGIN
-Swapchain *CreateSwapchain(const DeviceAttribute *attr,const VkExtent2D &acquire_extent);
+Swapchain *CreateSwapchain(const RenderDeviceAttribute *attr,const VkExtent2D &acquire_extent);
 
 namespace
 {
@@ -51,7 +51,7 @@ namespace
         return nullptr;
     }
 
-    void GetDeviceQueue(DeviceAttribute *attr)
+    void GetDeviceQueue(RenderDeviceAttribute *attr)
     {
         vkGetDeviceQueue(attr->device,attr->graphics_family,0,&attr->graphics_queue);
 
@@ -374,7 +374,7 @@ namespace
 constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEGIN_RANGE+1;
 #endif//VK_DRIVER_ID_RANGE_SIZE
 
-Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent)
+RenderDevice *CreateRenderDevice(VkInstance inst,const PhysicalRenderDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent)
 {
     #ifdef _DEBUG
     {
@@ -397,9 +397,9 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
     }
     #endif//_DEBUG
 
-    DeviceAttribute *device_attr=new DeviceAttribute(inst,physical_device,surface);
+    RenderDeviceAttribute *device_attr=new RenderDeviceAttribute(inst,physical_device,surface);
 
-    AutoDelete<DeviceAttribute> auto_delete(device_attr);
+    AutoDelete<RenderDeviceAttribute> auto_delete(device_attr);
 
     if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
@@ -428,10 +428,10 @@ Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device
 
     auto_delete.Discard();
 
-    return(new Device(device_attr));
+    return(new RenderDevice(device_attr));
 }
 
-Device *CreateRenderDevice(vulkan::Instance *inst,Window *win,const vulkan::PhysicalDevice *pd)
+RenderDevice *CreateRenderDevice(vulkan::Instance *inst,Window *win,const vulkan::PhysicalRenderDevice *pd)
 {
     if(!inst)
         return(nullptr);
@@ -453,7 +453,7 @@ Device *CreateRenderDevice(vulkan::Instance *inst,Window *win,const vulkan::Phys
     extent.width=win->GetWidth();
     extent.height=win->GetHeight();
 
-    Device *device=CreateRenderDevice(*inst,pd,surface,extent);
+    RenderDevice *device=CreateRenderDevice(*inst,pd,surface,extent);
 
     if(!device)
     {

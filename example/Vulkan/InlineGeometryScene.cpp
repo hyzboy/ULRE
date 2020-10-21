@@ -30,7 +30,7 @@ private:
     vulkan::Pipeline *          pipeline_line       =nullptr;
     vulkan::Pipeline *          pipeline_solid      =nullptr;
 
-    vulkan::Buffer *            ubo_color           =nullptr;
+    vulkan::GPUBuffer *            ubo_color           =nullptr;
 
     vulkan::Renderable          *ro_plane_grid,
                                 *ro_cube,
