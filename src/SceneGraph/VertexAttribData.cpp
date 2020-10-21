@@ -9,7 +9,7 @@ namespace hgl
             if(!type||!type->Check())
                 return(nullptr);
 
-            VkFormat fmt=vulkan::GetVulkanFormat(type);
+            VkFormat fmt=GetVulkanFormat(type);
 
             return(new VertexAttribData(vertex_count,type->vec_size,type->GetStride(),fmt));
         }

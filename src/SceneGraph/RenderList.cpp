@@ -27,7 +27,7 @@ namespace hgl
         //    return (((Frustum *)fc)->BoxIn(node->GetWorldBoundingBox())!=Frustum::OUTSIDE);
         //}
 
-        void RenderList::Render(SceneNode *node,vulkan::RenderableInstance *ri)
+        void RenderList::Render(SceneNode *node,RenderableInstance *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
@@ -49,7 +49,7 @@ namespace hgl
             {
                 last_pc=node->GetPushConstant();
 
-                cmd_buf->PushConstants(last_pc,sizeof(vulkan::PushConstant));
+                cmd_buf->PushConstants(last_pc,sizeof(PushConstant));
             }
 
             //更新fin_mvp
@@ -61,7 +61,7 @@ namespace hgl
                 last_ri=ri;
             }
 
-            const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
+            const IndexBuffer *ib=ri->GetIndexBuffer();
 
             if(ib)
             {
@@ -73,10 +73,10 @@ namespace hgl
             }
         }
 
-        void RenderList::Render(SceneNode *node,List<vulkan::RenderableInstance *> &ri_list)
+        void RenderList::Render(SceneNode *node,List<RenderableInstance *> &ri_list)
         {
             const int count=ri_list.GetCount();
-            vulkan::RenderableInstance **ri=ri_list.GetData();
+            RenderableInstance **ri=ri_list.GetData();
 
             for(int i=0;i<count;i++)
             {
@@ -85,7 +85,7 @@ namespace hgl
             }
         }
 
-        bool RenderList::Render(vulkan::GPUCmdBuffer *cb) 
+        bool RenderList::Render(GPUCmdBuffer *cb) 
         {
             if(!cb)
                 return(false);

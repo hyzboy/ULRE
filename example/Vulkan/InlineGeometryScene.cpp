@@ -23,16 +23,16 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
     
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
+    Material *          material            =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
 
-    vulkan::PipelineData *      pipeline_data       =nullptr;
-    vulkan::Pipeline *          pipeline_line       =nullptr;
-    vulkan::Pipeline *          pipeline_solid      =nullptr;
+    PipelineData *      pipeline_data       =nullptr;
+    Pipeline *          pipeline_line       =nullptr;
+    Pipeline *          pipeline_solid      =nullptr;
 
-    vulkan::GPUBuffer *            ubo_color           =nullptr;
+    GPUBuffer *            ubo_color           =nullptr;
 
-    vulkan::Renderable          *ro_plane_grid,
+    Renderable          *ro_plane_grid,
                                 *ro_cube,
                                 *ro_sphere,
                                 *ro_dome,
@@ -50,7 +50,7 @@ private:
         material_instance=db->CreateMaterialInstance(material);
         if(!material_instance)return(false);
 
-        pipeline_data=vulkan::GetPipelineData(vulkan::InlinePipeline::Solid3D);
+        pipeline_data=GetPipelineData(InlinePipeline::Solid3D);
         if(!pipeline_data)return(false);
 
         pipeline_line=CreatePipeline(material,pipeline_data,Prim::Lines);
@@ -155,14 +155,14 @@ private:
         return(true);
     }
     
-    void Add(vulkan::Renderable *r,vulkan::Pipeline *pl)
+    void Add(Renderable *r,Pipeline *pl)
     {
         auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
         render_root.Add(ri);
     }
 
-    void Add(vulkan::Renderable *r,vulkan::Pipeline *pl,const Matrix4f &mat)
+    void Add(Renderable *r,Pipeline *pl,const Matrix4f &mat)
     {
         auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 

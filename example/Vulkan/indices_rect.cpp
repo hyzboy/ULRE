@@ -36,11 +36,11 @@ private:
 
     Camera cam;
 
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::RenderableInstance *renderable_instance =nullptr;
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *renderable_instance =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -49,7 +49,7 @@ private:
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/FragColor"));
         if(!material_instance)return(false);
         
-        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);
         return(true);
     }
     
@@ -124,7 +124,7 @@ public:
 int main(int,char **)
 {
     #ifdef _DEBUG
-    if(!vulkan::CheckStrideBytesByFormat())
+    if(!CheckStrideBytesByFormat())
         return 0xff;
     #endif//
 

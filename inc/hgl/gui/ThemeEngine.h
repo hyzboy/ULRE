@@ -17,13 +17,13 @@ namespace hgl
         {
         protected:
 
-            vulkan::GPUDevice *device;
+            GPUDevice *device;
 
             MapObject<Form *,ThemeForm> form_list;
 
         public:
 
-            ThemeEngine(vulkan::GPUDevice *dev){device=dev;}
+            ThemeEngine(GPUDevice *dev){device=dev;}
             virtual ~ThemeEngine()=default;
 
             virtual bool Init()=0;

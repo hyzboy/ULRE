@@ -22,7 +22,7 @@ VK_NAMESPACE_END
 constexpr uint32_t SCREEN_WIDTH=512;
 constexpr uint32_t SCREEN_HEIGHT=512;
 
-using Texture2DPointer=vulkan::Texture2D *;
+using Texture2DPointer=Texture2D *;
 
 class TestApp:public CameraAppFramework
 {
@@ -31,20 +31,20 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    vulkan::RenderTarget *gbuffer_rt;
+    RenderTarget *gbuffer_rt;
 
     struct SubpassParam
     {
-        vulkan::Material *          material;
-        vulkan::MaterialInstance *  material_instance;
-        vulkan::Pipeline *          pipeline_fan;
-        vulkan::Pipeline *          pipeline_triangles;
+        Material *          material;
+        MaterialInstance *  material_instance;
+        Pipeline *          pipeline_fan;
+        Pipeline *          pipeline_triangles;
     };//
 
     SubpassParam                sp_gbuffer;
     SubpassParam                sp_composition;
 
-    vulkan::Renderable          *ro_plane,
+    Renderable          *ro_plane,
                                 *ro_cube,
                                 *ro_sphere,
                                 *ro_torus,
@@ -53,7 +53,7 @@ private:
                                 
                                 *ro_gbc_plane;
 
-    vulkan::Sampler *           sampler=nullptr;
+    Sampler *           sampler=nullptr;
 
     struct
     {
@@ -61,7 +61,7 @@ private:
         Texture2DPointer        normal=nullptr;
     }texture;
 
-    vulkan::GPUCmdBuffer       *gbuffer_cmd=nullptr;
+    GPUCmdBuffer       *gbuffer_cmd=nullptr;
 
 public:
 
@@ -101,18 +101,18 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        sp->pipeline_triangles  =db->CreatePipeline(sp->material,gbuffer_rt,vulkan::InlinePipeline::Solid3D,Prim::Triangles);
+        sp->pipeline_triangles  =db->CreatePipeline(sp->material,gbuffer_rt,InlinePipeline::Solid3D,Prim::Triangles);
         if(!sp->pipeline_triangles)
             return(false);
 
-        sp->pipeline_fan        =db->CreatePipeline(sp->material,gbuffer_rt,vulkan::InlinePipeline::Solid3D,Prim::Fan);
+        sp->pipeline_fan        =db->CreatePipeline(sp->material,gbuffer_rt,InlinePipeline::Solid3D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
 
     bool InitCompositionPipeline(SubpassParam *sp)
     {
-        sp->pipeline_fan=db->CreatePipeline(sp->material,gbuffer_rt,vulkan::InlinePipeline::Solid2D,Prim::Fan);
+        sp->pipeline_fan=db->CreatePipeline(sp->material,gbuffer_rt,InlinePipeline::Solid2D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
@@ -125,8 +125,8 @@ private:
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         if(!InitCompositionPipeline(&sp_composition))return(false);
 
-        texture.color   =vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
-        texture.normal  =vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
+        texture.color   =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
+        texture.normal  =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
 
         sampler=device->CreateSampler();
 
@@ -144,7 +144,7 @@ private:
         return(true);
     }
 
-    void CreateRenderObject(vulkan::Material *mtl)
+    void CreateRenderObject(Material *mtl)
     {
         {
             struct PlaneCreateInfo pci;

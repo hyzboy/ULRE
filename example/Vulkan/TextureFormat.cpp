@@ -35,7 +35,7 @@ constexpr char *data_type_name[]
     "SRGB"
 };//
 
-vulkan::VulkanInstance *InitVulkanInstance()
+VulkanInstance *InitVulkanInstance()
 {
     #ifdef _DEBUG
         if(!CheckStrideBytesByFormat())
@@ -56,15 +56,15 @@ vulkan::VulkanInstance *InitVulkanInstance()
     cili.lunarg.standard_validation=true;
     cili.khronos.validation=true;
 
-    return vulkan::CreateInstance("VulkanTest",nullptr,&cili);
+    return CreateInstance("VulkanTest",nullptr,&cili);
 }
 
 int main(int,char **)
 {
                     Window *        win             =nullptr;
-            vulkan::VulkanInstance *      inst            =nullptr;
-            vulkan::GPUDevice *        device          =nullptr;
-    const   vulkan::GPUPhysicalDevice *physical_device =nullptr;
+            VulkanInstance *      inst            =nullptr;
+            GPUDevice *        device          =nullptr;
+    const   GPUPhysicalDevice *physical_device =nullptr;
 
     inst=InitVulkanInstance();
 

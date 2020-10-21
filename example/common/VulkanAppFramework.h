@@ -27,8 +27,8 @@ class VulkanApplicationFramework
 {
 private:
 
-            Window *            win             =nullptr;
-    vulkan::VulkanInstance *    inst            =nullptr;
+            Window *    win             =nullptr;
+    VulkanInstance *    inst            =nullptr;
 
     void OnKeyDown  (KeyboardButton kb){key_status[kb]=true;}
     void OnKeyUp    (KeyboardButton kb){key_status[kb]=false;}
@@ -46,20 +46,20 @@ protected:
 
 protected:
 
-    vulkan::GPUDevice *          device                      =nullptr;
-    vulkan::SwapchainRenderTarget * sc_render_target            =nullptr;
+    GPUDevice *          device                      =nullptr;
+    SwapchainRenderTarget * sc_render_target            =nullptr;
 
 protected:
 
             int32_t                 swap_chain_count            =0;
 
-    vulkan::GPUCmdBuffer **        cmd_buf                     =nullptr;
+    GPUCmdBuffer **        cmd_buf                     =nullptr;
 
             Color4f                 clear_color;
 
 protected:
 
-    vulkan::RenderResource *              db                          =nullptr;
+    RenderResource *              db                          =nullptr;
 
             bool                    key_status[kbRangeSize];
 
@@ -82,7 +82,7 @@ public:
         clear_color.Zero();
 
     #ifdef _DEBUG
-        if(!vulkan::CheckStrideBytesByFormat())
+        if(!CheckStrideBytesByFormat())
             return(false);
     #endif//
 
@@ -106,7 +106,7 @@ public:
             cili.khronos.validation = true;
             cili.RenderDoc.Capture = true;
 
-            inst=vulkan::CreateInstance("VulkanTest",nullptr,&cili);
+            inst=CreateInstance("VulkanTest",nullptr,&cili);
 
             if(!inst)
                 return(false);
@@ -117,7 +117,7 @@ public:
         if(!device)
             return(false);
 
-        db=new vulkan::RenderResource(device);
+        db=new RenderResource(device);
 
         InitCommandBuffer();
 
@@ -161,20 +161,20 @@ public:
         {
             const VkExtent2D extent=sc_render_target->GetExtent();
 
-            cmd_buf=hgl_zero_new<vulkan::GPUCmdBuffer *>(swap_chain_count);
+            cmd_buf=hgl_zero_new<GPUCmdBuffer *>(swap_chain_count);
 
             for(int32_t i=0;i<swap_chain_count;i++)
                 cmd_buf[i]=device->CreateCommandBuffer(extent,2);
         }
     }
 
-    void BuildCommandBuffer(vulkan::RenderTarget *rt,vulkan::RenderableInstance *ri)
+    void BuildCommandBuffer(RenderTarget *rt,RenderableInstance *ri)
     {
         if(!rt||!ri)
             return;
 
-        vulkan::GPUCmdBuffer *cb=rt->GetCommandBuffer();        
-        const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
+        GPUCmdBuffer *cb=rt->GetCommandBuffer();        
+        const IndexBuffer *ib=ri->GetIndexBuffer();
 
         cb->Begin();
             cb->BindFramebuffer(rt);
@@ -196,14 +196,14 @@ public:
         clear_color.Use(cc,1.0);
     }
 
-    void BuildCommandBuffer(uint32_t index,vulkan::RenderableInstance *ri)
+    void BuildCommandBuffer(uint32_t index,RenderableInstance *ri)
     {
         if(!ri)
             return;
 
-        const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
+        const IndexBuffer *ib=ri->GetIndexBuffer();
 
-        vulkan::GPUCmdBuffer *cb=cmd_buf[index];
+        GPUCmdBuffer *cb=cmd_buf[index];
 
         cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
 
@@ -222,13 +222,13 @@ public:
         cb->End();
     }
 
-    void BuildCommandBuffer(vulkan::RenderableInstance *ri)
+    void BuildCommandBuffer(RenderableInstance *ri)
     {
         for(int32_t i=0;i<swap_chain_count;i++)
             BuildCommandBuffer(i,ri);
     }
 
-    void BuildCurrentCommandBuffer(vulkan::RenderableInstance *ri)
+    void BuildCurrentCommandBuffer(RenderableInstance *ri)
     {
         BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),ri);
     }
@@ -237,7 +237,7 @@ public:
     {
         if(!rl)return;
 
-        vulkan::GPUCmdBuffer *cb=cmd_buf[index];
+        GPUCmdBuffer *cb=cmd_buf[index];
         
         cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
 
@@ -297,32 +297,32 @@ public:
 
 public: //pipeline
 
-    vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,const vulkan::InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    Pipeline *CreatePipeline(Material *mtl,const InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
         return db->CreatePipeline(mtl,sc_render_target,ip,prim,prim_restart);
     }
 
-    vulkan::Pipeline *CreatePipeline(vulkan::MaterialInstance *mi,const vulkan::InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    Pipeline *CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
         return db->CreatePipeline(mi,sc_render_target,ip,prim,prim_restart);
     }
 
-    vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,vulkan::PipelineData *pd,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    Pipeline *CreatePipeline(Material *mtl,PipelineData *pd,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
         return db->CreatePipeline(mtl,sc_render_target,pd,prim,prim_restart);
     }
 
-    vulkan::Pipeline *CreatePipeline(vulkan::MaterialInstance *mi,vulkan::PipelineData *pd,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    Pipeline *CreatePipeline(MaterialInstance *mi,PipelineData *pd,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
         return db->CreatePipeline(mi,sc_render_target,pd,prim,prim_restart);
     }
 
-    vulkan::Pipeline *CreatePipeline(vulkan::Material *mtl,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    Pipeline *CreatePipeline(Material *mtl,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
         return db->CreatePipeline(mtl,sc_render_target,pipeline_name,prim,prim_restart);
     }
 
-    vulkan::Pipeline *CreatePipeline(vulkan::MaterialInstance *mi,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
+    Pipeline *CreatePipeline(MaterialInstance *mi,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
     {
         return db->CreatePipeline(mi,sc_render_target,pipeline_name,prim,prim_restart);
     }
@@ -332,7 +332,7 @@ class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
 
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
 
 protected:
 
@@ -375,7 +375,7 @@ public:
         camera.height=h;
     }
 
-    vulkan::GPUBuffer *GetCameraMatrixBuffer()
+    GPUBuffer *GetCameraMatrixBuffer()
     {
         return ubo_world_matrix;
     }

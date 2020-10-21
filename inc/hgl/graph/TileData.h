@@ -48,7 +48,7 @@ namespace hgl
 
         protected:
 
-            vulkan::GPUBuffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
+            GPUBuffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
 
             List<ImageRegion> commit_list;
             uint8 *commit_ptr;

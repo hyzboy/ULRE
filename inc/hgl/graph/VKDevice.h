@@ -261,7 +261,7 @@ public: //Command GPUBuffer 相关
                                         const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     GPUFence *             CreateFence(bool);
-    vulkan::GPUSemaphore * CreateSemaphore();
+    GPUSemaphore * CreateSemaphore();
 
 public: //FrameBuffer相关
 

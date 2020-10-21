@@ -93,7 +93,7 @@ namespace
         GPUDevice *device;
 
         VkFormat format;
-        vulkan::GPUBuffer *buf;
+        GPUBuffer *buf;
 
         Texture2D *tex;
 

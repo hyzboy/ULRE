@@ -13,13 +13,13 @@ namespace hgl
         protected:
         
             Form *form;
-            hgl::graph::vulkan::RenderTarget *render_target;
+            hgl::graph::RenderTarget *render_target;
 
         public:
 
             ThemeForm(Form *);
 
-            void SetRenderTarget(hgl::graph::vulkan::RenderTarget *);
+            void SetRenderTarget(hgl::graph::RenderTarget *);
         };//class ThemeForm
     }//namespace gui
 }//namespace hgl

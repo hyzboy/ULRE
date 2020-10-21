@@ -109,7 +109,7 @@ Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,P
 
 Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
 {
-    PipelineData *pd=vulkan::GetPipelineData(pipeline_filename);
+    PipelineData *pd=GetPipelineData(pipeline_filename);
 
     if(!pd)return(nullptr);
 

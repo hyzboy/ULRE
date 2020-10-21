@@ -12,7 +12,7 @@ namespace hgl
 {
     namespace graph
     {
-        vulkan::Renderable *CreateRenderableRectangle(vulkan::RenderResource *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
+        Renderable *CreateRenderableRectangle(RenderResource *db,Material *mtl,const RectangleCreateInfo *rci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -29,7 +29,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableGBufferComposition(vulkan::RenderResource *db,vulkan::Material *mtl)
+        Renderable *CreateRenderableGBufferComposition(RenderResource *db,Material *mtl)
         {
             RectangleCreateInfo rci;
 
@@ -38,7 +38,7 @@ namespace hgl
             return CreateRenderableRectangle(db,mtl,&rci);
         }
 
-        vulkan::Renderable *CreateRenderableRoundRectangle(vulkan::RenderResource *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
+        Renderable *CreateRenderableRoundRectangle(RenderResource *db,Material *mtl,const RoundRectangleCreateInfo *rci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -112,7 +112,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableCircle(vulkan::RenderResource *db,vulkan::Material *mtl,const CircleCreateInfo *cci)
+        Renderable *CreateRenderableCircle(RenderResource *db,Material *mtl,const CircleCreateInfo *cci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -160,7 +160,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderablePlaneGrid(vulkan::RenderResource *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci)
+        Renderable *CreateRenderablePlaneGrid(RenderResource *db,Material *mtl,const PlaneGridCreateInfo *pgci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -207,7 +207,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderablePlane(vulkan::RenderResource *db,vulkan::Material *mtl,const PlaneCreateInfo *pci)
+        Renderable *CreateRenderablePlane(RenderResource *db,Material *mtl,const PlaneCreateInfo *pci)
         {
             const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                     float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
@@ -248,7 +248,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableCube(vulkan::RenderResource *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
+        Renderable *CreateRenderableCube(RenderResource *db,Material *mtl,const CubeCreateInfo *cci)
         {                              // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    -0.5f, +0.5f, +0.5f,
             /*     *------------* */                            +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f,    -0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,
@@ -426,7 +426,7 @@ namespace hgl
         * @param numberSlices 切片数
         * @return 可渲染数据
         */
-        vulkan::Renderable *CreateRenderableSphere(vulkan::RenderResource *db,vulkan::Material *mtl,const uint numberSlices)
+        Renderable *CreateRenderableSphere(RenderResource *db,Material *mtl,const uint numberSlices)
         {
             RenderableCreater rc(db,mtl);
 
@@ -502,7 +502,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableDome(vulkan::RenderResource *db,vulkan::Material *mtl,const DomeCreateInfo *dci)
+        Renderable *CreateRenderableDome(RenderResource *db,Material *mtl,const DomeCreateInfo *dci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -621,7 +621,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableTorus(vulkan::RenderResource *db,vulkan::Material *mtl,const TorusCreateInfo *tci)
+        Renderable *CreateRenderableTorus(RenderResource *db,Material *mtl,const TorusCreateInfo *tci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -777,7 +777,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableCylinder(vulkan::RenderResource *db,vulkan::Material *mtl,const CylinderCreateInfo *cci)
+        Renderable *CreateRenderableCylinder(RenderResource *db,Material *mtl,const CylinderCreateInfo *cci)
         {
             uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
@@ -996,7 +996,7 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableCone(vulkan::RenderResource *db,vulkan::Material *mtl,const ConeCreateInfo *cci)
+        Renderable *CreateRenderableCone(RenderResource *db,Material *mtl,const ConeCreateInfo *cci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -1123,7 +1123,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableAxis(vulkan::RenderResource *db,vulkan::Material *mtl,const AxisCreateInfo *aci)
+        Renderable *CreateRenderableAxis(RenderResource *db,Material *mtl,const AxisCreateInfo *aci)
         {
             RenderableCreater rc(db,mtl);
 
@@ -1148,7 +1148,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableBoundingBox(vulkan::RenderResource *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
+        Renderable *CreateRenderableBoundingBox(RenderResource *db,Material *mtl,const CubeCreateInfo *cci)
         {
             // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,

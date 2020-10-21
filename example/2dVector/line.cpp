@@ -35,13 +35,13 @@ private:
 
     Camera cam;
 
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::RenderableInstance *render_instance     =nullptr;
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
-    vulkan::GPUBuffer *            ubo_color_material  =nullptr;
-    vulkan::GPUBuffer *            ubo_line_config     =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *render_instance     =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
+    GPUBuffer *            ubo_color_material  =nullptr;
+    GPUBuffer *            ubo_line_config     =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -61,9 +61,9 @@ private:
         return(true);
     }
 
-    vulkan::GPUBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
+    GPUBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
     {
-        vulkan::GPUBuffer *ubo=db->CreateUBO(size,data);
+        GPUBuffer *ubo=db->CreateUBO(size,data);
 
         if(!ubo)
             return(nullptr);
@@ -97,7 +97,7 @@ private:
     
     bool InitVBO()
     {
-        vulkan::Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
+        Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
         if(!render_obj->Set(VAN::Position,  db->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data)))return(false);

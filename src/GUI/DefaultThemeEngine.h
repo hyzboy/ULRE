@@ -23,13 +23,13 @@ namespace hgl
 
                 //struct
                 //{
-                //    vulkan::Material *          m;
-                //    vulkan::MaterialInstance *  mi;
+                //    Material *          m;
+                //    MaterialInstance *  mi;
                 //}panel;
 
             public:
 
-                DefaultThemeEngine(vulkan::GPUDevice *dev):ThemeEngine(dev){}
+                DefaultThemeEngine(GPUDevice *dev):ThemeEngine(dev){}
                 virtual ~DefaultThemeEngine() override;
 
                 bool Init() override;

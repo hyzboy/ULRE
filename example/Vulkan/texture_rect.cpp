@@ -49,12 +49,12 @@ class TestApp:public VulkanApplicationFramework
 
 private:
 
-    vulkan::Texture2D *         texture             =nullptr;
-    vulkan::Sampler *           sampler             =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::RenderableInstance *renderable_instance =nullptr;
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Texture2D *         texture             =nullptr;
+    Sampler *           sampler             =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *renderable_instance =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -63,10 +63,10 @@ private:
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Texture2D"));        
         if(!material_instance)return(false);
 
-        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
+        texture=CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
         if(!texture)return(false);
 
         db->Add(texture);
@@ -148,7 +148,7 @@ public:
 int main(int,char **)
 {
 #ifdef _DEBUG
-    if(!vulkan::CheckStrideBytesByFormat())
+    if(!CheckStrideBytesByFormat())
         return 0xff;
 #endif//
 
