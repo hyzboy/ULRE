@@ -23,8 +23,8 @@ struct PhongLight
 struct PhongMaterial
 {
     Vector4f BaseColor;
+    Vector4f specular;
     float ambient;
-    float specular;
 };
 
 constexpr size_t v3flen=sizeof(PhongLight);
@@ -55,7 +55,6 @@ private:
     Renderable          *ro_axis,
                         *ro_cube,
                         *ro_sphere,
-                        *ro_dome,
                         *ro_torus,
                         *ro_cylinder,
                         *ro_cone;
@@ -67,9 +66,9 @@ private:
         light.color.Set(1,1,1,1);
         light.position.Set(1000,1000,1000,1.0);
 
-        phong.BaseColor.Set(1,1,1,1);
-        phong.ambient=0.1;
-        phong.specular=0.5;
+        phong.BaseColor.Set(1,0,0,1);
+        phong.ambient=0.05;
+        phong.specular.Set(0.3,0.3,0.3,32);
 
         axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
         if(!axis_material)return(false);
@@ -118,22 +117,13 @@ private:
         }
 
         {
-            DomeCreateInfo dci;
-
-            dci.radius=100;
-            dci.numberSlices=32;
-
-            ro_dome=CreateRenderableDome(db,material,&dci);
-        }
-
-        {
             TorusCreateInfo tci;
 
             tci.innerRadius=50;
             tci.outerRadius=70;
 
             tci.numberSlices=128;
-            tci.numberStacks=32;
+            tci.numberStacks=64;
 
             ro_torus=CreateRenderableTorus(db,material,&tci);
         }
@@ -199,7 +189,6 @@ private:
     bool InitScene()
     {
         render_root.Add(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
-//        Add(ro_dome,pipeline_solid);
         Add(ro_torus    ,pipeline_solid);//,rotate(90,Vector3f(1,0,0)));
         Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));
         Add(ro_sphere   ,pipeline_solid,translate( 10,  0, 5)*scale(10,10,10));
