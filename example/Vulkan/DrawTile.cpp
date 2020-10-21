@@ -38,13 +38,13 @@ class TestApp:public VulkanApplicationFramework
 
 private:
 
-    vulkan::Sampler *           sampler             =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::RenderableInstance *render_instance     =nullptr;
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    Sampler *           sampler             =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    Renderable *        render_obj          =nullptr;
+    RenderableInstance *render_instance     =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 public:
 
@@ -150,7 +150,7 @@ private:
         if(!material_instance)
             return(false);
 
-        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D,Prim::Rectangles);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Rectangles);
 
         sampler=db->CreateSampler();
 

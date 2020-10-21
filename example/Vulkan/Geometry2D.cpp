@@ -28,17 +28,17 @@ private:
             SceneNode           render_root;
             RenderList          render_list;
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
+    Material *          material            =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
 
-    vulkan::Renderable          *ro_rectangle       =nullptr,
+    Renderable          *ro_rectangle       =nullptr,
                                 *ro_circle          =nullptr,
                                 *ro_round_rectangle =nullptr;
 
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
-    vulkan::GPUBuffer *            ubo_color_material  =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
+    GPUBuffer *            ubo_color_material  =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -52,7 +52,7 @@ private:
 
         if(!material_instance)return(false);
 
-        pipeline=CreatePipeline(material,vulkan::InlinePipeline::Solid2D,Prim::Fan);
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::Fan);
 
         return pipeline;
     }
@@ -92,9 +92,9 @@ private:
         }
     }
 
-    vulkan::GPUBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
+    GPUBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
     {
-        vulkan::GPUBuffer *ubo=db->CreateUBO(size,data);
+        GPUBuffer *ubo=db->CreateUBO(size,data);
 
         if(!ubo)
             return(nullptr);

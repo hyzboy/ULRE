@@ -26,11 +26,11 @@ private:
 
     Camera cam;
 
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::RenderableInstance *renderable_instance =nullptr;
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *renderable_instance =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -41,7 +41,7 @@ private:
         if(!material_instance)
             return(false);
             
-        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D,Prim::TriangleStrip);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::TriangleStrip);
 
         if(!pipeline)
             return(false);

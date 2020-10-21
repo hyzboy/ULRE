@@ -5,7 +5,7 @@ namespace hgl
 {
     namespace graph
     {
-        RenderableCreater::RenderableCreater(vulkan::RenderResource *sdb,vulkan::Material *m)
+        RenderableCreater::RenderableCreater(RenderResource *sdb,Material *m)
         {
             db              =sdb;
             mtl             =m;
@@ -24,7 +24,7 @@ namespace hgl
             return(true);
         }
 
-        VAD *RenderableCreater::CreateVAD(const AnsiString &name,const vulkan::ShaderStage *ss)
+        VAD *RenderableCreater::CreateVAD(const AnsiString &name,const ShaderStage *ss)
         {
             if(!ss)return(nullptr);
 
@@ -51,7 +51,7 @@ namespace hgl
             if(!vsm)return(nullptr);
             if(name.IsEmpty())return(nullptr);
 
-            const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
+            const ShaderStage *ss=vsm->GetStageInput(name);
 
             if(!ss)
                 return(nullptr);
@@ -71,7 +71,7 @@ namespace hgl
             if(vab_maps.Get(name,ssb))
                 return false;
 
-            const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
+            const ShaderStage *ss=vsm->GetStageInput(name);
 
             if(!ss)
                 return(false);
@@ -108,14 +108,14 @@ namespace hgl
             return (uint32 *)ibo->Map();
         }
 
-        vulkan::Renderable *RenderableCreater::Finish()
+        Renderable *RenderableCreater::Finish()
         {
             const uint si_count=vsm->GetStageInputCount();
 
             if(vab_maps.GetCount()!=si_count)
                 return(nullptr);
 
-            vulkan::Renderable *render_obj=db->CreateRenderable(vertices_number);
+            Renderable *render_obj=db->CreateRenderable(vertices_number);
 
             const auto *sp=vab_maps.GetDataList();
             for(uint i=0;i<si_count;i++)

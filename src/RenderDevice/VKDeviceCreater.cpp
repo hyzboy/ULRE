@@ -431,7 +431,7 @@ GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_
     return(new GPUDevice(device_attr));
 }
 
-GPUDevice *CreateRenderDevice(vulkan::VulkanInstance *inst,Window *win,const vulkan::GPUPhysicalDevice *pd)
+GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *pd)
 {
     if(!inst)
         return(nullptr);

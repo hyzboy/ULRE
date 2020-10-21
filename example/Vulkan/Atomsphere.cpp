@@ -37,13 +37,13 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Pipeline *          pipeline_solid      =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    Pipeline *          pipeline_solid      =nullptr;
     
-    vulkan::GPUBuffer *         ubo_atomsphere      =nullptr;
-    AtmosphereData              atomsphere_data;
+    GPUBuffer *         ubo_atomsphere      =nullptr;
+    AtmosphereData      atomsphere_data;
 
-    vulkan::Renderable *        ro_sphere           =nullptr;
+    Renderable *        ro_sphere           =nullptr;
 
 private:
 
@@ -53,7 +53,7 @@ private:
         if(!material_instance)return(false);
         
 //        pipeline_solid=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/sky"));
-        pipeline_solid=CreatePipeline(material_instance,vulkan::InlinePipeline::Sky);       //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline_solid=CreatePipeline(material_instance,InlinePipeline::Sky);       //等同上一行，为Framework重载，默认使用swapchain的render target
         if(!pipeline_solid)return(false);
 
         return(true);

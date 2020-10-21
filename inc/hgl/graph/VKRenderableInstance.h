@@ -29,9 +29,9 @@ public:
 
     virtual ~RenderableInstance();
 
-    vulkan::Pipeline *          GetPipeline         (){return pipeline;}
-    vulkan::MaterialInstance *  GetMaterialInstance (){return mat_inst;}
-    vulkan::Renderable *        GetRenderable       (){return render_obj;}
+    Pipeline *          GetPipeline         (){return pipeline;}
+    MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+    Renderable *        GetRenderable       (){return render_obj;}
     const AABB &                GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
 
     const   uint32_t        GetBufferCount      ()const{return buffer_count;}

@@ -50,7 +50,7 @@ bool GPUQueue::WaitFence(const bool wait_all,uint64_t time_out)
     return(true);
 }
     
-bool GPUQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,vulkan::GPUSemaphore *wait_sem,vulkan::GPUSemaphore *complete_sem)
+bool GPUQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem)
 {
     VkSemaphore ws;
     VkSemaphore cs;
@@ -93,7 +93,7 @@ bool GPUQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,vul
     return(result==VK_SUCCESS);
 }
 
-bool GPUQueue::Submit(const VkCommandBuffer &cmd_buf,vulkan::GPUSemaphore *wait_sem,vulkan::GPUSemaphore *complete_sem)
+bool GPUQueue::Submit(const VkCommandBuffer &cmd_buf,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem)
 {
     return Submit(&cmd_buf,1,wait_sem,complete_sem);
 }

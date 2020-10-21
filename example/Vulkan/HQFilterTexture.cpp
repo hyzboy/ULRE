@@ -45,28 +45,28 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-        vulkan::PipelineData *      pipeline_data       =nullptr;
-        vulkan::Renderable *        render_obj          =nullptr;
-        vulkan::Sampler *           sampler_linear      =nullptr;
-        vulkan::Sampler *           sampler_nearest     =nullptr;
+        PipelineData *      pipeline_data       =nullptr;
+        Renderable *        render_obj          =nullptr;
+        Sampler *           sampler_linear      =nullptr;
+        Sampler *           sampler_nearest     =nullptr;
 
     struct MP
     {
-        vulkan::Material *          material            =nullptr;
-        vulkan::Pipeline *          pipeline            =nullptr;
+        Material *          material            =nullptr;
+        Pipeline *          pipeline            =nullptr;
     }mp_normal,mp_hq;
 
     struct MIR
     {
-        vulkan::MaterialInstance *  material_instance   =nullptr;
-        vulkan::RenderableInstance *renderable_instance =nullptr;
+        MaterialInstance *  material_instance   =nullptr;
+        RenderableInstance *renderable_instance =nullptr;
     }mir_nearest,mir_linear,mir_nearest_hq,mir_linear_hq;
     
-    vulkan::Texture2D *         texture             =nullptr;
+    Texture2D *         texture             =nullptr;
 
-    vulkan::VAB *               vertex_buffer       =nullptr;
-    vulkan::VAB *               tex_coord_buffer    =nullptr;
-    vulkan::IndexBuffer *       index_buffer        =nullptr;
+    VAB *               vertex_buffer       =nullptr;
+    VAB *               tex_coord_buffer    =nullptr;
+    IndexBuffer *       index_buffer        =nullptr;
     
             SceneNode           render_root;
             RenderList          render_list;
@@ -110,9 +110,9 @@ private:
         return(true);
     }
 
-    vulkan::Sampler *InitSampler(VkFilter filter)
+    Sampler *InitSampler(VkFilter filter)
     {
-        vulkan::SamplerCreateInfo sampler_create_info;
+        SamplerCreateInfo sampler_create_info;
 
         sampler_create_info.magFilter               = filter;
         sampler_create_info.minFilter               = filter;
@@ -135,7 +135,7 @@ private:
 
     bool InitTexture()
     {
-        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/heightmap.Tex2D"));
+        texture=CreateTextureFromFile(device,OS_TEXT("res/image/heightmap.Tex2D"));
         return texture;
     }
 
@@ -152,7 +152,7 @@ private:
 
     bool InitMaterial()
     {
-        pipeline_data=vulkan::GetPipelineData(vulkan::InlinePipeline::Solid2D);
+        pipeline_data=GetPipelineData(InlinePipeline::Solid2D);
         if(!pipeline_data)return(false);
 
         if(!InitMaterial(&mp_normal,OS_TEXT("res/material/Texture2DPC")))return(false);
@@ -161,7 +161,7 @@ private:
         return(true);
     }
 
-    bool InitMIR(struct MIR *mir,vulkan::Sampler *sampler,MP *mp)
+    bool InitMIR(struct MIR *mir,Sampler *sampler,MP *mp)
     {
         mir->material_instance=db->CreateMaterialInstance(mp->material);
         if(!mir->material_instance)return(false);
@@ -239,7 +239,7 @@ public:
 int main(int,char **)
 {
 #ifdef _DEBUG
-    if(!vulkan::CheckStrideBytesByFormat())
+    if(!CheckStrideBytesByFormat())
         return 0xff;
 #endif//
 

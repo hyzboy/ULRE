@@ -16,7 +16,7 @@ class TestApp:public CameraAppFramework
 {
     Color4f color;
 
-    vulkan::GPUBuffer *ubo_color=nullptr;
+    GPUBuffer *ubo_color=nullptr;
 
 private:
 
@@ -25,12 +25,12 @@ private:
 
     struct MDP
     {
-        vulkan::Material *          material            =nullptr;
-        vulkan::MaterialInstance *  material_instance   =nullptr;
-        vulkan::Pipeline *          pipeline            =nullptr;
+        Material *          material            =nullptr;
+        MaterialInstance *  material_instance   =nullptr;
+        Pipeline *          pipeline            =nullptr;
     }m3d,m2d;
 
-    vulkan::Renderable          *ro_plane_grid[3],
+    Renderable          *ro_plane_grid[3],
                                 *ro_round_rectangle =nullptr;
 
 private:
@@ -43,7 +43,7 @@ private:
         mdp->material_instance=db->CreateMaterialInstance(mdp->material);
         if(!mdp->material_instance)return(false);
 
-        mdp->pipeline=CreatePipeline(mdp->material_instance,vulkan::InlinePipeline::Solid3D,primitive);
+        mdp->pipeline=CreatePipeline(mdp->material_instance,InlinePipeline::Solid3D,primitive);
 
         if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
@@ -52,14 +52,14 @@ private:
         return(true);
     }
     
-    void Add(vulkan::Renderable *r,MDP &mdp)
+    void Add(Renderable *r,MDP &mdp)
     {
         auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
 
         render_root.Add(ri);
     }
 
-    void Add(vulkan::Renderable *r,MDP &mdp,const Matrix4f &mat)
+    void Add(Renderable *r,MDP &mdp,const Matrix4f &mat)
     {
         auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
 

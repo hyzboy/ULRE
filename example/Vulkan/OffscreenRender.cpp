@@ -15,24 +15,24 @@ class TestApp:public CameraAppFramework
     {
         Camera cam;
 
-        vulkan::MaterialInstance *  material_instance   =nullptr;
-        vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+        MaterialInstance *  material_instance   =nullptr;
+        GPUBuffer *            ubo_world_matrix    =nullptr;
     };
 
     struct:public RenderObject
     {        
-        vulkan::RenderTarget *      render_taget        =nullptr;
+        RenderTarget *      render_taget        =nullptr;
         
-        vulkan::Pipeline *          pipeline            =nullptr;
-        vulkan::RenderableInstance *renderable_instance =nullptr;
+        Pipeline *          pipeline            =nullptr;
+        RenderableInstance *renderable_instance =nullptr;
     }os;
     
     struct:public RenderObject
     {
-        vulkan::Sampler *           sampler             =nullptr;        
+        Sampler *           sampler             =nullptr;        
        
-        vulkan::Pipeline *          pipeline            =nullptr;
-        vulkan::RenderableInstance *renderable_instance =nullptr;
+        Pipeline *          pipeline            =nullptr;
+        RenderableInstance *renderable_instance =nullptr;
 
         SceneNode                   scene_root;
         RenderList                  render_list;
@@ -70,7 +70,7 @@ public:
         os.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
         if(!os.material_instance)return(false);
 
-        os.pipeline=db->CreatePipeline(os.material_instance,os.render_taget,vulkan::InlinePipeline::Solid2D,Prim::Fan);
+        os.pipeline=db->CreatePipeline(os.material_instance,os.render_taget,InlinePipeline::Solid2D,Prim::Fan);
         if(!os.pipeline)return(false);
 
         if(!InitUBO(&os,os.render_taget->GetExtent()))
@@ -86,7 +86,7 @@ public:
             cci.center_color.Set(1,1,1,1);
             cci.border_color.Set(1,1,1,0);
 
-            vulkan::Renderable *render_obj=CreateRenderableCircle(db,os.material_instance->GetMaterial(),&cci);
+            Renderable *render_obj=CreateRenderableCircle(db,os.material_instance->GetMaterial(),&cci);
             if(!render_obj)return(false);
 
             os.renderable_instance=db->CreateRenderableInstance(render_obj,os.material_instance,os.pipeline);
@@ -107,7 +107,7 @@ public:
         cube.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureMask3D"));        
         if(!cube.material_instance)return(false);
 
-        cube.pipeline=CreatePipeline(cube.material_instance,vulkan::InlinePipeline::Solid3D);
+        cube.pipeline=CreatePipeline(cube.material_instance,InlinePipeline::Solid3D);
         if(!cube.pipeline)return(false);
         
         cube.sampler=db->CreateSampler();
@@ -120,7 +120,7 @@ public:
         {
             CubeCreateInfo cci;
 
-            vulkan::Renderable *render_obj=CreateRenderableCube(db,cube.material_instance->GetMaterial(),&cci);
+            Renderable *render_obj=CreateRenderableCube(db,cube.material_instance->GetMaterial(),&cci);
             if(!render_obj)return(false);
 
             cube.renderable_instance=db->CreateRenderableInstance(render_obj,cube.material_instance,cube.pipeline);

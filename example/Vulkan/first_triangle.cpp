@@ -32,11 +32,11 @@ private:
 
     Camera cam;
 
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::RenderableInstance *render_instance     =nullptr;
-    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *render_instance     =nullptr;
+    GPUBuffer *            ubo_world_matrix    =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
@@ -48,7 +48,7 @@ private:
             return(false);
             
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,vulkan::InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         return pipeline;
     }
@@ -74,7 +74,7 @@ private:
     
     bool InitVBO()
     {
-        vulkan::Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
+        Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
         if(!render_obj->Set(VAN::Position,  db->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
