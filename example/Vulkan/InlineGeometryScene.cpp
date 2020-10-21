@@ -99,6 +99,9 @@ private:
 
             texture.color   =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
             texture.normal  =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
+            
+            db->Add(texture.color);
+            db->Add(texture.normal);
         }
 
         {
@@ -170,7 +173,7 @@ private:
             cci.halfExtend=10;
             cci.radius=10;
             cci.numberSlices=128;
-            cci.numberStacks=1;
+            cci.numberStacks=32;
 
             ro_cone=CreateRenderableCone(db,material,&cci);
         }

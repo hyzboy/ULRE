@@ -119,7 +119,7 @@ public: //Get
     Pipeline *          GetPipeline             (const PipelineID           &id){return rm_pipeline.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
     Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
-    GPUBuffer *            GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
+    GPUBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
     RenderableInstance *GetRenderableInstance   (const RenderableInstanceID &id){return rm_renderable_instances.Get(id);}
