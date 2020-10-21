@@ -17,7 +17,7 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VKDatabase.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;
@@ -28,7 +28,7 @@ class VulkanApplicationFramework
 private:
 
             Window *            win             =nullptr;
-    vulkan::Instance *          inst            =nullptr;
+    vulkan::VulkanInstance *    inst            =nullptr;
 
     void OnKeyDown  (KeyboardButton kb){key_status[kb]=true;}
     void OnKeyUp    (KeyboardButton kb){key_status[kb]=false;}
@@ -46,20 +46,20 @@ protected:
 
 protected:
 
-    vulkan::RenderDevice *          device                      =nullptr;
+    vulkan::GPUDevice *          device                      =nullptr;
     vulkan::SwapchainRenderTarget * sc_render_target            =nullptr;
 
 protected:
 
             int32_t                 swap_chain_count            =0;
 
-    vulkan::CommandBuffer **        cmd_buf                     =nullptr;
+    vulkan::GPUCmdBuffer **        cmd_buf                     =nullptr;
 
             Color4f                 clear_color;
 
 protected:
 
-    vulkan::Database *              db                          =nullptr;
+    vulkan::RenderResource *              db                          =nullptr;
 
             bool                    key_status[kbRangeSize];
 
@@ -117,7 +117,7 @@ public:
         if(!device)
             return(false);
 
-        db=new vulkan::Database(device);
+        db=new vulkan::RenderResource(device);
 
         InitCommandBuffer();
 
@@ -161,7 +161,7 @@ public:
         {
             const VkExtent2D extent=sc_render_target->GetExtent();
 
-            cmd_buf=hgl_zero_new<vulkan::CommandBuffer *>(swap_chain_count);
+            cmd_buf=hgl_zero_new<vulkan::GPUCmdBuffer *>(swap_chain_count);
 
             for(int32_t i=0;i<swap_chain_count;i++)
                 cmd_buf[i]=device->CreateCommandBuffer(extent,2);
@@ -173,7 +173,7 @@ public:
         if(!rt||!ri)
             return;
 
-        vulkan::CommandBuffer *cb=rt->GetCommandBuffer();        
+        vulkan::GPUCmdBuffer *cb=rt->GetCommandBuffer();        
         const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
 
         cb->Begin();
@@ -203,7 +203,7 @@ public:
 
         const vulkan::IndexBuffer *ib=ri->GetIndexBuffer();
 
-        vulkan::CommandBuffer *cb=cmd_buf[index];
+        vulkan::GPUCmdBuffer *cb=cmd_buf[index];
 
         cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
 
@@ -237,7 +237,7 @@ public:
     {
         if(!rl)return;
 
-        vulkan::CommandBuffer *cb=cmd_buf[index];
+        vulkan::GPUCmdBuffer *cb=cmd_buf[index];
         
         cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
 

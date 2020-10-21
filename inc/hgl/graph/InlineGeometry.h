@@ -17,12 +17,12 @@ namespace hgl
             RectScope2f scope;
         };//struct RectangleCreateInfo
 
-        vulkan::Renderable *CreateRenderableRectangle(vulkan::Database *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
+        vulkan::Renderable *CreateRenderableRectangle(vulkan::RenderResource *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
 
         /**
          * 创建延迟渲染用全屏平面
          */
-        vulkan::Renderable *CreateRenderableGBufferComposition(vulkan::Database *db,vulkan::Material *mtl);
+        vulkan::Renderable *CreateRenderableGBufferComposition(vulkan::RenderResource *db,vulkan::Material *mtl);
 
         /**
          * 圆角矩形创建信息(扇形/线圈)
@@ -33,7 +33,7 @@ namespace hgl
             uint32_t round_per;     ///<圆角精度
         };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
 
-        vulkan::Renderable *CreateRenderableRoundRectangle(vulkan::Database *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci);
+        vulkan::Renderable *CreateRenderableRoundRectangle(vulkan::RenderResource *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci);
 
         /**
          * 圆形创建信息
@@ -53,7 +53,7 @@ namespace hgl
         /**
          * 创建一个2D圆形(扇形/线圈)
          */
-        vulkan::Renderable *CreateRenderableCircle(vulkan::Database *db,vulkan::Material *mtl,const CircleCreateInfo *cci);
+        vulkan::Renderable *CreateRenderableCircle(vulkan::RenderResource *db,vulkan::Material *mtl,const CircleCreateInfo *cci);
 
         /**
          * 平面网格创建信息
@@ -72,7 +72,7 @@ namespace hgl
         /**
          * 创建一个平面网格(线条)
          */
-        vulkan::Renderable *CreateRenderablePlaneGrid(vulkan::Database *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci);
+        vulkan::Renderable *CreateRenderablePlaneGrid(vulkan::RenderResource *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci);
 
         struct PlaneCreateInfo
         {
@@ -89,7 +89,7 @@ namespace hgl
         /**
          * 创建一个平面(三角形)
          */
-        vulkan::Renderable *CreateRenderablePlane(vulkan::Database *db,vulkan::Material *mtl,const PlaneCreateInfo *pci);
+        vulkan::Renderable *CreateRenderablePlane(vulkan::RenderResource *db,vulkan::Material *mtl,const PlaneCreateInfo *pci);
 
         struct CubeCreateInfo
         {
@@ -129,17 +129,17 @@ namespace hgl
         /**
          * 创建一个立方体(三角形)
          */
-        vulkan::Renderable *CreateRenderableCube(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
+        vulkan::Renderable *CreateRenderableCube(vulkan::RenderResource *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
         
         /**
          *  创建一个绑定盒(线条)
          */
-        vulkan::Renderable *CreateRenderableBoundingBox(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
+        vulkan::Renderable *CreateRenderableBoundingBox(vulkan::RenderResource *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
         
         /**
          * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
          */
-        vulkan::Renderable *CreateRenderableSphere(vulkan::Database *db,vulkan::Material *mtl,const uint numberSlices);
+        vulkan::Renderable *CreateRenderableSphere(vulkan::RenderResource *db,vulkan::Material *mtl,const uint numberSlices);
 
         struct DomeCreateInfo
         {
@@ -150,7 +150,7 @@ namespace hgl
         /**
          * 创建一个穹顶(三角形)
          */
-        vulkan::Renderable *CreateRenderableDome(vulkan::Database *db,vulkan::Material *mtl, const DomeCreateInfo *);
+        vulkan::Renderable *CreateRenderableDome(vulkan::RenderResource *db,vulkan::Material *mtl, const DomeCreateInfo *);
 
         struct TorusCreateInfo
         {
@@ -164,7 +164,7 @@ namespace hgl
         /**
          * 创建一个圆环(三角形)
          */
-        vulkan::Renderable *CreateRenderableTorus(vulkan::Database *db,vulkan::Material *mtl,const TorusCreateInfo *tci);
+        vulkan::Renderable *CreateRenderableTorus(vulkan::RenderResource *db,vulkan::Material *mtl,const TorusCreateInfo *tci);
 
         struct CylinderCreateInfo
         {
@@ -176,7 +176,7 @@ namespace hgl
         /**
          * 创建一个圆柱(三角形)
          */
-        vulkan::Renderable *CreateRenderableCylinder(vulkan::Database *db,vulkan::Material *mtl,const CylinderCreateInfo *cci);
+        vulkan::Renderable *CreateRenderableCylinder(vulkan::RenderResource *db,vulkan::Material *mtl,const CylinderCreateInfo *cci);
 
         struct ConeCreateInfo
         {
@@ -189,7 +189,7 @@ namespace hgl
         /**
          * 创建一个圆锥(三角形)
          */
-        vulkan::Renderable *CreateRenderableCone(vulkan::Database *db,vulkan::Material *mtl,const ConeCreateInfo *cci);
+        vulkan::Renderable *CreateRenderableCone(vulkan::RenderResource *db,vulkan::Material *mtl,const ConeCreateInfo *cci);
         
         struct AxisCreateInfo
         {
@@ -229,7 +229,7 @@ namespace hgl
         /**
          * 创建一个坐标线(线条)
          */
-        vulkan::Renderable *CreateRenderableAxis(vulkan::Database *db,vulkan::Material *mtl,const AxisCreateInfo *aci);
+        vulkan::Renderable *CreateRenderableAxis(vulkan::RenderResource *db,vulkan::Material *mtl,const AxisCreateInfo *aci);
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE

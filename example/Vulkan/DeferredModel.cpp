@@ -4,7 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/VKDatabase.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/VKTexture.h>
@@ -16,7 +16,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *CreateTextureFromFile(RenderDevice *device,const OSString &filename);
+Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=512;
@@ -61,7 +61,7 @@ private:
         Texture2DPointer        normal=nullptr;
     }texture;
 
-    vulkan::CommandBuffer       *gbuffer_cmd=nullptr;
+    vulkan::GPUCmdBuffer       *gbuffer_cmd=nullptr;
 
 public:
 

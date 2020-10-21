@@ -33,7 +33,7 @@ namespace hgl
          */
         class TileData                                                                                                 ///Tile纹理管理
         {
-            RenderDevice *device;
+            GPUDevice *device;
 
         protected:
 
@@ -67,7 +67,7 @@ namespace hgl
 
         public:
 
-            TileData(RenderDevice *,Texture2D *,const uint tw,const uint th);
+            TileData(GPUDevice *,Texture2D *,const uint tw,const uint th);
             virtual ~TileData();
 
             void BeginCommit();

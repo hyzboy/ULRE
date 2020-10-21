@@ -192,7 +192,7 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     return(true);
 }
 
-RenderPass *RenderDevice::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
+RenderPass *GPUDevice::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
                                         const List<VkFormat> &color_format_list,
@@ -233,7 +233,7 @@ RenderPass *RenderDevice::CreateRenderPass(   const List<VkAttachmentDescription
     return(new RenderPass(attr->device,render_pass,color_format_list,depth_format));
 }
 
-RenderPass *RenderDevice::CreateRenderPass(const List<VkFormat> &color_format_list,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+RenderPass *GPUDevice::CreateRenderPass(const List<VkFormat> &color_format_list,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
     for(const VkFormat &fmt:color_format_list)
         if(!attr->physical_device->IsColorAttachmentOptimal(fmt))
@@ -268,7 +268,7 @@ RenderPass *RenderDevice::CreateRenderPass(const List<VkFormat> &color_format_li
     return CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
 }
 
-RenderPass *RenderDevice::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+RenderPass *GPUDevice::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
 {
     List<VkFormat> color_format_list;
 

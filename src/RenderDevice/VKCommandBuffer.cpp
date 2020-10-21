@@ -10,7 +10,7 @@
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t atta_count,VkCommandPool cp,VkCommandBuffer cb)
+GPUCmdBuffer::GPUCmdBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t atta_count,VkCommandPool cp,VkCommandBuffer cb)
 {
     device=dev;
     pool=cp;
@@ -39,21 +39,21 @@ CommandBuffer::CommandBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_
     pipeline_layout=VK_NULL_HANDLE;
 }
 
-CommandBuffer::~CommandBuffer()
+GPUCmdBuffer::~GPUCmdBuffer()
 {
     delete[] clear_values;
 
     vkFreeCommandBuffers(device,pool,1,&cmd_buf);
 }
 
-void CommandBuffer::SetRenderArea(const VkExtent2D &ext2d)
+void GPUCmdBuffer::SetRenderArea(const VkExtent2D &ext2d)
 {
     render_area.offset.x=0;
     render_area.offset.y=0;
     render_area.extent=ext2d;
 }
 
-bool CommandBuffer::Begin()
+bool GPUCmdBuffer::Begin()
 {
     CommandBufferBeginInfo cmd_buf_info;
     
@@ -65,7 +65,7 @@ bool CommandBuffer::Begin()
     return(true);
 }
 
-bool CommandBuffer::BindFramebuffer(VkRenderPass rp,VkFramebuffer fb)
+bool GPUCmdBuffer::BindFramebuffer(VkRenderPass rp,VkFramebuffer fb)
 {
     RenderPassBeginInfo rp_begin;
 
@@ -93,19 +93,19 @@ bool CommandBuffer::BindFramebuffer(VkRenderPass rp,VkFramebuffer fb)
     return(true);
 }
 
-bool CommandBuffer::BindFramebuffer(Framebuffer *fbo)
+bool GPUCmdBuffer::BindFramebuffer(Framebuffer *fbo)
 {
     return BindFramebuffer(fbo->GetRenderPass(),fbo->GetFramebuffer());
 }
 
-bool CommandBuffer::BindFramebuffer(RenderTarget *rt)
+bool GPUCmdBuffer::BindFramebuffer(RenderTarget *rt)
 {
     if(!rt)return(false);
 
     return BindFramebuffer(rt->GetRenderPass(),rt->GetFramebuffer());
 }
 
-bool CommandBuffer::BindVAB(RenderableInstance *ri)
+bool GPUCmdBuffer::BindVAB(RenderableInstance *ri)
 {
     if(!ri)
         return(false);

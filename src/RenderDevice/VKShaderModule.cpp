@@ -3,7 +3,7 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-ShaderModule *RenderDevice::CreateShaderModule(ShaderResource *sr)
+ShaderModule *GPUDevice::CreateShaderModule(ShaderResource *sr)
 {
     if(!sr)return(nullptr);
 

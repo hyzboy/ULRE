@@ -11,7 +11,7 @@ namespace hgl
          */
         class TextRenderable:public vulkan::Renderable
         {
-            vulkan::RenderDevice *    device;
+            vulkan::GPUDevice *    device;
             vulkan::Material *  mtl;
 
                     uint        max_count;                                      ///<缓冲区最大容量
@@ -21,7 +21,7 @@ namespace hgl
 
         public:
 
-            TextRenderable(vulkan::RenderDevice *,vulkan::Material *,uint mc=1024);
+            TextRenderable(vulkan::GPUDevice *,vulkan::Material *,uint mc=1024);
             virtual ~TextRenderable();
 
         public:

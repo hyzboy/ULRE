@@ -18,7 +18,7 @@ class RenderPass
 
 private:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
 
     RenderPass(VkDevice d,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
     {

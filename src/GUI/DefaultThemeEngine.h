@@ -29,7 +29,7 @@ namespace hgl
 
             public:
 
-                DefaultThemeEngine(vulkan::RenderDevice *dev):ThemeEngine(dev){}
+                DefaultThemeEngine(vulkan::GPUDevice *dev):ThemeEngine(dev){}
                 virtual ~DefaultThemeEngine() override;
 
                 bool Init() override;

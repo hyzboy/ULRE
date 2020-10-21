@@ -10,7 +10,7 @@ class GPUSemaphore
 
 private:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
 
     GPUSemaphore(VkDevice d,VkSemaphore s)
     {

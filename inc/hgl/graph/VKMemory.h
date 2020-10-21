@@ -13,7 +13,7 @@ class GPUMemory
 
 private:
 
-    friend class RenderDevice;
+    friend class GPUDevice;
 
     GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p)
     {

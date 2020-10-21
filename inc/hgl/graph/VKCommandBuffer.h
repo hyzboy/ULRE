@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 //push constant 一般只有128/256字节，仅能存在矩阵。
 //所以我们将每个对象的独立变换矩阵存在push constant中
-class CommandBuffer
+class GPUCmdBuffer
 {
     VkDevice device;
     VkCommandPool pool;
@@ -24,8 +24,8 @@ class CommandBuffer
 
 public:
 
-    CommandBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t att_count,VkCommandPool cp,VkCommandBuffer cb);
-    ~CommandBuffer();
+    GPUCmdBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t att_count,VkCommandPool cp,VkCommandBuffer cb);
+    ~GPUCmdBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
     operator const VkCommandBuffer()const{return cmd_buf;}
@@ -122,6 +122,6 @@ public: //draw
 
     void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
     bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
-};//class CommandBuffer
+};//class GPUCmdBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE

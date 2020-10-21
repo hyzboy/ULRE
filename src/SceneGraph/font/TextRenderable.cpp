@@ -6,7 +6,7 @@ namespace hgl
 {
     namespace graph
     {
-        TextRenderable::TextRenderable(vulkan::RenderDevice *dev,vulkan::Material *m,uint mc):vulkan::Renderable(mc)
+        TextRenderable::TextRenderable(vulkan::GPUDevice *dev,vulkan::Material *m,uint mc):vulkan::Renderable(mc)
         {
             device=dev;
             mtl=m;

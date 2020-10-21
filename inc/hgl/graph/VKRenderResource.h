@@ -29,9 +29,9 @@ class VertexAttribData;
 /**
  * 资源管理，用于管理场景内所需的所有数据
  */
-class Database
+class RenderResource
 {
-    RenderDevice *device;
+    GPUDevice *device;
     
     MapObject<OSString,ShaderModule> shader_module_by_name;
     Map<OSString,Material *> material_by_name;
@@ -41,15 +41,15 @@ class Database
     IDResManage<PipelineID,             Pipeline>           rm_pipeline;                ///<管线合集
     IDResManage<DescriptorSetsID,       DescriptorSets>     rm_desc_sets;               ///<描述符合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<可渲染对象合集
-    IDResManage<BufferID,               GPUBuffer>             rm_buffers;                 ///<顶点缓冲区合集
+    IDResManage<BufferID,               GPUBuffer>          rm_buffers;                 ///<顶点缓冲区合集
     IDResManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableInstanceID,   RenderableInstance> rm_renderable_instances;    ///<渲染实例集合集
 
 public:
 
-    Database(RenderDevice *dev):device(dev){}
-    virtual ~Database()=default;
+    RenderResource(GPUDevice *dev):device(dev){}
+    virtual ~RenderResource()=default;
 
 public: //Add
 
@@ -123,6 +123,6 @@ public: //Get
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
     RenderableInstance *GetRenderableInstance   (const RenderableInstanceID &id){return rm_renderable_instances.Get(id);}
-};//class Database
+};//class RenderResource
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DATABASE_INCLUDE

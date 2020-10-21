@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        TileData::TileData(RenderDevice *dev,Texture2D *tt,const uint tw,const uint th)
+        TileData::TileData(GPUDevice *dev,Texture2D *tt,const uint tw,const uint th)
         {
             device=dev;
 

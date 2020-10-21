@@ -2,7 +2,7 @@
 #include<hgl/graph/VKImageCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
-VkImage RenderDevice::CreateImage(VkImageCreateInfo *ici)
+VkImage GPUDevice::CreateImage(VkImageCreateInfo *ici)
 {
     if(!ici)return(VK_NULL_HANDLE);
     if(!CheckVulkanFormat(ici->format))return(VK_NULL_HANDLE);
@@ -16,14 +16,14 @@ VkImage RenderDevice::CreateImage(VkImageCreateInfo *ici)
     return image;
 }
 
-void RenderDevice::DestoryImage(VkImage img)
+void GPUDevice::DestoryImage(VkImage img)
 {
     if(img==VK_NULL_HANDLE)return;
 
     vkDestroyImage(attr->device,img,nullptr);
 }
 
-GPUMemory *RenderDevice::CreateMemory(VkImage image,const uint32_t flag)
+GPUMemory *GPUDevice::CreateMemory(VkImage image,const uint32_t flag)
 {
     VkMemoryRequirements memReqs;
 

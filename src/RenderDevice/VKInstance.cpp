@@ -5,11 +5,11 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-RenderDevice *CreateRenderDevice(VkInstance,const PhysicalRenderDevice *,Window *);
+GPUDevice *CreateRenderDevice(VkInstance,const GPUPhysicalDevice *,Window *);
 
 void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
 
-Instance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
+VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
 {
     ApplicationInfo app_info;
     InstanceCreateInfo inst_info(&app_info);
@@ -50,13 +50,13 @@ Instance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstan
         if(out)
             out->Init(inst);
 
-        return(new Instance(inst,out));
+        return(new VulkanInstance(inst,out));
     }
 
     return(nullptr);
 }
 
-Instance::Instance(VkInstance i,VKDebugOut *out)
+VulkanInstance::VulkanInstance(VkInstance i,VKDebugOut *out)
 {
     inst=i;
 
@@ -70,13 +70,13 @@ Instance::Instance(VkInstance i,VKDebugOut *out)
         vkEnumeratePhysicalDevices(inst, &gpu_count,pd_list);
 
         for(uint32_t i=0;i<gpu_count;i++)
-            physical_devices.Add(new PhysicalRenderDevice(inst,pd_list[i]));
+            physical_devices.Add(new GPUPhysicalDevice(inst,pd_list[i]));
 
         delete[] pd_list;
     }
 }
 
-Instance::~Instance()
+VulkanInstance::~VulkanInstance()
 {
     SAFE_CLEAR(debug_out);
     
@@ -84,10 +84,10 @@ Instance::~Instance()
     vkDestroyInstance(inst,nullptr);
 }
 
-const PhysicalRenderDevice *Instance::GetDevice(VkPhysicalDeviceType type)const
+const GPUPhysicalDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
 {
     const uint32_t count=physical_devices.GetCount();
-    PhysicalRenderDevice **pd=physical_devices.GetData();
+    GPUPhysicalDevice **pd=physical_devices.GetData();
 
     for(uint32_t i=0;i<count;i++)
     {
