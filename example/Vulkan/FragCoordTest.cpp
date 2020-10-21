@@ -28,7 +28,7 @@ private:
 
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::RenderableInstance *renderable_instance =nullptr;
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
+    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 

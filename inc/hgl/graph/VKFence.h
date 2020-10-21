@@ -3,16 +3,16 @@
 
 #include<hgl/graph/VK.h>
 VK_NAMESPACE_BEGIN
-class Fence
+class GPUFence
 {
     VkDevice device;
     VkFence fence;
 
 private:
 
-    friend class Device;
+    friend class RenderDevice;
 
-    Fence(VkDevice d,VkFence f)
+    GPUFence(VkDevice d,VkFence f)
     {
         device=d;
         fence=f;
@@ -20,9 +20,9 @@ private:
 
 public:
 
-    ~Fence();
+    ~GPUFence();
 
     operator VkFence(){return fence;}
-};//class Fence
+};//class GPUFence
 VK_NAMESPACE_END
 #endif//HGL_VULKAN_GRAPH_FENCE_INCLUDE

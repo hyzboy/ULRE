@@ -7,11 +7,11 @@ VK_NAMESPACE_BEGIN
 struct BufferData
 {
     VkBuffer                buffer;
-    Memory *                memory=nullptr;
+    GPUMemory *           memory=nullptr;
     VkDescriptorBufferInfo  info;
 };//struct BufferData
 
-class Buffer
+class GPUBuffer
 {
 protected:
 
@@ -20,11 +20,11 @@ protected:
 
 private:
 
-    friend class Device;
+    friend class RenderDevice;
     friend class VertexAttribBuffer;
     friend class IndexBuffer;
 
-    Buffer(VkDevice d,const BufferData &b)
+    GPUBuffer(VkDevice d,const BufferData &b)
     {
         device=d;
         buf=b;
@@ -32,10 +32,10 @@ private:
 
 public:
 
-    virtual ~Buffer();
+    virtual ~GPUBuffer();
 
             VkBuffer                   GetBuffer    (){return buf.buffer;}
-            Memory *                   GetMemory    (){return buf.memory;}
+            GPUMemory *                GetMemory    (){return buf.memory;}
     const   VkDescriptorBufferInfo *   GetBufferInfo()const{return &buf.info;}
 
             void *  Map     ()                                              {return buf.memory->Map();}
@@ -45,9 +45,9 @@ public:
             bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
             bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
             bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
-};//class Buffer
+};//class GPUBuffer
 
-class VertexAttribBuffer:public Buffer
+class VertexAttribBuffer:public GPUBuffer
 {
     VkFormat format;                    ///<数据格式
     uint32_t stride;                    ///<单个数据字节数
@@ -55,9 +55,9 @@ class VertexAttribBuffer:public Buffer
 
 private:
 
-    friend class Device;
+    friend class RenderDevice;
 
-    VertexAttribBuffer(VkDevice d,const BufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):Buffer(d,vb)
+    VertexAttribBuffer(VkDevice d,const BufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):GPUBuffer(d,vb)
     {
         format=fmt;
         stride=_stride;
@@ -74,22 +74,22 @@ public:
 
     void *Map(VkDeviceSize start=0,VkDeviceSize size=0) override
     {
-        return Buffer::Map(start*stride,size*stride);
+        return GPUBuffer::Map(start*stride,size*stride);
     }
-};//class VertexAttribBuffer:public Buffer
+};//class VertexAttribBuffer:public GPUBuffer
 
 using VAB=VertexAttribBuffer;
 
-class IndexBuffer:public Buffer
+class IndexBuffer:public GPUBuffer
 {
     IndexType index_type;
     uint32_t count;
 
 private:
 
-    friend class Device;
+    friend class RenderDevice;
 
-    IndexBuffer(VkDevice d,const BufferData &vb,IndexType it,uint32_t _count):Buffer(d,vb)
+    IndexBuffer(VkDevice d,const BufferData &vb,IndexType it,uint32_t _count):GPUBuffer(d,vb)
     {
         index_type=it;
         count=_count;
@@ -101,6 +101,6 @@ public:
 
     const IndexType GetType ()const{return index_type;}
     const uint32    GetCount()const{return count;}
-};//class IndexBuffer:public Buffer
+};//class IndexBuffer:public GPUBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_BUFFER_INCLUDE

@@ -1,14 +1,14 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget *Device::CreateRenderTarget(Framebuffer *fb,const uint32_t fence_count)
+RenderTarget *RenderDevice::CreateRenderTarget(Framebuffer *fb,const uint32_t fence_count)
 {
     CommandBuffer *cb=CreateCommandBuffer(fb->GetExtent(),fb->GetAttachmentCount());
 
     return(new RenderTarget(this,fb,cb,fence_count));
 }
 
-RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
+RenderTarget *RenderDevice::CreateRenderTarget(   const uint w,const uint h,
                                             const List<VkFormat> &color_format_list,
                                             const VkFormat depth_format,
                                             const VkImageLayout color_layout,
@@ -65,7 +65,7 @@ RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
     return nullptr;
 }
 
-RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
+RenderTarget *RenderDevice::CreateRenderTarget(   const uint w,const uint h,
                                             const VkFormat color_format,
                                             const VkFormat depth_format,
                                             const VkImageLayout color_layout,
@@ -81,7 +81,7 @@ RenderTarget *Device::CreateRenderTarget(   const uint w,const uint h,
     return CreateRenderTarget(w,h,color_format_list,depth_format,color_layout,depth_layout,fence_count);
 }
 
-RenderTarget *Device::CreateRenderTarget(const uint w,const uint h,const VkFormat format,const VkImageLayout final_layout,const uint32_t fence_count)
+RenderTarget *RenderDevice::CreateRenderTarget(const uint w,const uint h,const VkFormat format,const VkImageLayout final_layout,const uint32_t fence_count)
 {
     if(w<=0||h<=0)return(nullptr);
 

@@ -46,7 +46,7 @@ protected:
 
 protected:
 
-    vulkan::Device *                device                      =nullptr;
+    vulkan::RenderDevice *          device                      =nullptr;
     vulkan::SwapchainRenderTarget * sc_render_target            =nullptr;
 
 protected:
@@ -332,7 +332,7 @@ class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
 
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
+    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
 
 protected:
 
@@ -375,7 +375,7 @@ public:
         camera.height=h;
     }
 
-    vulkan::Buffer *GetCameraMatrixBuffer()
+    vulkan::GPUBuffer *GetCameraMatrixBuffer()
     {
         return ubo_world_matrix;
     }

@@ -35,8 +35,8 @@ private:
                                 *ro_circle          =nullptr,
                                 *ro_round_rectangle =nullptr;
 
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
-    vulkan::Buffer *            ubo_color_material  =nullptr;
+    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    vulkan::GPUBuffer *            ubo_color_material  =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
@@ -92,9 +92,9 @@ private:
         }
     }
 
-    vulkan::Buffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
+    vulkan::GPUBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
     {
-        vulkan::Buffer *ubo=db->CreateUBO(size,data);
+        vulkan::GPUBuffer *ubo=db->CreateUBO(size,data);
 
         if(!ubo)
             return(nullptr);

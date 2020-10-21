@@ -16,7 +16,7 @@ class Framebuffer
 
 private:
 
-    friend class Device;
+    friend class RenderDevice;
 
     Framebuffer(VkDevice,VkFramebuffer,const VkExtent2D &,VkRenderPass,uint32_t color_count,bool depth);
 

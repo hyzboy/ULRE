@@ -90,16 +90,16 @@ namespace
     {
     protected:
 
-        Device *device;
+        RenderDevice *device;
 
         VkFormat format;
-        vulkan::Buffer *buf;
+        vulkan::GPUBuffer *buf;
 
         Texture2D *tex;
 
     public:
 
-        VkTexture2DLoader(Device *dev):device(dev)
+        VkTexture2DLoader(RenderDevice *dev):device(dev)
         {
             buf=nullptr;
             format=VK_FORMAT_UNDEFINED;
@@ -169,7 +169,7 @@ namespace
     };//class VkTexture2DLoader
 }//namespace
 
-Texture2D *CreateTextureFromFile(Device *device,const OSString &filename)
+Texture2D *CreateTextureFromFile(RenderDevice *device,const OSString &filename)
 {
     VkTexture2DLoader loader(device);
 

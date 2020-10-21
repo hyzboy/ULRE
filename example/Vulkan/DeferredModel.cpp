@@ -16,7 +16,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
+Texture2D *CreateTextureFromFile(RenderDevice *device,const OSString &filename);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=512;

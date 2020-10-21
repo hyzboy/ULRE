@@ -4,7 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
 VK_NAMESPACE_BEGIN
-class Buffer;
+class GPUBuffer;
 
 class DescriptorSets
 {
@@ -39,8 +39,8 @@ public:
     const VkPipelineLayout          GetPipelineLayout   ()const{return pipeline_layout;}
 
     void Clear();
-    bool BindUBO(const int binding,const Buffer *);
-    bool BindUBODynamic(const int binding,const Buffer *);
+    bool BindUBO(const int binding,const GPUBuffer *);
+    bool BindUBODynamic(const int binding,const GPUBuffer *);
     bool BindSampler(const int binding,Texture *,Sampler *);
     void Update();
 };//class DescriptorSets

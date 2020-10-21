@@ -15,7 +15,7 @@ namespace
         return swapchain_extent;
     }
 
-    VkSwapchainKHR CreateSwapChain(const DeviceAttribute *dev_attr,const VkExtent2D &extent)
+    VkSwapchainKHR CreateSwapChain(const RenderDeviceAttribute *dev_attr,const VkExtent2D &extent)
     {
         VkSwapchainCreateInfoKHR swapchain_ci;
 
@@ -68,7 +68,7 @@ namespace
     }
 }//namespace
 
-bool Device::CreateSwapchainColorTexture()
+bool RenderDevice::CreateSwapchainColorTexture()
 {
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->swap_chain_count),nullptr)!=VK_SUCCESS)
         return(false);
@@ -98,7 +98,7 @@ bool Device::CreateSwapchainColorTexture()
     return(true);
 }
 
-bool Device::CreateSwapchainDepthTexture()
+bool RenderDevice::CreateSwapchainDepthTexture()
 {
     const VkFormat depth_format=attr->physical_device->GetDepthFormat();
 
@@ -115,7 +115,7 @@ bool Device::CreateSwapchainDepthTexture()
     return swapchain->sc_depth;
 }
 
-bool Device::CreateSwapchain(const VkExtent2D &acquire_extent)
+bool RenderDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
 {
     swapchain=new Swapchain;
 

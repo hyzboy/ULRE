@@ -10,20 +10,20 @@ namespace hgl
     {
         namespace vulkan
         {
-            class Device;
+            class RenderDevice;
         }//namespace vulkan
 
         class ThemeEngine
         {
         protected:
 
-            vulkan::Device *device;
+            vulkan::RenderDevice *device;
 
             MapObject<Form *,ThemeForm> form_list;
 
         public:
 
-            ThemeEngine(vulkan::Device *dev){device=dev;}
+            ThemeEngine(vulkan::RenderDevice *dev){device=dev;}
             virtual ~ThemeEngine()=default;
 
             virtual bool Init()=0;

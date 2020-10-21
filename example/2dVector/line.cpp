@@ -37,9 +37,9 @@ private:
 
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::RenderableInstance *render_instance     =nullptr;
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
-    vulkan::Buffer *            ubo_color_material  =nullptr;
-    vulkan::Buffer *            ubo_line_config     =nullptr;
+    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    vulkan::GPUBuffer *            ubo_color_material  =nullptr;
+    vulkan::GPUBuffer *            ubo_line_config     =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 
@@ -61,9 +61,9 @@ private:
         return(true);
     }
 
-    vulkan::Buffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
+    vulkan::GPUBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
     {
-        vulkan::Buffer *ubo=db->CreateUBO(size,data);
+        vulkan::GPUBuffer *ubo=db->CreateUBO(size,data);
 
         if(!ubo)
             return(nullptr);

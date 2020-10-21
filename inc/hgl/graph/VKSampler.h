@@ -12,7 +12,7 @@ class Sampler
 
 protected:
 
-    friend class Device;
+    friend class RenderDevice;
 
     Sampler(VkDevice dev,VkSampler s)
     {

@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-Buffer::~Buffer()
+GPUBuffer::~GPUBuffer()
 {
     if(buf.memory)delete buf.memory;
     vkDestroyBuffer(device,buf.buffer,nullptr);

@@ -33,7 +33,7 @@ namespace hgl
          */
         class TileData                                                                                                 ///Tile纹理管理
         {
-            Device *device;
+            RenderDevice *device;
 
         protected:
 
@@ -48,7 +48,7 @@ namespace hgl
 
         protected:
 
-            vulkan::Buffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
+            vulkan::GPUBuffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
 
             List<ImageRegion> commit_list;
             uint8 *commit_ptr;
@@ -67,7 +67,7 @@ namespace hgl
 
         public:
 
-            TileData(Device *,Texture2D *,const uint tw,const uint th);
+            TileData(RenderDevice *,Texture2D *,const uint tw,const uint th);
             virtual ~TileData();
 
             void BeginCommit();

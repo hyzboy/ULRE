@@ -28,8 +28,8 @@ private:
 
     vulkan::Sampler *           sampler             =nullptr;
     vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
-    vulkan::Buffer *            ubo_color           =nullptr;
+    vulkan::GPUBuffer *            ubo_world_matrix    =nullptr;
+    vulkan::GPUBuffer *            ubo_color           =nullptr;
 
     vulkan::Pipeline *          pipeline            =nullptr;
 

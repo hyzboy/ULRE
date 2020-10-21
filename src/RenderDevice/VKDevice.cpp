@@ -11,7 +11,7 @@
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-Device::Device(DeviceAttribute *da)
+RenderDevice::RenderDevice(RenderDeviceAttribute *da)
 {
     attr=da;
 
@@ -23,7 +23,7 @@ Device::Device(DeviceAttribute *da)
     Resize(attr->surface_caps.currentExtent);
 }
 
-Device::~Device()
+RenderDevice::~RenderDevice()
 {
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
@@ -34,7 +34,7 @@ Device::~Device()
     delete attr;
 }
 
-bool Device::Resize(const VkExtent2D &extent)
+bool RenderDevice::Resize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
@@ -55,7 +55,7 @@ bool Device::Resize(const VkExtent2D &extent)
     return(true);
 }
 
-CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count)
+CommandBuffer *RenderDevice::CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count)
 {
     if(!attr->cmd_pool)
         return(nullptr);
@@ -80,7 +80,7 @@ CommandBuffer *Device::CreateCommandBuffer(const VkExtent2D &extent,const uint32
  * 创建栅栏
  * @param create_signaled 是否创建初始信号
  */
-Fence *Device::CreateFence(bool create_signaled)
+GPUFence *RenderDevice::CreateFence(bool create_signaled)
 {
     FenceCreateInfo fenceInfo(create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0);
 
@@ -89,10 +89,10 @@ Fence *Device::CreateFence(bool create_signaled)
     if(vkCreateFence(attr->device, &fenceInfo, nullptr, &fence)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new Fence(attr->device,fence));
+    return(new GPUFence(attr->device,fence));
 }
 
-vulkan::GPUSemaphore *Device::CreateSemaphore()
+vulkan::GPUSemaphore *RenderDevice::CreateSemaphore()
 {
     SemaphoreCreateInfo SemaphoreCreateInfo;
 

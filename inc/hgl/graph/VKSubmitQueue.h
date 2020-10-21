@@ -8,17 +8,17 @@ class SubmitQueue
 {
 protected:
 
-    Device *device;
+    RenderDevice *device;
     VkQueue queue;
     
     uint32_t current_fence;
-    ObjectList<Fence> fence_list;
+    ObjectList<GPUFence> fence_list;
 
     SubmitInfo submit_info;
 
 public:
 
-    SubmitQueue(Device *dev,VkQueue q,const uint32_t fence_count=1);
+    SubmitQueue(RenderDevice *dev,VkQueue q,const uint32_t fence_count=1);
     virtual ~SubmitQueue();
     
     bool WaitQueue();

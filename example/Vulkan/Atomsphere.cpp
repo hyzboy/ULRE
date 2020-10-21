@@ -40,7 +40,7 @@ private:
     vulkan::MaterialInstance *  material_instance   =nullptr;
     vulkan::Pipeline *          pipeline_solid      =nullptr;
     
-    vulkan::Buffer *            ubo_atomsphere      =nullptr;
+    vulkan::GPUBuffer *            ubo_atomsphere      =nullptr;
     AtmosphereData              atomsphere_data;
 
     vulkan::Renderable *        ro_sphere           =nullptr;

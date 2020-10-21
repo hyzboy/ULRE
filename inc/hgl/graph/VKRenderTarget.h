@@ -30,10 +30,10 @@ protected:
 
 protected:
 
-    friend class Device;
+    friend class RenderDevice;
 
-    RenderTarget(Device *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count=1);
-    RenderTarget(Device *dev,RenderPass *_rp,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
+    RenderTarget(RenderDevice *dev,Framebuffer *_fb,CommandBuffer *_cb,const uint32_t fence_count=1);
+    RenderTarget(RenderDevice *dev,RenderPass *_rp,Framebuffer *_fb,CommandBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
 
 public:
 
@@ -72,7 +72,7 @@ class SwapchainRenderTarget:public RenderTarget
 
 public:
 
-    SwapchainRenderTarget(Device *dev,Swapchain *sc);
+    SwapchainRenderTarget(RenderDevice *dev,Swapchain *sc);
     ~SwapchainRenderTarget();
 
             const   VkRenderPass    GetRenderPass   ()const override        {return *main_rp;}

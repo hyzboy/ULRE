@@ -4,7 +4,7 @@ namespace hgl
 {
     namespace gui
     {
-        ThemeEngine *CreateDefaultThemeEngine(vulkan::Device *dev)
+        ThemeEngine *CreateDefaultThemeEngine(vulkan::RenderDevice *dev)
         {
             return(new default_theme::DefaultThemeEngine(dev));
         }

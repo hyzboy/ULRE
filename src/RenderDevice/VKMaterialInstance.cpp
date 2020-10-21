@@ -15,7 +15,7 @@ MaterialInstance::~MaterialInstance()
     delete descriptor_sets;
 }
 
-bool MaterialInstance::BindUBO(const AnsiString &name,vulkan::Buffer *ubo)
+bool MaterialInstance::BindUBO(const AnsiString &name,vulkan::GPUBuffer *ubo)
 {
     if(name.IsEmpty()||!ubo)
         return(false);

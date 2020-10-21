@@ -26,9 +26,9 @@ namespace hgl
 }//namespace hgl
 
 VK_NAMESPACE_BEGIN
-class Device
+class RenderDevice
 {
-    DeviceAttribute *attr;
+    RenderDeviceAttribute *attr;
 
     SubmitQueue *textureSQ;
     CommandBuffer *texture_cmd_buf;
@@ -43,20 +43,20 @@ class Device
 
 private:
 
-    friend Device *CreateRenderDevice(VkInstance inst,const PhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
+    friend RenderDevice *CreateRenderDevice(VkInstance inst,const PhysicalRenderDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
 
-    Device(DeviceAttribute *da);
+    RenderDevice(RenderDeviceAttribute *da);
 
 public:
 
-    virtual ~Device();
+    virtual ~RenderDevice();
 
     operator    VkDevice                                ()      {return attr->device;}
-                DeviceAttribute *   GetDeviceAttribute  ()      {return attr;}
+                RenderDeviceAttribute *   GetRenderDeviceAttribute  ()      {return attr;}
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}
-    const       PhysicalDevice *    GetPhysicalDevice   ()const {return attr->physical_device;}
+    const       PhysicalRenderDevice *    GetPhysicalRenderDevice   ()const {return attr->physical_device;}
 
                 VkDescriptorPool    GetDescriptorPool   ()      {return attr->desc_pool;}
                 VkPipelineCache     GetPipelineCache    ()      {return attr->pipeline_cache;}
@@ -82,8 +82,8 @@ public:
 
 public: //内存相关
 
-    Memory *CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
-    Memory *CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    GPUMemory *CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
+    GPUMemory *CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 private: //Buffer相关
 
@@ -91,8 +91,8 @@ private: //Buffer相关
 
 public: //Buffer相关
 
-    Buffer *        CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
-    Buffer *        CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
+    GPUBuffer *   CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
+    GPUBuffer *   CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
 
     VAB *           CreateVAB   (VkFormat format,uint32_t count,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
     VAB *           CreateVAB   (VkFormat format,uint32_t count,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sharing_mode);}
@@ -106,8 +106,8 @@ public: //Buffer相关
     IndexBuffer *   CreateIBO16 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sharing_mode);}
     IndexBuffer *   CreateIBO32 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sharing_mode);}
 
-#define CREATE_BUFFER_OBJECT(LargeName,type)    Buffer *Create##LargeName(VkDeviceSize size,void *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,sharing_mode);}  \
-                                                Buffer *Create##LargeName(VkDeviceSize size,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,sharing_mode);}
+#define CREATE_BUFFER_OBJECT(LargeName,type)    GPUBuffer *Create##LargeName(VkDeviceSize size,void *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,sharing_mode);}  \
+                                                GPUBuffer *Create##LargeName(VkDeviceSize size,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,sharing_mode);}
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)
     CREATE_BUFFER_OBJECT(SSBO,STORAGE)
@@ -131,7 +131,7 @@ public: //Texture
 
     void Clear(TextureCreateInfo *);
 
-    Texture2D *CreateTexture2D(Memory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,ImageTiling tiling);
+    Texture2D *CreateTexture2D(GPUMemory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,ImageTiling tiling);
     Texture2D *CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,VkImage image,VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
 
     Texture2D *CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
@@ -183,7 +183,7 @@ public: //Texture
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
 
-    Texture2D *CreateTexture2D( const VkFormat video_format,Buffer *buf,uint32_t width,uint32_t height,
+    Texture2D *CreateTexture2D( const VkFormat video_format,GPUBuffer *buf,uint32_t width,uint32_t height,
                                 const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
                                 const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
                                 const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -195,14 +195,14 @@ public: //Texture
                                 const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                 const ImageTiling           tiling      =ImageTiling::Optimal);
 
-    bool ChangeTexture2D(Texture2D *,Buffer *buf,const VkBufferImageCopy *,const int count);
-    bool ChangeTexture2D(Texture2D *,Buffer *buf,const List<ImageRegion> &);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<ImageRegion> &);
 
-    bool ChangeTexture2D(Texture2D *,Buffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height);
     bool ChangeTexture2D(Texture2D *,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size);
 
     template<typename T>
-    bool ChangeTexture2D(Texture2D *tex,Buffer *buf,const RectScope2<T> &rs)
+    bool ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const RectScope2<T> &rs)
     {
         return ChangeTexture2D( tex,
                                 buf,
@@ -238,7 +238,7 @@ public: //shader & material
     Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module);
     Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module);
 
-public: //Command Buffer 相关
+public: //Command GPUBuffer 相关
 
     CommandBuffer * CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count);
     
@@ -260,7 +260,7 @@ public: //Command Buffer 相关
                                         const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                         const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    Fence *             CreateFence(bool);
+    GPUFence *             CreateFence(bool);
     vulkan::GPUSemaphore * CreateSemaphore();
 
 public: //FrameBuffer相关
@@ -312,7 +312,7 @@ public:
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体
-};//class Device
+};//class RenderDevice
 
 //void CreateSubpassDependency(VkSubpassDependency *);
 void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count);
@@ -333,6 +333,6 @@ bool CreateAttachmentDescription(      List<VkAttachmentDescription> &color_outp
                             const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                             const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-Device *CreateRenderDevice(Instance *inst,Window *win,const PhysicalDevice *physical_device=nullptr);
+RenderDevice *CreateRenderDevice(Instance *inst,Window *win,const PhysicalRenderDevice *physical_device=nullptr);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE

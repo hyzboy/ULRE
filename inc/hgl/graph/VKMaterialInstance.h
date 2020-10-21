@@ -25,7 +25,7 @@ public:
 
     ~MaterialInstance();
 
-    bool BindUBO(const AnsiString &name,vulkan::Buffer *ubo);
+    bool BindUBO(const AnsiString &name,vulkan::GPUBuffer *ubo);
     bool BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
     
     void Update();

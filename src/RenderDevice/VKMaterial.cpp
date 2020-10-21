@@ -7,7 +7,7 @@
 #include<hgl/graph/VKBuffer.h>
 #include"VKDescriptorSetLayoutCreater.h"
 VK_NAMESPACE_BEGIN
-Material *Device::CreateMaterial(ShaderModuleMap *shader_maps)
+Material *RenderDevice::CreateMaterial(ShaderModuleMap *shader_maps)
 {
     const int shader_count=shader_maps->GetCount();
 
@@ -49,7 +49,7 @@ Material *Device::CreateMaterial(ShaderModuleMap *shader_maps)
     return(new Material(shader_maps,shader_stage_list,dsl_creater));
 }
 
-Material *Device::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
+Material *RenderDevice::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
 {
     if(!vertex_shader_module||!fragment_shader_module)
         return(nullptr);
@@ -65,7 +65,7 @@ Material *Device::CreateMaterial(const VertexShaderModule *vertex_shader_module,
     return CreateMaterial(smm);
 }
 
-Material *Device::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
+Material *RenderDevice::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
 {
     if(!vertex_shader_module
      ||!geometry_shader_module

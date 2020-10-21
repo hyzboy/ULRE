@@ -31,7 +31,7 @@ class VertexAttribData;
  */
 class Database
 {
-    Device *device;
+    RenderDevice *device;
     
     MapObject<OSString,ShaderModule> shader_module_by_name;
     Map<OSString,Material *> material_by_name;
@@ -41,14 +41,14 @@ class Database
     IDResManage<PipelineID,             Pipeline>           rm_pipeline;                ///<管线合集
     IDResManage<DescriptorSetsID,       DescriptorSets>     rm_desc_sets;               ///<描述符合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<可渲染对象合集
-    IDResManage<BufferID,               Buffer>             rm_buffers;                 ///<顶点缓冲区合集
+    IDResManage<BufferID,               GPUBuffer>             rm_buffers;                 ///<顶点缓冲区合集
     IDResManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableInstanceID,   RenderableInstance> rm_renderable_instances;    ///<渲染实例集合集
 
 public:
 
-    Database(Device *dev):device(dev){}
+    Database(RenderDevice *dev):device(dev){}
     virtual ~Database()=default;
 
 public: //Add
@@ -58,7 +58,7 @@ public: //Add
     PipelineID              Add(Pipeline *          p   ){return rm_pipeline.Add(p);}
     DescriptorSetsID        Add(DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
-    BufferID                Add(Buffer *            buf ){return rm_buffers.Add(buf);}
+    BufferID                Add(GPUBuffer *            buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableInstanceID    Add(RenderableInstance *ri  ){return rm_renderable_instances.Add(ri);}
@@ -69,8 +69,8 @@ public: // VBO/VAO
     VAB *CreateVAB(VkFormat format,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sm);}
     VAB *CreateVAB(const VAD *vad,SharingMode sm=SharingMode::Exclusive){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sm);}
 
-    #define SCENE_DB_CREATE_FUNC(name)  Buffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
-                                        Buffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive);
+    #define SCENE_DB_CREATE_FUNC(name)  GPUBuffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
+                                        GPUBuffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive);
 
             SCENE_DB_CREATE_FUNC(UBO)
             SCENE_DB_CREATE_FUNC(SSBO)
@@ -119,7 +119,7 @@ public: //Get
     Pipeline *          GetPipeline             (const PipelineID           &id){return rm_pipeline.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
     Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
-    Buffer *            GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
+    GPUBuffer *            GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
     RenderableInstance *GetRenderableInstance   (const RenderableInstanceID &id){return rm_renderable_instances.Get(id);}
