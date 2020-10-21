@@ -37,7 +37,6 @@ SET(ULRE    CMCore
             ULRE.VulkanRender
             ULRE.SceneGraph
             MathGeoLib
-            ${JSONCPP_LIBRARY}
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
