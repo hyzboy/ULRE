@@ -6,6 +6,7 @@
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKTexture.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;
@@ -13,6 +14,10 @@ using namespace hgl::graph;
 
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
+
+VK_NAMESPACE_BEGIN
+Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename);
+VK_NAMESPACE_END
 
 struct PhongLight
 {
@@ -52,6 +57,13 @@ private:
     GPUBuffer *         ubo_light           =nullptr;
     GPUBuffer *         ubo_phong           =nullptr;
 
+    struct
+    {
+        Sampler *       sampler             =nullptr;
+        Texture2D *     color               =nullptr;
+        Texture2D *     normal              =nullptr;
+    }texture;
+
     Renderable          *ro_axis,
                         *ro_cube,
                         *ro_sphere,
@@ -66,28 +78,42 @@ private:
         light.color.Set(1,1,1,1);
         light.position.Set(1000,1000,1000,1.0);
 
-        phong.BaseColor.Set(1,0,0,1);
+        phong.BaseColor.Set(1,1,1,1);
         phong.ambient=0.05;
         phong.specular.Set(0.3,0.3,0.3,32);
 
-        axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
-        if(!axis_material)return(false);
+        {
+            axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
+            if(!axis_material)return(false);
 
-        axis_mi=db->CreateMaterialInstance(axis_material);
-        if(!axis_mi)return(false);
+            axis_mi=db->CreateMaterialInstance(axis_material);
+            if(!axis_mi)return(false);
 
-        axis_pipeline=CreatePipeline(axis_material,InlinePipeline::Solid3D,Prim::Lines);
-        if(!axis_pipeline)return(false);
+            axis_pipeline=CreatePipeline(axis_material,InlinePipeline::Solid3D,Prim::Lines);
+            if(!axis_pipeline)return(false);
+        }
 
-        material=db->CreateMaterial(OS_TEXT("res/material/VertexNormal"));
-        if(!material)return(false);
+        
+        {
+            texture.sampler =db->CreateSampler();
 
-        material_instance=db->CreateMaterialInstance(material);
-        if(!material_instance)return(false);
+            texture.color   =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
+            texture.normal  =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
+        }
+
+        {
+            material=db->CreateMaterial(OS_TEXT("res/material/TextureNormal"));
+            if(!material)return(false);
+
+            material_instance=db->CreateMaterialInstance(material);
+            if(!material_instance)return(false);
+
+            material_instance->BindSampler("TexColor"    ,texture.color,    texture.sampler);
+            material_instance->BindSampler("TexNormal"   ,texture.normal,   texture.sampler);
+        }
 
         pipeline_data=GetPipelineData(InlinePipeline::Solid3D);
         if(!pipeline_data)return(false);
-
 
         pipeline_solid=CreatePipeline(material,pipeline_data,Prim::Triangles);
         if(!pipeline_solid)return(false);
@@ -160,7 +186,8 @@ private:
 
         if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
-        if(!material_instance->BindUBO("fs_world",GetCameraMatrixBuffer()))
+
+        if(!material_instance->BindUBO("fs_light",ubo_light))
             return(false);
 
         material_instance->Update();
