@@ -703,8 +703,8 @@ namespace hgl
                     if(tcp)
                     {
                         // generate texture coordinates and stores it in the right position
-                        *tcp = s; ++tcp;
-                        *tcp = t; ++tcp;
+                        *tcp = s*tci->uv_scale.x; ++tcp;
+                        *tcp = t*tci->uv_scale.y; ++tcp;
                     }
 
                     if(tp)

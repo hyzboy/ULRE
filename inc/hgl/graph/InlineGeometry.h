@@ -159,6 +159,8 @@ namespace hgl
 
             uint    numberSlices,
                     numberStacks;
+
+            Vector2f uv_scale={1.0,1.0};
         };//struct TorusCreateInfo
         
         /**
