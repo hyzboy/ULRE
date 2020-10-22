@@ -86,6 +86,13 @@ private:
         Texture2DPointer    normal=nullptr;
     }texture;
 
+public:
+
+    ~TestApp()
+    {
+        delete gbuffer_rt;
+    }
+
 private:
 
     bool InitGBuffer()
