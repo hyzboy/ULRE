@@ -8,7 +8,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(Framebuffer *fb,const uint32_t fence
     return(new RenderTarget(this,fb,cb,fence_count));
 }
 
-RenderTarget *GPUDevice::CreateRenderTarget(   const uint w,const uint h,
+RenderTarget *GPUDevice::CreateRenderTarget(const uint w,const uint h,
                                             const List<VkFormat> &color_format_list,
                                             const VkFormat depth_format,
                                             const VkImageLayout color_layout,
@@ -65,7 +65,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(   const uint w,const uint h,
     return nullptr;
 }
 
-RenderTarget *GPUDevice::CreateRenderTarget(   const uint w,const uint h,
+RenderTarget *GPUDevice::CreateRenderTarget(const uint w,const uint h,
                                             const VkFormat color_format,
                                             const VkFormat depth_format,
                                             const VkImageLayout color_layout,
