@@ -15,10 +15,6 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
-VK_NAMESPACE_BEGIN
-Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename);
-VK_NAMESPACE_END
-
 struct PhongLight
 {
     Vector4f color;
@@ -97,11 +93,8 @@ private:
         {
             texture.sampler =db->CreateSampler();
 
-            texture.color   =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
-            texture.normal  =CreateTextureFromFile(device,OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
-            
-            db->Add(texture.color);
-            db->Add(texture.normal);
+            texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
+            texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
         }
 
         {

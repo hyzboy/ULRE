@@ -157,7 +157,7 @@ RenderableInstance *RenderResource::CreateRenderableInstance(Renderable *r,Mater
 
     return ri;
 }
-        
+
 Sampler *RenderResource::CreateSampler(VkSamplerCreateInfo *sci)
 {
     Sampler *s=device->CreateSampler(sci);
@@ -166,5 +166,25 @@ Sampler *RenderResource::CreateSampler(VkSamplerCreateInfo *sci)
         Add(s);
 
     return s;
+}
+
+Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename);
+
+Texture2D *RenderResource::LoadTexture2D(const OSString &filename)
+{
+    Texture2D *tex;
+    
+    if(texture_by_name.Get(filename,(Texture *&)tex))
+        return tex;
+    
+    tex=CreateTextureFromFile(device,filename);
+
+    if(tex)
+    {
+        texture_by_name.Add(filename,tex);
+        Add(tex);
+    }
+
+    return tex;
 }
 VK_NAMESPACE_END

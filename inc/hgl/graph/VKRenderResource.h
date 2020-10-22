@@ -35,6 +35,7 @@ class RenderResource
     
     MapObject<OSString,ShaderModule> shader_module_by_name;
     Map<OSString,Material *> material_by_name;
+    Map<OSString,Texture *> texture_by_name;
     
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
@@ -58,7 +59,7 @@ public: //Add
     PipelineID              Add(Pipeline *          p   ){return rm_pipeline.Add(p);}
     DescriptorSetsID        Add(DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
-    BufferID                Add(GPUBuffer *            buf ){return rm_buffers.Add(buf);}
+    BufferID                Add(GPUBuffer *         buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableInstanceID    Add(RenderableInstance *ri  ){return rm_renderable_instances.Add(ri);}
@@ -111,6 +112,10 @@ public: //Material
     RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
+
+public: //texture
+
+    Texture2D *         LoadTexture2D(const OSString &);
 
 public: //Get
 
