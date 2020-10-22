@@ -30,8 +30,7 @@ namespace hgl
             InverseLocalToWorldMatrix=inverse(LocalToWorldMatrix);
 
             pc.local_to_world   =LocalToWorldMatrix;
-//            pc.object_position  =;
-//            pc.object_size      =;
+            pc.normal           =InverseLocalToWorldMatrix.Transposed();
 
             return LocalToWorldMatrix;
         }
