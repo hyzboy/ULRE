@@ -255,10 +255,10 @@ namespace hgl
             /*    /|           /| */                            -0.5f, -0.5f, +0.5f,    -0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,
             /*  0/ |         1/ | */                            -0.5f, +0.5f, +0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f    };
             /*  *--+---------*  | */    // Normals of a cube.
-            /*  |  |         |  | */    const float normals[]={ +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,
-            /*  | 7|         | 6| */                            +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +0.0f, -1.0f,    +0.0f, +0.0f, -1.0f,    +0.0f, +0.0f, -1.0f,    +0.0f, +0.0f, -1.0f,
-            /*  |  *---------+--* */                            +0.0f, +0.0f, +1.0f,    +0.0f, +0.0f, +1.0f,    +0.0f, +0.0f, +1.0f,    +0.0f, +0.0f, +1.0f,    -1.0f, +0.0f, +0.0f,    -1.0f, +0.0f, +0.0f,
-            /*  | /          | /  */                            -1.0f, +0.0f, +0.0f,    -1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f    };
+            /*  |  |         |  | */    const float normals[]={ +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,
+            /*  | 7|         | 6| */                            +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -0.0f, -1.0f,    +0.0f, -0.0f, -1.0f,    +0.0f, -0.0f, -1.0f,    +0.0f, -0.0f, -1.0f,
+            /*  |  *---------+--* */                            +0.0f, -0.0f, +1.0f,    +0.0f, -0.0f, +1.0f,    +0.0f, -0.0f, +1.0f,    +0.0f, -0.0f, +1.0f,    -1.0f, -0.0f, +0.0f,    -1.0f, -0.0f, +0.0f,
+            /*  | /          | /  */                            -1.0f, -0.0f, +0.0f,    -1.0f, -0.0f, +0.0f,    +1.0f, -0.0f, +0.0f,    +1.0f, -0.0f, +0.0f,    +1.0f, -0.0f, +0.0f,    +1.0f, -0.0f, +0.0f    };
             /*  |/          2|/   */    // The associated indices.
             /* 3*------------*    */    const uint16 indices[]={    0,    2,    1,    0,    3,    2,    4,    5,    6,    4,    6,    7,    8,    9,    10,    8,    10,    11, 12,    15,    14,    12,    14,    13, 16,    17,    18,    16,    18,    19, 20,    23,    22,    20,    22,    21    };
 
@@ -469,9 +469,9 @@ namespace hgl
 
                     if(np)
                     {
-                        *np=x;++np;
-                        *np=y;++np;
-                        *np=z;++np;
+                        *np=+x;++np;
+                        *np=-y;++np;
+                        *np=+z;++np;
                     }
 
                     if(tcp)
@@ -695,9 +695,9 @@ namespace hgl
                         // generate normal and stores it in the right position
                         // NOTE: cos (2PIx) = cos (x) and sin (2PIx) = sin (x) so, we can use this formula
                         //       normal = {cos(2PIs)cos(2PIt) , sin(2PIs)cos(2PIt) ,sin(2PIt)}
-                        *np = cos2PIs * cos2PIt; ++np;
-                        *np = sin2PIt; ++np;
-                        *np = sin2PIs * cos2PIt; ++np;
+                        *np = +cos2PIs * cos2PIt;   ++np;
+                        *np = -sin2PIt;             ++np;
+                        *np = +sin2PIs * cos2PIt;   ++np;
                     }
 
                     if(tcp)
@@ -927,7 +927,7 @@ namespace hgl
                     if(np)
                     {
                         *np =  cos(currentAngle);   ++np;
-                        *np = -sin(currentAngle);   ++np;
+                        *np =  sin(currentAngle);   ++np;
                         *np = 0.0f;                 ++np;
                     }
 
@@ -1096,7 +1096,7 @@ namespace hgl
                     if(np)
                     {
                         *np = h / l *  cos(currentAngle);   ++np;
-                        *np = h / l * -sin(currentAngle);   ++np;
+                        *np = h / l *  sin(currentAngle);   ++np;
                         *np = r / l;                        ++np;
                     }
 

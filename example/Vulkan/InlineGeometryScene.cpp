@@ -79,7 +79,7 @@ private:
         light.position.Set(1000,1000,1000,1.0);
 
         phong.BaseColor.Set(1,1,1,1);
-        phong.ambient=0.05;
+        phong.ambient=0.5;
         phong.specular.Set(0.3,0.3,0.3,32);
 
         {
@@ -141,7 +141,7 @@ private:
             ro_cube=CreateRenderableCube(db,material,&cci);
         }
         
-        {        
+        {
             ro_sphere=CreateRenderableSphere(db,material,64);
         }
 
@@ -190,8 +190,7 @@ private:
         if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
             return(false);
 
-        if(!material_instance->BindUBO("fs_light",ubo_light))
-            return(false);
+        material_instance->BindUBO("fs_light",ubo_light);
 
         material_instance->Update();
 
@@ -219,7 +218,7 @@ private:
     bool InitScene()
     {
         render_root.Add(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
-        Add(ro_torus    ,pipeline_solid);//,rotate(90,Vector3f(1,0,0)));
+        Add(ro_torus    ,pipeline_solid);
         Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));
         Add(ro_sphere   ,pipeline_solid,translate( 10,  0, 5)*scale(10,10,10));
         Add(ro_cylinder ,pipeline_solid,translate(  0, 16, 0));
