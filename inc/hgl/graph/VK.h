@@ -122,6 +122,7 @@ inline const uint GetShaderCountByBits(const uint32_t bits)
 struct PushConstant
 {
     Matrix4f local_to_world;
+    Matrix4f normal;
 };
 
 constexpr uint32_t MAX_PUSH_CONSTANT_BYTES=sizeof(PushConstant);
