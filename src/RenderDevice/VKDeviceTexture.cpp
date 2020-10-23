@@ -10,14 +10,9 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    uint32_t GetMipLevels(uint32_t size)
+    const uint32_t GetMipLevels(const uint32_t size)
     {
-        uint32_t level=1;
-
-        while(size>>=1)
-            ++level;
-
-        return level;
+        return static_cast<uint32_t>(std::floor(std::log2(size)))+1;
     }
 }//namespace
 
@@ -71,7 +66,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
 
     if(!tci->image)
     {        
-        Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent.width,tci->extent.height);
+        Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent.width,tci->extent.height,tci->mipmap);
         tci->image=CreateImage(&ici);
 
         if(!tci->image)
@@ -117,7 +112,7 @@ Texture2D *GPUDevice::CreateTexture2D(VkFormat format,uint32_t width,uint32_t he
     return CreateTexture2D(tci);
 }
 
-Texture2D *GPUDevice::CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,ImageTiling tiling)
+Texture2D *GPUDevice::CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout,ImageTiling tiling)
 {
     if(!CheckTextureFormatSupport(format,tiling))return(nullptr);
     
@@ -136,7 +131,7 @@ Texture2D *GPUDevice::CreateTexture2D(const VkFormat format,uint32_t width,uint3
     return CreateTexture2D(tci);
 }
 
-Texture2D *GPUDevice::CreateTexture2D(const VkFormat format,GPUBuffer *buf,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const ImageTiling tiling)
+Texture2D *GPUDevice::CreateTexture2D(VkFormat format,GPUBuffer *buf,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout,const ImageTiling tiling)
 {
     if(!buf)return(nullptr);
 
@@ -149,7 +144,7 @@ Texture2D *GPUDevice::CreateTexture2D(const VkFormat format,GPUBuffer *buf,uint3
     return(tex);
 }
 
-Texture2D *GPUDevice::CreateTexture2D(const VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,const ImageTiling tiling)
+Texture2D *GPUDevice::CreateTexture2D(VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout,ImageTiling tiling)
 {
     Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout,tiling);
 
@@ -306,6 +301,93 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t
     delete buf;
 
     return(result);
+}
+
+void GPUDevice::GenerateMipmaps(Texture2D *tex)
+{
+//VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
+    // Check if image format supports linear blitting
+
+    const uint32_t mipLevels=GetMipLevels(std::max(tex->GetWidth(),tex->GetHeight()));
+
+    VkImage image=tex->GetImage();
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.image = image;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.subresourceRange.aspectMask = tex->GetAspect();
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.levelCount = 1;
+
+    int32_t mipWidth = tex->GetWidth();
+    int32_t mipHeight = tex->GetHeight();
+
+    texture_cmd_buf->Begin();
+
+    for (uint32_t i = 1; i < mipLevels; i++) {
+        barrier.subresourceRange.baseMipLevel = i - 1;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        texture_cmd_buf->PipelineBarrier(
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier);
+
+        VkImageBlit blit{};
+        blit.srcOffsets[0] = {0, 0, 0};
+        blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
+        blit.srcSubresource.aspectMask = tex->GetAspect();
+        blit.srcSubresource.mipLevel = i - 1;
+        blit.srcSubresource.baseArrayLayer = 0;
+        blit.srcSubresource.layerCount = 1;
+        blit.dstOffsets[0] = {0, 0, 0};
+        blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+        blit.dstSubresource.aspectMask = tex->GetAspect();
+        blit.dstSubresource.mipLevel = i;
+        blit.dstSubresource.baseArrayLayer = 0;
+        blit.dstSubresource.layerCount = 1;
+
+        texture_cmd_buf->BlitImage(
+            image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1, &blit,
+            VK_FILTER_LINEAR);
+
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        texture_cmd_buf->PipelineBarrier(
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier);
+
+        if (mipWidth > 1) mipWidth /= 2;
+        if (mipHeight > 1) mipHeight /= 2;
+    }
+
+    barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    texture_cmd_buf->PipelineBarrier(
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier);
+
+    texture_cmd_buf->End();
 }
 
 bool GPUDevice::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)

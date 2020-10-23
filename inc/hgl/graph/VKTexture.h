@@ -6,40 +6,10 @@
 #include<hgl/graph/VKImageView.h>
 #include<hgl/graph/Bitmap.h>
 #include<hgl/type/String.h>
+#include<hgl/graph/VKTextureCreateInfo.h>
 VK_NAMESPACE_BEGIN
 
 BitmapData *LoadBitmapFromFile(const OSString &filename);
-
-struct TextureData
-{
-    GPUMemory *            memory      =nullptr;
-    VkImage             image       =VK_NULL_HANDLE;
-    VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
-    ImageView *         image_view  =nullptr;
-    uint32              mip_levels  =0;
-    VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
-};//struct TextureData
-
-struct TextureCreateInfo
-{
-    VkExtent3D              extent;
-    VkFormat                format;
-    uint                    usage;
-    VkImageAspectFlags      aspect;
-    ImageTiling             tiling;
-
-    VkImage                 image;
-    GPUMemory *                memory;
-    ImageView *             image_view;
-    VkImageLayout           image_layout;
-
-public:
-
-    TextureCreateInfo()
-    {
-        hgl_zero(*this);
-    }
-};//struct TextureCreateInfo
 
 class Texture
 {
@@ -57,7 +27,7 @@ public:
     VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->operator VkImageView():VK_NULL_HANDLE;}
 
-    GPUMemory *                    GetMemory           ()      {return data?data->memory:nullptr;}
+    GPUMemory *                 GetMemory           ()      {return data?data->memory:nullptr;}
     ImageView *                 GetImageView        ()      {return data?data->image_view:nullptr;}
 
     const uint32                GetMipLevels        ()const {return data?data->mip_levels:0;}
