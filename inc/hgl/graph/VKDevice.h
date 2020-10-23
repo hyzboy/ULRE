@@ -134,9 +134,9 @@ public: //Texture
     Texture2D *CreateTexture2D(GPUMemory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,ImageTiling tiling);
     Texture2D *CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,VkImage image,VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
 
-    Texture2D *CreateTexture2D(const VkFormat format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
+    Texture2D *CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout,ImageTiling tiling=ImageTiling::Optimal);
 
-    Texture2D *CreateTexture2DColor(const VkFormat video_format,uint32_t width,uint32_t height,const ImageTiling tiling=ImageTiling::Optimal)
+    Texture2D *CreateTexture2DColor(VkFormat video_format,uint32_t width,uint32_t height,ImageTiling tiling=ImageTiling::Optimal)
     {
         return CreateTexture2D(video_format,width,height,
                 VK_IMAGE_ASPECT_COLOR_BIT,
@@ -145,7 +145,7 @@ public: //Texture
                 tiling);
     }
 
-    Texture2D *CreateTexture2DDepth(const VkFormat video_format,uint32_t width,uint32_t height,const ImageTiling tiling=ImageTiling::Optimal)
+    Texture2D *CreateTexture2DDepth(VkFormat video_format,uint32_t width,uint32_t height,ImageTiling tiling=ImageTiling::Optimal)
     {
         return CreateTexture2D(video_format,width,height,
                 VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -154,12 +154,12 @@ public: //Texture
                 tiling);
     }
 
-    Texture2D *CreateAttachmentTexture(const VkFormat video_format,uint32_t width,uint32_t height,const VkImageAspectFlags aspectMask,const uint usage,const VkImageLayout image_layout)
+    Texture2D *CreateAttachmentTexture(VkFormat video_format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout)
     {
         return CreateTexture2D(video_format,width,height,aspectMask,usage|VK_IMAGE_USAGE_SAMPLED_BIT,image_layout);
     }
 
-    Texture2D *CreateAttachmentTextureColor(const VkFormat video_format,uint32_t width,uint32_t height)
+    Texture2D *CreateAttachmentTextureColor(VkFormat video_format,uint32_t width,uint32_t height)
     {
         return CreateAttachmentTexture( video_format,width,height,
                                         VK_IMAGE_ASPECT_COLOR_BIT,
@@ -167,7 +167,7 @@ public: //Texture
                                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     }
 
-    Texture2D *CreateAttachmentTextureDepth(const VkFormat video_format,uint32_t width,uint32_t height)
+    Texture2D *CreateAttachmentTextureDepth(VkFormat video_format,uint32_t width,uint32_t height)
     {
         return CreateAttachmentTexture( video_format,width,height,
                                         VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -175,7 +175,7 @@ public: //Texture
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
 
-    Texture2D *CreateAttachmentTextureDepthStencil(const VkFormat video_format,uint32_t width,uint32_t height)
+    Texture2D *CreateAttachmentTextureDepthStencil(VkFormat video_format,uint32_t width,uint32_t height)
     {
         return CreateAttachmentTexture( video_format,width,height,
                                         VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT,
@@ -183,17 +183,17 @@ public: //Texture
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     }
 
-    Texture2D *CreateTexture2D( const VkFormat video_format,GPUBuffer *buf,uint32_t width,uint32_t height,
-                                const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
-                                const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
-                                const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                const ImageTiling           tiling      =ImageTiling::Optimal);
+    Texture2D *CreateTexture2D( VkFormat video_format,GPUBuffer *buf,uint32_t width,uint32_t height,
+                                VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
+                                uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                                VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                ImageTiling           tiling      =ImageTiling::Optimal);
 
-    Texture2D *CreateTexture2D( const VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,
-                                const VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
-                                const uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
-                                const VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                const ImageTiling           tiling      =ImageTiling::Optimal);
+    Texture2D *CreateTexture2D( VkFormat video_format,void *data,uint32_t width,uint32_t height,uint32_t size,
+                                VkImageAspectFlags    aspectMask  =VK_IMAGE_ASPECT_COLOR_BIT,
+                                uint                  usage       =VK_IMAGE_USAGE_TRANSFER_DST_BIT|VK_IMAGE_USAGE_SAMPLED_BIT,
+                                VkImageLayout         image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                ImageTiling           tiling      =ImageTiling::Optimal);
 
     bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count);
     bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<ImageRegion> &);
@@ -223,6 +223,8 @@ public: //Texture
                                 rs.GetHeight(),
                                 size);
     }
+
+    void GenerateMipmaps(Texture2D *);
 
 public: //
 

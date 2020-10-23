@@ -54,6 +54,7 @@ SET(VK_SHADER_SOURCE    ${VK_INCLUDE_PATH}/VKShaderModule.h
 
 SET(VK_TEXTURE_SOURCE   ${VK_INCLUDE_PATH}/VKImageView.h
                         ${VK_INCLUDE_PATH}/VKTexture.h
+                        ${VK_INCLUDE_PATH}/VKTextureCreateInfo.h
                         ${VK_INCLUDE_PATH}/VKSampler.h
                         VKSampler.cpp
                         VKImageView.cpp

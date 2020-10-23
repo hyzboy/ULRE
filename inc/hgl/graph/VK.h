@@ -75,6 +75,12 @@ enum class SharingMode
     Concurrent
 };//
 
+enum class Filter
+{
+    Nearest=0,
+    Linear,
+};//
+
 enum ImageTiling
 {
     Optimal=0,
