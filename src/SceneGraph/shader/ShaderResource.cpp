@@ -221,7 +221,15 @@ VK_NAMESPACE_BEGIN
             return sr;
 
         int64 filesize;
-        AutoDeleteArray<uint8> origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".shader"),filesize);
+        uint8 *filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".shader"),filesize);
+
+        if(!filedata)
+        {        
+            shader_resource_by_filename.Add(filename,nullptr);
+            return(nullptr);
+        }
+
+        AutoDeleteArray<uint8> origin_filedata(filedata,filesize);
 
         sr=LoadShaderResource(origin_filedata,filesize,true);
 
