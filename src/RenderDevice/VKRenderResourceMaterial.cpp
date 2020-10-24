@@ -90,7 +90,15 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     constexpr uint MaterialFileHeaderLength=sizeof(MaterialFileHeader)-1;
 
     int64 filesize;
-    AutoDeleteArray<uint8> origin_filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".material"),filesize);
+    uint8 *filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".material"),filesize);
+
+    if(!filedata)
+    {
+        material_by_name.Add(filename,nullptr);
+        return(nullptr);
+    }
+
+    AutoDeleteArray<uint8> origin_filedata(filedata,filesize);
 
     if(filesize<MaterialFileHeaderLength)
         return(nullptr);

@@ -26,7 +26,7 @@ Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,
 
     if(depth)++att_count;
     
-    AutoDeleteArray<VkImageView> attachments=new VkImageView[att_count];
+    AutoDeleteArray<VkImageView> attachments(att_count);
     VkImageView *ap=attachments;
 
     if(color_count)
