@@ -91,7 +91,29 @@ private:
 
         
         {
-            texture.sampler =db->CreateSampler();
+            VkSamplerCreateInfo sampler_create_info=
+            {
+                VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                nullptr,
+                0,
+                VK_FILTER_LINEAR,
+                VK_FILTER_LINEAR,
+                VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                0.0f,
+                false,
+                0,
+                false,
+                VK_COMPARE_OP_NEVER,
+                0.0f,
+                1.0f,
+                VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                false
+            };
+
+            texture.sampler =db->CreateSampler(&sampler_create_info);
 
             texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
             texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
@@ -146,6 +168,9 @@ private:
 
             tci.numberSlices=128;
             tci.numberStacks=64;
+
+            tci.uv_scale.x=4;
+            tci.uv_scale.y=1;
 
             ro_torus=CreateRenderableTorus(db,material,&tci);
         }
