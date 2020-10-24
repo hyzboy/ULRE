@@ -95,15 +95,18 @@ namespace
         VkFormat format;
         GPUBuffer *buf;
 
+        bool auto_mipmaps;
+
         Texture2D *tex;
 
     public:
 
-        VkTexture2DLoader(GPUDevice *dev):device(dev)
+        VkTexture2DLoader(GPUDevice *dev,const bool am):device(dev)
         {
             buf=nullptr;
             format=VK_FORMAT_UNDEFINED;
             tex=nullptr;
+            auto_mipmaps=am;
         }
 
         virtual ~VkTexture2DLoader()
@@ -159,6 +162,15 @@ namespace
 
             TextureCreateInfo *tci=new TextureCreateInfo(format);
 
+            if(auto_mipmaps)
+            {
+                if(device->CheckFormatSupport(format,VK_FORMAT_FEATURE_BLIT_DST_BIT))
+                {
+                    tci->usage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+                    tci->SetAutoMipmaps();
+                }
+            }
+
             tci->SetData(buf,file_header.width,file_header.height);
 
             tex=device->CreateTexture2D(tci);
@@ -176,9 +188,9 @@ namespace
     };//class VkTexture2DLoader
 }//namespace
 
-Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename)
+Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps)
 {
-    VkTexture2DLoader loader(device);
+    VkTexture2DLoader loader(device,auto_mipmaps);
 
     if(!loader.Load(filename))
         return(nullptr);

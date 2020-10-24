@@ -15,12 +15,13 @@ protected:
     VkImageAspectFlags aspect_mask;
 
     VkExtent3D extent;
+    uint32_t miplevel;
 
 private:
 
-    friend ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img);
+    friend ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img);
 
-    ImageView(VkDevice dev,VkImageView iv,const VkImageViewType vt,const VkFormat fmt,const VkExtent3D &ext,const VkImageAspectFlags am)
+    ImageView(VkDevice dev,VkImageView iv,const VkImageViewType vt,const VkFormat fmt,const VkExtent3D &ext,const uint32_t &ml,const VkImageAspectFlags am)
     {
         device      =dev;
         image_view  =iv;
@@ -28,6 +29,7 @@ private:
         format      =fmt;
         aspect_mask =am;
         extent      =ext;
+        miplevel    =ml;
     }
 
 public:
@@ -41,6 +43,7 @@ public:
     const VkImageViewType       GetViewType     ()const{return view_type;}
     const VkFormat              GetFormat       ()const{return format;}
     const VkExtent3D &          GetExtent       ()const{return extent;}
+    const uint32_t &            GetMipLevel     ()const{return miplevel;}
     const VkImageAspectFlags    GetAspectFlags  ()const{return aspect_mask;}
 
     const bool                  hasColor        ()const{return aspect_mask&VK_IMAGE_ASPECT_COLOR_BIT;}
@@ -49,12 +52,12 @@ public:
     const bool                  hasDepthStencil ()const{return aspect_mask&(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT);}
 };//class ImageView
 
-ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img);
+ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img);
 
 #define CREATE_IMAGE_VIEW(short_name,larget_name) \
-    inline ImageView *CreateImageView##short_name(VkDevice device,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img=VK_NULL_HANDLE)   \
+    inline ImageView *CreateImageView##short_name(VkDevice device,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img=VK_NULL_HANDLE)   \
     {   \
-        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_##larget_name,format,ext,aspectMask,img);  \
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_##larget_name,format,ext,miplevel,aspectMask,img);  \
     }
 
     CREATE_IMAGE_VIEW(1D,1D);

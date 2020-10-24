@@ -9,7 +9,7 @@ struct TextureData
     VkImage             image       =VK_NULL_HANDLE;
     VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
     ImageView *         image_view  =nullptr;
-    uint32              mip_levels  =0;
+    uint32              miplevel  =0;
     VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
 };//struct TextureData
 

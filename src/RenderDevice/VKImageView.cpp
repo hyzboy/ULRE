@@ -6,7 +6,7 @@ ImageView::~ImageView()
     vkDestroyImageView(device,image_view,nullptr);
 }
 
-ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,VkImageAspectFlags aspectMask,VkImage img)
+ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img)
 {
     ImageViewCreateInfo iv_createinfo;
 
@@ -15,7 +15,7 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
     iv_createinfo.viewType  =type;
     iv_createinfo.subresourceRange.aspectMask       =aspectMask;
     iv_createinfo.subresourceRange.baseMipLevel     =0;
-    iv_createinfo.subresourceRange.levelCount       =ext.depth;
+    iv_createinfo.subresourceRange.levelCount       =miplevel;
     iv_createinfo.subresourceRange.baseArrayLayer   =0;
     iv_createinfo.subresourceRange.layerCount       =ext.depth;
 
@@ -42,6 +42,6 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
     if(vkCreateImageView(device,&iv_createinfo,nullptr,&img_view)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new ImageView(device,img_view,type,format,ext,aspectMask));
+    return(new ImageView(device,img_view,type,format,ext,miplevel,aspectMask));
 }
 VK_NAMESPACE_END

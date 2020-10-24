@@ -78,21 +78,21 @@ namespace
         return(VK_NULL_HANDLE);
     }
 
-    ImageView *Create2DImageView(VkDevice device,VkFormat format,const VkExtent2D &ext,VkImage img=VK_NULL_HANDLE)
+    ImageView *Create2DImageView(VkDevice device,VkFormat format,const VkExtent2D &ext,const uint32_t miplevel,VkImage img=VK_NULL_HANDLE)
     {
         VkExtent3D extent;
 
         copy(extent,ext);
 
-        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,VK_IMAGE_ASPECT_COLOR_BIT,img);
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,miplevel,VK_IMAGE_ASPECT_COLOR_BIT,img);
     }
 
-    ImageView *CreateDepthImageView(VkDevice device,VkFormat format,const VkExtent2D &ext,VkImage img=VK_NULL_HANDLE)
+    ImageView *CreateDepthImageView(VkDevice device,VkFormat format,const VkExtent2D &ext,const uint32_t miplevel,VkImage img=VK_NULL_HANDLE)
     {
         VkExtent3D extent;
 
         copy(extent,ext,1);
-        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,VK_IMAGE_ASPECT_DEPTH_BIT,img);
+        return CreateImageView(device,VK_IMAGE_VIEW_TYPE_2D,format,extent,miplevel,VK_IMAGE_ASPECT_DEPTH_BIT,img);
     }
 
     VkDescriptorPool CreateDescriptorPool(VkDevice device,uint32_t sets_count)

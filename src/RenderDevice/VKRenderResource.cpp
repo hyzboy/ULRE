@@ -170,16 +170,16 @@ Sampler *RenderResource::CreateSampler(VkSamplerCreateInfo *sci)
     return s;
 }
 
-Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename);
+Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
 
-Texture2D *RenderResource::LoadTexture2D(const OSString &filename)
+Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
 {
     Texture2D *tex;
     
     if(texture_by_name.Get(filename,(Texture *&)tex))
         return tex;
     
-    tex=CreateTextureFromFile(device,filename);
+    tex=CreateTextureFromFile(device,filename,auto_mipmaps);
 
     if(tex)
     {

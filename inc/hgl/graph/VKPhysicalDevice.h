@@ -92,19 +92,22 @@ public:
 
 public:
 
-    const uint32_t GetMaxImage1D            ()const{return properties.limits.maxImageDimension1D;}
-    const uint32_t GetMaxImage2D            ()const{return properties.limits.maxImageDimension2D;}
-    const uint32_t GetMaxImage3D            ()const{return properties.limits.maxImageDimension3D;}
-    const uint32_t GetMaxImageCube          ()const{return properties.limits.maxImageDimensionCube;}
-    const uint32_t GetMaxImageArrayLayers   ()const{return properties.limits.maxImageArrayLayers;}
-    const uint32_t GetMaxUBORange           ()const{return properties.limits.maxUniformBufferRange;}
-    const uint32_t GetMaxSSBORange          ()const{return properties.limits.maxStorageBufferRange;}
-    const uint32_t GetMaxBoundDescriptorSets()const{return properties.limits.maxBoundDescriptorSets;}
+    const uint32_t  GetMaxImage1D            ()const{return properties.limits.maxImageDimension1D;}
+    const uint32_t  GetMaxImage2D            ()const{return properties.limits.maxImageDimension2D;}
+    const uint32_t  GetMaxImage3D            ()const{return properties.limits.maxImageDimension3D;}
+    const uint32_t  GetMaxImageCube          ()const{return properties.limits.maxImageDimensionCube;}
+    const uint32_t  GetMaxImageArrayLayers   ()const{return properties.limits.maxImageArrayLayers;}
+    const uint32_t  GetMaxUBORange           ()const{return properties.limits.maxUniformBufferRange;}
+    const uint32_t  GetMaxSSBORange          ()const{return properties.limits.maxStorageBufferRange;}
+    const uint32_t  GetMaxBoundDescriptorSets()const{return properties.limits.maxBoundDescriptorSets;}
 
-    const uint32_t GetMaxVertexInputAttributes  ()const{return properties.limits.maxVertexInputAttributes;}
-    const uint32_t GetMaxVertexInputBindings    ()const{return properties.limits.maxVertexInputBindings;}
+    const uint32_t  GetMaxVertexInputAttributes  ()const{return properties.limits.maxVertexInputAttributes;}
+    const uint32_t  GetMaxVertexInputBindings    ()const{return properties.limits.maxVertexInputBindings;}
 
-    const uint32_t GetMaxColorAttachments       ()const{return properties.limits.maxColorAttachments;}
+    const uint32_t  GetMaxColorAttachments       ()const{return properties.limits.maxColorAttachments;}
+
+    const float     GetMaxSamplerAnisotropy      ()const{return properties.limits.maxSamplerAnisotropy;}
+    const float     GetMaxSamplerLodBias         ()const{return properties.limits.maxSamplerLodBias;}
 
     const void     GetPointSize(float &granularity,float &min_size,float &max_size)
     {

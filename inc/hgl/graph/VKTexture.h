@@ -30,7 +30,7 @@ public:
     GPUMemory *                 GetMemory           ()      {return data?data->memory:nullptr;}
     ImageView *                 GetImageView        ()      {return data?data->image_view:nullptr;}
 
-    const uint32                GetMipLevels        ()const {return data?data->mip_levels:0;}
+    const uint32                GetMipLevel         ()const {return data?data->miplevel:0;}
     const bool                  IsOptimal           ()const {return data?data->tiling==VK_IMAGE_TILING_OPTIMAL:false;}
     const bool                  IsLinear            ()const {return data?data->tiling==VK_IMAGE_TILING_LINEAR:false;}
 
