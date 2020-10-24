@@ -23,15 +23,17 @@ RenderTarget *GPUDevice::CreateRenderTarget(const uint w,const uint h,
 
     const uint32_t color_count=color_format_list.GetCount();
 
+    const VkExtent3D extent={w,h,1};
+
     AutoDeleteObjectArray<Texture2D> color_texture_list(color_count);
-    AutoDeleteArray<ImageView *> color_iv_list=new ImageView *[color_count];        //iv只是从Texture2D中取出来的，无需一个个delete
+    AutoDeleteArray<ImageView *> color_iv_list(color_count);        //iv只是从Texture2D中取出来的，无需一个个delete
 
     Texture2D **tp=color_texture_list;
     ImageView **iv=color_iv_list;
 
     for(const VkFormat &fmt:color_format_list)
     {
-        Texture2D *color_texture=CreateAttachmentTextureColor(fmt,w,h);
+        Texture2D *color_texture=CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt,extent));
 
         if(!color_texture)
         {
@@ -43,7 +45,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const uint w,const uint h,
         *iv++=color_texture->GetImageView();
     }
 
-    Texture2D *depth_texture=(depth_format!=FMT_UNDEFINED)?CreateAttachmentTextureDepth(depth_format,w,h):nullptr;
+    Texture2D *depth_texture=(depth_format!=FMT_UNDEFINED)?CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format,extent)):nullptr;
 
     Framebuffer *fb=CreateFramebuffer(rp,color_iv_list,color_count,depth_texture?depth_texture->GetImageView():nullptr);
 

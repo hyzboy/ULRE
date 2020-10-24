@@ -34,21 +34,6 @@ Texture2D *GPUDevice::CreateTexture2D(TextureData *tex_data)
     return(new Texture2D(attr->device,tex_data));
 }
 
-Texture2D *GPUDevice::CreateTexture2D(GPUMemory *mem,VkImage image,ImageView *image_view,VkImageLayout image_layout,ImageTiling tiling)
-{
-    TextureData *tex_data=new TextureData;
-
-    tex_data->memory        = mem;
-    tex_data->image_layout  = image_layout;
-    tex_data->image         = image;
-    tex_data->image_view    = image_view;
-
-    tex_data->mip_levels    = 0;
-    tex_data->tiling        = VkImageTiling(tiling);
-
-    return CreateTexture2D(tex_data);
-}
-
 void GPUDevice::Clear(TextureCreateInfo *tci)
 {
     if(!tci)return;
@@ -64,8 +49,10 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
+    if(tci->extent.width*tci->extent.height*tci->extent.depth<=0)return(nullptr);
+
     if(!tci->image)
-    {        
+    {
         Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent.width,tci->extent.height,tci->mipmap);
         tci->image=CreateImage(&ici);
 
@@ -81,7 +68,17 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
     if(!tci->image_view)
         tci->image_view=CreateImageView2D(attr->device,tci->format,tci->extent,tci->aspect,tci->image);
 
-    Texture2D *tex=CreateTexture2D(tci->memory,tci->image,tci->image_view,tci->image_layout,tci->tiling);
+    TextureData *tex_data=new TextureData;
+
+    tex_data->memory        = tci->memory;
+    tex_data->image_layout  = tci->image_layout;
+    tex_data->image         = tci->image;
+    tex_data->image_view    = tci->image_view;
+
+    tex_data->mip_levels    = tci->mipmap;
+    tex_data->tiling        = VkImageTiling(tci->tiling);
+
+    Texture2D *tex=CreateTexture2D(tex_data);
 
     if(!tex)
     {
@@ -89,79 +86,17 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
         return(nullptr);
     }
 
-    delete tci;
-    return tex;
-}
+    if((!tci->buffer)&&tci->pixels&&tci->pixel_bytes>0)
+        tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->pixel_bytes,tci->pixels);
 
-Texture2D *GPUDevice::CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,VkImage image,VkImageLayout image_layout,ImageTiling tiling)
-{
-    if(!CheckTextureFormatSupport(format,tiling))return(nullptr);
- 
-    TextureCreateInfo *tci=new TextureCreateInfo;
-    
-    tci->extent.width   =width;
-    tci->extent.height  =height;
-    tci->extent.depth   =1;
-
-    tci->format         =format;
-    tci->aspect         =aspectMask;
-    tci->image          =image;
-    tci->image_layout   =image_layout;
-    tci->tiling         =tiling;
-
-    return CreateTexture2D(tci);
-}
-
-Texture2D *GPUDevice::CreateTexture2D(VkFormat format,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout,ImageTiling tiling)
-{
-    if(!CheckTextureFormatSupport(format,tiling))return(nullptr);
-    
-    TextureCreateInfo *tci=new TextureCreateInfo;
-
-    tci->extent.width   =width;
-    tci->extent.height  =height;
-    tci->extent.depth   =1;
-
-    tci->format         =format;
-    tci->aspect         =aspectMask;
-    tci->usage          =usage;
-    tci->image_layout   =image_layout;
-    tci->tiling         =tiling;
-
-    return CreateTexture2D(tci);
-}
-
-Texture2D *GPUDevice::CreateTexture2D(VkFormat format,GPUBuffer *buf,uint32_t width,uint32_t height,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout,const ImageTiling tiling)
-{
-    if(!buf)return(nullptr);
-
-    Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout,tiling);
-
-    if(!tex)return(nullptr);
-
-    ChangeTexture2D(tex,buf,0,0,width,height);
-
-    return(tex);
-}
-
-Texture2D *GPUDevice::CreateTexture2D(VkFormat format,void *data,uint32_t width,uint32_t height,uint32_t size,VkImageAspectFlags aspectMask,uint usage,VkImageLayout image_layout,ImageTiling tiling)
-{
-    Texture2D *tex=CreateTexture2D(format,width,height,aspectMask,usage,image_layout,tiling);
-
-    if(!tex)return(nullptr);
-
-    if(data)
+    if(tci->buffer)
     {
-        GPUBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
-
-        if(buf)
-        {    
-            ChangeTexture2D(tex,buf,0,0,width,height);
-            delete buf;
-        }
+        ChangeTexture2D(tex,tci->buffer,0,0,tci->extent.width,tci->extent.height);
+        delete tci->buffer;
     }
 
-    return(tex);
+    delete tci;
+    return tex;
 }
 
 bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count)

@@ -157,7 +157,14 @@ namespace
         {
             buf->Unmap();
 
-            tex=device->CreateTexture2D(format,buf,file_header.width,file_header.height);
+            TextureCreateInfo *tci=new TextureCreateInfo(format);
+
+            tci->SetData(buf,file_header.width,file_header.height);
+
+            tex=device->CreateTexture2D(tci);
+
+            if(tex)
+                buf=nullptr;
         }
 
         Texture2D *GetTexture()
