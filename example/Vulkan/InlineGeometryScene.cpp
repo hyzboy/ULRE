@@ -88,9 +88,11 @@ private:
             axis_pipeline=CreatePipeline(axis_material,InlinePipeline::Solid3D,Prim::Lines);
             if(!axis_pipeline)return(false);
         }
-
         
         {
+            texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"),true);
+            texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"),true);
+
             VkSamplerCreateInfo sampler_create_info=
             {
                 VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -103,20 +105,17 @@ private:
                 VK_SAMPLER_ADDRESS_MODE_REPEAT,
                 VK_SAMPLER_ADDRESS_MODE_REPEAT,
                 0.0f,
-                false,
-                0,
+                VK_TRUE,
+                device->GetGPUPhysicalDevice()->GetMaxSamplerAnisotropy(),
                 false,
                 VK_COMPARE_OP_NEVER,
                 0.0f,
-                1.0f,
+                static_cast<float>(texture.color->GetMipLevel()),
                 VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
                 false
             };
 
             texture.sampler =db->CreateSampler(&sampler_create_info);
-
-            texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
-            texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
         }
 
         {

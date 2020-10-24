@@ -131,11 +131,11 @@ public: //Texture
 
     void Clear(TextureCreateInfo *);
 
-    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count);
-    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<ImageRegion> &);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count,  const uint32_t miplevel=1);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<ImageRegion> &,                  const uint32_t miplevel=1);
 
-    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height);
-    bool ChangeTexture2D(Texture2D *,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,              const uint32_t miplevel=1);
+    bool ChangeTexture2D(Texture2D *,void *data,    uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,const uint32_t miplevel=1);
 
     template<typename T>
     bool ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const RectScope2<T> &rs)
@@ -159,8 +159,6 @@ public: //Texture
                                 rs.GetHeight(),
                                 size);
     }
-
-    void GenerateMipmaps(Texture2D *);
 
 public: //
 
