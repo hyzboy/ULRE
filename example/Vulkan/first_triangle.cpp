@@ -20,10 +20,10 @@ constexpr float vertex_data[VERTEX_COUNT][2]=
     {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
 };
 
-constexpr float color_data[VERTEX_COUNT][3]=
-{   {1,0,0},
-    {0,1,0},
-    {0,0,1}
+constexpr float color_data[VERTEX_COUNT][4]=
+{   {1,0,0,1},
+    {0,1,0,1},
+    {0,0,1,1}
 };
 
 class TestApp:public VulkanApplicationFramework
@@ -34,7 +34,7 @@ private:
 
     MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *            ubo_world_matrix    =nullptr;
+    GPUBuffer *         ubo_world_matrix    =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -78,7 +78,7 @@ private:
         if(!render_obj)return(false);
 
         if(!render_obj->Set(VAN::Position,  db->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
-        if(!render_obj->Set(VAN::Color,     db->CreateVAB(VAF_VEC3,VERTEX_COUNT,color_data)))return(false);
+        if(!render_obj->Set(VAN::Color,     db->CreateVAB(VAF_VEC4,VERTEX_COUNT,color_data)))return(false);
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
         return(true);
@@ -100,7 +100,8 @@ public:
         if(!InitVBO())
             return(false);
 
-        BuildCommandBuffer(render_instance);
+        if(!BuildCommandBuffer(render_instance))
+            return(false);
 
         return(true);
     }

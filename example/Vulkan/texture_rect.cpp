@@ -66,10 +66,8 @@ private:
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        texture=CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
+        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"));
         if(!texture)return(false);
-
-        db->Add(texture);
 
         sampler=db->CreateSampler();
 
