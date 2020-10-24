@@ -78,39 +78,15 @@ bool GPUDevice::CreateSwapchainColorTexture()
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->swap_chain_count),sc_images)!=VK_SUCCESS)
         return(false);
 
-    VkImage *ip=sc_images;
-    Texture2D *tex;
-
-    for(uint32_t i=0; i<swapchain->swap_chain_count; i++)
-    {
-        tex=CreateTexture2D(attr->format,
-            swapchain->extent.width,
-            swapchain->extent.height,
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            *ip,
-            VK_IMAGE_LAYOUT_UNDEFINED);
-
-        swapchain->sc_color.Add(tex);
-
-        ++ip;
-    }
+    for(VkImage ip:sc_images)
+        swapchain->sc_color.Add(CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->format,swapchain->extent,ip)));
 
     return(true);
 }
 
 bool GPUDevice::CreateSwapchainDepthTexture()
 {
-    const VkFormat depth_format=attr->physical_device->GetDepthFormat();
-
-    const VkFormatProperties props=attr->physical_device->GetFormatProperties(depth_format);
-
-    swapchain->sc_depth=CreateTexture2D(depth_format,
-        swapchain->extent.width,
-        swapchain->extent.height,
-        VK_IMAGE_ASPECT_DEPTH_BIT,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        (props.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)?ImageTiling::Optimal:ImageTiling::Linear);
+    swapchain->sc_depth=CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
 
     return swapchain->sc_depth;
 }
