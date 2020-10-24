@@ -104,7 +104,7 @@ public:
 
             cili.lunarg.standard_validation = true;
             cili.khronos.validation = true;
-            cili.RenderDoc.Capture = true;
+            cili.RenderDoc.Capture = false;
 
             inst=CreateInstance("VulkanTest",nullptr,&cili);
 
@@ -196,10 +196,9 @@ public:
         clear_color.Use(cc,1.0);
     }
 
-    void BuildCommandBuffer(uint32_t index,RenderableInstance *ri)
-    {
-        if(!ri)
-            return;
+    bool BuildCommandBuffer(uint32_t index,RenderableInstance *ri)
+    {   
+        if(!ri)return(false);
 
         const IndexBuffer *ib=ri->GetIndexBuffer();
 
@@ -220,17 +219,25 @@ public:
 
             cb->EndRenderPass();
         cb->End();
+
+        return(true);
     }
 
-    void BuildCommandBuffer(RenderableInstance *ri)
+    bool BuildCommandBuffer(RenderableInstance *ri)
     {
+        if(!ri)return(false);
+
         for(int32_t i=0;i<swap_chain_count;i++)
             BuildCommandBuffer(i,ri);
+
+        return(true);
     }
 
-    void BuildCurrentCommandBuffer(RenderableInstance *ri)
+    bool BuildCurrentCommandBuffer(RenderableInstance *ri)
     {
-        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),ri);
+        if(!ri)return(false);
+    
+        return BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),ri);
     }
 
     void BuildCommandBuffer(uint32_t index,RenderList *rl)
