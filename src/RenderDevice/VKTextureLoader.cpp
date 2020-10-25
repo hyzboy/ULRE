@@ -117,21 +117,6 @@ namespace
 
         void *OnBegin(uint32 total_bytes) override
         {
-            constexpr VkFormat CompressFormatList[]=
-            {
-                FMT_BC1_RGBUN,
-                FMT_BC1_RGBAUN,
-                FMT_BC2UN,
-                FMT_BC3UN,
-                FMT_BC4UN,
-                FMT_BC5UN,
-                FMT_BC6UF,
-                FMT_BC6SF,
-                FMT_BC7UN
-            };
-
-            constexpr size_t CompressFormatCount=sizeof(CompressFormatList)/sizeof(VkFormat);
-
             SAFE_CLEAR(buf);
             SAFE_CLEAR(tex);
 
@@ -161,8 +146,10 @@ namespace
             buf->Unmap();
 
             TextureCreateInfo *tci=new TextureCreateInfo(format);
+            
+            tci->SetData(buf,file_header.width,file_header.height);
 
-            if(auto_mipmaps)
+            if(auto_mipmaps&&file_header.mipmaps<=1)
             {
                 if(device->CheckFormatSupport(format,VK_FORMAT_FEATURE_BLIT_DST_BIT))
                 {
@@ -170,8 +157,13 @@ namespace
                     tci->SetAutoMipmaps();
                 }
             }
+            else
+            {
+                tci->origin_mipmaps=
+                tci->target_mipmaps=file_header.mipmaps;
+            }
 
-            tci->SetData(buf,file_header.width,file_header.height);
+            tci->mipmap_zero_total_bytes=mipmap_zero_total_bytes;
 
             tex=device->CreateTexture2D(tci);
 

@@ -4,10 +4,28 @@
 #include<hgl/io/InputStream.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/Bitmap.h>
+#include<hgl/graph/VKFormat.h>
 namespace hgl
 {
     namespace graph
     {
+        constexpr VkFormat CompressFormatList[]=
+        {
+            FMT_BC1_RGBUN,
+            FMT_BC1_RGBAUN,
+            FMT_BC2UN,
+            FMT_BC3UN,
+            FMT_BC4UN,
+            FMT_BC5UN,
+            FMT_BC6UF,
+            FMT_BC6SF,
+            FMT_BC7UN
+        };
+
+        constexpr uint32 CompressFormatBits[]={4,4,8,8,4,8,8,8,8};
+
+        constexpr uint32 CompressFormatCount=sizeof(CompressFormatList)/sizeof(VkFormat);
+
         #pragma pack(push,1)
         struct Tex2DFileHeader
         {
@@ -31,7 +49,8 @@ namespace hgl
 
         public:
 
-            const uint pixel_bytes()const{return (bits[0]+bits[1]+bits[2]+bits[3])>>3;}
+            const uint pixel_bits()const{return bits[0]+bits[1]+bits[2]+bits[3];}
+            const uint pixel_bytes()const{return pixel_bits()>>3;}
         };//struct TexPixelFormat
         #pragma pack(pop)
 
@@ -50,10 +69,12 @@ namespace hgl
                 uint16          compress_format;
             };
 
-            uint32 total_bytes;
+        protected:
 
-        protected:        
+            uint32 mipmap_zero_total_bytes;
 
+            uint32 ComputeTotalBytes();
+            
             virtual void *OnBegin(uint32)=0;
             virtual void  OnEnd()=0;
             virtual void  OnError(){}
