@@ -120,6 +120,11 @@ public: //Image
     VkImage CreateImage         (VkImageCreateInfo *);
     void    DestoryImage        (VkImage);
 
+private:    //texture
+
+    bool CommitTexture2D(Texture2D *,GPUBuffer *buf,uint32_t width,uint32_t height,const uint32_t miplevel,VkPipelineStageFlags stage);
+    bool CommitTexture2DMipmaps(Texture2D *,GPUBuffer *buf,uint32_t width,uint32_t height,uint32_t miplevel,uint32_t);
+
 public: //Texture
 
     bool CheckFormatSupport(const VkFormat,const uint32_t bits,ImageTiling tiling=ImageTiling::Optimal)const;
@@ -131,11 +136,10 @@ public: //Texture
 
     void Clear(TextureCreateInfo *);
 
-    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count,  const uint32_t miplevel=1);
-    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<ImageRegion> &,                  const uint32_t miplevel=1);
-
-    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,              const uint32_t miplevel=1);
-    bool ChangeTexture2D(Texture2D *,void *data,    uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,const uint32_t miplevel=1);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<ImageRegion> &,                                              const uint32_t miplevel=1,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count,                              const uint32_t miplevel=1,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,              const uint32_t miplevel=1,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,void *data,    uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,const uint32_t miplevel=1,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
     template<typename T>
     bool ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const RectScope2<T> &rs)

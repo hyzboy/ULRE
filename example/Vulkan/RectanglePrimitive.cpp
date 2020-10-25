@@ -41,7 +41,7 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *            ubo_world_matrix    =nullptr;
+    GPUBuffer *         ubo_world_matrix    =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -55,7 +55,7 @@ private:
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Rectangles);
         if(!pipeline)return(false);
 
-        texture=CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
+        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"));
         if(!texture)return(false);
 
         sampler=db->CreateSampler();

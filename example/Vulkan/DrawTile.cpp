@@ -42,7 +42,7 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *            ubo_world_matrix    =nullptr;
+    GPUBuffer *         ubo_world_matrix    =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 

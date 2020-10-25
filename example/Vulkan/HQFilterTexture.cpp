@@ -9,10 +9,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-VK_NAMESPACE_BEGIN
-Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename);
-VK_NAMESPACE_END
-
 constexpr uint32_t SCREEN_SIZE=512;
 
 constexpr uint32_t VERTEX_COUNT=4;
@@ -79,7 +75,6 @@ public:
         SAFE_CLEAR(vertex_buffer);
         SAFE_CLEAR(sampler_nearest);
         SAFE_CLEAR(sampler_linear);
-        SAFE_CLEAR(texture);
     }
 
 private:
@@ -135,7 +130,7 @@ private:
 
     bool InitTexture()
     {
-        texture=CreateTextureFromFile(device,OS_TEXT("res/image/heightmap.Tex2D"));
+        texture=db->LoadTexture2D(OS_TEXT("res/image/heightmap.Tex2D"));
         return texture;
     }
 

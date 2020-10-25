@@ -9,7 +9,7 @@ struct TextureData
     VkImage             image       =VK_NULL_HANDLE;
     VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
     ImageView *         image_view  =nullptr;
-    uint32              miplevel  =0;
+    uint32              miplevel    =0;
     VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
 };//struct TextureData
 
@@ -18,7 +18,9 @@ struct TextureCreateInfo
     VkExtent3D          extent;
     VkFormat            format;
     uint32_t            usage;
-    uint32_t            mipmap;         ///<如果值>0表示提供的数据已有mipmaps，如果为0表示自动生成mipmaps
+    uint32_t            mipmap_zero_total_bytes;
+    uint32_t            origin_mipmaps; //原始mipmaps，0/1
+    uint32_t            target_mipmaps; //目标mipmaps，如果和origin_mipmaps不相等，则证明希望自动生成mipmaps
     VkImageAspectFlags  aspect;
     ImageTiling         tiling;
 
@@ -30,18 +32,15 @@ struct TextureCreateInfo
     ImageView *         image_view;     //如果没有imageview，则创建
 
     void *              pixels;         //如果没有buffer但有pixels，则根据pixels和以上条件创建buffer
-    VkDeviceSize        pixel_bytes;
+    VkDeviceSize        total_bytes;
     GPUBuffer *         buffer;         //如果pixels也没有，则代表不会立即写入图像数据
 
 public:
 
     TextureCreateInfo()
     {
-        hgl_zero(*this);
-        mipmap=1;
+        hgl_zero(*this);        
     }
-
-    void SetAutoMipmaps(){mipmap=0;}
 
     TextureCreateInfo(const uint32_t aspect_bit,const VkExtent2D &ext,const VkFormat &fmt,VkImage img):TextureCreateInfo()
     {   
@@ -171,6 +170,11 @@ public:
         extent.depth=1;
 
         return(true);
+    }
+    
+    void SetAutoMipmaps()
+    {
+        target_mipmaps=hgl::GetMipLevel(extent.width,extent.height,extent.depth);
     }
 };//struct TextureCreateInfo
 
