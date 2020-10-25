@@ -87,6 +87,16 @@ enum ImageTiling
     Linear
 };//
 
+inline const uint32_t GetMipLevel(const VkExtent2D &ext)
+{
+    return hgl::GetMipLevel(ext.width,ext.height);
+}
+
+inline const uint32_t GetMipLevel(const VkExtent3D &ext)
+{
+    return hgl::GetMipLevel(ext.width,ext.height,ext.depth);
+}
+
 enum IndexType
 {
     U16=0,
