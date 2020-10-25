@@ -10,21 +10,6 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    const uint32_t GetMipLevel(const uint32_t size)
-    {
-        return static_cast<uint32_t>(std::floor(std::log2(size)))+1;
-    }
-
-    const uint32_t GetMipLevel(const VkExtent2D &ext)
-    {
-        return GetMipLevel(std::max(ext.width,ext.height));
-    }
-
-    const uint32_t GetMipLevel(const VkExtent3D &ext)
-    {
-        return GetMipLevel(std::max(std::max(ext.width,ext.height),ext.depth));
-    }
-    
     void GenerateMipmaps(GPUCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,const int32_t width,const int32_t height,const uint32_t mipLevels)
     {
     //VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
