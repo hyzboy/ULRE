@@ -22,6 +22,8 @@ Pipeline *CreatePipeline(VkDevice device,VkPipelineCache pipeline_cache,Pipeline
                                 material->GetVertexAttributeList());
 
     data->InitViewportState(rt->GetExtent());
+    
+    data->SetColorAttachments(rt->GetColorCount());
 
     data->pipeline_info.layout = material->GetPipelineLayout();
 
