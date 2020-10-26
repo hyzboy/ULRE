@@ -27,14 +27,13 @@ using Texture2DPointer=Texture2D *;
 
 enum class GBufferAttachment
 {
-    Position=0,
-    Color,
+    Color=0,
     Normal,
 
-    ENUM_CLASS_RANGE(Position,Normal)
+    ENUM_CLASS_RANGE(Color,Normal)
 };//
 
-constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UFMT_RGBA32F,UFMT_RGBA32F,UFMT_RGBA32F};
+constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UFMT_RGBA32F,UFMT_RGBA32F};
 constexpr VkFormat gbuffer_depth_format=FMT_D32F;
 
 struct alignas(16) PhongPointLight
@@ -99,7 +98,12 @@ private:
     {
         List<VkFormat> gbuffer_color_format_list(gbuffer_color_format,size_t(GBufferAttachment::RANGE_SIZE));
 
-        gbuffer_rt=device->CreateRenderTarget(SCREEN_WIDTH,SCREEN_HEIGHT,gbuffer_color_format_list,gbuffer_depth_format);
+        gbuffer_rt=device->CreateRenderTarget(  SCREEN_WIDTH,
+                                                SCREEN_HEIGHT,
+                                                gbuffer_color_format_list,
+                                                gbuffer_depth_format,
+                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         return(true);
     }
@@ -183,9 +187,9 @@ private:
 
         sp_composition.material_instance->BindUBO("world",GetCameraMatrixBuffer());
         sp_composition.material_instance->BindUBO("lights",ubo_lights);
-        sp_composition.material_instance->BindSampler("GB_Position" ,gbuffer_rt->GetColorTexture((uint)GBufferAttachment::Position),sampler);
-        sp_composition.material_instance->BindSampler("GB_Normal"   ,gbuffer_rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
         sp_composition.material_instance->BindSampler("GB_Color"    ,gbuffer_rt->GetColorTexture((uint)GBufferAttachment::Color),sampler);
+        sp_composition.material_instance->BindSampler("GB_Normal"   ,gbuffer_rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
+        sp_composition.material_instance->BindSampler("GB_Depth"    ,gbuffer_rt->GetDepthTexture(),sampler);
         sp_composition.material_instance->Update();
 
         return(true);
