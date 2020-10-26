@@ -93,10 +93,10 @@ bool GPUCmdBuffer::BindFramebuffer(VkRenderPass rp,VkFramebuffer fb)
     return(true);
 }
 
-bool GPUCmdBuffer::BindFramebuffer(Framebuffer *fbo)
-{
-    return BindFramebuffer(fbo->GetRenderPass(),fbo->GetFramebuffer());
-}
+//bool GPUCmdBuffer::BindFramebuffer(Framebuffer *fbo)
+//{
+//    return BindFramebuffer(fbo->GetRenderPass(),fbo->GetFramebuffer());
+//}
 
 bool GPUCmdBuffer::BindFramebuffer(RenderTarget *rt)
 {

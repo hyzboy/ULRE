@@ -141,6 +141,11 @@ public:
     virtual void MouseMove(){}
     virtual void MouseWheel(int,int,uint){}
 
+    void SetClearColor(COLOR cc)
+    {
+        clear_color.Use(cc,1.0);
+    }
+
     void OnResize(int w,int h)
     {
         if(w>0&&h>0)
@@ -168,46 +173,16 @@ public:
         }
     }
 
-    void BuildCommandBuffer(RenderTarget *rt,RenderableInstance *ri)
-    {
-        if(!rt||!ri)
-            return;
-
-        GPUCmdBuffer *cb=rt->GetCommandBuffer();        
-        const IndexBuffer *ib=ri->GetIndexBuffer();
-
-        cb->Begin();
-            cb->BindFramebuffer(rt);
-                cb->BindPipeline(ri->GetPipeline());
-                cb->BindDescriptorSets(ri->GetDescriptorSets());
-                cb->BindVAB(ri);
-
-                    if (ib)
-                        cb->DrawIndexed(ib->GetCount());
-                    else
-                        cb->Draw(ri->GetDrawCount());
-
-            cb->EndRenderPass();
-        cb->End();
-    }
-
-    void SetClearColor(COLOR cc)
-    {
-        clear_color.Use(cc,1.0);
-    }
-
-    bool BuildCommandBuffer(uint32_t index,RenderableInstance *ri)
+    bool BuildCommandBuffer(GPUCmdBuffer *cb,VkRenderPass rp,VkFramebuffer fb,RenderableInstance *ri)
     {   
         if(!ri)return(false);
 
         const IndexBuffer *ib=ri->GetIndexBuffer();
 
-        GPUCmdBuffer *cb=cmd_buf[index];
-
         cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
 
         cb->Begin();
-            cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
+            cb->BindFramebuffer(rp,fb);
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetDescriptorSets());
                 cb->BindVAB(ri);
@@ -221,6 +196,21 @@ public:
         cb->End();
 
         return(true);
+    }
+
+    void BuildCommandBuffer(RenderTarget *rt,RenderableInstance *ri)
+    {
+        if(!rt||!ri)
+            return;
+
+        BuildCommandBuffer(rt->GetCommandBuffer(),rt->GetRenderPass(),rt->GetFramebuffer(),ri);
+    }
+
+    bool BuildCommandBuffer(uint32_t index,RenderableInstance *ri)
+    {   
+        if(!ri)return(false);
+
+        return BuildCommandBuffer(cmd_buf[index],sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index),ri);
     }
 
     bool BuildCommandBuffer(RenderableInstance *ri)
