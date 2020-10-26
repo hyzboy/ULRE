@@ -20,5 +20,9 @@ namespace hgl
             align_bits=0;       //不对齐
             position.Clear();
         }
+
+        void Widget::OnResize(const uint,const uint)
+        {
+        }
     }//namespace gui
 }//namespace hgl

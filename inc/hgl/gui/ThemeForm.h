@@ -8,18 +8,26 @@ namespace hgl
 {
     namespace gui
     {
+        using namespace hgl::graph;
+
         class ThemeForm
         {
         protected:
         
             Form *form;
-            hgl::graph::RenderTarget *render_target;
+            RenderTarget *render_target;
 
         public:
 
-            ThemeForm(Form *);
+            ThemeForm(Form *,RenderTarget *);
+            virtual ~ThemeForm();
 
-            void SetRenderTarget(hgl::graph::RenderTarget *);
+            RenderTarget *  GetRenderTarget(){return render_target;}
+            bool            SetRenderTarget(RenderTarget *);
+
+            void            Resize(uint w,uint h);
+
+
         };//class ThemeForm
     }//namespace gui
 }//namespace hgl

@@ -337,7 +337,7 @@ public:
 
         VkCommandBuffer cb=*cmd_buf[index];
         
-        sc_render_target->Submit(cb,gbuffer_rt->GetCompleteSemaphore());
+        sc_render_target->Submit(cb,gbuffer_rt->GetRenderCompleteSemaphore());
         sc_render_target->PresentBackbuffer();
         sc_render_target->WaitQueue();
         sc_render_target->WaitFence();

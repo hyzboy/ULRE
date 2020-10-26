@@ -52,12 +52,14 @@ namespace hgl
             void                SetPosition (const RectScope2i &);
             void                SetSize     (const Vector2f &);
 
+        public: //事件
+
+            virtual void OnResize(uint,uint);
+
         public:
 
             Widget(Widget *parent=nullptr,ThemeEngine *te=nullptr);
             virtual ~Widget()=default;
-
-            virtual void Draw(){}
         };//class Widget
     }//namespace gui
 }//namespace hgl

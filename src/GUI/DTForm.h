@@ -3,12 +3,13 @@
 
 #include<hgl/gui/ThemeForm.h>
 #include<hgl/graph/VK.h>
-using namespace hgl::graph;
 
 namespace hgl
 {    
     namespace gui
     {
+        using namespace hgl::graph;
+
         class Form;
 
         namespace default_theme
@@ -18,7 +19,7 @@ namespace hgl
 
             public:
 
-                DTForm(Form *f):ThemeForm(f){}
+                using ThemeForm::ThemeForm;
                 ~DTForm()=default;
             };//class DTForm
         }//namespace default_theme
