@@ -77,8 +77,6 @@ Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,const In
 
     pd->Set(prim,prim_restart);
 
-    pd->SetColorAttachments(rt->GetColorCount());
-
     Pipeline *p=device->CreatePipeline(pd,mtl,rt);
 
     if(p)
@@ -95,7 +93,7 @@ Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,c
 Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
 {
     pd->Set(prim,prim_restart);
-
+    
     Pipeline *p=device->CreatePipeline(pd,mtl,rt);
 
     if(p)
