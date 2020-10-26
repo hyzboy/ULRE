@@ -164,12 +164,12 @@ private:
             VK_SAMPLER_ADDRESS_MODE_REPEAT,
             VK_SAMPLER_ADDRESS_MODE_REPEAT,
             0.0f,
-            false,
-            0,
+            VK_TRUE,
+            device->GetGPUPhysicalDevice()->GetMaxSamplerAnisotropy(),
             false,
             VK_COMPARE_OP_NEVER,
             0.0f,
-            1.0f,
+            static_cast<float>(texture.color->GetMipLevel()),
             VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
             false
         };

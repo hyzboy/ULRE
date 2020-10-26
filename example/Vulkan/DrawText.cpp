@@ -28,22 +28,22 @@ private:
 
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    GPUBuffer *            ubo_world_matrix    =nullptr;
-    GPUBuffer *            ubo_color           =nullptr;
+    GPUBuffer *         ubo_world_matrix    =nullptr;
+    GPUBuffer *         ubo_color           =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
 private:
 
-    FontSource *                eng_fs              =nullptr;
-    FontSource *                chs_fs              =nullptr;
-    FontSourceMulti *           font_source         =nullptr;
+    FontSource *        eng_fs              =nullptr;
+    FontSource *        chs_fs              =nullptr;
+    FontSourceMulti *   font_source         =nullptr;
 
-    TileFont *                  tile_font           =nullptr;
-    TextLayout                  tl_engine;                                      ///<文本排版引擎
+    TileFont *          tile_font           =nullptr;
+    TextLayout          tl_engine;                                      ///<文本排版引擎
 
-    TextRenderable *            text_render_obj     =nullptr;
-    RenderableInstance *        render_instance     =nullptr;
+    TextRenderable *    text_render_obj     =nullptr;
+    RenderableInstance *render_instance     =nullptr;
 
 public:
 

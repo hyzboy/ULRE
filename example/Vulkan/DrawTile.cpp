@@ -31,7 +31,7 @@ class TestApp:public VulkanApplicationFramework
     
     ObjectList<TileBitmap> tile_list;
 
-    TileData *tile_data;
+    TileData *tile_data=nullptr;
 
     float *vertex_data=nullptr;
     float *tex_coord_data=nullptr;
