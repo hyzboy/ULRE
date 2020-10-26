@@ -88,7 +88,17 @@ void GPUDeviceAttribute::Refresh()
                 if (format_count == 1 && sf->format == VK_FORMAT_UNDEFINED)
                     format = VK_FORMAT_B8G8R8A8_UNORM;
                 else
-                    format = sf->format;
+                {
+                    format=VK_FORMAT_UNDEFINED;
+
+                    for(int i=0;i<format_count;i++)
+                    {
+                        if(sf->format>format)
+                            format=sf->format;
+
+                        ++sf;
+                    }
+                }
             }
         }
     }
