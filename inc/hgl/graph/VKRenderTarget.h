@@ -14,13 +14,13 @@ class RenderTarget:public GPUQueue
 {
 protected:
 
-    RenderPass *rp;
-    Framebuffer *fb;
+    RenderPass *render_pass;
+    Framebuffer *fbo;
     
     VkExtent2D extent;
     
-    GPUSemaphore *  render_complete_semaphore   =nullptr;
-    GPUCmdBuffer * command_buffer              =nullptr;
+    GPUSemaphore *render_complete_semaphore =nullptr;
+    GPUCmdBuffer *command_buffer            =nullptr;
 
 protected:
 
@@ -40,16 +40,18 @@ public:
     virtual ~RenderTarget();
     
             const   VkExtent2D &    GetExtent           ()const {return extent;}
-                    GPUSemaphore *  GetCompleteSemaphore(){return render_complete_semaphore;}
-                    GPUCmdBuffer * GetCommandBuffer    ()      {return command_buffer;}
-    virtual const   VkRenderPass    GetRenderPass       ()const {return fb->GetRenderPass();}
-    virtual const   uint32_t        GetColorCount       ()const {return fb->GetColorCount();}
-    virtual const   VkFramebuffer   GetFramebuffer      ()const {return fb->GetFramebuffer();}
+    virtual const   VkRenderPass    GetRenderPass       ()const {return *render_pass;}
+    virtual const   uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
+    virtual const   VkFramebuffer   GetFramebuffer      ()const {return fbo->GetFramebuffer();}
 
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
 
-    virtual         bool            Submit              (GPUSemaphore *present_complete_semaphore=nullptr);
+public:
+
+            GPUSemaphore *  GetRenderCompleteSemaphore  (){return render_complete_semaphore;}
+            GPUCmdBuffer *  GetCommandBuffer            (){return command_buffer;}
+    virtual bool            Submit                      (GPUSemaphore *present_complete_semaphore=nullptr);
 };//class RenderTarget
 
 /**
@@ -63,8 +65,6 @@ class SwapchainRenderTarget:public RenderTarget
 
     GPUSemaphore *present_complete_semaphore=nullptr;
 
-    RenderPass *main_rp=nullptr;
-
     uint32_t swap_chain_count;
 
     uint32_t current_frame;
@@ -75,18 +75,19 @@ public:
     SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc);
     ~SwapchainRenderTarget();
 
-            const   VkRenderPass    GetRenderPass   ()const override        {return *main_rp;}
-            const   VkFramebuffer   GetFramebuffer  ()const override        {return render_frame[current_frame]->GetFramebuffer();}
-                    VkFramebuffer   GetFramebuffer  (const uint32_t index)  {return render_frame[index]->GetFramebuffer();}
+            const   VkFramebuffer   GetFramebuffer  ()const override            {return render_frame[current_frame]->GetFramebuffer();}
+                    VkFramebuffer   GetFramebuffer  (const uint32_t index)      {return render_frame[index]->GetFramebuffer();}
 
-            const   uint32_t        GetColorCount   ()const override   {return 1;}
-            const   uint32_t        GetImageCount   ()const            {return swap_chain_count;}
+            const   uint32_t        GetColorCount   ()const override            {return 1;}
+            const   uint32_t        GetImageCount   ()const                     {return swap_chain_count;}
 
-            const   uint32_t        GetCurrentFrameIndices()const{return current_frame;}
-                    GPUSemaphore *  GetPresentCompleteSemaphore(){return present_complete_semaphore;}
+    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->GetColorTexture(index);}
+    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->GetDepthTexture();}
 
-    virtual         Texture2D *     GetColorTexture(const int index=0)  override{return swapchain->GetColorTexture(index);}
-    virtual         Texture2D *     GetDepthTexture()                   override{return swapchain->GetDepthTexture();}
+public:
+
+            const   uint32_t        GetCurrentFrameIndices      ()const {return current_frame;}
+                    GPUSemaphore *  GetPresentCompleteSemaphore ()      {return present_complete_semaphore;}
 
 public:
 

@@ -7,12 +7,12 @@
 VK_NAMESPACE_BEGIN
 RenderTarget::RenderTarget(GPUDevice *dev,Framebuffer *_fb,GPUCmdBuffer *_cb,const uint32_t fence_count):GPUQueue(dev,dev->GetGraphicsQueue(),fence_count)
 {
-    rp=nullptr;
-    fb=_fb;
+    render_pass=nullptr;
+    fbo=_fb;
     command_buffer=_cb;
 
-    if(fb)
-        color_count=fb->GetColorCount();
+    if(fbo)
+        color_count=fbo->GetColorCount();
     else
         color_count=0;
 
@@ -23,8 +23,8 @@ RenderTarget::RenderTarget(GPUDevice *dev,Framebuffer *_fb,GPUCmdBuffer *_cb,con
 
 RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,GPUCmdBuffer *_cb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):GPUQueue(dev,dev->GetGraphicsQueue(),fence_count)
 {
-    rp=_rp;
-    fb=_fb;
+    render_pass=_rp;
+    fbo=_fb;
     command_buffer=_cb;
     
     depth_texture=dt;
@@ -59,8 +59,8 @@ RenderTarget::~RenderTarget()
     
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(command_buffer);
-    SAFE_CLEAR(fb);
-    SAFE_CLEAR(rp);
+    SAFE_CLEAR(fbo);
+    SAFE_CLEAR(render_pass);
 }
 
 bool RenderTarget::Submit(GPUSemaphore *present_complete_semaphore)
@@ -82,7 +82,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
     Texture2D **sc_color=swapchain->GetColorTextures();
     Texture2D *sc_depth=swapchain->GetDepthTexture();
 
-    main_rp=device->CreateRenderPass((*sc_color)->GetFormat(),sc_depth->GetFormat(),VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    this->render_pass=device->CreateRenderPass((*sc_color)->GetFormat(),sc_depth->GetFormat(),VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
     swap_chain_count=swapchain->GetImageCount();
     
@@ -92,7 +92,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame[i]=device->CreateFramebuffer(main_rp,(*sc_color)->GetImageView(),sc_depth->GetImageView());
+        render_frame[i]=device->CreateFramebuffer(this->render_pass,(*sc_color)->GetImageView(),sc_depth->GetImageView());
         ++sc_color;
     }
 
@@ -106,7 +106,6 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
     SAFE_CLEAR_OBJECT_ARRAY(render_frame,swap_chain_count);
 
     delete present_complete_semaphore;
-    delete main_rp;
 }
     
 int SwapchainRenderTarget::AcquireNextImage()
