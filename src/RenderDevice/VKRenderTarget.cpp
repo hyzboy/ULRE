@@ -33,7 +33,7 @@ RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,GPUCm
     if(color_count>0)
     {
         color_textures=new Texture2D *[color_count];
-        hgl_cpy<Texture2D *>(color_textures,ctl,color_count);
+        hgl_cpy(color_textures,ctl,color_count);
 
         extent.width=color_textures[0]->GetWidth();
         extent.height=color_textures[0]->GetHeight();

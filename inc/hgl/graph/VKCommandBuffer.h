@@ -67,7 +67,7 @@ public:
     template<typename ...ARGS> void BlitImage           (ARGS...args){vkCmdBlitImage        (cmd_buf,args...);}
 
     bool BindFramebuffer(VkRenderPass rp,VkFramebuffer fb);
-    bool BindFramebuffer(Framebuffer *);
+//    bool BindFramebuffer(Framebuffer *);
     bool BindFramebuffer(RenderTarget *);
 
     bool BindPipeline(Pipeline *p)
