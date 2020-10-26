@@ -14,12 +14,14 @@ namespace hgl
          */
         class Form:public Widget
         {
-        protected:  //每个窗体独立一个FBO存在，所以每个窗体会有自己的RenderTarget与pipeline
+        protected:
 
         public:
 
             Form(ThemeEngine *te=nullptr):Widget(nullptr,te){}
             virtual ~Form()=default;
+
+
         };//class Form
     }//namespace gui
 }//namespace hgl

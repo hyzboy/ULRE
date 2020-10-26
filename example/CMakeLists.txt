@@ -2,3 +2,4 @@
 
 add_subdirectory(Vulkan)
 add_subdirectory(2dVector)
+add_subdirectory(GUI)

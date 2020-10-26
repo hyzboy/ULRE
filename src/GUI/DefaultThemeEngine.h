@@ -34,11 +34,8 @@ namespace hgl
 
                 bool Init() override;
                 void Clear() override;
-
-                bool Registry(Form *) override;
-                void Unregistry(Form *) override;
-                void Render(Form *) override;
-                bool Resize(Form *,const uint32_t,const uint32_t) override;
+                
+                bool ThemeRender(Form *) override;
             };//class DefaultThemeEngine:public ThemeEngine
         }//namespace default_theme
     }//namespace gui
