@@ -34,7 +34,7 @@ namespace hgl
                 if(vab_position)
                     delete vab_position;
 
-                vab_position      =device->CreateVAB(VAF_VEC4,max_count);
+                vab_position    =device->CreateVAB(VAF_VEC4,max_count);
                 Set(VAN::Position,vab_position);
             }
 
@@ -47,7 +47,7 @@ namespace hgl
             }
         }
 
-        bool TextRenderable::WriteVertex    (const float *fp){if(!fp)return(false);if(!vab_position   )return(false);return vab_position    ->Write(fp,draw_count*4*sizeof(float));}
+        bool TextRenderable::WriteVertex    (const float *fp){if(!fp)return(false);if(!vab_position )return(false);return vab_position  ->Write(fp,draw_count*4*sizeof(float));}
         bool TextRenderable::WriteTexCoord  (const float *fp){if(!fp)return(false);if(!vab_tex_coord)return(false);return vab_tex_coord ->Write(fp,draw_count*4*sizeof(float));}
     }//namespace graph
 }//namespace hgl
