@@ -217,6 +217,14 @@ struct ColorAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
         format=fmt;
         extent=ext;
     }
+
+    ColorAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext):ColorAttachmentTextureCreateInfo()
+    {
+        format=fmt;
+        extent.width=ext.width;
+        extent.height=ext.height;
+        extent.depth=1;
+    }
 };
 
 struct DepthAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
@@ -236,6 +244,14 @@ struct DepthAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
         format=fmt;
         extent=ext;
     }
+
+    DepthAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext):DepthAttachmentTextureCreateInfo()
+    {
+        format=fmt;
+        extent.width=ext.width;
+        extent.height=ext.height;
+        extent.depth=1;
+    }
 };
 
 struct DepthStencilAttachmentTextureCreateInfo:public AttachmentTextureCreateInfo
@@ -254,6 +270,14 @@ struct DepthStencilAttachmentTextureCreateInfo:public AttachmentTextureCreateInf
     {
         format=fmt;
         extent=ext;
+    }
+
+    DepthStencilAttachmentTextureCreateInfo(const VkFormat fmt,const VkExtent2D &ext):DepthStencilAttachmentTextureCreateInfo()
+    {
+        format=fmt;
+        extent.width=ext.width;
+        extent.height=ext.height;
+        extent.depth=1;
     }
 };
 

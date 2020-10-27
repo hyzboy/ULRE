@@ -180,28 +180,17 @@ public: //shader & material
 
 public: //Command GPUBuffer 相关
 
-    GPUCmdBuffer * CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count);
+    GPUCmdBuffer *  CreateCommandBuffer(const uint32_t attachment_count);
     
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
-                                        const List<VkFormat> &color_format,
-                                        const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                                        const RenderbufferInfo *);
 
-    RenderPass *    CreateRenderPass(   const List<VkFormat> &color_format,
-                                        const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    RenderPass *    CreateRenderPass(   const RenderbufferInfo *);
 
-    RenderPass *    CreateRenderPass(   const VkFormat color_format,
-                                        const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-    GPUFence *             CreateFence(bool);
-    GPUSemaphore * CreateSemaphore();
+    GPUFence *      CreateFence(bool);
+    GPUSemaphore *  CreateSemaphore();
 
 public: //FrameBuffer相关
 
@@ -216,31 +205,7 @@ public:
     
     RenderTarget *CreateRenderTarget(   Framebuffer *,const uint32_t fence_count=1);
 
-    RenderTarget *CreateRenderTarget(   const uint,const uint,
-                                        const List<VkFormat> &color_format_list,
-                                        const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                        const uint32_t fence_count=1);
-
-    RenderTarget *CreateRenderTarget(   const uint,const uint,
-                                        const VkFormat color_format,
-                                        const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                        const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                        const uint32_t fence_count=1);
-
-    RenderTarget *CreateRenderTarget(   const uint,const uint,const VkFormat,const VkImageLayout final_layout,const uint32_t fence_count=1);
-
-    RenderTarget *CreateColorRenderTarget(   const uint w,const uint h,const VkFormat format,const uint32_t fence_count=1)
-    {
-        return CreateRenderTarget(w,h,format,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,fence_count);
-    }
-
-    RenderTarget *CreateDepthRenderTarget(   const uint w,const uint h,const VkFormat format,const uint32_t fence_count=1)
-    {
-        return CreateRenderTarget(w,h,format,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,fence_count);
-    }
+    RenderTarget *CreateRenderTarget(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
     
 public:
 

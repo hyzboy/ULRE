@@ -80,11 +80,11 @@ void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint c
     }
 }
 
-bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const RenderbufferInfo *rbi)
 {
-    const uint color_count=color_format.GetCount();
+    const uint color_count=rbi->GetColorCount();
 
-    const uint count=(depth_format!=FMT_UNDEFINED)?color_count+1:color_count;
+    const uint count=(rbi->HasDepthOrStencil())?color_count+1:color_count;
 
     desc_list.SetCount(count);
 
@@ -104,21 +104,21 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
     }
 
     desc=desc_list.GetData();
-    const VkFormat *cf=color_format.GetData();
+    const VkFormat *cf=rbi->GetColorFormat();
     for(uint i=0;i<color_count;i++)
     {
-        desc->finalLayout      = color_final_layout;
+        desc->finalLayout      = rbi->GetColorLayout();
         desc->format           = *cf;
 
         ++desc;
         ++cf;
     }
 
-    if(depth_format!=FMT_UNDEFINED)
+    if(rbi->GetDepthFormat()!=FMT_UNDEFINED)
     {
-        desc->finalLayout  = depth_final_layout;
-        desc->format       = depth_format;
-        desc->storeOp      = VK_ATTACHMENT_STORE_OP_STORE;      //swapchainRT最后"可能"是不需要保存深度的，，，，想想怎么最后弄成"DONT CARE"
+        desc->finalLayout  = rbi->GetDepthLayout();
+        desc->format       = rbi->GetDepthFormat();
+        desc->storeOp      = rbi->IsSwapchain()?VK_ATTACHMENT_STORE_OP_DONT_CARE:VK_ATTACHMENT_STORE_OP_STORE;
     }
     
     return(true);
@@ -192,22 +192,21 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     return(true);
 }
 
-RenderPass *GPUDevice::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
+RenderPass *GPUDevice::CreateRenderPass(const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
-                                        const List<VkFormat> &color_format_list,
-                                        const VkFormat depth_format,
-                                        const VkImageLayout color_final_layout,
-                                        const VkImageLayout depth_final_layout)
+                                        const RenderbufferInfo *rbi)
 {
-    for(const VkFormat cf:color_format_list)
+    for(const VkFormat cf:rbi->GetColorFormatList())
     {
         if(!attr->physical_device->IsColorAttachmentOptimal(cf)
             &&!attr->physical_device->IsColorAttachmentLinear(cf))
             return(nullptr);
     }
 
-    if(depth_format!=FMT_UNDEFINED)
+    const VkFormat depth_format=rbi->GetDepthFormat();
+
+    if(rbi->HasDepthOrStencil())
     {
         if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format)
          &&!attr->physical_device->IsDepthAttachmentLinear(depth_format))
@@ -230,12 +229,12 @@ RenderPass *GPUDevice::CreateRenderPass(   const List<VkAttachmentDescription> &
     if(vkCreateRenderPass(attr->device,&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(attr->device,render_pass,color_format_list,depth_format));
+    return(new RenderPass(attr->device,render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
-RenderPass *GPUDevice::CreateRenderPass(const List<VkFormat> &color_format_list,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
+RenderPass *GPUDevice::CreateRenderPass(const RenderbufferInfo *rbi)
 {
-    for(const VkFormat &fmt:color_format_list)
+    for(const VkFormat &fmt:rbi->GetColorFormatList())
         if(!attr->physical_device->IsColorAttachmentOptimal(fmt))
             return(nullptr);
 
@@ -245,17 +244,17 @@ RenderPass *GPUDevice::CreateRenderPass(const List<VkFormat> &color_format_list,
     List<VkSubpassDescription> subpass_desc_list;
     List<VkSubpassDependency> subpass_dependency_list;
 
-    color_ref_list.SetCount(color_format_list.GetCount());
-    CreateColorAttachmentReference(color_ref_list.GetData(),0,color_format_list.GetCount());
+    color_ref_list.SetCount(rbi->GetColorCount());
+    CreateColorAttachmentReference(color_ref_list.GetData(),0,rbi->GetColorCount());
     
-    CreateAttachmentDescription(atta_desc_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
+    CreateAttachmentDescription(atta_desc_list,rbi);
 
-    if(depth_format!=FMT_UNDEFINED)
+    if(rbi->HasDepthOrStencil())
     {
-        if(!attr->physical_device->IsDepthAttachmentOptimal(depth_format))
+        if(!attr->physical_device->IsDepthAttachmentOptimal(rbi->GetDepthFormat()))
             return(nullptr);
             
-        CreateDepthAttachmentReference(&depth_ref,color_format_list.GetCount());
+        CreateDepthAttachmentReference(&depth_ref,rbi->GetColorCount());
         subpass_desc_list.Add(SubpassDescription(color_ref_list.GetData(),color_ref_list.GetCount(),&depth_ref));
     }
     else
@@ -265,15 +264,6 @@ RenderPass *GPUDevice::CreateRenderPass(const List<VkFormat> &color_format_list,
 
     CreateSubpassDependency(subpass_dependency_list,2);
 
-    return CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,color_format_list,depth_format,color_final_layout,depth_final_layout);
-}
-
-RenderPass *GPUDevice::CreateRenderPass(VkFormat color_format,VkFormat depth_format,VkImageLayout color_final_layout,VkImageLayout depth_final_layout)
-{
-    List<VkFormat> color_format_list;
-
-    color_format_list.Add(color_format);
-
-    return CreateRenderPass(color_format_list,depth_format,color_final_layout,depth_final_layout);
+    return CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
 }
 VK_NAMESPACE_END

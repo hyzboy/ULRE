@@ -8,6 +8,7 @@
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/VKPrimivate.h>
 #include<hgl/graph/VKStruct.h>
+#include<hgl/graph/VKRenderbufferInfo.h>
 
 VK_NAMESPACE_BEGIN
 

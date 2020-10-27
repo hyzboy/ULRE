@@ -22,9 +22,22 @@ class TestApp:public CameraAppFramework
     struct:public RenderObject
     {        
         RenderTarget *      render_taget        =nullptr;
+        GPUCmdBuffer *      command_buffer      =nullptr;
         
         Pipeline *          pipeline            =nullptr;
         RenderableInstance *renderable_instance =nullptr;
+
+    public:
+
+        bool Submit()
+        {            
+            if(!render_taget->Submit(command_buffer))
+                return(false);
+            if(!render_taget->WaitQueue())
+                return(false);
+
+            return(true);
+        }
     }os;
     
     struct:public RenderObject
@@ -64,8 +77,13 @@ public:
 
     bool InitOffscreen()
     {
-        os.render_taget=device->CreateColorRenderTarget(OFFSCREEN_SIZE,OFFSCREEN_SIZE,UFMT_RGBA8);
+        FramebufferInfo fbi(UFMT_RGBA8,OFFSCREEN_SIZE,OFFSCREEN_SIZE);
+
+        os.render_taget=device->CreateRenderTarget(&fbi);
         if(!os.render_taget)return(false);
+
+        os.command_buffer=device->CreateCommandBuffer(fbi.GetAttachmentCount());
+        if(!os.command_buffer)return(false);
         
         os.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
         if(!os.material_instance)return(false);
@@ -94,10 +112,9 @@ public:
             if(!os.renderable_instance)return(false);
         }
 
-        VulkanApplicationFramework::BuildCommandBuffer(os.render_taget,os.renderable_instance);
+        VulkanApplicationFramework::BuildCommandBuffer(os.command_buffer,os.render_taget,os.renderable_instance);
 
-        os.render_taget->Submit(nullptr);
-        os.render_taget->WaitQueue();
+        os.Submit();
 
         return(true);
     }

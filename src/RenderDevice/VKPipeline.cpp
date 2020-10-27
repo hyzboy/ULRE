@@ -28,7 +28,7 @@ Pipeline *CreatePipeline(VkDevice device,VkPipelineCache pipeline_cache,Pipeline
     data->pipeline_info.layout = material->GetPipelineLayout();
 
     {
-        data->pipeline_info.renderPass = rt->GetRenderPass();
+        data->pipeline_info.renderPass = rt->GetVkRenderPass();
         data->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
     }
 

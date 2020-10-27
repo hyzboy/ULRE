@@ -24,6 +24,8 @@ public:
 
     ~Framebuffer();
 
+    operator VkFramebuffer(){return frame_buffer;}
+
     const   VkFramebuffer   GetFramebuffer      ()const{return frame_buffer;}
     const   VkRenderPass    GetRenderPass       ()const{return render_pass;}
 

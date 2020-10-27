@@ -50,7 +50,18 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    RenderTarget *gbuffer_rt;
+    struct
+    {
+        RenderTarget *rt;
+        GPUCmdBuffer *cmd;
+
+    public:
+
+        bool Submit(GPUSemaphore *sem)
+        {
+            return rt->Submit(cmd,sem);
+        }
+    }gbuffer;
 
     PhongPointLight lights;
 
@@ -89,23 +100,25 @@ public:
 
     ~TestApp()
     {
-        delete gbuffer_rt;
+        delete gbuffer.cmd;
+        delete gbuffer.rt;
     }
 
 private:
 
     bool InitGBuffer()
     {
-        List<VkFormat> gbuffer_color_format_list(gbuffer_color_format,size_t(GBufferAttachment::RANGE_SIZE));
+        FramebufferInfo fbi(gbuffer_color_format,size_t(GBufferAttachment::RANGE_SIZE),gbuffer_depth_format);
 
-        gbuffer_rt=device->CreateRenderTarget(  SCREEN_WIDTH,
-                                                SCREEN_HEIGHT,
-                                                gbuffer_color_format_list,
-                                                gbuffer_depth_format,
-                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        fbi.SetExtent(SCREEN_WIDTH,SCREEN_HEIGHT);
 
-        return(gbuffer_rt);
+        gbuffer.rt=device->CreateRenderTarget(&fbi);
+
+        if(!gbuffer.rt)return(false);
+
+        gbuffer.cmd=device->CreateCommandBuffer(size_t(GBufferAttachment::RANGE_SIZE)+1);
+
+        return(gbuffer.rt);
     }
 
     bool InitSubpass(SubpassParam *sp,const OSString &material_filename)
@@ -121,11 +134,11 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        sp->pipeline_triangles  =gbuffer_rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Triangles);
+        sp->pipeline_triangles  =gbuffer.rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Triangles);
         if(!sp->pipeline_triangles)
             return(false);
 
-        sp->pipeline_fan        =gbuffer_rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Fan);
+        sp->pipeline_fan        =gbuffer.rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
@@ -187,9 +200,9 @@ private:
 
         sp_composition.material_instance->BindUBO("world",GetCameraMatrixBuffer());
         sp_composition.material_instance->BindUBO("lights",ubo_lights);
-        sp_composition.material_instance->BindSampler("GB_Color"    ,gbuffer_rt->GetColorTexture((uint)GBufferAttachment::Color),sampler);
-        sp_composition.material_instance->BindSampler("GB_Normal"   ,gbuffer_rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
-        sp_composition.material_instance->BindSampler("GB_Depth"    ,gbuffer_rt->GetDepthTexture(),sampler);
+        sp_composition.material_instance->BindSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),sampler);
+        sp_composition.material_instance->BindSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
+        sp_composition.material_instance->BindSampler("GB_Depth"    ,gbuffer.rt->GetDepthTexture(),sampler);
         sp_composition.material_instance->Update();
 
         return(true);
@@ -278,19 +291,17 @@ private:
 
     bool InitGBufferCommandBuffer()
     {
-        GPUCmdBuffer *gbuffer_cmd=gbuffer_rt->GetCommandBuffer();
-
-        if(!gbuffer_cmd)
+        if(!gbuffer.cmd)
             return(false);
 
-        gbuffer_cmd->Begin();
-            if(!gbuffer_cmd->BindFramebuffer(gbuffer_rt))
+        gbuffer.cmd->Begin();
+            if(!gbuffer.cmd->BindFramebuffer(gbuffer.rt->GetRenderPass(),gbuffer.rt->GetFramebuffer()))
                 return(false);
 
-            render_list.Render(gbuffer_cmd);
+            render_list.Render(gbuffer.cmd);
 
-            gbuffer_cmd->EndRenderPass();
-        gbuffer_cmd->End();
+            gbuffer.cmd->EndRenderPass();
+        gbuffer.cmd->End();
 
         return(true);
     }
@@ -337,17 +348,17 @@ public:
     
     virtual void SubmitDraw(int index) override
     {   
-        gbuffer_rt->Submit(sc_render_target->GetPresentCompleteSemaphore());
+        gbuffer.Submit(sc_render_target->GetPresentCompleteSemaphore());
 
         VkCommandBuffer cb=*cmd_buf[index];
         
-        sc_render_target->Submit(cb,gbuffer_rt->GetRenderCompleteSemaphore());
+        sc_render_target->Submit(cb,gbuffer.rt->GetRenderCompleteSemaphore());
         sc_render_target->PresentBackbuffer();
         sc_render_target->WaitQueue();
         sc_render_target->WaitFence();
 
-        gbuffer_rt->WaitQueue();
-        gbuffer_rt->WaitFence();
+        gbuffer.rt->WaitQueue();
+        gbuffer.rt->WaitFence();
     }
     
     void BuildCommandBuffer(uint32_t index) override

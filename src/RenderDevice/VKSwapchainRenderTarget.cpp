@@ -3,7 +3,7 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):RenderTarget(dev,nullptr,nullptr,sc->GetImageCount())
+SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):RenderTarget(dev,nullptr,sc->GetImageCount())
 {
     swapchain=sc;
     vk_swapchain=swapchain->GetSwapchain();
@@ -17,7 +17,9 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
     Texture2D **sc_color=swapchain->GetColorTextures();
     Texture2D *sc_depth=swapchain->GetDepthTexture();
 
-    this->render_pass=device->CreateRenderPass((*sc_color)->GetFormat(),sc_depth->GetFormat(),VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    SwapchainRenderbufferInfo rbi((*sc_color)->GetFormat(),sc_depth->GetFormat());
+
+    this->render_pass=device->CreateRenderPass(&rbi);
 
     swap_chain_count=swapchain->GetImageCount();
     
