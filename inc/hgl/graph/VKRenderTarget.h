@@ -6,6 +6,7 @@
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKQueue.h>
+#include<hgl/graph/VKPipeline.h>
 VK_NAMESPACE_BEGIN
 /**
  * 渲染目标
@@ -30,6 +31,10 @@ protected:
 
 protected:
 
+    ObjectList<Pipeline> pipeline_list;
+
+protected:
+
     friend class GPUDevice;
 
     RenderTarget(GPUDevice *dev,Framebuffer *_fb,GPUCmdBuffer *_cb,const uint32_t fence_count=1);
@@ -46,6 +51,15 @@ public:
 
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
+
+public:
+
+    Pipeline *CreatePipeline(Material *,          const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,                PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,          const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
 public:
 

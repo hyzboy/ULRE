@@ -33,8 +33,8 @@ enum class GBufferAttachment
     ENUM_CLASS_RANGE(Color,Normal)
 };//
 
-constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UFMT_RGB565,UFMT_RG8};
-constexpr VkFormat gbuffer_depth_format=FMT_D32F;
+constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UFMT_RGB565,FMT_RG8UN};
+constexpr VkFormat gbuffer_depth_format=FMT_D16UN;
 
 struct alignas(16) PhongPointLight
 {
@@ -105,7 +105,7 @@ private:
                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                                                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        return(true);
+        return(gbuffer_rt);
     }
 
     bool InitSubpass(SubpassParam *sp,const OSString &material_filename)
@@ -121,18 +121,18 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        sp->pipeline_triangles  =db->CreatePipeline(sp->material,gbuffer_rt,InlinePipeline::Solid3D,Prim::Triangles);
+        sp->pipeline_triangles  =gbuffer_rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Triangles);
         if(!sp->pipeline_triangles)
             return(false);
 
-        sp->pipeline_fan        =db->CreatePipeline(sp->material,gbuffer_rt,InlinePipeline::Solid3D,Prim::Fan);
+        sp->pipeline_fan        =gbuffer_rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
 
     bool InitCompositionPipeline(SubpassParam *sp)
     {
-        sp->pipeline_fan=db->CreatePipeline(sp->material,sc_render_target,InlinePipeline::Solid2D,Prim::Fan);
+        sp->pipeline_fan=sc_render_target->CreatePipeline(sp->material,InlinePipeline::Solid2D,Prim::Fan);
 
         return sp->pipeline_fan;
     }

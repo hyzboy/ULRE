@@ -70,7 +70,7 @@ public:
         os.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
         if(!os.material_instance)return(false);
 
-        os.pipeline=db->CreatePipeline(os.material_instance,os.render_taget,InlinePipeline::Solid2D,Prim::Fan);
+        os.pipeline=os.render_taget->CreatePipeline(os.material_instance,InlinePipeline::Solid2D,Prim::Fan);
         if(!os.pipeline)return(false);
 
         if(!InitUBO(&os,os.render_taget->GetExtent()))
