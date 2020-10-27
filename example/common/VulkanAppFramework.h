@@ -30,19 +30,19 @@ private:
             Window *    win             =nullptr;
     VulkanInstance *    inst            =nullptr;
 
-    void OnKeyDown  (KeyboardButton kb){key_status[kb]=true;}
-    void OnKeyUp    (KeyboardButton kb){key_status[kb]=false;}
-    void OnKeyPress (KeyboardButton kb){KeyPress(kb);}
+    void OnKeyPressed   (KeyboardButton kb){key_status[kb]=true;}
+    void OnKeyReleased  (KeyboardButton kb){key_status[kb]=false;}
+    void OnKeyRepeat    (KeyboardButton kb){KeyRepeat(kb);}
 
 protected:
 
     uint        mouse_key=0;
     Vector2f    mouse_pos;
 
-    void OnMouseDown(int,int,uint mk){mouse_key=mk;MouseDown(mk);}
-    void OnMouseUp  (int,int,uint mk){mouse_key=0;MouseUp(mk);}
-    void OnMouseMove(int x,int y){mouse_pos.Set(x,y);MouseMove();}
-    void OnMouseWheel(int v,int h,uint mk){MouseWheel(v,h,mk);}
+    void OnMousePressed (int,int,uint mk){mouse_key=mk;MousePressed(mk);}
+    void OnMouseReleased(int,int,uint mk){mouse_key=0;MouseReleased(mk);}
+    void OnMouseMove    (int x,int y){mouse_pos.Set(x,y);MouseMove();}
+    void OnMouseWheel   (int v,int h,uint mk){MouseWheel(v,h,mk);}
 
 protected:
 
@@ -121,23 +121,23 @@ public:
 
         InitCommandBuffer();
 
-        SetEventCall(win->OnResize,     this,VulkanApplicationFramework,OnResize    );
-        SetEventCall(win->OnKeyDown,    this,VulkanApplicationFramework,OnKeyDown   );
-        SetEventCall(win->OnKeyUp,      this,VulkanApplicationFramework,OnKeyUp     );
-        SetEventCall(win->OnKeyPress,   this,VulkanApplicationFramework,OnKeyPress  );
+        SetEventCall(win->OnResize,         this,VulkanApplicationFramework,OnResize        );
+        SetEventCall(win->OnKeyPressed,     this,VulkanApplicationFramework,OnKeyPressed    );
+        SetEventCall(win->OnKeyReleased,    this,VulkanApplicationFramework,OnKeyReleased   );
+        SetEventCall(win->OnKeyRepeat,      this,VulkanApplicationFramework,OnKeyRepeat     );
 
-        SetEventCall(win->OnMouseDown,  this,VulkanApplicationFramework,OnMouseDown );
-        SetEventCall(win->OnMouseUp,    this,VulkanApplicationFramework,OnMouseUp   );
-        SetEventCall(win->OnMouseMove,  this,VulkanApplicationFramework,OnMouseMove );
-        SetEventCall(win->OnMouseWheel, this,VulkanApplicationFramework,OnMouseWheel);
+        SetEventCall(win->OnMousePressed,   this,VulkanApplicationFramework,OnMousePressed  );
+        SetEventCall(win->OnMouseReleased,  this,VulkanApplicationFramework,OnMouseReleased );
+        SetEventCall(win->OnMouseMove,      this,VulkanApplicationFramework,OnMouseMove     );
+        SetEventCall(win->OnMouseWheel,     this,VulkanApplicationFramework,OnMouseWheel    );
 
         return(true);
     }
 
     virtual void Resize(int,int)=0;
-    virtual void KeyPress(KeyboardButton){}
-    virtual void MouseDown(uint){}
-    virtual void MouseUp(uint){}
+    virtual void KeyRepeat(KeyboardButton){}
+    virtual void MousePressed(uint){}
+    virtual void MouseReleased(uint){}
     virtual void MouseMove(){}
     virtual void MouseWheel(int,int,uint){}
 
@@ -404,14 +404,14 @@ public:
             return;
     }
 
-    virtual void KeyPress(KeyboardButton kb)override
+    virtual void KeyRepeat(KeyboardButton kb)override
     {
         if(kb==kbMinus)move_speed*=0.9f;else
         if(kb==kbEquals)move_speed*=1.1f;else
             return;
     }
 
-    virtual void MouseDown(uint) override
+    virtual void MousePressed(uint) override
     {
         mouse_last_pos=mouse_pos;
     }
