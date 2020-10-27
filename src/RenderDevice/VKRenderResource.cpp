@@ -71,56 +71,6 @@ MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_fil
     return CreateMaterialInstance(mtl);
 }
 
-Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
-{
-    PipelineData *pd=GetPipelineData(ip);
-
-    pd->Set(prim,prim_restart);
-
-    Pipeline *p=device->CreatePipeline(pd,mtl,rt);
-
-    if(p)
-        Add(p);
-
-    return(p);
-}
-
-Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
-{
-    return CreatePipeline(mi->GetMaterial(),rt,ip,prim,prim_restart);
-}
-
-Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
-{
-    pd->Set(prim,prim_restart);
-    
-    Pipeline *p=device->CreatePipeline(pd,mtl,rt);
-
-    if(p)
-        Add(p);
-
-    return(p);
-}
-
-Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,PipelineData *pd,const Prim &prim,const bool prim_restart)
-{
-    return CreatePipeline(mi->GetMaterial(),rt,pd,prim,prim_restart);
-}
-
-Pipeline *RenderResource::CreatePipeline(Material *mtl,RenderTarget *rt,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
-{
-    PipelineData *pd=GetPipelineData(pipeline_filename);
-
-    if(!pd)return(nullptr);
-
-    return CreatePipeline(mtl,rt,pd,prim,prim_restart);
-}
-
-Pipeline *RenderResource::CreatePipeline(MaterialInstance *mi,RenderTarget *rt,const OSString &filename,const Prim &prim,const bool prim_restart)
-{
-    return CreatePipeline(mi->GetMaterial(),rt,filename,prim,prim_restart);
-}
-
 Renderable *RenderResource::CreateRenderable(const uint32_t vertex_count)
 {
     if(!vertex_count)return(nullptr);

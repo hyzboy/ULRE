@@ -109,7 +109,7 @@ public:
     const float     GetMaxSamplerAnisotropy      ()const{return properties.limits.maxSamplerAnisotropy;}
     const float     GetMaxSamplerLodBias         ()const{return properties.limits.maxSamplerLodBias;}
 
-    const void     GetPointSize(float &granularity,float &min_size,float &max_size)
+    const void      GetPointSize(float &granularity,float &min_size,float &max_size)
     {
         granularity =properties.limits.pointSizeGranularity;
         min_size    =properties.limits.pointSizeRange[0];

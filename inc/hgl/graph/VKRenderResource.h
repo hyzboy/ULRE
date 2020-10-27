@@ -16,7 +16,6 @@
 VK_NAMESPACE_BEGIN
 using MaterialID            =int;
 using MaterialInstanceID    =int;
-using PipelineID            =int;
 using BufferID              =int;
 using DescriptorSetsID      =int;
 using RenderableID          =int;
@@ -39,7 +38,6 @@ class RenderResource
     
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
-    IDResManage<PipelineID,             Pipeline>           rm_pipeline;                ///<管线合集
     IDResManage<DescriptorSetsID,       DescriptorSets>     rm_desc_sets;               ///<描述符合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<可渲染对象合集
     IDResManage<BufferID,               GPUBuffer>          rm_buffers;                 ///<顶点缓冲区合集
@@ -56,7 +54,6 @@ public: //Add
 
     MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
-    PipelineID              Add(Pipeline *          p   ){return rm_pipeline.Add(p);}
     DescriptorSetsID        Add(DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
     BufferID                Add(GPUBuffer *         buf ){return rm_buffers.Add(buf);}
@@ -98,13 +95,6 @@ public: //Material
     Material *          CreateMaterial(const OSString &);
     MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(const OSString &);
-    
-    Pipeline *          CreatePipeline(Material *,          RenderTarget *,const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(Material *,          RenderTarget *,      PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,      PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(Material *,          RenderTarget *,const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *          CreatePipeline(MaterialInstance *,  RenderTarget *,const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
     Renderable *        CreateRenderable(const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);
@@ -121,7 +111,6 @@ public: //Get
 
     Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
-    Pipeline *          GetPipeline             (const PipelineID           &id){return rm_pipeline.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
     Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
     GPUBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}

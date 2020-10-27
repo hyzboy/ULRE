@@ -256,6 +256,9 @@ public:
         BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),rl);
     }
 
+    template<typename ...ARGS>
+    Pipeline *CreatePipeline(ARGS...args){return sc_render_target->CreatePipeline(args...);}
+
 public:
 
     int AcquireNextImage()
@@ -290,38 +293,6 @@ public:
             Draw();
 
         return(true);
-    }
-
-public: //pipeline
-
-    Pipeline *CreatePipeline(Material *mtl,const InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
-    {
-        return db->CreatePipeline(mtl,sc_render_target,ip,prim,prim_restart);
-    }
-
-    Pipeline *CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
-    {
-        return db->CreatePipeline(mi,sc_render_target,ip,prim,prim_restart);
-    }
-
-    Pipeline *CreatePipeline(Material *mtl,PipelineData *pd,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
-    {
-        return db->CreatePipeline(mtl,sc_render_target,pd,prim,prim_restart);
-    }
-
-    Pipeline *CreatePipeline(MaterialInstance *mi,PipelineData *pd,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
-    {
-        return db->CreatePipeline(mi,sc_render_target,pd,prim,prim_restart);
-    }
-
-    Pipeline *CreatePipeline(Material *mtl,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
-    {
-        return db->CreatePipeline(mtl,sc_render_target,pipeline_name,prim,prim_restart);
-    }
-
-    Pipeline *CreatePipeline(MaterialInstance *mi,const OSString &pipeline_name,const Prim &prim=Prim::Triangles,const bool prim_restart=false)
-    {
-        return db->CreatePipeline(mi,sc_render_target,pipeline_name,prim,prim_restart);
     }
 };//class VulkanApplicationFramework
 
