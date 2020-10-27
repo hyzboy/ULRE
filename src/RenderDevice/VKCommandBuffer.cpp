@@ -10,7 +10,7 @@
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-GPUCmdBuffer::GPUCmdBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t atta_count,VkCommandPool cp,VkCommandBuffer cb)
+GPUCmdBuffer::GPUCmdBuffer(VkDevice dev,const uint32_t atta_count,VkCommandPool cp,VkCommandBuffer cb)
 {
     device=dev;
     pool=cp;
@@ -32,7 +32,8 @@ GPUCmdBuffer::GPUCmdBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t 
 
     render_area.offset.x=0;
     render_area.offset.y=0;
-    render_area.extent=extent;
+    render_area.extent.width=0;
+    render_area.extent.height=0;
 
     default_line_width=1.0;
 
@@ -65,12 +66,16 @@ bool GPUCmdBuffer::Begin()
     return(true);
 }
 
-bool GPUCmdBuffer::BindFramebuffer(VkRenderPass rp,VkFramebuffer fb)
+bool GPUCmdBuffer::BindFramebuffer(RenderPass *rp,Framebuffer *fb)
 {
     RenderPassBeginInfo rp_begin;
+    
+    render_area.offset.x=0;
+    render_area.offset.y=0;
+    render_area.extent=fb->GetExtent();
 
-    rp_begin.renderPass         = rp;
-    rp_begin.framebuffer        = fb;
+    rp_begin.renderPass         = *rp;
+    rp_begin.framebuffer        = *fb;
     rp_begin.renderArea         = render_area;
     rp_begin.clearValueCount    = cv_count;
     rp_begin.pClearValues       = clear_values;
@@ -91,18 +96,6 @@ bool GPUCmdBuffer::BindFramebuffer(VkRenderPass rp,VkFramebuffer fb)
     pipeline_layout=VK_NULL_HANDLE;
 
     return(true);
-}
-
-//bool GPUCmdBuffer::BindFramebuffer(Framebuffer *fbo)
-//{
-//    return BindFramebuffer(fbo->GetRenderPass(),fbo->GetFramebuffer());
-//}
-
-bool GPUCmdBuffer::BindFramebuffer(RenderTarget *rt)
-{
-    if(!rt)return(false);
-
-    return BindFramebuffer(rt->GetRenderPass(),rt->GetFramebuffer());
 }
 
 bool GPUCmdBuffer::BindVAB(RenderableInstance *ri)

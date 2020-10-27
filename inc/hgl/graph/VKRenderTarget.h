@@ -21,7 +21,6 @@ protected:
     VkExtent2D extent;
     
     GPUSemaphore *render_complete_semaphore =nullptr;
-    GPUCmdBuffer *command_buffer            =nullptr;
 
 protected:
 
@@ -37,22 +36,23 @@ protected:
 
     friend class GPUDevice;
 
-    RenderTarget(GPUDevice *dev,Framebuffer *_fb,GPUCmdBuffer *_cb,const uint32_t fence_count=1);
-    RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,GPUCmdBuffer *_cb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
+    RenderTarget(GPUDevice *dev,Framebuffer *_fb,const uint32_t fence_count=1);
+    RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
 
 public:
 
     virtual ~RenderTarget();
     
             const   VkExtent2D &    GetExtent           ()const {return extent;}
-    virtual const   VkRenderPass    GetRenderPass       ()const {return *render_pass;}
+    virtual         RenderPass *    GetRenderPass       ()      {return render_pass;}
+    virtual const   VkRenderPass    GetVkRenderPass     ()const {return *render_pass;}
     virtual const   uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
-    virtual const   VkFramebuffer   GetFramebuffer      ()const {return fbo->GetFramebuffer();}
+    virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
 
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
 
-public:
+public: //pipeline
 
     Pipeline *CreatePipeline(Material *,          const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
@@ -61,11 +61,10 @@ public:
     Pipeline *CreatePipeline(Material *,          const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
-public:
+public: // command buffer
 
             GPUSemaphore *  GetRenderCompleteSemaphore  (){return render_complete_semaphore;}
-            GPUCmdBuffer *  GetCommandBuffer            (){return command_buffer;}
-    virtual bool            Submit                      (GPUSemaphore *present_complete_semaphore=nullptr);
+    virtual bool            Submit                      (GPUCmdBuffer *,GPUSemaphore *present_complete_semaphore=nullptr);
 };//class RenderTarget
 
 /**
@@ -89,8 +88,8 @@ public:
     SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc);
     ~SwapchainRenderTarget();
 
-            const   VkFramebuffer   GetFramebuffer  ()const override            {return render_frame[current_frame]->GetFramebuffer();}
-                    VkFramebuffer   GetFramebuffer  (const uint32_t index)      {return render_frame[index]->GetFramebuffer();}
+                    Framebuffer *   GetFramebuffer  ()override                  {return render_frame[current_frame];}
+                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return render_frame[index];}
 
             const   uint32_t        GetColorCount   ()const override            {return 1;}
             const   uint32_t        GetImageCount   ()const                     {return swap_chain_count;}

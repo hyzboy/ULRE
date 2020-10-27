@@ -169,11 +169,11 @@ public:
             cmd_buf=hgl_zero_new<GPUCmdBuffer *>(swap_chain_count);
 
             for(int32_t i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateCommandBuffer(extent,2);
+                cmd_buf[i]=device->CreateCommandBuffer(2);
         }
     }
 
-    bool BuildCommandBuffer(GPUCmdBuffer *cb,VkRenderPass rp,VkFramebuffer fb,RenderableInstance *ri)
+    bool BuildCommandBuffer(GPUCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,RenderableInstance *ri)
     {   
         if(!ri)return(false);
 
@@ -198,12 +198,12 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(RenderTarget *rt,RenderableInstance *ri)
+    void BuildCommandBuffer(GPUCmdBuffer *cb,RenderTarget *rt,RenderableInstance *ri)
     {
-        if(!rt||!ri)
+        if(!cb||!rt||!ri)
             return;
 
-        BuildCommandBuffer(rt->GetCommandBuffer(),rt->GetRenderPass(),rt->GetFramebuffer(),ri);
+        BuildCommandBuffer(cb,rt->GetRenderPass(),rt->GetFramebuffer(),ri);
     }
 
     bool BuildCommandBuffer(uint32_t index,RenderableInstance *ri)

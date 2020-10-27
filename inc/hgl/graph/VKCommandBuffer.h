@@ -24,7 +24,7 @@ class GPUCmdBuffer
 
 public:
 
-    GPUCmdBuffer(VkDevice dev,const VkExtent2D &extent,const uint32_t att_count,VkCommandPool cp,VkCommandBuffer cb);
+    GPUCmdBuffer(VkDevice dev,const uint32_t att_count,VkCommandPool cp,VkCommandBuffer cb);
     ~GPUCmdBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
@@ -66,9 +66,7 @@ public:
     template<typename ...ARGS> void CopyImageToBuffer   (ARGS...args){vkCmdCopyImageToBuffer(cmd_buf,args...);}
     template<typename ...ARGS> void BlitImage           (ARGS...args){vkCmdBlitImage        (cmd_buf,args...);}
 
-    bool BindFramebuffer(VkRenderPass rp,VkFramebuffer fb);
-//    bool BindFramebuffer(Framebuffer *);
-    bool BindFramebuffer(RenderTarget *);
+    bool BindFramebuffer(RenderPass *rp,Framebuffer *fb);
 
     bool BindPipeline(Pipeline *p)
     {

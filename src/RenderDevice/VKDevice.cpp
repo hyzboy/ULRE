@@ -47,7 +47,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     if(!CreateSwapchain(extent))
         return(false);
 
-    texture_cmd_buf=CreateCommandBuffer(extent,0);
+    texture_cmd_buf=CreateCommandBuffer(0);
     textureSQ=new GPUQueue(this,attr->graphics_queue,1);
 
     swapchainRT=new SwapchainRenderTarget(this,swapchain);
@@ -55,7 +55,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     return(true);
 }
 
-GPUCmdBuffer *GPUDevice::CreateCommandBuffer(const VkExtent2D &extent,const uint32_t atta_count)
+GPUCmdBuffer *GPUDevice::CreateCommandBuffer(const uint32_t attachment_count)
 {
     if(!attr->cmd_pool)
         return(nullptr);
@@ -73,7 +73,7 @@ GPUCmdBuffer *GPUDevice::CreateCommandBuffer(const VkExtent2D &extent,const uint
     if(res!=VK_SUCCESS)
         return(nullptr);
 
-    return(new GPUCmdBuffer(attr->device,extent,atta_count,attr->cmd_pool,cmd_buf));
+    return(new GPUCmdBuffer(attr->device,attachment_count,attr->cmd_pool,cmd_buf));
 }
 
 /**
