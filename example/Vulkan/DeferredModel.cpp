@@ -33,7 +33,7 @@ enum class GBufferAttachment
     ENUM_CLASS_RANGE(Color,Normal)
 };//
 
-constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UFMT_RGBA32F,UFMT_RGBA32F};
+constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UFMT_RGBA32F,UFMT_RG8};
 constexpr VkFormat gbuffer_depth_format=FMT_D32F;
 
 struct alignas(16) PhongPointLight
