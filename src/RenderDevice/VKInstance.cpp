@@ -31,7 +31,12 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
 #endif//_DEBUG
 
     if(layer_info)
+    {
+        if(layer_info->khronos.validation)
+            ext_list.Add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
         CheckInstanceLayer(layer_list,layer_info);
+    }
 
     inst_info.enabledExtensionCount     = ext_list.GetCount();
     inst_info.ppEnabledExtensionNames   = ext_list.GetData();

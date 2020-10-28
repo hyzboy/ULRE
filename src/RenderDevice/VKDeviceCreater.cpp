@@ -28,7 +28,9 @@ namespace
         queue_info.flags=0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
 
         VkDeviceCreateInfo create_info={};
-        const char *ext_list[1]={VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        CharPointerList ext_list;
+        ext_list.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        ext_list.Add(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 
         VkPhysicalDeviceFeatures features={};
         features.geometryShader=true;
@@ -37,8 +39,8 @@ namespace
         create_info.pNext=nullptr;
         create_info.queueCreateInfoCount=1;
         create_info.pQueueCreateInfos=&queue_info;
-        create_info.enabledExtensionCount=1;
-        create_info.ppEnabledExtensionNames=ext_list;
+        create_info.enabledExtensionCount=ext_list.GetCount();
+        create_info.ppEnabledExtensionNames=ext_list.GetData();
         create_info.enabledLayerCount=0;
         create_info.ppEnabledLayerNames=nullptr;
         create_info.pEnabledFeatures=&features;
