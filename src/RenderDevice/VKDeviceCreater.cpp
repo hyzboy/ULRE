@@ -378,20 +378,6 @@ GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_
 {
     #ifdef _DEBUG
     {
-        const VkDriverIdKHR driver_id=physical_device->GetDriverId();
-
-        if(driver_id>=VK_DRIVER_ID_BEGIN_RANGE
-         &&driver_id<=VK_DRIVER_ID_END_RANGE)
-        {
-            std::cout<<"DriverID: "<<physical_device->GetDriverId()<<std::endl;
-            std::cout<<"DriverName: "<<physical_device->GetDriverName()<<std::endl;
-            std::cout<<"DriverInfo: "<<physical_device->GetDriverInfo()<<std::endl;
-        }
-        else
-        {
-            std::cout<<"Unknow VideoCard Driver"<<std::endl;
-        }
-
         DebugOut(physical_device->GetProperties());
         DebugOut(physical_device->GetFeatures());
     }

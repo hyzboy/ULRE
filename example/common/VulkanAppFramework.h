@@ -88,7 +88,7 @@ public:
 
         InitNativeWindowSystem();
 
-        InitVulkanProperties();
+        InitVulkanInstanceProperties();
 
         win=CreateRenderWindow(OS_TEXT("VulkanTest"));
         if(!win)

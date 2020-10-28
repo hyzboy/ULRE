@@ -12,7 +12,7 @@ namespace
 const List<VkLayerProperties> &GetLayerProperties(){return layer_properties;}
 const List<VkExtensionProperties> &GetExtensionProperties(){return extension_properties;}
 
-void InitVulkanProperties()
+void InitVulkanInstanceProperties()
 {
     layer_properties.Clear();
     extension_properties.Clear();
@@ -24,7 +24,7 @@ void InitVulkanProperties()
         layer_properties.SetCount(layer_count);
         vkEnumerateInstanceLayerProperties(&layer_count,layer_properties.GetData());
 
-        debug_out(layer_properties);
+        debug_out("Instance",layer_properties);
     }
 
     {
@@ -34,24 +34,33 @@ void InitVulkanProperties()
         extension_properties.SetCount(prop_count);
         vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,extension_properties.GetData());
 
-        debug_out(extension_properties);
+        debug_out("Instance",extension_properties);
     }
 }
 
-const bool CheckLayerSupport(const char *layer_name)
+const bool CheckInstanceLayerSupport(const AnsiString &layer_name)
 {
     if(!layer_name||!*layer_name)
         return(false);
 
-    const uint32_t count=layer_properties.GetCount();
-    VkLayerProperties *lp=layer_properties.GetData();
-
-    for(uint32_t i=0;i<count;i++)
-    {
-        if(strcmp(layer_name,lp->layerName)==0)
+    for(const VkLayerProperties &lp:layer_properties)
+        if(layer_name.Comp(lp.layerName)==0)
             return(true);
 
-        ++lp;
+    return(false);
+}
+
+const bool GetInstanceLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)
+{    
+    for(const VkLayerProperties &lp:layer_properties)
+    {
+        if(name.Comp(lp.layerName)==0)
+        {
+            spec=lp.specVersion;
+            impl=lp.implementationVersion;
+
+            return(true);
+        }
     }
 
     return(false);
@@ -61,7 +70,7 @@ void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *lay
 {
     #define VK_LAYER_CHECK(sname,lname,name)    if(layer_info->sname.name)  \
                                                 {   \
-                                                    if(CheckLayerSupport("VK_LAYER_" lname "_" #name)) \
+                                                    if(CheckInstanceLayerSupport("VK_LAYER_" lname "_" #name)) \
                                                           layer_list.Add("VK_LAYER_" lname "_" #name); \
                                                 }
 
@@ -94,5 +103,16 @@ void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *lay
 #define VK_LAYER_BANDICAM_ADD(name)     VK_LAYER_CHECK(bandicam,"bandicam",name)
 
     VK_LAYER_BANDICAM_ADD(helper)    
+}
+
+const bool CheckInstanceExtensionSupport(const AnsiString &name)
+{
+    for(const VkExtensionProperties &ep:extension_properties)
+    {
+        if(name.Comp(ep.extensionName)==0)
+            return true;
+    }
+
+    return(false);
 }
 VK_NAMESPACE_END

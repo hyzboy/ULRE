@@ -153,7 +153,14 @@ inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d,const uint32 depth=1)
     e3d.depth   =depth;
 }
 
-inline void debug_out(const hgl::List<VkLayerProperties> &layer_properties)
+inline void debug_out_vk_version(const uint32_t version)
+{
+    std::cout<<VK_VERSION_MAJOR(version)<<"."
+             <<VK_VERSION_MINOR(version)<<"."
+             <<VK_VERSION_PATCH(version);
+}
+
+inline void debug_out(const char *front,const hgl::List<VkLayerProperties> &layer_properties)
 {
     const int property_count=layer_properties.GetCount();
 
@@ -163,12 +170,18 @@ inline void debug_out(const hgl::List<VkLayerProperties> &layer_properties)
 
     for(int i=0;i<property_count;i++)
     {
-        std::cout<<"Layer Propertyes ["<<i<<"] : "<<lp->layerName<<" desc: "<<lp->description<<std::endl;
+        std::cout<<front<<" Layer Propertyes ["<<i<<"] : "<<lp->layerName<<" [spec: ";        
+        debug_out_vk_version(lp->specVersion);
+        
+        std::cout<<", impl: ";
+        debug_out_vk_version(lp->implementationVersion);
+
+        std::cout<<"] desc: "<<lp->description<<std::endl;
         ++lp;
     }
 }
 
-inline void debug_out(const hgl::List<VkExtensionProperties> &extension_properties)
+inline void debug_out(const char *front,const hgl::List<VkExtensionProperties> &extension_properties)
 {
     const int extension_count=extension_properties.GetCount();
 
@@ -177,7 +190,11 @@ inline void debug_out(const hgl::List<VkExtensionProperties> &extension_properti
     VkExtensionProperties *ep=extension_properties.GetData();
     for(int i=0;i<extension_count;i++)
     {
-        std::cout<<"Extension Propertyes ["<<i<<"] : "<<ep->extensionName<<" ver: "<<ep->specVersion<<std::endl;
+        std::cout<<front<<" Extension Propertyes ["<<i<<"] : "<<ep->extensionName<<" ver: ";
+        
+        debug_out_vk_version(ep->specVersion);
+        
+        std::cout<<std::endl;
         ++ep;
     }
 }

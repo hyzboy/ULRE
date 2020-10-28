@@ -71,12 +71,20 @@ VK_NAMESPACE_BEGIN
 
         const   ObjectList<GPUPhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
         const   GPUPhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
+        
+        template<typename T>
+        T *GetInstanceProc(const char *name)
+        {
+            return reinterpret_cast<T>(vkGetInstanceProcAddr(inst,name));
+        }
     };//class VulkanInstance
     
-            void                            InitVulkanProperties();
-    const   List<VkLayerProperties> &       GetLayerProperties();
-    const   List<VkExtensionProperties> &   GetExtensionProperties();
-    const   bool                            CheckLayerSupport(const char *);
+            void                            InitVulkanInstanceProperties();
+    const   List<VkLayerProperties> &       GetInstanceLayerProperties();
+    const   List<VkExtensionProperties> &   GetInstanceExtensionProperties();
+    const   bool                            CheckInstanceLayerSupport(const AnsiString &);
+    const   bool                            GetInstanceLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl);
+    const   bool                            CheckInstanceExtensionSupport(const AnsiString &);
 
     VulkanInstance *CreateInstance(const AnsiString &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
 VK_NAMESPACE_END

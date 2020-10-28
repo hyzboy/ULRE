@@ -86,16 +86,9 @@ VulkanInstance::~VulkanInstance()
 
 const GPUPhysicalDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
 {
-    const uint32_t count=physical_devices.GetCount();
-    GPUPhysicalDevice **pd=physical_devices.GetData();
-
-    for(uint32_t i=0;i<count;i++)
-    {
-        if((*pd)->GetDeviceType()==type)
-            return(*pd);
-
-        ++pd;
-    }
+    for(GPUPhysicalDevice *pd:physical_devices)
+        if(pd->GetDeviceType()==type)
+            return(pd);
 
     return(nullptr);
 }
