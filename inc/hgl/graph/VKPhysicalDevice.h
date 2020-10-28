@@ -11,7 +11,6 @@ class GPUPhysicalDevice
     VkPhysicalDevice                    physical_device=nullptr;
     VkPhysicalDeviceFeatures            features;
     VkPhysicalDeviceProperties          properties;
-    VkPhysicalDeviceDriverPropertiesKHR driver_properties;
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
     List<VkExtensionProperties>         extension_properties;
@@ -32,12 +31,9 @@ public:
     const VkPhysicalDeviceFeatures &        GetFeatures         ()const{return features;}
     const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
-
-    const uint32_t          GetExtensionSpecVersion(const AnsiString &name)const;
-
-    const VkDriverIdKHR     GetDriverId     ()const{return driver_properties.driverID;}
-    const char *            GetDriverName   ()const{return driver_properties.driverName;}
-    const char *            GetDriverInfo   ()const{return driver_properties.driverInfo;}
+    
+    const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
+    const uint32_t          GetExtensionVersion(const AnsiString &name)const;
 
 public:
 

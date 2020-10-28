@@ -10,6 +10,8 @@ struct GPUDeviceAttribute
 {
     VkInstance                          instance        =VK_NULL_HANDLE;
     const GPUPhysicalDevice *           physical_device =nullptr;
+    
+    VkPhysicalDeviceDriverPropertiesKHR driver_properties;
 
     VkSurfaceKHR                        surface         =VK_NULL_HANDLE;
     VkSurfaceCapabilitiesKHR            surface_caps;

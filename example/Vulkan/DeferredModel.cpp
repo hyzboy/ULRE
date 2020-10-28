@@ -52,8 +52,8 @@ private:
 
     struct
     {
-        RenderTarget *rt;
-        RenderCommand *cmd;
+        RenderTarget *rt=nullptr;
+        RenderCommand *cmd=nullptr;
 
     public:
 
@@ -100,8 +100,8 @@ public:
 
     ~TestApp()
     {
-        delete gbuffer.cmd;
-        delete gbuffer.rt;
+        SAFE_CLEAR(gbuffer.cmd);
+        SAFE_CLEAR(gbuffer.rt);
     }
 
 private:

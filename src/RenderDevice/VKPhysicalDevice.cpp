@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/graph/VKInstance.h>
 
 VK_NAMESPACE_BEGIN
 GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
@@ -14,7 +15,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         layer_properties.SetCount(property_count);
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
 
-        debug_out(layer_properties);
+        debug_out("PhysicalDevice",layer_properties);
     }
 
     {
@@ -25,48 +26,36 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         extension_properties.SetCount(exten_count);
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
 
-        debug_out(extension_properties);
+        debug_out("PhysicalDevice",extension_properties);
     }
 
     vkGetPhysicalDeviceFeatures(physical_device,&features);
     vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
-
-    PFN_vkGetPhysicalDeviceProperties2 GetGPUPhysicalDeviceProperties2=nullptr;
-
-    if(GetExtensionSpecVersion(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
-        GetGPUPhysicalDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2KHR");
-
-    if(!GetGPUPhysicalDeviceProperties2)
-        if(GetExtensionSpecVersion(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME))
-            GetGPUPhysicalDeviceProperties2=(PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2");
-
-    if(GetGPUPhysicalDeviceProperties2)
-    {
-        VkPhysicalDeviceProperties2KHR properties2;
-        GetGPUPhysicalDeviceProperties2(physical_device,&properties2);
-
-        hgl_cpy(properties,properties2.properties);
-
-        if(properties2.pNext)
-            memcpy(&driver_properties,properties2.pNext,sizeof(VkPhysicalDeviceDriverPropertiesKHR));
-    }
-    else
-    {
-        vkGetPhysicalDeviceProperties(physical_device,&properties);
-
-        hgl_zero(driver_properties);
-    }
+    vkGetPhysicalDeviceProperties(physical_device,&properties);
 }
 
-const uint32_t GPUPhysicalDevice::GetExtensionSpecVersion(const AnsiString &name)const
-{
-    const uint count=extension_properties.GetCount();
-    const VkExtensionProperties *ep=extension_properties.GetData();
-
-    for(uint i=0;i<count;i++)
+const bool GPUPhysicalDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
+{    
+    for(const VkLayerProperties &lp:layer_properties)
     {
-        if(name.Comp(ep->extensionName)==0)
-            return ep->specVersion;
+        if(name.Comp(lp.layerName)==0)
+        {
+            spec=lp.specVersion;
+            impl=lp.implementationVersion;
+
+            return(true);
+        }
+    }
+
+    return(false);
+}
+
+const uint32_t GPUPhysicalDevice::GetExtensionVersion(const AnsiString &name)const
+{
+    for(const VkExtensionProperties &ep:extension_properties)
+    {
+        if(name.Comp(ep.extensionName)==0)
+            return ep.specVersion;
     }
 
     return 0;
