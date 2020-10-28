@@ -53,7 +53,7 @@ private:
     struct
     {
         RenderTarget *rt;
-        GPUCmdBuffer *cmd;
+        RenderCommand *cmd;
 
     public:
 
@@ -116,7 +116,7 @@ private:
 
         if(!gbuffer.rt)return(false);
 
-        gbuffer.cmd=device->CreateCommandBuffer(size_t(GBufferAttachment::RANGE_SIZE)+1);
+        gbuffer.cmd=device->CreateRenderCommandBuffer();
 
         return(gbuffer.rt);
     }
@@ -298,7 +298,10 @@ private:
             if(!gbuffer.cmd->BindFramebuffer(gbuffer.rt->GetRenderPass(),gbuffer.rt->GetFramebuffer()))
                 return(false);
 
-            render_list.Render(gbuffer.cmd);
+            if(!gbuffer.cmd->BeginRenderpass())
+                return(false);
+
+                render_list.Render(gbuffer.cmd);
 
             gbuffer.cmd->EndRenderPass();
         gbuffer.cmd->End();

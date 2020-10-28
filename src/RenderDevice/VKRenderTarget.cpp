@@ -62,7 +62,7 @@ RenderTarget::~RenderTarget()
     SAFE_CLEAR(render_pass);
 }
 
-bool RenderTarget::Submit(GPUCmdBuffer *command_buffer,GPUSemaphore *present_complete_semaphore)
+bool RenderTarget::Submit(RenderCommand *command_buffer,GPUSemaphore *present_complete_semaphore)
 {
     return this->GPUQueue::Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
 }

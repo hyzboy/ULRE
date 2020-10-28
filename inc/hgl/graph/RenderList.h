@@ -11,7 +11,7 @@ namespace hgl
     {
         class RenderList
         {
-            GPUCmdBuffer *cmd_buf;
+            RenderCommand *cmd_buf;
 
         private:
 
@@ -41,7 +41,7 @@ namespace hgl
             void Add    (SceneNode *node)  {if(node)scene_node_list.Add(node);}
             void Clear  ()                 {scene_node_list.ClearData();}
 
-            bool Render(GPUCmdBuffer *);
+            bool Render (RenderCommand *);
         };//class RenderList
     }//namespace graph
 }//namespace hgl

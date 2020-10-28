@@ -47,7 +47,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     if(!CreateSwapchain(extent))
         return(false);
 
-    texture_cmd_buf=CreateCommandBuffer(0);
+    texture_cmd_buf=CreateTextureCommandBuffer();
     textureSQ=new GPUQueue(this,attr->graphics_queue,1);
 
     swapchainRT=new SwapchainRenderTarget(this,swapchain);
@@ -55,10 +55,10 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     return(true);
 }
 
-GPUCmdBuffer *GPUDevice::CreateCommandBuffer(const uint32_t attachment_count)
+VkCommandBuffer GPUDevice::CreateCommandBuffer()
 {
     if(!attr->cmd_pool)
-        return(nullptr);
+        return(VK_NULL_HANDLE);
 
     CommandBufferAllocateInfo cmd;
 
@@ -71,9 +71,27 @@ GPUCmdBuffer *GPUDevice::CreateCommandBuffer(const uint32_t attachment_count)
     VkResult res=vkAllocateCommandBuffers(attr->device,&cmd,&cmd_buf);
 
     if(res!=VK_SUCCESS)
-        return(nullptr);
+        return(VK_NULL_HANDLE);
 
-    return(new GPUCmdBuffer(attr->device,attachment_count,attr->cmd_pool,cmd_buf));
+    return cmd_buf;
+}
+
+RenderCommand *GPUDevice::CreateRenderCommandBuffer()
+{
+    VkCommandBuffer cb=CreateCommandBuffer();
+
+    if(cb==VK_NULL_HANDLE)return(nullptr);
+
+    return(new RenderCommand(attr->device,attr->cmd_pool,cb));
+}
+
+TextureCommand *GPUDevice::CreateTextureCommandBuffer()
+{
+    VkCommandBuffer cb=CreateCommandBuffer();
+
+    if(cb==VK_NULL_HANDLE)return(nullptr);
+
+    return(new TextureCommand(attr->device,attr->cmd_pool,cb));
 }
 
 /**

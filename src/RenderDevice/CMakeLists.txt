@@ -75,7 +75,6 @@ SET(VK_RENDER_PASS_SOURCE   ${VK_INCLUDE_PATH}/VKFramebuffer.h
                             ${VK_INCLUDE_PATH}/VKRenderPass.h
                             ${VK_INCLUDE_PATH}/VKRenderTarget.h
                             ${VK_INCLUDE_PATH}/VKSwapchain.h
-                            ${VK_INCLUDE_PATH}/VKCommandBuffer.h
                             ${VK_INCLUDE_PATH}/VKSemaphore.h
                             ${VK_INCLUDE_PATH}/VKFence.h
                             VKQueue.cpp
@@ -88,9 +87,15 @@ SET(VK_RENDER_PASS_SOURCE   ${VK_INCLUDE_PATH}/VKFramebuffer.h
                             VKRenderTargetPipeline.cpp
                             VKSwapchainRenderTarget.cpp
                             VKSwapchain.cpp
-                            VKCommandBuffer.cpp)
+                            )
 
 SOURCE_GROUP("Render Pass" FILES ${VK_RENDER_PASS_SOURCE})
+
+SET(VK_CMD_BUFFER_SOURCE    ${VK_INCLUDE_PATH}/VKCommandBuffer.h
+                            VKCommandBuffer.cpp
+                            VKCommandBufferRender.cpp)
+
+SOURCE_GROUP("Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
 SET(VK_RENDERABLE_SOURCE    ${VK_INCLUDE_PATH}/VKVertexAttributeBinding.h
                             ${VK_INCLUDE_PATH}/VKRenderable.h
@@ -122,5 +127,6 @@ add_cm_library(ULRE.VulkanRender "ULRE" ${VK_RR_SOURCE}
                                         ${VK_TEXTURE_SOURCE}
                                         ${VK_MATERIAL_SOURCE}
                                         ${VK_RENDER_PASS_SOURCE}
+                                        ${VK_CMD_BUFFER_SOURCE}
                                         ${VK_RENDERABLE_SOURCE}
                                         ${VK_RENDER_DEVICE_SOURCE})

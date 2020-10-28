@@ -64,7 +64,7 @@ public: //pipeline
 public: // command buffer
 
             GPUSemaphore *  GetRenderCompleteSemaphore  (){return render_complete_semaphore;}
-    virtual bool            Submit                      (GPUCmdBuffer *,GPUSemaphore *present_complete_semaphore=nullptr);
+    virtual bool            Submit                      (RenderCommand *,GPUSemaphore *present_complete_semaphore=nullptr);
 };//class RenderTarget
 
 /**

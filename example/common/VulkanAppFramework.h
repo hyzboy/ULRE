@@ -53,7 +53,7 @@ protected:
 
             int32_t         swap_chain_count            =0;
 
-    GPUCmdBuffer **         cmd_buf                     =nullptr;
+    RenderCommand **        cmd_buf                     =nullptr;
 
             Color4f         clear_color;
 
@@ -166,23 +166,23 @@ public:
         {
             const VkExtent2D extent=sc_render_target->GetExtent();
 
-            cmd_buf=hgl_zero_new<GPUCmdBuffer *>(swap_chain_count);
+            cmd_buf=hgl_zero_new<RenderCommand *>(swap_chain_count);
 
             for(int32_t i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateCommandBuffer(2);
+                cmd_buf[i]=device->CreateRenderCommandBuffer();
         }
     }
 
-    bool BuildCommandBuffer(GPUCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,RenderableInstance *ri)
+    bool BuildCommandBuffer(RenderCommand *cb,RenderPass *rp,Framebuffer *fb,RenderableInstance *ri)
     {   
         if(!ri)return(false);
 
         const IndexBuffer *ib=ri->GetIndexBuffer();
 
-        cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
-
         cb->Begin();
             cb->BindFramebuffer(rp,fb);
+            cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
+            cb->BeginRenderpass();
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetDescriptorSets());
                 cb->BindVAB(ri);
@@ -198,7 +198,7 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(GPUCmdBuffer *cb,RenderTarget *rt,RenderableInstance *ri)
+    void BuildCommandBuffer(RenderCommand *cb,RenderTarget *rt,RenderableInstance *ri)
     {
         if(!cb||!rt||!ri)
             return;
@@ -234,14 +234,14 @@ public:
     {
         if(!rl)return;
 
-        GPUCmdBuffer *cb=cmd_buf[index];
-        
-        cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
+        RenderCommand *cb=cmd_buf[index];
 
         cb->Begin();
-        cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));
-        rl->Render(cb);
-        cb->EndRenderPass();
+        cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
+        cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
+            cb->BeginRenderpass();
+                rl->Render(cb);
+            cb->EndRenderPass();
         cb->End();
     }
 
