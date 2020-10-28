@@ -44,15 +44,10 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
 
     if(fb)
     {
-        GPUCmdBuffer *cb=CreateCommandBuffer(fb->GetAttachmentCount());
+        RenderTarget *rt=new RenderTarget(this,rp,fb,color_texture_list,color_count,depth_texture,fence_count);
 
-        if(cb)
-        {
-            RenderTarget *rt=new RenderTarget(this,rp,fb,color_texture_list,color_count,depth_texture,fence_count);
-
-            color_texture_list.DiscardObject();
-            return rt;
-        }
+        color_texture_list.DiscardObject();
+        return rt;
     }
 
     SAFE_CLEAR(depth_texture);

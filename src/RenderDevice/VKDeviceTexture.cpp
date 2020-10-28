@@ -50,7 +50,7 @@ namespace
         }
     };//
 
-    void GenerateMipmaps(GPUCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,const int32_t width,const int32_t height,const uint32_t mipLevels)
+    void GenerateMipmaps(TextureCommand *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,const int32_t width,const int32_t height,const uint32_t mipLevels)
     {
     //VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
         // Check if image format supports linear blitting

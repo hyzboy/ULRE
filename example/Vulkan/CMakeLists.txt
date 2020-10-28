@@ -1,5 +1,5 @@
 ﻿macro(CreateProject name)
-    add_executable(${name} ${ARGN})
+    add_executable(${name} ${ARGN} ${VULKAN_APP_FRAMEWORK})
     target_link_libraries(${name} ${ULRE})
 
     IF(WIN32)

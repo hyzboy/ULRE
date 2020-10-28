@@ -31,10 +31,14 @@ class GPUDevice
     GPUDeviceAttribute *attr;
 
     GPUQueue *textureSQ;
-    GPUCmdBuffer *texture_cmd_buf;
+    TextureCommand *texture_cmd_buf;
 
     Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
+
+private:
+
+    VkCommandBuffer CreateCommandBuffer();
 
     bool CreateSwapchainColorTexture();
     bool CreateSwapchainDepthTexture();
@@ -180,7 +184,8 @@ public: //shader & material
 
 public: //Command GPUBuffer 相关
 
-    GPUCmdBuffer *  CreateCommandBuffer(const uint32_t attachment_count);
+    RenderCommand * CreateRenderCommandBuffer();
+    TextureCommand *CreateTextureCommandBuffer();
     
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,

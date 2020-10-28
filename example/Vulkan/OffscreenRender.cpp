@@ -22,7 +22,7 @@ class TestApp:public CameraAppFramework
     struct:public RenderObject
     {        
         RenderTarget *      render_taget        =nullptr;
-        GPUCmdBuffer *      command_buffer      =nullptr;
+        RenderCommand *     command_buffer      =nullptr;
         
         Pipeline *          pipeline            =nullptr;
         RenderableInstance *renderable_instance =nullptr;
@@ -82,7 +82,7 @@ public:
         os.render_taget=device->CreateRenderTarget(&fbi);
         if(!os.render_taget)return(false);
 
-        os.command_buffer=device->CreateCommandBuffer(fbi.GetAttachmentCount());
+        os.command_buffer=device->CreateRenderCommandBuffer();
         if(!os.command_buffer)return(false);
         
         os.material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));

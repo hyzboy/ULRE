@@ -66,19 +66,6 @@ private:
         render_root.Add(ri,mat);
     }
 
-    bool InitScene()
-    {
-        Add(ro_round_rectangle,m2d);
-        Add(ro_plane_grid[0],m3d);
-        Add(ro_plane_grid[1],m3d,rotate(HGL_RAD_90,0,1,0));
-        Add(ro_plane_grid[2],m3d,rotate(HGL_RAD_90,1,0,0));
-
-        render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
-
-        return(true);
-    }
-
     void CreateRenderObject()
     {
         struct PlaneGridCreateInfo pgci;
@@ -119,6 +106,19 @@ private:
         }
 
         camera.eye.Set(200,200,200,1.0);
+    }
+
+    bool InitScene()
+    {
+        Add(ro_round_rectangle,m2d);
+        Add(ro_plane_grid[0],m3d);
+        Add(ro_plane_grid[1],m3d,rotate(HGL_RAD_90,0,1,0));
+        Add(ro_plane_grid[2],m3d,rotate(HGL_RAD_90,1,0,0));
+
+        render_root.RefreshMatrix();
+        render_root.ExpendToList(&render_list);
+
+        return(true);
     }
 
 public:

@@ -9,27 +9,44 @@ VK_NAMESPACE_BEGIN
 //所以我们将每个对象的独立变换矩阵存在push constant中
 class GPUCmdBuffer
 {
+protected:
+
     VkDevice device;
     VkCommandPool pool;
     VkCommandBuffer cmd_buf;
 
+public:
+
+    GPUCmdBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb);
+    virtual ~GPUCmdBuffer();
+
+    operator VkCommandBuffer(){return cmd_buf;}
+    operator const VkCommandBuffer()const{return cmd_buf;}
+    operator const VkCommandBuffer *()const{return &cmd_buf;}
+    
+    bool Begin();
+    bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
+};//class GPUCmdBuffer
+
+class RenderCommand:public GPUCmdBuffer
+{
     uint32_t cv_count;
     VkClearValue *clear_values;
     VkRect2D render_area;
     VkViewport viewport;
 
     float default_line_width;
-
+    
+    Framebuffer *fbo;
+    RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
+
+    void SetFBO(Framebuffer *);
 
 public:
 
-    GPUCmdBuffer(VkDevice dev,const uint32_t att_count,VkCommandPool cp,VkCommandBuffer cb);
-    ~GPUCmdBuffer();
-
-    operator VkCommandBuffer(){return cmd_buf;}
-    operator const VkCommandBuffer()const{return cmd_buf;}
-    operator const VkCommandBuffer *()const{return &cmd_buf;}
+    RenderCommand(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb);
+    ~RenderCommand();
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetRenderArea(const VkExtent2D &);
@@ -59,14 +76,9 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool Begin();
-
-    template<typename ...ARGS> void PipelineBarrier     (ARGS...args){vkCmdPipelineBarrier  (cmd_buf,args...);}
-    template<typename ...ARGS> void CopyBufferToImage   (ARGS...args){vkCmdCopyBufferToImage(cmd_buf,args...);}
-    template<typename ...ARGS> void CopyImageToBuffer   (ARGS...args){vkCmdCopyImageToBuffer(cmd_buf,args...);}
-    template<typename ...ARGS> void BlitImage           (ARGS...args){vkCmdBlitImage        (cmd_buf,args...);}
-
     bool BindFramebuffer(RenderPass *rp,Framebuffer *fb);
+
+    bool BeginRenderpass();
 
     bool BindPipeline(Pipeline *p)
     {
@@ -120,7 +132,18 @@ public: //draw
     void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
 
     void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
-    bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
-};//class GPUCmdBuffer
+};//class RenderCommand:public GPUCmdBuffer
+
+class TextureCommand:public GPUCmdBuffer
+{
+public:
+
+    using GPUCmdBuffer::GPUCmdBuffer;
+
+    template<typename ...ARGS> void PipelineBarrier     (ARGS...args){vkCmdPipelineBarrier  (cmd_buf,args...);}
+    template<typename ...ARGS> void CopyBufferToImage   (ARGS...args){vkCmdCopyBufferToImage(cmd_buf,args...);}
+    template<typename ...ARGS> void CopyImageToBuffer   (ARGS...args){vkCmdCopyImageToBuffer(cmd_buf,args...);}
+    template<typename ...ARGS> void BlitImage           (ARGS...args){vkCmdBlitImage        (cmd_buf,args...);}
+};//class TextureCommand:public GPUCmdBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
