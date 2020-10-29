@@ -27,7 +27,7 @@ namespace
             pTexelBufferView = nullptr;
         }
 
-        WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorImageInfo *img_info):WriteDescriptorSet(desc_set,binding,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+        WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorImageInfo *img_info,const VkDescriptorType desc_type=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER):WriteDescriptorSet(desc_set,binding,desc_type)
         {            
             pImageInfo      = img_info;
             pBufferInfo     = nullptr;
@@ -108,6 +108,17 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
     image_list.Add(image_info);
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info));
+    return(true);
+}
+
+bool DescriptorSets::BindInputAttachment(const int binding,Texture *tex)
+{
+    if(binding<0||!tex)
+        return(false);
+
+    DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,nullptr);
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
     return(true);
 }
 
