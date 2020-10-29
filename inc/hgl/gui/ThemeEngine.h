@@ -27,7 +27,7 @@ namespace hgl
 
         protected:
 
-            virtual bool ThemeRender(Form *)=0;
+            virtual ThemeForm *CreateForm(Form *,RenderTarget *,RenderCommand *)=0;
 
         public:
 
@@ -40,7 +40,7 @@ namespace hgl
             virtual bool Registry(Form *,const VkFormat format=DefaultRenderTargetFormat);
             virtual void Unregistry(Form *);
             virtual bool Resize(Form *,const uint32_t,const uint32_t,const VkFormat format=DefaultRenderTargetFormat);
-            virtual void Render(Form *);
+            virtual bool Render(Form *);
         };//class ThemeEngine
 
 //        ThemeEngine *CreateThemeEngine();                   

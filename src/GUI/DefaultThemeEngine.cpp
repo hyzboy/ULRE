@@ -20,23 +20,9 @@ namespace hgl
             {
             }
 
-            bool DefaultThemeEngine::Registry(Form *f)
+            ThemeForm *DefaultThemeEngine::CreateForm(Form *f,RenderTarget *rt,RenderCommand *rc)
             {
-                if(!f)return(false);
-                if(form_list.KeyExist(f))return(false);
-
-            
-                return(true);
-            }
-
-            void DefaultThemeEngine::Unregistry(Form *f)
-            {
-                if(!f)return;
-                if(!form_list.KeyExist(f))return;
-            }
-        
-            void DefaultThemeEngine::Render(Form *f)
-            {
+                return(new DTForm(f,rt,rc));
             }
         }//namespace default_theme
     }//namespace gui

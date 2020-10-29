@@ -20,22 +20,15 @@ namespace hgl
              */
             class DefaultThemeEngine:public ThemeEngine
             {
-
-                //struct
-                //{
-                //    Material *          m;
-                //    MaterialInstance *  mi;
-                //}panel;
-
             public:
 
-                DefaultThemeEngine(GPUDevice *dev):ThemeEngine(dev){}
+                using ThemeEngine::ThemeEngine;
                 virtual ~DefaultThemeEngine() override;
 
                 bool Init() override;
                 void Clear() override;
                 
-                bool ThemeRender(Form *) override;
+                ThemeForm *CreateForm(Form *,RenderTarget *,RenderCommand *) override;
             };//class DefaultThemeEngine:public ThemeEngine
         }//namespace default_theme
     }//namespace gui
