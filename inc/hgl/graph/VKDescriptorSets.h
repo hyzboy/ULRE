@@ -15,7 +15,8 @@ class DescriptorSets
 
     VkPipelineLayout pipeline_layout;
 
-    ObjectList<VkDescriptorImageInfo> desc_image_info;
+    ObjectList<VkDescriptorBufferInfo> buffer_list;
+    ObjectList<VkDescriptorImageInfo> image_list;
     List<VkWriteDescriptorSet> wds_list;
 
 private:
@@ -40,6 +41,7 @@ public:
 
     void Clear();
     bool BindUBO(const int binding,const GPUBuffer *);
+    bool BindUBO(const int binding,const GPUBuffer *,const VkDeviceSize offset,const VkDeviceSize range);
     bool BindUBODynamic(const int binding,const GPUBuffer *);
     bool BindSampler(const int binding,Texture *,Sampler *);
     void Update();
