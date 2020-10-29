@@ -44,6 +44,7 @@ public:
     bool BindUBO(const int binding,const GPUBuffer *,const VkDeviceSize offset,const VkDeviceSize range);
     bool BindUBODynamic(const int binding,const GPUBuffer *);
     bool BindSampler(const int binding,Texture *,Sampler *);
+    bool BindInputAttachment(const int binding,Texture *);
     void Update();
 };//class DescriptorSets
 VK_NAMESPACE_END
