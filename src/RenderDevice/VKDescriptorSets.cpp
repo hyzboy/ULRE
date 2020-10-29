@@ -34,6 +34,30 @@ namespace
             pTexelBufferView= nullptr;
         }
     };//struct WriteDescriptorSet
+
+    struct DescriptorBufferInfo:public VkDescriptorBufferInfo
+    {
+    public:
+
+        DescriptorBufferInfo(const GPUBuffer *buf,const VkDeviceSize off,const VkDeviceSize rng)
+        {
+            buffer=buf->GetBuffer();
+            offset=off;
+            range=rng;
+        }
+    };//struct DescriptorBufferInfo:public VkDescriptorBufferInfo
+
+    struct DescriptorImageInfo:public VkDescriptorImageInfo
+    {
+    public:
+
+        DescriptorImageInfo(Texture *tex,Sampler *sam)
+        {
+            sampler=*sam;
+            imageView=tex->GetVulkanImageView();
+            imageLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+    };//struct DescriptorImageInfo:public VkDescriptorImageInfo
 }//namespace
 
 void DescriptorSets::Clear()
@@ -48,9 +72,7 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf)
     if(binding<0||!buf)
         return(false);
 
-    WriteDescriptorSet wds(desc_set,binding,buf->GetBufferInfo());
-
-    wds_list.Add(wds);
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo()));
     return(true);
 }
 
@@ -59,17 +81,11 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDevi
     if(binding<0||!buf)
         return(false);
 
-    VkDescriptorBufferInfo *buf_info=new VkDescriptorBufferInfo;
-
-    buf_info->buffer=buf->GetBuffer();
-    buf_info->offset=offset;
-    buf_info->range=range;
+    DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
     buffer_list.Add(buf_info);
 
-    WriteDescriptorSet wds(desc_set,binding,buf_info);
-
-    wds_list.Add(wds);
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info));
     return(true);
 }
 
@@ -78,9 +94,7 @@ bool DescriptorSets::BindUBODynamic(const int binding,const GPUBuffer *buf)
     if(binding<0||!buf)
         return(false);
         
-    WriteDescriptorSet wds(desc_set,binding,buf->GetBufferInfo(),VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-
-    wds_list.Add(wds);
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC));
     return(true);
 }
 
@@ -89,18 +103,11 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
     if(binding<0||!tex||!sampler)
         return(false);
 
-    VkDescriptorImageInfo *image_info=new VkDescriptorImageInfo;
-
-    image_info->imageView    =tex->GetVulkanImageView();
-//          image_info.imageLayout  =tex->GetImageLayout();
-    image_info->imageLayout  =VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    image_info->sampler      =*sampler;
+    DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,sampler);
 
     image_list.Add(image_info);
 
-    WriteDescriptorSet wds(desc_set,binding,image_info);
-
-    wds_list.Add(wds);
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info));
     return(true);
 }
 
