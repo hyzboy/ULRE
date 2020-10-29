@@ -32,7 +32,9 @@ namespace hgl
             const uint width=power_to_2(w);
             const uint height=power_to_2(h);
 
-            return device->CreateColorRenderTarget(width,height,format);
+            FramebufferInfo fbi(format,w,h);
+
+            return device->CreateRenderTarget(&fbi);
         }
         
         bool ThemeEngine::Registry(Form *f,const VkFormat format)
@@ -47,8 +49,8 @@ namespace hgl
             RenderTarget *rt=CreateRenderTarget(size.x,size.y,format);
 
             if(!rt)return(false);
-
-            ThemeForm *tf=new ThemeForm(f,rt);
+            
+            ThemeForm *tf=CreateForm(f,rt);
 
             form_list.Add(f,tf);
 
@@ -103,12 +105,24 @@ namespace hgl
             tf->Resize(w,h);
             return(true);
         }
-
-        void ThemeEngine::Render(Form *f)
+        
+        bool ThemeEngine::Render(Form *f)
         {
-            if(!f)return;
+            if(!f)return(false);
 
+            const Vector2f &size=f->GetSize();
+
+            if(size.x==0&&size.y==0)return(false);
             
+            ThemeForm *tf;
+
+            if(!form_list.Get(f,tf))
+                return(false);
+
+            tf->BeginRender();
+
+
+            tf->EndRender();
         }
     }//namespace gui
 }//namespace hgl

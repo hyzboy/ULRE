@@ -15,11 +15,13 @@ namespace hgl
         protected:
         
             Form *form;
+
             RenderTarget *render_target;
+            RenderCommand *cmd_buf;
 
         public:
 
-            ThemeForm(Form *,RenderTarget *);
+            ThemeForm(Form *,RenderTarget *,RenderCommand *);
             virtual ~ThemeForm();
 
             RenderTarget *  GetRenderTarget(){return render_target;}
@@ -27,7 +29,8 @@ namespace hgl
 
             void            Resize(uint w,uint h);
 
-
+            bool            BeginRender();
+            bool            EndRender();
         };//class ThemeForm
     }//namespace gui
 }//namespace hgl
