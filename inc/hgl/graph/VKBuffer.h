@@ -34,8 +34,8 @@ public:
 
     virtual ~GPUBuffer();
 
-            VkBuffer                   GetBuffer    (){return buf.buffer;}
-            GPUMemory *                GetMemory    (){return buf.memory;}
+            VkBuffer                   GetBuffer    ()const{return buf.buffer;}
+            GPUMemory *                GetMemory    ()const{return buf.memory;}
     const   VkDescriptorBufferInfo *   GetBufferInfo()const{return &buf.info;}
 
             void *  Map     ()                                              {return buf.memory->Map();}
