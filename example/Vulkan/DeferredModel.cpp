@@ -298,7 +298,7 @@ private:
             if(!gbuffer.cmd->BindFramebuffer(gbuffer.rt->GetRenderPass(),gbuffer.rt->GetFramebuffer()))
                 return(false);
 
-            if(!gbuffer.cmd->BeginRenderpass())
+            if(!gbuffer.cmd->BeginRenderPass())
                 return(false);
 
                 render_list.Render(gbuffer.cmd);

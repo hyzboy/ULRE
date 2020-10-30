@@ -78,7 +78,7 @@ public:
 
     bool BindFramebuffer(RenderPass *rp,Framebuffer *fb);
 
-    bool BeginRenderpass();
+    bool BeginRenderPass();
 
     bool BindPipeline(Pipeline *p)
     {
