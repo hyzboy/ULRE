@@ -24,13 +24,14 @@ namespace hgl
             ThemeForm(Form *,RenderTarget *,RenderCommand *);
             virtual ~ThemeForm();
 
-            RenderTarget *  GetRenderTarget(){return render_target;}
-            bool            SetRenderTarget(RenderTarget *);
+                    RenderTarget *  GetRenderTarget(){return render_target;}
+                    bool            SetRenderTarget(RenderTarget *);
 
-            void            Resize(uint w,uint h);
+                    void            Resize(uint w,uint h);
 
-            bool            BeginRender();
-            bool            EndRender();
+                    bool            BeginRender();
+            virtual bool            Render()=0;
+                    bool            EndRender();
         };//class ThemeForm
     }//namespace gui
 }//namespace hgl

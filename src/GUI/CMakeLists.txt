@@ -7,8 +7,8 @@ SET(THEME_SOURCE    ${GUI_INCLUDE_PATH}/ThemeForm.h
 
 SET(DEFAULT_THEME_SOURCE    DefaultThemeEngine.h
                             DefaultThemeEngine.cpp
-                            DTForm.h
-                            DTForm.cpp)
+                            DefaultThemeForm.h
+                            DefaultThemeForm.cpp)
 
 set(WIDGET_SOURCE   ${GUI_INCLUDE_PATH}/Widget.h
                     ${GUI_INCLUDE_PATH}/Layout.h

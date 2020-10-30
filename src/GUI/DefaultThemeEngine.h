@@ -13,23 +13,20 @@ namespace hgl
 
         class Form;     ///<窗体
 
-        namespace default_theme
+        /**
+            * 缺省GUI主题引擎
+            */
+        class DefaultThemeEngine:public ThemeEngine
         {
-            /**
-             * 缺省GUI主题引擎
-             */
-            class DefaultThemeEngine:public ThemeEngine
-            {
-            public:
+        public:
 
-                using ThemeEngine::ThemeEngine;
-                virtual ~DefaultThemeEngine() override;
+            using ThemeEngine::ThemeEngine;
+            virtual ~DefaultThemeEngine() override;
 
-                bool Init() override;
-                void Clear() override;
+            bool Init() override;
+            void Clear() override;
                 
-                ThemeForm *CreateForm(Form *,RenderTarget *,RenderCommand *) override;
-            };//class DefaultThemeEngine:public ThemeEngine
-        }//namespace default_theme
+            ThemeForm *CreateForm(Form *,RenderTarget *,RenderCommand *) override;
+        };//class DefaultThemeEngine:public ThemeEngine
     }//namespace gui
 }//namespace hgl
