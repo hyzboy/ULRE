@@ -6,24 +6,21 @@ namespace hgl
     {
         ThemeEngine *CreateDefaultThemeEngine(GPUDevice *dev)
         {
-            return(new default_theme::DefaultThemeEngine(dev));
+            return(new DefaultThemeEngine(dev));
         }
 
-        namespace default_theme
+        bool DefaultThemeEngine::Init()
         {
-            bool DefaultThemeEngine::Init()
-            {
-                return(true);
-            }
+            return(true);
+        }
 
-            void DefaultThemeEngine::Clear()
-            {
-            }
+        void DefaultThemeEngine::Clear()
+        {
+        }
 
-            ThemeForm *DefaultThemeEngine::CreateForm(Form *f,RenderTarget *rt,RenderCommand *rc)
-            {
-                return(new DTForm(f,rt,rc));
-            }
-        }//namespace default_theme
+        ThemeForm *DefaultThemeEngine::CreateForm(Form *f,RenderTarget *rt,RenderCommand *rc)
+        {
+            return(new DefaultThemeForm(f,rt,rc));
+        }
     }//namespace gui
 }//namespace hgl

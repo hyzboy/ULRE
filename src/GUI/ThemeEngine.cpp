@@ -121,6 +121,7 @@ namespace hgl
 
             tf->BeginRender();
 
+            tf->Render();
 
             tf->EndRender();
         }

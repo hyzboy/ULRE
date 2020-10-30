@@ -12,17 +12,16 @@ namespace hgl
 
         class Form;
 
-        namespace default_theme
+        class DefaultThemeForm:public ThemeForm
         {
-            class DTForm:public ThemeForm
-            {
 
-            public:
+        public:
 
-                using ThemeForm::ThemeForm;
-                ~DTForm()=default;
-            };//class DTForm
-        }//namespace default_theme
+            using ThemeForm::ThemeForm;
+            ~DefaultThemeForm()=default;
+
+            bool Render() override;
+        };//class DefaultThemeForm
     }//namespace gui
 }//namespace hgl
 #endif//HGL_GUI_DEFAULT_THEME_FORM_INCLUDE
