@@ -86,7 +86,7 @@ bool RenderCommand::BindFramebuffer(RenderPass *rp,Framebuffer *fb)
     return(true);
 };
 
-bool RenderCommand::BeginRenderpass()
+bool RenderCommand::BeginRenderPass()
 {
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 

@@ -104,7 +104,7 @@ public:
 
             cili.lunarg.standard_validation = true;
             cili.khronos.validation = true;
-            cili.RenderDoc.Capture = true;
+//            cili.RenderDoc.Capture = true;
 
             inst=CreateInstance("VulkanTest",nullptr,&cili);
 
@@ -182,7 +182,7 @@ public:
         cb->Begin();
             cb->BindFramebuffer(rp,fb);
             cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
-            cb->BeginRenderpass();
+            cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetDescriptorSets());
                 cb->BindVAB(ri);
@@ -239,7 +239,7 @@ public:
         cb->Begin();
         cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
         cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
-            cb->BeginRenderpass();
+            cb->BeginRenderPass();
                 rl->Render(cb);
             cb->EndRenderPass();
         cb->End();
