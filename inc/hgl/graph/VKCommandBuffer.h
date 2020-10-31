@@ -99,12 +99,18 @@ public:
         return(true);
     }
 
+    bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
+    {
+        vkCmdPushDescriptorSetKHR(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,set,count,write_desc_set);
+    }
+
     void PushConstants(ShaderStageBit shader_stage_bit,uint32_t offset,uint32_t size,const void *pValues)
     {
         vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_stage_bit,offset,size,pValues);
     }
 
-    void PushConstants(const void *data,const uint32_t size){vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,size,data);}
+    void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,       size,data);}
+    void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,offset,  size,data);}
 
     bool BindVAB(RenderableInstance *);
 
