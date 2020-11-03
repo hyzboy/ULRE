@@ -39,6 +39,11 @@ namespace hgl
 
         public:
 
+            Widget *            GetParent       (){return parent_widget;}
+            ThemeEngine *       GetThemeEngine  (){return theme_engine;}
+
+        public:
+
             const bool          IsVisible   ()const{return visible;}
             const bool          IsRecvEvent ()const{return recv_event;}
             const uint8         GetAlign    ()const{return align_bits;}

@@ -106,6 +106,15 @@ namespace hgl
             return(true);
         }
         
+        bool ThemeEngine::Render(ThemeForm *tf)
+        {
+            tf->BeginRender();
+
+            tf->Render();
+
+            tf->EndRender();
+        }
+        
         bool ThemeEngine::Render(Form *f)
         {
             if(!f)return(false);
@@ -119,11 +128,7 @@ namespace hgl
             if(!form_list.Get(f,tf))
                 return(false);
 
-            tf->BeginRender();
-
-            tf->Render();
-
-            tf->EndRender();
+            return Render(tf);
         }
     }//namespace gui
 }//namespace hgl

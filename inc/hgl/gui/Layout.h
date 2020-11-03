@@ -36,7 +36,7 @@ namespace hgl
         class VBoxLayout:public LayoutBase
         {
         public:
-        };//class VBoxLayout:public LayoutBase
+        };//class VBoxLayout:public LayoutBase 
 
         /**
          * 水平分布布局器

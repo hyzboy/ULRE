@@ -11,7 +11,7 @@ namespace hgl
             if(!cmd_buf->BeginRenderPass())
                 return(false);
 
-            
+                        
 
             cmd_buf->EndRenderPass();
             return(true);
