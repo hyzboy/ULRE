@@ -22,5 +22,12 @@ namespace hgl
         {
             return(new DefaultThemeForm(f,rt,rc));
         }
+
+        void DefaultThemeEngine::DrawPanel(RenderCommand *rc,const RectScope2f &rs)
+        {
+            if(!rc)return;
+
+
+        }
     }//namespace gui
 }//namespace hgl

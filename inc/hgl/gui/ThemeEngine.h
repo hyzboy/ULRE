@@ -29,6 +29,8 @@ namespace hgl
 
             virtual ThemeForm *CreateForm(Form *,RenderTarget *,RenderCommand *)=0;
 
+            virtual bool Render(ThemeForm *);
+
         public:
 
             ThemeEngine(GPUDevice *dev){device=dev;}
