@@ -11,6 +11,7 @@
 #include<iomanip>
 
 VK_NAMESPACE_BEGIN
+VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
 Swapchain *CreateSwapchain(const GPUDeviceAttribute *attr,const VkExtent2D &acquire_extent);
 
 namespace
@@ -70,7 +71,7 @@ namespace
         cmd_pool_info.sType=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cmd_pool_info.pNext=nullptr;
         cmd_pool_info.queueFamilyIndex=graphics_family;
-        cmd_pool_info.flags=VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;        //允许COMMAND被重复begin，如果没有此标记也可以正常用，但是会频繁报错
+        cmd_pool_info.flags=VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
         VkCommandPool cmd_pool;
 
@@ -121,23 +122,6 @@ namespace
             return(VK_NULL_HANDLE);
 
         return desc_pool;
-    }
-
-    VkPipelineCache CreatePipelineCache(VkDevice device)
-    {
-        VkPipelineCacheCreateInfo pipelineCache;
-        pipelineCache.sType             = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-        pipelineCache.pNext             = nullptr;
-        pipelineCache.flags             = 0;
-        pipelineCache.initialDataSize   = 0;
-        pipelineCache.pInitialData      = nullptr;
-
-        VkPipelineCache cache;
-
-        if(vkCreatePipelineCache(device, &pipelineCache, nullptr, &cache)!=VK_SUCCESS)
-            return(VK_NULL_HANDLE);
-
-        return cache;
     }
 
     void DebugOut(const VkPhysicalDeviceFeatures &features)
@@ -351,12 +335,12 @@ namespace
 
         std::cout<<"       apiVersion: ";DebugOutVersion(pdp.apiVersion);
         std::cout<<"    driverVersion: ";DebugOutVersion(pdp.driverVersion);
-        std::cout<<"         vendorID: "<<pdp.vendorID<<std::endl;
-        std::cout<<"         deviceID: "<<pdp.deviceID<<std::endl;
+        std::cout<<"         vendorID: 0x"<<HexToString<char>(pdp.vendorID).c_str()<<std::endl;
+        std::cout<<"         deviceID: 0x"<<HexToString<char>(pdp.deviceID).c_str()<<std::endl;
         std::cout<<"       deviceType: "<<DeviceTypeString[pdp.deviceType]<<std::endl;
         std::cout<<"       deviceName: "<<pdp.deviceName<<std::endl;
 
-        AnsiString uuid=HexToString<char>(pdp.pipelineCacheUUID);
+        AnsiString uuid=VkUUID2String<char>(pdp.pipelineCacheUUID);
 
         std::cout<<"pipelineCahceUUID: "<<uuid.c_str()<<std::endl;
 
@@ -409,7 +393,7 @@ GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_
     if(!device_attr->desc_pool)
         return(nullptr);
 
-    device_attr->pipeline_cache=CreatePipelineCache(device_attr->device);
+    device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,physical_device->GetProperties());
 
     if(!device_attr->pipeline_cache)
         return(nullptr);

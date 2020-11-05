@@ -82,6 +82,7 @@ SET(VK_RENDER_PASS_SOURCE   ${VK_INCLUDE_PATH}/VKFramebuffer.h
                             VKFence.cpp
                             VKFramebuffer.cpp
                             VKPipeline.cpp
+                            VKPipelineCache.cpp
                             VKRenderPass.cpp
                             VKRenderTarget.cpp
                             VKRenderTargetPipeline.cpp
