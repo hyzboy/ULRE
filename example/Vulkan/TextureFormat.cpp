@@ -47,7 +47,7 @@ VulkanInstance *InitVulkanInstance()
 
     InitNativeWindowSystem();
 
-    InitVulkanProperties();
+    //InitVulkanProperties();
 
     CreateInstanceLayerInfo cili;
 
@@ -61,10 +61,10 @@ VulkanInstance *InitVulkanInstance()
 
 int main(int,char **)
 {
-                    Window *        win             =nullptr;
-            VulkanInstance *      inst            =nullptr;
-            GPUDevice *        device          =nullptr;
-    const   GPUPhysicalDevice *physical_device =nullptr;
+            Window *            win             =nullptr;
+            VulkanInstance *    inst            =nullptr;
+            GPUDevice *         device          =nullptr;
+    const   GPUPhysicalDevice * physical_device =nullptr;
 
     inst=InitVulkanInstance();
 
