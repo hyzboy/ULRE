@@ -5,6 +5,8 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
+void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysicalDeviceProperties &pdp);
+
 GPUDeviceAttribute::GPUDeviceAttribute(VkInstance inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s)
 {
     instance=inst;
@@ -17,7 +19,10 @@ GPUDeviceAttribute::GPUDeviceAttribute(VkInstance inst,const GPUPhysicalDevice *
 GPUDeviceAttribute::~GPUDeviceAttribute()
 {
     if(pipeline_cache)
+    {
+        SavePipelineCacheData(device,pipeline_cache,physical_device->GetProperties());
         vkDestroyPipelineCache(device,pipeline_cache,nullptr);
+    }
 
     if(desc_pool)
         vkDestroyDescriptorPool(device,desc_pool,nullptr);
@@ -45,13 +50,9 @@ void GPUDeviceAttribute::Refresh()
 
     {
         if (surface_caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
-        {
             preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-        }
         else
-        {
             preTransform = surface_caps.currentTransform;
-        }
     }
 
     {
@@ -60,14 +61,12 @@ void GPUDeviceAttribute::Refresh()
                                                                       VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
                                                                       VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR };
 
-        for (uint32_t i = 0; i < sizeof(compositeAlphaFlags); i++)
-        {
-            if (surface_caps.supportedCompositeAlpha & compositeAlphaFlags[i])
+        for(auto flags:compositeAlphaFlags)
+            if (surface_caps.supportedCompositeAlpha & flags)
             {
-                compositeAlpha = compositeAlphaFlags[i];
+                compositeAlpha = flags;
                 break;
             }
-        }
     }
 
     {

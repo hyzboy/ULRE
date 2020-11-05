@@ -3,6 +3,7 @@
 
 #include<hgl/type/List.h>
 #include<hgl/math/Math.h>
+#include<hgl/type/String.h>
 #include<iostream>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKFormat.h>
@@ -158,6 +159,16 @@ inline void debug_out_vk_version(const uint32_t version)
     std::cout<<VK_VERSION_MAJOR(version)<<"."
              <<VK_VERSION_MINOR(version)<<"."
              <<VK_VERSION_PATCH(version);
+}
+
+template<typename T>
+inline hgl::String<T> VkUUID2String(const uint8_t *pipelineCacheUUID)
+{
+    T *hstr=new T[VK_UUID_SIZE*2+1];
+    
+    DataToLowerHexStr(hstr,pipelineCacheUUID,VK_UUID_SIZE);
+
+    return hgl::String<T>::newOf(hstr,VK_UUID_SIZE*2);
 }
 
 inline void debug_out(const char *front,const hgl::List<VkLayerProperties> &layer_properties)
