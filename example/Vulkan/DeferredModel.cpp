@@ -168,7 +168,7 @@ private:
 
         texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
         texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
-        
+
         VkSamplerCreateInfo sampler_create_info=
         {
             VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -215,12 +215,12 @@ private:
 
             ro_plane=CreateRenderablePlane(db,mtl,&pci);
         }
-        
+
         {
             struct CubeCreateInfo cci;            
             ro_cube=CreateRenderableCube(db,mtl,&cci);
         }
-        
+
         {        
             ro_sphere=CreateRenderableSphere(db,mtl,64);
         }
