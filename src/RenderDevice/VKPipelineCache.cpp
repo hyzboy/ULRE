@@ -1,5 +1,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/type/StringList.h>
+#include<hgl/type/StrChar.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -9,17 +11,18 @@ namespace
     const OSString GetUUIDCachePath(const VkPhysicalDeviceProperties &pdp)
     {
         OSString app_data;
-        OSString pathname;
         
         if(!GetLocalAppdataPath(app_data))return OS_TEXT("");
 
-        pathname=app_data+HGL_DIRECTORY_SEPARATOR
-                +OSString(OS_TEXT("VkPipelineCache.com"))+HGL_DIRECTORY_SEPARATOR
-                +OSString::valueOf(VK_PIPELINE_CACHE_HEADER_VERSION_ONE)+HGL_DIRECTORY_SEPARATOR
-                +OSString::valueOf(pdp.vendorID)+HGL_DIRECTORY_SEPARATOR
-                +OSString::valueOf(pdp.deviceID)+HGL_DIRECTORY_SEPARATOR;
+        OSStringList sl;
 
-        return pathname;
+        sl.Add(app_data);
+        sl.Add(OS_TEXT("VkPipelineCache.com"));
+        sl.Add(OSString::valueOf(VK_PIPELINE_CACHE_HEADER_VERSION_ONE));
+        sl.Add(OSString::valueOf(pdp.vendorID));
+        sl.Add(OSString::valueOf(pdp.deviceID));
+
+        return ComboFilename(sl);
     }
 
     void LoadPipelineCacheFile(VkPipelineCacheCreateInfo *pcci,const VkPhysicalDeviceProperties &pdp)
