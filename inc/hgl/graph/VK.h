@@ -46,8 +46,8 @@ using VAB=VertexAttribBuffer;
 class IndexBuffer;
 
 class GPUCmdBuffer;
-class RenderCommand;
-class TextureCommand;
+class RenderCmdBuffer;
+class TextureCmdBuffer;
 class RenderPass;
 class GPUFence;
 class GPUSemaphore;

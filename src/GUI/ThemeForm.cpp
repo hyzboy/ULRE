@@ -5,7 +5,7 @@ namespace hgl
 {
     namespace gui
     {
-        ThemeForm::ThemeForm(Form *f,RenderTarget *rt,RenderCommand *rc)
+        ThemeForm::ThemeForm(Form *f,RenderTarget *rt,RenderCmdBuffer *rc)
         {
             form=f;
             render_target=rt;

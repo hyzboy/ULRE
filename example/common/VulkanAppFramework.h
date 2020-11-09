@@ -53,7 +53,7 @@ protected:
 
             int32_t         swap_chain_count            =0;
 
-    RenderCommand **        cmd_buf                     =nullptr;
+    RenderCmdBuffer **      cmd_buf                     =nullptr;
 
             Color4f         clear_color;
 
@@ -166,14 +166,14 @@ public:
         {
             const VkExtent2D extent=sc_render_target->GetExtent();
 
-            cmd_buf=hgl_zero_new<RenderCommand *>(swap_chain_count);
+            cmd_buf=hgl_zero_new<RenderCmdBuffer *>(swap_chain_count);
 
             for(int32_t i=0;i<swap_chain_count;i++)
                 cmd_buf[i]=device->CreateRenderCommandBuffer();
         }
     }
 
-    bool BuildCommandBuffer(RenderCommand *cb,RenderPass *rp,Framebuffer *fb,RenderableInstance *ri)
+    bool BuildCommandBuffer(RenderCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,RenderableInstance *ri)
     {   
         if(!ri)return(false);
 
@@ -198,7 +198,7 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(RenderCommand *cb,RenderTarget *rt,RenderableInstance *ri)
+    void BuildCommandBuffer(RenderCmdBuffer *cb,RenderTarget *rt,RenderableInstance *ri)
     {
         if(!cb||!rt||!ri)
             return;
@@ -234,7 +234,7 @@ public:
     {
         if(!rl)return;
 
-        RenderCommand *cb=cmd_buf[index];
+        RenderCmdBuffer *cb=cmd_buf[index];
 
         cb->Begin();
         cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        

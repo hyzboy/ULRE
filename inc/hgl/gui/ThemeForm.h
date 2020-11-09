@@ -17,11 +17,11 @@ namespace hgl
             Form *form;
 
             RenderTarget *render_target;
-            RenderCommand *cmd_buf;
+            RenderCmdBuffer *cmd_buf;
 
         public:
 
-            ThemeForm(Form *,RenderTarget *,RenderCommand *);
+            ThemeForm(Form *,RenderTarget *,RenderCmdBuffer *);
             virtual ~ThemeForm();
 
                     RenderTarget *  GetRenderTarget(){return render_target;}

@@ -76,22 +76,22 @@ VkCommandBuffer GPUDevice::CreateCommandBuffer()
     return cmd_buf;
 }
 
-RenderCommand *GPUDevice::CreateRenderCommandBuffer()
+RenderCmdBuffer *GPUDevice::CreateRenderCommandBuffer()
 {
     VkCommandBuffer cb=CreateCommandBuffer();
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
-    return(new RenderCommand(attr->device,attr->cmd_pool,cb));
+    return(new RenderCmdBuffer(attr->device,attr->cmd_pool,cb));
 }
 
-TextureCommand *GPUDevice::CreateTextureCommandBuffer()
+TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer()
 {
     VkCommandBuffer cb=CreateCommandBuffer();
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
-    return(new TextureCommand(attr->device,attr->cmd_pool,cb));
+    return(new TextureCmdBuffer(attr->device,attr->cmd_pool,cb));
 }
 
 /**
