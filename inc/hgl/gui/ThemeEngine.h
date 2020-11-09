@@ -27,7 +27,7 @@ namespace hgl
 
         protected:
 
-            virtual ThemeForm *CreateForm(Form *,RenderTarget *,RenderCommand *)=0;
+            virtual ThemeForm *CreateForm(Form *,RenderTarget *,RenderCmdBuffer *)=0;
 
             virtual bool Render(ThemeForm *);
 

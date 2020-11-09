@@ -33,11 +33,11 @@ namespace hgl
             bool Init() override;
             void Clear() override;
 
-            ThemeForm *CreateForm(Form *,RenderTarget *,RenderCommand *) override;
+            ThemeForm *CreateForm(Form *,RenderTarget *,RenderCmdBuffer *) override;
 
         public:
 
-            void DrawPanel(RenderCommand *,const RectScope2f &);
+            void DrawPanel(RenderCmdBuffer *,const RectScope2f &);
         };//class DefaultThemeEngine:public ThemeEngine
     }//namespace gui
 }//namespace hgl

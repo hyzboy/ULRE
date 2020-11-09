@@ -85,7 +85,7 @@ namespace hgl
             }
         }
 
-        bool RenderList::Render(RenderCommand *cb) 
+        bool RenderList::Render(RenderCmdBuffer *cb) 
         {
             if(!cb)
                 return(false);

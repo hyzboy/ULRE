@@ -31,7 +31,7 @@ class GPUDevice
     GPUDeviceAttribute *attr;
 
     GPUQueue *textureSQ;
-    TextureCommand *texture_cmd_buf;
+    TextureCmdBuffer *texture_cmd_buf;
 
     Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
@@ -190,10 +190,10 @@ public: //shader & material
     Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module);
     Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module);
 
-public: //Command GPUBuffer 相关
+public: //Command Buffer 相关
 
-    RenderCommand * CreateRenderCommandBuffer();
-    TextureCommand *CreateTextureCommandBuffer();
+    RenderCmdBuffer * CreateRenderCommandBuffer();
+    TextureCmdBuffer *CreateTextureCommandBuffer();
     
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,

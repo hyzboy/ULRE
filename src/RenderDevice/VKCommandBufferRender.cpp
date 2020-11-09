@@ -4,7 +4,7 @@
 #include<hgl/graph/VKRenderableInstance.h>
 
 VK_NAMESPACE_BEGIN
-RenderCommand::RenderCommand(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb):GPUCmdBuffer(dev,cp,cb)
+RenderCmdBuffer::RenderCmdBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb):GPUCmdBuffer(dev,cp,cb)
 {
     cv_count=0;
     clear_values=nullptr;
@@ -18,13 +18,13 @@ RenderCommand::RenderCommand(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb):G
     pipeline_layout=VK_NULL_HANDLE;
 }
 
-RenderCommand::~RenderCommand()
+RenderCmdBuffer::~RenderCmdBuffer()
 {
     if(clear_values)
         hgl_free(clear_values);
 }
 
-void RenderCommand::SetFBO(Framebuffer *fb)
+void RenderCmdBuffer::SetFBO(Framebuffer *fb)
 {
     if(fbo==fb)return;
 
@@ -53,14 +53,14 @@ void RenderCommand::SetFBO(Framebuffer *fb)
     render_area.extent.height=0;
 }
 
-void RenderCommand::SetRenderArea(const VkExtent2D &ext2d)
+void RenderCmdBuffer::SetRenderArea(const VkExtent2D &ext2d)
 {
     render_area.offset.x=0;
     render_area.offset.y=0;
     render_area.extent=ext2d;
 }
 
-bool RenderCommand::BindFramebuffer(RenderPass *rp,Framebuffer *fb)
+bool RenderCmdBuffer::BindFramebuffer(RenderPass *rp,Framebuffer *fb)
 {
     if(!rp||!fb)return(false);
 
@@ -86,7 +86,7 @@ bool RenderCommand::BindFramebuffer(RenderPass *rp,Framebuffer *fb)
     return(true);
 };
 
-bool RenderCommand::BeginRenderPass()
+bool RenderCmdBuffer::BeginRenderPass()
 {
     vkCmdBeginRenderPass(cmd_buf, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -99,7 +99,7 @@ bool RenderCommand::BeginRenderPass()
     return(true);
 }
 
-bool RenderCommand::BindVAB(RenderableInstance *ri)
+bool RenderCmdBuffer::BindVAB(RenderableInstance *ri)
 {
     if(!ri)
         return(false);

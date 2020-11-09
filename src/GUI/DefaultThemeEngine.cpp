@@ -18,12 +18,12 @@ namespace hgl
         {
         }
 
-        ThemeForm *DefaultThemeEngine::CreateForm(Form *f,RenderTarget *rt,RenderCommand *rc)
+        ThemeForm *DefaultThemeEngine::CreateForm(Form *f,RenderTarget *rt,RenderCmdBuffer *rc)
         {
             return(new DefaultThemeForm(f,rt,rc));
         }
 
-        void DefaultThemeEngine::DrawPanel(RenderCommand *rc,const RectScope2f &rs)
+        void DefaultThemeEngine::DrawPanel(RenderCmdBuffer *rc,const RectScope2f &rs)
         {
             if(!rc)return;
 

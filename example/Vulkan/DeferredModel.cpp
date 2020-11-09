@@ -53,7 +53,7 @@ private:
     struct
     {
         RenderTarget *rt=nullptr;
-        RenderCommand *cmd=nullptr;
+        RenderCmdBuffer *cmd=nullptr;
 
     public:
 

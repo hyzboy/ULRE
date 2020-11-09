@@ -22,7 +22,7 @@ class TestApp:public CameraAppFramework
     struct:public RenderObject
     {        
         RenderTarget *      render_taget        =nullptr;
-        RenderCommand *     command_buffer      =nullptr;
+        RenderCmdBuffer *     command_buffer      =nullptr;
         
         Pipeline *          pipeline            =nullptr;
         RenderableInstance *renderable_instance =nullptr;
