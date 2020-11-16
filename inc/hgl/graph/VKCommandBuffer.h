@@ -11,13 +11,13 @@ class GPUCmdBuffer
 {
 protected:
 
-    VkDevice device;
-    VkCommandPool pool;
+    const GPUDeviceAttribute *dev_attr;
+
     VkCommandBuffer cmd_buf;
 
 public:
 
-    GPUCmdBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb);
+    GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
     virtual ~GPUCmdBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
@@ -45,7 +45,7 @@ class RenderCmdBuffer:public GPUCmdBuffer
 
 public:
 
-    RenderCmdBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb);
+    RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
     ~RenderCmdBuffer();
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
@@ -129,11 +129,16 @@ public:
 
 public: //draw
 
-                                void Draw       (const uint32_t vertex_count)   {vkCmdDraw(cmd_buf,vertex_count,1,0,0);}
-                                void DrawIndexed(const uint32_t index_count )   {vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);}
+                                void Draw               (const uint32_t vertex_count)   {vkCmdDraw(cmd_buf,vertex_count,1,0,0);}
+                                void DrawIndexed        (const uint32_t index_count )   {vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);}
     
-    template<typename ...ARGS>  void Draw       (ARGS...args)                   {vkCmdDraw(cmd_buf,args...);}
-    template<typename ...ARGS>  void DrawIndexed(ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
+    template<typename ...ARGS>  void Draw               (ARGS...args)                   {vkCmdDraw(cmd_buf,args...);}
+    template<typename ...ARGS>  void DrawIndexed        (ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
+
+                                void DrawIndirect       (VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         ));
+                                void DrawIndexedIndirect(VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  ));
+                                void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
+                                void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
     void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
 

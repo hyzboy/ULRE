@@ -82,7 +82,7 @@ RenderCmdBuffer *GPUDevice::CreateRenderCommandBuffer()
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
-    return(new RenderCmdBuffer(attr->device,attr->cmd_pool,cb));
+    return(new RenderCmdBuffer(attr,cb));
 }
 
 TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer()
@@ -91,7 +91,7 @@ TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer()
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
-    return(new TextureCmdBuffer(attr->device,attr->cmd_pool,cb));
+    return(new TextureCmdBuffer(attr,cb));
 }
 
 /**

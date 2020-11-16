@@ -2,9 +2,11 @@
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKDeviceAttribute.h>
+#include<hgl/graph/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
-RenderCmdBuffer::RenderCmdBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb):GPUCmdBuffer(dev,cp,cb)
+RenderCmdBuffer::RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
 {
     cv_count=0;
     clear_values=nullptr;
@@ -117,5 +119,29 @@ bool RenderCmdBuffer::BindVAB(RenderableInstance *ri)
         vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),ri->GetIndexBufferOffset(),VkIndexType(indices_buffer->GetType()));
 
     return(true);
+}
+
+void RenderCmdBuffer::DrawIndirect( VkBuffer        buffer,
+                                    VkDeviceSize    offset,
+                                    uint32_t        drawCount,
+                                    uint32_t        stride)
+{
+    if(this->dev_attr->physical_device->GetFeatures().multiDrawIndirect)
+        vkCmdDrawIndirect(cmd_buf,buffer,offset,drawCount,stride);
+    else
+    for(uint32_t i=0;i<drawCount;i++)
+        vkCmdDrawIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
+}
+
+void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer                                    buffer,
+                                            VkDeviceSize                                offset,
+                                            uint32_t                                    drawCount,
+                                            uint32_t                                    stride)
+{
+    if(this->dev_attr->physical_device->GetFeatures().multiDrawIndirect)
+        vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset,drawCount,stride);
+    else
+    for(uint32_t i=0;i<drawCount;i++)
+        vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 VK_NAMESPACE_END
