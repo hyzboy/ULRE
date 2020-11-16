@@ -1,16 +1,16 @@
 ﻿#include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKDeviceAttribute.h>
 
 VK_NAMESPACE_BEGIN
-GPUCmdBuffer::GPUCmdBuffer(VkDevice dev,VkCommandPool cp,VkCommandBuffer cb)
+GPUCmdBuffer::GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb)
 {
-    device=dev;
-    pool=cp;
+    dev_attr=attr;
     cmd_buf=cb;
 }
 
 GPUCmdBuffer::~GPUCmdBuffer()
 {
-    vkFreeCommandBuffers(device,pool,1,&cmd_buf);
+    vkFreeCommandBuffers(dev_attr->device,dev_attr->cmd_pool,1,&cmd_buf);
 }
 
 bool GPUCmdBuffer::Begin()
