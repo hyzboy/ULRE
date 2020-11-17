@@ -90,7 +90,7 @@ void GPUDeviceAttribute::Refresh()
                 {
                     format=VK_FORMAT_UNDEFINED;
 
-                    for(int i=0;i<format_count;i++)
+                    for(uint32_t i=0;i<format_count;i++)
                     {
                         if(sf->format>format)
                             format=sf->format;
