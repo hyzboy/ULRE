@@ -16,8 +16,8 @@ namespace hgl
             if(!cam||!obj_one||!obj_two)
                 return(0);
 
-            return( length_squared(obj_one->GetCenter(),cam->eye)-
-                    length_squared(obj_two->GetCenter(),cam->eye));
+            return( length_squared(obj_one->GetCenter(),cam->pos)-
+                    length_squared(obj_two->GetCenter(),cam->pos));
         }
 
         //bool FrustumClipFilter(const SceneNode *node,void *fc)

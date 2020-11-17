@@ -30,8 +30,8 @@ private:
         Pipeline *          pipeline            =nullptr;
     }m3d,m2d;
 
-    Renderable          *ro_plane_grid[3],
-                                *ro_round_rectangle =nullptr;
+    Renderable              *ro_plane_grid[3],
+                            *ro_round_rectangle =nullptr;
 
 private:
 
@@ -105,7 +105,7 @@ private:
             ro_round_rectangle=CreateRenderableRoundRectangle(db,m2d.material,&rrci);
         }
 
-        camera.eye.Set(200,200,200,1.0);
+        camera.pos.Set(200,200,200,1.0);
     }
 
     bool InitScene()
