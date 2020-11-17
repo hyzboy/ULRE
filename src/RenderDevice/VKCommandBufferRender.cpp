@@ -133,10 +133,10 @@ void RenderCmdBuffer::DrawIndirect( VkBuffer        buffer,
         vkCmdDrawIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer                                    buffer,
-                                            VkDeviceSize                                offset,
-                                            uint32_t                                    drawCount,
-                                            uint32_t                                    stride)
+void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
+                                            VkDeviceSize    offset,
+                                            uint32_t        drawCount,
+                                            uint32_t        stride)
 {
     if(this->dev_attr->physical_device->GetFeatures().multiDrawIndirect)
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset,drawCount,stride);
