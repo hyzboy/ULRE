@@ -300,18 +300,22 @@ class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
 
-    GPUBuffer *     ubo_world_matrix    =nullptr;
+    GPUBuffer *         ubo_world_matrix    =nullptr;
 
 protected:
 
-    ControlCamera   camera;
-    float           move_speed=1;
+    Camera              camera;
+    FreeCameraControl * fcc=nullptr;
+    float               move_speed=1;
 
-    Vector2f        mouse_last_pos;
+    Vector2f            mouse_last_pos;
 
 public:
 
-    virtual ~CameraAppFramework()=default;
+    virtual ~CameraAppFramework()
+    {
+        SAFE_CLEAR(fcc);
+    }
 
     virtual bool Init(int w,int h)
     {
@@ -329,10 +333,12 @@ public:
         camera.height=h;
         camera.vp_width=w;
         camera.vp_height=h;
-        camera.center.Set(0,0,0,1);
-        camera.eye.Set(10,10,10,1);      //xyz三个值不要一样，以方便调试
+        camera.target.Set(0,0,0,1);
+        camera.pos.Set(10,10,10,1);      //xyz三个值不要一样，以方便调试
 
         camera.Refresh();      //更新矩阵计算
+
+        fcc=new FreeCameraControl(&camera);
         
         ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
     }
@@ -361,17 +367,17 @@ public:
 
         SubmitDraw(index);
 
-        if(key_status[kbW])camera.Forward   (move_speed);else
-        if(key_status[kbS])camera.Backward  (move_speed);else
-        if(key_status[kbA])camera.Left      (move_speed);else
-        if(key_status[kbD])camera.Right     (move_speed);else
-        if(key_status[kbR])camera.Up        (move_speed);else
-        if(key_status[kbF])camera.Down      (move_speed);else
+        if(key_status[kbW])fcc->Forward   (move_speed);else
+        if(key_status[kbS])fcc->Backward  (move_speed);else
+        if(key_status[kbA])fcc->Left      (move_speed);else
+        if(key_status[kbD])fcc->Right     (move_speed);else
+        if(key_status[kbR])fcc->Up        (move_speed);else
+        if(key_status[kbF])fcc->Down      (move_speed);else
 
-        if(key_status[kbLeft    ])camera.WrapHorzRotate( move_speed);else
-        if(key_status[kbRight   ])camera.WrapHorzRotate(-move_speed);else
-        if(key_status[kbUp      ])camera.WrapVertRotate( move_speed);else
-        if(key_status[kbDown    ])camera.WrapVertRotate(-move_speed);else
+        //if(key_status[kbLeft    ])camera.WrapHorzRotate( move_speed);else
+        //if(key_status[kbRight   ])camera.WrapHorzRotate(-move_speed);else
+        //if(key_status[kbUp      ])camera.WrapVertRotate( move_speed);else
+        //if(key_status[kbDown    ])camera.WrapVertRotate(-move_speed);else
             return;
     }
 
@@ -394,8 +400,8 @@ public:
         Vector2f gap=mouse_pos-mouse_last_pos;
 
         bool update=false;
-        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.HorzRotate(-gap.x/10.0f);else camera.WrapHorzRotate(gap.x);}
-        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.VertRotate(-gap.y/10.0f);else camera.WrapVertRotate(gap.y);}
+//        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.HorzRotate(-gap.x/10.0f);else camera.WrapHorzRotate(gap.x);}
+//        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.VertRotate(-gap.y/10.0f);else camera.WrapVertRotate(gap.y);}
 
         mouse_last_pos=mouse_pos;
     }
