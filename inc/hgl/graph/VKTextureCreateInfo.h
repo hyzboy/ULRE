@@ -3,16 +3,6 @@
 
 #include<hgl/graph/VK.h>
 VK_NAMESPACE_BEGIN
-struct TextureData
-{
-    GPUMemory *         memory      =nullptr;
-    VkImage             image       =VK_NULL_HANDLE;
-    VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
-    ImageView *         image_view  =nullptr;
-    uint32              miplevel    =0;
-    VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
-};//struct TextureData
-
 struct TextureCreateInfo
 {
     VkExtent3D          extent;
@@ -297,5 +287,41 @@ struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
                             ImageTiling::Optimal,
                             VK_IMAGE_LAYOUT_UNDEFINED){}
 };//struct SwapchainColorTextureCreateInfo:public TextureCreateInfo
+
+struct TextureData
+{
+    GPUMemory *         memory      =nullptr;
+    VkImage             image       =VK_NULL_HANDLE;
+    VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
+    ImageView *         image_view  =nullptr;
+    uint32              miplevel    =0;
+    VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
+
+public:
+
+    TextureData()
+    {
+        memory      =nullptr;
+        image       =VK_NULL_HANDLE;
+        image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
+        image_view  =nullptr;
+        miplevel    =0;
+        tiling      =VK_IMAGE_TILING_OPTIMAL;
+    }
+
+    TextureData(const TextureCreateInfo *tci)
+    {
+        memory      =tci->memory;
+        image       =tci->image;
+        image_view  =tci->image_view;
+        miplevel    =tci->target_mipmaps;
+        tiling      =VkImageTiling(tci->tiling);
+
+        if(!tci->buffer&&!tci->pixels&&tci->image_layout==VK_IMAGE_LAYOUT_UNDEFINED)
+            image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        else        
+            image_layout=tci->image_layout;
+    }
+};//struct TextureData
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_TEXTURE_CREATE_INFO_INCLUDE
