@@ -25,6 +25,12 @@ namespace
             imageSubresource.aspectMask=aspect_mask;
         }
 
+        BufferImageCopy(const Texture2D *tex):BufferImageCopy()
+        {
+            imageSubresource.aspectMask=tex->GetAspect();
+            SetRectScope(0,0,tex->GetWidth(),tex->GetHeight());
+        }
+
         void Set(const VkImageAspectFlags aspect_mask,const uint32_t layer_count)
         {
             imageSubresource.aspectMask=aspect_mask;
@@ -186,17 +192,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
     if(!tci->image_view)
         tci->image_view=CreateImageView2D(attr->device,tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
-    TextureData *tex_data=new TextureData;
-
-    tex_data->memory        = tci->memory;
-    tex_data->image_layout  = tci->image_layout;
-    tex_data->image         = tci->image;
-    tex_data->image_view    = tci->image_view;
-    tex_data->miplevel      = tci->target_mipmaps;
-    tex_data->tiling        = VkImageTiling(tci->tiling);
-
-    if(!tci->buffer&&!tci->pixels&&tci->image_layout==VK_IMAGE_LAYOUT_UNDEFINED)
-        tex_data->image_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    TextureData *tex_data=new TextureData(tci);
 
     Texture2D *tex=CreateTexture2D(tex_data);
 
@@ -305,9 +301,7 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,uint32_t width,uin
 {
     if(!tex||!buf)return(false);
 
-    BufferImageCopy buffer_image_copy(tex->GetAspect());
-
-    buffer_image_copy.SetRectScope(0,0,width,height);
+    BufferImageCopy buffer_image_copy(tex);
     
     return CommitTexture2D(tex,buf,&buffer_image_copy,1,miplevel,destinationStage);
 }
@@ -401,9 +395,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,uint32_t left,uint
      ||width<=0||height<=0)
         return(false);
 
-    BufferImageCopy buffer_image_copy(tex->GetAspect());
-
-    buffer_image_copy.SetRectScope(left,top,width,height);
+    BufferImageCopy buffer_image_copy(tex);
     
     texture_cmd_buf->Begin();
     bool result=CommitTexture2D(tex,buf,&buffer_image_copy,1,miplevel,destinationStage);    
