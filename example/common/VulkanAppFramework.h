@@ -296,6 +296,74 @@ public:
     }
 };//class VulkanApplicationFramework
 
+class WalkerCamera:public Camera
+{
+public:
+
+    using Camera::Camera;
+    virtual ~WalkerCamera()=default;
+
+    void ComputeViewMatrix() override
+    {
+        matrix.view=lookat(pos,target,world_up);
+    }
+
+public:
+
+    /**
+        * 向前移动指定距离(延视线)
+        */
+    virtual void Backward(const float move_length)
+    {
+        Move(camera_direction*move_length/view_distance.y);
+    }
+
+    /**
+        * 向后移动指定距离(延视线)
+        */
+    virtual void Forward(const float move_length){Backward(-move_length);}
+
+    /**
+        * 向上移动指定距离(和视线垂直90度)
+        */
+    virtual void Up(const float move_length)
+    {
+        Move(camera_up*move_length/view_distance.z);
+    }
+            
+    /**
+        * 向下移动指定距离(和视线垂直90度)
+        */
+    virtual void Down(const float move_length){Up(-move_length);}
+
+    virtual void Left(const float move_length)
+    {
+        Move(camera_right*move_length/view_distance.x);
+    }
+
+    virtual void Right(const float move_length){Left(-move_length);}
+
+    virtual void HoriRotate(const float ang)
+    {
+        Rotate(ang,camera_up);
+    }
+
+    virtual void VertRotate(const float ang)
+    {
+        Rotate(ang,camera_right);
+    }
+
+    virtual void WrapHoriRotate(const float ang)
+    {
+        WrapRotate(ang,camera_up);
+    }
+
+    virtual void WrapVertRotate(const float ang)
+    {
+        WrapRotate(ang,camera_right);
+    }
+};//class WalkerCamera:public Camera
+
 class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
@@ -304,8 +372,7 @@ private:
 
 protected:
 
-    Camera              camera;
-    FreeCameraControl * fcc=nullptr;
+    WalkerCamera *      camera;
     float               move_speed=1;
 
     Vector2f            mouse_last_pos;
@@ -314,7 +381,7 @@ public:
 
     virtual ~CameraAppFramework()
     {
-        SAFE_CLEAR(fcc);
+        SAFE_CLEAR(camera);
     }
 
     virtual bool Init(int w,int h)
@@ -328,25 +395,26 @@ public:
 
     virtual void InitCamera(int w,int h)
     {
-        camera.type=CameraType::Perspective;
-        camera.width=w;
-        camera.height=h;
-        camera.vp_width=w;
-        camera.vp_height=h;
-        camera.target.Set(0,0,0,1);
-        camera.pos.Set(10,10,10,1);      //xyz三个值不要一样，以方便调试
+        camera=new WalkerCamera;
 
-        camera.Refresh();      //更新矩阵计算
+        camera->type=CameraType::Perspective;
+        camera->width=w;
+        camera->height=h;
+        camera->vp_width=w;
+        camera->vp_height=h;
 
-        fcc=new FreeCameraControl(&camera);
+        camera->pos=Vector4f(10,10,10,1);
+        camera->target=Vector4f(0,0,0,1);
+
+        camera->Refresh();      //更新矩阵计算
         
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera.matrix);
+        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&camera->matrix);
     }
 
     void Resize(int w,int h)override
     {
-        camera.width=w;
-        camera.height=h;
+        camera->width=w;
+        camera->height=h;
     }
 
     GPUBuffer *GetCameraMatrixBuffer()
@@ -358,8 +426,8 @@ public:
 
     virtual void Draw()override
     {
-        camera.Refresh();                           //更新相机矩阵
-        ubo_world_matrix->Write(&camera.matrix);    //写入缓冲区
+        camera->Refresh();                           //更新相机矩阵
+        ubo_world_matrix->Write(&camera->matrix);    //写入缓冲区
 
         const uint32_t index=AcquireNextImage();
 
@@ -367,17 +435,17 @@ public:
 
         SubmitDraw(index);
 
-        if(key_status[kbW])fcc->Forward   (move_speed);else
-        if(key_status[kbS])fcc->Backward  (move_speed);else
-        if(key_status[kbA])fcc->Left      (move_speed);else
-        if(key_status[kbD])fcc->Right     (move_speed);else
-        if(key_status[kbR])fcc->Up        (move_speed);else
-        if(key_status[kbF])fcc->Down      (move_speed);else
+        if(key_status[kbW])camera->Up       (move_speed);else
+        if(key_status[kbS])camera->Down     (move_speed);else
+        if(key_status[kbA])camera->Left     (move_speed);else
+        if(key_status[kbD])camera->Right    (move_speed);else
+        if(key_status[kbR])camera->Forward  (move_speed);else
+        if(key_status[kbF])camera->Backward (move_speed);else
 
-        //if(key_status[kbLeft    ])camera.WrapHorzRotate( move_speed);else
-        //if(key_status[kbRight   ])camera.WrapHorzRotate(-move_speed);else
-        //if(key_status[kbUp      ])camera.WrapVertRotate( move_speed);else
-        //if(key_status[kbDown    ])camera.WrapVertRotate(-move_speed);else
+        if(key_status[kbLeft    ])camera->HoriRotate( move_speed);else
+        if(key_status[kbRight   ])camera->HoriRotate(-move_speed);else
+        if(key_status[kbUp      ])camera->VertRotate( move_speed);else
+        if(key_status[kbDown    ])camera->VertRotate(-move_speed);else
             return;
     }
 
@@ -400,14 +468,14 @@ public:
         Vector2f gap=mouse_pos-mouse_last_pos;
 
         bool update=false;
-//        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera.HorzRotate(-gap.x/10.0f);else camera.WrapHorzRotate(gap.x);}
-//        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera.VertRotate(-gap.y/10.0f);else camera.WrapVertRotate(gap.y);}
+        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera->HoriRotate(-gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
+        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera->VertRotate( gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
 
         mouse_last_pos=mouse_pos;
     }
 
     virtual void MouseWheel(int v,int h,uint)
     {
-        camera.Distance(1+(v/1000.0f));
+        camera->Distance(1+(v/1000.0f));
     }
 };//class CameraAppFramework
