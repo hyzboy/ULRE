@@ -5,6 +5,7 @@
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/graph/Camera.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -105,7 +106,7 @@ private:
             ro_round_rectangle=CreateRenderableRoundRectangle(db,m2d.material,&rrci);
         }
 
-        camera.pos.Set(200,200,200,1.0);
+        camera->pos.Set(200,200,200,1.0);
     }
 
     bool InitScene()
