@@ -9,15 +9,44 @@ namespace hgl
 {
     namespace graph
     {
+        template<typename T> struct GPUArray
+        {
+            List<T> list;
+            GPUBuffer *buffer;
+
+        public:
+
+            GPUArray()
+            {
+                buffer=nullptr;
+            }
+
+            ~GPUArray()
+            {
+                SAFE_CLEAR(buffer);
+            }
+
+            void Clear()
+            {
+                list.ClearData();
+            }
+
+            void Add(const T &data)
+            {
+                list.Add(data);
+            }
+        };//
+
         class RenderList
         {
             RenderCmdBuffer *cmd_buf;
 
         private:
 
+            GPUArray<Matrix4f> LocalToWorld;
+
             List<SceneNode *> scene_node_list;
 
-            PushConstant *      last_pc;
             Pipeline *          last_pipeline;
             MaterialInstance *  last_mat_inst;
             RenderableInstance *last_ri;
@@ -27,19 +56,12 @@ namespace hgl
 
         public:
 
-            RenderList()
-            {
-                cmd_buf=nullptr;
-                last_pc=nullptr;
-                last_pipeline=nullptr;
-                last_mat_inst=nullptr;
-                last_ri=nullptr;
-            }
-
+            RenderList();
             ~RenderList()=default;
-
-            void Add    (SceneNode *node)  {if(node)scene_node_list.Add(node);}
-            void Clear  ()                 {scene_node_list.ClearData();}
+            
+            void Begin  ();
+            void Add    (SceneNode *);
+            void End    ();
 
             bool Render (RenderCmdBuffer *);
         };//class RenderList
