@@ -27,6 +27,38 @@ namespace hgl
         //    return (((Frustum *)fc)->BoxIn(node->GetWorldBoundingBox())!=Frustum::OUTSIDE);
         //}
 
+        RenderList::RenderList()
+        {
+            cmd_buf         =nullptr;
+
+            last_pipeline   =nullptr;
+            last_mat_inst   =nullptr;
+            last_ri         =nullptr;
+        }
+
+        void RenderList::Begin()
+        {
+            LocalToWorld.Clear();
+            scene_node_list.ClearData();
+
+            last_pipeline   =nullptr;
+            last_mat_inst   =nullptr;
+            last_ri         =nullptr;
+        }
+
+        void RenderList::Add(SceneNode *node)
+        {
+            if(!node)return;
+
+            LocalToWorld.Add(node->GetLocalToWorldMatrix());
+            
+            scene_node_list.Add(node);
+        }
+
+        void RenderList::End()
+        {
+        }
+
         void RenderList::Render(SceneNode *node,RenderableInstance *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
@@ -43,13 +75,6 @@ namespace hgl
                 last_mat_inst=ri->GetMaterialInstance();
 
                 cmd_buf->BindDescriptorSets(last_mat_inst->GetDescriptorSets());
-            }
-
-            if(last_pc!=node->GetPushConstant())
-            {
-                last_pc=node->GetPushConstant();
-
-                cmd_buf->PushConstants(last_pc,sizeof(PushConstant));
             }
 
             //更新fin_mvp
@@ -95,7 +120,6 @@ namespace hgl
             last_pipeline=nullptr;
             last_mat_inst=nullptr;
             last_ri=nullptr;
-            last_pc=nullptr;
 
             const int count=scene_node_list.GetCount();
             SceneNode **node=scene_node_list.GetData();

@@ -7,7 +7,6 @@ namespace hgl
 
         SceneOrient::SceneOrient()
         {
-            pc.local_to_world           =Matrix4f::identity;
             LocalMatrix                 =Matrix4f::identity;
             LocalToWorldMatrix          =Matrix4f::identity;
             InverseLocalMatrix          =Matrix4f::identity;
@@ -28,9 +27,6 @@ namespace hgl
             LocalToWorldMatrix=m;
 
             InverseLocalToWorldMatrix=inverse(LocalToWorldMatrix);
-
-            pc.local_to_world   =LocalToWorldMatrix;
-            pc.normal           =InverseLocalToWorldMatrix.Transposed();
 
             return LocalToWorldMatrix;
         }
