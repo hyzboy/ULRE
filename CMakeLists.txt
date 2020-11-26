@@ -34,7 +34,6 @@ SET(ULRE    CMCore
             CMAssetsManage
             CMSceneGraph
             ULRE.Util
-            ULRE.VulkanRender
             ULRE.SceneGraph
             MathGeoLib
             ${RENDER_LIBRARY}

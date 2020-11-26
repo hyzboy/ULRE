@@ -311,29 +311,29 @@ public:
 public:
 
     /**
-        * 向前移动指定距离(延视线)
-        */
+     * 向前移动指定距离(延视线)
+     */
     virtual void Backward(const float move_length)
     {
         Move(camera_direction*move_length/view_distance.y);
     }
 
     /**
-        * 向后移动指定距离(延视线)
-        */
+     * 向后移动指定距离(延视线)
+     */
     virtual void Forward(const float move_length){Backward(-move_length);}
 
     /**
-        * 向上移动指定距离(和视线垂直90度)
-        */
+     * 向上移动指定距离(和视线垂直90度)
+     */
     virtual void Up(const float move_length)
     {
         Move(camera_up*move_length/view_distance.z);
     }
             
     /**
-        * 向下移动指定距离(和视线垂直90度)
-        */
+     * 向下移动指定距离(和视线垂直90度)
+     */
     virtual void Down(const float move_length){Up(-move_length);}
 
     virtual void Left(const float move_length)
@@ -468,8 +468,8 @@ public:
         Vector2f gap=mouse_pos-mouse_last_pos;
 
         bool update=false;
-        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera->HoriRotate(-gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
-        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera->VertRotate( gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
+        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera->HoriRotate( gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
+        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera->VertRotate(-gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
 
         mouse_last_pos=mouse_pos;
     }
