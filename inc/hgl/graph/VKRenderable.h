@@ -14,17 +14,17 @@ VK_NAMESPACE_BEGIN
  */
 class Renderable
 {
-    struct GPUBufferData
+    struct VABData
     {
         VAB *buf;
         VkDeviceSize offset;
 
     public:
 
-        CompOperatorMemcmp(const GPUBufferData &);
+        CompOperatorMemcmp(const VABData &);
     };
 
-    Map<UTF8String,GPUBufferData> buffer_list;
+    Map<UTF8String,VABData> buffer_list;
     
 protected:
 
