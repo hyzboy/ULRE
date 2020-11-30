@@ -99,12 +99,12 @@ public: //内存相关
 
 private: //Buffer相关
 
-    bool            CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode);
+    bool            CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode,bool dynamic=false);
 
 public: //Buffer相关
 
-    GPUBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
-    GPUBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,nullptr,sharing_mode);}
+    GPUBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false);
+    GPUBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,                    SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false){return CreateBuffer(buf_usage,size,nullptr,sharing_mode,dynamic);}
 
     VAB *           CreateVAB   (VkFormat format,uint32_t count,const void *data,   SharingMode sharing_mode=SharingMode::Exclusive);
     VAB *           CreateVAB   (VkFormat format,uint32_t count,                    SharingMode sharing_mode=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sharing_mode);}
@@ -118,8 +118,8 @@ public: //Buffer相关
     IndexBuffer *   CreateIBO16 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sharing_mode);}
     IndexBuffer *   CreateIBO32 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sharing_mode);}
 
-#define CREATE_BUFFER_OBJECT(LargeName,type)    GPUBuffer *Create##LargeName(VkDeviceSize size,void *data,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,sharing_mode);}  \
-                                                GPUBuffer *Create##LargeName(VkDeviceSize size,SharingMode sharing_mode=SharingMode::Exclusive){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,sharing_mode);}
+#define CREATE_BUFFER_OBJECT(LargeName,type)    GPUBuffer *Create##LargeName(VkDeviceSize size,void *data,  SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,      sharing_mode,dynamic);}  \
+                                                GPUBuffer *Create##LargeName(VkDeviceSize size,             SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,   sharing_mode,dynamic);}
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)
     CREATE_BUFFER_OBJECT(SSBO,STORAGE)

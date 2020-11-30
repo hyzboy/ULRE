@@ -18,25 +18,29 @@ protected:
     VkDevice device;
     GPUBufferData buf;
 
+    bool dynamic;
+
 private:
 
     friend class GPUDevice;
     friend class VertexAttribBuffer;
     friend class IndexBuffer;
 
-    GPUBuffer(VkDevice d,const GPUBufferData &b)
+    GPUBuffer(VkDevice d,const GPUBufferData &b,bool dy)
     {
         device=d;
         buf=b;
+        dynamic=dy;
     }
 
 public:
 
     virtual ~GPUBuffer();
 
-            VkBuffer                   GetBuffer    ()const{return buf.buffer;}
-            GPUMemory *                GetMemory    ()const{return buf.memory;}
-    const   VkDescriptorBufferInfo *   GetBufferInfo()const{return &buf.info;}
+    const   bool                        IsDynamic       ()const{return dynamic;}
+            VkBuffer                    GetBuffer       ()const{return buf.buffer;}
+            GPUMemory *                 GetMemory       ()const{return buf.memory;}
+    const   VkDescriptorBufferInfo *    GetBufferInfo   ()const{return &buf.info;}
 
             void *  Map     ()                                              {return buf.memory->Map();}
     virtual void *  Map     (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Map(start,size);}
@@ -57,7 +61,7 @@ private:
 
     friend class GPUDevice;
 
-    VertexAttribBuffer(VkDevice d,const GPUBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):GPUBuffer(d,vb)
+    VertexAttribBuffer(VkDevice d,const GPUBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count,bool dy=false):GPUBuffer(d,vb,dy)
     {
         format=fmt;
         stride=_stride;
@@ -89,7 +93,7 @@ private:
 
     friend class GPUDevice;
 
-    IndexBuffer(VkDevice d,const GPUBufferData &vb,IndexType it,uint32_t _count):GPUBuffer(d,vb)
+    IndexBuffer(VkDevice d,const GPUBufferData &vb,IndexType it,uint32_t _count,bool dy=false):GPUBuffer(d,vb,dy)
     {
         index_type=it;
         count=_count;

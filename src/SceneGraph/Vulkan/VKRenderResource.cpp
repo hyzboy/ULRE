@@ -16,18 +16,18 @@ VAB *RenderResource::CreateVAB(VkFormat format,uint32_t count,const void *data,S
     return vb;
 }
 
-#define SCENE_DB_CREATE_BUFFER(name)    GPUBuffer *RenderResource::Create##name(VkDeviceSize size,void *data,SharingMode sharing_mode) \
+#define SCENE_DB_CREATE_BUFFER(name)    GPUBuffer *RenderResource::Create##name(VkDeviceSize size,void *data,SharingMode sharing_mode,bool dynamic) \
                                         {   \
-                                            GPUBuffer *buf=device->Create##name(size,data,sharing_mode);   \
+                                            GPUBuffer *buf=device->Create##name(size,data,sharing_mode,dynamic);   \
                                             \
                                             if(!buf)return(nullptr);    \
                                             rm_buffers.Add(buf);    \
                                             return(buf);    \
                                         }   \
                                         \
-                                        GPUBuffer *RenderResource::Create##name(VkDeviceSize size,SharingMode sharing_mode)    \
+                                        GPUBuffer *RenderResource::Create##name(VkDeviceSize size,SharingMode sharing_mode,bool dynamic)    \
                                         {   \
-                                            GPUBuffer *buf=device->Create##name(size,sharing_mode);    \
+                                            GPUBuffer *buf=device->Create##name(size,sharing_mode,dynamic);    \
                                             \
                                             if(!buf)return(nullptr);    \
                                             rm_buffers.Add(buf);    \
