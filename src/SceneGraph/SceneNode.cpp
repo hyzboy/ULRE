@@ -51,7 +51,6 @@ namespace hgl
             }
 
             LocalBoundingBox=local;
-
         }
 
         /**
