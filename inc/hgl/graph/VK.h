@@ -1,9 +1,10 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_INCLUDE
 #define HGL_GRAPH_VULKAN_INCLUDE
 
-#include<hgl/type/List.h>
 #include<hgl/math/Math.h>
+#include<hgl/type/List.h>
 #include<hgl/type/String.h>
+#include<hgl/type/Map.h>
 #include<iostream>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKFormat.h>
@@ -14,6 +15,7 @@
 VK_NAMESPACE_BEGIN
 
 using CharPointerList=hgl::List<const char *>;
+using BindingMapping=Map<uint32_t,int>;
 
 class VulkanInstance;
 class GPUPhysicalDevice;

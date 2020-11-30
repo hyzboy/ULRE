@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/VK.h>
 #include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/type/Map.h>
 VK_NAMESPACE_BEGIN
@@ -15,7 +16,7 @@ class DescriptorSetLayoutCreater
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
     VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
-    Map<uint32_t,int> index_by_binding;
+    BindingMapping index_by_binding;
 
     VkPipelineLayout pipeline_layout=VK_NULL_HANDLE;
 
