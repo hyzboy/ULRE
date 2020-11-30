@@ -20,8 +20,10 @@ namespace
             descriptorType  = desc_type;
         }
 
-        WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorBufferInfo *buf_info,const VkDescriptorType desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER):WriteDescriptorSet(desc_set,binding,desc_type)
-        {            
+        WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorBufferInfo *buf_info,const bool dynamic):
+                            WriteDescriptorSet(desc_set,binding,dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+                                                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+        {
             pImageInfo       = nullptr;
             pBufferInfo      = buf_info;
             pTexelBufferView = nullptr;
@@ -72,7 +74,8 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf)
     if(binding<0||!buf)
         return(false);
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo()));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),buf->IsDynamic()));
+
     return(true);
 }
 
@@ -84,17 +87,8 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDevi
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
     buffer_list.Add(buf_info);
-
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info));
-    return(true);
-}
-
-bool DescriptorSets::BindUBODynamic(const int binding,const GPUBuffer *buf)
-{
-    if(binding<0||!buf)
-        return(false);
-        
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC));
+    
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,buf->IsDynamic()));
     return(true);
 }
 
