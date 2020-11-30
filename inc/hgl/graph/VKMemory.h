@@ -11,18 +11,13 @@ class GPUMemory
     uint32_t                index;
     uint32_t                properties;
 
+    VkMappedMemoryRange     memory_range;
+
 private:
 
     friend class GPUDevice;
 
-    GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p)
-    {
-        device=dev;
-        memory=dm;
-        req=mr;
-        index=i;
-        properties=p;
-    }
+    GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p);
 
 public:
 
@@ -48,6 +43,9 @@ public:
 
     bool    BindBuffer  (VkBuffer buffer);
     bool    BindImage   (VkImage image);
+
+    void    Flush       (VkDeviceSize,VkDeviceSize);
+    void    Flush       (VkDeviceSize size){Flush(0,size);}
 };//class GPUMemory
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MEMORY_INCLUDE
