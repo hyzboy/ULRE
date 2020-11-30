@@ -2,7 +2,7 @@
 #include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode,bool dynamic)
 {
     BufferCreateInfo buf_info;
 
@@ -19,7 +19,12 @@ bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkD
 
     vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
 
-    GPUMemory *dm=CreateMemory(mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    uint32_t prop=VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+    if(!dynamic)
+        prop|=VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    GPUMemory *dm=CreateMemory(mem_reqs,prop);
 
     if(dm&&dm->BindBuffer(buf->buffer))
     {
@@ -80,13 +85,13 @@ IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void
     return(new IndexBuffer(attr->device,buf,index_type,count));
 }
 
-GPUBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+GPUBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode,bool dynamic)
 {
     GPUBufferData buf;
 
-    if(!CreateBuffer(&buf,buf_usage,size,data,sharing_mode))
+    if(!CreateBuffer(&buf,buf_usage,size,data,sharing_mode,dynamic))
         return(nullptr);
 
-    return(new GPUBuffer(attr->device,buf));
+    return(new GPUBuffer(attr->device,buf,dynamic));
 }
 VK_NAMESPACE_END
