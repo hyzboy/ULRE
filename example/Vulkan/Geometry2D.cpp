@@ -25,18 +25,18 @@ class TestApp:public VulkanApplicationFramework
 
 private:
 
-            SceneNode           render_root;
-            RenderList          render_list;
+    SceneNode           render_root;
+    RenderList          render_list;
 
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
 
-    Renderable          *ro_rectangle       =nullptr,
-                                *ro_circle          =nullptr,
-                                *ro_round_rectangle =nullptr;
+    Renderable *        ro_rectangle        =nullptr;
+    Renderable *        ro_circle           =nullptr;
+    Renderable *        ro_round_rectangle  =nullptr;
 
-    GPUBuffer *            ubo_world_matrix    =nullptr;
-    GPUBuffer *            ubo_color_material  =nullptr;
+    GPUBuffer *         ubo_world_matrix    =nullptr;
+    GPUBuffer *         ubo_color_material  =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 

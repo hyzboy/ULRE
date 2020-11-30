@@ -57,7 +57,7 @@ namespace hgl
         public:
 
             RenderList();
-            ~RenderList()=default;
+            virtual ~RenderList()=default;
             
             void Begin  ();
             void Add    (SceneNode *);

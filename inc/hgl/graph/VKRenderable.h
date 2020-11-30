@@ -83,7 +83,7 @@ public:
     const   int             GetBufferCount()const{return buffer_list.GetCount();}
 
     IndexBuffer *           GetIndexBuffer()            {return indices_buffer;}
-    const VkDeviceSize      GetIndexBufferOffset()const   {return indices_offset;}
+    const VkDeviceSize      GetIndexBufferOffset()const {return indices_offset;}
 };//class Renderable
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
