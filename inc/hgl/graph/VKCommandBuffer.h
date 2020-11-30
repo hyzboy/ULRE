@@ -99,6 +99,17 @@ public:
         return(true);
     }
 
+    bool BindDescriptorSets(DescriptorSets *dsl,const uint32_t offset)
+    {
+        if(!dsl)return(false);
+
+        pipeline_layout=dsl->GetPipelineLayout();
+
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,dsl->GetDescriptorSets(),1,&offset);
+
+        return(true);
+    }
+
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {
         vkCmdPushDescriptorSetKHR(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,set,count,write_desc_set);
