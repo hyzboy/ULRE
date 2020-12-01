@@ -9,12 +9,7 @@ GPUMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t prop
     if(!attr->physical_device->CheckMemoryType(req.memoryTypeBits,properties,&index))
         return(nullptr);
 
-    VkMemoryAllocateInfo alloc_info;
-
-    alloc_info.sType            =VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.pNext            =nullptr;
-    alloc_info.memoryTypeIndex  =index;
-    alloc_info.allocationSize   =req.size;
+    MemoryAllocateInfo alloc_info(index,req.size);
 
     VkDeviceMemory memory;
 
