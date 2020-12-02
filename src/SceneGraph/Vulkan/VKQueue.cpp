@@ -49,7 +49,7 @@ bool GPUQueue::WaitFence(const bool wait_all,uint64_t time_out)
 
     return(true);
 }
-    
+
 bool GPUQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem)
 {
     VkSemaphore ws;

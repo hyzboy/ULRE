@@ -24,6 +24,7 @@ macro(CreateQtProject name)
 endmacro()
 
 CreateProject(00.triangle first_triangle.cpp)
+CreateProject(00.two_triangle two_triangle.cpp)
 CreateProject(01.FragCoord FragCoordTest.cpp)
 CreateProject(02.indices_rect indices_rect.cpp)
 CreateProject(03.TextureFormat TextureFormat.cpp)
