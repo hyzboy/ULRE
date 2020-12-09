@@ -118,8 +118,10 @@ public: //Buffer相关
     IndexBuffer *   CreateIBO16 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U16,count,nullptr,sharing_mode);}
     IndexBuffer *   CreateIBO32 (                     uint32_t count,SharingMode sharing_mode=SharingMode::Exclusive){return CreateIBO(IndexType::U32,count,nullptr,sharing_mode);}
 
-#define CREATE_BUFFER_OBJECT(LargeName,type)    GPUBuffer *Create##LargeName(VkDeviceSize size,void *data,  SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,      sharing_mode,dynamic);}  \
-                                                GPUBuffer *Create##LargeName(VkDeviceSize size,             SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false){return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,   sharing_mode,dynamic);}
+#define CREATE_BUFFER_OBJECT(LargeName,type)    GPUBuffer *Create##LargeName(           VkDeviceSize size,void *data,  SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,      sharing_mode,dynamic);} \
+                                                GPUBuffer *Create##LargeName(           VkDeviceSize size,             SharingMode sharing_mode=SharingMode::Exclusive,bool dynamic=false)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,   sharing_mode,dynamic);} \
+                                                GPUBuffer *Create##LargeName##Dynamic(  VkDeviceSize size,void *data,  SharingMode sharing_mode=SharingMode::Exclusive)                     {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,data,      sharing_mode,true);} \
+                                                GPUBuffer *Create##LargeName##Dynamic(  VkDeviceSize size,             SharingMode sharing_mode=SharingMode::Exclusive)                     {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size,nullptr,   sharing_mode,true);}
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)
     CREATE_BUFFER_OBJECT(SSBO,STORAGE)
