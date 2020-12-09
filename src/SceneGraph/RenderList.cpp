@@ -57,6 +57,11 @@ namespace hgl
 
         void RenderList::End()
         {
+            const uint32_t count=scene_node_list.GetCount();
+
+            for(SceneNode *node:scene_node_list)
+            {
+            }
         }
 
         void RenderList::Render(SceneNode *node,RenderableInstance *ri)
@@ -126,6 +131,8 @@ namespace hgl
 
             for(int i=0;i<count;i++)
             {
+//                cmb_buf->....offset L2W Matrix
+
                 Render(*node,(*node)->renderable_instances);
                 ++node;
             }

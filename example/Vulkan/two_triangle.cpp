@@ -32,6 +32,9 @@ private:
 
     Camera cam;
 
+    SceneNode           render_root;
+    RenderList          render_list;
+
     MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
     GPUBuffer *         ubo_world_matrix    =nullptr;
@@ -71,7 +74,7 @@ private:
         material_instance->Update();
         return(true);
     }
-    
+
     bool InitVBO()
     {
         Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
@@ -81,6 +84,10 @@ private:
         if(!render_obj->Set(VAN::Color,     db->CreateVAB(VAF_VEC4,VERTEX_COUNT,color_data)))return(false);
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
+
+        render_root.Add(render_instance,scale(0.5,0.5));
+        render_root.RefreshMatrix();
+        render_root.ExpendToList(&render_list);
         return(true);
     }
 
@@ -100,8 +107,7 @@ public:
         if(!InitVBO())
             return(false);
 
-        if(!BuildCommandBuffer(render_instance))
-            return(false);
+        BuildCommandBuffer(&render_list);
 
         return(true);
     }
@@ -115,7 +121,7 @@ public:
 
         ubo_world_matrix->Write(&cam.matrix);
 
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(&render_list);
     }
 };//class TestApp:public VulkanApplicationFramework
 

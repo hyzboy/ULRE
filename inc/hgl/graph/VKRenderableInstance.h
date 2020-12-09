@@ -11,13 +11,13 @@ VK_NAMESPACE_BEGIN
 */
 class RenderableInstance
 {
-    Pipeline *        pipeline;
-    MaterialInstance *mat_inst;
-    Renderable *      render_obj;
+    Pipeline *          pipeline;
+    MaterialInstance *  mat_inst;
+    Renderable *        render_obj;
 
-    uint32_t buffer_count;
-    VkBuffer *buffer_list;
-    VkDeviceSize *buffer_size;
+    uint32_t            buffer_count;
+    VkBuffer *          buffer_list;
+    VkDeviceSize *      buffer_size;
 
 private:
 
@@ -29,19 +29,19 @@ public:
 
     virtual ~RenderableInstance();
 
-    Pipeline *          GetPipeline         (){return pipeline;}
-    MaterialInstance *  GetMaterialInstance (){return mat_inst;}
-    Renderable *        GetRenderable       (){return render_obj;}
-    const AABB &                GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
+            Pipeline *          GetPipeline         (){return pipeline;}
+            MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+            Renderable *        GetRenderable       (){return render_obj;}
+    const   AABB &              GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
 
-    const   uint32_t        GetBufferCount      ()const{return buffer_count;}
-            VkBuffer *      GetBuffer           ()const{return buffer_list;}
-            VkDeviceSize *  GetBufferSize       ()const{return buffer_size;}
-            IndexBuffer *   GetIndexBuffer      ()const{return render_obj->GetIndexBuffer();}
-    const   uint32_t        GetIndexBufferOffset  ()const{return render_obj->GetIndexBufferOffset();}
-    const   uint32_t        GetDrawCount        ()const{return render_obj->GetDrawCount();}
+    const   uint32_t            GetBufferCount      ()const{return buffer_count;}
+            VkBuffer *          GetBuffer           ()const{return buffer_list;}
+            VkDeviceSize *      GetBufferSize       ()const{return buffer_size;}
+            IndexBuffer *       GetIndexBuffer      ()const{return render_obj->GetIndexBuffer();}
+    const   uint32_t            GetIndexBufferOffset()const{return render_obj->GetIndexBufferOffset();}
+    const   uint32_t            GetDrawCount        ()const{return render_obj->GetDrawCount();}
 
-            DescriptorSets *GetDescriptorSets   ()const{return mat_inst->GetDescriptorSets();}
+            DescriptorSets *    GetDescriptorSets   ()const{return mat_inst->GetDescriptorSets();}
 
 public:
 
