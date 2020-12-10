@@ -35,13 +35,15 @@ public:
 
     ~DescriptorSets()=default;
 
-    const uint32_t                  GetCount            ()const{return count;}
-    const VkDescriptorSet *         GetDescriptorSets   ()const{return &desc_set;}
-    const VkPipelineLayout          GetPipelineLayout   ()const{return pipeline_layout;}
+    const uint32_t          GetCount            ()const{return count;}
+    const VkDescriptorSet * GetDescriptorSets   ()const{return &desc_set;}
+    const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
     void Clear();
-    bool BindUBO(const int binding,const GPUBuffer *);
-    bool BindUBO(const int binding,const GPUBuffer *,const VkDeviceSize offset,const VkDeviceSize range);
+
+    bool BindUBO(const int binding,const GPUBuffer *buf,bool dynamic=false);
+    bool BindUBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+
     bool BindSampler(const int binding,Texture *,Sampler *);
     bool BindInputAttachment(const int binding,Texture *);
     void Update();
