@@ -67,8 +67,8 @@ public: // VBO/VAO
     VAB *CreateVAB(VkFormat format,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,count,nullptr,sm);}
     VAB *CreateVAB(const VAD *vad,SharingMode sm=SharingMode::Exclusive){return CreateVAB(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sm);}
 
-    #define SCENE_DB_CREATE_FUNC(name)  GPUBuffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive,bool dynamic=false);   \
-                                        GPUBuffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive,bool dynamic=false);
+    #define SCENE_DB_CREATE_FUNC(name)  GPUBuffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
+                                        GPUBuffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive);
 
             SCENE_DB_CREATE_FUNC(UBO)
             SCENE_DB_CREATE_FUNC(SSBO)
