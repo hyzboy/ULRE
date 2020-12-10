@@ -20,9 +20,7 @@ namespace
             descriptorType  = desc_type;
         }
 
-        WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorBufferInfo *buf_info,const bool dynamic):
-                            WriteDescriptorSet(desc_set,binding,dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-                                                                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+        WriteDescriptorSet(VkDescriptorSet desc_set,const uint32_t binding,const VkDescriptorBufferInfo *buf_info,const VkDescriptorType desc_type):WriteDescriptorSet(desc_set,binding,desc_type)
         {
             pImageInfo       = nullptr;
             pBufferInfo      = buf_info;
@@ -74,7 +72,9 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,bool dynamic
     if(binding<0||!buf)
         return(false);
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),dynamic));
+    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),desc_type));
 
     return(true);
 }
@@ -87,8 +87,37 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDevi
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
     buffer_list.Add(buf_info);
+
+    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,dynamic));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,desc_type));
+    return(true);
+}
+
+bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,bool dynamic)
+{
+    if(binding<0||!buf)
+        return(false);
+
+    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),desc_type));
+
+    return(true);
+}
+
+bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+{
+    if(binding<0||!buf)
+        return(false);
+
+    DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
+
+    buffer_list.Add(buf_info);
+
+    const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,desc_type));
     return(true);
 }
 

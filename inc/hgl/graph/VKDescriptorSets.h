@@ -43,6 +43,8 @@ public:
 
     bool BindUBO(const int binding,const GPUBuffer *buf,bool dynamic=false);
     bool BindUBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindSSBO(const int binding,const GPUBuffer *buf,bool dynamic=false);
+    bool BindSSBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
     bool BindSampler(const int binding,Texture *,Sampler *);
     bool BindInputAttachment(const int binding,Texture *);
