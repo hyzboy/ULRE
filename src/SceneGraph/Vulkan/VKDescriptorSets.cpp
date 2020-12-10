@@ -69,17 +69,17 @@ void DescriptorSets::Clear()
     wds_list.ClearData();
 }
 
-bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf)
+bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
 
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),buf->IsDynamic()));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),dynamic));
 
     return(true);
 }
 
-bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range)
+bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -88,7 +88,7 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDevi
 
     buffer_list.Add(buf_info);
     
-    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,buf->IsDynamic()));
+    wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,dynamic));
     return(true);
 }
 
