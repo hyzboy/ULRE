@@ -43,8 +43,11 @@ public:
         GET_BO_BINDING(SSTBO,               STORAGE_TEXEL_BUFFER)
         GET_BO_BINDING(UBO,                 UNIFORM_BUFFER)
         GET_BO_BINDING(SSBO,                STORAGE_BUFFER)
-        GET_BO_BINDING(UBODynamic,          UNIFORM_BUFFER_DYNAMIC)
-        GET_BO_BINDING(SSBODynamic,         STORAGE_BUFFER_DYNAMIC)
+
+        //shader中并不区分普通UBO和动态UBO，所以Material/ShaderResource中的数据，只有UBO
+
+//        GET_BO_BINDING(UBODynamic,          UNIFORM_BUFFER_DYNAMIC)
+//        GET_BO_BINDING(SSBODynamic,         STORAGE_BUFFER_DYNAMIC)
 
         GET_BO_BINDING(InputAttachment,     INPUT_ATTACHMENT)
     #undef GET_BO_BINDING
