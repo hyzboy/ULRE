@@ -15,7 +15,7 @@ MaterialInstance::~MaterialInstance()
     delete descriptor_sets;
 }
 
-bool MaterialInstance::BindUBO(const AnsiString &name,GPUBuffer *ubo)
+bool MaterialInstance::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic)
 {
     if(name.IsEmpty()||!ubo)
         return(false);
@@ -25,7 +25,7 @@ bool MaterialInstance::BindUBO(const AnsiString &name,GPUBuffer *ubo)
     if(index<0)
         return(false);
 
-    if(!descriptor_sets->BindUBO(index,ubo))
+    if(!descriptor_sets->BindUBO(index,ubo,dynamic))
         return(false);
 
     return(true);
