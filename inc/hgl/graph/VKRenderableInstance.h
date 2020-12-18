@@ -7,9 +7,10 @@
 #include<hgl/graph/VKMaterialInstance.h>
 VK_NAMESPACE_BEGIN
 /**
-* 可渲染对象节点
+* 可渲染对象实例<br>
+* RenderList会统一管理Shader中的LocalToWorld数据，使用DynamicUBO/DynamicSSBO实现。
 */
-class RenderableInstance
+class RenderableInstance                                                        ///可渲染对象实例
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
