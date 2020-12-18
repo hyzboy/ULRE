@@ -6,6 +6,26 @@
 #include<hgl/graph/VKStruct.h>
 
 VK_NAMESPACE_BEGIN
+
+/**
+ * Shader数据来源
+ */
+enum class ShaderDataSource
+{
+    Global=0,       ///<由全局系统提供的数据(如WorldMatrix)
+    Private=1,      ///<每种材质的私有数据
+};//
+
+/**
+ * Shader数据来源类型
+ */
+enum class ShaderDataSourceType
+{
+    Static=0,
+    Dynamic,
+    Instance
+};
+
 struct ShaderStage
 {
     AnsiString          name;
@@ -15,6 +35,9 @@ struct ShaderStage
     VkFormat            format;     ///<对应的Vulkan格式(如vec4对应的FMT_RGBA32F)
 
     uint                binding;
+
+    bool                global;     ///<是否全局数据
+    bool                dynamic;    ///<是否动态数量
 };//struct ShaderStage
 
 using ShaderStageList       =ObjectList<ShaderStage>;
