@@ -31,6 +31,22 @@ bool MaterialInstance::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynami
     return(true);
 }
 
+bool MaterialInstance::BindSSBO(const AnsiString &name,GPUBuffer *ssbo,bool dynamic)
+{
+    if(name.IsEmpty()||!ssbo)
+        return(false);
+
+    const int index=material->GetSSBO(name);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_sets->BindSSBO(index,ssbo,dynamic))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialInstance::BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     if(name.IsEmpty()||!tex||!sampler)

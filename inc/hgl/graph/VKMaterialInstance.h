@@ -26,6 +26,7 @@ public:
     ~MaterialInstance();
 
     bool BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic=false);
+    bool BindSSBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic=false);
     bool BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
     
     void Update();
