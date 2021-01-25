@@ -21,7 +21,7 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType de
 {
     if(index_by_binding.KeyExist(binding))
     {
-        //重复的绑定点，有可能存在的，比如WorldMatrix在vs/fs中同时存在
+        //重复的绑定点，有可能存在的，比如CameraMatrix在vs/fs中同时存在
         return;
     }
 
