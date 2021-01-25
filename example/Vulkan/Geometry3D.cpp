@@ -46,7 +46,7 @@ private:
 
         mdp->pipeline=CreatePipeline(mdp->material_instance,InlinePipeline::Solid3D,primitive);
 
-        if(!mdp->material_instance->BindUBO("world",GetCameraMatrixBuffer()))
+        if(!mdp->material_instance->BindUBO("camera",GetCameraMatrixBuffer()))
             return(false);
 
         mdp->material_instance->Update();

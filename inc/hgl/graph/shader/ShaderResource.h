@@ -12,7 +12,7 @@ VK_NAMESPACE_BEGIN
  */
 enum class ShaderDataSource
 {
-    Global=0,       ///<由全局系统提供的数据(如WorldMatrix)
+    Global=0,       ///<由全局系统提供的数据(如CameraMatrix)
     Private=1,      ///<每种材质的私有数据
 };//
 

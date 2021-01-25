@@ -35,7 +35,7 @@ private:
     Renderable *        ro_circle           =nullptr;
     Renderable *        ro_round_rectangle  =nullptr;
 
-    GPUBuffer *         ubo_world_matrix    =nullptr;
+    GPUBuffer *         ubo_camera_matrix    =nullptr;
     GPUBuffer *         ubo_color_material  =nullptr;
 
     Pipeline *          pipeline            =nullptr;
@@ -118,7 +118,7 @@ private:
 
         cam.Refresh();
         
-        ubo_world_matrix    =CreateUBO("world",         sizeof(WorldMatrix),&cam.matrix);
+        ubo_camera_matrix    =CreateUBO("camera",         sizeof(CameraMatrix),&cam.matrix);
         ubo_color_material  =CreateUBO("color_material",sizeof(Vector4f),&color);
 
         material_instance->Update();
@@ -164,7 +164,7 @@ public:
 
         cam.Refresh();
 
-        ubo_world_matrix->Write(&cam.matrix);
+        ubo_camera_matrix->Write(&cam.matrix);
 
         BuildCommandBuffer(&render_list);
     }

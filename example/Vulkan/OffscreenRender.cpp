@@ -16,7 +16,7 @@ class TestApp:public CameraAppFramework
         Camera cam;
 
         MaterialInstance *  material_instance   =nullptr;
-        GPUBuffer *         ubo_world_matrix    =nullptr;
+        GPUBuffer *         ubo_camera_matrix    =nullptr;
     };
 
     struct:public RenderObject
@@ -65,12 +65,12 @@ public:
 
         ro->cam.Refresh();
 
-        ro->ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&ro->cam.matrix);
+        ro->ubo_camera_matrix=db->CreateUBO(sizeof(CameraMatrix),&ro->cam.matrix);
 
-        if(!ro->ubo_world_matrix)
+        if(!ro->ubo_camera_matrix)
             return(false);
             
-        ro->material_instance->BindUBO("world",ro->ubo_world_matrix);
+        ro->material_instance->BindUBO("camera",ro->ubo_camera_matrix);
         ro->material_instance->Update();
         return(true);
     }
@@ -131,7 +131,7 @@ public:
         if(!cube.sampler)return(false);
 
         cube.material_instance->BindSampler("tex",os.render_taget->GetColorTexture(),cube.sampler);
-        cube.material_instance->BindUBO("world",GetCameraMatrixBuffer());
+        cube.material_instance->BindUBO("camera",GetCameraMatrixBuffer());
         cube.material_instance->Update();
 
         {
@@ -148,7 +148,7 @@ public:
         cube.scene_root.RefreshMatrix();
         cube.scene_root.ExpendToList(&cube.render_list);
 
-        camera.eye.Set(5,5,5,1.0);
+        camera->pos.Set(5,5,5,1.0);
 
         return(true);
     }
