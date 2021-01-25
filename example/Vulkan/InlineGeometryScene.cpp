@@ -204,14 +204,14 @@ private:
         material_instance->BindUBO("light",ubo_light);
         material_instance->BindUBO("phong",ubo_phong);
 
-        if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
+        if(!material_instance->BindUBO("camera",GetCameraMatrixBuffer()))
             return(false);
 
         material_instance->BindUBO("fs_light",ubo_light);
 
         material_instance->Update();
 
-        if(!axis_mi->BindUBO("world",GetCameraMatrixBuffer()))
+        if(!axis_mi->BindUBO("camera",GetCameraMatrixBuffer()))
             return(false);
 
         axis_mi->Update();
