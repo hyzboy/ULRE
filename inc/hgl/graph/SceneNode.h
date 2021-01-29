@@ -8,18 +8,6 @@ namespace hgl
 {
     namespace graph
     {
-        class SceneNode;
-        struct Camera;
-        class RenderList;
-        
-        using RenderListCompFunc=float (*)(Camera *,SceneNode *,SceneNode *);                       ///<渲染列表排序比较函数
-
-        float CameraLengthComp(Camera *,SceneNode *,SceneNode *);                                   ///<摄像机距离比较函数
-
-        using FilterSceneNodeFunc=bool (*)(const SceneNode *,void *);                               ///<场景节点过滤函数重定义
-
-        bool FrustumClipFilter(const SceneNode *,void *);                                           ///<平截头截剪函数
-
         /**
         * 场景节点数据类<br>
         * 从场景坐标变换(SceneOrient)类继承

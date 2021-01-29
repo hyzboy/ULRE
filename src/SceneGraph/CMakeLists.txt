@@ -42,6 +42,7 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         SceneNode.cpp
                         SceneOrient.cpp
                         InlineGeometry.cpp
+                        SceneTreeToRenderList.cpp
                         #InlinePipeline.cpp
                         #Material.cpp
                         #Mesh.cpp
