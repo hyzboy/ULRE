@@ -9,7 +9,7 @@ namespace hgl
 {
     namespace graph
     {
-        struct L2WArrays;
+        struct MVPArray;
 
         class RenderList
         {
@@ -18,7 +18,9 @@ namespace hgl
 
         private:
 
-            L2WArrays *LocalToWorld;
+            Camera *camera;
+
+            MVPArray *mvp_array;
 
             List<SceneNode *> scene_node_list;
 
@@ -40,10 +42,38 @@ namespace hgl
             
             void Begin  ();
             void Add    (SceneNode *);
-            void End    ();
+            void End    (CameraMatrix *);
 
             bool Render (RenderCmdBuffer *);
         };//class RenderList
+        
+        class SceneTreeToRenderList
+        {
+            GPUDevice *device;
+
+        public:
+
+            Camera *        camera;
+            CameraMatrix *  camera_matrix;
+            Frustum         frustum;
+
+        public:
+
+            virtual uint32  CameraLength(SceneNode *,SceneNode *);                                  ///<摄像机距离比较函数
+
+            virtual bool    InFrustum(const SceneNode *,void *);                                    ///<平截头截剪函数
+
+        public:
+
+            SceneTreeToRenderList(GPUDevice *d)
+            {
+                device=d;
+                camera=nullptr;
+                camera_matrix=nullptr;
+            }
+
+            virtual bool    Expend(RenderList *,Camera *,SceneNode *);
+        };//class SceneTreeToRenderList
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_RENDER_LIST_INCLUDE

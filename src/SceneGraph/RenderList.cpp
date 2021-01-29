@@ -12,44 +12,31 @@ namespace hgl
 {
     namespace graph
     {
-        constexpr uint32_t L2WItemBytes=sizeof(Matrix4f);               ///<单个L2W数据字节数
-
-        struct L2WArrays
+        /** 
+         * MVP矩阵
+         */
+        struct MVPMatrix
         {
-            uint alloc_count;
-            uint count;
+            Matrix4f l2w;                   ///< Local to World
+            Matrix4f inverse_l2w;
 
-            List<Matrix4f> items;
-            GPUBuffer *buffer;
-            Matrix4f *buffer_address;
-            List<uint32_t> offset;
+            Matrix4f mvp;                   ///< projection * view * local_to_world
+            Matrix4f inverse_mvp;
 
         public:
 
-            L2WArrays()
+            void Set(const Matrix4f &w,const Matrix4f &vp)
             {
-                alloc_count=0;
-                count=0;
-                buffer=nullptr;
-                buffer_address=nullptr;
-            }
+                l2w=w;
+                inverse_l2w=l2w.Inverted();
 
-            ~L2WArrays()
-            {
-                if(buffer)
-                {
-                    buffer->Unmap();
-                    delete buffer;
-                }
+                mvp=vp*l2w;
+                inverse_mvp=mvp.Inverted();
             }
+        };//struct MVPMatrix
 
-            void Init(const uint32_t c)
-            {
-                count=c;
-                items.SetCount(count);
-                offset.SetCount(count);
-            }
-        };//
+        constexpr size_t MVPMatrixBytes=sizeof(MVPMatrix);
+
 
         float CameraLengthComp(Camera *cam,SceneNode *obj_one,SceneNode *obj_two)
         {
@@ -75,12 +62,12 @@ namespace hgl
             last_pipeline   =nullptr;
             last_ri         =nullptr;
 
-            LocalToWorld=new L2WArrays;
+            mvp_array=new MVPArray;
         }
 
         RenderList::~RenderList()
         {
-            delete LocalToWorld;
+            delete mvp_array;
         }
 
         void RenderList::Begin()
@@ -98,58 +85,58 @@ namespace hgl
             scene_node_list.Add(node);
         }
 
-        void RenderList::End()
+        void RenderList::End(CameraMatrix *camera_matrix)
         {
             //清0计数器
-            uint32_t l2w_count=0;       //local to world矩阵总数量
+            uint32_t mvp_count=0;       //local to world矩阵总数量
 
             //统计Render
             const uint32_t count=scene_node_list.GetCount();
 
-            LocalToWorld->Init(count);
+            mvp_array->Init(count);
 
-            Matrix4f *mp=LocalToWorld->items.GetData();
-            uint32_t *op=LocalToWorld->offset.GetData();
+            MVPMatrix *mp=mvp_array->items.GetData();
+            uint32_t *op=mvp_array->offset.GetData();
 
             for(SceneNode *node:scene_node_list)
             {
-                const Matrix4f &mat=node->GetLocalToWorldMatrix();
+                const Matrix4f &l2w=node->GetLocalToWorldMatrix();
 
-                if(!mat.IsIdentity())
+                if(!l2w.IsIdentity())
                 {
-                    hgl_cpy(mp,&mat);
+                    mp->Set(l2w,camera_matrix->vp);
                     ++mp;
 
-                    *op=(l2w_count)*L2WItemBytes;
-                    ++l2w_count;
+                    *op=(mvp_count)*MVPMatrixBytes;
+                    ++mvp_count;
                 }
                 else
                 {
-                    *op=l2w_count;
+                    *op=mvp_count;
                 }
 
                 ++op;
             }
 
-            if(LocalToWorld->buffer)
+            if(mvp_array->buffer)
             {
-                if(LocalToWorld->alloc_count<l2w_count)
+                if(mvp_array->alloc_count<mvp_count)
                 {
-                    LocalToWorld->buffer->Unmap();
-                    delete LocalToWorld->buffer;
-                    LocalToWorld->buffer=nullptr;
-//                    LocalToWorld->buffer_address=nullptr;     //下面一定会重写，所以这一行没必要操作
+                    mvp_array->buffer->Unmap();
+                    delete mvp_array->buffer;
+                    mvp_array->buffer=nullptr;
+//                    mvp_array->buffer_address=nullptr;     //下面一定会重写，所以这一行没必要操作
                 }
             }
 
-            if(!LocalToWorld->buffer)
+            if(!mvp_array->buffer)
             {
-                LocalToWorld->alloc_count=power_to_2(l2w_count);
-                LocalToWorld->buffer=device->CreateUBO(LocalToWorld->alloc_count*L2WItemBytes);
-                LocalToWorld->buffer_address=(Matrix4f *)(LocalToWorld->buffer->Map());
+                mvp_array->alloc_count=power_to_2(mvp_count);
+                mvp_array->buffer=device->CreateUBO(mvp_array->alloc_count*MVPMatrixBytes);
+                mvp_array->buffer_address=(MVPMatrix *)(mvp_array->buffer->Map());
             }
 
-            hgl_cpy(LocalToWorld->buffer_address,LocalToWorld->items.GetData(),l2w_count);
+            hgl_cpy(mvp_array->buffer_address,mvp_array->items.GetData(),mvp_count);
         }
 
         void RenderList::Render(SceneNode *node,RenderableInstance *ri)
