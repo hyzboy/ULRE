@@ -28,14 +28,19 @@ namespace hgl
 
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
 
-            List<RenderableInstance *> renderable_instances;                                                            ///<可渲染实例
+            RenderableInstance *renderable_instances;                                                                   ///<可渲染实例
 
         public:
 
-            SceneNode()=default;
-            SceneNode(const Matrix4f &mat)
+            SceneNode()
+            {
+                renderable_instances=nullptr;
+            }
+
+            SceneNode(const Matrix4f &mat,RenderableInstance *ri=nullptr)
             {
                 SetLocalMatrix(mat);
+                renderable_instances=ri;
             }
 
             virtual ~SceneNode()
@@ -59,20 +64,17 @@ namespace hgl
                 return sn;
             }
 
-            void Add(SceneNode *n){if(n)SubNode.Add(n);}                                                                ///<增加一个子节点
+            void AddSubNode(SceneNode *n){if(n)SubNode.Add(n);}                                                         ///<增加一个子节点
             void ClearSubNode(){SubNode.ClearData();}                                                                   ///<清除子节点
 
-            void Add(RenderableInstance *ri){if(ri)renderable_instances.Add(ri);}                                       ///<增加渲染实例
+            void Set(RenderableInstance *ri){renderable_instances=ri;}                                                  ///<增加渲染实例
 
-            void Add(RenderableInstance *ri,const Matrix4f &mat)
+            void Set(const Matrix4f &mat,RenderableInstance *ri)
             {
-                SceneNode *sn=new SceneNode(mat);
+                SetLocalMatrix(mat);
 
-                sn->Add(ri);
-                SubNode.Add(sn);
+                renderable_instances=ri;
             }
-
-            void ClearRenderableInstance(){renderable_instances.ClearData();}                                           ///<清除渲染实例
 
         public: //坐标相关方法
 
@@ -88,14 +90,6 @@ namespace hgl
             virtual const   Vector4f &  GetCenter           ()const{return Center;}                                     ///<取得中心点
             virtual const   Vector4f &  GetLocalCenter      ()const{return LocalCenter;}                                ///<取得本地坐标中心点
             virtual const   Vector4f &  GetWorldCenter      ()const{return WorldCenter;}                                ///<取得世界坐标中心点
-
-        public: //渲染列表相关方法
-
-            virtual bool ExpendToList(RenderList *,FilterSceneNodeFunc func=nullptr,void *func_data=nullptr);           ///<展开到渲染列表
-                    bool ExpendToList(RenderList *rl,Frustum *f)                                                        ///<展开到渲染列表(使用平截头裁剪)
-                        {return ExpendToList(rl,FrustumClipFilter,f);}
-
-                    bool ExpendToList(RenderList *,Camera *,RenderListCompFunc=nullptr);                                ///<展开到渲染列表(使用摄像机平截头裁剪并排序)
         };//class SceneNode
     }//namespace graph
 }//namespace hgl

@@ -48,7 +48,7 @@ namespace hgl
         {
             if(!sn)return(false);
 
-            if(sn->renderable_instances.GetCount()>0)
+            if(sn->renderable_instances)
                 scene_node_list->Add(sn);
 
             for(SceneNode *sub:sn->SubNode)
