@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/math/Math.h>

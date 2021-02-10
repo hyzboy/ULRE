@@ -29,7 +29,7 @@ public:
 
     const uint32_t              GetType         ()const{return req.memoryTypeBits;}
     const VkDeviceSize          GetSize         ()const{return req.size;}
-    const VkDeviceSize          GetAligment     ()const{return req.alignment;}
+    const VkDeviceSize          GetAlignment    ()const{return req.alignment;}
     const uint32_t              GetTypeIndex    ()const{return index;}
     const uint32_t              GetProperties   ()const{return properties;}
     
