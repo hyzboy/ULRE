@@ -102,8 +102,12 @@ SET(VK_DEBUG_SOURCE     ${SG_INCLUDE_PATH}/VKDebugOut.h
 
 SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
                         ${SG_INCLUDE_PATH}/VKBuffer.h
+                        ${SG_INCLUDE_PATH}/VKVertexAttribBuffer.h
+                        ${SG_INCLUDE_PATH}/VKIndexBuffer.h
+                        ${SG_INCLUDE_PATH}/VKArrayBuffer.h
                         Vulkan/VKMemory.cpp
-                        Vulkan/VKBuffer.cpp)
+                        Vulkan/VKBuffer.cpp
+                        Vulkan/VKArrayBuffer.cpp)
 
 SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         ${SG_INCLUDE_PATH}/VKDeviceAttribute.h
