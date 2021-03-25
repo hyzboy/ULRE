@@ -1,5 +1,5 @@
-﻿#ifndef HGL_GRAPH_RENDER_SURFACE_INCLUDE
-#define HGL_GRAPH_RENDER_SURFACE_INCLUDE
+﻿#ifndef HGL_GRAPH_VULKAN_DEVICE_INCLUDE
+#define HGL_GRAPH_VULKAN_DEVICE_INCLUDE
 
 #include<hgl/type/List.h>
 #include<hgl/type/String.h>
@@ -30,7 +30,7 @@ class GPUDevice
 {
     GPUDeviceAttribute *attr;
 
-    GPUQueue *textureSQ;
+    GPUQueue *texture_queue;
     TextureCmdBuffer *texture_cmd_buf;
 
     Swapchain *swapchain;
@@ -60,7 +60,7 @@ public:
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}
-    const       GPUPhysicalDevice * GetGPUPhysicalDevice()const {return attr->physical_device;}
+    const       GPUPhysicalDevice * GetPhysicalDevice   ()const {return attr->physical_device;}
 
                 VkDescriptorPool    GetDescriptorPool   ()      {return attr->desc_pool;}
                 VkPipelineCache     GetPipelineCache    ()      {return attr->pipeline_cache;}
@@ -253,4 +253,4 @@ bool CreateAttachmentDescription( List<VkAttachmentDescription> &color_output_de
 
 GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *physical_device=nullptr);
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_RENDER_SURFACE_INCLUDE
+#endif//HGL_GRAPH_VULKAN_DEVICE_INCLUDE

@@ -1,16 +1,19 @@
-#include<hgl/graph/VKArrayBuffer.h>
+ï»¿#include<hgl/graph/VKArrayBuffer.h>
 
 namespace hgl
 {
     namespace graph
     {
         /**
-        * ±¾Àà¹¹Ôìº¯Êı
-        * @param s µ¥¸öÊı¾İ³¤¶È
-        * @param c Êı¾İ¸öÊı
+        * æœ¬ç±»æ„é€ å‡½æ•°
+        * @param d è®¾å¤‡æŒ‡é’ˆ
+        * @param s å•ä¸ªæ•°æ®é•¿åº¦
+        * @param c æ•°æ®ä¸ªæ•°
         */
-        GPUArrayBuffer::GPUArrayBuffer(const uint32_t s,const uint32_t c)
+        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *d,const uint32_t s,const uint32_t c)
         {
+            device=d;
+
             item_size=s;
             count=c;
             alloc_count=power_to_2(c);
@@ -22,6 +25,7 @@ namespace hgl
 
         GPUArrayBuffer::~GPUArrayBuffer()
         {
+            SAFE_CLEAR_ARRAY(offset);
             SAFE_CLEAR(buf_gpu);
         }
 
@@ -30,6 +34,27 @@ namespace hgl
             count=0;
         }
 
+        bool GPUArrayBuffer::Init(const uint32_t c)
+        {
+            if(c<=0)return(false);
 
+            if(!buf_gpu)
+            {
+                count=c;
+                alloc_count=power_to_2(count);
+
+                total_bytes=item_size*alloc_count;
+
+                if(total_bytes<=0)return(false);
+
+                buf_gpu=device->CreateUBO(total_bytes);
+                buf_cpu=(uint8 *)(buf_gpu->Map());
+
+                offset=new uint32_t[alloc_count];
+            }
+            else
+            {
+            }
+        }
     }//namespace graph
 }//namespace hgl

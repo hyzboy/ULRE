@@ -1,38 +1,39 @@
-#ifndef HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
 #define HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
 
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKDevice.h>
 namespace hgl
 {
     namespace graph
     {
         /**
-        * GPUÊı¾İÕóÁĞ»º³åÇø<br>
-        * ËüÓÃÓÚ´¢´æ¶à·İÏàÍ¬¸ñÊ½µÄÊı¾İ£¬³£ÓÃÓÚ¶àÎï¼şäÖÈ¾£¬instanceµÈ
+        * GPUæ•°æ®é˜µåˆ—ç¼“å†²åŒº<br>
+        * å®ƒç”¨äºå‚¨å­˜å¤šä»½ç›¸åŒæ ¼å¼çš„æ•°æ®ï¼Œå¸¸ç”¨äºå¤šç‰©ä»¶æ¸²æŸ“ï¼Œinstanceç­‰
         */
         class GPUArrayBuffer
         {
         protected:
 
-            uint32_t    item_size;                          ///<µ¥¸öÊı¾İ³¤¶È
-            uint32_t    alloc_count;                        ///<×Ü¼Æ·ÖÅäµÄÊı¾İ¸öÊı
-            uint32_t    count;                              ///<Êµ¼ÊÊ¹ÓÃµÄÊı¾İ¸öÊı
+            GPUDevice * device;
 
-            GPUBuffer * buf_gpu;                            ///<Êµ¼ÊÊı¾İGPU»º³åÇø
+            uint32_t    item_size;                          ///<å•ä¸ªæ•°æ®é•¿åº¦
+            uint32_t    alloc_count;                        ///<æ€»è®¡åˆ†é…çš„æ•°æ®ä¸ªæ•°
+            uint32_t    count;                              ///<å®é™…ä½¿ç”¨çš„æ•°æ®ä¸ªæ•°
+            uint32_t    total_bytes;                        ///<æ€»å­—èŠ‚æ•°
+
+            GPUBuffer * buf_gpu;                            ///<å®é™…æ•°æ®GPUç¼“å†²åŒº
             uint8 *     buf_cpu;
-            uint32_t *  offset;                             ///<Êı¾İÆ«ÒÆµØÖ·
+            uint32_t *  offset;                             ///<æ•°æ®åç§»åœ°å€
 
         public:
 
-            /**
-            * ±¾Àà¹¹Ôìº¯Êı
-            * @param s µ¥¸öÊı¾İ³¤¶È
-            * @param c Êı¾İ¸öÊı
-            */
-            GPUArrayBuffer(const uint32_t s=0,const uint32_t c=0);
+            GPUArrayBuffer(GPUDevice *,const uint32_t s=0,const uint32_t c=0);
             virtual ~GPUArrayBuffer();
 
-            void Clear();                                   ///<Çå¿Õ»º³åÇø
+            void Clear();                                   ///<æ¸…ç©ºç¼“å†²åŒº
+
+            bool Init(const uint32_t);                      ///<åˆå§‹åŒ–å¹¶åˆ†é…ç©ºé—´
         };//class GPUArrayBuffer
     }//namespace graph
 }//namespace hgl
