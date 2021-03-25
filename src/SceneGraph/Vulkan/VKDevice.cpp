@@ -15,7 +15,7 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
 
-    textureSQ=nullptr;
+    texture_queue=nullptr;
     texture_cmd_buf=nullptr;
 
     swapchain=nullptr;
@@ -28,7 +28,7 @@ GPUDevice::~GPUDevice()
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
-    SAFE_CLEAR(textureSQ);
+    SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
 
     delete attr;
@@ -39,7 +39,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
-    SAFE_CLEAR(textureSQ);
+    SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
 
     attr->Refresh();
@@ -48,7 +48,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
         return(false);
 
     texture_cmd_buf=CreateTextureCommandBuffer();
-    textureSQ=new GPUQueue(this,attr->graphics_queue,1);
+    texture_queue=new GPUQueue(this,attr->graphics_queue,1);
 
     swapchainRT=new SwapchainRenderTarget(this,swapchain);
 

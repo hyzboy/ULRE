@@ -426,9 +426,9 @@ bool GPUDevice::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t cou
     if(!cmd_bufs||count<=0)
         return(false);
 
-    textureSQ->Submit(cmd_bufs,count,nullptr,nullptr);
-//    textureSQ->WaitQueue();
-    textureSQ->WaitFence();
+    texture_queue->Submit(cmd_bufs,count,nullptr,nullptr);
+//    texture_queue->WaitQueue();
+    texture_queue->WaitFence();
 
     return(true);
 }

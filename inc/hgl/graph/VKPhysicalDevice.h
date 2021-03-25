@@ -37,7 +37,9 @@ public:
 
 public:
 
-    const uint32_t          GetConstantSize()const{return properties.limits.maxPushConstantsSize;}
+    const uint32_t          GetUBORange     ()const{return properties.limits.maxUniformBufferRange;}
+    const uint32_t          GetSSBORange    ()const{return properties.limits.maxStorageBufferRange;}
+    const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}
 
 public:
 
