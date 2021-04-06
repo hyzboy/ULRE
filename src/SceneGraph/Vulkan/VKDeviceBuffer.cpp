@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
 bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
