@@ -26,9 +26,14 @@ namespace hgl
             uint8 *     buf_cpu;
             uint32_t *  offset;                             ///<数据偏移地址
 
+        private:
+        
+            GPUArrayBuffer(GPUDevice *,const uint32_t s=0,const uint32_t c=0);
+
+            friend class GPUDevice;
+
         public:
 
-            GPUArrayBuffer(GPUDevice *,const uint32_t s=0,const uint32_t c=0);
             virtual ~GPUArrayBuffer();
 
             void Clear();                                   ///<清空缓冲区

@@ -17,7 +17,11 @@ VKMemoryAllocator::VKMemoryAllocator(GPUDevice *d,const uint32_t flags)
 
 VKMemoryAllocator::~VKMemoryAllocator()
 {
-    SAFE_CLEAR(gpu_buffer);
+    if(gpu_buffer)
+    {
+        gpu_buffer->Unmap();
+        delete gpu_buffer;
+    }
 }
 
 bool VKMemoryAllocator::Alloc()
