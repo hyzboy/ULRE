@@ -25,7 +25,7 @@ public:
 
 public:
 
-    VKMemoryAllocator(GPUDevice *,const uint32_t);
+    VKMemoryAllocator(GPUDevice *,const uint32_t flags);
     ~VKMemoryAllocator();
     
     void Free() override {/* DON'T RUN ANY OPERATION.*/}
