@@ -3,6 +3,7 @@
 
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKMemoryAllocator.h>
 #include<hgl/type/Collection.h>
 namespace hgl
 {
@@ -16,26 +17,43 @@ namespace hgl
         {
         protected:
 
-            GPUDevice * device;
+            GPUDevice *device;
+            VkBufferUsageFlags buffer_usage_flags;
 
             Collection<T> *coll;
 
-        private:
+        public:
         
-            GPUArrayBuffer(GPUDevice *device,const uint32_t s,const uint32_t c)
+            GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags)
             {
-                
+                device=dev;
+                buffer_usage_flags=flags;
+
+                coll=new Collection<T>(new MemoryBlock(new VKMemoryAllocator(device,buffer_usage_flags)));
             }
 
-            friend class GPUDevice;
+            virtual ~GPUArrayBuffer()
+            {
+                delete coll;
+            }
 
-        public:
+            uint32 Alloc(const uint32 max_count)            ///<预分配空间
+            {
+                if(!coll->Alloc(max_count))
+                    return(0);
 
-            virtual ~GPUArrayBuffer();
+                return coll->GetAllocCount();
+            }
 
-            void Clear();                                   ///<清空缓冲区
+            void Clear()
+            {
+                coll->Clear();
+            }
 
-            bool Init(const uint32_t);                      ///<初始化并分配空间
+            T *Map(const uint32 start,const uint32 count)
+            {
+                return coll->Map(start,count);
+            }
         };//class GPUArrayBuffer
     }//namespace graph
 }//namespace hgl

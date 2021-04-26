@@ -2,6 +2,7 @@
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
@@ -12,31 +13,7 @@ namespace hgl
 {
     namespace graph
     {
-        /** 
-         * MVP矩阵
-         */
-        struct MVPMatrix
-        {
-            Matrix4f l2w;                   ///< Local to World
-            Matrix4f inverse_l2w;
-
-            Matrix4f mvp;                   ///< projection * view * local_to_world
-            Matrix4f inverse_mvp;
-
-        public:
-
-            void Set(const Matrix4f &w,const Matrix4f &vp)
-            {
-                l2w=w;
-                inverse_l2w=l2w.Inverted();
-
-                mvp=vp*l2w;
-                inverse_mvp=mvp.Inverted();
-            }
-        };//struct MVPMatrix
-
         constexpr size_t MVPMatrixBytes=sizeof(MVPMatrix);
-
 
         float CameraLengthComp(Camera *cam,SceneNode *obj_one,SceneNode *obj_two)
         {
@@ -62,7 +39,7 @@ namespace hgl
             last_pipeline   =nullptr;
             last_ri         =nullptr;
 
-            mvp_array=new MVPArray;
+            mvp_array       =new MVPArrayBuffer(gd,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
         }
 
         RenderList::~RenderList()
@@ -73,6 +50,9 @@ namespace hgl
         void RenderList::Begin()
         {
             scene_node_list.ClearData();
+
+            mvp_array->Clear();
+            mvp_offset.ClearData();
 
             last_pipeline   =nullptr;
             last_ri         =nullptr;
@@ -93,10 +73,14 @@ namespace hgl
             //统计Render
             const uint32_t count=scene_node_list.GetCount();
 
-            mvp_array->Init(count);
+            mvp_array->Alloc(count);
+            mvp_array->Clear();
 
-            MVPMatrix *mp=mvp_array->items.GetData();
-            uint32_t *op=mvp_array->offset.GetData();
+            mvp_offset.PreMalloc(count);
+            mvp_offset.ClearData();
+
+            MVPMatrix *mp=mvp_array->Map(0,count);
+            uint32_t *op=mvp_offset.GetData();
 
             for(SceneNode *node:scene_node_list)
             {
@@ -107,36 +91,16 @@ namespace hgl
                     mp->Set(l2w,camera_matrix->vp);
                     ++mp;
 
-                    *op=(mvp_count)*MVPMatrixBytes;
+                    *op=mvp_count*MVPMatrixBytes;
                     ++mvp_count;
                 }
                 else
                 {
-                    *op=mvp_count;
+                    *op=mvp_count*MVPMatrixBytes;
                 }
 
                 ++op;
             }
-
-            if(mvp_array->buffer)
-            {
-                if(mvp_array->alloc_count<mvp_count)
-                {
-                    mvp_array->buffer->Unmap();
-                    delete mvp_array->buffer;
-                    mvp_array->buffer=nullptr;
-//                    mvp_array->buffer_address=nullptr;     //下面一定会重写，所以这一行没必要操作
-                }
-            }
-
-            if(!mvp_array->buffer)
-            {
-                mvp_array->alloc_count=power_to_2(mvp_count);
-                mvp_array->buffer=device->CreateUBO(mvp_array->alloc_count*MVPMatrixBytes);
-                mvp_array->buffer_address=(MVPMatrix *)(mvp_array->buffer->Map());
-            }
-
-            hgl_cpy(mvp_array->buffer_address,mvp_array->items.GetData(),mvp_count);
         }
 
         void RenderList::Render(SceneNode *node,RenderableInstance *ri)

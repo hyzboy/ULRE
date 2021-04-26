@@ -14,6 +14,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/VKShaderModuleMap.h>
+#include<hgl/graph/VKArrayBuffer.h>
 
 namespace hgl
 {
