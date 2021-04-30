@@ -32,5 +32,5 @@ namespace hgl
             CompOperatorMemcmp(const MVPMatrix &);
         };//struct MVPMatrix
     }//namespace graph
-//namespace hgl
+}//namespace hgl
 #endif//HGL_GRAPH_MVP_MATRIX_INCLUDE

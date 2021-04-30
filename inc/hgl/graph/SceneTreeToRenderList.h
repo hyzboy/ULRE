@@ -1,11 +1,19 @@
-#ifndef HGL_GRAPH_SCENE_TREE_TO_RENDER_LIST_INCLUDE
+ï»¿#ifndef HGL_GRAPH_SCENE_TREE_TO_RENDER_LIST_INCLUDE
 #define HGL_GRAPH_SCENE_TREE_TO_RENDER_LIST_INCLUDE
 
 #include<hgl/graph/RenderList.h>
+#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKMaterialInstance.h>
 namespace hgl
 {
     namespace graph
     {
+        struct RenderNode
+        {
+            SceneNode *node;
+        };//
+
         class SceneTreeToRenderList
         {
             using PipelineSets=Sets<Pipeline *>;
@@ -24,19 +32,19 @@ namespace hgl
 
         protected:
 
-            SceneNodeList * scene_node_list;        ///<³¡¾°½ÚµãÁÐ±í
+            SceneNodeList * scene_node_list;        ///<åœºæ™¯èŠ‚ç‚¹åˆ—è¡¨
 
-            PipelineSets    pipeline_sets;          ///<¹ÜÏßºÏ¼¯
-            MaterialSets    material_sets;          ///<²ÄÖÊºÏ¼¯
-            MatInstanceSets mat_instance_sets;      ///<²ÄÖÊÊµÀýºÏ¼¯
+            PipelineSets    pipeline_sets;          ///<ç®¡çº¿åˆé›†
+            MaterialSets    material_sets;          ///<æè´¨åˆé›†
+            MatInstanceSets mat_instance_sets;      ///<æè´¨å®žä¾‹åˆé›†
 
             RenderList *    render_list;
 
         protected:
 
-            virtual uint32  CameraLength(SceneNode *,SceneNode *);                                  ///<ÉãÏñ»ú¾àÀë±È½Ïº¯Êý
+            virtual float   CameraLength(SceneNode *,SceneNode *);                                  ///<æ‘„åƒæœºè·ç¦»æ¯”è¾ƒå‡½æ•°
 
-            virtual bool    InFrustum(const SceneNode *,void *);                                    ///<Æ½½ØÍ·½Ø¼ôº¯Êý
+            virtual bool    InFrustum(const SceneNode *,void *);                                    ///<å¹³æˆªå¤´æˆªå‰ªå‡½æ•°
 
             virtual bool    Begin();
             virtual bool    Expend(SceneNode *);
@@ -57,7 +65,7 @@ namespace hgl
             virtual ~SceneTreeToRenderList();
 
             virtual bool    Expend(RenderList *,Camera *,SceneNode *);
-        };//class SceneTreeToRenderList        
+        };//class SceneTreeToRenderList
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_SCENE_TREE_TO_RENDER_LIST_INCLUDE

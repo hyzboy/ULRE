@@ -16,6 +16,10 @@ namespace hgl
         using MVPArrayBuffer=GPUArrayBuffer<MVPMatrix>;
         using MVPOffsetBuffer=List<uint32_t>;
 
+        /**
+         * 渲染对象列表<br>
+         * 已经展开的渲染对象列表，产生mvp用UBO/SSBO等数据，最终创建RenderCommandBuffer
+         */
         class RenderList
         {
             GPUDevice *device;
