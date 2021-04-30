@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/RenderList.h>
+﻿#include<hgl/graph/SceneTreeToRenderList.h>
 
 namespace hgl
 {
@@ -9,12 +9,19 @@ namespace hgl
             SAFE_CLEAR(scene_node_list);
         }
 
-        uint32 SceneTreeToRenderList::CameraLength(SceneNode *,SceneNode *)
+        float SceneTreeToRenderList::CameraLength(SceneNode *obj_one,SceneNode *obj_two)
         {
+            if(!camera||!obj_one||!obj_two)
+                return(0);
+
+            return( length_squared(obj_one->GetCenter(),camera->pos)-
+                    length_squared(obj_two->GetCenter(),camera->pos));
+        }
         }
 
         bool SceneTreeToRenderList::InFrustum(const SceneNode *,void *)
         {
+            return(true);
         }
 
         bool SceneTreeToRenderList::Begin()

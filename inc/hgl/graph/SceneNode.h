@@ -10,7 +10,8 @@ namespace hgl
     {
         /**
         * 场景节点数据类<br>
-        * 从场景坐标变换(SceneOrient)类继承
+        * 从场景坐标变换(SceneOrient)类继承，
+        * 每个场景节点中可能包括一个可渲染数据实例，或是完全不包含(用于坐标变换的父节点，或是灯光/摄像机之类)。
         */
         class SceneNode:public SceneOrient                                                                              ///场景节点类
         {

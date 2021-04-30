@@ -15,14 +15,6 @@ namespace hgl
     {
         constexpr size_t MVPMatrixBytes=sizeof(MVPMatrix);
 
-        float CameraLengthComp(Camera *cam,SceneNode *obj_one,SceneNode *obj_two)
-        {
-            if(!cam||!obj_one||!obj_two)
-                return(0);
-
-            return( length_squared(obj_one->GetCenter(),cam->pos)-
-                    length_squared(obj_two->GetCenter(),cam->pos));
-        }
 
         //bool FrustumClipFilter(const SceneNode *node,void *fc)
         //{

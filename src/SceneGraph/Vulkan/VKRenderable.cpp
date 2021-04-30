@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKShaderModule.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
 //bool Renderable::Set(const int stage_input_binding,VAB *vab,VkDeviceSize offset)
