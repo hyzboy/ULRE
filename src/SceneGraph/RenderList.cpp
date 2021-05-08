@@ -57,7 +57,7 @@ namespace hgl
             scene_node_list.Add(node);
         }
 
-        void RenderList::End(CameraMatrix *camera_matrix)
+        void RenderList::End(CameraInfo *camera_matrix)
         {
             //清0计数器
             uint32_t mvp_count=0;       //local to world矩阵总数量

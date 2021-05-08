@@ -340,7 +340,7 @@ public:
 
         camera->Refresh();      //更新矩阵计算
         
-        ubo_camera_matrix=db->CreateUBO(sizeof(CameraMatrix),&camera->matrix);
+        ubo_camera_matrix=db->CreateUBO(sizeof(CameraInfo),&camera->matrix);
     }
 
     void Resize(int w,int h)override

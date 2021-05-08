@@ -118,7 +118,7 @@ private:
 
         cam.Refresh();
         
-        ubo_camera_matrix    =CreateUBO("camera",         sizeof(CameraMatrix),&cam.matrix);
+        ubo_camera_matrix    =CreateUBO("camera",         sizeof(CameraInfo),&cam.matrix);
         ubo_color_material  =CreateUBO("color_material",sizeof(Vector4f),&color);
 
         material_instance->Update();

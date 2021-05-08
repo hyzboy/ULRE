@@ -62,7 +62,7 @@ private:
 
         cam.Refresh();
 
-        ubo_camera_matrix=db->CreateUBO(sizeof(CameraMatrix),&cam.matrix);
+        ubo_camera_matrix=db->CreateUBO(sizeof(CameraInfo),&cam.matrix);
 
         if(!ubo_camera_matrix)
             return(false);
