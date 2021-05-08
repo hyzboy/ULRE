@@ -30,9 +30,13 @@ namespace hgl
                 buffer_usage_flags=flags;
 
                 {
-                    const size_t unit_size=sizeof(T);
+                    uint32_t unit_size=sizeof(T);
                     VKMemoryAllocator *ma=new VKMemoryAllocator(device,buffer_usage_flags);
                     MemoryBlock *mb=new MemoryBlock(ma);
+
+                    uint32_t align_size=ma->GetAllocUnitSize()-1;     ///< this value is "min UBO Offset alignment"
+
+                    unit_size=(unit_size+align_size)&(~align_size);
 
                     coll=new Collection(unit_size,mb);
                 }
