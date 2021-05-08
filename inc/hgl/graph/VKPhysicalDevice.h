@@ -38,7 +38,11 @@ public:
 public:
 
     const uint32_t          GetUBORange     ()const{return properties.limits.maxUniformBufferRange;}
+    const uint32_t          GetUBOAlign     ()const{return properties.limits.minUniformBufferOffsetAlignment;}
+
     const uint32_t          GetSSBORange    ()const{return properties.limits.maxStorageBufferRange;}
+    const uint32_t          GetSSBOAlign    ()const{return properties.limits.minStorageBufferOffsetAlignment;}
+
     const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}
 
 public:
