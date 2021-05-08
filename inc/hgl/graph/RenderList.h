@@ -54,7 +54,7 @@ namespace hgl
             
             void Begin  ();
             void Add    (SceneNode *);
-            void End    (CameraMatrix *);
+            void End    (CameraInfo *);
 
             bool Render (RenderCmdBuffer *);
         };//class RenderList        

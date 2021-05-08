@@ -27,7 +27,7 @@ namespace hgl
         protected:
 
             Camera *        camera;
-            CameraMatrix *  camera_matrix;
+            CameraInfo *  camera_matrix;
             Frustum         frustum;
 
         protected:

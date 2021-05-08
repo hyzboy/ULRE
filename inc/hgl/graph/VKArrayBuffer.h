@@ -20,7 +20,7 @@ namespace hgl
             GPUDevice *device;
             VkBufferUsageFlags buffer_usage_flags;
 
-            Collection<T> *coll;
+            Collection *coll;
 
         public:
         
@@ -29,7 +29,13 @@ namespace hgl
                 device=dev;
                 buffer_usage_flags=flags;
 
-                coll=new Collection<T>(new MemoryBlock(new VKMemoryAllocator(device,buffer_usage_flags)));
+                {
+                    const size_t unit_size=sizeof(T);
+                    VKMemoryAllocator *ma=new VKMemoryAllocator(device,buffer_usage_flags);
+                    MemoryBlock *mb=new MemoryBlock(ma);
+
+                    coll=new Collection(unit_size,mb);
+                }
             }
 
             virtual ~GPUArrayBuffer()
