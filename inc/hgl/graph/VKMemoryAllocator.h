@@ -15,7 +15,7 @@ class VKMemoryAllocator:public AbstractMemoryAllocator
 
 protected:
 
-    bool Alloc() override;
+    bool AllocMemory() override;
 
 public:
 

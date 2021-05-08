@@ -12,7 +12,7 @@ VKMemoryAllocator::VKMemoryAllocator(GPUDevice *d,const uint32_t flags)
 
     const GPUPhysicalDevice *pd=device->GetPhysicalDevice();
 
-    SetAllocUnitSize(pd->GetConstantSize());        //据说push constant容量就是GPU的最小访问单位
+    SetAllocUnitSize(pd->GetUBOAlign());
 }
 
 VKMemoryAllocator::~VKMemoryAllocator()
@@ -24,7 +24,7 @@ VKMemoryAllocator::~VKMemoryAllocator()
     }
 }
 
-bool VKMemoryAllocator::Alloc()
+bool VKMemoryAllocator::AllocMemory()
 {
     if(gpu_buffer)
         delete gpu_buffer;
