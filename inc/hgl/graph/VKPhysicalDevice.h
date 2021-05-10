@@ -11,6 +11,7 @@ class GPUPhysicalDevice
     VkPhysicalDevice                    physical_device=nullptr;
     VkPhysicalDeviceFeatures            features;
     VkPhysicalDeviceProperties          properties;
+
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
     List<VkExtensionProperties>         extension_properties;
@@ -31,6 +32,7 @@ public:
     const VkPhysicalDeviceFeatures &        GetFeatures         ()const{return features;}
     const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
+    const VkPhysicalDeviceLimits &          GetLimits           ()const{return properties.limits;}
     
     const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
     const uint32_t          GetExtensionVersion(const AnsiString &name)const;
@@ -38,10 +40,10 @@ public:
 public:
 
     const uint32_t          GetUBORange     ()const{return properties.limits.maxUniformBufferRange;}
-    const uint32_t          GetUBOAlign     ()const{return properties.limits.minUniformBufferOffsetAlignment;}
+    const VkDeviceSize      GetUBOAlign     ()const{return properties.limits.minUniformBufferOffsetAlignment;}
 
     const uint32_t          GetSSBORange    ()const{return properties.limits.maxStorageBufferRange;}
-    const uint32_t          GetSSBOAlign    ()const{return properties.limits.minStorageBufferOffsetAlignment;}
+    const VkDeviceSize      GetSSBOAlign    ()const{return properties.limits.minStorageBufferOffsetAlignment;}
 
     const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}
 
