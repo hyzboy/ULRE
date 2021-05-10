@@ -15,6 +15,8 @@ class DescriptorSetLayoutCreater;
  */
 class Material
 {
+    UTF8String mtl_name;
+
     ShaderModuleMap *shader_maps;
     VertexShaderModule *vertex_sm;
     List<VkPipelineShaderStageCreateInfo> *shader_stage_list;
@@ -25,12 +27,14 @@ class Material
 
 public:
 
-    Material(ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc);
+    Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc);
     ~Material();
 
-    const VertexShaderModule *GetVertexShaderModule()const{return vertex_sm;}
+    const UTF8String &          GetName()const{return mtl_name;}
 
-    const int GetBinding(VkDescriptorType,const AnsiString &)const;
+    const VertexShaderModule *  GetVertexShaderModule()const{return vertex_sm;}
+
+    const int                   GetBinding(VkDescriptorType,const AnsiString &)const;
 
 #define GET_BO_BINDING(name,vk_name)    const int Get##name(const AnsiString &obj_name)const{return GetBinding(VK_DESCRIPTOR_TYPE_##vk_name,obj_name);}
 //        GET_BO_BINDING(Sampler,             SAMPLER)

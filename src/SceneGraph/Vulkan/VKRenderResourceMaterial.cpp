@@ -44,7 +44,7 @@ const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename)
     return sm;
 }
 
-Material *RenderResource::CreateMaterial(const OSString &vertex_shader_filename,const OSString &fragment_shader_filename)
+Material *RenderResource::CreateMaterial(const UTF8String &mtl_name,const OSString &vertex_shader_filename,const OSString &fragment_shader_filename)
 {
     const ShaderModule *vs=CreateShaderModule(vertex_shader_filename);
 
@@ -56,10 +56,10 @@ Material *RenderResource::CreateMaterial(const OSString &vertex_shader_filename,
     if(!fs)
         return(nullptr);
 
-    return(device->CreateMaterial((VertexShaderModule *)vs,fs));
+    return(device->CreateMaterial(mtl_name,(VertexShaderModule *)vs,fs));
 }
 
-Material *RenderResource::CreateMaterial(const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename)
+Material *RenderResource::CreateMaterial(const UTF8String &mtl_name,const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename)
 {
     const ShaderModule *vs=CreateShaderModule(vertex_shader_filename);
 
@@ -76,7 +76,7 @@ Material *RenderResource::CreateMaterial(const OSString &vertex_shader_filename,
     if(!fs)
         return(nullptr);
 
-    return(device->CreateMaterial((VertexShaderModule *)vs,gs,fs));
+    return(device->CreateMaterial(mtl_name,(VertexShaderModule *)vs,gs,fs));
 }
 
 Material *RenderResource::CreateMaterial(const OSString &filename)
@@ -163,7 +163,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
     if(result)
     {
-        mtl=device->CreateMaterial(smm);
+        mtl=device->CreateMaterial(ToUTF8String(filename),smm);
         Add(mtl);
     }
     else
