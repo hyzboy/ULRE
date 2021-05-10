@@ -7,7 +7,7 @@
 #include<hgl/graph/VKBuffer.h>
 #include"VKDescriptorSetLayoutCreater.h"
 VK_NAMESPACE_BEGIN
-Material *GPUDevice::CreateMaterial(ShaderModuleMap *shader_maps)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps)
 {
     const int shader_count=shader_maps->GetCount();
 
@@ -46,10 +46,10 @@ Material *GPUDevice::CreateMaterial(ShaderModuleMap *shader_maps)
         return(nullptr);
     }
 
-    return(new Material(shader_maps,shader_stage_list,dsl_creater));
+    return(new Material(mtl_name,shader_maps,shader_stage_list,dsl_creater));
 }
 
-Material *GPUDevice::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
 {
     if(!vertex_shader_module||!fragment_shader_module)
         return(nullptr);
@@ -62,10 +62,10 @@ Material *GPUDevice::CreateMaterial(const VertexShaderModule *vertex_shader_modu
     smm->Add(vertex_shader_module);
     smm->Add(fragment_shader_module);
 
-    return CreateMaterial(smm);
+    return CreateMaterial(mtl_name,smm);
 }
 
-Material *GPUDevice::CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
 {
     if(!vertex_shader_module
      ||!geometry_shader_module
@@ -82,11 +82,12 @@ Material *GPUDevice::CreateMaterial(const VertexShaderModule *vertex_shader_modu
     smm->Add(geometry_shader_module);
     smm->Add(fragment_shader_module);
 
-    return CreateMaterial(smm);
+    return CreateMaterial(mtl_name,smm);
 }
 
-Material::Material(ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc)
+Material::Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc)
 {
+    mtl_name=name;
     shader_maps=smm;
     shader_stage_list=psci_list;
     dsl_creater=dslc;
