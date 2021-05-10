@@ -187,9 +187,9 @@ public: //shader & material
     
     ShaderModule *CreateShaderModule(ShaderResource *);
     
-    Material *CreateMaterial(ShaderModuleMap *shader_maps);    
-    Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module);
-    Material *CreateMaterial(const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module);
+    Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps);    
+    Material *CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module);
+    Material *CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module);
 
 public: //Command Buffer 相关
 
