@@ -1,6 +1,7 @@
 #include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
 RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
@@ -35,7 +36,11 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
     const int input_count=ssl.GetCount();
 
     if(r->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
+    {
+        LOG_ERROR("[FATAL ERROR] input buffer count of Renderable lesser than Material, Material name: "+mtl->GetName());
+
         return(nullptr);
+    }
 
     AutoDeleteArray<VkBuffer> buffer_list(input_count);
     AutoDeleteArray<VkDeviceSize> buffer_size(input_count);
@@ -53,10 +58,31 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
 
         vab=r->GetVAB((*ss)->name,buffer_size+i);
 
-        if(!vab)return(nullptr);
+        if(!vab)
+        {
+            LOG_ERROR("[FATAL ERROR] can't find VAB \""+(*ss)->name+"\" in Material: "+mtl->GetName());
+            return(nullptr);
+        }
 
-        if(vab->GetFormat()!=attr->format)return(nullptr);
-        if(vab->GetStride()!=desc->stride)return(nullptr);
+        if(vab->GetFormat()!=attr->format)
+        {
+            LOG_ERROR(  "[FATAL ERROR] VAB \""+(*ss)->name+
+                        UTF8String("\" format can't match Renderable, Material(")+mtl->GetName()+
+                        UTF8String(") Format(")+GetVulkanFormatName(attr->format)+
+                        UTF8String("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
+                        ")");
+            return(nullptr);
+        }
+
+        if(vab->GetStride()!=desc->stride)
+        {
+            LOG_ERROR(  "[FATAL ERROR] VAB \""+(*ss)->name+
+                        UTF8String("\" stride can't match Renderable, Material(")+mtl->GetName()+
+                        UTF8String(") stride(")+UTF8String::valueOf(desc->stride)+
+                        UTF8String("), VAB stride(")+UTF8String::valueOf(vab->GetStride())+
+                        ")");
+            return(nullptr);
+        }
 
         buffer_list[i]=vab->GetBuffer();
 

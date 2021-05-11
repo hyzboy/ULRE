@@ -15,7 +15,6 @@ namespace hgl
     {
         constexpr size_t MVPMatrixBytes=sizeof(MVPMatrix);
 
-
         //bool FrustumClipFilter(const SceneNode *node,void *fc)
         //{
         //    if(!node||!fc)return(false);
@@ -57,7 +56,7 @@ namespace hgl
             scene_node_list.Add(node);
         }
 
-        void RenderList::End(CameraInfo *camera_matrix)
+        void RenderList::End(CameraInfo *camera_info)
         {
             //清0计数器
             uint32_t mvp_count=0;       //local to world矩阵总数量
@@ -80,7 +79,7 @@ namespace hgl
 
                 if(!l2w.IsIdentity())
                 {
-                    mp->Set(l2w,camera_matrix->vp);
+                    mp->Set(l2w,camera_info->vp);
                     ++mp;
 
                     *op=mvp_count*MVPMatrixBytes;

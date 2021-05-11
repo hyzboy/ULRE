@@ -31,10 +31,10 @@ namespace hgl
 
                 {
                     uint32_t unit_size=sizeof(T);
-                    VKMemoryAllocator *ma=new VKMemoryAllocator(device,buffer_usage_flags);
+                    VKMemoryAllocator *ma=new VKMemoryAllocator(device,buffer_usage_flags);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
                     MemoryBlock *mb=new MemoryBlock(ma);
 
-                    uint32_t align_size=ma->GetAllocUnitSize()-1;     ///< this value is "min UBO Offset alignment"
+                    const uint32_t align_size=ma->GetAllocUnitSize()-1;                         // this value is "min UBO Offset alignment"
 
                     unit_size=(unit_size+align_size)&(~align_size);
 
@@ -62,7 +62,7 @@ namespace hgl
 
             T *Map(const uint32 start,const uint32 count)
             {
-                return coll->Map(start,count);
+                return (T *)(coll->Map(start,count));
             }
         };//class GPUArrayBuffer
     }//namespace graph

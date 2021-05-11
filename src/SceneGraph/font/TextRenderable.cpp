@@ -1,6 +1,7 @@
 #include<hgl/graph/font/TextRenderable.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 
 namespace hgl
 {

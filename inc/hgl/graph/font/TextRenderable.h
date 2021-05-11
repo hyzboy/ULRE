@@ -14,7 +14,7 @@ namespace hgl
             GPUDevice *    device;
             Material *  mtl;
 
-                    uint        max_count;                                      ///<缓冲区最大容量
+            uint        max_count;                                      ///<缓冲区最大容量
 
             VAB *       vab_position;
             VAB *       vab_tex_coord;
