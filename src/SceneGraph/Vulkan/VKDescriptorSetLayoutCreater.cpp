@@ -38,19 +38,19 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType de
     index_by_binding.Add(binding,index);
 }
 
-void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
+void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t binding_count,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
-    if(!binding||count<=0)return;
+    if(!binding||binding_count<=0)return;
 
     const uint old_count=layout_binding_list.GetCount();
 
-    layout_binding_list.PreMalloc(old_count+count);
+    layout_binding_list.PreMalloc(old_count+binding_count);
 
     VkDescriptorSetLayoutBinding *p=layout_binding_list.GetData()+old_count;
 
     uint fin_count=0;
 
-    for(uint i=old_count;i<old_count+count;i++)
+    for(uint i=old_count;i<old_count+binding_count;i++)
     {
         if(!index_by_binding.KeyExist(*binding))
         {

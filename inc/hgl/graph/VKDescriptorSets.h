@@ -9,7 +9,7 @@ class GPUBuffer;
 class DescriptorSets
 {
     VkDevice device;
-    int count;
+    int layout_binding_count;
     VkDescriptorSet desc_set;
     const BindingMapping *index_by_binding;
 
@@ -26,7 +26,7 @@ private:
     DescriptorSets(VkDevice dev,const int c,VkPipelineLayout pl,VkDescriptorSet ds,const BindingMapping *bi):index_by_binding(bi)
     {
         device=dev;
-        count=c;
+        layout_binding_count=c;
         desc_set=ds;
         pipeline_layout=pl;
     }
@@ -35,7 +35,7 @@ public:
 
     ~DescriptorSets()=default;
 
-    const uint32_t          GetCount            ()const{return count;}
+    const uint32_t          GetCount            ()const{return layout_binding_count;}
     const VkDescriptorSet * GetDescriptorSets   ()const{return &desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 

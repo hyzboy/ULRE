@@ -27,7 +27,7 @@ namespace hgl
         protected:
 
             Camera *        camera;
-            CameraInfo *  camera_matrix;
+            CameraInfo *    camera_info;
             Frustum         frustum;
 
         protected:
@@ -56,7 +56,7 @@ namespace hgl
             {
                 device=d;
                 camera=nullptr;
-                camera_matrix=nullptr;
+                camera_info=nullptr;
 
                 scene_node_list=nullptr;
                 render_list=nullptr;
