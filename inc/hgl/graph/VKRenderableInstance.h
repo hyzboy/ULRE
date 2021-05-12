@@ -16,6 +16,8 @@ class RenderableInstance                                                        
     MaterialInstance *  mat_inst;
     Renderable *        render_obj;
 
+    DescriptorSets *    descriptor_sets;                                        ///<渲染实例专用描述符合集，一般用于存LocalToWorld等等
+
     uint32_t            buffer_count;
     VkBuffer *          buffer_list;
     VkDeviceSize *      buffer_size;
@@ -42,7 +44,8 @@ public:
     const   uint32_t            GetIndexBufferOffset()const{return render_obj->GetIndexBufferOffset();}
     const   uint32_t            GetDrawCount        ()const{return render_obj->GetDrawCount();}
 
-            DescriptorSets *    GetDescriptorSets   ()const{return mat_inst->GetDescriptorSets();}
+            DescriptorSets *    GetMIDescSets       ()const{return mat_inst->GetDescriptorSets();}
+            DescriptorSets *    GetRIDescSets       ()const{return descriptor_sets;}
 
 public:
 
