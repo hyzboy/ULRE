@@ -10,6 +10,8 @@ RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeli
     mat_inst=mi;
     pipeline=p;
 
+    descriptor_sets=nullptr;
+
     buffer_count=count;
     buffer_list=bl;
     buffer_size=bs;
@@ -17,6 +19,7 @@ RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeli
 
 RenderableInstance::~RenderableInstance()
 {
+    SAFE_CLEAR(descriptor_sets);
     //需要在这里添加删除pipeline/desc_sets/render_obj引用计数的代码
 
     delete[] buffer_list;

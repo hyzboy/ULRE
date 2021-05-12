@@ -184,7 +184,7 @@ public:
             cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
-                cb->BindDescriptorSets(ri->GetDescriptorSets());
+                cb->BindDescriptorSets(ri->GetMIDescSets());
                 cb->BindVAB(ri);
 
                     if (ib)
