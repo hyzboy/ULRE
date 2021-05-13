@@ -300,12 +300,12 @@ class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
 
-    GPUBuffer *         ubo_camera_matrix    =nullptr;
+    GPUBuffer *         ubo_camera_info    =nullptr;
 
 protected:
 
-    WalkerCamera *      camera;
-    float               move_speed=1;
+    WalkerCamera *      camera              =nullptr;
+    float               move_speed          =1;
 
     Vector2f            mouse_last_pos;
 
@@ -340,7 +340,7 @@ public:
 
         camera->Refresh();      //更新矩阵计算
         
-        ubo_camera_matrix=db->CreateUBO(sizeof(CameraInfo),&camera->matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera->info);
     }
 
     void Resize(int w,int h)override
@@ -351,7 +351,7 @@ public:
 
     GPUBuffer *GetCameraMatrixBuffer()
     {
-        return ubo_camera_matrix;
+        return ubo_camera_info;
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;
@@ -359,7 +359,7 @@ public:
     virtual void Draw()override
     {
         camera->Refresh();                           //更新相机矩阵
-        ubo_camera_matrix->Write(&camera->matrix);    //写入缓冲区
+        ubo_camera_info->Write(&camera->info);    //写入缓冲区
 
         const uint32_t index=AcquireNextImage();
 

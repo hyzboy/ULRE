@@ -51,21 +51,21 @@ public:
     Renderable(const uint32_t dc=0):draw_count(dc){}
     virtual ~Renderable()=default;
 
-    const uint GetRefCount()const{return ref_count;}
+    const   uint GetRefCount()const{return ref_count;}
 
-    void        SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
-    const AABB &GetBoundingBox()const           {return BoundingBox;}
+    void         SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
+    const   AABB &GetBoundingBox()const           {return BoundingBox;}
 
-    bool Set(const UTF8String &name,VAB *vb,VkDeviceSize offset=0);
+            bool Set(const UTF8String &name,VAB *vb,VkDeviceSize offset=0);
 
-    bool Set(IndexBuffer *ib,VkDeviceSize offset=0)
-    {
-        if(!ib)return(false);
+            bool Set(IndexBuffer *ib,VkDeviceSize offset=0)
+            {
+                if(!ib)return(false);
 
-        indices_buffer=ib;
-        indices_offset=offset;
-        return(true);
-    }
+                indices_buffer=ib;
+                indices_offset=offset;
+                return(true);
+            }
 
 public:
 

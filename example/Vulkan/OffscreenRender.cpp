@@ -16,7 +16,7 @@ class TestApp:public CameraAppFramework
         Camera cam;
 
         MaterialInstance *  material_instance   =nullptr;
-        GPUBuffer *         ubo_camera_matrix    =nullptr;
+        GPUBuffer *         ubo_camera_info    =nullptr;
     };
 
     struct:public RenderObject
@@ -65,12 +65,12 @@ public:
 
         ro->cam.Refresh();
 
-        ro->ubo_camera_matrix=db->CreateUBO(sizeof(CameraInfo),&ro->cam.matrix);
+        ro->ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&ro->cam.info);
 
-        if(!ro->ubo_camera_matrix)
+        if(!ro->ubo_camera_info)
             return(false);
             
-        ro->material_instance->BindUBO("camera",ro->ubo_camera_matrix);
+        ro->material_instance->BindUBO("camera",ro->ubo_camera_info);
         ro->material_instance->Update();
         return(true);
     }
