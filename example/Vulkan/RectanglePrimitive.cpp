@@ -41,7 +41,7 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *         ubo_camera_matrix    =nullptr;
+    GPUBuffer *         ubo_camera_info    =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -61,7 +61,7 @@ private:
         sampler=db->CreateSampler();
 
         material_instance->BindSampler("tex",texture,sampler);
-        material_instance->BindUBO("camera",ubo_camera_matrix);
+        material_instance->BindUBO("camera",ubo_camera_info);
         material_instance->Update();
 
         db->Add(texture);
@@ -77,9 +77,9 @@ private:
 
         cam.Refresh();
 
-        ubo_camera_matrix=db->CreateUBO(sizeof(CameraInfo),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_camera_matrix)
+        if(!ubo_camera_info)
             return(false);
 
         return(true);
@@ -127,7 +127,7 @@ public:
 
         cam.Refresh();
 
-        ubo_camera_matrix->Write(&cam.matrix);
+        ubo_camera_info->Write(&cam.info);
         
         BuildCommandBuffer(render_instance);
     }

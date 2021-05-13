@@ -28,7 +28,7 @@ private:
 
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    GPUBuffer *         ubo_camera_matrix    =nullptr;
+    GPUBuffer *         ubo_camera_info    =nullptr;
     GPUBuffer *         ubo_color           =nullptr;
 
     Pipeline *          pipeline            =nullptr;
@@ -65,7 +65,7 @@ private:
         sampler=db->CreateSampler();
 
         material_instance->BindSampler("lum_texture",tile_font->GetTexture(),sampler);
-        material_instance->BindUBO("camera",ubo_camera_matrix);
+        material_instance->BindUBO("camera",ubo_camera_info);
         material_instance->BindUBO("color_material",ubo_color);
         material_instance->Update();
 
@@ -81,9 +81,9 @@ private:
 
         cam.Refresh();
 
-        ubo_camera_matrix=db->CreateUBO(sizeof(CameraInfo),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_camera_matrix)
+        if(!ubo_camera_info)
             return(false);
 
         color.One();
@@ -181,7 +181,7 @@ public:
 
         cam.Refresh();
 
-        ubo_camera_matrix->Write(&cam.matrix);
+        ubo_camera_info->Write(&cam.info);
         
         BuildCommandBuffer(render_instance);
     }
