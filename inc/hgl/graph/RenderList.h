@@ -5,7 +5,7 @@
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKArrayBuffer.h>
-#include<hgl/graph/MVPMatrix.h>
+#include<hgl/graph/SceneInfo.h>
 #include<hgl/type/Color4f.h>
 #include<hgl/type/Sets.h>
 namespace hgl

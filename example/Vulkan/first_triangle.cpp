@@ -4,6 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/SceneInfo.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -55,6 +56,8 @@ private:
 
     bool InitUBO()
     {
+        MVPMatrix *mvp=new MVPMatrix;
+
         const VkExtent2D extent=sc_render_target->GetExtent();
 
         cam.width=extent.width;
