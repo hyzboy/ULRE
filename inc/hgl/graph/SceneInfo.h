@@ -1,5 +1,5 @@
-#ifndef HGL_GRAPH_MVP_MATRIX_INCLUDE
-#define HGL_GRAPH_MVP_MATRIX_INCLUDE
+#ifndef HGL_GRAPH_SCENE_INFO_INCLUDE
+#define HGL_GRAPH_SCENE_INFO_INCLUDE
 
 #include<hgl/math/Matrix.h>
 #include<hgl/CompOperator.h>
@@ -33,4 +33,4 @@ namespace hgl
         };//struct MVPMatrix
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_MVP_MATRIX_INCLUDE
+#endif//HGL_GRAPH_SCENE_INFO_INCLUDE
