@@ -131,7 +131,7 @@ public:
         if(!cube.sampler)return(false);
 
         cube.material_instance->BindSampler("tex",os.render_taget->GetColorTexture(),cube.sampler);
-        cube.material_instance->BindUBO("camera",GetCameraMatrixBuffer());
+        cube.material_instance->BindUBO("camera",GetCameraInfoBuffer());
         cube.material_instance->Update();
 
         {

@@ -61,7 +61,7 @@ private:
 
     bool InitUBO()
     {
-        if(!material_instance->BindUBO("camera",GetCameraMatrixBuffer()))
+        if(!material_instance->BindUBO("camera",GetCameraInfoBuffer()))
             return(false);
 
         ubo_atomsphere=db->CreateUBO(sizeof(AtmosphereData),&atomsphere_data);

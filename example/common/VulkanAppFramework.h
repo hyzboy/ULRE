@@ -349,7 +349,7 @@ public:
         camera->height=h;
     }
 
-    GPUBuffer *GetCameraMatrixBuffer()
+    GPUBuffer *GetCameraInfoBuffer()
     {
         return ubo_camera_info;
     }
