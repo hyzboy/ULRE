@@ -193,12 +193,12 @@ private:
 
         sampler=db->CreateSampler(&sampler_create_info);
 
-        sp_gbuffer.material_instance->BindUBO("camera",GetCameraMatrixBuffer());
+        sp_gbuffer.material_instance->BindUBO("camera",GetCameraInfoBuffer());
         sp_gbuffer.material_instance->BindSampler("TexColor"    ,texture.color,    sampler);
         sp_gbuffer.material_instance->BindSampler("TexNormal"   ,texture.normal,   sampler);
         sp_gbuffer.material_instance->Update();
 
-        sp_composition.material_instance->BindUBO("camera",GetCameraMatrixBuffer());
+        sp_composition.material_instance->BindUBO("camera",GetCameraInfoBuffer());
         sp_composition.material_instance->BindUBO("lights",ubo_lights);
         sp_composition.material_instance->BindSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),sampler);
         sp_composition.material_instance->BindSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
