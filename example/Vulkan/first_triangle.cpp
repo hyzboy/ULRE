@@ -35,7 +35,7 @@ private:
 
     MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *         ubo_camera_info   =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
