@@ -16,9 +16,9 @@ namespace hgl
 
         class SceneTreeToRenderList
         {
-            using PipelineSets=Sets<Pipeline *>;
-            using MaterialSets=Sets<Material *>;
-            using MatInstanceSets=Sets<MaterialInstance *>;
+            using PipelineSets  =Sets<Pipeline *>;
+            using MaterialSets  =Sets<Material *>;
+            using MatInstSets   =Sets<MaterialInstance *>;
 
         protected:
 
@@ -26,8 +26,7 @@ namespace hgl
 
         protected:
 
-            Camera *        camera;
-            CameraInfo *    camera_info;
+            CameraInfo      camera_info;            ///<相机信息
             Frustum         frustum;
 
         protected:
@@ -36,7 +35,7 @@ namespace hgl
 
             PipelineSets    pipeline_sets;          ///<管线合集
             MaterialSets    material_sets;          ///<材质合集
-            MatInstanceSets mat_instance_sets;      ///<材质实例合集
+            MatInstSets     mat_inst_sets;          ///<材质实例合集
 
             RenderList *    render_list;
 
@@ -52,19 +51,10 @@ namespace hgl
 
         public:
 
-            SceneTreeToRenderList(GPUDevice *d)
-            {
-                device=d;
-                camera=nullptr;
-                camera_info=nullptr;
-
-                scene_node_list=nullptr;
-                render_list=nullptr;
-            }
-
+            SceneTreeToRenderList(GPUDevice *d);
             virtual ~SceneTreeToRenderList();
 
-            virtual bool    Expend(RenderList *,Camera *,SceneNode *);
+            virtual bool    Expend(RenderList *,const CameraInfo &,SceneNode *);
         };//class SceneTreeToRenderList
     }//namespace graph
 }//namespace hgl
