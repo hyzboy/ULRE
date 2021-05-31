@@ -39,10 +39,10 @@ namespace hgl
 
         protected:
 
-            uint32                  vertices_number;
+            uint32          vertices_number;
 
             IndexBuffer *   ibo;
-            VADMaps                 vab_maps;
+            VADMaps         vab_maps;
 
         protected:
 
@@ -85,7 +85,7 @@ namespace hgl
                     uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);                         ///<创建16位的索引缓冲区
                     uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);                         ///<创建32位的索引缓冲区
 
-            virtual Renderable *    Finish();                                                                   ///<结束并创建可渲染对象
+            virtual Renderable *            Finish();                                                                   ///<结束并创建可渲染对象
         };//class RenderableCreater
     }//namespace graph
 }//namespace hgl
