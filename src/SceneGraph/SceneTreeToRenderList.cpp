@@ -3,7 +3,16 @@
 namespace hgl
 {
     namespace graph
-    {
+    {    
+        SceneTreeToRenderList::SceneTreeToRenderList(GPUDevice *d)
+        {
+            device=d;
+            hgl_zero(camera_info);
+
+            scene_node_list=nullptr;
+            render_list=nullptr;
+        }
+
         SceneTreeToRenderList::~SceneTreeToRenderList()
         {
             SAFE_CLEAR(scene_node_list);
@@ -11,17 +20,17 @@ namespace hgl
 
         float SceneTreeToRenderList::CameraLength(SceneNode *obj_one,SceneNode *obj_two)
         {
-            if(!camera||!obj_one||!obj_two)
+            if(!obj_one||!obj_two)
                 return(0);
 
-            return( length_squared(obj_one->GetCenter(),camera->pos)-
-                    length_squared(obj_two->GetCenter(),camera->pos));
+            return( length_squared(obj_one->GetCenter(),camera_info.pos)-
+                    length_squared(obj_two->GetCenter(),camera_info.pos));
         }
 
-        //bool SceneTreeToRenderList::InFrustum(const SceneNode *,void *)
-        //{
-        //    return(true);
-        //}
+        bool SceneTreeToRenderList::InFrustum(const SceneNode *,void *)
+        {
+            return(true);
+        }
 
         //bool SceneTreeToRenderList::Begin()
         //{
@@ -37,14 +46,15 @@ namespace hgl
         //    return(true);
         //}
 
-        ///**
-        //* 理论上讲，我们需要按以下顺序排序
-        //*
-        //* for(material)
-        //*   for(pipeline)
-        //*       for(material_instance)
-        //*           for(vbo)
-        //*/
+        /**
+        * 理论上讲，我们需要按以下顺序排序
+        *
+        * for(material)
+        *   for(pipeline)
+        *       for(material_instance)
+        *           for(vbo)
+        *               for(distance)
+        */
 
         //bool SceneTreeToRenderList::End()
         //{
@@ -63,22 +73,20 @@ namespace hgl
         //    return(true);
         //}
 
-        //bool SceneTreeToRenderList::Expend(RenderList *rl,Camera *c,SceneNode *sn)
-        //{
-        //    if(!device)return(false);
-        //    if(!rl||!c||sn)return(false);
+        bool SceneTreeToRenderList::Expend(RenderList *rl,const CameraInfo &ci,SceneNode *sn)
+        {
+            if(!device)return(false);
+            if(!rl||sn)return(false);
 
-        //    camera=c;
-        //    camera->Refresh();
-        //    camera_info=&(camera->matrix);
+            camera_info=ci;
 
-        //    //Frustum f;
+            //Frustum f;
 
-        //    render_list=rl;
+            render_list=rl;
 
-        //    Begin();
-        //    Expend(sn);
-        //    End();
-        //}
+            Begin();
+            Expend(sn);
+            End();
+        }
     }//namespace graph
 }//namespace hgl
