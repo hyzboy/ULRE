@@ -27,24 +27,24 @@ namespace hgl
                     length_squared(obj_two->GetCenter(),camera_info.pos));
         }
 
-        bool SceneTreeToRenderList::InFrustum(const SceneNode *,void *)
-        {
-            return(true);
-        }
-
-        //bool SceneTreeToRenderList::Begin()
+        //bool SceneTreeToRenderList::InFrustum(const SceneNode *,void *)
         //{
-        //    if(!scene_node_list)
-        //        scene_node_list=new SceneNodeList;
-
-        //    scene_node_list->ClearData();
-
-        //    pipeline_sets.ClearData();
-        //    material_sets.ClearData();
-        //    mat_instance_sets.ClearData();
-
         //    return(true);
         //}
+
+        bool SceneTreeToRenderList::Begin()
+        {
+            if(!scene_node_list)
+                scene_node_list=new SceneNodeList;
+
+            scene_node_list->ClearData();
+
+            pipeline_sets.ClearData();
+            material_sets.ClearData();
+            mat_inst_sets.ClearData();
+
+            return(true);
+        }
 
         /**
         * 理论上讲，我们需要按以下顺序排序
@@ -56,22 +56,22 @@ namespace hgl
         *               for(distance)
         */
 
-        //bool SceneTreeToRenderList::End()
-        //{
-        //}
+        bool SceneTreeToRenderList::End()
+        {
+        }
 
-        //bool SceneTreeToRenderList::Expend(SceneNode *sn)
-        //{
-        //    if(!sn)return(false);
+        bool SceneTreeToRenderList::Expend(SceneNode *sn)
+        {
+            if(!sn)return(false);
 
-        //    if(sn->renderable_instances)
-        //        scene_node_list->Add(sn);
+            if(sn->RIList.GetCount()>0)
+                scene_node_list->Add(sn);
 
-        //    for(SceneNode *sub:sn->SubNode)
-        //        Expend(sub);
+            for(SceneNode *sub:sn->SubNode)
+                Expend(sub);
 
-        //    return(true);
-        //}
+            return(true);
+        }
 
         bool SceneTreeToRenderList::Expend(RenderList *rl,const CameraInfo &ci,SceneNode *sn)
         {
@@ -87,6 +87,8 @@ namespace hgl
             Begin();
             Expend(sn);
             End();
+
+            return(true);
         }
     }//namespace graph
 }//namespace hgl

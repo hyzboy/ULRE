@@ -4,6 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/SceneTreeToRenderList.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -85,9 +86,17 @@ private:
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
-        render_root.Add(render_instance,scale(0.5,0.5));
+        {
+            SceneNode *sn=render_root.CreateSubNode(scale(0.5,0.5));
+            sn->RIList.Add(render_instance);
+        }
+
         render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
+
+        SceneTreeToRenderList st2rl(device);
+
+        st2rl.Expend(&render_list,&render_root,&cam);
+
         return(true);
     }
 
