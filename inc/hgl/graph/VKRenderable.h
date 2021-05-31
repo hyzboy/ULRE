@@ -1,7 +1,6 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
 #define HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
 
-#include<hgl/graph/VK.h>
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
@@ -69,8 +68,8 @@ public:
 
 public:
 
-                    void        SetDrawCount(const uint32_t dc){draw_count=dc;} ///<设置当前对象绘制需要多少个顶点
-    virtual const   uint32_t    GetDrawCount()const                             ///<取得当前对象绘制需要多少个顶点
+                    void            SetDrawCount(const uint32_t dc){draw_count=dc;} ///<设置当前对象绘制需要多少个顶点
+    virtual const   uint32_t        GetDrawCount()const                             ///<取得当前对象绘制需要多少个顶点
     {
         if(indices_buffer)
             return indices_buffer->GetCount();
@@ -78,12 +77,12 @@ public:
         return draw_count;
     }
 
-            VAB *           GetVAB(const UTF8String &,VkDeviceSize *);
-            VkBuffer        GetBuffer(const UTF8String &,VkDeviceSize *);
-    const   int             GetBufferCount()const{return buffer_list.GetCount();}
+                    VAB *           GetVAB              (const UTF8String &,VkDeviceSize *);
+                    VkBuffer        GetBuffer           (const UTF8String &,VkDeviceSize *);
+            const   int             GetBufferCount      ()const {return buffer_list.GetCount();}
 
-    IndexBuffer *           GetIndexBuffer()            {return indices_buffer;}
-    const VkDeviceSize      GetIndexBufferOffset()const {return indices_offset;}
+                    IndexBuffer *   GetIndexBuffer      ()      {return indices_buffer;}
+            const   VkDeviceSize    GetIndexBufferOffset()const {return indices_offset;}
 };//class Renderable
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDERABLE_INCLUDE
