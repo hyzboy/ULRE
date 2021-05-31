@@ -22,7 +22,7 @@ namespace hgl
 
         protected:
 
-            GPUDevice *device;
+            GPUDevice *     device;
 
         protected:
 
@@ -43,7 +43,7 @@ namespace hgl
 
             virtual float   CameraLength(SceneNode *,SceneNode *);                                  ///<摄像机距离比较函数
 
-            virtual bool    InFrustum(const SceneNode *,void *);                                    ///<平截头截剪函数
+//            virtual bool    InFrustum(const SceneNode *,void *);                                    ///<平截头截剪函数
 
             virtual bool    Begin();
             virtual bool    Expend(SceneNode *);

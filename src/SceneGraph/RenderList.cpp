@@ -152,14 +152,8 @@ namespace hgl
             last_pipeline=nullptr;
             last_ri=nullptr;
 
-            const int count=scene_node_list.GetCount();
-            SceneNode **node=scene_node_list.GetData();
-
-            for(int i=0;i<count;i++)
-            {
-                Render(*node,(*node)->renderable_instances);
-                ++node;
-            }
+            for(SceneNode *sn:scene_node_list)
+                Render(sn,sn->RIList);
 
             return(true);
         }
