@@ -94,7 +94,7 @@ namespace hgl
             }
         }
 
-        void RenderList::Render(SceneNode *node,RenderableInstance *ri)
+        void RenderList::Render(RenderableInstance *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
@@ -130,18 +130,6 @@ namespace hgl
             }
         }
 
-        void RenderList::Render(SceneNode *node,List<RenderableInstance *> &ri_list)
-        {
-            const int count=ri_list.GetCount();
-            RenderableInstance **ri=ri_list.GetData();
-
-            for(int i=0;i<count;i++)
-            {
-                Render(node,*ri);
-                ++ri;
-            }
-        }
-
         bool RenderList::Render(RenderCmdBuffer *cb) 
         {
             if(!cb)
@@ -153,7 +141,7 @@ namespace hgl
             last_ri=nullptr;
 
             for(SceneNode *sn:scene_node_list)
-                Render(sn,sn->RIList);
+                Render(sn->render_obj);
 
             return(true);
         }

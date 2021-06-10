@@ -29,39 +29,22 @@ namespace hgl
 
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
             
-            List<RenderableInstance *> RIList;                                                                          ///<可渲染实例
+            RenderableInstance *render_obj=nullptr;                                                                     ///<可渲染实例
 
         public:
 
             SceneNode()=default;
-            SceneNode(const Matrix4f &mat)
+            SceneNode(                      RenderableInstance *ri  )                   {render_obj=ri;}
+            SceneNode(const Matrix4f &mat                           ):SceneOrient(mat)  {}
+            SceneNode(const Matrix4f &mat,  RenderableInstance *ri  ):SceneOrient(mat)  {render_obj=ri;}
+
+            virtual ~SceneNode(){}
+
+            void Clear()
             {
-                SetLocalMatrix(mat);
+                SubNode.ClearData();
+                render_obj=nullptr;
             }
-
-            virtual ~SceneNode()
-            {
-                ClearSubNode();
-            }
-
-            SceneNode *CreateSubNode()
-            {
-                SceneNode *sn=new SceneNode();
-
-                SubNode.Add(sn);
-                return sn;
-            }
-
-            SceneNode *CreateSubNode(const Matrix4f &mat)
-            {
-                SceneNode *sn=new SceneNode(mat);
-
-                SubNode.Add(sn);
-                return sn;
-            }
-
-            void AddSubNode(SceneNode *n){if(n)SubNode.Add(n);}                                                         ///<增加一个子节点
-            void ClearSubNode(){SubNode.ClearData();}                                                                   ///<清除子节点
 
         public: //坐标相关方法
 
