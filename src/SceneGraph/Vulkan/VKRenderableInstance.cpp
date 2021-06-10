@@ -2,8 +2,12 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/util/hash/Hash.h>
 
 VK_NAMESPACE_BEGIN
+
+using namespace util;
+
 RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
 {
     render_obj=r;
@@ -15,8 +19,13 @@ RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeli
     buffer_count=count;
     buffer_list=bl;
     buffer_size=bs;
-}
 
+    if(buffer_count>0)
+        CountHash<HASH::Adler32>(buffer_list,buffer_count*sizeof(VkBuffer),(void *)&buffer_hash);
+    else
+        buffer_hash=0;
+}
+ 
 RenderableInstance::~RenderableInstance()
 {
     SAFE_CLEAR(descriptor_sets);
