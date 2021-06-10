@@ -15,6 +15,7 @@ use_mgl(${ULRE_3RDPTY_ROOT_PATH}/MathGeoLib)
 
 include(use_cm_module)
 use_cm_module(Core)
+use_cm_module(Util)
 use_cm_module(Platform)
 use_cm_module(AssetsManage)
 use_cm_module(SceneGraph)
@@ -33,6 +34,7 @@ SET(ULRE    CMCore
             CMPlatform
             CMAssetsManage
             CMSceneGraph
+            CMUtil
             ULRE.Util
             ULRE.SceneGraph
             MathGeoLib
