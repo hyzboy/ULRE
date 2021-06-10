@@ -22,6 +22,8 @@ class RenderableInstance                                                        
     VkBuffer *          buffer_list;
     VkDeviceSize *      buffer_size;
 
+    uint32_t            buffer_hash;
+
 private:
 
     friend RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);
@@ -43,6 +45,8 @@ public:
             IndexBuffer *       GetIndexBuffer      ()const{return render_obj->GetIndexBuffer();}
     const   uint32_t            GetIndexBufferOffset()const{return render_obj->GetIndexBufferOffset();}
     const   uint32_t            GetDrawCount        ()const{return render_obj->GetDrawCount();}
+
+    const   uint32_t            GetBufferHash       ()const{return buffer_hash;}
 
             DescriptorSets *    GetMIDescSets       ()const{return mat_inst->GetDescriptorSets();}
             DescriptorSets *    GetRIDescSets       ()const{return descriptor_sets;}
