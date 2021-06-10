@@ -27,6 +27,7 @@ namespace hgl
         public:
 
             SceneOrient();
+            SceneOrient(const Matrix4f &mat);
             virtual ~SceneOrient()=default;
 
                     Matrix4f &  SetLocalMatrix              (const Matrix4f &);                                         ///<设定当前节点矩阵
