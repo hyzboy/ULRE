@@ -22,3 +22,6 @@
 [submodule "CMSceneGraph"]
 	path = CMSceneGraph
 	url = https://github.com/hyzboy/CMSceneGraph.git
+[submodule "CMUtil"]
+	path = CMUtil
+	url = https://github.com/hyzboy/CMUtil.git
