@@ -3,13 +3,19 @@ namespace hgl
 {
     namespace graph
     {
-        Matrix4f Ortho2DMatrix;                                                        ///<全局2D视图矩阵
-
         SceneOrient::SceneOrient()
         {
             LocalMatrix                 =Matrix4f::identity;
             LocalToWorldMatrix          =Matrix4f::identity;
             InverseLocalMatrix          =Matrix4f::identity;
+            InverseLocalToWorldMatrix   =Matrix4f::identity;
+        }
+
+        SceneOrient::SceneOrient(const Matrix4f &mat)
+        {
+            SetLocalMatrix(mat);
+
+            LocalToWorldMatrix          =Matrix4f::identity;
             InverseLocalToWorldMatrix   =Matrix4f::identity;
         }
 
