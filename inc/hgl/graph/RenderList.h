@@ -4,6 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/SceneNode.h>
+#include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/type/Color4f.h>
@@ -12,7 +13,7 @@ namespace hgl
 {
     namespace graph
     {
-        using SceneNodeList=List<SceneNode *>;        
+//        using SceneNodeList=List<SceneNode *>;        
         using MVPArrayBuffer=GPUArrayBuffer<MVPMatrix>;
         using MVPOffsetBuffer=List<uint32_t>;
 
@@ -29,7 +30,7 @@ namespace hgl
 
             Camera *camera;
 
-            SceneNodeList scene_node_list;
+            RenderNodeList render_node_list;
 
             MVPArrayBuffer *mvp_array;
             MVPOffsetBuffer mvp_offset;
@@ -39,8 +40,7 @@ namespace hgl
             Pipeline *          last_pipeline;
             RenderableInstance *last_ri;
 
-            void Render(SceneNode *,RenderableInstance *);
-            void Render(SceneNode *,List<RenderableInstance *> &);
+            void Render(RenderableInstance *);
 
         private:
 

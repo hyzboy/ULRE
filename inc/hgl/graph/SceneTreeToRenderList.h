@@ -9,11 +9,6 @@ namespace hgl
 {
     namespace graph
     {
-        struct RenderNode
-        {
-            SceneNode *node;
-        };//
-
         class SceneTreeToRenderList
         {
             using PipelineSets  =Sets<Pipeline *>;
@@ -31,7 +26,7 @@ namespace hgl
 
         protected:
 
-            SceneNodeList * scene_node_list;        ///<场景节点列表
+            RenderNodeList *render_node_list;       ///<场景节点列表
 
             PipelineSets    pipeline_sets;          ///<管线合集
             MaterialSets    material_sets;          ///<材质合集
@@ -41,7 +36,7 @@ namespace hgl
 
         protected:
 
-            virtual float   CameraLength(SceneNode *,SceneNode *);                                  ///<摄像机距离比较函数
+            virtual int     Comp(RenderNode *,RenderNode *);                                  ///<摄像机距离比较函数
 
 //            virtual bool    InFrustum(const SceneNode *,void *);                                    ///<平截头截剪函数
 
