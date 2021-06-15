@@ -19,6 +19,9 @@ namespace hgl
 
             GPUDevice *device;
             VkBufferUsageFlags buffer_usage_flags;
+            VKMemoryAllocator *vk_ma;
+
+            uint32_t ubo_offset_alignment;
 
             Collection *coll;
 
@@ -31,10 +34,12 @@ namespace hgl
 
                 {
                     uint32_t unit_size=sizeof(T);
-                    VKMemoryAllocator *ma=new VKMemoryAllocator(device,buffer_usage_flags);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
-                    MemoryBlock *mb=new MemoryBlock(ma);
+                    vk_ma=new VKMemoryAllocator(device,buffer_usage_flags);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
+                    MemoryBlock *mb=new MemoryBlock(vk_ma);
 
-                    const uint32_t align_size=ma->GetAllocUnitSize()-1;                         // this value is "min UBO Offset alignment"
+                    ubo_offset_alignment=vk_ma->GetAllocUnitSize();
+
+                    const uint32_t align_size=ubo_offset_alignment-1;
 
                     unit_size=(unit_size+align_size)&(~align_size);
 
@@ -45,6 +50,21 @@ namespace hgl
             virtual ~GPUArrayBuffer()
             {
                 delete coll;
+            }
+
+            const uint32_t GetOffsetAlignment()const
+            {
+                return ubo_offset_alignment;
+            }
+
+            const uint32_t GetUnitSize()const
+            {
+                return coll->GetUnitBytes();
+            }
+
+            GPUBuffer *GetBuffer()
+            {
+                return vk_ma->GetBuffer();
             }
 
             uint32 Alloc(const uint32 max_count)            ///<预分配空间
