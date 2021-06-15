@@ -1,9 +1,27 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/graph/VKRenderableInstance.h>
 namespace hgl
 {
     namespace graph
     {
+        void SceneNode::SetRI(RenderableInstance *ri)
+        {
+            render_obj=ri;
+
+            if(render_obj)
+            {
+                SetBoundingBox(render_obj->GetBoundingBox());
+            }
+            else
+            {
+                BoundingBox.minPoint=vec::zero;
+                BoundingBox.maxPoint=vec::zero;
+
+                WorldBoundingBox=LocalBoundingBox=BoundingBox;
+            }
+        }
+
         /**
         * 刷新矩阵
         * @param root_matrix 根矩阵

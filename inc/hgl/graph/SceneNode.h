@@ -24,12 +24,12 @@ namespace hgl
             Vector4f Center;                                                                                            ///<中心点
             Vector4f LocalCenter;                                                                                       ///<本地坐标中心点
             Vector4f WorldCenter;                                                                                       ///<世界坐标中心点
+            
+            RenderableInstance *render_obj=nullptr;                                                                     ///<可渲染实例
 
         public:
 
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
-            
-            RenderableInstance *render_obj=nullptr;                                                                     ///<可渲染实例
 
         public:
 
@@ -38,12 +38,39 @@ namespace hgl
             SceneNode(const Matrix4f &mat                           ):SceneOrient(mat)  {}
             SceneNode(const Matrix4f &mat,  RenderableInstance *ri  ):SceneOrient(mat)  {render_obj=ri;}
 
-            virtual ~SceneNode(){}
+            virtual ~SceneNode()=default;
 
             void Clear()
             {
                 SubNode.ClearData();
                 render_obj=nullptr;
+            }
+
+            RenderableInstance *GetRI(){return render_obj;}
+            void                SetRI(RenderableInstance *);
+
+            SceneNode *CreateSubNode()
+            {
+                SceneNode *sn=new SceneNode();
+
+                SubNode.Add(sn);
+                return sn;
+            }
+
+            SceneNode *CreateSubNode(const Matrix4f &mat)
+            {
+                SceneNode *sn=new SceneNode(mat);
+
+                SubNode.Add(sn);
+                return sn;
+            }
+
+            SceneNode *CreateSubNode(const Matrix4f &mat,RenderableInstance *ri)
+            {
+                SceneNode *sn=new SceneNode(mat,ri);
+
+                SubNode.Add(sn);
+                return sn;
             }
 
         public: //坐标相关方法
