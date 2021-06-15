@@ -13,85 +13,27 @@ namespace hgl
 {
     namespace graph
     {
-        constexpr size_t MVPMatrixBytes=sizeof(MVPMatrix);
-
-        //bool FrustumClipFilter(const SceneNode *node,void *fc)
-        //{
-        //    if(!node||!fc)return(false);
-
-        //    return (((Frustum *)fc)->BoxIn(node->GetWorldBoundingBox())!=Frustum::OUTSIDE);
-        //}
-
         RenderList::RenderList(GPUDevice *gd)
         {
             device          =gd;
             cmd_buf         =nullptr;
 
-            last_pipeline   =nullptr;
-            last_ri         =nullptr;
+            mvp_buffer      =nullptr;
+            ri_list         =nullptr;
 
-            mvp_array       =new MVPArrayBuffer(gd,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-        }
-
-        RenderList::~RenderList()
-        {
-            delete mvp_array;
-        }
-
-        void RenderList::Begin()
-        {
-            scene_node_list.ClearData();
-
-            mvp_array->Clear();
-            mvp_offset.ClearData();
+            ubo_offset      =0;
+            ubo_align       =0;
 
             last_pipeline   =nullptr;
-            last_ri         =nullptr;
+            last_mi         =nullptr;
+            last_vbo        =0;
         }
 
-        void RenderList::Add(SceneNode *node)
+        void RenderList::Set(List<RenderableInstance *> *ril,GPUBuffer *buf,const uint32_t align)
         {
-            if(!node)return;
-
-            scene_node_list.Add(node);
-        }
-
-        void RenderList::End(CameraInfo *camera_info)
-        {
-            //清0计数器
-            uint32_t mvp_count=0;       //local to world矩阵总数量
-
-            //统计Render
-            const uint32_t count=scene_node_list.GetCount();
-
-            mvp_array->Alloc(count);
-            mvp_array->Clear();
-
-            mvp_offset.PreMalloc(count);
-            mvp_offset.ClearData();
-
-            MVPMatrix *mp=mvp_array->Map(0,count);
-            uint32_t *op=mvp_offset.GetData();
-
-            for(SceneNode *node:scene_node_list)
-            {
-                const Matrix4f &l2w=node->GetLocalToWorldMatrix();
-
-                if(!l2w.IsIdentity())
-                {
-                    mp->Set(l2w,camera_info->vp);
-                    ++mp;
-
-                    *op=mvp_count*MVPMatrixBytes;
-                    ++mvp_count;
-                }
-                else
-                {
-                    *op=mvp_count*MVPMatrixBytes;
-                }
-
-                ++op;
-            }
+            ri_list=ril;
+            mvp_buffer=buf;
+            ubo_align=align;
         }
 
         void RenderList::Render(RenderableInstance *ri)
@@ -106,16 +48,22 @@ namespace hgl
             {
                 MaterialInstance *mi=ri->GetMaterialInstance();
 
-                cmd_buf->BindDescriptorSets(mi->GetDescriptorSets());
+                if(mi!=last_mi)
+                {
+                    last_mi=mi;
+                    cmd_buf->BindDescriptorSets(mi->GetDescriptorSets());
+                }
             }
 
-            //更新fin_mvp
-
-            if(ri!=last_ri)
             {
-                cmd_buf->BindVAB(ri);
+                
+            }
 
-                last_ri=ri;
+            if(last_vbo!=ri->GetBufferHash())
+            {
+                last_vbo=ri->GetBufferHash();
+                
+                cmd_buf->BindVAB(ri);
             }
 
             const IndexBuffer *ib=ri->GetIndexBuffer();
@@ -135,13 +83,22 @@ namespace hgl
             if(!cb)
                 return(false);
 
+            if(!mvp_buffer
+             ||!ri_list)
+                return(false);
+
+            if(ri_list->GetCount()<=0)
+                return(true);
+
             cmd_buf=cb;
 
             last_pipeline=nullptr;
-            last_ri=nullptr;
+            last_mi=nullptr;
+            last_vbo=0;
+            ubo_offset=0;
 
-            for(SceneNode *sn:scene_node_list)
-                Render(sn->render_obj);
+            for(RenderableInstance *ri:*ri_list)
+                Render(ri);
 
             return(true);
         }

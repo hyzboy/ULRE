@@ -13,10 +13,6 @@ namespace hgl
 {
     namespace graph
     {
-//        using SceneNodeList=List<SceneNode *>;        
-        using MVPArrayBuffer=GPUArrayBuffer<MVPMatrix>;
-        using MVPOffsetBuffer=List<uint32_t>;
-
         /**
          * 渲染对象列表<br>
          * 已经展开的渲染对象列表，产生mvp用UBO/SSBO等数据，最终创建RenderCommandBuffer
@@ -30,15 +26,19 @@ namespace hgl
 
             Camera *camera;
 
-            RenderNodeList render_node_list;
+            GPUBuffer *mvp_buffer;
+            List<RenderableInstance *> *ri_list;
 
-            MVPArrayBuffer *mvp_array;
-            MVPOffsetBuffer mvp_offset;
+            DescriptorSets *renderable_desc_sets;
+
+            uint32_t ubo_offset;
+            uint32_t ubo_align;
 
         private:
 
             Pipeline *          last_pipeline;
-            RenderableInstance *last_ri;
+            MaterialInstance *  last_mi;
+            uint32_t            last_vbo;
 
             void Render(RenderableInstance *);
 
@@ -48,14 +48,14 @@ namespace hgl
 
             RenderList(GPUDevice *);
 
+            friend class SceneTreeToRenderList;
+
+            void Set(List<RenderableInstance *> *,GPUBuffer *,const uint32_t);
+
         public:
 
-            virtual ~RenderList();
+            virtual ~RenderList()=default;
             
-            void Begin  ();
-            void Add    (SceneNode *);
-            void End    (CameraInfo *);
-
             bool Render (RenderCmdBuffer *);
         };//class RenderList        
     }//namespace graph
