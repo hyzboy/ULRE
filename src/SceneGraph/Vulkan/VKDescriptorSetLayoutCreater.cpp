@@ -100,7 +100,7 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     return(true);
 }
 
-DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetType &type)
+DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetsType &type)
 {
     if(!pipeline_layout||!dsl)
         return(nullptr);
@@ -108,6 +108,23 @@ DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetType &type
     const int count=layout_binding_list.GetCount();
 
     if(count<=0)
+        return(nullptr);
+
+    BindingMapping *bm=nullptr;
+
+    if(type==DescriptorSetsType::Material
+     ||type==DescriptorSetsType::MaterialInstance)                                              //未开会区分开
+        bm=&index_by_binding;
+    else
+    if(type==DescriptorSetsType::RenderableInstance)
+        bm=&index_by_binding_ri;
+    else
+    if(type==DescriptorSetsType::Global)
+        bm=&index_by_binding_global;
+    else
+        return(nullptr);
+
+    if(bm->GetCount()==0)
         return(nullptr);
 
     DescriptorSetAllocateInfo alloc_info;
@@ -120,16 +137,7 @@ DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetType &type
 
     if(vkAllocateDescriptorSets(device,&alloc_info,&desc_set)!=VK_SUCCESS)
         return(nullptr);
-
-    if(type==DescriptorSetType::Material)
-        return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding));
-    else
-    if(type==DescriptorSetType::Renderable)
-        return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding_ri));
-    else
-    if(type==DescriptorSetType::Global)
-        return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding_global));
-    else
-        return(nullptr);
+        
+    return(new DescriptorSets(device,count,pipeline_layout,desc_set,bm));
 }
 VK_NAMESPACE_END
