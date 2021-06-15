@@ -44,7 +44,12 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
             p->stageFlags           = stageFlags;
             p->pImmutableSamplers   = nullptr;
 
-            index_by_binding.Add(sd.binding,fin_count+old_count);
+            if(sd.name[0]=='r'
+             &&sd.name[1]=='i'
+             &&sd.name[2]=='_')
+                index_by_binding_ri.Add(sd.binding,fin_count+old_count);
+            else
+                index_by_binding.Add(sd.binding,fin_count+old_count);
 
             ++p;
             ++fin_count;
@@ -91,7 +96,7 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     return(true);
 }
 
-DescriptorSets *DescriptorSetLayoutCreater::Create()
+DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetType &type)
 {
     if(!pipeline_layout||!dsl)
         return(nullptr);
@@ -112,6 +117,12 @@ DescriptorSets *DescriptorSetLayoutCreater::Create()
     if(vkAllocateDescriptorSets(device,&alloc_info,&desc_set)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding));
+    if(type==DescriptorSetType::Material)
+        return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding));
+    else
+    if(type==DescriptorSetType::Renderable)
+        return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding_ri));
+    else
+        return(nullptr);
 }
 VK_NAMESPACE_END

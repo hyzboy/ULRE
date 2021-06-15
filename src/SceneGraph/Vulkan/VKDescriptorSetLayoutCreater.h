@@ -6,6 +6,12 @@
 VK_NAMESPACE_BEGIN
 class DescriptorSets;
 
+enum class DescriptorSetType
+{
+    Material=0,
+    Renderable,
+};//
+
 /**
 * 描述符合集创造器
 */
@@ -65,6 +71,6 @@ public:
 
     const VkPipelineLayout GetPipelineLayout()const{return pipeline_layout;}
 
-    DescriptorSets *Create();
+    DescriptorSets *Create(const DescriptorSetType &type=DescriptorSetType::Material);
 };//class DescriptorSetLayoutCreater
 VK_NAMESPACE_END
