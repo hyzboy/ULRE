@@ -23,6 +23,8 @@ public:
 
     const uint32_t  GetBufferUsageFlagBits  ()const{return buffer_usage_flag_bits;}
 
+    GPUBuffer *     GetBuffer               (){return gpu_buffer;}
+
 public:
 
     VKMemoryAllocator(GPUDevice *,const uint32_t flags);
