@@ -17,6 +17,7 @@ class DescriptorSetLayoutCreater
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
     VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
     BindingMapping index_by_binding;
+    BindingMapping index_by_binding_ri;
 
     VkPipelineLayout pipeline_layout=VK_NULL_HANDLE;
 
@@ -25,20 +26,20 @@ public:
     DescriptorSetLayoutCreater(VkDevice dev,VkDescriptorPool dp){device=dev;pool=dp;}
     ~DescriptorSetLayoutCreater();
 
-    void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);
-    void Bind(const uint32_t *binding,const uint32_t count,VkDescriptorType type,VkShaderStageFlagBits stage);
-    void Bind(const DescriptorBindingList &dbl,VkDescriptorType type,VkShaderStageFlagBits stage)
-    {
-        if(dbl.GetCount()>0)
-            Bind(dbl.GetData(),dbl.GetCount(),type,stage);
-    }
+//    void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);     //单个版本，暂时用不到
+    void Bind(const ShaderDescriptorList *sd_list,VkDescriptorType type,VkShaderStageFlagBits stage);
+    //void Bind(const DescriptorBindingList &dbl,VkDescriptorType type,VkShaderStageFlagBits stage)
+    //{
+    //    if(dbl.GetCount()>0)
+    //        Bind(dbl.GetData(),dbl.GetCount(),type,stage);
+    //}
 
     void Bind(const ShaderDescriptorList *sdl,VkShaderStageFlagBits stage)
     {
         for(uint32_t i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)
         {
-            if(sdl->binding_list.GetCount()>0)
-                Bind(sdl->binding_list.GetData(),sdl->binding_list.GetCount(),(VkDescriptorType)i,stage);
+            if(sdl->GetCount()>0)
+                Bind(sdl,(VkDescriptorType)i,stage);
 
             ++sdl;
         }
