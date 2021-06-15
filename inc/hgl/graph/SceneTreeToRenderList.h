@@ -5,10 +5,17 @@
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
+
+using RenderNodePointer=hgl::graph::RenderNode *;
+
+using RenderNodeComparator=Comparator<RenderNodePointer>;
+
 namespace hgl
 {
     namespace graph
     {
+        using MVPArrayBuffer=GPUArrayBuffer<MVPMatrix>;
+
         class SceneTreeToRenderList
         {
             using PipelineSets  =Sets<Pipeline *>;
@@ -25,24 +32,25 @@ namespace hgl
             Frustum         frustum;
 
         protected:
+        
+            RenderNodeComparator render_node_comparator;
 
-            RenderNodeList *render_node_list;       ///<场景节点列表
+            RenderNodeList  render_node_list;       ///<场景节点列表
 
-            PipelineSets    pipeline_sets;          ///<管线合集
-            MaterialSets    material_sets;          ///<材质合集
-            MatInstSets     mat_inst_sets;          ///<材质实例合集
+            //PipelineSets    pipeline_sets;          ///<管线合集
+            //MaterialSets    material_sets;          ///<材质合集
+            //MatInstSets     mat_inst_sets;          ///<材质实例合集
+
+            MVPArrayBuffer *mvp_array;
+            List<RenderableInstance *> ri_list;
 
             RenderList *    render_list;
 
         protected:
 
-            virtual int     Comp(RenderNode *,RenderNode *);                                  ///<摄像机距离比较函数
-
-//            virtual bool    InFrustum(const SceneNode *,void *);                                    ///<平截头截剪函数
-
             virtual bool    Begin();
             virtual bool    Expend(SceneNode *);
-            virtual bool    End();
+            virtual void    End();
 
         public:
 
