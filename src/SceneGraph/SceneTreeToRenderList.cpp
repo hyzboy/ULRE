@@ -130,7 +130,9 @@ namespace hgl
             }
 
             //写入RenderList
-            render_list->Set(mvp_array->GetBuffer(),&ri_list);
+            render_list->Set(   &ri_list,
+                                mvp_array->GetBuffer(),
+                                mvp_array->GetUnitSize());
         }
 
         bool SceneTreeToRenderList::Expend(SceneNode *sn)
