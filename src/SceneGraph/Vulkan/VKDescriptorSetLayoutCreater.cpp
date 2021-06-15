@@ -17,28 +17,6 @@ DescriptorSetLayoutCreater::~DescriptorSetLayoutCreater()
         vkDestroyDescriptorSetLayout(device,dsl,nullptr);
 }
 
-//单个版本，暂时用不到
-//void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
-//{
-//    if(index_by_binding.KeyExist(binding))
-//    {
-//        //重复的绑定点，有可能存在的，比如CameraMatrix在vs/fs中同时存在
-//        return;
-//    }
-//
-//    VkDescriptorSetLayoutBinding layout_binding;
-//
-//    layout_binding.binding              = binding;
-//    layout_binding.descriptorType       = desc_type;
-//    layout_binding.descriptorCount      = 1;
-//    layout_binding.stageFlags           = stageFlags;
-//    layout_binding.pImmutableSamplers   = nullptr;
-//
-//    const int index=layout_binding_list.Add(layout_binding);
-//
-//    index_by_binding.Add(binding,index);
-//}
-
 void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
     if(!sd_list||sd_list->GetCount()<=0)return;
@@ -55,6 +33,8 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
 
     for(const ShaderDescriptor &sd:*sd_list)
     {
+        //重复的绑定点是有可能存在的，比如CameraInfo在vs/fs中同时存在
+
         if((!index_by_binding.KeyExist(sd.binding))
          &&(!index_by_binding_ri.KeyExist(sd.binding)))
         {

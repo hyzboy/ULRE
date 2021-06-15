@@ -41,8 +41,6 @@ struct ShaderStage
 };//struct ShaderStage
 
 using ShaderStageList       =ObjectList<ShaderStage>;
-using DescriptorSetList     =List<uint32_t>;
-using DescriptorBindingList =List<uint32_t>;
 
 struct ShaderDescriptor
 {

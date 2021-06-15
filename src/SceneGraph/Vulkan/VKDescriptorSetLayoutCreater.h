@@ -26,13 +26,7 @@ public:
     DescriptorSetLayoutCreater(VkDevice dev,VkDescriptorPool dp){device=dev;pool=dp;}
     ~DescriptorSetLayoutCreater();
 
-//    void Bind(const uint32_t binding,VkDescriptorType,VkShaderStageFlagBits);     //单个版本，暂时用不到
     void Bind(const ShaderDescriptorList *sd_list,VkDescriptorType type,VkShaderStageFlagBits stage);
-    //void Bind(const DescriptorBindingList &dbl,VkDescriptorType type,VkShaderStageFlagBits stage)
-    //{
-    //    if(dbl.GetCount()>0)
-    //        Bind(dbl.GetData(),dbl.GetCount(),type,stage);
-    //}
 
     void Bind(const ShaderDescriptorList *sdl,VkShaderStageFlagBits stage)
     {
