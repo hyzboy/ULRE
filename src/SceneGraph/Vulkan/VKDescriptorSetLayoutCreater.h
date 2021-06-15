@@ -6,13 +6,6 @@
 VK_NAMESPACE_BEGIN
 class DescriptorSets;
 
-enum class DescriptorSetType
-{
-    Material=0,
-    Renderable,
-    Global,
-};//
-
 /**
 * 描述符合集创造器
 */
@@ -23,6 +16,7 @@ class DescriptorSetLayoutCreater
 
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
     VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
+
     BindingMapping index_by_binding;
     BindingMapping index_by_binding_ri;
     BindingMapping index_by_binding_global;
@@ -73,6 +67,6 @@ public:
 
     const VkPipelineLayout GetPipelineLayout()const{return pipeline_layout;}
 
-    DescriptorSets *Create(const DescriptorSetType &type=DescriptorSetType::Material);
+    DescriptorSets *Create(const DescriptorSetsType &type);
 };//class DescriptorSetLayoutCreater
 VK_NAMESPACE_END
