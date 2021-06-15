@@ -139,7 +139,9 @@ namespace hgl
         {
             if(!sn)return(false);
 
-            if(sn->render_obj)
+            RenderableInstance *ri=sn->GetRI();
+
+            if(ri)
             {
                 RenderNode *rn=new RenderNode;
 
@@ -150,7 +152,7 @@ namespace hgl
                 rn->distance_to_camera_square=length_squared(rn->WorldCenter,camera_info.pos);
 //                rn->distance_to_camera=sqrtf(rn->distance_to_camera_square);
 
-                rn->ri=sn->render_obj;
+                rn->ri=ri;
 
                 render_node_list.Add(rn);
             }
