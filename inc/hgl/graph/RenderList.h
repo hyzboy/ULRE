@@ -19,7 +19,6 @@ namespace hgl
          */
         class RenderList
         {
-            GPUDevice *device;
             RenderCmdBuffer *cmd_buf;
 
         private:
@@ -44,19 +43,16 @@ namespace hgl
 
         private:
 
-            friend class GPUDevice;
-
-            RenderList(GPUDevice *);
-
             friend class SceneTreeToRenderList;
 
             void Set(List<RenderableInstance *> *,GPUBuffer *,const uint32_t);
 
         public:
 
+            RenderList();
             virtual ~RenderList()=default;
             
-            bool Render (RenderCmdBuffer *);
+            bool Render(RenderCmdBuffer *);
         };//class RenderList        
     }//namespace graph
 }//namespace hgl
