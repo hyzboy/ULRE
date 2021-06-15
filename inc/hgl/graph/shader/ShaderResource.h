@@ -51,6 +51,17 @@ struct ShaderDescriptor
 
 using ShaderDescriptorList=List<ShaderDescriptor>;
 
+enum class DescriptorSetsType
+{
+    //设计使其对应shader中的sets
+
+    Material=0,         ///<材质中永远不变的参数
+    MaterialTexture,    ///<材质中的纹理参数
+    MaterialValues,     ///<材质中的变量参数
+    RenderableInstance, ///<渲染实例参数
+    Global,             ///<全局参数
+};//
+
 #ifndef VK_DESCRIPTOR_TYPE_BEGIN_RANGE
 constexpr size_t VK_DESCRIPTOR_TYPE_BEGIN_RANGE=VK_DESCRIPTOR_TYPE_SAMPLER;
 #endif//VK_DESCRIPTOR_TYPE_BEGIN_RANGE
