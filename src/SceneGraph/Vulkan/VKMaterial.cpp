@@ -104,10 +104,13 @@ Material::Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineSh
         vertex_sm=nullptr;
         vab=nullptr;
     }
+
+    ri_desc_sets=dsl_creater->Create(DescriptorSetsType::RenderableInstance);
 }
 
 Material::~Material()
 {
+    SAFE_CLEAR(ri_desc_sets);
     delete dsl_creater;
 
     if(vab)
@@ -150,8 +153,8 @@ const VkPipelineLayout Material::GetPipelineLayout()const
     return dsl_creater->GetPipelineLayout();
 }
 
-DescriptorSets *Material::CreateDescriptorSets()const
+DescriptorSets *Material::CreateMIDescriptorSets()const
 {
-    return dsl_creater->Create();
+    return dsl_creater->Create(DescriptorSetsType::MaterialInstance);
 }
 VK_NAMESPACE_END

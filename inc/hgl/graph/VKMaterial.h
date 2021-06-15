@@ -23,6 +23,9 @@ class Material
 
     DescriptorSetLayoutCreater *dsl_creater;
 
+    DescriptorSets *g_desc_sets;
+    DescriptorSets *ri_desc_sets;
+
     VertexAttributeBinding *vab;
 
 public:
@@ -60,7 +63,10 @@ public:
     const   VkPipelineShaderStageCreateInfo *   GetStages               ()const{return shader_stage_list->GetData();}
 
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-            DescriptorSets *                    CreateDescriptorSets    ()const;
+            DescriptorSets *                    CreateMIDescriptorSets  ()const;
+
+            DescriptorSets *                    GetGlobalDescriptorSets (){return g_desc_sets;}
+            DescriptorSets *                    GetRIDescriptorSets     (){return ri_desc_sets;}
     
     const   VertexAttributeBinding *            GetVAB                  ()const{return vab;}
     const   uint32_t                            GetVertexAttrCount      ()const{return vab->GetVertexAttrCount();}    
