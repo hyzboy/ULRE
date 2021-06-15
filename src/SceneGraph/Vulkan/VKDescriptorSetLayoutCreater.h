@@ -10,6 +10,7 @@ enum class DescriptorSetType
 {
     Material=0,
     Renderable,
+    Global,
 };//
 
 /**
@@ -24,6 +25,7 @@ class DescriptorSetLayoutCreater
     VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
     BindingMapping index_by_binding;
     BindingMapping index_by_binding_ri;
+    BindingMapping index_by_binding_global;
 
     VkPipelineLayout pipeline_layout=VK_NULL_HANDLE;
 

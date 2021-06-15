@@ -49,6 +49,10 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
              &&sd.name[2]=='_')
                 index_by_binding_ri.Add(sd.binding,fin_count+old_count);
             else
+            if(sd.name[0]=='g'
+             &&sd.name[1]=='_')
+                index_by_binding_global.Add(sd.binding,fin_count+old_count);
+            else
                 index_by_binding.Add(sd.binding,fin_count+old_count);
 
             ++p;
@@ -122,6 +126,9 @@ DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetType &type
     else
     if(type==DescriptorSetType::Renderable)
         return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding_ri));
+    else
+    if(type==DescriptorSetType::Global)
+        return(new DescriptorSets(device,count,pipeline_layout,desc_set,&index_by_binding_global));
     else
         return(nullptr);
 }
