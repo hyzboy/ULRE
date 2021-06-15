@@ -44,12 +44,14 @@ using ShaderStageList       =ObjectList<ShaderStage>;
 using DescriptorSetList     =List<uint32_t>;
 using DescriptorBindingList =List<uint32_t>;
 
-struct ShaderDescriptorList
+struct ShaderDescriptor
 {
-    AnsiStringList          name_list;
-    DescriptorSetList       set_list;
-    DescriptorBindingList   binding_list;
+    char name[128];
+    uint32_t set;
+    uint32_t binding;
 };
+
+using ShaderDescriptorList=List<ShaderDescriptor>;
 
 #ifndef VK_DESCRIPTOR_TYPE_BEGIN_RANGE
 constexpr size_t VK_DESCRIPTOR_TYPE_BEGIN_RANGE=VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -109,13 +111,13 @@ public:
     ShaderDescriptorList &GetSampler(){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
 
     const int                       GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;
-    const DescriptorBindingList *   GetBindingList  (VkDescriptorType desc_type)const
-    {
-        if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-            ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
+    //const DescriptorBindingList *   GetBindingList  (VkDescriptorType desc_type)const
+    //{
+    //    if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
+    //        ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
 
-        return &(descriptor_list[desc_type].binding_list);
-    }
+    //    return &(descriptor_list[desc_type].binding_list);
+    //}
 };//class ShaderResource
 
 ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize,bool include_file_header);

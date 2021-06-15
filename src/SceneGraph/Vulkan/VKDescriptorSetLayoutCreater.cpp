@@ -17,30 +17,33 @@ DescriptorSetLayoutCreater::~DescriptorSetLayoutCreater()
         vkDestroyDescriptorSetLayout(device,dsl,nullptr);
 }
 
-void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
+//单个版本，暂时用不到
+//void DescriptorSetLayoutCreater::Bind(const uint32_t binding,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
+//{
+//    if(index_by_binding.KeyExist(binding))
+//    {
+//        //重复的绑定点，有可能存在的，比如CameraMatrix在vs/fs中同时存在
+//        return;
+//    }
+//
+//    VkDescriptorSetLayoutBinding layout_binding;
+//
+//    layout_binding.binding              = binding;
+//    layout_binding.descriptorType       = desc_type;
+//    layout_binding.descriptorCount      = 1;
+//    layout_binding.stageFlags           = stageFlags;
+//    layout_binding.pImmutableSamplers   = nullptr;
+//
+//    const int index=layout_binding_list.Add(layout_binding);
+//
+//    index_by_binding.Add(binding,index);
+//}
+
+void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
 {
-    if(index_by_binding.KeyExist(binding))
-    {
-        //重复的绑定点，有可能存在的，比如CameraMatrix在vs/fs中同时存在
-        return;
-    }
+    if(!sd_list||sd_list->GetCount()<=0)return;
 
-    VkDescriptorSetLayoutBinding layout_binding;
-
-    layout_binding.binding              = binding;
-    layout_binding.descriptorType       = desc_type;
-    layout_binding.descriptorCount      = 1;
-    layout_binding.stageFlags           = stageFlags;
-    layout_binding.pImmutableSamplers   = nullptr;
-
-    const int index=layout_binding_list.Add(layout_binding);
-
-    index_by_binding.Add(binding,index);
-}
-
-void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t binding_count,VkDescriptorType desc_type,VkShaderStageFlagBits stageFlags)
-{
-    if(!binding||binding_count<=0)return;
+    const uint32_t binding_count=sd_list->GetCount();
 
     const uint old_count=layout_binding_list.GetCount();
 
@@ -50,23 +53,22 @@ void DescriptorSetLayoutCreater::Bind(const uint32_t *binding,const uint32_t bin
 
     uint fin_count=0;
 
-    for(uint i=old_count;i<old_count+binding_count;i++)
+    for(const ShaderDescriptor &sd:*sd_list)
     {
-        if(!index_by_binding.KeyExist(*binding))
+        if((!index_by_binding.KeyExist(sd.binding))
+         &&(!index_by_binding_ri.KeyExist(sd.binding)))
         {
-            p->binding              = *binding;
+            p->binding              = sd.binding;
             p->descriptorType       = desc_type;
             p->descriptorCount      = 1;
             p->stageFlags           = stageFlags;
             p->pImmutableSamplers   = nullptr;
 
-            index_by_binding.Add(*binding,i);
+            index_by_binding.Add(sd.binding,fin_count+old_count);
 
             ++p;
             ++fin_count;
         }
-
-        ++binding;
     }
 
     layout_binding_list.SetCount(old_count+fin_count);

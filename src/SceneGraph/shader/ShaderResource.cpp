@@ -64,19 +64,22 @@ VK_NAMESPACE_BEGIN
 
             uint str_len;
 
-            sd_list->binding_list.PreMalloc(count);
-            sd_list->set_list.PreMalloc(count);
+            sd_list->SetCount(count);
+
+            ShaderDescriptor *sd=sd_list->GetData();
 
             for(uint i=0;i<count;i++)
             {
                 if(version>=1)
-                    sd_list->set_list.Add(*data++);
+                    sd->set=*data++;
                 else
-                    sd_list->set_list.Add(0);
+                    sd->set=0;
 
-                sd_list->binding_list.Add(*data++);
+                sd->binding=*data++;
                 str_len=*data++;
-                sd_list->name_list.Add(AnsiString((char *)data,str_len));
+
+                memcpy(sd->name,(char *)data,str_len);
+                sd->name[str_len]=0;
                 data+=str_len;
             }
 
@@ -158,14 +161,11 @@ VK_NAMESPACE_BEGIN
 
         const ShaderDescriptorList *sdl=descriptor_list+(size_t)desc_type;
 
-        const int index=sdl->name_list.Find(name);
+        for(const ShaderDescriptor &sd:*sdl)
+            if(name==sd.name)
+                return sd.binding;
 
-        uint binding;
-
-        if(sdl->binding_list.Get(index,binding))
-            return binding;
-        else
-            return -1;
+        return -1;
     }
 
     ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize,bool include_file_header)
