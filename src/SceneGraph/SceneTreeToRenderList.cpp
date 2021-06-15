@@ -166,7 +166,7 @@ namespace hgl
         bool SceneTreeToRenderList::Expend(RenderList *rl,const CameraInfo &ci,SceneNode *sn)
         {
             if(!device)return(false);
-            if(!rl||sn)return(false);
+            if(!rl||!sn)return(false);
 
             camera_info=ci;
 

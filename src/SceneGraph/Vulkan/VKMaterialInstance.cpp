@@ -70,7 +70,7 @@ void MaterialInstance::Update()
 
 MaterialInstance *Material::CreateInstance()
 {
-    DescriptorSets *ds=CreateDescriptorSets();
+    DescriptorSets *ds=CreateMIDescriptorSets();
 
     if(!ds)return(nullptr);
 

@@ -86,16 +86,13 @@ private:
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
-        {
-            SceneNode *sn=render_root.CreateSubNode(scale(0.5,0.5));
-            sn->RIList.Add(render_instance);
-        }
+        render_root.CreateSubNode(scale(0.5,0.5),render_instance);
 
         render_root.RefreshMatrix();
 
         SceneTreeToRenderList st2rl(device);
 
-        st2rl.Expend(&render_list,&render_root,&cam);
+        st2rl.Expend(&render_list,cam.info,&render_root);
 
         return(true);
     }
