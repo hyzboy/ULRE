@@ -1,7 +1,6 @@
 ﻿#include<hgl/graph/RenderList.h>
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -13,9 +12,8 @@ namespace hgl
 {
     namespace graph
     {
-        RenderList::RenderList(GPUDevice *gd)
+        RenderList::RenderList()
         {
-            device          =gd;
             cmd_buf         =nullptr;
 
             mvp_buffer      =nullptr;
