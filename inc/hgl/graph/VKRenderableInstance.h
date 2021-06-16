@@ -18,8 +18,6 @@ class RenderableInstance                                                        
     MaterialInstance *  mat_inst;
     Renderable *        render_obj;
 
-    MaterialParameters *mp_r;
-
     uint32_t            buffer_count;
     VkBuffer *          buffer_list;
     VkDeviceSize *      buffer_size;
@@ -38,6 +36,7 @@ public:
 
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
+            Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             Renderable *        GetRenderable       (){return render_obj;}
     const   AABB &              GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
@@ -51,7 +50,7 @@ public:
 
     const   uint32_t            GetBufferHash       ()const{return buffer_hash;}
 
-            MaterialParameters *GetMP               (const DescriptorSetsType &type);
+            MaterialParameters *GetMP               (const DescriptorSetsType &type){return mat_inst->GetMP(type);}
 };//class RenderableInstance
 
 RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);

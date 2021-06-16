@@ -18,9 +18,9 @@ namespace hgl
 
         class SceneTreeToRenderList
         {
-            using PipelineSets  =Sets<Pipeline *>;
+            //using PipelineSets  =Sets<Pipeline *>;
             using MaterialSets  =Sets<Material *>;
-            using MatInstSets   =Sets<MaterialParameters *>;
+            //using MatInstSets   =Sets<MaterialParameters *>;
 
         protected:
 
@@ -38,9 +38,10 @@ namespace hgl
             RenderNodeList  render_node_list;       ///<场景节点列表
 
             //PipelineSets    pipeline_sets;          ///<管线合集
-            //MaterialSets    material_sets;          ///<材质合集
+            MaterialSets    material_sets;          ///<材质合集
             //MatInstSets     mat_inst_sets;          ///<材质实例合集
 
+            需将以下两行数据转到RenderList，避免这边释放信息就没了。two_triangle测试这个
             MVPArrayBuffer *mvp_array;
             List<RenderableInstance *> ri_list;
 

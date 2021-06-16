@@ -36,7 +36,7 @@ private:
     SceneNode           render_root;
     RenderList          render_list;
 
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
     GPUBuffer *         ubo_camera_info     =nullptr;
 
@@ -71,8 +71,15 @@ private:
         if(!ubo_camera_info)
             return(false);
             
-        material_instance->BindUBO("camera",ubo_camera_info);
-        material_instance->Update();
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
+
+            mp_global->BindUBO("g_camera",ubo_camera_info);
+            mp_global->Update();
+        }
         return(true);
     }
 
