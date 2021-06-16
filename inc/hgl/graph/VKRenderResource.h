@@ -9,6 +9,7 @@
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKMaterialParameters.h>
+#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/font/TextRenderable.h>
@@ -37,7 +38,7 @@ class RenderResource
     Map<OSString,Texture *> texture_by_name;
     
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
-    IDResManage<MaterialInstanceID,     MaterialParameters>   rm_material_instance;       ///<材质实例合集
+    IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
     IDResManage<DescriptorSetsID,       DescriptorSets>     rm_desc_sets;               ///<描述符合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<可渲染对象合集
     IDResManage<BufferID,               GPUBuffer>          rm_buffers;                 ///<顶点缓冲区合集
@@ -53,7 +54,7 @@ public:
 public: //Add
 
     MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
-    MaterialInstanceID      Add(MaterialParameters *  mi  ){return rm_material_instance.Add(mi);}
+    MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
     DescriptorSetsID        Add(DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
     BufferID                Add(GPUBuffer *         buf ){return rm_buffers.Add(buf);}
@@ -93,13 +94,13 @@ public: //Material
     Material *          CreateMaterial(const UTF8String &mtl_name,const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename);
 
     Material *          CreateMaterial(const OSString &);
-    MaterialParameters *  CreateMaterialInstance(Material *);
-    MaterialParameters *  CreateMaterialInstance(const OSString &);
+    MaterialInstance *  CreateMaterialInstance(Material *);
+    MaterialInstance *  CreateMaterialInstance(const OSString &);
 
     Renderable *        CreateRenderable(const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);
 
-    RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialParameters *mi,Pipeline *p);
+    RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
 
@@ -110,7 +111,7 @@ public: //texture
 public: //Get
 
     Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialParameters *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
     Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
     GPUBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}

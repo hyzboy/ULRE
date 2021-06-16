@@ -101,6 +101,38 @@ bool RenderCmdBuffer::BeginRenderPass()
     return(true);
 }
 
+bool RenderCmdBuffer::BindDescriptorSets(RenderableInstance *ri)
+{
+    if(!ri)return(false);
+
+    {
+        uint32_t count=0;
+
+        MaterialParameters *mp;
+        VkDescriptorSet ds[(size_t)DescriptorSetsType::RANGE_SIZE];
+
+        ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+        {
+            mp=ri->GetMP((DescriptorSetsType)i);
+
+            if(mp)
+            {
+                ds[count]=mp->GetVkDescriptorSet();
+                ++count;
+            }
+        }
+
+        if(count>0)
+        {
+            pipeline_layout=ri->GetPipelineLayout();
+
+            vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,count,ds,0,nullptr);
+        }
+    }
+
+    return(false);
+}
+
 bool RenderCmdBuffer::BindVAB(RenderableInstance *ri)
 {
     if(!ri)

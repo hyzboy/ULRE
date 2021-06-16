@@ -4,9 +4,9 @@
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-MaterialParameters::MaterialParameters(Material *m,const DescriptorSetsType &type,DescriptorSets *ds)
+MaterialParameters::MaterialParameters(const ShaderModuleMap *smm,const DescriptorSetsType &type,DescriptorSets *ds)
 {
-    material=m;
+    shader_map=smm;
     ds_type=type;
     descriptor_sets=ds;
 }
@@ -21,7 +21,7 @@ bool MaterialParameters::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dyna
     if(name.IsEmpty()||!ubo)
         return(false);
 
-    const int index=material->GetUBO(name);
+    const int index=shader_map->GetUBO(name);
 
     if(index<0)
         return(false);
@@ -37,7 +37,7 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,GPUBuffer *ssbo,bool dy
     if(name.IsEmpty()||!ssbo)
         return(false);
 
-    const int index=material->GetSSBO(name);
+    const int index=shader_map->GetSSBO(name);
 
     if(index<0)
         return(false);
@@ -53,7 +53,7 @@ bool MaterialParameters::BindSampler(const AnsiString &name,Texture *tex,Sampler
     if(name.IsEmpty()||!tex||!sampler)
         return(false);
 
-    const int index=material->GetSampler(name);
+    const int index=shader_map->GetSampler(name);
 
     if(index<0)
         return(false);

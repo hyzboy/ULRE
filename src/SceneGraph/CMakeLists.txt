@@ -161,8 +161,10 @@ SET(VK_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/VKImageView.h
 
 SET(VK_MATERIAL_SOURCE  ${SG_INCLUDE_PATH}/VKMaterial.h
                         ${SG_INCLUDE_PATH}/VKMaterialParameters.h
+                        ${SG_INCLUDE_PATH}/VKMaterialInstance.h
                         Vulkan/VKMaterial.cpp
-                        Vulkan/VKMaterialParameters.cpp)
+                        Vulkan/VKMaterialParameters.cpp
+                        Vulkan/VKMaterialInstance.cpp)
 
 SOURCE_GROUP("Vulkan\\Material" FILES ${VK_MATERIAL_SOURCE})
 SOURCE_GROUP("Vulkan\\Material\\Texture" FILES ${VK_TEXTURE_SOURCE})

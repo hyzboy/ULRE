@@ -57,14 +57,14 @@ class GPUSemaphore;
 enum class DescriptorSetsType
 {
     //设计使其对应shader中的sets
-
-    Material=0, ///<材质中永远不变的参数
+    
+    Global=0,   ///<全局参数(如太阳光等)
+    Material,   ///<材质中永远不变的参数
 //    Texture,    ///<材质中的纹理参数
-    Values,     ///<材质中的变量参数
+    Value,      ///<材质中的变量参数
     Renderable, ///<渲染实例参数(如Local2World matrix)
-    Global,     ///<全局参数(如太阳光等)
 
-    ENUM_CLASS_RANGE(Material,Global)
+    ENUM_CLASS_RANGE(Global,Renderable)
 };//
 
 class DescriptorSetLayoutCreater;
@@ -75,8 +75,11 @@ struct ShaderStage;
 class ShaderResource;
 class ShaderModule;
 class VertexShaderModule;
+class ShaderModuleMap;
+
 class Material;
 class MaterialParameters;
+class MaterialInstance;
 class PipelineLayout;
 struct PipelineData;
 enum class InlinePipeline;

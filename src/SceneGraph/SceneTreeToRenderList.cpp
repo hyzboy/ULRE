@@ -5,7 +5,6 @@
 /**
 * 理论上讲，我们需要按以下顺序排序
 *
-* for(material)
 *   for(pipeline)
 *       for(material_instance)
 *           for(vbo)
@@ -17,36 +16,40 @@ int Comparator<RenderNodePointer>::compare(const RenderNodePointer &obj_one,cons
 {
     int off;
 
-    //比较材质
-    hgl::graph::MaterialParameters *mi1=obj_one->ri->GetMaterialInstance();
-    hgl::graph::MaterialParameters *mi2=obj_two->ri->GetMaterialInstance();
-                       
-    off=mi1->GetMaterial()-mi2->GetMaterial();
+    hgl::graph::RenderableInstance *ri_one=obj_one->ri;
+    hgl::graph::RenderableInstance *ri_two=obj_two->ri;
 
-    if(off)
-        return off;
-            
     //比较管线
-    hgl::graph::Pipeline *p1=obj_one->ri->GetPipeline();
-    hgl::graph::Pipeline *p2=obj_two->ri->GetPipeline();
+    {
+        off=ri_one->GetPipeline()
+           -ri_two->GetPipeline();
 
-    off=p1-p2;
-
-    if(off)
-        return off;
+        if(off)
+            return off;
+    }
 
     //比较材质实例
-    off=mi1-mi2;
+    {
+        for(int i =(int)hgl::graph::DescriptorSetsType::BEGIN_RANGE;
+                i<=(int)hgl::graph::DescriptorSetsType::END_RANGE;
+                i++)
+        {
+            off=ri_one->GetMP((hgl::graph::DescriptorSetsType)i)
+               -ri_two->GetMP((hgl::graph::DescriptorSetsType)i);
 
-    if(off)
-        return off;
-            
+            if(off)
+                return off;
+        }
+    }
+
     //比较vbo+ebo
-    off=obj_one->ri->GetBufferHash()
-       -obj_two->ri->GetBufferHash();
+    {
+        off=ri_one->GetBufferHash()
+           -ri_two->GetBufferHash();
 
-    if(off)
-        return off;
+        if(off)
+            return off;
+    }
 
     //比较距离
     {

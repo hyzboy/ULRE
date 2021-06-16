@@ -51,7 +51,7 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
              &&sd.name[1]=='_')
                 index_by_binding[(size_t)DescriptorSetsType::Global].Add(sd.binding,fin_count+old_count);
             else
-                index_by_binding[(size_t)DescriptorSetsType::Values].Add(sd.binding,fin_count+old_count);
+                index_by_binding[(size_t)DescriptorSetsType::Value].Add(sd.binding,fin_count+old_count);
 
             all_index_by_binding.Add(sd.binding,fin_count+old_count);
 
@@ -100,7 +100,7 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     return(true);
 }
 
-DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetsType &type)
+DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetsType &type)const
 {
     if(!pipeline_layout||!dsl)
         return(nullptr);
@@ -110,12 +110,12 @@ DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetsType &typ
     if(count<=0)
         return(nullptr);
 
-    BindingMapping *bm=nullptr;
+    const BindingMapping *bm=nullptr;
 
     if(type==DescriptorSetsType::Material
 //     ||type==DescriptorSetsType::Texture
-     ||type==DescriptorSetsType::Values)                                              //未来会区分开
-        bm=&index_by_binding[(size_t)DescriptorSetsType::Values];
+     ||type==DescriptorSetsType::Value)                                              //未来会区分开
+        bm=&index_by_binding[(size_t)DescriptorSetsType::Value];
     else
     if(type==DescriptorSetsType::Renderable)
         bm=&index_by_binding[(size_t)DescriptorSetsType::Renderable];

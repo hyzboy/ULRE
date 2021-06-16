@@ -23,7 +23,7 @@ namespace hgl
             ubo_align       =0;
 
             last_pipeline   =nullptr;
-            last_mi         =nullptr;
+            hgl_zero(last_mp);
             last_vbo        =0;
         }
 
@@ -44,17 +44,38 @@ namespace hgl
             }
 
             {
-                MaterialParameters *mi=ri->GetMaterialInstance();
+                int ds_count=0;
+                MaterialParameters *mp;
 
-                if(mi!=last_mi)
+                for(int i=(int)DescriptorSetsType::BEGIN_RANGE;
+                        i<(int)DescriptorSetsType::Renderable;
+                        i++)
                 {
-                    last_mi=mi;
-                    cmd_buf->BindDescriptorSets(mi->GetDescriptorSets());
-                }
-            }
+                    mp=ri->GetMP((DescriptorSetsType)i);
 
-            {
-                
+                    if(last_mp[i]!=mp)
+                    {
+                        last_mp[i]=mp;
+
+                        if(mp)
+                        {
+                            ds_list[ds_count]=mp->GetVkDescriptorSet();
+                            ++ds_count;
+                        }
+                    }
+                }
+
+                {
+                    mp=ri->GetMP(DescriptorSetsType::Renderable);
+
+                    if(mp)
+                    {
+                        ds_list[ds_count]=mp->GetVkDescriptorSet();
+                        ++ds_count;
+                    }
+                }
+
+                cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),ds_list,ds_count,&ubo_offset,1);
             }
 
             if(last_vbo!=ri->GetBufferHash())
@@ -90,8 +111,8 @@ namespace hgl
 
             cmd_buf=cb;
 
-            last_pipeline=nullptr;
-            last_mi=nullptr;
+            last_pipeline=nullptr;            
+            hgl_zero(last_mp);
             last_vbo=0;
             ubo_offset=0;
 

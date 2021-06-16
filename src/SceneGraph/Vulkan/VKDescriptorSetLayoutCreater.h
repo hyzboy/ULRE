@@ -66,6 +66,6 @@ public:
 
     const VkPipelineLayout GetPipelineLayout()const{return pipeline_layout;}
 
-    DescriptorSets *Create(const DescriptorSetsType &type);
+    DescriptorSets *Create(const DescriptorSetsType &type)const;
 };//class DescriptorSetLayoutCreater
 VK_NAMESPACE_END

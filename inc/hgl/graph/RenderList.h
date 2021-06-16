@@ -28,6 +28,7 @@ namespace hgl
             GPUBuffer *mvp_buffer;
             List<RenderableInstance *> *ri_list;
 
+            VkDescriptorSet ds_list[(size_t)DescriptorSetsType::RANGE_SIZE];
             DescriptorSets *renderable_desc_sets;
 
             uint32_t ubo_offset;
@@ -36,7 +37,7 @@ namespace hgl
         private:
 
             Pipeline *          last_pipeline;
-            MaterialParameters *  last_mi;
+            MaterialParameters *last_mp[(size_t)DescriptorSetsType::RANGE_SIZE];
             uint32_t            last_vbo;
 
             void Render(RenderableInstance *);
