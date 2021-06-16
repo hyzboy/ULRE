@@ -54,12 +54,12 @@ public:
 
 public: //pipeline
 
-    Pipeline *CreatePipeline(const Material *,          const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(const MaterialInstance *,  const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(const Material *,                PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(const MaterialInstance *,        PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(const Material *,          const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(const MaterialInstance *,  const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,          const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,                PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,          const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
 public: // command buffer
 

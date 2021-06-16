@@ -72,10 +72,16 @@ namespace hgl
                     {
                         ds_list[ds_count]=mp->GetVkDescriptorSet();
                         ++ds_count;
+                        
+                        cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),ds_list,ds_count,&ubo_offset,1);
                     }
-                }
+                    else
+                    {                        
+                        cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),ds_list,ds_count,nullptr,0);
+                    }
 
-                cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),ds_list,ds_count,&ubo_offset,1);
+                    ubo_offset+=ubo_align;
+                }
             }
 
             if(last_vbo!=ri->GetBufferHash())

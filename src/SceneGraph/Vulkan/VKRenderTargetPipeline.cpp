@@ -5,7 +5,7 @@
 #include<hgl/graph/VKPipelineData.h>
 
 VK_NAMESPACE_BEGIN
-Pipeline *RenderTarget::CreatePipeline(const Material *mtl,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(Material *mtl,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
 {
     if(!mtl)return(nullptr);
 
@@ -21,14 +21,14 @@ Pipeline *RenderTarget::CreatePipeline(const Material *mtl,const InlinePipeline 
     return p;
 }
 
-Pipeline *RenderTarget::CreatePipeline(const MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
 {
     if(!mi)return(nullptr);
 
     return CreatePipeline(mi->GetMaterial(),ip,prim,prim_restart);
 }
 
-Pipeline *RenderTarget::CreatePipeline(const Material *mtl,PipelineData *pd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(Material *mtl,PipelineData *pd,const Prim &prim,const bool prim_restart)
 {
     pd->Set(prim,prim_restart);
     
@@ -40,12 +40,12 @@ Pipeline *RenderTarget::CreatePipeline(const Material *mtl,PipelineData *pd,cons
     return(p);
 }
 
-Pipeline *RenderTarget::CreatePipeline(const MaterialInstance *mi,PipelineData *pd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(MaterialInstance *mi,PipelineData *pd,const Prim &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),pd,prim,prim_restart);
 }
 
-Pipeline *RenderTarget::CreatePipeline(const Material *mtl,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(Material *mtl,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
 {
     PipelineData *pd=GetPipelineData(pipeline_filename);
 
@@ -54,7 +54,7 @@ Pipeline *RenderTarget::CreatePipeline(const Material *mtl,const OSString &pipel
     return CreatePipeline(mtl,pd,prim,prim_restart);
 }
 
-Pipeline *RenderTarget::CreatePipeline(const MaterialInstance *mi,const OSString &filename,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(MaterialInstance *mi,const OSString &filename,const Prim &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),filename,prim,prim_restart);
 }

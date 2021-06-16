@@ -90,7 +90,7 @@ namespace hgl
             ri_list.ClearData();
 
             //pipeline_sets.ClearData();
-            //material_sets.ClearData();
+            material_sets.ClearData();
             //mat_inst_sets.ClearData();
 
             return(true);
@@ -132,6 +132,15 @@ namespace hgl
                 }
             }
 
+            //为所有的材质绑定
+            for(Material *mtl:material_sets)
+            {
+                MaterialParameters *mp=mtl->GetMP(DescriptorSetsType::Renderable);
+
+                if(mp)
+                    mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),false);
+            }
+
             //写入RenderList
             render_list->Set(   &ri_list,
                                 mvp_array->GetBuffer(),
@@ -158,6 +167,8 @@ namespace hgl
                 rn->ri=ri;
 
                 render_node_list.Add(rn);
+
+                material_sets.Add(ri->GetMaterial());
             }
 
             for(SceneNode *sub:sn->SubNode)

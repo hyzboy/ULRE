@@ -15,8 +15,6 @@ RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeli
     pipeline=p;
     mat_inst=mi;
 
-    mp_r=mi->GetMaterial()->CreateMP(DescriptorSetsType::Renderable);
-
     buffer_count=count;
     buffer_list=bl;
     buffer_size=bs;
@@ -29,19 +27,10 @@ RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeli
  
 RenderableInstance::~RenderableInstance()
 {
-    SAFE_CLEAR(mp_r);
     //需要在这里添加删除pipeline/desc_sets/render_obj引用计数的代码
 
     delete[] buffer_list;
     delete[] buffer_size;
-}
-
-MaterialParameters *RenderableInstance::GetMP(const DescriptorSetsType &type)
-{
-    if(type==DescriptorSetsType::Renderable)
-        return mp_r;
-
-    return mat_inst->GetMP(type);
 }
 
 RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
