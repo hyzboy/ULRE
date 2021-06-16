@@ -36,7 +36,7 @@ public:
     ~DescriptorSets()=default;
 
     const uint32_t          GetCount            ()const{return layout_binding_count;}
-    const VkDescriptorSet * GetDescriptorSets   ()const{return &desc_set;}
+    const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
     void Clear();

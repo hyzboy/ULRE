@@ -1,4 +1,5 @@
 #include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
@@ -8,13 +9,13 @@ VK_NAMESPACE_BEGIN
 
 using namespace util;
 
-RenderableInstance::RenderableInstance(Renderable *r,MaterialParameters *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
+RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
 {
     render_obj=r;
-    mat_inst=mi;
     pipeline=p;
+    mat_inst=mi;
 
-    descriptor_sets=nullptr;
+    mp_r=mi->GetMaterial()->CreateMP(DescriptorSetsType::Renderable);
 
     buffer_count=count;
     buffer_list=bl;
@@ -28,18 +29,26 @@ RenderableInstance::RenderableInstance(Renderable *r,MaterialParameters *mi,Pipe
  
 RenderableInstance::~RenderableInstance()
 {
-    SAFE_CLEAR(descriptor_sets);
+    SAFE_CLEAR(mp_r);
     //需要在这里添加删除pipeline/desc_sets/render_obj引用计数的代码
 
     delete[] buffer_list;
     delete[] buffer_size;
 }
 
-RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialParameters *mi,Pipeline *p)
+MaterialParameters *RenderableInstance::GetMP(const DescriptorSetsType &type)
+{
+    if(type==DescriptorSetsType::Renderable)
+        return mp_r;
+
+    return mat_inst->GetMP(type);
+}
+
+RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!r||!mi||!p)return(nullptr);
 
-    Material *mtl=mi->GetMaterial();
+    const Material *mtl=mi->GetMaterial();
 
     if(!mtl)return(nullptr);
 

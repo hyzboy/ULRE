@@ -4,7 +4,9 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
+#include<hgl/graph/VKMaterialInstance.h>
 VK_NAMESPACE_BEGIN
 /**
 * 可渲染对象实例<br>
@@ -13,10 +15,10 @@ VK_NAMESPACE_BEGIN
 class RenderableInstance                                                        ///可渲染对象实例
 {
     Pipeline *          pipeline;
-    MaterialParameters *  mat_inst;
+    MaterialInstance *  mat_inst;
     Renderable *        render_obj;
 
-    DescriptorSets *    descriptor_sets;                                        ///<渲染实例专用描述符合集，一般用于存LocalToWorld等等
+    MaterialParameters *mp_r;
 
     uint32_t            buffer_count;
     VkBuffer *          buffer_list;
@@ -26,16 +28,17 @@ class RenderableInstance                                                        
 
 private:
 
-    friend RenderableInstance *CreateRenderableInstance(Renderable *,MaterialParameters *,Pipeline *);
+    friend RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);
 
-    RenderableInstance(Renderable *,MaterialParameters *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
+    RenderableInstance(Renderable *,MaterialInstance *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
 
 public:
 
     virtual ~RenderableInstance();
 
             Pipeline *          GetPipeline         (){return pipeline;}
-            MaterialParameters *  GetMaterialInstance (){return mat_inst;}
+            VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
+            MaterialInstance *  GetMaterialInstance (){return mat_inst;}
             Renderable *        GetRenderable       (){return render_obj;}
     const   AABB &              GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
 
@@ -48,53 +51,9 @@ public:
 
     const   uint32_t            GetBufferHash       ()const{return buffer_hash;}
 
-            DescriptorSets *    GetMIDescSets       ()const{return mat_inst->GetDescriptorSets();}
-            DescriptorSets *    GetRIDescSets       ()const{return descriptor_sets;}
-
-public:
-
-    const int Comp(const RenderableInstance *ri)const
-    {
-        //绘制顺序：
-
-        //  ARM Mali GPU :   不透明、AlphaTest、半透明
-        //  Adreno/NV/AMD:   AlphaTest、不透明、半透明
-        //  PowerVR:         同Adreno/NV/AMD，但不透明部分可以不排序
-
-        if(pipeline->IsAlphaBlend())
-        {
-            if(!ri->pipeline->IsAlphaBlend())
-                return 1;
-        }
-        else
-        {
-            if(ri->pipeline->IsAlphaBlend())
-                return -1;
-        }
-
-        if(pipeline->IsAlphaTest())
-        {
-            if(!ri->pipeline->IsAlphaTest())
-                return 1;
-        }
-        else
-        {
-            if(ri->pipeline->IsAlphaTest())
-                return -1;
-        }
-
-        if(pipeline!=ri->pipeline)
-            return pipeline-ri->pipeline;
-
-        if(mat_inst!=ri->mat_inst)
-            return int64(mat_inst)-int64(ri->mat_inst);
-
-        return render_obj-ri->render_obj;
-    }
-
-    CompOperator(const RenderableInstance *,Comp)
+            MaterialParameters *GetMP               (const DescriptorSetsType &type);
 };//class RenderableInstance
 
-RenderableInstance *CreateRenderableInstance(Renderable *,MaterialParameters *,Pipeline *);
+RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE

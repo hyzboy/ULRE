@@ -94,7 +94,9 @@ public:
 
         pipeline_layout=dsl->GetPipelineLayout();
 
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,dsl->GetDescriptorSets(),0,nullptr);
+        const VkDescriptorSet ds=dsl->GetDescriptorSet();
+
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,&ds,0,nullptr);
 
         return(true);
     }
@@ -105,10 +107,23 @@ public:
 
         pipeline_layout=dsl->GetPipelineLayout();
 
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,dsl->GetDescriptorSets(),1,&offset);
+        const VkDescriptorSet ds=dsl->GetDescriptorSet();
+
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,1,&ds,1,&offset);
 
         return(true);
     }
+
+    bool BindDescriptorSets(VkPipelineLayout pipeline_layout,const VkDescriptorSet *ds_list,const uint32_t ds_count,const uint32_t *offset,const uint32_t offset_count)
+    {
+        if(!ds_list||ds_count<=0)return(false);
+
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,ds_count,ds_list,offset_count,offset);
+
+        return(true);
+    }
+
+    bool BindDescriptorSets(RenderableInstance *ri);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {

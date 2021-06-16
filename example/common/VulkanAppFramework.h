@@ -16,6 +16,7 @@
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
+#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
@@ -184,7 +185,7 @@ public:
             cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
-                cb->BindDescriptorSets(ri->GetMIDescSets());
+                cb->BindDescriptorSets(ri);
                 cb->BindVAB(ri);
 
                     if (ib)
