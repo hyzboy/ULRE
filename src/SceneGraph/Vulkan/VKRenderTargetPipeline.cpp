@@ -21,7 +21,7 @@ Pipeline *RenderTarget::CreatePipeline(Material *mtl,const InlinePipeline &ip,co
     return p;
 }
 
-Pipeline *RenderTarget::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(MaterialParameters *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
 {
     if(!mi)return(nullptr);
 
@@ -40,7 +40,7 @@ Pipeline *RenderTarget::CreatePipeline(Material *mtl,PipelineData *pd,const Prim
     return(p);
 }
 
-Pipeline *RenderTarget::CreatePipeline(MaterialInstance *mi,PipelineData *pd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(MaterialParameters *mi,PipelineData *pd,const Prim &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),pd,prim,prim_restart);
 }
@@ -54,7 +54,7 @@ Pipeline *RenderTarget::CreatePipeline(Material *mtl,const OSString &pipeline_fi
     return CreatePipeline(mtl,pd,prim,prim_restart);
 }
 
-Pipeline *RenderTarget::CreatePipeline(MaterialInstance *mi,const OSString &filename,const Prim &prim,const bool prim_restart)
+Pipeline *RenderTarget::CreatePipeline(MaterialParameters *mi,const OSString &filename,const Prim &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),filename,prim,prim_restart);
 }

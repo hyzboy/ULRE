@@ -51,7 +51,7 @@ private:
 
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialParameters *  material_instance   =nullptr;
     RenderableInstance *renderable_instance =nullptr;
     GPUBuffer *         ubo_camera_info    =nullptr;
     Pipeline *          pipeline            =nullptr;

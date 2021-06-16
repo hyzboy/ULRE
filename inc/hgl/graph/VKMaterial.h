@@ -75,7 +75,7 @@ public:
 
 public:
 
-            MaterialInstance *                  CreateInstance          ();
+            MaterialParameters *                  CreateInstance          ();
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE

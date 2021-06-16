@@ -36,7 +36,7 @@ private:
     SceneNode           render_root;
     RenderList          render_list;
 
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialParameters *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
     GPUBuffer *         ubo_camera_info     =nullptr;
 

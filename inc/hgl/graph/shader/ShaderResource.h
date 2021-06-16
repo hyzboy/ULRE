@@ -55,11 +55,11 @@ enum class DescriptorSetsType
 {
     //设计使其对应shader中的sets
 
-    Material=0,         ///<材质中永远不变的参数
-    MaterialTexture,    ///<材质中的纹理参数
-    MaterialValues,     ///<材质中的变量参数
-    RenderableInstance, ///<渲染实例参数
-    Global,             ///<全局参数
+    Material=0, ///<材质中永远不变的参数
+    Texture,    ///<材质中的纹理参数
+    Values,     ///<材质中的变量参数
+    Renderable, ///<渲染实例参数(如Local2World matrix)
+    Global,     ///<全局参数(如太阳光等)
 };//
 
 #ifndef VK_DESCRIPTOR_TYPE_BEGIN_RANGE

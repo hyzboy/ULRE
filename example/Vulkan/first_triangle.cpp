@@ -33,7 +33,7 @@ private:
 
     Camera cam;
 
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialParameters *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
     GPUBuffer *         ubo_camera_info     =nullptr;
 

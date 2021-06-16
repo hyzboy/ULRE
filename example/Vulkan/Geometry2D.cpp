@@ -29,7 +29,7 @@ private:
     RenderList          render_list;
 
     Material *          material            =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialParameters *  material_instance   =nullptr;
 
     Renderable *        ro_rectangle        =nullptr;
     Renderable *        ro_circle           =nullptr;

@@ -20,7 +20,7 @@ namespace hgl
         {
             using PipelineSets  =Sets<Pipeline *>;
             using MaterialSets  =Sets<Material *>;
-            using MatInstSets   =Sets<MaterialInstance *>;
+            using MatInstSets   =Sets<MaterialParameters *>;
 
         protected:
 

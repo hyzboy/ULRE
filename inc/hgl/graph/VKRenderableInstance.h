@@ -13,7 +13,7 @@ VK_NAMESPACE_BEGIN
 class RenderableInstance                                                        ///可渲染对象实例
 {
     Pipeline *          pipeline;
-    MaterialInstance *  mat_inst;
+    MaterialParameters *  mat_inst;
     Renderable *        render_obj;
 
     DescriptorSets *    descriptor_sets;                                        ///<渲染实例专用描述符合集，一般用于存LocalToWorld等等
@@ -26,16 +26,16 @@ class RenderableInstance                                                        
 
 private:
 
-    friend RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);
+    friend RenderableInstance *CreateRenderableInstance(Renderable *,MaterialParameters *,Pipeline *);
 
-    RenderableInstance(Renderable *,MaterialInstance *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
+    RenderableInstance(Renderable *,MaterialParameters *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
 
 public:
 
     virtual ~RenderableInstance();
 
             Pipeline *          GetPipeline         (){return pipeline;}
-            MaterialInstance *  GetMaterialInstance (){return mat_inst;}
+            MaterialParameters *  GetMaterialInstance (){return mat_inst;}
             Renderable *        GetRenderable       (){return render_obj;}
     const   AABB &              GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
 
@@ -95,6 +95,6 @@ public:
     CompOperator(const RenderableInstance *,Comp)
 };//class RenderableInstance
 
-RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);
+RenderableInstance *CreateRenderableInstance(Renderable *,MaterialParameters *,Pipeline *);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE

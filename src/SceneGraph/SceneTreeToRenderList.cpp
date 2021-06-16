@@ -18,8 +18,8 @@ int Comparator<RenderNodePointer>::compare(const RenderNodePointer &obj_one,cons
     int off;
 
     //比较材质
-    hgl::graph::MaterialInstance *mi1=obj_one->ri->GetMaterialInstance();
-    hgl::graph::MaterialInstance *mi2=obj_two->ri->GetMaterialInstance();
+    hgl::graph::MaterialParameters *mi1=obj_one->ri->GetMaterialInstance();
+    hgl::graph::MaterialParameters *mi2=obj_two->ri->GetMaterialInstance();
                        
     off=mi1->GetMaterial()-mi2->GetMaterial();
 
