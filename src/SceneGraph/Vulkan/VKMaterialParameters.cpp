@@ -1,12 +1,13 @@
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-MaterialParameters::MaterialParameters(Material *m,DescriptorSets *ds)
+MaterialParameters::MaterialParameters(Material *m,const DescriptorSetsType &type,DescriptorSets *ds)
 {
     material=m;
+    ds_type=type;
     descriptor_sets=ds;
 }
 
@@ -66,14 +67,5 @@ bool MaterialParameters::BindSampler(const AnsiString &name,Texture *tex,Sampler
 void MaterialParameters::Update()
 {
     descriptor_sets->Update();
-}
-
-MaterialParameters *Material::CreateInstance()
-{
-    DescriptorSets *ds=CreateMIDescriptorSets();
-
-    if(!ds)return(nullptr);
-
-    return(new MaterialParameters(this,ds));
 }
 VK_NAMESPACE_END

@@ -1,5 +1,5 @@
 #include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/graph/VKPipelineData.h>

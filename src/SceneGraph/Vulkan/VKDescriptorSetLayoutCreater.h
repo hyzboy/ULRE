@@ -17,9 +17,8 @@ class DescriptorSetLayoutCreater
     List<VkDescriptorSetLayoutBinding> layout_binding_list;
     VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
 
-    BindingMapping index_by_binding;
-    BindingMapping index_by_binding_ri;
-    BindingMapping index_by_binding_global;
+    BindingMapping all_index_by_binding;
+    BindingMapping index_by_binding[size_t(DescriptorSetsType::RANGE_SIZE)];
 
     VkPipelineLayout pipeline_layout=VK_NULL_HANDLE;
 

@@ -35,8 +35,7 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
     {
         //重复的绑定点是有可能存在的，比如CameraInfo在vs/fs中同时存在
 
-        if((!index_by_binding.KeyExist(sd.binding))
-         &&(!index_by_binding_ri.KeyExist(sd.binding)))
+        if(!all_index_by_binding.KeyExist(sd.binding))
         {
             p->binding              = sd.binding;
             p->descriptorType       = desc_type;
@@ -45,15 +44,16 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
             p->pImmutableSamplers   = nullptr;
 
             if(sd.name[0]=='r'
-             &&sd.name[1]=='i'
-             &&sd.name[2]=='_')
-                index_by_binding_ri.Add(sd.binding,fin_count+old_count);
+             &&sd.name[1]=='_')
+                index_by_binding[(size_t)DescriptorSetsType::Renderable].Add(sd.binding,fin_count+old_count);
             else
             if(sd.name[0]=='g'
              &&sd.name[1]=='_')
-                index_by_binding_global.Add(sd.binding,fin_count+old_count);
+                index_by_binding[(size_t)DescriptorSetsType::Global].Add(sd.binding,fin_count+old_count);
             else
-                index_by_binding.Add(sd.binding,fin_count+old_count);
+                index_by_binding[(size_t)DescriptorSetsType::Values].Add(sd.binding,fin_count+old_count);
+
+            all_index_by_binding.Add(sd.binding,fin_count+old_count);
 
             ++p;
             ++fin_count;
@@ -113,14 +113,15 @@ DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetsType &typ
     BindingMapping *bm=nullptr;
 
     if(type==DescriptorSetsType::Material
-     ||type==DescriptorSetsType::MaterialInstance)                                              //未开会区分开
-        bm=&index_by_binding;
+//     ||type==DescriptorSetsType::Texture
+     ||type==DescriptorSetsType::Values)                                              //未来会区分开
+        bm=&index_by_binding[(size_t)DescriptorSetsType::Values];
     else
-    if(type==DescriptorSetsType::RenderableInstance)
-        bm=&index_by_binding_ri;
+    if(type==DescriptorSetsType::Renderable)
+        bm=&index_by_binding[(size_t)DescriptorSetsType::Renderable];
     else
     if(type==DescriptorSetsType::Global)
-        bm=&index_by_binding_global;
+        bm=&index_by_binding[(size_t)DescriptorSetsType::Global];
     else
         return(nullptr);
 

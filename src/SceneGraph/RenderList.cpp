@@ -5,7 +5,7 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKRenderableInstance.h>
 
 namespace hgl

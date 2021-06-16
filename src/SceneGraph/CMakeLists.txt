@@ -122,6 +122,7 @@ SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         Vulkan/VKDeviceBuffer.cpp
                         Vulkan/VKDeviceImage.cpp
                         Vulkan/VKDeviceTexture.cpp
+                        Vulkan/VKDeviceMaterial.cpp
                         Vulkan/VKDeviceFramebuffer.cpp
                         Vulkan/VKDeviceSwapchain.cpp
                         Vulkan/VKDeviceRenderPass.cpp
@@ -159,9 +160,9 @@ SET(VK_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/VKImageView.h
                         Vulkan/VKTextureLoader.cpp)
 
 SET(VK_MATERIAL_SOURCE  ${SG_INCLUDE_PATH}/VKMaterial.h
-                        ${SG_INCLUDE_PATH}/VKMaterialInstance.h
+                        ${SG_INCLUDE_PATH}/VKMaterialParameters.h
                         Vulkan/VKMaterial.cpp
-                        Vulkan/VKMaterialInstance.cpp)
+                        Vulkan/VKMaterialParameters.cpp)
 
 SOURCE_GROUP("Vulkan\\Material" FILES ${VK_MATERIAL_SOURCE})
 SOURCE_GROUP("Vulkan\\Material\\Texture" FILES ${VK_TEXTURE_SOURCE})
