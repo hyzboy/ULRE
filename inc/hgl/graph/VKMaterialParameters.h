@@ -3,10 +3,11 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/String.h>
+#include<hgl/graph/VKDescriptorSets.h>
 VK_NAMESPACE_BEGIN
 class MaterialParameters
 {
-    Material *material;
+    const ShaderModuleMap *shader_map;
 
     DescriptorSetsType ds_type;
 
@@ -16,20 +17,20 @@ private:
 
     friend class Material;
 
-    MaterialParameters(Material *,const DescriptorSetsType &type,DescriptorSets *);
+    MaterialParameters(const ShaderModuleMap *,const DescriptorSetsType &type,DescriptorSets *);
 
 public:
 
-            Material *          GetMaterial      (){return material;}
-    const   DescriptorSetsType  GetType          (){return ds_type;}
-            DescriptorSets *    GetDescriptorSets(){return descriptor_sets;}
+    const   DescriptorSetsType  GetType             (){return ds_type;}
+            DescriptorSets *    GetDescriptorSet    (){return descriptor_sets;}
+    const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
 
 public:
 
     #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetsType::name;}
         MP_TYPE_IS(Material)
 //        MP_TYPE_IS(Texture)
-        MP_TYPE_IS(Values)
+        MP_TYPE_IS(Value)
         MP_TYPE_IS(Renderable)
         MP_TYPE_IS(Global)
     #undef MP_TYPE_IS

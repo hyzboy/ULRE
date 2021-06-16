@@ -45,42 +45,17 @@ Material::~Material()
     delete shader_maps;
 }
 
-const int Material::GetBinding(VkDescriptorType desc_type,const AnsiString &name)const
-{
-    if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-     ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE
-     ||name.IsEmpty())
-        return(-1);
-
-    int binding;
-    const int shader_count=shader_maps->GetCount();
-
-    const ShaderModule *sm;
-    auto **itp=shader_maps->GetDataList();
-    for(int i=0;i<shader_count;i++)
-    {
-        sm=(*itp)->right;
-        binding=sm->GetBinding(desc_type,name);
-        if(binding!=-1)
-            return binding;
-
-        ++itp;
-    }
-
-    return(-1);
-}
-
 const VkPipelineLayout Material::GetPipelineLayout()const
 {
     return dsl_creater->GetPipelineLayout();
 }
 
-MaterialParameters *Material::CreateMP(const DescriptorSetsType &type)
+MaterialParameters *Material::CreateMP(const DescriptorSetsType &type)const
 {
     DescriptorSets *ds=dsl_creater->Create(type);
 
     if(!ds)return(nullptr);
 
-    return(new MaterialParameters(this,type,ds));
+    return(new MaterialParameters(shader_maps,type,ds));
 }
 VK_NAMESPACE_END
