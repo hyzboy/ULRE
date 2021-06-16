@@ -4,18 +4,18 @@
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-MaterialInstance::MaterialInstance(Material *m,DescriptorSets *ds)
+MaterialParameters::MaterialParameters(Material *m,DescriptorSets *ds)
 {
     material=m;
     descriptor_sets=ds;
 }
 
-MaterialInstance::~MaterialInstance()
+MaterialParameters::~MaterialParameters()
 {
     delete descriptor_sets;
 }
 
-bool MaterialInstance::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic)
+bool MaterialParameters::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic)
 {
     if(name.IsEmpty()||!ubo)
         return(false);
@@ -31,7 +31,7 @@ bool MaterialInstance::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynami
     return(true);
 }
 
-bool MaterialInstance::BindSSBO(const AnsiString &name,GPUBuffer *ssbo,bool dynamic)
+bool MaterialParameters::BindSSBO(const AnsiString &name,GPUBuffer *ssbo,bool dynamic)
 {
     if(name.IsEmpty()||!ssbo)
         return(false);
@@ -47,7 +47,7 @@ bool MaterialInstance::BindSSBO(const AnsiString &name,GPUBuffer *ssbo,bool dyna
     return(true);
 }
 
-bool MaterialInstance::BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
+bool MaterialParameters::BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     if(name.IsEmpty()||!tex||!sampler)
         return(false);
@@ -63,17 +63,17 @@ bool MaterialInstance::BindSampler(const AnsiString &name,Texture *tex,Sampler *
     return(true);
 }
 
-void MaterialInstance::Update()
+void MaterialParameters::Update()
 {
     descriptor_sets->Update();
 }
 
-MaterialInstance *Material::CreateInstance()
+MaterialParameters *Material::CreateInstance()
 {
     DescriptorSets *ds=CreateMIDescriptorSets();
 
     if(!ds)return(nullptr);
 
-    return(new MaterialInstance(this,ds));
+    return(new MaterialParameters(this,ds));
 }
 VK_NAMESPACE_END

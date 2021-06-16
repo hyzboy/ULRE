@@ -27,7 +27,7 @@ private:
     struct MDP
     {
         Material *          material            =nullptr;
-        MaterialInstance *  material_instance   =nullptr;
+        MaterialParameters *  material_instance   =nullptr;
         Pipeline *          pipeline            =nullptr;
     }m3d,m2d;
 

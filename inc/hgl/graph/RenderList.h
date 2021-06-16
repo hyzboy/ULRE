@@ -36,7 +36,7 @@ namespace hgl
         private:
 
             Pipeline *          last_pipeline;
-            MaterialInstance *  last_mi;
+            MaterialParameters *  last_mi;
             uint32_t            last_vbo;
 
             void Render(RenderableInstance *);

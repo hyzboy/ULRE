@@ -54,7 +54,7 @@ private:
 
     struct MIR
     {
-        MaterialInstance *  material_instance   =nullptr;
+        MaterialParameters *  material_instance   =nullptr;
         RenderableInstance *renderable_instance =nullptr;
     }mir_nearest,mir_linear,mir_nearest_hq,mir_linear_hq;
     

@@ -70,7 +70,7 @@ private:
     struct SubpassParam
     {
         Material *          material;
-        MaterialInstance *  material_instance;
+        MaterialParameters *  material_instance;
         Pipeline *          pipeline_fan;
         Pipeline *          pipeline_triangles;
     };//

@@ -62,7 +62,7 @@ class ShaderResource;
 class ShaderModule;
 class VertexShaderModule;
 class Material;
-class MaterialInstance;
+class MaterialParameters;
 class PipelineLayout;
 struct PipelineData;
 enum class InlinePipeline;

@@ -39,7 +39,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     Sampler *           sampler             =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialParameters *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
     GPUBuffer *         ubo_camera_info    =nullptr;

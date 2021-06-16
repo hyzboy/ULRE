@@ -44,7 +44,7 @@ namespace hgl
             }
 
             {
-                MaterialInstance *mi=ri->GetMaterialInstance();
+                MaterialParameters *mi=ri->GetMaterialInstance();
 
                 if(mi!=last_mi)
                 {

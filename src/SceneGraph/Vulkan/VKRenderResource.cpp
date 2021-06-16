@@ -50,11 +50,11 @@ IndexBuffer *RenderResource::CreateIBO(IndexType index_type,uint32_t count,const
     return(buf);
 }
         
-MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl)
+MaterialParameters *RenderResource::CreateMaterialInstance(Material *mtl)
 {
     if(!mtl)return(nullptr);
 
-    MaterialInstance *mi=mtl->CreateInstance();
+    MaterialParameters *mi=mtl->CreateInstance();
 
     if(mi)
         Add(mi);
@@ -62,7 +62,7 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl)
     return mi;
 }
 
-MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_filename)
+MaterialParameters *RenderResource::CreateMaterialInstance(const OSString &mtl_filename)
 {
     Material *mtl=this->CreateMaterial(mtl_filename);
 
@@ -96,7 +96,7 @@ TextRenderable *RenderResource::CreateTextRenderable(Material *mtl)
     return tr;
 }
 
-RenderableInstance *RenderResource::CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
+RenderableInstance *RenderResource::CreateRenderableInstance(Renderable *r,MaterialParameters *mi,Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);

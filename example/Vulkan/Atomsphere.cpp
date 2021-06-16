@@ -37,7 +37,7 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    MaterialInstance *  material_instance   =nullptr;
+    MaterialParameters *  material_instance   =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
     
     GPUBuffer *         ubo_atomsphere      =nullptr;
