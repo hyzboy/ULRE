@@ -28,7 +28,7 @@ public:
 
     #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetsType::name;}
         MP_TYPE_IS(Material)
-        MP_TYPE_IS(Texture)
+//        MP_TYPE_IS(Texture)
         MP_TYPE_IS(Values)
         MP_TYPE_IS(Renderable)
         MP_TYPE_IS(Global)

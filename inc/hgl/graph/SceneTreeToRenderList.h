@@ -4,7 +4,7 @@
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 
 using RenderNodePointer=hgl::graph::RenderNode *;
 

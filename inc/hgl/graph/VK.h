@@ -54,7 +54,21 @@ class RenderPass;
 class GPUFence;
 class GPUSemaphore;
 
+enum class DescriptorSetsType
+{
+    //设计使其对应shader中的sets
+
+    Material=0, ///<材质中永远不变的参数
+//    Texture,    ///<材质中的纹理参数
+    Values,     ///<材质中的变量参数
+    Renderable, ///<渲染实例参数(如Local2World matrix)
+    Global,     ///<全局参数(如太阳光等)
+
+    ENUM_CLASS_RANGE(Material,Global)
+};//
+
 class DescriptorSetLayoutCreater;
+class DescriptorSets;
 
 struct ShaderStage;
 
@@ -67,7 +81,6 @@ class PipelineLayout;
 struct PipelineData;
 enum class InlinePipeline;
 class Pipeline;
-class DescriptorSets;
 class VertexAttributeBinding;
 
 class Renderable;

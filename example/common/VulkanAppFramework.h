@@ -15,7 +15,7 @@
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>

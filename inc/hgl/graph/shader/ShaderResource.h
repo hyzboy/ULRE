@@ -7,25 +7,6 @@
 
 VK_NAMESPACE_BEGIN
 
-/**
- * Shader数据来源
- */
-enum class ShaderDataSource
-{
-    Global=0,       ///<由全局系统提供的数据(如CameraMatrix)
-    Private=1,      ///<每种材质的私有数据
-};//
-
-/**
- * Shader数据来源类型
- */
-enum class ShaderDataSourceType
-{
-    Static=0,
-    Dynamic,
-    Instance
-};
-
 struct ShaderStage
 {
     AnsiString          name;
@@ -50,17 +31,6 @@ struct ShaderDescriptor
 };
 
 using ShaderDescriptorList=List<ShaderDescriptor>;
-
-enum class DescriptorSetsType
-{
-    //设计使其对应shader中的sets
-
-    Material=0, ///<材质中永远不变的参数
-    Texture,    ///<材质中的纹理参数
-    Values,     ///<材质中的变量参数
-    Renderable, ///<渲染实例参数(如Local2World matrix)
-    Global,     ///<全局参数(如太阳光等)
-};//
 
 #ifndef VK_DESCRIPTOR_TYPE_BEGIN_RANGE
 constexpr size_t VK_DESCRIPTOR_TYPE_BEGIN_RANGE=VK_DESCRIPTOR_TYPE_SAMPLER;

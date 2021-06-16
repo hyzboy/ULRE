@@ -8,7 +8,7 @@
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/VKRenderableInstance.h>
 #include<hgl/graph/font/TextRenderable.h>

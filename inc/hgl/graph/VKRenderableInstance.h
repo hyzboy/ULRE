@@ -4,7 +4,7 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSets.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 VK_NAMESPACE_BEGIN
 /**
 * 可渲染对象实例<br>

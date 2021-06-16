@@ -1,90 +1,7 @@
 ﻿#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKDescriptorSets.h>
-#include<hgl/graph/VKShaderModule.h>
-#include<hgl/graph/VKShaderModuleMap.h>
-#include<hgl/graph/VKVertexAttributeBinding.h>
-#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKMaterialParameters.h>
 #include"VKDescriptorSetLayoutCreater.h"
 VK_NAMESPACE_BEGIN
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps)
-{
-    const int shader_count=shader_maps->GetCount();
-
-    if(shader_count<2)
-        return(nullptr);
-
-    const ShaderModule *sm;
-
-    if(!shader_maps->Get(VK_SHADER_STAGE_VERTEX_BIT,sm))
-        return(nullptr);
-
-    DescriptorSetLayoutCreater *dsl_creater=CreateDescriptorSetLayoutCreater();
-    List<VkPipelineShaderStageCreateInfo> *shader_stage_list=new List<VkPipelineShaderStageCreateInfo>;
-
-    shader_stage_list->SetCount(shader_count);
-
-    VkPipelineShaderStageCreateInfo *p=shader_stage_list->GetData();
-
-    auto **itp=shader_maps->GetDataList();
-    for(int i=0;i<shader_count;i++)
-    {
-        sm=(*itp)->right;
-        hgl_cpy(p,sm->GetCreateInfo());
-
-        dsl_creater->Bind(sm->GetDescriptorList(),sm->GetStage());
-
-        ++p;
-        ++itp;
-    }
-
-    if(!dsl_creater->CreatePipelineLayout())
-    {
-        delete shader_stage_list;
-        delete dsl_creater;
-        delete shader_maps;
-        return(nullptr);
-    }
-
-    return(new Material(mtl_name,shader_maps,shader_stage_list,dsl_creater));
-}
-
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
-{
-    if(!vertex_shader_module||!fragment_shader_module)
-        return(nullptr);
-
-    if(!vertex_shader_module->IsVertex())return(nullptr);
-    if(!fragment_shader_module->IsFragment())return(nullptr);
-
-    ShaderModuleMap *smm=new ShaderModuleMap;
-
-    smm->Add(vertex_shader_module);
-    smm->Add(fragment_shader_module);
-
-    return CreateMaterial(mtl_name,smm);
-}
-
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
-{
-    if(!vertex_shader_module
-     ||!geometry_shader_module
-     ||!fragment_shader_module)
-        return(nullptr);
-
-    if(!vertex_shader_module->IsVertex())return(nullptr);
-    if(!geometry_shader_module->IsGeometry())return(nullptr);
-    if(!fragment_shader_module->IsFragment())return(nullptr);
-
-    ShaderModuleMap *smm=new ShaderModuleMap;
-
-    smm->Add(vertex_shader_module);
-    smm->Add(geometry_shader_module);
-    smm->Add(fragment_shader_module);
-
-    return CreateMaterial(mtl_name,smm);
-}
-
 Material::Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc)
 {
     mtl_name=name;
@@ -105,12 +22,17 @@ Material::Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineSh
         vab=nullptr;
     }
 
-    ri_desc_sets=dsl_creater->Create(DescriptorSetsType::RenderableInstance);
+    mp_m=CreateMP(DescriptorSetsType::Material);
+    mp_r=CreateMP(DescriptorSetsType::Renderable);
+    mp_g=CreateMP(DescriptorSetsType::Global);
 }
 
 Material::~Material()
 {
-    SAFE_CLEAR(ri_desc_sets);
+    SAFE_CLEAR(mp_m);
+    SAFE_CLEAR(mp_r);
+    SAFE_CLEAR(mp_g);
+
     delete dsl_creater;
 
     if(vab)
@@ -153,8 +75,12 @@ const VkPipelineLayout Material::GetPipelineLayout()const
     return dsl_creater->GetPipelineLayout();
 }
 
-DescriptorSets *Material::CreateMIDescriptorSets()const
+MaterialParameters *Material::CreateMP(const DescriptorSetsType &type)
 {
-    return dsl_creater->Create(DescriptorSetsType::MaterialInstance);
+    DescriptorSets *ds=dsl_creater->Create(type);
+
+    if(!ds)return(nullptr);
+
+    return(new MaterialParameters(this,type,ds));
 }
 VK_NAMESPACE_END

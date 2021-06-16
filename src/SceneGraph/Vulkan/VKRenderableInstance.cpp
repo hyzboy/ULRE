@@ -1,5 +1,5 @@
 #include<hgl/graph/VKRenderableInstance.h>
-#include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/util/hash/Hash.h>

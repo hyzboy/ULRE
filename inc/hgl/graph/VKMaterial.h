@@ -23,8 +23,7 @@ class Material
 
     DescriptorSetLayoutCreater *dsl_creater;
 
-    DescriptorSets *g_desc_sets;
-    DescriptorSets *ri_desc_sets;
+    MaterialParameters *mp_m,*mp_g,*mp_r;
 
     VertexAttributeBinding *vab;
 
@@ -63,11 +62,7 @@ public:
     const   VkPipelineShaderStageCreateInfo *   GetStages               ()const{return shader_stage_list->GetData();}
 
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-            DescriptorSets *                    CreateMIDescriptorSets  ()const;
-
-            DescriptorSets *                    GetGlobalDescriptorSets (){return g_desc_sets;}
-            DescriptorSets *                    GetRIDescriptorSets     (){return ri_desc_sets;}
-    
+  
     const   VertexAttributeBinding *            GetVAB                  ()const{return vab;}
     const   uint32_t                            GetVertexAttrCount      ()const{return vab->GetVertexAttrCount();}    
     const   VkVertexInputBindingDescription *   GetVertexBindingList    ()const{return vab->GetVertexBindingList();}
@@ -75,7 +70,14 @@ public:
 
 public:
 
-            MaterialParameters *                  CreateInstance          ();
+            MaterialParameters *                CreateMP                (const DescriptorSetsType &type=DescriptorSetsType::Values);
+            MaterialParameters *                GetMP                   (const DescriptorSetsType &type)
+            {
+                if(type==DescriptorSetsType::Material   )return mp_m;else
+                if(type==DescriptorSetsType::Renderable )return mp_r;else
+                if(type==DescriptorSetsType::Global     )return mp_g;else
+                return(nullptr);
+            }
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE

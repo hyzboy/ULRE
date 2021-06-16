@@ -54,7 +54,7 @@ MaterialParameters *RenderResource::CreateMaterialInstance(Material *mtl)
 {
     if(!mtl)return(nullptr);
 
-    MaterialParameters *mi=mtl->CreateInstance();
+    MaterialParameters *mi=mtl->CreateMP();
 
     if(mi)
         Add(mi);
