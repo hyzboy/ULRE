@@ -103,7 +103,7 @@ private:
 
 public:
 
-    TestApp()
+    ~TestApp()
     {
         SAFE_CLEAR(render_list);
     }
