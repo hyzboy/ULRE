@@ -4,7 +4,6 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/SceneTreeToRenderList.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -34,7 +33,7 @@ private:
     Camera cam;
 
     SceneNode           render_root;
-    RenderList          render_list;
+    RenderList *        render_list         =nullptr;
 
     MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
@@ -97,19 +96,24 @@ private:
 
         render_root.RefreshMatrix();
 
-        SceneTreeToRenderList st2rl(device);
-
-        st2rl.Expend(&render_list,cam.info,&render_root);
+        render_list->Expend(cam.info,&render_root);
 
         return(true);
     }
 
 public:
 
+    TestApp()
+    {
+        SAFE_CLEAR(render_list);
+    }
+
     bool Init()
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+
+        render_list=new RenderList(device);
 
         if(!InitMaterial())
             return(false);
@@ -120,7 +124,7 @@ public:
         if(!InitVBO())
             return(false);
 
-        BuildCommandBuffer(&render_list);
+        BuildCommandBuffer(render_list);
 
         return(true);
     }
@@ -134,7 +138,7 @@ public:
 
         ubo_camera_info->Write(&cam.info);
 
-        BuildCommandBuffer(&render_list);
+        BuildCommandBuffer(render_list);
     }
 };//class TestApp:public VulkanApplicationFramework
 
