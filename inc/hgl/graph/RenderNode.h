@@ -32,4 +32,8 @@ namespace hgl
         using RenderNodeList=List<RenderNode *>;
     }//namespace graph
 }//namespace hgl
+
+using RenderNodePointer=hgl::graph::RenderNode *;
+using RenderNodeComparator=Comparator<RenderNodePointer>;
+
 #endif//HGL_GRAPH_RENDER_NODE_INCLUDE
