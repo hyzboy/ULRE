@@ -63,8 +63,7 @@ private:
         if(!ubo_camera_info)
             return(false);
 
-        {
-        
+        {        
             MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
