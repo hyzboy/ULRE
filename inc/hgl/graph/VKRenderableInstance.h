@@ -34,6 +34,8 @@ public:
 
     virtual ~RenderableInstance();
 
+            void                UpdatePipeline      (Pipeline *p){pipeline=p;}
+
             Pipeline *          GetPipeline         (){return pipeline;}
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
