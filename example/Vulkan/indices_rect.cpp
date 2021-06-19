@@ -36,9 +36,9 @@ private:
 
     Camera cam;
 
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *renderable_instance =nullptr;
-    GPUBuffer *         ubo_camera_info    =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -66,11 +66,18 @@ private:
 
         if(!ubo_camera_info)
             return(false);
+            
+        {        
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        if(!material_instance->BindUBO("camera",ubo_camera_info))return(false);
-        if(!material_instance->BindUBO("frag_world",ubo_camera_info))return(false);
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+            if(!mp_global->BindUBO("g_frag_camera",ubo_camera_info))return(false);
 
-        material_instance->Update();
+            mp_global->Update();
+        }
         return(true);
     }
 
