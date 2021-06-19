@@ -59,12 +59,6 @@ namespace hgl
 
             void Render(RenderableInstance *);
 
-        private:
-
-            friend class SceneTreeToRenderList;
-
-            void Set(List<RenderableInstance *> *,GPUBuffer *,const uint32_t);
-
         public:
 
             RenderList(GPUDevice *);
