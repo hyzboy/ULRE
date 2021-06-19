@@ -34,7 +34,6 @@ SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/Light.h
                         ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/SceneOrient.h
                         ${SG_INCLUDE_PATH}/RenderList.h
-                        ${SG_INCLUDE_PATH}/SceneTreeToRenderList.h
                         ${SG_INCLUDE_PATH}/InlineGeometry.h
                         #${SG_INCLUDE_PATH}/Mesh.h
                         #${SG_INCLUDE_PATH}/Material.h
@@ -45,7 +44,6 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         SceneNode.cpp
                         SceneOrient.cpp
                         InlineGeometry.cpp
-                        SceneTreeToRenderList.cpp
                         #InlinePipeline.cpp
                         #Material.cpp
                         #Mesh.cpp

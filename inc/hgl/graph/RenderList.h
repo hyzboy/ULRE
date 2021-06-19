@@ -13,26 +13,43 @@ namespace hgl
 {
     namespace graph
     {
+        using MVPArrayBuffer=GPUArrayBuffer<MVPMatrix>;
+        using MaterialSets=Sets<Material *>;
+
         /**
          * 渲染对象列表<br>
          * 已经展开的渲染对象列表，产生mvp用UBO/SSBO等数据，最终创建RenderCommandBuffer
          */
         class RenderList
         {
+            GPUDevice *     device;
             RenderCmdBuffer *cmd_buf;
 
         private:
 
-            Camera *camera;
+            CameraInfo      camera_info;
+            
+            RenderNodeList  render_node_list;       ///<场景节点列表
+            MaterialSets    material_sets;          ///<材质合集
 
-            GPUBuffer *mvp_buffer;
-            List<RenderableInstance *> *ri_list;
+            RenderNodeComparator render_node_comparator;
+
+        private:
+
+            MVPArrayBuffer *mvp_array;
+            List<RenderableInstance *> ri_list;
 
             VkDescriptorSet ds_list[(size_t)DescriptorSetsType::RANGE_SIZE];
             DescriptorSets *renderable_desc_sets;
 
             uint32_t ubo_offset;
             uint32_t ubo_align;
+
+        protected:
+
+            virtual bool    Begin();
+            virtual bool    Expend(SceneNode *);
+            virtual void    End();
 
         private:
 
@@ -50,10 +67,12 @@ namespace hgl
 
         public:
 
-            RenderList();
-            virtual ~RenderList()=default;
+            RenderList(GPUDevice *);
+            virtual ~RenderList();
             
-            bool Render(RenderCmdBuffer *);
+            virtual bool Expend(const CameraInfo &,SceneNode *);
+
+            virtual bool Render(RenderCmdBuffer *);
         };//class RenderList        
     }//namespace graph
 }//namespace hgl
