@@ -51,9 +51,9 @@ private:
 
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *renderable_instance =nullptr;
-    GPUBuffer *         ubo_camera_info    =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
     Pipeline *          pipeline            =nullptr;
 
 private:
@@ -71,7 +71,15 @@ private:
 
         sampler=db->CreateSampler();
 
-        material_instance->BindSampler("tex",texture,sampler);
+        {
+            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp_texture)
+            
+            if(!mp_texture->BindUBO("tex",ubo_camera_info))return(false);
+
+            mp_texture->Update();
+        }
 
         return(true);
     }
@@ -89,9 +97,18 @@ private:
 
         if(!ubo_camera_info)
             return(false);
+        
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        if(!material_instance->BindUBO("camera",ubo_camera_info))return(false);
-        material_instance->Update();
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
+
         return(true);
     }
 
