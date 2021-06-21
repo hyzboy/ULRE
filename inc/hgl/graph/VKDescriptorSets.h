@@ -11,7 +11,7 @@ class DescriptorSets
     VkDevice device;
     int layout_binding_count;
     VkDescriptorSet desc_set;
-    const BindingMapping *index_by_binding;
+//    const BindingMapping *index_by_binding;
 
     VkPipelineLayout pipeline_layout;
 
@@ -23,10 +23,10 @@ private:
 
     friend class DescriptorSetLayoutCreater;
 
-    DescriptorSets(VkDevice dev,const int c,VkPipelineLayout pl,VkDescriptorSet ds,const BindingMapping *bi):index_by_binding(bi)
+    DescriptorSets(VkDevice dev,const int lbc,VkPipelineLayout pl,VkDescriptorSet ds)//,const BindingMapping *bi):index_by_binding(bi)
     {
         device=dev;
-        layout_binding_count=c;
+        layout_binding_count=lbc;
         desc_set=ds;
         pipeline_layout=pl;
     }
