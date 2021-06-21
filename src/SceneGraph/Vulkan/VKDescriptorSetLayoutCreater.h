@@ -3,6 +3,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/shader/ShaderResource.h>
 #include<hgl/type/Map.h>
+#include<hgl/type/Sets.h>
 VK_NAMESPACE_BEGIN
 class DescriptorSets;
 
@@ -14,17 +15,33 @@ class DescriptorSetLayoutCreater
     VkDevice device;
     VkDescriptorPool pool;
 
-    List<VkDescriptorSetLayoutBinding> layout_binding_list;
-    VkDescriptorSetLayout dsl=VK_NULL_HANDLE;
+    Sets<uint32_t> all_set;
+    Sets<uint32_t> all_binding;
 
-    BindingMapping all_index_by_binding;
-    BindingMapping index_by_binding[size_t(DescriptorSetsType::RANGE_SIZE)];
+    struct ShaderDescriptorSet
+    {
+        List<VkDescriptorSetLayoutBinding>  binding_list;
+        VkDescriptorSetLayout               layout;
+    };
+
+    ShaderDescriptorSet sds[size_t(DescriptorSetsType::RANGE_SIZE)];
+
+    VkDescriptorSetLayout fin_dsl[size_t(DescriptorSetsType::RANGE_SIZE)];
+    uint32_t fin_dsl_count;
 
     VkPipelineLayout pipeline_layout=VK_NULL_HANDLE;
 
 public:
 
-    DescriptorSetLayoutCreater(VkDevice dev,VkDescriptorPool dp){device=dev;pool=dp;}
+    DescriptorSetLayoutCreater(VkDevice dev,VkDescriptorPool dp)
+    {
+        ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+            sds[i].layout=nullptr;
+
+        hgl_zero(fin_dsl);
+        fin_dsl_count=0;
+        device=dev;pool=dp;
+    }
     ~DescriptorSetLayoutCreater();
 
     void Bind(const ShaderDescriptorList *sd_list,VkDescriptorType type,VkShaderStageFlagBits stage);

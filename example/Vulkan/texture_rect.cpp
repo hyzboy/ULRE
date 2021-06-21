@@ -72,11 +72,12 @@ private:
         sampler=db->CreateSampler();
 
         {
-            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Material);
         
             if(!mp_texture)
+                return(false);
             
-            if(!mp_texture->BindUBO("tex",ubo_camera_info))return(false);
+            if(!mp_texture->BindSampler("m_tex",texture,sampler))return(false);
 
             mp_texture->Update();
         }
