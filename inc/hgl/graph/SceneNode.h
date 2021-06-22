@@ -57,6 +57,14 @@ namespace hgl
                 return sn;
             }
 
+            SceneNode *CreateSubNode(RenderableInstance *ri)
+            {
+                SceneNode *sn=new SceneNode(ri);
+
+                SubNode.Add(sn);
+                return sn;
+            }
+
             SceneNode *CreateSubNode(const Matrix4f &mat)
             {
                 SceneNode *sn=new SceneNode(mat);
