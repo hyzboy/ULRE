@@ -25,7 +25,9 @@ using ShaderStageList       =ObjectList<ShaderStage>;
 struct ShaderDescriptor
 {
     char name[128];
-    DescriptorSetType type;
+
+    VkDescriptorType desc_type;
+    DescriptorSetType set_type;
     uint32_t set;
     uint32_t binding;
 };
@@ -80,13 +82,15 @@ public:
             ShaderDescriptorList *  GetDescriptorList   (VkDescriptorType desc_type)
     {
         if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-            ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
+         ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
 
         return descriptor_list+desc_type;
     }
 
-    ShaderDescriptorList &GetUBO    (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER];}
-    ShaderDescriptorList &GetSSBO   (){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];}
+    ShaderDescriptorList &GetUBO        (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER];}
+    ShaderDescriptorList &GetSSBO       (){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];}
+    ShaderDescriptorList &GetUBODynamic (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC];}
+    ShaderDescriptorList &GetSSBODynamic(){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC];}
     ShaderDescriptorList &GetSampler(){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
 
     const int                       GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;

@@ -1,9 +1,15 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
-bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+const VkDeviceSize GPUDevice::GetUBOAlign()
+{
+    return attr->physical_device->GetUBOAlign();
+}
+
+bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     BufferCreateInfo buf_info;
 
@@ -26,14 +32,13 @@ bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkD
     {
         buf->info.buffer  =buf->buffer;
         buf->info.offset  =0;
-        buf->info.range   =size;
+        buf->info.range   =range;
 
         buf->memory       =dm;
 
         if(!data)
             return(true);
 
-        dm->Write(data,0,size);
         return(true);
     }
 
@@ -57,7 +62,7 @@ VAB *GPUDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharin
 
     GPUBufferData buf;
 
-    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,data,sharing_mode))
+    if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode))
         return(nullptr);
 
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
@@ -81,11 +86,11 @@ IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void
     return(new IndexBuffer(attr->device,buf,index_type,count));
 }
 
-GPUBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+GPUBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     GPUBufferData buf;
 
-    if(!CreateBuffer(&buf,buf_usage,size,data,sharing_mode))
+    if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode))
         return(nullptr);
 
     return(new GPUBuffer(attr->device,buf));

@@ -4,15 +4,14 @@
 #include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-VKMemoryAllocator::VKMemoryAllocator(GPUDevice *d,const uint32_t flags)
+VKMemoryAllocator::VKMemoryAllocator(GPUDevice *d,const uint32_t flags,const VkDeviceSize r)
 {
     device=d;
     buffer_usage_flag_bits=flags;
     gpu_buffer=nullptr;
+    range=r;
 
-    const GPUPhysicalDevice *pd=device->GetPhysicalDevice();
-
-    SetAllocUnitSize(pd->GetUBOAlign());
+    SetAllocUnitSize(range);
 }
 
 VKMemoryAllocator::~VKMemoryAllocator()
@@ -29,7 +28,7 @@ bool VKMemoryAllocator::AllocMemory()
     if(gpu_buffer)
         delete gpu_buffer;
 
-    gpu_buffer=device->CreateBuffer(buffer_usage_flag_bits,alloc_size);
+    gpu_buffer=device->CreateBuffer(buffer_usage_flag_bits,range,alloc_size);
 
     if(!gpu_buffer)
     {
@@ -40,5 +39,10 @@ bool VKMemoryAllocator::AllocMemory()
     memory_block=gpu_buffer->Map();
 
     return(true);
+}
+
+void VKMemoryAllocator::Flush(const VkDeviceSize size)
+{
+    gpu_buffer->Flush(size);
 }
 VK_NAMESPACE_END

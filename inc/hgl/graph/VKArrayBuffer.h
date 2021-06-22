@@ -33,15 +33,16 @@ namespace hgl
                 buffer_usage_flags=flags;
 
                 {
-                    uint32_t unit_size=sizeof(T);
-                    vk_ma=new VKMemoryAllocator(device,buffer_usage_flags);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
-                    MemoryBlock *mb=new MemoryBlock(vk_ma);
+                    ubo_offset_alignment=device->GetUBOAlign();
 
-                    ubo_offset_alignment=vk_ma->GetAllocUnitSize();
+                    uint32_t unit_size=sizeof(T);
 
                     const uint32_t align_size=ubo_offset_alignment-1;
 
                     unit_size=(unit_size+align_size)&(~align_size);
+
+                    vk_ma=new VKMemoryAllocator(device,buffer_usage_flags,unit_size);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
+                    MemoryBlock *mb=new MemoryBlock(vk_ma);
 
                     coll=new Collection(unit_size,mb);
                 }
@@ -83,6 +84,11 @@ namespace hgl
             T *Map(const uint32 start,const uint32 count)
             {
                 return (T *)(coll->Map(start,count));
+            }
+
+            void Flush(const uint32 count)
+            {
+                vk_ma->Flush(count*GetUnitSize());
             }
         };//class GPUArrayBuffer
     }//namespace graph

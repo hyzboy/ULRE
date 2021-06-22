@@ -29,7 +29,7 @@ private:
     RenderList          render_list;
 
     Material *          material            =nullptr;
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
 
     Renderable *        ro_rectangle        =nullptr;
     Renderable *        ro_circle           =nullptr;
@@ -119,7 +119,7 @@ private:
         cam.Refresh();
         
         ubo_camera_info    =CreateUBO("camera",         sizeof(CameraInfo),&cam.info);
-        ubo_color_material  =CreateUBO("color_material",sizeof(Vector4f),&color);
+        ubo_color_material =CreateUBO("color_material", sizeof(Vector4f),&color);
 
         material_instance->Update();
         return(true);

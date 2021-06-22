@@ -22,14 +22,14 @@ class TestApp:public CameraAppFramework
 private:
 
     SceneNode   render_root;
-    RenderList  render_list;
+    RenderList *render_list=nullptr;
 
     struct MDP
     {
         Material *          material            =nullptr;
-        MaterialParameters *  material_instance   =nullptr;
+        MaterialInstance *  material_instance   =nullptr;
         Pipeline *          pipeline            =nullptr;
-    }m3d,m2d;
+    }m3d;//,m2d;
 
     Renderable              *ro_plane_grid[3],
                             *ro_round_rectangle =nullptr;
@@ -46,10 +46,17 @@ private:
 
         mdp->pipeline=CreatePipeline(mdp->material_instance,InlinePipeline::Solid3D,primitive);
 
-        if(!mdp->material_instance->BindUBO("camera",GetCameraInfoBuffer()))
-            return(false);
+        {
+            MaterialParameters *mp_global=mdp->material_instance->GetMP(DescriptorSetType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        mdp->material_instance->Update();
+            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
+
+            mp_global->Update();
+        }
+
         return(true);
     }
     
@@ -57,14 +64,14 @@ private:
     {
         auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
 
-        render_root.Add(ri);
+        render_root.CreateSubNode(ri);
     }
 
     void Add(Renderable *r,MDP &mdp,const Matrix4f &mat)
     {
         auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
 
-        render_root.Add(ri,mat);
+        render_root.CreateSubNode(mat,ri);
     }
 
     void CreateRenderObject()
@@ -96,54 +103,61 @@ private:
         pgci.side_color.Set(0,0,1,1);
         ro_plane_grid[2]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
 
-        {
-            struct RoundRectangleCreateInfo rrci;
+        //{
+        //    struct RoundRectangleCreateInfo rrci;
 
-            rrci.scope.Set(SCREEN_WIDTH-30,10,20,20);
-            rrci.radius=5;
-            rrci.round_per=5;
+        //    rrci.scope.Set(SCREEN_WIDTH-30,10,20,20);
+        //    rrci.radius=5;
+        //    rrci.round_per=5;
 
-            ro_round_rectangle=CreateRenderableRoundRectangle(db,m2d.material,&rrci);
-        }
+        //    ro_round_rectangle=CreateRenderableRoundRectangle(db,m2d.material,&rrci);
+        //}
 
         camera->pos.Set(200,200,200,1.0);
     }
 
     bool InitScene()
     {
-        Add(ro_round_rectangle,m2d);
+//        Add(ro_round_rectangle,m2d);
         Add(ro_plane_grid[0],m3d);
         Add(ro_plane_grid[1],m3d,rotate(HGL_RAD_90,0,1,0));
         Add(ro_plane_grid[2],m3d,rotate(HGL_RAD_90,1,0,0));
 
         render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(camera->info,&render_root);
 
         return(true);
     }
 
 public:
 
+    ~TestApp()
+    {
+        SAFE_CLEAR(render_list);
+    }
+
     bool Init()
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+            
+        render_list=new RenderList(device);
 
         if(!InitMDP(&m3d,Prim::Lines,OS_TEXT("res/material/VertexColor3D")))
             return(false);
 
-        if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/material/PureColor2D")))
-            return(false);
+        //if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/material/PureColor2D")))
+        //    return(false);
 
-        {
-            color.Set(1,1,0,1);
-            ubo_color=device->CreateUBO(sizeof(Vector4f),&color);
+        //{
+        //    color.Set(1,1,0,1);
+        //    ubo_color=device->CreateUBO(sizeof(Vector4f),&color);
 
-            m2d.material_instance->BindUBO("color_material",ubo_color);
-            m2d.material_instance->Update();
+        //    m2d.material_instance->BindUBO("color_material",ubo_color);
+        //    m2d.material_instance->Update();
 
-            db->Add(ubo_color);
-        }
+        //    db->Add(ubo_color);
+        //}
 
         CreateRenderObject();
 
@@ -155,7 +169,7 @@ public:
 
     void BuildCommandBuffer(uint32 index)
     {
-        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
+        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 };//class TestApp:public CameraAppFramework
 
