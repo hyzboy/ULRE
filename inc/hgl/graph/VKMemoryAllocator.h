@@ -13,6 +13,8 @@ class VKMemoryAllocator:public AbstractMemoryAllocator
 
     GPUBuffer *gpu_buffer;
 
+    VkDeviceSize range;         //ubo之类需要一个一次访问范围
+
 protected:
 
     bool AllocMemory() override;
@@ -27,10 +29,12 @@ public:
 
 public:
 
-    VKMemoryAllocator(GPUDevice *,const uint32_t flags);
+    VKMemoryAllocator(GPUDevice *,const uint32_t flags,const VkDeviceSize r);
     ~VKMemoryAllocator();
     
     void Free() override {/* DON'T RUN ANY OPERATION.*/}
+
+    void Flush(const VkDeviceSize);
 };//class VKMemoryAllocator:public AbstractMemoryAllocator
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MEMORY_ALLOCATOR_INCLUDE

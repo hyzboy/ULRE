@@ -137,12 +137,14 @@ namespace hgl
 
                     for(RenderNode *node:render_node_list)                  //未来可能要在Expend处考虑做去重
                     {
-                        memcpy(mp,&(node->matrix),sizeof(MVPMatrix));
+                        memcpy(mp,&(node->matrix),MVPMatrixBytes);
                         mp+=ubo_align;
 
                         (*ri)=node->ri;
                         ++ri;
                     }
+
+                    mvp_array->Flush(count);
                 }
             }
 
@@ -152,7 +154,10 @@ namespace hgl
                 MaterialParameters *mp=mtl->GetMP(DescriptorSetType::Renderable);
 
                 if(mp)
-                    mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),false);
+                {
+                    mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true);
+                    mp->Update();
+                }
             }
         }
 
@@ -218,9 +223,9 @@ namespace hgl
                 {
                     mp=ri->GetMP((DescriptorSetType)i);
 
-                    if(last_mp[i]!=mp)
+//                    if(last_mp[i]!=mp)
                     {
-                        last_mp[i]=mp;
+                        //last_mp[i]=mp;
 
                         if(mp)
                         {

@@ -54,7 +54,7 @@ private:
 
     struct MIR
     {
-        MaterialParameters *  material_instance   =nullptr;
+        MaterialInstance *  material_instance   =nullptr;
         RenderableInstance *renderable_instance =nullptr;
     }mir_nearest,mir_linear,mir_nearest_hq,mir_linear_hq;
     
@@ -64,8 +64,9 @@ private:
     VAB *               tex_coord_buffer    =nullptr;
     IndexBuffer *       index_buffer        =nullptr;
     
-            SceneNode           render_root;
-            RenderList          render_list;
+    SceneNode           render_root;
+    RenderList          render_list;
+
 public:
 
     ~TestApp()
@@ -160,9 +161,17 @@ private:
     {
         mir->material_instance=db->CreateMaterialInstance(mp->material);
         if(!mir->material_instance)return(false);
+        
+        {
+            MaterialParameters *mp_texture=mir->material_instance->GetMP(DescriptorSetType::Value);
+        
+            if(!mp_texture)
+                return(false);
             
-        if(!mir->material_instance->BindSampler("tex",texture,sampler))return(false);
-        mir->material_instance->Update();
+            if(!mp_texture->BindSampler("tex",texture,sampler))return(false);
+
+            mp_texture->Update();
+        }
 
         mir->renderable_instance=db->CreateRenderableInstance(render_obj,mir->material_instance,mp->pipeline);
 
@@ -174,7 +183,7 @@ private:
 
     bool Add(struct MIR *mir,const Matrix4f &offset)
     {
-        render_root.Add(mir->renderable_instance,offset);
+        render_root.CreateSubNode(offset,mir->renderable_instance);
 
         return(true);
     }
@@ -187,7 +196,7 @@ private:
         Add(&mir_linear_hq, translate( 0, 0,0));
         
         render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
+        render_list.Expend(&render_root);
         BuildCommandBuffer(&render_list);
         return(true);
     }

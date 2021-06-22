@@ -68,7 +68,7 @@ VK_NAMESPACE_BEGIN
             return data;
         }
 
-        const uint8 *LoadShaderDescriptor(const uint8_t version,ShaderDescriptorList *sd_list,const uint8 *data)
+        const uint8 *LoadShaderDescriptor(const uint8_t version,ShaderDescriptorList *sd_list,const VkDescriptorType desc_type,const uint8 *data)
         {   
             const uint32 total_bytes=AccessByPointer(data,uint32);
 
@@ -94,7 +94,18 @@ VK_NAMESPACE_BEGIN
                 sd->name[str_len]=0;
                 data+=str_len;
 
-                sd->type=CheckDescriptorSetType(sd->name);
+                sd->set_type=CheckDescriptorSetType(sd->name);
+
+                if(sd->set_type==DescriptorSetType::Renderable)
+                {
+                    if(desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
+                    if(desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;else
+                                                                    sd->desc_type=desc_type;
+                }
+                else
+                {
+                    sd->desc_type=desc_type;
+                }
 
                 ++sd;
             }
@@ -223,7 +234,7 @@ VK_NAMESPACE_BEGIN
         {
             desc_type=AccessByPointer(filedata,uint32);
 
-            filedata=LoadShaderDescriptor(version,sr->GetDescriptorList((VkDescriptorType)desc_type),filedata);
+            filedata=LoadShaderDescriptor(version,sr->GetDescriptorList((VkDescriptorType)desc_type),(VkDescriptorType)desc_type,filedata);
         }
 
         return sr;

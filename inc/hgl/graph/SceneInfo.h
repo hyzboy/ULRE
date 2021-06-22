@@ -31,6 +31,8 @@ namespace hgl
 
             CompOperatorMemcmp(const MVPMatrix &);
         };//struct MVPMatrix
+
+        constexpr size_t MVPMatrixBytes=sizeof(MVPMatrix);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_SCENE_INFO_INCLUDE

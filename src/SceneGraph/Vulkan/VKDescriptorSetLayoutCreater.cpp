@@ -34,9 +34,9 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
 
     for(const ShaderDescriptor &sd:*sd_list)
     {
-        all_set.Add(sd.type);
+        all_set.Add(sd.set_type);
 
-        ++binding_count[(size_t)sd.type];
+        ++binding_count[(size_t)sd.set_type];
     }
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
@@ -54,16 +54,16 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
 
         if(!all_binding.IsMember(sd.binding))
         {
-            p[(size_t)sd.type]->binding              = sd.binding;
-            p[(size_t)sd.type]->descriptorType       = desc_type;
-            p[(size_t)sd.type]->descriptorCount      = 1;
-            p[(size_t)sd.type]->stageFlags           = stageFlags;
-            p[(size_t)sd.type]->pImmutableSamplers   = nullptr;
+            p[(size_t)sd.set_type]->binding              = sd.binding;
+            p[(size_t)sd.set_type]->descriptorType       = sd.desc_type;
+            p[(size_t)sd.set_type]->descriptorCount      = 1;
+            p[(size_t)sd.set_type]->stageFlags           = stageFlags;
+            p[(size_t)sd.set_type]->pImmutableSamplers   = nullptr;
 
             all_binding.Add(sd.binding);
 
-            ++p[(size_t)sd.type];
-            ++fin_count[(size_t)sd.type];
+            ++p[(size_t)sd.set_type];
+            ++fin_count[(size_t)sd.set_type];
         }
     }
     
