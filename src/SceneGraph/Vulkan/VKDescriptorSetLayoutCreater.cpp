@@ -34,9 +34,9 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
 
     for(const ShaderDescriptor &sd:*sd_list)
     {
-        all_set.Add(sd.set);
+        all_set.Add(sd.type);
 
-        ++binding_count[sd.set];
+        ++binding_count[(size_t)sd.type];
     }
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
@@ -53,17 +53,17 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
         //重复的绑定点是有可能存在的，比如CameraInfo在vs/fs中同时存在
 
         if(!all_binding.IsMember(sd.binding))
-        {            
-            p[sd.set]->binding              = sd.binding;
-            p[sd.set]->descriptorType       = desc_type;
-            p[sd.set]->descriptorCount      = 1;
-            p[sd.set]->stageFlags           = stageFlags;
-            p[sd.set]->pImmutableSamplers   = nullptr;
+        {
+            p[(size_t)sd.type]->binding              = sd.binding;
+            p[(size_t)sd.type]->descriptorType       = desc_type;
+            p[(size_t)sd.type]->descriptorCount      = 1;
+            p[(size_t)sd.type]->stageFlags           = stageFlags;
+            p[(size_t)sd.type]->pImmutableSamplers   = nullptr;
 
             all_binding.Add(sd.binding);
 
-            ++p[sd.set];
-            ++fin_count[sd.set];
+            ++p[(size_t)sd.type];
+            ++fin_count[(size_t)sd.type];
         }
     }
     
