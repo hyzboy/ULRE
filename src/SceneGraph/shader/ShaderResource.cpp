@@ -94,7 +94,9 @@ VK_NAMESPACE_BEGIN
                 sd->name[str_len]=0;
                 data+=str_len;
 
-                sd->type=CheckDescriptorSetType(sd->name);                
+                sd->type=CheckDescriptorSetType(sd->name);
+
+                ++sd;
             }
 
             return data;
