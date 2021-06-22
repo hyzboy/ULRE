@@ -22,10 +22,10 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
 {
     if(!sd_list||sd_list->GetCount()<=0)return;
 
-    uint32_t binding_count[size_t(DescriptorSetsType::RANGE_SIZE)],
-             old_count[size_t(DescriptorSetsType::RANGE_SIZE)],
-             fin_count[size_t(DescriptorSetsType::RANGE_SIZE)];
-    VkDescriptorSetLayoutBinding *p[size_t(DescriptorSetsType::RANGE_SIZE)];
+    uint32_t binding_count[size_t(DescriptorSetType::RANGE_SIZE)],
+             old_count[size_t(DescriptorSetType::RANGE_SIZE)],
+             fin_count[size_t(DescriptorSetType::RANGE_SIZE)];
+    VkDescriptorSetLayoutBinding *p[size_t(DescriptorSetType::RANGE_SIZE)];
 
     hgl_zero(binding_count);
     hgl_zero(old_count);
@@ -39,7 +39,7 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
         ++binding_count[sd.set];
     }
 
-    ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
         if(binding_count[i]>0)
         {
             old_count[i]=sds[i].binding_list.GetCount();
@@ -67,7 +67,7 @@ void DescriptorSetLayoutCreater::Bind(const ShaderDescriptorList *sd_list,VkDesc
         }
     }
     
-    ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
         if(binding_count[i]>0)
             sds[i].binding_list.SetCount(old_count[i]+fin_count[i]);
 }
@@ -76,7 +76,7 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
 {
     fin_dsl_count=0;
 
-    ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
     {
         const int count=sds[i].binding_list.GetCount();
 
@@ -120,12 +120,12 @@ bool DescriptorSetLayoutCreater::CreatePipelineLayout()
     return(true);
 }
 
-DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetsType &type)const
+DescriptorSets *DescriptorSetLayoutCreater::Create(const DescriptorSetType &type)const
 {
     if(!pipeline_layout)
         return(nullptr);
 
-    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(DescriptorSetsType,type);
+    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(DescriptorSetType,type);
 
     const uint32_t count=sds[(size_t)type].binding_list.GetCount();
 

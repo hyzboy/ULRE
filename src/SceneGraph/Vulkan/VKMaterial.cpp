@@ -22,9 +22,9 @@ Material::Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineSh
         vab=nullptr;
     }
 
-    mp_m=CreateMP(DescriptorSetsType::Material);
-    mp_r=CreateMP(DescriptorSetsType::Renderable);
-    mp_g=CreateMP(DescriptorSetsType::Global);
+    mp_m=CreateMP(DescriptorSetType::Material);
+    mp_r=CreateMP(DescriptorSetType::Renderable);
+    mp_g=CreateMP(DescriptorSetType::Global);
 }
 
 Material::~Material()
@@ -50,7 +50,7 @@ const VkPipelineLayout Material::GetPipelineLayout()const
     return dsl_creater->GetPipelineLayout();
 }
 
-MaterialParameters *Material::CreateMP(const DescriptorSetsType &type)const
+MaterialParameters *Material::CreateMP(const DescriptorSetType &type)const
 {
     DescriptorSets *ds=dsl_creater->Create(type);
 

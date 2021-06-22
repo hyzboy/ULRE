@@ -54,7 +54,7 @@ class RenderPass;
 class GPUFence;
 class GPUSemaphore;
 
-enum class DescriptorSetsType
+enum class DescriptorSetType
 {
     //设计使其对应shader中的sets
     

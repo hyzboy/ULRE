@@ -9,7 +9,7 @@ class MaterialParameters
 {
     const ShaderModuleMap *shader_map;
 
-    DescriptorSetsType ds_type;
+    DescriptorSetType ds_type;
 
     DescriptorSets *descriptor_sets;
 
@@ -17,17 +17,17 @@ private:
 
     friend class Material;
 
-    MaterialParameters(const ShaderModuleMap *,const DescriptorSetsType &type,DescriptorSets *);
+    MaterialParameters(const ShaderModuleMap *,const DescriptorSetType &type,DescriptorSets *);
 
 public:
 
-    const   DescriptorSetsType  GetType             (){return ds_type;}
+    const   DescriptorSetType  GetType             (){return ds_type;}
             DescriptorSets *    GetDescriptorSet    (){return descriptor_sets;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
 
 public:
 
-    #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetsType::name;}
+    #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetType::name;}
         MP_TYPE_IS(Material)
 //        MP_TYPE_IS(Texture)
         MP_TYPE_IS(Value)
