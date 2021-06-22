@@ -4,7 +4,7 @@
 #include<hgl/graph/VKDescriptorSets.h>
 
 VK_NAMESPACE_BEGIN
-MaterialParameters::MaterialParameters(const ShaderModuleMap *smm,const DescriptorSetsType &type,DescriptorSets *ds)
+MaterialParameters::MaterialParameters(const ShaderModuleMap *smm,const DescriptorSetType &type,DescriptorSets *ds)
 {
     shader_map=smm;
     ds_type=type;

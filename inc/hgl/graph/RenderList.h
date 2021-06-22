@@ -39,7 +39,7 @@ namespace hgl
             MVPArrayBuffer *mvp_array;
             List<RenderableInstance *> ri_list;
 
-            VkDescriptorSet ds_list[(size_t)DescriptorSetsType::RANGE_SIZE];
+            VkDescriptorSet ds_list[(size_t)DescriptorSetType::RANGE_SIZE];
             DescriptorSets *renderable_desc_sets;
 
             uint32_t ubo_offset;
@@ -54,7 +54,7 @@ namespace hgl
         private:
 
             Pipeline *          last_pipeline;
-            MaterialParameters *last_mp[(size_t)DescriptorSetsType::RANGE_SIZE];
+            MaterialParameters *last_mp[(size_t)DescriptorSetType::RANGE_SIZE];
             uint32_t            last_vbo;
 
             void Render(RenderableInstance *);

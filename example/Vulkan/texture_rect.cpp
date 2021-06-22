@@ -72,12 +72,12 @@ private:
         sampler=db->CreateSampler();
 
         {
-            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Material);
+            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetType::Value);
         
             if(!mp_texture)
                 return(false);
             
-            if(!mp_texture->BindSampler("m_tex",texture,sampler))return(false);
+            if(!mp_texture->BindSampler("tex",texture,sampler))return(false);
 
             mp_texture->Update();
         }
@@ -100,7 +100,7 @@ private:
             return(false);
         
         {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
         
             if(!mp_global)
                 return(false);

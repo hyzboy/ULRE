@@ -52,7 +52,7 @@ public:
 
     const   uint32_t            GetBufferHash       ()const{return buffer_hash;}
 
-            MaterialParameters *GetMP               (const DescriptorSetsType &type){return mat_inst->GetMP(type);}
+            MaterialParameters *GetMP               (const DescriptorSetType &type){return mat_inst->GetMP(type);}
 };//class RenderableInstance
 
 RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);

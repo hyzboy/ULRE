@@ -24,9 +24,9 @@ class DescriptorSetLayoutCreater
         VkDescriptorSetLayout               layout;
     };
 
-    ShaderDescriptorSet sds[size_t(DescriptorSetsType::RANGE_SIZE)];
+    ShaderDescriptorSet sds[size_t(DescriptorSetType::RANGE_SIZE)];
 
-    VkDescriptorSetLayout fin_dsl[size_t(DescriptorSetsType::RANGE_SIZE)];
+    VkDescriptorSetLayout fin_dsl[size_t(DescriptorSetType::RANGE_SIZE)];
     uint32_t fin_dsl_count;
 
     VkPipelineLayout pipeline_layout=VK_NULL_HANDLE;
@@ -35,7 +35,7 @@ public:
 
     DescriptorSetLayoutCreater(VkDevice dev,VkDescriptorPool dp)
     {
-        ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+        ENUM_CLASS_FOR(DescriptorSetType,int,i)
             sds[i].layout=nullptr;
 
         hgl_zero(fin_dsl);
@@ -83,6 +83,6 @@ public:
 
     const VkPipelineLayout GetPipelineLayout()const{return pipeline_layout;}
 
-    DescriptorSets *Create(const DescriptorSetsType &type)const;
+    DescriptorSets *Create(const DescriptorSetType &type)const;
 };//class DescriptorSetLayoutCreater
 VK_NAMESPACE_END

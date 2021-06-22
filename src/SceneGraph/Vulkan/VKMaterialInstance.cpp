@@ -5,7 +5,7 @@
 VK_NAMESPACE_BEGIN
 MaterialInstance *Material::CreateInstance()
 {
-    MaterialParameters *mp=CreateMP(DescriptorSetsType::Value);
+    MaterialParameters *mp=CreateMP(DescriptorSetType::Value);
 
     return(new MaterialInstance(this,mp));
 }
@@ -22,12 +22,12 @@ MaterialInstance::~MaterialInstance()
     SAFE_CLEAR(mp_value);
 }
 
-MaterialParameters *MaterialInstance::GetMP(const DescriptorSetsType &type)
+MaterialParameters *MaterialInstance::GetMP(const DescriptorSetType &type)
 {
-    //if(type==DescriptorSetsType::Texture
+    //if(type==DescriptorSetType::Texture
     //    return mp_texture;
 
-    if(type==DescriptorSetsType::Value)
+    if(type==DescriptorSetType::Value)
         return mp_value;
 
     return material->GetMP(type);

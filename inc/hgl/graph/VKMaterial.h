@@ -48,12 +48,12 @@ public:
 
 public:
 
-            MaterialParameters *                CreateMP                (const DescriptorSetsType &type)const;
-            MaterialParameters *                GetMP                   (const DescriptorSetsType &type)
+            MaterialParameters *                CreateMP                (const DescriptorSetType &type)const;
+            MaterialParameters *                GetMP                   (const DescriptorSetType &type)
             {
-                if(type==DescriptorSetsType::Material   )return mp_m;else
-                if(type==DescriptorSetsType::Renderable )return mp_r;else
-                if(type==DescriptorSetsType::Global     )return mp_g;else
+                if(type==DescriptorSetType::Material   )return mp_m;else
+                if(type==DescriptorSetType::Renderable )return mp_r;else
+                if(type==DescriptorSetType::Global     )return mp_g;else
                 return(nullptr);
             }
 
