@@ -5,6 +5,18 @@
 
 VK_NAMESPACE_BEGIN
 
+    const DescriptorSetType CheckDescriptorSetType(const char *str)
+    {
+        if(str[1]=='_')
+        {
+            if(str[0]=='m')return DescriptorSetType::Material;
+            if(str[0]=='g')return DescriptorSetType::Global;
+            if(str[0]=='r')return DescriptorSetType::Renderable;
+        }
+
+        return DescriptorSetType::Value;
+    }
+
     #define AccessByPointer(data,type)  *(type *)data;data+=sizeof(type);
 
     namespace
@@ -81,6 +93,8 @@ VK_NAMESPACE_BEGIN
                 memcpy(sd->name,(char *)data,str_len);
                 sd->name[str_len]=0;
                 data+=str_len;
+
+                sd->type=CheckDescriptorSetType(sd->name);                
             }
 
             return data;

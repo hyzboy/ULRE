@@ -2,8 +2,7 @@
 #include<hgl/type/String.h>
 #include<hgl/type/List.h>
 #include<hgl/type/StringList.h>
-#include<hgl/graph/VKFormat.h>
-#include<hgl/graph/VKStruct.h>
+#include<hgl/graph/VK.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -26,6 +25,7 @@ using ShaderStageList       =ObjectList<ShaderStage>;
 struct ShaderDescriptor
 {
     char name[128];
+    DescriptorSetType type;
     uint32_t set;
     uint32_t binding;
 };

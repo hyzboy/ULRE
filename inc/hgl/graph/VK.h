@@ -56,7 +56,7 @@ class GPUSemaphore;
 
 enum class DescriptorSetType
 {
-    //设计使其对应shader中的sets
+    //设计使其对应shader中的set
     
     Global=0,   ///<全局参数(如太阳光等)
     Material,   ///<材质中永远不变的参数
@@ -66,6 +66,8 @@ enum class DescriptorSetType
 
     ENUM_CLASS_RANGE(Global,Renderable)
 };//
+
+const DescriptorSetType CheckDescriptorSetType(const char *str);
 
 class DescriptorSetLayoutCreater;
 class DescriptorSets;

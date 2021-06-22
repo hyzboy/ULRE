@@ -15,7 +15,7 @@ class DescriptorSetLayoutCreater
     VkDevice device;
     VkDescriptorPool pool;
 
-    Sets<uint32_t> all_set;
+    Sets<DescriptorSetType> all_set;
     Sets<uint32_t> all_binding;
 
     struct ShaderDescriptorSet
