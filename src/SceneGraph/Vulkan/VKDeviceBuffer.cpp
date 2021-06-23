@@ -38,7 +38,8 @@ bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkD
 
         if(!data)
             return(true);
-
+            
+        dm->Write(data,0,size);
         return(true);
     }
 
