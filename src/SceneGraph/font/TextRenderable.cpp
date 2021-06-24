@@ -35,7 +35,7 @@ namespace hgl
                 if(vab_position)
                     delete vab_position;
 
-                vab_position    =device->CreateVAB(VAF_VEC4,max_count);
+                vab_position    =device->CreateVAB(VF_VEC4,max_count);
                 Set(VAN::Position,vab_position);
             }
 
@@ -43,7 +43,7 @@ namespace hgl
                 if(vab_tex_coord)
                     delete vab_tex_coord;
 
-                vab_tex_coord   =device->CreateVAB(VAF_VEC4,max_count);
+                vab_tex_coord   =device->CreateVAB(VF_VEC4,max_count);
                 Set(VAN::TexCoord,vab_tex_coord);
             }
         }

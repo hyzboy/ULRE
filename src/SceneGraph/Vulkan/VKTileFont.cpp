@@ -23,7 +23,7 @@ TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
     if(!fs)
         return(nullptr);
 
-    TileData *td=CreateTileData(UFMT_R8,height,height,limit_count);
+    TileData *td=CreateTileData(UPF_R8,height,height,limit_count);
 
     if(!td)
         return nullptr;

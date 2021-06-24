@@ -85,12 +85,12 @@ VkFormat GPUPhysicalDevice::GetDepthFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthFormats[] =
     {
-        FMT_D16UN,
-        FMT_X8_D24UN,
-        FMT_D16UN_S8U,
-        FMT_D24UN_S8U,
-        FMT_D32F,
-        FMT_D32F_S8U
+        PF_D16UN,
+        PF_X8_D24UN,
+        PF_D16UN_S8U,
+        PF_D24UN_S8U,
+        PF_D32F,
+        PF_D32F_S8U
     };
 
     VkFormat result=VK_FORMAT_UNDEFINED;
@@ -113,9 +113,9 @@ VkFormat GPUPhysicalDevice::GetDepthStencilFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthStencilFormats[] =
     {
-        FMT_D16UN_S8U,
-        FMT_D24UN_S8U,
-        FMT_D32F_S8U
+        PF_D16UN_S8U,
+        PF_D24UN_S8U,
+        PF_D32F_S8U
     };
 
     VkFormat result=VK_FORMAT_UNDEFINED;

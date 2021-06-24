@@ -77,7 +77,7 @@ public:
 
     bool InitOffscreen()
     {
-        FramebufferInfo fbi(UFMT_RGBA8,OFFSCREEN_SIZE,OFFSCREEN_SIZE);
+        FramebufferInfo fbi(UPF_RGBA8,OFFSCREEN_SIZE,OFFSCREEN_SIZE);
 
         os.render_taget=device->CreateRenderTarget(&fbi);
         if(!os.render_taget)return(false);

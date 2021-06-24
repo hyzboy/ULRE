@@ -11,15 +11,15 @@ namespace hgl
     {
         constexpr VkFormat CompressFormatList[]=
         {
-            FMT_BC1_RGBUN,
-            FMT_BC1_RGBAUN,
-            FMT_BC2UN,
-            FMT_BC3UN,
-            FMT_BC4UN,
-            FMT_BC5UN,
-            FMT_BC6UF,
-            FMT_BC6SF,
-            FMT_BC7UN
+            PF_BC1_RGBUN,
+            PF_BC1_RGBAUN,
+            PF_BC2UN,
+            PF_BC3UN,
+            PF_BC4UN,
+            PF_BC5UN,
+            PF_BC6UF,
+            PF_BC6SF,
+            PF_BC7UN
         };
 
         constexpr uint32 CompressFormatBits[]={4,4,8,8,4,8,8,8,8};

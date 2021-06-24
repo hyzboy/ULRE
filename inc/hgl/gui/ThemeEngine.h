@@ -13,7 +13,7 @@ namespace hgl
             class GPUDevice;
         }//namespace vulkan
 
-        constexpr VkFormat DefaultRenderTargetFormat=UFMT_ABGR8;                ///<缺省窗体绘图表面格式
+        constexpr VkFormat DefaultRenderTargetFormat=UPF_ABGR8;                ///<缺省窗体绘图表面格式
 
         class ThemeEngine
         {

@@ -86,7 +86,7 @@ private:
         auto render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        if(!render_obj->Set(VAN::Position,db->CreateVAB(VAF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::Position,db->CreateVAB(VF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
         if(!render_obj->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
 
         renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
