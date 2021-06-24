@@ -214,7 +214,8 @@ namespace hgl
             }
 
             {
-                int ds_count=0;
+                uint32_t ds_count=0;
+                uint32_t first_set=0;
                 MaterialParameters *mp;
 
                 for(int i=(int)DescriptorSetType::BEGIN_RANGE;
@@ -223,15 +224,20 @@ namespace hgl
                 {
                     mp=ri->GetMP((DescriptorSetType)i);
 
-//                    if(last_mp[i]!=mp)
+                    if(last_mp[i]!=mp)
                     {
-                        //last_mp[i]=mp;
+                        last_mp[i]=mp;
 
                         if(mp)
                         {
                             ds_list[ds_count]=mp->GetVkDescriptorSet();
                             ++ds_count;
                         }
+                    }
+                    else
+                    {
+                        if(mp)
+                            ++first_set;
                     }
                 }
 
@@ -243,11 +249,11 @@ namespace hgl
                         ds_list[ds_count]=mp->GetVkDescriptorSet();
                         ++ds_count;
                         
-                        cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),ds_list,ds_count,&ubo_offset,1);
+                        cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),first_set,ds_list,ds_count,&ubo_offset,1);
                     }
                     else
                     {                        
-                        cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),ds_list,ds_count,nullptr,0);
+                        cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),first_set,ds_list,ds_count,nullptr,0);
                     }
 
                     ubo_offset+=ubo_align;
