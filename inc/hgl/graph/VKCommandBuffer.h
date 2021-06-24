@@ -114,11 +114,11 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(VkPipelineLayout pipeline_layout,const VkDescriptorSet *ds_list,const uint32_t ds_count,const uint32_t *offset,const uint32_t offset_count)
+    bool BindDescriptorSets(VkPipelineLayout pipeline_layout,const uint32_t first_set,const VkDescriptorSet *ds_list,const uint32_t ds_count,const uint32_t *offset,const uint32_t offset_count)
     {
         if(!ds_list||ds_count<=0)return(false);
 
-        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,ds_count,ds_list,offset_count,offset);
+        vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,first_set,ds_count,ds_list,offset_count,offset);
 
         return(true);
     }
