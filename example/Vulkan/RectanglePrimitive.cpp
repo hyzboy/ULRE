@@ -91,8 +91,8 @@ private:
 
         if(!render_obj)return(false);
 
-        render_obj->Set(VAN::Position,db->CreateVAB(VAF_VEC4,VERTEX_COUNT,vertex_data));
-        render_obj->Set(VAN::TexCoord,db->CreateVAB(VAF_VEC4,VERTEX_COUNT,tex_coord_data));
+        render_obj->Set(VAN::Position,db->CreateVAB(VF_VEC4,VERTEX_COUNT,vertex_data));
+        render_obj->Set(VAN::TexCoord,db->CreateVAB(VF_VEC4,VERTEX_COUNT,tex_coord_data));
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 

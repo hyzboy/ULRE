@@ -114,7 +114,7 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
         ++cf;
     }
 
-    if(rbi->GetDepthFormat()!=FMT_UNDEFINED)
+    if(rbi->GetDepthFormat()!=PF_UNDEFINED)
     {
         desc->finalLayout  = rbi->GetDepthLayout();
         desc->format       = rbi->GetDepthFormat();

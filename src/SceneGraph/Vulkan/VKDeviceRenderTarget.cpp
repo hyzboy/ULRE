@@ -38,7 +38,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
         *iv++=color_texture->GetImageView();
     }
 
-    Texture2D *depth_texture=(depth_format!=FMT_UNDEFINED)?CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format,extent)):nullptr;
+    Texture2D *depth_texture=(depth_format!=PF_UNDEFINED)?CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format,extent)):nullptr;
 
     Framebuffer *fb=CreateFramebuffer(rp,color_iv_list,color_count,depth_texture?depth_texture->GetImageView():nullptr);
 

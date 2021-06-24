@@ -41,10 +41,10 @@ private:
     RenderList  render_list;
     
     Material *          material            =nullptr;
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
 
     Material *          axis_material       =nullptr;
-    MaterialParameters *  axis_mi             =nullptr;
+    MaterialInstance *  axis_mi             =nullptr;
 
     PipelineData *      pipeline_data       =nullptr;
     Pipeline *          axis_pipeline       =nullptr;
