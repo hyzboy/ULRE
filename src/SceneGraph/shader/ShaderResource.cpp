@@ -40,8 +40,6 @@ VK_NAMESPACE_BEGIN
             if(count<=0)
                 return(data);
 
-            const uint32 total_bytes=AccessByPointer(data,uint32);
-
             int str_len;
 
             ShaderStage *ss;
@@ -50,11 +48,11 @@ VK_NAMESPACE_BEGIN
             {
                 ss=new ShaderStage;
 
-                ss->location=*data++;
-                ss->type.basetype=(VertexAttribBaseType)*data++;
-                ss->type.vec_size=*data++;
+                ss->location        =*data++;
+                ss->type.basetype   =(VertexAttribBaseType)*data++;
+                ss->type.vec_size   =*data++;
 
-                ss->format=VK_NAMESPACE::GetVulkanFormat(&(ss->type));
+                ss->format          =VK_NAMESPACE::GetVulkanFormat(&(ss->type));
 
                 str_len=*data++;
                 ss->name.SetString((char *)data,str_len);
@@ -63,51 +61,6 @@ VK_NAMESPACE_BEGIN
                 ss->binding=i;
 
                 ss_list.Add(ss);
-            }
-
-            return data;
-        }
-
-        const uint8 *LoadShaderDescriptor(const uint8_t version,ShaderDescriptorList *sd_list,const VkDescriptorType desc_type,const uint8 *data)
-        {   
-            const uint32 total_bytes=AccessByPointer(data,uint32);
-
-            const uint count=*data++;
-
-            uint str_len;
-
-            sd_list->SetCount(count);
-
-            ShaderDescriptor *sd=sd_list->GetData();
-
-            for(uint i=0;i<count;i++)
-            {
-                if(version>=1)
-                    sd->set=*data++;
-                else
-                    sd->set=0;
-
-                sd->binding=*data++;
-                str_len=*data++;
-
-                memcpy(sd->name,(char *)data,str_len);
-                sd->name[str_len]=0;
-                data+=str_len;
-
-                sd->set_type=CheckDescriptorSetType(sd->name);
-
-                if(sd->set_type==DescriptorSetType::Renderable)
-                {
-                    if(desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
-                    if(desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;else
-                                                                    sd->desc_type=desc_type;
-                }
-                else
-                {
-                    sd->desc_type=desc_type;
-                }
-
-                ++sd;
             }
 
             return data;
@@ -195,31 +148,16 @@ VK_NAMESPACE_BEGIN
         return -1;
     }
 
-    ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize,bool include_file_header)
+    ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize)
     {
         if(!origin_filedata)return(nullptr);
 
         const uint8 *filedata=origin_filedata;
         const uint8 *file_end=filedata+filesize;
 
-        if(include_file_header)
-        {
-            if(filesize<SHADER_FILE_MIN_SIZE
-             ||memcmp(origin_filedata,SHADER_FILE_HEADER,SHADER_FILE_HEADER_BYTES))
-            {
-                delete[] origin_filedata;
-                return(nullptr);
-            }
-
-            filedata+=SHADER_FILE_HEADER_BYTES;
-        }
-
-        uint8                   version;
         VkShaderStageFlagBits   flag;
         uint32                  spv_size;
-        uint32                  desc_type;
 
-        version =AccessByPointer(filedata,uint8);
         flag    =(const VkShaderStageFlagBits)AccessByPointer(filedata,uint32);
         spv_size=AccessByPointer(filedata,uint32);
 
@@ -230,37 +168,6 @@ VK_NAMESPACE_BEGIN
         filedata=LoadShaderStages(sr->GetStageInputs(),filedata);
         filedata=LoadShaderStages(sr->GetStageOutputs(),filedata);
 
-        while(filedata<file_end)
-        {
-            desc_type=AccessByPointer(filedata,uint32);
-
-            filedata=LoadShaderDescriptor(version,sr->GetDescriptorList((VkDescriptorType)desc_type),(VkDescriptorType)desc_type,filedata);
-        }
-
-        return sr;
-    }
-
-    ShaderResource *LoadShaderResoruce(const OSString &filename)
-    {
-        ShaderResource *sr;
-
-        if(shader_resource_by_filename.Get(filename,sr))
-            return sr;
-
-        int64 filesize;
-        uint8 *filedata=(uint8 *)filesystem::LoadFileToMemory(filename+OS_TEXT(".shader"),filesize);
-
-        if(!filedata)
-        {        
-            shader_resource_by_filename.Add(filename,nullptr);
-            return(nullptr);
-        }
-
-        AutoDeleteArray<uint8> origin_filedata(filedata,filesize);
-
-        sr=LoadShaderResource(origin_filedata,filesize,true);
-
-        shader_resource_by_filename.Add(filename,sr);
         return sr;
     }
 VK_NAMESPACE_END

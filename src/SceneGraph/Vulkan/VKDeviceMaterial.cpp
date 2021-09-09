@@ -3,7 +3,7 @@
 #include"VKDescriptorSetLayoutCreater.h"
 
 VK_NAMESPACE_BEGIN
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *mds)
 {
     const int shader_count=shader_maps->GetCount();
 
@@ -45,7 +45,7 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     return(new Material(mtl_name,shader_maps,shader_stage_list,dsl_creater));
 }
 
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *mds)
 {
     if(!vertex_shader_module||!fragment_shader_module)
         return(nullptr);
@@ -58,10 +58,10 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShade
     smm->Add(vertex_shader_module);
     smm->Add(fragment_shader_module);
 
-    return CreateMaterial(mtl_name,smm);
+    return CreateMaterial(mtl_name,smm,mds);
 }
 
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *mds)
 {
     if(!vertex_shader_module
      ||!geometry_shader_module
@@ -78,6 +78,6 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShade
     smm->Add(geometry_shader_module);
     smm->Add(fragment_shader_module);
 
-    return CreateMaterial(mtl_name,smm);
+    return CreateMaterial(mtl_name,smm,mds);
 }
 VK_NAMESPACE_END

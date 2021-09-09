@@ -26,57 +26,50 @@ const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,
     return sm;
 }
 
-const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename)
-{
-    ShaderModule *sm;
+const bool LoadShaderDescriptor(ShaderResource *sr,const uint8 *data)
+{   
+    const uint8 count=*data++;
 
-    if(shader_module_by_name.Get(filename,sm))
-        return sm;
+    if(count<=0)return(true);
 
-    ShaderResource *shader_resource=LoadShaderResoruce(filename);
+    ShaderDescriptorList *sd_list;
+    const VkDescriptorType desc_type;
 
-    if(!shader_resource)return(nullptr);
 
-    sm=device->CreateShaderModule(shader_resource);
 
-    shader_module_by_name.Add(filename,sm);
+    uint str_len;
 
-    return sm;
-}
+    sd_list->SetCount(count);
 
-Material *RenderResource::CreateMaterial(const UTF8String &mtl_name,const OSString &vertex_shader_filename,const OSString &fragment_shader_filename)
-{
-    const ShaderModule *vs=CreateShaderModule(vertex_shader_filename);
+    ShaderDescriptor *sd=sd_list->GetData();
 
-    if(!vs)
-        return(nullptr);
+    for(uint i=0;i<count;i++)
+    {
+        sd->set=*data++;
+        sd->binding=*data++;
+        str_len=*data++;
 
-    const ShaderModule *fs=CreateShaderModule(fragment_shader_filename);
+        memcpy(sd->name,(char *)data,str_len);
+        sd->name[str_len]=0;
+        data+=str_len;
 
-    if(!fs)
-        return(nullptr);
+        sd->set_type=CheckDescriptorSetType(sd->name);
 
-    return(device->CreateMaterial(mtl_name,(VertexShaderModule *)vs,fs));
-}
+        if(sd->set_type==DescriptorSetType::Renderable)
+        {
+            if(desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
+            if(desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;else
+                                                            sd->desc_type=desc_type;
+        }
+        else
+        {
+            sd->desc_type=desc_type;
+        }
 
-Material *RenderResource::CreateMaterial(const UTF8String &mtl_name,const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename)
-{
-    const ShaderModule *vs=CreateShaderModule(vertex_shader_filename);
+        ++sd;
+    }
 
-    if(!vs)
-        return(nullptr);
-
-    const ShaderModule *gs=CreateShaderModule(geometry_shader_filename);
-
-    if(!gs)
-        return(nullptr);
-
-    const ShaderModule *fs=CreateShaderModule(fragment_shader_filename);
-
-    if(!fs)
-        return(nullptr);
-
-    return(device->CreateMaterial(mtl_name,(VertexShaderModule *)vs,gs,fs));
+    return data;
 }
 
 Material *RenderResource::CreateMaterial(const OSString &filename)
@@ -104,24 +97,21 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         return(nullptr);
 
     const uint8 *sp=origin_filedata;
-    int64 left=filesize;
+    const uint8 *end=sp+filesize;
 
     if(memcmp(sp,MaterialFileHeader,MaterialFileHeaderLength)!=0)
         return(nullptr);
 
     sp+=MaterialFileHeaderLength;
-    left-=MaterialFileHeaderLength;
 
     const uint8 ver=*sp;
     ++sp;
-    --left;
 
-    if(ver!=1)
+    if(ver!=2)
         return(nullptr);
 
     const uint32_t shader_bits=*(uint32_t *)sp;
     sp+=sizeof(uint32_t);
-    left-=sizeof(uint32_t);
 
     const uint count=GetShaderCountByBits(shader_bits);
     uint32_t size;
@@ -138,11 +128,9 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     {
         size=*(uint32_t *)sp;
         sp+=sizeof(uint32_t);
-        left-=sizeof(uint32_t);
 
-        sr=LoadShaderResource(sp,size,false);
+        sr=LoadShaderResource(sp,size);
         sp+=size;
-        left-=size;
 
         if(sr)
         {
@@ -155,11 +143,14 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
                 if(smm->Add(sm))
                     continue;
             }
-        }
-
+        }   
+    
         result=false;
         break;
     }
+
+    if(!LoadShaderDescriptor(sr,filedata))
+        result=false;
 
     if(result)
     {
