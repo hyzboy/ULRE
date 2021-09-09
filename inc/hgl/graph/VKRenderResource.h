@@ -88,11 +88,7 @@ public: // VBO/VAO
 public: //Material
 
     const ShaderModule *CreateShaderModule(const OSString &filename,ShaderResource *shader_resource);
-    const ShaderModule *CreateShaderModule(const OSString &filename);
     
-    Material *          CreateMaterial(const UTF8String &mtl_name,const OSString &vertex_shader_filename,const OSString &fragment_shader_filename);    
-    Material *          CreateMaterial(const UTF8String &mtl_name,const OSString &vertex_shader_filename,const OSString &geometry_shader_filename,const OSString &fragment_shader_filename);
-
     Material *          CreateMaterial(const OSString &);
     MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(const OSString &);

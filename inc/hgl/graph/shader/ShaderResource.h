@@ -30,6 +30,7 @@ struct ShaderDescriptor
     DescriptorSetType set_type;
     uint32_t set;
     uint32_t binding;
+    uint32_t stage_flag;
 };
 
 using ShaderDescriptorList=List<ShaderDescriptor>;
@@ -46,6 +47,37 @@ constexpr size_t VK_DESCRIPTOR_TYPE_END_RANGE=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMEN
 constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_DESCRIPTOR_TYPE_BEGIN_RANGE+1;
 #endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
 
+class MaterialDescriptorSets
+{
+    ShaderDescriptorList descriptor_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
+
+public:
+
+    const   ShaderDescriptorList *  GetDescriptorList   ()const {return descriptor_list;}
+            ShaderDescriptorList *  GetDescriptorList   (VkDescriptorType desc_type)
+    {
+        if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
+         ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
+
+        return descriptor_list+desc_type;
+    }
+
+    ShaderDescriptorList &GetUBO        (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER];}
+    ShaderDescriptorList &GetSSBO       (){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];}
+    ShaderDescriptorList &GetUBODynamic (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC];}
+    ShaderDescriptorList &GetSSBODynamic(){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC];}
+    ShaderDescriptorList &GetSampler    (){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
+
+    const int                       GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;
+    //const DescriptorBindingList *   GetBindingList  (VkDescriptorType desc_type)const
+    //{
+    //    if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
+    //        ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
+
+    //    return &(descriptor_list[desc_type].binding_list);
+    //}
+};//
+
 class ShaderResource
 {
     VkShaderStageFlagBits stage_flag;
@@ -55,8 +87,6 @@ class ShaderResource
 
     ShaderStageList stage_inputs;
     ShaderStageList stage_outputs;
-
-    ShaderDescriptorList descriptor_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
 public:
 
@@ -77,34 +107,9 @@ public:
 
     const   ShaderStage *           GetStageInput       (const AnsiString &)const;
     const   int                     GetStageInputBinding(const AnsiString &)const;
-
-    const   ShaderDescriptorList *  GetDescriptorList   ()const {return descriptor_list;}
-            ShaderDescriptorList *  GetDescriptorList   (VkDescriptorType desc_type)
-    {
-        if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-         ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
-
-        return descriptor_list+desc_type;
-    }
-
-    ShaderDescriptorList &GetUBO        (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER];}
-    ShaderDescriptorList &GetSSBO       (){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];}
-    ShaderDescriptorList &GetUBODynamic (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC];}
-    ShaderDescriptorList &GetSSBODynamic(){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC];}
-    ShaderDescriptorList &GetSampler(){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
-
-    const int                       GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const;
-    //const DescriptorBindingList *   GetBindingList  (VkDescriptorType desc_type)const
-    //{
-    //    if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-    //        ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
-
-    //    return &(descriptor_list[desc_type].binding_list);
-    //}
 };//class ShaderResource
 
-ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize,bool include_file_header);
-ShaderResource *LoadShaderResoruce(const OSString &filename);
+ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize);
 
 struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
 {
