@@ -191,7 +191,7 @@ public: //
 
 public: //shader & material
 
-    DescriptorSetLayoutCreater *CreateDescriptorSetLayoutCreater();
+    DescriptorSetLayoutCreater *CreateDescriptorSetLayoutCreater(const MaterialDescriptorSets *);
     
     ShaderModule *CreateShaderModule(ShaderResource *);
     

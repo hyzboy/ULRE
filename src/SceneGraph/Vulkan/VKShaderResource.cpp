@@ -1,6 +1,6 @@
-#include<hgl/graph/shader/ShaderResource.h>
-#include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/VKShaderResource.h>
 #include<hgl/graph/VKFormat.h>
+#include<hgl/filesystem/FileSystem.h>
 #include<hgl/type/Map.h>
 
 VK_NAMESPACE_BEGIN
@@ -22,16 +22,6 @@ VK_NAMESPACE_BEGIN
     namespace
     {
         MapObject<OSString,ShaderResource> shader_resource_by_filename;
-
-        constexpr char      SHADER_FILE_HEADER[]    ="Shader\x1A";
-        constexpr uint      SHADER_FILE_HEADER_BYTES=sizeof(SHADER_FILE_HEADER)-1;
-
-        constexpr uint32    SHADER_FILE_MIN_SIZE    =SHADER_FILE_HEADER_BYTES
-                                                    +1                         //version
-                                                    +sizeof(uint32)            //shader flag
-                                                    +sizeof(uint32)            //spv_size
-                                                    +1                         //input states count
-                                                    +1;                        //output states count
 
         const uint8 *LoadShaderStages(ShaderStageList &ss_list,const uint8 *data)
         {
@@ -130,20 +120,6 @@ VK_NAMESPACE_BEGIN
 
             ++ss;
         }
-
-        return -1;
-    }
-    
-    const int ShaderResource::GetBinding(VkDescriptorType desc_type,const AnsiString &name)const
-    {
-        if(desc_type>=VK_DESCRIPTOR_TYPE_RANGE_SIZE)return -1;
-        if(name.IsEmpty())return -1;
-
-        const ShaderDescriptorList *sdl=descriptor_list+(size_t)desc_type;
-
-        for(const ShaderDescriptor &sd:*sdl)
-            if(name==sd.name)
-                return sd.binding;
 
         return -1;
     }

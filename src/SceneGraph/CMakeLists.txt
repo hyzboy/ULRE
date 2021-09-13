@@ -1,21 +1,9 @@
 ﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
-SET(SHADER_RESOURCE_FILES   ${SG_INCLUDE_PATH}/shader/ShaderResource.h
-                            shader/ShaderResource.cpp)
-
-file(GLOB SG_MATERIAL_HEADER ${SG_INCLUDE_PATH}/material/*.*)
-
-file(GLOB SG_MATERIAL_SOURCE material/*.*)
-
-SOURCE_GROUP("Material" FILES   ${SG_MATERIAL_HEADER}
-                                ${SG_MATERIAL_SOURCE})
-
-SOURCE_GROUP("Material\\Shader" FILES ${SHADER_RESOURCE_FILES})
-
 SET(SG_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/TextureLoader.h
                         Texture2DLoader.cpp)
 
-SOURCE_GROUP("Material\\Texture" FILES ${SG_TEXTURE_SOURCE})
+SOURCE_GROUP("Texture" FILES ${SG_TEXTURE_SOURCE})
 
 SET(SG_VAD_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribData.h
                     ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
@@ -94,6 +82,16 @@ SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h
                         Vulkan/VKRenderResourceMaterial.cpp)
 
 SOURCE_GROUP("Vulkan\\RenderResource" FILES ${VK_RR_SOURCE})
+
+SET(VK_RR_SHADER_FILES  ${SG_INCLUDE_PATH}/VKShaderResource.h
+                        Vulkan/VKShaderResource.cpp)
+
+SOURCE_GROUP("Vulkan\\RenderResource\\Shader" FILES ${VK_RR_SHADER_FILES})
+
+SET(VK_RR_MATERIAL_FILES    ${SG_INCLUDE_PATH}/VKMaterialDescriptorSets.h
+                            Vulkan/VKMaterialDescriptorSets.cpp)
+
+SOURCE_GROUP("Vulkan\\RenderResource\\Material" FILES   ${VK_RR_MATERIAL_FILES})
 
 SET(VK_INST_SOURCE      ${SG_INCLUDE_PATH}/VKInstance.h
                         Vulkan/VKInstance.cpp)
@@ -216,6 +214,8 @@ IF(WIN32)
 ENDIF(WIN32)
 
 SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
+                            ${VK_RR_SHADER_FILES}
+                            ${VK_RR_MATERIAL_FILES}
                             ${VK_INST_SOURCE}
                             ${VK_DEBUG_SOURCE}
                             ${VK_MEMORY_SOURCE}
@@ -233,11 +233,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SCENE_GRAPH_SOURCE}
 
-                                        ${SHADER_RESOURCE_FILES}
-
                                         ${SG_TEXTURE_SOURCE}
-                                        ${SG_MATERIAL_HEADER}
-                                        ${SG_MATERIAL_SOURCE}
                                         ${TILE_SOURCE}
                                         ${SG_VAD_SOURCE}
 

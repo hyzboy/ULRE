@@ -18,8 +18,10 @@ class Material
     UTF8String mtl_name;
 
     ShaderModuleMap *shader_maps;
+    MaterialDescriptorSets *mds;
+
     VertexShaderModule *vertex_sm;
-    List<VkPipelineShaderStageCreateInfo> *shader_stage_list;
+    List<VkPipelineShaderStageCreateInfo> shader_stage_list;
 
     DescriptorSetLayoutCreater *dsl_creater;
 
@@ -29,15 +31,15 @@ class Material
 
 public:
 
-    Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *,DescriptorSetLayoutCreater *dslc);
+    Material(const UTF8String &name,ShaderModuleMap *smm,MaterialDescriptorSets *_mds,DescriptorSetLayoutCreater *);
     ~Material();
 
     const   UTF8String &                        GetName                 ()const{return mtl_name;}
 
     const   VertexShaderModule *                GetVertexShaderModule   ()const{return vertex_sm;}
 
-    const   uint32_t                            GetStageCount           ()const{return shader_stage_list->GetCount();}
-    const   VkPipelineShaderStageCreateInfo *   GetStages               ()const{return shader_stage_list->GetData();}
+    const   uint32_t                            GetStageCount           ()const{return shader_stage_list.GetCount();}
+    const   VkPipelineShaderStageCreateInfo *   GetStages               ()const{return shader_stage_list.GetData();}
 
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
   

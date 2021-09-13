@@ -1,15 +1,34 @@
 ﻿#include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
+#include<hgl/graph/VKMaterialDescriptorSets.h>
 #include"VKDescriptorSetLayoutCreater.h"
 VK_NAMESPACE_BEGIN
-Material::Material(const UTF8String &name,ShaderModuleMap *smm,List<VkPipelineShaderStageCreateInfo> *psci_list,DescriptorSetLayoutCreater *dslc)
+Material::Material(const UTF8String &name,ShaderModuleMap *smm,MaterialDescriptorSets *_mds,DescriptorSetLayoutCreater *dslc)
 {
     mtl_name=name;
     shader_maps=smm;
-    shader_stage_list=psci_list;
+    mds=_mds;
     dsl_creater=dslc;
 
     const ShaderModule *sm;
+
+    {
+        const int shader_count=shader_maps->GetCount();
+        shader_stage_list.SetCount(shader_count);
+    
+        VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();        
+
+        auto **itp=shader_maps->GetDataList();
+        for(int i=0;i<shader_count;i++)
+        {
+            sm=(*itp)->right;
+            hgl_cpy(p,sm->GetCreateInfo());
+
+            ++p;
+            ++itp;
+        }
+    }
+
     if(smm->Get(VK_SHADER_STAGE_VERTEX_BIT,sm))
     {
         vertex_sm=(VertexShaderModule *)sm;
@@ -41,8 +60,8 @@ Material::~Material()
         delete vab;
     }
 
-    delete shader_stage_list;
     delete shader_maps;
+    SAFE_CLEAR(mds);
 }
 
 const VkPipelineLayout Material::GetPipelineLayout()const
@@ -56,6 +75,6 @@ MaterialParameters *Material::CreateMP(const DescriptorSetType &type)const
 
     if(!ds)return(nullptr);
 
-    return(new MaterialParameters(shader_maps,type,ds));
+    return(new MaterialParameters(mds,type,ds));
 }
 VK_NAMESPACE_END

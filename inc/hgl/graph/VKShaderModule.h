@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
-#include<hgl/graph/shader/ShaderResource.h>
+#include<hgl/graph/VKShaderResource.h>
 #include<hgl/type/Sets.h>
 
 VK_NAMESPACE_BEGIN
@@ -45,13 +45,6 @@ public:
     const bool                              IsMesh          ()const{return stage_create_info->stage==VK_SHADER_STAGE_MESH_BIT_NV;}
 
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
-
-    const int                               GetBinding      (VkDescriptorType desc_type,const AnsiString &name)const
-    {
-        return shader_resource->GetBinding(desc_type,name);
-    }
-
-    const ShaderDescriptorList *            GetDescriptorList()const{return shader_resource->GetDescriptorList();}
 };//class ShaderModule
 
 class VertexAttributeBinding;
