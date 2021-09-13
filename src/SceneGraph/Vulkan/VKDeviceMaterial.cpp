@@ -1,5 +1,6 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKMaterialDescriptorSets.h>
 #include"VKDescriptorSetLayoutCreater.h"
 
 VK_NAMESPACE_BEGIN
@@ -15,34 +16,16 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     if(!shader_maps->Get(VK_SHADER_STAGE_VERTEX_BIT,sm))
         return(nullptr);
 
-    DescriptorSetLayoutCreater *dsl_creater=CreateDescriptorSetLayoutCreater();
-    List<VkPipelineShaderStageCreateInfo> *shader_stage_list=new List<VkPipelineShaderStageCreateInfo>;
-
-    shader_stage_list->SetCount(shader_count);
-
-    VkPipelineShaderStageCreateInfo *p=shader_stage_list->GetData();
-
-    auto **itp=shader_maps->GetDataList();
-    for(int i=0;i<shader_count;i++)
-    {
-        sm=(*itp)->right;
-        hgl_cpy(p,sm->GetCreateInfo());
-
-        dsl_creater->Bind(sm->GetDescriptorList(),sm->GetStage());
-
-        ++p;
-        ++itp;
-    }
-
+    DescriptorSetLayoutCreater *dsl_creater=CreateDescriptorSetLayoutCreater(mds);
+    
     if(!dsl_creater->CreatePipelineLayout())
     {
-        delete shader_stage_list;
-        delete dsl_creater;
         delete shader_maps;
+        SAFE_CLEAR(mds);
         return(nullptr);
     }
 
-    return(new Material(mtl_name,shader_maps,shader_stage_list,dsl_creater));
+    return(new Material(mtl_name,shader_maps,mds,dsl_creater));
 }
 
 Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *mds)

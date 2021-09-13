@@ -14,6 +14,18 @@
 
 VK_NAMESPACE_BEGIN
 
+#ifndef VK_DESCRIPTOR_TYPE_BEGIN_RANGE
+constexpr size_t VK_DESCRIPTOR_TYPE_BEGIN_RANGE=VK_DESCRIPTOR_TYPE_SAMPLER;
+#endif//VK_DESCRIPTOR_TYPE_BEGIN_RANGE
+
+#ifndef VK_DESCRIPTOR_TYPE_END_RANGE
+constexpr size_t VK_DESCRIPTOR_TYPE_END_RANGE=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+#endif//VK_DESCRIPTOR_TYPE_END_RANGE
+    
+#ifndef VK_DESCRIPTOR_TYPE_RANGE_SIZE
+constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_DESCRIPTOR_TYPE_BEGIN_RANGE+1;
+#endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
+
 using CharPointerList=hgl::List<const char *>;
 using BindingMapping=Map<uint32_t,int>;
 
@@ -78,6 +90,7 @@ class ShaderResource;
 class ShaderModule;
 class VertexShaderModule;
 class ShaderModuleMap;
+class MaterialDescriptorSets;
 
 class Material;
 class MaterialParameters;

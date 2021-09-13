@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/shader/ShaderResource.h>
+#include<hgl/graph/VKShaderResource.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/Sets.h>
 VK_NAMESPACE_BEGIN
@@ -15,17 +15,9 @@ class DescriptorSetLayoutCreater
     VkDevice device;
     VkDescriptorPool pool;
 
-    Sets<DescriptorSetType> all_set;
-    Sets<uint32_t> all_binding;
+    const MaterialDescriptorSets *mds;
 
-    struct ShaderDescriptorSet
-    {
-        List<VkDescriptorSetLayoutBinding>  binding_list;
-        VkDescriptorSetLayout               layout;
-    };
-
-    ShaderDescriptorSet sds[size_t(DescriptorSetType::RANGE_SIZE)];
-
+    VkDescriptorSetLayout layouts[size_t(DescriptorSetType::RANGE_SIZE)];
     VkDescriptorSetLayout fin_dsl[size_t(DescriptorSetType::RANGE_SIZE)];
     uint32_t fin_dsl_count;
 
@@ -33,29 +25,8 @@ class DescriptorSetLayoutCreater
 
 public:
 
-    DescriptorSetLayoutCreater(VkDevice dev,VkDescriptorPool dp)
-    {
-        ENUM_CLASS_FOR(DescriptorSetType,int,i)
-            sds[i].layout=nullptr;
-
-        hgl_zero(fin_dsl);
-        fin_dsl_count=0;
-        device=dev;pool=dp;
-    }
+    DescriptorSetLayoutCreater(VkDevice,VkDescriptorPool,const MaterialDescriptorSets *);
     ~DescriptorSetLayoutCreater();
-
-    void Bind(const ShaderDescriptorList *sd_list,VkDescriptorType type,VkShaderStageFlagBits stage);
-
-    void Bind(const ShaderDescriptorList *sdl,VkShaderStageFlagBits stage)
-    {
-        for(uint32_t i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)
-        {
-            if(sdl->GetCount()>0)
-                Bind(sdl,(VkDescriptorType)i,stage);
-
-            ++sdl;
-        }
-    }
 
 //以下代码不再需要，使用一个void Bind(const ShaderResource &sr,VkShaderStageFlagBits stage)即可全部替代，而且更方便，但以此为提示
 //

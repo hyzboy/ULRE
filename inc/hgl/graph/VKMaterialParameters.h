@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 class MaterialParameters
 {
-    const ShaderModuleMap *shader_map;
+    const MaterialDescriptorSets *mds;
 
     DescriptorSetType ds_type;
 
@@ -17,7 +17,7 @@ private:
 
     friend class Material;
 
-    MaterialParameters(const ShaderModuleMap *,const DescriptorSetType &type,DescriptorSets *);
+    MaterialParameters(const MaterialDescriptorSets *,const DescriptorSetType &type,DescriptorSets *);
 
 public:
 
