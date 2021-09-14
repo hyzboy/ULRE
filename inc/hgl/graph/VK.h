@@ -81,7 +81,7 @@ enum class DescriptorSetType
 
 const DescriptorSetType CheckDescriptorSetType(const char *str);
 
-class DescriptorSetLayoutCreater;
+struct PipelineLayoutData;
 class DescriptorSets;
 
 struct ShaderStage;
@@ -95,7 +95,6 @@ class MaterialDescriptorSets;
 class Material;
 class MaterialParameters;
 class MaterialInstance;
-class PipelineLayout;
 struct PipelineData;
 enum class InlinePipeline;
 class Pipeline;

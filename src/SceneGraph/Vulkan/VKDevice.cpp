@@ -110,7 +110,7 @@ GPUFence *GPUDevice::CreateFence(bool create_signaled)
     return(new GPUFence(attr->device,fence));
 }
 
-GPUSemaphore *GPUDevice::CreateSemaphore()
+GPUSemaphore *GPUDevice::CreateGPUSemaphore()
 {
     SemaphoreCreateInfo SemaphoreCreateInfo;
 

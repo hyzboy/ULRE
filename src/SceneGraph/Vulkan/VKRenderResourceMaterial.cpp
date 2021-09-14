@@ -145,7 +145,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         {
             ShaderDescriptor *sd_list=hgl_zero_new<ShaderDescriptor>(count);
 
-            LoadShaderDescriptor(filedata,sd_list,count);
+            LoadShaderDescriptor(sp,sd_list,count);
         
             mds=new MaterialDescriptorSets(sd_list,count);
         }
@@ -158,6 +158,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     }
     else
     {
+        SAFE_CLEAR(mds);
         delete smm;
         mtl=nullptr;
     }

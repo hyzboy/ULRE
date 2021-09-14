@@ -18,7 +18,7 @@ RenderTarget::RenderTarget(GPUDevice *dev,Framebuffer *_fb,const uint32_t fence_
 
     color_textures=nullptr;
     depth_texture=nullptr;    
-    render_complete_semaphore=dev->CreateSemaphore();
+    render_complete_semaphore=dev->CreateGPUSemaphore();
 }
 
 RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):GPUQueue(dev,dev->GetGraphicsQueue(),fence_count)
@@ -48,7 +48,7 @@ RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,Textu
         }
     }
 
-    render_complete_semaphore=dev->CreateSemaphore();
+    render_complete_semaphore=dev->CreateGPUSemaphore();
 }
 
 RenderTarget::~RenderTarget()

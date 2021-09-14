@@ -45,38 +45,14 @@ public:
     MaterialDescriptorSets(ShaderDescriptor *,const uint);
     ~MaterialDescriptorSets();
 
-    const   ShaderDescriptorList *  GetDescriptorList   ()const {return descriptor_list;}
-            ShaderDescriptorList *  GetDescriptorList   (VkDescriptorType desc_type)
-    {
-        if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-         ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
-
-        return descriptor_list+desc_type;
-    }
-
-    //ShaderDescriptorList &GetUBO        (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER];}
-    //ShaderDescriptorList &GetSSBO       (){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];}
-    //ShaderDescriptorList &GetUBODynamic (){return descriptor_list[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC];}
-    //ShaderDescriptorList &GetSSBODynamic(){return descriptor_list[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC];}
-    //ShaderDescriptorList &GetSampler    (){return descriptor_list[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];}
-
-
     const int GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const;
 
-    const int GetUBO(const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,name);}
-    const int GetSSBO(const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,name);}
-    const int GetSampler(const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
+    const int GetUBO    (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          name);}
+    const int GetSSBO   (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          name);}
+    const int GetSampler(const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  name);}
 
-    const int *GetBindingList(const VkDescriptorType &desc_type)const
-    {
-        if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-         ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)return nullptr;
-
-        return binding_list[(size_t)desc_type];
-    }
-
-    const int                           GetSetBindingCount(const DescriptorSetType &type)const{return sds[(size_t)type].count;}
-    const VkDescriptorSetLayoutBinding *GetSetBindingList(const DescriptorSetType &type)const{return sds[(size_t)type].binding_list;}
+    const int                           GetBindingCount (const DescriptorSetType &type)const{return sds[(size_t)type].count;}
+    const VkDescriptorSetLayoutBinding *GetBindingList  (const DescriptorSetType &type)const{return sds[(size_t)type].binding_list;}
 };//class MaterialDescriptorSets
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE

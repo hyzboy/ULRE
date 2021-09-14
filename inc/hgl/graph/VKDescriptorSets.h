@@ -9,9 +9,8 @@ class GPUBuffer;
 class DescriptorSets
 {
     VkDevice device;
-    int layout_binding_count;
+    int binding_count;
     VkDescriptorSet desc_set;
-//    const BindingMapping *index_by_binding;
 
     VkPipelineLayout pipeline_layout;
 
@@ -21,30 +20,30 @@ class DescriptorSets
 
 private:
 
-    friend class DescriptorSetLayoutCreater;
+    friend class GPUDevice;
 
-    DescriptorSets(VkDevice dev,const int lbc,VkPipelineLayout pl,VkDescriptorSet ds)//,const BindingMapping *bi):index_by_binding(bi)
+    DescriptorSets(VkDevice dev,const int bc,VkPipelineLayout pl,VkDescriptorSet ds)
     {
-        device=dev;
-        layout_binding_count=lbc;
-        desc_set=ds;
-        pipeline_layout=pl;
+        device          =dev;
+        binding_count   =bc;
+        desc_set        =ds;
+        pipeline_layout =pl;
     }
 
 public:
 
     ~DescriptorSets()=default;
 
-    const uint32_t          GetCount            ()const{return layout_binding_count;}
+    const uint32_t          GetCount            ()const{return binding_count;}
     const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
     void Clear();
 
-    bool BindUBO(const int binding,const GPUBuffer *buf,bool dynamic=false);
-    bool BindUBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
-    bool BindSSBO(const int binding,const GPUBuffer *buf,bool dynamic=false);
-    bool BindSSBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindUBO    (const int binding,const GPUBuffer *buf,bool dynamic=false);
+    bool BindUBO    (const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindSSBO   (const int binding,const GPUBuffer *buf,bool dynamic=false);
+    bool BindSSBO   (const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
     bool BindSampler(const int binding,Texture *,Sampler *);
     bool BindInputAttachment(const int binding,Texture *);

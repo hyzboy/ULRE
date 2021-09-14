@@ -136,8 +136,8 @@ SOURCE_GROUP("Vulkan\\Device\\Memory"           FILES ${VK_MEMORY_SOURCE})
 
 SET(VK_DESCRIPTOR_SETS_SOURCE   ${SG_INCLUDE_PATH}/VKDescriptorSets.h
                                 Vulkan/VKDescriptorSets.cpp
-                                Vulkan/VKDescriptorSetLayoutCreater.cpp
-                                Vulkan/VKDescriptorSetLayoutCreater.h)
+                                Vulkan/VKPipelineLayoutData.h                                
+                                Vulkan/VKPipelineLayoutData.cpp)
 
 SOURCE_GROUP("Vulkan\\Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})
 

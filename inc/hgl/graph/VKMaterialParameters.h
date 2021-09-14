@@ -15,7 +15,7 @@ class MaterialParameters
 
 private:
 
-    friend class Material;
+    friend class GPUDevice;
 
     MaterialParameters(const MaterialDescriptorSets *,const DescriptorSetType &type,DescriptorSets *);
 

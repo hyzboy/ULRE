@@ -1,13 +1,16 @@
+#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
 
 VK_NAMESPACE_BEGIN
-MaterialInstance *Material::CreateInstance()
+MaterialInstance *GPUDevice::CreateMI(Material *mtl)
 {
-    MaterialParameters *mp=CreateMP(DescriptorSetType::Value);
+    if(!mtl)return(nullptr);
 
-    return(new MaterialInstance(this,mp));
+    MaterialParameters *mp=CreateMP(mtl,DescriptorSetType::Value);
+
+    return(new MaterialInstance(mtl,mp));
 }
 
 MaterialInstance::MaterialInstance(Material *mtl,MaterialParameters *p)

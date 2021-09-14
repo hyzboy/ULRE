@@ -12,7 +12,7 @@ class MaterialInstance
 
 private:
 
-    friend class Material;
+    friend class GPUDevice;
 
     MaterialInstance(Material *,MaterialParameters *);
 

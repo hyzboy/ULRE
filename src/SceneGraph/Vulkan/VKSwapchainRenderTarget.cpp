@@ -35,7 +35,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
 
     current_frame=0;
 
-    present_complete_semaphore=dev->CreateSemaphore();
+    present_complete_semaphore=dev->CreateGPUSemaphore();
 }
 
 SwapchainRenderTarget::~SwapchainRenderTarget()

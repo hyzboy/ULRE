@@ -7,7 +7,31 @@
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKVertexAttributeBinding.h>
 VK_NAMESPACE_BEGIN
-class DescriptorSetLayoutCreater;
+struct MaterialData
+{
+    UTF8String name;
+
+    ShaderModuleMap *shader_maps;
+    MaterialDescriptorSets *mds;
+
+    VertexShaderModule *vertex_sm;
+    VertexAttributeBinding *vab;
+
+    List<VkPipelineShaderStageCreateInfo> shader_stage_list;
+
+    PipelineLayoutData *pipeline_layout_data;
+
+    struct
+    {
+        MaterialParameters *m,*g,*r;
+    }mp;
+
+private:
+
+    friend class Material;
+
+    ~MaterialData();
+};//struct MaterialData
 
 /**
  * 材质类<br>
@@ -15,51 +39,44 @@ class DescriptorSetLayoutCreater;
  */
 class Material
 {
-    UTF8String mtl_name;
+    MaterialData *data;
 
-    ShaderModuleMap *shader_maps;
-    MaterialDescriptorSets *mds;
+private:
 
-    VertexShaderModule *vertex_sm;
-    List<VkPipelineShaderStageCreateInfo> shader_stage_list;
+    friend GPUDevice;
 
-    DescriptorSetLayoutCreater *dsl_creater;
-
-    MaterialParameters *mp_m,*mp_g,*mp_r;
-
-    VertexAttributeBinding *vab;
+    MaterialData *GetMaterialData(){return data;}
 
 public:
 
-    Material(const UTF8String &name,ShaderModuleMap *smm,MaterialDescriptorSets *_mds,DescriptorSetLayoutCreater *);
+    Material(MaterialData *md):data(md){}
     ~Material();
 
-    const   UTF8String &                        GetName                 ()const{return mtl_name;}
+    const   UTF8String &                        GetName                 ()const{return data->name;}
 
-    const   VertexShaderModule *                GetVertexShaderModule   ()const{return vertex_sm;}
+    const   VertexShaderModule *                GetVertexShaderModule   ()const{return data->vertex_sm;}
 
-    const   uint32_t                            GetStageCount           ()const{return shader_stage_list.GetCount();}
-    const   VkPipelineShaderStageCreateInfo *   GetStages               ()const{return shader_stage_list.GetData();}
+    const   uint32_t                            GetStageCount           ()const{return data->shader_stage_list.GetCount();}
+    const   VkPipelineShaderStageCreateInfo *   GetStages               ()const{return data->shader_stage_list.GetData();}
 
+    const   MaterialDescriptorSets *            GetDescriptorSets       ()const{return data->mds;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
+    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return data->pipeline_layout_data;}
   
-    const   VertexAttributeBinding *            GetVAB                  ()const{return vab;}
-    const   uint32_t                            GetVertexAttrCount      ()const{return vab->GetVertexAttrCount();}    
-    const   VkVertexInputBindingDescription *   GetVertexBindingList    ()const{return vab->GetVertexBindingList();}
-    const   VkVertexInputAttributeDescription * GetVertexAttributeList  ()const{return vab->GetVertexAttributeList();}
+    const   VertexAttributeBinding *            GetVAB                  ()const{return data->vab;}
+    const   uint32_t                            GetVertexAttrCount      ()const{return data->vab->GetVertexAttrCount();}    
+    const   VkVertexInputBindingDescription *   GetVertexBindingList    ()const{return data->vab->GetVertexBindingList();}
+    const   VkVertexInputAttributeDescription * GetVertexAttributeList  ()const{return data->vab->GetVertexAttributeList();}
 
 public:
 
-            MaterialParameters *                CreateMP                (const DescriptorSetType &type)const;
             MaterialParameters *                GetMP                   (const DescriptorSetType &type)
             {
-                if(type==DescriptorSetType::Material   )return mp_m;else
-                if(type==DescriptorSetType::Renderable )return mp_r;else
-                if(type==DescriptorSetType::Global     )return mp_g;else
+                if(type==DescriptorSetType::Material   )return data->mp.m;else
+                if(type==DescriptorSetType::Renderable )return data->mp.r;else
+                if(type==DescriptorSetType::Global     )return data->mp.g;else
                 return(nullptr);
             }
-
-            MaterialInstance *                  CreateInstance();
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
