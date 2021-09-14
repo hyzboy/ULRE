@@ -159,7 +159,7 @@ void GPUDevice::Clear(TextureCreateInfo *tci)
 {
     if(!tci)return;
 
-    if(tci->image)DestoryImage(tci->image);
+    if(tci->image)DestroyImage(tci->image);
     if(tci->image_view)delete tci->image_view;
     if(tci->memory)delete tci->memory;
 

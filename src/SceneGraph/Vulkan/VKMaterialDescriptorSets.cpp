@@ -19,7 +19,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
     if(sd_count<=0)return;
 
     {
-        hgl_zero(sds);
+        hgl_zero(sds,size_t(DescriptorSetType::RANGE_SIZE));
 
         {
             ShaderDescriptor *sp=sd_list;
@@ -78,6 +78,8 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
                 {
                     binding_list[i]=nullptr;
                 }
+
+                ++sdl;
             }
         }
     }

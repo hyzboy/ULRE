@@ -70,7 +70,6 @@ private:
                 return(false);
 
             if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
-            if(!mp_global->BindUBO("g_frag_camera",ubo_camera_info))return(false);
 
             mp_global->Update();
         }

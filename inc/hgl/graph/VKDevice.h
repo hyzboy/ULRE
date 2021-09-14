@@ -139,7 +139,7 @@ public: //Buffer相关
 public: //Image
 
     VkImage CreateImage         (VkImageCreateInfo *);
-    void    DestoryImage        (VkImage);
+    void    DestroyImage        (VkImage);
 
 private:    //texture
 
@@ -191,13 +191,20 @@ public: //
 
 public: //shader & material
 
-    DescriptorSetLayoutCreater *CreateDescriptorSetLayoutCreater(const MaterialDescriptorSets *);
+    PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorSets *);
+    void Destroy(PipelineLayoutData *);
+
+    DescriptorSets *    CreateDescriptorSets(const PipelineLayoutData *,const DescriptorSetType &type)const;
+    MaterialParameters *CreateMP(const MaterialDescriptorSets *,const PipelineLayoutData *,const DescriptorSetType &);
+    MaterialParameters *CreateMP(Material *,const DescriptorSetType &);
     
     ShaderModule *CreateShaderModule(ShaderResource *);
     
     Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *);
     Material *CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *);
     Material *CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *);
+
+    MaterialInstance *CreateMI(Material *);
 
 public: //Command Buffer 相关
 
@@ -212,7 +219,7 @@ public: //Command Buffer 相关
     RenderPass *    CreateRenderPass(   const RenderbufferInfo *);
 
     GPUFence *      CreateFence(bool);
-    GPUSemaphore *  CreateSemaphore();
+    GPUSemaphore *  CreateGPUSemaphore();
 
 public: //FrameBuffer相关
 

@@ -16,7 +16,7 @@ VkImage GPUDevice::CreateImage(VkImageCreateInfo *ici)
     return image;
 }
 
-void GPUDevice::DestoryImage(VkImage img)
+void GPUDevice::DestroyImage(VkImage img)
 {
     if(img==VK_NULL_HANDLE)return;
 

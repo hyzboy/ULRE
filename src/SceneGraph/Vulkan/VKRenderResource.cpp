@@ -54,7 +54,7 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl)
 {
     if(!mtl)return(nullptr);
 
-    MaterialInstance *mi=mtl->CreateInstance();
+    MaterialInstance *mi=device->CreateMI(mtl);
 
     if(mi)
         Add(mi);
