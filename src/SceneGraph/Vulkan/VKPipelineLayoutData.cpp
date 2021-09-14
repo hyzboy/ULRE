@@ -12,7 +12,7 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
     {
         const DescriptorSetLayoutCreateInfo *dslci=mds->GetBinding((DescriptorSetType)i);
 
-        if(!dslci)
+        if(!dslci||dslci->bindingCount<=0)
             continue;
 
         if(pld->layouts[i])
