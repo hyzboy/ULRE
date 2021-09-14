@@ -32,13 +32,7 @@ class MaterialDescriptorSets
 
 private:
 
-    struct ShaderDescriptorSet
-    {
-        uint32_t count;
-        VkDescriptorSetLayoutBinding *binding_list;
-    };
-
-    ShaderDescriptorSet sds[size_t(DescriptorSetType::RANGE_SIZE)];
+    DescriptorSetLayoutCreateInfo sds[size_t(DescriptorSetType::RANGE_SIZE)];
 
 public:
 
@@ -51,8 +45,7 @@ public:
     const int GetSSBO   (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          name);}
     const int GetSampler(const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  name);}
 
-    const int                           GetBindingCount (const DescriptorSetType &type)const{return sds[(size_t)type].count;}
-    const VkDescriptorSetLayoutBinding *GetBindingList  (const DescriptorSetType &type)const{return sds[(size_t)type].binding_list;}
+    const DescriptorSetLayoutCreateInfo *GetBinding(const DescriptorSetType &type)const{return sds+size_t(type);}
 };//class MaterialDescriptorSets
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE

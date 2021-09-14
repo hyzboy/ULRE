@@ -10,26 +10,21 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
     {
-        const int binding_count=mds->GetBindingCount((DescriptorSetType)i);
+        const DescriptorSetLayoutCreateInfo *dslci=mds->GetBinding((DescriptorSetType)i);
 
-        if(binding_count<=0)
+        if(!dslci)
             continue;
-
-        DescriptorSetLayoutCreateInfo descriptor_layout;
-
-        descriptor_layout.bindingCount  = binding_count;
-        descriptor_layout.pBindings     = mds->GetBindingList((DescriptorSetType)i);
 
         if(pld->layouts[i])
             vkDestroyDescriptorSetLayout(attr->device,pld->layouts[i],nullptr);
 
-        if(vkCreateDescriptorSetLayout(attr->device,&descriptor_layout,nullptr,pld->layouts+i)!=VK_SUCCESS)
+        if(vkCreateDescriptorSetLayout(attr->device,dslci,nullptr,pld->layouts+i)!=VK_SUCCESS)
         {
             delete pld;
             return(nullptr);
         }
 
-        pld->binding_count[i]=binding_count;
+        pld->binding_count[i]=dslci->bindingCount;
 
         pld->fin_dsl[pld->fin_dsl_count]=pld->layouts[i];
         ++pld->fin_dsl_count;
