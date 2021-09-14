@@ -37,7 +37,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
                 sd_by_name.Add(sp->name,sp);
                 binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
 
-                ++sds[sp->set].bindingCount;
+                ++sds[size_t(sp->set_type)].bindingCount;
 
                 ++sp;
             }
@@ -70,10 +70,10 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
                     {
                         binding_list[i][j]=(*sdp)->binding;
 
-                        WriteDescriptorSetLayoutBinding(sds_ptr[(*sdp)->set],
+                        WriteDescriptorSetLayoutBinding(sds_ptr[size_t((*sdp)->set_type)],
                                                         *sdp);
 
-                        ++sds_ptr[(*sdp)->set];
+                        ++sds_ptr[size_t((*sdp)->set_type)];
 
                         ++sdp;
                     }
