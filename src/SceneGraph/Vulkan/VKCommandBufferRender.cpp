@@ -130,7 +130,7 @@ bool RenderCmdBuffer::BindDescriptorSets(RenderableInstance *ri)
         }
     }
 
-    return(false);
+    return(true);
 }
 
 bool RenderCmdBuffer::BindVAB(RenderableInstance *ri)

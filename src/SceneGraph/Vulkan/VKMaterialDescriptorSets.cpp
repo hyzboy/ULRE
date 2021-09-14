@@ -19,7 +19,11 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
     if(sd_count<=0)return;
 
     {
-        hgl_zero(sds,size_t(DescriptorSetType::RANGE_SIZE));
+        ENUM_CLASS_FOR(DescriptorSetType,int,i)
+        {
+            sds[i].bindingCount=0;
+            sds[i].pBindings=nullptr;
+        }
 
         {
             ShaderDescriptor *sp=sd_list;
@@ -33,7 +37,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
                 sd_by_name.Add(sp->name,sp);
                 binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
 
-                ++sds[sp->set].count;
+                ++sds[sp->set].bindingCount;
 
                 ++sp;
             }
@@ -43,10 +47,10 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
 
         {
             ENUM_CLASS_FOR(DescriptorSetType,int,i)
-                if(sds[i].count>0)
+                if(sds[i].bindingCount>0)
                 {
-                    sds[i].binding_list=new VkDescriptorSetLayoutBinding[sds[i].count];
-                    sds_ptr[i]=sds[i].binding_list;
+                    sds[i].pBindings=new VkDescriptorSetLayoutBinding[sds[i].bindingCount];
+                    sds_ptr[i]=(VkDescriptorSetLayoutBinding *)sds[i].pBindings;
                 }
         }
 
@@ -88,8 +92,8 @@ MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint c
 MaterialDescriptorSets::~MaterialDescriptorSets()
 {
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
-        if(sds[i].count)
-            delete[] sds[i].binding_list;
+        if(sds[i].bindingCount)
+            delete[] sds[i].pBindings;
 
     delete[] sd_list;       //"delete[] nullptr" isn't bug.
 }
