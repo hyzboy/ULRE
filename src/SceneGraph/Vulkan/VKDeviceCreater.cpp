@@ -31,7 +31,7 @@ namespace
         VkDeviceCreateInfo create_info={};
         CharPointerList ext_list;
         ext_list.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-        ext_list.Add(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+        //ext_list.Add(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 
         VkPhysicalDeviceFeatures features={};
         features.geometryShader=true;
