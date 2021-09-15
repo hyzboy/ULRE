@@ -41,9 +41,11 @@ public:
 
     const int GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const;
 
-    const int GetUBO    (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          name);}
-    const int GetSSBO   (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          name);}
-    const int GetSampler(const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  name);}
+    const int GetUBO        (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,          name);}
+    const int GetSSBO       (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          name);}
+    const int GetUBODynamic (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,  name);}
+    const int GetSSBODynamic(const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,  name);}
+    const int GetSampler    (const AnsiString &name)const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  name);}
 
     const DescriptorSetLayoutCreateInfo *GetBinding(const DescriptorSetType &type)const{return sds+size_t(type);}
 };//class MaterialDescriptorSets

@@ -31,8 +31,8 @@ private:
             Window *    win             =nullptr;
     VulkanInstance *    inst            =nullptr;
 
-    void OnKeyPressed   (KeyboardButton kb){key_status[kb]=true;}
-    void OnKeyReleased  (KeyboardButton kb){key_status[kb]=false;}
+    void OnKeyPressed   (KeyboardButton kb){key_status[size_t(kb)]=true;}
+    void OnKeyReleased  (KeyboardButton kb){key_status[size_t(kb)]=false;}
     void OnKeyRepeat    (KeyboardButton kb){KeyRepeat(kb);}
 
 protected:
@@ -62,7 +62,7 @@ protected:
 
     RenderResource *        db                          =nullptr;
 
-            bool            key_status[kbRangeSize];
+            bool            key_status[size_t(KeyboardButton::RANGE_SIZE)];
 
 public:
 
@@ -348,6 +348,10 @@ public:
     {
         camera->width=w;
         camera->height=h;
+
+        camera->Refresh();
+
+        ubo_camera_info->Write(&camera->info);
     }
 
     GPUBuffer *GetCameraInfoBuffer()
@@ -356,6 +360,8 @@ public:
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;
+
+    inline bool isPush(enum class KeyboardButton kb)const{return key_status[size_t(kb)];}
 
     virtual void Draw()override
     {
@@ -368,24 +374,24 @@ public:
 
         SubmitDraw(index);
 
-        if(key_status[kbW])camera->Up       (move_speed);else
-        if(key_status[kbS])camera->Down     (move_speed);else
-        if(key_status[kbA])camera->Left     (move_speed);else
-        if(key_status[kbD])camera->Right    (move_speed);else
-        if(key_status[kbR])camera->Forward  (move_speed);else
-        if(key_status[kbF])camera->Backward (move_speed);else
+        if(isPush(KeyboardButton::W     ))camera->Up        (move_speed);else
+        if(isPush(KeyboardButton::S     ))camera->Down      (move_speed);else
+        if(isPush(KeyboardButton::A     ))camera->Left      (move_speed);else
+        if(isPush(KeyboardButton::D     ))camera->Right     (move_speed);else
+        if(isPush(KeyboardButton::R     ))camera->Forward   (move_speed);else
+        if(isPush(KeyboardButton::F     ))camera->Backward  (move_speed);else
 
-        if(key_status[kbLeft    ])camera->HoriRotate( move_speed);else
-        if(key_status[kbRight   ])camera->HoriRotate(-move_speed);else
-        if(key_status[kbUp      ])camera->VertRotate( move_speed);else
-        if(key_status[kbDown    ])camera->VertRotate(-move_speed);else
+        if(isPush(KeyboardButton::Left  ))camera->HoriRotate( move_speed);else
+        if(isPush(KeyboardButton::Right ))camera->HoriRotate(-move_speed);else
+        if(isPush(KeyboardButton::Up    ))camera->VertRotate( move_speed);else
+        if(isPush(KeyboardButton::Down  ))camera->VertRotate(-move_speed);else
             return;
     }
 
     virtual void KeyRepeat(KeyboardButton kb)override
     {
-        if(kb==kbMinus)move_speed*=0.9f;else
-        if(kb==kbEquals)move_speed*=1.1f;else
+        if(kb==KeyboardButton::Minus    )move_speed*=0.9f;else
+        if(kb==KeyboardButton::Equals   )move_speed*=1.1f;else
             return;
     }
 
