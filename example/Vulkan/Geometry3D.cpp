@@ -24,30 +24,35 @@ private:
     SceneNode   render_root;
     RenderList *render_list=nullptr;
 
-    struct MDP
-    {
-        Material *          material            =nullptr;
-        MaterialInstance *  material_instance   =nullptr;
-        Pipeline *          pipeline            =nullptr;
-    }m3d;//,m2d;
+    Material *          material            =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
-    Renderable              *ro_plane_grid[3],
-                            *ro_round_rectangle =nullptr;
+    Renderable        * ro_plane_grid[3];
+    RenderableInstance *ri_plane_grid[3];
 
 private:
 
-    bool InitMDP(MDP *mdp,const Prim primitive,const OSString &mtl_name)
+    bool RecreatePipeline()
     {
-        mdp->material=db->CreateMaterial(mtl_name);
-        if(!mdp->material)return(false);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Lines);
 
-        mdp->material_instance=db->CreateMaterialInstance(mdp->material);
-        if(!mdp->material_instance)return(false);
+        return pipeline;
+    }
 
-        mdp->pipeline=CreatePipeline(mdp->material_instance,InlinePipeline::Solid3D,primitive);
+    bool InitMDP()
+    {
+        material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
+        if(!material)return(false);
+
+        material_instance=db->CreateMaterialInstance(material);
+        if(!material_instance)return(false);
+
+        if(!RecreatePipeline())
+            return(false);
 
         {
-            MaterialParameters *mp_global=mdp->material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
         
             if(!mp_global)
                 return(false);
@@ -60,18 +65,13 @@ private:
         return(true);
     }
     
-    void Add(Renderable *r,MDP &mdp)
+    RenderableInstance *Add(Renderable *r,const Matrix4f &mat)
     {
-        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
-
-        render_root.CreateSubNode(ri);
-    }
-
-    void Add(Renderable *r,MDP &mdp,const Matrix4f &mat)
-    {
-        auto ri=db->CreateRenderableInstance(r,mdp.material_instance,mdp.pipeline);
+        RenderableInstance *ri=db->CreateRenderableInstance(r,material_instance,pipeline);
 
         render_root.CreateSubNode(mat,ri);
+
+        return ri;
     }
 
     void CreateRenderObject()
@@ -92,36 +92,25 @@ private:
         pgci.color.Set(0.5,0,0,1);
         pgci.side_color.Set(1,0,0,1);
 
-        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
+        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,material,&pgci);
 
         pgci.color.Set(0,0.5,0,1);
         pgci.side_color.Set(0,1,0,1);
 
-        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
+        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,material,&pgci);
 
         pgci.color.Set(0,0,0.5,1);
         pgci.side_color.Set(0,0,1,1);
-        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,m3d.material,&pgci);
-
-        //{
-        //    struct RoundRectangleCreateInfo rrci;
-
-        //    rrci.scope.Set(SCREEN_WIDTH-30,10,20,20);
-        //    rrci.radius=5;
-        //    rrci.round_per=5;
-
-        //    ro_round_rectangle=CreateRenderableRoundRectangle(db,m2d.material,&rrci);
-        //}
+        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,material,&pgci);
 
         camera->pos.Set(200,200,200,1.0);
     }
 
     bool InitScene()
     {
-//        Add(ro_round_rectangle,m2d);
-        Add(ro_plane_grid[0],m3d);
-        Add(ro_plane_grid[1],m3d,rotate(HGL_RAD_90,0,1,0));
-        Add(ro_plane_grid[2],m3d,rotate(HGL_RAD_90,1,0,0));
+        ri_plane_grid[0]=Add(ro_plane_grid[0],Matrix4f::identity);
+        ri_plane_grid[1]=Add(ro_plane_grid[1],rotate(HGL_RAD_90,0,1,0));
+        ri_plane_grid[2]=Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
 
         render_root.RefreshMatrix();
         render_list->Expend(camera->info,&render_root);
@@ -143,21 +132,8 @@ public:
             
         render_list=new RenderList(device);
 
-        if(!InitMDP(&m3d,Prim::Lines,OS_TEXT("res/material/VertexColor3D")))
+        if(!InitMDP())
             return(false);
-
-        //if(!InitMDP(&m2d,Prim::Fan, OS_TEXT("res/material/PureColor2D")))
-        //    return(false);
-
-        //{
-        //    color.Set(1,1,0,1);
-        //    ubo_color=device->CreateUBO(sizeof(Vector4f),&color);
-
-        //    m2d.material_instance->BindUBO("color_material",ubo_color);
-        //    m2d.material_instance->Update();
-
-        //    db->Add(ubo_color);
-        //}
 
         CreateRenderObject();
 
@@ -170,6 +146,18 @@ public:
     void BuildCommandBuffer(uint32 index)
     {
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
+    }
+
+    void Resize(int w,int h)override
+    {
+        CameraAppFramework::Resize(w,h);
+        
+        RecreatePipeline();
+
+        for(int i=0;i<3;i++)
+            ri_plane_grid[i]->UpdatePipeline(pipeline);
+        
+        VulkanApplicationFramework::BuildCommandBuffer(render_list);
     }
 };//class TestApp:public CameraAppFramework
 

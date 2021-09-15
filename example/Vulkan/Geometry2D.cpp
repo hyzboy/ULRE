@@ -42,6 +42,13 @@ private:
 
 private:
 
+    bool RecreatePipeline()
+    {
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::Fan);
+
+        return pipeline;
+    }
+
     bool InitMaterial()
     {
         material=db->CreateMaterial(OS_TEXT("res/material/PureColor2D"));
@@ -52,9 +59,7 @@ private:
 
         if(!material_instance)return(false);
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::Fan);
-
-        return pipeline;
+        return RecreatePipeline();
     }
 
     void CreateRenderObject()
@@ -165,6 +170,9 @@ public:
         cam.Refresh();
 
         ubo_camera_info->Write(&cam.info);
+
+        RecreatePipeline();
+        renderable_instance->UpdatePipeline(pipeline);
 
         BuildCommandBuffer(&render_list);
     }

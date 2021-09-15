@@ -155,8 +155,8 @@ namespace hgl
 
                 if(mp)
                 {
-                    mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true);
-                    mp->Update();
+                    if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
+                        mp->Update();
                 }
             }
         }
