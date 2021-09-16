@@ -10,7 +10,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
 {
     if(!fbi)return(nullptr);
 
-    RenderPass *rp=CreateRenderPass(fbi);       //Renderpass内部会验证格式，所以不需要自己处理
+    RenderPass *rp=CreateRenderPass(RenderpassTypeBy::Format,fbi);       //Renderpass内部会验证格式，所以不需要自己处理
 
     if(!rp)return(nullptr);
 
