@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKRenderPass.h>
+#include<hgl/util/hash/Hash.h>
 
 VK_NAMESPACE_BEGIN
 //void CreateSubpassDependency(VkSubpassDependency *dependency)
@@ -192,7 +193,52 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     return(true);
 }
 
-RenderPass *GPUDevice::CreateRenderPass(const List<VkAttachmentDescription> &desc_list,
+namespace
+{
+    using RenderPassHASHCode=util::HashCodeSHA1LE;
+
+    void HashRenderPass(RenderPassHASHCode *code,const VkRenderPassCreateInfo &rpci)
+    {
+        util::Hash *hash=util::CreateSHA1LEHash();
+
+        hash->Init();
+
+//        hash->Write(rpci.attachmentCount);
+        hash->Write(rpci.pAttachments,rpci.attachmentCount);
+//        hash->Write(rpci.subpassCount);
+        {
+            const VkSubpassDescription *sd=rpci.pSubpasses;
+
+            for(uint32_t i=0;i<rpci.subpassCount;i++)
+            {
+                hash->Write(sd->pipelineBindPoint);
+                hash->Write(sd->pInputAttachments,sd->inputAttachmentCount);
+                hash->Write(sd->pColorAttachments,sd->colorAttachmentCount);
+
+                if(sd->pResolveAttachments)
+                    hash->Write(*sd->pResolveAttachments);
+
+                if(sd->pDepthStencilAttachment)
+                    hash->Write(*sd->pDepthStencilAttachment);
+
+                hash->Write(sd->pPreserveAttachments,sd->preserveAttachmentCount);
+
+                ++sd;
+            }
+        }
+
+        hash->Write(rpci.pDependencies,rpci.dependencyCount);
+
+        hash->Final(code);
+
+        delete hash;
+    }
+
+    static Map<RenderPassHASHCode,RenderPass *> RenderPassList;
+}
+
+RenderPass *GPUDevice::CreateRenderPass(const RenderpassTypeBy &type_by,
+                                        const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
                                         const RenderbufferInfo *rbi)
@@ -224,15 +270,28 @@ RenderPass *GPUDevice::CreateRenderPass(const List<VkAttachmentDescription> &des
     rp_info.dependencyCount = dependency.GetCount();
     rp_info.pDependencies   = dependency.GetData();
 
+    RenderPassHASHCode code;
+
+    HashRenderPass(&code,rp_info);
+
+    RenderPass *rp;
+
+    if(RenderPassList.Get(code,rp))
+        return rp;
+
     VkRenderPass render_pass;
 
     if(vkCreateRenderPass(attr->device,&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(attr->device,render_pass,rbi->GetColorFormatList(),depth_format));
+    rp=new RenderPass(attr->device,render_pass,rbi->GetColorFormatList(),depth_format);
+
+    RenderPassList.Add(code,rp);
+
+    return rp;
 }
 
-RenderPass *GPUDevice::CreateRenderPass(const RenderbufferInfo *rbi)
+RenderPass *GPUDevice::CreateRenderPass(const RenderpassTypeBy &type_by,const RenderbufferInfo *rbi)
 {
     for(const VkFormat &fmt:rbi->GetColorFormatList())
         if(!attr->physical_device->IsColorAttachmentOptimal(fmt))
@@ -264,6 +323,6 @@ RenderPass *GPUDevice::CreateRenderPass(const RenderbufferInfo *rbi)
 
     CreateSubpassDependency(subpass_dependency_list,2);
 
-    return CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
+    return CreateRenderPass(type_by,atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
 }
 VK_NAMESPACE_END

@@ -3,6 +3,20 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
+struct SwapchainFormatHash
+{
+    union
+    {
+        struct
+        {
+            uint32 color;
+            uint32 depth;
+        };
+
+        uint64 hash;
+    };
+};//
+
 SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):RenderTarget(dev,nullptr,sc->GetImageCount())
 {
     swapchain=sc;
@@ -19,7 +33,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
 
     SwapchainRenderbufferInfo rbi((*sc_color)->GetFormat(),sc_depth->GetFormat());
 
-    this->render_pass=device->CreateRenderPass(&rbi);
+    this->render_pass=device->CreateRenderPass(RenderpassTypeBy::Simple,&rbi);
 
     swap_chain_count=swapchain->GetImageCount();
     
