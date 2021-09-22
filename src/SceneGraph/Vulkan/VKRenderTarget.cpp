@@ -59,7 +59,6 @@ RenderTarget::~RenderTarget()
     
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
-    SAFE_CLEAR(render_pass);
 }
 
 bool RenderTarget::Submit(RenderCmdBuffer *command_buffer,GPUSemaphore *present_complete_semaphore)
