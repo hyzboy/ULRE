@@ -3,25 +3,6 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-namespace
-{
-    struct SwapchainFormatHash
-    {
-        union
-        {
-            struct
-            {
-                uint32_t color;
-                uint32_t depth;
-            };
-
-            uint64 hashcode;
-        };
-    };//
-
-    static Map<uint64,RenderPass *> RenderpassListBySimple;
-}//namespace
-
 SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):RenderTarget(dev,nullptr,sc->GetImageCount())
 {
     swapchain=sc;
@@ -36,21 +17,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
     Texture2D **sc_color=swapchain->GetColorTextures();
     Texture2D *sc_depth=swapchain->GetDepthTexture();
 
-    {
-        SwapchainFormatHash sfh;
-    
-        sfh.color=(*sc_color)->GetFormat();
-        sfh.depth=sc_depth->GetFormat();
-
-        if(!RenderpassListBySimple.Get(sfh.hashcode,this->render_pass))
-        {
-            SwapchainRenderbufferInfo rbi((*sc_color)->GetFormat(),sc_depth->GetFormat());
-
-            this->render_pass=device->AcquireRenderPass(&rbi,RenderPassTypeBy::Simple);
-
-            RenderpassListBySimple.Add(sfh.hashcode,this->render_pass);
-        }
-    }
+    render_pass=dev->GetRenderPass();
 
     swap_chain_count=swapchain->GetImageCount();
     
@@ -60,7 +27,7 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
 
     for(uint i=0;i<swap_chain_count;i++)
     {
-        render_frame[i]=device->CreateFramebuffer(this->render_pass,(*sc_color)->GetImageView(),sc_depth->GetImageView());
+        render_frame[i]=device->CreateFramebuffer(render_pass,(*sc_color)->GetImageView(),sc_depth->GetImageView());
         ++sc_color;
     }
 

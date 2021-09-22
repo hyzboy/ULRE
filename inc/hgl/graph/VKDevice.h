@@ -34,8 +34,15 @@ class GPUDevice
     GPUQueue *texture_queue;
     TextureCmdBuffer *texture_cmd_buf;
 
+private:
+
+    DeviceRenderPassManage *render_pass_manage;
+    RenderPass *device_render_pass;
+
     Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
+
+    void InitRenderPassManage();
 
 private:
 
@@ -69,6 +76,7 @@ public:
     const       VkFormat            GetSurfaceFormat    ()const {return attr->format;}
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
+                RenderPass *        GetRenderPass       ()      {return device_render_pass;}
                 Swapchain *         GetSwapchain        ()      {return swapchain;}
 
     SwapchainRenderTarget *         GetSwapchainRT      ()      {return swapchainRT;}
@@ -211,17 +219,9 @@ public: //Command Buffer 相关
     RenderCmdBuffer * CreateRenderCommandBuffer();
     TextureCmdBuffer *CreateTextureCommandBuffer();
     
-private:
-
-    RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
-                                        const List<VkSubpassDescription> &subpass,
-                                        const List<VkSubpassDependency> &dependency,
-                                        const RenderbufferInfo *,
-                                        const RenderPassTypeBy &type_by=RenderPassTypeBy::Verbose);
-
 public:
 
-    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const RenderPassTypeBy &type_by=RenderPassTypeBy::Normal);
+    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *);
 
     GPUFence *      CreateFence(bool);
     GPUSemaphore *  CreateGPUSemaphore();
@@ -251,25 +251,6 @@ public:
     
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体
 };//class GPUDevice
-
-//void CreateSubpassDependency(VkSubpassDependency *);
-void CreateSubpassDependency(List<VkSubpassDependency> &dependency,const uint32_t count);
-
-void CreateAttachmentReference(VkAttachmentReference *ref_list,uint start,uint count,VkImageLayout layout);
-
-inline void CreateColorAttachmentReference(VkAttachmentReference *ref_list, uint start,uint count)  {CreateAttachmentReference(ref_list,    start,count,VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);}
-inline void CreateDepthAttachmentReference(VkAttachmentReference *depth_ref,uint index)             {CreateAttachmentReference(depth_ref,   index,1    ,VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);}
-inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list, uint start,uint count)  {CreateAttachmentReference(ref_list,    start,count,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);}
-
-    
-bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const List<VkFormat> &color_format,const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachmentDescription> &desc_list,const VkFormat &depth_format,const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-bool CreateAttachmentDescription( List<VkAttachmentDescription> &color_output_desc_list,
-                            const List<VkFormat> &color_format,
-                            const VkFormat depth_format,
-                            const VkImageLayout color_final_layout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            const VkImageLayout depth_final_layout=VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *physical_device=nullptr);
 VK_NAMESPACE_END

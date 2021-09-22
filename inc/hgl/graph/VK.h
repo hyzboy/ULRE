@@ -63,14 +63,9 @@ class GPUCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;
 
-enum class RenderPassTypeBy
-{
-    Simple=0,
-    Normal,
-    Verbose
-};//
-
 class RenderPass;
+class DeviceRenderPassManage;
+
 class GPUFence;
 class GPUSemaphore;
 
