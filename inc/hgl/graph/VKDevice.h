@@ -43,6 +43,7 @@ private:
     SwapchainRenderTarget *swapchainRT;
 
     void InitRenderPassManage();
+    void ClearRenderPassManage();
 
 private:
 

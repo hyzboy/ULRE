@@ -31,7 +31,7 @@ GPUDevice::~GPUDevice()
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
-    delete(render_pass_manage);
+    ClearRenderPassManage();
 
     SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);

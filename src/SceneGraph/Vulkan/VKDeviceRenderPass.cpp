@@ -8,11 +8,15 @@ void GPUDevice::InitRenderPassManage()
 {
     render_pass_manage=new DeviceRenderPassManage(attr->device);
     
-    {
-        SwapchainRenderbufferInfo rbi(attr->format,attr->physical_device->GetDepthFormat());
+    SwapchainRenderbufferInfo rbi(attr->format,attr->physical_device->GetDepthFormat());
 
-        device_render_pass=render_pass_manage->AcquireRenderPass(&rbi);
-    }
+    device_render_pass=render_pass_manage->AcquireRenderPass(&rbi);
+}
+
+void GPUDevice::ClearRenderPassManage()
+{
+    SAFE_CLEAR(device_render_pass);
+    SAFE_CLEAR(render_pass_manage);
 }
 
 RenderPass *GPUDevice::AcquireRenderPass(const RenderbufferInfo *rbi)
