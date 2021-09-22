@@ -140,6 +140,8 @@ bool DescriptorSets::BindInputAttachment(const int binding,Texture *tex)
         return(false);
 
     DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,nullptr);
+    
+    image_list.Add(image_info);
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
     return(true);
