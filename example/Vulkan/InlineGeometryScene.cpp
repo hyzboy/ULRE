@@ -37,8 +37,8 @@ class TestApp:public CameraAppFramework
 
 private:
 
-    SceneNode   render_root;
-    RenderList  render_list;
+    SceneNode           render_root;
+    RenderList *        render_list         =nullptr;
     
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
@@ -208,18 +208,40 @@ private:
         ubo_light=db->CreateUBO(sizeof(PhongLight),&light);
         ubo_phong=db->CreateUBO(sizeof(PhongMaterial),&phong);
         
-        material_instance->BindUBO("light",ubo_light);
-        material_instance->BindUBO("phong",ubo_phong);
+        {
+            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetType::Value);
+        
+            if(!mp_value)
+                return(false);
 
-        if(!material_instance->BindUBO("camera",GetCameraInfoBuffer()))
-            return(false);
+            mp_value->BindUBO("light",ubo_light);
+            mp_value->BindUBO("phong",ubo_phong);
 
-        material_instance->Update();
+            mp_value->Update();
+        }
+        
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        if(!axis_mi->BindUBO("camera",GetCameraInfoBuffer()))
-            return(false);
+            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
 
-        axis_mi->Update();
+            mp_global->Update();
+        }
+        
+        {
+            MaterialParameters *mp_global=axis_mi->GetMP(DescriptorSetType::Global);
+        
+            if(!mp_global)
+                return(false);
+
+            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
+
+            mp_global->Update();
+        }
+
         return(true);
     }
     
@@ -248,17 +270,24 @@ private:
         Add(ro_cone     ,pipeline_solid,translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
-        render_list.Expend(GetCameraInfo(),&render_root);
+        render_list->Expend(GetCameraInfo(),&render_root);
 
         return(true);
     }
 
 public:
 
+    ~TestApp()
+    {
+        SAFE_CLEAR(render_list);
+    }
+
     bool Init()
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+            
+        render_list=new RenderList(device);
             
         if(!InitMaterial())
             return(false);
@@ -277,11 +306,9 @@ public:
     void BuildCommandBuffer(uint32_t index) override
     {
         render_root.RefreshMatrix();
-        render_list.Begin();
-        render_root.ExpendToList(&render_list);
-        render_list.End();
+        render_list->Expend(GetCameraInfo(),&render_root);
         
-        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
+        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 };//class TestApp:public CameraAppFramework
 
