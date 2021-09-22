@@ -357,6 +357,11 @@ public:
         ubo_camera_info->Write(&camera->info);
     }
 
+    const CameraInfo &GetCameraInfo()
+    {
+        return camera->info;
+    }
+
     GPUBuffer *GetCameraInfoBuffer()
     {
         return ubo_camera_info;
