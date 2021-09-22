@@ -274,8 +274,6 @@ public:
         render_list.Begin();
         render_root.ExpendToList(&render_list);
         render_list.End();
-
-
         
         VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
     }

@@ -58,20 +58,15 @@ private:
 
 private:
 
-    bool RecreatePipeline()
-    {
-//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
-        
-        return pipeline;
-    }
-
     bool InitMaterial()
     {
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Texture2D"));        
         if(!material_instance)return(false);
 
-        if(!RecreatePipeline())
+//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        
+        if(!pipeline)
             return(false);
 
         texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"));
@@ -164,9 +159,6 @@ public:
         cam.Refresh();
 
         ubo_camera_info->Write(&cam.info);
-        
-        RecreatePipeline();
-        renderable_instance->UpdatePipeline(pipeline);
         
         BuildCommandBuffer(renderable_instance);
     }
