@@ -21,10 +21,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,RenderPas
         Texture2D *color_texture=CreateTexture2D(new ColorAttachmentTextureCreateInfo(fmt,extent));
 
         if(!color_texture)
-        {
-            delete rp;
             return(nullptr);
-        }
 
         *tp++=color_texture;
         *iv++=color_texture->GetImageView();
@@ -50,7 +47,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
 {
     if(!fbi)return(nullptr);
 
-    RenderPass *rp=AcquireRenderPass(fbi,RenderPassTypeBy::Normal);
+    RenderPass *rp=AcquireRenderPass(fbi);
 
     if(!rp)return(nullptr);
 

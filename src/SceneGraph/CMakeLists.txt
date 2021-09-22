@@ -123,6 +123,7 @@ SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         Vulkan/VKDeviceFramebuffer.cpp
                         Vulkan/VKDeviceSwapchain.cpp
                         Vulkan/VKDeviceRenderPass.cpp
+                        Vulkan/VKDeviceRenderPassManage.cpp
                         Vulkan/VKDeviceRenderTarget.cpp)
 
 SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
