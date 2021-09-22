@@ -53,7 +53,6 @@ RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,Textu
 
 RenderTarget::~RenderTarget()
 {
-    pipeline_list.Clear();
     SAFE_CLEAR(depth_texture);
     SAFE_CLEAR_OBJECT_ARRAY(color_textures,color_count);
     

@@ -240,11 +240,6 @@ public:
     
     RenderTarget *CreateRenderTarget(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
     RenderTarget *CreateRenderTarget(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
-    
-public:
-
-    Pipeline *CreatePipeline(      PipelineData *,  const Material *,const RenderTarget *);
-    Pipeline *CreatePipeline(const InlinePipeline &,const Material *,const RenderTarget *);
 
 public:
 

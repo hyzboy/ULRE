@@ -5,7 +5,7 @@ VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExt
 {
     FramebufferCreateInfo fb_info;
 
-    fb_info.renderPass      = *rp;
+    fb_info.renderPass      = rp->GetVkRenderPass();
     fb_info.attachmentCount = attachmentCount;
     fb_info.pAttachments    = attachments;
     fb_info.width           = extent.width;
@@ -75,7 +75,7 @@ Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,
     if(!fbo)
         return(nullptr);
 
-    return(new Framebuffer(GetDevice(),fbo,extent,*rp,color_count,depth));
+    return(new Framebuffer(GetDevice(),fbo,extent,rp->GetVkRenderPass(),color_count,depth));
 }
 //
 //Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
