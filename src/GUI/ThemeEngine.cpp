@@ -49,7 +49,7 @@ namespace hgl
             RenderTarget *rt=CreateRenderTarget(size.x,size.y,format);
 
             if(!rt)return(false);
-            
+           
             ThemeForm *tf=CreateForm(f,rt);
 
             form_list.Add(f,tf);

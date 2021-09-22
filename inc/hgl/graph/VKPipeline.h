@@ -14,10 +14,23 @@ class Pipeline
 
     bool alpha_test;
     bool alpha_blend;
+    
+private:
+
+    friend class GPUDevice;
+
+    Pipeline(VkDevice dev,VkPipeline p,PipelineData *pd)
+    {
+        device=dev;
+        pipeline=p;
+        data=pd;
+
+        alpha_test=false;
+        alpha_blend=false;
+    }
 
 public:
 
-    Pipeline(VkDevice dev,VkPipeline p,PipelineData *pd):device(dev),pipeline(p),data(pd){}
     virtual ~Pipeline();
 
     operator VkPipeline(){return pipeline;}

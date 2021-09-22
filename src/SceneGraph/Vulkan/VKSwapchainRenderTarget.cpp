@@ -3,19 +3,24 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-struct SwapchainFormatHash
+namespace
 {
-    union
+    struct SwapchainFormatHash
     {
-        struct
+        union
         {
-            uint32 color;
-            uint32 depth;
-        };
+            struct
+            {
+                uint32_t color;
+                uint32_t depth;
+            };
 
-        uint64 hash;
-    };
-};//
+            uint64 hashcode;
+        };
+    };//
+
+    static Map<uint64,RenderPass *> RenderpassListBySimple;
+}//namespace
 
 SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):RenderTarget(dev,nullptr,sc->GetImageCount())
 {
@@ -31,9 +36,21 @@ SwapchainRenderTarget::SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc):Rende
     Texture2D **sc_color=swapchain->GetColorTextures();
     Texture2D *sc_depth=swapchain->GetDepthTexture();
 
-    SwapchainRenderbufferInfo rbi((*sc_color)->GetFormat(),sc_depth->GetFormat());
+    {
+        SwapchainFormatHash sfh;
+    
+        sfh.color=(*sc_color)->GetFormat();
+        sfh.depth=sc_depth->GetFormat();
 
-    this->render_pass=device->CreateRenderPass(RenderpassTypeBy::Simple,&rbi);
+        if(!RenderpassListBySimple.Get(sfh.hashcode,this->render_pass))
+        {
+            SwapchainRenderbufferInfo rbi((*sc_color)->GetFormat(),sc_depth->GetFormat());
+
+            this->render_pass=device->AcquireRenderPass(&rbi,RenderPassTypeBy::Simple);
+
+            RenderpassListBySimple.Add(sfh.hashcode,this->render_pass);
+        }
+    }
 
     swap_chain_count=swapchain->GetImageCount();
     
