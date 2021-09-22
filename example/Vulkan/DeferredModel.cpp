@@ -53,6 +53,7 @@ private:
     struct
     {
         RenderTarget *rt=nullptr;
+        RenderPass *rp=nullptr;
         RenderCmdBuffer *cmd=nullptr;
 
     public:
@@ -118,6 +119,8 @@ private:
 
         gbuffer.cmd=device->CreateRenderCommandBuffer();
 
+        gbuffer.rp=gbuffer.rt->GetRenderPass();
+
         return(gbuffer.rt);
     }
 
@@ -134,18 +137,18 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        sp->pipeline_triangles  =gbuffer.rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Triangles);
+        sp->pipeline_triangles  =gbuffer.rp->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Triangles);
         if(!sp->pipeline_triangles)
             return(false);
 
-        sp->pipeline_fan        =gbuffer.rt->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Fan);
+        sp->pipeline_fan        =gbuffer.rp->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
 
     bool InitCompositionPipeline(SubpassParam *sp)
     {
-        sp->pipeline_fan=sc_render_target->CreatePipeline(sp->material,InlinePipeline::Solid2D,Prim::Fan);
+        sp->pipeline_fan=device_render_pass->CreatePipeline(sp->material,InlinePipeline::Solid2D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
