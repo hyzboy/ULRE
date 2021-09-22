@@ -29,16 +29,8 @@ private:
     Pipeline *          pipeline            =nullptr;
 
     Renderable        * ro_plane_grid[3];
-    RenderableInstance *ri_plane_grid[3];
 
 private:
-
-    bool RecreatePipeline()
-    {
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Lines);
-
-        return pipeline;
-    }
 
     bool InitMDP()
     {
@@ -47,8 +39,9 @@ private:
 
         material_instance=db->CreateMaterialInstance(material);
         if(!material_instance)return(false);
-
-        if(!RecreatePipeline())
+        
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Lines);
+        if(!pipeline)
             return(false);
 
         {
@@ -108,9 +101,9 @@ private:
 
     bool InitScene()
     {
-        ri_plane_grid[0]=Add(ro_plane_grid[0],Matrix4f::identity);
-        ri_plane_grid[1]=Add(ro_plane_grid[1],rotate(HGL_RAD_90,0,1,0));
-        ri_plane_grid[2]=Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
+        Add(ro_plane_grid[0],Matrix4f::identity);
+        Add(ro_plane_grid[1],rotate(HGL_RAD_90,0,1,0));
+        Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
 
         render_root.RefreshMatrix();
         render_list->Expend(camera->info,&render_root);
@@ -151,11 +144,6 @@ public:
     void Resize(int w,int h)override
     {
         CameraAppFramework::Resize(w,h);
-        
-        RecreatePipeline();
-
-        for(int i=0;i<3;i++)
-            ri_plane_grid[i]->UpdatePipeline(pipeline);
         
         VulkanApplicationFramework::BuildCommandBuffer(render_list);
     }
