@@ -119,7 +119,6 @@ SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         Vulkan/VKDeviceImage.cpp
                         Vulkan/VKDeviceTexture.cpp
                         Vulkan/VKDeviceMaterial.cpp
-                        Vulkan/VKDevicePipeline.cpp
                         Vulkan/VKDeviceFramebuffer.cpp
                         Vulkan/VKDeviceSwapchain.cpp
                         Vulkan/VKDeviceRenderPass.cpp
@@ -183,7 +182,6 @@ SET(VK_RENDER_PASS_SOURCE   ${SG_INCLUDE_PATH}/VKFramebuffer.h
                             Vulkan/VKPipelineCache.cpp
                             Vulkan/VKRenderPass.cpp
                             Vulkan/VKRenderTarget.cpp
-                            Vulkan/VKRenderTargetPipeline.cpp
                             Vulkan/VKSwapchainRenderTarget.cpp
                             Vulkan/VKSwapchain.cpp
                             )

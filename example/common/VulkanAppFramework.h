@@ -48,6 +48,7 @@ protected:
 protected:
 
     GPUDevice *             device                      =nullptr;
+    RenderPass *            device_render_pass          =nullptr;
     SwapchainRenderTarget * sc_render_target            =nullptr;
 
 protected:
@@ -117,6 +118,8 @@ public:
 
         if(!device)
             return(false);
+
+        device_render_pass=device->GetRenderPass();
 
         db=new RenderResource(device);
 
@@ -258,7 +261,7 @@ public:
     }
 
     template<typename ...ARGS>
-    Pipeline *CreatePipeline(ARGS...args){return sc_render_target->CreatePipeline(args...);}
+    Pipeline *CreatePipeline(ARGS...args){return device_render_pass->CreatePipeline(args...);}
 
 public:
 

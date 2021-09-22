@@ -11,6 +11,7 @@ using RenderPassHASHCode=util::HashCodeSHA1LE;
 class DeviceRenderPassManage
 {
     VkDevice device;
+    VkPipelineCache pipeline_cache;
 
     util::Hash *hash;
 
@@ -20,7 +21,7 @@ private:
 
     friend class GPUDevice;
 
-    DeviceRenderPassManage(VkDevice);
+    DeviceRenderPassManage(VkDevice,VkPipelineCache);
     ~DeviceRenderPassManage();
 
 private:

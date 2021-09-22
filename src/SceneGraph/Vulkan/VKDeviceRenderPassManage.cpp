@@ -210,9 +210,10 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     return(true);
 }
 
-DeviceRenderPassManage::DeviceRenderPassManage(VkDevice dev)
+DeviceRenderPassManage::DeviceRenderPassManage(VkDevice dev,VkPipelineCache pc)
 {
     device=dev;
+    pipeline_cache=pc;
 
     hash=util::CreateSHA1LEHash();
 }
@@ -298,7 +299,7 @@ RenderPass *DeviceRenderPassManage::CreateRenderPass(   const List<VkAttachmentD
     if(vkCreateRenderPass(device,&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(device,render_pass,rbi->GetColorFormatList(),depth_format));
+    return(new RenderPass(device,pipeline_cache,render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
 RenderPass *DeviceRenderPassManage::AcquireRenderPass(const RenderbufferInfo *rbi)

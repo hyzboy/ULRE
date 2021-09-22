@@ -30,10 +30,6 @@ protected:
 
 protected:
 
-    ObjectList<Pipeline> pipeline_list;
-
-protected:
-
     friend class GPUDevice;
 
     RenderTarget(GPUDevice *dev,Framebuffer *_fb,const uint32_t fence_count=1);
@@ -45,21 +41,12 @@ public:
     
             const   VkExtent2D &    GetExtent           ()const {return extent;}
     virtual         RenderPass *    GetRenderPass       ()      {return render_pass;}
-    virtual const   VkRenderPass    GetVkRenderPass     ()const {return *render_pass;}
+    virtual const   VkRenderPass    GetVkRenderPass     ()const {return render_pass->GetVkRenderPass();}
     virtual const   uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
     virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
 
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
-
-public: //pipeline
-
-    Pipeline *CreatePipeline(Material *,          const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *,                PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *,    const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *,          const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim=Prim::Triangles,const bool prim_restart=false);
 
 public: // command buffer
 

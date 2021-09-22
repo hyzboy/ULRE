@@ -2,6 +2,8 @@
 #define HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
 
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKPipeline.h>
+#include<hgl/type/List.h>
 VK_NAMESPACE_BEGIN
 /**
  * RenderPass功能封装<br>
@@ -11,28 +13,26 @@ VK_NAMESPACE_BEGIN
 class RenderPass
 {
     VkDevice device;
+    VkPipelineCache pipeline_cache;
     VkRenderPass render_pass;
 
     List<VkFormat> color_formats;
     VkFormat depth_format;
 
+protected:
+
+    ObjectList<Pipeline> pipeline_list;
+
 private:
 
     friend class DeviceRenderPassManage;
 
-    RenderPass(VkDevice d,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
+    RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
     {
         device=d;
+        pipeline_cache=pc;
         render_pass=rp;
         color_formats=cf;
-        depth_format=df;
-    }
-
-    RenderPass(VkDevice d,VkRenderPass rp,VkFormat cf,VkFormat df)
-    {
-        device=d;
-        render_pass=rp;
-        color_formats.Add(cf);
         depth_format=df;
     }
 
@@ -40,7 +40,8 @@ public:
 
     virtual ~RenderPass();
 
-    operator VkRenderPass(){return render_pass;}
+            VkRenderPass    GetVkRenderPass(){return render_pass;}
+            VkPipelineCache GetPipelineCache(){return pipeline_cache;}
 
     const uint              GetColorCount()const{return color_formats.GetCount();}
     const List<VkFormat> &  GetColorFormat()const{return color_formats;}
@@ -51,6 +52,20 @@ public:
         return color_formats.GetData()[index];
     }
     const VkFormat          GetDepthFormat()const{return depth_format;}
+
+public:
+
+    Pipeline *CreatePipeline(const Material *,      PipelineData *);
+    Pipeline *CreatePipeline(const Material *,const InlinePipeline &);
+
+public:
+
+    Pipeline *CreatePipeline(Material *,          const InlinePipeline &,  const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,                PipelineData *,    const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *,    const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,          const OSString &,        const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim,const bool prim_restart=false);
 };//class RenderPass
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
