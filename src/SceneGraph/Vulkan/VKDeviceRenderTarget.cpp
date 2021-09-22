@@ -1,17 +1,9 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget *GPUDevice::CreateRenderTarget(Framebuffer *fb,const uint32_t fence_count)
-{
-    return(new RenderTarget(this,fb,fence_count));
-}
-
-RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uint32_t fence_count)
+RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
-
-    RenderPass *rp=CreateRenderPass(RenderpassTypeBy::Format,fbi);       //Renderpass内部会验证格式，所以不需要自己处理
-
     if(!rp)return(nullptr);
 
     const uint32_t color_count=fbi->GetColorCount();
@@ -51,7 +43,17 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
     }
 
     SAFE_CLEAR(depth_texture);
-    delete rp;
     return nullptr;
+}
+
+RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uint32_t fence_count)
+{
+    if(!fbi)return(nullptr);
+
+    RenderPass *rp=AcquireRenderPass(fbi,RenderPassTypeBy::Normal);
+
+    if(!rp)return(nullptr);
+
+    return CreateRenderTarget(fbi,rp,fence_count);
 }
 VK_NAMESPACE_END

@@ -119,6 +119,7 @@ SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         Vulkan/VKDeviceImage.cpp
                         Vulkan/VKDeviceTexture.cpp
                         Vulkan/VKDeviceMaterial.cpp
+                        Vulkan/VKDevicePipeline.cpp
                         Vulkan/VKDeviceFramebuffer.cpp
                         Vulkan/VKDeviceSwapchain.cpp
                         Vulkan/VKDeviceRenderPass.cpp

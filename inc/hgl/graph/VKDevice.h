@@ -211,12 +211,17 @@ public: //Command Buffer 相关
     RenderCmdBuffer * CreateRenderCommandBuffer();
     TextureCmdBuffer *CreateTextureCommandBuffer();
     
+private:
+
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
-                                        const RenderbufferInfo *);
+                                        const RenderbufferInfo *,
+                                        const RenderPassTypeBy &type_by=RenderPassTypeBy::Verbose);
 
-    RenderPass *    CreateRenderPass(   const RenderbufferInfo *);
+public:
+
+    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const RenderPassTypeBy &type_by=RenderPassTypeBy::Normal);
 
     GPUFence *      CreateFence(bool);
     GPUSemaphore *  CreateGPUSemaphore();
@@ -232,14 +237,13 @@ public:
 
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
     
-    RenderTarget *CreateRenderTarget(   Framebuffer *,const uint32_t fence_count=1);
-
+    RenderTarget *CreateRenderTarget(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
     RenderTarget *CreateRenderTarget(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
     
 public:
 
-    Pipeline *CreatePipeline(const InlinePipeline &,const Material *,const RenderTarget *);
     Pipeline *CreatePipeline(      PipelineData *,  const Material *,const RenderTarget *);
+    Pipeline *CreatePipeline(const InlinePipeline &,const Material *,const RenderTarget *);
 
 public:
 

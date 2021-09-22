@@ -234,14 +234,14 @@ namespace
         delete hash;
     }
 
-    static Map<RenderPassHASHCode,RenderPass *> RenderPassList;
+    static Map<RenderPassHASHCode,RenderPass *> RenderPassListByVerbose;
 }
 
-RenderPass *GPUDevice::CreateRenderPass(const RenderpassTypeBy &type_by,
-                                        const List<VkAttachmentDescription> &desc_list,
+RenderPass *GPUDevice::CreateRenderPass(const List<VkAttachmentDescription> &desc_list,
                                         const List<VkSubpassDescription> &subpass,
                                         const List<VkSubpassDependency> &dependency,
-                                        const RenderbufferInfo *rbi)
+                                        const RenderbufferInfo *rbi,
+                                        const RenderPassTypeBy &type_by)
 {
     for(const VkFormat cf:rbi->GetColorFormatList())
     {
@@ -269,15 +269,17 @@ RenderPass *GPUDevice::CreateRenderPass(const RenderpassTypeBy &type_by,
     rp_info.pSubpasses      = subpass.GetData();
     rp_info.dependencyCount = dependency.GetCount();
     rp_info.pDependencies   = dependency.GetData();
-
+    
     RenderPassHASHCode code;
+    RenderPass *rp=nullptr;
 
-    HashRenderPass(&code,rp_info);
+    if(type_by==RenderPassTypeBy::Verbose)
+    {
+        HashRenderPass(&code,rp_info);
 
-    RenderPass *rp;
-
-    if(RenderPassList.Get(code,rp))
-        return rp;
+        if(RenderPassListByVerbose.Get(code,rp))
+            return rp;
+    }
 
     VkRenderPass render_pass;
 
@@ -286,16 +288,46 @@ RenderPass *GPUDevice::CreateRenderPass(const RenderpassTypeBy &type_by,
 
     rp=new RenderPass(attr->device,render_pass,rbi->GetColorFormatList(),depth_format);
 
-    RenderPassList.Add(code,rp);
+    if(type_by==RenderPassTypeBy::Verbose)
+        RenderPassListByVerbose.Add(code,rp);
 
     return rp;
 }
 
-RenderPass *GPUDevice::CreateRenderPass(const RenderpassTypeBy &type_by,const RenderbufferInfo *rbi)
+namespace
+{
+    void HashRenderPass(RenderPassHASHCode *code,const RenderbufferInfo *rbi)
+    {       
+        util::Hash *hash=util::CreateSHA1LEHash();
+
+        hash->Init();
+
+        for(const VkFormat &fmt:rbi->GetColorFormatList())
+            hash->Write(fmt);
+
+        hash->Final(&code);
+        delete hash;
+    }
+
+    static Map<RenderPassHASHCode,RenderPass *> RenderPassListByNormal;
+}//namespace
+
+RenderPass *GPUDevice::AcquireRenderPass(const RenderbufferInfo *rbi,const RenderPassTypeBy &type_by)
 {
     for(const VkFormat &fmt:rbi->GetColorFormatList())
         if(!attr->physical_device->IsColorAttachmentOptimal(fmt))
             return(nullptr);
+
+    RenderPassHASHCode code;
+    RenderPass *rp=nullptr;
+
+    if(type_by==RenderPassTypeBy::Normal)
+    {
+        HashRenderPass(&code,rbi);
+
+        if(RenderPassListByNormal.Get(code,rp))
+            return rp;
+    }
 
     List<VkAttachmentReference> color_ref_list;
     VkAttachmentReference depth_ref;
@@ -323,6 +355,11 @@ RenderPass *GPUDevice::CreateRenderPass(const RenderpassTypeBy &type_by,const Re
 
     CreateSubpassDependency(subpass_dependency_list,2);
 
-    return CreateRenderPass(type_by,atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
+    rp=CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi,type_by);
+
+    if(type_by==RenderPassTypeBy::Normal)
+        RenderPassListByNormal.Add(code,rp);
+
+    return rp;
 }
 VK_NAMESPACE_END
