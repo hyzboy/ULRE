@@ -21,7 +21,7 @@ bool MaterialParameters::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dyna
     if(name.IsEmpty()||!ubo)
         return(false);
 
-    const int index=dynamic?mds->GetUBODynamic(name):mds->GetUBO(name);
+    const int index=mds->GetUBO(name,dynamic);
 
     if(index<0)
         return(false);
@@ -37,7 +37,7 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,GPUBuffer *ssbo,bool dy
     if(name.IsEmpty()||!ssbo)
         return(false);
 
-    const int index=dynamic?mds->GetSSBODynamic(name):mds->GetSSBO(name);
+    const int index=mds->GetSSBO(name,dynamic);
 
     if(index<0)
         return(false);

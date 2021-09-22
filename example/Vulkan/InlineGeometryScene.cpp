@@ -125,8 +125,15 @@ private:
             material_instance=db->CreateMaterialInstance(material);
             if(!material_instance)return(false);
 
-            material_instance->BindSampler("TexColor"    ,texture.color,    texture.sampler);
-            material_instance->BindSampler("TexNormal"   ,texture.normal,   texture.sampler);
+            {            
+                MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetType::Value);
+        
+                if(!mp_texture)
+                    return(false);
+
+                mp_texture->BindSampler("TexColor"    ,texture.color,    texture.sampler);
+                mp_texture->BindSampler("TexNormal"   ,texture.normal,   texture.sampler);
+            }
         }
 
         pipeline_data=GetPipelineData(InlinePipeline::Solid3D);
@@ -200,14 +207,12 @@ private:
     {
         ubo_light=db->CreateUBO(sizeof(PhongLight),&light);
         ubo_phong=db->CreateUBO(sizeof(PhongMaterial),&phong);
-
+        
         material_instance->BindUBO("light",ubo_light);
         material_instance->BindUBO("phong",ubo_phong);
 
         if(!material_instance->BindUBO("camera",GetCameraInfoBuffer()))
             return(false);
-
-        material_instance->BindUBO("fs_light",ubo_light);
 
         material_instance->Update();
 
@@ -222,19 +227,20 @@ private:
     {
         auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
-        render_root.Add(ri);
+        render_root.CreateSubNode(ri);
     }
 
     void Add(Renderable *r,Pipeline *pl,const Matrix4f &mat)
     {
         auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
-        render_root.Add(ri,mat);
+        render_root.CreateSubNode(mat,ri);
     }
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
+        render_root.CreateSubNode(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
+
         Add(ro_torus    ,pipeline_solid);
         Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));
         Add(ro_sphere   ,pipeline_solid,translate( 10,  0, 5)*scale(10,10,10));
@@ -242,7 +248,7 @@ private:
         Add(ro_cone     ,pipeline_solid,translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
+        render_list.Expend(GetCameraInfo(),&render_root);
 
         return(true);
     }
