@@ -5,6 +5,7 @@
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/Color4f.h>
+#include<hgl/graph/AABB.h>
 namespace hgl
 {
     namespace graph
@@ -82,7 +83,8 @@ namespace hgl
 
             PlaneCreateInfo()
             {
-                tile.Set(1,1);
+                tile.x=1.0f;
+                tile.y=1.0f;
             }
         };//struct PlaneCreateInfo
 
@@ -101,18 +103,18 @@ namespace hgl
             Vector4f color;
 
         public:
-        
+
             void Set(const AABB &box)
             {
-                center=box.CenterPoint().xyz();
-                size=box.Size().xyz();
+                center=box.center;
+                size=box.length;
             }
 
             CubeCreateInfo()
             {
-                center.Set(0,0,0);
-                size.Set(1,1,1);
-                tile.Set(1,1);
+                center=Vector3f(0,0,0);
+                size=Vector3f(1,1,1);
+                tile=Vector2f(1,1);
 
                 has_color=false;
             }
@@ -120,8 +122,8 @@ namespace hgl
             CubeCreateInfo(const AABB &box)
             {
                 Set(box);
-                tile.Set(1,1);
-                
+                tile=Vector2f(1,1);
+
                 has_color=false;
             }
         };//struct CubeCreateInfo
@@ -130,12 +132,12 @@ namespace hgl
          * 创建一个立方体(三角形)
          */
         Renderable *CreateRenderableCube(RenderResource *db,Material *mtl,const CubeCreateInfo *cci);
-        
+
         /**
          *  创建一个绑定盒(线条)
          */
         Renderable *CreateRenderableBoundingBox(RenderResource *db,Material *mtl,const CubeCreateInfo *cci);
-        
+
         /**
          * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
          */
@@ -162,7 +164,7 @@ namespace hgl
 
             Vector2f uv_scale={1.0,1.0};
         };//struct TorusCreateInfo
-        
+
         /**
          * 创建一个圆环(三角形)
          */
@@ -192,7 +194,7 @@ namespace hgl
          * 创建一个圆锥(三角形)
          */
         Renderable *CreateRenderableCone(RenderResource *db,Material *mtl,const ConeCreateInfo *cci);
-        
+
         struct AxisCreateInfo
         {
             float size;

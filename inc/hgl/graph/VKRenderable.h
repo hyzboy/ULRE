@@ -5,6 +5,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/math/Math.h>
+#include<hgl/graph/AABB.h>
 VK_NAMESPACE_BEGIN
 /**
  * 可渲染数据对象<br>
@@ -24,7 +25,7 @@ class Renderable
     };
 
     Map<UTF8String,VABData> buffer_list;
-    
+
 protected:
 
     uint32_t draw_count;

@@ -15,8 +15,8 @@ namespace hgl
             }
             else
             {
-                BoundingBox.minPoint=vec::zero;
-                BoundingBox.maxPoint=vec::zero;
+                BoundingBox.minPoint=Vector3f(0,0,0);
+                BoundingBox.maxPoint=Vector3f(0,0,0);
 
                 WorldBoundingBox=LocalBoundingBox=BoundingBox;
             }

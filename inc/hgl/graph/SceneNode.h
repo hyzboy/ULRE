@@ -4,6 +4,7 @@
 #include<hgl/type/List.h>
 #include<hgl/graph/SceneOrient.h>
 #include<hgl/graph/VK.h>
+#include<hgl/graph/AABB.h>
 namespace hgl
 {
     namespace graph
@@ -24,7 +25,7 @@ namespace hgl
             Vector4f Center;                                                                                            ///<中心点
             Vector4f LocalCenter;                                                                                       ///<本地坐标中心点
             Vector4f WorldCenter;                                                                                       ///<世界坐标中心点
-            
+
             RenderableInstance *render_obj=nullptr;                                                                     ///<可渲染实例
 
         public:
