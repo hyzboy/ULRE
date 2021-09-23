@@ -11,7 +11,8 @@ set(ULRE_3RDPTY_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty)
 include(vulkan)
 
 include(math)
-use_mgl(${ULRE_3RDPTY_ROOT_PATH}/MathGeoLib)
+#use_mgl(${ULRE_3RDPTY_ROOT_PATH}/MathGeoLib)
+use_glm(${ULRE_3RDPTY_ROOT_PATH}/glm)
 
 include(use_cm_module)
 use_cm_module(Core)
