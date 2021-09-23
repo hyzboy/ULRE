@@ -25,6 +25,9 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
     ext_list.Add(VK_KHR_SURFACE_EXTENSION_NAME);
     ext_list.Add(HGL_VK_SURFACE_EXTENSION_NAME);            //此宏在VKSurfaceExtensionName.h中定义
 
+    if(CheckInstanceExtensionSupport(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME))
+        ext_list.Add(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+
 #ifdef _DEBUG
     ext_list.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     ext_list.Add(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
