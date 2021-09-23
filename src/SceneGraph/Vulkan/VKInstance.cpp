@@ -87,6 +87,8 @@ VulkanInstance::VulkanInstance(VkInstance i,VKDebugOut *out)
 
         delete[] pd_list;
     }
+
+    GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)vkGetInstanceProcAddr(inst, "vkGetDeviceProcAddr");
 }
 
 VulkanInstance::~VulkanInstance()
@@ -104,5 +106,10 @@ const GPUPhysicalDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)con
             return(pd);
 
     return(nullptr);
+}
+
+void VulkanInstance::DestroySurface(VkSurfaceKHR surface)
+{
+    vkDestroySurfaceKHR(inst,surface,nullptr);
 }
 VK_NAMESPACE_END

@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/VKInstance.h>
 #include<hgl/graph/VKTexture.h>
 
 VK_NAMESPACE_BEGIN
@@ -8,7 +9,7 @@ constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
 struct GPUDeviceAttribute
 {
-    VkInstance                          instance        =VK_NULL_HANDLE;
+    VulkanInstance *                    instance        =nullptr;
     const GPUPhysicalDevice *           physical_device =nullptr;
     
     VkPhysicalDeviceDriverPropertiesKHR driver_properties;
@@ -41,11 +42,19 @@ struct GPUDeviceAttribute
 
 public:
 
-    GPUDeviceAttribute(VkInstance inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s);
+    GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s);
     ~GPUDeviceAttribute();
 
     bool CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const;
 
     void Refresh();
+
+public:
+
+    template<typename T>
+    T *GetDeviceProc(const char *name)
+    {
+        return instance->GetDeviceProc<T>(device,name);
+    }
 };//class GPUDeviceAttribute
 VK_NAMESPACE_END

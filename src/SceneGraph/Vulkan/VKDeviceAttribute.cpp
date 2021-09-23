@@ -5,25 +5,9 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-
-namespace
-{
-    PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR vkGetPhysicalDeviceSurfaceCapabilities2KHR = NULL;
-    PFN_vkGetPhysicalDeviceSurfaceFormats2KHR      vkGetPhysicalDeviceSurfaceFormats2KHR = NULL;
-    PFN_vkSetHdrMetadataEXT                        vkSetHdrMetadataEXT = NULL;
-
-    PFN_vkAcquireFullScreenExclusiveModeEXT        vkAcquireFullScreenExclusiveModeEXT = NULL;
-    PFN_vkReleaseFullScreenExclusiveModeEXT        vkReleaseFullScreenExclusiveModeEXT = NULL;
-}
-
-bool InitPhysicsDeviceSurfaceAPI2()
-{
-    return(false);
-}
-
 void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysicalDeviceProperties &pdp);
 
-GPUDeviceAttribute::GPUDeviceAttribute(VkInstance inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s)
+GPUDeviceAttribute::GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s)
 {
     instance=inst;
     physical_device=pd;
@@ -50,7 +34,7 @@ GPUDeviceAttribute::~GPUDeviceAttribute()
         vkDestroyDevice(device,nullptr);
 
     if(surface)
-        vkDestroySurfaceKHR(instance,surface,nullptr);
+        instance->DestroySurface(surface);
 }
 
 bool GPUDeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const

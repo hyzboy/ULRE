@@ -371,7 +371,7 @@ namespace
 constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEGIN_RANGE+1;
 #endif//VK_DRIVER_ID_RANGE_SIZE
 
-GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent)
+GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent)
 {
     #ifdef _DEBUG
     {
@@ -387,7 +387,7 @@ GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_
     if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    device_attr->device=CreateDevice(inst,physical_device,device_attr->graphics_family);
+    device_attr->device=CreateDevice(*inst,physical_device,device_attr->graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
@@ -436,7 +436,7 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysical
     extent.width=win->GetWidth();
     extent.height=win->GetHeight();
 
-    GPUDevice *device=CreateRenderDevice(*inst,pd,surface,extent);
+    GPUDevice *device=CreateRenderDevice(inst,pd,surface,extent);
 
     if(!device)
     {

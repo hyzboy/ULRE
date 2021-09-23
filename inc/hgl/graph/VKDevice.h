@@ -56,7 +56,7 @@ private:
 
 private:
 
-    friend GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
+    friend GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
 
     GPUDevice(GPUDeviceAttribute *da);
 
@@ -94,14 +94,6 @@ public:
 
                     return Resize(extent);
                 }
-
-public: //
-
-    template<typename T>
-    T *GetProc(const char *name)
-    {
-        return reinterpret_cast<T>(vkGetDeviceProcAddr(attr->device,name));
-    }
 
 public: //内存相关
 

@@ -58,6 +58,10 @@ VK_NAMESPACE_BEGIN
         ObjectList<GPUPhysicalDevice> physical_devices;
 
     private:
+    
+        PFN_vkGetDeviceProcAddr GetDeviceProcAddr;
+
+    private:
 
         friend VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
 
@@ -77,6 +81,16 @@ VK_NAMESPACE_BEGIN
         {
             return reinterpret_cast<T>(vkGetInstanceProcAddr(inst,name));
         }
+
+        template<typename T>
+        T *GetDeviceProc(const char *name)
+        {
+            if(!GetDeviceProcAddr)return(nullptr);
+
+            return reinterpret_cast<T>(GetDeviceProcAddr(name));
+        }
+
+        void DestroySurface(VkSurfaceKHR);
     };//class VulkanInstance
     
             void                            InitVulkanInstanceProperties();
