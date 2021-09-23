@@ -96,7 +96,8 @@ void GPUDeviceAttribute::Refresh()
 
                     for(uint32_t i=0;i<format_count;i++)
                     {
-                        if(sf->format>surface_format.format)
+                        if(sf->format>surface_format.format
+                         &&sf->colorSpace==VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
                             surface_format=*sf;
 
                         ++sf;
