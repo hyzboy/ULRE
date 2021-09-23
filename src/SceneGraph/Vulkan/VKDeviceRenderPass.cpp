@@ -8,7 +8,7 @@ void GPUDevice::InitRenderPassManage()
 {
     render_pass_manage=new DeviceRenderPassManage(attr->device,attr->pipeline_cache);
     
-    SwapchainRenderbufferInfo rbi(attr->format,attr->physical_device->GetDepthFormat());
+    SwapchainRenderbufferInfo rbi(attr->surface_format.format,attr->physical_device->GetDepthFormat());
 
     device_render_pass=render_pass_manage->AcquireRenderPass(&rbi);
 }

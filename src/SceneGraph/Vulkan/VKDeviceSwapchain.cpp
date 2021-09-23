@@ -24,8 +24,8 @@ namespace
         swapchain_ci.flags                  =0;
         swapchain_ci.surface                =dev_attr->surface;
         swapchain_ci.minImageCount          =3;//rsa->surface_caps.minImageCount;
-        swapchain_ci.imageFormat            =dev_attr->format;
-        swapchain_ci.imageColorSpace        =VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        swapchain_ci.imageFormat            =dev_attr->surface_format.format;
+        swapchain_ci.imageColorSpace        =dev_attr->surface_format.colorSpace;
         swapchain_ci.imageExtent            =extent;
         swapchain_ci.imageArrayLayers       =1;
         swapchain_ci.imageUsage             =VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -79,7 +79,7 @@ bool GPUDevice::CreateSwapchainColorTexture()
         return(false);
 
     for(VkImage ip:sc_images)
-        swapchain->sc_color.Add(CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->format,swapchain->extent,ip)));
+        swapchain->sc_color.Add(CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->surface_format.format,swapchain->extent,ip)));
 
     return(true);
 }
