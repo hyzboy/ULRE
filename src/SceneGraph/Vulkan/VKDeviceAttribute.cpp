@@ -72,7 +72,7 @@ void GPUDeviceAttribute::Refresh()
     {
         uint32_t format_count;
 
-        surface_format.format       = VK_FORMAT_B8G8R8A8_UNORM;
+        surface_format.format       = PF_A2BGR10UN;
         surface_format.colorSpace   = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
         if (vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &format_count, nullptr) == VK_SUCCESS)
