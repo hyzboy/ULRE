@@ -23,10 +23,10 @@ namespace hgl
             void Set(const Matrix4f &w,const Matrix4f &vp)
             {
                 l2w=w;
-                inverse_l2w=l2w.Inverted();
+                inverse_l2w=inverse(l2w);
 
                 mvp=vp*l2w;
-                inverse_mvp=mvp.Inverted();
+                inverse_mvp=inverse(mvp);
             }
 
             CompOperatorMemcmp(const MVPMatrix &);
