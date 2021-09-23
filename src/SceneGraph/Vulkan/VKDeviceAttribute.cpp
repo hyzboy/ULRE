@@ -87,7 +87,10 @@ void GPUDeviceAttribute::Refresh()
             {
                 VkSurfaceFormatKHR *sf = surface_formats_list.GetData();
 
-                if (format_count>1)
+                if (format_count == 1 && sf->format == VK_FORMAT_UNDEFINED)
+                {                    
+                }
+                else
                 {
                     surface_format.format=VK_FORMAT_UNDEFINED;
 
