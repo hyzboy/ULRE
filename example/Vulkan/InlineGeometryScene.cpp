@@ -93,6 +93,10 @@ private:
             texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"),true);
             texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"),true);
 
+            if(!texture.color
+             ||!texture.normal)
+                return(false);
+
             VkSamplerCreateInfo sampler_create_info=
             {
                 VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
