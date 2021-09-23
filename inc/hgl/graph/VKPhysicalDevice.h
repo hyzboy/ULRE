@@ -36,6 +36,7 @@ public:
     
     const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
     const uint32_t          GetExtensionVersion(const AnsiString &name)const;
+    const bool              CheckExtensionSupport(const AnsiString &name)const;
 
 public:
 
