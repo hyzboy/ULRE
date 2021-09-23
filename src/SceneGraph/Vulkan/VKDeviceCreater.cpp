@@ -16,7 +16,7 @@ Swapchain *CreateSwapchain(const GPUDeviceAttribute *attr,const VkExtent2D &acqu
 
 namespace
 {
-    VkDevice CreateDevice(VkInstance instance,VkPhysicalDevice physical_device,uint32_t graphics_family)
+    VkDevice CreateDevice(VkInstance instance,const GPUPhysicalDevice *physical_device,uint32_t graphics_family)
     {
         float queue_priorities[1]={0.0};
 
@@ -31,7 +31,18 @@ namespace
         VkDeviceCreateInfo create_info={};
         CharPointerList ext_list;
         ext_list.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-        //ext_list.Add(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
+        constexpr char *require_ext_list[]=
+        {
+            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+            VK_EXT_HDR_METADATA_EXTENSION_NAME,
+            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
+            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME
+        };
+
+        for(const char *ext_name:require_ext_list)
+            if(physical_device->CheckExtensionSupport(ext_name))
+                ext_list.Add(ext_name);
 
         VkPhysicalDeviceFeatures features={};
         features.geometryShader=true;
@@ -48,7 +59,7 @@ namespace
 
         VkDevice device;
 
-        if(vkCreateDevice(physical_device,&create_info,nullptr,&device)==VK_SUCCESS)
+        if(vkCreateDevice(*physical_device,&create_info,nullptr,&device)==VK_SUCCESS)
             return device;
 
         return nullptr;
@@ -376,7 +387,7 @@ GPUDevice *CreateRenderDevice(VkInstance inst,const GPUPhysicalDevice *physical_
     if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    device_attr->device=CreateDevice(inst,*physical_device,device_attr->graphics_family);
+    device_attr->device=CreateDevice(inst,physical_device,device_attr->graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
