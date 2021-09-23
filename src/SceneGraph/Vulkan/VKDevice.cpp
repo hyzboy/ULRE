@@ -12,6 +12,27 @@
 #include<hgl/graph/VKDeviceRenderPassManage.h>
 
 VK_NAMESPACE_BEGIN
+void LogSurfaceFormat(const List<VkSurfaceFormatKHR> &surface_format_list)
+{
+    const uint32_t format_count=surface_format_list.GetCount();
+    const VkSurfaceFormatKHR *sf=surface_format_list.GetData();
+
+    LOG_INFO(OS_TEXT("Current physics device support ")+OSString::valueOf(format_count)+OS_TEXT(" surface format"));
+
+    const VulkanFormat *vf;
+    const VulkanColorSpace *cs;
+
+    for(uint32_t i=0;i<format_count;i++)
+    {
+        vf=GetVulkanFormat(sf->format);
+        cs=GetVulkanColorSpace(sf->colorSpace);
+
+        LOG_INFO("  "+AnsiString::valueOf(i)+": "+AnsiString(vf->name)+", "+AnsiString(cs->name));
+
+        ++sf;
+    }
+}
+
 GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
@@ -24,6 +45,8 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
     swapchain=nullptr;
     swapchainRT=nullptr;
     Resize(attr->surface_caps.currentExtent);
+
+    LogSurfaceFormat(attr->surface_formats_list);
 }
 
 GPUDevice::~GPUDevice()
