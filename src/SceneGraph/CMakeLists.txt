@@ -109,7 +109,7 @@ SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
                         Vulkan/VKMemoryAllocator.cpp
                         Vulkan/VKBuffer.cpp
                         )
-
+                        
 SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         ${SG_INCLUDE_PATH}/VKDeviceAttribute.h
                         Vulkan/VKDeviceAttribute.cpp

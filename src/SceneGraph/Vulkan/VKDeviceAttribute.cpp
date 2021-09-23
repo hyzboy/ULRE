@@ -71,29 +71,30 @@ void GPUDeviceAttribute::Refresh()
 
     {
         uint32_t format_count;
+
+        surface_format.format       = VK_FORMAT_B8G8R8A8_SRGB;
+        surface_format.colorSpace   = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
         if (vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &format_count, nullptr) == VK_SUCCESS)
         {
-            surface_formts.SetCount(format_count);
+            surface_formats_list.SetCount(format_count);
 
-            if (vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &format_count, surface_formts.GetData()) != VK_SUCCESS)
+            if (vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &format_count, surface_formats_list.GetData()) != VK_SUCCESS)
             {
-                surface_formts.Clear();
-                format = VK_FORMAT_B8G8R8A8_UNORM;
+                surface_formats_list.Clear();
             }
             else
             {
-                VkSurfaceFormatKHR *sf = surface_formts.GetData();
+                VkSurfaceFormatKHR *sf = surface_formats_list.GetData();
 
-                if (format_count == 1 && sf->format == VK_FORMAT_UNDEFINED)
-                    format = VK_FORMAT_B8G8R8A8_UNORM;
-                else
+                if (format_count>1)
                 {
-                    format=VK_FORMAT_UNDEFINED;
+                    surface_format.format=VK_FORMAT_UNDEFINED;
 
                     for(uint32_t i=0;i<format_count;i++)
                     {
-                        if(sf->format>format)
-                            format=sf->format;
+                        if(sf->format>surface_format.format)
+                            surface_format=*sf;
 
                         ++sf;
                     }
