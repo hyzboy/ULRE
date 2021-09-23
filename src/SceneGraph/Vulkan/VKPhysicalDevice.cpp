@@ -61,6 +61,17 @@ const uint32_t GPUPhysicalDevice::GetExtensionVersion(const AnsiString &name)con
     return 0;
 }
 
+const bool GPUPhysicalDevice::CheckExtensionSupport(const AnsiString &name)const
+{
+    for(const VkExtensionProperties &ep:extension_properties)
+    {
+        if(name.Comp(ep.extensionName)==0)
+            return(true);
+    }
+
+    return(false);
+}
+
 const bool GPUPhysicalDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex)const
 {
     // Search memtypes to find first index with those properties
