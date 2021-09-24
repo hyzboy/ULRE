@@ -71,12 +71,12 @@ private:
 
     bool InitMaterial()
     {
-        light.color.Set(1,1,1,1);
-        light.position.Set(1000,1000,1000,1.0);
+        light.color=Vector4f(1,1,1,1);
+        light.position=Vector4f(1000,1000,1000,1.0);
 
-        phong.BaseColor.Set(1,1,1,1);
+        phong.BaseColor=Vector4f(1,1,1,1);
         phong.ambient=0.5;
-        phong.specular.Set(0.3,0.3,0.3,32);
+        phong.specular=Vector4f(0.3,0.3,0.3,32);
 
         {
             axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
@@ -162,7 +162,7 @@ private:
         {
             struct CubeCreateInfo cci;
             cci.has_color=true;
-            cci.color.Set(1,1,1,1);
+            cci.color=Vector4f(1,1,1,1);
             ro_cube=CreateRenderableCube(db,material,&cci);
         }
         

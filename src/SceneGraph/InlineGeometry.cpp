@@ -63,7 +63,7 @@ namespace hgl
                 
                 AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
 
-                vec2<float> *coord=new vec2<float>[rci->round_per];
+                Vector2f *coord=new Vector2f[rci->round_per];
 
                 float   l=rci->scope.GetLeft(),
                         r=rci->scope.GetRight(),
@@ -164,21 +164,21 @@ namespace hgl
         {
             RenderableCreater rc(db,mtl);
 
-            if(!rc.Init(((pgci->step.u+1)+(pgci->step.v+1))*2))
+            if(!rc.Init(((pgci->step.x+1)+(pgci->step.y+1))*2))
                 return(nullptr);
 
             AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-            for(uint row=0;row<=pgci->step.u;row++)
+            for(uint row=0;row<=pgci->step.x;row++)
             {
-                float pos=float(row)/float(pgci->step.u);
+                float pos=float(row)/float(pgci->step.x);
 
                 vertex->WriteLine(  to(pgci->coord[0],pgci->coord[1],pos),
                                     to(pgci->coord[3],pgci->coord[2],pos));
             }
 
-            for(uint col=0;col<=pgci->step.v;col++)
+            for(uint col=0;col<=pgci->step.y;col++)
             {
-                float pos=float(col)/float(pgci->step.v);
+                float pos=float(col)/float(pgci->step.y);
 
                 vertex->WriteLine(to(pgci->coord[1],pgci->coord[2],pos),
                                   to(pgci->coord[0],pgci->coord[3],pos));
@@ -187,17 +187,17 @@ namespace hgl
             AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
             if(color)
             {
-                for(uint row=0;row<=pgci->step.u;row++)
+                for(uint row=0;row<=pgci->step.x;row++)
                 {
-                    if((row%pgci->side_step.u)==0)
+                    if((row%pgci->side_step.x)==0)
                         color->Fill(pgci->side_color,2);
                     else
                         color->Fill(pgci->color,2);
                 }
 
-                for(uint col=0;col<=pgci->step.v;col++)
+                for(uint col=0;col<=pgci->step.y;col++)
                 {
-                    if((col%pgci->side_step.v)==0)
+                    if((col%pgci->side_step.y)==0)
                         color->Fill(pgci->side_color,2);
                     else
                         color->Fill(pgci->color,2);

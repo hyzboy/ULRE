@@ -5,18 +5,18 @@ namespace hgl
     {
         SceneOrient::SceneOrient()
         {
-            LocalMatrix                 =Matrix4f::identity;
-            LocalToWorldMatrix          =Matrix4f::identity;
-            InverseLocalMatrix          =Matrix4f::identity;
-            InverseLocalToWorldMatrix   =Matrix4f::identity;
+            //LocalMatrix                 =Matrix4f::identity;
+            //LocalToWorldMatrix          =Matrix4f::identity;
+            //InverseLocalMatrix          =Matrix4f::identity;
+            //InverseLocalToWorldMatrix   =Matrix4f::identity;
         }
 
         SceneOrient::SceneOrient(const Matrix4f &mat)
         {
             SetLocalMatrix(mat);
 
-            LocalToWorldMatrix          =Matrix4f::identity;
-            InverseLocalToWorldMatrix   =Matrix4f::identity;
+            //LocalToWorldMatrix          =Matrix4f::identity;
+            //InverseLocalToWorldMatrix   =Matrix4f::identity;
         }
 
         Matrix4f &SceneOrient::SetLocalMatrix(const Matrix4f &m)

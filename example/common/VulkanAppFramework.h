@@ -42,7 +42,7 @@ protected:
 
     void OnMousePressed (int,int,uint mk){mouse_key=mk;MousePressed(mk);}
     void OnMouseReleased(int,int,uint mk){mouse_key=0;MouseReleased(mk);}
-    void OnMouseMove    (int x,int y){mouse_pos.Set(x,y);MouseMove();}
+    void OnMouseMove    (int x,int y){mouse_pos.x=x;mouse_pos.y=y;MouseMove();}
     void OnMouseWheel   (int v,int h,uint mk){MouseWheel(v,h,mk);}
 
 protected:
