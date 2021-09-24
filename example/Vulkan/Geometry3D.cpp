@@ -71,16 +71,16 @@ private:
     {
         struct PlaneGridCreateInfo pgci;
 
-        pgci.coord[0].Set(-100,-100,0);
-        pgci.coord[1].Set( 100,-100,0);
-        pgci.coord[2].Set( 100, 100,0);
-        pgci.coord[3].Set(-100, 100,0);
+        pgci.coord[0]=Vector3f(-100,-100,0);
+        pgci.coord[1]=Vector3f( 100,-100,0);
+        pgci.coord[2]=Vector3f( 100, 100,0);
+        pgci.coord[3]=Vector3f(-100, 100,0);
 
-        pgci.step.u=20;
-        pgci.step.v=20;
+        pgci.step.x=20;
+        pgci.step.y=20;
 
-        pgci.side_step.u=10;
-        pgci.side_step.v=10;
+        pgci.side_step.x=10;
+        pgci.side_step.y=10;
 
         pgci.color.Set(0.5,0,0,1);
         pgci.side_color.Set(1,0,0,1);
@@ -96,12 +96,12 @@ private:
         pgci.side_color.Set(0,0,1,1);
         ro_plane_grid[2]=CreateRenderablePlaneGrid(db,material,&pgci);
 
-        camera->pos.Set(200,200,200,1.0);
+        camera->pos=Vector4f(200,200,200,1.0);
     }
 
     bool InitScene()
     {
-        Add(ro_plane_grid[0],Matrix4f::identity);
+        Add(ro_plane_grid[0],Matrix4f());
         Add(ro_plane_grid[1],rotate(HGL_RAD_90,0,1,0));
         Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
 
