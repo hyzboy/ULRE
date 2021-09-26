@@ -101,7 +101,7 @@ private:
 
     bool InitScene()
     {
-        Add(ro_plane_grid[0],Matrix4f());
+        Add(ro_plane_grid[0],Matrix4f(1.0f));
         Add(ro_plane_grid[1],rotate(HGL_RAD_90,0,1,0));
         Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
 

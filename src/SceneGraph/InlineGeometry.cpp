@@ -74,8 +74,8 @@ namespace hgl
                 {
                     float ang=float(i)/float(rci->round_per-1)*90.0f;
 
-                    float x=sin(hgl_ang2rad(ang))*radius;
-                    float y=cos(hgl_ang2rad(ang))*radius;
+                    float x=sin(hgl_deg2rad(ang))*radius;
+                    float y=cos(hgl_deg2rad(ang))*radius;
 
                     coord[i].x=x;
                     coord[i].y=y;
@@ -148,8 +148,8 @@ namespace hgl
             {
                 float ang=float(i)/float(cci->field_count)*360.0f;
 
-                float x=cci->center.x+sin(hgl_ang2rad(ang))*cci->radius.x;
-                float y=cci->center.y+cos(hgl_ang2rad(ang))*cci->radius.y;
+                float x=cci->center.x+sin(hgl_deg2rad(ang))*cci->radius.x;
+                float y=cci->center.y+cos(hgl_deg2rad(ang))*cci->radius.y;
 
                 vertex->Write(x,y);
                 
@@ -357,7 +357,7 @@ namespace hgl
 
             void glusQuaternionRotateRyf(float quaternion[4], const float angle)
             {
-                float halfAngleRadian = hgl_ang2rad(angle) * 0.5f;
+                float halfAngleRadian = hgl_deg2rad(angle) * 0.5f;
 
                 quaternion[0] = 0.0f;
                 quaternion[1] = sin(halfAngleRadian);
@@ -367,7 +367,7 @@ namespace hgl
 
             void glusQuaternionRotateRzf(float quaternion[4], const float angle)
             {
-                float halfAngleRadian = hgl_ang2rad(angle) * 0.5f;
+                float halfAngleRadian = hgl_deg2rad(angle) * 0.5f;
 
                 quaternion[0] = 0.0f;
                 quaternion[1] = 0.0f;
