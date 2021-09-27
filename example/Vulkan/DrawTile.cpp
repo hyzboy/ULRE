@@ -36,13 +36,15 @@ class TestApp:public VulkanApplicationFramework
     float *vertex_data=nullptr;
     float *tex_coord_data=nullptr;
 
+    VkFormat tile_texture_format=PF_UNDEFINED;
+
 private:
 
     Sampler *           sampler             =nullptr;
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *         ubo_camera_info    =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -67,7 +69,17 @@ private:
         
         int result=0;
 
-        for(int i=0;i<count;i++)
+        const VulkanFormat *vf=GetVulkanFormat(sl[0].c_str());
+
+        if(!vf)
+        {
+            LOG_ERROR("can't support the format: "+sl[0]);
+            return(-1);
+        }
+
+        tile_texture_format=vf->format;
+
+        for(int i=1;i<count;i++)
         {
             if(loader.Load(icon_path+ToOSString(sl[i])+OS_TEXT(".Tex2D")))
             {
@@ -86,7 +98,7 @@ private:
 
     bool InitTileTexture()
     {
-        tile_data=device->CreateTileData(   PF_BC1_RGBAUN,         //纹理格式，因VK不支持实时转换，所以提交的数据格式必须与此一致
+        tile_data=device->CreateTileData(   tile_texture_format,    //纹理格式，不支持实时转换，所以提交的数据格式必须与此一致
                                             512,512,                //TILE大小
                                             tile_list.GetCount());  //TILE需求数量
 
@@ -152,11 +164,29 @@ private:
 
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Rectangles);
 
-        sampler=db->CreateSampler();
+        sampler=db->CreateSampler();        
 
-        material_instance->BindSampler("tex",tile_data->GetTexture(),sampler);
-        material_instance->BindUBO("camera",ubo_camera_info);
-        material_instance->Update();
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
+        
+            if(!mp_global)
+                return(false);
+
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
+
+        {
+            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetType::Value);
+        
+            if(!mp_texture)
+                return(false);
+            
+            if(!mp_texture->BindSampler("tex",tile_data->GetTexture(),sampler))return(false);
+
+            mp_texture->Update();
+        }
 
         return(true);
     }
