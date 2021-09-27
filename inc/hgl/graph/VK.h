@@ -84,6 +84,19 @@ enum class DescriptorSetType
 
 const DescriptorSetType CheckDescriptorSetType(const char *str);
 
+constexpr char *DescriptSetsTypeName[]=
+{
+    "Global","Material","Value","Renderable"
+};
+
+inline const char *GetDescriptorSetsTypeName(const enum class DescriptorSetType &type)
+{
+    if(!ENUM_CLASS_RANGE_CHECK(DescriptorSetType,type))
+        return nullptr;
+
+    return DescriptSetsTypeName[(size_t)type];
+}
+
 struct PipelineLayoutData;
 class DescriptorSets;
 
