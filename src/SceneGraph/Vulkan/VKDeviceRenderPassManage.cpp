@@ -271,7 +271,7 @@ namespace
         for(const VkFormat &fmt:rbi->GetColorFormatList())
             hash->Write(fmt);
 
-        hash->Final(&code);
+        hash->Final(code);
         delete hash;
     }
 }
