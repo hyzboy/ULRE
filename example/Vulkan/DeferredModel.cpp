@@ -48,7 +48,7 @@ class TestApp:public CameraAppFramework
 private:
 
     SceneNode   render_root;
-    RenderList  render_list;
+    RenderList *render_list=nullptr;
 
     struct
     {
@@ -101,6 +101,7 @@ public:
 
     ~TestApp()
     {
+        SAFE_CLEAR(render_list);
         SAFE_CLEAR(gbuffer.cmd);
         SAFE_CLEAR(gbuffer.rt);
     }
@@ -195,18 +196,52 @@ private:
         };
 
         sampler=db->CreateSampler(&sampler_create_info);
+       
+        {
+            MaterialParameters *mp_global=sp_gbuffer.material_instance->GetMP(DescriptorSetType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        sp_gbuffer.material_instance->BindUBO("camera",GetCameraInfoBuffer());
-        sp_gbuffer.material_instance->BindSampler("TexColor"    ,texture.color,    sampler);
-        sp_gbuffer.material_instance->BindSampler("TexNormal"   ,texture.normal,   sampler);
-        sp_gbuffer.material_instance->Update();
+            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
 
-        sp_composition.material_instance->BindUBO("camera",GetCameraInfoBuffer());
-        sp_composition.material_instance->BindUBO("lights",ubo_lights);
-        sp_composition.material_instance->BindSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),sampler);
-        sp_composition.material_instance->BindSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
-        sp_composition.material_instance->BindSampler("GB_Depth"    ,gbuffer.rt->GetDepthTexture(),sampler);
-        sp_composition.material_instance->Update();
+            mp_global->Update();
+        }
+
+        {
+            MaterialParameters *mp=sp_gbuffer.material_instance->GetMP(DescriptorSetType::Value);
+
+            if(!mp)
+                return(false);
+
+            mp->BindSampler("TexColor"    ,texture.color,    sampler);
+            mp->BindSampler("TexNormal"   ,texture.normal,   sampler);
+            mp->Update();
+        }
+        
+        {
+            MaterialParameters *mp_global=sp_composition.material_instance->GetMP(DescriptorSetType::Global);
+        
+            if(!mp_global)
+                return(false);
+
+            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
+
+            mp_global->Update();
+        }
+
+        {            
+            MaterialParameters *mp=sp_composition.material_instance->GetMP(DescriptorSetType::Value);
+        
+            if(!mp)
+                return(false);
+
+            mp->BindUBO("lights",ubo_lights);
+            mp->BindSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),sampler);
+            mp->BindSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
+            mp->BindSampler("GB_Depth"    ,gbuffer.rt->GetDepthTexture(),sampler);
+            mp->Update();
+        }
 
         return(true);
     }
@@ -215,7 +250,6 @@ private:
     {
         {
             struct PlaneCreateInfo pci;
-
             ro_plane=CreateRenderablePlane(db,mtl,&pci);
         }
 
@@ -279,15 +313,15 @@ private:
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material);
-        render_root.Add(db->CreateRenderableInstance(ro_plane      ,sp->material_instance,sp->pipeline_fan      ),scale(100,100,1));
-        render_root.Add(db->CreateRenderableInstance(ro_torus      ,sp->material_instance,sp->pipeline_triangles),translate(0,0,0));
-        render_root.Add(db->CreateRenderableInstance(ro_sphere     ,sp->material_instance,sp->pipeline_triangles),scale(20,20,20));
-        render_root.Add(db->CreateRenderableInstance(ro_cube       ,sp->material_instance,sp->pipeline_triangles),translate(-30,  0,10)*scale(10,10,10));        
-        render_root.Add(db->CreateRenderableInstance(ro_cylinder   ,sp->material_instance,sp->pipeline_triangles),translate( 30, 30,10)*scale(1,1,2));
-        render_root.Add(db->CreateRenderableInstance(ro_cone       ,sp->material_instance,sp->pipeline_triangles),translate(  0,-30, 0)*scale(1,1,2));
+        render_root.CreateSubNode(                      scale(100,100,1),   db->CreateRenderableInstance(ro_plane      ,sp->material_instance,sp->pipeline_fan      ));
+        render_root.CreateSubNode(translate(0,0,0),                         db->CreateRenderableInstance(ro_torus      ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(                      scale(20,20,20),    db->CreateRenderableInstance(ro_sphere     ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(translate(-30,  0,10)*scale(10,10,10),    db->CreateRenderableInstance(ro_cube       ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(translate( 30, 30,10)*scale(1,1,2),       db->CreateRenderableInstance(ro_cylinder   ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(translate(  0,-30, 0)*scale(1,1,2),       db->CreateRenderableInstance(ro_cone       ,sp->material_instance,sp->pipeline_triangles));
 
         render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(GetCameraInfo(),&render_root);
 
         return(true);
     }
@@ -304,7 +338,7 @@ private:
             if(!gbuffer.cmd->BeginRenderPass())
                 return(false);
 
-                render_list.Render(gbuffer.cmd);
+                render_list->Render(gbuffer.cmd);
 
             gbuffer.cmd->EndRenderPass();
         gbuffer.cmd->End();
@@ -318,6 +352,8 @@ public:
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+
+        render_list=new RenderList(device);
 
         if(!InitGBuffer())
             return(false);
@@ -343,7 +379,7 @@ public:
         
 		// White
 		lights.position = Vector4f(0.0f, 0.0f, 50.0f, 0.0f);
-		lights.color = Vector3f(15.0f);
+		lights.color = Vector3f(105.0f);
 		lights.radius = 150.0f;
 
 		lights.position.x = sin(hgl_rad2deg(timer/100)) * 100.0f;
@@ -353,7 +389,7 @@ public:
     }
     
     virtual void SubmitDraw(int index) override
-    {   
+    {
         gbuffer.Submit(sc_render_target->GetPresentCompleteSemaphore());
 
         VkCommandBuffer cb=*cmd_buf[index];
@@ -368,15 +404,18 @@ public:
     }
     
     void BuildCommandBuffer(uint32_t index) override
-    {    
+    {
         VulkanApplicationFramework::BuildCommandBuffer(index,ro_gbc_plane_ri);
     }
     
     void Draw()override
     {
         UpdateLights();
+        
+        render_root.RefreshMatrix();
+        render_list->Expend(GetCameraInfo(),&render_root);
 
-        CameraAppFramework::Draw();
+        CameraAppFramework::Draw();        
     }
 };//class TestApp:public CameraAppFramework
 

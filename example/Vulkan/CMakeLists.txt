@@ -12,7 +12,7 @@ endmacro()
 macro(CreateQtProject name)
     add_executable(${name} ${ARGN} VulkanAppFramework.h)
 
-    set(IDENTIFIER "com.hyzgame.texconv")
+    set(IDENTIFIER "com.hyzgame.example")
 
     target_link_libraries(${name} ${ULRE} Qt5::Core Qt5::Gui Qt5::Widgets)
 
