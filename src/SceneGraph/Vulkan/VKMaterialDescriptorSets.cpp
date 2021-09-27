@@ -21,7 +21,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
     if(sd_count<=0)return;
 
     {
-        ENUM_CLASS_FOR(DescriptorSetType,int,i)
+        ENUM_CLASS_FOR(DescriptorSetsType,int,i)
         {
             sds[i].bindingCount=0;
             sds[i].pBindings=nullptr;
@@ -45,10 +45,10 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
             }
         }
 
-        VkDescriptorSetLayoutBinding *sds_ptr[size_t(DescriptorSetType::RANGE_SIZE)];
+        VkDescriptorSetLayoutBinding *sds_ptr[size_t(DescriptorSetsType::RANGE_SIZE)];
 
         {
-            ENUM_CLASS_FOR(DescriptorSetType,int,i)
+            ENUM_CLASS_FOR(DescriptorSetsType,int,i)
                 if(sds[i].bindingCount>0)
                 {
                     sds[i].pBindings=new VkDescriptorSetLayoutBinding[sds[i].bindingCount];
@@ -93,7 +93,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
 
 MaterialDescriptorSets::~MaterialDescriptorSets()
 {
-    ENUM_CLASS_FOR(DescriptorSetType,int,i)
+    ENUM_CLASS_FOR(DescriptorSetsType,int,i)
         if(sds[i].bindingCount)
             delete[] sds[i].pBindings;
 

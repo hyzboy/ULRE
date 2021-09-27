@@ -67,7 +67,7 @@ private:
             return(false);
 
         {
-            MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::Value);
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
 
             if(!mp)return(false);
 

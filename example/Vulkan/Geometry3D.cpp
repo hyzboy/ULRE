@@ -45,7 +45,7 @@ private:
             return(false);
 
         {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);

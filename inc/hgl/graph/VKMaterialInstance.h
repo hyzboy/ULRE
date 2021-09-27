@@ -23,7 +23,7 @@ public:
     Material *GetMaterial(){return material;}
 
     MaterialParameters *GetMP(){return mp_value;}
-    MaterialParameters *GetMP(const DescriptorSetType &type);
+    MaterialParameters *GetMP(const DescriptorSetsType &type);
 };//class MaterialInstance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE

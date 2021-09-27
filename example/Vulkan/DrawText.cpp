@@ -65,7 +65,7 @@ private:
         sampler=db->CreateSampler();
         
         {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);
@@ -76,7 +76,7 @@ private:
         }
 
         {
-            MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::Value);
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
         
             if(!mp)
                 return(false);

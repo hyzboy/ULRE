@@ -69,7 +69,7 @@ class DeviceRenderPassManage;
 class GPUFence;
 class GPUSemaphore;
 
-enum class DescriptorSetType
+enum class DescriptorSetsType
 {
     //设计使其对应shader中的set
     
@@ -82,16 +82,16 @@ enum class DescriptorSetType
     ENUM_CLASS_RANGE(Global,Renderable)
 };//
 
-const DescriptorSetType CheckDescriptorSetType(const char *str);
+const DescriptorSetsType CheckDescriptorSetsType(const char *str);
 
 constexpr char *DescriptSetsTypeName[]=
 {
     "Global","Material","Value","Renderable"
 };
 
-inline const char *GetDescriptorSetsTypeName(const enum class DescriptorSetType &type)
+inline const char *GetDescriptorSetsTypeName(const enum class DescriptorSetsType &type)
 {
-    if(!ENUM_CLASS_RANGE_CHECK(DescriptorSetType,type))
+    if(!ENUM_CLASS_RANGE_CHECK(DescriptorSetsType,type))
         return nullptr;
 
     return DescriptSetsTypeName[(size_t)type];

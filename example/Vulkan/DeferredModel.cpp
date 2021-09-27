@@ -38,7 +38,7 @@ constexpr VkFormat gbuffer_depth_format=PF_D16UN;
 
 struct alignas(16) PhongPointLight
 {
-    Vector3f color;
+    Vector4f color;
     Vector4f position;
     float radius;
 };//
@@ -198,7 +198,7 @@ private:
         sampler=db->CreateSampler(&sampler_create_info);
        
         {
-            MaterialParameters *mp_global=sp_gbuffer.material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=sp_gbuffer.material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);
@@ -209,7 +209,7 @@ private:
         }
 
         {
-            MaterialParameters *mp=sp_gbuffer.material_instance->GetMP(DescriptorSetType::Value);
+            MaterialParameters *mp=sp_gbuffer.material_instance->GetMP(DescriptorSetsType::Value);
 
             if(!mp)
                 return(false);
@@ -220,7 +220,7 @@ private:
         }
         
         {
-            MaterialParameters *mp_global=sp_composition.material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=sp_composition.material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);
@@ -231,7 +231,7 @@ private:
         }
 
         {            
-            MaterialParameters *mp=sp_composition.material_instance->GetMP(DescriptorSetType::Value);
+            MaterialParameters *mp=sp_composition.material_instance->GetMP(DescriptorSetsType::Value);
         
             if(!mp)
                 return(false);
@@ -379,8 +379,8 @@ public:
         
 		// White
 		lights.position = Vector4f(0.0f, 0.0f, 50.0f, 0.0f);
-		lights.color = Vector3f(105.0f);
-		lights.radius = 150.0f;
+		lights.color = Vector4f(1.0f);
+		lights.radius = 15.0f;
 
 		lights.position.x = sin(hgl_rad2deg(timer/100)) * 100.0f;
 		lights.position.y = cos(hgl_rad2deg(timer/100)) * 100.0f;
