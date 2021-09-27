@@ -20,6 +20,8 @@ using ShaderDescriptorList=List<ShaderDescriptor *>;
 
 class MaterialDescriptorSets
 {
+    UTF8String mtl_name;
+
     ShaderDescriptor *sd_list;
     uint sd_count;
 
@@ -36,8 +38,10 @@ private:
 
 public:
 
-    MaterialDescriptorSets(ShaderDescriptor *,const uint);
+    MaterialDescriptorSets(const UTF8String &,ShaderDescriptor *,const uint);
     ~MaterialDescriptorSets();
+
+    const UTF8String &GetMaterialName()const{return mtl_name;}
 
     const int GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const;
 
