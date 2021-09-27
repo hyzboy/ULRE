@@ -65,6 +65,8 @@ void DescriptorSets::Clear()
     buffer_list.ClearData();
     image_list.ClearData();
     wds_list.ClearData();
+    binded_sets.ClearData();
+    is_dirty=true;
 }
 
 bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,bool dynamic)
@@ -72,10 +74,14 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,bool dynamic
     if(binding<0||!buf)
         return(false);
 
+    if(binded_sets.IsMember(binding))return(false);
+
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),desc_type));
 
+    binded_sets.Add(binding);
+    is_dirty=true;
     return(true);
 }
 
@@ -84,6 +90,8 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDevi
     if(binding<0||!buf)
         return(false);
 
+    if(binded_sets.IsMember(binding))return(false);
+
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
     buffer_list.Add(buf_info);
@@ -91,6 +99,9 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDevi
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     
     wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,desc_type));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
     return(true);
 }
 
@@ -99,10 +110,14 @@ bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,bool dynami
     if(binding<0||!buf)
         return(false);
 
+    if(binded_sets.IsMember(binding))return(false);
+
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,buf->GetBufferInfo(),desc_type));
 
+    binded_sets.Add(binding);
+    is_dirty=true;
     return(true);
 }
 
@@ -111,6 +126,8 @@ bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,const VkDev
     if(binding<0||!buf)
         return(false);
 
+    if(binded_sets.IsMember(binding))return(false);
+
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
     buffer_list.Add(buf_info);
@@ -118,6 +135,9 @@ bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,const VkDev
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     
     wds_list.Add(WriteDescriptorSet(desc_set,binding,buf_info,desc_type));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
     return(true);
 }
 
@@ -126,11 +146,16 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
     if(binding<0||!tex||!sampler)
         return(false);
 
+    if(binded_sets.IsMember(binding))return(false);
+
     DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,sampler);
 
     image_list.Add(image_info);
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
     return(true);
 }
 
@@ -139,16 +164,24 @@ bool DescriptorSets::BindInputAttachment(const int binding,Texture *tex)
     if(binding<0||!tex)
         return(false);
 
+    if(binded_sets.IsMember(binding))return(false);
+
     DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,nullptr);
     
     image_list.Add(image_info);
 
     wds_list.Add(WriteDescriptorSet(desc_set,binding,image_info,VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT));
+
+    binded_sets.Add(binding);
+    is_dirty=true;
     return(true);
 }
 
 void DescriptorSets::Update()
 {
+    if(!is_dirty)return;
+
     vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
+    is_dirty=false;
 }
 VK_NAMESPACE_END
