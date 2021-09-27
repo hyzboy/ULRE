@@ -136,6 +136,8 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         break;
     }
 
+    const UTF8String mtl_name=ToUTF8String(filename);
+
     MaterialDescriptorSets *mds=nullptr;
     {
         const uint8 count=*sp;
@@ -147,13 +149,13 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
             LoadShaderDescriptor(sp,sd_list,count);
         
-            mds=new MaterialDescriptorSets(sd_list,count);
+            mds=new MaterialDescriptorSets(mtl_name,sd_list,count);
         }
     }
 
     if(result)
     {
-        mtl=device->CreateMaterial(ToUTF8String(filename),smm,mds);
+        mtl=device->CreateMaterial(mtl_name,smm,mds);
         Add(mtl);
     }
     else

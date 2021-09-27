@@ -155,7 +155,7 @@ namespace
         if(msgFlags&VK_DEBUG_REPORT_INFORMATION_BIT_EXT)        std::cerr<<"[INFO:";                else
         if(msgFlags&VK_DEBUG_REPORT_DEBUG_BIT_EXT)              std::cerr<<"[DEBUG:";
 
-        std::cerr<<msgCode<<"]["<<obj_type_name<<":"<<srcObject<<"][Location:"<<location<<"]["<<pLayerPrefix<<"] "<<pMsg<<std::endl;
+        std::cerr<<msgCode<<"]["<<obj_type_name<<":"<<std::hex<<srcObject<<"][Location:"<<location<<"]["<<pLayerPrefix<<"] "<<pMsg<<std::endl;
 
         return VK_FALSE;
     }
