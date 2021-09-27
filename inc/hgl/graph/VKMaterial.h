@@ -70,11 +70,11 @@ public:
 
 public:
 
-            MaterialParameters *                GetMP                   (const DescriptorSetType &type)
+            MaterialParameters *                GetMP                   (const DescriptorSetsType &type)
             {
-                if(type==DescriptorSetType::Material   )return data->mp.m;else
-                if(type==DescriptorSetType::Renderable )return data->mp.r;else
-                if(type==DescriptorSetType::Global     )return data->mp.g;else
+                if(type==DescriptorSetsType::Material   )return data->mp.m;else
+                if(type==DescriptorSetsType::Renderable )return data->mp.r;else
+                if(type==DescriptorSetsType::Global     )return data->mp.g;else
                 return(nullptr);
             }
 };//class Material

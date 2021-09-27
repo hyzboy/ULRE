@@ -37,12 +37,12 @@ int Comparator<RenderNodePointer>::compare(const RenderNodePointer &obj_one,cons
 
     //比较材质实例
     {
-        for(int i =(int)hgl::graph::DescriptorSetType::BEGIN_RANGE;
-                i<=(int)hgl::graph::DescriptorSetType::END_RANGE;
+        for(int i =(int)hgl::graph::DescriptorSetsType::BEGIN_RANGE;
+                i<=(int)hgl::graph::DescriptorSetsType::END_RANGE;
                 i++)
         {
-            off=ri_one->GetMP((hgl::graph::DescriptorSetType)i)
-               -ri_two->GetMP((hgl::graph::DescriptorSetType)i);
+            off=ri_one->GetMP((hgl::graph::DescriptorSetsType)i)
+               -ri_two->GetMP((hgl::graph::DescriptorSetsType)i);
 
             if(off)
                 return off;
@@ -151,7 +151,7 @@ namespace hgl
             //为所有的材质绑定
             for(Material *mtl:material_sets)
             {
-                MaterialParameters *mp=mtl->GetMP(DescriptorSetType::Renderable);
+                MaterialParameters *mp=mtl->GetMP(DescriptorSetsType::Renderable);
 
                 if(mp)
                 {
@@ -218,11 +218,11 @@ namespace hgl
                 uint32_t first_set=0;
                 MaterialParameters *mp;
 
-                for(int i=(int)DescriptorSetType::BEGIN_RANGE;
-                        i<(int)DescriptorSetType::Renderable;
+                for(int i=(int)DescriptorSetsType::BEGIN_RANGE;
+                        i<(int)DescriptorSetsType::Renderable;
                         i++)
                 {
-                    mp=ri->GetMP((DescriptorSetType)i);
+                    mp=ri->GetMP((DescriptorSetsType)i);
 
                     if(last_mp[i]!=mp)
                     {
@@ -242,7 +242,7 @@ namespace hgl
                 }
 
                 {
-                    mp=ri->GetMP(DescriptorSetType::Renderable);
+                    mp=ri->GetMP(DescriptorSetsType::Renderable);
 
                     if(mp)
                     {

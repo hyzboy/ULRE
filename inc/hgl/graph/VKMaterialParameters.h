@@ -9,7 +9,7 @@ class MaterialParameters
 {
     const MaterialDescriptorSets *mds;
 
-    DescriptorSetType ds_type;
+    DescriptorSetsType ds_type;
 
     DescriptorSets *descriptor_sets;
 
@@ -17,11 +17,11 @@ private:
 
     friend class GPUDevice;
 
-    MaterialParameters(const MaterialDescriptorSets *,const DescriptorSetType &type,DescriptorSets *);
+    MaterialParameters(const MaterialDescriptorSets *,const DescriptorSetsType &type,DescriptorSets *);
 
 public:
 
-    const   DescriptorSetType   GetType             (){return ds_type;}
+    const   DescriptorSetsType   GetType             (){return ds_type;}
             DescriptorSets *    GetDescriptorSet    (){return descriptor_sets;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
 
@@ -30,7 +30,7 @@ public:
 
 public:
 
-    #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetType::name;}
+    #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetsType::name;}
         MP_TYPE_IS(Material)
 //        MP_TYPE_IS(Texture)
         MP_TYPE_IS(Value)

@@ -8,9 +8,9 @@
 #include"VKPipelineLayoutData.h"
 
 VK_NAMESPACE_BEGIN
-DescriptorSets *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetType &type)const
+DescriptorSets *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetsType &type)const
 {
-    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(DescriptorSetType,type);
+    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(DescriptorSetsType,type);
 
     const uint32_t binding_count=pld->binding_count[size_t(type)];
 
@@ -31,10 +31,10 @@ DescriptorSets *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,co
     return(new DescriptorSets(attr->device,binding_count,pld->pipeline_layout,desc_set));
 }
 
-MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
+MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const PipelineLayoutData *pld,const DescriptorSetsType &desc_set_type)
 {
     if(!mds||!pld)return(nullptr);
-    if(!RangeCheck<DescriptorSetType>(desc_set_type))
+    if(!RangeCheck<DescriptorSetsType>(desc_set_type))
         return(nullptr);
 
     DescriptorSets *ds=CreateDescriptorSets(pld,desc_set_type);
@@ -50,7 +50,7 @@ MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const 
     return(new MaterialParameters(mds,desc_set_type,ds));
 }
 
-MaterialParameters *GPUDevice::CreateMP(Material *mtl,const DescriptorSetType &desc_set_type)
+MaterialParameters *GPUDevice::CreateMP(Material *mtl,const DescriptorSetsType &desc_set_type)
 {
     if(!mtl)return(nullptr);
 
@@ -108,9 +108,9 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     CreateShaderStageList(data->shader_stage_list,shader_maps);
     data->pipeline_layout_data=pld;
-    data->mp.m=CreateMP(mds,pld,DescriptorSetType::Material     );
-    data->mp.r=CreateMP(mds,pld,DescriptorSetType::Renderable   );
-    data->mp.g=CreateMP(mds,pld,DescriptorSetType::Global       );
+    data->mp.m=CreateMP(mds,pld,DescriptorSetsType::Material     );
+    data->mp.r=CreateMP(mds,pld,DescriptorSetsType::Renderable   );
+    data->mp.g=CreateMP(mds,pld,DescriptorSetsType::Global       );
 
     return(new Material(data));
 }

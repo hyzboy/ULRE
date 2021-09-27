@@ -8,7 +8,7 @@ MaterialInstance *GPUDevice::CreateMI(Material *mtl)
 {
     if(!mtl)return(nullptr);
 
-    MaterialParameters *mp=CreateMP(mtl,DescriptorSetType::Value);
+    MaterialParameters *mp=CreateMP(mtl,DescriptorSetsType::Value);
 
     return(new MaterialInstance(mtl,mp));
 }
@@ -25,12 +25,12 @@ MaterialInstance::~MaterialInstance()
     SAFE_CLEAR(mp_value);
 }
 
-MaterialParameters *MaterialInstance::GetMP(const DescriptorSetType &type)
+MaterialParameters *MaterialInstance::GetMP(const DescriptorSetsType &type)
 {
-    //if(type==DescriptorSetType::Texture
+    //if(type==DescriptorSetsType::Texture
     //    return mp_texture;
 
-    if(type==DescriptorSetType::Value)
+    if(type==DescriptorSetsType::Value)
         return mp_value;
 
     return material->GetMP(type);

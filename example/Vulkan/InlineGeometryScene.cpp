@@ -130,7 +130,7 @@ private:
             if(!material_instance)return(false);
 
             {            
-                MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetType::Value);
+                MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
         
                 if(!mp_texture)
                     return(false);
@@ -213,7 +213,7 @@ private:
         ubo_phong=db->CreateUBO(sizeof(PhongMaterial),&phong);
         
         {
-            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetType::Value);
+            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetsType::Value);
         
             if(!mp_value)
                 return(false);
@@ -225,7 +225,7 @@ private:
         }
         
         {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);
@@ -236,7 +236,7 @@ private:
         }
         
         {
-            MaterialParameters *mp_global=axis_mi->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=axis_mi->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);

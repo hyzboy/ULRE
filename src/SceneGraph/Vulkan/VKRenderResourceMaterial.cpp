@@ -47,9 +47,9 @@ void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint
         sd->stage_flag  =*(uint32 *)data;
         data+=sizeof(uint32);
 
-        sd->set_type=CheckDescriptorSetType(sd->name);
+        sd->set_type=CheckDescriptorSetsType(sd->name);
 
-        if(sd->set_type==DescriptorSetType::Renderable)
+        if(sd->set_type==DescriptorSetsType::Renderable)
         {
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;

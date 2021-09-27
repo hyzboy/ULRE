@@ -72,7 +72,7 @@ public:
             return(false);
             
         {
-            MaterialParameters *mp_global=ro->material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=ro->material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);
@@ -143,7 +143,7 @@ public:
         if(!cube.sampler)return(false);
         
         {
-            MaterialParameters *mp_texture=cube.material_instance->GetMP(DescriptorSetType::Value);
+            MaterialParameters *mp_texture=cube.material_instance->GetMP(DescriptorSetsType::Value);
         
             if(!mp_texture)
                 return(false);

@@ -161,7 +161,7 @@ private:
         if(!mir->material_instance)return(false);
         
         {
-            MaterialParameters *mp_global=mir->material_instance->GetMP(DescriptorSetType::Global);
+            MaterialParameters *mp_global=mir->material_instance->GetMP(DescriptorSetsType::Global);
         
             if(!mp_global)
                 return(false);
@@ -172,7 +172,7 @@ private:
         }
 
         {
-            MaterialParameters *mp_texture=mir->material_instance->GetMP(DescriptorSetType::Value);
+            MaterialParameters *mp_texture=mir->material_instance->GetMP(DescriptorSetsType::Value);
         
             if(!mp_texture)
                 return(false);
