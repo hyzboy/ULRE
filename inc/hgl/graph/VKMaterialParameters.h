@@ -25,6 +25,9 @@ public:
             DescriptorSets *    GetDescriptorSet    (){return descriptor_sets;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
 
+    const   uint32_t            GetCount            ()const{return descriptor_sets->GetCount();}
+    const   bool                IsReady             ()const{return descriptor_sets->IsReady();}
+
 public:
 
     #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetType::name;}

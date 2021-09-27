@@ -38,6 +38,8 @@ public:
     const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
+    const bool              IsReady             ()const{return wds_list.GetCount()==binding_count;}
+
     void Clear();
 
     bool BindUBO    (const int binding,const GPUBuffer *buf,bool dynamic=false);
