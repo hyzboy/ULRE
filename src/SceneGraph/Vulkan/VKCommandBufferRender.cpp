@@ -105,6 +105,9 @@ bool RenderCmdBuffer::BindDescriptorSets(RenderableInstance *ri)
 {
     if(!ri)return(false);
 
+    uint32_t *dynamic_offset=nullptr;
+    uint32_t dynamic_count=0;
+
     {
         uint32_t count=0;
 
@@ -119,6 +122,13 @@ bool RenderCmdBuffer::BindDescriptorSets(RenderableInstance *ri)
             {
                 ds[count]=mp->GetVkDescriptorSet();
                 ++count;
+
+                if((DescriptorSetType)i==DescriptorSetType::Renderable)
+                {
+                    dynamic_count=mp->GetCount();
+
+                    dynamic_offset=hgl_zero_new<uint32_t>(dynamic_count);
+                }
             }
         }
 
@@ -126,7 +136,9 @@ bool RenderCmdBuffer::BindDescriptorSets(RenderableInstance *ri)
         {
             pipeline_layout=ri->GetPipelineLayout();
 
-            vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,count,ds,0,nullptr);
+            vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,count,ds,dynamic_count,dynamic_offset);
+
+            SAFE_CLEAR_ARRAY(dynamic_offset);
         }
     }
 
