@@ -11,8 +11,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=512;
+constexpr uint32_t SCREEN_HEIGHT=512;
 
 struct AtmosphereData
 {
@@ -24,7 +24,7 @@ public:
 
     AtmosphereData()
     {    
-        position.Set(0,0.1f,-1.0f);
+        position=Vector3f(0,0.1f,-1.0f);
         intensity=22.0f;
         scattering_direction=0.758f;
     }
@@ -34,10 +34,10 @@ class TestApp:public CameraAppFramework
 {
 private:
 
-    SceneNode   render_root;
-    RenderList  render_list;
+    SceneNode           render_root;
+    RenderList *        render_list=nullptr;
 
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
     
     GPUBuffer *         ubo_atomsphere      =nullptr;
@@ -53,7 +53,7 @@ private:
         if(!material_instance)return(false);
         
 //        pipeline_solid=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/sky"));
-        pipeline_solid=CreatePipeline(material_instance,InlinePipeline::Sky);       //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline_solid=CreatePipeline(material_instance,InlinePipeline::Sky,Prim::Triangles);       //等同上一行，为Framework重载，默认使用swapchain的render target
         if(!pipeline_solid)return(false);
 
         return(true);
@@ -61,18 +61,24 @@ private:
 
     bool InitUBO()
     {
-        if(!material_instance->BindUBO("camera",GetCameraInfoBuffer()))
-            return(false);
+//        if(!material_instance->BindUBO("g_camera",GetCameraInfoBuffer()))
+//            return(false);
 
         ubo_atomsphere=db->CreateUBO(sizeof(AtmosphereData),&atomsphere_data);
 
         if(!ubo_atomsphere)
             return(false);
 
-        if(!material_instance->BindUBO("sun",ubo_atomsphere))
-            return(false);
+        {
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::Value);
 
-        material_instance->Update();
+            if(!mp)return(false);
+
+            if(!mp->BindUBO("sun",ubo_atomsphere))
+                return(false);
+
+            mp->Update();
+        }
         return(true);
     }
 
@@ -80,20 +86,27 @@ private:
     {
         ro_sphere=CreateRenderableSphere(db,material_instance->GetMaterial(),128);
         
-        render_root.Add(db->CreateRenderableInstance(ro_sphere,material_instance,pipeline_solid),scale(100));
+        render_root.CreateSubNode(scale(100),db->CreateRenderableInstance(ro_sphere,material_instance,pipeline_solid));
 
         render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(GetCameraInfo(),&render_root);
 
         return(true);
     }
 
 public:
 
+    ~TestApp()
+    {
+        SAFE_CLEAR(render_list);
+    }
+
     bool Init()
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+            
+        render_list=new RenderList(device);
 
         if(!InitMaterial())
             return(false);
@@ -110,10 +123,9 @@ public:
     void BuildCommandBuffer(uint32_t index) override
     {
         render_root.RefreshMatrix();
-        render_list.Clear();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(GetCameraInfo(),&render_root);
         
-        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
+        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 };//class TestApp:public CameraAppFramework
 
