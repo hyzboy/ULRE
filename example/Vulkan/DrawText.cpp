@@ -27,8 +27,8 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     Sampler *           sampler             =nullptr;
-    MaterialParameters *  material_instance   =nullptr;
-    GPUBuffer *         ubo_camera_info    =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
     GPUBuffer *         ubo_color           =nullptr;
 
     Pipeline *          pipeline            =nullptr;
@@ -63,11 +63,30 @@ private:
         if(!pipeline)return(false);
 
         sampler=db->CreateSampler();
+        
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        material_instance->BindSampler("lum_texture",tile_font->GetTexture(),sampler);
-        material_instance->BindUBO("camera",ubo_camera_info);
-        material_instance->BindUBO("color_material",ubo_color);
-        material_instance->Update();
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
+
+        {
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::Value);
+        
+            if(!mp)
+                return(false);
+            
+            if(!mp->BindSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);            
+            if(!mp->BindUBO("color_material",ubo_color))return(false);
+
+            mp->Update();
+        }
+
 
         return(true);
     }
@@ -136,7 +155,7 @@ private:
     {
         UTF16String str;
 
-        LoadStringFromTextFile(str,OS_TEXT("README.md"));
+        LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 
         text_render_obj=db->CreateTextRenderable(material_instance->GetMaterial());
 
