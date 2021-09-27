@@ -30,7 +30,7 @@ namespace hgl
         struct Tex2DFileHeader
         {
             uint8   id[6];                  ///<Tex2D\x1A
-            uint8   version;                ///<必须为2
+            uint8   version;                ///<必须为3
             uint8   mipmaps;
             uint32  width;
             uint32  height;
