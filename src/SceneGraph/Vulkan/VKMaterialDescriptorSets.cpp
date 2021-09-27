@@ -11,8 +11,10 @@ void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDe
     dslb->pImmutableSamplers=nullptr;
 }
 
-MaterialDescriptorSets::MaterialDescriptorSets(ShaderDescriptor *sd,const uint count)
+MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDescriptor *sd,const uint count)
 {
+    mtl_name=name;
+
     sd_list=sd;
     sd_count=count;
 
