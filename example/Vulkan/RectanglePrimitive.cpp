@@ -52,7 +52,7 @@ private:
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureRect2D"));
         if(!material_instance)return(false);
 
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Rectangles);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
         if(!pipeline)return(false);
 
         texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"));
