@@ -149,6 +149,9 @@ inline const uint32_t GetMipLevel(const VkExtent3D &ext)
     return hgl::GetMipLevel(ext.width,ext.height,ext.depth);
 }
 
+/**
+ * 索引类型,等同于VkIndexType
+ */
 enum IndexType
 {
     U16=0,
