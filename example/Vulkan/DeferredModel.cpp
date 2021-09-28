@@ -33,7 +33,7 @@ enum class GBufferAttachment
     ENUM_CLASS_RANGE(Color,Normal)
 };//
 
-constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UPF_RGB565,PF_RG8UN};
+constexpr VkFormat gbuffer_color_format[size_t(GBufferAttachment::RANGE_SIZE)]={UPF_RGB565,UPF_RG8};
 constexpr VkFormat gbuffer_depth_format=PF_D16UN;
 
 struct alignas(16) PhongPointLight
@@ -84,9 +84,10 @@ private:
                             *ro_sphere,
                             *ro_torus,
                             *ro_cylinder,
-                            *ro_cone,
-                                
-                            *ro_gbc_plane;
+                            *ro_cone,                                
+                            *ro_gbc_plane,
+                            *ro_axis;
+
     RenderableInstance      *ro_gbc_plane_ri;
 
     Sampler *               sampler=nullptr;
@@ -314,7 +315,7 @@ private:
     {
         CreateRenderObject(sp->material);
         render_root.CreateSubNode(                      scale(100,100,1),   db->CreateRenderableInstance(ro_plane      ,sp->material_instance,sp->pipeline_fan      ));
-        render_root.CreateSubNode(translate(0,0,0),                         db->CreateRenderableInstance(ro_torus      ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(                                          db->CreateRenderableInstance(ro_torus      ,sp->material_instance,sp->pipeline_triangles));
         render_root.CreateSubNode(                      scale(20,20,20),    db->CreateRenderableInstance(ro_sphere     ,sp->material_instance,sp->pipeline_triangles));
         render_root.CreateSubNode(translate(-30,  0,10)*scale(10,10,10),    db->CreateRenderableInstance(ro_cube       ,sp->material_instance,sp->pipeline_triangles));
         render_root.CreateSubNode(translate( 30, 30,10)*scale(1,1,2),       db->CreateRenderableInstance(ro_cylinder   ,sp->material_instance,sp->pipeline_triangles));
@@ -378,9 +379,9 @@ public:
         const double timer=GetDoubleTime();
         
 		// White
-		lights.position = Vector4f(0.0f, 0.0f, 50.0f, 0.0f);
-		lights.color = Vector4f(1.0f);
-		lights.radius = 15.0f;
+		lights.position = Vector4f(0.0f, 0.0f, 25.0f, 0.0f);
+		lights.color = Vector4f(15.0f);
+		lights.radius = 155.0f;
 
 		lights.position.x = sin(hgl_rad2deg(timer/100)) * 100.0f;
 		lights.position.y = cos(hgl_rad2deg(timer/100)) * 100.0f;
