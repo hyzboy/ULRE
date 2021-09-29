@@ -19,6 +19,8 @@ class RenderPass
     List<VkFormat> color_formats;
     VkFormat depth_format;
 
+    VkExtent2D granularity;
+
 protected:
 
     ObjectList<Pipeline> pipeline_list;
@@ -27,14 +29,7 @@ private:
 
     friend class DeviceRenderPassManage;
 
-    RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
-    {
-        device=d;
-        pipeline_cache=pc;
-        render_pass=rp;
-        color_formats=cf;
-        depth_format=df;
-    }
+    RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df);
 
 public:
 
@@ -52,6 +47,8 @@ public:
         return color_formats.GetData()[index];
     }
     const VkFormat          GetDepthFormat()const{return depth_format;}
+
+    const VkExtent2D &      GetGranularity()const{return granularity;}
 
 public:
 
