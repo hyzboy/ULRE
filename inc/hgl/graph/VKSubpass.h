@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_SUBPASS_INCLUDE
 #define HGL_GRAPH_VULKAN_SUBPASS_INCLUDE
 
-#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/VK.h>
 VK_NAMESPACE_BEGIN
 /**
  * 渲染流程中一次具体的操作，即便整个Renderpass只有一次渲染，也需要创建subpass
