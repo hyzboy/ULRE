@@ -5,6 +5,17 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
 VK_NAMESPACE_BEGIN
+RenderPass::RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
+{
+    device=d;
+    pipeline_cache=pc;
+    render_pass=rp;
+    color_formats=cf;
+    depth_format=df;
+
+    vkGetRenderAreaGranularity(device,render_pass,&granularity);
+}
+
 RenderPass::~RenderPass()
 {
     pipeline_list.Clear();
