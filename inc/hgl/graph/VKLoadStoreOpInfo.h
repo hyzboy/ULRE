@@ -1,0 +1,12 @@
+#ifndef HGL_VULKAN_LOAD_STORE_OP_INFO_INCLUDE
+#define HGL_VULKAN_LOAD_STORE_OP_INFO_INCLUDE
+
+#include<hgl/graph/VK.h>
+VK_NAMESPACE_BEGIN
+struct LoadStoreInfo
+{
+	VkAttachmentLoadOp	load_op		= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	VkAttachmentStoreOp store_op	= VK_ATTACHMENT_STORE_OP_STORE;
+};
+VK_NAMESPACE_END
+#endif//HGL_VULKAN_LOAD_STORE_OP_INFO_INCLUDE

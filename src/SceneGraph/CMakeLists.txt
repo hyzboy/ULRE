@@ -169,6 +169,7 @@ SOURCE_GROUP("Vulkan\\Material\\Shader" FILES ${VK_SHADER_SOURCE})
 
 SET(VK_RENDER_CONTEXT_SOURCE    ${SG_INCLUDE_PATH}/VKRenderContext.h
                                 ${SG_INCLUDE_PATH}/VKSubpass.h
+                                Vulkan/VKSubpass.cpp
                                 Vulkan/VKRenderContext.cpp)
 
 SET(VK_RENDER_PASS_SOURCE   ${SG_INCLUDE_PATH}/VKFramebuffer.h
@@ -191,7 +192,7 @@ SET(VK_RENDER_PASS_SOURCE   ${SG_INCLUDE_PATH}/VKFramebuffer.h
                             Vulkan/VKSwapchain.cpp
                             )
 
-SOURCE_GROUP("Vulkan\\Render Context\\Render Pass" FILES ${VK_RENDER_PASS_SOURCE})
+SOURCE_GROUP("Vulkan\\Render Pass" FILES ${VK_RENDER_PASS_SOURCE})
 
 SOURCE_GROUP("Vulkan\\Render Context" FILES ${VK_RENDER_CONTEXT_SOURCE})
 
@@ -233,7 +234,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_TEXTURE_SOURCE}
                             ${VK_MATERIAL_SOURCE}
                             ${VK_RENDER_PASS_SOURCE}
-                            ${VK_RENDER_CONTEXT_SOURCE}
+                            #${VK_RENDER_CONTEXT_SOURCE}
                             ${VK_CMD_BUFFER_SOURCE}
                             ${VK_RENDERABLE_SOURCE}
                             ${VK_RENDER_DEVICE_SOURCE})
