@@ -99,6 +99,7 @@ public: //Material
     RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
+    Sampler *           CreateSampler(Texture *);
 
 public: //texture
 
