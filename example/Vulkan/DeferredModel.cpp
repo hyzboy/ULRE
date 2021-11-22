@@ -56,6 +56,8 @@ private:
         RenderPass *rp=nullptr;
         RenderCmdBuffer *cmd=nullptr;
 
+        Sampler *sampler=nullptr;
+
     public:
 
         bool Submit(GPUSemaphore *sem)
@@ -90,12 +92,13 @@ private:
 
     RenderableInstance      *ro_gbc_plane_ri;
 
-    Sampler *               sampler=nullptr;
-
     struct
     {
         Texture2DPointer    color=nullptr;
         Texture2DPointer    normal=nullptr;
+
+        Sampler *           color_sampler=nullptr;
+        Sampler *           normal_sampler=nullptr;
     }texture;
 
 public:
@@ -109,6 +112,33 @@ public:
     }
 
 private:
+
+    void CreateGBufferSampler()
+    {    
+        VkSamplerCreateInfo sci=
+        {
+            VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            nullptr,
+            0,
+            VK_FILTER_LINEAR,
+            VK_FILTER_LINEAR,
+            VK_SAMPLER_MIPMAP_MODE_NEAREST,
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+            0.0f,
+            false,
+            1.0f,
+            false,
+            VK_COMPARE_OP_NEVER,
+            0.0f,
+            0.0f,
+            VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+            false
+        };
+
+        gbuffer.sampler=db->CreateSampler(&sci);
+    }
 
     bool InitGBuffer()
     {
@@ -124,10 +154,12 @@ private:
 
         gbuffer.rp=gbuffer.rt->GetRenderPass();
 
+        CreateGBufferSampler();
+
         return(gbuffer.rt);
     }
 
-    bool InitSubpass(SubpassParam *sp,const OSString &material_filename)
+    bool InitMaterial(SubpassParam *sp,const OSString &material_filename)
     {
         sp->material=db->CreateMaterial(material_filename);
 
@@ -162,21 +194,51 @@ private:
         return ubo_lights;
     }
 
+    Sampler *CreateSampler(Texture *tex)
+    {    
+        VkSamplerCreateInfo sci=
+        {
+            VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            nullptr,
+            0,
+            VK_FILTER_LINEAR,
+            VK_FILTER_LINEAR,
+            VK_SAMPLER_MIPMAP_MODE_LINEAR,
+            VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            0.0f,
+            false,
+            1.0f,
+            false,
+            VK_COMPARE_OP_NEVER,
+            0.0f,
+            0.0f,
+            VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+            false
+        };
+
+        sci.maxLod=tex->GetMipLevel();
+
+        return db->CreateSampler(&sci);
+    }
+
     bool InitMaterial()
     {
         if(!InitLightsUBO())return(false);
 
-        if(!InitSubpass(&sp_gbuffer,    OS_TEXT("res/material/opaque")))return(false);
-        if(!InitSubpass(&sp_composition,OS_TEXT("res/material/composition")))return(false);
+        if(!InitMaterial(&sp_gbuffer,    OS_TEXT("res/material/opaque")))return(false);
+        if(!InitMaterial(&sp_composition,OS_TEXT("res/material/composition")))return(false);
 
         if(!InitGBufferPipeline(&sp_gbuffer))return(false);
         if(!InitCompositionPipeline(&sp_composition))return(false);
 
         texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
         texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
-
-        sampler=db->CreateSampler(texture.color);
-       
+        
+        texture.color_sampler=CreateSampler(texture.color);
+        texture.normal_sampler=CreateSampler(texture.normal);
+      
         {
             MaterialParameters *mp_global=sp_gbuffer.material_instance->GetMP(DescriptorSetsType::Global);
         
@@ -194,8 +256,8 @@ private:
             if(!mp)
                 return(false);
 
-            mp->BindSampler("TexColor"    ,texture.color,    sampler);
-            mp->BindSampler("TexNormal"   ,texture.normal,   sampler);
+            mp->BindSampler("TexColor"    ,texture.color,    texture.color_sampler);
+            mp->BindSampler("TexNormal"   ,texture.normal,   texture.normal_sampler);
             mp->Update();
         }
         
@@ -217,9 +279,9 @@ private:
                 return(false);
 
             mp->BindUBO("lights",ubo_lights);
-            mp->BindSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),sampler);
-            mp->BindSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),sampler);
-            mp->BindSampler("GB_Depth"    ,gbuffer.rt->GetDepthTexture(),sampler);
+            mp->BindSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),gbuffer.sampler);
+            mp->BindSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),gbuffer.sampler);
+            mp->BindSampler("GB_Depth"    ,gbuffer.rt->GetDepthTexture(),gbuffer.sampler);
             mp->Update();
         }
 
