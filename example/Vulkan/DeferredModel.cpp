@@ -105,6 +105,7 @@ public:
         SAFE_CLEAR(render_list);
         SAFE_CLEAR(gbuffer.cmd);
         SAFE_CLEAR(gbuffer.rt);
+        SAFE_CLEAR(gbuffer.rp);
     }
 
 private:
