@@ -45,9 +45,8 @@ CreateProject(14.DrawText DrawText.cpp)
 
 CreateProject(15.OffscreenRender OffscreenRender.cpp)
 
-
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
-CreateProject(16.DeferredModel DeferredModel.cpp)
+CreateProject(16.DeferredRenderMultiCmdBuffer DeferredRenderMultiCmdBuffer.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
 
