@@ -45,7 +45,15 @@ namespace
                 ext_list.Add(ext_name);
 
         VkPhysicalDeviceFeatures features={};
-        features.geometryShader=true;
+
+        if(physical_device->SupportGeometryShader())
+            features.geometryShader=true;
+
+        if(physical_device->SupportSamplerAnisotropy())
+            features.samplerAnisotropy=true;
+
+        if(physical_device->SupportMultiDrawIndirect())
+            features.multiDrawIndirect=true;
 
         create_info.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         create_info.pNext=nullptr;
