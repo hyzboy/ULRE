@@ -119,6 +119,16 @@ Sampler *RenderResource::CreateSampler(VkSamplerCreateInfo *sci)
     return s;
 }
 
+Sampler *RenderResource::CreateSampler(Texture *tex)
+{
+    Sampler *s=device->CreateSampler(tex);
+
+    if(s)
+        Add(s);
+
+    return s;    
+}
+
 Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
 
 Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipmaps)

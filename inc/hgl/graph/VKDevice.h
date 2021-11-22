@@ -190,6 +190,7 @@ public: //Texture
 public: //
 
     Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr);
+    Sampler *CreateSampler(Texture *);
 
 public: //shader & material
 
