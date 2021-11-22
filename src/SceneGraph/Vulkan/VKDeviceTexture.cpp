@@ -464,23 +464,11 @@ Sampler *GPUDevice::CreateSampler(VkSamplerCreateInfo *sci)
 
     sci->sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 
-    //if(attr->physical_device->features.samplerAnisotropy)         //不知道为什么不准，先全部禁用吧
-    //{
-    //    sci->maxAnisotropy = attr->physical_device->properties.limits.maxSamplerAnisotropy;
-    //    sci->anisotropyEnable = VK_TRUE;
-    //} 
-    //else 
-    {
-        sci->maxAnisotropy = 1.0;
-        sci->anisotropyEnable = VK_FALSE;
-    }
-
     if(vkCreateSampler(attr->device,sci,nullptr,&sampler)!=VK_SUCCESS)
         return(nullptr);
 
     return(new Sampler(attr->device,sampler));
 }
-
 
 Sampler *GPUDevice::CreateSampler(Texture *tex)
 {
