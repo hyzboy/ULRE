@@ -1,5 +1,4 @@
-﻿// 9.延迟渲染
-//  简单的延迟渲染测试，仅一个太阳光
+﻿// 简单传统延迟渲染，使用多个RenderPass，多个CommandBuffer
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
