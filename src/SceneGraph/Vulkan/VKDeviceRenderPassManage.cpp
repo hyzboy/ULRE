@@ -236,11 +236,13 @@ namespace
 //        delete hash;
 //    }
 
-    void HashRenderPass(RenderPassHASHCode *code,const RenderbufferInfo *rbi)
+    void HashRenderPass(RenderPassHASHCode *code,const RenderbufferInfo *rbi,const uint8 subpass_count)
     {       
         util::Hash *hash=util::CreateSHA1LEHash();
 
         hash->Init();
+
+        hash->Write<uint8>(subpass_count);
 
         for(const VkFormat &fmt:rbi->GetColorFormatList())
             hash->Write(fmt);
@@ -276,12 +278,12 @@ RenderPass *DeviceRenderPassManage::CreateRenderPass(   const List<VkAttachmentD
     return(new RenderPass(device,pipeline_cache,render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
-RenderPass *DeviceRenderPassManage::AcquireRenderPass(const RenderbufferInfo *rbi)
+RenderPass *DeviceRenderPassManage::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
 {
     RenderPassHASHCode hash;
     RenderPass *rp=nullptr;
 
-    HashRenderPass(&hash,rbi);
+    HashRenderPass(&hash,rbi,subpass_count);
 
     if(RenderPassList.Get(hash,rp))
         return rp;
@@ -307,7 +309,7 @@ RenderPass *DeviceRenderPassManage::AcquireRenderPass(const RenderbufferInfo *rb
         subpass_desc_list.Add(SubpassDescription(color_ref_list.GetData(),color_ref_list.GetCount()));
     }
 
-    CreateSubpassDependency(subpass_dependency_list,2);
+    CreateSubpassDependency(subpass_dependency_list,subpass_count);
 
     rp=CreateRenderPass(atta_desc_list,subpass_desc_list,subpass_dependency_list,rbi);
 

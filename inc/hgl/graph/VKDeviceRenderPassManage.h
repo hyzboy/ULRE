@@ -31,7 +31,7 @@ private:
                                         const List<VkSubpassDependency> &dependency,
                                         const RenderbufferInfo *);
 
-    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *);
+    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 };//class DeviceRenderPassManage
 VK_NAMESPACE_END
 #endif//HGL_VULKAN_DEVICE_RENDERPASS_MANAGE_INCLUDE
