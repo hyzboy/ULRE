@@ -216,7 +216,7 @@ public: //Command Buffer 相关
     
 public:
 
-    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *);
+    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 
     GPUFence *      CreateFence(bool);
     GPUSemaphore *  CreateGPUSemaphore();
