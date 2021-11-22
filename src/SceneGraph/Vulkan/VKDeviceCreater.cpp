@@ -16,6 +16,35 @@ Swapchain *CreateSwapchain(const GPUDeviceAttribute *attr,const VkExtent2D &acqu
 
 namespace
 {
+    void SetDeviceExtension(CharPointerList *ext_list,const GPUPhysicalDevice *physical_device)
+    {
+        ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+        constexpr char *require_ext_list[]=
+        {
+            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+            VK_EXT_HDR_METADATA_EXTENSION_NAME,
+            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
+            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME
+        };
+
+        for(const char *ext_name:require_ext_list)
+            if(physical_device->CheckExtensionSupport(ext_name))
+                ext_list->Add(ext_name);
+    }
+
+    void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf)
+    {
+        #define FEATURE_COPY(name)  features->name=pdf.name;
+
+        FEATURE_COPY(geometryShader);
+        FEATURE_COPY(multiDrawIndirect);
+        FEATURE_COPY(imageCubeArray);
+        FEATURE_COPY(samplerAnisotropy);
+
+        #undef FEATURE_COPY
+    }
+
     VkDevice CreateDevice(VkInstance instance,const GPUPhysicalDevice *physical_device,uint32_t graphics_family)
     {
         float queue_priorities[1]={0.0};
@@ -30,30 +59,10 @@ namespace
 
         VkDeviceCreateInfo create_info={};
         CharPointerList ext_list;
-        ext_list.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-        constexpr char *require_ext_list[]=
-        {
-            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-            VK_EXT_HDR_METADATA_EXTENSION_NAME,
-            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
-            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME
-        };
-
-        for(const char *ext_name:require_ext_list)
-            if(physical_device->CheckExtensionSupport(ext_name))
-                ext_list.Add(ext_name);
-
         VkPhysicalDeviceFeatures features={};
 
-        if(physical_device->SupportGeometryShader())
-            features.geometryShader=true;
-
-        if(physical_device->SupportSamplerAnisotropy())
-            features.samplerAnisotropy=true;
-
-        if(physical_device->SupportMultiDrawIndirect())
-            features.multiDrawIndirect=true;
+        SetDeviceExtension(&ext_list,physical_device);
+        SetDeviceFeatures(&features,physical_device->GetFeatures());
 
         create_info.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         create_info.pNext=nullptr;
