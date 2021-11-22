@@ -19,7 +19,7 @@ void GPUDevice::ClearRenderPassManage()
     SAFE_CLEAR(render_pass_manage);
 }
 
-RenderPass *GPUDevice::AcquireRenderPass(const RenderbufferInfo *rbi)
+RenderPass *GPUDevice::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
 {
     for(const VkFormat &fmt:rbi->GetColorFormatList())
         if(!attr->physical_device->IsColorAttachmentOptimal(fmt))
@@ -29,6 +29,6 @@ RenderPass *GPUDevice::AcquireRenderPass(const RenderbufferInfo *rbi)
     if(!attr->physical_device->IsDepthAttachmentOptimal(rbi->GetDepthFormat()))
             return(nullptr);
 
-    return render_pass_manage->AcquireRenderPass(rbi);
+    return render_pass_manage->AcquireRenderPass(rbi,subpass_count);
 }
 VK_NAMESPACE_END
