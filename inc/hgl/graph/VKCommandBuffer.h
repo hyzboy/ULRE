@@ -4,6 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/type/Color4f.h>
 VK_NAMESPACE_BEGIN
 //push constant 一般只有128/256字节，仅能存在矩阵。
 //所以我们将每个对象的独立变换矩阵存在push constant中
@@ -26,6 +27,15 @@ public:
     
     bool Begin();
     bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
+
+#ifdef _DEBUG
+    void SetDebugName(const char *);
+    void BeginRegion(const char *,const Color4f &);
+    void EndRegion();
+#else
+    void BeginRegion(const char *,const Color4f &){}
+    void EndRegion(){}
+#endif//_DEBUG
 };//class GPUCmdBuffer
 
 class RenderCmdBuffer:public GPUCmdBuffer
