@@ -22,10 +22,13 @@ namespace
 
         constexpr char *require_ext_list[]=
         {
-            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-            VK_EXT_HDR_METADATA_EXTENSION_NAME,
+        #ifdef _DEBUG
+            VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
+        #endif//_DEBUG
+//            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+//            VK_EXT_HDR_METADATA_EXTENSION_NAME,
             VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
-            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME
+//            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME
         };
 
         for(const char *ext_name:require_ext_list)
