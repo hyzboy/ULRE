@@ -6,6 +6,7 @@
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKDebugMaker.h>
 
 #include<iostream>
 #include<iomanip>
@@ -13,6 +14,10 @@
 VK_NAMESPACE_BEGIN
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
 Swapchain *CreateSwapchain(const GPUDeviceAttribute *attr,const VkExtent2D &acquire_extent);
+
+#ifdef _DEBUG
+DebugMaker *CreateDebugMaker(VkDevice);
+#endif//_DEBUG
 
 namespace
 {
@@ -27,8 +32,10 @@ namespace
         #endif//_DEBUG
 //            VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
 //            VK_EXT_HDR_METADATA_EXTENSION_NAME,
-            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
-//            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME
+//            VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
+//            VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME,
+
+//            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
         };
 
         for(const char *ext_name:require_ext_list)
@@ -411,6 +418,10 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
 
     if(!device_attr->device)
         return(nullptr);
+
+#ifdef _DEBUG
+    device_attr->debug_maker=CreateDebugMaker(device_attr->device);
+#endif//_DEBUG
 
     GetDeviceQueue(device_attr);
 
