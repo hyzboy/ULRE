@@ -3,6 +3,10 @@
 #include<hgl/graph/VKInstance.h>
 #include<hgl/graph/VKTexture.h>
 
+#ifdef _DEBUG
+#include<hgl/graph/VKDebugMaker.h>
+#endif//_DEBUG
+
 VK_NAMESPACE_BEGIN
 
 constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
@@ -39,6 +43,10 @@ struct GPUDeviceAttribute
     VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
 
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
+    
+#ifdef _DEBUG
+    DebugMaker *                        debug_maker     =nullptr;
+#endif//_DEBUG
 
 public:
 
