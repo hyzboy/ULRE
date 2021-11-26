@@ -24,7 +24,8 @@ namespace
 
     constexpr PixelFormat pf_list[]=
     {
-        {UPF_BGRA4,      4,{'B','G','R','A'},{ 4, 4, 4, 4},VulkanDataType::UNORM},
+        { PF_RGBA4,      4,{'R','G','B','A'},{ 4, 4, 4, 4},VulkanDataType::UNORM},      //Android 部分不支持
+        { PF_BGRA4,      4,{'B','G','R','A'},{ 4, 4, 4, 4},VulkanDataType::UNORM},      //ios不支持这个
         {UPF_RGB565,     3,{'R','G','B', 0 },{ 5, 6, 5, 0},VulkanDataType::UNORM},
         {UPF_A1RGB5,     4,{'A','R','G','B'},{ 1, 5, 5, 5},VulkanDataType::UNORM},
         {UPF_R8,         1,{'R', 0 , 0 , 0 },{ 8, 0, 0, 0},VulkanDataType::UNORM},
