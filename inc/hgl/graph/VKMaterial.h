@@ -64,9 +64,6 @@ public:
     const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return data->pipeline_layout_data;}
   
     const   VertexAttributeBinding *            GetVAB                  ()const{return data->vab;}
-    const   uint32_t                            GetVertexAttrCount      ()const{return data->vab->GetVertexAttrCount();}    
-    const   VkVertexInputBindingDescription *   GetVertexBindingList    ()const{return data->vab->GetVertexBindingList();}
-    const   VkVertexInputAttributeDescription * GetVertexAttributeList  ()const{return data->vab->GetVertexAttributeList();}
 
 public:
 
