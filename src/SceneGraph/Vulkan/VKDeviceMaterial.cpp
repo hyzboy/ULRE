@@ -100,13 +100,14 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     MaterialData *data=new MaterialData;
 
-    data->name=mtl_name;
-    data->shader_maps=shader_maps;
-    data->mds=mds;
-    data->vertex_sm=(VertexShaderModule *)vsm;
-    data->vab=data->vertex_sm->CreateVertexAttributeBinding();
+    data->name          =mtl_name;
+    data->shader_maps   =shader_maps;
+    data->mds           =mds;
+    data->vertex_sm     =(VertexShaderModule *)vsm;
+    data->vab           =data->vertex_sm->CreateVertexAttributeBinding();
 
     CreateShaderStageList(data->shader_stage_list,shader_maps);
+
     data->pipeline_layout_data=pld;
     data->mp.m=CreateMP(mds,pld,DescriptorSetsType::Material     );
     data->mp.r=CreateMP(mds,pld,DescriptorSetsType::Renderable   );
