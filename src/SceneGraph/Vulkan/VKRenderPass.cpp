@@ -27,13 +27,8 @@ Pipeline *RenderPass::CreatePipeline(const Material *material,PipelineData *data
 {
     VkPipeline graphicsPipeline;
 
-    const VAB *vab=material->GetVAB();
-    
-    data->InitVertexInputState( material->GetStageCount(),
-                                material->GetStages(),
-                                vab->GetVertexAttrCount(),
-                                vab->GetVertexBindingList(),
-                                vab->GetVertexAttributeList());
+    data->InitShaderStage(material->GetStageList());
+    data->InitVertexInputState(material->GetVAB());
 
     data->SetColorAttachments(color_formats.GetCount());
 

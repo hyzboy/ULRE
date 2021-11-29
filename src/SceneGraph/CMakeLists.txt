@@ -104,7 +104,6 @@ SET(VK_DEBUG_SOURCE     ${SG_INCLUDE_PATH}/VKDebugOut.h
 SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
                         ${SG_INCLUDE_PATH}/VKMemoryAllocator.h
                         ${SG_INCLUDE_PATH}/VKBuffer.h
-                        ${SG_INCLUDE_PATH}/VKVertexAttribBuffer.h
                         ${SG_INCLUDE_PATH}/VKIndexBuffer.h
                         ${SG_INCLUDE_PATH}/VKArrayBuffer.h
                         Vulkan/VKMemory.cpp
@@ -204,10 +203,8 @@ SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
 
 SOURCE_GROUP("Vulkan\\Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
-SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKVertexAttributeBinding.h
-                            ${SG_INCLUDE_PATH}/VKRenderable.h
+SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
                             ${SG_INCLUDE_PATH}/VKRenderableInstance.h
-                            Vulkan/VKVertexAttributeBinding.cpp
                             Vulkan/VKRenderable.cpp
                             Vulkan/VKRenderableInstance.cpp
                             Vulkan/VKTileData.cpp
