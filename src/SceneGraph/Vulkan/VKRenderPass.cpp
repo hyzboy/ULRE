@@ -27,13 +27,13 @@ Pipeline *RenderPass::CreatePipeline(const Material *material,PipelineData *data
 {
     VkPipeline graphicsPipeline;
 
-    const VertexAttributeBinding *vab=material->GetVAB();
+    const VertexAttributeBinding *vbo=material->GetVBO();
     
     data->InitVertexInputState( material->GetStageCount(),
                                 material->GetStages(),
-                                vab->GetVertexAttrCount(),
-                                vab->GetVertexBindingList(),
-                                vab->GetVertexAttributeList());
+                                vbo->GetVertexAttrCount(),
+                                vbo->GetVertexBindingList(),
+                                vbo->GetVertexAttributeList());
 
     data->SetColorAttachments(color_formats.GetCount());
 

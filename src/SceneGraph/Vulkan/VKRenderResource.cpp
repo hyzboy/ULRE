@@ -5,9 +5,9 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
-VAB *RenderResource::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
+VBO *RenderResource::CreateVBO(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
-    VAB *vb=device->CreateVAB(format,count,data,sharing_mode);
+    VBO *vb=device->CreateVBO(format,count,data,sharing_mode);
 
     if(!vb)
         return(nullptr);

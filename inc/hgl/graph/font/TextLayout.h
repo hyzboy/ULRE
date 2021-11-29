@@ -141,7 +141,7 @@ namespace hgl
         protected:
         
             TextRenderable *text_render_obj;
-            MemBlock<float> vertex;
+            MemBlock<int16> vertex;
             MemBlock<float> tex_coord;
 
         public:

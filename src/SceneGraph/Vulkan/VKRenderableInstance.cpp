@@ -6,7 +6,6 @@
 #include<hgl/util/hash/Hash.h>
 
 VK_NAMESPACE_BEGIN
-
 using namespace util;
 
 RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
@@ -57,7 +56,7 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
 
     ShaderStage **ss=ssl.GetData();
 
-    VAB *vab;
+    VBO *vbo;
     const VkVertexInputBindingDescription *desc;
     const VkVertexInputAttributeDescription *attr;
 
@@ -66,35 +65,35 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
         desc=vsm->GetDesc(i);
         attr=vsm->GetAttr(i);
 
-        vab=r->GetVAB((*ss)->name,buffer_size+i);
+        vbo=r->GetVBO((*ss)->name,buffer_size+i);
 
-        if(!vab)
+        if(!vbo)
         {
-            LOG_ERROR("[FATAL ERROR] can't find VAB \""+(*ss)->name+"\" in Material: "+mtl->GetName());
+            LOG_ERROR("[FATAL ERROR] can't find VBO \""+(*ss)->name+"\" in Material: "+mtl->GetName());
             return(nullptr);
         }
 
-        if(vab->GetFormat()!=attr->format)
+        if(vbo->GetFormat()!=attr->format)
         {
-            LOG_ERROR(  "[FATAL ERROR] VAB \""+(*ss)->name+
+            LOG_ERROR(  "[FATAL ERROR] VBO \""+(*ss)->name+
                         UTF8String("\" format can't match Renderable, Material(")+mtl->GetName()+
                         UTF8String(") Format(")+GetVulkanFormatName(attr->format)+
-                        UTF8String("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
+                        UTF8String("), VBO Format(")+GetVulkanFormatName(vbo->GetFormat())+
                         ")");
             return(nullptr);
         }
 
-        if(vab->GetStride()!=desc->stride)
+        if(vbo->GetStride()!=desc->stride)
         {
-            LOG_ERROR(  "[FATAL ERROR] VAB \""+(*ss)->name+
+            LOG_ERROR(  "[FATAL ERROR] VBO \""+(*ss)->name+
                         UTF8String("\" stride can't match Renderable, Material(")+mtl->GetName()+
                         UTF8String(") stride(")+UTF8String::valueOf(desc->stride)+
-                        UTF8String("), VAB stride(")+UTF8String::valueOf(vab->GetStride())+
+                        UTF8String("), VBO stride(")+UTF8String::valueOf(vbo->GetStride())+
                         ")");
             return(nullptr);
         }
 
-        buffer_list[i]=vab->GetBuffer();
+        buffer_list[i]=vbo->GetBuffer();
 
         ++ss;
     }

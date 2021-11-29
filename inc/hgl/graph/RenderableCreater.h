@@ -13,7 +13,7 @@ namespace hgl
             AnsiString      name;
             uint            binding;
             VAD *           data    =nullptr;
-            VAB *   vab     =nullptr;
+            VBO *           vbo     =nullptr;
 
         public:
 

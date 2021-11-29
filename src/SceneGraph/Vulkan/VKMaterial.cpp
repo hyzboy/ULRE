@@ -9,10 +9,10 @@ MaterialData::~MaterialData()
     SAFE_CLEAR(mp.r);
     SAFE_CLEAR(mp.g);
 
-    if(vab)
+    if(vbo)
     {
-        vertex_sm->Release(vab);
-        delete vab;
+        vertex_sm->Release(vbo);
+        delete vbo;
     }
 
     delete shader_maps;
