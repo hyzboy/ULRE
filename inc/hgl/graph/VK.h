@@ -115,6 +115,18 @@ struct PipelineData;
 enum class InlinePipeline;
 class Pipeline;
 
+struct VAConfig
+{
+    VkFormat format;
+    bool instance;
+
+public:
+
+    CompOperatorMemcmp(const VAConfig &);
+};
+
+using VABConfigInfo=Map<AnsiString,VAConfig>;
+
 class VertexAttributeBinding;
 using VAB=VertexAttributeBinding;
 

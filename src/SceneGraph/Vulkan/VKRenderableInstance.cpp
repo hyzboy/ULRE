@@ -34,19 +34,15 @@ RenderableInstance::~RenderableInstance()
 
 RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
 {
-    if(!r||!mi||!p)return(nullptr);
+    if(!r||!p)return(nullptr);
 
-    const Material *mtl=mi->GetMaterial();
-
-    if(!mtl)return(nullptr);
-
-    const VertexShaderModule *vsm=mtl->GetVertexShaderModule();
-    const ShaderStageList &ssl=vsm->GetStageInputs();
-    const int input_count=ssl.GetCount();
+    const VAB *vab=p->GetVAB();
+    const int input_count=vab->GetVertexAttrCount();
+    const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
     if(r->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        LOG_ERROR("[FATAL ERROR] input buffer count of Renderable lesser than Material, Material name: "+mtl->GetName());
+        LOG_ERROR("[FATAL ERROR] input buffer count of Renderable lesser than Material, Material name: "+mtl_name);
 
         return(nullptr);
     }
@@ -54,40 +50,36 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
     AutoDeleteArray<VkBuffer> buffer_list(input_count);
     AutoDeleteArray<VkDeviceSize> buffer_size(input_count);
 
-    ShaderStage **ss=ssl.GetData();
-
     VBO *vbo;
-    const VkVertexInputBindingDescription *desc;
-    const VkVertexInputAttributeDescription *attr;
+    const AnsiString **                         name_list=vab->GetVertexNameList();
+    const VkVertexInputBindingDescription *     bind_list=vab->GetVertexBindingList();
+    const VkVertexInputAttributeDescription *   attr_list=vab->GetVertexAttributeList();
 
     for(int i=0;i<input_count;i++)
     {
-        desc=vsm->GetDesc(i);
-        attr=vsm->GetAttr(i);
-
-        vbo=r->GetVBO((*ss)->name,buffer_size+i);
+        vbo=r->GetVBO(**name_list,buffer_size+i);
 
         if(!vbo)
         {
-            LOG_ERROR("[FATAL ERROR] can't find VBO \""+(*ss)->name+"\" in Material: "+mtl->GetName());
+            LOG_ERROR("[FATAL ERROR] can't find VBO \""+**name_list+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 
-        if(vbo->GetFormat()!=attr->format)
+        if(vbo->GetFormat()!=attr_list->format)
         {
-            LOG_ERROR(  "[FATAL ERROR] VBO \""+(*ss)->name+
-                        UTF8String("\" format can't match Renderable, Material(")+mtl->GetName()+
-                        UTF8String(") Format(")+GetVulkanFormatName(attr->format)+
+            LOG_ERROR(  "[FATAL ERROR] VBO \""+**name_list+
+                        UTF8String("\" format can't match Renderable, Material(")+mtl_name+
+                        UTF8String(") Format(")+GetVulkanFormatName(attr_list->format)+
                         UTF8String("), VBO Format(")+GetVulkanFormatName(vbo->GetFormat())+
                         ")");
             return(nullptr);
         }
 
-        if(vbo->GetStride()!=desc->stride)
+        if(vbo->GetStride()!=bind_list->stride)
         {
-            LOG_ERROR(  "[FATAL ERROR] VBO \""+(*ss)->name+
-                        UTF8String("\" stride can't match Renderable, Material(")+mtl->GetName()+
-                        UTF8String(") stride(")+UTF8String::valueOf(desc->stride)+
+            LOG_ERROR(  "[FATAL ERROR] VBO \""+**name_list+
+                        UTF8String("\" stride can't match Renderable, Material(")+mtl_name+
+                        UTF8String(") stride(")+UTF8String::valueOf(bind_list->stride)+
                         UTF8String("), VBO stride(")+UTF8String::valueOf(vbo->GetStride())+
                         ")");
             return(nullptr);
@@ -95,7 +87,9 @@ RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,
 
         buffer_list[i]=vbo->GetBuffer();
 
-        ++ss;
+        ++name_list;
+        ++bind_list;
+        ++attr_list;
     }
 
     RenderableInstance *ri=new RenderableInstance(r,mi,p,input_count,buffer_list,buffer_size);

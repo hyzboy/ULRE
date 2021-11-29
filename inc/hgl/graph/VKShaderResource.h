@@ -14,7 +14,6 @@ struct ShaderStage
     uint                location;
 
     VertexAttribType    type;       ///<成份数量(如vec4中的4)
-    VkFormat            format;     ///<对应的Vulkan格式(如vec4对应的FMT_RGBA32F)
 
     uint                binding;
 

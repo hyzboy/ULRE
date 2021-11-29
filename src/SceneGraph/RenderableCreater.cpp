@@ -5,11 +5,10 @@ namespace hgl
 {
     namespace graph
     {
-        RenderableCreater::RenderableCreater(RenderResource *sdb,Material *m)
+        RenderableCreater::RenderableCreater(RenderResource *sdb,const VAB *v)
         {
             db              =sdb;
-            mtl             =m;
-            vsm             =mtl->GetVertexShaderModule();
+            vab             =v;
 
             vertices_number =0;
             ibo             =nullptr;
@@ -24,70 +23,64 @@ namespace hgl
             return(true);
         }
 
-        VAD *RenderableCreater::CreateVAD(const AnsiString &name,const ShaderStage *ss)
+        VAD *RenderableCreater::CreateVAD(const AnsiString &name)
         {
-            if(!ss)return(nullptr);
+            if(!vab)return(nullptr);
+            if(name.IsEmpty())return(nullptr);
+            
+            const auto *va=vab->GetVertexAttribute(name);
+
+            if(!va)
+                return(nullptr);
 
             ShaderStageBind *ssb;
 
-            if(vab_maps.Get(name,ssb))
+            if(ssb_map.Get(name,ssb))
                 return ssb->data;
 
             ssb=new ShaderStageBind;
 
-            ssb->data   =hgl::graph::CreateVertexAttribData(&(ss->type),vertices_number);
+            ssb->data   =hgl::graph::CreateVertexAttribData(vertices_number,va->format,va->vec_size,va->stride);
             ssb->name   =name;
-            ssb->binding=ss->binding;
+            ssb->binding=va->binding;
             
             ssb->vbo    =nullptr;
 
-            vab_maps.Add(name,ssb);
+            ssb_map.Add(name,ssb);
 
             return ssb->data;
-        }
 
-        VAD *RenderableCreater::CreateVAD(const AnsiString &name)
-        {
-            if(!vsm)return(nullptr);
-            if(name.IsEmpty())return(nullptr);
-
-            const ShaderStage *ss=vsm->GetStageInput(name);
-
-            if(!ss)
-                return(nullptr);
-
-            return this->CreateVAD(name,ss);
         }
 
         bool RenderableCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
         {
-            if(!vsm)return(false);
+            if(!vab)return(false);
             if(name.IsEmpty())return(false);
             if(!data)return(false);
             if(!bytes)return(false);
             
             ShaderStageBind *ssb;
 
-            if(vab_maps.Get(name,ssb))
+            if(ssb_map.Get(name,ssb))
                 return false;
 
-            const ShaderStage *ss=vsm->GetStageInput(name);
+            const auto *va=vab->GetVertexAttribute(name);
 
-            if(!ss)
+            if(!va)
                 return(false);
 
-            if(ss->type.GetStride()*vertices_number!=bytes)
+            if(va->stride*vertices_number!=bytes)
                 return(false);
                
             ssb=new ShaderStageBind;
 
             ssb->data   =nullptr;
             ssb->name   =name;
-            ssb->binding=ss->binding;
+            ssb->binding=va->binding;
 
-            ssb->vbo    =db->CreateVBO(ss->format,vertices_number,data);
+            ssb->vbo    =db->CreateVBO(va->format,vertices_number,data);
 
-            vab_maps.Add(name,ssb);
+            ssb_map.Add(name,ssb);
 
             return true;
         }
@@ -110,14 +103,14 @@ namespace hgl
 
         Renderable *RenderableCreater::Finish()
         {
-            const uint si_count=vsm->GetStageInputCount();
+            const uint si_count=vab->GetVertexAttrCount();
 
-            if(vab_maps.GetCount()!=si_count)
+            if(ssb_map.GetCount()!=si_count)
                 return(nullptr);
 
             Renderable *render_obj=db->CreateRenderable(vertices_number);
 
-            const auto *sp=vab_maps.GetDataList();
+            const auto *sp=ssb_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
                 if((*sp)->right->vbo)

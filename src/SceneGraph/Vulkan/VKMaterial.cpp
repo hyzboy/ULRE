@@ -9,12 +9,6 @@ MaterialData::~MaterialData()
     SAFE_CLEAR(mp.r);
     SAFE_CLEAR(mp.g);
 
-    if(vab)
-    {
-        vertex_sm->Release(vab);
-        delete vab;
-    }
-
     delete shader_maps;
     SAFE_CLEAR(mds);
 }

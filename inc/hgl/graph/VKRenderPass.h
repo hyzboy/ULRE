@@ -52,16 +52,13 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(const Material *,      PipelineData *);
-    Pipeline *CreatePipeline(const Material *,const InlinePipeline &);
+    Pipeline *CreatePipeline(MaterialInstance *,      PipelineData *);
+    Pipeline *CreatePipeline(MaterialInstance *,const InlinePipeline &);
 
 public:
 
-    Pipeline *CreatePipeline(Material *,          const InlinePipeline &,  const Prim &prim,const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim,const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *,                PipelineData *,    const Prim &prim,const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *,    const Prim &prim,const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *,          const OSString &,        const Prim &prim,const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim,const bool prim_restart=false);
 };//class RenderPass
 VK_NAMESPACE_END

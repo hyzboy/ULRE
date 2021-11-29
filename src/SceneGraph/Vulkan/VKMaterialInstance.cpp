@@ -2,20 +2,35 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
+#include<hgl/graph/VKShaderModule.h>
 
 VK_NAMESPACE_BEGIN
-MaterialInstance *GPUDevice::CreateMI(Material *mtl)
+MaterialInstance *GPUDevice::CreateMI(Material *mtl,const VABConfigInfo *vab_cfg)
 {
     if(!mtl)return(nullptr);
 
+    VertexShaderModule *vsm=mtl->GetVertexShaderModule();
+
+    VAB *vab=vsm->CreateVAB(vab_cfg);
+
+    if(!vab)return(nullptr);
+
     MaterialParameters *mp=CreateMP(mtl,DescriptorSetsType::Value);
 
-    return(new MaterialInstance(mtl,mp));
+    if(!mp)
+    {
+        delete vab;
+        return nullptr;
+    }
+
+    return(new MaterialInstance(mtl,vab,mp));
 }
 
-MaterialInstance::MaterialInstance(Material *mtl,MaterialParameters *p)
+MaterialInstance::MaterialInstance(Material *mtl,VAB *v,MaterialParameters *p)
 {
     material=mtl;
+
+    vab=v;
 
     mp_value=p;
 }

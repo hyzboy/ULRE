@@ -14,17 +14,17 @@ VK_NAMESPACE_BEGIN
  */
 class Renderable
 {
-    struct VABData
+    struct VBOData
     {
         VBO *buf;
         VkDeviceSize offset;
 
     public:
 
-        CompOperatorMemcmp(const VABData &);
+        CompOperatorMemcmp(const VBOData &);
     };
 
-    Map<UTF8String,VABData> buffer_list;
+    Map<AnsiString,VBOData> buffer_list;
 
 protected:
 
@@ -56,7 +56,7 @@ public:
     void         SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
     const   AABB &GetBoundingBox()const           {return BoundingBox;}
 
-            bool Set(const UTF8String &name,VBO *vb,VkDeviceSize offset=0);
+            bool Set(const AnsiString &name,VBO *vb,VkDeviceSize offset=0);
 
             bool Set(IndexBuffer *ib,VkDeviceSize offset=0)
             {
@@ -78,8 +78,8 @@ public:
         return draw_count;
     }
 
-                    VBO *           GetVBO              (const UTF8String &,VkDeviceSize *);
-                    VkBuffer        GetBuffer           (const UTF8String &,VkDeviceSize *);
+                    VBO *           GetVBO              (const AnsiString &,VkDeviceSize *);
+                    VkBuffer        GetBuffer           (const AnsiString &,VkDeviceSize *);
             const   int             GetBufferCount      ()const {return buffer_list.GetCount();}
 
                     IndexBuffer *   GetIndexBuffer      ()      {return indices_buffer;}

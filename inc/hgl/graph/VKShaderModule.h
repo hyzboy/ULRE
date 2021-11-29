@@ -47,8 +47,6 @@ public:
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
 };//class ShaderModule
 
-class VertexAttributeBinding;
-
 /**
  * 顶点Shader模块<br>
  * 由于顶点shader在最前方执行，所以它比其它shader多了VertexInput的数据
@@ -56,12 +54,13 @@ class VertexAttributeBinding;
 class VertexShaderModule:public ShaderModule
 {
     uint32_t attr_count;
-    VkVertexInputBindingDescription *binding_list;
-    VkVertexInputAttributeDescription *attribute_list;
+    VertexAttribType *type_list;
+    const AnsiString **name_list;
+    ShaderStage **ssi_list;
 
 private:
-
-    Sets<VertexAttributeBinding *> vab_sets;
+    
+    Sets<VAB *> vab_sets;
 
 public:
 
@@ -76,17 +75,17 @@ public:
     const uint                                  GetStageInputCount  ()                      const{return shader_resource->GetStageInputCount();}    
     const ShaderStageList &                     GetStageInputs      ()                      const{return shader_resource->GetStageInputs();}
 
-    const uint32_t                              GetAttrCount()const{return attr_count;}
+    //const uint32_t                              GetAttrCount()const{return attr_count;}
 
-    const VkVertexInputBindingDescription *     GetDescList ()const{return binding_list;}
-    const VkVertexInputAttributeDescription *   GetAttrList ()const{return attribute_list;}
+    //const VkVertexInputBindingDescription *     GetDescList ()const{return binding_list;}
+    //const VkVertexInputAttributeDescription *   GetAttrList ()const{return attribute_list;}
 
-    const VkVertexInputBindingDescription *     GetDesc     (const uint32_t index)const{return (index>=attr_count?nullptr:binding_list+index);}
-    const VkVertexInputAttributeDescription *   GetAttr     (const uint32_t index)const{return (index>=attr_count?nullptr:attribute_list+index);}
+    //const VkVertexInputBindingDescription *     GetDesc     (const uint32_t index)const{return (index>=attr_count?nullptr:binding_list+index);}
+    //const VkVertexInputAttributeDescription *   GetAttr     (const uint32_t index)const{return (index>=attr_count?nullptr:attribute_list+index);}
 
 public:
 
-    VAB *                                       CreateVAB();
+    VAB *                                       CreateVAB(const VABConfigInfo *format_map=nullptr);
     bool                                        Release(VAB *);
     const uint32_t                              GetInstanceCount()const{return vab_sets.GetCount();}
 };//class VertexShaderModule:public ShaderModule
