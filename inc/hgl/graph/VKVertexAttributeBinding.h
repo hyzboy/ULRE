@@ -33,5 +33,7 @@ public:
     const VkVertexInputBindingDescription *     GetVertexBindingList    ()const{return binding_list;}
     const VkVertexInputAttributeDescription *   GetVertexAttributeList  ()const{return attribute_list;}
 };//class VertexAttributeBinding
+
+using VAB=VertexAttributeBinding;
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_VERTEX_ATTRIBUTE_BINDING_INCLUDE

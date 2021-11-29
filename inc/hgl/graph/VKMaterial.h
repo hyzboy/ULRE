@@ -15,7 +15,7 @@ struct MaterialData
     MaterialDescriptorSets *mds;
 
     VertexShaderModule *vertex_sm;
-    VertexAttributeBinding *vbo;
+    VertexAttributeBinding *vab;
 
     List<VkPipelineShaderStageCreateInfo> shader_stage_list;
 
@@ -63,7 +63,7 @@ public:
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
     const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return data->pipeline_layout_data;}
   
-    const   VertexAttributeBinding *            GetVBO                  ()const{return data->vbo;}
+    const   VertexAttributeBinding *            GetVAB                  ()const{return data->vab;}
 
 public:
 

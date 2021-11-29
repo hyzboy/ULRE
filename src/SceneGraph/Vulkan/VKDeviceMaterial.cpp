@@ -104,7 +104,7 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     data->shader_maps   =shader_maps;
     data->mds           =mds;
     data->vertex_sm     =(VertexShaderModule *)vsm;
-    data->vbo           =data->vertex_sm->CreateVertexAttributeBinding();
+    data->vab           =data->vertex_sm->CreateVAB();
 
     CreateShaderStageList(data->shader_stage_list,shader_maps);
 
