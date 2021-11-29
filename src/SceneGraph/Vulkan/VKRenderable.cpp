@@ -22,21 +22,21 @@ VK_NAMESPACE_BEGIN
 //    return(true);
 //}
 
-bool Renderable::Set(const UTF8String &name,VAB *vab,VkDeviceSize offset)
+bool Renderable::Set(const UTF8String &name,VBO *vbo,VkDeviceSize offset)
 {
-    if(!vab)return(false);
+    if(!vbo)return(false);
     if(buffer_list.KeyExist(name))return(false);
 
     VABData bd;
     
-    bd.buf=vab;
+    bd.buf=vbo;
     bd.offset=offset;
 
     buffer_list.Add(name,bd);
     return(true);
 }
 
-VAB *Renderable::GetVAB(const UTF8String &name,VkDeviceSize *offset)
+VBO *Renderable::GetVBO(const UTF8String &name,VkDeviceSize *offset)
 {
     if(!offset)return(nullptr);
     if(name.IsEmpty())return(nullptr);
@@ -54,9 +54,9 @@ VAB *Renderable::GetVAB(const UTF8String &name,VkDeviceSize *offset)
 
 VkBuffer Renderable::GetBuffer(const UTF8String &name,VkDeviceSize *offset)
 {
-    VAB *vab=GetVAB(name,offset);
+    VBO *vbo=GetVBO(name,offset);
 
-    if(vab)return vab->GetBuffer();
+    if(vbo)return vbo->GetBuffer();
 
     return(VK_NULL_HANDLE);
 }

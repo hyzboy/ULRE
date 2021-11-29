@@ -39,7 +39,7 @@ namespace hgl
             ssb->name   =name;
             ssb->binding=ss->binding;
             
-            ssb->vab    =nullptr;
+            ssb->vbo    =nullptr;
 
             vab_maps.Add(name,ssb);
 
@@ -85,7 +85,7 @@ namespace hgl
             ssb->name   =name;
             ssb->binding=ss->binding;
 
-            ssb->vab    =db->CreateVAB(ss->format,vertices_number,data);
+            ssb->vbo    =db->CreateVBO(ss->format,vertices_number,data);
 
             vab_maps.Add(name,ssb);
 
@@ -120,10 +120,10 @@ namespace hgl
             const auto *sp=vab_maps.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
-                if((*sp)->right->vab)
-                    render_obj->Set((*sp)->left,(*sp)->right->vab);                    
+                if((*sp)->right->vbo)
+                    render_obj->Set((*sp)->left,(*sp)->right->vbo);                    
                 else
-                    render_obj->Set((*sp)->left,db->CreateVAB((*sp)->right->data));
+                    render_obj->Set((*sp)->left,db->CreateVBO((*sp)->right->data));
 
                 ++sp;
             }

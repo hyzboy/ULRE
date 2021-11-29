@@ -55,7 +55,7 @@ class GPUBuffer;
 struct GPUBufferData;
 
 class VertexAttribBuffer;
-using VAB=VertexAttribBuffer;
+using VBO=VertexAttribBuffer;
 
 class IndexBuffer;
 

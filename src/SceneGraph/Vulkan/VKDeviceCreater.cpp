@@ -378,9 +378,16 @@ namespace
         std::cout<<"       deviceType: "<<DeviceTypeString[pdp.deviceType]<<std::endl;
         std::cout<<"       deviceName: "<<pdp.deviceName<<std::endl;
 
-        AnsiString uuid=VkUUID2String<char>(pdp.pipelineCacheUUID);
+        if(memcmp(pdp.pipelineCacheUUID,"rdoc",4)==0)
+        {
+            std::cout<<"pipelineCahceUUID: "<<(char *)pdp.pipelineCacheUUID<<std::endl;
+        }
+        else
+        {
+            AnsiString uuid=VkUUID2String<char>(pdp.pipelineCacheUUID);
 
-        std::cout<<"pipelineCahceUUID: "<<uuid.c_str()<<std::endl;
+            std::cout<<"pipelineCahceUUID: "<<uuid.c_str()<<std::endl;
+        }
 
         DebugOut(pdp.limits);
     }

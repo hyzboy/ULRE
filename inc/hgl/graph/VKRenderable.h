@@ -16,7 +16,7 @@ class Renderable
 {
     struct VABData
     {
-        VAB *buf;
+        VBO *buf;
         VkDeviceSize offset;
 
     public:
@@ -56,7 +56,7 @@ public:
     void         SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
     const   AABB &GetBoundingBox()const           {return BoundingBox;}
 
-            bool Set(const UTF8String &name,VAB *vb,VkDeviceSize offset=0);
+            bool Set(const UTF8String &name,VBO *vb,VkDeviceSize offset=0);
 
             bool Set(IndexBuffer *ib,VkDeviceSize offset=0)
             {
@@ -78,7 +78,7 @@ public:
         return draw_count;
     }
 
-                    VAB *           GetVAB              (const UTF8String &,VkDeviceSize *);
+                    VBO *           GetVBO              (const UTF8String &,VkDeviceSize *);
                     VkBuffer        GetBuffer           (const UTF8String &,VkDeviceSize *);
             const   int             GetBufferCount      ()const {return buffer_list.GetCount();}
 

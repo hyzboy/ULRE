@@ -173,7 +173,7 @@ namespace hgl
             int cur_size=0;
             int left=0,top=0;
 
-            float *tp=vertex;
+            int16 *tp=vertex;
             float *tcp=tex_coord;
 
             for(int i=0;i<count;i++)

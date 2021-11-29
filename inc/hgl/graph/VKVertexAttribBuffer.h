@@ -38,7 +38,7 @@ namespace hgl
             }
         };//class VertexAttribBuffer:public GPUBuffer
 
-        using VAB=VertexAttribBuffer;
+        using VBO=VertexAttribBuffer;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE

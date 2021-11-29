@@ -11,13 +11,13 @@ namespace hgl
          */
         class TextRenderable:public Renderable
         {
-            GPUDevice *    device;
+            GPUDevice * device;
             Material *  mtl;
 
             uint        max_count;                                      ///<缓冲区最大容量
 
-            VAB *       vab_position;
-            VAB *       vab_tex_coord;
+            VBO *       vbo_position;
+            VBO *       vbo_tex_coord;
 
         public:
 
@@ -28,7 +28,7 @@ namespace hgl
 
             void SetCharCount   (const uint);
 
-            bool WriteVertex    (const float *fp);
+            bool WriteVertex    (const int16 *fp);
             bool WriteTexCoord  (const float *fp);
         };//class TextRenderable:public Renderable
     }//namespace graph
