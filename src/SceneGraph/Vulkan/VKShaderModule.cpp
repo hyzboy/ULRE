@@ -88,16 +88,16 @@ VertexShaderModule::~VertexShaderModule()
     SAFE_CLEAR_ARRAY(attribute_list);
 }
 
-VertexAttributeBinding *VertexShaderModule::CreateVertexAttributeBinding()
+VAB *VertexShaderModule::CreateVAB()
 {
-    VertexAttributeBinding *vab=new VertexAttributeBinding(attr_count,binding_list,attribute_list);
+    VAB *vab=new VAB(attr_count,binding_list,attribute_list);
 
     vab_sets.Add(vab);
 
     return(vab);
 }
 
-bool VertexShaderModule::Release(VertexAttributeBinding *vab)
+bool VertexShaderModule::Release(VAB *vab)
 {
     return vab_sets.Delete(vab);
 }

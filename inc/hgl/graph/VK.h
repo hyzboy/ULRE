@@ -114,7 +114,9 @@ class MaterialInstance;
 struct PipelineData;
 enum class InlinePipeline;
 class Pipeline;
+
 class VertexAttributeBinding;
+using VAB=VertexAttributeBinding;
 
 class Renderable;
 class RenderableInstance;

@@ -86,8 +86,8 @@ public:
 
 public:
 
-    VertexAttributeBinding *                    CreateVertexAttributeBinding();
-    bool                                        Release(VertexAttributeBinding *);
+    VAB *                                       CreateVAB();
+    bool                                        Release(VAB *);
     const uint32_t                              GetInstanceCount()const{return vab_sets.GetCount();}
 };//class VertexShaderModule:public ShaderModule
 VK_NAMESPACE_END
