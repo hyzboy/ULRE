@@ -69,11 +69,12 @@ namespace hgl
 
         /**
          * 根据格式要求，创建对应的顶点属性数据区(VAD)
-         * @param base_type 基础格式
-         * @param vecsize vec数量
-         * @param vertex_count 顶点数量
+         * @param vertex_count  顶点数量
+         * @param fmt           Vulkan格式
+         * @param vec_size      vec数量
+         * @param stride        单个数据字节数
          */
-        VAD *CreateVertexAttribData(const VertexAttribType *,const uint32_t vertex_count);
+        VAD *CreateVertexAttribData(const uint32_t vertex_count,const VkFormat fmt,const int vec_size,const uint stride);
         //这个函数比较重要，就不搞成CreateVAD的简写了
     }//namespace graph
 }//namespace hgl

@@ -22,12 +22,12 @@ VK_NAMESPACE_BEGIN
 //    return(true);
 //}
 
-bool Renderable::Set(const UTF8String &name,VBO *vbo,VkDeviceSize offset)
+bool Renderable::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
 {
     if(!vbo)return(false);
     if(buffer_list.KeyExist(name))return(false);
 
-    VABData bd;
+    VBOData bd;
     
     bd.buf=vbo;
     bd.offset=offset;
@@ -36,12 +36,12 @@ bool Renderable::Set(const UTF8String &name,VBO *vbo,VkDeviceSize offset)
     return(true);
 }
 
-VBO *Renderable::GetVBO(const UTF8String &name,VkDeviceSize *offset)
+VBO *Renderable::GetVBO(const AnsiString &name,VkDeviceSize *offset)
 {
     if(!offset)return(nullptr);
     if(name.IsEmpty())return(nullptr);
 
-    VABData bd;
+    VBOData bd;
 
     if(buffer_list.Get(name,bd))
     {
@@ -52,7 +52,7 @@ VBO *Renderable::GetVBO(const UTF8String &name,VkDeviceSize *offset)
     return(nullptr);
 }
 
-VkBuffer Renderable::GetBuffer(const UTF8String &name,VkDeviceSize *offset)
+VkBuffer Renderable::GetBuffer(const AnsiString &name,VkDeviceSize *offset)
 {
     VBO *vbo=GetVBO(name,offset);
 

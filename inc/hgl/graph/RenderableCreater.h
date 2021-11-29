@@ -23,7 +23,7 @@ namespace hgl
             }
         };//struct ShaderStageBind
 
-        using VADMaps=MapObject<AnsiString,ShaderStageBind>;
+        using ShaderStageBindMap=MapObject<AnsiString,ShaderStageBind>;
 
         /**
          * 可渲染对象创建器
@@ -35,22 +35,18 @@ namespace hgl
             RenderResource *db;
             Material *mtl;
 
-            const VertexShaderModule *vsm;
+            const VAB *vab;
 
         protected:
 
-            uint32          vertices_number;
+            uint32              vertices_number;
 
-            IndexBuffer *   ibo;
-            VADMaps         vab_maps;
-
-        protected:
-
-            virtual VAD *CreateVAD(const AnsiString &name,const ShaderStage *ss);                               ///<创建一个顶点属性缓冲区
+            IndexBuffer *       ibo;
+            ShaderStageBindMap  ssb_map;
 
         public:
 
-            RenderableCreater(RenderResource *sdb,Material *m);
+            RenderableCreater(RenderResource *sdb,const VAB *);
             virtual ~RenderableCreater()=default;
 
             virtual bool                    Init(const uint32 count);                                                   ///<初始化，参数为顶点数量
@@ -60,12 +56,9 @@ namespace hgl
             template<typename T> 
                     T *                     CreateVADA(const AnsiString &name)                                          ///<创建一个顶点属性缓冲区以及访问器
                     {
-                        const ShaderStage *ss=vsm->GetStageInput(name);
+                        const VkFormat format=vab->GetFormat(name);
 
-                        if(!ss)
-                            return(nullptr);
-
-                        if(ss->format!=T::GetVulkanFormat())
+                        if(format!=T::GetVulkanFormat())
                             return(nullptr);
 
                         VAD *vad=this->CreateVAD(name);

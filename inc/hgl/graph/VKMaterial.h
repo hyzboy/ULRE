@@ -5,7 +5,6 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
-#include<hgl/graph/VKVertexAttributeBinding.h>
 VK_NAMESPACE_BEGIN
 using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
 
@@ -17,7 +16,6 @@ struct MaterialData
     MaterialDescriptorSets *mds;
 
     VertexShaderModule *vertex_sm;
-    VertexAttributeBinding *vab;
 
     ShaderStageCreateInfoList shader_stage_list;
 
@@ -56,15 +54,13 @@ public:
 
     const   UTF8String &                        GetName                 ()const{return data->name;}
 
-    const   VertexShaderModule *                GetVertexShaderModule   ()const{return data->vertex_sm;}
+            VertexShaderModule *                GetVertexShaderModule   ()     {return data->vertex_sm;}
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return data->shader_stage_list;}
 
     const   MaterialDescriptorSets *            GetDescriptorSets       ()const{return data->mds;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
     const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return data->pipeline_layout_data;}
-  
-    const   VertexAttributeBinding *            GetVAB                  ()const{return data->vab;}
 
 public:
 
