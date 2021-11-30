@@ -195,6 +195,19 @@ DeviceRenderPassManage::DeviceRenderPassManage(VkDevice dev,VkPipelineCache pc)
 DeviceRenderPassManage::~DeviceRenderPassManage()
 {
     SAFE_CLEAR(hash);
+    
+    const int count=RenderPassList.GetCount();
+
+    auto *obj=RenderPassList.GetDataList();
+
+    for(int i=0;i<count;i++)
+    {
+        delete (*obj)->right;
+
+        ++obj;        
+    }
+
+    RenderPassList.Clear();
 }
 
 namespace
