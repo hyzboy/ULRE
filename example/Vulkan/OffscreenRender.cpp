@@ -39,7 +39,7 @@ class TestApp:public CameraAppFramework
             return(true);
         }
     }os;
-    
+
     struct:public RenderObject
     {
         Sampler *           sampler             =nullptr;
@@ -48,7 +48,7 @@ class TestApp:public CameraAppFramework
         RenderableInstance *renderable_instance =nullptr;
 
         SceneNode           scene_root;
-        RenderList          *render_list        =nullptr;
+        RenderList *        render_list         =nullptr;
     }cube;
 
 public:
@@ -56,7 +56,6 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(cube.render_list);
-        SAFE_CLEAR(os.pipeline);
         SAFE_CLEAR(os.render_taget);
     }
 

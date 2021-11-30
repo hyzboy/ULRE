@@ -51,10 +51,10 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 
 GPUDevice::~GPUDevice()
 {
+    ClearRenderPassManage();
+
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
-
-    ClearRenderPassManage();
 
     SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
