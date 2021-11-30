@@ -204,7 +204,7 @@ DeviceRenderPassManage::~DeviceRenderPassManage()
     {
         delete (*obj)->right;
 
-        ++obj;        
+        ++obj;
     }
 
     RenderPassList.Clear();
