@@ -215,8 +215,8 @@ private:
         render_obj=db->CreateRenderable(tile_count);
         if(!render_obj)return(false);
 
-        render_obj->Set(VAN::Position,db->CreateVBO(VF_VEC4,tile_count,vertex_data));
-        render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_VEC4,tile_count,tex_coord_data));
+        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,vertex_data));
+        render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,tile_count,tex_coord_data));
 
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 

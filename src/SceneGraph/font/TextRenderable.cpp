@@ -35,7 +35,7 @@ namespace hgl
                 if(vbo_position)
                     delete vbo_position;
 
-                vbo_position    =device->CreateVBO(PF_RGBA16I,max_count);
+                vbo_position    =device->CreateVBO(VF_V4I16,max_count);
                 Set(VAN::Position,vbo_position);
             }
 
@@ -43,7 +43,7 @@ namespace hgl
                 if(vbo_tex_coord)
                     delete vbo_tex_coord;
 
-                vbo_tex_coord   =device->CreateVBO(VF_VEC4,max_count);
+                vbo_tex_coord   =device->CreateVBO(VF_V4F,max_count);
                 Set(VAN::TexCoord,vbo_tex_coord);
             }
         }

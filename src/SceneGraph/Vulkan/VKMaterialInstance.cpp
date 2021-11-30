@@ -17,12 +17,6 @@ MaterialInstance *GPUDevice::CreateMI(Material *mtl,const VABConfigInfo *vab_cfg
 
     MaterialParameters *mp=CreateMP(mtl,DescriptorSetsType::Value);
 
-    if(!mp)
-    {
-        delete vab;
-        return nullptr;
-    }
-
     return(new MaterialInstance(mtl,vab,mp));
 }
 

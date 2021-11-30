@@ -38,9 +38,14 @@ namespace hgl
             if(ssb_map.Get(name,ssb))
                 return ssb->data;
 
+            VAD *vad=hgl::graph::CreateVertexAttribData(vertices_number,va->format,va->vec_size,va->stride);
+
+            if(!vad)
+                return(nullptr);
+
             ssb=new ShaderStageBind;
 
-            ssb->data   =hgl::graph::CreateVertexAttribData(vertices_number,va->format,va->vec_size,va->stride);
+            ssb->data   =vad;
             ssb->name   =name;
             ssb->binding=va->binding;
             
@@ -49,7 +54,6 @@ namespace hgl
             ssb_map.Add(name,ssb);
 
             return ssb->data;
-
         }
 
         bool RenderableCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)

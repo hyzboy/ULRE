@@ -56,6 +56,7 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(cube.render_list);
+        SAFE_CLEAR(os.pipeline);
         SAFE_CLEAR(os.render_taget);
     }
 
@@ -114,7 +115,7 @@ public:
             cci.center_color=Vector4f(1,1,1,1);
             cci.border_color=Vector4f(1,1,1,0);
 
-            Renderable *render_obj=CreateRenderableCircle(db,os.material_instance->GetMaterial(),&cci);
+            Renderable *render_obj=CreateRenderableCircle(db,os.material_instance->GetVAB(),&cci);
             if(!render_obj)return(false);
 
             os.renderable_instance=db->CreateRenderableInstance(render_obj,os.material_instance,os.pipeline);
@@ -156,7 +157,7 @@ public:
         {
             CubeCreateInfo cci;
 
-            Renderable *render_obj=CreateRenderableCube(db,cube.material_instance->GetMaterial(),&cci);
+            Renderable *render_obj=CreateRenderableCube(db,cube.material_instance->GetVAB(),&cci);
             if(!render_obj)return(false);
 
             cube.renderable_instance=db->CreateRenderableInstance(render_obj,cube.material_instance,cube.pipeline);

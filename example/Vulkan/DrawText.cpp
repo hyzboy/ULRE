@@ -27,6 +27,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     Sampler *           sampler             =nullptr;
+    Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
     GPUBuffer *         ubo_camera_info     =nullptr;
     GPUBuffer *         ubo_color           =nullptr;
@@ -56,8 +57,21 @@ private:
 
     bool InitMaterial()
     {
-        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/LumTextureRect2D"));
-        if(!material_instance)return(false);
+        material=db->CreateMaterial(OS_TEXT("res/material/LumTextureRect2D"));
+
+        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
+        {
+            VABConfigInfo vab_config;
+            VAConfig va_cfg;
+
+            va_cfg.format=VF_V4I16;
+            va_cfg.instance=false;
+
+            vab_config.Add("Position",va_cfg);
+
+            material_instance=db->CreateMaterialInstance(material,&vab_config);
+            if(!material_instance)return(false);
+        }
 
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
         if(!pipeline)return(false);

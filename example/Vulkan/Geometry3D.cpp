@@ -85,16 +85,18 @@ private:
         pgci.color.Set(0.5,0,0,1);
         pgci.side_color.Set(1,0,0,1);
 
-        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,material,&pgci);
+        const VAB *vab=material_instance->GetVAB();
+
+        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,vab,&pgci);
 
         pgci.color.Set(0,0.5,0,1);
         pgci.side_color.Set(0,1,0,1);
 
-        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,material,&pgci);
+        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,vab,&pgci);
 
         pgci.color.Set(0,0,0.5,1);
         pgci.side_color.Set(0,0,1,1);
-        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,material,&pgci);
+        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,vab,&pgci);
 
         camera->pos=Vector4f(200,200,200,1.0);
     }

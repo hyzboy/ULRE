@@ -90,8 +90,8 @@ public: //Material
     const ShaderModule *CreateShaderModule(const OSString &filename,ShaderResource *shader_resource);
     
     Material *          CreateMaterial(const OSString &);
-    MaterialInstance *  CreateMaterialInstance(Material *);
-    MaterialInstance *  CreateMaterialInstance(const OSString &);
+    MaterialInstance *  CreateMaterialInstance(Material *,const VABConfigInfo *vab_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(const OSString &,const VABConfigInfo *vab_cfg=nullptr);
 
     Renderable *        CreateRenderable(const uint32_t vertex_count=0);
     TextRenderable *    CreateTextRenderable(Material *);

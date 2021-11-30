@@ -117,8 +117,8 @@ class Pipeline;
 
 struct VAConfig
 {
-    VkFormat format;
-    bool instance;
+    VkFormat format=PF_UNDEFINED;
+    bool instance=false;
 
 public:
 

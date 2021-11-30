@@ -42,13 +42,9 @@ VK_NAMESPACE_BEGIN
                 ss->type.basetype   =(VertexAttribBaseType)*data++;
                 ss->type.vec_size   =*data++;
 
-//                ss->format          =VK_NAMESPACE::GetVulkanFormat(&(ss->type));
-
                 str_len=*data++;
                 ss->name.SetString((char *)data,str_len);
                 data+=str_len;
-
-                ss->binding=i;
 
                 ss_list.Add(ss);
             }

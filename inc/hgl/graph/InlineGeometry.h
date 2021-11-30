@@ -18,12 +18,12 @@ namespace hgl
             RectScope2f scope;
         };//struct RectangleCreateInfo
 
-        Renderable *CreateRenderableRectangle(RenderResource *db,Material *mtl,const RectangleCreateInfo *rci);
+        Renderable *CreateRenderableRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci);
 
         /**
          * 创建延迟渲染用全屏平面
          */
-        Renderable *CreateRenderableGBufferComposition(RenderResource *db,Material *mtl);
+        Renderable *CreateRenderableGBufferComposition(RenderResource *db,const VAB *vab);
 
         /**
          * 圆角矩形创建信息(扇形/线圈)
@@ -34,7 +34,7 @@ namespace hgl
             uint32_t round_per;     ///<圆角精度
         };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
 
-        Renderable *CreateRenderableRoundRectangle(RenderResource *db,Material *mtl,const RoundRectangleCreateInfo *rci);
+        Renderable *CreateRenderableRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci);
 
         /**
          * 圆形创建信息
@@ -54,7 +54,7 @@ namespace hgl
         /**
          * 创建一个2D圆形(扇形/线圈)
          */
-        Renderable *CreateRenderableCircle(RenderResource *db,Material *mtl,const CircleCreateInfo *cci);
+        Renderable *CreateRenderableCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci);
 
         /**
          * 平面网格创建信息
@@ -73,7 +73,7 @@ namespace hgl
         /**
          * 创建一个平面网格(线条)
          */
-        Renderable *CreateRenderablePlaneGrid(RenderResource *db,Material *mtl,const PlaneGridCreateInfo *pgci);
+        Renderable *CreateRenderablePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci);
 
         struct PlaneCreateInfo
         {
@@ -91,7 +91,7 @@ namespace hgl
         /**
          * 创建一个平面(三角形)
          */
-        Renderable *CreateRenderablePlane(RenderResource *db,Material *mtl,const PlaneCreateInfo *pci);
+        Renderable *CreateRenderablePlane(RenderResource *db,const VAB *vab,const PlaneCreateInfo *pci);
 
         struct CubeCreateInfo
         {
@@ -131,17 +131,17 @@ namespace hgl
         /**
          * 创建一个立方体(三角形)
          */
-        Renderable *CreateRenderableCube(RenderResource *db,Material *mtl,const CubeCreateInfo *cci);
+        Renderable *CreateRenderableCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
 
         /**
          *  创建一个绑定盒(线条)
          */
-        Renderable *CreateRenderableBoundingBox(RenderResource *db,Material *mtl,const CubeCreateInfo *cci);
+        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
 
         /**
          * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
          */
-        Renderable *CreateRenderableSphere(RenderResource *db,Material *mtl,const uint numberSlices);
+        Renderable *CreateRenderableSphere(RenderResource *db,const VAB *vab,const uint numberSlices);
 
         struct DomeCreateInfo
         {
@@ -152,7 +152,7 @@ namespace hgl
         /**
          * 创建一个穹顶(三角形)
          */
-        Renderable *CreateRenderableDome(RenderResource *db,Material *mtl, const DomeCreateInfo *);
+        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab, const DomeCreateInfo *);
 
         struct TorusCreateInfo
         {
@@ -168,7 +168,7 @@ namespace hgl
         /**
          * 创建一个圆环(三角形)
          */
-        Renderable *CreateRenderableTorus(RenderResource *db,Material *mtl,const TorusCreateInfo *tci);
+        Renderable *CreateRenderableTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci);
 
         struct CylinderCreateInfo
         {
@@ -180,7 +180,7 @@ namespace hgl
         /**
          * 创建一个圆柱(三角形)
          */
-        Renderable *CreateRenderableCylinder(RenderResource *db,Material *mtl,const CylinderCreateInfo *cci);
+        Renderable *CreateRenderableCylinder(RenderResource *db,const VAB *vab,const CylinderCreateInfo *cci);
 
         struct ConeCreateInfo
         {
@@ -193,7 +193,7 @@ namespace hgl
         /**
          * 创建一个圆锥(三角形)
          */
-        Renderable *CreateRenderableCone(RenderResource *db,Material *mtl,const ConeCreateInfo *cci);
+        Renderable *CreateRenderableCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci);
 
         struct AxisCreateInfo
         {
@@ -214,7 +214,7 @@ namespace hgl
         /**
          * 创建一个坐标线(线条)
          */
-        Renderable *CreateRenderableAxis(RenderResource *db,Material *mtl,const AxisCreateInfo *aci);
+        Renderable *CreateRenderableAxis(RenderResource *db,const VAB *vab,const AxisCreateInfo *aci);
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE

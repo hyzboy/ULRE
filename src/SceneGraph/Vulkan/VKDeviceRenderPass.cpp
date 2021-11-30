@@ -15,7 +15,6 @@ void GPUDevice::InitRenderPassManage()
 
 void GPUDevice::ClearRenderPassManage()
 {
-    SAFE_CLEAR(device_render_pass);
     SAFE_CLEAR(render_pass_manage);
 }
 

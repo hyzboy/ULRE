@@ -52,8 +52,8 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(MaterialInstance *,      PipelineData *);
-    Pipeline *CreatePipeline(MaterialInstance *,const InlinePipeline &);
+    Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *);
+    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &);
 
 public:
 

@@ -171,18 +171,18 @@ private:
 
     bool InitGBufferPipeline(SubpassParam *sp)
     {
-        sp->pipeline_triangles  =gbuffer.rp->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Triangles);
+        sp->pipeline_triangles  =gbuffer.rp->CreatePipeline(sp->material_instance,InlinePipeline::Solid3D,Prim::Triangles);
         if(!sp->pipeline_triangles)
             return(false);
 
-        sp->pipeline_fan        =gbuffer.rp->CreatePipeline(sp->material,InlinePipeline::Solid3D,Prim::Fan);
+        sp->pipeline_fan        =gbuffer.rp->CreatePipeline(sp->material_instance,InlinePipeline::Solid3D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
 
     bool InitCompositionPipeline(SubpassParam *sp)
     {
-        sp->pipeline_fan=device_render_pass->CreatePipeline(sp->material,InlinePipeline::Solid2D,Prim::Fan);
+        sp->pipeline_fan=device_render_pass->CreatePipeline(sp->material_instance,InlinePipeline::Solid2D,Prim::Fan);
 
         return sp->pipeline_fan;
     }
@@ -287,20 +287,20 @@ private:
         return(true);
     }
 
-    void CreateRenderObject(Material *mtl)
+    void CreateRenderObject(const VAB *vab)
     {
         {
             struct PlaneCreateInfo pci;
-            ro_plane=CreateRenderablePlane(db,mtl,&pci);
+            ro_plane=CreateRenderablePlane(db,vab,&pci);
         }
 
         {
             struct CubeCreateInfo cci;            
-            ro_cube=CreateRenderableCube(db,mtl,&cci);
+            ro_cube=CreateRenderableCube(db,vab,&cci);
         }
 
         {        
-            ro_sphere=CreateRenderableSphere(db,mtl,64);
+            ro_sphere=CreateRenderableSphere(db,vab,64);
         }
 
         {
@@ -315,7 +315,7 @@ private:
             tci.uv_scale.x=4;
             tci.uv_scale.y=1;
 
-            ro_torus=CreateRenderableTorus(db,mtl,&tci);
+            ro_torus=CreateRenderableTorus(db,vab,&tci);
         }
 
         {
@@ -325,7 +325,7 @@ private:
             cci.radius=10;
             cci.numberSlices=32;
 
-            ro_cylinder=CreateRenderableCylinder(db,mtl,&cci);
+            ro_cylinder=CreateRenderableCylinder(db,vab,&cci);
         }
 
         {
@@ -336,13 +336,13 @@ private:
             cci.numberSlices=128;
             cci.numberStacks=32;
 
-            ro_cone=CreateRenderableCone(db,mtl,&cci);
+            ro_cone=CreateRenderableCone(db,vab,&cci);
         }
     }
 
     bool InitCompositionRenderable()
     {
-        ro_gbc_plane=CreateRenderableGBufferComposition(db,sp_composition.material);
+        ro_gbc_plane=CreateRenderableGBufferComposition(db,sp_composition.material_instance->GetVAB());
         if(!ro_gbc_plane)return(false);
 
         ro_gbc_plane_ri=db->CreateRenderableInstance(ro_gbc_plane,sp_composition.material_instance,sp_composition.pipeline_fan);
@@ -353,7 +353,7 @@ private:
 
     bool InitScene(SubpassParam *sp)
     {
-        CreateRenderObject(sp->material);
+        CreateRenderObject(sp->material_instance->GetVAB());
         render_root.CreateSubNode(                      scale(100,100,1),   db->CreateRenderableInstance(ro_plane      ,sp->material_instance,sp->pipeline_fan      ));
         render_root.CreateSubNode(                                          db->CreateRenderableInstance(ro_torus      ,sp->material_instance,sp->pipeline_triangles));
         render_root.CreateSubNode(                      scale(20,20,20),    db->CreateRenderableInstance(ro_sphere     ,sp->material_instance,sp->pipeline_triangles));

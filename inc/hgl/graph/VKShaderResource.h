@@ -15,8 +15,6 @@ struct ShaderStage
 
     VertexAttribType    type;       ///<成份数量(如vec4中的4)
 
-    uint                binding;
-
     bool                global;     ///<是否全局数据
     bool                dynamic;    ///<是否动态数量
 };//struct ShaderStage

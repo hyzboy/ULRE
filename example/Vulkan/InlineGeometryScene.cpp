@@ -85,7 +85,7 @@ private:
             axis_mi=db->CreateMaterialInstance(axis_material);
             if(!axis_mi)return(false);
 
-            axis_pipeline=CreatePipeline(axis_material,InlinePipeline::Solid3D,Prim::Lines);
+            axis_pipeline=CreatePipeline(axis_mi,InlinePipeline::Solid3D,Prim::Lines);
             if(!axis_pipeline)return(false);
         }
         
@@ -143,7 +143,7 @@ private:
         pipeline_data=GetPipelineData(InlinePipeline::Solid3D);
         if(!pipeline_data)return(false);
 
-        pipeline_solid=CreatePipeline(material,pipeline_data,Prim::Triangles);
+        pipeline_solid=CreatePipeline(material_instance,pipeline_data,Prim::Triangles);
         if(!pipeline_solid)return(false);
 
         return(true);
@@ -156,18 +156,20 @@ private:
 
             aci.size=200;
 
-            ro_axis=CreateRenderableAxis(db,axis_material,&aci);
+            ro_axis=CreateRenderableAxis(db,axis_mi->GetVAB(),&aci);
         }
+
+        const VAB *vab=material_instance->GetVAB();
         
         {
             struct CubeCreateInfo cci;
             cci.has_color=true;
             cci.color=Vector4f(1,1,1,1);
-            ro_cube=CreateRenderableCube(db,material,&cci);
+            ro_cube=CreateRenderableCube(db,vab,&cci);
         }
         
         {
-            ro_sphere=CreateRenderableSphere(db,material,64);
+            ro_sphere=CreateRenderableSphere(db,vab,64);
         }
 
         {
@@ -182,7 +184,7 @@ private:
             tci.uv_scale.x=4;
             tci.uv_scale.y=1;
 
-            ro_torus=CreateRenderableTorus(db,material,&tci);
+            ro_torus=CreateRenderableTorus(db,vab,&tci);
         }
 
         {
@@ -192,7 +194,7 @@ private:
             cci.radius=10;
             cci.numberSlices=32;
 
-            ro_cylinder=CreateRenderableCylinder(db,material,&cci);
+            ro_cylinder=CreateRenderableCylinder(db,vab,&cci);
         }
 
         {
@@ -203,7 +205,7 @@ private:
             cci.numberSlices=128;
             cci.numberStacks=32;
 
-            ro_cone=CreateRenderableCone(db,material,&cci);
+            ro_cone=CreateRenderableCone(db,vab,&cci);
         }
     }
 

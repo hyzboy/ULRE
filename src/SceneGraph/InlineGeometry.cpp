@@ -12,9 +12,9 @@ namespace hgl
 {
     namespace graph
     {
-        Renderable *CreateRenderableRectangle(RenderResource *db,Material *mtl,const RectangleCreateInfo *rci)
+        Renderable *CreateRenderableRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(4))
                 return(nullptr);
@@ -29,18 +29,18 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableGBufferComposition(RenderResource *db,Material *mtl)
+        Renderable *CreateRenderableGBufferComposition(RenderResource *db,const VAB *vab)
         {
             RectangleCreateInfo rci;
 
             rci.scope.Set(-1,-1,2,2);
 
-            return CreateRenderableRectangle(db,mtl,&rci);
+            return CreateRenderableRectangle(db,vab,&rci);
         }
 
-        Renderable *CreateRenderableRoundRectangle(RenderResource *db,Material *mtl,const RoundRectangleCreateInfo *rci)
+        Renderable *CreateRenderableRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
             {
@@ -112,9 +112,9 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableCircle(RenderResource *db,Material *mtl,const CircleCreateInfo *cci)
+        Renderable *CreateRenderableCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint edge;
 
@@ -160,9 +160,9 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderablePlaneGrid(RenderResource *db,Material *mtl,const PlaneGridCreateInfo *pgci)
+        Renderable *CreateRenderablePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(((pgci->step.x+1)+(pgci->step.y+1))*2))
                 return(nullptr);
@@ -207,14 +207,14 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderablePlane(RenderResource *db,Material *mtl,const PlaneCreateInfo *pci)
+        Renderable *CreateRenderablePlane(RenderResource *db,const VAB *vab,const PlaneCreateInfo *pci)
         {
             const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                     float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
             const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
             const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(4))
                 return(nullptr);
@@ -248,7 +248,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableCube(RenderResource *db,Material *mtl,const CubeCreateInfo *cci)
+        Renderable *CreateRenderableCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci)
         {                              // Points of a cube.
             /*     4            5 */    constexpr float points[]={  -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    -0.5f, +0.5f, +0.5f,
             /*     *------------* */                                +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f,    -0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,
@@ -271,7 +271,7 @@ namespace hgl
                                             1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
                                             0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f };
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(24))
                 return(nullptr);
@@ -426,9 +426,9 @@ namespace hgl
         * @param numberSlices 切片数
         * @return 可渲染数据
         */
-        Renderable *CreateRenderableSphere(RenderResource *db,Material *mtl,const uint numberSlices)
+        Renderable *CreateRenderableSphere(RenderResource *db,const VAB *vab,const uint numberSlices)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint numberParallels = (numberSlices+1) / 2;
             uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
@@ -502,9 +502,9 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableDome(RenderResource *db,Material *mtl,const DomeCreateInfo *dci)
+        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab,const DomeCreateInfo *dci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint i, j;
 
@@ -621,9 +621,9 @@ namespace hgl
             }
         }//namespace
 
-        Renderable *CreateRenderableTorus(RenderResource *db,Material *mtl,const TorusCreateInfo *tci)
+        Renderable *CreateRenderableTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             // s, t = parametric values of the equations, in the range [0,1]
             float s = 0;
@@ -777,14 +777,14 @@ namespace hgl
             }
         }//namespace
 
-        Renderable *CreateRenderableCylinder(RenderResource *db,Material *mtl,const CylinderCreateInfo *cci)
+        Renderable *CreateRenderableCylinder(RenderResource *db,const VAB *vab,const CylinderCreateInfo *cci)
         {
             uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
             if(numberIndices<=0)
                 return(nullptr);
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
@@ -996,9 +996,9 @@ namespace hgl
             }
         }//namespace
 
-        Renderable *CreateRenderableCone(RenderResource *db,Material *mtl,const ConeCreateInfo *cci)
+        Renderable *CreateRenderableCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint i, j;
 
@@ -1123,11 +1123,11 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableAxis(RenderResource *db,Material *mtl,const AxisCreateInfo *aci)
+        Renderable *CreateRenderableAxis(RenderResource *db,const VAB *vab,const AxisCreateInfo *aci)
         {
-            if(!db||!mtl||!aci)return(nullptr);
+            if(!db||!vab||!aci)return(nullptr);
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(6))
                 return(nullptr);
@@ -1150,7 +1150,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableBoundingBox(RenderResource *db,Material *mtl,const CubeCreateInfo *cci)
+        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci)
         {
             // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
@@ -1172,7 +1172,7 @@ namespace hgl
                 0,4,    1,5,    2,6,    3,7
             };
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(8))
                 return(nullptr);

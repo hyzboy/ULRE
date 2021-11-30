@@ -7,8 +7,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
@@ -78,7 +78,7 @@ private:
         auto render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_VEC2,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,vertex_data)))return(false);
 
         renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
         return(true);
@@ -107,6 +107,8 @@ public:
 
     void Resize(int w,int h)override
     {
+        cam.width=w;
+        cam.height=h;
         cam.vp_width=w;
         cam.vp_height=h;
 
