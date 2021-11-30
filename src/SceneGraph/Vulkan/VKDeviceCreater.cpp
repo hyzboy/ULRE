@@ -48,8 +48,8 @@ namespace
         #define FEATURE_COPY(name)  features->name=pdf.name;
 
         FEATURE_COPY(geometryShader);
-        FEATURE_COPY(multiDrawIndirect);
-        FEATURE_COPY(imageCubeArray);
+//        FEATURE_COPY(multiDrawIndirect);
+//        FEATURE_COPY(imageCubeArray);
         FEATURE_COPY(samplerAnisotropy);
 
         #undef FEATURE_COPY
@@ -60,12 +60,12 @@ namespace
         float queue_priorities[1]={0.0};
 
         VkDeviceQueueCreateInfo queue_info;
-        queue_info.sType=VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_info.pNext=nullptr;
-        queue_info.queueFamilyIndex=graphics_family;
-        queue_info.queueCount=1;
-        queue_info.pQueuePriorities=queue_priorities;
-        queue_info.flags=0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
+        queue_info.sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queue_info.pNext            =nullptr;
+        queue_info.queueFamilyIndex =graphics_family;
+        queue_info.queueCount       =1;
+        queue_info.pQueuePriorities =queue_priorities;
+        queue_info.flags            =0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
 
         VkDeviceCreateInfo create_info={};
         CharPointerList ext_list;
@@ -74,15 +74,15 @@ namespace
         SetDeviceExtension(&ext_list,physical_device);
         SetDeviceFeatures(&features,physical_device->GetFeatures());
 
-        create_info.sType=VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.pNext=nullptr;
-        create_info.queueCreateInfoCount=1;
-        create_info.pQueueCreateInfos=&queue_info;
-        create_info.enabledExtensionCount=ext_list.GetCount();
-        create_info.ppEnabledExtensionNames=ext_list.GetData();
-        create_info.enabledLayerCount=0;
-        create_info.ppEnabledLayerNames=nullptr;
-        create_info.pEnabledFeatures=&features;
+        create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        create_info.pNext                   =nullptr;
+        create_info.queueCreateInfoCount    =1;
+        create_info.pQueueCreateInfos       =&queue_info;
+        create_info.enabledExtensionCount   =ext_list.GetCount();
+        create_info.ppEnabledExtensionNames =ext_list.GetData();
+        create_info.enabledLayerCount       =0;
+        create_info.ppEnabledLayerNames     =nullptr;
+        create_info.pEnabledFeatures        =&features;
 
         VkDevice device;
 
@@ -106,10 +106,10 @@ namespace
     {
         VkCommandPoolCreateInfo cmd_pool_info={};
 
-        cmd_pool_info.sType=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmd_pool_info.pNext=nullptr;
-        cmd_pool_info.queueFamilyIndex=graphics_family;
-        cmd_pool_info.flags=VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        cmd_pool_info.sType             =VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cmd_pool_info.pNext             =nullptr;
+        cmd_pool_info.queueFamilyIndex  =graphics_family;
+        cmd_pool_info.flags             =VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
         VkCommandPool cmd_pool;
 
