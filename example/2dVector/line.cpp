@@ -35,9 +35,9 @@ private:
 
     Camera cam;
 
-    MaterialParameters *  material_instance   =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *         ubo_camera_info    =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
     GPUBuffer *         ubo_color_material  =nullptr;
     GPUBuffer *         ubo_line_config     =nullptr;
 
@@ -69,13 +69,6 @@ private:
         if(!ubo)
             return(nullptr);
 
-        if(!material_instance->BindUBO(name,ubo))
-        {
-            std::cerr<<"Bind UBO<"<<name.c_str()<<"> to material failed!"<<std::endl;
-            SAFE_CLEAR(ubo);
-            return(nullptr);
-        }
-
         return ubo;
     }
 
@@ -87,12 +80,34 @@ private:
         cam.height=extent.height;
 
         cam.Refresh();
-        
-        ubo_camera_info    =CreateUBO("camera",         sizeof(CameraInfo),    &cam.info);
-        ubo_color_material  =CreateUBO("color_material",sizeof(Vector4f),       &color);
-        ubo_line_config     =CreateUBO("line2d_config", sizeof(Line2DConfig),   &line_2d_config);
 
-        material_instance->Update();
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
+        
+            ubo_camera_info     =db->CreateUBO(sizeof(CameraInfo),     &cam.info);
+
+            mp_global->BindUBO("g_camera",ubo_camera_info);
+            mp_global->Update();
+        }
+
+        {
+        
+            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp_value)
+                return(false);
+
+            ubo_color_material  =db->CreateUBO(sizeof(Vector4f),       &color);
+            ubo_line_config     =db->CreateUBO(sizeof(Line2DConfig),   &line_2d_config);
+
+            mp_value->BindUBO("color_material",ubo_color_material);
+            mp_value->BindUBO("line2d_config",ubo_line_config);
+            mp_value->Update();
+        }
+
         return(true);
     }
     

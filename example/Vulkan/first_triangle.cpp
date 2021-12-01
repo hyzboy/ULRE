@@ -56,8 +56,6 @@ private:
 
     bool InitUBO()
     {
-        MVPMatrix *mvp=new MVPMatrix;
-
         const VkExtent2D extent=sc_render_target->GetExtent();
 
         cam.width=extent.width;
