@@ -50,3 +50,4 @@ CreateProject(15.OffscreenRender OffscreenRender.cpp)
 CreateProject(16.DeferredRenderMultiCmdBuffer DeferredRenderMultiCmdBuffer.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
 
+CreateProject(17.Cubemap Cubemap.cpp)
