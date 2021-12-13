@@ -6,6 +6,32 @@ namespace hgl
 {
     namespace graph
     {
+        namespace
+        {
+            constexpr VkFormat CompressFormatList[]=
+            {
+                PF_BC1_RGBUN,
+                PF_BC1_RGBAUN,
+                PF_BC2UN,
+                PF_BC3UN,
+                PF_BC4UN,
+                PF_BC5UN,
+                PF_BC6UF,
+                PF_BC6SF,
+                PF_BC7UN
+            };
+
+            constexpr uint32 CompressFormatBits[]={4,4,8,8,4,8,8,8,8};
+
+            constexpr uint32 CompressFormatCount=sizeof(CompressFormatList)/sizeof(VkFormat);
+        }
+
+        const uint TexPixelFormat::pixel_bits()const
+        {
+            return channels ?bits[0]+bits[1]+bits[2]+bits[3]
+                :CompressFormatBits[compress_format];
+        }
+
         const uint32 ComputeMipmapBytes(uint32 length,uint32 bytes)
         {
             uint32 total=0;
