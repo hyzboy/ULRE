@@ -9,23 +9,6 @@ namespace hgl
 {
     namespace graph
     {
-        constexpr VkFormat CompressFormatList[]=
-        {
-            PF_BC1_RGBUN,
-            PF_BC1_RGBAUN,
-            PF_BC2UN,
-            PF_BC3UN,
-            PF_BC4UN,
-            PF_BC5UN,
-            PF_BC6UF,
-            PF_BC6SF,
-            PF_BC7UN
-        };
-
-        constexpr uint32 CompressFormatBits[]={4,4,8,8,4,8,8,8,8};
-
-        constexpr uint32 CompressFormatCount=sizeof(CompressFormatList)/sizeof(VkFormat);
-
         #pragma pack(push,1)
         struct TexPixelFormat
         {
@@ -48,11 +31,7 @@ namespace hgl
 
         public:
 
-            const uint pixel_bits()const
-            {
-                return channels ?bits[0]+bits[1]+bits[2]+bits[3]
-                                :CompressFormatBits[compress_format];
-            }
+            const uint pixel_bits()const;
         };//struct TexPixelFormat
 
         constexpr uint TexPixelFormatLength=sizeof(TexPixelFormat);
@@ -104,7 +83,6 @@ namespace hgl
         protected:
 
             virtual uint32 GetPixelsCount()const=0;
-            virtual uint32 GetImageCount()const=0;                              ///<每个级别的图象数量
             virtual uint32 GetTotalBytes()const=0;                              ///<计算总字节数
 
         protected:
@@ -122,6 +100,29 @@ namespace hgl
         };//class TextureLoader
 
         /**
+         * 1D纹理加载器
+         */
+        class Texture1DLoader:public TextureLoader
+        {
+        protected:  // override functions
+
+            uint32 GetPixelsCount()const override{return file_header.length;}
+            uint32 GetTotalBytes()const override
+            {
+                if(file_header.mipmaps<=1)
+                    return mipmap_zero_total_bytes;
+                else
+                    return ComputeMipmapBytes(  file_header.length,
+                                                mipmap_zero_total_bytes);
+            }
+
+        public:
+
+            Texture1DLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_1D){}
+            virtual ~Texture1DLoader()=default;
+        };//class Texture1DLoader
+
+        /**
          * 2D纹理加载器
          */
         class Texture2DLoader:public TextureLoader
@@ -129,7 +130,6 @@ namespace hgl
         protected:  // override functions
 
             uint32 GetPixelsCount()const override{return file_header.width*file_header.height;}
-            uint32 GetImageCount()const override{return 1;}
             uint32 GetTotalBytes()const override
             {
                 if(file_header.mipmaps<=1)
@@ -145,6 +145,126 @@ namespace hgl
             Texture2DLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_2D){}
             virtual ~Texture2DLoader()=default;
         };//class Texture2DLoader
+
+        /**
+         * 3D纹理加载器
+         */
+        class Texture3DLoader:public TextureLoader
+        {
+        protected:  // override functions
+
+            uint32 GetPixelsCount()const override{return file_header.width*file_header.height*file_header.depth;}
+            uint32 GetTotalBytes()const override
+            {
+                if(file_header.mipmaps<=1)
+                    return mipmap_zero_total_bytes;
+                else
+                    return ComputeMipmapBytes(  file_header.width,
+                                                file_header.height,
+                                                file_header.depth,
+                                                mipmap_zero_total_bytes);
+            }
+
+        public:
+
+            Texture3DLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_3D){}
+            virtual ~Texture3DLoader()=default;
+        };//class Texture3DLoader
+
+        /**
+         * Cube纹理加载器
+         */
+        class TextureCubeLoader:public TextureLoader
+        {
+        protected:  // override functions
+
+            uint32 GetPixelsCount()const override{return file_header.width*file_header.height;}
+            uint32 GetTotalBytes()const override
+            {
+                if(file_header.mipmaps<=1)
+                    return mipmap_zero_total_bytes*6;
+                else
+                    return ComputeMipmapBytes(  file_header.width,
+                                                file_header.height,
+                                                mipmap_zero_total_bytes)*6;
+            }
+
+        public:
+
+            TextureCubeLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_CUBE){}
+            virtual ~TextureCubeLoader()=default;
+        };//class TextureCubeLoader
+
+        /**
+         * 1D纹理阵列加载器
+         */
+        class Texture1DArrayLoader:public TextureLoader
+        {
+        protected:  // override functions
+
+            uint32 GetPixelsCount()const override{return file_header.length;}
+            uint32 GetTotalBytes()const override
+            {
+                if(file_header.mipmaps<=1)
+                    return mipmap_zero_total_bytes*file_header.layers;
+                else
+                    return ComputeMipmapBytes(  file_header.length,
+                                                mipmap_zero_total_bytes)*file_header.layers;;
+            }
+
+        public:
+
+            Texture1DArrayLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_1D_ARRAY){}
+            virtual ~Texture1DArrayLoader()=default;
+        };//class Texture1DArrayLoader
+
+        /**
+         * 2D纹理阵列加载器
+         */
+        class Texture2DArrayLoader:public TextureLoader
+        {
+        protected:  // override functions
+
+            uint32 GetPixelsCount()const override{return file_header.width*file_header.height;}
+            uint32 GetTotalBytes()const override
+            {
+                if(file_header.mipmaps<=1)
+                    return mipmap_zero_total_bytes*file_header.layers;
+                else
+                    return ComputeMipmapBytes(  file_header.width,
+                                                file_header.height,
+                                                mipmap_zero_total_bytes)*file_header.layers;
+            }
+
+        public:
+
+            Texture2DArrayLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_2D_ARRAY){}
+            virtual ~Texture2DArrayLoader()=default;
+        };//class Texture2DArrayLoader
+
+        /**
+         * Cube纹理阵列加载器
+         */
+        class TextureCubeArrayLoader:public TextureLoader
+        {
+        protected:  // override functions
+
+            uint32 GetPixelsCount()const override{return file_header.width*file_header.height;}
+            uint32 GetTotalBytes()const override
+            {
+                if(file_header.mipmaps<=1)
+                    return mipmap_zero_total_bytes*6*file_header.layers;
+                else
+                    return ComputeMipmapBytes(  file_header.width,
+                                                file_header.height,
+                                                mipmap_zero_total_bytes)*6*file_header.layers;
+            }
+
+        public:
+
+            TextureCubeArrayLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_CUBE_ARRAY){}
+            virtual ~TextureCubeArrayLoader()=default;
+        };//class TextureCubeArrayLoader
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXTURE_LOADER_INCLUDE
