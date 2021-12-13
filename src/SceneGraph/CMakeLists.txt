@@ -1,7 +1,9 @@
 ﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
 SET(SG_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/TextureLoader.h
-                        Texture2DLoader.cpp)
+                        ${SG_INCLUDE_PATH}/Bitmap2DLoader.h
+                        TextureLoader.cpp
+                        Bitmap2DLoader.cpp)
 
 SOURCE_GROUP("Texture" FILES ${SG_TEXTURE_SOURCE})
 

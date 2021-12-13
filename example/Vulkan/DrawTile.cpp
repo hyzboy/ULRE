@@ -2,7 +2,7 @@
 // 该示例使用TileData，演示多个tile图片在一张纹理上
 
 #include<hgl/type/StringList.h>
-#include<hgl/graph/TextureLoader.h>
+#include<hgl/graph/Bitmap2DLoader.h>
 #include<hgl/graph/TileData.h>
 
 #include"VulkanAppFramework.h"
