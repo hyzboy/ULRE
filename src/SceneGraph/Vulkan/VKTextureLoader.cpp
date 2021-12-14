@@ -90,7 +90,7 @@ namespace
     };//class VkTexture2DLoader
 }//namespace
 
-Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps)
+Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps)
 {
     VkTexture2DLoader loader(device,auto_mipmaps);
 
