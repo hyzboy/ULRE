@@ -45,7 +45,7 @@ namespace hgl
             union
             {
                 uint32 length;              ///<长(1D纹理用)
-                uint32 width;               ///<宽(2D/Cube纹理用)
+                uint32 width;               ///<宽(2D/3D/Cube纹理用)
             };
 
             uint32 height;                  ///<高(2D/3D/Cube纹理用)
