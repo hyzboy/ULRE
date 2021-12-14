@@ -56,7 +56,7 @@ namespace
         }
     };//
 
-    void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,const int32_t width,const int32_t height,const uint32_t mipLevels)
+    void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels)
     {
     //VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
         // Check if image format supports linear blitting
@@ -71,8 +71,11 @@ namespace
         barrier.subresourceRange.layerCount = 1;
         barrier.subresourceRange.levelCount = 1;
 
-        int32_t mipWidth = width;
-        int32_t mipHeight = height;
+        VkImageBlit blit;
+
+        int32_t width   =extent.width;
+        int32_t height  =extent.height;
+        int32_t depth   =extent.depth;
 
         for (uint32_t i = 1; i < mipLevels; i++) 
         {
@@ -88,15 +91,19 @@ namespace
                 0, nullptr,
                 1, &barrier);
 
-            VkImageBlit blit{};
             blit.srcOffsets[0] = {0, 0, 0};
-            blit.srcOffsets[1] = {mipWidth, mipHeight, 1};
+            blit.srcOffsets[1] = {width,height,depth};
             blit.srcSubresource.aspectMask = aspect_mask;
             blit.srcSubresource.mipLevel = i - 1;
             blit.srcSubresource.baseArrayLayer = 0;
             blit.srcSubresource.layerCount = 1;
+
+            if(width >1)width >>=1;
+            if(height>1)height>>=1;
+            if(depth >1)depth >>=1;
+
             blit.dstOffsets[0] = {0, 0, 0};
-            blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+            blit.dstOffsets[1] = {width,height,depth};
             blit.dstSubresource.aspectMask = aspect_mask;
             blit.dstSubresource.mipLevel = i;
             blit.dstSubresource.baseArrayLayer = 0;
@@ -118,9 +125,6 @@ namespace
                 0, nullptr,
                 0, nullptr,
                 1, &barrier);
-
-            if (mipWidth > 1) mipWidth /= 2;
-            if (mipHeight > 1) mipHeight /= 2;
         }
 
         barrier.subresourceRange.baseMipLevel = mipLevels - 1;
@@ -223,7 +227,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
             if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
             {
                 CommitTexture2D(tex,tci->buffer,tci->extent.width,tci->extent.height,tex_data->miplevel,VK_PIPELINE_STAGE_TRANSFER_BIT);
-                GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tex->GetWidth(),tex->GetHeight(),tex_data->miplevel);              
+                GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel);              
             }
         texture_cmd_buf->End();
 
