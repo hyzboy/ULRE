@@ -129,7 +129,7 @@ Sampler *RenderResource::CreateSampler(Texture *tex)
     return s;    
 }
 
-Texture2D *CreateTextureFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
+Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
 
 Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
 {
@@ -138,7 +138,7 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
     if(texture_by_name.Get(filename,(Texture *&)tex))
         return tex;
     
-    tex=CreateTextureFromFile(device,filename,auto_mipmaps);
+    tex=CreateTexture2DFromFile(device,filename,auto_mipmaps);
 
     if(tex)
     {
