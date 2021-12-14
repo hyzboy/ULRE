@@ -5,7 +5,10 @@
 VK_NAMESPACE_BEGIN
 struct TextureCreateInfo
 {
-    VkExtent3D          extent;
+    VkImageViewType     type;
+
+    VkExtent3D          extent;         //如为arrays,depth等同于layers
+
     VkFormat            format;
     uint32_t            usage;
     uint32_t            mipmap_zero_total_bytes;
@@ -149,15 +152,14 @@ public:
         return(true);
     }
 
-    bool SetData(GPUBuffer *buf,const uint32_t w,const uint32_t h)
+    bool SetData(GPUBuffer *buf,const VkExtent3D &ext)
     {
-        if(!buf||w<=0||h<=0)return(false);
+        if(!buf)return(false);
+        if(ext.width<=0||ext.height<=0||ext.depth<=0)return(false);
 
         buffer=buf;
 
-        extent.width=w;
-        extent.height=h;
-        extent.depth=1;
+        extent=ext;
 
         return(true);
     }

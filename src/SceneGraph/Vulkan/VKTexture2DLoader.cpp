@@ -8,6 +8,10 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
+    class VkTextureLoader
+    {
+    };
+
     class VkTexture2DLoader:public Texture2DLoader
     {
     protected:
@@ -24,7 +28,6 @@ namespace
         VkTexture2DLoader(GPUDevice *dev,const bool am):device(dev)
         {
             buf=nullptr;
-            format=VK_FORMAT_UNDEFINED;
             tex=nullptr;
             auto_mipmaps=am;
         }
@@ -56,8 +59,14 @@ namespace
             buf->Unmap();
 
             TextureCreateInfo *tci=new TextureCreateInfo(format);
-            
-            tci->SetData(buf,file_header.width,file_header.height);
+
+            VkExtent3D extent;
+
+            extent.width    =file_header.width;
+            extent.height   =file_header.height;
+            extent.depth    =1;
+
+            tci->SetData(buf,extent);
 
             if(auto_mipmaps&&file_header.mipmaps<=1)
             {
