@@ -157,7 +157,7 @@ SET(VK_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/VKImageView.h
                         Vulkan/VKSampler.cpp
                         Vulkan/VKImageView.cpp
                         Vulkan/VKTexture.cpp
-                        Vulkan/VKTextureLoader.cpp)
+                        Vulkan/VKTexture2DLoader.cpp)
 
 SET(VK_MATERIAL_SOURCE  ${SG_INCLUDE_PATH}/VKMaterial.h
                         ${SG_INCLUDE_PATH}/VKMaterialParameters.h
