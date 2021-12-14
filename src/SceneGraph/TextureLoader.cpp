@@ -178,7 +178,7 @@ namespace hgl
             if(is->Read(&file_header,sizeof(TextureFileHeader))!=sizeof(TextureFileHeader))
                 return(false);
             
-            constexpr char TEXTURE_FILE_HEADER[]="Texture\x1A";
+            constexpr char TEXTURE_FILE_HEADER[]="Texture";
             constexpr uint TEXTURE_FILE_HEADER_LENGTH=sizeof(TEXTURE_FILE_HEADER)-1;
 
             if(memcmp(&file_header.id_str,TEXTURE_FILE_HEADER,TEXTURE_FILE_HEADER_LENGTH))

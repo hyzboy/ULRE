@@ -38,7 +38,7 @@ namespace hgl
 
         struct alignas(8) TextureFileHeader
         {
-            uint8 id_str[8];                ///<Texture\x1A
+            uint8 id_str[7];                ///<Texture\x1A
             uint8 version;                  ///<必须为0
             uint8 type;                     ///<贴图类型，等同于VkImageViewType
 
