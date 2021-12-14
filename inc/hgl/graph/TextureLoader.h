@@ -93,7 +93,15 @@ namespace hgl
 
         public:
 
-            TextureLoader(const VkImageViewType &ivt){type=ivt;}
+            TextureLoader(const VkImageViewType &ivt)
+            {
+                type=ivt;
+                format=VK_FORMAT_UNDEFINED;
+                mipmap_zero_total_bytes=0;
+                total_bytes=0;
+            }
+
+            virtual ~TextureLoader()=default;
 
             virtual bool Load(io::InputStream *);
                     bool Load(const OSString &filename);
