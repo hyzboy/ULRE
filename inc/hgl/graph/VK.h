@@ -33,6 +33,7 @@ class VulkanInstance;
 class GPUPhysicalDevice;
 class GPUDevice;
 struct GPUDeviceAttribute;
+class GPUQueue;
 class ImageView;
 class Framebuffer;
 struct Swapchain;

@@ -11,9 +11,11 @@ VK_NAMESPACE_BEGIN
 /**
  * 渲染目标
  */
-class RenderTarget:public GPUQueue
+class RenderTarget
 {
 protected:
+
+    GPUQueue *queue;
 
     RenderPass *render_pass;
     Framebuffer *fbo;
@@ -32,8 +34,8 @@ protected:
 
     friend class GPUDevice;
 
-    RenderTarget(GPUDevice *dev,Framebuffer *_fb,const uint32_t fence_count=1);
-    RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture,const uint32_t fence_count=1);
+    RenderTarget(GPUQueue *,GPUSemaphore *);
+    RenderTarget(GPUQueue *,GPUSemaphore *,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture);
 
 public:
 
@@ -52,6 +54,9 @@ public: // command buffer
 
             GPUSemaphore *  GetRenderCompleteSemaphore  (){return render_complete_semaphore;}
     virtual bool            Submit                      (RenderCmdBuffer *,GPUSemaphore *present_complete_semaphore=nullptr);
+
+            bool            WaitQueue(){return queue->WaitQueue();}
+            bool            WaitFence(){return queue->WaitFence();}
 };//class RenderTarget
 
 /**
@@ -59,6 +64,7 @@ public: // command buffer
  */
 class SwapchainRenderTarget:public RenderTarget
 {
+    VkDevice device;
     Swapchain *swapchain;
     VkSwapchainKHR vk_swapchain;
     PresentInfo present_info;
@@ -72,7 +78,7 @@ class SwapchainRenderTarget:public RenderTarget
 
 public:
 
-    SwapchainRenderTarget(GPUDevice *dev,Swapchain *sc);
+    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,GPUQueue *q,GPUSemaphore *rcs,GPUSemaphore *pcs,RenderPass *rp,Framebuffer **fbo_list);
     ~SwapchainRenderTarget();
 
                     Framebuffer *   GetFramebuffer  ()override                  {return render_frame[current_frame];}
