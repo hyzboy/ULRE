@@ -13,7 +13,9 @@ GPUDeviceAttribute::GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDev
     physical_device=pd;
     surface=s;
 
-    Refresh();
+    RefreshSurfaceCaps();
+    RefreshSurface();
+    RefreshQueueFamily();
 }
 
 GPUDeviceAttribute::~GPUDeviceAttribute()
@@ -42,11 +44,16 @@ bool GPUDeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags
     return physical_device->CheckMemoryType(typeBits,properties,typeIndex);
 }
 
-void GPUDeviceAttribute::Refresh()
+void GPUDeviceAttribute::RefreshSurfaceCaps()
 {
     VkPhysicalDevice pdevice = *physical_device;
 
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice, surface, &surface_caps);
+}
+
+void GPUDeviceAttribute::RefreshSurface()
+{
+    VkPhysicalDevice pdevice = *physical_device;
 
     {
         if (surface_caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
@@ -116,58 +123,61 @@ void GPUDeviceAttribute::Refresh()
                 present_modes.Clear();
         }
     }
+}
+
+void GPUDeviceAttribute::RefreshQueueFamily()
+{
+    VkPhysicalDevice pdevice = *physical_device;
+
+    uint32_t family_count;
+    vkGetPhysicalDeviceQueueFamilyProperties(pdevice, &family_count, nullptr);
+    family_properties.SetCount(family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(pdevice, &family_count, family_properties.GetData());
 
     {
-        uint32_t family_count;
-        vkGetPhysicalDeviceQueueFamilyProperties(pdevice, &family_count, nullptr);
-        family_properties.SetCount(family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(pdevice, &family_count, family_properties.GetData());
-
+        supports_present.SetCount(family_count);
+        VkBool32 *sp = supports_present.GetData();
+        for (uint32_t i = 0; i < family_count; i++)
         {
-            supports_present.SetCount(family_count);
-            VkBool32 *sp = supports_present.GetData();
-            for (uint32_t i = 0; i < family_count; i++)
-            {
-                vkGetPhysicalDeviceSurfaceSupportKHR(pdevice, i, surface, sp);
-                ++sp;
-            }
+            vkGetPhysicalDeviceSurfaceSupportKHR(pdevice, i, surface, sp);
+            ++sp;
         }
+    }
 
+    {
+        VkQueueFamilyProperties *fp = family_properties.GetData();
+        VkBool32 *sp = supports_present.GetData();
+        for (uint32_t i = 0; i < family_count; i++)
         {
-            VkQueueFamilyProperties *fp = family_properties.GetData();
-            VkBool32 *sp = supports_present.GetData();
-            for (uint32_t i = 0; i < family_count; i++)
+            if (fp->queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
-                if (fp->queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                {
-                    if (graphics_family == ERROR_FAMILY_INDEX)
-                        graphics_family = i;
+                if (graphics_family == ERROR_FAMILY_INDEX)
+                    graphics_family = i;
 
-                    if (*sp)
-                    {
-                        graphics_family = i;
-                        present_family = i;
-                        break;
-                    }
-                }
-
-                ++fp;
-                ++sp;
-            }
-        }
-
-        if (present_family == ERROR_FAMILY_INDEX)
-        {
-            VkBool32 *sp = supports_present.GetData();
-            for (uint32_t i = 0; i < family_count; i++)
-            {
                 if (*sp)
                 {
+                    graphics_family = i;
                     present_family = i;
                     break;
                 }
-                ++sp;
             }
+
+            ++fp;
+            ++sp;
+        }
+    }
+
+    if (present_family == ERROR_FAMILY_INDEX)
+    {
+        VkBool32 *sp = supports_present.GetData();
+        for (uint32_t i = 0; i < family_count; i++)
+        {
+            if (*sp)
+            {
+                present_family = i;
+                break;
+            }
+            ++sp;
         }
     }
 }
