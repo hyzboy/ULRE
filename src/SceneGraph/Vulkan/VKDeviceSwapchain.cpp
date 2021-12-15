@@ -68,46 +68,63 @@ namespace
     }
 }//namespace
 
-bool GPUDevice::CreateSwapchainColorTexture()
+bool GPUDevice::CreateSwapchainColorTexture(Swapchain *swapchain)
 {
-    if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->swap_chain_count),nullptr)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->color_count),nullptr)!=VK_SUCCESS)
         return(false);
 
-    AutoDeleteArray<VkImage> sc_images(swapchain->swap_chain_count);
+    AutoDeleteArray<VkImage> sc_images(swapchain->color_count);
 
-    if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->swap_chain_count),sc_images)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
         return(false);
 
-    for(VkImage ip:sc_images)
-        swapchain->sc_color.Add(CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->surface_format.format,swapchain->extent,ip)));
+    swapchain->sc_color=new Texture2D *[swapchain->color_count];
+
+    for(uint32_t i=0;i<swapchain->color_count;i++)
+        swapchain->sc_color[i]=CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->surface_format.format,swapchain->extent,sc_images[i]));
 
     return(true);
 }
 
-bool GPUDevice::CreateSwapchainDepthTexture()
+bool GPUDevice::CreateSwapchainDepthTexture(Swapchain *swapchain)
 {
     swapchain->sc_depth=CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
 
     return swapchain->sc_depth;
 }
 
-bool GPUDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
+void GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
 {
-    swapchain=new Swapchain;
+    swapchain->render_frame=new Framebuffer *[swapchain->color_count];
+
+    for(uint32_t i=0;i<swapchain->color_count;i++)
+    {
+        swapchain->render_frame[i]=CreateFramebuffer(   device_render_pass,
+                                                        swapchain->sc_color[i]->GetImageView(),
+                                                        swapchain->sc_depth->GetImageView());
+    }
+}
+
+Swapchain *GPUDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
+{
+    Swapchain *swapchain=new Swapchain;
 
     swapchain->device          =attr->device;
     swapchain->extent          =acquire_extent;
-    swapchain->graphics_queue  =attr->graphics_queue;
-    swapchain->swap_chain      =CreateSwapChain(attr,swapchain->extent);
+
+    swapchain->swap_chain      =CreateSwapChain(attr,acquire_extent);
 
     if(swapchain->swap_chain)
-    if(CreateSwapchainColorTexture())
-    if(CreateSwapchainDepthTexture())
-        return(true);
+    if(CreateSwapchainColorTexture(swapchain))
+    if(CreateSwapchainDepthTexture(swapchain))
+    {
+        CreateSwapchainFBO(swapchain);
+        return(swapchain);
+    }
 
     delete swapchain;
     swapchain=nullptr;
 
-    return(false);
+    return(nullptr);
 }
 VK_NAMESPACE_END

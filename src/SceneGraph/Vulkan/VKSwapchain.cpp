@@ -1,10 +1,12 @@
 #include<hgl/graph/VKSwapchain.h>
+#include<hgl/graph/VKFramebuffer.h>
 
 VK_NAMESPACE_BEGIN
 Swapchain::~Swapchain()
 {
+    SAFE_CLEAR_OBJECT_ARRAY(render_frame,color_count);
     SAFE_CLEAR(sc_depth);
-    sc_color.Clear();
+    SAFE_CLEAR_OBJECT_ARRAY(sc_color,color_count)
 
     if(swap_chain)
     {
@@ -12,6 +14,6 @@ Swapchain::~Swapchain()
         swap_chain=VK_NULL_HANDLE;
     }
 
-    swap_chain_count=0;
+    color_count=0;
 }
 VK_NAMESPACE_END

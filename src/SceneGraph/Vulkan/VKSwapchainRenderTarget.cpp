@@ -3,26 +3,21 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,GPUQueue *q,GPUSemaphore *rcs,GPUSemaphore *pcs,RenderPass *rp,Framebuffer **fbo_list):RenderTarget(q,rcs)
+SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,GPUQueue *q,GPUSemaphore *rcs,GPUSemaphore *pcs,RenderPass *rp):RenderTarget(q,rcs)
 {
     device=dev;
 
     swapchain=sc;
-    vk_swapchain=swapchain->GetSwapchain();
 
     present_info.waitSemaphoreCount = 0;
     present_info.pWaitSemaphores    = nullptr;
     present_info.swapchainCount     = 1;
     present_info.pResults           = nullptr;
-    present_info.pSwapchains        = &vk_swapchain;
+    present_info.pSwapchains        = &(swapchain->swap_chain);
 
     render_pass=rp;
-
-    swap_chain_count=swapchain->GetImageCount();
-    
-    extent=swapchain->GetExtent();
-
-    render_frame=fbo_list;
+   
+    extent=swapchain->extent;
 
     current_frame=0;
 
@@ -31,14 +26,13 @@ SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,GPUQueue
 
 SwapchainRenderTarget::~SwapchainRenderTarget()
 {
-    SAFE_CLEAR_OBJECT_ARRAY(render_frame,swap_chain_count);
-
     delete present_complete_semaphore;
+    delete swapchain;
 }
     
 int SwapchainRenderTarget::AcquireNextImage()
 {
-    if(vkAcquireNextImageKHR(device,vk_swapchain,UINT64_MAX,*(this->present_complete_semaphore),VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
+    if(vkAcquireNextImageKHR(device,swapchain->swap_chain,UINT64_MAX,*(this->present_complete_semaphore),VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
         return current_frame;
 
     return -1;

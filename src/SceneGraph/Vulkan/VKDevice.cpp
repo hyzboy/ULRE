@@ -5,7 +5,6 @@
 #include<hgl/graph/VKImageView.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>
-//#include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKDescriptorSets.h>
@@ -42,7 +41,6 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 
     InitRenderPassManage();
 
-    swapchain=nullptr;
     swapchainRT=nullptr;
     Resize(attr->surface_caps.currentExtent);
 
@@ -57,7 +55,6 @@ GPUDevice::~GPUDevice()
     ClearRenderPassManage();
 
     SAFE_CLEAR(swapchainRT);
-    SAFE_CLEAR(swapchain);
 
     SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
@@ -68,12 +65,8 @@ GPUDevice::~GPUDevice()
 bool GPUDevice::Resize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(swapchainRT);
-    SAFE_CLEAR(swapchain);
 
     attr->RefreshSurfaceCaps();
-
-    if(!CreateSwapchain(attr->surface_caps.currentExtent))
-        return(false);
 
     swapchainRT=CreateSwapchainRenderTarget();
 

@@ -59,30 +59,21 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
 
 SwapchainRenderTarget *GPUDevice::CreateSwapchainRenderTarget()
 {
-    const uint32_t count=swapchain->GetImageCount();
+    Swapchain *sc=CreateSwapchain(attr->surface_caps.currentExtent);
 
-    GPUQueue *q=CreateQueue(count,false);
+    if(!sc)
+        return(false);
+
+    GPUQueue *q=CreateQueue(sc->color_count,false);
     GPUSemaphore *render_complete_semaphore=CreateGPUSemaphore();
     GPUSemaphore *present_complete_semaphore=CreateGPUSemaphore();
 
-    Texture2D **sc_color=swapchain->GetColorTextures();
-    Texture2D *sc_depth=swapchain->GetDepthTexture();
-
-    Framebuffer **render_frame=new Framebuffer *[count];
-
-    for(uint32_t i=0;i<count;i++)
-    {
-        render_frame[i]=CreateFramebuffer(device_render_pass,(*sc_color)->GetImageView(),sc_depth->GetImageView());
-        ++sc_color;
-    }
-
     SwapchainRenderTarget *srt=new SwapchainRenderTarget(   attr->device,
-                                                            swapchain,
+                                                            sc,
                                                             q,
                                                             render_complete_semaphore,
                                                             present_complete_semaphore,
-                                                            device_render_pass,
-                                                            render_frame
+                                                            device_render_pass
                                                             );
 
     return srt;
