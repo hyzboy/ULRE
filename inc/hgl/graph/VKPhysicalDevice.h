@@ -48,6 +48,20 @@ public:
 
     const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}
 
+    // support != open, so please don't direct use GetFeatures().
+    // open any features in CreateDevice()&SetDeviceFeatures() functions.
+    const bool              IsSupportMDI    ()const
+    {
+        // I found a few device support MDI, but its MaxDrawIndirectCount is 1.
+
+        return (features.multiDrawIndirect&&properties.limits.maxDrawIndirectCount>1);
+    }
+
+    const uint32_t          GetMaxMDICount  ()const
+    {
+        return properties.limits.maxDrawIndirectCount;
+    }
+
 public:
 
     /**

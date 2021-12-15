@@ -170,7 +170,7 @@ void RenderCmdBuffer::DrawIndirect( VkBuffer        buffer,
                                     uint32_t        drawCount,
                                     uint32_t        stride)
 {
-    if(this->dev_attr->physical_device->GetFeatures().multiDrawIndirect)
+    if(this->dev_attr->physical_device->IsSupportMDI())
         vkCmdDrawIndirect(cmd_buf,buffer,offset,drawCount,stride);
     else
     for(uint32_t i=0;i<drawCount;i++)
@@ -182,7 +182,7 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
                                             uint32_t        drawCount,
                                             uint32_t        stride)
 {
-    if(this->dev_attr->physical_device->GetFeatures().multiDrawIndirect)
+    if(this->dev_attr->physical_device->IsSupportMDI())
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset,drawCount,stride);
     else
     for(uint32_t i=0;i<drawCount;i++)
