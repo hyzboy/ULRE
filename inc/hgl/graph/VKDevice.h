@@ -50,9 +50,7 @@ private:
 
     VkCommandBuffer CreateCommandBuffer();
 
-    bool CreateSwapchainColorTexture(Swapchain *);
-    bool CreateSwapchainDepthTexture(Swapchain *);
-    void CreateSwapchainFBO(Swapchain *);
+    bool CreateSwapchainFBO(Swapchain *);
 
     Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
 
