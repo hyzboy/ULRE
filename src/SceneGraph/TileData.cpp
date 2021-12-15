@@ -108,7 +108,7 @@ namespace hgl
             memcpy(commit_ptr,data,bytes);
             commit_ptr+=bytes;
 
-            ImageRegion ir;
+            Image2DRegion ir;
 
             ir.left     =obj->uv_pixel.GetLeft();
             ir.top      =obj->uv_pixel.GetTop();

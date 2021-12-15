@@ -160,7 +160,7 @@ public: //Texture
 
     void Clear(TextureCreateInfo *);
 
-    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<ImageRegion> &,                                              VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<Image2DRegion> &,                                            VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,              VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2D(Texture2D *,void *data,    uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
