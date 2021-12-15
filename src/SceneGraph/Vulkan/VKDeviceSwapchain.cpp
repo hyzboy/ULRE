@@ -68,7 +68,7 @@ namespace
     }
 }//namespace
 
-bool GPUDevice::CreateSwapchainColorTexture(Swapchain *swapchain)
+bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
 {
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->color_count),nullptr)!=VK_SUCCESS)
         return(false);
@@ -78,31 +78,20 @@ bool GPUDevice::CreateSwapchainColorTexture(Swapchain *swapchain)
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
         return(false);
 
-    swapchain->sc_color=new Texture2D *[swapchain->color_count];
-
-    for(uint32_t i=0;i<swapchain->color_count;i++)
-        swapchain->sc_color[i]=CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->surface_format.format,swapchain->extent,sc_images[i]));
-
-    return(true);
-}
-
-bool GPUDevice::CreateSwapchainDepthTexture(Swapchain *swapchain)
-{
-    swapchain->sc_depth=CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
-
-    return swapchain->sc_depth;
-}
-
-void GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
-{
-    swapchain->render_frame=new Framebuffer *[swapchain->color_count];
+    swapchain->sc_depth     =CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
+    swapchain->sc_color     =new Texture2D *[swapchain->color_count];
+    swapchain->render_frame =new Framebuffer *[swapchain->color_count];
 
     for(uint32_t i=0;i<swapchain->color_count;i++)
     {
+        swapchain->sc_color[i]=CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->surface_format.format,swapchain->extent,sc_images[i]));
+
         swapchain->render_frame[i]=CreateFramebuffer(   device_render_pass,
                                                         swapchain->sc_color[i]->GetImageView(),
                                                         swapchain->sc_depth->GetImageView());
     }
+
+    return(true);
 }
 
 Swapchain *GPUDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
@@ -115,12 +104,8 @@ Swapchain *GPUDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
     swapchain->swap_chain      =CreateSwapChain(attr,acquire_extent);
 
     if(swapchain->swap_chain)
-    if(CreateSwapchainColorTexture(swapchain))
-    if(CreateSwapchainDepthTexture(swapchain))
-    {
-        CreateSwapchainFBO(swapchain);
+    if(CreateSwapchainFBO(swapchain))
         return(swapchain);
-    }
 
     delete swapchain;
     swapchain=nullptr;
