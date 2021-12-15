@@ -5,15 +5,15 @@
 VK_NAMESPACE_BEGIN
 namespace
 {
-    VkExtent2D SwapchainExtentClamp(const VkSurfaceCapabilitiesKHR &surface_caps,const VkExtent2D &acquire_extent)
-    {
-        VkExtent2D swapchain_extent;
+    //VkExtent2D SwapchainExtentClamp(const VkSurfaceCapabilitiesKHR &surface_caps,const VkExtent2D &acquire_extent)
+    //{
+    //    VkExtent2D swapchain_extent;
 
-        swapchain_extent.width  =hgl_clamp(acquire_extent.width,    surface_caps.minImageExtent.width,  surface_caps.maxImageExtent.width   );
-        swapchain_extent.height =hgl_clamp(acquire_extent.height,   surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height  );
+    //    swapchain_extent.width  =hgl_clamp(acquire_extent.width,    surface_caps.minImageExtent.width,  surface_caps.maxImageExtent.width   );
+    //    swapchain_extent.height =hgl_clamp(acquire_extent.height,   surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height  );
 
-        return swapchain_extent;
-    }
+    //    return swapchain_extent;
+    //}
 
     VkSwapchainKHR CreateSwapChain(const GPUDeviceAttribute *dev_attr,const VkExtent2D &extent)
     {
@@ -96,7 +96,7 @@ bool GPUDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
     swapchain=new Swapchain;
 
     swapchain->device          =attr->device;
-    swapchain->extent          =SwapchainExtentClamp(attr->surface_caps,acquire_extent);
+    swapchain->extent          =acquire_extent;
     swapchain->graphics_queue  =attr->graphics_queue;
     swapchain->swap_chain      =CreateSwapChain(attr,swapchain->extent);
 
