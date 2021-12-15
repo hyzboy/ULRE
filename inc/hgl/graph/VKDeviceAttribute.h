@@ -55,7 +55,12 @@ public:
 
     bool CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const;
 
-    void Refresh();
+    void RefreshSurfaceCaps();
+
+private:
+
+    void RefreshSurface();
+    void RefreshQueueFamily();
 
 public:
 
