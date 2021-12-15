@@ -39,7 +39,6 @@ private:
     DeviceRenderPassManage *render_pass_manage;
     RenderPass *device_render_pass;
 
-    Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
 
     SwapchainRenderTarget *CreateSwapchainRenderTarget();
@@ -51,10 +50,11 @@ private:
 
     VkCommandBuffer CreateCommandBuffer();
 
-    bool CreateSwapchainColorTexture();
-    bool CreateSwapchainDepthTexture();
+    bool CreateSwapchainColorTexture(Swapchain *);
+    bool CreateSwapchainDepthTexture(Swapchain *);
+    void CreateSwapchainFBO(Swapchain *);
 
-    bool CreateSwapchain(const VkExtent2D &acquire_extent);
+    Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
 
 private:
 
@@ -81,13 +81,12 @@ public:
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
                 RenderPass *        GetRenderPass       ()      {return device_render_pass;}
-                Swapchain *         GetSwapchain        ()      {return swapchain;}
 
     SwapchainRenderTarget *         GetSwapchainRT      ()      {return swapchainRT;}
 
-public:
+    const       VkExtent2D &        GetSwapchainSize    ()const {return swapchainRT->GetExtent();}
 
-                const VkExtent2D &  GetSwapchainSize    ()const {return swapchain->extent;}
+public:
 
                 bool                Resize              (const VkExtent2D &);
                 bool                Resize              (const uint32_t &w,const uint32_t &h)

@@ -66,29 +66,25 @@ class SwapchainRenderTarget:public RenderTarget
 {
     VkDevice device;
     Swapchain *swapchain;
-    VkSwapchainKHR vk_swapchain;
     PresentInfo present_info;
 
     GPUSemaphore *present_complete_semaphore=nullptr;
 
-    uint32_t swap_chain_count;
-
     uint32_t current_frame;
-    Framebuffer **render_frame;
 
 public:
 
-    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,GPUQueue *q,GPUSemaphore *rcs,GPUSemaphore *pcs,RenderPass *rp,Framebuffer **fbo_list);
+    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,GPUQueue *q,GPUSemaphore *rcs,GPUSemaphore *pcs,RenderPass *rp);
     ~SwapchainRenderTarget();
 
-                    Framebuffer *   GetFramebuffer  ()override                  {return render_frame[current_frame];}
-                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return render_frame[index];}
+                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->render_frame[current_frame];}
+                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->render_frame[index];}
 
             const   uint32_t        GetColorCount   ()const override            {return 1;}
-            const   uint32_t        GetImageCount   ()const                     {return swap_chain_count;}
+            const   uint32_t        GetImageCount   ()const                     {return swapchain->color_count;}
 
-    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->GetColorTexture(index);}
-    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->GetDepthTexture();}
+    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_color[index];}
+    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_depth;}
 
 public:
 
