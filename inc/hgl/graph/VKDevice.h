@@ -42,7 +42,7 @@ private:
     Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
 
-    SwapchainRenderTarget *CreateSwapchainRT();
+    SwapchainRenderTarget *CreateSwapchainRenderTarget();
 
     void InitRenderPassManage();
     void ClearRenderPassManage();
