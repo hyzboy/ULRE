@@ -37,7 +37,7 @@ namespace
             imageSubresource.layerCount=layer_count;
         }
 
-        void Set(ImageRegion *ir)
+        void Set(Image2DRegion *ir)
         {
             imageOffset.x=ir->left;
             imageOffset.y=ir->top;
@@ -326,7 +326,7 @@ bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,GPUBuffer *buf,uint32_t wi
     return CommitTexture2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<ImageRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||ir_list.GetCount()<=0)
         return(false);
@@ -339,7 +339,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<ImageRe
 
     VkDeviceSize offset=0;
 
-    for(const ImageRegion &sp:ir_list)
+    for(const Image2DRegion &sp:ir_list)
     {
         tp->bufferOffset      = offset;
         tp->bufferRowLength   = 0;

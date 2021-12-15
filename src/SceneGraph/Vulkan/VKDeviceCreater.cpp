@@ -48,7 +48,7 @@ namespace
         #define FEATURE_COPY(name)  features->name=pdf.name;
 
         FEATURE_COPY(geometryShader);
-//        FEATURE_COPY(multiDrawIndirect);
+        FEATURE_COPY(multiDrawIndirect);
 //        FEATURE_COPY(imageCubeArray);
         FEATURE_COPY(samplerAnisotropy);
 
@@ -67,7 +67,7 @@ namespace
         queue_info.pQueuePriorities =queue_priorities;
         queue_info.flags            =0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
 
-        VkDeviceCreateInfo create_info={};
+        VkDeviceCreateInfo create_info;
         CharPointerList ext_list;
         VkPhysicalDeviceFeatures features={};
 
@@ -76,6 +76,7 @@ namespace
 
         create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         create_info.pNext                   =nullptr;
+        create_info.flags                   =0;
         create_info.queueCreateInfoCount    =1;
         create_info.pQueueCreateInfos       =&queue_info;
         create_info.enabledExtensionCount   =ext_list.GetCount();
