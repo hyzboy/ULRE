@@ -264,7 +264,7 @@ namespace hgl
             {
                 last_vbo=ri->GetBufferHash();
                 
-                cmd_buf->BindVAB(ri);
+                cmd_buf->BindVBO(ri);
             }
 
             const IndexBuffer *ib=ri->GetIndexBuffer();

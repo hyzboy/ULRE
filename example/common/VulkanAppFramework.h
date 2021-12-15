@@ -189,7 +189,7 @@ public:
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri);
-                cb->BindVAB(ri);
+                cb->BindVBO(ri);
 
                     if (ib)
                         cb->DrawIndexed(ib->GetCount());

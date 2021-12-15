@@ -69,7 +69,7 @@ private:
         if(!pipeline)
             return(false);
 
-        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"));
+        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
         if(!texture)return(false);
 
         sampler=db->CreateSampler();
