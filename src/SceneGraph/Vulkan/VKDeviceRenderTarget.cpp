@@ -57,7 +57,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
     return CreateRenderTarget(fbi,rp,fence_count);
 }
 
-SwapchainRenderTarget *GPUDevice::CreateSwapchainRT()
+SwapchainRenderTarget *GPUDevice::CreateSwapchainRenderTarget()
 {
     const uint32_t count=swapchain->GetImageCount();
 

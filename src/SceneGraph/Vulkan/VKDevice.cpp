@@ -75,7 +75,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     if(!CreateSwapchain(attr->surface_caps.currentExtent))
         return(false);
 
-    swapchainRT=CreateSwapchainRT();
+    swapchainRT=CreateSwapchainRenderTarget();
 
     return(true);
 }
