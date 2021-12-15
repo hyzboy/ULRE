@@ -33,7 +33,10 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,RenderPas
 
     if(fb)
     {
-        RenderTarget *rt=new RenderTarget(this,rp,fb,color_texture_list,color_count,depth_texture,fence_count);
+        GPUQueue *q=CreateQueue(fence_count,false);
+        GPUSemaphore *render_complete_semaphore=CreateGPUSemaphore();
+
+        RenderTarget *rt=new RenderTarget(q,render_complete_semaphore,rp,fb,color_texture_list,color_count,depth_texture);
 
         color_texture_list.DiscardObject();
         return rt;
@@ -52,5 +55,36 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
     if(!rp)return(nullptr);
 
     return CreateRenderTarget(fbi,rp,fence_count);
+}
+
+SwapchainRenderTarget *GPUDevice::CreateSwapchainRT()
+{
+    const uint32_t count=swapchain->GetImageCount();
+
+    GPUQueue *q=CreateQueue(count,false);
+    GPUSemaphore *render_complete_semaphore=CreateGPUSemaphore();
+    GPUSemaphore *present_complete_semaphore=CreateGPUSemaphore();
+
+    Texture2D **sc_color=swapchain->GetColorTextures();
+    Texture2D *sc_depth=swapchain->GetDepthTexture();
+
+    Framebuffer **render_frame=new Framebuffer *[count];
+
+    for(uint32_t i=0;i<count;i++)
+    {
+        render_frame[i]=CreateFramebuffer(device_render_pass,(*sc_color)->GetImageView(),sc_depth->GetImageView());
+        ++sc_color;
+    }
+
+    SwapchainRenderTarget *srt=new SwapchainRenderTarget(   attr->device,
+                                                            swapchain,
+                                                            q,
+                                                            render_complete_semaphore,
+                                                            present_complete_semaphore,
+                                                            device_render_pass,
+                                                            render_frame
+                                                            );
+
+    return srt;
 }
 VK_NAMESPACE_END

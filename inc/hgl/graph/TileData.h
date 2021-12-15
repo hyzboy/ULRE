@@ -48,9 +48,9 @@ namespace hgl
 
         protected:
 
-            GPUBuffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
+            GPUBuffer *tile_buffer;                                                                                     ///<Tile暂存缓冲区
 
-            List<ImageRegion> commit_list;
+            List<Image2DRegion> commit_list;
             uint8 *commit_ptr;
 
             bool CommitTile(TileObject *,const void *,const uint,const int,const int);	                                ///<提交一个Tile数据

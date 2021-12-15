@@ -6,23 +6,21 @@
 #include<hgl/graph/VKFramebuffer.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget::RenderTarget(GPUDevice *dev,Framebuffer *_fb,const uint32_t fence_count):GPUQueue(dev,dev->GetGraphicsQueue(),fence_count)
+RenderTarget::RenderTarget(GPUQueue *q,GPUSemaphore *s)
 {
+    queue=q;
     render_pass=nullptr;
-    fbo=_fb;
+    fbo=nullptr;
 
-    if(fbo)
-        color_count=fbo->GetColorCount();
-    else
-        color_count=0;
-
+    color_count=0;
     color_textures=nullptr;
-    depth_texture=nullptr;    
-    render_complete_semaphore=dev->CreateGPUSemaphore();
+    depth_texture=nullptr;
+    render_complete_semaphore=s;
 }
 
-RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt,const uint32_t fence_count):GPUQueue(dev,dev->GetGraphicsQueue(),fence_count)
+RenderTarget::RenderTarget(GPUQueue *q,GPUSemaphore *s,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt)
 {
+    queue=q;
     render_pass=_rp;
     fbo=_fb;
     
@@ -48,11 +46,12 @@ RenderTarget::RenderTarget(GPUDevice *dev,RenderPass *_rp,Framebuffer *_fb,Textu
         }
     }
 
-    render_complete_semaphore=dev->CreateGPUSemaphore();
+    render_complete_semaphore=s;
 }
 
 RenderTarget::~RenderTarget()
 {
+    SAFE_CLEAR(queue);
     SAFE_CLEAR(depth_texture);
     SAFE_CLEAR_OBJECT_ARRAY(color_textures,color_count);
     
@@ -62,6 +61,6 @@ RenderTarget::~RenderTarget()
 
 bool RenderTarget::Submit(RenderCmdBuffer *command_buffer,GPUSemaphore *present_complete_semaphore)
 {
-    return this->GPUQueue::Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
+    return queue->Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
 }
 VK_NAMESPACE_END
