@@ -46,6 +46,9 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
     swapchainRT=nullptr;
     Resize(attr->surface_caps.currentExtent);
 
+    texture_cmd_buf=CreateTextureCommandBuffer();
+    texture_queue=CreateQueue();
+
     LogSurfaceFormat(attr->surface_formats_list);
 }
 
@@ -67,18 +70,12 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     SAFE_CLEAR(swapchainRT);
     SAFE_CLEAR(swapchain);
 
-    SAFE_CLEAR(texture_queue);
-    SAFE_CLEAR(texture_cmd_buf);
+    attr->RefreshSurfaceCaps();
 
-    attr->Refresh();
-
-    if(!CreateSwapchain(extent))
+    if(!CreateSwapchain(attr->surface_caps.currentExtent))
         return(false);
 
-    texture_cmd_buf=CreateTextureCommandBuffer();
-    texture_queue=new GPUQueue(this,attr->graphics_queue,1);
-
-    swapchainRT=new SwapchainRenderTarget(this,swapchain);
+    swapchainRT=CreateSwapchainRT();
 
     return(true);
 }
@@ -148,5 +145,17 @@ GPUSemaphore *GPUDevice::CreateGPUSemaphore()
         return(nullptr);
 
     return(new GPUSemaphore(attr->device,sem));
+}
+
+GPUQueue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
+{
+    if(fence_count<=0)return(nullptr);
+
+    GPUFence **fence_list=new GPUFence *[fence_count];
+
+    for(uint32_t i=0;i<fence_count;i++)
+        fence_list[i]=CreateFence(create_signaled);
+
+    return(new GPUQueue(attr->device,attr->graphics_queue,fence_list,fence_count));
 }
 VK_NAMESPACE_END

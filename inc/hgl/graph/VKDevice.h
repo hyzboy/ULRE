@@ -42,6 +42,8 @@ private:
     Swapchain *swapchain;
     SwapchainRenderTarget *swapchainRT;
 
+    SwapchainRenderTarget *CreateSwapchainRT();
+
     void InitRenderPassManage();
     void ClearRenderPassManage();
 
@@ -220,6 +222,8 @@ public:
 
     GPUFence *      CreateFence(bool);
     GPUSemaphore *  CreateGPUSemaphore();
+
+    GPUQueue *      CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
 
 public: //FrameBuffer相关
 

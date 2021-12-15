@@ -1,5 +1,4 @@
 #include<hgl/graph/VKQueue.h>
-#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
@@ -8,22 +7,21 @@ namespace
     const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 }//namespace
 
-GPUQueue::GPUQueue(GPUDevice *dev,VkQueue q,const uint32_t fence_count)
+GPUQueue::GPUQueue(VkDevice dev,VkQueue q,GPUFence **fl,const uint32_t fc)
 {
     device=dev;
     queue=q;
 
-    for(uint32_t i=0;i<fence_count;i++)
-         fence_list.Add(device->CreateFence(false));
-
     current_fence=0;
+    fence_list=fl;
+    fence_count=fc;
 
     submit_info.pWaitDstStageMask       = &pipe_stage_flags;
 }
 
 GPUQueue::~GPUQueue()
 {
-    fence_list.Clear();
+    SAFE_CLEAR_OBJECT_ARRAY(fence_list,fence_count)
 }
 
 bool GPUQueue::WaitQueue()
@@ -41,10 +39,10 @@ bool GPUQueue::WaitFence(const bool wait_all,uint64_t time_out)
     VkResult result;
     VkFence fence=*fence_list[current_fence];
 
-    result=vkWaitForFences(device->GetDevice(),1,&fence,wait_all,time_out);
-    result=vkResetFences(device->GetDevice(),1,&fence);
+    result=vkWaitForFences(device,1,&fence,wait_all,time_out);
+    result=vkResetFences(device,1,&fence);
 
-    if(++current_fence==fence_list.GetCount())
+    if(++current_fence==fence_count)
         current_fence=0;
 
     return(true);
