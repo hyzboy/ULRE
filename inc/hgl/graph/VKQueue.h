@@ -8,19 +8,27 @@ class GPUQueue
 {
 protected:
 
-    GPUDevice *device;
+    VkDevice device;
     VkQueue queue;
     
     uint32_t current_fence;
-    ObjectList<GPUFence> fence_list;
+    GPUFence **fence_list;
+    uint32_t fence_count;
 
     SubmitInfo submit_info;
 
+private:
+
+    friend class GPUDevice;
+
+    GPUQueue(VkDevice dev,VkQueue q,GPUFence **,const uint32_t fc);
+
 public:
 
-    GPUQueue(GPUDevice *dev,VkQueue q,const uint32_t fence_count=1);
     virtual ~GPUQueue();
     
+    VkResult Present(const VkPresentInfoKHR *pi){return vkQueuePresentKHR(queue,pi);}
+
     bool WaitQueue();
     bool WaitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
     bool Submit(const VkCommandBuffer &cmd_buf,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem);
