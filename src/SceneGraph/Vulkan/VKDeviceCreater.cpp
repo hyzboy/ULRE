@@ -49,8 +49,12 @@ namespace
 
         FEATURE_COPY(geometryShader);
         FEATURE_COPY(multiDrawIndirect);
-//        FEATURE_COPY(imageCubeArray);
         FEATURE_COPY(samplerAnisotropy);
+
+//        FEATURE_COPY(imageCubeArray);
+//        FEATURE_COPY(fullDrawIndexUint32);
+//        FEATURE_COPY(wideLines)
+//        FEATURE_COPY(largePoints)
 
         #undef FEATURE_COPY
     }

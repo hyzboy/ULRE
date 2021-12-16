@@ -2,10 +2,68 @@
 #include<hgl/graph/VKInstance.h>
 
 VK_NAMESPACE_BEGIN
+namespace
+{
+    void debug_queue_family_properties_out(const char *front,const List<VkQueueFamilyProperties> &qfp_list)
+    {
+        constexpr char *queue_bit_name[]=
+        {
+            "Graphics",
+            "Compute",
+            "Transfer",
+            "SparseBinding",
+            "Protected",
+            "VideoDecode",
+            "VideoEncode"
+        };
+
+        const int count=qfp_list.GetCount();
+
+        if(count<=0)return;
+
+        const VkQueueFamilyProperties *p=qfp_list.GetData();
+
+        for(int i=0;i<count;i++)
+        {
+            std::cout<<front<<" Queue Family ["<<i<<"] count: "<<p->queueCount
+                <<", timestampValidBits: "<<p->timestampValidBits
+                <<", minImageTransferGranularity [" <<p->minImageTransferGranularity.width<<","
+                                                    <<p->minImageTransferGranularity.height<<","
+                                                    <<p->minImageTransferGranularity.depth<<"], queueFlags[";
+
+            uint32_t bits=p->queueFlags;
+
+            for(uint i=0;i<7;i++)
+            {
+                if(bits&1)
+                {
+                    std::cout<<queue_bit_name[i];
+                    bits>>=1;
+                    if(bits>0)std::cout<<",";
+                }
+                else
+                {
+                    bits>>=1;
+                }
+            }                
+
+            std::cout<<"]"<<std::endl;
+
+            ++p;
+        }
+    }
+}
+
 GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 {
     instance=inst;
     physical_device=pd;
+
+    vkGetPhysicalDeviceFeatures(physical_device,&features);
+    vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
+    vkGetPhysicalDeviceProperties(physical_device,&properties);
+
+    std::string debug_front="PhysicalDevice["+std::string(properties.deviceName)+"]";
 
     {
         uint32_t property_count;
@@ -15,7 +73,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         layer_properties.SetCount(property_count);
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
 
-        debug_out("PhysicalDevice",layer_properties);
+        debug_out(debug_front.c_str(),layer_properties);
     }
 
     {
@@ -26,12 +84,19 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         extension_properties.SetCount(exten_count);
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
 
-        debug_out("PhysicalDevice",extension_properties);
+        debug_out(debug_front.c_str(),extension_properties);
     }
 
-    vkGetPhysicalDeviceFeatures(physical_device,&features);
-    vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
-    vkGetPhysicalDeviceProperties(physical_device,&properties);
+    {
+        uint32_t family_count;
+
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,nullptr);
+
+        queue_family_properties.SetCount(family_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,queue_family_properties.GetData());
+
+        debug_queue_family_properties_out(debug_front.c_str(),queue_family_properties);
+    }
 }
 
 const bool GPUPhysicalDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const

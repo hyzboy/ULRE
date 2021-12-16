@@ -27,6 +27,18 @@ namespace hgl
 }//namespace hgl
 
 VK_NAMESPACE_BEGIN
+/*
+ * GPU设备创建信息
+ */
+struct GPUDeviceCreateInfo
+{
+    VkPhysicalDeviceType    device_type             =VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM;
+
+    uint32_t                swapchain_image_count   =0;
+    VkSurfaceFormatKHR      color_format            ={PF_A2BGR10UN,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+    VkFormat                depth_format            =VK_FORMAT_UNDEFINED;
+};//struct GPUDeviceCreateInfo
+
 class GPUDevice
 {
     GPUDeviceAttribute *attr;

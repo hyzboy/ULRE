@@ -15,6 +15,7 @@ class GPUPhysicalDevice
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
     List<VkExtensionProperties>         extension_properties;
+    List<VkQueueFamilyProperties>       queue_family_properties;
 
 public:
 
@@ -47,20 +48,6 @@ public:
     const VkDeviceSize      GetSSBOAlign    ()const{return properties.limits.minStorageBufferOffsetAlignment;}
 
     const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}
-
-    // support != open, so please don't direct use GetFeatures().
-    // open any features in CreateDevice()&SetDeviceFeatures() functions.
-    const bool              IsSupportMDI    ()const
-    {
-        // I found a few device support MDI, but its MaxDrawIndirectCount is 1.
-
-        return (features.multiDrawIndirect&&properties.limits.maxDrawIndirectCount>1);
-    }
-
-    const uint32_t          GetMaxMDICount  ()const
-    {
-        return properties.limits.maxDrawIndirectCount;
-    }
 
 public:
 
@@ -112,8 +99,22 @@ public:
 public:
 
     const VkBool32  SupportGeometryShader       ()const{return features.geometryShader;}
-    const VkBool32  SupportMultiDrawIndirect    ()const{return features.multiDrawIndirect;}
     const VkBool32  SupportCubeMapArray         ()const{return features.imageCubeArray;}
+
+
+    // support != open, so please don't direct use GetFeatures().
+    // open any features in CreateDevice()&SetDeviceFeatures() functions.
+    const bool              SupportMDI          ()const
+    {
+        // I found a few device support MDI, but its MaxDrawIndirectCount is 1.
+
+        return (features.multiDrawIndirect&&properties.limits.maxDrawIndirectCount>1);
+    }
+
+    const uint32_t          GetMaxMDICount      ()const
+    {
+        return properties.limits.maxDrawIndirectCount;
+    }
 
     const uint32_t  GetMaxImage1D            ()const{return properties.limits.maxImageDimension1D;}
     const uint32_t  GetMaxImage2D            ()const{return properties.limits.maxImageDimension2D;}
