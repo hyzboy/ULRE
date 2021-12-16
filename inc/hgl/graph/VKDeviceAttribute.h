@@ -59,8 +59,9 @@ public:
 
 private:
 
-    void RefreshSurface();
-    void RefreshQueueFamily();
+    void GetSurfaceFormatList();
+    void GetSurfacePresentMode();
+    void GetQueueFamily();
 
 public:
 

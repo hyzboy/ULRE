@@ -14,8 +14,9 @@ GPUDeviceAttribute::GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDev
     surface=s;
 
     RefreshSurfaceCaps();
-    RefreshSurface();
-    RefreshQueueFamily();
+    GetSurfaceFormatList();
+    GetSurfacePresentMode();
+    GetQueueFamily();
 }
 
 GPUDeviceAttribute::~GPUDeviceAttribute()
@@ -49,11 +50,6 @@ void GPUDeviceAttribute::RefreshSurfaceCaps()
     VkPhysicalDevice pdevice = *physical_device;
 
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice, surface, &surface_caps);
-}
-
-void GPUDeviceAttribute::RefreshSurface()
-{
-    VkPhysicalDevice pdevice = *physical_device;
 
     {
         if (surface_caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
@@ -63,10 +59,13 @@ void GPUDeviceAttribute::RefreshSurface()
     }
 
     {
-        constexpr VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4]={VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-                                                                      VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-                                                                      VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
-                                                                      VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR };
+        constexpr VkCompositeAlphaFlagBitsKHR compositeAlphaFlags[4]=
+        {
+            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+            VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR 
+        };
 
         for(auto flags:compositeAlphaFlags)
             if (surface_caps.supportedCompositeAlpha & flags)
@@ -75,6 +74,11 @@ void GPUDeviceAttribute::RefreshSurface()
                 break;
             }
     }
+}
+
+void GPUDeviceAttribute::GetSurfaceFormatList()
+{
+    VkPhysicalDevice pdevice = *physical_device;
 
     {
         uint32_t format_count;
@@ -113,19 +117,24 @@ void GPUDeviceAttribute::RefreshSurface()
             //}
         }
     }
-
-    {
-        uint32_t mode_count;
-        if (vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, surface, &mode_count, nullptr) == VK_SUCCESS)
-        {
-            present_modes.SetCount(mode_count);
-            if (vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, surface, &mode_count, present_modes.GetData()) != VK_SUCCESS)
-                present_modes.Clear();
-        }
-    }
 }
 
-void GPUDeviceAttribute::RefreshQueueFamily()
+void GPUDeviceAttribute::GetSurfacePresentMode()
+{
+    uint32_t mode_count;
+
+    VkPhysicalDevice pdevice = *physical_device;
+
+    if (!vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, surface, &mode_count, nullptr) == VK_SUCCESS)
+        return;
+    
+    present_modes.SetCount(mode_count);
+
+    if (vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, surface, &mode_count, present_modes.GetData()) != VK_SUCCESS)
+        present_modes.Clear();
+}
+
+void GPUDeviceAttribute::GetQueueFamily()
 {
     VkPhysicalDevice pdevice = *physical_device;
 
