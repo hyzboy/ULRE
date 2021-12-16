@@ -75,10 +75,10 @@ DebugMaker *CreateDebugMaker(VkDevice device)
 	dmf.End				= reinterpret_cast<PFN_vkCmdDebugMarkerEndEXT		>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerEndEXT"));
 	dmf.Insert			= reinterpret_cast<PFN_vkCmdDebugMarkerInsertEXT	>(vkGetDeviceProcAddr(device, "vkCmdDebugMarkerInsertEXT"));
 
-	if(!dmf.SetObjectTag	)return(nullptr);		
-	if(!dmf.SetObjectName	)return(nullptr);		
-	if(!dmf.Begin			)return(nullptr);		
-	if(!dmf.End				)return(nullptr);		
+	if(!dmf.SetObjectTag	)return(nullptr);
+	if(!dmf.SetObjectName	)return(nullptr);
+	if(!dmf.Begin			)return(nullptr);
+	if(!dmf.End				)return(nullptr);
 	if(!dmf.Insert			)return(nullptr);
 
 	return(new DebugMaker(device,dmf));
