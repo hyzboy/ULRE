@@ -20,7 +20,6 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
     app_info.applicationVersion = 1;
     app_info.pEngineName        = "CMGameEngine/ULRE";
     app_info.engineVersion      = 1;
-    app_info.apiVersion         = VK_API_VERSION_1_0;
 
     ext_list.Add(VK_KHR_SURFACE_EXTENSION_NAME);
     ext_list.Add(HGL_VK_SURFACE_EXTENSION_NAME);            //此宏在VKSurfaceExtensionName.h中定义
@@ -31,6 +30,7 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
         VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 #endif//_DEBUG
+        VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
     };
 
     for(const char *ext_name:require_ext_list)
@@ -39,9 +39,6 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
 
     if(layer_info)
     {
-        if(layer_info->khronos.validation)
-            ext_list.Add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-
         CheckInstanceLayer(layer_list,layer_info);
     }
 
@@ -52,20 +49,31 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
 
     VkInstance inst;
 
-    if(vkCreateInstance(&inst_info,nullptr,&inst)==VK_SUCCESS)
+    app_info.apiVersion         = VK_API_VERSION_1_2;
+    if(vkCreateInstance(&inst_info,nullptr,&inst)!=VK_SUCCESS)
     {
-#ifdef _DEBUG
-        if(!out)
-            out=new VKDebugOut;
-#endif//_DEBUG
+        app_info.apiVersion         = VK_API_VERSION_1_1;
 
-        if(out)
-            out->Init(inst);
-
-        return(new VulkanInstance(inst,out));
+        if(vkCreateInstance(&inst_info,nullptr,&inst)!=VK_SUCCESS)
+        {
+            app_info.apiVersion         = VK_API_VERSION_1_0;
+    
+            if(!vkCreateInstance(&inst_info,nullptr,&inst)==VK_SUCCESS)
+            {
+                return(nullptr);
+            }
+        }
     }
 
-    return(nullptr);
+#ifdef _DEBUG
+    if(!out)
+        out=new VKDebugOut;
+#endif//_DEBUG
+
+    if(out)
+        out->Init(inst);
+
+    return(new VulkanInstance(inst,out));
 }
 
 VulkanInstance::VulkanInstance(VkInstance i,VKDebugOut *out)
