@@ -9,8 +9,14 @@ class GPUPhysicalDevice
 {
     VkInstance                          instance=nullptr;
     VkPhysicalDevice                    physical_device=nullptr;
+
     VkPhysicalDeviceFeatures            features;
+    VkPhysicalDeviceVulkan11Features    features11;
+    VkPhysicalDeviceVulkan12Features    features12;
+
     VkPhysicalDeviceProperties          properties;
+    VkPhysicalDeviceVulkan11Properties  properties11;
+    VkPhysicalDeviceVulkan12Properties  properties12;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
@@ -133,6 +139,9 @@ public:
     const VkBool32  SupportSamplerAnisotropy    ()const{return features.samplerAnisotropy;}
     const float     GetMaxSamplerAnisotropy     ()const{return properties.limits.maxSamplerAnisotropy;}
     const float     GetMaxSamplerLodBias        ()const{return properties.limits.maxSamplerLodBias;}
+
+    const VkBool32  SupportYcbcrConversion      ()const{return features11.samplerYcbcrConversion;}
+    const VkBool32  SupportClampMirrorToEdge    ()const{return features12.samplerMirrorClampToEdge;}
 
     const void      GetPointSize(float &granularity,float &min_size,float &max_size)
     {
