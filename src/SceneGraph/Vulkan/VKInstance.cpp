@@ -31,6 +31,8 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 #endif//_DEBUG
         VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
+        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+        VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
     };
 
     for(const char *ext_name:require_ext_list)

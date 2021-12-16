@@ -59,9 +59,65 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
     instance=inst;
     physical_device=pd;
 
-    vkGetPhysicalDeviceFeatures(physical_device,&features);
+    {
+        auto func=(PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceFeatures2KHR");
+
+        if(func)
+        {
+            VkPhysicalDeviceFeatures2 features2;
+
+            features2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+            features2.pNext=&features11;
+
+            features11.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+            features11.pNext=&features12;
+
+            features12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            features12.pNext=nullptr;
+
+            func(physical_device,&features2);
+
+            hgl_cpy(&features,&features2.features);
+        }
+        else
+        {
+            vkGetPhysicalDeviceFeatures(physical_device,&features);
+
+            hgl_zero(features11);
+            hgl_zero(features12);
+        }
+    }
+
+    {
+        auto func=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceProperties2KHR");
+
+        if(func)
+        {
+            VkPhysicalDeviceProperties2 properties2;
+
+            properties2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+            properties2.pNext=&properties11;
+
+            properties11.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+            properties11.pNext=&properties12;
+
+            properties12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+            properties12.pNext=nullptr;
+
+            func(physical_device,&properties2);
+
+            hgl_cpy(&properties,&properties2.properties);
+        }
+        else
+        {
+            vkGetPhysicalDeviceProperties(physical_device,&properties);
+
+            hgl_zero(properties11);
+            hgl_zero(properties12);
+        }
+    }
+
     vkGetPhysicalDeviceMemoryProperties(physical_device,&memory_properties);
-    vkGetPhysicalDeviceProperties(physical_device,&properties);
 
     std::string debug_front="PhysicalDevice["+std::string(properties.deviceName)+"]";
 
