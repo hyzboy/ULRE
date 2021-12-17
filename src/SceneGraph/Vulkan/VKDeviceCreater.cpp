@@ -76,7 +76,7 @@ namespace
         VkPhysicalDeviceFeatures features={};
 
         SetDeviceExtension(&ext_list,physical_device);
-        SetDeviceFeatures(&features,physical_device->GetFeatures());
+        SetDeviceFeatures(&features,physical_device->GetFeatures10());
 
         create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         create_info.pNext                   =nullptr;
@@ -169,7 +169,9 @@ namespace
 
     void DebugOut(const VkPhysicalDeviceFeatures &features)
     {
-    #define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(40)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
+        std::cout<<"Vulkan 1.0 features"<<std::endl;
+
+    #define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
             OUTPUT_PHYSICAL_DEVICE_FEATURE(robustBufferAccess)
             OUTPUT_PHYSICAL_DEVICE_FEATURE(fullDrawIndexUint32)
             OUTPUT_PHYSICAL_DEVICE_FEATURE(imageCubeArray)
@@ -226,6 +228,81 @@ namespace
             OUTPUT_PHYSICAL_DEVICE_FEATURE(variableMultisampleRate)
             OUTPUT_PHYSICAL_DEVICE_FEATURE(inheritedQueries)
     #undef OUTPUT_PHYSICAL_DEVICE_FEATURE
+    }
+
+    void DebugOut(const VkPhysicalDeviceVulkan11Features &features)
+    {
+        std::cout<<"Vulkan 1.1 features"<<std::endl;
+
+#define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(storageBuffer16BitAccess)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(uniformAndStorageBuffer16BitAccess)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(storagePushConstant16)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(storageInputOutput16)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(multiview)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(multiviewGeometryShader)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(multiviewTessellationShader)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(variablePointersStorageBuffer)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(variablePointers)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(protectedMemory)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerYcbcrConversion)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderDrawParameters)
+#undef OUTPUT_PHYSICAL_DEVICE_FEATURE
+    }
+
+    void DebugOut(const VkPhysicalDeviceVulkan12Features &features)
+    {
+        std::cout<<"Vulkan 1.2 features"<<std::endl;
+
+#define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerMirrorClampToEdge)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(drawIndirectCount)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(storageBuffer8BitAccess)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(uniformAndStorageBuffer8BitAccess)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(storagePushConstant8)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderBufferInt64Atomics)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSharedInt64Atomics)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderFloat16)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInt8)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInputAttachmentArrayDynamicIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformTexelBufferArrayDynamicIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageTexelBufferArrayDynamicIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformBufferArrayNonUniformIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSampledImageArrayNonUniformIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageBufferArrayNonUniformIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageImageArrayNonUniformIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderInputAttachmentArrayNonUniformIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderUniformTexelBufferArrayNonUniformIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderStorageTexelBufferArrayNonUniformIndexing)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingUniformBufferUpdateAfterBind)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingSampledImageUpdateAfterBind)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingStorageImageUpdateAfterBind)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingStorageBufferUpdateAfterBind)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingUniformTexelBufferUpdateAfterBind)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingStorageTexelBufferUpdateAfterBind)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingUpdateUnusedWhilePending)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingPartiallyBound)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingVariableDescriptorCount)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(runtimeDescriptorArray)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(samplerFilterMinmax)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(scalarBlockLayout)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(imagelessFramebuffer)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(uniformBufferStandardLayout)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSubgroupExtendedTypes)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(separateDepthStencilLayouts)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(hostQueryReset)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(timelineSemaphore)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(bufferDeviceAddress)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(bufferDeviceAddressCaptureReplay)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(bufferDeviceAddressMultiDevice)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(vulkanMemoryModel)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(vulkanMemoryModelDeviceScope)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(vulkanMemoryModelAvailabilityVisibilityChains)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderOutputViewportIndex)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderOutputLayer)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(subgroupBroadcastDynamicId)
+#undef OUTPUT_PHYSICAL_DEVICE_FEATURE
     }
 
     void DebugOutVersion(uint32_t version)
@@ -415,7 +492,9 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
     #ifdef _DEBUG
     {
         DebugOut(physical_device->GetProperties());
-        DebugOut(physical_device->GetFeatures());
+        DebugOut(physical_device->GetFeatures10());
+        DebugOut(physical_device->GetFeatures11());
+        DebugOut(physical_device->GetFeatures12());
     }
     #endif//_DEBUG
 
