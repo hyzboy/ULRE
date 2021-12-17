@@ -36,7 +36,10 @@ public:
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
     const char *            GetDeviceName()const{return properties.deviceName;}
 
-    const VkPhysicalDeviceFeatures &        GetFeatures         ()const{return features;}
+    const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
+    const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
+    const VkPhysicalDeviceVulkan12Features &GetFeatures12       ()const{return features12;}
+
     const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
     const VkPhysicalDeviceLimits &          GetLimits           ()const{return properties.limits;}
