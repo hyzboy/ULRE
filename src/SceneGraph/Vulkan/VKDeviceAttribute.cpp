@@ -40,9 +40,9 @@ GPUDeviceAttribute::~GPUDeviceAttribute()
         instance->DestroySurface(surface);
 }
 
-bool GPUDeviceAttribute::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const
+int GPUDeviceAttribute::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const
 {
-    return physical_device->CheckMemoryType(typeBits,properties,typeIndex);
+    return physical_device->GetMemoryType(typeBits,properties);
 }
 
 void GPUDeviceAttribute::RefreshSurfaceCaps()

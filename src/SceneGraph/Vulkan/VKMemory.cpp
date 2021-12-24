@@ -4,9 +4,9 @@
 VK_NAMESPACE_BEGIN
 GPUMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
 {
-    uint32_t index;
+    const int index=attr->physical_device->GetMemoryType(req.memoryTypeBits,properties);
 
-    if(!attr->physical_device->CheckMemoryType(req.memoryTypeBits,properties,&index))
+    if(index<0)
         return(nullptr);
 
     MemoryAllocateInfo alloc_info(index,req.size);
