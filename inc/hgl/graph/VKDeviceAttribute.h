@@ -53,7 +53,7 @@ public:
     GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s);
     ~GPUDeviceAttribute();
 
-    bool CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex) const;
+    int GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const;
 
     void RefreshSurfaceCaps();
 

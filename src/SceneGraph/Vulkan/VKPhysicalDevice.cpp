@@ -193,24 +193,20 @@ const bool GPUPhysicalDevice::CheckExtensionSupport(const AnsiString &name)const
     return(false);
 }
 
-const bool GPUPhysicalDevice::CheckMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties,uint32_t *typeIndex)const
+const int GPUPhysicalDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties)const
 {
     // Search memtypes to find first index with those properties
-    for(uint32_t i=0; i<memory_properties.memoryTypeCount; i++)
+    for(int i=0; i<memory_properties.memoryTypeCount; i++)
     {
-        if((typeBits&1)==1)
-        {
-            // Type is available, does it match user properties?
+        if(typeBits&1)  // Type is available, does it match user properties?
             if((memory_properties.memoryTypes[i].propertyFlags&properties)==properties)
-            {
-                *typeIndex=i;
-                return true;
-            }
-        }
+                return i;
+
         typeBits>>=1;
     }
+
     // No memory types matched, return failure
-    return false;
+    return -1;
 }
 
 VkFormat GPUPhysicalDevice::GetDepthFormat(bool lower_to_high)const

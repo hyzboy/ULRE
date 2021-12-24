@@ -246,7 +246,7 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,const VkBufferImag
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         count,
         buffer_image_copy);
-    
+
     if(destinationStage==VK_PIPELINE_STAGE_TRANSFER_BIT)                            //接下来还有，一般是给自动生成mipmaps
     {
         texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
