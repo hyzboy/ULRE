@@ -18,7 +18,7 @@ use_cm_module(Platform)
 use_cm_module(AssetsManage)
 use_cm_module(SceneGraph)
 
-OPTION(SUPPORT_QT_VULKAN	OFF)
+OPTION(SUPPORT_QT_VULKAN OFF)
 
 SET(ULRE    CMCore
             CMPlatform
@@ -27,7 +27,7 @@ SET(ULRE    CMCore
             CMUtil
             ULRE.Util
             ULRE.SceneGraph
-            GLM
+            ${HGL_GLM_LIB}
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
@@ -36,7 +36,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
 SET(ROOT_INCLUDE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/inc)
 
-SET(ULRE_RUNTIME_PATH   ${CMAKE_CURRENT_SOURCE_DIR})
+SET(ULRE_RUNTIME_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(src)
 
