@@ -8,12 +8,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMCMakeModule)
 
 set(ULRE_3RDPTY_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdpty)
 
-include(vulkan)
-
 include(math)
-use_glm(${ULRE_3RDPTY_ROOT_PATH}/glm)
-
+include(vulkan)
 include(use_cm_module)
+
 use_cm_module(Core)
 use_cm_module(Util)
 use_cm_module(Platform)
@@ -21,14 +19,6 @@ use_cm_module(AssetsManage)
 use_cm_module(SceneGraph)
 
 OPTION(SUPPORT_QT_VULKAN	OFF)
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    include_directories(${ULRE_3RDPTY_ROOT_PATH}/jsoncpp/include)
-    add_subdirectory(3rdpty/jsoncpp)
-    SET(JSONCPP_LIBRARY jsoncpp_lib)
-ELSE()
-    SET(JSONCPP_LIBRARY jsoncpp)
-ENDIF()
 
 SET(ULRE    CMCore
             CMPlatform

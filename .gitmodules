@@ -1,6 +1,3 @@
-[submodule "3rdpty/jsoncpp"]
-	path = 3rdpty/jsoncpp
-	url = https://github.com/open-source-parsers/jsoncpp
 [submodule "CMCMakeModule"]
 	path = CMCMakeModule
 	url = https://github.com/hyzboy/CMCMakeModule
@@ -22,6 +19,3 @@
 [submodule "CMUtil"]
 	path = CMUtil
 	url = https://github.com/hyzboy/CMUtil.git
-[submodule "3rdpty/glm"]
-	path = 3rdpty/glm
-	url = https://github.com/g-truc/glm.git
