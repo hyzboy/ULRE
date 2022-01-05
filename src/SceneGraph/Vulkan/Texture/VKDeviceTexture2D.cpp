@@ -17,14 +17,14 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
-    if(tci->extent.width*tci->extent.height*tci->extent.depth<=0)return(nullptr);
+    if(tci->extent.width*tci->extent.height)return(nullptr);
 
     if(tci->target_mipmaps==0)
         tci->target_mipmaps=(tci->origin_mipmaps>1?tci->origin_mipmaps:1);
 
     if(!tci->image)
     {
-        Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent.width,tci->extent.height,tci->target_mipmaps);
+        Image2DCreateInfo ici(tci->usage,tci->tiling,tci->format,tci->extent,tci->target_mipmaps);
         tci->image=CreateImage(&ici);
 
         if(!tci->image)
