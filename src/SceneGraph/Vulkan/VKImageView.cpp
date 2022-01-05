@@ -17,7 +17,15 @@ ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,
     iv_createinfo.subresourceRange.baseMipLevel     =0;
     iv_createinfo.subresourceRange.levelCount       =miplevel;
     iv_createinfo.subresourceRange.baseArrayLayer   =0;
-    iv_createinfo.subresourceRange.layerCount       =ext.depth;
+
+    if(type==VK_IMAGE_VIEW_TYPE_CUBE)
+        iv_createinfo.subresourceRange.layerCount   =6;
+    else
+    if(type==VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+        iv_createinfo.subresourceRange.layerCount   =6*ext.depth;
+    else
+        iv_createinfo.subresourceRange.layerCount   =ext.depth;
+
 
     if(aspectMask&VK_IMAGE_ASPECT_DEPTH_BIT)
     {
