@@ -17,7 +17,7 @@ namespace hgl
 
         public:
 
-            using Texture2DLoader::Texture2DLoader;
+            Bitmap2DLoader():Texture2DLoader(){}
             ~Bitmap2DLoader();
 
             void *OnBegin(uint32 total_bytes) override;

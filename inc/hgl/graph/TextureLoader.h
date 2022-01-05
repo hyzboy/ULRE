@@ -71,8 +71,6 @@ namespace hgl
         {
         protected:
 
-            VkImageViewType type;
-
             TextureFileHeader file_header;
 
             VkFormat format;
@@ -93,9 +91,8 @@ namespace hgl
 
         public:
 
-            TextureLoader(const VkImageViewType &ivt)
+            TextureLoader()
             {
-                type=ivt;
                 format=VK_FORMAT_UNDEFINED;
                 mipmap_zero_total_bytes=0;
                 total_bytes=0;
@@ -121,12 +118,12 @@ namespace hgl
                     return mipmap_zero_total_bytes;
                 else
                     return ComputeMipmapBytes(  file_header.length,
-                                                mipmap_zero_total_bytes);
+                        mipmap_zero_total_bytes);
             }
 
         public:
 
-            Texture1DLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_1D){}
+            using TextureLoader::TextureLoader;
             virtual ~Texture1DLoader()=default;
         };//class Texture1DLoader
 
@@ -144,13 +141,13 @@ namespace hgl
                     return mipmap_zero_total_bytes;
                 else
                     return ComputeMipmapBytes(  file_header.width,
-                                                file_header.height,
-                                                mipmap_zero_total_bytes);
+                        file_header.height,
+                        mipmap_zero_total_bytes);
             }
 
         public:
 
-            Texture2DLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_2D){}
+            using TextureLoader::TextureLoader;
             virtual ~Texture2DLoader()=default;
         };//class Texture2DLoader
 
@@ -168,14 +165,14 @@ namespace hgl
                     return mipmap_zero_total_bytes;
                 else
                     return ComputeMipmapBytes(  file_header.width,
-                                                file_header.height,
-                                                file_header.depth,
-                                                mipmap_zero_total_bytes);
+                        file_header.height,
+                        file_header.depth,
+                        mipmap_zero_total_bytes);
             }
 
         public:
 
-            Texture3DLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_3D){}
+            using TextureLoader::TextureLoader;
             virtual ~Texture3DLoader()=default;
         };//class Texture3DLoader
 
@@ -193,13 +190,13 @@ namespace hgl
                     return mipmap_zero_total_bytes*6;
                 else
                     return ComputeMipmapBytes(  file_header.width,
-                                                file_header.height,
-                                                mipmap_zero_total_bytes)*6;
+                        file_header.height,
+                        mipmap_zero_total_bytes)*6;
             }
 
         public:
 
-            TextureCubeLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_CUBE){}
+            using TextureLoader::TextureLoader;
             virtual ~TextureCubeLoader()=default;
         };//class TextureCubeLoader
 
@@ -217,12 +214,12 @@ namespace hgl
                     return mipmap_zero_total_bytes*file_header.layers;
                 else
                     return ComputeMipmapBytes(  file_header.length,
-                                                mipmap_zero_total_bytes)*file_header.layers;;
+                        mipmap_zero_total_bytes)*file_header.layers;
             }
 
         public:
 
-            Texture1DArrayLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_1D_ARRAY){}
+            using TextureLoader::TextureLoader;
             virtual ~Texture1DArrayLoader()=default;
         };//class Texture1DArrayLoader
 
@@ -240,13 +237,13 @@ namespace hgl
                     return mipmap_zero_total_bytes*file_header.layers;
                 else
                     return ComputeMipmapBytes(  file_header.width,
-                                                file_header.height,
-                                                mipmap_zero_total_bytes)*file_header.layers;
+                        file_header.height,
+                        mipmap_zero_total_bytes)*file_header.layers;
             }
 
         public:
 
-            Texture2DArrayLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_2D_ARRAY){}
+            using TextureLoader::TextureLoader;
             virtual ~Texture2DArrayLoader()=default;
         };//class Texture2DArrayLoader
 
@@ -264,13 +261,13 @@ namespace hgl
                     return mipmap_zero_total_bytes*6*file_header.layers;
                 else
                     return ComputeMipmapBytes(  file_header.width,
-                                                file_header.height,
-                                                mipmap_zero_total_bytes)*6*file_header.layers;
+                        file_header.height,
+                        mipmap_zero_total_bytes)*6*file_header.layers;
             }
 
         public:
 
-            TextureCubeArrayLoader():TextureLoader(VK_IMAGE_VIEW_TYPE_CUBE_ARRAY){}
+            using TextureLoader::TextureLoader;
             virtual ~TextureCubeArrayLoader()=default;
         };//class TextureCubeArrayLoader
     }//namespace graph

@@ -21,7 +21,7 @@ private:
 
 public:
 
-    const   DescriptorSetsType   GetType             (){return ds_type;}
+    const   DescriptorSetsType  GetType             (){return ds_type;}
             DescriptorSets *    GetDescriptorSet    (){return descriptor_sets;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
 
