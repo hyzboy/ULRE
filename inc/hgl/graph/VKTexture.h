@@ -82,15 +82,23 @@ public:
 //    uint32_t width,height,depth;
 //};//class Texture3D:public Texture
 
-//class TextureCubemap:public Texture
-//{
-//    uint32_t width,height;
-//};//class TextureCubemap:public Texture
+class TextureCube:public Texture
+{
+public:
 
-//class TextureCubemapArray:public Texture
+    TextureCube(VkDevice dev,TextureData *td):Texture(dev,td){}
+    ~TextureCube()=default;
+
+    static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_CUBE;}
+
+    const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
+    const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
+};//class TextureCube:public Texture
+
+//class TextureCubeArray:public Texture
 //{
 //    uint32_t width,height,count;
-//};//class TextureCubemapArray:public Texture
+//};//class TextureCubeArray:public Texture
 
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_TEXTURE_INCLUDE
