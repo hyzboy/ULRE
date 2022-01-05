@@ -92,7 +92,7 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        cam.vp_width=cam.width=extent.width;
+        cam.vp_width =cam.width =extent.width;
         cam.vp_height=cam.height=extent.height;        
 
         cam.Refresh();

@@ -187,8 +187,8 @@ namespace hgl
             if(file_header.version!=0)
                 return(false);
 
-            if(file_header.type!=type)
-                return(false);
+//            if(file_header.type!=type)
+//                return(false);
 
             if(file_header.pixel_format.channels==0)
             {

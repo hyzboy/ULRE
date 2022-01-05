@@ -66,6 +66,8 @@ public:
     Texture2D(VkDevice dev,TextureData *td):Texture(dev,td){}
     ~Texture2D()=default;
 
+    static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_2D;}
+
     const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
     const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
 };//class Texture2D:public Texture
