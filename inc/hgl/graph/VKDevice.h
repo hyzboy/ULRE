@@ -171,6 +171,9 @@ public: //Texture
     Texture2D *CreateTexture2D(TextureData *);
     Texture2D *CreateTexture2D(TextureCreateInfo *ci);
 
+    TextureCube *CreateTextureCube(TextureData *);
+    TextureCube *CreateTextureCube(TextureCreateInfo *ci);
+
     void Clear(TextureCreateInfo *);
 
     bool ChangeTexture2D(Texture2D *,GPUBuffer *buf,const List<Image2DRegion> &,                                            VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
