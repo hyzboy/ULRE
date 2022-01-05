@@ -112,6 +112,16 @@ SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
                         Vulkan/VKMemoryAllocator.cpp
                         Vulkan/VKBuffer.cpp
                         )
+
+SET(VK_DEVICE_TEXTURE_SOURCE    Vulkan/Texture/BufferImageCopy2D.h
+                                Vulkan/Texture/GenMipmaps2D.cpp
+                                Vulkan/Texture/VKDeviceTexture.cpp
+                                Vulkan/Texture/VKDeviceTexture2D.cpp)
+
+SET(VK_TEXTURE_LOADER_SOURCE    ${SG_INCLUDE_PATH}/VKTextureCreateInfo.h
+                                Vulkan/Texture/VKTextureLoader.h
+                                Vulkan/Texture/VKTexture2DLoader.cpp)
+                                #Vulkan/Texture/VKTextureCubeLoader.cpp)
                         
 SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         ${SG_INCLUDE_PATH}/VKDeviceAttribute.h
@@ -121,7 +131,6 @@ SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceBuffer.cpp
                         Vulkan/VKDeviceImage.cpp
-                        Vulkan/VKDeviceTexture.cpp
                         Vulkan/VKDeviceSampler.cpp
                         Vulkan/VKDeviceMaterial.cpp
                         Vulkan/VKDeviceFramebuffer.cpp
@@ -139,6 +148,8 @@ SOURCE_GROUP("Vulkan\\Device\\Debug"            FILES ${VK_DEBUG_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Instance"         FILES ${VK_INST_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Physical Device"  FILES ${VK_PHYSICAL_DEVICE_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Memory"           FILES ${VK_MEMORY_SOURCE})
+SOURCE_GROUP("Vulkan\\Device\\Texture"          FILES ${VK_DEVICE_TEXTURE_SOURCE})
+SOURCE_GROUP("Vulkan\\Device\\Texture\\Loader"  FILES ${VK_TEXTURE_LOADER_SOURCE})
 
 SET(VK_DESCRIPTOR_SETS_SOURCE   ${SG_INCLUDE_PATH}/VKDescriptorSets.h
                                 Vulkan/VKDescriptorSets.cpp
@@ -154,12 +165,10 @@ SET(VK_SHADER_SOURCE    ${SG_INCLUDE_PATH}/VKShaderModule.h
 
 SET(VK_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/VKImageView.h
                         ${SG_INCLUDE_PATH}/VKTexture.h
-                        ${SG_INCLUDE_PATH}/VKTextureCreateInfo.h
                         ${SG_INCLUDE_PATH}/VKSampler.h
                         Vulkan/VKSampler.cpp
                         Vulkan/VKImageView.cpp
-                        Vulkan/VKTexture.cpp
-                        Vulkan/VKTexture2DLoader.cpp)
+                        Vulkan/VKTexture.cpp)
 
 SET(VK_MATERIAL_SOURCE  ${SG_INCLUDE_PATH}/VKMaterial.h
                         ${SG_INCLUDE_PATH}/VKMaterialParameters.h
@@ -231,6 +240,8 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_DEBUG_SOURCE}
                             ${VK_MEMORY_SOURCE}
                             ${VK_DEVICE_SOURCE}
+                            ${VK_DEVICE_TEXTURE_SOURCE}
+                            ${VK_TEXTURE_LOADER_SOURCE}
                             ${VK_PHYSICAL_DEVICE_SOURCE}
                             ${VK_DESCRIPTOR_SETS_SOURCE}
                             ${VK_SHADER_SOURCE}

@@ -46,8 +46,8 @@ class Texture1DArray;
 class Texture2D;
 class Texture2DArray;
 class Texture3D;
-class TextureCubemap;
-class TextureCubemapArray;
+class TextureCube;
+class TextureCubeArray;
 
 class Sampler;
 
