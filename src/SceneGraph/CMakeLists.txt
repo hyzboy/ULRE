@@ -115,14 +115,15 @@ SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
 
 SET(VK_DEVICE_TEXTURE_SOURCE    Vulkan/Texture/BufferImageCopy2D.h
                                 Vulkan/Texture/GenMipmaps2D.cpp
+                                Vulkan/Texture/GenMipmapsCube.cpp
                                 Vulkan/Texture/VKDeviceTexture.cpp
                                 Vulkan/Texture/VKDeviceTexture2D.cpp
                                 Vulkan/Texture/VKDeviceTextureCube.cpp)
 
 SET(VK_TEXTURE_LOADER_SOURCE    ${SG_INCLUDE_PATH}/VKTextureCreateInfo.h
                                 Vulkan/Texture/VKTextureLoader.h
-                                Vulkan/Texture/VKTexture2DLoader.cpp)
-                                #Vulkan/Texture/VKTextureCubeLoader.cpp)
+                                Vulkan/Texture/VKTexture2DLoader.cpp
+                                Vulkan/Texture/VKTextureCubeLoader.cpp)
                         
 SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                         ${SG_INCLUDE_PATH}/VKDeviceAttribute.h

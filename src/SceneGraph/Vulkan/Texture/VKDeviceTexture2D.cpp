@@ -74,7 +74,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
             if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
             {
                 CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
-                GenerateMipmaps2D(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel);              
+                GenerateMipmaps2D(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel);
             }
         texture_cmd_buf->End();
 

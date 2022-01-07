@@ -104,6 +104,7 @@ public: //Material
 public: //texture
 
     Texture2D *         LoadTexture2D(const OSString &,bool auto_mipmaps=false);
+    TextureCube *       LoadTextureCube(const OSString &,bool auto_mipmaps=false);
 
 public: //Get
 
