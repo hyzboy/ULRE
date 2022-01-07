@@ -1,16 +1,16 @@
 #include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
-void GenerateMipmapsCube(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels)
+void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32 layer_count)
 {
-    ImageSubresourceRange subresourceRange(aspect_mask);
+    ImageSubresourceRange subresourceRange(aspect_mask,1,layer_count);
 
     VkImageBlit blit;
 
     blit.srcOffsets[0] = {0, 0, 0};
     blit.srcSubresource.aspectMask = aspect_mask;
     blit.srcSubresource.baseArrayLayer = 0;
-    blit.srcSubresource.layerCount = 6;
+    blit.srcSubresource.layerCount = layer_count;
 
     blit.dstOffsets[0] = {0, 0, 0};
     blit.dstSubresource=blit.srcSubresource;
@@ -22,15 +22,6 @@ void GenerateMipmapsCube(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImage
     {
         subresourceRange.baseMipLevel = i - 1;
 
-        texture_cmd_buf->ImageMemoryBarrier(image,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            subresourceRange);
-
         blit.srcOffsets[1] = {width,height,1};
         blit.srcSubresource.mipLevel = i - 1;
 
@@ -39,6 +30,15 @@ void GenerateMipmapsCube(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImage
 
         blit.dstOffsets[1] = {width,height,1};
         blit.dstSubresource.mipLevel = i;
+
+        texture_cmd_buf->ImageMemoryBarrier(image,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_ACCESS_TRANSFER_READ_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            subresourceRange);
 
         texture_cmd_buf->BlitImage(
             image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

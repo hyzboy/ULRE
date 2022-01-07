@@ -3,7 +3,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include"BufferImageCopy2D.h"
 VK_NAMESPACE_BEGIN
-void GenerateMipmapsCube(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels);
+void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
 TextureCube *GPUDevice::CreateTextureCube(TextureData *tex_data)
 {
@@ -70,7 +70,7 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
             if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
             {
                 CommitTextureCube(tex,tci->buffer,tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_TRANSFER_BIT);
-                GenerateMipmapsCube(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel);
+                GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,6);
             }
         texture_cmd_buf->End();
 
@@ -81,55 +81,6 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
 
     delete tci;     //"delete tci" is correct,please don't use "Clear(tci)"
     return tex;
-}
-
-bool GPUDevice::CommitTextureCube(TextureCube *tex,GPUBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,VkPipelineStageFlags destinationStage)
-{
-    if(!tex||!buf)
-        return(false);
-
-    ImageSubresourceRange subresourceRange(tex->GetAspect(),tex->GetMipLevel(),6);
-
-    texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-        VK_PIPELINE_STAGE_HOST_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        subresourceRange);
-
-    texture_cmd_buf->CopyBufferToImage(
-        buf->GetBuffer(),
-        tex->GetImage(),
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        count,
-        buffer_image_copy);
-
-    if(destinationStage==VK_PIPELINE_STAGE_TRANSFER_BIT)                            //接下来还有，一般是给自动生成mipmaps
-    {
-        texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            subresourceRange);
-    }
-    else// if(destinationStage==VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)              //接下来就给fragment shader用了，证明是最后一步
-    {
-        texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_SHADER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            subresourceRange);
-    }
-
-    return(true);
 }
 
 bool GPUDevice::CommitTextureCube(TextureCube *tex,GPUBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
@@ -161,7 +112,7 @@ bool GPUDevice::CommitTextureCube(TextureCube *tex,GPUBuffer *buf,const uint32_t
         offset+=mipmaps_zero_bytes;
     }
 
-    return CommitTextureCube(tex,buf,bic_list,6,destinationStage);
+    return CommitTexture(tex,buf,bic_list,6,6,destinationStage);
 }
 
 bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
@@ -219,7 +170,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const V
         }
     }
 
-    return CommitTextureCube(tex,buf,buffer_image_copy,miplevel*6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CommitTexture(tex,buf,buffer_image_copy,miplevel*6,6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
 //bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)

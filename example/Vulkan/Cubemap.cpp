@@ -57,7 +57,7 @@ private:
         }
 
         {
-            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Storforsen4.TexCube"),false);
+            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Test.TexCube"),true);
 
             if(!texture)
                 return(false);

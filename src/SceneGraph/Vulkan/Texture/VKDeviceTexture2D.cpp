@@ -3,7 +3,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include"BufferImageCopy2D.h"
 VK_NAMESPACE_BEGIN
-void GenerateMipmaps2D(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels);
+void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
 Texture2D *GPUDevice::CreateTexture2D(TextureData *tex_data)
 {
@@ -74,7 +74,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
             if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
             {
                 CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
-                GenerateMipmaps2D(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel);
+                GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,1);
             }
         texture_cmd_buf->End();
 
@@ -87,62 +87,13 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
     return tex;
 }
 
-bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,VkPipelineStageFlags destinationStage)
-{
-    if(!tex||!buf)
-        return(false);
-
-    ImageSubresourceRange subresourceRange(tex->GetAspect(),tex->GetMipLevel());
-
-    texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-        VK_PIPELINE_STAGE_HOST_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        subresourceRange);
-
-    texture_cmd_buf->CopyBufferToImage(
-        buf->GetBuffer(),
-        tex->GetImage(),
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        count,
-        buffer_image_copy);
-
-    if(destinationStage==VK_PIPELINE_STAGE_TRANSFER_BIT)                            //接下来还有，一般是给自动生成mipmaps
-    {
-        texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            subresourceRange);
-    }
-    else// if(destinationStage==VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)              //接下来就给fragment shader用了，证明是最后一步
-    {
-        texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_SHADER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            subresourceRange);
-    }
-
-    return(true);
-}
-
 bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf)return(false);
 
     BufferImageCopy buffer_image_copy(tex);
 
-    return CommitTexture2D(tex,buf,&buffer_image_copy,1,destinationStage);
+    return CommitTexture(tex,buf,&buffer_image_copy,1,1,destinationStage);
 }
 
 bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,GPUBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
@@ -188,7 +139,7 @@ bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,GPUBuffer *buf,const VkExt
         if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CommitTexture2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CommitTexture(tex,buf,buffer_image_copy,miplevel,1,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
 bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
@@ -225,7 +176,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<Image2D
     }
 
     texture_cmd_buf->Begin();
-    bool result=CommitTexture2D(tex,buf,buffer_image_copy,ir_count,destinationStage);
+    bool result=CommitTexture(tex,buf,buffer_image_copy,ir_count,1,destinationStage);
     texture_cmd_buf->End();
     SubmitTexture(*texture_cmd_buf);
     return result;
@@ -242,7 +193,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,uint32_t left,uint
     BufferImageCopy buffer_image_copy(tex);
 
     texture_cmd_buf->Begin();
-    bool result=CommitTexture2D(tex,buf,&buffer_image_copy,1,destinationStage);
+    bool result=CommitTexture(tex,buf,&buffer_image_copy,1,1,destinationStage);
     texture_cmd_buf->End();
     SubmitTexture(*texture_cmd_buf);
     return result;
