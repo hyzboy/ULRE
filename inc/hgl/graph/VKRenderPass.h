@@ -25,6 +25,8 @@ protected:
 
     ObjectList<Pipeline> pipeline_list;
 
+    Pipeline *CreatePipeline(Material *,PipelineData *,const VAB *);
+
 private:
 
     friend class DeviceRenderPassManage;
@@ -52,13 +54,13 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *);
+    Pipeline *CreatePipeline(MaterialInstance *,  const PipelineData *);
     Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &);
 
 public:
 
     Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,        PipelineData *,    const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,  const PipelineData *,    const Prim &prim,const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim,const bool prim_restart=false);
 };//class RenderPass
 VK_NAMESPACE_END
