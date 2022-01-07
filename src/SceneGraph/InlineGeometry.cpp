@@ -276,49 +276,16 @@ namespace hgl
             if(!rc.Init(24))
                 return(nullptr);
 
-            if(cci->center  ==Vector3f(0,0,0)
-             &&cci->size    ==Vector3f(1,1,1))
-            {
-                rc.WriteVAD(VAN::Position,points,sizeof(points));
-            }
-            else
-            {
-                const float *sp=points;
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                float *vp=vertex->Get();
+            rc.WriteVAD(VAN::Position,points,sizeof(points));
 
-                for(uint i=0;i<24;i++)
-                {
-                    *vp=cci->center.x+(*sp)*cci->size.x;  ++vp;++sp;
-                    *vp=cci->center.y+(*sp)*cci->size.y;  ++vp;++sp;
-                    *vp=cci->center.z+(*sp)*cci->size.z;  ++vp;++sp;
-                }
-            }
-
+            if(cci->has_normal)
             rc.WriteVAD(VAN::Normal,normals,sizeof(normals));
+
+            if(cci->has_tangent)
             rc.WriteVAD(VAN::Tangent,tangents,sizeof(tangents));
 
-            if(cci->tile.x==1&&cci->tile.y==1)
-            {
-                rc.WriteVAD(VAN::TexCoord,tex_coords,sizeof(tex_coords));
-            }
-            else
-            {
-                AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
-
-                if(tex_coord)
-                {
-                    float *tcp=tex_coord->Get();
-
-                    const float *tcs=tex_coords;
-
-                    for(uint i=0;i<24;i++)
-                    {
-                        *tcp=(*tcs)*cci->tile.x;++tcs;++tcp;
-                        *tcp=(*tcs)*cci->tile.y;++tcs;++tcp;
-                    }
-                }
-            }
+            if(cci->has_tex_coord)
+            rc.WriteVAD(VAN::TexCoord,tex_coords,sizeof(tex_coords));
 
             if(cci->has_color)
             {                
@@ -1181,23 +1148,7 @@ namespace hgl
 
             if(!vertex)return(nullptr);
 
-            if(cci->center  ==Vector3f(0,0,0)
-             &&cci->size    ==Vector3f(1,1,1))
-            {
-                rc.WriteVAD(VAN::Position,points,sizeof(points));
-            }
-            else
-            {
-                const float *sp=points;
-                float *vp=vertex->Get();
-
-                for(uint i=0;i<8;i++)
-                {
-                    *vp=cci->center.x+(*sp)*cci->size.x;  ++vp;++sp;
-                    *vp=cci->center.y+(*sp)*cci->size.y;  ++vp;++sp;
-                    *vp=cci->center.z+(*sp)*cci->size.z;  ++vp;++sp;
-                }
-            }
+            rc.WriteVAD(VAN::Position,points,sizeof(points));
 
             if(cci->has_color)
             {
