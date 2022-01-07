@@ -46,7 +46,6 @@ private:
     Material *          axis_material       =nullptr;
     MaterialInstance *  axis_mi             =nullptr;
 
-    PipelineData *      pipeline_data       =nullptr;
     Pipeline *          axis_pipeline       =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
 
@@ -140,10 +139,7 @@ private:
             }
         }
 
-        pipeline_data=GetPipelineData(InlinePipeline::Solid3D);
-        if(!pipeline_data)return(false);
-
-        pipeline_solid=CreatePipeline(material_instance,pipeline_data,Prim::Triangles);
+        pipeline_solid=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Triangles);
         if(!pipeline_solid)return(false);
 
         return(true);
@@ -163,6 +159,9 @@ private:
         
         {
             struct CubeCreateInfo cci;
+            cci.has_normal=true;
+            cci.has_tangent=true;
+            cci.has_tex_coord=true;
             cci.has_color=true;
             cci.color=Vector4f(1,1,1,1);
             ro_cube=CreateRenderableCube(db,vab,&cci);

@@ -95,34 +95,20 @@ namespace hgl
 
         struct CubeCreateInfo
         {
-            Vector3f center;
-            Vector3f size;
-            Vector2f tile;
+            bool has_normal;
+            bool has_tangent;
+            bool has_tex_coord;
 
             bool has_color;
             Vector4f color;
 
         public:
 
-            void Set(const AABB &box)
-            {
-                center=box.center;
-                size=box.length;
-            }
-
             CubeCreateInfo()
             {
-                center=Vector3f(0,0,0);
-                size=Vector3f(1,1,1);
-                tile=Vector2f(1,1);
-
-                has_color=false;
-            }
-
-            CubeCreateInfo(const AABB &box)
-            {
-                Set(box);
-                tile=Vector2f(1,1);
+                has_normal=false;
+                has_tangent=false;
+                has_tex_coord=false;
 
                 has_color=false;
             }
