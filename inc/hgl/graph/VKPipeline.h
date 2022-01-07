@@ -35,8 +35,6 @@ public:
 
     operator VkPipeline(){return pipeline;}
 
-    const VAB *GetVAB()const{return data->GetVAB();}
-
     const bool IsAlphaTest()const{return data->alpha_test>0;}
     const bool IsAlphaBlend()const{return data->alpha_blend;}
 };//class GraphicsPipeline
