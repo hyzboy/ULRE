@@ -17,7 +17,11 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
-    if(tci->extent.width*tci->extent.height)return(nullptr);
+    if(tci->extent.width*tci->extent.height<=0)
+    {
+        Clear(tci);
+        return(nullptr);
+    }
 
     if(tci->target_mipmaps==0)
         tci->target_mipmaps=(tci->origin_mipmaps>1?tci->origin_mipmaps:1);
@@ -79,7 +83,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
         delete tci->buffer;
     }
 
-    delete tci;
+    delete tci;     //"delete tci" is correct,please don't use "Clear(tci)"
     return tex;
 }
 
