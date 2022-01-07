@@ -25,6 +25,11 @@ private:
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
 
+
+    Material *          axis_material       =nullptr;
+    MaterialInstance *  axis_mi             =nullptr;
+
+    Pipeline *          axis_pipeline       =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
 
     GPUBuffer *         ubo_light           =nullptr;
@@ -33,6 +38,7 @@ private:
     Sampler *           sampler             =nullptr;
     TextureCube *       texture             =nullptr;
 
+    Renderable *        ro_axis             =nullptr;
     Renderable *        ro_cube             =nullptr;
 
 private:
@@ -40,7 +46,18 @@ private:
     bool InitMaterial()
     {
         {
-            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Test/Test.TexCube"),false);
+            axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
+            if(!axis_material)return(false);
+
+            axis_mi=db->CreateMaterialInstance(axis_material);
+            if(!axis_mi)return(false);
+
+            axis_pipeline=CreatePipeline(axis_mi,InlinePipeline::Solid3D,Prim::Lines);
+            if(!axis_pipeline)return(false);
+        }
+
+        {
+            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Storforsen4.TexCube"),false);
 
             if(!texture)
                 return(false);
@@ -50,9 +67,9 @@ private:
                 VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
                 nullptr,
                 0,
-                VK_FILTER_NEAREST,
-                VK_FILTER_NEAREST,
-                VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                VK_FILTER_LINEAR,
+                VK_FILTER_LINEAR,
+                VK_SAMPLER_MIPMAP_MODE_LINEAR,
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -98,6 +115,14 @@ private:
 
     void CreateRenderObject()
     {
+        {
+            struct AxisCreateInfo aci;
+
+            aci.size=200;
+
+            ro_axis=CreateRenderableAxis(db,axis_mi->GetVAB(),&aci);
+        }
+
         const VAB *vab=material_instance->GetVAB();
 
         {
@@ -105,6 +130,22 @@ private:
 
             ro_cube=CreateRenderableCube(db,vab,&cci);
         }
+    }
+
+    bool InitUBO()
+    {
+        {
+            MaterialParameters *mp_global=axis_mi->GetMP(DescriptorSetsType::Global);
+
+            if(!mp_global)
+                return(false);
+
+            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
+
+            mp_global->Update();
+        }
+
+        return(true);
     }
 
     void Add(Renderable *r,Pipeline *pl)
@@ -123,6 +164,8 @@ private:
 
     bool InitScene()
     {
+        render_root.CreateSubNode(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
+
         Add(ro_cube,pipeline_solid);
 
         render_root.RefreshMatrix();
@@ -146,6 +189,9 @@ public:
         render_list=new RenderList(device);
 
         if(!InitMaterial())
+            return(false);
+
+        if(!InitUBO())
             return(false);
 
         CreateRenderObject();
