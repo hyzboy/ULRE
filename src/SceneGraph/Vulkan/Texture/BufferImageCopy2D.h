@@ -22,6 +22,12 @@ public:
         SetRectScope(0,0,tex->GetWidth(),tex->GetHeight());
     }
 
+    BufferImageCopy(const TextureCube *tex):BufferImageCopy()
+    {
+        imageSubresource.aspectMask=tex->GetAspect();
+        SetRectScope(0,0,tex->GetWidth(),tex->GetHeight());
+    }
+
     void Set(const VkImageAspectFlags aspect_mask,const uint32_t layer_count)
     {
         imageSubresource.aspectMask=aspect_mask;

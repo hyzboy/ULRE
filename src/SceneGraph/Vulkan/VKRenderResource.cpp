@@ -148,4 +148,24 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
 
     return tex;
 }
+
+TextureCube *CreateTextureCubeFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
+
+TextureCube *RenderResource::LoadTextureCube(const OSString &filename,bool auto_mipmaps)
+{
+    TextureCube *tex;
+
+    if(texture_by_name.Get(filename,(Texture *&)tex))
+        return tex;
+
+    tex=CreateTextureCubeFromFile(device,filename,auto_mipmaps);
+
+    if(tex)
+    {
+        texture_by_name.Add(filename,tex);
+        Add(tex);
+    }
+
+    return tex;
+}
 VK_NAMESPACE_END

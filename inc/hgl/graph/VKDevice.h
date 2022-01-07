@@ -160,7 +160,12 @@ private:    //texture
     bool CommitTexture2DMipmaps (Texture2D *,GPUBuffer *buf,const VkExtent3D &,uint32_t);
     bool CommitTexture2D        (Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-    bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
+    bool SubmitTexture          (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
+
+
+    bool CommitTextureCube          (TextureCube *,GPUBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags stage);
+    bool CommitTextureCubeMipmaps   (TextureCube *,GPUBuffer *buf,const VkExtent3D &,uint32_t);
+    bool CommitTextureCube          (TextureCube *,GPUBuffer *buf,const VkBufferImageCopy *,const int count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
 public: //Texture
 

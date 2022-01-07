@@ -1,7 +1,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
-void GenerateMipmaps2D(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels)
+void GenerateMipmapsCube(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels)
 {
     ImageSubresourceRange subresourceRange(aspect_mask);
 
@@ -10,7 +10,7 @@ void GenerateMipmaps2D(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAs
     blit.srcOffsets[0] = {0, 0, 0};
     blit.srcSubresource.aspectMask = aspect_mask;
     blit.srcSubresource.baseArrayLayer = 0;
-    blit.srcSubresource.layerCount = 1;
+    blit.srcSubresource.layerCount = 6;
 
     blit.dstOffsets[0] = {0, 0, 0};
     blit.dstSubresource=blit.srcSubresource;
