@@ -67,7 +67,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
             }
             else //本身有mipmaps数据
             {
-                CommitTexture2DMipmaps(tex,tci->buffer,tci->extent.width,tci->extent.height,tci->mipmap_zero_total_bytes);
+                CommitTexture2DMipmaps(tex,tci->buffer,tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
@@ -145,10 +145,10 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,VkPipelineStageFla
     return CommitTexture2D(tex,buf,&buffer_image_copy,1,destinationStage);
 }
 
-bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,GPUBuffer *buf,uint32_t width,uint32_t height,uint32_t total_bytes)
+bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,GPUBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
-        ||width<=0||height<=0)
+      ||extent.width*extent.height<=0)
         return(false);
 
     const uint32_t miplevel=tex->GetMipLevel();
@@ -157,6 +157,9 @@ bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,GPUBuffer *buf,uint32_t wi
 
     VkDeviceSize offset=0;
     uint32_t level=0;
+
+    uint32_t width=extent.width;
+    uint32_t height=extent.height;
 
     buffer_image_copy.zero();
 

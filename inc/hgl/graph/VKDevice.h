@@ -157,7 +157,7 @@ public: //Image
 private:    //texture
 
     bool CommitTexture2D        (Texture2D *,GPUBuffer *buf,VkPipelineStageFlags stage);
-    bool CommitTexture2DMipmaps (Texture2D *,GPUBuffer *buf,uint32_t width,uint32_t height,uint32_t);
+    bool CommitTexture2DMipmaps (Texture2D *,GPUBuffer *buf,const VkExtent3D &,uint32_t);
     bool CommitTexture2D        (Texture2D *,GPUBuffer *buf,const VkBufferImageCopy *,const int count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
     bool SubmitTexture      (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
