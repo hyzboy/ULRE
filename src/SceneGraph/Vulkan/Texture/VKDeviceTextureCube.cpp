@@ -86,33 +86,10 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
 bool GPUDevice::CommitTextureCube(TextureCube *tex,GPUBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||!mipmaps_zero_bytes)return(false);
+    
+    BufferImageCopy buffer_image_copy(tex);
 
-    AutoDeleteArray<VkBufferImageCopy> bic_list(6);
-
-    uint32_t face=0;
-    uint32_t offset=0;
-
-    for(VkBufferImageCopy &bic:bic_list)
-    {
-        bic.bufferOffset      = offset;
-        bic.bufferRowLength   = 0;
-        bic.bufferImageHeight = 0;
-        bic.imageSubresource.aspectMask       = tex->GetAspect();
-        bic.imageSubresource.mipLevel         = 0;
-        bic.imageSubresource.baseArrayLayer   = face;
-        bic.imageSubresource.layerCount       = 1;
-        bic.imageOffset.x     = 0;
-        bic.imageOffset.y     = 0;
-        bic.imageOffset.z     = 0;
-        bic.imageExtent.width = tex->GetWidth();
-        bic.imageExtent.height= tex->GetHeight();
-        bic.imageExtent.depth = 1;
-
-        ++face;
-        offset+=mipmaps_zero_bytes;
-    }
-
-    return CommitTexture(tex,buf,bic_list,6,6,destinationStage);
+    return CommitTexture(tex,buf,&buffer_image_copy,1,6,destinationStage);
 }
 
 bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
@@ -123,7 +100,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const V
 
     const uint32_t miplevel=tex->GetMipLevel();
 
-    AutoDeleteArray<VkBufferImageCopy> buffer_image_copy(miplevel*6);
+    AutoDeleteArray<VkBufferImageCopy> buffer_image_copy(miplevel);
 
     VkDeviceSize offset=0;
     
@@ -142,8 +119,8 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const V
         bic.bufferImageHeight = 0;
         bic.imageSubresource.aspectMask       = tex->GetAspect();
         bic.imageSubresource.mipLevel         = level;
-        bic.imageSubresource.baseArrayLayer   = face;
-        bic.imageSubresource.layerCount       = 1;
+        bic.imageSubresource.baseArrayLayer   = 0;
+        bic.imageSubresource.layerCount       = 6;
         bic.imageOffset.x     = 0;
         bic.imageOffset.y     = 0;
         bic.imageOffset.z     = 0;
@@ -156,21 +133,13 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const V
         else
             offset+=total_bytes;
 
-        if(face==5)
-        {
-            face=0;
-            ++level;
+        ++level;
 
-            if(width>1){width>>=1;total_bytes>>=1;}
-            if(height>1){height>>=1;total_bytes>>=1;}
-        }
-        else
-        {
-            ++face;
-        }
+        if(width>1){width>>=1;total_bytes>>=1;}
+        if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CommitTexture(tex,buf,buffer_image_copy,miplevel*6,6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CommitTexture(tex,buf,buffer_image_copy,miplevel,6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
 //bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
