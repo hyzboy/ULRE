@@ -292,23 +292,18 @@ struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 
 struct TextureData
 {
-    GPUMemory *         memory      =nullptr;
-    VkImage             image       =VK_NULL_HANDLE;
-    VkImageLayout       image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
-    ImageView *         image_view  =nullptr;
-    uint32              miplevel    =0;
-    VkImageTiling       tiling      =VK_IMAGE_TILING_OPTIMAL;
+    GPUMemory *         memory;
+    VkImage             image;
+    VkImageLayout       image_layout;
+    ImageView *         image_view;
+    uint32              miplevel;
+    VkImageTiling       tiling;
 
 public:
 
     TextureData()
     {
-        memory      =nullptr;
-        image       =VK_NULL_HANDLE;
-        image_layout=VK_IMAGE_LAYOUT_UNDEFINED;
-        image_view  =nullptr;
-        miplevel    =0;
-        tiling      =VK_IMAGE_TILING_OPTIMAL;
+        hgl_zero(*this);
     }
 
     TextureData(const TextureCreateInfo *tci)

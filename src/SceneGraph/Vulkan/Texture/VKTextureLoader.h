@@ -62,6 +62,8 @@ public:
 
         tci->SetData(buf,extent);
 
+        tci->origin_mipmaps=file_header.mipmaps;
+
         if(auto_mipmaps&&file_header.mipmaps<=1)
         {
             if(device->CheckFormatSupport(format,VK_FORMAT_FEATURE_BLIT_DST_BIT))
@@ -72,8 +74,7 @@ public:
         }
         else
         {
-            tci->origin_mipmaps=
-                tci->target_mipmaps=file_header.mipmaps;
+            tci->target_mipmaps=file_header.mipmaps;
         }
 
         tci->mipmap_zero_total_bytes=mipmap_zero_total_bytes;
