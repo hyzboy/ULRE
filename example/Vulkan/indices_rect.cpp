@@ -7,8 +7,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr uint32_t VERTEX_COUNT=4;
 

@@ -30,7 +30,7 @@ private:
     MaterialInstance *  axis_mi             =nullptr;
 
     Pipeline *          axis_pipeline       =nullptr;
-    Pipeline *          pipeline_solid      =nullptr;
+    Pipeline *          sky_pipeline        =nullptr;
 
     GPUBuffer *         ubo_light           =nullptr;
     GPUBuffer *         ubo_phong           =nullptr;
@@ -57,7 +57,7 @@ private:
         }
 
         {
-            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Test.TexCube"),true);
+            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Storforsen4.TexCube"),true);
 
             if(!texture)
                 return(false);
@@ -107,8 +107,8 @@ private:
             }
         }
 
-        pipeline_solid=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Triangles);
-        if(!pipeline_solid)return(false);
+        sky_pipeline=CreatePipeline(material_instance,InlinePipeline::Sky,Prim::Triangles);
+        if(!sky_pipeline)return(false);
 
         return(true);
     }
@@ -145,6 +145,17 @@ private:
             mp_global->Update();
         }
 
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+
+            if(!mp_global)
+                return(false);
+
+            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
+
+            mp_global->Update();
+        }
+
         return(true);
     }
 
@@ -166,7 +177,7 @@ private:
     {
         render_root.CreateSubNode(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
 
-        Add(ro_cube,pipeline_solid);
+        Add(ro_cube,sky_pipeline);
 
         render_root.RefreshMatrix();
         render_list->Expend(GetCameraInfo(),&render_root);
