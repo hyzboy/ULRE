@@ -9,27 +9,20 @@ protected:
 
     VkDevice device;
     VkImageView image_view;
+    ImageViewCreateInfo *ivci;
     
-    VkImageViewType view_type;
-    VkFormat format;
-    VkImageAspectFlags aspect_mask;
-
     VkExtent3D extent;
-    uint32_t miplevel;
 
 private:
 
     friend ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img);
 
-    ImageView(VkDevice dev,VkImageView iv,const VkImageViewType vt,const VkFormat fmt,const VkExtent3D &ext,const uint32_t &ml,const VkImageAspectFlags am)
+    ImageView(VkDevice dev,VkImageView iv,ImageViewCreateInfo *ci,const VkExtent3D &ext)
     {
         device      =dev;
         image_view  =iv;
-        view_type   =vt;
-        format      =fmt;
-        aspect_mask =am;
+        ivci        =ci;
         extent      =ext;
-        miplevel    =ml;
     }
 
 public:
@@ -40,16 +33,16 @@ public:
 
 public:
 
-    const VkImageViewType       GetViewType     ()const{return view_type;}
-    const VkFormat              GetFormat       ()const{return format;}
+    const VkImageViewType       GetViewType     ()const{return ivci->viewType;}
+    const VkFormat              GetFormat       ()const{return ivci->format;}
     const VkExtent3D &          GetExtent       ()const{return extent;}
-    const uint32_t &            GetMipLevel     ()const{return miplevel;}
-    const VkImageAspectFlags    GetAspectFlags  ()const{return aspect_mask;}
+    const VkImageAspectFlags    GetAspectFlags  ()const{return ivci->subresourceRange.aspectMask;}
+    const uint32_t              GetLayerCount   ()const{return ivci->subresourceRange.layerCount;}
 
-    const bool                  hasColor        ()const{return aspect_mask&VK_IMAGE_ASPECT_COLOR_BIT;}
-    const bool                  hasDepth        ()const{return aspect_mask&VK_IMAGE_ASPECT_DEPTH_BIT;}
-    const bool                  hasStencil      ()const{return aspect_mask&VK_IMAGE_ASPECT_STENCIL_BIT;}
-    const bool                  hasDepthStencil ()const{return aspect_mask&(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT);}
+    const bool                  hasColor        ()const{return ivci->subresourceRange.aspectMask&VK_IMAGE_ASPECT_COLOR_BIT;}
+    const bool                  hasDepth        ()const{return ivci->subresourceRange.aspectMask&VK_IMAGE_ASPECT_DEPTH_BIT;}
+    const bool                  hasStencil      ()const{return ivci->subresourceRange.aspectMask&VK_IMAGE_ASPECT_STENCIL_BIT;}
+    const bool                  hasDepthStencil ()const{return ivci->subresourceRange.aspectMask&(VK_IMAGE_ASPECT_DEPTH_BIT|VK_IMAGE_ASPECT_STENCIL_BIT);}
 };//class ImageView
 
 ImageView *CreateImageView(VkDevice device,VkImageViewType type,VkFormat format,const VkExtent3D &ext,const uint32_t &miplevel,VkImageAspectFlags aspectMask,VkImage img);
