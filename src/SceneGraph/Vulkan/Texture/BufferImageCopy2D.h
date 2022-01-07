@@ -25,6 +25,7 @@ public:
     BufferImageCopy(const TextureCube *tex):BufferImageCopy()
     {
         imageSubresource.aspectMask=tex->GetAspect();
+        imageSubresource.layerCount=6;
         SetRectScope(0,0,tex->GetWidth(),tex->GetHeight());
     }
 
