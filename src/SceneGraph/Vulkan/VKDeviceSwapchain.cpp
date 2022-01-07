@@ -79,12 +79,19 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
         return(false);
 
     swapchain->sc_depth     =CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
-    swapchain->sc_color     =new Texture2D *[swapchain->color_count];
-    swapchain->render_frame =new Framebuffer *[swapchain->color_count];
+
+    if(!swapchain->sc_depth)
+        return(false);
+
+    swapchain->sc_color     =hgl_zero_new<Texture2D *>(swapchain->color_count);
+    swapchain->render_frame =hgl_zero_new<Framebuffer *>(swapchain->color_count);
 
     for(uint32_t i=0;i<swapchain->color_count;i++)
     {
         swapchain->sc_color[i]=CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->surface_format.format,swapchain->extent,sc_images[i]));
+
+        if(!swapchain->sc_color[i])
+            return(false);
 
         swapchain->render_frame[i]=CreateFramebuffer(   device_render_pass,
                                                         swapchain->sc_color[i]->GetImageView(),
