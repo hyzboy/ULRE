@@ -34,9 +34,9 @@ RenderableInstance::~RenderableInstance()
 
 RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
 {
-    if(!r||!p)return(nullptr);
+    if(!r||!mi||!p)return(nullptr);
 
-    const VAB *vab=p->GetVAB();
+    const VAB *vab=mi->GetVAB();
     const int input_count=vab->GetVertexAttrCount();
     const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
