@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDevice.h>
+ï»¿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include"BufferImageCopy2D.h"
@@ -61,19 +61,19 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
         texture_cmd_buf->Begin();
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
-            if(tci->target_mipmaps<=1)      //±¾Éí²»º¬mipmaps£¬µ«Ò²²»Òªmipmaps
+            if(tci->target_mipmaps<=1)      //æœ¬èº«ä¸å«mipmapsï¼Œä½†ä¹Ÿä¸è¦mipmaps
             {
-                CommitTexture2D(tex,tci->buffer,tci->extent.width,tci->extent.height,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+                CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
             }
-            else //±¾ÉíÓÐmipmapsÊý¾Ý
+            else //æœ¬èº«æœ‰mipmapsæ•°æ®
             {
                 CommitTexture2DMipmaps(tex,tci->buffer,tci->extent.width,tci->extent.height,tci->mipmap_zero_total_bytes);
             }
         }
         else
-            if(tci->origin_mipmaps<=1)          //±¾Éí²»º¬mipmapsÊý¾Ý,ÓÖÏëÒªmipmaps
+            if(tci->origin_mipmaps<=1)          //æœ¬èº«ä¸å«mipmapsæ•°æ®,åˆæƒ³è¦mipmaps
             {
-                CommitTexture2D(tex,tci->buffer,tci->extent.width,tci->extent.height,VK_PIPELINE_STAGE_TRANSFER_BIT);
+                CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
                 GenerateMipmaps2D(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel);              
             }
         texture_cmd_buf->End();
@@ -110,7 +110,7 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,const VkBufferImag
         count,
         buffer_image_copy);
 
-    if(destinationStage==VK_PIPELINE_STAGE_TRANSFER_BIT)                            //½ÓÏÂÀ´»¹ÓÐ£¬Ò»°ãÊÇ¸ø×Ô¶¯Éú³Émipmaps
+    if(destinationStage==VK_PIPELINE_STAGE_TRANSFER_BIT)                            //æŽ¥ä¸‹æ¥è¿˜æœ‰ï¼Œä¸€èˆ¬æ˜¯ç»™è‡ªåŠ¨ç”Ÿæˆmipmaps
     {
         texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -121,7 +121,7 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,const VkBufferImag
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             subresourceRange);
     }
-    else// if(destinationStage==VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)              //½ÓÏÂÀ´¾Í¸øfragment shaderÓÃÁË£¬Ö¤Ã÷ÊÇ×îºóÒ»²½
+    else// if(destinationStage==VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)              //æŽ¥ä¸‹æ¥å°±ç»™fragment shaderç”¨äº†ï¼Œè¯æ˜Žæ˜¯æœ€åŽä¸€æ­¥
     {
         texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -136,7 +136,7 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,const VkBufferImag
     return(true);
 }
 
-bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
+bool GPUDevice::CommitTexture2D(Texture2D *tex,GPUBuffer *buf,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf)return(false);
 
