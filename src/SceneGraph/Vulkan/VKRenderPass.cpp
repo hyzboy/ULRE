@@ -23,37 +23,47 @@ RenderPass::~RenderPass()
     vkDestroyRenderPass(device,render_pass,nullptr);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,PipelineData *data)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,PipelineData *pd,const VAB *vab)
 {
     VkPipeline graphicsPipeline;
 
-    Material *mtl=mi->GetMaterial();
+    pd->InitShaderStage(mtl->GetStageList());
+    pd->InitVertexInputState(vab);
 
-    data->InitShaderStage(mtl->GetStageList());
-    data->InitVertexInputState(mi->GetVAB());
+    pd->SetColorAttachments(color_formats.GetCount());
 
-    data->SetColorAttachments(color_formats.GetCount());
-
-    data->pipeline_info.layout = mtl->GetPipelineLayout();
+    pd->pipeline_info.layout = mtl->GetPipelineLayout();
 
     {
-        data->pipeline_info.renderPass = render_pass;
-        data->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
+        pd->pipeline_info.renderPass = render_pass;
+        pd->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
     }
 
     if (vkCreateGraphicsPipelines(  device,
-                                    pipeline_cache,
-                                    1,&data->pipeline_info,
-                                    nullptr,
-                                    &graphicsPipeline) != VK_SUCCESS)
+        pipeline_cache,
+        1,&pd->pipeline_info,
+        nullptr,
+        &graphicsPipeline) != VK_SUCCESS)
+    {
+        delete pd;
         return(nullptr);
+    }
 
-    return(new Pipeline(device,graphicsPipeline,data));
+    return(new Pipeline(device,graphicsPipeline,pd));
+}
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *data)
+{
+    Material *mtl=mi->GetMaterial();
+
+    PipelineData *pd=new PipelineData(data);
+
+    return CreatePipeline(mtl,pd,mi->GetVAB());
 }
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip)
 {
-    PipelineData *pd=GetPipelineData(ip);
+    const PipelineData *pd=GetPipelineData(ip);
 
     if(!pd)return(nullptr);
 
@@ -64,11 +74,13 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &
 {
     if(!mi)return(nullptr);
 
-    PipelineData *pd=GetPipelineData(ip);
+    const PipelineData *cpd=GetPipelineData(ip);
+
+    PipelineData *pd=new PipelineData(cpd);
 
     pd->Set(prim,prim_restart);
 
-    Pipeline *p=CreatePipeline(mi,pd);
+    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVAB());
 
     if(p)
         pipeline_list.Add(p);
@@ -76,11 +88,13 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &
     return p;
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,PipelineData *pd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
 {
+    PipelineData *pd=new PipelineData(cpd);
+
     pd->Set(prim,prim_restart);
-    
-    Pipeline *p=CreatePipeline(mi,pd);
+
+    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVAB());
 
     if(p)
         pipeline_list.Add(p);
@@ -90,7 +104,7 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,PipelineData *pd,const
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
 {
-    PipelineData *pd=GetPipelineData(pipeline_filename);
+    const PipelineData *pd=GetPipelineData(pipeline_filename);
 
     if(!pd)return(nullptr);
 
