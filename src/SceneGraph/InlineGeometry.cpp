@@ -190,17 +190,17 @@ namespace hgl
                 for(uint row=0;row<=pgci->step.x;row++)
                 {
                     if((row%pgci->side_step.x)==0)
-                        color->Fill(pgci->side_color,2);
+                        color->RepeatWrite(pgci->side_color,2);
                     else
-                        color->Fill(pgci->color,2);
+                        color->RepeatWrite(pgci->color,2);
                 }
 
                 for(uint col=0;col<=pgci->step.y;col++)
                 {
                     if((col%pgci->side_step.y)==0)
-                        color->Fill(pgci->side_color,2);
+                        color->RepeatWrite(pgci->side_color,2);
                     else
-                        color->Fill(pgci->color,2);
+                        color->RepeatWrite(pgci->color,2);
                 }
             }
 
@@ -224,13 +224,13 @@ namespace hgl
             {
                 AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
 
-                if(normal)normal->Fill(xy_normal,4);
+                if(normal)normal->RepeatWrite(xy_normal,4);
             }
 
             {
                 AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
 
-                tangent->Fill(xy_tangent,4);
+                tangent->RepeatWrite(xy_tangent,4);
             }
 
             {
@@ -319,11 +319,28 @@ namespace hgl
             if(cci->has_tex_coord)
             rc.WriteVAD(VAN::TexCoord,tex_coords,sizeof(tex_coords));
 
-            if(cci->has_color)
+            if(cci->color_type!=CubeCreateInfo::ColorType::NoColor)
             {                
+                ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
+
                 AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
-                if(color)color->Fill(cci->color,24);
+                if(color)
+                {
+                    if(cci->color_type==CubeCreateInfo::ColorType::SameColor)
+                        color->RepeatWrite(cci->color[0],24);
+                    else
+                    if(cci->color_type==CubeCreateInfo::ColorType::FaceColor)
+                    {
+                        for(uint face=0;face<6;face++)
+                            color->RepeatWrite(cci->color[face],4);
+                    }
+                    else
+                    if(cci->color_type==CubeCreateInfo::ColorType::VertexColor)
+                        color->Write(cci->color,24);
+                    else
+                        return(nullptr);
+                }
             }
 
             rc.CreateIBO16(6*2*3,indices);
@@ -1149,7 +1166,7 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci)
+        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const BoundingBoxCreateInfo *cci)
         {
             // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
@@ -1182,18 +1199,19 @@ namespace hgl
 
             rc.WriteVAD(VAN::Position,points,sizeof(points));
 
-            if(cci->has_color)
+            if(cci->color_type!=BoundingBoxCreateInfo::ColorType::NoColor)
             {
-                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
-                float *color_pointer=color->Get();
+                ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
 
-                if(color_pointer)
+                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+
+                if(color)
                 {
-                    for(uint i=0;i<8;i++)
-                    {
-                        memcpy(color_pointer,&(cci->color),4*sizeof(float));
-                        color_pointer+=4;
-                    }
+                    if(cci->color_type==BoundingBoxCreateInfo::ColorType::SameColor)
+                        color->RepeatWrite(cci->color[0],8);
+                    else
+                    if(cci->color_type==BoundingBoxCreateInfo::ColorType::VertexColor)
+                        color->Write(cci->color,8);
                 }
             }
 
