@@ -10,7 +10,7 @@
 VK_NAMESPACE_BEGIN
 DescriptorSets *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetsType &type)const
 {
-    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(DescriptorSetsType,type);
+    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(type);
 
     const uint32_t binding_count=pld->binding_count[size_t(type)];
 
