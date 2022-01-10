@@ -99,8 +99,18 @@ namespace hgl
             bool has_tangent;
             bool has_tex_coord;
 
-            bool has_color;
-            Vector4f color;
+            enum class ColorType
+            {
+                NoColor=0,      ///<没有颜色
+                SameColor,      ///<一个颜色
+                FaceColor,      ///<每个面一个颜色(请写入6个颜色值)
+                VertexColor,    ///<每个顶点一个颜色(请写入24个颜色值)
+
+                ENUM_CLASS_RANGE(NoColor,VertexColor)
+            };
+
+            ColorType color_type;
+            Vector4f color[24];
 
         public:
 
@@ -110,7 +120,7 @@ namespace hgl
                 has_tangent=false;
                 has_tex_coord=false;
 
-                has_color=false;
+                color_type=ColorType::NoColor;
             }
         };//struct CubeCreateInfo
 
@@ -119,10 +129,36 @@ namespace hgl
          */
         Renderable *CreateRenderableCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
 
+        struct BoundingBoxCreateInfo
+        {
+            bool has_normal;
+
+            enum class ColorType
+            {
+                NoColor=0,      ///<没有颜色
+                SameColor,      ///<一个颜色
+                VertexColor,    ///<每个顶点一个颜色(请写入8个颜色值)
+
+                ENUM_CLASS_RANGE(NoColor,VertexColor)
+            };
+
+            ColorType color_type;
+            Vector4f color[8];
+
+        public:
+
+            BoundingBoxCreateInfo()
+            {
+                has_normal=false;
+
+                color_type=ColorType::NoColor;
+            }
+        };//struct BoundingBoxCreateInfo
+
         /**
          *  创建一个绑定盒(线条)
          */
-        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
+        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const BoundingBoxCreateInfo *cci);
 
         /**
          * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
