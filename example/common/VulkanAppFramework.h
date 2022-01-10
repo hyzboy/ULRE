@@ -367,6 +367,20 @@ public:
         return ubo_camera_info;
     }
 
+    bool BindCameraUBO(MaterialInstance *mi)
+    {
+        MaterialParameters *mp_global=mi->GetMP(DescriptorSetsType::Global);
+
+        if(!mp_global)
+            return(false);
+
+        if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+        mp_global->Update();
+
+        return(true);
+    }
+
     virtual void BuildCommandBuffer(uint32_t index)=0;
 
     inline bool isPush(enum class KeyboardButton kb)const{return key_status[size_t(kb)];}
