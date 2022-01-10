@@ -237,16 +237,7 @@ private:
         texture.color_sampler=CreateSampler(texture.color);
         texture.normal_sampler=CreateSampler(texture.normal);
       
-        {
-            MaterialParameters *mp_global=sp_gbuffer.material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
-
-            mp_global->Update();
-        }
+        BindCameraUBO(sp_gbuffer.material_instance);
 
         {
             MaterialParameters *mp=sp_gbuffer.material_instance->GetMP(DescriptorSetsType::Value);
@@ -259,16 +250,7 @@ private:
             mp->Update();
         }
         
-        {
-            MaterialParameters *mp_global=sp_composition.material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
-
-            mp_global->Update();
-        }
+        BindCameraUBO(sp_composition.material_instance);
 
         {            
             MaterialParameters *mp=sp_composition.material_instance->GetMP(DescriptorSetsType::Value);
