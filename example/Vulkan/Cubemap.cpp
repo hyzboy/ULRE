@@ -57,7 +57,7 @@ private:
         }
 
         {
-            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Storforsen4.TexCube"),true);
+            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Test.TexCube"),false);
 
             if(!texture)
                 return(false);
@@ -67,8 +67,8 @@ private:
                 VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
                 nullptr,
                 0,
-                VK_FILTER_LINEAR,
-                VK_FILTER_LINEAR,
+                VK_FILTER_NEAREST,
+                VK_FILTER_NEAREST,
                 VK_SAMPLER_MIPMAP_MODE_LINEAR,
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -118,7 +118,7 @@ private:
         {
             struct AxisCreateInfo aci;
 
-            aci.size=200;
+            aci.size=GetCameraInfo().zfar;
 
             ro_axis=CreateRenderableAxis(db,axis_mi->GetVAB(),&aci);
         }
