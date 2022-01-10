@@ -92,8 +92,7 @@ constexpr char *DescriptSetsTypeName[]=
 
 inline const char *GetDescriptorSetsTypeName(const enum class DescriptorSetsType &type)
 {
-    if(!ENUM_CLASS_RANGE_CHECK(DescriptorSetsType,type))
-        return nullptr;
+    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(type);
 
     return DescriptSetsTypeName[(size_t)type];
 }
