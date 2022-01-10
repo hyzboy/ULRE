@@ -324,7 +324,7 @@ namespace hgl
              * @param count 写入数量
              */
             template<typename V2>
-            bool Fill(const V2 &v,const uint32_t count)
+            bool RepeatWrite(const V2 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count<<1)>this->data_end)
                 {
@@ -629,7 +629,7 @@ namespace hgl
              * @param count 写入数量
              */
             template<typename V3>
-            bool Fill(const V3 &v,const uint32_t count)
+            bool RepeatWrite(const V3 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count*3)>this->data_end)
                 {
@@ -917,7 +917,7 @@ namespace hgl
                 return(true);
             }
 
-            bool Fill(const Color4f &v,const uint32_t count)
+            bool RepeatWrite(const Color4f &v,const uint32_t count)
             {
                 if(count<=0)return(false);
 
@@ -944,7 +944,7 @@ namespace hgl
              * @param count 写入数量
              */
             template<typename V4>
-            bool Fill(const V4 &v,const uint32_t count)
+            bool RepeatWrite(const V4 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count<<2)>this->data_end)
                 {
