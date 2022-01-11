@@ -162,8 +162,8 @@ private:
             cci.has_normal=true;
             cci.has_tangent=true;
             cci.has_tex_coord=true;
-            cci.has_color=true;
-            cci.color=Vector4f(1,1,1,1);
+            cci.color_type=CubeCreateInfo::ColorType::SameColor;
+            cci.color[0]=Vector4f(1,1,1,1);
             ro_cube=CreateRenderableCube(db,vab,&cci);
         }
         
@@ -224,28 +224,8 @@ private:
 
             mp_value->Update();
         }
-        
-        {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
 
-            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
-
-            mp_global->Update();
-        }
-        
-        {
-            MaterialParameters *mp_global=axis_mi->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
-
-            mp_global->Update();
-        }
+        BindCameraUBO(material_instance);
 
         return(true);
     }
