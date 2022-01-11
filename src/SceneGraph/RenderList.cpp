@@ -171,7 +171,7 @@ namespace hgl
             {
                 RenderNode *rn=new RenderNode;
 
-                rn->matrix.Set(sn->GetLocalToWorldMatrix(),camera_info.vp);
+                rn->matrix.Set(sn->GetLocalToWorldMatrix(),camera_info.vp,camera_info.view);
 
                 rn->WorldCenter=sn->GetWorldCenter();
 
