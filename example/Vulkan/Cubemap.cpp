@@ -22,15 +22,18 @@ private:
     SceneNode           render_root;
     RenderList *        render_list         =nullptr;
 
-    Material *          material            =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
-
+    Material *          sky_material        =nullptr;
+    MaterialInstance *  sky_mi              =nullptr;
 
     Material *          axis_material       =nullptr;
     MaterialInstance *  axis_mi             =nullptr;
 
+    Material *          envmap_material     =nullptr;
+    MaterialInstance *  envmap_mi           =nullptr;
+
     Pipeline *          axis_pipeline       =nullptr;
     Pipeline *          sky_pipeline        =nullptr;
+    Pipeline *          solid_pipeline      =nullptr;
 
     GPUBuffer *         ubo_light           =nullptr;
     GPUBuffer *         ubo_phong           =nullptr;
@@ -40,6 +43,7 @@ private:
 
     Renderable *        ro_axis             =nullptr;
     Renderable *        ro_cube             =nullptr;
+    Renderable *        ro_sphere           =nullptr;
 
 private:
 
@@ -57,7 +61,7 @@ private:
         }
 
         {
-            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Test.TexCube"),false);
+            texture   =db->LoadTextureCube(OS_TEXT("res/cubemap/Storforsen4.TexCube"),false);
 
             if(!texture)
                 return(false);
@@ -67,8 +71,8 @@ private:
                 VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
                 nullptr,
                 0,
-                VK_FILTER_NEAREST,
-                VK_FILTER_NEAREST,
+                VK_FILTER_LINEAR,
+                VK_FILTER_LINEAR,
                 VK_SAMPLER_MIPMAP_MODE_LINEAR,
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                 VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -88,14 +92,14 @@ private:
         }
 
         {
-            material=db->CreateMaterial(OS_TEXT("res/material/Skybox"));
-            if(!material)return(false);
+            sky_material=db->CreateMaterial(OS_TEXT("res/material/Skybox"));
+            if(!sky_material)return(false);
 
-            material_instance=db->CreateMaterialInstance(material);
-            if(!material_instance)return(false);
+            sky_mi=db->CreateMaterialInstance(sky_material);
+            if(!sky_mi)return(false);
 
             {            
-                MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+                MaterialParameters *mp_texture=sky_mi->GetMP(DescriptorSetsType::Value);
 
                 if(!mp_texture)
                     return(false);
@@ -105,10 +109,32 @@ private:
 
                 mp_texture->Update();
             }
+
+            sky_pipeline=CreatePipeline(sky_mi,InlinePipeline::Sky,Prim::Triangles);
+            if(!sky_pipeline)return(false);
         }
 
-        sky_pipeline=CreatePipeline(material_instance,InlinePipeline::Sky,Prim::Triangles);
-        if(!sky_pipeline)return(false);
+        {
+            envmap_material=db->CreateMaterial(OS_TEXT("res/material/EnvCubemap"));
+            if(!envmap_material)return(false);
+
+            envmap_mi=db->CreateMaterialInstance(envmap_material);
+            if(!envmap_mi)return(false);
+
+            {            
+                MaterialParameters *mp_texture=envmap_mi->GetMP(DescriptorSetsType::Value);
+
+                if(!mp_texture)
+                    return(false);
+
+                if(!mp_texture->BindSampler("EnvCubemap"    ,texture,    sampler))
+                    return(false);
+
+                mp_texture->Update();
+            }
+
+            solid_pipeline=CreatePipeline(envmap_mi,InlinePipeline::Solid3D,Prim::Triangles);
+        }
 
         return(true);
     }
@@ -123,61 +149,38 @@ private:
             ro_axis=CreateRenderableAxis(db,axis_mi->GetVAB(),&aci);
         }
 
-        const VAB *vab=material_instance->GetVAB();
-
+        
         {
             struct CubeCreateInfo cci;
 
-            ro_cube=CreateRenderableCube(db,vab,&cci);
+            ro_cube=CreateRenderableCube(db,sky_mi->GetVAB(),&cci);
+        }
+
+        {
+            ro_sphere=CreateRenderableSphere(db,envmap_mi->GetVAB(),64);
         }
     }
 
     bool InitUBO()
     {
-        {
-            MaterialParameters *mp_global=axis_mi->GetMP(DescriptorSetsType::Global);
-
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
-
-            mp_global->Update();
-        }
-
-        {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
-
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
-
-            mp_global->Update();
-        }
+        if(!BindCameraUBO(sky_mi))return(false);
+        if(!BindCameraUBO(envmap_mi))return(false);
 
         return(true);
     }
 
-    void Add(Renderable *r,Pipeline *pl)
+    SceneNode *Add(Renderable *r,MaterialInstance *mi,Pipeline *pl)
     {
-        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
+        auto ri=db->CreateRenderableInstance(r,mi,pl);
 
-        render_root.CreateSubNode(ri);
-    }
-
-    void Add(Renderable *r,Pipeline *pl,const Matrix4f &mat)
-    {
-        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
-
-        render_root.CreateSubNode(mat,ri);
+        return render_root.CreateSubNode(ri);
     }
 
     bool InitScene()
     {
-        render_root.CreateSubNode(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
-
-        Add(ro_cube,sky_pipeline);
+        Add(ro_axis,axis_mi,axis_pipeline);
+        Add(ro_cube,sky_mi,sky_pipeline);
+        Add(ro_sphere,envmap_mi,solid_pipeline)->SetLocalMatrix(scale(5,5,5));
 
         render_root.RefreshMatrix();
         render_list->Expend(GetCameraInfo(),&render_root);
