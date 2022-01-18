@@ -44,17 +44,6 @@ private:
         if(!pipeline)
             return(false);
 
-        {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",GetCameraInfoBuffer()))return(false);
-
-            mp_global->Update();
-        }
-
         return(true);
     }
     
@@ -98,7 +87,6 @@ private:
         pgci.side_color.Set(0,0,1,1);
         ro_plane_grid[2]=CreateRenderablePlaneGrid(db,vab,&pgci);
 
-        camera->pos=Vector4f(200,200,200,1.0);
     }
 
     bool InitScene()
@@ -106,6 +94,9 @@ private:
         Add(ro_plane_grid[0],Matrix4f(1.0f));
         Add(ro_plane_grid[1],rotate(HGL_RAD_90,0,1,0));
         Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
+
+        camera->pos=Vector3f(200,200,200);
+        camera->Refresh();
 
         render_root.RefreshMatrix();
         render_list->Expend(camera->info,&render_root);
@@ -140,6 +131,9 @@ public:
 
     void BuildCommandBuffer(uint32 index)
     {
+        render_root.RefreshMatrix();
+        render_list->Expend(GetCameraInfo(),&render_root);
+
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 

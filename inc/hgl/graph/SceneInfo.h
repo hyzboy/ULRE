@@ -12,21 +12,21 @@ namespace hgl
          */
         struct MVPMatrix
         {
-            Matrix4f l2w;                   ///< Local to World
-                                            //Matrix4f normal;                ///<transpose(inverse(mat3(l2w)));
+            Matrix4f model;                 ///< model: Local to World
+                                            //Matrix4f normal;                ///<transpose(inverse(mat3(model)));
             Matrix3x4f normal;              ///<这里用3x4，在Shader中是3x3(但实际它是3x4保存)
 
-            Matrix4f mv;                    ///< view * local_to_world
-            Matrix4f mvp;                   ///< projection * view * local_to_world
+            Matrix4f mv;                    ///< view * model
+            Matrix4f mvp;                   ///< projection * view * model
 
         public:
 
-            void Set(const Matrix4f &w,const Matrix4f &vp,const Matrix4f &v)
+            void Set(const Matrix4f &local_to_world,const Matrix4f &view_projection,const Matrix4f &view)
             {
-                l2w=w;
-                normal=transpose(inverse(l2w));
-                mv=v*l2w;
-                mvp=vp*l2w;
+                model   =local_to_world;
+                normal  =transpose(inverse(model));
+                mv      =view*model;
+                mvp     =view_projection*model;
             }
 
             CompOperatorMemcmp(const MVPMatrix &);

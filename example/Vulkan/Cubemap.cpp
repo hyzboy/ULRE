@@ -1,5 +1,5 @@
-// Cubemap
-// Cube��ͼ����
+﻿// Cubemap
+// Cube贴图测试
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -121,7 +121,7 @@ private:
             envmap_mi=db->CreateMaterialInstance(envmap_material);
             if(!envmap_mi)return(false);
 
-            {            
+            {
                 MaterialParameters *mp_texture=envmap_mi->GetMP(DescriptorSetsType::Value);
 
                 if(!mp_texture)
@@ -200,7 +200,12 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        render_list=new RenderList(device);
+        camera->pos=Vector3f(10,10,0);
+        camera->target=Vector3f(0,0,0);
+
+        camera->Refresh();      //更新矩阵计算
+
+        render_list=new RenderList(device);     
 
         if(!InitMaterial())
             return(false);

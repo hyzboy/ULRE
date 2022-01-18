@@ -14,7 +14,7 @@ namespace hgl
         {
             MVPMatrix matrix;
 
-            Vector4f WorldCenter;
+            Vector3f WorldCenter;
 
             float distance_to_camera_square;
 //            float distance_to_camera;
