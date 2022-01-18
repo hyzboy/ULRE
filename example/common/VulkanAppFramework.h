@@ -333,7 +333,6 @@ public:
     {
         camera=new WalkerCamera;
 
-        camera->type=CameraType::Perspective;
         camera->width=w;
         camera->height=h;
         camera->vp_width=w;
@@ -396,12 +395,12 @@ public:
 
         SubmitDraw(index);
 
-        if(isPush(KeyboardButton::W     ))camera->Up        (move_speed);else
-        if(isPush(KeyboardButton::S     ))camera->Down      (move_speed);else
+        if(isPush(KeyboardButton::W     ))camera->Forward   (move_speed);else
+        if(isPush(KeyboardButton::S     ))camera->Backward  (move_speed);else
         if(isPush(KeyboardButton::A     ))camera->Left      (move_speed);else
         if(isPush(KeyboardButton::D     ))camera->Right     (move_speed);else
-        if(isPush(KeyboardButton::R     ))camera->Forward   (move_speed);else
-        if(isPush(KeyboardButton::F     ))camera->Backward  (move_speed);else
+        if(isPush(KeyboardButton::R     ))camera->Up        (move_speed);else
+        if(isPush(KeyboardButton::F     ))camera->Down      (move_speed);else
 
         if(isPush(KeyboardButton::Left  ))camera->HoriRotate( move_speed);else
         if(isPush(KeyboardButton::Right ))camera->HoriRotate(-move_speed);else
