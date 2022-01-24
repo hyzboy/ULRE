@@ -22,6 +22,9 @@
 #include<hgl/graph/RenderList.h>
 #include<hgl/Time.h>
 
+//#include<hgl/graph/LookAtCameraControl.h>
+#include<hgl/graph/FirstPersonCameraControl.h>
+
 #include<hgl/io/event/KeyboardEvent.h>
 #include<hgl/io/event/MouseEvent.h>
 
@@ -278,12 +281,12 @@ public:
 
 class CameraKeyboardControl:public KeyboardStateEvent
 {
-    WalkerCamera *camera;
+    FirstPersonCameraControl *camera;
     float move_speed;
 
 public:
 
-    CameraKeyboardControl(WalkerCamera *wc)
+    CameraKeyboardControl(FirstPersonCameraControl *wc)
     {
         camera=wc;
         move_speed=1.0f;
@@ -306,21 +309,22 @@ public:
         if(HasPressed(KeyboardButton::S     ))camera->Backward  (move_speed);else
         if(HasPressed(KeyboardButton::A     ))camera->Left      (move_speed);else
         if(HasPressed(KeyboardButton::D     ))camera->Right     (move_speed);else
-        if(HasPressed(KeyboardButton::R     ))camera->Up        (move_speed);else
-        if(HasPressed(KeyboardButton::F     ))camera->Down      (move_speed);else
+        //if(HasPressed(KeyboardButton::R     ))camera->Up        (move_speed);else
+        //if(HasPressed(KeyboardButton::F     ))camera->Down      (move_speed);else
 
-        if(HasPressed(KeyboardButton::Left  ))camera->HoriRotate( move_speed);else
-        if(HasPressed(KeyboardButton::Right ))camera->HoriRotate(-move_speed);else
-        if(HasPressed(KeyboardButton::Up    ))camera->VertRotate( move_speed);else
-        if(HasPressed(KeyboardButton::Down  ))camera->VertRotate(-move_speed);else
+        //if(HasPressed(KeyboardButton::Left  ))camera->HoriRotate( move_speed);else
+        //if(HasPressed(KeyboardButton::Right ))camera->HoriRotate(-move_speed);else
+        //if(HasPressed(KeyboardButton::Up    ))camera->VertRotate( move_speed);else
+        //if(HasPressed(KeyboardButton::Down  ))camera->VertRotate(-move_speed);else
             return;
     }
 };
 
 class CameraMouseControl:public MouseEvent
 {
-    WalkerCamera *camera;
+    FirstPersonCameraControl *camera;
     double cur_time;
+    double last_time;
 
     Vector2f mouse_last_pos;
 
@@ -330,6 +334,8 @@ protected:
     {
         mouse_last_pos.x=x;
         mouse_last_pos.y=y;
+
+        last_time=cur_time;
 
         return(true);
     }
@@ -345,23 +351,27 @@ protected:
             Vector2f gap=pos-mouse_last_pos;
 
             bool update=false;
-            if(gap.x!=0){update=true;if(left)camera->HoriRotate( gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
-            if(gap.y!=0){update=true;if(left)camera->VertRotate(-gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
+            //if(gap.x!=0){update=true;if(left)camera->HoriRotate( gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
+            //if(gap.y!=0){update=true;if(left)camera->VertRotate(-gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
+
+            camera->Rotate(gap,(cur_time-last_time)*5);
+
+            last_time=cur_time;
+            mouse_last_pos=Vector2f(x,y);
         }
 
-        mouse_last_pos=Vector2f(x,y);
         return(true);
     }
 
     bool OnWheel(int v,int h)
     {
-        camera->Distance(1+(h/1000.0f));
+        //camera->Distance(1+(h/1000.0f));
         return(true);
     }
 
 public:
 
-    CameraMouseControl(WalkerCamera *wc)
+    CameraMouseControl(FirstPersonCameraControl *wc)
     {
         camera=wc;
         cur_time=0;
@@ -377,11 +387,12 @@ class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
 
-    GPUBuffer *         ubo_camera_info    =nullptr;
+    GPUBuffer *ubo_camera_info=nullptr;
 
 protected:
 
-    WalkerCamera *      camera              =nullptr;
+    Camera *camera=nullptr;
+    FirstPersonCameraControl *camera_control=nullptr;
 
     CameraKeyboardControl * ckc=nullptr;
     CameraMouseControl *    cmc=nullptr;
@@ -406,7 +417,7 @@ public:
 
     virtual void InitCamera(int w,int h)
     {
-        camera=new WalkerCamera;
+        camera=new Camera;
 
         camera->width=w;
         camera->height=h;
@@ -414,14 +425,16 @@ public:
         camera->vp_height=h;
 
         camera->pos=Vector4f(10,10,10,1);
-        camera->target=Vector4f(0,0,0,1);
 
-        camera->Refresh();      //更新矩阵计算
+        camera_control=new FirstPersonCameraControl(camera);
+
+        //camera_control->target=Vector4f(0,0,0,1);
+        camera_control->Refresh();      //更新矩阵计算
         
         ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera->info);
 
-        ckc=new CameraKeyboardControl(camera);
-        cmc=new CameraMouseControl(camera);
+        ckc=new CameraKeyboardControl(camera_control);
+        cmc=new CameraMouseControl(camera_control);
 
         win->Join(ckc);
         win->Join(cmc);
@@ -432,7 +445,7 @@ public:
         camera->width=w;
         camera->height=h;
 
-        camera->Refresh();
+        camera_control->Refresh();
 
         ubo_camera_info->Write(&camera->info);
     }
@@ -465,7 +478,7 @@ public:
 
     virtual void Draw()override
     {
-        camera->Refresh();                           //更新相机矩阵
+        camera_control->Refresh();                           //更新相机矩阵
         ubo_camera_info->Write(&camera->info);    //写入缓冲区
 
         const uint32_t index=AcquireNextImage();
