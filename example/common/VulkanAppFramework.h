@@ -20,30 +20,21 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/Time.h>
+
+#include<hgl/io/event/KeyboardEvent.h>
+#include<hgl/io/event/MouseEvent.h>
 
 using namespace hgl;
+using namespace hgl::io;
 using namespace hgl::graph;
 
-class VulkanApplicationFramework
+class VulkanApplicationFramework:WindowEvent
 {
-private:
+protected:
 
             Window *    win             =nullptr;
     VulkanInstance *    inst            =nullptr;
-
-    void OnKeyPressed   (KeyboardButton kb){key_status[size_t(kb)]=true;}
-    void OnKeyReleased  (KeyboardButton kb){key_status[size_t(kb)]=false;}
-    void OnKeyRepeat    (KeyboardButton kb){KeyRepeat(kb);}
-
-protected:
-
-    uint        mouse_key=0;
-    Vector2f    mouse_pos;
-
-    void OnMousePressed (int,int,uint mk){mouse_key=mk;MousePressed(mk);}
-    void OnMouseReleased(int,int,uint mk){mouse_key=0;MouseReleased(mk);}
-    void OnMouseMove    (int x,int y){mouse_pos.x=x;mouse_pos.y=y;MouseMove();}
-    void OnMouseWheel   (int v,int h,uint mk){MouseWheel(v,h,mk);}
 
 protected:
 
@@ -63,12 +54,12 @@ protected:
 
     RenderResource *        db                          =nullptr;
 
-            bool            key_status[size_t(KeyboardButton::RANGE_SIZE)];
-
 public:
 
     virtual ~VulkanApplicationFramework()
     {
+        win->Unjoin(this);
+
         SAFE_CLEAR(db);
         SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
 
@@ -79,8 +70,6 @@ public:
 
     virtual bool Init(int w,int h)
     {
-        hgl_zero(key_status);
-
         clear_color.Zero();
 
     #ifdef _DEBUG
@@ -125,32 +114,19 @@ public:
 
         InitCommandBuffer();
 
-        SetEventCall(win->OnResize,         this,VulkanApplicationFramework,OnResize        );
-        SetEventCall(win->OnKeyPressed,     this,VulkanApplicationFramework,OnKeyPressed    );
-        SetEventCall(win->OnKeyReleased,    this,VulkanApplicationFramework,OnKeyReleased   );
-        SetEventCall(win->OnKeyRepeat,      this,VulkanApplicationFramework,OnKeyRepeat     );
-
-        SetEventCall(win->OnMousePressed,   this,VulkanApplicationFramework,OnMousePressed  );
-        SetEventCall(win->OnMouseReleased,  this,VulkanApplicationFramework,OnMouseReleased );
-        SetEventCall(win->OnMouseMove,      this,VulkanApplicationFramework,OnMouseMove     );
-        SetEventCall(win->OnMouseWheel,     this,VulkanApplicationFramework,OnMouseWheel    );
+        win->Join(this);
 
         return(true);
     }
 
     virtual void Resize(int,int)=0;
-    virtual void KeyRepeat(KeyboardButton){}
-    virtual void MousePressed(uint){}
-    virtual void MouseReleased(uint){}
-    virtual void MouseMove(){}
-    virtual void MouseWheel(int,int,uint){}
 
     void SetClearColor(COLOR cc)
     {
         clear_color.Use(cc,1.0);
     }
 
-    void OnResize(int w,int h)
+    void OnResize(uint w,uint h) override
     {
         if(w>0&&h>0)
             device->Resize(w,h);
@@ -300,6 +276,103 @@ public:
     }
 };//class VulkanApplicationFramework
 
+class CameraKeyboardControl:public KeyboardStateEvent
+{
+    WalkerCamera *camera;
+    float move_speed;
+
+public:
+
+    CameraKeyboardControl(WalkerCamera *wc)
+    {
+        camera=wc;
+        move_speed=1.0f;
+    }
+
+    bool OnPressed(const KeyboardButton &kb)override
+    {
+        if(!KeyboardStateEvent::OnPressed(kb))
+            return(false);
+
+        if(kb==KeyboardButton::Minus    )move_speed*=0.9f;else
+        if(kb==KeyboardButton::Equals   )move_speed*=1.1f;
+
+        return(true);
+    }
+
+    void Update()
+    {
+        if(HasPressed(KeyboardButton::W     ))camera->Forward   (move_speed);else
+        if(HasPressed(KeyboardButton::S     ))camera->Backward  (move_speed);else
+        if(HasPressed(KeyboardButton::A     ))camera->Left      (move_speed);else
+        if(HasPressed(KeyboardButton::D     ))camera->Right     (move_speed);else
+        if(HasPressed(KeyboardButton::R     ))camera->Up        (move_speed);else
+        if(HasPressed(KeyboardButton::F     ))camera->Down      (move_speed);else
+
+        if(HasPressed(KeyboardButton::Left  ))camera->HoriRotate( move_speed);else
+        if(HasPressed(KeyboardButton::Right ))camera->HoriRotate(-move_speed);else
+        if(HasPressed(KeyboardButton::Up    ))camera->VertRotate( move_speed);else
+        if(HasPressed(KeyboardButton::Down  ))camera->VertRotate(-move_speed);else
+            return;
+    }
+};
+
+class CameraMouseControl:public MouseEvent
+{
+    WalkerCamera *camera;
+    double cur_time;
+
+    Vector2f mouse_last_pos;
+
+protected:
+
+    bool OnPressed(int x,int y,MouseButton) override
+    {
+        mouse_last_pos.x=x;
+        mouse_last_pos.y=y;
+
+        return(true);
+    }
+
+    bool OnMove(int x,int y) override
+    {
+        bool left=HasPressed(MouseButton::Left);
+        bool right=HasPressed(MouseButton::Right);
+
+        if(left||right)
+        {
+            Vector2f pos(x,y);
+            Vector2f gap=pos-mouse_last_pos;
+
+            bool update=false;
+            if(gap.x!=0){update=true;if(left)camera->HoriRotate( gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
+            if(gap.y!=0){update=true;if(left)camera->VertRotate(-gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
+        }
+
+        mouse_last_pos=Vector2f(x,y);
+        return(true);
+    }
+
+    bool OnWheel(int v,int h)
+    {
+        camera->Distance(1+(h/1000.0f));
+        return(true);
+    }
+
+public:
+
+    CameraMouseControl(WalkerCamera *wc)
+    {
+        camera=wc;
+        cur_time=0;
+    }
+
+    void Update()
+    {
+        cur_time=GetDoubleTime();
+    }
+};
+
 class CameraAppFramework:public VulkanApplicationFramework
 {
 private:
@@ -309,14 +382,16 @@ private:
 protected:
 
     WalkerCamera *      camera              =nullptr;
-    float               move_speed          =1;
 
-    Vector2f            mouse_last_pos;
+    CameraKeyboardControl * ckc=nullptr;
+    CameraMouseControl *    cmc=nullptr;
 
 public:
 
     virtual ~CameraAppFramework()
     {
+        SAFE_CLEAR(ckc);
+        SAFE_CLEAR(cmc);
         SAFE_CLEAR(camera);
     }
 
@@ -344,6 +419,12 @@ public:
         camera->Refresh();      //更新矩阵计算
         
         ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera->info);
+
+        ckc=new CameraKeyboardControl(camera);
+        cmc=new CameraMouseControl(camera);
+
+        win->Join(ckc);
+        win->Join(cmc);
     }
 
     void Resize(int w,int h)override
@@ -382,8 +463,6 @@ public:
 
     virtual void BuildCommandBuffer(uint32_t index)=0;
 
-    inline bool isPush(enum class KeyboardButton kb)const{return key_status[size_t(kb)];}
-
     virtual void Draw()override
     {
         camera->Refresh();                           //更新相机矩阵
@@ -395,47 +474,7 @@ public:
 
         SubmitDraw(index);
 
-        if(isPush(KeyboardButton::W     ))camera->Forward   (move_speed);else
-        if(isPush(KeyboardButton::S     ))camera->Backward  (move_speed);else
-        if(isPush(KeyboardButton::A     ))camera->Left      (move_speed);else
-        if(isPush(KeyboardButton::D     ))camera->Right     (move_speed);else
-        if(isPush(KeyboardButton::R     ))camera->Up        (move_speed);else
-        if(isPush(KeyboardButton::F     ))camera->Down      (move_speed);else
-
-        if(isPush(KeyboardButton::Left  ))camera->HoriRotate( move_speed);else
-        if(isPush(KeyboardButton::Right ))camera->HoriRotate(-move_speed);else
-        if(isPush(KeyboardButton::Up    ))camera->VertRotate( move_speed);else
-        if(isPush(KeyboardButton::Down  ))camera->VertRotate(-move_speed);else
-            return;
-    }
-
-    virtual void KeyRepeat(KeyboardButton kb)override
-    {
-        if(kb==KeyboardButton::Minus    )move_speed*=0.9f;else
-        if(kb==KeyboardButton::Equals   )move_speed*=1.1f;else
-            return;
-    }
-
-    virtual void MousePressed(uint) override
-    {
-        mouse_last_pos=mouse_pos;
-    }
-
-    virtual void MouseMove() override
-    {
-        if(!(mouse_key&(mbLeft|mbRight)))return;
-
-        Vector2f gap=mouse_pos-mouse_last_pos;
-
-        bool update=false;
-        if(gap.x!=0){update=true;if(mouse_key&mbLeft)camera->HoriRotate( gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
-        if(gap.y!=0){update=true;if(mouse_key&mbLeft)camera->VertRotate(-gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
-
-        mouse_last_pos=mouse_pos;
-    }
-
-    virtual void MouseWheel(int v,int h,uint)
-    {
-        camera->Distance(1+(v/1000.0f));
+        ckc->Update();
+        cmc->Update();
     }
 };//class CameraAppFramework
