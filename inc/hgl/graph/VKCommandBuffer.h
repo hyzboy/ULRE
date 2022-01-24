@@ -6,8 +6,6 @@
 #include<hgl/graph/VKDescriptorSets.h>
 #include<hgl/type/Color4f.h>
 VK_NAMESPACE_BEGIN
-//push constant 一般只有128/256字节，仅能存在矩阵。
-//所以我们将每个对象的独立变换矩阵存在push constant中
 class GPUCmdBuffer
 {
 protected:
