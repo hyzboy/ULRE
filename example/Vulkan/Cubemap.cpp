@@ -148,7 +148,6 @@ private:
 
             ro_axis=CreateRenderableAxis(db,axis_mi->GetVAB(),&aci);
         }
-
         
         {
             struct CubeCreateInfo cci;
@@ -205,7 +204,7 @@ public:
 
         camera->Refresh();      //更新矩阵计算
 
-        render_list=new RenderList(device);     
+        render_list=new RenderList(device);
 
         if(!InitMaterial())
             return(false);
