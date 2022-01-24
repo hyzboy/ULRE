@@ -23,6 +23,10 @@ class GPUPhysicalDevice
     List<VkExtensionProperties>         extension_properties;
     List<VkQueueFamilyProperties>       queue_family_properties;
 
+private:
+
+    bool dynamic_state=false;
+
 public:
 
     GPUPhysicalDevice(VkInstance,VkPhysicalDevice);
@@ -146,18 +150,20 @@ public:
     const VkBool32  SupportYcbcrConversion      ()const{return features11.samplerYcbcrConversion;}
     const VkBool32  SupportClampMirrorToEdge    ()const{return features12.samplerMirrorClampToEdge;}
 
-    const void      GetPointSize(float &granularity,float &min_size,float &max_size)
+    const void      GetPointSize(float &granularity,float &min_size,float &max_size) const
     {
         granularity =properties.limits.pointSizeGranularity;
         min_size    =properties.limits.pointSizeRange[0];
         max_size    =properties.limits.pointSizeRange[1];
     }
 
-    const void      GetLineWidth(float &granularity,float &min_width,float &max_width)
+    const void      GetLineWidth(float &granularity,float &min_width,float &max_width) const
     {
         granularity =properties.limits.lineWidthGranularity;
         min_width   =properties.limits.lineWidthRange[0];
         max_width   =properties.limits.lineWidthRange[1];
     }
+
+    const bool      SupportDynamicState() const {return dynamic_state;}
 };//class GPUPhysicalDevice
 VK_NAMESPACE_END

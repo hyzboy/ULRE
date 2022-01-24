@@ -179,6 +179,8 @@ public: //draw
     void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
 
     void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
+
+public: //dynamic state
 };//class RenderCmdBuffer:public GPUCmdBuffer
 
 class TextureCmdBuffer:public GPUCmdBuffer
