@@ -200,7 +200,8 @@ public:
             return(false);
 
         camera->pos=Vector3f(10,10,0);
-        //camera->target=Vector3f(0,0,0);
+
+        camera_control->SetTarget(Vector3f(0,0,0));
 
         //camera->Refresh();      //更新矩阵计算
 
