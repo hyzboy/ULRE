@@ -363,9 +363,9 @@ protected:
         return(true);
     }
 
-    bool OnWheel(int v,int h)
+    bool OnWheel(int x,int y)
     {
-        //camera->Distance(1+(h/1000.0f));
+        camera->Distance(y>1.0f?1.1f:0.9f);
         return(true);
     }
 
@@ -424,11 +424,10 @@ public:
         camera->vp_width=w;
         camera->vp_height=h;
 
-        camera->pos=Vector4f(10,10,10,1);
+        camera->pos=Vector3f(10,10,10);
 
         camera_control=new FirstPersonCameraControl(camera);
 
-        //camera_control->target=Vector4f(0,0,0,1);
         camera_control->Refresh();      //更新矩阵计算
         
         ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera->info);
