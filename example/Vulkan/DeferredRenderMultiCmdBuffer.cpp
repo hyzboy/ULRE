@@ -404,8 +404,8 @@ public:
 		lights.color = Vector4f(15.0f);
 		lights.radius = 155.0f;
 
-		lights.position.x = sin(hgl_rad2deg(timer/100)) * 100.0f;
-		lights.position.y = cos(hgl_rad2deg(timer/100)) * 100.0f;
+		lights.position.x = sin(rad2deg(timer/100)) * 100.0f;
+		lights.position.y = cos(rad2deg(timer/100)) * 100.0f;
 
         ubo_lights->Write(&lights);
     }
