@@ -350,10 +350,6 @@ protected:
             Vector2f pos(x,y);
             Vector2f gap=pos-mouse_last_pos;
 
-            bool update=false;
-            //if(gap.x!=0){update=true;if(left)camera->HoriRotate( gap.x/10.0f);else camera->WrapHoriRotate(gap.x);}
-            //if(gap.y!=0){update=true;if(left)camera->VertRotate(-gap.y/10.0f);else camera->WrapVertRotate(gap.y);}
-
             camera->Rotate(gap,(cur_time-last_time)*5);
 
             last_time=cur_time;
