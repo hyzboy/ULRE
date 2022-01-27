@@ -350,18 +350,12 @@ protected:
             Vector2f pos(x,y);
             Vector2f gap=pos-mouse_last_pos;
 
-            camera->Rotate(gap,(cur_time-last_time)*5);
+            camera->Rotate(gap/180.0f,(cur_time-last_time)*5);
 
             last_time=cur_time;
             mouse_last_pos=Vector2f(x,y);
         }
 
-        return(true);
-    }
-
-    bool OnWheel(int x,int y)
-    {
-        camera->Distance(y>1.0f?1.1f:0.9f);
         return(true);
     }
 
