@@ -96,7 +96,8 @@ private:
         Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
 
         camera->pos=Vector3f(200,200,200);
-        camera->Refresh();
+        camera_control->SetTarget(Vector3f(0,0,0));
+        camera_control->Refresh();
 
         render_root.RefreshMatrix();
         render_list->Expend(camera->info,&render_root);
