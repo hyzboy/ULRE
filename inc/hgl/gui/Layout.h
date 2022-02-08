@@ -2,7 +2,7 @@
 #define HGL_GUI_LAYOUT_INCLUDE
 
 #include<hgl/gui/Widget.h>
-#include<hgl/type/Sets.h>
+#include<hgl/type/SortedSets.h>
 namespace hgl
 {
     namespace gui
@@ -14,7 +14,7 @@ namespace hgl
         {
         protected:
 
-            Sets<Widget *> widgets_set;
+            SortedSets<Widget *> widgets_set;
 
         public:
 

@@ -3,7 +3,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/Sets.h>
+#include<hgl/type/SortedSets.h>
 VK_NAMESPACE_BEGIN
 class GPUBuffer;
 
@@ -19,7 +19,7 @@ class DescriptorSets
     ObjectList<VkDescriptorImageInfo> image_list;
     List<VkWriteDescriptorSet> wds_list;
 
-    Sets<uint32_t> binded_sets;
+    SortedSets<uint32_t> binded_sets;
 
     bool is_dirty;
 

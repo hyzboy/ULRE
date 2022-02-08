@@ -8,13 +8,13 @@
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/type/Color4f.h>
-#include<hgl/type/Sets.h>
+#include<hgl/type/SortedSets.h>
 namespace hgl
 {
     namespace graph
     {
         using MVPArrayBuffer=GPUArrayBuffer<MVPMatrix>;
-        using MaterialSets=Sets<Material *>;
+        using MaterialSets=SortedSets<Material *>;
 
         /**
          * 渲染对象列表<br>
