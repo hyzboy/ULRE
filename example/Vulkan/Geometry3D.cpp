@@ -86,7 +86,6 @@ private:
         pgci.color.Set(0,0,0.5,1);
         pgci.side_color.Set(0,0,1,1);
         ro_plane_grid[2]=CreateRenderablePlaneGrid(db,vab,&pgci);
-
     }
 
     bool InitScene()

@@ -95,9 +95,9 @@ namespace hgl
 
         struct CubeCreateInfo
         {
-            bool has_normal;
-            bool has_tangent;
-            bool has_tex_coord;
+            bool normal;
+            bool tangent;
+            bool tex_coord;
 
             enum class ColorType
             {
@@ -116,9 +116,9 @@ namespace hgl
 
             CubeCreateInfo()
             {
-                has_normal=false;
-                has_tangent=false;
-                has_tex_coord=false;
+                normal=false;
+                tangent=false;
+                tex_coord=false;
 
                 color_type=ColorType::NoColor;
             }
@@ -131,7 +131,7 @@ namespace hgl
 
         struct BoundingBoxCreateInfo
         {
-            bool has_normal;
+            bool normal;
 
             enum class ColorType
             {
@@ -149,7 +149,7 @@ namespace hgl
 
             BoundingBoxCreateInfo()
             {
-                has_normal=false;
+                normal=false;
 
                 color_type=ColorType::NoColor;
             }
