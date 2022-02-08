@@ -159,9 +159,9 @@ private:
         
         {
             struct CubeCreateInfo cci;
-            cci.has_normal=true;
-            cci.has_tangent=true;
-            cci.has_tex_coord=true;
+            cci.normal=true;
+            cci.tangent=true;
+            cci.tex_coord=true;
             cci.color_type=CubeCreateInfo::ColorType::SameColor;
             cci.color[0]=Vector4f(1,1,1,1);
             ro_cube=CreateRenderableCube(db,vab,&cci);
