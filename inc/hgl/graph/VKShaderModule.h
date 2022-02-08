@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
 #include<hgl/graph/VKShaderResource.h>
-#include<hgl/type/Sets.h>
+#include<hgl/type/SortedSets.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -60,7 +60,7 @@ class VertexShaderModule:public ShaderModule
 
 private:
     
-    Sets<VAB *> vab_sets;
+    SortedSets<VAB *> vab_sets;
 
 public:
 

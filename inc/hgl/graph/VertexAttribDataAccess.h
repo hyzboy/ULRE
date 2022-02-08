@@ -44,7 +44,7 @@ namespace hgl
 
             virtual ~VertexAttribDataAccess()=default;
 
-            void GPUBufferData(const T *ptr)
+            void Write(const T *ptr)
             {
                 if(!ptr)return;
 

@@ -198,7 +198,7 @@ const bool GPUPhysicalDevice::CheckExtensionSupport(const AnsiString &name)const
 const int GPUPhysicalDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties)const
 {
     // Search memtypes to find first index with those properties
-    for(int i=0; i<memory_properties.memoryTypeCount; i++)
+    for(uint32_t i=0; i<memory_properties.memoryTypeCount; i++)
     {
         if(typeBits&1)  // Type is available, does it match user properties?
             if((memory_properties.memoryTypes[i].propertyFlags&properties)==properties)
