@@ -326,9 +326,10 @@ class CameraMouseControl:public MouseEvent
     double cur_time;
     double last_time;
 
+    Vector2f mouse_pos;
     Vector2f mouse_last_pos;
 
-protected:
+protected:    
 
     bool OnPressed(int x,int y,MouseButton) override
     {
@@ -342,6 +343,9 @@ protected:
 
     bool OnMove(int x,int y) override
     {
+        mouse_pos.x=x;
+        mouse_pos.y=y;
+
         bool left=HasPressed(MouseButton::Left);
         bool right=HasPressed(MouseButton::Right);
 
@@ -367,6 +371,8 @@ public:
         cur_time=0;
     }
 
+    const Vector2f &GetMouseCoord()const{return mouse_pos;}
+
     void Update()
     {
         cur_time=GetDoubleTime();
@@ -386,6 +392,8 @@ protected:
 
     CameraKeyboardControl * ckc=nullptr;
     CameraMouseControl *    cmc=nullptr;
+
+    const Vector2f &GetMouseCoord()const{return cmc->GetMouseCoord();}
 
 public:
 

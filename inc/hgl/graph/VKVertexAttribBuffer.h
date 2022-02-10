@@ -31,11 +31,6 @@ namespace hgl
             const VkFormat GetFormat()const { return format; }
             const uint32_t GetStride()const { return stride; }
             const uint32_t GetCount ()const { return count; }
-
-            void *Map(VkDeviceSize start=0,VkDeviceSize size=0) override
-            {
-                return GPUBuffer::Map(start*stride,size*stride);
-            }
         };//class VertexAttribBuffer:public GPUBuffer
 
         using VBO=VertexAttribBuffer;
