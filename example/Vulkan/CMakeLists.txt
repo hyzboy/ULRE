@@ -51,3 +51,4 @@ CreateProject(16.DeferredRenderMultiCmdBuffer DeferredRenderMultiCmdBuffer.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
 
 CreateProject(17.Cubemap Cubemap.cpp)
+CreateProject(18.RayPicking RayPicking.cpp)

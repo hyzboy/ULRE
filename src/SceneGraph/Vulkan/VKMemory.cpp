@@ -54,7 +54,7 @@ void *GPUMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
 
     void *result;
 
-    if(vkMapMemory(device,memory,0,size,0,&result)==VK_SUCCESS)
+    if(vkMapMemory(device,memory,offset,size,0,&result)==VK_SUCCESS)
         return result;
 
     return(nullptr);
