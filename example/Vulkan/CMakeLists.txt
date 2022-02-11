@@ -35,7 +35,7 @@ CreateProject(06.Geometry3D Geometry3D.cpp)
 #CreateProject(08.SceneTree SceneTree.cpp)
 #CreateProject(09.LoadStaticMesh LoadStaticMesh.cpp LoadScene.cpp)
 CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
-CreateProject(11.Atomsphere Atomsphere.cpp)
+CreateProject(11.Atmosphere Atmosphere.cpp)
 
 CreateProject(12.RectanglePrimitive RectanglePrimitive.cpp)
 
