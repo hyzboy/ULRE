@@ -35,10 +35,6 @@ private:
 
     Renderable *        ro_sphere           =nullptr;
 
-    SceneNode *         sn_sphere           =nullptr;
-
-    double              last_time;
-
 private:
 
     bool InitMaterial()
@@ -123,7 +119,7 @@ private:
 
     bool InitScene()
     {
-        sn_sphere=Add(ro_sphere,envmap_mi,solid_pipeline);
+        auto sn_sphere=Add(ro_sphere,envmap_mi,solid_pipeline);
         sn_sphere->SetLocalMatrix(scale(5,5,5));
 
         render_root.RefreshMatrix();
@@ -143,8 +139,6 @@ public:
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-
-        last_time=GetDoubleTime();
 
         camera->pos=Vector3f(10,10,0);
 
