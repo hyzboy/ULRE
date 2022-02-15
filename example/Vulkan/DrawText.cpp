@@ -86,7 +86,7 @@ private:
         cam.width=extent.width;
         cam.height=extent.height;
 
-        cam.Refresh();
+        cam.RefreshCameraInfo();
 
         ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
 
@@ -197,8 +197,8 @@ public:
     {
         cam.width=w;
         cam.height=h;
-
-        cam.Refresh();
+        
+        cam.RefreshCameraInfo();
 
         ubo_world_matrix->Write(&cam.matrix);
 
