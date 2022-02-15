@@ -3,15 +3,20 @@ namespace hgl
 {
     namespace graph
     {
-        Matrix4f Ortho2DMatrix;                                                        ///<全局2D视图矩阵
-
         SceneOrient::SceneOrient()
         {
-            pc.local_to_world           =Matrix4f::identity;
-            LocalMatrix                 =Matrix4f::identity;
-            LocalToWorldMatrix          =Matrix4f::identity;
-            InverseLocalMatrix          =Matrix4f::identity;
-            InverseLocalToWorldMatrix   =Matrix4f::identity;
+            LocalMatrix                 =Matrix4f(1.0f);
+            LocalToWorldMatrix          =Matrix4f(1.0f);
+            InverseLocalMatrix          =Matrix4f(1.0f);
+            InverseLocalToWorldMatrix   =Matrix4f(1.0f);
+        }
+
+        SceneOrient::SceneOrient(const Matrix4f &mat)
+        {
+            SetLocalMatrix(mat);
+
+            LocalToWorldMatrix          =Matrix4f(1.0f);
+            InverseLocalToWorldMatrix   =Matrix4f(1.0f);
         }
 
         Matrix4f &SceneOrient::SetLocalMatrix(const Matrix4f &m)
@@ -28,10 +33,6 @@ namespace hgl
             LocalToWorldMatrix=m;
 
             InverseLocalToWorldMatrix=inverse(LocalToWorldMatrix);
-
-            pc.local_to_world   =LocalToWorldMatrix;
-//            pc.object_position  =;
-//            pc.object_size      =;
 
             return LocalToWorldMatrix;
         }

@@ -1,7 +1,7 @@
 ﻿#include<iostream>
-#include<hgl/graph/vulkan/VK.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKInstance.h>
+#include<hgl/graph/VK.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKInstance.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -35,7 +35,7 @@ constexpr char *data_type_name[]
     "SRGB"
 };//
 
-vulkan::Instance *InitVulkanInstance()
+VulkanInstance *InitVulkanInstance()
 {
     #ifdef _DEBUG
         if(!CheckStrideBytesByFormat())
@@ -47,7 +47,7 @@ vulkan::Instance *InitVulkanInstance()
 
     InitNativeWindowSystem();
 
-    InitVulkanProperties();
+    //InitVulkanProperties();
 
     CreateInstanceLayerInfo cili;
 
@@ -56,15 +56,15 @@ vulkan::Instance *InitVulkanInstance()
     cili.lunarg.standard_validation=true;
     cili.khronos.validation=true;
 
-    return vulkan::CreateInstance("VulkanTest",nullptr,&cili);
+    return CreateInstance("VulkanTest",nullptr,&cili);
 }
 
 int main(int,char **)
 {
-                    Window *        win             =nullptr;
-            vulkan::Instance *      inst            =nullptr;
-            vulkan::Device *        device          =nullptr;
-    const   vulkan::PhysicalDevice *physical_device =nullptr;
+            Window *            win             =nullptr;
+            VulkanInstance *    inst            =nullptr;
+            GPUDevice *         device          =nullptr;
+    const   GPUPhysicalDevice * physical_device =nullptr;
 
     inst=InitVulkanInstance();
 

@@ -1,7 +1,4 @@
-﻿// DrawTile
-// 该示例使用TileData，演示多个tile图片在一张纹理上
-
-#include<hgl/type/StringList.h>
+﻿#include<hgl/type/StringList.h>
 #include<hgl/graph/TextureLoader.h>
 #include<hgl/graph/TileData.h>
 #include<hgl/graph/font/TileFont.h>
@@ -9,8 +6,8 @@
 #include<hgl/graph/font/TextRenderable.h>
 
 #include"VulkanAppFramework.h"
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKSampler.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
@@ -29,24 +26,25 @@ class TestApp:public VulkanApplicationFramework
     
 private:
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::Sampler *           sampler             =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
-    vulkan::Buffer *            ubo_color           =nullptr;
+    Sampler *           sampler             =nullptr;
+    Material *          material            =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
+    GPUBuffer *         ubo_color           =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
-    FontSource *                eng_fs              =nullptr;
-    FontSource *                chs_fs              =nullptr;
-    FontSourceMulti *           font_source         =nullptr;
+    FontSource *        eng_fs              =nullptr;
+    FontSource *        chs_fs              =nullptr;
+    FontSourceMulti *   font_source         =nullptr;
 
-    TileFont *                  tile_font           =nullptr;
-    TextLayout                  tl_engine;                                      ///<文本排版引擎
+    TileFont *          tile_font           =nullptr;
+    TextLayout          tl_engine;                                      ///<文本排版引擎
 
-    TextRenderable *            text_render_obj     =nullptr;
+    TextRenderable *    text_render_obj     =nullptr;
+    RenderableInstance *render_instance     =nullptr;
 
 public:
 
@@ -59,23 +57,51 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
-                                                OS_TEXT("res/shader/DrawRect2D.geom"),
-                                                OS_TEXT("res/shader/FlatLumTexture.frag"));
-        if(!material)
-            return(false);
+        material=db->CreateMaterial(OS_TEXT("res/material/LumTextureRect2D"));
 
-        material_instance=material->CreateInstance();
+        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
+        {
+            VABConfigInfo vab_config;
+            VAConfig va_cfg;
+
+            va_cfg.format=VF_V4I16;
+            va_cfg.instance=false;
+
+            vab_config.Add("Position",va_cfg);
+
+            material_instance=db->CreateMaterialInstance(material,&vab_config);
+            if(!material_instance)return(false);
+        }
+
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
+        if(!pipeline)return(false);
 
         sampler=db->CreateSampler();
+        
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        material_instance->BindSampler("tex",tile_font->GetTexture(),sampler);
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->BindUBO("color_material",ubo_color);
-        material_instance->Update();
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
 
-        db->Add(material);
-        db->Add(material_instance);
+            mp_global->Update();
+        }
+
+        {
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp)
+                return(false);
+            
+            if(!mp->BindSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);            
+            if(!mp->BindUBO("color_material",ubo_color))return(false);
+
+            mp->Update();
+        }
+
+
         return(true);
     }
 
@@ -88,9 +114,9 @@ private:
 
         cam.RefreshCameraInfo();
 
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_world_matrix)
+        if(!ubo_camera_info)
             return(false);
 
         color.One();
@@ -101,19 +127,6 @@ private:
             return(false);
 
         return(true);
-    }
-
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Rectangles);
-
-        pipeline=pipeline_creater->Create();
-
-        db->Add(pipeline);
-        return pipeline;
     }
 
     bool InitTileFont()
@@ -156,11 +169,15 @@ private:
     {
         UTF16String str;
 
-        LoadStringFromTextFile(str,OS_TEXT("README.md"));
+        LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 
-        text_render_obj=db->CreateTextRenderable(material);
+        text_render_obj=db->CreateTextRenderable(material_instance->GetMaterial());
 
-        return(tl_engine.SimpleLayout(text_render_obj,tile_font,str)>0);
+        if(tl_engine.SimpleLayout(text_render_obj,tile_font,str)<=0)return(false);
+
+        render_instance=db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
+
+        return(render_instance);
     }
 
 public:
@@ -179,16 +196,13 @@ public:
         if(!InitMaterial())
             return(false);
 
-        if(!InitPipeline())
-            return(false);
-
         if(!InitTextLayoutEngine())
             return(false);
 
         if(!InitTextRenderable())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,text_render_obj);
+        BuildCommandBuffer(render_instance);
 
         return(true);
     }
@@ -200,9 +214,9 @@ public:
         
         cam.RefreshCameraInfo();
 
-        ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,text_render_obj);
+        ubo_camera_info->Write(&cam.info);
+        
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 

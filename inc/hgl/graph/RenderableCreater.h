@@ -1,9 +1,9 @@
 ﻿#ifndef HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 #define HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
 
-#include<hgl/graph/vulkan/VKDatabase.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/vulkan/VKShaderModule.h>
+#include<hgl/graph/VKShaderModule.h>
 namespace hgl
 {
     namespace graph
@@ -13,7 +13,7 @@ namespace hgl
             AnsiString      name;
             uint            binding;
             VAD *           data    =nullptr;
-            vulkan::VAB *   vab     =nullptr;
+            VBO *           vbo     =nullptr;
 
         public:
 
@@ -23,7 +23,7 @@ namespace hgl
             }
         };//struct ShaderStageBind
 
-        using VADMaps=MapObject<AnsiString,ShaderStageBind>;
+        using ShaderStageBindMap=MapObject<AnsiString,ShaderStageBind>;
 
         /**
          * 可渲染对象创建器
@@ -32,25 +32,21 @@ namespace hgl
         {
         protected:
 
-            vulkan::Database *db;
-            vulkan::Material *mtl;
+            RenderResource *db;
+            Material *mtl;
 
-            const vulkan::VertexShaderModule *vsm;
-
-        protected:
-
-            uint32                  vertices_number;
-
-            vulkan::IndexBuffer *   ibo;
-            VADMaps                 vab_maps;
+            const VAB *vab;
 
         protected:
 
-            virtual VAD *CreateVAD(const AnsiString &name,const vulkan::ShaderStage *ss);                               ///<创建一个顶点属性缓冲区
+            uint32              vertices_number;
+
+            IndexBuffer *       ibo;
+            ShaderStageBindMap  ssb_map;
 
         public:
 
-            RenderableCreater(vulkan::Database *sdb,vulkan::Material *m);
+            RenderableCreater(RenderResource *sdb,const VAB *);
             virtual ~RenderableCreater()=default;
 
             virtual bool                    Init(const uint32 count);                                                   ///<初始化，参数为顶点数量
@@ -60,12 +56,9 @@ namespace hgl
             template<typename T> 
                     T *                     CreateVADA(const AnsiString &name)                                          ///<创建一个顶点属性缓冲区以及访问器
                     {
-                        const vulkan::ShaderStage *ss=vsm->GetStageInput(name);
+                        const VkFormat format=vab->GetFormat(name);
 
-                        if(!ss)
-                            return(nullptr);
-
-                        if(ss->format!=T::GetVulkanFormat())
+                        if(format!=T::GetVulkanFormat())
                             return(nullptr);
 
                         VAD *vad=this->CreateVAD(name);
@@ -85,7 +78,7 @@ namespace hgl
                     uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr);                         ///<创建16位的索引缓冲区
                     uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);                         ///<创建32位的索引缓冲区
 
-            virtual vulkan::Renderable *    Finish();                                                                   ///<结束并创建可渲染对象
+            virtual Renderable *            Finish();                                                                   ///<结束并创建可渲染对象
         };//class RenderableCreater
     }//namespace graph
 }//namespace hgl

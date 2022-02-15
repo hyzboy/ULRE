@@ -1,0 +1,128 @@
+﻿#include<hgl/graph/VKShaderModule.h>
+#include<hgl/graph/VKVertexAttributeBinding.h>
+#include<hgl/graph/VKDevice.h>
+
+VK_NAMESPACE_BEGIN
+ShaderModule *GPUDevice::CreateShaderModule(ShaderResource *sr)
+{
+    if(!sr)return(nullptr);
+
+    PipelineShaderStageCreateInfo *shader_stage=new PipelineShaderStageCreateInfo(sr->GetStage());
+
+    ShaderModuleCreateInfo moduleCreateInfo(sr);
+
+    if(vkCreateShaderModule(attr->device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
+        return(nullptr);
+
+    ShaderModule *sm;
+
+    if(sr->GetStage()==VK_SHADER_STAGE_VERTEX_BIT)
+        sm=new VertexShaderModule(attr->device,shader_stage,sr);
+    else
+        sm=new ShaderModule(attr->device,shader_stage,sr);
+
+    return sm;
+}
+
+ShaderModule::ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *sci,ShaderResource *sr)
+{
+    device=dev;
+    ref_count=0;
+
+    stage_create_info=sci;
+
+    shader_resource=sr;
+}
+
+ShaderModule::~ShaderModule()
+{
+    vkDestroyShaderModule(device,stage_create_info->module,nullptr);
+    //这里不用删除stage_create_info，材质中会删除的
+
+    SAFE_CLEAR(shader_resource);
+}
+
+VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,pssci,sr)
+{
+    const ShaderStageList &stage_input_list=sr->GetStageInputs();
+
+    attr_count=stage_input_list.GetCount();
+    ssi_list=stage_input_list.GetData();
+    name_list=new const AnsiString *[attr_count];
+    type_list=new VertexAttribType[attr_count];
+    
+    for(uint i=0;i<attr_count;i++)
+    {
+        name_list[i]=&(ssi_list[i]->name);
+        type_list[i]= ssi_list[i]->type;
+    }
+}
+
+VertexShaderModule::~VertexShaderModule()
+{
+    if(vab_sets.GetCount()>0)
+    {
+        //还有在用的，这是个错误
+    }
+
+    delete[] type_list;
+    delete[] name_list;
+}
+
+VAB *VertexShaderModule::CreateVAB(const VABConfigInfo *cfg)
+{
+    VkVertexInputBindingDescription *binding_list=new VkVertexInputBindingDescription[attr_count];
+    VkVertexInputAttributeDescription *attribute_list=new VkVertexInputAttributeDescription[attr_count];
+
+    VkVertexInputBindingDescription *bind=binding_list;
+    VkVertexInputAttributeDescription *attr=attribute_list;
+
+    ShaderStage **si=ssi_list;
+    VAConfig vac;
+
+    for(uint i=0;i<attr_count;i++)
+    {
+        //binding对应的是第几个数据输入流
+        //实际使用一个binding可以绑定多个attrib
+        //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
+        //但在我们的设计中，仅支持一个流传递一个attrib
+
+        attr->binding   =i;
+        attr->location  =(*si)->location;               //此值对应shader中的layout(location=
+        
+        attr->offset    =0;
+
+        bind->binding   =i;                             //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
+                                                        //在RenderableInstance类中，buffer_list必需严格按照本此binding为序列号排列
+
+        if(!cfg||!cfg->Get((*si)->name,vac))
+        {
+            attr->format    =VK_NAMESPACE::GetVulkanFormat(&((*si)->type));
+            bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
+        }
+        else
+        {
+            attr->format    =vac.format;
+            bind->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
+        }
+
+        bind->stride    =GetStrideByFormat(attr->format);
+
+        ++attr;
+        ++bind;
+
+        ++si;
+    }
+
+    VAB *vab=new VAB(attr_count,name_list,type_list,binding_list,attribute_list);
+
+    vab_sets.Add(vab);
+
+    return(vab);
+}
+
+bool VertexShaderModule::Release(VAB *vab)
+{
+    return vab_sets.Delete(vab);
+}
+VK_NAMESPACE_END

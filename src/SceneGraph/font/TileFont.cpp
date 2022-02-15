@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/font/TileFont.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKFormat.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKFormat.h>
 
 namespace hgl
 {

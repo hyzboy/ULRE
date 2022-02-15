@@ -4,12 +4,10 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/SceneInfo.h>
 
 using namespace hgl;
 using namespace hgl::graph;
-
-bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
 
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
@@ -23,10 +21,10 @@ constexpr float vertex_data[VERTEX_COUNT][2]=
     {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
 };
 
-constexpr float color_data[VERTEX_COUNT][3]=
-{   {1,0,0},
-    {0,1,0},
-    {0,0,1}
+constexpr float color_data[VERTEX_COUNT][4]=
+{   {1,0,0,1},
+    {0,1,0,1},
+    {0,0,1,1}
 };
 
 class TestApp:public VulkanApplicationFramework
@@ -35,41 +33,25 @@ private:
 
     Camera cam;
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *render_instance     =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *               vertex_buffer       =nullptr;
-    vulkan::VAB *               color_buffer        =nullptr;
-
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(color_buffer);
-        SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_world_matrix);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
-        SAFE_CLEAR(material);
-    }
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatColor.vert"),
-                                               OS_TEXT("res/shader/VertexColor.frag"));
-        if(!material)
-            return(false);
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
 
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
-        material_instance=material->CreateInstance();
-        return(true);
+        if(!material_instance)
+            return(false);
+            
+//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+
+        return pipeline;
     }
 
     bool InitUBO()
@@ -79,52 +61,35 @@ private:
         cam.width=extent.width;
         cam.height=extent.height;
 
-        cam.Refresh();
+        cam.RefreshCameraInfo();
 
-        ubo_world_matrix=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_world_matrix)
+        if(!ubo_camera_info)
             return(false);
-            
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->Update();
+
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
+
+            mp_global->BindUBO("g_camera",ubo_camera_info);
+            mp_global->Update();
+        }
         return(true);
     }
     
     bool InitVBO()
     {
-        vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
-        color_buffer    =device->CreateVAB(FMT_RGB32F, VERTEX_COUNT,color_data);
+        Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
+        if(!render_obj)return(false);
 
-        if(!render_obj->Set("Vertex",   vertex_buffer))return(false);
-        if(!render_obj->Set("Color",    color_buffer))return(false);
-
+        if(!render_obj->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::Color,     db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data)))return(false);
+        
+        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
         return(true);
-    }
-
-    bool InitPipeline()
-    {
-        constexpr os_char PIPELINE_FILENAME[]=OS_TEXT("2DSolid.pipeline");
-
-        {
-            AutoDelete<vulkan::PipelineCreater> 
-            pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-            pipeline_creater->CloseCullFace();
-            pipeline_creater->Set(Prim::Triangles);
-
-            SaveToFile(PIPELINE_FILENAME,pipeline_creater);
-        }
-
-        {
-            void *data;
-            uint size=filesystem::LoadFileToMemory(PIPELINE_FILENAME,(void **)&data);
-
-            AutoDelete<vulkan::PipelineCreater> pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target,(uchar *)data,size);
-
-            pipeline=pipeline_creater->Create();
-        }
-
-        return pipeline;
     }
 
 public:
@@ -143,10 +108,8 @@ public:
         if(!InitVBO())
             return(false);
 
-        if(!InitPipeline())
+        if(!BuildCommandBuffer(render_instance))
             return(false);
-
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
 
         return(true);
     }
@@ -156,11 +119,11 @@ public:
         cam.width=w;
         cam.height=h;
 
-        cam.Refresh();
+        cam.RefreshCameraInfo();
 
-        ubo_world_matrix->Write(&cam.matrix);
+        ubo_camera_info->Write(&cam.info);
 
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 

@@ -2,19 +2,20 @@
 // 该示例是1.indices_rect的进化，演示在矩形上贴上贴图
 
 #include"VulkanAppFramework.h"
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKSampler.h>
+#include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
+Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename);
 VK_NAMESPACE_END
 
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
@@ -48,54 +49,41 @@ class TestApp:public VulkanApplicationFramework
 
 private:
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::Texture2D *         texture             =nullptr;
-    vulkan::Sampler *           sampler             =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_world_matrix             =nullptr;
-
-    vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *      vertex_buffer       =nullptr;
-    vulkan::VAB *      tex_coord_buffer    =nullptr;
-    vulkan::IndexBuffer *       index_buffer        =nullptr;
-
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(index_buffer);
-        SAFE_CLEAR(tex_coord_buffer);
-        SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_world_matrix);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
-        SAFE_CLEAR(sampler);
-        SAFE_CLEAR(texture);
-        SAFE_CLEAR(material);
-    }
+    Texture2D *         texture             =nullptr;
+    Sampler *           sampler             =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *renderable_instance =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/FlatTexture.vert"),
-                                               OS_TEXT("res/shader/FlatTexture.frag"));
-        if(!material)
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Texture2D"));        
+        if(!material_instance)return(false);
+
+//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        
+        if(!pipeline)
             return(false);
 
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
-        material_instance=material->CreateInstance();
+        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        if(!texture)return(false);
 
-        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
+        sampler=db->CreateSampler();
 
-        sampler=device->CreateSampler();
+        {
+            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp_texture)
+                return(false);
+            
+            if(!mp_texture->BindSampler("tex",texture,sampler))return(false);
 
-        material_instance->BindSampler("tex",texture,sampler);
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->Update();
+            mp_texture->Update();
+        }
 
         return(true);
     }
@@ -104,40 +92,42 @@ private:
     {
         const VkExtent2D extent=sc_render_target->GetExtent();
 
-        cam.width=extent.width;
-        cam.height=extent.height;
+        cam.vp_width =cam.width =extent.width;
+        cam.vp_height=cam.height=extent.height;        
 
         cam.Refresh();
 
-        ubo_world_matrix=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_world_matrix)
+        if(!ubo_camera_info)
             return(false);
+        
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
+
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
 
         return(true);
     }
 
-    void InitVBO()
+    bool InitVBO()
     {
-        vertex_buffer   =device->CreateVAB(FMT_RG32F,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=device->CreateVAB(FMT_RG32F,VERTEX_COUNT,tex_coord_data);
-        index_buffer    =device->CreateIBO16(INDEX_COUNT,index_data);
+        auto render_obj=db->CreateRenderable(VERTEX_COUNT);
+        if(!render_obj)return(false);
 
-        render_obj->Set("Vertex",vertex_buffer);
-        render_obj->Set("TexCoord",tex_coord_buffer);
-        render_obj->Set(index_buffer);
-    }
+        if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V2F,VERTEX_COUNT,tex_coord_data)))return(false);
+        if(!render_obj->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Triangles);
+        renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
-        pipeline=pipeline_creater->Create();
-
-        return pipeline;
+        return(true);
     }
 
 public:
@@ -146,19 +136,17 @@ public:
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+            
+        if(!InitMaterial())
+            return(false);
 
         if(!InitUBO())
             return(false);
 
-        if(!InitMaterial())
-            return(false);
-
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(renderable_instance);
 
         return(true);
     }
@@ -170,16 +158,16 @@ public:
 
         cam.Refresh();
 
-        ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        ubo_camera_info->Write(&cam.info);
+        
+        BuildCommandBuffer(renderable_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 
 int main(int,char **)
 {
 #ifdef _DEBUG
-    if(!vulkan::CheckStrideBytesByFormat())
+    if(!CheckStrideBytesByFormat())
         return 0xff;
 #endif//
 
