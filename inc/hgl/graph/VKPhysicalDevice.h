@@ -13,10 +13,12 @@ class GPUPhysicalDevice
     VkPhysicalDeviceFeatures            features;
     VkPhysicalDeviceVulkan11Features    features11;
     VkPhysicalDeviceVulkan12Features    features12;
+    VkPhysicalDeviceVulkan13Features    features13;
 
     VkPhysicalDeviceProperties          properties;
     VkPhysicalDeviceVulkan11Properties  properties11;
     VkPhysicalDeviceVulkan12Properties  properties12;
+    VkPhysicalDeviceVulkan13Properties  properties13;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
@@ -43,6 +45,7 @@ public:
     const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
     const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
     const VkPhysicalDeviceVulkan12Features &GetFeatures12       ()const{return features12;}
+    const VkPhysicalDeviceVulkan13Features &GetFeatures13       ()const{return features13;}
 
     const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}

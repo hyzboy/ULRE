@@ -73,7 +73,10 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             features11.pNext=&features12;
 
             features12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features12.pNext=nullptr;
+            features12.pNext=&features13;
+
+            features13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            features13.pNext=nullptr;
 
             func(physical_device,&features2);
 
@@ -85,6 +88,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
             hgl_zero(features11);
             hgl_zero(features12);
+            hgl_zero(features13);
         }
     }
 
@@ -102,7 +106,10 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             properties11.pNext=&properties12;
 
             properties12.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
-            properties12.pNext=nullptr;
+            properties12.pNext=&properties13;
+
+            properties13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+            properties13.pNext=nullptr;
 
             func(physical_device,&properties2);
 
@@ -114,6 +121,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
             hgl_zero(properties11);
             hgl_zero(properties12);
+            hgl_zero(properties13);
         }
     }
 
