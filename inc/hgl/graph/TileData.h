@@ -14,7 +14,7 @@ namespace hgl
     namespace graph
     {
         using TileUVPixel=RectScope2i;
-        using TileUVFloat=RectScope2d;
+        using TileUVFloat=RectScope2f;
 
         using TileUVFloatList=List<TileUVFloat>;
         using TileUVFloatMap=Map<u32char,TileUVFloat>;
