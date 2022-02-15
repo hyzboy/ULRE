@@ -44,7 +44,7 @@ namespace hgl
 
             virtual ~VertexAttribDataAccess()=default;
 
-            void BufferData(const T *ptr)
+            void Write(const T *ptr)
             {
                 if(!ptr)return;
 
@@ -60,7 +60,7 @@ namespace hgl
             {
                 if(!data||offset>=count)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Get() out,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Get() out,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -76,7 +76,7 @@ namespace hgl
             {
                 if(access)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Begin() access!=0,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,offset:")+OSString::valueOf(offset));
                     return(nullptr);
                 }
 
@@ -106,7 +106,7 @@ namespace hgl
             {
                 if(!this->access||this->access+C*number>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribBuffer::Write(const T *,number) out,number:")+OSString::valueOf(number));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Write(const T *,number) out,number:")+OSString::valueOf(number));
                     return(false);
                 }
 
@@ -116,7 +116,7 @@ namespace hgl
 
                 return(true);
             }
-        };//class VertexAttribBuffer
+        };//class VertexAttribDataAccess
 
         /**
         * 一元数据缓冲区
@@ -324,7 +324,7 @@ namespace hgl
              * @param count 写入数量
              */
             template<typename V2>
-            bool Fill(const V2 &v,const uint32_t count)
+            bool RepeatWrite(const V2 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count<<1)>this->data_end)
                 {
@@ -629,7 +629,7 @@ namespace hgl
              * @param count 写入数量
              */
             template<typename V3>
-            bool Fill(const V3 &v,const uint32_t count)
+            bool RepeatWrite(const V3 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count*3)>this->data_end)
                 {
@@ -917,7 +917,7 @@ namespace hgl
                 return(true);
             }
 
-            bool Fill(const Color4f &v,const uint32_t count)
+            bool RepeatWrite(const Color4f &v,const uint32_t count)
             {
                 if(count<=0)return(false);
 
@@ -944,7 +944,7 @@ namespace hgl
              * @param count 写入数量
              */
             template<typename V4>
-            bool Fill(const V4 &v,const uint32_t count)
+            bool RepeatWrite(const V4 &v,const uint32_t count)
             {
                 if(!this->access||this->access+(count<<2)>this->data_end)
                 {
@@ -1140,41 +1140,41 @@ namespace hgl
         };//class VertexAttribDataAccess4
 
         //缓冲区具体数据类型定义
-        typedef VertexAttribDataAccess1<int8  ,FMT_R8I    >   VB1i8   ,VB1b;
-        typedef VertexAttribDataAccess1<int16 ,FMT_R16I   >   VB1i16  ,VB1s;
-        typedef VertexAttribDataAccess1<int32 ,FMT_R32I   >   VB1i32  ,VB1i;
-        typedef VertexAttribDataAccess1<uint8 ,FMT_R8U    >   VB1u8   ,VB1ub;
-        typedef VertexAttribDataAccess1<uint16,FMT_R16U   >   VB1u16  ,VB1us;
-        typedef VertexAttribDataAccess1<uint32,FMT_R32U   >   VB1u32  ,VB1ui;
-        typedef VertexAttribDataAccess1<float ,FMT_R32F   >   VB1f;
-        typedef VertexAttribDataAccess1<double,FMT_R64F   >   VB1d;
+        typedef VertexAttribDataAccess1<int8  ,PF_R8I    >   VB1i8   ,VB1b;
+        typedef VertexAttribDataAccess1<int16 ,PF_R16I   >   VB1i16  ,VB1s;
+        typedef VertexAttribDataAccess1<int32 ,PF_R32I   >   VB1i32  ,VB1i;
+        typedef VertexAttribDataAccess1<uint8 ,PF_R8U    >   VB1u8   ,VB1ub;
+        typedef VertexAttribDataAccess1<uint16,PF_R16U   >   VB1u16  ,VB1us;
+        typedef VertexAttribDataAccess1<uint32,PF_R32U   >   VB1u32  ,VB1ui;
+        typedef VertexAttribDataAccess1<float ,PF_R32F   >   VB1f;
+        typedef VertexAttribDataAccess1<double,PF_R64F   >   VB1d;
 
-        typedef VertexAttribDataAccess2<int8  ,FMT_RG8I   >   VB2i8   ,VB2b;
-        typedef VertexAttribDataAccess2<int16 ,FMT_RG16I  >   VB2i16  ,VB2s;
-        typedef VertexAttribDataAccess2<int32 ,FMT_RG32I  >   VB2i32  ,VB2i;
-        typedef VertexAttribDataAccess2<uint8 ,FMT_RG8U   >   VB2u8   ,VB2ub;
-        typedef VertexAttribDataAccess2<uint16,FMT_RG16U  >   VB2u16  ,VB2us;
-        typedef VertexAttribDataAccess2<uint32,FMT_RG32U  >   VB2u32  ,VB2ui;
-        typedef VertexAttribDataAccess2<float ,FMT_RG32F  >   VB2f;
-        typedef VertexAttribDataAccess2<double,FMT_RG64F  >   VB2d;
+        typedef VertexAttribDataAccess2<int8  ,PF_RG8I   >   VB2i8   ,VB2b;
+        typedef VertexAttribDataAccess2<int16 ,PF_RG16I  >   VB2i16  ,VB2s;
+        typedef VertexAttribDataAccess2<int32 ,PF_RG32I  >   VB2i32  ,VB2i;
+        typedef VertexAttribDataAccess2<uint8 ,PF_RG8U   >   VB2u8   ,VB2ub;
+        typedef VertexAttribDataAccess2<uint16,PF_RG16U  >   VB2u16  ,VB2us;
+        typedef VertexAttribDataAccess2<uint32,PF_RG32U  >   VB2u32  ,VB2ui;
+        typedef VertexAttribDataAccess2<float ,PF_RG32F  >   VB2f;
+        typedef VertexAttribDataAccess2<double,PF_RG64F  >   VB2d;
 
-//        typedef VertexAttribDataAccess3<int8  ,FMT_RGB8I  >   VB3i8   ,VB3b;
-//        typedef VertexAttribDataAccess3<int16 ,FMT_RGB16I >   VB3i16  ,VB3s;
-        typedef VertexAttribDataAccess3<int32 ,FMT_RGB32I >   VB3i32  ,VB3i;
-//        typedef VertexAttribDataAccess3<uint8 ,FMT_RGB8U  >   VB3u8   ,VB3ub;
-//        typedef VertexAttribDataAccess3<uint16,FMT_RGB16U >   VB3u16  ,VB3us;
-        typedef VertexAttribDataAccess3<uint32,FMT_RGB32U >   VB3u32  ,VB3ui;
-        typedef VertexAttribDataAccess3<float ,FMT_RGB32F >   VB3f;
-        typedef VertexAttribDataAccess3<double,FMT_RGB64F >   VB3d;
+//        typedef VertexAttribDataAccess3<int8  ,PF_RGB8I  >   VB3i8   ,VB3b;
+//        typedef VertexAttribDataAccess3<int16 ,PF_RGB16I >   VB3i16  ,VB3s;
+        typedef VertexAttribDataAccess3<int32 ,PF_RGB32I >   VB3i32  ,VB3i;
+//        typedef VertexAttribDataAccess3<uint8 ,PF_RGB8U  >   VB3u8   ,VB3ub;
+//        typedef VertexAttribDataAccess3<uint16,PF_RGB16U >   VB3u16  ,VB3us;
+        typedef VertexAttribDataAccess3<uint32,PF_RGB32U >   VB3u32  ,VB3ui;
+        typedef VertexAttribDataAccess3<float ,PF_RGB32F >   VB3f;
+        typedef VertexAttribDataAccess3<double,PF_RGB64F >   VB3d;
 
-        typedef VertexAttribDataAccess4<int8  ,FMT_RGBA8I >   VB4i8   ,VB4b;
-        typedef VertexAttribDataAccess4<int16 ,FMT_RGBA16I>   VB4i16  ,VB4s;
-        typedef VertexAttribDataAccess4<int32 ,FMT_RGBA32I>   VB4i32  ,VB4i;
-        typedef VertexAttribDataAccess4<uint8 ,FMT_RGBA8U >   VB4u8   ,VB4ub;
-        typedef VertexAttribDataAccess4<uint16,FMT_RGBA16U>   VB4u16  ,VB4us;
-        typedef VertexAttribDataAccess4<uint32,FMT_RGBA32U>   VB4u32  ,VB4ui;
-        typedef VertexAttribDataAccess4<float ,FMT_RGBA32F>   VB4f;
-        typedef VertexAttribDataAccess4<double,FMT_RGBA64F>   VB4d;
+        typedef VertexAttribDataAccess4<int8  ,PF_RGBA8I >   VB4i8   ,VB4b;
+        typedef VertexAttribDataAccess4<int16 ,PF_RGBA16I>   VB4i16  ,VB4s;
+        typedef VertexAttribDataAccess4<int32 ,PF_RGBA32I>   VB4i32  ,VB4i;
+        typedef VertexAttribDataAccess4<uint8 ,PF_RGBA8U >   VB4u8   ,VB4ub;
+        typedef VertexAttribDataAccess4<uint16,PF_RGBA16U>   VB4u16  ,VB4us;
+        typedef VertexAttribDataAccess4<uint32,PF_RGBA32U>   VB4u32  ,VB4ui;
+        typedef VertexAttribDataAccess4<float ,PF_RGBA32F>   VB4f;
+        typedef VertexAttribDataAccess4<double,PF_RGBA64F>   VB4d;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE

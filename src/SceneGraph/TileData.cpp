@@ -1,13 +1,13 @@
 ﻿#include<hgl/graph/TileData.h>
 #include<hgl/log/LogInfo.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKBuffer.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKBuffer.h>
 
 namespace hgl
 {
     namespace graph
     {
-        TileData::TileData(Device *dev,Texture2D *tt,const uint tw,const uint th)
+        TileData::TileData(GPUDevice *dev,Texture2D *tt,const uint tw,const uint th)
         {
             device=dev;
 
@@ -108,7 +108,7 @@ namespace hgl
             memcpy(commit_ptr,data,bytes);
             commit_ptr+=bytes;
 
-            ImageRegion ir;
+            Image2DRegion ir;
 
             ir.left     =obj->uv_pixel.GetLeft();
             ir.top      =obj->uv_pixel.GetTop();

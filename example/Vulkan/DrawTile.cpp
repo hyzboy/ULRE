@@ -2,12 +2,12 @@
 // 该示例使用TileData，演示多个tile图片在一张纹理上
 
 #include<hgl/type/StringList.h>
-#include<hgl/graph/TextureLoader.h>
+#include<hgl/graph/Bitmap2DLoader.h>
 #include<hgl/graph/TileData.h>
 
 #include"VulkanAppFramework.h"
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKSampler.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
@@ -17,6 +17,7 @@ constexpr uint32_t SCREEN_WIDTH =1024;
 constexpr uint32_t SCREEN_HEIGHT=512;
 
 constexpr float BORDER=2;
+constexpr uint TILE_COLS=10;
 
 struct TileBitmap
 {
@@ -30,30 +31,27 @@ class TestApp:public VulkanApplicationFramework
     
     ObjectList<TileBitmap> tile_list;
 
-    TileData *tile_data;
+    TileData *tile_data=nullptr;
 
     float *vertex_data=nullptr;
     float *tex_coord_data=nullptr;
 
+    VkFormat tile_texture_format=PF_UNDEFINED;
+
 private:
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::Sampler *           sampler             =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
+    Sampler *           sampler             =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    Renderable *        render_obj          =nullptr;
+    RenderableInstance *render_instance     =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *vertex_buffer       =nullptr;
-    vulkan::VAB *tex_coord_buffer    =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 public:
 
     ~TestApp()
     {
-        SAFE_CLEAR_ARRAY(vertex_data);
-        SAFE_CLEAR_ARRAY(tex_coord_data);
         SAFE_CLEAR(tile_data);
     }
 
@@ -71,7 +69,17 @@ private:
         
         int result=0;
 
-        for(int i=0;i<count;i++)
+        const VulkanFormat *vf=GetVulkanFormat(sl[0].c_str());
+
+        if(!vf)
+        {
+            LOG_ERROR("can't support the format: "+sl[0]);
+            return(-1);
+        }
+
+        tile_texture_format=vf->format;
+
+        for(int i=1;i<count;i++)
         {
             if(loader.Load(icon_path+ToOSString(sl[i])+OS_TEXT(".Tex2D")))
             {
@@ -90,7 +98,7 @@ private:
 
     bool InitTileTexture()
     {
-        tile_data=device->CreateTileData(   FMT_BC1_RGBAUN,         //纹理格式，因VK不支持实时转换，所以提交的数据格式必须与此一致
+        tile_data=device->CreateTileData(   tile_texture_format,    //纹理格式，不支持实时转换，所以提交的数据格式必须与此一致
                                             512,512,                //TILE大小
                                             tile_list.GetCount());  //TILE需求数量
 
@@ -109,7 +117,7 @@ private:
         int col=0;
         int row=0;
 
-        float size      =SCREEN_WIDTH/10;
+        float size      =SCREEN_WIDTH/TILE_COLS;
         float view_size =size-BORDER*2;
         float left      =0;
         float top       =0;
@@ -118,7 +126,7 @@ private:
 
         for(int i=0;i<count;i++)
         {
-            (*tb)->to=tile_data->Commit((*tb)->bmp);           //添加一个tile图片
+            (*tb)->to=tile_data->Commit((*tb)->bmp);        //添加一个tile图片
 
             vp=WriteRect(vp,left+BORDER,                    //产生绘制顶点信息
                             top +BORDER,
@@ -128,7 +136,7 @@ private:
             tp=WriteRect(tp,(*tb)->to->uv_float);           //产生绘制纹理坐标信息
 
             ++col;
-            if(col==10)
+            if(col==TILE_COLS)
             {
                 left=0;
                 top+=size;
@@ -150,22 +158,36 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
-                                                OS_TEXT("res/shader/DrawRect2D.geom"),
-                                                OS_TEXT("res/shader/FlatTexture.frag"));
-        if(!material)
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureRect2D"));
+        if(!material_instance)
             return(false);
 
-        material_instance=material->CreateInstance();
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
 
-        sampler=db->CreateSampler();
+        sampler=db->CreateSampler();        
 
-        material_instance->BindSampler("tex",tile_data->GetTexture(),sampler);
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->Update();
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        db->Add(material);
-        db->Add(material_instance);
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
+
+        {
+            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp_texture)
+                return(false);
+            
+            if(!mp_texture->BindSampler("tex",tile_data->GetTexture(),sampler))return(false);
+
+            mp_texture->Update();
+        }
+
         return(true);
     }
 
@@ -178,38 +200,27 @@ private:
 
         cam.Refresh();
 
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_world_matrix)
+        if(!ubo_camera_info)
             return(false);
 
         return(true);
     }
 
-    void InitVBO()
+    bool InitVBO()
     {
-        const int tile_count=tile_list.GetCount();
+        const uint tile_count=tile_list.GetCount();
 
-        render_obj=db->CreateRenderable(material,tile_count);
+        render_obj=db->CreateRenderable(tile_count);
+        if(!render_obj)return(false);
 
-        vertex_buffer   =db->CreateVAB(VAF_VEC4,tile_count,vertex_data);
-        tex_coord_buffer=db->CreateVAB(VAF_VEC4,tile_count,tex_coord_data);
+        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,vertex_data));
+        render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,tile_count,tex_coord_data));
 
-        render_obj->Set("Vertex",vertex_buffer);
-        render_obj->Set("TexCoord",tex_coord_buffer);
-    }
+        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Rectangles);
-
-        pipeline=pipeline_creater->Create();
-
-        db->Add(pipeline);
-        return pipeline;
+        return(render_instance);
     }
 
 public:
@@ -231,12 +242,10 @@ public:
         if(!InitMaterial())
             return(false);
 
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(render_instance);
 
         return(true);
     }
@@ -248,9 +257,9 @@ public:
 
         cam.Refresh();
 
-        ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        ubo_camera_info->Write(&cam.info);
+        
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 

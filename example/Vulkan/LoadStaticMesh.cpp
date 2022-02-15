@@ -36,7 +36,7 @@ vulkan::Renderable *CreateMeshRenderable(Database *db,vulkan::Material *mtl,cons
         if(vertex_binding==-1)
             return(nullptr);
 
-        vulkan::VAB *vbo=db->CreateVAB(FMT_RGB32F,mesh->vertex_count,mesh->position);
+        vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->position);
 
         render_obj=mtl->CreateRenderable();
         render_obj->Set(vertex_binding,vbo);
@@ -47,7 +47,7 @@ vulkan::Renderable *CreateMeshRenderable(Database *db,vulkan::Material *mtl,cons
 
     if(normal_binding!=-1)
     {
-        vulkan::VAB *vbo=db->CreateVAB(FMT_RGB32F,mesh->vertex_count,mesh->normal);
+        vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->normal);
 
         render_obj->Set(normal_binding,vbo);
     }
@@ -56,7 +56,7 @@ vulkan::Renderable *CreateMeshRenderable(Database *db,vulkan::Material *mtl,cons
 
     if(tagent_binding!=-1)
     {
-        vulkan::VAB *vbo=db->CreateVAB(FMT_RGB32F,mesh->vertex_count,mesh->tangent);
+        vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->tangent);
 
         render_obj->Set(tagent_binding,vbo);
     }
@@ -65,7 +65,7 @@ vulkan::Renderable *CreateMeshRenderable(Database *db,vulkan::Material *mtl,cons
 
     if(bitagent_binding!=-1)
     {
-        vulkan::VAB *vbo=db->CreateVAB(FMT_RGB32F,mesh->vertex_count,mesh->bitangent);
+        vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->bitangent);
 
         render_obj->Set(bitagent_binding,vbo);
     }

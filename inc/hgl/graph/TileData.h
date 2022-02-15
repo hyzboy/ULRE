@@ -5,7 +5,7 @@
 #include<hgl/type/Pool.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/graph/Bitmap.h>
-#include<hgl/graph/vulkan/VKTexture.h>
+#include<hgl/graph/VKTexture.h>
 
 VK_NAMESPACE_USING
 
@@ -33,7 +33,7 @@ namespace hgl
          */
         class TileData                                                                                                 ///Tile纹理管理
         {
-            Device *device;
+            GPUDevice *device;
 
         protected:
 
@@ -48,9 +48,9 @@ namespace hgl
 
         protected:
 
-            vulkan::Buffer *tile_buffer;                                                                                ///<Tile暂存缓冲区
+            GPUBuffer *tile_buffer;                                                                                     ///<Tile暂存缓冲区
 
-            List<ImageRegion> commit_list;
+            List<Image2DRegion> commit_list;
             uint8 *commit_ptr;
 
             bool CommitTile(TileObject *,const void *,const uint,const int,const int);	                                ///<提交一个Tile数据
@@ -67,7 +67,7 @@ namespace hgl
 
         public:
 
-            TileData(Device *,Texture2D *,const uint tw,const uint th);
+            TileData(GPUDevice *,Texture2D *,const uint tw,const uint th);
             virtual ~TileData();
 
             void BeginCommit();

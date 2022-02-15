@@ -7,11 +7,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-bool SaveToFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-bool LoadFromFile(const OSString &filename,VK_NAMESPACE::PipelineCreater *pc);
-
-constexpr uint32_t SCREEN_WIDTH=128;
-constexpr uint32_t SCREEN_HEIGHT=128;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
@@ -29,39 +26,24 @@ private:
 
     Camera cam;
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_world_matrix             =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    RenderableInstance *renderable_instance =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *      vertex_buffer       =nullptr;
-
-public:
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(vertex_buffer);
-        SAFE_CLEAR(pipeline);
-        SAFE_CLEAR(ubo_world_matrix);
-        SAFE_CLEAR(render_obj);
-        SAFE_CLEAR(material_instance);
-        SAFE_CLEAR(material);
-    }
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition.vert"),
-                                               OS_TEXT("res/shader/FragCoord.frag"));
-        if(!material)
-            return(false);
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/FragColor"));
 
-        render_obj=material->CreateRenderable(VERTEX_COUNT);
-        material_instance=material->CreateInstance();
-        return(true);
+        if(!material_instance)
+            return(false);
+        
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::TriangleStrip);
+
+        return pipeline;
     }
 
     bool InitUBO()
@@ -73,35 +55,33 @@ private:
 
         cam.Refresh();
 
-        ubo_world_matrix=device->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_world_matrix)
+        if(!ubo_camera_info)
             return(false);
 
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->BindUBO("fragment_world",ubo_world_matrix);
+        {        
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        material_instance->Update();
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
         return(true);
     }
 
-    void InitVBO()
+    bool InitVBO()
     {
-        vertex_buffer   =device->CreateVAB(FMT_RG32F,  VERTEX_COUNT,vertex_data);
+        auto render_obj=db->CreateRenderable(VERTEX_COUNT);
+        if(!render_obj)return(false);
 
-        render_obj->Set("Vertex",   vertex_buffer);
-    }
+        if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,vertex_data)))return(false);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(PRIM_TRIANGLE_STRIP);
-
-        pipeline=pipeline_creater->Create();
-
-        return pipeline;
+        renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
+        return(true);
     }
 
 public:
@@ -117,26 +97,26 @@ public:
         if(!InitUBO())
             return(false);
 
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
 
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(renderable_instance);
 
         return(true);
     }
 
     void Resize(int w,int h)override
     {
+        cam.width=w;
+        cam.height=h;
         cam.vp_width=w;
         cam.vp_height=h;
 
         cam.Refresh();
 
-        ubo_world_matrix->Write(&cam.matrix);
+        ubo_camera_info->Write(&cam.info);
 
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(renderable_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 

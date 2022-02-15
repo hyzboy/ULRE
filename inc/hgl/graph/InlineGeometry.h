@@ -1,10 +1,11 @@
 ﻿#ifndef HGL_GRAPH_INLINE_GEOMETRY_INCLUDE
 #define HGL_GRAPH_INLINE_GEOMETRY_INCLUDE
 
-#include<hgl/graph/vulkan/VK.h>
+#include<hgl/graph/VK.h>
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/Color4f.h>
+#include<hgl/graph/AABB.h>
 namespace hgl
 {
     namespace graph
@@ -17,12 +18,12 @@ namespace hgl
             RectScope2f scope;
         };//struct RectangleCreateInfo
 
-        vulkan::Renderable *CreateRenderableRectangle(vulkan::Database *db,vulkan::Material *mtl,const RectangleCreateInfo *rci);
+        Renderable *CreateRenderableRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci);
 
         /**
          * 创建延迟渲染用全屏平面
          */
-        vulkan::Renderable *CreateRenderableGBufferComposition(vulkan::Database *db,vulkan::Material *mtl);
+        Renderable *CreateRenderableGBufferComposition(RenderResource *db,const VAB *vab);
 
         /**
          * 圆角矩形创建信息(扇形/线圈)
@@ -33,7 +34,7 @@ namespace hgl
             uint32_t round_per;     ///<圆角精度
         };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
 
-        vulkan::Renderable *CreateRenderableRoundRectangle(vulkan::Database *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci);
+        Renderable *CreateRenderableRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci);
 
         /**
          * 圆形创建信息
@@ -42,13 +43,18 @@ namespace hgl
         {
             Vector2f center;            ///<圆心坐标
             Vector2f radius;            ///<半径
-            uint field_count;           ///<分段次数
+            uint field_count=8;         ///<分段次数
+
+            bool has_color  =false;
+
+            Vector4f center_color;      ///<圆心颜色
+            Vector4f border_color;      ///<边缘颜色
         };//struct CircleCreateInfo
 
         /**
          * 创建一个2D圆形(扇形/线圈)
          */
-        vulkan::Renderable *CreateRenderableCircle(vulkan::Database *db,vulkan::Material *mtl,const CircleCreateInfo *rci);
+        Renderable *CreateRenderableCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci);
 
         /**
          * 平面网格创建信息
@@ -56,9 +62,9 @@ namespace hgl
         struct PlaneGridCreateInfo
         {
             Vector3f coord[4];
-            vec2<uint> step;
+            Vector2u step;
 
-            vec2<uint> side_step;   //到边界的步数
+            Vector2u side_step;   //到边界的步数
 
             Color4f color;          //一般线条颜色
             Color4f side_color;     //边界线条颜色
@@ -67,7 +73,7 @@ namespace hgl
         /**
          * 创建一个平面网格(线条)
          */
-        vulkan::Renderable *CreateRenderablePlaneGrid(vulkan::Database *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci);
+        Renderable *CreateRenderablePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci);
 
         struct PlaneCreateInfo
         {
@@ -77,64 +83,87 @@ namespace hgl
 
             PlaneCreateInfo()
             {
-                tile.Set(1,1);
+                tile.x=1.0f;
+                tile.y=1.0f;
             }
         };//struct PlaneCreateInfo
 
         /**
          * 创建一个平面(三角形)
          */
-        vulkan::Renderable *CreateRenderablePlane(vulkan::Database *db,vulkan::Material *mtl,const PlaneCreateInfo *pci);
+        Renderable *CreateRenderablePlane(RenderResource *db,const VAB *vab,const PlaneCreateInfo *pci);
 
         struct CubeCreateInfo
         {
-            Vector3f center;
-            Vector3f size;
-            Vector2f tile;
+            bool normal;
+            bool tangent;
+            bool tex_coord;
 
-            bool has_color;
-            Vector4f color;
+            enum class ColorType
+            {
+                NoColor=0,      ///<没有颜色
+                SameColor,      ///<一个颜色
+                FaceColor,      ///<每个面一个颜色(请写入6个颜色值)
+                VertexColor,    ///<每个顶点一个颜色(请写入24个颜色值)
+
+                ENUM_CLASS_RANGE(NoColor,VertexColor)
+            };
+
+            ColorType color_type;
+            Vector4f color[24];
 
         public:
-        
-            void Set(const AABB &box)
-            {
-                center=box.CenterPoint().xyz();
-                size=box.Size().xyz();
-            }
 
             CubeCreateInfo()
             {
-                center.Set(0,0,0);
-                size.Set(1,1,1);
-                tile.Set(1,1);
+                normal=false;
+                tangent=false;
+                tex_coord=false;
 
-                has_color=false;
-            }
-
-            CubeCreateInfo(const AABB &box)
-            {
-                Set(box);
-                tile.Set(1,1);
-                
-                has_color=false;
+                color_type=ColorType::NoColor;
             }
         };//struct CubeCreateInfo
 
         /**
          * 创建一个立方体(三角形)
          */
-        vulkan::Renderable *CreateRenderableCube(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
-        
+        Renderable *CreateRenderableCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
+
+        struct BoundingBoxCreateInfo
+        {
+            bool normal;
+
+            enum class ColorType
+            {
+                NoColor=0,      ///<没有颜色
+                SameColor,      ///<一个颜色
+                VertexColor,    ///<每个顶点一个颜色(请写入8个颜色值)
+
+                ENUM_CLASS_RANGE(NoColor,VertexColor)
+            };
+
+            ColorType color_type;
+            Vector4f color[8];
+
+        public:
+
+            BoundingBoxCreateInfo()
+            {
+                normal=false;
+
+                color_type=ColorType::NoColor;
+            }
+        };//struct BoundingBoxCreateInfo
+
         /**
          *  创建一个绑定盒(线条)
          */
-        vulkan::Renderable *CreateRenderableBoundingBox(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci);
-        
+        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const BoundingBoxCreateInfo *cci);
+
         /**
          * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
          */
-        vulkan::Renderable *CreateRenderableSphere(vulkan::Database *db,vulkan::Material *mtl,const uint numberSlices);
+        Renderable *CreateRenderableSphere(RenderResource *db,const VAB *vab,const uint numberSlices);
 
         struct DomeCreateInfo
         {
@@ -145,7 +174,7 @@ namespace hgl
         /**
          * 创建一个穹顶(三角形)
          */
-        vulkan::Renderable *CreateRenderableDome(vulkan::Database *db,vulkan::Material *mtl, const DomeCreateInfo *);
+        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab, const DomeCreateInfo *);
 
         struct TorusCreateInfo
         {
@@ -154,12 +183,14 @@ namespace hgl
 
             uint    numberSlices,
                     numberStacks;
+
+            Vector2f uv_scale={1.0,1.0};
         };//struct TorusCreateInfo
-        
+
         /**
          * 创建一个圆环(三角形)
          */
-        vulkan::Renderable *CreateRenderableTorus(vulkan::Database *db,vulkan::Material *mtl,const TorusCreateInfo *tci);
+        Renderable *CreateRenderableTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci);
 
         struct CylinderCreateInfo
         {
@@ -171,7 +202,7 @@ namespace hgl
         /**
          * 创建一个圆柱(三角形)
          */
-        vulkan::Renderable *CreateRenderableCylinder(vulkan::Database *db,vulkan::Material *mtl,const CylinderCreateInfo *cci);
+        Renderable *CreateRenderableCylinder(RenderResource *db,const VAB *vab,const CylinderCreateInfo *cci);
 
         struct ConeCreateInfo
         {
@@ -184,47 +215,28 @@ namespace hgl
         /**
          * 创建一个圆锥(三角形)
          */
-        vulkan::Renderable *CreateRenderableCone(vulkan::Database *db,vulkan::Material *mtl,const ConeCreateInfo *cci);
-        
+        Renderable *CreateRenderableCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci);
+
         struct AxisCreateInfo
         {
-            Vector3f root;
-            Vector3f size;
+            float size;
             Color4f color[3];
 
         public:
 
-            void RestartColor()
+            AxisCreateInfo()
             {
+                size=1.0f;
                 color[0].Set(1,0,0,1);
                 color[1].Set(0,1,0,1);
                 color[2].Set(0,0,1,1);
-            }
-
-            void Set(const AABB &box)
-            {
-                root=box.CenterPoint().xyz();
-                size=box.HalfSize().xyz();
-            }
-
-            AxisCreateInfo()
-            {
-                root.Set(0,0,0);
-                size.Set(1,1,1);
-                RestartColor();
-            }
-
-            AxisCreateInfo(const AABB &box)
-            {
-                Set(box);
-                RestartColor();
             }
         };//struct AxisCreateInfo
 
         /**
          * 创建一个坐标线(线条)
          */
-        vulkan::Renderable *CreateRenderableAxis(vulkan::Database *db,vulkan::Material *mtl,const AxisCreateInfo *aci);
+        Renderable *CreateRenderableAxis(RenderResource *db,const VAB *vab,const AxisCreateInfo *aci);
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE

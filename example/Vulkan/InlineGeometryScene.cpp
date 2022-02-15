@@ -4,8 +4,9 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/VKRenderResource.h>
+#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKTexture.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;
@@ -14,84 +15,160 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
+struct PhongLight
+{
+    Vector4f color;
+    Vector4f position;
+};
+
+struct PhongMaterial
+{
+    Vector4f BaseColor;
+    Vector4f specular;
+    float ambient;
+};
+
+constexpr size_t v3flen=sizeof(PhongLight);
+
 class TestApp:public CameraAppFramework
 {
-    Color4f color;
+    PhongLight light;
+    PhongMaterial phong;
 
 private:
 
-    SceneNode   render_root;
-    RenderList  render_list;
+    SceneNode           render_root;
+    RenderList *        render_list         =nullptr;
+    
+    Material *          material            =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Buffer *            ubo_color           =nullptr;
+    Material *          axis_material       =nullptr;
+    MaterialInstance *  axis_mi             =nullptr;
 
-    vulkan::Renderable          *ro_plane_grid,
-                                *ro_cube,
-                                *ro_sphere,
-                                *ro_dome,
-                                *ro_torus,
-                                *ro_cylinder,
-                                *ro_cone;
+    Pipeline *          axis_pipeline       =nullptr;
+    Pipeline *          pipeline_solid      =nullptr;
 
-    vulkan::Pipeline            *pipeline_line      =nullptr,
-                                *pipeline_solid     =nullptr;
+    GPUBuffer *         ubo_light           =nullptr;
+    GPUBuffer *         ubo_phong           =nullptr;
+
+    struct
+    {
+        Sampler *       sampler             =nullptr;
+        Texture2D *     color               =nullptr;
+        Texture2D *     normal              =nullptr;
+    }texture;
+
+    Renderable          *ro_axis,
+                        *ro_cube,
+                        *ro_sphere,
+                        *ro_torus,
+                        *ro_cylinder,
+                        *ro_cone;
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/OnlyPosition3D.vert"),
-                                               OS_TEXT("res/shader/FlatColor.frag"));
-        if(!material)
-            return(false);
+        light.color=Vector4f(1,1,1,1);
+        light.position=Vector4f(1000,1000,1000,1.0);
 
-        material_instance=material->CreateInstance();
+        phong.BaseColor=Vector4f(1,1,1,1);
+        phong.ambient=0.5;
+        phong.specular=Vector4f(0.3,0.3,0.3,32);
 
-        db->Add(material);
-        db->Add(material_instance);
+        {
+            axis_material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
+            if(!axis_material)return(false);
+
+            axis_mi=db->CreateMaterialInstance(axis_material);
+            if(!axis_mi)return(false);
+
+            axis_pipeline=CreatePipeline(axis_mi,InlinePipeline::Solid3D,Prim::Lines);
+            if(!axis_pipeline)return(false);
+        }
+        
+        {
+            texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"),true);
+            texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"),true);
+
+            if(!texture.color
+             ||!texture.normal)
+                return(false);
+
+            VkSamplerCreateInfo sampler_create_info=
+            {
+                VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                nullptr,
+                0,
+                VK_FILTER_LINEAR,
+                VK_FILTER_LINEAR,
+                VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                0.0f,
+                VK_TRUE,
+                device->GetPhysicalDevice()->GetMaxSamplerAnisotropy(),
+                false,
+                VK_COMPARE_OP_NEVER,
+                0.0f,
+                static_cast<float>(texture.color->GetMipLevel()),
+                VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                false
+            };
+
+            texture.sampler =db->CreateSampler(&sampler_create_info);
+        }
+
+        {
+            material=db->CreateMaterial(OS_TEXT("res/material/TextureNormal"));
+            if(!material)return(false);
+
+            material_instance=db->CreateMaterialInstance(material);
+            if(!material_instance)return(false);
+
+            {            
+                MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+        
+                if(!mp_texture)
+                    return(false);
+
+                mp_texture->BindSampler("TexColor"    ,texture.color,    texture.sampler);
+                mp_texture->BindSampler("TexNormal"   ,texture.normal,   texture.sampler);
+            }
+        }
+
+        pipeline_solid=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Triangles);
+        if(!pipeline_solid)return(false);
+
         return(true);
     }
 
     void CreateRenderObject()
     {
         {
-            struct PlaneGridCreateInfo pgci;
+            struct AxisCreateInfo aci;
 
-            pgci.coord[0].Set(-100,-100,0);
-            pgci.coord[1].Set( 100,-100,0);
-            pgci.coord[2].Set( 100, 100,0);
-            pgci.coord[3].Set(-100, 100,0);
+            aci.size=200;
 
-            pgci.step.u=20;
-            pgci.step.v=20;
+            ro_axis=CreateRenderableAxis(db,axis_mi->GetVAB(),&aci);
+        }
 
-            pgci.side_step.u=10;
-            pgci.side_step.v=10;
-
-            pgci.color.Set(0.75,0,0,1);
-            pgci.side_color.Set(1,0,0,1);
-
-            ro_plane_grid=CreateRenderablePlaneGrid(db,material,&pgci);
+        const VAB *vab=material_instance->GetVAB();
+        
+        {
+            struct CubeCreateInfo cci;
+            cci.normal=true;
+            cci.tangent=true;
+            cci.tex_coord=true;
+            cci.color_type=CubeCreateInfo::ColorType::SameColor;
+            cci.color[0]=Vector4f(1,1,1,1);
+            ro_cube=CreateRenderableCube(db,vab,&cci);
         }
         
         {
-            struct CubeCreateInfo cci;            
-            ro_cube=CreateRenderableCube(db,material,&cci);
-        }
-        
-        {        
-            ro_sphere=CreateRenderableSphere(db,material,16);
-        }
-
-        {
-            DomeCreateInfo dci;
-
-            dci.radius=100;
-            dci.numberSlices=32;
-
-            ro_dome=CreateRenderableDome(db,material,&dci);
+            ro_sphere=CreateRenderableSphere(db,vab,64);
         }
 
         {
@@ -100,10 +177,13 @@ private:
             tci.innerRadius=50;
             tci.outerRadius=70;
 
-            tci.numberSlices=32;
-            tci.numberStacks=16;
+            tci.numberSlices=128;
+            tci.numberStacks=64;
 
-            ro_torus=CreateRenderableTorus(db,material,&tci);
+            tci.uv_scale.x=4;
+            tci.uv_scale.y=1;
+
+            ro_torus=CreateRenderableTorus(db,vab,&tci);
         }
 
         {
@@ -111,9 +191,9 @@ private:
 
             cci.halfExtend=10;
             cci.radius=10;
-            cci.numberSlices=16;
+            cci.numberSlices=32;
 
-            ro_cylinder=CreateRenderableCylinder(db,material,&cci);
+            ro_cylinder=CreateRenderableCylinder(db,vab,&cci);
         }
 
         {
@@ -121,87 +201,86 @@ private:
 
             cci.halfExtend=10;
             cci.radius=10;
-            cci.numberSlices=16;
-            cci.numberStacks=1;
+            cci.numberSlices=128;
+            cci.numberStacks=32;
 
-            ro_cone=CreateRenderableCone(db,material,&cci);
+            ro_cone=CreateRenderableCone(db,vab,&cci);
         }
     }
 
     bool InitUBO()
     {
-        color.Set(1,1,1,1);
+        ubo_light=db->CreateUBO(sizeof(PhongLight),&light);
+        ubo_phong=db->CreateUBO(sizeof(PhongMaterial),&phong);
         
-        ubo_color=device->CreateUBO(sizeof(Vector4f),&color);
+        {
+            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp_value)
+                return(false);
 
-        db->Add(ubo_color);
+            mp_value->BindUBO("light",ubo_light);
+            mp_value->BindUBO("phong",ubo_phong);
 
-        material_instance->BindUBO("color_material",ubo_color);
+            mp_value->Update();
+        }
 
-        if(!material_instance->BindUBO("world",GetCameraMatrixBuffer()))
-            return(false);
+        BindCameraUBO(material_instance);
 
-        material_instance->Update();
         return(true);
     }
-
-    bool InitPipeline()
+    
+    void Add(Renderable *r,Pipeline *pl)
     {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->Set(Prim::Lines);
+        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
-        pipeline_line=pipeline_creater->Create();
+        render_root.CreateSubNode(ri);
+    }
 
-        if(!pipeline_line)
-            return(false);
+    void Add(Renderable *r,Pipeline *pl,const Matrix4f &mat)
+    {
+        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
-        db->Add(pipeline_line);
-
-        pipeline_creater->Set(Prim::Triangles);
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
-        pipeline_solid=pipeline_creater->Create();
-
-        if(!pipeline_solid)
-            return(false);
-
-        db->Add(pipeline_solid);
-        return(true);
+        render_root.CreateSubNode(mat,ri);
     }
 
     bool InitScene()
     {
-        render_root.Add(db->CreateRenderableInstance(pipeline_line,material_instance,ro_plane_grid));
-        //render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_dome));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_torus));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cube     ),translate(-10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_sphere   ),translate( 10,  0, 5)*scale(10,10,10));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cylinder ),translate(  0, 16, 0));
-        render_root.Add(db->CreateRenderableInstance(pipeline_solid,material_instance,ro_cone     ),translate(  0,-16, 0));
+        render_root.CreateSubNode(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
+
+        Add(ro_torus    ,pipeline_solid);
+        Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));
+        Add(ro_sphere   ,pipeline_solid,translate( 10,  0, 5)*scale(10,10,10));
+        Add(ro_cylinder ,pipeline_solid,translate(  0, 16, 0));
+        Add(ro_cone     ,pipeline_solid,translate(  0,-16, 0));
 
         render_root.RefreshMatrix();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(GetCameraInfo(),&render_root);
 
         return(true);
     }
 
 public:
 
+    ~TestApp()
+    {
+        SAFE_CLEAR(render_list);
+    }
+
     bool Init()
     {
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-
+            
+        render_list=new RenderList(device);
+            
         if(!InitMaterial())
             return(false);
-
-        CreateRenderObject();
 
         if(!InitUBO())
             return(false);
 
-        if(!InitPipeline())
-            return(false);
+        CreateRenderObject();
 
         if(!InitScene())
             return(false);
@@ -212,10 +291,9 @@ public:
     void BuildCommandBuffer(uint32_t index) override
     {
         render_root.RefreshMatrix();
-        render_list.Clear();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(GetCameraInfo(),&render_root);
         
-        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
+        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 };//class TestApp:public CameraAppFramework
 

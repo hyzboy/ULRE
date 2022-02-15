@@ -1,9 +1,3 @@
-[submodule "3rdpty/MathGeoLib"]
-	path = 3rdpty/MathGeoLib
-	url = https://github.com/juj/MathGeoLib.git
-[submodule "3rdpty/jsoncpp"]
-	path = 3rdpty/jsoncpp
-	url = https://github.com/open-source-parsers/jsoncpp
 [submodule "CMCMakeModule"]
 	path = CMCMakeModule
 	url = https://github.com/hyzboy/CMCMakeModule
@@ -22,3 +16,6 @@
 [submodule "CMSceneGraph"]
 	path = CMSceneGraph
 	url = https://github.com/hyzboy/CMSceneGraph.git
+[submodule "CMUtil"]
+	path = CMUtil
+	url = https://github.com/hyzboy/CMUtil.git

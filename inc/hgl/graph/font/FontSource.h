@@ -3,7 +3,7 @@
 
 #include<hgl/type/StrChar.h>
 #include<hgl/type/Map.h>
-#include<hgl/type/Set.h>
+#include<hgl/type/SortedSets.h>
 #include<hgl/graph/font/Font.h>
 #include<hgl/type/UnicodeBlocks.h>
 
@@ -70,7 +70,7 @@ namespace hgl
         {
         protected:
 
-            Set<void *> ref_object;
+            SortedSets<void *> ref_object;
 
             MapObject<u32char,CLA> cla_cache;
 

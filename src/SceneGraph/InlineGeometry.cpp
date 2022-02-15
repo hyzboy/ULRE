@@ -3,18 +3,18 @@
 
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/vulkan/VKDevice.h>
-#include<hgl/graph/vulkan/VKShaderModule.h>
-#include<hgl/graph/vulkan/VKDatabase.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKShaderModule.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderableCreater.h>
 
 namespace hgl
 {
     namespace graph
     {
-        vulkan::Renderable *CreateRenderableRectangle(vulkan::Database *db,vulkan::Material *mtl,const RectangleCreateInfo *rci)
+        Renderable *CreateRenderableRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(4))
                 return(nullptr);
@@ -29,18 +29,18 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableGBufferComposition(vulkan::Database *db,vulkan::Material *mtl)
+        Renderable *CreateRenderableGBufferComposition(RenderResource *db,const VAB *vab)
         {
             RectangleCreateInfo rci;
 
             rci.scope.Set(-1,-1,2,2);
 
-            return CreateRenderableRectangle(db,mtl,&rci);
+            return CreateRenderableRectangle(db,vab,&rci);
         }
 
-        vulkan::Renderable *CreateRenderableRoundRectangle(vulkan::Database *db,vulkan::Material *mtl,const RoundRectangleCreateInfo *rci)
+        Renderable *CreateRenderableRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
             {
@@ -63,7 +63,7 @@ namespace hgl
                 
                 AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
 
-                vec2<float> *coord=new vec2<float>[rci->round_per];
+                Vector2f *coord=new Vector2f[rci->round_per];
 
                 float   l=rci->scope.GetLeft(),
                         r=rci->scope.GetRight(),
@@ -74,8 +74,8 @@ namespace hgl
                 {
                     float ang=float(i)/float(rci->round_per-1)*90.0f;
 
-                    float x=sin(hgl_ang2rad(ang))*radius;
-                    float y=cos(hgl_ang2rad(ang))*radius;
+                    float x=sin(deg2rad(ang))*radius;
+                    float y=cos(deg2rad(ang))*radius;
 
                     coord[i].x=x;
                     coord[i].y=y;
@@ -112,50 +112,73 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableCircle(vulkan::Database *db,vulkan::Material *mtl,const CircleCreateInfo *cci)
+        Renderable *CreateRenderableCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
-            if(!rc.Init(cci->field_count))
-                return(nullptr);
+            uint edge;
+
+            if(cci->has_color)
+            {
+                edge=cci->field_count+1;
+                if(!rc.Init(cci->field_count+2))return(nullptr);
+            }
+            else
+            {
+                edge=cci->field_count;
+                if(!rc.Init(cci->field_count))return(nullptr);
+            }
 
             AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
+            AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
             if(!vertex)
                 return(nullptr);
 
-            for(uint i=0;i<cci->field_count;i++)
+            if(cci->has_color)
+            {
+                if(!color)
+                    return(nullptr);
+
+                vertex->Write(cci->center);
+                color->Write(cci->center_color);
+            }
+
+            for(uint i=0;i<edge;i++)
             {
                 float ang=float(i)/float(cci->field_count)*360.0f;
 
-                float x=cci->center.x+sin(hgl_ang2rad(ang))*cci->radius.x;
-                float y=cci->center.y+cos(hgl_ang2rad(ang))*cci->radius.y;
+                float x=cci->center.x+sin(deg2rad(ang))*cci->radius.x;
+                float y=cci->center.y+cos(deg2rad(ang))*cci->radius.y;
 
                 vertex->Write(x,y);
+                
+                if(cci->has_color)
+                    color->Write(cci->border_color);
             }
 
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderablePlaneGrid(vulkan::Database *db,vulkan::Material *mtl,const PlaneGridCreateInfo *pgci)
+        Renderable *CreateRenderablePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
-            if(!rc.Init(((pgci->step.u+1)+(pgci->step.v+1))*2))
+            if(!rc.Init(((pgci->step.x+1)+(pgci->step.y+1))*2))
                 return(nullptr);
 
             AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-            for(uint row=0;row<=pgci->step.u;row++)
+            for(uint row=0;row<=pgci->step.x;row++)
             {
-                float pos=float(row)/float(pgci->step.u);
+                float pos=float(row)/float(pgci->step.x);
 
                 vertex->WriteLine(  to(pgci->coord[0],pgci->coord[1],pos),
                                     to(pgci->coord[3],pgci->coord[2],pos));
             }
 
-            for(uint col=0;col<=pgci->step.v;col++)
+            for(uint col=0;col<=pgci->step.y;col++)
             {
-                float pos=float(col)/float(pgci->step.v);
+                float pos=float(col)/float(pgci->step.y);
 
                 vertex->WriteLine(to(pgci->coord[1],pgci->coord[2],pos),
                                   to(pgci->coord[0],pgci->coord[3],pos));
@@ -164,34 +187,34 @@ namespace hgl
             AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
             if(color)
             {
-                for(uint row=0;row<=pgci->step.u;row++)
+                for(uint row=0;row<=pgci->step.x;row++)
                 {
-                    if((row%pgci->side_step.u)==0)
-                        color->Fill(pgci->side_color,2);
+                    if((row%pgci->side_step.x)==0)
+                        color->RepeatWrite(pgci->side_color,2);
                     else
-                        color->Fill(pgci->color,2);
+                        color->RepeatWrite(pgci->color,2);
                 }
 
-                for(uint col=0;col<=pgci->step.v;col++)
+                for(uint col=0;col<=pgci->step.y;col++)
                 {
-                    if((col%pgci->side_step.v)==0)
-                        color->Fill(pgci->side_color,2);
+                    if((col%pgci->side_step.y)==0)
+                        color->RepeatWrite(pgci->side_color,2);
                     else
-                        color->Fill(pgci->color,2);
+                        color->RepeatWrite(pgci->color,2);
                 }
             }
 
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderablePlane(vulkan::Database *db,vulkan::Material *mtl,const PlaneCreateInfo *pci)
+        Renderable *CreateRenderablePlane(RenderResource *db,const VAB *vab,const PlaneCreateInfo *pci)
         {
             const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                     float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
             const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
             const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(4))
                 return(nullptr);
@@ -201,13 +224,13 @@ namespace hgl
             {
                 AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
 
-                if(normal)normal->Fill(xy_normal,4);
+                if(normal)normal->RepeatWrite(xy_normal,4);
             }
 
             {
                 AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
 
-                tangent->Fill(xy_tangent,4);
+                tangent->RepeatWrite(xy_tangent,4);
             }
 
             {
@@ -218,82 +241,103 @@ namespace hgl
                     xy_tex_coord[2]=xy_tex_coord[4]=pci->tile.x;
                     xy_tex_coord[5]=xy_tex_coord[7]=pci->tile.y;
 
-                    tex_coord->BufferData(xy_tex_coord);
+                    tex_coord->Write(xy_tex_coord);
                 }
             }
 
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableCube(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
-        {                              // Points of a cube.
-            /*     4            5 */    const float points[]={  -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    -0.5f, +0.5f, +0.5f,
-            /*     *------------* */                            +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f,    -0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,
-            /*    /|           /| */                            -0.5f, -0.5f, +0.5f,    -0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,
-            /*  0/ |         1/ | */                            -0.5f, +0.5f, +0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f    };
-            /*  *--+---------*  | */    // Normals of a cube.
-            /*  |  |         |  | */    const float normals[]={ +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,
-            /*  | 7|         | 6| */                            +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +0.0f, -1.0f,    +0.0f, +0.0f, -1.0f,    +0.0f, +0.0f, -1.0f,    +0.0f, +0.0f, -1.0f,
-            /*  |  *---------+--* */                            +0.0f, +0.0f, +1.0f,    +0.0f, +0.0f, +1.0f,    +0.0f, +0.0f, +1.0f,    +0.0f, +0.0f, +1.0f,    -1.0f, +0.0f, +0.0f,    -1.0f, +0.0f, +0.0f,
-            /*  | /          | /  */                            -1.0f, +0.0f, +0.0f,    -1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f,    +1.0f, +0.0f, +0.0f    };
-            /*  |/          2|/   */    // The associated indices.
-            /* 3*------------*    */    const uint16 indices[]={    0,    2,    1,    0,    3,    2,    4,    5,    6,    4,    6,    7,    8,    9,    10,    8,    10,    11, 12,    15,    14,    12,    14,    13, 16,    17,    18,    16,    18,    19, 20,    23,    22,    20,    22,    21    };
+        Renderable *CreateRenderableCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci)
+        {   
+            /**
+             *     4            5 
+             *     *------------*       Z               Y
+             *    /|           /|       |    Y          |    Z
+             *  0/ |         1/ |       |   /           |   /
+             *  *--+---------*  |       |  /            |  /
+             *  |  |         |  |       | /             | /
+             *  | 7|         | 6|       |/              |/
+             *  |  *---------+--*       *-----------X   *-----------X
+             *  | /          | /  
+             *  |/          2|/             my              Cubemap
+             * 3*------------*    
+             * 
+             * 注：cubemap纹理坐标系依然遵循OpenGL时代定下的坐标系，所以这里的position虽然使用vulkan坐标系，但在shader中当做cubemap纹理坐标使用时，需要在shader中转换为opengl坐标系(交换yz即可)
+             */
 
-            const float tangents[] = {  +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,
-                                        +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      -1.0f, 0.0f, 0.0f,      -1.0f, 0.0f, 0.0f,      -1.0f, 0.0f, 0.0f,      -1.0f, 0.0f, 0.0f,
-                                        +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,       0.0f, 0.0f,+1.0f,       0.0f, 0.0f,+1.0f,
-                                         0.0f, 0.0f,+1.0f,       0.0f, 0.0f,+1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f };
+            constexpr float positions[]={   -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, -0.5f, -0.5f,
+                                            -0.5f, +0.5f, -0.5f,    -0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f,
+                                            -0.5f, -0.5f, -0.5f,    -0.5f, +0.5f, -0.5f,    +0.5f, +0.5f, -0.5f,    +0.5f, -0.5f, -0.5f,
+                                            -0.5f, -0.5f, +0.5f,    -0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, -0.5f, +0.5f,
+                                            -0.5f, -0.5f, -0.5f,    -0.5f, -0.5f, +0.5f,    -0.5f, +0.5f, +0.5f,    -0.5f, +0.5f, -0.5f,
+                                            +0.5f, -0.5f, -0.5f,    +0.5f, -0.5f, +0.5f,    +0.5f, +0.5f, +0.5f,    +0.5f, +0.5f, -0.5f};
 
-            const float tex_coords[] ={ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-                                        1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-                                        0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f };
+            constexpr float normals[]={     +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,    +0.0f, +1.0f, +0.0f,
+                                            +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,    +0.0f, -1.0f, +0.0f,
+                                            +0.0f, -0.0f, -1.0f,    +0.0f, -0.0f, -1.0f,    +0.0f, -0.0f, -1.0f,    +0.0f, -0.0f, -1.0f,
+                                            +0.0f, -0.0f, +1.0f,    +0.0f, -0.0f, +1.0f,    +0.0f, -0.0f, +1.0f,    +0.0f, -0.0f, +1.0f,
+                                            -1.0f, -0.0f, +0.0f,    -1.0f, -0.0f, +0.0f,    -1.0f, -0.0f, +0.0f,    -1.0f, -0.0f, +0.0f,
+                                            +1.0f, -0.0f, +0.0f,    +1.0f, -0.0f, +0.0f,    +1.0f, -0.0f, +0.0f,    +1.0f, -0.0f, +0.0f};
 
-            RenderableCreater rc(db,mtl);
+            constexpr float tangents[] = {  +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,
+                                            +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,
+                                            -1.0f, 0.0f, 0.0f,      -1.0f, 0.0f, 0.0f,      -1.0f, 0.0f, 0.0f,      -1.0f, 0.0f, 0.0f,
+                                            +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,      +1.0f, 0.0f, 0.0f,
+                                             0.0f, 0.0f,+1.0f,       0.0f, 0.0f,+1.0f,       0.0f, 0.0f,+1.0f,       0.0f, 0.0f,+1.0f,
+                                             0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f,       0.0f, 0.0f,-1.0f};
+
+            constexpr float tex_coords[] ={ 0.0f, 0.0f,     0.0f, 1.0f,     1.0f, 1.0f,     1.0f, 0.0f,
+                                            0.0f, 1.0f,     0.0f, 0.0f,     1.0f, 0.0f,     1.0f, 1.0f,
+                                            1.0f, 0.0f,     1.0f, 1.0f,     0.0f, 1.0f,     0.0f, 0.0f,
+                                            0.0f, 0.0f,     0.0f, 1.0f,     1.0f, 1.0f,     1.0f, 0.0f,
+                                            0.0f, 0.0f,     1.0f, 0.0f,     1.0f, 1.0f,     0.0f, 1.0f,
+                                            1.0f, 0.0f,     0.0f, 0.0f,     0.0f, 1.0f,     1.0f, 1.0f};
+            // The associated indices.
+            constexpr uint16 indices[]={    0,    2,    1,       0,    3,    2,
+                                            4,    5,    6,       4,    6,    7,
+                                            8,    9,   10,       8,   10,   11,
+                                            12,  15,   14,      12,   14,   13,
+                                            16,  17,   18,      16,   18,   19,
+                                            20,  23,   22,      20,   22,   21};
+
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(24))
                 return(nullptr);
 
-            if(cci->center  ==Vector3f(0,0,0)
-             &&cci->size    ==Vector3f(1,1,1))
-            {
-                rc.WriteVAD(VAN::Position,points,sizeof(points));
-            }
-            else
-            {
-                const float *sp=points;
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                float *vp=vertex->Get();
+            rc.WriteVAD(VAN::Position,positions,sizeof(positions));
 
-                for(uint i=0;i<24;i++)
-                {
-                    *vp=cci->center.x+(*sp)*cci->size.x;  ++vp;++sp;
-                    *vp=cci->center.y+(*sp)*cci->size.y;  ++vp;++sp;
-                    *vp=cci->center.z+(*sp)*cci->size.z;  ++vp;++sp;
-                }
-            }
-
+            if(cci->normal)
             rc.WriteVAD(VAN::Normal,normals,sizeof(normals));
+
+            if(cci->tangent)
             rc.WriteVAD(VAN::Tangent,tangents,sizeof(tangents));
 
-            if(cci->tile.x==1&&cci->tile.y==1)
-            {
-                rc.WriteVAD(VAN::TexCoord,tex_coords,sizeof(tex_coords));
-            }
-            else
-            {
-                AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
+            if(cci->tex_coord)
+            rc.WriteVAD(VAN::TexCoord,tex_coords,sizeof(tex_coords));
 
-                if(tex_coord)
+            if(cci->color_type!=CubeCreateInfo::ColorType::NoColor)
+            {                
+                ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
+
+                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+
+                if(color)
                 {
-                    float *tcp=tex_coord->Get();
-
-                    const float *tcs=tex_coords;
-
-                    for(uint i=0;i<24;i++)
+                    if(cci->color_type==CubeCreateInfo::ColorType::SameColor)
+                        color->RepeatWrite(cci->color[0],24);
+                    else
+                    if(cci->color_type==CubeCreateInfo::ColorType::FaceColor)
                     {
-                        *tcp=(*tcs)*cci->tile.x;++tcs;++tcp;
-                        *tcp=(*tcs)*cci->tile.y;++tcs;++tcp;
+                        for(uint face=0;face<6;face++)
+                            color->RepeatWrite(cci->color[face],4);
                     }
+                    else
+                    if(cci->color_type==CubeCreateInfo::ColorType::VertexColor)
+                        color->Write(cci->color,24);
+                    else
+                        return(nullptr);
                 }
             }
 
@@ -327,7 +371,7 @@ namespace hgl
 
             void glusQuaternionRotateRyf(float quaternion[4], const float angle)
             {
-                float halfAngleRadian = hgl_ang2rad(angle) * 0.5f;
+                float halfAngleRadian = deg2rad(angle) * 0.5f;
 
                 quaternion[0] = 0.0f;
                 quaternion[1] = sin(halfAngleRadian);
@@ -337,7 +381,7 @@ namespace hgl
 
             void glusQuaternionRotateRzf(float quaternion[4], const float angle)
             {
-                float halfAngleRadian = hgl_ang2rad(angle) * 0.5f;
+                float halfAngleRadian = deg2rad(angle) * 0.5f;
 
                 quaternion[0] = 0.0f;
                 quaternion[1] = 0.0f;
@@ -396,9 +440,9 @@ namespace hgl
         * @param numberSlices 切片数
         * @return 可渲染数据
         */
-        vulkan::Renderable *CreateRenderableSphere(vulkan::Database *db,vulkan::Material *mtl,const uint numberSlices)
+        Renderable *CreateRenderableSphere(RenderResource *db,const VAB *vab,const uint numberSlices)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint numberParallels = (numberSlices+1) / 2;
             uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
@@ -439,9 +483,9 @@ namespace hgl
 
                     if(np)
                     {
-                        *np=x;++np;
-                        *np=y;++np;
-                        *np=z;++np;
+                        *np=+x;++np;
+                        *np=-y;++np;
+                        *np=+z;++np;
                     }
 
                     if(tcp)
@@ -472,9 +516,9 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableDome(vulkan::Database *db,vulkan::Material *mtl,const DomeCreateInfo *dci)
+        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab,const DomeCreateInfo *dci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint i, j;
 
@@ -591,9 +635,9 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableTorus(vulkan::Database *db,vulkan::Material *mtl,const TorusCreateInfo *tci)
+        Renderable *CreateRenderableTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             // s, t = parametric values of the equations, in the range [0,1]
             float s = 0;
@@ -665,16 +709,16 @@ namespace hgl
                         // generate normal and stores it in the right position
                         // NOTE: cos (2PIx) = cos (x) and sin (2PIx) = sin (x) so, we can use this formula
                         //       normal = {cos(2PIs)cos(2PIt) , sin(2PIs)cos(2PIt) ,sin(2PIt)}
-                        *np = cos2PIs * cos2PIt; ++np;
-                        *np = sin2PIt; ++np;
-                        *np = sin2PIs * cos2PIt; ++np;
+                        *np = +cos2PIs * cos2PIt;   ++np;
+                        *np = -sin2PIt;             ++np;
+                        *np = +sin2PIs * cos2PIt;   ++np;
                     }
 
                     if(tcp)
                     {
                         // generate texture coordinates and stores it in the right position
-                        *tcp = s; ++tcp;
-                        *tcp = t; ++tcp;
+                        *tcp = s*tci->uv_scale.x; ++tcp;
+                        *tcp = t*tci->uv_scale.y; ++tcp;
                     }
 
                     if(tp)
@@ -709,7 +753,7 @@ namespace hgl
 
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = centerIndex;      ++tp;
+                    *tp = centerIndex;      ++tp;
                     *tp = indexCounter;     ++tp;
                     *tp = indexCounter + 1; ++tp;
 
@@ -723,7 +767,7 @@ namespace hgl
 
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = centerIndex;      ++tp;
+                    *tp = centerIndex;      ++tp;
                     *tp = indexCounter + 1; ++tp;
                     *tp = indexCounter;     ++tp;
 
@@ -734,11 +778,11 @@ namespace hgl
                 // Sides
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = indexCounter;     ++tp;
+                    *tp = indexCounter;     ++tp;
                     *tp = indexCounter + 1; ++tp;
                     *tp = indexCounter + 2; ++tp;
 
-    	            *tp = indexCounter + 2; ++tp;
+                    *tp = indexCounter + 2; ++tp;
                     *tp = indexCounter + 1; ++tp;
                     *tp = indexCounter + 3; ++tp;
 
@@ -747,14 +791,14 @@ namespace hgl
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableCylinder(vulkan::Database *db,vulkan::Material *mtl,const CylinderCreateInfo *cci)
+        Renderable *CreateRenderableCylinder(RenderResource *db,const VAB *vab,const CylinderCreateInfo *cci)
         {
             uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
             if(numberIndices<=0)
                 return(nullptr);
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
@@ -802,11 +846,11 @@ namespace hgl
 
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
-    	        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        *vp =  cos(currentAngle) * cci->radius; ++vp;
-		        *vp = -sin(currentAngle) * cci->radius; ++vp;
-		        *vp = -cci->halfExtend;                 ++vp;
+                *vp =  cos(currentAngle) * cci->radius; ++vp;
+                *vp = -sin(currentAngle) * cci->radius; ++vp;
+                *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
@@ -855,11 +899,11 @@ namespace hgl
 
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
-    	        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        *vp =  cos(currentAngle) * cci->radius; ++vp;
-		        *vp = -sin(currentAngle) * cci->radius; ++vp;
-		        *vp =  cci->halfExtend;                 ++vp;
+                *vp =  cos(currentAngle) * cci->radius; ++vp;
+                *vp = -sin(currentAngle) * cci->radius; ++vp;
+                *vp =  cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
@@ -884,37 +928,37 @@ namespace hgl
 
             for(uint i = 0; i < cci->numberSlices + 1; i++)
             {
-		        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        float sign = -1.0f;
+                float sign = -1.0f;
 
-		        for (uint j = 0; j < 2; j++)
+                for (uint j = 0; j < 2; j++)
                 {
-			        *vp =  cos(currentAngle) * cci->radius;     ++vp;
-			        *vp = -sin(currentAngle) * cci->radius;     ++vp;
-			        *vp =  cci->halfExtend * sign;              ++vp;
+                    *vp =  cos(currentAngle) * cci->radius;     ++vp;
+                    *vp = -sin(currentAngle) * cci->radius;     ++vp;
+                    *vp =  cci->halfExtend * sign;              ++vp;
 
                     if(np)
                     {
-			            *np =  cos(currentAngle);   ++np;
-			            *np = -sin(currentAngle);   ++np;
-			            *np = 0.0f;                 ++np;
+                        *np =  cos(currentAngle);   ++np;
+                        *np =  sin(currentAngle);   ++np;
+                        *np = 0.0f;                 ++np;
                     }
 
                     if(tp)
                     {
-			            *tp = -sin(currentAngle);   ++tp;
-			            *tp = -cos(currentAngle);   ++tp;
-			            *tp = 0.0f;                 ++tp;
+                        *tp = -sin(currentAngle);   ++tp;
+                        *tp = -cos(currentAngle);   ++tp;
+                        *tp = 0.0f;                 ++tp;
                     }
 
                     if(tcp)
                     {
-			            *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
-			            *tcp = (sign + 1.0f) / 2.0f;                 ++tcp;
+                        *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
+                        *tcp = (sign + 1.0f) / 2.0f;                 ++tcp;
                     }
 
-			        sign = 1.0f;
+                    sign = 1.0f;
                 }
             }
 
@@ -938,7 +982,7 @@ namespace hgl
 
                 for (i = 0; i < numberSlices; i++)
                 {
-    	            *tp = centerIndex;      ++tp;
+                    *tp = centerIndex;      ++tp;
                     *tp = indexCounter;     ++tp;
                     *tp = indexCounter + 1; ++tp;
 
@@ -947,28 +991,28 @@ namespace hgl
                 indexCounter++;
 
                 // Sides
-	            for (j = 0; j < numberStacks; j++)
-	            {
-		            for (i = 0; i < numberSlices; i++)
-		            {
-			            *tp = indexCounter;                     ++tp;
-			            *tp = indexCounter + numberSlices + 1;  ++tp;
-			            *tp = indexCounter + 1;                 ++tp;
+                for (j = 0; j < numberStacks; j++)
+                {
+                    for (i = 0; i < numberSlices; i++)
+                    {
+                        *tp = indexCounter;                     ++tp;
+                        *tp = indexCounter + numberSlices + 1;  ++tp;
+                        *tp = indexCounter + 1;                 ++tp;
 
-			            *tp = indexCounter + 1;                 ++tp;
-			            *tp = indexCounter + numberSlices + 1;  ++tp;
-			            *tp = indexCounter + numberSlices + 2;  ++tp;
+                        *tp = indexCounter + 1;                 ++tp;
+                        *tp = indexCounter + numberSlices + 1;  ++tp;
+                        *tp = indexCounter + numberSlices + 2;  ++tp;
 
-	                    indexCounter++;
-    	            }
-		            indexCounter++;
+                        indexCounter++;
+                    }
+                    indexCounter++;
                 }
             }
         }//namespace
 
-        vulkan::Renderable *CreateRenderableCone(vulkan::Database *db,vulkan::Material *mtl,const ConeCreateInfo *cci)
+        Renderable *CreateRenderableCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci)
         {
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             uint i, j;
 
@@ -1024,63 +1068,63 @@ namespace hgl
 
             for (i = 0; i < cci->numberSlices + 1; i++)
             {
-    	        float currentAngle = angleStep * (float)i;
+                float currentAngle = angleStep * (float)i;
 
-		        *vp =  cos(currentAngle) * cci->radius; ++vp;
-		        *vp = -sin(currentAngle) * cci->radius; ++vp;
-		        *vp = -cci->halfExtend;                 ++vp;
+                *vp =  cos(currentAngle) * cci->radius; ++vp;
+                *vp = -sin(currentAngle) * cci->radius; ++vp;
+                *vp = -cci->halfExtend;                 ++vp;
 
                 if(np)
                 {
-		            *np = 0.0f;++np;
-		            *np = 0.0f;++np;
-		            *np =-1.0f;++np;
+                    *np = 0.0f;++np;
+                    *np = 0.0f;++np;
+                    *np =-1.0f;++np;
                 }
 
                 if(tp)
                 {
-		            *tp = sin(currentAngle);    ++tp;
-		            *tp = cos(currentAngle);    ++tp;
-		            *tp = 0.0f;                 ++tp;
+                    *tp = sin(currentAngle);    ++tp;
+                    *tp = cos(currentAngle);    ++tp;
+                    *tp = 0.0f;                 ++tp;
                 }
 
                 if(tcp)
                 {
-		            *tcp = 0.0f; ++tcp;
-		            *tcp = 0.0f; ++tcp;
+                    *tcp = 0.0f; ++tcp;
+                    *tcp = 0.0f; ++tcp;
                 }
             }
 
-	        for (j = 0; j < cci->numberStacks + 1; j++)
+            for (j = 0; j < cci->numberStacks + 1; j++)
             {
-		        float level = (float)j / (float)cci->numberStacks;
+                float level = (float)j / (float)cci->numberStacks;
 
-		        for (i = 0; i < cci->numberSlices + 1; i++)
-		        {
-			        float currentAngle = angleStep * (float)i;
+                for (i = 0; i < cci->numberSlices + 1; i++)
+                {
+                    float currentAngle = angleStep * (float)i;
 
-			        *vp =  cos(currentAngle) * cci->radius * (1.0f - level);    ++vp;
-			        *vp = -sin(currentAngle) * cci->radius * (1.0f - level);    ++vp;
-			        *vp = -cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
+                    *vp =  cos(currentAngle) * cci->radius * (1.0f - level);    ++vp;
+                    *vp = -sin(currentAngle) * cci->radius * (1.0f - level);    ++vp;
+                    *vp = -cci->halfExtend + 2.0f * cci->halfExtend * level;    ++vp;
 
                     if(np)
                     {
-			            *np = h / l *  cos(currentAngle);   ++np;
-			            *np = h / l * -sin(currentAngle);   ++np;
-			            *np = r / l;                        ++np;
+                        *np = h / l *  cos(currentAngle);   ++np;
+                        *np = h / l *  sin(currentAngle);   ++np;
+                        *np = r / l;                        ++np;
                     }
 
                     if(tp)
                     {
-			            *tp = -sin(currentAngle);   ++tp;
-			            *tp = -cos(currentAngle);   ++tp;
-			            *tp = 0.0f;                 ++tp;
+                        *tp = -sin(currentAngle);   ++tp;
+                        *tp = -cos(currentAngle);   ++tp;
+                        *tp = 0.0f;                 ++tp;
                     }
 
                     if(tcp)
                     {
-			            *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
-			            *tcp = level;                                ++tcp;
+                        *tcp = (float)i / (float)cci->numberSlices;  ++tcp;
+                        *tcp = level;                                ++tcp;
                     }
                 }
             }
@@ -1093,9 +1137,11 @@ namespace hgl
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableAxis(vulkan::Database *db,vulkan::Material *mtl,const AxisCreateInfo *aci)
+        Renderable *CreateRenderableAxis(RenderResource *db,const VAB *vab,const AxisCreateInfo *aci)
         {
-            RenderableCreater rc(db,mtl);
+            if(!db||!vab||!aci)return(nullptr);
+
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(6))
                 return(nullptr);
@@ -1106,19 +1152,19 @@ namespace hgl
             if(!vertex||!color)
                 return(nullptr);
 
-            vertex->Write(aci->root);color->Write(aci->color[0]);
-            vertex->Write(aci->root.x+aci->size[0],aci->root.y,aci->root.z);color->Write(aci->color[0]);
+            const float s=aci->size;
 
-            vertex->Write(aci->root);color->Write(aci->color[1]);
-            vertex->Write(aci->root.x,aci->root.y+aci->size[1],aci->root.z);color->Write(aci->color[1]);
-
-            vertex->Write(aci->root);color->Write(aci->color[2]);
-            vertex->Write(aci->root.x,aci->root.y,aci->root.z+aci->size[2]);color->Write(aci->color[2]);
+            vertex->Write(0,0,0);color->Write(aci->color[0]);
+            vertex->Write(s,0,0);color->Write(aci->color[0]);
+            vertex->Write(0,0,0);color->Write(aci->color[1]);
+            vertex->Write(0,s,0);color->Write(aci->color[1]);
+            vertex->Write(0,0,0);color->Write(aci->color[2]);
+            vertex->Write(0,0,s);color->Write(aci->color[2]);
 
             return rc.Finish();
         }
 
-        vulkan::Renderable *CreateRenderableBoundingBox(vulkan::Database *db,vulkan::Material *mtl,const CubeCreateInfo *cci)
+        Renderable *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const BoundingBoxCreateInfo *cci)
         {
             // Points of a cube.
             /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
@@ -1140,7 +1186,7 @@ namespace hgl
                 0,4,    1,5,    2,6,    3,7
             };
 
-            RenderableCreater rc(db,mtl);
+            RenderableCreater rc(db,vab);
 
             if(!rc.Init(8))
                 return(nullptr);
@@ -1149,36 +1195,21 @@ namespace hgl
 
             if(!vertex)return(nullptr);
 
-            if(cci->center  ==Vector3f(0,0,0)
-             &&cci->size    ==Vector3f(1,1,1))
-            {
-                rc.WriteVAD(VAN::Position,points,sizeof(points));
-            }
-            else
-            {
-                const float *sp=points;
-                float *vp=vertex->Get();
+            rc.WriteVAD(VAN::Position,points,sizeof(points));
 
-                for(uint i=0;i<8;i++)
-                {
-                    *vp=cci->center.x+(*sp)*cci->size.x;  ++vp;++sp;
-                    *vp=cci->center.y+(*sp)*cci->size.y;  ++vp;++sp;
-                    *vp=cci->center.z+(*sp)*cci->size.z;  ++vp;++sp;
-                }
-            }
-
-            if(cci->has_color)
+            if(cci->color_type!=BoundingBoxCreateInfo::ColorType::NoColor)
             {
+                ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
+
                 AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
-                float *color_pointer=color->Get();
 
-                if(color_pointer)
+                if(color)
                 {
-                    for(uint i=0;i<8;i++)
-                    {
-                        memcpy(color_pointer,&(cci->color),4*sizeof(float));
-                        color_pointer+=4;
-                    }
+                    if(cci->color_type==BoundingBoxCreateInfo::ColorType::SameColor)
+                        color->RepeatWrite(cci->color[0],8);
+                    else
+                    if(cci->color_type==BoundingBoxCreateInfo::ColorType::VertexColor)
+                        color->Write(cci->color,8);
                 }
             }
 

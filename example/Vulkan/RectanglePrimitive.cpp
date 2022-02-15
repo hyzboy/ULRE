@@ -2,15 +2,15 @@
 // 该示例是texture_rect的进化，演示使用GeometryShader画矩形
 
 #include"VulkanAppFramework.h"
-#include<hgl/graph/vulkan/VKTexture.h>
-#include<hgl/graph/vulkan/VKSampler.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKSampler.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *CreateTextureFromFile(Device *device,const OSString &filename);
+Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_SIZE=512;
@@ -36,40 +36,52 @@ class TestApp:public VulkanApplicationFramework
 
 private:
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::Texture2D *         texture             =nullptr;
-    vulkan::Sampler *           sampler             =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
-    vulkan::Renderable *        render_obj          =nullptr;
-    vulkan::Buffer *            ubo_world_matrix    =nullptr;
+    Texture2D *         texture             =nullptr;
+    Sampler *           sampler             =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
+    Renderable *        render_obj          =nullptr;
+    RenderableInstance *render_instance     =nullptr;
+    GPUBuffer *         ubo_camera_info     =nullptr;
 
-    vulkan::Pipeline *          pipeline            =nullptr;
-
-    vulkan::VAB *vertex_buffer       =nullptr;
-    vulkan::VAB *tex_coord_buffer    =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial( OS_TEXT("res/shader/DrawRect2D.vert"),
-                                                OS_TEXT("res/shader/DrawRect2D.geom"),
-                                                OS_TEXT("res/shader/FlatTexture.frag"));
-        if(!material)
-            return(false);
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureRect2D"));
+        if(!material_instance)return(false);
 
-        render_obj=db->CreateRenderable(material,VERTEX_COUNT);
-        material_instance=db->CreateMaterialInstance(material);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
+        if(!pipeline)return(false);
 
-        texture=vulkan::CreateTextureFromFile(device,OS_TEXT("res/image/lena.Tex2D"));
+        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"));
+        if(!texture)return(false);
 
         sampler=db->CreateSampler();
 
-        material_instance->BindSampler("tex",texture,sampler);
-        material_instance->BindUBO("world",ubo_world_matrix);
-        material_instance->Update();
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
 
-        db->Add(material);
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
+
+        {
+            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp_texture)
+                return(false);
+            
+            if(!mp_texture->BindSampler("tex",texture,sampler))return(false);
+
+            mp_texture->Update();
+        }
+
         db->Add(texture);
         return(true);
     }
@@ -83,34 +95,26 @@ private:
 
         cam.Refresh();
 
-        ubo_world_matrix=db->CreateUBO(sizeof(WorldMatrix),&cam.matrix);
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
-        if(!ubo_world_matrix)
+        if(!ubo_camera_info)
             return(false);
 
         return(true);
     }
 
-    void InitVBO()
-    {
-        vertex_buffer   =db->CreateVAB(FMT_RGBA32F,VERTEX_COUNT,vertex_data);
-        tex_coord_buffer=db->CreateVAB(FMT_RGBA32F,VERTEX_COUNT,tex_coord_data);
+    bool InitVBO()
+    {        
+        render_obj=db->CreateRenderable(VERTEX_COUNT);
 
-        render_obj->Set("Vertex",vertex_buffer);
-        render_obj->Set("TexCoord",tex_coord_buffer);
-    }
+        if(!render_obj)return(false);
 
-    bool InitPipeline()
-    {
-        AutoDelete<vulkan::PipelineCreater>
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->Set(Prim::Rectangles);
+        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,VERTEX_COUNT,vertex_data));
+        render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,VERTEX_COUNT,tex_coord_data));
+        
+        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
 
-        pipeline=pipeline_creater->Create();
-
-        db->Add(pipeline);
-        return pipeline;
+        return(render_instance);
     }
 
 public:
@@ -126,12 +130,10 @@ public:
         if(!InitMaterial())
             return(false);
 
-        InitVBO();
-
-        if(!InitPipeline())
+        if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        BuildCommandBuffer(render_instance);
 
         return(true);
     }
@@ -143,9 +145,9 @@ public:
 
         cam.Refresh();
 
-        ubo_world_matrix->Write(&cam.matrix);
-
-        BuildCommandBuffer(pipeline,material_instance,render_obj);
+        ubo_camera_info->Write(&cam.info);
+        
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 
