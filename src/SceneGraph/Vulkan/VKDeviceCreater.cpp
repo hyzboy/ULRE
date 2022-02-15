@@ -305,6 +305,29 @@ namespace
         OUTPUT_PHYSICAL_DEVICE_FEATURE(subgroupBroadcastDynamicId)
 #undef OUTPUT_PHYSICAL_DEVICE_FEATURE
     }
+    
+    void DebugOut(const VkPhysicalDeviceVulkan13Features &features)
+    {
+        std::cout<<"Vulkan 1.3 features"<<std::endl;
+
+#define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(robustImageAccess)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(inlineUniformBlock)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(descriptorBindingInlineUniformBlockUpdateAfterBind)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(pipelineCreationCacheControl)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(privateData)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderDemoteToHelperInvocation)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderTerminateInvocation)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(subgroupSizeControl)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(computeFullSubgroups)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(synchronization2)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(textureCompressionASTC_HDR)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderZeroInitializeWorkgroupMemory)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(dynamicRendering)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderIntegerDotProduct)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(maintenance4)
+#undef OUTPUT_PHYSICAL_DEVICE_FEATURE
+    }
 
     void DebugOutVersion(uint32_t version)
     {
@@ -496,6 +519,7 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
         DebugOut(physical_device->GetFeatures10());
         DebugOut(physical_device->GetFeatures11());
         DebugOut(physical_device->GetFeatures12());
+        DebugOut(physical_device->GetFeatures13());
     }
     #endif//_DEBUG
 
