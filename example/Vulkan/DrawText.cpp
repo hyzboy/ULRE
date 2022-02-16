@@ -18,23 +18,17 @@ constexpr uint32_t SCREEN_HEIGHT=SCREEN_WIDTH/16*9;
 
 constexpr uint CHAR_BITMAP_SIZE=16;         //字符尺寸
 
-class TestApp:public VulkanApplicationFramework
+class TextRender
 {
-    Camera cam;
+    GPUDevice *         device              =nullptr;
+    RenderResource *    db                  =nullptr;
 
-    Color4f color;
-    
-private:
-
-    Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    GPUBuffer *         ubo_camera_info     =nullptr;
-    GPUBuffer *         ubo_color           =nullptr;
+
+    Sampler *           sampler             =nullptr;
 
     Pipeline *          pipeline            =nullptr;
-
-private:
 
     FontSource *        eng_fs              =nullptr;
     FontSource *        chs_fs              =nullptr;
@@ -42,92 +36,25 @@ private:
 
     TileFont *          tile_font           =nullptr;
     TextLayout          tl_engine;                                      ///<文本排版引擎
-
-    TextRenderable *    text_render_obj     =nullptr;
-    RenderableInstance *render_instance     =nullptr;
+    
+    Color4f             color;
+    GPUBuffer *         ubo_color           =nullptr;
 
 public:
 
-    ~TestApp()
+    TextRender(GPUDevice *dev)
+    {
+        device=dev;
+        db=new RenderResource(device);
+    }
+
+    ~TextRender()
     {
         SAFE_CLEAR(tile_font);
+        SAFE_CLEAR(db);
     }
 
-private:
-
-    bool InitMaterial()
-    {
-        material=db->CreateMaterial(OS_TEXT("res/material/LumTextureRect2D"));
-
-        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
-        {
-            VABConfigInfo vab_config;
-            VAConfig va_cfg;
-
-            va_cfg.format=VF_V4I16;
-            va_cfg.instance=false;
-
-            vab_config.Add("Position",va_cfg);
-
-            material_instance=db->CreateMaterialInstance(material,&vab_config);
-            if(!material_instance)return(false);
-        }
-
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
-        if(!pipeline)return(false);
-
-        sampler=db->CreateSampler();
-        
-        {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
-
-            mp_global->Update();
-        }
-
-        {
-            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
-        
-            if(!mp)
-                return(false);
-            
-            if(!mp->BindSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);            
-            if(!mp->BindUBO("color_material",ubo_color))return(false);
-
-            mp->Update();
-        }
-
-
-        return(true);
-    }
-
-    bool InitUBO()
-    {
-        const VkExtent2D extent=sc_render_target->GetExtent();
-
-        cam.width=extent.width;
-        cam.height=extent.height;
-
-        cam.RefreshCameraInfo();
-
-        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
-
-        if(!ubo_camera_info)
-            return(false);
-
-        color.One();
-
-        ubo_color=db->CreateUBO(sizeof(Color4f),&color);
-
-        if(!ubo_color)
-            return(false);
-
-        return(true);
-    }
+private:    
 
     bool InitTileFont()
     {
@@ -165,19 +92,172 @@ private:
         return tl_engine.Init();
     }
 
+    bool InitUBO()
+    {
+        color.One();
+
+        ubo_color=db->CreateUBO(sizeof(Color4f),&color);
+
+        if(!ubo_color)
+            return(false);
+
+        return(true);
+    }
+
+    bool InitMaterial(RenderPass *rp,GPUBuffer *ubo_camera_info)
+    {
+        material=db->CreateMaterial(OS_TEXT("res/material/LumTextureRect2D"));
+
+        //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
+        {
+            VABConfigInfo vab_config;
+            VAConfig va_cfg;
+
+            va_cfg.format=VF_V4I16;
+            va_cfg.instance=false;
+
+            vab_config.Add("Position",va_cfg);
+
+            material_instance=db->CreateMaterialInstance(material,&vab_config);
+            if(!material_instance)return(false);
+        }
+
+        pipeline=rp->CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
+        if(!pipeline)return(false);
+
+        sampler=db->CreateSampler();
+        
+        {
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+        
+            if(!mp_global)
+                return(false);
+
+            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
+
+            mp_global->Update();
+        }
+
+        {
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
+        
+            if(!mp)
+                return(false);
+            
+            if(!mp->BindSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);            
+            if(!mp->BindUBO("color_material",ubo_color))return(false);
+
+            mp->Update();
+        }
+
+        return(true);
+    }
+
+public:
+
+    bool Init(RenderPass *rp,GPUBuffer *ubo_camera_info)
+    {
+        if(!InitTileFont())
+            return(false);
+
+        if(!InitTextLayoutEngine())
+            return(false);
+
+        if(!InitUBO())
+            return(false);
+
+        if(!InitMaterial(rp,ubo_camera_info))
+            return(false);
+
+        return(true);
+    }
+
+    TextRenderable *CreateRenderable()
+    {
+        return db->CreateTextRenderable(material);
+    }
+
+    RenderableInstance *CreateRenderableInstance(TextRenderable *text_render_obj,const UTF16String &str)
+    {
+        if(tl_engine.SimpleLayout(text_render_obj,tile_font,str)<=0)
+            return(nullptr);
+
+        return db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
+    }
+};//class TextRender
+
+TextRender *CreateTextRender(GPUDevice *dev,RenderPass *rp,GPUBuffer *ubo_camera_info)
+{
+    if(!dev||!rp||!ubo_camera_info)
+        return(nullptr);
+
+    TextRender *text_render=new TextRender(dev);
+
+    if(!text_render->Init(rp,ubo_camera_info))
+    {
+        delete text_render;
+        return(nullptr);
+    }
+
+    return text_render;
+}
+
+class TestApp:public VulkanApplicationFramework
+{
+    Camera cam;
+
+private:
+
+    GPUBuffer *         ubo_camera_info     =nullptr;
+
+private:
+
+    TextRender *        text_render         =nullptr;
+
+    TextRenderable *    text_render_obj     =nullptr;
+    RenderableInstance *render_instance     =nullptr;
+
+public:
+
+    ~TestApp()
+    {
+        SAFE_CLEAR(text_render)
+    }
+
+private:
+
+    bool InitUBO()
+    {
+        const VkExtent2D extent=sc_render_target->GetExtent();
+
+        cam.width=extent.width;
+        cam.height=extent.height;
+
+        cam.RefreshCameraInfo();
+
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
+
+        if(!ubo_camera_info)
+            return(false);
+
+        return(true);
+    }
+
     bool InitTextRenderable()
     {
         UTF16String str;
 
         LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 
-        text_render_obj=db->CreateTextRenderable(material_instance->GetMaterial());
+        text_render_obj=text_render->CreateRenderable();
+        if(!text_render_obj)
+            return(false);
 
-        if(tl_engine.SimpleLayout(text_render_obj,tile_font,str)<=0)return(false);
+        render_instance=text_render->CreateRenderableInstance(text_render_obj,str);
+        if(!render_instance)
+            return(false);
 
-        render_instance=db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
-
-        return(render_instance);
+        return(true);
     }
 
 public:
@@ -186,22 +266,17 @@ public:
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
-            
-        if(!InitTileFont())
-            return(false);
 
         if(!InitUBO())
             return(false);
 
-        if(!InitMaterial())
-            return(false);
-
-        if(!InitTextLayoutEngine())
+        text_render=CreateTextRender(device,device_render_pass,ubo_camera_info);
+        if(!text_render)
             return(false);
 
         if(!InitTextRenderable())
             return(false);
-            
+
         BuildCommandBuffer(render_instance);
 
         return(true);
