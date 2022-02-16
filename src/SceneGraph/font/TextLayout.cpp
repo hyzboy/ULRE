@@ -58,7 +58,7 @@ namespace hgl
             //遍历所有字符，取得每一个字符的基本绘制信息
             {
                 draw_chars_count=0;
-                alone_chars.ClearData();
+                chars_sets.ClearData();
                 draw_chars_list.ClearData();
 
                 const T *cp=str;
@@ -72,7 +72,7 @@ namespace hgl
 
                     if(cda->cla->visible)
                     {
-                        alone_chars.Add(*cp);              //统计所有不重复字符
+                        chars_sets.Add(*cp);              //统计所有不重复字符
                         ++draw_chars_count;
                     }
 
@@ -83,10 +83,10 @@ namespace hgl
             }
             
             //注册不重复字符给tile font系统，获取所有字符的UV
-            if(!tile_font->Registry(alone_chars_uv,alone_chars.GetData(),alone_chars.GetCount()))
+            if(!tile_font->Registry(chars_uv,chars_sets.GetData(),chars_sets.GetCount()))
             {
                 draw_chars_list.ClearData();
-                alone_chars.ClearData();
+                chars_sets.ClearData();
 
                 return(false);
             }
@@ -97,7 +97,7 @@ namespace hgl
 
                 for(int i=0;i<str_length;i++)
                 {
-                    alone_chars_uv.Get((*cda)->cla->attr->ch,(*cda)->uv);
+                    chars_uv.Get((*cda)->cla->attr->ch,(*cda)->uv);
 
                     ++cda;
                 }
