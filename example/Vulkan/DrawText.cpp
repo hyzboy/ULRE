@@ -16,7 +16,7 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH =1280;
 constexpr uint32_t SCREEN_HEIGHT=SCREEN_WIDTH/16*9;
 
-constexpr uint CHAR_BITMAP_SIZE=12;         //字符尺寸
+constexpr uint CHAR_BITMAP_SIZE=16;         //字符尺寸
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -156,7 +156,7 @@ private:
         tla.line_gap=0.1f;
 
         tl_engine.SetFont(tile_font->GetFontSource());
-        tl_engine.SetTLA(&tla);
+        tl_engine.Set(&tla);
         tl_engine.SetTextDirection(0);
         tl_engine.SetAlign(TextAlign::Left);
         tl_engine.SetMaxWidth(0);

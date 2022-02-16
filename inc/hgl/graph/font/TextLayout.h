@@ -20,10 +20,9 @@ namespace hgl
         {
             bool    bold        =false; ///<加粗
             bool    italic      =false; ///<右斜
-            bool    underline   =false; ///<下划线
 
             Color4f CharColor;          ///<字符颜色
-            Color4f BackgroundColor;    ///<背影颜色
+            Color4f BackgroundColor;    ///<背景颜色
         };//struct CharLayoutAttr
        
         /**
@@ -99,8 +98,8 @@ namespace hgl
 
             int draw_chars_count;                       ///<要绘制字符列表
 
-            SortedSets<u32char> alone_chars;                   ///<不重复字符统计缓冲区
-            TileUVFloatMap alone_chars_uv;              ///<所有要绘制字符的uv
+            SortedSets<u32char> chars_sets;             ///<不重复字符统计缓冲区
+            TileUVFloatMap chars_uv;                    ///<所有要绘制字符的uv
 
             struct CharDrawAttr
             {
@@ -156,7 +155,7 @@ namespace hgl
 
             virtual ~TextLayout()=default;
 
-            void SetTLA             (const TextLayoutAttributes *_tla)  {if(_tla)memcpy(&tla,_tla,sizeof(TextLayoutAttributes));}
+            void Set                (const TextLayoutAttributes *_tla)  {if(_tla)hgl_cpy(&tla,_tla);}
             void SetFont            (FontSource *fs)                    {if(fs)font_source=fs;}
             void SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
             void SetAlign           (const TextAlign &ta)               {tla.align=ta;}

@@ -34,8 +34,8 @@ public:
     GPUPhysicalDevice(VkInstance,VkPhysicalDevice);
     ~GPUPhysicalDevice()=default;
 
-    operator VkPhysicalDevice(){return physical_device;}
-    operator const VkPhysicalDevice()const{return physical_device;}
+    operator        VkPhysicalDevice()      {return physical_device;}
+    operator const  VkPhysicalDevice()const {return physical_device;}
 
     const int               GetMemoryType(uint32_t,VkMemoryPropertyFlags)const;
 
@@ -116,7 +116,6 @@ public:
 
     const VkBool32  SupportGeometryShader       ()const{return features.geometryShader;}
     const VkBool32  SupportCubeMapArray         ()const{return features.imageCubeArray;}
-
 
     // support != open, so please don't direct use GetFeatures().
     // open any features in CreateDevice()&SetDeviceFeatures() functions.
