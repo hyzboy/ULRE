@@ -62,12 +62,15 @@ SET(FONT_LAYOUT_SOURCE  ${SG_INCLUDE_PATH}/font/TextLayout.h
                         font/TextLayout.cpp)
 
 SET(TEXT_RENDERABLE_SOURCE  ${SG_INCLUDE_PATH}/font/TextRenderable.h
+                            ${SG_INCLUDE_PATH}/font/TextRender.h
+                            font/TextRender.cpp
                             font/TextRenderable.cpp)
 
 SOURCE_GROUP("Font"             FILES ${FONT_MANAGE_SOURCE})
 SOURCE_GROUP("Font\\Source"     FILES ${FONT_SOURCE})
 SOURCE_GROUP("Font\\TileFont"   FILES ${TILE_FONT_SOURCE})
-SOURCE_GROUP("Font\\Layout"     FILES ${FONT_LAYOUT_SOURCE} ${TEXT_RENDERABLE_SOURCE})
+SOURCE_GROUP("Font\\Layout"     FILES ${FONT_LAYOUT_SOURCE})
+SOURCE_GROUP("Font\\Render"     FILES ${TEXT_RENDERABLE_SOURCE})
 
 IF(WIN32)
     SET(FONT_SOURCE_OS  font/FontSourceWin.cpp
