@@ -53,7 +53,7 @@ private:
     {
         UTF16String str;
 
-        FontSource *fs=CreateFontSource(OS_TEXT("微软雅黑"),12);
+        FontSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),12);
 
         text_render=CreateTextRender(device,fs,device_render_pass,ubo_camera_info);
         if(!text_render)

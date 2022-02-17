@@ -140,15 +140,28 @@ namespace hgl
 
         TextRenderable *TextRender::CreateRenderable(const UTF16String &str)
         {
+            return db->CreateTextRenderable(material);
+        }
+
+        TextRenderable *TextRender::CreateRenderable(const UTF16String &str)
+        {
             TextRenderable *tr=db->CreateTextRenderable(material);
 
             if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
-            {
-                delete tr;
-                return(nullptr);
-            }
+                return(tr);
 
             return tr;
+        }
+
+        bool TextRender::Layout(TextRenderable *tr,const UTF16String &str)
+        {
+            if(!tr)
+                return(false);
+
+            if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
+                return(false);
+
+            return true;
         }
 
         RenderableInstance *TextRender::CreateRenderableInstance(TextRenderable *text_render_obj)
@@ -171,7 +184,7 @@ namespace hgl
             return font_source;
         }
 
-        FontSource *CreateFontSource(const os_char *name,const uint32_t size)
+        FontSource *AcquireFontSource(const os_char *name,const uint32_t size)
         {
             Font fnt(name,0,size);
 
