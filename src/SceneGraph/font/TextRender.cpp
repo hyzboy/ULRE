@@ -11,11 +11,12 @@ namespace hgl
 {
     namespace graph
     {
-        TextRender::TextRender(GPUDevice *dev)
+        TextRender::TextRender(GPUDevice *dev,FontSource *fs)
         {
             device=dev;
             db=new RenderResource(device);
             tl_engine=new TextLayout();
+            font_source=fs;
         }
 
         TextRender::~TextRender()
@@ -27,15 +28,6 @@ namespace hgl
 
         bool TextRender::InitTileFont()
         {
-            Font eng_fnt(OS_TEXT("Source Code Pro"),0,CHAR_BITMAP_SIZE);
-            Font chs_fnt(OS_TEXT("微软雅黑"),0,CHAR_BITMAP_SIZE);
-
-            eng_fs=AcquireFontSource(eng_fnt);
-            chs_fs=AcquireFontSource(chs_fnt);
-
-            font_source=new FontSourceMulti(eng_fs);
-            font_source->AddCJK(chs_fs);
-
             tile_font=device->CreateTileFont(font_source);
             return(true);
         }
@@ -152,12 +144,34 @@ namespace hgl
             return db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
         }
 
-        TextRender *CreateTextRender(GPUDevice *dev,RenderPass *rp,GPUBuffer *ubo_camera_info)
+        FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size)
+        {
+            Font eng_fnt(lf,0,size);
+            Font chs_fnt(cf,0,size);
+
+            FontSource *eng_fs=AcquireFontSource(eng_fnt);
+            FontSource *chs_fs=AcquireFontSource(chs_fnt);
+
+            FontSourceMulti *font_source=new FontSourceMulti(eng_fs);
+
+            font_source->AddCJK(chs_fs);
+
+            return font_source;
+        }
+
+        FontSource *CreateFontSource(const os_char *name,const uint32_t size)
+        {
+            Font fnt(name,0,size);
+
+            return AcquireFontSource(fnt);
+        }
+
+        TextRender *CreateTextRender(GPUDevice *dev,FontSource *fs,RenderPass *rp,GPUBuffer *ubo_camera_info)
         {
             if(!dev||!rp||!ubo_camera_info)
                 return(nullptr);
 
-            TextRender *text_render=new TextRender(dev);
+            TextRender *text_render=new TextRender(dev,fs);
 
             if(!text_render->Init(rp,ubo_camera_info))
             {
