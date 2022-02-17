@@ -77,7 +77,9 @@ public:
         if(!InitUBO())
             return(false);
 
-        text_render=CreateTextRender(device,device_render_pass,ubo_camera_info);
+        FontSource *fs=CreateFontSource(OS_TEXT("微软雅黑"),12);
+
+        text_render=CreateTextRender(device,fs,device_render_pass,ubo_camera_info);
         if(!text_render)
             return(false);
 

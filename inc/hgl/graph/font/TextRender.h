@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_TEXT_RENDER_INCLUDE
+﻿#ifndef HGL_GRAPH_TEXT_RENDER_INCLUDE
 #define HGL_GRAPH_TEXT_RENDER_INCLUDE
 
 #include<hgl/graph/VK.h>
@@ -9,7 +9,6 @@ namespace hgl
     namespace graph
     {
         class FontSource;
-        class FontSourceMulti;
         class TileFont;
         class TextLayout;
         class TextRenderable;
@@ -26,9 +25,7 @@ namespace hgl
 
             Pipeline *          pipeline            =nullptr;
 
-            FontSource *        eng_fs              =nullptr;
-            FontSource *        chs_fs              =nullptr;
-            FontSourceMulti *   font_source         =nullptr;
+            FontSource *        font_source         =nullptr;
 
             TileFont *          tile_font           =nullptr;
             TextLayout *        tl_engine           =nullptr;
@@ -38,14 +35,8 @@ namespace hgl
 
         private:
 
-            friend TextRender *CreateTextRender(GPUDevice *,RenderPass *,GPUBuffer *);
-            TextRender(GPUDevice *dev);
-
-        public:
-
-            ~TextRender();
-
-        private:    
+            friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *);
+            TextRender(GPUDevice *dev,FontSource *);
 
             bool InitTileFont();
             bool InitTextLayoutEngine();
@@ -54,13 +45,35 @@ namespace hgl
 
         public:
 
+            ~TextRender();
+
             bool Init(RenderPass *rp,GPUBuffer *ubo_camera_info);
+
+        public:
 
             TextRenderable *CreateRenderable();
             RenderableInstance *CreateRenderableInstance(TextRenderable *text_render_obj,const UTF16String &str);
         };//class TextRender
 
-        TextRender *CreateTextRender(GPUDevice *,RenderPass *,GPUBuffer *);
+        /**
+         * 创建一个CJK字体源
+         * @param cf CJK字体名称
+         * @param lf 其它字体名称
+         * @param size 字体象素高度
+         */
+        FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size);
+
+        /**
+         * 创建一个字体源
+         * @param name 字体名称
+         * @param size 字体象素高度
+         */
+        FontSource *CreateFontSource(const os_char *name,const uint32_t size);
+
+        /**
+         * 创建一个文本渲染器.
+         */
+        TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_RENDER_INCLUDE
