@@ -51,7 +51,11 @@ namespace hgl
 
         public:
 
+            TextRenderable *CreateRenderable();
             TextRenderable *CreateRenderable(const UTF16String &str);
+
+            bool Layout(TextRenderable *tr,const UTF16String &str);
+
             RenderableInstance *CreateRenderableInstance(TextRenderable *text_render_obj);
         };//class TextRender
 
@@ -68,7 +72,7 @@ namespace hgl
          * @param name 字体名称
          * @param size 字体象素高度
          */
-        FontSource *CreateFontSource(const os_char *name,const uint32_t size);
+        FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
 
         /**
          * 创建一个文本渲染器.
