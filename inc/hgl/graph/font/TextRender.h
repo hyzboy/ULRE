@@ -15,23 +15,23 @@ namespace hgl
 
         class TextRender
         {
-            GPUDevice *         device              =nullptr;
-            RenderResource *    db                  =nullptr;
+            GPUDevice *         device;
+            RenderResource *    db;
 
-            Material *          material            =nullptr;
-            MaterialInstance *  material_instance   =nullptr;
+            Material *          material;
+            MaterialInstance *  material_instance;
 
-            Sampler *           sampler             =nullptr;
+            Sampler *           sampler;
 
-            Pipeline *          pipeline            =nullptr;
+            Pipeline *          pipeline;
 
-            FontSource *        font_source         =nullptr;
+            FontSource *        font_source;
 
-            TileFont *          tile_font           =nullptr;
-            TextLayout *        tl_engine           =nullptr;
+            TileFont *          tile_font;
+            TextLayout *        tl_engine;
     
             Color4f             color;
-            GPUBuffer *         ubo_color           =nullptr;
+            GPUBuffer *         ubo_color;
 
         private:
 
@@ -51,8 +51,8 @@ namespace hgl
 
         public:
 
-            TextRenderable *CreateRenderable();
-            RenderableInstance *CreateRenderableInstance(TextRenderable *text_render_obj,const UTF16String &str);
+            TextRenderable *CreateRenderable(const UTF16String &str);
+            RenderableInstance *CreateRenderableInstance(TextRenderable *text_render_obj);
         };//class TextRender
 
         /**

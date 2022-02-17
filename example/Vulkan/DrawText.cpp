@@ -1,7 +1,6 @@
 ﻿#include<hgl/type/StringList.h>
 #include<hgl/graph/font/TextRender.h>
 #include"VulkanAppFramework.h"
-#include<hgl/math/Math.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -54,13 +53,19 @@ private:
     {
         UTF16String str;
 
+        FontSource *fs=CreateFontSource(OS_TEXT("微软雅黑"),12);
+
+        text_render=CreateTextRender(device,fs,device_render_pass,ubo_camera_info);
+        if(!text_render)
+            return(false);
+
         LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 
-        text_render_obj=text_render->CreateRenderable();
+        text_render_obj=text_render->CreateRenderable(str);
         if(!text_render_obj)
             return(false);
 
-        render_instance=text_render->CreateRenderableInstance(text_render_obj,str);
+        render_instance=text_render->CreateRenderableInstance(text_render_obj);
         if(!render_instance)
             return(false);
 
@@ -75,12 +80,6 @@ public:
             return(false);
 
         if(!InitUBO())
-            return(false);
-
-        FontSource *fs=CreateFontSource(OS_TEXT("微软雅黑"),12);
-
-        text_render=CreateTextRender(device,fs,device_render_pass,ubo_camera_info);
-        if(!text_render)
             return(false);
 
         if(!InitTextRenderable())
