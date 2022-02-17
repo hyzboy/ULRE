@@ -17,6 +17,13 @@ namespace hgl
             db=new RenderResource(device);
             tl_engine=new TextLayout();
             font_source=fs;
+            
+            material            =nullptr;
+            material_instance   =nullptr;
+            sampler             =nullptr;
+            pipeline            =nullptr;
+            tile_font           =nullptr;    
+            ubo_color           =nullptr;
         }
 
         TextRender::~TextRender()
@@ -131,16 +138,21 @@ namespace hgl
             return(true);
         }
 
-        TextRenderable *TextRender::CreateRenderable()
+        TextRenderable *TextRender::CreateRenderable(const UTF16String &str)
         {
-            return db->CreateTextRenderable(material);
+            TextRenderable *tr=db->CreateTextRenderable(material);
+
+            if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
+            {
+                delete tr;
+                return(nullptr);
+            }
+
+            return tr;
         }
 
-        RenderableInstance *TextRender::CreateRenderableInstance(TextRenderable *text_render_obj,const UTF16String &str)
+        RenderableInstance *TextRender::CreateRenderableInstance(TextRenderable *text_render_obj)
         {
-            if(tl_engine->SimpleLayout(text_render_obj,tile_font,str)<=0)
-                return(nullptr);
-
             return db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
         }
 
