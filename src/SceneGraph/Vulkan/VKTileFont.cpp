@@ -11,13 +11,13 @@ TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
 {
     if(!fs)return(nullptr);
 
-    int height=((fs->GetCharHeight()+2+3)>>2)<<2;  //上下左右各空一个象素，并保证可以被4整除
+    const uint32_t height=hgl_align2(fs->GetCharHeight()+2,4);  //上下左右各空一个象素，并保证可以被4整除
 
     if(limit_count<=0)
     {
         const VkExtent2D &ext=GetSwapchainSize();
 
-        limit_count=(ext.width/height)*(ext.height/height);     //按全屏幕放满不一样的字符为上限
+        limit_count=hgl_align2(ext.width,height)*hgl_align(ext.height,height);   //按全屏幕放满不一样的字符为上限
     }
 
     if(!fs)
