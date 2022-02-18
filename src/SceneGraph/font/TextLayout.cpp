@@ -83,7 +83,7 @@ namespace hgl
             }
             
             //注册不重复字符给tile font系统，获取所有字符的UV
-            if(!tile_font->Registry(chars_uv,chars_sets.GetData(),chars_sets.GetCount()))
+            if(!tile_font->Registry(chars_uv,chars_sets))
             {
                 draw_chars_list.ClearData();
                 chars_sets.ClearData();
@@ -195,7 +195,7 @@ namespace hgl
                     if((*cda)->cla->attr->ch==' ')
                         left+=space_size;
                     else
-                    if((*cda)->cla->attr->ch==HGL_FULL_SPACE)
+                    if((*cda)->cla->attr->ch==U32_FULL_SPACE)
                         left+=full_space_size;
                     else
                     if((*cda)->cla->attr->ch=='\t')

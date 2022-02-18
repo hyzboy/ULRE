@@ -30,31 +30,31 @@ namespace hgl
          * @param rs 每个字符在纹理中的UV坐标
          * @param ch_list 要注册的字符列表
          */
-        bool TileFont::Registry(TileUVFloatMap &uv_map,const u32char *ch_list,const int ch_count)
+        bool TileFont::Registry(TileUVFloatMap &uv_map,SortedSets<u32char> &chars_sets)
         {
-            const u32char *cp=ch_list;
-            TileObject *to;
-
             ResPoolStats stats;
 
-            to_res.Stats(stats,ch_list,ch_count);
+            chars_sets.Clear(not_bitmap_chars);                                     //清除所有没有位图的字符
+
+            to_res.Stats(stats,chars_sets.GetData(),chars_sets.GetCount());
 
             if(stats.non_existent>stats.can_free+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
                 return(false);
 
             uv_map.ClearData();
 
+            TileObject *to;
             FontBitmap *bmp;
-            cp=ch_list;
 
             if(stats.non_existent>0)
             {
                 tile_data->BeginCommit();
-                for(int i=0;i<ch_count;i++)
+                for(const u32char cp:chars_sets)
                 {
-                    if(!to_res.Get(*cp,to))
+                    if(!not_bitmap_chars.IsMember(cp))
+                    if(!to_res.Get(cp,to))
                     {
-                        bmp=source->GetCharBitmap(*cp);
+                        bmp=source->GetCharBitmap(cp);
 
                         if(bmp)
                         {
@@ -62,27 +62,26 @@ namespace hgl
                                                     bmp->metrics_info.w*bmp->metrics_info.h,
                                                     bmp->metrics_info.w,bmp->metrics_info.h);
 
-                            to_res.Add(*cp,to);
+                            to_res.Add(cp,to);
                         }
                         else
                         {
-                            
+                            not_bitmap_chars.Add(cp);
+                            continue;
                         }
                     }
 
-                    uv_map.Add(*cp,to->uv_float);
-                    ++cp;
+                    uv_map.Add(cp,to->uv_float);
                 }
                 tile_data->EndCommit();
             }
             else
             {
-                for(int i=0;i<ch_count;i++)
+                for(const u32char cp:chars_sets)
                 {
-                    to_res.Get(*cp,to);
+                    to_res.Get(cp,to);
 
-                    uv_map.Add(*cp,to->uv_float);
-                    ++cp;
+                    uv_map.Add(cp,to->uv_float);
                 }
             }
 
