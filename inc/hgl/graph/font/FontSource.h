@@ -41,6 +41,7 @@ namespace hgl
                 
             bool is_cjk;            ///<是否是中日韩文字
             bool is_emoji;          ///<是否是表情符号
+            bool is_currency;       ///<是否货币符号
 
             bool is_punctuation;    ///<是否是标点符号
 

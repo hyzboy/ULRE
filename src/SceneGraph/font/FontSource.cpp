@@ -59,8 +59,10 @@ namespace hgl
                     attr->begin_disable =hgl::strchr(BeginSymbols,      ch,BeginSymbolsCount    );
                     attr->end_disable   =hgl::strchr(EndSymbols,        ch,EndSymbolsCount      );
 
-                    if(!attr->end_disable)       //货币符号同样行尾禁用
-                    attr->end_disable   =hgl::strchr(CurrencySymbols,   ch,CurrencySymbolsCount );
+                    attr->is_currency   =hgl::strchr(CurrencySymbols,   ch,CurrencySymbolsCount );
+
+                    if(!attr->end_disable)       
+                    attr->end_disable   =attr->is_currency;     //货币符号同样行尾禁用
 
                     attr->vrotate       =hgl::strchr(VRotateSymbols,    ch,VRotateSymbolsCount  );
 
