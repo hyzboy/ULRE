@@ -138,7 +138,7 @@ namespace hgl
             return(true);
         }
 
-        TextRenderable *TextRender::CreateRenderable(const UTF16String &str)
+        TextRenderable *TextRender::CreateRenderable()
         {
             return db->CreateTextRenderable(material);
         }
