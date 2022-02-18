@@ -27,8 +27,7 @@ namespace hgl
              ||!fs
              ||fs==default_source)return;
 
-             if(fs->GetCharHeight()>max_char_height)
-                max_char_height=fs->GetCharHeight();
+            get_max(max_char_height,fs->GetCharHeight());
 
             source_map.Update(ub,fs);
         }
@@ -43,8 +42,7 @@ namespace hgl
 
             for(int i=0;i<count;i++)
             {
-                if((*fsp)->right->GetCharHeight()>max_char_height)
-                    max_char_height=(*fsp)->right->GetCharHeight();
+                get_max(max_char_height,(*fsp)->right->GetCharHeight());
 
                 ++fsp;
             }
