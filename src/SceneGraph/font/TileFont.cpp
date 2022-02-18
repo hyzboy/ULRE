@@ -35,14 +35,11 @@ namespace hgl
             const u32char *cp=ch_list;
             TileObject *to;
 
-            int in_active_count;    //在活跃列表中的数量
-            int in_idle_count;      //在闲置列表中的数量
-            int out_count;          //不存在的字符数量
-            int idle_left_count;    //闲置列表中可释放的数量
+            ResPoolStats stats;
 
-            to_res.Stats(ch_list,ch_count,&in_active_count,&in_idle_count,&out_count,&idle_left_count);
+            to_res.Stats(stats,ch_list,ch_count);
 
-            if(out_count>idle_left_count+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
+            if(stats.non_existent>stats.can_free+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
                 return(false);
 
             uv_map.ClearData();
@@ -50,7 +47,7 @@ namespace hgl
             FontBitmap *bmp;
             cp=ch_list;
 
-            if(out_count>0)
+            if(stats.non_existent>0)
             {
                 tile_data->BeginCommit();
                 for(int i=0;i<ch_count;i++)
