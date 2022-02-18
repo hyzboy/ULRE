@@ -42,7 +42,7 @@ namespace hgl
         bool TextRender::InitTextLayoutEngine()
         {
             CharLayoutAttr cla;
-            TextLayoutAttributes tla;
+            TextLayoutAttribute tla;
 
             cla.CharColor=Color4f(COLOR::White);
             cla.BackgroundColor=Color4f(COLOR::Black);
@@ -112,7 +112,7 @@ namespace hgl
                 if(!mp)
                     return(false);
             
-                if(!mp->BindSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);            
+                if(!mp->BindSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);
                 if(!mp->BindUBO("color_material",ubo_color))return(false);
 
                 mp->Update();

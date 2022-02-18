@@ -46,7 +46,7 @@ namespace hgl
 
             bool begin_disable;     ///<是否行首禁用符号
             bool end_disable;       ///<是否行尾禁用符号
-            bool vrotate;           ///<竖排时是否需要旋转           
+            bool vrotate;           ///<竖排时是否需要旋转
         };//
         
         /**
@@ -62,7 +62,7 @@ namespace hgl
         };//struct CharLayoutAttributes
 
         using CLA=CharLayoutAttributes;
-            
+
         /**
          * 文字位图数据源
          */

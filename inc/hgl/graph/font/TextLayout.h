@@ -56,7 +56,7 @@ namespace hgl
         /**
          * 文本排版属性
          */
-        struct TextLayoutAttributes
+        struct TextLayoutAttribute
         {
             FontSource *    font_source             =nullptr;                                       ///<字符源
             CharLayoutAttr *char_layout_attr        =nullptr;                                       ///<缺省字符排版属性
@@ -78,7 +78,9 @@ namespace hgl
             float           tab_size                =4.0f;                                          ///<Tab符号尺寸(对应字符高度的系数)
 
             bool            compress_punctuation    =false;                                         ///<压缩标点符号
-        };//struct TextLayoutAttributes
+        };//struct TextLayoutAttribute
+
+        using TLA=TextLayoutAttribute;
         
         using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
 
@@ -87,7 +89,7 @@ namespace hgl
         protected:
 
             FontSource *font_source;
-            TextLayoutAttributes tla;
+            TextLayoutAttribute tla;
 
         protected:
 
@@ -155,12 +157,12 @@ namespace hgl
 
             virtual ~TextLayout()=default;
 
-            void Set                (const TextLayoutAttributes *_tla)  {if(_tla)hgl_cpy(&tla,_tla);}
-            void SetFont            (FontSource *fs)                    {if(fs)font_source=fs;}
-            void SetTextDirection   (const uint8 &td)                   {tla.text_direction=td;}
-            void SetAlign           (const TextAlign &ta)               {tla.align=ta;}
-            void SetMaxWidth        (const float mw)                    {tla.max_width=mw;}
-            void SetMaxHeight       (const float mh)                    {tla.max_height=mh;}
+            void Set                (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla);}
+            void SetFont            (      FontSource * fs)     {if(fs)font_source=fs;}
+            void SetTextDirection   (const uint8 &      td)     {tla.text_direction=td;}
+            void SetAlign           (const TextAlign &  ta)     {tla.align=ta;}
+            void SetMaxWidth        (const float        mw)     {tla.max_width=mw;}
+            void SetMaxHeight       (const float        mh)     {tla.max_height=mh;}
 
             virtual bool    Init        ();                                                         ///<初始化排版
 
