@@ -17,7 +17,7 @@ TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
     {
         const VkExtent2D &ext=GetSwapchainSize();
 
-        limit_count=hgl_align2(ext.width,height)*hgl_align(ext.height,height);   //按全屏幕放满不一样的字符为上限
+        limit_count=(ext.width/height)*(ext.height/height);   //按全屏幕放满不一样的字符为上限
     }
 
     if(!fs)
