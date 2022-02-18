@@ -22,15 +22,15 @@ namespace hgl
 
         namespace
         {
-            constexpr u16char   BeginSymbols    []=U16_TEXT("!),❟.:;?]}¨·ˇˉ―‖’❜”„❞…∶、。〃々❯〉》」』】〕〗！＂＇），．：；？］｀｜｝～»›");     //行首禁用符号
-            constexpr u16char 	EndSymbols      []=U16_TEXT("([{·❛‘“‟❝❮〈《「『【〔〖（．［｛«‹");                                           //行尾禁用符号
-            constexpr u16char 	CurrencySymbols []=U16_TEXT("₳฿₿￠₡¢₢₵₫€￡£₤₣ƒ₲₭Ł₥₦₽₱＄$₮ℳ₶₩￦¥￥₴₸¤₰៛₪₯₠₧﷼㍐원৳₹₨৲௹");                //货币符号
-            constexpr u16char   VRotateSymbols  []=U16_TEXT("()[]{}〈〉《》「」『』【】〔〕〖〗（）［］｛｝―‖…∶｜～");                        //竖排必须旋转的符号
+            constexpr u32char   BeginSymbols    []=U32_TEXT("!),❟.:;?]}¨·ˇˉ―‖’❜”„❞…∶、。〃々❯〉》」』】〕〗！＂＇），．：；？］｀｜｝～»›");  //行首禁用符号
+            constexpr u32char   EndSymbols      []=U32_TEXT("([{·❛‘“‟❝❮〈《「『【〔〖（．［｛«‹");                                       //行尾禁用符号
+            constexpr u32char   CurrencySymbols []=U32_TEXT("₳฿₿￠₡¢₢₵₫€￡£₤₣ƒ₲₭Ł₥₦₽₱＄$₮ℳ₶₩￦¥￥₴₸¤₰៛₪₯₠₧﷼㍐원৳₹₨৲௹");                //货币符号
+            constexpr u32char   VRotateSymbols  []=U32_TEXT("()[]{}〈〉《》「」『』【】〔〕〖〗（）［］｛｝―‖…∶｜～");                        //竖排必须旋转的符号
 
-            constexpr int       BeginSymbolsCount   =(sizeof(BeginSymbols)   /sizeof(u16char))-1;
-            constexpr int 		EndSymbolsCount	    =(sizeof(EndSymbols)     /sizeof(u16char))-1;
-            constexpr int 		CurrencySymbolsCount=(sizeof(CurrencySymbols)/sizeof(u16char))-1;
-            constexpr int       VRotateSymbolsCount =(sizeof(VRotateSymbols) /sizeof(u16char))-1;
+            constexpr int       BeginSymbolsCount   =(sizeof(BeginSymbols)   /sizeof(u32char))-1;
+            constexpr int       EndSymbolsCount	    =(sizeof(EndSymbols)     /sizeof(u32char))-1;
+            constexpr int       CurrencySymbolsCount=(sizeof(CurrencySymbols)/sizeof(u32char))-1;
+            constexpr int       VRotateSymbolsCount =(sizeof(VRotateSymbols) /sizeof(u32char))-1;
 
             MapObject<u32char,CharAttributes> all_char_attrs;
         }//namespace
