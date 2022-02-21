@@ -84,18 +84,6 @@ Renderable *RenderResource::CreateRenderable(const uint32_t vertex_count)
     return ro;
 }
 
-TextRenderable *RenderResource::CreateTextRenderable(Material *mtl)
-{
-    if(!mtl)return(nullptr);
-            
-    TextRenderable *tr=new TextRenderable(device,mtl);
-
-    if(tr)
-        Add(tr);
-
-    return tr;
-}
-
 RenderableInstance *RenderResource::CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!p||!mi||!r)

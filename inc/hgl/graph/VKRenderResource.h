@@ -94,7 +94,6 @@ public: //Material
     MaterialInstance *  CreateMaterialInstance(const OSString &,const VABConfigInfo *vab_cfg=nullptr);
 
     Renderable *        CreateRenderable(const uint32_t vertex_count=0);
-    TextRenderable *    CreateTextRenderable(Material *);
 
     RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p);
 

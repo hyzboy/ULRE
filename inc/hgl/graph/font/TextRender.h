@@ -33,6 +33,8 @@ namespace hgl
             Color4f             color;
             GPUBuffer *         ubo_color;
 
+            SortedSets<TextRenderable *> tr_sets;
+
         private:
 
             friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *);
@@ -57,6 +59,8 @@ namespace hgl
             bool Layout(TextRenderable *tr,const UTF16String &str);
 
             RenderableInstance *CreateRenderableInstance(TextRenderable *text_render_obj);
+
+            void Release(TextRenderable *);
         };//class TextRender
 
         /**

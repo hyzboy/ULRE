@@ -28,6 +28,14 @@ namespace hgl
 
         TextRender::~TextRender()
         {
+            for(TextRenderable *tr:tr_sets)
+            {
+                tile_font->Unregistry(tr->GetCharsSets().GetList());
+                delete tr;
+            }
+
+            tr_sets.Clear();
+            
             SAFE_CLEAR(tl_engine);
             SAFE_CLEAR(tile_font);
             SAFE_CLEAR(db);
@@ -139,13 +147,17 @@ namespace hgl
         }
 
         TextRenderable *TextRender::CreateRenderable()
-        {
-            return db->CreateTextRenderable(material);
+        {   
+            TextRenderable *tr=new TextRenderable(device,material);
+
+            tr_sets.Add(tr);
+
+            return tr;
         }
 
         TextRenderable *TextRender::CreateRenderable(const UTF16String &str)
         {
-            TextRenderable *tr=db->CreateTextRenderable(material);
+            TextRenderable *tr=CreateRenderable();
 
             if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
                 return(tr);
@@ -167,6 +179,17 @@ namespace hgl
         RenderableInstance *TextRender::CreateRenderableInstance(TextRenderable *text_render_obj)
         {
             return db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
+        }
+
+        void TextRender::Release(TextRenderable *tr)
+        {
+            if(!tr)return;
+
+            if(!tr_sets.Delete(tr))return;
+
+            tile_font->Unregistry(tr->GetCharsSets().GetList());
+
+            delete tr;
         }
 
         FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size)

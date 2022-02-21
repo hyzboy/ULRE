@@ -28,7 +28,7 @@ namespace hgl
         /**
          * 注册要使用的字符
          * @param rs 每个字符在纹理中的UV坐标
-         * @param ch_list 要注册的字符列表
+         * @param chars_sets 要注册的字符合集
          */
         bool TileFont::Registry(TileUVFloatMap &uv_map,SortedSets<u32char> &chars_sets)
         {
