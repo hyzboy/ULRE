@@ -1,5 +1,5 @@
 ﻿# ULRE
-experiment project - Ultra Lazy Rendering Engine
+experiment project - Ultra Light Rendering Engine
 
 ULRE is a project of experimental nature,Used to experiment with various rendering related techniques,And do some examples.
 
