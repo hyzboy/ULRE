@@ -11,7 +11,7 @@ TileFont *GPUDevice::CreateTileFont(FontSource *fs,int limit_count)
 {
     if(!fs)return(nullptr);
 
-    const uint32_t height=hgl_align2(fs->GetCharHeight()+2,4);  //上下左右各空一个象素，并保证可以被4整除
+    const uint32_t height=hgl_align_pow2(fs->GetCharHeight()+2,4);  //上下左右各空一个象素，并保证可以被4整除
 
     if(limit_count<=0)
     {

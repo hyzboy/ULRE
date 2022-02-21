@@ -38,7 +38,7 @@ namespace hgl
 
             to_res.Stats(stats,chars_sets.GetData(),chars_sets.GetCount());
 
-            if(stats.non_existent>stats.can_free+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
+            if(stats.not_found>stats.can_free+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
                 return(false);
 
             uv_map.ClearData();
@@ -46,7 +46,7 @@ namespace hgl
             TileObject *to;
             FontBitmap *bmp;
 
-            if(stats.non_existent>0)
+            if(stats.not_found>0)
             {
                 tile_data->BeginCommit();
                 for(const u32char cp:chars_sets)
