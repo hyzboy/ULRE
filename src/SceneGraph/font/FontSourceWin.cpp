@@ -118,8 +118,8 @@ namespace hgl
 
             GetGlyphOutlineW(hdc,ch,ggo,&gm,DWORD(buffer.length()),buffer.data(),&mat);
 
-            bmp->metrics_info.w		=((gm.gmBlackBoxX+3)>>2)<<2;
-            bmp->metrics_info.h		=((gm.gmBlackBoxY+3)>>2)<<2;
+            bmp->metrics_info.w		=hgl_align_pow2<uint>(gm.gmBlackBoxX,4);
+            bmp->metrics_info.h		=hgl_align_pow2<uint>(gm.gmBlackBoxY,4);
 
             bmp->metrics_info.x		=gm.gmptGlyphOrigin.x;
             bmp->metrics_info.y		=gm.gmptGlyphOrigin.y;
