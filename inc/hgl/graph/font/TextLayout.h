@@ -101,6 +101,7 @@ namespace hgl
             int draw_chars_count;                       ///<要绘制字符列表
 
             SortedSets<u32char> chars_sets;             ///<不重复字符统计缓冲区
+            SortedSets<u32char> clear_chars_sets;       ///<待清除的字符合集
             TileUVFloatMap chars_uv;                    ///<所有要绘制字符的uv
 
             struct CharDrawAttr
@@ -111,7 +112,7 @@ namespace hgl
             
             ObjectList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
 
-            template<typename T> bool preprocess(TileFont *,const T *,const int);
+            template<typename T> bool preprocess(TextRenderable *,TileFont *,const T *,const int);
 
         protected:        
 

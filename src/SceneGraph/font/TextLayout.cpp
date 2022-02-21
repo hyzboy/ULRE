@@ -48,9 +48,10 @@ namespace hgl
          * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
          */
         template<typename T> 
-        bool TextLayout::preprocess(TileFont *tile_font,const T *str,const int str_length)
+        bool TextLayout::preprocess(TextRenderable *tr,TileFont *tile_font,const T *str,const int str_length)
         {
-            if(!tile_font
+            if(!tr
+             ||!tile_font
              ||!str||!*str||str_length<=0
              ||!font_source)
                 return(false);
@@ -81,7 +82,21 @@ namespace hgl
                     ++cp;
                 }
             }
-            
+
+            //释放不再使用的字符
+            {
+                clear_chars_sets=tr->GetCharsSets();                    //获取不再使用的字符合集
+
+                clear_chars_sets.Clear(chars_sets);                     //清除下一步要用的字符合集
+
+                if(clear_chars_sets.GetCount()>0)                       //可以彻底清除的字符
+                {
+                    tile_font->Unregistry(clear_chars_sets.GetList());
+
+                    clear_chars_sets.ClearData();
+                }
+            }
+
             //注册不重复字符给tile font系统，获取所有字符的UV
             if(!tile_font->Registry(chars_uv,chars_sets))
             {
@@ -90,6 +105,8 @@ namespace hgl
 
                 return(false);
             }
+
+            tr->SetCharsSets(chars_sets);                               //注册需要使用的字符合集
 
             //为可绘制字符列表中的字符获取UV
             {
@@ -236,7 +253,7 @@ namespace hgl
 
             int max_chars=str.Length();
 
-            if(!preprocess<T>(tf,str.c_str(),max_chars))
+            if(!preprocess<T>(tr,tf,str.c_str(),max_chars))
                 return(-2);
 
             if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？

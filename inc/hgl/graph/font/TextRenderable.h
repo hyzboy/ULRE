@@ -19,10 +19,24 @@ namespace hgl
             VBO *       vbo_position;
             VBO *       vbo_tex_coord;
 
+        protected:
+
+            friend class TextLayout;
+            friend class TextRender;
+
+            SortedSets<u32char> chars_sets;
+
+            const SortedSets<u32char> &GetCharsSets()const{return chars_sets;}
+            void SetCharsSets(const SortedSets<u32char> &sl){chars_sets=sl;}
+            void ClearCharsSets(){chars_sets.Clear();}
+
+        private:
+
+            virtual ~TextRenderable();
+
         public:
 
             TextRenderable(GPUDevice *,Material *,uint mc=1024);
-            virtual ~TextRenderable();
 
         public:
 
