@@ -19,7 +19,7 @@ constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr uint32_t VERTEX_COUNT=4;
 
-constexpr float vertex_data[VERTEX_COUNT][2]=
+constexpr float position_data[VERTEX_COUNT][2]=
 {
     {0,             0},
     {SCREEN_WIDTH,  0},
@@ -121,7 +121,7 @@ private:
         auto render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
         if(!render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V2F,VERTEX_COUNT,tex_coord_data)))return(false);
         if(!render_obj->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
 

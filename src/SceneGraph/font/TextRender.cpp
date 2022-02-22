@@ -5,8 +5,6 @@
 #include<hgl/graph/font/TextRenderable.h>
 #include<hgl/graph/VKDevice.h>
 
-constexpr uint CHAR_BITMAP_SIZE=16;         //字符尺寸
-
 namespace hgl
 {
     namespace graph

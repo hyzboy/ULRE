@@ -33,7 +33,7 @@ class TestApp:public VulkanApplicationFramework
 
     TileData *tile_data=nullptr;
 
-    float *vertex_data=nullptr;
+    float *position_data=nullptr;
     float *tex_coord_data=nullptr;
 
     VkFormat tile_texture_format=PF_UNDEFINED;
@@ -108,10 +108,10 @@ private:
         const int count=tile_list.GetCount();
         TileBitmap **tb=tile_list.GetData();
 
-        vertex_data=new float[count*4];
+        position_data=new float[count*4];
         tex_coord_data=new float[count*4];
 
-        float *vp=vertex_data;
+        float *vp=position_data;
         float *tp=tex_coord_data;
 
         int col=0;
@@ -215,7 +215,7 @@ private:
         render_obj=db->CreateRenderable(tile_count);
         if(!render_obj)return(false);
 
-        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,vertex_data));
+        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,position_data));
         render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,tile_count,tex_coord_data));
 
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);

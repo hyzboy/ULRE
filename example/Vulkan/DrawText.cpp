@@ -34,7 +34,7 @@ private:
 
     bool InitUBO()
     {
-        const VkExtent2D extent=sc_render_target->GetExtent();
+        const VkExtent2D &extent=sc_render_target->GetExtent();
 
         cam.width=extent.width;
         cam.height=extent.height;

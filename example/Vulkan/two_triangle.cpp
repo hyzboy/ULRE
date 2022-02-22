@@ -13,7 +13,7 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
-constexpr float vertex_data[VERTEX_COUNT][2]=
+constexpr float position_data[VERTEX_COUNT][2]=
 {
     {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
     {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
@@ -87,7 +87,7 @@ private:
         Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
         if(!render_obj)return(false);
 
-        if(!render_obj->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,vertex_data)))return(false);
+        if(!render_obj->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
         if(!render_obj->Set(VAN::Color,     db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data)))return(false);
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
