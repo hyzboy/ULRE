@@ -19,7 +19,7 @@ constexpr uint32_t VERTEX_COUNT=1;
 
 constexpr float BORDER=0.1f;
 
-constexpr float vertex_data[4]=
+constexpr float position_data[4]=
 {
     SCREEN_SIZE*BORDER,         SCREEN_SIZE*BORDER,
     SCREEN_SIZE*(1.0-BORDER),   SCREEN_SIZE*(1.0-BORDER)
@@ -109,7 +109,7 @@ private:
 
         if(!render_obj)return(false);
 
-        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,VERTEX_COUNT,vertex_data));
+        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,VERTEX_COUNT,position_data));
         render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,VERTEX_COUNT,tex_coord_data));
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
