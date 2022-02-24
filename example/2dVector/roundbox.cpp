@@ -6,8 +6,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_WIDTH=256;
+constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr uint32_t VERTEX_COUNT=1;
 
@@ -22,7 +22,7 @@ struct RoundedBoxConfig
     Color4f Color;
     Color4f InColor;
     Color4f OutColor;
-    float Radius[4];
+    float Radius[4];        //bottom-right,top-right,bottom-left,top-left
 
     float LineWidth;
 };
@@ -102,7 +102,6 @@ private:
         }
 
         {
-        
             MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetsType::Value);
         
             if(!mp_value)
@@ -111,8 +110,11 @@ private:
             rb_config.Color.Set(1,1,1,1);
             rb_config.OutColor.Set(0,0,0,0);
             rb_config.InColor.Use(COLOR::MozillaOrange,1.0);
-            hgl_set<float>(rb_config.Radius,8.0f,4);
-            rb_config.LineWidth=0;
+            rb_config.Radius[0]=0;
+            rb_config.Radius[1]=16;
+            rb_config.Radius[2]=0;
+            rb_config.Radius[3]=16;
+            rb_config.LineWidth=1.5;
 
             ubo_rb_config  =db->CreateUBO(sizeof(RoundedBoxConfig),       &rb_config);
 
