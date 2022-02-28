@@ -13,7 +13,7 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 class TestApp:public CameraAppFramework
 {
-    Color4f color;
+    Color3f color;
 
     GPUBuffer *ubo_color=nullptr;
 
@@ -25,6 +25,8 @@ private:
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline            =nullptr;
+
+    GPUBuffer *         ubo_sky_color       =nullptr;
 
     Renderable        * ro_skyphere         =nullptr;
 
@@ -43,6 +45,34 @@ private:
             return(false);
 
         return(true);
+    }
+
+    bool InitUBO()
+    {
+        color.Set(
+        //.1, .3, .6      //blue
+        //.18,.19,.224    //overcast
+        //.1, .15,.4      //dusk
+        .03,.2, .9      //tropical blue
+        //.4, .06,.01     //orange-red
+        //.1, .2, .01     //green
+        );
+
+        ubo_sky_color=db->CreateUBO(sizeof(Color3f),&color);
+
+        if(!ubo_sky_color)
+            return(false);
+
+        {
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
+
+            if(!mp)return(false);
+
+            if(!mp->BindUBO("sky_color",ubo_sky_color))
+                return(false);
+
+            mp->Update();
+        }
     }
     
     RenderableInstance *Add(Renderable *r,const Matrix4f &mat)
@@ -90,6 +120,9 @@ public:
         render_list=new RenderList(device);
 
         if(!InitMDP())
+            return(false);
+
+        if(!InitUBO())
             return(false);
 
         CreateRenderObject();
