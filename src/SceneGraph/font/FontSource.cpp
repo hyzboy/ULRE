@@ -34,7 +34,7 @@ namespace hgl
 
             MapObject<u32char,CharAttributes> all_char_attrs;
         }//namespace
-        
+
         const CLA *FontSource::GetCLA(const u32char &ch)
         {
             CLA *cla;

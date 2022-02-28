@@ -212,7 +212,7 @@ namespace hgl
                     if((*cda)->cla->attr->ch==' ')
                         left+=space_size;
                     else
-                    if((*cda)->cla->attr->ch==U32_FULL_SPACE)
+                    if((*cda)->cla->attr->ch==U32_FULL_WIDTH_SPACE)
                         left+=full_space_size;
                     else
                     if((*cda)->cla->attr->ch=='\t')
