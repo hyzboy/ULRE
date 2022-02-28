@@ -516,17 +516,17 @@ namespace hgl
             return rc.Finish();
         }
 
-        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab,const DomeCreateInfo *dci)
+        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab,const uint numberSlices)
         {
             RenderableCreater rc(db,vab);
 
             uint i, j;
 
-            uint numberParallels = dci->numberSlices / 4;
-            uint numberVertices = (numberParallels + 1) * (dci->numberSlices + 1);
-            uint numberIndices = numberParallels * dci->numberSlices * 6;
+            uint numberParallels = numberSlices / 4;
+            uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
+            uint numberIndices = numberParallels * numberSlices * 6;
 
-            float angleStep = (2.0f * HGL_PI) / ((float) dci->numberSlices);
+            float angleStep = (2.0f * HGL_PI) / ((float) numberSlices);
 
             // used later to help us calculating tangents vectors
             float helpVector[3] = { 1.0f, 0.0f, 0.0f };
@@ -534,7 +534,7 @@ namespace hgl
             float helpMatrix[16];
             float tex_x;
 
-            if (dci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+            if (numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                 return nullptr;
 
             if(!rc.Init(numberVertices))
@@ -552,16 +552,16 @@ namespace hgl
 
             for (i = 0; i < numberParallels + 1; i++)
             {
-                for (j = 0; j < dci->numberSlices + 1; j++)
+                for (j = 0; j < numberSlices + 1; j++)
                 {
-                    uint vertexIndex = (i * (dci->numberSlices + 1) + j) * 4;
-                    uint normalIndex = (i * (dci->numberSlices + 1) + j) * 3;
-                    uint tangentIndex = (i * (dci->numberSlices + 1) + j) * 3;
-                    uint texCoordsIndex = (i * (dci->numberSlices + 1) + j) * 2;
-
-                    float x= dci->radius * sin(angleStep * (double) i) * sin(angleStep * (double) j);
-                    float y= dci->radius * sin(angleStep * (double) i) * cos(angleStep * (double) j);
-                    float z= dci->radius * cos(angleStep * (double) i);
+                    uint vertexIndex = (i * (numberSlices + 1) + j) * 4;
+                    uint normalIndex = (i * (numberSlices + 1) + j) * 3;
+                    uint tangentIndex = (i * (numberSlices + 1) + j) * 3;
+                    uint texCoordsIndex = (i * (numberSlices + 1) + j) * 2;
+                    
+                    float x = sin(angleStep * (double) i) * sin(angleStep * (double) j);
+                    float y = sin(angleStep * (double) i) * cos(angleStep * (double) j);
+                    float z = cos(angleStep * (double) i);
 
                     *vp=x;++vp;
                     *vp=y;++vp;
@@ -569,15 +569,17 @@ namespace hgl
 
                     if(np)
                     {
-                        *np = x / dci->radius;++np;
-                        *np = y / dci->radius;++np;
-                        *np = z / dci->radius;++np;
+                        *np=+x;++np;
+                        *np=-y;++np;
+                        *np=+z;++np;
                     }
 
                     if(tcp)
-                    {
-                        *tcp = tex_x=(float) j / (float) dci->numberSlices;++tcp;
-                        *tcp = 1.0f - (float) i / (float) numberParallels;++tcp;
+                    {                        
+                        tex_x=(float) j / (float) numberSlices;
+
+                        *tcp=tex_x;++tcp;
+                        *tcp=1.0f - (float) i / (float) numberParallels;++tcp;
 
                         if(tp)
                         {
@@ -593,9 +595,9 @@ namespace hgl
             }
 
             if(numberVertices<=0xffff)
-                CreateSphereIndices<uint16>(rc.CreateIBO16(numberIndices),numberParallels,dci->numberSlices);
+                CreateSphereIndices<uint16>(rc.CreateIBO16(numberIndices),numberParallels,numberSlices);
             else
-                CreateSphereIndices<uint32>(rc.CreateIBO32(numberIndices),numberParallels,dci->numberSlices);
+                CreateSphereIndices<uint32>(rc.CreateIBO32(numberIndices),numberParallels,numberSlices);
 
             return rc.Finish();
         }

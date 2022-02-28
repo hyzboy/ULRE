@@ -165,16 +165,10 @@ namespace hgl
          */
         Renderable *CreateRenderableSphere(RenderResource *db,const VAB *vab,const uint numberSlices);
 
-        struct DomeCreateInfo
-        {
-            float radius;
-            uint numberSlices;
-        };//struct DomeCreateInfo
-
         /**
          * 创建一个穹顶(三角形)
          */
-        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab, const DomeCreateInfo *);
+        Renderable *CreateRenderableDome(RenderResource *db,const VAB *vab, const uint numberSlices);
 
         struct TorusCreateInfo
         {
