@@ -73,6 +73,8 @@ private:
 
             mp->Update();
         }
+
+        return(true);
     }
     
     RenderableInstance *Add(Renderable *r,const Matrix4f &mat)
