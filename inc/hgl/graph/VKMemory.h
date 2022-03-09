@@ -12,12 +12,13 @@ class GPUMemory
     uint32_t                properties;
 
     VkMappedMemoryRange     memory_range;
+    VkDeviceSize            nonCoherentAtomSize;
 
 private:
 
     friend class GPUDevice;
 
-    GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p);
+    GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p,const VkDeviceSize cas);
 
 public:
 

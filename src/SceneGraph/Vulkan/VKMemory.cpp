@@ -16,10 +16,10 @@ GPUMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t prop
     if(vkAllocateMemory(attr->device,&alloc_info,nullptr,&memory)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new GPUMemory(attr->device,memory,req,index,properties));
+    return(new GPUMemory(attr->device,memory,req,index,properties,attr->physical_device->GetLimits().nonCoherentAtomSize));
 }
 
-GPUMemory::GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p)
+GPUMemory::GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p,const VkDeviceSize cas)
 {
     device=dev;
     memory=dm;
@@ -30,6 +30,8 @@ GPUMemory::GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &
     memory_range.sType  =VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
     memory_range.pNext  =nullptr;
     memory_range.memory =memory;
+
+    nonCoherentAtomSize=cas;
 }
 
 GPUMemory::~GPUMemory()
@@ -68,7 +70,7 @@ void GPUMemory::Unmap()
 void GPUMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
 {
     memory_range.offset =offset;
-    memory_range.size   =size;
+    memory_range.size   =size>0?hgl_align(size,nonCoherentAtomSize):0;
 
     vkFlushMappedMemoryRanges(device,1,&memory_range);
 }
