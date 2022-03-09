@@ -11,9 +11,15 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
+struct SkyColorConfig
+{
+    Color4f Color;
+    Color4f LowColor;
+};
+
 class TestApp:public CameraAppFramework
 {
-    Color3f color;
+    SkyColorConfig scc;
 
     GPUBuffer *ubo_color=nullptr;
 
@@ -49,7 +55,7 @@ private:
 
     bool InitUBO()
     {
-        color.Set(
+        scc.Color.Set(
         //.1, .3, .6      //blue
         //.18,.19,.224    //overcast
         //.1, .15,.4      //dusk
@@ -58,7 +64,9 @@ private:
         //.1, .2, .01     //green
         );
 
-        ubo_sky_color=db->CreateUBO(sizeof(Color3f),&color);
+        scc.LowColor.Use(COLOR::DarkMidnightBlue,1.0f);
+
+        ubo_sky_color=db->CreateUBO(sizeof(SkyColorConfig),&scc);
 
         if(!ubo_sky_color)
             return(false);
@@ -90,7 +98,7 @@ private:
     {
         const VAB *vab=material_instance->GetVAB();
 
-        ro_skyphere=CreateRenderableDome(db,vab,32);
+        ro_skyphere=CreateRenderableSphere(db,vab,1024);
     }
 
     bool InitScene()
