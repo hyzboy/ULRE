@@ -10,12 +10,6 @@ constexpr uint32_t SCREEN_HEIGHT=SCREEN_WIDTH/16*9;
 
 class TestApp:public VulkanApplicationFramework
 {
-    Camera cam;
-
-private:
-
-    GPUBuffer *         ubo_camera_info     =nullptr;
-
 private:
 
     TextRender *        text_render         =nullptr;
@@ -31,23 +25,6 @@ public:
     }
 
 private:
-
-    bool InitUBO()
-    {
-        const VkExtent2D &extent=sc_render_target->GetExtent();
-
-        cam.width=extent.width;
-        cam.height=extent.height;
-
-        cam.RefreshCameraInfo();
-
-        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
-
-        if(!ubo_camera_info)
-            return(false);
-
-        return(true);
-    }
 
     bool InitTextRenderable()
     {
@@ -79,9 +56,6 @@ public:
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        if(!InitUBO())
-            return(false);
-
         if(!InitTextRenderable())
             return(false);
 
@@ -92,12 +66,7 @@ public:
 
     void Resize(int w,int h)override
     {
-        cam.width=w;
-        cam.height=h;
-        
-        cam.RefreshCameraInfo();
-
-        ubo_camera_info->Write(&cam.info);
+        VulkanApplicationFramework::Resize(w,h);
         
         BuildCommandBuffer(render_instance);
     }

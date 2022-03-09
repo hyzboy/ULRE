@@ -56,11 +56,17 @@ protected:
 protected:
 
     RenderResource *        db                          =nullptr;
+    
+protected:
+    
+    Camera *                camera                      =nullptr;
+    GPUBuffer *             ubo_camera_info             =nullptr;
 
 public:
 
     virtual ~VulkanApplicationFramework()
     {
+        SAFE_CLEAR(camera);
         win->Unjoin(this);
 
         SAFE_CLEAR(db);
@@ -119,10 +125,50 @@ public:
 
         win->Join(this);
 
+        {
+            camera=new Camera;
+
+            camera->width=w;
+            camera->height=h;
+            camera->vp_width=w;
+            camera->vp_height=h;
+
+            camera->pos=Vector3f(10,10,10);
+        
+            camera->RefreshCameraInfo();
+        
+            ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera->info);
+        }
+
         return(true);
     }
 
-    virtual void Resize(int,int)=0;
+    const CameraInfo &GetCameraInfo()
+    {
+        return camera->info;
+    }
+
+    GPUBuffer *GetCameraInfoBuffer()
+    {
+        return ubo_camera_info;
+    }
+
+    bool BindCameraUBO(MaterialInstance *mi)
+    {
+        return mi->BindUBO(DescriptorSetsType::Global,"g_camera",ubo_camera_info);
+    }
+
+    virtual void Resize(int w,int h)
+    {
+        camera->width=w;
+        camera->height=h;
+        camera->vp_width=w;
+        camera->vp_height=h;
+
+        camera->RefreshCameraInfo();
+
+        ubo_camera_info->Write(&camera->info);
+    }
 
     void SetClearColor(COLOR cc)
     {
@@ -381,13 +427,9 @@ public:
 
 class CameraAppFramework:public VulkanApplicationFramework
 {
-private:
-
-    GPUBuffer *ubo_camera_info=nullptr;
 
 protected:
 
-    Camera *camera=nullptr;
     FirstPersonCameraControl *camera_control=nullptr;
 
     CameraKeyboardControl * ckc=nullptr;
@@ -401,7 +443,6 @@ public:
     {
         SAFE_CLEAR(ckc);
         SAFE_CLEAR(cmc);
-        SAFE_CLEAR(camera);
     }
 
     virtual bool Init(int w,int h)
@@ -415,20 +456,9 @@ public:
 
     virtual void InitCamera(int w,int h)
     {
-        camera=new Camera;
-
-        camera->width=w;
-        camera->height=h;
-        camera->vp_width=w;
-        camera->vp_height=h;
-
-        camera->pos=Vector3f(10,10,10);
-
         camera_control=new FirstPersonCameraControl(camera);
 
         camera_control->Refresh();      //更新矩阵计算
-        
-        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera->info);
 
         ckc=new CameraKeyboardControl(camera_control);
         cmc=new CameraMouseControl(camera_control);
@@ -441,41 +471,19 @@ public:
     {
         camera->width=w;
         camera->height=h;
+        camera->vp_width=w;
+        camera->vp_height=h;
 
         camera_control->Refresh();
 
         ubo_camera_info->Write(&camera->info);
     }
 
-    const CameraInfo &GetCameraInfo()
-    {
-        return camera->info;
-    }
-
-    GPUBuffer *GetCameraInfoBuffer()
-    {
-        return ubo_camera_info;
-    }
-
-    bool BindCameraUBO(MaterialInstance *mi)
-    {
-        MaterialParameters *mp_global=mi->GetMP(DescriptorSetsType::Global);
-
-        if(!mp_global)
-            return(false);
-
-        if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
-
-        mp_global->Update();
-
-        return(true);
-    }
-
     virtual void BuildCommandBuffer(uint32_t index)=0;
 
     virtual void Draw()override
     {
-        camera_control->Refresh();                           //更新相机矩阵
+        camera_control->Refresh();                //更新相机矩阵
         ubo_camera_info->Write(&camera->info);    //写入缓冲区
 
         const uint32_t index=AcquireNextImage();

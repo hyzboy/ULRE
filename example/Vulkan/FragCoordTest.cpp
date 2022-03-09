@@ -24,11 +24,8 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    Camera cam;
-
     MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *renderable_instance =nullptr;
-    GPUBuffer *         ubo_camera_info     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -40,29 +37,12 @@ private:
 
         if(!material_instance)
             return(false);
+
+        BindCameraUBO(material_instance);
         
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::TriangleStrip);
 
         return pipeline;
-    }
-
-    bool InitUBO()
-    {
-        const VkExtent2D extent=sc_render_target->GetExtent();
-
-        cam.vp_width=cam.width=extent.width;
-        cam.vp_height=cam.height=extent.height;        
-
-        cam.RefreshCameraInfo();
-
-        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
-
-        if(!ubo_camera_info)
-            return(false);
-
-        if(!material_instance->BindUBO(DescriptorSetsType::Global,"g_camera",ubo_camera_info))return(false);
-
-        return(true);
     }
 
     bool InitVBO()
@@ -86,9 +66,6 @@ public:
         if(!InitMaterial())
             return(false);
 
-        if(!InitUBO())
-            return(false);
-
         if(!InitVBO())
             return(false);
 
@@ -99,14 +76,7 @@ public:
 
     void Resize(int w,int h)override
     {
-        cam.width=w;
-        cam.height=h;
-        cam.vp_width=w;
-        cam.vp_height=h;
-
-        cam.RefreshCameraInfo();
-
-        ubo_camera_info->Write(&cam.info);
+        VulkanApplicationFramework::Resize(w,h);
 
         BuildCommandBuffer(renderable_instance);
     }

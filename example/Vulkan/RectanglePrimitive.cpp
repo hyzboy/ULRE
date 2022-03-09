@@ -32,8 +32,6 @@ constexpr float tex_coord_data[4]=
 
 class TestApp:public VulkanApplicationFramework
 {
-    Camera cam;
-
 private:
 
     Texture2D *         texture             =nullptr;
@@ -41,7 +39,6 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
-    GPUBuffer *         ubo_camera_info     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -52,6 +49,8 @@ private:
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/TextureRect2D"));
         if(!material_instance)return(false);
 
+        BindCameraUBO(material_instance);
+
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
         if(!pipeline)return(false);
 
@@ -60,25 +59,7 @@ private:
 
         sampler=db->CreateSampler();
 
-        if(!material_instance->BindUBO(DescriptorSetsType::Global,"g_camera",ubo_camera_info))return(false);
         if(!material_instance->BindSampler(DescriptorSetsType::Value,"tex",texture,sampler))return(false);
-
-        return(true);
-    }
-
-    bool InitUBO()
-    {
-        const VkExtent2D extent=sc_render_target->GetExtent();
-
-        cam.width=extent.width;
-        cam.height=extent.height;
-
-        cam.RefreshCameraInfo();
-
-        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
-
-        if(!ubo_camera_info)
-            return(false);
 
         return(true);
     }
@@ -104,9 +85,6 @@ public:
         if(!VulkanApplicationFramework::Init(SCREEN_SIZE,SCREEN_SIZE))
             return(false);
 
-        if(!InitUBO())
-            return(false);
-
         if(!InitMaterial())
             return(false);
 
@@ -120,12 +98,7 @@ public:
 
     void Resize(int w,int h)override
     {
-        cam.width=w;
-        cam.height=h;
-
-        cam.RefreshCameraInfo();
-
-        ubo_camera_info->Write(&cam.info);
+        VulkanApplicationFramework::Resize(w,h);
         
         BuildCommandBuffer(render_instance);
     }
