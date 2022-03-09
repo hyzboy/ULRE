@@ -64,7 +64,7 @@ public:
         ro->cam.width=extent.width;
         ro->cam.height=extent.height;
 
-        ro->cam.Refresh();
+        ro->cam.RefreshCameraInfo();
 
         ro->ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&ro->cam.info);
 

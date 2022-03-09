@@ -74,16 +74,7 @@ private:
 
         sampler=db->CreateSampler();
 
-        {
-            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
-        
-            if(!mp_texture)
-                return(false);
-            
-            if(!mp_texture->BindSampler("tex",texture,sampler))return(false);
-
-            mp_texture->Update();
-        }
+        if(!material_instance->BindSampler(DescriptorSetsType::Value,"tex",texture,sampler))return(false);
 
         return(true);
     }
@@ -95,23 +86,14 @@ private:
         cam.vp_width =cam.width =extent.width;
         cam.vp_height=cam.height=extent.height;        
 
-        cam.Refresh();
+        cam.RefreshCameraInfo();
 
         ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
         if(!ubo_camera_info)
             return(false);
         
-        {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
-
-            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
-
-            mp_global->Update();
-        }
+        if(!material_instance->BindUBO(DescriptorSetsType::Global,"g_camera",ubo_camera_info))return(false);
 
         return(true);
     }
@@ -156,7 +138,7 @@ public:
         cam.width=w;
         cam.height=h;
 
-        cam.Refresh();
+        cam.RefreshCameraInfo();
 
         ubo_camera_info->Write(&cam.info);
         

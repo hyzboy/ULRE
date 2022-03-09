@@ -28,7 +28,7 @@ private:
     double      start_time;
 
     SceneNode   render_root;
-    RenderList  render_list;
+    RenderList *render_list;
 
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
@@ -81,14 +81,11 @@ private:
         ubo_sun=device->CreateUBO(sizeof(sun_direction),&sun_direction);
         if(!ubo_sun)return(false);
 
-        material_instance->BindUBO("world",GetCameraMatrixBuffer());
         material_instance->BindUBO("color_material",ubo_color);
         material_instance->BindUBO("sun",ubo_sun);
 
         material_instance->Update();
 
-        db->Add(ubo_color);
-        db->Add(ubo_sun);
         return(true);
     }
 
@@ -123,8 +120,7 @@ private:
         }
 
         render_root.RefreshMatrix();
-        render_list.Clear();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(camera->info,&render_root);
         return(true);
     }
 

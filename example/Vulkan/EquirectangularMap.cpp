@@ -48,29 +48,7 @@ private:
             if(!texture)
                 return(false);
 
-            VkSamplerCreateInfo sampler_create_info=
-            {
-                VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-                nullptr,
-                0,
-                VK_FILTER_LINEAR,
-                VK_FILTER_LINEAR,
-                VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                0.0f,
-                VK_FALSE,
-                0,
-                false,
-                VK_COMPARE_OP_NEVER,
-                0.0f,
-                0,
-                VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK,
-                false
-            };
-
-            sampler =db->CreateSampler(&sampler_create_info);
+            sampler =db->CreateSampler();
         }
 
         {
@@ -80,17 +58,7 @@ private:
             envmap_mi=db->CreateMaterialInstance(envmap_material);
             if(!envmap_mi)return(false);
 
-            {
-                MaterialParameters *mp_texture=envmap_mi->GetMP(DescriptorSetsType::Value);
-
-                if(!mp_texture)
-                    return(false);
-
-                if(!mp_texture->BindSampler("Envmap"    ,texture,    sampler))
-                    return(false);
-
-                mp_texture->Update();
-            }
+            if(!envmap_mi->BindSampler(DescriptorSetsType::Value,"Envmap"    ,texture,    sampler))return(false);
 
             solid_pipeline=CreatePipeline(envmap_mi,InlinePipeline::Solid3D,Prim::Triangles);
         }
