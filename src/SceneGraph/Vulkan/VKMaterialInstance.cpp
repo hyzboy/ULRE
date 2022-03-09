@@ -44,4 +44,43 @@ MaterialParameters *MaterialInstance::GetMP(const DescriptorSetsType &type)
 
     return material->GetMP(type);
 }
+
+bool MaterialInstance::BindUBO(const DescriptorSetsType &type,const AnsiString &name,GPUBuffer *ubo,bool dynamic)
+{
+    MaterialParameters *mp_global=GetMP(type);
+        
+    if(!mp_global)
+        return(false);
+
+    if(!mp_global->BindUBO(name,ubo,dynamic))return(false);
+
+    mp_global->Update();
+    return(true);
+}
+
+bool MaterialInstance::BindSSBO(const DescriptorSetsType &type,const AnsiString &name,GPUBuffer *ubo,bool dynamic)
+{
+    MaterialParameters *mp_global=GetMP(type);
+        
+    if(!mp_global)
+        return(false);
+
+    if(!mp_global->BindSSBO(name,ubo,dynamic))return(false);
+
+    mp_global->Update();
+    return(true);
+}
+
+bool MaterialInstance::BindSampler(const DescriptorSetsType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
+{
+    MaterialParameters *mp_global=GetMP(type);
+        
+    if(!mp_global)
+        return(false);
+
+    if(!mp_global->BindSampler(name,tex,sampler))return(false);
+
+    mp_global->Update();
+    return(true);
+}
 VK_NAMESPACE_END

@@ -71,16 +71,8 @@ private:
         if(!ubo_sky_color)
             return(false);
 
-        {
-            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
-
-            if(!mp)return(false);
-
-            if(!mp->BindUBO("sky_color",ubo_sky_color))
-                return(false);
-
-            mp->Update();
-        }
+        if(!material_instance->BindUBO(DescriptorSetsType::Value,"sky_color",ubo_sky_color))
+            return(false);
 
         return(true);
     }

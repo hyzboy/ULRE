@@ -27,6 +27,10 @@ public:
     const VAB *GetVAB()const{return vab;}
     MaterialParameters *GetMP(){return mp_value;}
     MaterialParameters *GetMP(const DescriptorSetsType &type);
+    
+    bool BindUBO(const DescriptorSetsType &type,const AnsiString &name,GPUBuffer *ubo,bool dynamic=false);
+    bool BindSSBO(const DescriptorSetsType &type,const AnsiString &name,GPUBuffer *ubo,bool dynamic=false);
+    bool BindSampler(const DescriptorSetsType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
 };//class MaterialInstance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE

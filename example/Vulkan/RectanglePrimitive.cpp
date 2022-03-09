@@ -60,29 +60,9 @@ private:
 
         sampler=db->CreateSampler();
 
-        {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
+        if(!material_instance->BindUBO(DescriptorSetsType::Global,"g_camera",ubo_camera_info))return(false);
+        if(!material_instance->BindSampler(DescriptorSetsType::Value,"tex",texture,sampler))return(false);
 
-            if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
-
-            mp_global->Update();
-        }
-
-        {
-            MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
-        
-            if(!mp_texture)
-                return(false);
-            
-            if(!mp_texture->BindSampler("tex",texture,sampler))return(false);
-
-            mp_texture->Update();
-        }
-
-        db->Add(texture);
         return(true);
     }
 
