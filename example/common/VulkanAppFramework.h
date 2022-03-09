@@ -354,7 +354,7 @@ protected:
             Vector2f pos(x,y);
             Vector2f gap=pos-mouse_last_pos;
 
-            camera->Rotate(gap/180.0f,(cur_time-last_time)*5);
+            camera->Rotate(gap);
 
             last_time=cur_time;
             mouse_last_pos=Vector2f(x,y);
