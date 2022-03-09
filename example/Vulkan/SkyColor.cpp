@@ -98,7 +98,7 @@ private:
     {
         const VAB *vab=material_instance->GetVAB();
 
-        ro_skyphere=CreateRenderableSphere(db,vab,1024);
+        ro_skyphere=CreateRenderableDome(db,vab,64);
     }
 
     bool InitScene()

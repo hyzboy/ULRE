@@ -1,11 +1,9 @@
-﻿// 5.SceneTree
-//      用于测试树形排列的场景中，每一级节点对变换矩阵的处理是否正确
+﻿// SceneTree
+//      用于测试树形排列的场景中，每一级节点对变换矩阵的处理是否正确,以及Instance绘制
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/vulkan/VKDatabase.h>
-#include<hgl/graph/RenderableInstance.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/Time.h>
 
@@ -19,8 +17,8 @@ class TestApp:public CameraAppFramework
 {
     struct
     {
-        Vector4f color;
-        Vector4f abiment;
+        Color4f color;
+        Color4f abiment;
     }color_material;
 
     Vector3f sun_direction;
@@ -32,15 +30,15 @@ private:
     SceneNode   render_root;
     RenderList  render_list;
 
-    vulkan::Material *          material            =nullptr;
-    vulkan::MaterialInstance *  material_instance   =nullptr;
+    Material *          material            =nullptr;
+    MaterialInstance *  material_instance   =nullptr;
 
-    vulkan::Buffer *            ubo_color           =nullptr;
-    vulkan::Buffer *            ubo_sun             =nullptr;
+    GPUBuffer *         ubo_color           =nullptr;
+    GPUBuffer *         ubo_sun             =nullptr;
 
-    vulkan::Renderable *        renderable_object   =nullptr;
+    Renderable *        renderable_object   =nullptr;
 
-    vulkan::Pipeline *          pipeline_line       =nullptr;
+    Pipeline *          pipeline            =nullptr;
 
 public:
 
@@ -55,35 +53,33 @@ private:
 
     bool InitMaterial()
     {
-        material=shader_manage->CreateMaterial(OS_TEXT("res/shader/VertexLight.vert"),
+        material=db->CreateMaterial(OS_TEXT("res/shader/VertexLight.vert"),
                                                OS_TEXT("res/shader/VertexColor.frag"));
         if(!material)
             return(false);
 
-        material_instance=material->CreateInstance();
+        material_instance=db->CreateMaterialInstance(material);
 
-        db->Add(material);
-        db->Add(material_instance);
         return(true);
     }
 
     void CreateRenderObject()
     {
-        renderable_object=CreateRenderableSphere(db,material,40);
-
-        db->Add(renderable_object);
+        renderable_object=CreateRenderableSphere(db,material_instance->GetVAB(),40);
     }
 
     bool InitUBO()
     {
-        LCG lcg;
-
-        color_material.color=Vector4f(1,1,1,1.0);
+        color_material.color.Set(1,1,1,1);
         color_material.abiment.Set(0.25,0.25,0.25,1.0);
-        ubo_color=device->CreateUBO(sizeof(color_material),&color_material);
 
-        sun_direction=Vector3f::RandomDir(lcg);
+        ubo_color=device->CreateUBO(sizeof(color_material),&color_material);
+        if(!ubo_color)return(false);
+
+        sun_direction=normalized(Vector3f(rand(),rand(),rand()));
+
         ubo_sun=device->CreateUBO(sizeof(sun_direction),&sun_direction);
+        if(!ubo_sun)return(false);
 
         material_instance->BindUBO("world",GetCameraMatrixBuffer());
         material_instance->BindUBO("color_material",ubo_color);
@@ -98,20 +94,9 @@ private:
 
     bool InitPipeline()
     {
-        AutoDelete<vulkan::PipelineCreater> 
-        pipeline_creater=new vulkan::PipelineCreater(device,material,sc_render_target);
-        pipeline_creater->SetDepthTest(true);
-        pipeline_creater->SetDepthWrite(true);
-        pipeline_creater->CloseCullFace();
-        pipeline_creater->SetPolygonMode(VK_POLYGON_MODE_FILL);
-        pipeline_creater->Set(Prim::Triangles);
-
-        pipeline_line=pipeline_creater->Create();
-        if(!pipeline_line)
-            return(false);
-
-        db->Add(pipeline_line);
-        return(true);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Triangles);
+        
+        return pipeline;
     }
 
     bool InitScene()
@@ -121,20 +106,20 @@ private:
         uint count;
         float size;
 
-        RenderableInstance *ri=db->CreateRenderableInstance(pipeline_line,material_instance,renderable_object);
+        RenderableInstance *ri=db->CreateRenderableInstance(pipeline,material_instance,renderable_object);
 
         for(uint i=0;i<360;i++)
         {
             size=(i+1)/100.0f;
 
-            cur_node=render_root.CreateSubNode( rotate(i/5.0f,camera.up_vector)*
+            cur_node=render_root.CreateSubNode( rotate(i/5.0f,camera->world_up)*
                                                 translate(i/4.0f,0,0)*
                                                 scale(size));
 
             count=(rand()%16)+1;
 
             for(uint n=0;n<count;n++)
-                cur_node->Add(ri,translate(0,0,size*n*1.01));
+                cur_node->CreateSubNode(translate(0,0,size*n*1.01),ri);
         }
 
         render_root.RefreshMatrix();

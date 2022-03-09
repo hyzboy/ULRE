@@ -198,7 +198,7 @@ private:
         cam.width=extent.width;
         cam.height=extent.height;
 
-        cam.Refresh();
+        cam.RefreshCameraInfo();
 
         ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&cam.info);
 
@@ -255,7 +255,7 @@ public:
         cam.width=w;
         cam.height=h;
 
-        cam.Refresh();
+        cam.RefreshCameraInfo();
 
         ubo_camera_info->Write(&cam.info);
         
