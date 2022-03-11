@@ -64,12 +64,7 @@ public:
     {
         if(index>=cv_count)return;
 
-        VkClearValue *cv=clear_values+index;
-
-        cv->color.float32[0]=cc.r;
-        cv->color.float32[1]=cc.g;
-        cv->color.float32[2]=cc.b;
-        cv->color.float32[3]=cc.a;
+        hgl_cpy(clear_values[index].color.float32,cc.rgba,4);
     }
 
     void SetClearDepthStencil(uint32_t index,float d=1.0f,float s=0)
