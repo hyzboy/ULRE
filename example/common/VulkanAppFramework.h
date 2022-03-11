@@ -20,6 +20,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/type/Color.h>
 #include<hgl/Time.h>
 
 //#include<hgl/graph/LookAtCameraControl.h>
@@ -170,9 +171,9 @@ public:
         ubo_camera_info->Write(&camera->info);
     }
 
-    void SetClearColor(COLOR cc)
+    void SetClearColor(const Color4f &cc)
     {
-        clear_color.Use(cc,1.0);
+        clear_color=cc;
     }
 
     void OnResize(uint w,uint h) override
