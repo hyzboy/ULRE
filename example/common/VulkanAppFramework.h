@@ -80,7 +80,7 @@ public:
 
     virtual bool Init(int w,int h)
     {
-        clear_color.Zero();
+        clear_color.Set(0,0,0,1);
 
     #ifdef _DEBUG
         if(!CheckStrideBytesByFormat())
@@ -211,7 +211,7 @@ public:
 
         cb->Begin();
             cb->BindFramebuffer(rp,fb);
-            cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
+            cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri);
@@ -268,7 +268,7 @@ public:
 
         cb->Begin();
         cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
-        cb->SetClearColor(0,clear_color.r,clear_color.g,clear_color.b);
+        cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 rl->Render(cb);
             cb->EndRenderPass();
