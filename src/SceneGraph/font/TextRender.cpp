@@ -4,6 +4,7 @@
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/font/TextRenderable.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/type/Color.h>
 
 namespace hgl
 {
@@ -50,8 +51,8 @@ namespace hgl
             CharLayoutAttr cla;
             TextLayoutAttribute tla;
 
-            cla.CharColor=Color4f(COLOR::White);
-            cla.BackgroundColor=Color4f(COLOR::Black);
+            cla.CharColor=GetColor4f(COLOR::White,1.0);
+            cla.BackgroundColor.Zero();
 
             tla.char_layout_attr=&cla;
             tla.line_gap=0.1f;
