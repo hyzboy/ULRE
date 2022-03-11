@@ -327,6 +327,8 @@ public:
         if(win->IsVisible())
             Draw();
 
+        device->WaitIdle();
+
         return(true);
     }
 };//class VulkanApplicationFramework

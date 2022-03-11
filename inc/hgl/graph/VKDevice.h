@@ -96,6 +96,8 @@ public:
 
     const       VkExtent2D &        GetSwapchainSize    ()const {return swapchainRT->GetExtent();}
 
+                void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
+
 public:
 
                 bool                Resize              (const VkExtent2D &);
