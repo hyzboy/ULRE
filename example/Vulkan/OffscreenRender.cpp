@@ -70,17 +70,8 @@ public:
 
         if(!ro->ubo_camera_info)
             return(false);
-            
-        {
-            MaterialParameters *mp_global=ro->material_instance->GetMP(DescriptorSetsType::Global);
-        
-            if(!mp_global)
-                return(false);
 
-            if(!mp_global->BindUBO("g_camera",ro->ubo_camera_info))return(false);
-
-            mp_global->Update();
-        }
+        BindCameraUBO(ro->material_instance);
 
         return(true);
     }
@@ -142,19 +133,13 @@ public:
         cube.sampler=db->CreateSampler();
         if(!cube.sampler)return(false);
         
-        {
-            MaterialParameters *mp_texture=cube.material_instance->GetMP(DescriptorSetsType::Value);
-        
-            if(!mp_texture)
-                return(false);
-            
-            if(!mp_texture->BindSampler("tex",os.render_taget->GetColorTexture(),cube.sampler))return(false);
-
-            mp_texture->Update();
-        }
+        if(!cube.material_instance->BindSampler(DescriptorSetsType::Value,"tex",os.render_taget->GetColorTexture(),cube.sampler))
+            return(false);
 
         {
             CubeCreateInfo cci;
+
+            cci.tex_coord=true;
 
             Renderable *render_obj=CreateRenderableCube(db,cube.material_instance->GetVAB(),&cci);
             if(!render_obj)return(false);
