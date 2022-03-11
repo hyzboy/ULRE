@@ -394,6 +394,15 @@ protected:
 
         return(true);
     }
+    
+    bool OnWheel(int,int y) override
+    {
+        if(y==0)return(false);
+
+        camera->Forward(float(y)/10.0f);
+
+        return(true);
+    }
 
     bool OnMove(int x,int y) override
     {
@@ -402,17 +411,26 @@ protected:
 
         bool left=HasPressed(MouseButton::Left);
         bool right=HasPressed(MouseButton::Right);
-
-        if(left||right)
+        
+        Vector2f pos(x,y);
+        Vector2f gap=pos-mouse_last_pos;
+        
+        if(left)
         {
-            Vector2f pos(x,y);
-            Vector2f gap=pos-mouse_last_pos;
+            gap/=-5.0f;
 
             camera->Rotate(gap);
-
-            last_time=cur_time;
-            mouse_last_pos=Vector2f(x,y);
         }
+        else
+        if(right)
+        {
+            gap/=10.0f;
+
+            camera->Move(Vector3f(gap.x,0,gap.y));
+        }
+
+        last_time=cur_time;
+        mouse_last_pos=Vector2f(x,y);
 
         return(true);
     }
