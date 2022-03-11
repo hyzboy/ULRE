@@ -80,7 +80,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
             func(physical_device,&features2);
 
-            hgl_cpy(&features,&features2.features);
+            hgl_cpy(features,features2.features);
         }
         else
         {
@@ -113,7 +113,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
 
             func(physical_device,&properties2);
 
-            hgl_cpy(&properties,&properties2.properties);
+            hgl_cpy(properties,properties2.properties);
         }
         else
         {

@@ -64,7 +64,7 @@ private:
         //.1, .2, .01     //green
         );
 
-        scc.LowColor.Use(COLOR::DarkMidnightBlue,1.0f);
+        scc.LowColor=GetColor4f(COLOR::DarkMidnightBlue,1.0f);
 
         ubo_sky_color=db->CreateUBO(sizeof(SkyColorConfig),&scc);
 
