@@ -176,6 +176,11 @@ public:
         clear_color=cc;
     }
 
+    void SetClearColor(const enum class COLOR &ce)
+    {
+        clear_color=GetColor4f(ce,1.0f);
+    }
+
     void OnResize(uint w,uint h) override
     {
         if(w>0&&h>0)

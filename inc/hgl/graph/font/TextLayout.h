@@ -158,7 +158,7 @@ namespace hgl
 
             virtual ~TextLayout()=default;
 
-            void Set                (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla);}
+            void Set                (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla,1);}
             void SetFont            (      FontSource * fs)     {if(fs)font_source=fs;}
             void SetTextDirection   (const uint8 &      td)     {tla.text_direction=td;}
             void SetAlign           (const TextAlign &  ta)     {tla.align=ta;}
