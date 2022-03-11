@@ -13,7 +13,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=512;
+constexpr uint32_t SCREEN_HEIGHT=720;
 
 class TestApp:public CameraAppFramework
 {
@@ -22,7 +22,6 @@ private:
     SceneNode           render_root;
     RenderList *        render_list         =nullptr;
 
-    Material *          envmap_material     =nullptr;
     MaterialInstance *  envmap_mi           =nullptr;
 
     Pipeline *          solid_pipeline      =nullptr;
@@ -43,32 +42,29 @@ private:
             // photo source: https://www.hqreslib.com
             // license: CY-BY
 
-            texture   =db->LoadTexture2D(OS_TEXT("res/equirectangular/jifu.Tex2D"),false);
+            texture=db->LoadTexture2D(OS_TEXT("res/equirectangular/jifu.Tex2D"),false);
 
             if(!texture)
                 return(false);
 
-            sampler =db->CreateSampler();
+            sampler=db->CreateSampler();
         }
 
         {
-            envmap_material=db->CreateMaterial(OS_TEXT("res/material/EnvEquirectangularMap"));
-            if(!envmap_material)return(false);
-
-            envmap_mi=db->CreateMaterialInstance(envmap_material);
+            envmap_mi=db->CreateMaterialInstance(OS_TEXT("res/material/EnvEquirectangularMap"));
             if(!envmap_mi)return(false);
 
             if(!envmap_mi->BindSampler(DescriptorSetsType::Value,"Envmap"    ,texture,    sampler))return(false);
-
-            solid_pipeline=CreatePipeline(envmap_mi,InlinePipeline::Solid3D,Prim::Triangles);
         }
+
+        solid_pipeline=CreatePipeline(envmap_mi,InlinePipeline::Solid3D,Prim::Triangles);
 
         return(true);
     }
 
     void CreateRenderObject()
     {
-        ro_sphere=CreateRenderableSphere(db,envmap_mi->GetVAB(),64);
+        ro_sphere=CreateRenderableSphere(db,envmap_mi->GetVAB(),128);
     }
 
     bool InitUBO()
