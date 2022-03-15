@@ -4,6 +4,7 @@
 
     IF(WIN32)
         set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
+        set_property(TARGET ${name} PROPERTY VS_DPI_AWARE "PerMonitor")
     ENDIF()
 
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan")
