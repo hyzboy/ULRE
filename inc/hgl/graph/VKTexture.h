@@ -25,7 +25,7 @@ public:
     VkDeviceMemory              GetDeviceMemory     ()      {return data?data->memory->operator VkDeviceMemory():VK_NULL_HANDLE;}
     VkImage                     GetImage            ()      {return data?data->image:VK_NULL_HANDLE;}
     VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
-    VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->operator VkImageView():VK_NULL_HANDLE;}
+    VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->GetImageView():VK_NULL_HANDLE;}
 
     GPUMemory *                 GetMemory           ()      {return data?data->memory:nullptr;}
     ImageView *                 GetImageView        ()      {return data?data->image_view:nullptr;}
