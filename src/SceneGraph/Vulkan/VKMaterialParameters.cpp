@@ -69,7 +69,7 @@ bool MaterialParameters::BindInputAttachment(const AnsiString &name,ImageView *i
     if(name.IsEmpty()||!iv)
         return(false);
 
-    const int index=mds->GetSampler(name);
+    const int index=mds->GetAttachment(name);
 
     if(index<0)
         return(false);
