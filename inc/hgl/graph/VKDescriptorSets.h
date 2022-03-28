@@ -55,7 +55,7 @@ public:
     bool BindSSBO   (const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
     bool BindSampler(const int binding,Texture *,Sampler *);
-    bool BindInputAttachment(const int binding,Texture *);
+    bool BindInputAttachment(const int binding,ImageView *);
     void Update();
 };//class DescriptorSets
 VK_NAMESPACE_END

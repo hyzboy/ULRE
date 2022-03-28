@@ -29,10 +29,10 @@ public:
 
     virtual ~ImageView();
 
-    operator VkImageView(){return image_view;}
-
 public:
+    
 
+          VkImageView           GetImageView    ()     {return image_view;}
     const VkImageViewType       GetViewType     ()const{return ivci->viewType;}
     const VkFormat              GetFormat       ()const{return ivci->format;}
     const VkExtent3D &          GetExtent       ()const{return extent;}

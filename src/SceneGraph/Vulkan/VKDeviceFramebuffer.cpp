@@ -41,7 +41,7 @@ Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,
             if(*cf!=(*iv)->GetFormat())
                 return(nullptr);
 
-            *ap=**iv;
+            *ap=(*iv)->GetImageView();
 
             ++ap;
             ++cf;
@@ -59,7 +59,7 @@ Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,
             return(nullptr);
         }
 
-        attachments[color_count]=*depth;
+        attachments[color_count]=depth->GetImageView();
 
         extent.width=depth->GetExtent().width;
         extent.height=depth->GetExtent().height;

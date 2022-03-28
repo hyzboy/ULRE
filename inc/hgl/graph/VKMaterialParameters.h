@@ -45,6 +45,7 @@ public:
     bool BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic=false);
     bool BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
+    bool BindInputAttachment(const AnsiString &name,ImageView *);
     
     void Update();
 };//class MaterialParameters
