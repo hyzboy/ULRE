@@ -109,12 +109,12 @@ private:
 
             rb_config.Color.Set(1,1,1,1);
             rb_config.OutColor.Set(0,0,0,0);
-            rb_config.InColor.Use(COLOR::MozillaOrange,1.0);
+            rb_config.InColor=GetColor4f(COLOR::MozillaOrange,1.0);
             rb_config.Radius[0]=0;
             rb_config.Radius[1]=16;
             rb_config.Radius[2]=0;
             rb_config.Radius[3]=16;
-            rb_config.LineWidth=1.5;
+            rb_config.LineWidth=2;
 
             ubo_rb_config  =db->CreateUBO(sizeof(RoundedBoxConfig),       &rb_config);
 
