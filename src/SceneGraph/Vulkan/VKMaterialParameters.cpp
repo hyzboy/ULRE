@@ -64,6 +64,22 @@ bool MaterialParameters::BindSampler(const AnsiString &name,Texture *tex,Sampler
     return(true);
 }
 
+bool MaterialParameters::BindInputAttachment(const AnsiString &name,ImageView *iv)
+{
+    if(name.IsEmpty()||!iv)
+        return(false);
+
+    const int index=mds->GetAttachment(name);
+
+    if(index<0)
+        return(false);
+
+    if(!descriptor_sets->BindInputAttachment(index,iv))
+        return(false);
+
+    return(true);
+}
+
 void MaterialParameters::Update()
 {
     descriptor_sets->Update();
