@@ -176,6 +176,7 @@ private:
 
         sp->pipeline_fan        =gbuffer.rp->CreatePipeline(sp->material_instance,InlinePipeline::Solid3D,Prim::Fan);
 
+
         return sp->pipeline_fan;
     }
 
@@ -232,7 +233,9 @@ private:
         if(!InitCompositionPipeline(&sp_composition))return(false);
 
         texture.color   =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Albedo.Tex2D"));
+        if(!texture.color)return(false);
         texture.normal  =db->LoadTexture2D(OS_TEXT("res/image/Brickwall/Normal.Tex2D"));
+        if(!texture.normal)return(false);
         
         texture.color_sampler=CreateSampler(texture.color);
         texture.normal_sampler=CreateSampler(texture.normal);
