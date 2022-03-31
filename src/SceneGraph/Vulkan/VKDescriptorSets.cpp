@@ -57,6 +57,13 @@ namespace
             imageView=tex->GetVulkanImageView();
             imageLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         }
+
+        DescriptorImageInfo(VkImageView iv)
+        {
+            sampler=VK_NULL_HANDLE;
+            imageView=iv;
+            imageLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
     };//struct DescriptorImageInfo:public VkDescriptorImageInfo
 }//namespace
 
@@ -159,14 +166,14 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
     return(true);
 }
 
-bool DescriptorSets::BindInputAttachment(const int binding,Texture *tex)
+bool DescriptorSets::BindInputAttachment(const int binding,ImageView *iv)
 {
-    if(binding<0||!tex)
+    if(binding<0||!iv)
         return(false);
 
     if(binded_sets.IsMember(binding))return(false);
 
-    DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,nullptr);
+    DescriptorImageInfo *image_info=new DescriptorImageInfo(iv->GetImageView());
     
     image_list.Add(image_info);
 

@@ -17,7 +17,7 @@ class TestApp:public CameraAppFramework
 {
     struct
     {
-        Color4f color;
+        Color4f diffuse;            //虽然shader中写vec3，但这里依然用Color4f
         Color4f abiment;
     }color_material;
 
@@ -46,15 +46,17 @@ public:
     {
         start_time=GetDoubleTime();
     }
-
-    ~TestApp()=default;
+    
+    ~TestApp()
+    {
+        SAFE_CLEAR(render_list);
+    }
 
 private:
 
     bool InitMaterial()
     {
-        material=db->CreateMaterial(OS_TEXT("res/shader/VertexLight.vert"),
-                                               OS_TEXT("res/shader/VertexColor.frag"));
+        material=db->CreateMaterial(OS_TEXT("res/material/SimplestDirectionLight"));
         if(!material)
             return(false);
 
@@ -70,21 +72,29 @@ private:
 
     bool InitUBO()
     {
-        color_material.color.Set(1,1,1,1);
-        color_material.abiment.Set(0.25,0.25,0.25,1.0);
+        color_material.diffuse.Set(1,1,1);
+        color_material.abiment.Set(0.25,0.25,0.25);
 
-        ubo_color=device->CreateUBO(sizeof(color_material),&color_material);
+        ubo_color=db->CreateUBO(sizeof(color_material),&color_material);
         if(!ubo_color)return(false);
 
         sun_direction=normalized(Vector3f(rand(),rand(),rand()));
 
-        ubo_sun=device->CreateUBO(sizeof(sun_direction),&sun_direction);
+        ubo_sun=db->CreateUBO(sizeof(sun_direction),&sun_direction);
         if(!ubo_sun)return(false);
 
-        material_instance->BindUBO("color_material",ubo_color);
-        material_instance->BindUBO("sun",ubo_sun);
+        {
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
 
-        material_instance->Update();
+            if(!mp)return(false);
+
+            mp->BindUBO("material",ubo_color);
+            mp->BindUBO("sun",ubo_sun);
+
+            mp->Update();
+        }
+
+        BindCameraUBO(material_instance);
 
         return(true);
     }
@@ -103,7 +113,7 @@ private:
         uint count;
         float size;
 
-        RenderableInstance *ri=db->CreateRenderableInstance(pipeline,material_instance,renderable_object);
+        RenderableInstance *ri=db->CreateRenderableInstance(renderable_object,material_instance,pipeline);
 
         for(uint i=0;i<360;i++)
         {
@@ -131,6 +141,8 @@ public:
         if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
+        render_list=new RenderList(device);
+
         if(!InitMaterial())
             return(false);
 
@@ -152,16 +164,15 @@ public:
     {
         CameraAppFramework::Draw();
 
-        Matrix4f rot=rotate(GetDoubleTime()-start_time,camera.up_vector);
+        Matrix4f rot=rotate(GetDoubleTime()-start_time,camera->world_up);
 
         render_root.RefreshMatrix(&rot);
-        render_list.Clear();
-        render_root.ExpendToList(&render_list);
+        render_list->Expend(GetCameraInfo(),&render_root);
     }
     
     void BuildCommandBuffer(uint32 index)
     {
-        VulkanApplicationFramework::BuildCommandBuffer(index,&render_list);
+        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 };//class TestApp:public CameraAppFramework
 
