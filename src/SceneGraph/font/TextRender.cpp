@@ -40,9 +40,9 @@ namespace hgl
             SAFE_CLEAR(db);
         }
 
-        bool TextRender::InitTileFont()
+        bool TextRender::InitTileFont(int limit)
         {
-            tile_font=device->CreateTileFont(font_source);
+            tile_font=device->CreateTileFont(font_source,limit);
             return(true);
         }
 
@@ -128,9 +128,9 @@ namespace hgl
             return(true);
         }
 
-        bool TextRender::Init(RenderPass *rp,GPUBuffer *ubo_camera_info)
+        bool TextRender::Init(RenderPass *rp,GPUBuffer *ubo_camera_info,int limit)
         {
-            if(!InitTileFont())
+            if(!InitTileFont(limit))
                 return(false);
 
             if(!InitTextLayoutEngine())
@@ -213,14 +213,14 @@ namespace hgl
             return AcquireFontSource(fnt);
         }
 
-        TextRender *CreateTextRender(GPUDevice *dev,FontSource *fs,RenderPass *rp,GPUBuffer *ubo_camera_info)
+        TextRender *CreateTextRender(GPUDevice *dev,FontSource *fs,RenderPass *rp,GPUBuffer *ubo_camera_info,int limit)
         {
             if(!dev||!rp||!ubo_camera_info)
                 return(nullptr);
 
             TextRender *text_render=new TextRender(dev,fs);
 
-            if(!text_render->Init(rp,ubo_camera_info))
+            if(!text_render->Init(rp,ubo_camera_info,limit))
             {
                 delete text_render;
                 return(nullptr);

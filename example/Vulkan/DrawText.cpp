@@ -29,14 +29,16 @@ private:
     bool InitTextRenderable()
     {
         UTF16String str;
+        
+        LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
+
+        if(str.IsEmpty())return(false);
 
         FontSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),12);
 
-        text_render=CreateTextRender(device,fs,device_render_pass,ubo_camera_info);
+        text_render=CreateTextRender(device,fs,device_render_pass,ubo_camera_info,str.Length());
         if(!text_render)
             return(false);
-
-        LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 
         text_render_obj=text_render->CreateRenderable(str);
         if(!text_render_obj)

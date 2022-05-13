@@ -37,10 +37,10 @@ namespace hgl
 
         private:
 
-            friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *);
+            friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *,int limit=-1);
             TextRender(GPUDevice *dev,FontSource *);
 
-            bool InitTileFont();
+            bool InitTileFont(int limit);
             bool InitTextLayoutEngine();
             bool InitUBO();
             bool InitMaterial(RenderPass *,GPUBuffer *);
@@ -49,7 +49,7 @@ namespace hgl
 
             ~TextRender();
 
-            bool Init(RenderPass *rp,GPUBuffer *ubo_camera_info);
+            bool Init(RenderPass *rp,GPUBuffer *ubo_camera_info,int limit);
 
         public:
 
@@ -79,9 +79,10 @@ namespace hgl
         FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
 
         /**
-         * 创建一个文本渲染器.
+         * 创建一个文本渲染器
+         * @param limit 节数限制(-1表示自动)
          */
-        TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *);
+        TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *,int limit);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_RENDER_INCLUDE
