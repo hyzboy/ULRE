@@ -2,7 +2,7 @@
     add_executable(${name} ${ARGN} ${VULKAN_APP_FRAMEWORK})
     target_link_libraries(${name} ${ULRE})
 
-    IF(WIN32)
+    IF(MSVC)
         set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
         set_property(TARGET ${name} PROPERTY VS_DPI_AWARE "PerMonitor")
     ENDIF()
@@ -17,7 +17,7 @@ macro(CreateQtProject name)
 
     target_link_libraries(${name} ${ULRE} Qt5::Core Qt5::Gui Qt5::Widgets)
 
-    IF(WIN32)
+    IF(MSVC)
         set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
     ENDIF()
 
@@ -49,7 +49,7 @@ CreateProject(15.OffscreenRender OffscreenRender.cpp)
 
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
-CreateProject(16.DeferredRenderMultiCmdBuffer DeferredRenderMultiCmdBuffer.cpp)
+CreateProject(16.DeferredRender DeferredRender.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
 
 CreateProject(17.Cubemap Cubemap.cpp)
