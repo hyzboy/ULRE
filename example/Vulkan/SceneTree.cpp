@@ -1,5 +1,5 @@
 ﻿// SceneTree
-//      用于测试树形排列的场景中，每一级节点对变换矩阵的处理是否正确,以及Instance绘制
+//      用于测试树形排列的场景中，每一级节点对变换矩阵的处理是否正确
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -56,7 +56,7 @@ private:
 
     bool InitMaterial()
     {
-        material=db->CreateMaterial(OS_TEXT("res/material/SimplestDirectionLight"));
+        material=db->CreateMaterial(OS_TEXT("res/material/PhongFullyRough"));
         if(!material)
             return(false);
 
@@ -95,7 +95,6 @@ private:
         }
 
         BindCameraUBO(material_instance);
-
         return(true);
     }
 
@@ -126,7 +125,7 @@ private:
             count=(rand()%16)+1;
 
             for(uint n=0;n<count;n++)
-                cur_node->CreateSubNode(translate(0,0,size*n*1.01),ri);
+                cur_node->CreateSubNode(translate(0,0,size*n*1.1),ri);
         }
 
         render_root.RefreshMatrix();
