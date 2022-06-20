@@ -51,10 +51,10 @@ public:
     Renderable(const uint32_t dc=0):draw_count(dc){}
     virtual ~Renderable()=default;
 
-    const   uint GetRefCount()const{return ref_count;}
+    const   uint    GetRefCount()const{return ref_count;}
 
-    void         SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
-    const   AABB &GetBoundingBox()const           {return BoundingBox;}
+    void            SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
+    const   AABB &  GetBoundingBox()const           {return BoundingBox;}
 
             bool Set(const AnsiString &name,VBO *vb,VkDeviceSize offset=0);
 
