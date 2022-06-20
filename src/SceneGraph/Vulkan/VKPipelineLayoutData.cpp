@@ -8,32 +8,39 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
 {
     PipelineLayoutData *pld=hgl_zero_new<PipelineLayoutData>();
 
-    ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+    if(mds)
     {
-        const DescriptorSetLayoutCreateInfo *dslci=mds->GetBinding((DescriptorSetsType)i);
+        ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+        {
+            const DescriptorSetLayoutCreateInfo *dslci=mds->GetBinding((DescriptorSetsType)i);
 
-        if(!dslci||dslci->bindingCount<=0)
-            continue;
+            if(!dslci||dslci->bindingCount<=0)
+                continue;
 
-        if(pld->layouts[i])
-            vkDestroyDescriptorSetLayout(attr->device,pld->layouts[i],nullptr);
+            if(pld->layouts[i])
+                vkDestroyDescriptorSetLayout(attr->device,pld->layouts[i],nullptr);
 
-        if(vkCreateDescriptorSetLayout(attr->device,dslci,nullptr,pld->layouts+i)!=VK_SUCCESS)
+            if(vkCreateDescriptorSetLayout(attr->device,dslci,nullptr,pld->layouts+i)!=VK_SUCCESS)
+            {
+                delete pld;
+                return(nullptr);
+            }
+
+            pld->binding_count[i]=dslci->bindingCount;
+
+            pld->fin_dsl[pld->fin_dsl_count]=pld->layouts[i];
+            ++pld->fin_dsl_count;
+        }
+
+        if(pld->fin_dsl_count<=0)
         {
             delete pld;
             return(nullptr);
         }
-
-        pld->binding_count[i]=dslci->bindingCount;
-
-        pld->fin_dsl[pld->fin_dsl_count]=pld->layouts[i];
-        ++pld->fin_dsl_count;
     }
-
-    if(pld->fin_dsl_count<=0)
+    else
     {
-        delete pld;
-        return(nullptr);
+        //没有任何DescriptorSets的情况也是存在的
     }
 
     //VkPushConstantRange push_constant_range;
