@@ -28,7 +28,7 @@ CreateProject(00.triangle first_triangle.cpp)
 CreateProject(01.two_triangle two_triangle.cpp)
 CreateProject(02.FragCoord FragCoordTest.cpp)
 CreateProject(03.indices_rect indices_rect.cpp)
-CreateProject(04.FullScreenRect FullScreenRect.cpp)
+CreateProject(04.FullScreenTriangle FullScreenTriangle.cpp)
 
 CreateProject(05.TextureFormat TextureFormat.cpp)
 CreateProject(06.texture_rect texture_rect.cpp)
