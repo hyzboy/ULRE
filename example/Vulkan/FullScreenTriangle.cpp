@@ -1,5 +1,5 @@
-﻿// 全屏矩形
-// 该范例用于演示使用索引画一个矩形，但是不传递顶点信息。
+﻿// 全屏三角形
+// 该范例用于演示使用索引画一个覆盖全屏的三角形，但是不传递任何顶点信息，顶点坐标在vertex shader中通过gl_VertexIndex计算出来。
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
@@ -9,8 +9,6 @@ using namespace hgl::graph;
 
 constexpr uint32_t SCREEN_WIDTH=256;
 constexpr uint32_t SCREEN_HEIGHT=256;
-
-static Vector4f color(1,1,1,1);
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -30,14 +28,14 @@ private:
 
         BindCameraUBO(material_instance);
         
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Fan);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);
         
         return pipeline;
     }
 
     bool InitVBO()
-    {        
-        auto render_obj=db->CreateRenderable(4);
+    {
+        auto render_obj=db->CreateRenderable(3);
         if(!render_obj)return(false);
 
         renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
