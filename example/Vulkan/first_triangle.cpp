@@ -1,4 +1,4 @@
-﻿// 0.triangle
+﻿// first_triangle
 // 该范例主要演示直接绘制一个渐变色的三角形
 
 #include"VulkanAppFramework.h"

@@ -1,5 +1,5 @@
-﻿// 1.two_triangle
-// 该范例主要演示使用CmdBindDescriptorSets偏移UBO绘图
+﻿// second_triangle
+// 该范例主要演示使用场景树系统绘制三角形
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
