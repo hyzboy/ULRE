@@ -7,11 +7,13 @@ namespace hgl
     {
         namespace
         {
-            void Convert8BitGrey(uint8 *dst,int dst_w,uint8 *src,int src_w,int src_h,int src_line_bytes)
+            void Convert8BitGrey(uint8 *dst,int dst_w,uint8 *src,int src_w,int src_h)
             {
                 int pos;
                 uint8 *sp=src,*p;
                 uint8 *tp;
+
+                const uint src_line_bytes=hgl_align<uint>(src_w,4);         //每行字节是32位对齐，这个已测试正常
 
                 while(src_h--)
                 {
@@ -32,11 +34,13 @@ namespace hgl
                 }
             }
 
-            void ConvertBitmap(uint8 *dst,int dst_w,uint8 *src,int src_w,int src_h,int src_line_bytes)
+            void ConvertBitmap(uint8 *dst,int dst_w,uint8 *src,int src_w,int src_h)
             {
                 uint8 *sp=src,*p;
                 uint8 *tp;
                 uint8 bit;
+
+                const uint src_line_bytes=hgl_align<uint>(src_w>>3,4);      //每行字节是32位对齐，这个未测试
 
                 while(src_h--)
                 {
@@ -130,9 +134,9 @@ namespace hgl
             bmp->data=hgl_zero_new<uint8>(bmp->metrics_info.w*bmp->metrics_info.h);
 
             if(ggo==GGO_GRAY8_BITMAP)
-                Convert8BitGrey	(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/gm.gmBlackBoxY);
+                Convert8BitGrey	(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
             else
-                ConvertBitmap	(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY,size/gm.gmBlackBoxY);
+                ConvertBitmap	(bmp->data,bmp->metrics_info.w,buffer,gm.gmBlackBoxX,gm.gmBlackBoxY);
 
             return(true);
         }
