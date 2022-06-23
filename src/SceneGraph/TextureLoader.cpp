@@ -96,52 +96,52 @@ namespace hgl
         {
             VkFormat        format;
 
-            uint8           channels;   //ÑÕÉ«Í¨µÀÊý
+            uint8           channels;   //é¢œè‰²é€šé“æ•°
             char            colors[4];
             uint8           bits[4];
-            VulkanDataType  type;
+            VulkanNumberType  type;
         };//
 
         constexpr VulkanTexturePixelFormat pf_list[]=
         {
-            { PF_RGBA4,      4,{'R','G','B','A'},{ 4, 4, 4, 4},VulkanDataType::UNORM},      //Android ²¿·Ö²»Ö§³Ö
-            { PF_BGRA4,      4,{'B','G','R','A'},{ 4, 4, 4, 4},VulkanDataType::UNORM},      //ios²»Ö§³ÖÕâ¸ö
-            {UPF_RGB565,     3,{'R','G','B', 0 },{ 5, 6, 5, 0},VulkanDataType::UNORM},
-            {UPF_A1RGB5,     4,{'A','R','G','B'},{ 1, 5, 5, 5},VulkanDataType::UNORM},
-            {UPF_R8,         1,{'R', 0 , 0 , 0 },{ 8, 0, 0, 0},VulkanDataType::UNORM},
-            {UPF_RG8,        2,{'R','G', 0 , 0 },{ 8, 8, 0, 0},VulkanDataType::UNORM},
-            {UPF_RGBA8,      4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanDataType::UNORM},
-            {UPF_RGBA8S,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanDataType::SNORM},
-            {UPF_RGBA8U,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanDataType::UINT},
-            {UPF_RGBA8I,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanDataType::SINT},
-            {UPF_ABGR8,      4,{'A','B','G','R'},{ 8, 8, 8, 8},VulkanDataType::UNORM},
-            {UPF_A2BGR10,    4,{'A','B','G','R'},{ 2,10,10,10},VulkanDataType::UNORM},
-            {UPF_R16,        1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanDataType::UNORM},
-            {UPF_R16U,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanDataType::UINT},
-            {UPF_R16I,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanDataType::SINT},
-            {UPF_R16F,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanDataType::SFLOAT},
-            {UPF_RG16,       2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanDataType::UNORM},
-            {UPF_RG16U,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanDataType::UINT},
-            {UPF_RG16I,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanDataType::SINT},
-            {UPF_RG16F,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanDataType::SFLOAT},
-            { PF_RGBA16UN,   4,{'R','G','B','A'},{16,16,16,16},VulkanDataType::UNORM},
-            { PF_RGBA16SN,   4,{'R','G','B','A'},{16,16,16,16},VulkanDataType::SNORM},
-            {UPF_RGBA16U,    4,{'R','G','B','A'},{16,16,16,16},VulkanDataType::UINT},
-            {UPF_RGBA16I,    4,{'R','G','B','A'},{16,16,16,16},VulkanDataType::SINT},
-            {UPF_RGBA16F,    4,{'R','G','B','A'},{16,16,16,16},VulkanDataType::SFLOAT},
-            {UPF_R32U,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanDataType::UINT},
-            {UPF_R32I,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanDataType::SINT},
-            {UPF_R32F,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanDataType::SFLOAT},
-            {UPF_RG32U,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanDataType::UINT},
-            {UPF_RG32I,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanDataType::SINT},
-            {UPF_RG32F,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanDataType::SFLOAT},
-            { PF_RGB32U,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanDataType::UINT},
-            { PF_RGB32I,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanDataType::SINT},
-            { PF_RGB32F,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanDataType::SFLOAT},
-            {UPF_RGBA32U,    4,{'R','G','B','A'},{32,32,32,32},VulkanDataType::UINT},
-            {UPF_RGBA32I,    4,{'R','G','B','A'},{32,32,32,32},VulkanDataType::SINT},
-            {UPF_RGBA32F,    4,{'R','G','B','A'},{32,32,32,32},VulkanDataType::SFLOAT},
-            {UPF_B10GR11UF,  3,{'B','G','R', 0 },{10,11,11, 0},VulkanDataType::UFLOAT}
+            { PF_RGBA4,      4,{'R','G','B','A'},{ 4, 4, 4, 4},VulkanNumberType::UNORM},      //Android éƒ¨åˆ†ä¸æ”¯æŒ
+            { PF_BGRA4,      4,{'B','G','R','A'},{ 4, 4, 4, 4},VulkanNumberType::UNORM},      //iosä¸æ”¯æŒè¿™ä¸ª
+            {UPF_RGB565,     3,{'R','G','B', 0 },{ 5, 6, 5, 0},VulkanNumberType::UNORM},
+            {UPF_A1RGB5,     4,{'A','R','G','B'},{ 1, 5, 5, 5},VulkanNumberType::UNORM},
+            {UPF_R8,         1,{'R', 0 , 0 , 0 },{ 8, 0, 0, 0},VulkanNumberType::UNORM},
+            {UPF_RG8,        2,{'R','G', 0 , 0 },{ 8, 8, 0, 0},VulkanNumberType::UNORM},
+            {UPF_RGBA8,      4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanNumberType::UNORM},
+            {UPF_RGBA8S,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanNumberType::SNORM},
+            {UPF_RGBA8U,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanNumberType::UINT},
+            {UPF_RGBA8I,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanNumberType::SINT},
+            {UPF_ABGR8,      4,{'A','B','G','R'},{ 8, 8, 8, 8},VulkanNumberType::UNORM},
+            {UPF_A2BGR10,    4,{'A','B','G','R'},{ 2,10,10,10},VulkanNumberType::UNORM},
+            {UPF_R16,        1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanNumberType::UNORM},
+            {UPF_R16U,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanNumberType::UINT},
+            {UPF_R16I,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanNumberType::SINT},
+            {UPF_R16F,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanNumberType::SFLOAT},
+            {UPF_RG16,       2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanNumberType::UNORM},
+            {UPF_RG16U,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanNumberType::UINT},
+            {UPF_RG16I,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanNumberType::SINT},
+            {UPF_RG16F,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanNumberType::SFLOAT},
+            { PF_RGBA16UN,   4,{'R','G','B','A'},{16,16,16,16},VulkanNumberType::UNORM},
+            { PF_RGBA16SN,   4,{'R','G','B','A'},{16,16,16,16},VulkanNumberType::SNORM},
+            {UPF_RGBA16U,    4,{'R','G','B','A'},{16,16,16,16},VulkanNumberType::UINT},
+            {UPF_RGBA16I,    4,{'R','G','B','A'},{16,16,16,16},VulkanNumberType::SINT},
+            {UPF_RGBA16F,    4,{'R','G','B','A'},{16,16,16,16},VulkanNumberType::SFLOAT},
+            {UPF_R32U,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanNumberType::UINT},
+            {UPF_R32I,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanNumberType::SINT},
+            {UPF_R32F,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanNumberType::SFLOAT},
+            {UPF_RG32U,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanNumberType::UINT},
+            {UPF_RG32I,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanNumberType::SINT},
+            {UPF_RG32F,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanNumberType::SFLOAT},
+            { PF_RGB32U,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanNumberType::UINT},
+            { PF_RGB32I,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanNumberType::SINT},
+            { PF_RGB32F,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanNumberType::SFLOAT},
+            {UPF_RGBA32U,    4,{'R','G','B','A'},{32,32,32,32},VulkanNumberType::UINT},
+            {UPF_RGBA32I,    4,{'R','G','B','A'},{32,32,32,32},VulkanNumberType::SINT},
+            {UPF_RGBA32F,    4,{'R','G','B','A'},{32,32,32,32},VulkanNumberType::SFLOAT},
+            {UPF_B10GR11UF,  3,{'B','G','R', 0 },{10,11,11, 0},VulkanNumberType::UFLOAT}
         };
 
         constexpr uint VulkanTexturePixelFormatCount=sizeof(pf_list)/sizeof(VulkanTexturePixelFormat);
@@ -203,7 +203,7 @@ namespace hgl
                 format=GetVulkanFormat(file_header.pixel_format);
             }
 
-            //¼ÆËã0¼¶mipmapÍ¼ÏñµÄ×Ö½ÚÊý
+            //è®¡ç®—0çº§mipmapå›¾åƒçš„å­—èŠ‚æ•°
             mipmap_zero_total_bytes=(GetPixelsCount()*file_header.pixel_format.pixel_bits())>>3;
 
             total_bytes=GetTotalBytes();
