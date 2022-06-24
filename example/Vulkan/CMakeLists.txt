@@ -1,4 +1,4 @@
-﻿macro(CreateProject name)
+﻿macro(CreateProject group name)
     add_executable(${name} ${ARGN} ${VULKAN_APP_FRAMEWORK})
     target_link_libraries(${name} ${ULRE})
 
@@ -7,55 +7,43 @@
         set_property(TARGET ${name} PROPERTY VS_DPI_AWARE "PerMonitor")
     ENDIF()
 
-    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan")
+    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan/${group}")
 endmacro()
 
-macro(CreateQtProject name)
-    add_executable(${name} ${ARGN} VulkanAppFramework.h)
+CreateProject("Basic" 1st_triangle          first_triangle.cpp)
+CreateProject("Basic" 2nd_triangle          second_triangle.cpp)
+CreateProject("Basic" FragCoord             FragCoordTest.cpp)
+CreateProject("Basic" indices_rect          indices_rect.cpp)
+CreateProject("Basic" FullScreenTriangle    FullScreenTriangle.cpp)
+CreateProject("Basic" InstanceTriangle      InstanceTriangle.cpp)
 
-    set(IDENTIFIER "com.hyzgame.example")
-
-    target_link_libraries(${name} ${ULRE} Qt5::Core Qt5::Gui Qt5::Widgets)
-
-    IF(MSVC)
-        set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${ULRE_RUNTIME_PATH})
-    ENDIF()
-
-    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan")
-endmacro()
-
-CreateProject(00.1st_triangle first_triangle.cpp)
-CreateProject(01.2nd_triangle second_triangle.cpp)
-CreateProject(02.FragCoord FragCoordTest.cpp)
-CreateProject(03.indices_rect indices_rect.cpp)
-CreateProject(04.FullScreenTriangle FullScreenTriangle.cpp)
-
-CreateProject(05.TextureFormat TextureFormat.cpp)
-CreateProject(06.texture_rect texture_rect.cpp)
-#CreateProject(05.HQFilterTexture HQFilterTexture.cpp)
+CreateProject("Texture" TextureFormat       TextureFormat.cpp)
+CreateProject("Texture" texture_rect        texture_rect.cpp)
+#CreateProject("Texture" HQFilterTexture HQFilterTexture.cpp)
 #CreateProject(06.Geometry2D Geometry2D.cpp)
-CreateProject(07.Geometry3D Geometry3D.cpp)
-CreateProject(08.SceneTree SceneTree.cpp)
+
+CreateProject("Geometry2D" RectanglePrimitive    RectanglePrimitive.cpp)
+CreateProject("Tile" DrawTile              DrawTile.cpp)
+CreateProject("Tile" DrawText              DrawText.cpp)
+
+CreateProject("Geometry3D " Geometry3D            Geometry3D.cpp)
+
+CreateProject("Scene" SceneTree             SceneTree.cpp)
 #CreateProject(09.LoadStaticMesh LoadStaticMesh.cpp LoadScene.cpp)
-CreateProject(10.InlineGeometryScene InlineGeometryScene.cpp)
-CreateProject(11.SkyColor SkyColor.cpp)
-CreateProject(11.Atmosphere Atmosphere.cpp)
+CreateProject("Scene" InlineGeometryScene   InlineGeometryScene.cpp)
 
-CreateProject(12.RectanglePrimitive RectanglePrimitive.cpp)
+CreateProject("Scene/Sky" SkyColor              SkyColor.cpp)
+CreateProject("Scene/Sky" Atmosphere            Atmosphere.cpp)
 
-CreateProject(13.DrawTile DrawTile.cpp)
-
-CreateProject(14.DrawText DrawText.cpp)
-
-CreateProject(15.OffscreenRender OffscreenRender.cpp)
+CreateProject("Advanced Rendering" OffscreenRender       OffscreenRender.cpp)
 
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
-CreateProject(16.DeferredRender DeferredRender.cpp)
+CreateProject("AdvancedRendering" DeferredRender        DeferredRender.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
 
-CreateProject(17.Cubemap Cubemap.cpp)
-CreateProject(17.EquirectangularMap EquirectangularMap.cpp)
-CreateProject(18.RayPicking RayPicking.cpp)
-CreateProject(19.InstanceCube InstanceCube.cpp)
-CreateProject(20.TerrainSimple TerrainSimple.cpp)
+CreateProject("Texture" Cubemap               Cubemap.cpp)
+CreateProject("Texture" EquirectangularMap    EquirectangularMap.cpp)
+CreateProject("Picking" RayPicking            RayPicking.cpp)
+
+CreateProject("Landscape" TerrainSimple         TerrainSimple.cpp)
