@@ -53,6 +53,10 @@ public:
     const   uint32_t            GetBufferHash       ()const{return buffer_hash;}
 
             MaterialParameters *GetMP               (const DescriptorSetsType &type){return mat_inst->GetMP(type);}
+
+public: //instance support
+
+    virtual const uint32_t      GetInstanceCount    ()const{return 1;}
 };//class RenderableInstance
 
 RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);

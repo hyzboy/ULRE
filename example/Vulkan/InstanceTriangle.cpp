@@ -5,94 +5,61 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/SceneInfo.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_SIZE=512;
+
+constexpr uint32_t VERTEX_COUNT=3;
+
+constexpr float position_data[VERTEX_COUNT][2]=
+{
+    {0,0},
+    {0.25,-0.75},
+    {0,-1}
+};
+
+constexpr float color_data[VERTEX_COUNT][4]=
+{   {1,0,0,1},
+    {0,1,0,1},
+    {0,0,1,1}
+};
 
 class TestApp:public VulkanApplicationFramework
 {
 private:
 
-    double      start_time;
-
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        renderable_object   =nullptr;
     RenderableInstance *render_instance     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
-    
-public:
-
-    TestApp()
-    {
-        start_time=GetDoubleTime();
-    }
-    
-    ~TestApp()=default;
 
 private:
 
     bool InitMaterial()
     {
-        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/Vertex2DColor"));
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"));
 
         if(!material_instance)
             return(false);
-           
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);
+            
+//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         return pipeline;
     }
-    
-    bool InitUBO()
+   
+    bool InitVBO()
     {
-        color_material.diffuse.Set(1,1,1);
-        color_material.abiment.Set(0.25,0.25,0.25);
+        Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
+        if(!render_obj)return(false);
 
-        ubo_color=db->CreateUBO(sizeof(color_material),&color_material);
-        if(!ubo_color)return(false);
-
-        sun_direction=normalized(Vector3f(rand(),rand(),rand()));
-
-        ubo_sun=db->CreateUBO(sizeof(sun_direction),&sun_direction);
-        if(!ubo_sun)return(false);
-
-        {
-            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
-
-            if(!mp)return(false);
-
-            mp->BindUBO("material",ubo_color);
-            mp->BindUBO("sun",ubo_sun);
-
-            mp->Update();
-        }
-
-        BindCameraUBO(material_instance);
-        return(true);
-    }
-
-    bool InitRenderable()
-    {
-        CubeCreateInfo cci;
-
-        cci.tangent=false;
-        cci.tex_coord=false;
-
-        renderable_object=CreateRenderableCube(db,material_instance->GetVAB(),&cci);
-
-        if(!renderable_object)
-            return(false);
-
-        render_instance=db->CreateRenderableInstance(renderable_object,material_instance,pipeline);
-
-        if(!render_instance)
-            return(false);
-
+        if(!render_obj->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
+        if(!render_obj->Set(VAN::Color,     db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data)))return(false);
+        
+        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
         return(true);
     }
 
@@ -100,19 +67,16 @@ public:
 
     bool Init()
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!VulkanApplicationFramework::Init(SCREEN_SIZE,SCREEN_SIZE))
             return(false);
 
         if(!InitMaterial())
             return(false);
 
-        if(!InitUBO())
+        if(!InitVBO())
             return(false);
 
-        if(!InitRenderable())
-            return(false);
-
-        if(!VulkanApplicationFramework::BuildCommandBuffer(render_instance))
+        if(!BuildCommandBuffer(render_instance))
             return(false);
 
         return(true);
@@ -122,7 +86,7 @@ public:
     {
         VulkanApplicationFramework::Resize(w,h);
 
-        VulkanApplicationFramework::BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_instance);
     }
 };//class TestApp:public VulkanApplicationFramework
 
