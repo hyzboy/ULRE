@@ -1,5 +1,5 @@
 ﻿// first_triangle
-// 该范例主要演示直接绘制一个渐变色的三角形
+// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
@@ -16,9 +16,9 @@ constexpr uint32_t VERTEX_COUNT=3;
 
 constexpr float position_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
+    { 0.0, -0.5},
+    {-0.5,  0.5},
+    { 0.5,  0.5}
 };
 
 constexpr float color_data[VERTEX_COUNT][4]=
@@ -40,12 +40,10 @@ private:
 
     bool InitMaterial()
     {
-        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"));
 
         if(!material_instance)
             return(false);
-
-        BindCameraUBO(material_instance);
             
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
