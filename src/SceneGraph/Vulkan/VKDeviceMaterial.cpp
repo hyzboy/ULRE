@@ -109,7 +109,7 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     data->pipeline_layout_data=pld;
     data->mp.m=CreateMP(mds,pld,DescriptorSetsType::Material     );
-    data->mp.r=CreateMP(mds,pld,DescriptorSetsType::Renderable   );
+    data->mp.r=CreateMP(mds,pld,DescriptorSetsType::Primitive   );
     data->mp.g=CreateMP(mds,pld,DescriptorSetsType::Global       );
 
     return(new Material(data));

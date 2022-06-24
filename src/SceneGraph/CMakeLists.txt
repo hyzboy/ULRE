@@ -61,10 +61,10 @@ SET(TILE_FONT_SOURCE    ${SG_INCLUDE_PATH}/font/TileFont.h
 SET(FONT_LAYOUT_SOURCE  ${SG_INCLUDE_PATH}/font/TextLayout.h
                         font/TextLayout.cpp)
 
-SET(TEXT_RENDERABLE_SOURCE  ${SG_INCLUDE_PATH}/font/TextRenderable.h
+SET(TEXT_RENDERABLE_SOURCE  ${SG_INCLUDE_PATH}/font/TextPrimitive.h
                             ${SG_INCLUDE_PATH}/font/TextRender.h
                             font/TextRender.cpp
-                            font/TextRenderable.cpp)
+                            font/TextPrimitive.cpp)
 
 SOURCE_GROUP("Font"             FILES ${FONT_MANAGE_SOURCE})
 SOURCE_GROUP("Font\\Source"     FILES ${FONT_SOURCE})
@@ -220,9 +220,9 @@ SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
 
 SOURCE_GROUP("Vulkan\\Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
-SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
+SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKPrimitive.h
                             ${SG_INCLUDE_PATH}/VKRenderableInstance.h
-                            Vulkan/VKRenderable.cpp
+                            Vulkan/VKPrimitive.cpp
                             Vulkan/VKRenderableInstance.cpp
                             Vulkan/VKTileData.cpp
                             Vulkan/VKTileFont.cpp)

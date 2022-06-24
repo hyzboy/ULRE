@@ -8,7 +8,7 @@
 VK_NAMESPACE_BEGIN
 using namespace util;
 
-RenderableInstance::RenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
+RenderableInstance::RenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
 {
     render_obj=r;
     pipeline=p;
@@ -32,7 +32,7 @@ RenderableInstance::~RenderableInstance()
     delete[] buffer_size;
 }
 
-RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
+RenderableInstance *CreateRenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!r||!mi||!p)return(nullptr);
 

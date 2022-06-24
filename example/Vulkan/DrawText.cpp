@@ -14,7 +14,7 @@ private:
 
     TextRender *        text_render         =nullptr;
 
-    TextRenderable *    text_render_obj     =nullptr;
+    TextPrimitive *    text_render_obj     =nullptr;
     RenderableInstance *render_instance     =nullptr;
 
 public:
@@ -40,7 +40,7 @@ private:
         if(!text_render)
             return(false);
 
-        text_render_obj=text_render->CreateRenderable(str);
+        text_render_obj=text_render->CreatePrimitive(str);
         if(!text_render_obj)
             return(false);
 

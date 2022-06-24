@@ -28,7 +28,7 @@ constexpr uint32_t SCREEN_HEIGHT=720;
         /**
          * 创建一个地形网格
          */
-        Renderable *CreateRenderableTerrain(RenderResource *db,const VAB *vab,const TerrainCreateInfo *tci)
+        Primitive *CreateRenderableTerrain(RenderResource *db,const VAB *vab,const TerrainCreateInfo *tci)
         {
         }
 
@@ -47,7 +47,7 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Renderable        * renderable          =nullptr;
+    Primitive        * renderable          =nullptr;
 
 private:
 
@@ -66,7 +66,7 @@ private:
         return(true);
     }
     
-    RenderableInstance *Add(Renderable *r,const Matrix4f &mat)
+    RenderableInstance *Add(Primitive *r,const Matrix4f &mat)
     {
         RenderableInstance *ri=db->CreateRenderableInstance(r,material_instance,pipeline);
 

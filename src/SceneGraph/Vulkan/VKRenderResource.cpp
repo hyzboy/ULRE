@@ -72,11 +72,11 @@ MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_fil
     return CreateMaterialInstance(mtl,vab_cfg);
 }
 
-Renderable *RenderResource::CreateRenderable(const uint32_t vertex_count)
+Primitive *RenderResource::CreatePrimitive(const uint32_t vertex_count)
 {
     if(!vertex_count)return(nullptr);
 
-    Renderable *ro=new Renderable(vertex_count);
+    Primitive *ro=new Primitive(vertex_count);
 
     if(ro)
         Add(ro);
@@ -84,7 +84,7 @@ Renderable *RenderResource::CreateRenderable(const uint32_t vertex_count)
     return ro;
 }
 
-RenderableInstance *RenderResource::CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p)
+RenderableInstance *RenderResource::CreateRenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);

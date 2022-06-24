@@ -36,7 +36,7 @@ private:
     GPUBuffer *         ubo_color           =nullptr;
     GPUBuffer *         ubo_sun             =nullptr;
 
-    Renderable *        renderable_object   =nullptr;
+    Primitive *        renderable_object   =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 

@@ -11,7 +11,7 @@ namespace hgl
         class FontSource;
         class TileFont;
         class TextLayout;
-        class TextRenderable;
+        class TextPrimitive;
 
         class TextRender
         {
@@ -33,7 +33,7 @@ namespace hgl
             Color4f             color;
             GPUBuffer *         ubo_color;
 
-            SortedSets<TextRenderable *> tr_sets;
+            SortedSets<TextPrimitive *> tr_sets;
 
         private:
 
@@ -53,14 +53,14 @@ namespace hgl
 
         public:
 
-            TextRenderable *CreateRenderable();
-            TextRenderable *CreateRenderable(const UTF16String &str);
+            TextPrimitive *CreatePrimitive();
+            TextPrimitive *CreatePrimitive(const UTF16String &str);
 
-            bool Layout(TextRenderable *tr,const UTF16String &str);
+            bool Layout(TextPrimitive *tr,const UTF16String &str);
 
-            RenderableInstance *CreateRenderableInstance(TextRenderable *text_render_obj);
+            RenderableInstance *CreateRenderableInstance(TextPrimitive *text_render_obj);
 
-            void Release(TextRenderable *);
+            void Release(TextPrimitive *);
         };//class TextRender
 
         /**

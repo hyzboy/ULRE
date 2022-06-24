@@ -4,7 +4,7 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSets.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKTexture.h>
@@ -12,14 +12,14 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/VKRenderableInstance.h>
-#include<hgl/graph/font/TextRenderable.h>
+#include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/ResManage.h>
 VK_NAMESPACE_BEGIN
 using MaterialID            =int;
 using MaterialInstanceID    =int;
 using BufferID              =int;
 using DescriptorSetsID      =int;
-using RenderableID          =int;
+using PrimitiveID           =int;
 using RenderableInstanceID  =int;
 using SamplerID             =int;
 using TextureID             =int;
@@ -40,7 +40,7 @@ class RenderResource
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
     IDResManage<DescriptorSetsID,       DescriptorSets>     rm_desc_sets;               ///<描述符合集
-    IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<可渲染对象合集
+    IDResManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
     IDResManage<BufferID,               GPUBuffer>          rm_buffers;                 ///<顶点缓冲区合集
     IDResManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
@@ -56,7 +56,7 @@ public: //Add
     MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
     DescriptorSetsID        Add(DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
-    RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
+    PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
     BufferID                Add(GPUBuffer *         buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
@@ -93,9 +93,9 @@ public: //Material
     MaterialInstance *  CreateMaterialInstance(Material *,const VABConfigInfo *vab_cfg=nullptr);
     MaterialInstance *  CreateMaterialInstance(const OSString &,const VABConfigInfo *vab_cfg=nullptr);
 
-    Renderable *        CreateRenderable(const uint32_t vertex_count=0);
+    Primitive *         CreatePrimitive(const uint32_t vertex_count=0);
 
-    RenderableInstance *CreateRenderableInstance(Renderable *r,MaterialInstance *mi,Pipeline *p);
+    RenderableInstance *CreateRenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
     Sampler *           CreateSampler(Texture *);
@@ -110,7 +110,7 @@ public: //Get
     Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
-    Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
+    Primitive *         GetRenderable           (const PrimitiveID          &id){return rm_primitives.Get(id);}
     GPUBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}

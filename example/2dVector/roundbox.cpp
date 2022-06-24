@@ -129,7 +129,7 @@ private:
     
     bool InitVBO()
     {
-        Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
+        Primitive *render_obj=db->CreatePrimitive(VERTEX_COUNT);
         if(!render_obj)return(false);
 
         if(!render_obj->Set(VAN::Position,  db->CreateVBO(VF_V4I16,VERTEX_COUNT,position_data)))return(false);

@@ -59,7 +59,7 @@ private:
         Texture2D *     normal              =nullptr;
     }texture;
 
-    Renderable          *ro_axis,
+    Primitive          *ro_axis,
                         *ro_cube,
                         *ro_sphere,
                         *ro_torus,
@@ -230,14 +230,14 @@ private:
         return(true);
     }
     
-    void Add(Renderable *r,Pipeline *pl)
+    void Add(Primitive *r,Pipeline *pl)
     {
         auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 
         render_root.CreateSubNode(ri);
     }
 
-    void Add(Renderable *r,Pipeline *pl,const Matrix4f &mat)
+    void Add(Primitive *r,Pipeline *pl,const Matrix4f &mat)
     {
         auto ri=db->CreateRenderableInstance(r,material_instance,pl);
 

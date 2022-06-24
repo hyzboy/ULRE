@@ -43,7 +43,7 @@ private:
     GPUBuffer *         ubo_atomsphere      =nullptr;
     AtmosphereData      atomsphere_data;
 
-    Renderable *        ro_sphere           =nullptr;
+    Primitive *        ro_sphere           =nullptr;
 
 private:
 

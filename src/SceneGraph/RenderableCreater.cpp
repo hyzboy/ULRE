@@ -105,14 +105,14 @@ namespace hgl
             return (uint32 *)ibo->Map();
         }
 
-        Renderable *RenderableCreater::Finish()
+        Primitive *RenderableCreater::Finish()
         {
             const uint si_count=vab->GetVertexAttrCount();
 
             if(ssb_map.GetCount()!=si_count)
                 return(nullptr);
 
-            Renderable *render_obj=db->CreateRenderable(vertices_number);
+            Primitive *render_obj=db->CreatePrimitive(vertices_number);
 
             const auto *sp=ssb_map.GetDataList();
             for(uint i=0;i<si_count;i++)

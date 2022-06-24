@@ -28,7 +28,7 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Renderable        * ro_plane_grid[3];
+    Primitive        * ro_plane_grid[3];
 
 private:
 
@@ -47,7 +47,7 @@ private:
         return(true);
     }
     
-    RenderableInstance *Add(Renderable *r,const Matrix4f &mat)
+    RenderableInstance *Add(Primitive *r,const Matrix4f &mat)
     {
         RenderableInstance *ri=db->CreateRenderableInstance(r,material_instance,pipeline);
 

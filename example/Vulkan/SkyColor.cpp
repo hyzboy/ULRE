@@ -34,7 +34,7 @@ private:
 
     GPUBuffer *         ubo_sky_color       =nullptr;
 
-    Renderable        * ro_skyphere         =nullptr;
+    Primitive        * ro_skyphere         =nullptr;
 
 private:
 
@@ -77,7 +77,7 @@ private:
         return(true);
     }
     
-    RenderableInstance *Add(Renderable *r,const Matrix4f &mat)
+    RenderableInstance *Add(Primitive *r,const Matrix4f &mat)
     {
         RenderableInstance *ri=db->CreateRenderableInstance(r,material_instance,pipeline);
 

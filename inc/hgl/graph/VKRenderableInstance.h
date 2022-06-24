@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
 #define HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
 
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSets.h>
 #include<hgl/graph/VKMaterial.h>
@@ -16,7 +16,7 @@ class RenderableInstance                                                        
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
-    Renderable *        render_obj;
+    Primitive *         render_obj;
 
     uint32_t            buffer_count;
     VkBuffer *          buffer_list;
@@ -26,9 +26,9 @@ class RenderableInstance                                                        
 
 private:
 
-    friend RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);
+    friend RenderableInstance *CreateRenderableInstance(Primitive *,MaterialInstance *,Pipeline *);
 
-    RenderableInstance(Renderable *,MaterialInstance *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
+    RenderableInstance(Primitive *,MaterialInstance *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
 
 public:
 
@@ -40,7 +40,7 @@ public:
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
-            Renderable *        GetRenderable       (){return render_obj;}
+            Primitive *        GetRenderable       (){return render_obj;}
     const   AABB &              GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
 
     const   uint32_t            GetBufferCount      ()const{return buffer_count;}
@@ -59,6 +59,6 @@ public: //instance support
     virtual const uint32_t      GetInstanceCount    ()const{return 1;}
 };//class RenderableInstance
 
-RenderableInstance *CreateRenderableInstance(Renderable *,MaterialInstance *,Pipeline *);
+RenderableInstance *CreateRenderableInstance(Primitive *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
