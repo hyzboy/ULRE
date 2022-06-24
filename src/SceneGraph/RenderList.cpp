@@ -6,7 +6,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKMaterialParameters.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/util/sort/Sort.h>
 
 /**
@@ -23,8 +23,8 @@ int Comparator<RenderNodePointer>::compare(const RenderNodePointer &obj_one,cons
 {
     int off;
 
-    hgl::graph::RenderableInstance *ri_one=obj_one->ri;
-    hgl::graph::RenderableInstance *ri_two=obj_two->ri;
+    hgl::graph::Renderable *ri_one=obj_one->ri;
+    hgl::graph::Renderable *ri_two=obj_two->ri;
 
     //比较管线
     {
@@ -133,7 +133,7 @@ namespace hgl
                     ubo_align=mvp_array->GetUnitSize();
                     
                     char *mp=(char *)(mvp_array->Map(0,count));
-                    RenderableInstance **ri=ri_list.GetData();
+                    Renderable **ri=ri_list.GetData();
 
                     for(RenderNode *node:render_node_list)                  //未来可能要在Expend处考虑做去重
                     {
@@ -165,7 +165,7 @@ namespace hgl
         {
             if(!sn)return(false);
 
-            RenderableInstance *ri=sn->GetRI();
+            Renderable *ri=sn->GetRenderable();
 
             if(ri)
             {
@@ -204,7 +204,7 @@ namespace hgl
             return(true);
         }
 
-        void RenderList::Render(RenderableInstance *ri)
+        void RenderList::Render(Renderable *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
@@ -294,7 +294,7 @@ namespace hgl
             last_vbo=0;
             ubo_offset=0;
 
-            for(RenderableInstance *ri:ri_list)
+            for(Renderable *ri:ri_list)
                 Render(ri);
 
             return(true);

@@ -208,7 +208,7 @@ public:
         }
     }
 
-    bool BuildCommandBuffer(RenderCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,RenderableInstance *ri)
+    bool BuildCommandBuffer(RenderCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,Renderable *ri)
     {   
         if(!ri)return(false);
 
@@ -233,7 +233,7 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(RenderCmdBuffer *cb,RenderTarget *rt,RenderableInstance *ri)
+    void BuildCommandBuffer(RenderCmdBuffer *cb,RenderTarget *rt,Renderable *ri)
     {
         if(!cb||!rt||!ri)
             return;
@@ -241,14 +241,14 @@ public:
         BuildCommandBuffer(cb,rt->GetRenderPass(),rt->GetFramebuffer(),ri);
     }
 
-    bool BuildCommandBuffer(uint32_t index,RenderableInstance *ri)
+    bool BuildCommandBuffer(uint32_t index,Renderable *ri)
     {   
         if(!ri)return(false);
 
         return BuildCommandBuffer(cmd_buf[index],sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index),ri);
     }
 
-    bool BuildCommandBuffer(RenderableInstance *ri)
+    bool BuildCommandBuffer(Renderable *ri)
     {
         if(!ri)return(false);
 
@@ -258,7 +258,7 @@ public:
         return(true);
     }
 
-    bool BuildCurrentCommandBuffer(RenderableInstance *ri)
+    bool BuildCurrentCommandBuffer(Renderable *ri)
     {
         if(!ri)return(false);
     

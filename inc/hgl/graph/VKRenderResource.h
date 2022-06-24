@@ -11,7 +11,7 @@
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttribData.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/ResManage.h>
 VK_NAMESPACE_BEGIN
@@ -20,7 +20,7 @@ using MaterialInstanceID    =int;
 using BufferID              =int;
 using DescriptorSetsID      =int;
 using PrimitiveID           =int;
-using RenderableInstanceID  =int;
+using RenderableID          =int;
 using SamplerID             =int;
 using TextureID             =int;
 
@@ -44,7 +44,7 @@ class RenderResource
     IDResManage<BufferID,               GPUBuffer>          rm_buffers;                 ///<顶点缓冲区合集
     IDResManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
-    IDResManage<RenderableInstanceID,   RenderableInstance> rm_renderable_instances;    ///<渲染实例集合集
+    IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
 public:
 
@@ -60,7 +60,7 @@ public: //Add
     BufferID                Add(GPUBuffer *         buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
-    RenderableInstanceID    Add(RenderableInstance *ri  ){return rm_renderable_instances.Add(ri);}
+    RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
 
 public: // VBO/VAO
 
@@ -95,7 +95,7 @@ public: //Material
 
     Primitive *         CreatePrimitive(const uint32_t vertex_count=0);
 
-    RenderableInstance *CreateRenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p);
+    Renderable *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
     Sampler *           CreateSampler(Texture *);
@@ -110,11 +110,11 @@ public: //Get
     Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
-    Primitive *         GetPrimitive           (const PrimitiveID          &id){return rm_primitives.Get(id);}
+    Primitive *         GetPrimitive            (const PrimitiveID          &id){return rm_primitives.Get(id);}
     GPUBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
-    RenderableInstance *GetRenderableInstance   (const RenderableInstanceID &id){return rm_renderable_instances.Get(id);}
+    Renderable *        GetRenderable           (const RenderableID &id){return rm_renderables.Get(id);}
 };//class RenderResource
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DATABASE_INCLUDE

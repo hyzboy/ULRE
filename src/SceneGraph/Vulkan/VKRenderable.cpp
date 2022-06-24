@@ -1,4 +1,4 @@
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
@@ -8,7 +8,7 @@
 VK_NAMESPACE_BEGIN
 using namespace util;
 
-RenderableInstance::RenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
+Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
 {
     primitive=r;
     pipeline=p;
@@ -24,7 +24,7 @@ RenderableInstance::RenderableInstance(Primitive *r,MaterialInstance *mi,Pipelin
         buffer_hash=0;
 }
  
-RenderableInstance::~RenderableInstance()
+Renderable::~Renderable()
 {
     //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
@@ -32,7 +32,7 @@ RenderableInstance::~RenderableInstance()
     delete[] buffer_size;
 }
 
-RenderableInstance *CreateRenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p)
+Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!r||!mi||!p)return(nullptr);
 
@@ -92,7 +92,7 @@ RenderableInstance *CreateRenderableInstance(Primitive *r,MaterialInstance *mi,P
         ++attr_list;
     }
 
-    RenderableInstance *ri=new RenderableInstance(r,mi,p,input_count,buffer_list,buffer_size);
+    Renderable *ri=new Renderable(r,mi,p,input_count,buffer_list,buffer_size);
     buffer_list.Discard();
     buffer_size.Discard();
     return ri;

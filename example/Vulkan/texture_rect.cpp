@@ -50,7 +50,7 @@ private:
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    RenderableInstance *renderable_instance =nullptr;
+    Renderable *renderable =nullptr;
     Pipeline *          pipeline            =nullptr;
 
 private:
@@ -87,7 +87,7 @@ private:
         if(!primitive->Set(VAN::TexCoord,db->CreateVBO(VF_V2F,VERTEX_COUNT,tex_coord_data)))return(false);
         if(!primitive->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
 
-        renderable_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
+        renderable=db->CreateRenderable(primitive,material_instance,pipeline);
 
         return(true);
     }
@@ -105,7 +105,7 @@ public:
         if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(renderable_instance);
+        BuildCommandBuffer(renderable);
 
         return(true);
     }
@@ -114,7 +114,7 @@ public:
     {
         VulkanApplicationFramework::Resize(w,h);
         
-        BuildCommandBuffer(renderable_instance);
+        BuildCommandBuffer(renderable);
     }
 };//class TestApp:public VulkanApplicationFramework
 

@@ -37,7 +37,7 @@ namespace hgl
         private:
 
             MVPArrayBuffer *mvp_array;
-            List<RenderableInstance *> ri_list;
+            List<Renderable *> ri_list;
 
             VkDescriptorSet ds_list[(size_t)DescriptorSetsType::RANGE_SIZE];
             DescriptorSets *renderable_desc_sets;
@@ -57,7 +57,7 @@ namespace hgl
             MaterialParameters *last_mp[(size_t)DescriptorSetsType::RANGE_SIZE];
             uint32_t            last_vbo;
 
-            void Render(RenderableInstance *);
+            void Render(Renderable *);
 
         public:
 

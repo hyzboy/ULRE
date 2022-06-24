@@ -1,5 +1,5 @@
-﻿#ifndef HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
-#define HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
+﻿#ifndef HGL_GRAPH_RENDERABLE_INCLUDE
+#define HGL_GRAPH_RENDERABLE_INCLUDE
 
 #include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VKPipeline.h>
@@ -9,10 +9,10 @@
 #include<hgl/graph/VKMaterialInstance.h>
 VK_NAMESPACE_BEGIN
 /**
-* 可渲染对象实例<br>
+* 可渲染对象<br>
 * RenderList会统一管理Shader中的LocalToWorld数据，使用DynamicUBO/DynamicSSBO实现。
 */
-class RenderableInstance                                                        ///可渲染对象实例
+class Renderable                                                                ///可渲染对象实例
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
@@ -26,13 +26,13 @@ class RenderableInstance                                                        
 
 private:
 
-    friend RenderableInstance *CreateRenderableInstance(Primitive *,MaterialInstance *,Pipeline *);
+    friend Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    RenderableInstance(Primitive *,MaterialInstance *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
+    Renderable(Primitive *,MaterialInstance *,Pipeline *,const uint32_t,VkBuffer *,VkDeviceSize *);
 
 public:
 
-    virtual ~RenderableInstance();
+    virtual ~Renderable();
 
             void                UpdatePipeline      (Pipeline *p){pipeline=p;}
 
@@ -57,8 +57,8 @@ public:
 public: //instance support
 
     virtual const uint32_t      GetInstanceCount    ()const{return 1;}
-};//class RenderableInstance
+};//class Renderable
 
-RenderableInstance *CreateRenderableInstance(Primitive *,MaterialInstance *,Pipeline *);
+Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_RENDERABLE_INSTANCE_INCLUDE
+#endif//HGL_GRAPH_RENDERABLE_INCLUDE

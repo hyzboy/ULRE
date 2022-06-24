@@ -1,11 +1,11 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/RenderList.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 namespace hgl
 {
     namespace graph
     {
-        void SceneNode::SetRI(RenderableInstance *ri)
+        void SceneNode::SetRenderable(Renderable *ri)
         {
             render_obj=ri;
 

@@ -8,7 +8,7 @@ namespace hgl
 {
     namespace graph
     {
-        class RenderableInstance;
+        class Renderable;
 
         struct RenderNode
         {
@@ -19,7 +19,7 @@ namespace hgl
             float distance_to_camera_square;
 //            float distance_to_camera;
 
-            RenderableInstance *ri;
+            Renderable *ri;
 
         public:
 

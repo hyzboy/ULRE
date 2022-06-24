@@ -112,7 +112,7 @@ private:
         uint count;
         float size;
 
-        RenderableInstance *ri=db->CreateRenderableInstance(renderable_object,material_instance,pipeline);
+        Renderable *ri=db->CreateRenderable(renderable_object,material_instance,pipeline);
 
         for(uint i=0;i<360;i++)
         {

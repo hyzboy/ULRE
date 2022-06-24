@@ -4,7 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKImageView.h>
@@ -89,7 +89,7 @@ private:
                             *ro_gbc_plane,
                             *ro_axis;
 
-    RenderableInstance      *ro_gbc_plane_ri;
+    Renderable      *ro_gbc_plane_ri;
 
     struct
     {
@@ -329,7 +329,7 @@ private:
         ro_gbc_plane=CreateRenderableGBufferComposition(db,sp_composition.material_instance->GetVAB());
         if(!ro_gbc_plane)return(false);
 
-        ro_gbc_plane_ri=db->CreateRenderableInstance(ro_gbc_plane,sp_composition.material_instance,sp_composition.pipeline_fan);
+        ro_gbc_plane_ri=db->CreateRenderable(ro_gbc_plane,sp_composition.material_instance,sp_composition.pipeline_fan);
         if(!ro_gbc_plane_ri)return(false);
 
         return(true);
@@ -338,12 +338,12 @@ private:
     bool InitScene(SubpassParam *sp)
     {
         CreateRenderObject(sp->material_instance->GetVAB());
-        render_root.CreateSubNode(                      scale(100,100,1),   db->CreateRenderableInstance(ro_plane      ,sp->material_instance,sp->pipeline_fan      ));
-        render_root.CreateSubNode(                                          db->CreateRenderableInstance(ro_torus      ,sp->material_instance,sp->pipeline_triangles));
-        render_root.CreateSubNode(                      scale(20,20,20),    db->CreateRenderableInstance(ro_sphere     ,sp->material_instance,sp->pipeline_triangles));
-        render_root.CreateSubNode(translate(-30,  0,10)*scale(10,10,10),    db->CreateRenderableInstance(ro_cube       ,sp->material_instance,sp->pipeline_triangles));
-        render_root.CreateSubNode(translate( 30, 30,10)*scale(1,1,2),       db->CreateRenderableInstance(ro_cylinder   ,sp->material_instance,sp->pipeline_triangles));
-        render_root.CreateSubNode(translate(  0,-30, 0)*scale(1,1,2),       db->CreateRenderableInstance(ro_cone       ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(                      scale(100,100,1),   db->CreateRenderable(ro_plane      ,sp->material_instance,sp->pipeline_fan      ));
+        render_root.CreateSubNode(                                          db->CreateRenderable(ro_torus      ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(                      scale(20,20,20),    db->CreateRenderable(ro_sphere     ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(translate(-30,  0,10)*scale(10,10,10),    db->CreateRenderable(ro_cube       ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(translate( 30, 30,10)*scale(1,1,2),       db->CreateRenderable(ro_cylinder   ,sp->material_instance,sp->pipeline_triangles));
+        render_root.CreateSubNode(translate(  0,-30, 0)*scale(1,1,2),       db->CreateRenderable(ro_cone       ,sp->material_instance,sp->pipeline_triangles));
 
         render_root.RefreshMatrix();
         render_list->Expend(GetCameraInfo(),&render_root);

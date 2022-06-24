@@ -32,7 +32,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    RenderableInstance *render_instance     =nullptr;
+    Renderable *render_instance     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -59,7 +59,7 @@ private:
         if(!primitive->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
         if(!primitive->Set(VAN::Color,     db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data)))return(false);
         
-        render_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
+        render_instance=db->CreateRenderable(primitive,material_instance,pipeline);
         return(true);
     }
 

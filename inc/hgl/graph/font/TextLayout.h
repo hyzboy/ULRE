@@ -3,7 +3,7 @@
 
 #include<hgl/type/StringList.h>
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/graph/RenderableCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/TileData.h>
 #include<hgl/type/MemBlock.h>
 namespace hgl

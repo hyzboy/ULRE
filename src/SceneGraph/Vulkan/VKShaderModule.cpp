@@ -93,7 +93,7 @@ VAB *VertexShaderModule::CreateVAB(const VABConfigInfo *cfg)
         attr->offset    =0;
 
         bind->binding   =i;                             //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
-                                                        //在RenderableInstance类中，buffer_list必需严格按照本此binding为序列号排列
+                                                        //在Renderable类中，buffer_list必需严格按照本此binding为序列号排列
 
         if(!cfg||!cfg->Get((*si)->name,vac))
         {

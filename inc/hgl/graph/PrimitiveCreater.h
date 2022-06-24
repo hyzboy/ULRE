@@ -1,5 +1,5 @@
-﻿#ifndef HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
-#define HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
+﻿#ifndef HGL_GRAPH_PRIMITIVE_CREATER_INCLUDE
+#define HGL_GRAPH_PRIMITIVE_CREATER_INCLUDE
 
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
@@ -26,9 +26,9 @@ namespace hgl
         using ShaderStageBindMap=MapObject<AnsiString,ShaderStageBind>;
 
         /**
-         * 可渲染对象创建器
+         * 可绘制图元创建器
          */
-        class RenderableCreater
+        class PrimitiveCreater
         {
         protected:
 
@@ -46,8 +46,8 @@ namespace hgl
 
         public:
 
-            RenderableCreater(RenderResource *sdb,const VAB *);
-            virtual ~RenderableCreater()=default;
+            PrimitiveCreater(RenderResource *sdb,const VAB *);
+            virtual ~PrimitiveCreater()=default;
 
             virtual bool                    Init(const uint32 vertices_count);                                          ///<初始化，参数为顶点数量
 
@@ -79,7 +79,7 @@ namespace hgl
                     uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr);                         ///<创建32位的索引缓冲区
 
             virtual Primitive *            Finish();                                                                   ///<结束并创建可渲染对象
-        };//class RenderableCreater
+        };//class PrimitiveCreater
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_RENDERABLE_CREATER_INCLUDE
+#endif//HGL_GRAPH_PRIMITIVE_CREATER_INCLUDE

@@ -26,7 +26,7 @@ namespace hgl
             Vector4f LocalCenter;                                                                                       ///<本地坐标中心点
             Vector4f WorldCenter;                                                                                       ///<世界坐标中心点
 
-            RenderableInstance *render_obj=nullptr;                                                                     ///<可渲染实例
+            Renderable *render_obj=nullptr;                                                                             ///<可渲染实例
 
         public:
 
@@ -35,9 +35,9 @@ namespace hgl
         public:
 
             SceneNode()=default;
-            SceneNode(                      RenderableInstance *ri  )                   {render_obj=ri;}
-            SceneNode(const Matrix4f &mat                           ):SceneOrient(mat)  {}
-            SceneNode(const Matrix4f &mat,  RenderableInstance *ri  ):SceneOrient(mat)  {render_obj=ri;}
+            SceneNode(                      Renderable *ri  )                   {render_obj=ri;}
+            SceneNode(const Matrix4f &mat                   ):SceneOrient(mat)  {}
+            SceneNode(const Matrix4f &mat,  Renderable *ri  ):SceneOrient(mat)  {render_obj=ri;}
 
             virtual ~SceneNode()=default;
 
@@ -47,8 +47,8 @@ namespace hgl
                 render_obj=nullptr;
             }
 
-            RenderableInstance *GetRI(){return render_obj;}
-            void                SetRI(RenderableInstance *);
+            Renderable *GetRenderable(){return render_obj;}
+            void        SetRenderable(Renderable *);
 
             SceneNode *CreateSubNode()
             {
@@ -58,7 +58,7 @@ namespace hgl
                 return sn;
             }
 
-            SceneNode *CreateSubNode(RenderableInstance *ri)
+            SceneNode *CreateSubNode(Renderable *ri)
             {
                 SceneNode *sn=new SceneNode(ri);
 
@@ -74,7 +74,7 @@ namespace hgl
                 return sn;
             }
 
-            SceneNode *CreateSubNode(const Matrix4f &mat,RenderableInstance *ri)
+            SceneNode *CreateSubNode(const Matrix4f &mat,Renderable *ri)
             {
                 SceneNode *sn=new SceneNode(mat,ri);
 

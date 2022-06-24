@@ -40,10 +40,10 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         #SceneFile.cpp
                         )
 
-SET(RENDERABLE_FILES    ${SG_INCLUDE_PATH}/RenderableCreater.h
-                        RenderableCreater.cpp)
+SET(PRIMITIVE_CREATER_FILES ${SG_INCLUDE_PATH}/PrimitiveCreater.h
+                            PrimitiveCreater.cpp)
 
-SOURCE_GROUP("Renderable" FILES ${RENDERABLE_FILES})
+SOURCE_GROUP("PrimitiveCreater" FILES ${PRIMITIVE_CREATER_FILES})
 
 SET(FONT_MANAGE_SOURCE  ${SG_INCLUDE_PATH}/font/Font.h
                         ${SG_INCLUDE_PATH}/font/FontManage.h
@@ -221,9 +221,9 @@ SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
 SOURCE_GROUP("Vulkan\\Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
 SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKPrimitive.h
-                            ${SG_INCLUDE_PATH}/VKRenderableInstance.h
+                            ${SG_INCLUDE_PATH}/VKRenderable.h
                             Vulkan/VKPrimitive.cpp
-                            Vulkan/VKRenderableInstance.cpp
+                            Vulkan/VKRenderable.cpp
                             Vulkan/VKTileData.cpp
                             Vulkan/VKTileFont.cpp)
 
@@ -264,7 +264,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${TILE_SOURCE}
                                         ${SG_VAD_SOURCE}
 
-                                        ${RENDERABLE_FILES}
+                                        ${PRIMITIVE_CREATER_FILES}
 
                                         ${FONT_MANAGE_SOURCE}
                                         ${FONT_SOURCE}

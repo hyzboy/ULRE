@@ -4,7 +4,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/RenderableInstance.h>
+#include<hgl/graph/Renderable.h>
 #include<hgl/graph/VertexAttribData.h>
 
 #include<hgl/graph/data/SceneNodeData.h>
@@ -110,13 +110,13 @@ private:
     ModelData *model_data;
 
     vulkan::Primitive **mesh_renderable;
-    RenderableInstance **mesh_renderable_instance;
+    Renderable **mesh_renderable_instance;
 
     vulkan::Primitive *axis_renderable;
-    RenderableInstance *axis_renderable_instance;
+    Renderable *axis_renderable_instance;
 
     vulkan::Primitive *bbox_renderable;
-    RenderableInstance *bbox_renderable_instance;
+    Renderable *bbox_renderable_instance;
 
 private:
 
@@ -163,9 +163,9 @@ private:
         return(true);
     }
 
-    RenderableInstance *CreateRenderableInstance(const MP &mp,vulkan::Primitive *r)
+    Renderable *CreateRenderable(const MP &mp,vulkan::Primitive *r)
     {
-        return db->CreateRenderableInstance(mp.pipeline,mp.material_instance,r);
+        return db->CreateRenderable(mp.pipeline,mp.material_instance,r);
     }
 
     void CreateRenderObject()
@@ -174,12 +174,12 @@ private:
         MeshData **md=model_data->mesh_list.GetData();
 
         mesh_renderable         =new vulkan::Primitive *[count];
-        mesh_renderable_instance=new RenderableInstance *[count];
+        mesh_renderable_instance=new Renderable *[count];
 
         for(uint i=0;i<count;i++)
         {
             mesh_renderable[i]=CreateMeshRenderable(db,mp_solid.material,*md);
-            mesh_renderable_instance[i]=CreateRenderableInstance(mp_solid,mesh_renderable[i]);
+            mesh_renderable_instance[i]=CreateRenderable(mp_solid,mesh_renderable[i]);
             ++md;
         }
 
@@ -189,7 +189,7 @@ private:
             aci.size.Set(1000,1000,1000);
 
             axis_renderable=CreateRenderableAxis(db,mp_line.material,&aci);
-            axis_renderable_instance=CreateRenderableInstance(mp_line,axis_renderable);
+            axis_renderable_instance=CreateRenderable(mp_line,axis_renderable);
         }
 
         {
@@ -199,7 +199,7 @@ private:
             cci.color.Set(1,1,1,1);
 
             bbox_renderable=CreateRenderableBoundingBox(db,mp_line.material,&cci);
-            bbox_renderable_instance=CreateRenderableInstance(mp_line,bbox_renderable);
+            bbox_renderable_instance=CreateRenderable(mp_line,bbox_renderable);
         }
     }
 

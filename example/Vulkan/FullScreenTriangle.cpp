@@ -15,7 +15,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    RenderableInstance *renderable_instance =nullptr;
+    Renderable *renderable =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -38,7 +38,7 @@ private:
         auto primitive=db->CreatePrimitive(3);
         if(!primitive)return(false);
 
-        renderable_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
+        renderable=db->CreateRenderable(primitive,material_instance,pipeline);
 
         return(true);
     }
@@ -56,7 +56,7 @@ public:
         if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(renderable_instance);
+        BuildCommandBuffer(renderable);
 
         return(true);
     }
@@ -65,7 +65,7 @@ public:
     {
         VulkanApplicationFramework::Resize(w,h);
 
-        BuildCommandBuffer(renderable_instance);
+        BuildCommandBuffer(renderable);
     }
 };//class TestApp:public VulkanApplicationFramework
 

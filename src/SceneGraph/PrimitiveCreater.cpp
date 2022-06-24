@@ -1,11 +1,11 @@
-#include<hgl/graph/RenderableCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKShaderModule.h>
 
 namespace hgl
 {
     namespace graph
     {
-        RenderableCreater::RenderableCreater(RenderResource *sdb,const VAB *v)
+        PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VAB *v)
         {
             db              =sdb;
             vab             =v;
@@ -14,7 +14,7 @@ namespace hgl
             ibo             =nullptr;
         }
 
-        bool RenderableCreater::Init(const uint32 count)
+        bool PrimitiveCreater::Init(const uint32 count)
         {
             if(count<=0)return(false);
 
@@ -23,7 +23,7 @@ namespace hgl
             return(true);
         }
 
-        VAD *RenderableCreater::CreateVAD(const AnsiString &name)
+        VAD *PrimitiveCreater::CreateVAD(const AnsiString &name)
         {
             if(!vab)return(nullptr);
             if(name.IsEmpty())return(nullptr);
@@ -56,7 +56,7 @@ namespace hgl
             return ssb->data;
         }
 
-        bool RenderableCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
+        bool PrimitiveCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
         {
             if(!vab)return(false);
             if(name.IsEmpty())return(false);
@@ -89,7 +89,7 @@ namespace hgl
             return true;
         }
 
-        uint16 *RenderableCreater::CreateIBO16(uint count,const uint16 *data)
+        uint16 *PrimitiveCreater::CreateIBO16(uint count,const uint16 *data)
         {
             if(ibo)return(nullptr);
 
@@ -97,7 +97,7 @@ namespace hgl
             return (uint16 *)ibo->Map();
         }
 
-        uint32 *RenderableCreater::CreateIBO32(uint count,const uint32 *data)
+        uint32 *PrimitiveCreater::CreateIBO32(uint count,const uint32 *data)
         {
             if(ibo)return(nullptr);
 
@@ -105,7 +105,7 @@ namespace hgl
             return (uint32 *)ibo->Map();
         }
 
-        Primitive *RenderableCreater::Finish()
+        Primitive *PrimitiveCreater::Finish()
         {
             const uint si_count=vab->GetVertexAttrCount();
 

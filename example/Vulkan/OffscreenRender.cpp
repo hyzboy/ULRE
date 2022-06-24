@@ -25,7 +25,7 @@ class TestApp:public CameraAppFramework
         RenderCmdBuffer *   command_buffer      =nullptr;
         
         Pipeline *          pipeline            =nullptr;
-        RenderableInstance *renderable_instance =nullptr;
+        Renderable *renderable =nullptr;
 
     public:
 
@@ -45,7 +45,7 @@ class TestApp:public CameraAppFramework
         Sampler *           sampler             =nullptr;
        
         Pipeline *          pipeline            =nullptr;
-        RenderableInstance *renderable_instance =nullptr;
+        Renderable *renderable =nullptr;
 
         SceneNode           scene_root;
         RenderList *        render_list         =nullptr;
@@ -108,12 +108,12 @@ public:
             Primitive *primitive=CreateRenderableCircle(db,os.material_instance->GetVAB(),&cci);
             if(!primitive)return(false);
 
-            os.renderable_instance=db->CreateRenderableInstance(primitive,os.material_instance,os.pipeline);
+            os.renderable=db->CreateRenderable(primitive,os.material_instance,os.pipeline);
 
-            if(!os.renderable_instance)return(false);
+            if(!os.renderable)return(false);
         }
 
-        VulkanApplicationFramework::BuildCommandBuffer(os.command_buffer,os.render_taget,os.renderable_instance);
+        VulkanApplicationFramework::BuildCommandBuffer(os.command_buffer,os.render_taget,os.renderable);
 
         os.Submit();
 
@@ -144,9 +144,9 @@ public:
             Primitive *primitive=CreateRenderableCube(db,cube.material_instance->GetVAB(),&cci);
             if(!primitive)return(false);
 
-            cube.renderable_instance=db->CreateRenderableInstance(primitive,cube.material_instance,cube.pipeline);
+            cube.renderable=db->CreateRenderable(primitive,cube.material_instance,cube.pipeline);
 
-            cube.scene_root.CreateSubNode(cube.renderable_instance);
+            cube.scene_root.CreateSubNode(cube.renderable);
         }
 
         camera->pos=Vector4f(5,5,5,1.0);
