@@ -174,9 +174,9 @@ namespace hgl
             return true;
         }
 
-        Renderable *TextRender::CreateRenderable(TextPrimitive *text_render_obj)
+        Renderable *TextRender::CreateRenderable(TextPrimitive *text_primitive)
         {
-            return db->CreateRenderable(text_render_obj,material_instance,pipeline);
+            return db->CreateRenderable(text_primitive,material_instance,pipeline);
         }
 
         void TextRender::Release(TextPrimitive *tr)
