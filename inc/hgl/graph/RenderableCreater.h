@@ -49,7 +49,7 @@ namespace hgl
             RenderableCreater(RenderResource *sdb,const VAB *);
             virtual ~RenderableCreater()=default;
 
-            virtual bool                    Init(const uint32 count);                                                   ///<初始化，参数为顶点数量
+            virtual bool                    Init(const uint32 vertices_count);                                          ///<初始化，参数为顶点数量
 
                     VAD *                   CreateVAD(const AnsiString &name);                                          ///<创建一个顶点属性缓冲区
 

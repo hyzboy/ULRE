@@ -105,7 +105,7 @@ public:
 
             cili.lunarg.standard_validation = true;
             cili.khronos.validation = true;
-            cili.RenderDoc.Capture = true;
+            //cili.RenderDoc.Capture = true;
 
             inst=CreateInstance("VulkanTest",nullptr,&cili);
 
@@ -223,9 +223,9 @@ public:
                 cb->BindVBO(ri);
 
                     if (ib)
-                        cb->DrawIndexed(ib->GetCount());
+                        cb->DrawIndexed(ib->GetCount(),ri->GetInstanceCount());
                     else
-                        cb->Draw(ri->GetDrawCount());
+                        cb->Draw(ri->GetDrawCount(),ri->GetInstanceCount());
 
             cb->EndRenderPass();
         cb->End();
