@@ -95,14 +95,14 @@ int main(int,char **)
         else
             std::cout<<vf->bytes<<" bytes/pixel.";
 
-        if(vf->depth!=VulkanDataType::NONE)
+        if(vf->depth!=VulkanNumberType::NONE)
             std::cout<<"[Depth:"<<data_type_name[size_t(vf->depth)]<<"]";
         
-        if(vf->stencil!=VulkanDataType::NONE)
+        if(vf->stencil!=VulkanNumberType::NONE)
             std::cout<<"[Stencil:"<<data_type_name[size_t(vf->stencil)]<<"]";
 
-        if((vf->depth==VulkanDataType::NONE)
-         &&(vf->stencil==VulkanDataType::NONE))
+        if((vf->depth==VulkanNumberType::NONE)
+         &&(vf->stencil==VulkanNumberType::NONE))
             std::cout<<"[Color:"<<data_type_name[size_t(vf->color)]<<"]";
 
         {
