@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/font/TileFont.h>
-#include<hgl/graph/font/TextRenderable.h>
+#include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/Extent.h>
 
 namespace hgl
@@ -48,7 +48,7 @@ namespace hgl
          * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
          */
         template<typename T> 
-        bool TextLayout::preprocess(TextRenderable *tr,TileFont *tile_font,const T *str,const int str_length)
+        bool TextLayout::preprocess(TextPrimitive *tr,TileFont *tile_font,const T *str,const int str_length)
         {
             if(!tr
              ||!tile_font
@@ -243,7 +243,7 @@ namespace hgl
          * 简易文本排版。无任何特殊处理，不支持任何转义符，不支持\r\n
          */
         template<typename T>
-        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const String<T> &str)
+        int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const String<T> &str)
         {
             if(!tr)
                 return(-1);
@@ -292,8 +292,8 @@ namespace hgl
             return result;
         }
         
-        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const UTF16String &str){return this->SimpleLayout<u16char>(tr,tf,str);}
-        int TextLayout::SimpleLayout(TextRenderable *tr,TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tr,tf,str);}
+        int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const UTF16String &str){return this->SimpleLayout<u16char>(tr,tf,str);}
+        int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tr,tf,str);}
 
         //template<typename T>
         //int TextLayout::SimpleLayout(TileFont *tf,const StringList<String<T>> &sl)

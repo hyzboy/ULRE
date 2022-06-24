@@ -40,7 +40,7 @@ private:
 
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Primitive *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
@@ -174,7 +174,7 @@ private:
     {
         const uint tile_count=tile_list.GetCount();
 
-        render_obj=db->CreateRenderable(tile_count);
+        render_obj=db->CreatePrimitive(tile_count);
         if(!render_obj)return(false);
 
         render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,position_data));

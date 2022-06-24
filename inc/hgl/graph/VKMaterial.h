@@ -67,7 +67,7 @@ public:
             MaterialParameters *                GetMP                   (const DescriptorSetsType &type)
             {
                 if(type==DescriptorSetsType::Material   )return data->mp.m;else
-                if(type==DescriptorSetsType::Renderable )return data->mp.r;else
+                if(type==DescriptorSetsType::Primitive )return data->mp.r;else
                 if(type==DescriptorSetsType::Global     )return data->mp.g;else
                 return(nullptr);
             }

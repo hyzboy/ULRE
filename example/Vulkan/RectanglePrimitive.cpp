@@ -37,7 +37,7 @@ private:
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Primitive *        render_obj          =nullptr;
     RenderableInstance *render_instance     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
@@ -66,7 +66,7 @@ private:
 
     bool InitVBO()
     {        
-        render_obj=db->CreateRenderable(VERTEX_COUNT);
+        render_obj=db->CreatePrimitive(VERTEX_COUNT);
 
         if(!render_obj)return(false);
 

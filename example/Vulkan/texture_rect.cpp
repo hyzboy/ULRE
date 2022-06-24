@@ -80,7 +80,7 @@ private:
 
     bool InitVBO()
     {
-        auto render_obj=db->CreateRenderable(VERTEX_COUNT);
+        auto render_obj=db->CreatePrimitive(VERTEX_COUNT);
         if(!render_obj)return(false);
 
         if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);

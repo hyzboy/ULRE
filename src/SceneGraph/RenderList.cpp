@@ -2,7 +2,7 @@
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKBuffer.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKMaterialParameters.h>
@@ -151,7 +151,7 @@ namespace hgl
             //为所有的材质绑定
             for(Material *mtl:material_sets)
             {
-                MaterialParameters *mp=mtl->GetMP(DescriptorSetsType::Renderable);
+                MaterialParameters *mp=mtl->GetMP(DescriptorSetsType::Primitive);
 
                 if(mp)
                 {
@@ -219,7 +219,7 @@ namespace hgl
                 MaterialParameters *mp;
 
                 for(int i=(int)DescriptorSetsType::BEGIN_RANGE;
-                        i<(int)DescriptorSetsType::Renderable;
+                        i<(int)DescriptorSetsType::Primitive;
                         i++)
                 {
                     mp=ri->GetMP((DescriptorSetsType)i);
@@ -242,7 +242,7 @@ namespace hgl
                 }
 
                 {
-                    mp=ri->GetMP(DescriptorSetsType::Renderable);
+                    mp=ri->GetMP(DescriptorSetsType::Primitive);
 
                     if(mp)
                     {

@@ -23,13 +23,13 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
-vulkan::Renderable *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const MeshData *mesh)
+vulkan::Primitive *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const MeshData *mesh)
 {
     const vulkan::VertexShaderModule *vsm=mtl->GetVertexShaderModule();
 
     uint draw_count=mesh->indices_count;
 
-    vulkan::Renderable *render_obj=nullptr;
+    vulkan::Primitive *render_obj=nullptr;
     {
         const int vertex_binding=vsm->GetStageInputBinding("Vertex");
 
@@ -109,13 +109,13 @@ private:
 
     ModelData *model_data;
 
-    vulkan::Renderable **mesh_renderable;
+    vulkan::Primitive **mesh_renderable;
     RenderableInstance **mesh_renderable_instance;
 
-    vulkan::Renderable *axis_renderable;
+    vulkan::Primitive *axis_renderable;
     RenderableInstance *axis_renderable_instance;
 
-    vulkan::Renderable *bbox_renderable;
+    vulkan::Primitive *bbox_renderable;
     RenderableInstance *bbox_renderable_instance;
 
 private:
@@ -163,7 +163,7 @@ private:
         return(true);
     }
 
-    RenderableInstance *CreateRenderableInstance(const MP &mp,vulkan::Renderable *r)
+    RenderableInstance *CreateRenderableInstance(const MP &mp,vulkan::Primitive *r)
     {
         return db->CreateRenderableInstance(mp.pipeline,mp.material_instance,r);
     }
@@ -173,7 +173,7 @@ private:
         const uint count=model_data->mesh_list.GetCount();
         MeshData **md=model_data->mesh_list.GetData();
 
-        mesh_renderable         =new vulkan::Renderable *[count];
+        mesh_renderable         =new vulkan::Primitive *[count];
         mesh_renderable_instance=new RenderableInstance *[count];
 
         for(uint i=0;i<count;i++)

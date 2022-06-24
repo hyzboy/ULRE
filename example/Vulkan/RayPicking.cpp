@@ -42,9 +42,9 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Renderable *        ro_plane_grid       =nullptr;
+    Primitive *        ro_plane_grid       =nullptr;
 
-    Renderable *        ro_line             =nullptr;
+    Primitive *        ro_line             =nullptr;
 
     VBO *               vbo_pos             =nullptr;
 
@@ -67,7 +67,7 @@ private:
         return(true);
     }
     
-    RenderableInstance *Add(Renderable *r,const Matrix4f &mat)
+    RenderableInstance *Add(Primitive *r,const Matrix4f &mat)
     {
         RenderableInstance *ri=db->CreateRenderableInstance(r,material_instance,pipeline);
 
@@ -101,7 +101,7 @@ private:
         }
 
         {
-            ro_line=db->CreateRenderable(2);
+            ro_line=db->CreatePrimitive(2);
             if(!ro_line)return(false);
             
             if(!ro_line->Set(VAN::Position,  vbo_pos=db->CreateVBO(VF_V3F,2,position_data)))return(false);

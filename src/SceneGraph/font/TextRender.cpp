@@ -1,8 +1,7 @@
 ﻿#include<hgl/graph/font/TextRender.h>
-#include<hgl/graph/font/TextRenderable.h>
+#include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
-#include<hgl/graph/font/TextRenderable.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/type/Color.h>
 
@@ -27,7 +26,7 @@ namespace hgl
 
         TextRender::~TextRender()
         {
-            for(TextRenderable *tr:tr_sets)
+            for(TextPrimitive *tr:tr_sets)
             {
                 tile_font->Unregistry(tr->GetCharsSets().GetList());
                 delete tr;
@@ -145,18 +144,18 @@ namespace hgl
             return(true);
         }
 
-        TextRenderable *TextRender::CreateRenderable()
+        TextPrimitive *TextRender::CreatePrimitive()
         {   
-            TextRenderable *tr=new TextRenderable(device,material);
+            TextPrimitive *tr=new TextPrimitive(device,material);
 
             tr_sets.Add(tr);
 
             return tr;
         }
 
-        TextRenderable *TextRender::CreateRenderable(const UTF16String &str)
+        TextPrimitive *TextRender::CreatePrimitive(const UTF16String &str)
         {
-            TextRenderable *tr=CreateRenderable();
+            TextPrimitive *tr=CreatePrimitive();
 
             if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
                 return(tr);
@@ -164,7 +163,7 @@ namespace hgl
             return tr;
         }
 
-        bool TextRender::Layout(TextRenderable *tr,const UTF16String &str)
+        bool TextRender::Layout(TextPrimitive *tr,const UTF16String &str)
         {
             if(!tr)
                 return(false);
@@ -175,12 +174,12 @@ namespace hgl
             return true;
         }
 
-        RenderableInstance *TextRender::CreateRenderableInstance(TextRenderable *text_render_obj)
+        RenderableInstance *TextRender::CreateRenderableInstance(TextPrimitive *text_render_obj)
         {
             return db->CreateRenderableInstance(text_render_obj,material_instance,pipeline);
         }
 
-        void TextRender::Release(TextRenderable *tr)
+        void TextRender::Release(TextPrimitive *tr)
         {
             if(!tr)return;
 

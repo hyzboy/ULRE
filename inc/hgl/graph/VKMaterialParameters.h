@@ -34,7 +34,7 @@ public:
         MP_TYPE_IS(Material)
 //        MP_TYPE_IS(Texture)
         MP_TYPE_IS(Value)
-        MP_TYPE_IS(Renderable)
+        MP_TYPE_IS(Primitive)
         MP_TYPE_IS(Global)
     #undef MP_TYPE_IS
 

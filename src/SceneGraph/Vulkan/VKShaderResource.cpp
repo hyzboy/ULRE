@@ -11,7 +11,7 @@ VK_NAMESPACE_BEGIN
         {
             if(str[0]=='m')return DescriptorSetsType::Material;
             if(str[0]=='g')return DescriptorSetsType::Global;
-            if(str[0]=='r')return DescriptorSetsType::Renderable;
+            if(str[0]=='r')return DescriptorSetsType::Primitive;
         }
 
         return DescriptorSetsType::Value;

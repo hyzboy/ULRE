@@ -80,7 +80,7 @@ private:
     SubpassParam            sp_gbuffer;
     SubpassParam            sp_composition;
 
-    Renderable              *ro_plane,
+    Primitive              *ro_plane,
                             *ro_cube,
                             *ro_sphere,
                             *ro_torus,

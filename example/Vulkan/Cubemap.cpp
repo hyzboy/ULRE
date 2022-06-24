@@ -41,9 +41,9 @@ private:
     Sampler *           sampler             =nullptr;
     TextureCube *       texture             =nullptr;
 
-    Renderable *        ro_axis             =nullptr;
-    Renderable *        ro_cube             =nullptr;
-    Renderable *        ro_sphere           =nullptr;
+    Primitive *        ro_axis             =nullptr;
+    Primitive *        ro_cube             =nullptr;
+    Primitive *        ro_sphere           =nullptr;
 
 private:
 
@@ -148,7 +148,7 @@ private:
         return(true);
     }
 
-    SceneNode *Add(Renderable *r,MaterialInstance *mi,Pipeline *pl)
+    SceneNode *Add(Primitive *r,MaterialInstance *mi,Pipeline *pl)
     {
         auto ri=db->CreateRenderableInstance(r,mi,pl);
 

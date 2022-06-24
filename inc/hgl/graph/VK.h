@@ -8,7 +8,7 @@
 #include<iostream>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKFormat.h>
-#include<hgl/graph/VKPrimivate.h>
+#include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKStruct.h>
 #include<hgl/graph/VKRenderbufferInfo.h>
 
@@ -78,9 +78,9 @@ enum class DescriptorSetsType
     Material,   ///<材质中永远不变的参数
 //    Texture,    ///<材质中的纹理参数
     Value,      ///<材质中的变量参数
-    Renderable, ///<渲染实例参数(如Local2World matrix)
+    Primitive, ///<渲染实例参数(如Local2World matrix)
 
-    ENUM_CLASS_RANGE(Global,Renderable)
+    ENUM_CLASS_RANGE(Global,Primitive)
 };//
 
 const DescriptorSetsType CheckDescriptorSetsType(const char *str);
@@ -130,7 +130,7 @@ using VABConfigInfo=Map<AnsiString,VAConfig>;
 class VertexAttributeBinding;
 using VAB=VertexAttributeBinding;
 
-class Renderable;
+class Primitive;
 class RenderableInstance;
 
 class RenderResource;

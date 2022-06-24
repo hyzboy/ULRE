@@ -11,7 +11,7 @@ namespace hgl
     namespace graph
     {
         class TileFont;
-        class TextRenderable;
+        class TextPrimitive;
 
         /**
          * 字符属性，可精确到字也可精确到段落或是全文
@@ -112,7 +112,7 @@ namespace hgl
             
             ObjectList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
 
-            template<typename T> bool preprocess(TextRenderable *,TileFont *,const T *,const int);
+            template<typename T> bool preprocess(TextPrimitive *,TileFont *,const T *,const int);
 
         protected:        
 
@@ -124,7 +124,7 @@ namespace hgl
             int sl_v_r2l();
             int sl_v_l2r();
 
-            template<typename T> int SimpleLayout(TextRenderable *,TileFont *,const String<T> &);                   ///<简易排版
+            template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &);                   ///<简易排版
 
 //            template<typename T> int SimpleLayout(TileFont *,const StringList<String<T>> &);                      ///<简易排版
 
@@ -142,7 +142,7 @@ namespace hgl
 
         protected:
         
-            TextRenderable *text_render_obj;
+            TextPrimitive *text_render_obj;
             MemBlock<int16> vertex;
             MemBlock<float> tex_coord;
 
@@ -167,8 +167,8 @@ namespace hgl
 
             virtual bool    Init        ();                                                         ///<初始化排版
 
-            int     SimpleLayout (TextRenderable *,TileFont *,const UTF16String &);                 ///<简易排版
-            int     SimpleLayout (TextRenderable *,TileFont *,const UTF32String &);                 ///<简易排版
+            int     SimpleLayout (TextPrimitive *,TileFont *,const UTF16String &);                 ///<简易排版
+            int     SimpleLayout (TextPrimitive *,TileFont *,const UTF32String &);                 ///<简易排版
 
 //            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
 //            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
