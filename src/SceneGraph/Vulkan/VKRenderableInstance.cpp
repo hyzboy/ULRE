@@ -10,7 +10,7 @@ using namespace util;
 
 RenderableInstance::RenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p,const uint32_t count,VkBuffer *bl,VkDeviceSize *bs)
 {
-    render_obj=r;
+    primitive=r;
     pipeline=p;
     mat_inst=mi;
 
@@ -26,7 +26,7 @@ RenderableInstance::RenderableInstance(Primitive *r,MaterialInstance *mi,Pipelin
  
 RenderableInstance::~RenderableInstance()
 {
-    //需要在这里添加删除pipeline/desc_sets/render_obj引用计数的代码
+    //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
     delete[] buffer_list;
     delete[] buffer_size;

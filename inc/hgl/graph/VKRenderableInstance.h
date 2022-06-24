@@ -16,7 +16,7 @@ class RenderableInstance                                                        
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
-    Primitive *         render_obj;
+    Primitive *         primitive;
 
     uint32_t            buffer_count;
     VkBuffer *          buffer_list;
@@ -40,15 +40,15 @@ public:
             VkPipelineLayout    GetPipelineLayout   (){return mat_inst->GetMaterial()->GetPipelineLayout();}
             Material *          GetMaterial         (){return mat_inst->GetMaterial();}
             MaterialInstance *  GetMaterialInstance (){return mat_inst;}
-            Primitive *        GetRenderable       (){return render_obj;}
-    const   AABB &              GetBoundingBox      ()const{return render_obj->GetBoundingBox();}
+            Primitive *         GetPrimitive        (){return primitive;}
+    const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
     const   uint32_t            GetBufferCount      ()const{return buffer_count;}
             VkBuffer *          GetBuffer           ()const{return buffer_list;}
             VkDeviceSize *      GetBufferSize       ()const{return buffer_size;}
-            IndexBuffer *       GetIndexBuffer      ()const{return render_obj->GetIndexBuffer();}
-    const   uint32_t            GetIndexBufferOffset()const{return render_obj->GetIndexBufferOffset();}
-    const   uint32_t            GetDrawCount        ()const{return render_obj->GetDrawCount();}
+            IndexBuffer *       GetIndexBuffer      ()const{return primitive->GetIndexBuffer();}
+    const   uint32_t            GetIndexBufferOffset()const{return primitive->GetIndexBufferOffset();}
+    const   uint32_t            GetDrawCount        ()const{return primitive->GetDrawCount();}
 
     const   uint32_t            GetBufferHash       ()const{return buffer_hash;}
 

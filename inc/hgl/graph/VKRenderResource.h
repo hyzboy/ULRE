@@ -110,7 +110,7 @@ public: //Get
     Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
-    Primitive *         GetRenderable           (const PrimitiveID          &id){return rm_primitives.Get(id);}
+    Primitive *         GetPrimitive           (const PrimitiveID          &id){return rm_primitives.Get(id);}
     GPUBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}

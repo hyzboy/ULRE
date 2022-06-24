@@ -35,10 +35,10 @@ private:
 
     bool InitVBO()
     {
-        auto render_obj=db->CreatePrimitive(3);
-        if(!render_obj)return(false);
+        auto primitive=db->CreatePrimitive(3);
+        if(!primitive)return(false);
 
-        renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
+        renderable_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
 
         return(true);
     }

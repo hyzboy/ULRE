@@ -56,13 +56,13 @@ private:
 
     bool InitVBO()
     {        
-        auto render_obj=db->CreatePrimitive(VERTEX_COUNT);
-        if(!render_obj)return(false);
+        auto primitive=db->CreatePrimitive(VERTEX_COUNT);
+        if(!primitive)return(false);
 
-        if(!render_obj->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
-        if(!render_obj->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
+        if(!primitive->Set(VAN::Position,db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
+        if(!primitive->Set(db->CreateIBO16(INDEX_COUNT,index_data)))return(false);
 
-        renderable_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
+        renderable_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
 
         return(true);
     }
