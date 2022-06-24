@@ -29,7 +29,7 @@ vulkan::Primitive *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const
 
     uint draw_count=mesh->indices_count;
 
-    vulkan::Primitive *render_obj=nullptr;
+    vulkan::Primitive *primitive=nullptr;
     {
         const int vertex_binding=vsm->GetStageInputBinding("Vertex");
 
@@ -38,9 +38,9 @@ vulkan::Primitive *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const
 
         vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->position);
 
-        render_obj=mtl->CreateRenderable();
-        render_obj->Set(vertex_binding,vbo);
-        render_obj->SetBoundingBox(mesh->bounding_box);
+        primitive=mtl->CreateRenderable();
+        primitive->Set(vertex_binding,vbo);
+        primitive->SetBoundingBox(mesh->bounding_box);
     }
 
     const int normal_binding=vsm->GetStageInputBinding("Normal");
@@ -49,7 +49,7 @@ vulkan::Primitive *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const
     {
         vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->normal);
 
-        render_obj->Set(normal_binding,vbo);
+        primitive->Set(normal_binding,vbo);
     }
 
     const int tagent_binding=vsm->GetStageInputBinding("Tangent");
@@ -58,7 +58,7 @@ vulkan::Primitive *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const
     {
         vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->tangent);
 
-        render_obj->Set(tagent_binding,vbo);
+        primitive->Set(tagent_binding,vbo);
     }
 
     const int bitagent_binding=vsm->GetStageInputBinding("Bitangent");
@@ -67,16 +67,16 @@ vulkan::Primitive *CreateMeshRenderable(Database *db,vulkan::Material *mtl,const
     {
         vulkan::VAB *vbo=db->CreateVAB(VAF_VEC3,mesh->vertex_count,mesh->bitangent);
 
-        render_obj->Set(bitagent_binding,vbo);
+        primitive->Set(bitagent_binding,vbo);
     }
 
     if(mesh->vertex_count<=0xFFFF)
-        render_obj->Set(db->CreateIBO16(mesh->indices_count,mesh->indices16));
+        primitive->Set(db->CreateIBO16(mesh->indices_count,mesh->indices16));
     else
-        render_obj->Set(db->CreateIBO32(mesh->indices_count,mesh->indices32));
+        primitive->Set(db->CreateIBO32(mesh->indices_count,mesh->indices32));
 
-    db->Add(render_obj);
-    return(render_obj);
+    db->Add(primitive);
+    return(primitive);
 }
 
 class TestApp:public CameraAppFramework

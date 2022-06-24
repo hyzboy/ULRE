@@ -112,15 +112,15 @@ namespace hgl
             if(ssb_map.GetCount()!=si_count)
                 return(nullptr);
 
-            Primitive *render_obj=db->CreatePrimitive(vertices_number);
+            Primitive *primitive=db->CreatePrimitive(vertices_number);
 
             const auto *sp=ssb_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
                 if((*sp)->right->vbo)
-                    render_obj->Set((*sp)->left,(*sp)->right->vbo);                    
+                    primitive->Set((*sp)->left,(*sp)->right->vbo);                    
                 else
-                    render_obj->Set((*sp)->left,db->CreateVBO((*sp)->right->data));
+                    primitive->Set((*sp)->left,db->CreateVBO((*sp)->right->data));
 
                 ++sp;
             }
@@ -128,12 +128,12 @@ namespace hgl
             if(ibo)
             {
                 ibo->Unmap();
-                render_obj->Set(ibo);
+                primitive->Set(ibo);
             }
 
-            db->Add(render_obj);
+            db->Add(primitive);
 
-            return render_obj;
+            return primitive;
         }
     }//namespace graph
 }//namespace hgl

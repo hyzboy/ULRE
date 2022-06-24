@@ -37,7 +37,7 @@ private:
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Primitive *        render_obj          =nullptr;
+    Primitive *        primitive          =nullptr;
     RenderableInstance *render_instance     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
@@ -66,14 +66,14 @@ private:
 
     bool InitVBO()
     {        
-        render_obj=db->CreatePrimitive(VERTEX_COUNT);
+        primitive=db->CreatePrimitive(VERTEX_COUNT);
 
-        if(!render_obj)return(false);
+        if(!primitive)return(false);
 
-        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,VERTEX_COUNT,position_data));
-        render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,VERTEX_COUNT,tex_coord_data));
+        primitive->Set(VAN::Position,db->CreateVBO(VF_V4F,VERTEX_COUNT,position_data));
+        primitive->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,VERTEX_COUNT,tex_coord_data));
         
-        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
+        render_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
 
         return(render_instance);
     }

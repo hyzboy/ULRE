@@ -40,7 +40,7 @@ private:
 
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Primitive *        render_obj          =nullptr;
+    Primitive *        primitive          =nullptr;
     RenderableInstance *render_instance     =nullptr;
 
     Pipeline *          pipeline            =nullptr;
@@ -174,13 +174,13 @@ private:
     {
         const uint tile_count=tile_list.GetCount();
 
-        render_obj=db->CreatePrimitive(tile_count);
-        if(!render_obj)return(false);
+        primitive=db->CreatePrimitive(tile_count);
+        if(!primitive)return(false);
 
-        render_obj->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,position_data));
-        render_obj->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,tile_count,tex_coord_data));
+        primitive->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,position_data));
+        primitive->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,tile_count,tex_coord_data));
 
-        render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
+        render_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
 
         return(render_instance);
     }

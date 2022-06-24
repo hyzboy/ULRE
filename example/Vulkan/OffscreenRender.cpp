@@ -105,10 +105,10 @@ public:
             cci.center_color=Vector4f(1,1,1,1);
             cci.border_color=Vector4f(1,1,1,0);
 
-            Primitive *render_obj=CreateRenderableCircle(db,os.material_instance->GetVAB(),&cci);
-            if(!render_obj)return(false);
+            Primitive *primitive=CreateRenderableCircle(db,os.material_instance->GetVAB(),&cci);
+            if(!primitive)return(false);
 
-            os.renderable_instance=db->CreateRenderableInstance(render_obj,os.material_instance,os.pipeline);
+            os.renderable_instance=db->CreateRenderableInstance(primitive,os.material_instance,os.pipeline);
 
             if(!os.renderable_instance)return(false);
         }
@@ -141,10 +141,10 @@ public:
 
             cci.tex_coord=true;
 
-            Primitive *render_obj=CreateRenderableCube(db,cube.material_instance->GetVAB(),&cci);
-            if(!render_obj)return(false);
+            Primitive *primitive=CreateRenderableCube(db,cube.material_instance->GetVAB(),&cci);
+            if(!primitive)return(false);
 
-            cube.renderable_instance=db->CreateRenderableInstance(render_obj,cube.material_instance,cube.pipeline);
+            cube.renderable_instance=db->CreateRenderableInstance(primitive,cube.material_instance,cube.pipeline);
 
             cube.scene_root.CreateSubNode(cube.renderable_instance);
         }
