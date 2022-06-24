@@ -78,6 +78,8 @@ private:
 
     bool CreateRenderObject()
     {
+        using namespace inline_geometry;
+
         {
             struct PlaneGridCreateInfo pgci;
 
@@ -97,7 +99,7 @@ private:
 
             const VAB *vab=material_instance->GetVAB();
 
-            ro_plane_grid=CreateRenderablePlaneGrid(db,vab,&pgci);
+            ro_plane_grid=CreatePlaneGrid(db,vab,&pgci);
         }
 
         {

@@ -77,6 +77,8 @@ private:
 
     void CreateRenderObject()
     {
+        using namespace inline_geometry;
+
         struct PlaneGridCreateInfo pgci;
 
         pgci.coord[0]=Vector3f(-100,-100,0);
@@ -95,7 +97,7 @@ private:
 
         const VAB *vab=material_instance->GetVAB();
 
-        renderable=CreateRenderablePlaneGrid(db,vab,&pgci);
+        renderable=CreatePlaneGrid(db,vab,&pgci);
     }
 
     bool InitScene()

@@ -121,22 +121,24 @@ private:
 
     void CreateRenderObject()
     {
+        using namespace inline_geometry;
+
         {
             struct AxisCreateInfo aci;
 
             aci.size=GetCameraInfo().zfar;
 
-            ro_axis=CreateRenderableAxis(db,axis_mi->GetVAB(),&aci);
+            ro_axis=CreateAxis(db,axis_mi->GetVAB(),&aci);
         }
         
         {
             struct CubeCreateInfo cci;
 
-            ro_cube=CreateRenderableCube(db,sky_mi->GetVAB(),&cci);
+            ro_cube=CreateCube(db,sky_mi->GetVAB(),&cci);
         }
 
         {
-            ro_sphere=CreateRenderableSphere(db,envmap_mi->GetVAB(),64);
+            ro_sphere=CreateSphere(db,envmap_mi->GetVAB(),64);
         }
     }
 

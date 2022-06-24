@@ -273,18 +273,20 @@ private:
 
     void CreateRenderObject(const VAB *vab)
     {
+        using namespace inline_geometry;
+
         {
             struct PlaneCreateInfo pci;
-            ro_plane=CreateRenderablePlane(db,vab,&pci);
+            ro_plane=CreatePlane(db,vab,&pci);
         }
 
         {
             struct CubeCreateInfo cci;            
-            ro_cube=CreateRenderableCube(db,vab,&cci);
+            ro_cube=CreateCube(db,vab,&cci);
         }
 
         {        
-            ro_sphere=CreateRenderableSphere(db,vab,64);
+            ro_sphere=CreateSphere(db,vab,64);
         }
 
         {
@@ -299,7 +301,7 @@ private:
             tci.uv_scale.x=4;
             tci.uv_scale.y=1;
 
-            ro_torus=CreateRenderableTorus(db,vab,&tci);
+            ro_torus=CreateTorus(db,vab,&tci);
         }
 
         {
@@ -309,7 +311,7 @@ private:
             cci.radius=10;
             cci.numberSlices=32;
 
-            ro_cylinder=CreateRenderableCylinder(db,vab,&cci);
+            ro_cylinder=CreateCylinder(db,vab,&cci);
         }
 
         {
@@ -320,13 +322,13 @@ private:
             cci.numberSlices=128;
             cci.numberStacks=32;
 
-            ro_cone=CreateRenderableCone(db,vab,&cci);
+            ro_cone=CreateCone(db,vab,&cci);
         }
     }
 
     bool InitCompositionRenderable()
     {
-        ro_gbc_plane=CreateRenderableGBufferComposition(db,sp_composition.material_instance->GetVAB());
+        ro_gbc_plane=inline_geometry::CreateGBufferCompositionRectangle(db,sp_composition.material_instance->GetVAB());
         if(!ro_gbc_plane)return(false);
 
         ro_gbc_plane_ri=db->CreateRenderable(ro_gbc_plane,sp_composition.material_instance,sp_composition.pipeline_fan);

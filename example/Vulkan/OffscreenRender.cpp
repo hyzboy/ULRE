@@ -96,6 +96,8 @@ public:
             return(false);
 
         {
+            using namespace inline_geometry;
+
             CircleCreateInfo cci;
             
             cci.center=Vector2f(OFFSCREEN_SIZE*0.5,OFFSCREEN_SIZE*0.5);
@@ -105,7 +107,7 @@ public:
             cci.center_color=Vector4f(1,1,1,1);
             cci.border_color=Vector4f(1,1,1,0);
 
-            Primitive *primitive=CreateRenderableCircle(db,os.material_instance->GetVAB(),&cci);
+            Primitive *primitive=CreateCircle(db,os.material_instance->GetVAB(),&cci);
             if(!primitive)return(false);
 
             os.renderable=db->CreateRenderable(primitive,os.material_instance,os.pipeline);
@@ -136,12 +138,14 @@ public:
         if(!cube.material_instance->BindSampler(DescriptorSetsType::Value,"tex",os.render_taget->GetColorTexture(),cube.sampler))
             return(false);
 
-        {
+        {   
+            using namespace inline_geometry;
+
             CubeCreateInfo cci;
 
             cci.tex_coord=true;
 
-            Primitive *primitive=CreateRenderableCube(db,cube.material_instance->GetVAB(),&cci);
+            Primitive *primitive=CreateCube(db,cube.material_instance->GetVAB(),&cci);
             if(!primitive)return(false);
 
             cube.renderable=db->CreateRenderable(primitive,cube.material_instance,cube.pipeline);
@@ -159,7 +163,7 @@ public:
 
     bool Init()
     {
-        if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        //if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
         SetClearColor(COLOR::MozillaCharcoal);

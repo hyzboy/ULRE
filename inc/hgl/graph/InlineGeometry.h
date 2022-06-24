@@ -10,227 +10,230 @@ namespace hgl
 {
     namespace graph
     {
-        /**
-         * 矩形创建信息(扇形/三角形条)
-         */
-        struct RectangleCreateInfo
+        namespace inline_geometry
         {
-            RectScope2f scope;
-        };//struct RectangleCreateInfo
-
-        Primitive *CreateRenderableRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci);
-
-        /**
-         * 创建延迟渲染用全屏平面
-         */
-        Primitive *CreateRenderableGBufferComposition(RenderResource *db,const VAB *vab);
-
-        /**
-         * 圆角矩形创建信息(扇形/线圈)
-         */
-        struct RoundRectangleCreateInfo:public RectangleCreateInfo
-        {
-            float radius;           ///<圆角半径
-            uint32_t round_per;     ///<圆角精度
-        };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
-
-        Primitive *CreateRenderableRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci);
-
-        /**
-         * 圆形创建信息
-         */
-        struct CircleCreateInfo
-        {
-            Vector2f center;            ///<圆心坐标
-            Vector2f radius;            ///<半径
-            uint field_count=8;         ///<分段次数
-
-            bool has_color  =false;
-
-            Vector4f center_color;      ///<圆心颜色
-            Vector4f border_color;      ///<边缘颜色
-        };//struct CircleCreateInfo
-
-        /**
-         * 创建一个2D圆形(扇形/线圈)
-         */
-        Primitive *CreateRenderableCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci);
-
-        /**
-         * 平面网格创建信息
-         */
-        struct PlaneGridCreateInfo
-        {
-            Vector3f coord[4];
-            Vector2u step;
-
-            Vector2u side_step;   //到边界的步数
-
-            Color4f color;          //一般线条颜色
-            Color4f side_color;     //边界线条颜色
-        };//struct PlaneGridCreateInfo
-
-        /**
-         * 创建一个平面网格(线条)
-         */
-        Primitive *CreateRenderablePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci);
-
-        struct PlaneCreateInfo
-        {
-            Vector2f tile;
-
-        public:
-
-            PlaneCreateInfo()
+            /**
+             * 矩形创建信息(扇形/三角形条)
+             */
+            struct RectangleCreateInfo
             {
-                tile.x=1.0f;
-                tile.y=1.0f;
-            }
-        };//struct PlaneCreateInfo
+                RectScope2f scope;
+            };//struct RectangleCreateInfo
 
-        /**
-         * 创建一个平面(三角形)
-         */
-        Primitive *CreateRenderablePlane(RenderResource *db,const VAB *vab,const PlaneCreateInfo *pci);
+            Primitive *CreateRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci);
 
-        struct CubeCreateInfo
-        {
-            bool normal;
-            bool tangent;
-            bool tex_coord;
+            /**
+             * 创建延迟渲染用全屏平面
+             */
+            Primitive *CreateGBufferCompositionRectangle(RenderResource *db,const VAB *vab);
 
-            enum class ColorType
+            /**
+             * 圆角矩形创建信息(扇形/线圈)
+             */
+            struct RoundRectangleCreateInfo:public RectangleCreateInfo
             {
-                NoColor=0,      ///<没有颜色
-                SameColor,      ///<一个颜色
-                FaceColor,      ///<每个面一个颜色(请写入6个颜色值)
-                VertexColor,    ///<每个顶点一个颜色(请写入24个颜色值)
+                float radius;           ///<圆角半径
+                uint32_t round_per;     ///<圆角精度
+            };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
 
-                ENUM_CLASS_RANGE(NoColor,VertexColor)
-            };
+            Primitive *CreateRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci);
 
-            ColorType color_type;
-            Vector4f color[24];
-
-        public:
-
-            CubeCreateInfo()
+            /**
+             * 圆形创建信息
+             */
+            struct CircleCreateInfo
             {
-                normal=false;
-                tangent=false;
-                tex_coord=false;
+                Vector2f center;            ///<圆心坐标
+                Vector2f radius;            ///<半径
+                uint field_count=8;         ///<分段次数
 
-                color_type=ColorType::NoColor;
-            }
-        };//struct CubeCreateInfo
+                bool has_color  =false;
 
-        /**
-         * 创建一个立方体(三角形)
-         */
-        Primitive *CreateRenderableCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
+                Vector4f center_color;      ///<圆心颜色
+                Vector4f border_color;      ///<边缘颜色
+            };//struct CircleCreateInfo
 
-        struct BoundingBoxCreateInfo
-        {
-            bool normal;
+            /**
+             * 创建一个2D圆形(扇形/线圈)
+             */
+            Primitive *CreateCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci);
 
-            enum class ColorType
+            /**
+             * 平面网格创建信息
+             */
+            struct PlaneGridCreateInfo
             {
-                NoColor=0,      ///<没有颜色
-                SameColor,      ///<一个颜色
-                VertexColor,    ///<每个顶点一个颜色(请写入8个颜色值)
+                Vector3f coord[4];
+                Vector2u step;
 
-                ENUM_CLASS_RANGE(NoColor,VertexColor)
-            };
+                Vector2u side_step;   //到边界的步数
 
-            ColorType color_type;
-            Vector4f color[8];
+                Color4f color;          //一般线条颜色
+                Color4f side_color;     //边界线条颜色
+            };//struct PlaneGridCreateInfo
 
-        public:
+            /**
+             * 创建一个平面网格(线条)
+             */
+            Primitive *CreatePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci);
 
-            BoundingBoxCreateInfo()
+            struct PlaneCreateInfo
             {
-                normal=false;
+                Vector2f tile;
 
-                color_type=ColorType::NoColor;
-            }
-        };//struct BoundingBoxCreateInfo
+            public:
 
-        /**
-         *  创建一个绑定盒(线条)
-         */
-        Primitive *CreateRenderableBoundingBox(RenderResource *db,const VAB *vab,const BoundingBoxCreateInfo *cci);
+                PlaneCreateInfo()
+                {
+                    tile.x=1.0f;
+                    tile.y=1.0f;
+                }
+            };//struct PlaneCreateInfo
 
-        /**
-         * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
-         */
-        Primitive *CreateRenderableSphere(RenderResource *db,const VAB *vab,const uint numberSlices);
+            /**
+             * 创建一个平面(三角形)
+             */
+            Primitive *CreatePlane(RenderResource *db,const VAB *vab,const PlaneCreateInfo *pci);
 
-        /**
-         * 创建一个穹顶(三角形)
-         */
-        Primitive *CreateRenderableDome(RenderResource *db,const VAB *vab, const uint numberSlices);
-
-        struct TorusCreateInfo
-        {
-            float   innerRadius,
-                    outerRadius;
-
-            uint    numberSlices,
-                    numberStacks;
-
-            Vector2f uv_scale={1.0,1.0};
-        };//struct TorusCreateInfo
-
-        /**
-         * 创建一个圆环(三角形)
-         */
-        Primitive *CreateRenderableTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci);
-
-        struct CylinderCreateInfo
-        {
-            float   halfExtend,     //高度
-                    radius;         //半径
-            uint    numberSlices;
-        };//struct CylinderCreateInfo
-
-        /**
-         * 创建一个圆柱(三角形)
-         */
-        Primitive *CreateRenderableCylinder(RenderResource *db,const VAB *vab,const CylinderCreateInfo *cci);
-
-        struct ConeCreateInfo
-        {
-            float   halfExtend,     //高度
-                    radius;         //半径
-            uint    numberSlices,   //圆切分精度
-                    numberStacks;   //柱高层数
-        };//struct ConeCreateInfo
-
-        /**
-         * 创建一个圆锥(三角形)
-         */
-        Primitive *CreateRenderableCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci);
-
-        struct AxisCreateInfo
-        {
-            float size;
-            Color4f color[3];
-
-        public:
-
-            AxisCreateInfo()
+            struct CubeCreateInfo
             {
-                size=1.0f;
-                color[0].Set(1,0,0,1);
-                color[1].Set(0,1,0,1);
-                color[2].Set(0,0,1,1);
-            }
-        };//struct AxisCreateInfo
+                bool normal;
+                bool tangent;
+                bool tex_coord;
 
-        /**
-         * 创建一个坐标线(线条)
-         */
-        Primitive *CreateRenderableAxis(RenderResource *db,const VAB *vab,const AxisCreateInfo *aci);
+                enum class ColorType
+                {
+                    NoColor=0,      ///<没有颜色
+                    SameColor,      ///<一个颜色
+                    FaceColor,      ///<每个面一个颜色(请写入6个颜色值)
+                    VertexColor,    ///<每个顶点一个颜色(请写入24个颜色值)
+
+                    ENUM_CLASS_RANGE(NoColor,VertexColor)
+                };
+
+                ColorType color_type;
+                Vector4f color[24];
+
+            public:
+
+                CubeCreateInfo()
+                {
+                    normal=false;
+                    tangent=false;
+                    tex_coord=false;
+
+                    color_type=ColorType::NoColor;
+                }
+            };//struct CubeCreateInfo
+
+            /**
+             * 创建一个立方体(三角形)
+             */
+            Primitive *CreateCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
+
+            struct BoundingBoxCreateInfo
+            {
+                bool normal;
+
+                enum class ColorType
+                {
+                    NoColor=0,      ///<没有颜色
+                    SameColor,      ///<一个颜色
+                    VertexColor,    ///<每个顶点一个颜色(请写入8个颜色值)
+
+                    ENUM_CLASS_RANGE(NoColor,VertexColor)
+                };
+
+                ColorType color_type;
+                Vector4f color[8];
+
+            public:
+
+                BoundingBoxCreateInfo()
+                {
+                    normal=false;
+
+                    color_type=ColorType::NoColor;
+                }
+            };//struct BoundingBoxCreateInfo
+
+            /**
+             *  创建一个绑定盒(线条)
+             */
+            Primitive *CreateBoundingBox(RenderResource *db,const VAB *vab,const BoundingBoxCreateInfo *cci);
+
+            /**
+             * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
+             */
+            Primitive *CreateSphere(RenderResource *db,const VAB *vab,const uint numberSlices);
+
+            /**
+             * 创建一个穹顶(三角形)
+             */
+            Primitive *CreateDome(RenderResource *db,const VAB *vab, const uint numberSlices);
+
+            struct TorusCreateInfo
+            {
+                float   innerRadius,
+                        outerRadius;
+
+                uint    numberSlices,
+                        numberStacks;
+
+                Vector2f uv_scale={1.0,1.0};
+            };//struct TorusCreateInfo
+
+            /**
+             * 创建一个圆环(三角形)
+             */
+            Primitive *CreateTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci);
+
+            struct CylinderCreateInfo
+            {
+                float   halfExtend,     //高度
+                        radius;         //半径
+                uint    numberSlices;
+            };//struct CylinderCreateInfo
+
+            /**
+             * 创建一个圆柱(三角形)
+             */
+            Primitive *CreateCylinder(RenderResource *db,const VAB *vab,const CylinderCreateInfo *cci);
+
+            struct ConeCreateInfo
+            {
+                float   halfExtend,     //高度
+                        radius;         //半径
+                uint    numberSlices,   //圆切分精度
+                        numberStacks;   //柱高层数
+            };//struct ConeCreateInfo
+
+            /**
+             * 创建一个圆锥(三角形)
+             */
+            Primitive *CreateCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci);
+
+            struct AxisCreateInfo
+            {
+                float size;
+                Color4f color[3];
+
+            public:
+
+                AxisCreateInfo()
+                {
+                    size=1.0f;
+                    color[0].Set(1,0,0,1);
+                    color[1].Set(0,1,0,1);
+                    color[2].Set(0,0,1,1);
+                }
+            };//struct AxisCreateInfo
+
+            /**
+             * 创建一个坐标线(线条)
+             */
+            Primitive *CreateAxis(RenderResource *db,const VAB *vab,const AxisCreateInfo *aci);
+        }//namespace inline_geometry
     }//namespace graph
 };//namespace hgl
 #endif//HGL_GRAPH_INLINE_GEOMETRY_INCLUDE

@@ -36,7 +36,7 @@ private:
     GPUBuffer *         ubo_color           =nullptr;
     GPUBuffer *         ubo_sun             =nullptr;
 
-    Primitive *        renderable_object   =nullptr;
+    Primitive *         primitive           =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -67,7 +67,7 @@ private:
 
     void CreateRenderObject()
     {
-        renderable_object=CreateRenderableSphere(db,material_instance->GetVAB(),40);
+        primitive=inline_geometry::CreateSphere(db,material_instance->GetVAB(),40);
     }
 
     bool InitUBO()
@@ -112,7 +112,7 @@ private:
         uint count;
         float size;
 
-        Renderable *ri=db->CreateRenderable(renderable_object,material_instance,pipeline);
+        Renderable *ri=db->CreateRenderable(primitive,material_instance,pipeline);
 
         for(uint i=0;i<360;i++)
         {
