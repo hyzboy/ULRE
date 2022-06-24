@@ -102,7 +102,11 @@ VAB *VertexShaderModule::CreateVAB(const VABConfigInfo *cfg)
         }
         else
         {
-            attr->format    =vac.format;
+            if(vac.format!=PF_UNDEFINED)
+                attr->format    =vac.format;
+            else                
+                attr->format    =VK_NAMESPACE::GetVulkanFormat(&((*si)->type));
+
             bind->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
         }
 
