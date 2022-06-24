@@ -14,8 +14,8 @@ private:
 
     TextRender *        text_render         =nullptr;
 
-    TextPrimitive *    text_render_obj     =nullptr;
-    Renderable *render_instance     =nullptr;
+    TextPrimitive *     text_primitive      =nullptr;
+    Renderable *        render_obj          =nullptr;
 
 public:
 
@@ -40,12 +40,12 @@ private:
         if(!text_render)
             return(false);
 
-        text_render_obj=text_render->CreatePrimitive(str);
-        if(!text_render_obj)
+        text_primitive=text_render->CreatePrimitive(str);
+        if(!text_primitive)
             return(false);
 
-        render_instance=text_render->CreateRenderable(text_render_obj);
-        if(!render_instance)
+        render_obj=text_render->CreateRenderable(text_primitive);
+        if(!render_obj)
             return(false);
 
         return(true);
@@ -61,7 +61,7 @@ public:
         if(!InitTextRenderable())
             return(false);
 
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_obj);
 
         return(true);
     }
@@ -70,7 +70,7 @@ public:
     {
         VulkanApplicationFramework::Resize(w,h);
         
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

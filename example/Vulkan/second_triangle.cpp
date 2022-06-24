@@ -32,7 +32,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *render_instance     =nullptr;
+    Renderable *        render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -61,7 +61,7 @@ private:
         if(!primitive->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
         if(!primitive->Set(VAN::Color,     db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data)))return(false);
         
-        render_instance=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
         return(true);
     }
 
@@ -78,7 +78,7 @@ public:
         if(!InitVBO())
             return(false);
 
-        if(!BuildCommandBuffer(render_instance))
+        if(!BuildCommandBuffer(render_obj))
             return(false);
 
         return(true);
@@ -88,7 +88,7 @@ public:
     {
         VulkanApplicationFramework::Resize(w,h);
 
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

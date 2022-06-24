@@ -40,8 +40,8 @@ private:
 
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Primitive *        primitive          =nullptr;
-    Renderable *render_instance     =nullptr;
+    Primitive *         primitive           =nullptr;
+    Renderable *        render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -180,9 +180,9 @@ private:
         primitive->Set(VAN::Position,db->CreateVBO(VF_V4F,tile_count,position_data));
         primitive->Set(VAN::TexCoord,db->CreateVBO(VF_V4F,tile_count,tex_coord_data));
 
-        render_instance=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
 
-        return(render_instance);
+        return(render_obj);
     }
 
 public:
@@ -204,7 +204,7 @@ public:
         if(!InitVBO())
             return(false);
             
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_obj);
 
         return(true);
     }
@@ -213,7 +213,7 @@ public:
     {
         VulkanApplicationFramework::Resize(w,h);
         
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

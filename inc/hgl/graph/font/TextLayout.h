@@ -142,7 +142,7 @@ namespace hgl
 
         protected:
         
-            TextPrimitive *text_render_obj;
+            TextPrimitive *text_primitive;
             MemBlock<int16> vertex;
             MemBlock<float> tex_coord;
 
@@ -153,7 +153,7 @@ namespace hgl
                 direction.text_direction=0;
                 draw_chars_count=0;
 
-                text_render_obj =nullptr;
+                text_primitive =nullptr;
             }
 
             virtual ~TextLayout()=default;

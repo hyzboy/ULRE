@@ -36,7 +36,7 @@ private:
     Camera cam;
 
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *render_instance     =nullptr;
+    Renderable *        render_obj          =nullptr;
     GPUBuffer *         ubo_camera_info     =nullptr;
     GPUBuffer *         ubo_color_material  =nullptr;
     GPUBuffer *         ubo_line_config     =nullptr;
@@ -118,7 +118,7 @@ private:
 
         if(!primitive->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
         
-        render_instance=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
         return(true);
     }
 
@@ -138,7 +138,7 @@ public:
         if(!InitVBO())
             return(false);
 
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_obj);
 
         return(true);
     }
@@ -152,7 +152,7 @@ public:
 
         ubo_camera_info->Write(&cam.info);
 
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 

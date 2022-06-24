@@ -34,7 +34,7 @@ private:
     RenderList *        render_list         =nullptr;
 
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *render_instance     =nullptr;
+    Renderable *        render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -63,9 +63,9 @@ private:
         if(!primitive->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
         if(!primitive->Set(VAN::Color,     db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data)))return(false);
         
-        render_instance=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
 
-        render_root.CreateSubNode(render_instance);
+        render_root.CreateSubNode(render_obj);
 
         render_root.RefreshMatrix();
 
