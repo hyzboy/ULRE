@@ -58,6 +58,8 @@ private:
 
     void CreateRenderObject()
     {
+        using namespace inline_geometry;
+
         struct PlaneGridCreateInfo pgci;
 
         pgci.coord[0]=Vector3f(-100,-100,0);
@@ -76,16 +78,16 @@ private:
 
         const VAB *vab=material_instance->GetVAB();
 
-        ro_plane_grid[0]=CreateRenderablePlaneGrid(db,vab,&pgci);
+        ro_plane_grid[0]=CreatePlaneGrid(db,vab,&pgci);
 
         pgci.color.Set(0,0.5,0,1);
         pgci.side_color.Set(0,1,0,1);
 
-        ro_plane_grid[1]=CreateRenderablePlaneGrid(db,vab,&pgci);
+        ro_plane_grid[1]=CreatePlaneGrid(db,vab,&pgci);
 
         pgci.color.Set(0,0,0.5,1);
         pgci.side_color.Set(0,0,1,1);
-        ro_plane_grid[2]=CreateRenderablePlaneGrid(db,vab,&pgci);
+        ro_plane_grid[2]=CreatePlaneGrid(db,vab,&pgci);
     }
 
     bool InitScene()

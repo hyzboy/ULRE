@@ -81,7 +81,7 @@ private:
 
     bool InitScene()
     {
-        ro_sphere=CreateRenderableSphere(db,material_instance->GetVAB(),128);
+        ro_sphere=inline_geometry::CreateSphere(db,material_instance->GetVAB(),128);
         
         render_root.CreateSubNode(scale(100),db->CreateRenderable(ro_sphere,material_instance,pipeline_solid));
 

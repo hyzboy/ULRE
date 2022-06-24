@@ -188,7 +188,7 @@ private:
 
             aci.size.Set(1000,1000,1000);
 
-            axis_renderable=CreateRenderableAxis(db,mp_line.material,&aci);
+            axis_renderable=CreateAxis(db,mp_line.material,&aci);
             axis_renderable_instance=CreateRenderable(mp_line,axis_renderable);
         }
 
@@ -198,7 +198,7 @@ private:
             cci.has_color=true;
             cci.color.Set(1,1,1,1);
 
-            bbox_renderable=CreateRenderableBoundingBox(db,mp_line.material,&cci);
+            bbox_renderable=CreateBoundingBox(db,mp_line.material,&cci);
             bbox_renderable_instance=CreateRenderable(mp_line,bbox_renderable);
         }
     }
