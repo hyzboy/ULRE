@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
@@ -84,12 +84,12 @@ Primitive *RenderResource::CreatePrimitive(const uint32_t vertex_count)
     return ro;
 }
 
-RenderableInstance *RenderResource::CreateRenderableInstance(Primitive *r,MaterialInstance *mi,Pipeline *p)
+Renderable *RenderResource::CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
 
-    RenderableInstance *ri=VK_NAMESPACE::CreateRenderableInstance(r,mi,p);
+    Renderable *ri=VK_NAMESPACE::CreateRenderable(r,mi,p);
 
     if(ri)
         Add(ri);

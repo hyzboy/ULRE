@@ -131,7 +131,7 @@ class VertexAttributeBinding;
 using VAB=VertexAttributeBinding;
 
 class Primitive;
-class RenderableInstance;
+class Renderable;
 
 class RenderResource;
 

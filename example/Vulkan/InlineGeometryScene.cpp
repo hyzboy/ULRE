@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/RenderList.h>
 
@@ -232,21 +232,21 @@ private:
     
     void Add(Primitive *r,Pipeline *pl)
     {
-        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
+        auto ri=db->CreateRenderable(r,material_instance,pl);
 
         render_root.CreateSubNode(ri);
     }
 
     void Add(Primitive *r,Pipeline *pl,const Matrix4f &mat)
     {
-        auto ri=db->CreateRenderableInstance(r,material_instance,pl);
+        auto ri=db->CreateRenderable(r,material_instance,pl);
 
         render_root.CreateSubNode(mat,ri);
     }
 
     bool InitScene()
     {
-        render_root.CreateSubNode(db->CreateRenderableInstance(ro_axis,axis_mi,axis_pipeline));
+        render_root.CreateSubNode(db->CreateRenderable(ro_axis,axis_mi,axis_pipeline));
 
         Add(ro_torus    ,pipeline_solid);
         Add(ro_cube     ,pipeline_solid,translate(-10,  0, 5)*scale(10,10,10));

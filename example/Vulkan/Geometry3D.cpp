@@ -47,9 +47,9 @@ private:
         return(true);
     }
     
-    RenderableInstance *Add(Primitive *r,const Matrix4f &mat)
+    Renderable *Add(Primitive *r,const Matrix4f &mat)
     {
-        RenderableInstance *ri=db->CreateRenderableInstance(r,material_instance,pipeline);
+        Renderable *ri=db->CreateRenderable(r,material_instance,pipeline);
 
         render_root.CreateSubNode(mat,ri);
 

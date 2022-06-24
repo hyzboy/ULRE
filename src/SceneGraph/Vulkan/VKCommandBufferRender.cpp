@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 
@@ -101,7 +101,7 @@ bool RenderCmdBuffer::BeginRenderPass()
     return(true);
 }
 
-bool RenderCmdBuffer::BindDescriptorSets(RenderableInstance *ri)
+bool RenderCmdBuffer::BindDescriptorSets(Renderable *ri)
 {
     if(!ri)return(false);
 
@@ -145,7 +145,7 @@ bool RenderCmdBuffer::BindDescriptorSets(RenderableInstance *ri)
     return(true);
 }
 
-bool RenderCmdBuffer::BindVBO(RenderableInstance *ri)
+bool RenderCmdBuffer::BindVBO(Renderable *ri)
 {
     if(!ri)
         return(false);

@@ -58,7 +58,7 @@ namespace hgl
 
             bool Layout(TextPrimitive *tr,const UTF16String &str);
 
-            RenderableInstance *CreateRenderableInstance(TextPrimitive *text_render_obj);
+            Renderable *CreateRenderable(TextPrimitive *text_render_obj);
 
             void Release(TextPrimitive *);
         };//class TextRender

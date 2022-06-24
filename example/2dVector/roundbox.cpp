@@ -36,7 +36,7 @@ private:
     Camera cam;
 
     MaterialInstance *  material_instance   =nullptr;
-    RenderableInstance *render_instance     =nullptr;
+    Renderable *render_instance     =nullptr;
 
     GPUBuffer *         ubo_camera_info     =nullptr;
     GPUBuffer *         ubo_rb_config       =nullptr;
@@ -134,7 +134,7 @@ private:
 
         if(!primitive->Set(VAN::Position,  db->CreateVBO(VF_V4I16,VERTEX_COUNT,position_data)))return(false);
         
-        render_instance=db->CreateRenderableInstance(primitive,material_instance,pipeline);
+        render_instance=db->CreateRenderable(primitive,material_instance,pipeline);
         return(true);
     }
 

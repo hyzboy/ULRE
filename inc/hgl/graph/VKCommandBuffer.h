@@ -126,7 +126,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(RenderableInstance *ri);
+    bool BindDescriptorSets(Renderable *ri);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {
@@ -141,7 +141,7 @@ public:
     void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,       size,data);}
     void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,offset,  size,data);}
 
-    bool BindVBO(RenderableInstance *);
+    bool BindVBO(Renderable *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}

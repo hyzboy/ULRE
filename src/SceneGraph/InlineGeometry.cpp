@@ -6,7 +6,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/RenderableCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 
 namespace hgl
 {
@@ -14,7 +14,7 @@ namespace hgl
     {
         Primitive *CreateRenderableRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             if(!rc.Init(4))
                 return(nullptr);
@@ -40,7 +40,7 @@ namespace hgl
 
         Primitive *CreateRenderableRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
             {
@@ -114,7 +114,7 @@ namespace hgl
 
         Primitive *CreateRenderableCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             uint edge;
 
@@ -162,7 +162,7 @@ namespace hgl
 
         Primitive *CreateRenderablePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             if(!rc.Init(((pgci->step.x+1)+(pgci->step.y+1))*2))
                 return(nullptr);
@@ -214,7 +214,7 @@ namespace hgl
             const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
             const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             if(!rc.Init(4))
                 return(nullptr);
@@ -301,7 +301,7 @@ namespace hgl
                                             16,  17,   18,      16,   18,   19,
                                             20,  23,   22,      20,   22,   21};
 
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             if(!rc.Init(24))
                 return(nullptr);
@@ -442,7 +442,7 @@ namespace hgl
         */
         Primitive *CreateRenderableSphere(RenderResource *db,const VAB *vab,const uint numberSlices)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             uint numberParallels = (numberSlices+1) / 2;
             uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
@@ -518,7 +518,7 @@ namespace hgl
 
         Primitive *CreateRenderableDome(RenderResource *db,const VAB *vab,const uint numberSlices)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             uint i, j;
 
@@ -639,7 +639,7 @@ namespace hgl
 
         Primitive *CreateRenderableTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             // s, t = parametric values of the equations, in the range [0,1]
             float s = 0;
@@ -800,7 +800,7 @@ namespace hgl
             if(numberIndices<=0)
                 return(nullptr);
 
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
@@ -1014,7 +1014,7 @@ namespace hgl
 
         Primitive *CreateRenderableCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci)
         {
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             uint i, j;
 
@@ -1143,7 +1143,7 @@ namespace hgl
         {
             if(!db||!vab||!aci)return(nullptr);
 
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             if(!rc.Init(6))
                 return(nullptr);
@@ -1188,7 +1188,7 @@ namespace hgl
                 0,4,    1,5,    2,6,    3,7
             };
 
-            RenderableCreater rc(db,vab);
+            PrimitiveCreater rc(db,vab);
 
             if(!rc.Init(8))
                 return(nullptr);

@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;
@@ -83,7 +83,7 @@ private:
     {
         ro_sphere=CreateRenderableSphere(db,material_instance->GetVAB(),128);
         
-        render_root.CreateSubNode(scale(100),db->CreateRenderableInstance(ro_sphere,material_instance,pipeline_solid));
+        render_root.CreateSubNode(scale(100),db->CreateRenderable(ro_sphere,material_instance,pipeline_solid));
 
         render_root.RefreshMatrix();
         render_list->Expend(GetCameraInfo(),&render_root);

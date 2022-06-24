@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/VKRenderableInstance.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/RenderList.h>
 
@@ -150,7 +150,7 @@ private:
 
     SceneNode *Add(Primitive *r,MaterialInstance *mi,Pipeline *pl)
     {
-        auto ri=db->CreateRenderableInstance(r,mi,pl);
+        auto ri=db->CreateRenderable(r,mi,pl);
 
         return render_root.CreateSubNode(ri);
     }
