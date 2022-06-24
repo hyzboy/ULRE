@@ -12,6 +12,7 @@ endmacro()
 
 CreateProject("Basic" 1st_triangle          first_triangle.cpp)
 CreateProject("Basic" 2nd_triangle          second_triangle.cpp)
+CreateProject("Basic" 3rd_triangle          third_triangle.cpp)
 CreateProject("Basic" FragCoord             FragCoordTest.cpp)
 CreateProject("Basic" indices_rect          indices_rect.cpp)
 CreateProject("Basic" FullScreenTriangle    FullScreenTriangle.cpp)
@@ -29,7 +30,7 @@ CreateProject("Tile" DrawText              DrawText.cpp)
 CreateProject("Geometry3D " Geometry3D            Geometry3D.cpp)
 
 CreateProject("Scene" SceneTree             SceneTree.cpp)
-#CreateProject(09.LoadStaticMesh LoadStaticMesh.cpp LoadScene.cpp)
+#CreateProject("Scene" LoadStaticMesh        LoadStaticMesh.cpp LoadScene.cpp)
 CreateProject("Scene" InlineGeometryScene   InlineGeometryScene.cpp)
 
 CreateProject("Scene/Sky" SkyColor              SkyColor.cpp)
@@ -39,7 +40,7 @@ CreateProject("Advanced Rendering" OffscreenRender       OffscreenRender.cpp)
 
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
-CreateProject("AdvancedRendering" DeferredRender        DeferredRender.cpp)
+CreateProject("Advanced Rendering" DeferredRender        DeferredRender.cpp)
 #CreateProject(14.AutoMaterial auto_material.cpp)
 
 CreateProject("Texture" Cubemap               Cubemap.cpp)

@@ -1,10 +1,9 @@
-﻿// third_triangle
-// 该范例主要演示使用2D坐系统直接绘制一个渐变色的三角形
+﻿// second_triangle
+// 该范例主要演示使用场景树系统绘制三角形
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/SceneInfo.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -17,8 +16,8 @@ constexpr uint32_t VERTEX_COUNT=3;
 constexpr float position_data[VERTEX_COUNT][2]=
 {
     {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
+    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75},
+    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75}
 };
 
 constexpr float color_data[VERTEX_COUNT][4]=
@@ -30,6 +29,9 @@ constexpr float color_data[VERTEX_COUNT][4]=
 class TestApp:public VulkanApplicationFramework
 {
 private:
+
+    SceneNode           render_root;
+    RenderList *        render_list         =nullptr;
 
     MaterialInstance *  material_instance   =nullptr;
     RenderableInstance *render_instance     =nullptr;
@@ -49,10 +51,10 @@ private:
             
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
-
+        
         return pipeline;
     }
-   
+
     bool InitVBO()
     {
         Renderable *render_obj=db->CreateRenderable(VERTEX_COUNT);
@@ -62,15 +64,29 @@ private:
         if(!render_obj->Set(VAN::Color,     db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data)))return(false);
         
         render_instance=db->CreateRenderableInstance(render_obj,material_instance,pipeline);
+
+        render_root.CreateSubNode(render_instance);
+
+        render_root.RefreshMatrix();
+
+        render_list->Expend(GetCameraInfo(),&render_root);
+
         return(true);
     }
 
 public:
 
+    ~TestApp()
+    {
+        SAFE_CLEAR(render_list);
+    }
+
     bool Init()
     {
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
+
+        render_list=new RenderList(device);
 
         if(!InitMaterial())
             return(false);
@@ -78,8 +94,7 @@ public:
         if(!InitVBO())
             return(false);
 
-        if(!BuildCommandBuffer(render_instance))
-            return(false);
+        BuildCommandBuffer(render_list);
 
         return(true);
     }
@@ -88,7 +103,7 @@ public:
     {
         VulkanApplicationFramework::Resize(w,h);
 
-        BuildCommandBuffer(render_instance);
+        BuildCommandBuffer(render_list);
     }
 };//class TestApp:public VulkanApplicationFramework
 
