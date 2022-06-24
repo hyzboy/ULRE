@@ -82,14 +82,12 @@ TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const
     Texture2D *tex=nullptr;
     VkExtent2D extent={tex_width,tex_height};
 
-    if(vf->color>VulkanDataType::NONE
-     &&vf->color<VulkanDataType::END)
+    if(RangeCheck(vf->color))
     {
         tex=CreateTexture2D(new ColorTextureCreateInfo(format,extent));
     }
     else
-    if(vf->depth>VulkanDataType::NONE
-     &&vf->depth<VulkanDataType::END)
+    if(RangeCheck(vf->depth))
     {
         tex=CreateTexture2D(new DepthTextureCreateInfo(format,extent));
     }
