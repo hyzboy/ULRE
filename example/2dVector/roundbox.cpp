@@ -22,7 +22,13 @@ struct RoundedBoxConfig
     Color4f Color;
     Color4f InColor;
     Color4f OutColor;
-    float Radius[4];        //bottom-right,top-right,bottom-left,top-left
+    struct
+    {
+        float bottom_right;
+        float top_right;
+        float bottom_left;
+        float top_left;
+    }radius;
 
     float LineWidth;
 };
@@ -110,11 +116,11 @@ private:
             rb_config.Color.Set(1,1,1,1);
             rb_config.OutColor.Set(0,0,0,0);
             rb_config.InColor=GetColor4f(COLOR::MozillaOrange,1.0);
-            rb_config.Radius[0]=0;
-            rb_config.Radius[1]=16;
-            rb_config.Radius[2]=0;
-            rb_config.Radius[3]=16;
-            rb_config.LineWidth=2;
+            rb_config.radius.bottom_left=8;
+            rb_config.radius.bottom_right=8;
+            rb_config.radius.top_left=8;
+            rb_config.radius.top_right=8;
+            rb_config.LineWidth=1.5;
 
             ubo_rb_config  =db->CreateUBO(sizeof(RoundedBoxConfig),       &rb_config);
 
