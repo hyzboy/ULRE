@@ -82,6 +82,20 @@ public:
     bool BindFramebuffer(RenderPass *rp,Framebuffer *fb);
 
     bool BeginRenderPass();
+    void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
+    void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
+
+    void BeginRendering(const VkRenderingInfoKHR *ri)
+    {
+        if(!ri)return;
+
+        vkCmdBeginRenderingKHR(cmd_buf,ri);
+    }
+
+    void EndRendering()
+    {
+        vkCmdEndRenderingKHR(cmd_buf);
+    }
 
     bool BindPipeline(Pipeline *p)
     {
@@ -170,10 +184,6 @@ public: //draw
                                 void DrawIndexedIndirect(VkBuffer,VkDeviceSize, uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  ));
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
-
-    void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}
-
-    void EndRenderPass(){vkCmdEndRenderPass(cmd_buf);}
 
 public: //dynamic state
 };//class RenderCmdBuffer:public GPUCmdBuffer
