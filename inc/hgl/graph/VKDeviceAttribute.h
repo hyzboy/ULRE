@@ -23,6 +23,7 @@ struct GPUDeviceAttribute
 
     uint32_t                            graphics_family =ERROR_FAMILY_INDEX;
     uint32_t                            present_family  =ERROR_FAMILY_INDEX;
+    uint32_t                            compute_family  =ERROR_FAMILY_INDEX;
 
     VkQueue                             graphics_queue  =VK_NULL_HANDLE;
     VkQueue                             present_queue   =VK_NULL_HANDLE;
