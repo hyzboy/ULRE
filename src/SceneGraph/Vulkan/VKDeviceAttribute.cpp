@@ -158,6 +158,12 @@ void GPUDeviceAttribute::GetQueueFamily()
         VkBool32 *sp = supports_present.GetData();
         for (uint32_t i = 0; i < family_count; i++)
         {
+            if(fp->queueFlags & VK_QUEUE_COMPUTE_BIT)
+            {
+                if(compute_family==ERROR_FAMILY_INDEX)
+                    compute_family=i;
+            }
+
             if (fp->queueFlags & VK_QUEUE_GRAPHICS_BIT)
             {
                 if (graphics_family == ERROR_FAMILY_INDEX)
