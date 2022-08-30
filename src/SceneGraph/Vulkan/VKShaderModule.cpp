@@ -98,7 +98,11 @@ VAB *VertexShaderModule::CreateVAB(const VABConfigInfo *cfg)
         if(!cfg||!cfg->Get((*si)->name,vac))
         {
             attr->format    =VK_NAMESPACE::GetVulkanFormat(&((*si)->type));
-            bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
+
+            if(memcmp((*si)->name.c_str(),"Inst_",5)==0)                //不可以使用CaseComp("Inst_",5)会被认为是比较一个5字长的字符串，而不是只比较5个字符
+                bind->inputRate =VK_VERTEX_INPUT_RATE_INSTANCE;
+            else
+                bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
         }
         else
         {
