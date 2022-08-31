@@ -105,12 +105,15 @@ public:
 
     bool IsColorAttachmentLinear(const VkFormat format)const{return LinearSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
     bool IsDepthAttachmentLinear(const VkFormat format)const{return LinearSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
-
-    bool IsColorAttachmentBuffer(const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);}
-    bool IsDepthAttachmentBuffer(const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);}
     
     VkFormat GetDepthFormat(bool lower_to_high=false)const;
     VkFormat GetDepthStencilFormat(bool lower_to_high=false)const;
+    
+    const bool IsUBOTexelSupport    (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT);}    
+    const bool IsSTBSupport         (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT);}
+    const bool IsSTBAtomicSupport   (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT);}
+    const bool IsVBOSupport         (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT);}
+
 
 public:
 
@@ -121,7 +124,7 @@ public:
     // open any features in CreateDevice()&SetDeviceFeatures() functions.
     const bool              SupportMDI          ()const
     {
-        // I found a few device support MDI, but its MaxDrawIndirectCount is 1.
+        // the device is supported MDI, but MaxDrawIndirectCount is 1.
 
         return (features.multiDrawIndirect&&properties.limits.maxDrawIndirectCount>1);
     }
