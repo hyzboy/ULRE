@@ -132,6 +132,16 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
     {
         texture_by_name.Add(filename,tex);
         Add(tex);
+
+    #ifdef _DEBUG
+        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        const UTF8String name=ToUTF8String(filename);
+        
+        if(da->debug_maker)
+            da->debug_maker->SetImage(tex->GetImage(),name);
+        if(da->debug_utils)
+            da->debug_utils->SetImage(tex->GetImage(),name);
+    #endif//_DEBUG
     }
 
     return tex;

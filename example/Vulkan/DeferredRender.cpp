@@ -361,12 +361,14 @@ private:
             if(!gbuffer.cmd->BindFramebuffer(gbuffer.rt->GetRenderPass(),gbuffer.rt->GetFramebuffer()))
                 return(false);
 
+            gbuffer.cmd->BeginRegion("GBuffer",Color4f(1,0,0,1));
             if(!gbuffer.cmd->BeginRenderPass())
                 return(false);
 
                 render_list->Render(gbuffer.cmd);
 
             gbuffer.cmd->EndRenderPass();
+            gbuffer.cmd->EndRegion();
         gbuffer.cmd->End();
 
         return(true);
@@ -440,8 +442,8 @@ public:
         
         render_root.RefreshMatrix();
         render_list->Expend(GetCameraInfo(),&render_root);
-
-        CameraAppFramework::Draw();        
+        
+        CameraAppFramework::Draw();
     }
 };//class TestApp:public CameraAppFramework
 

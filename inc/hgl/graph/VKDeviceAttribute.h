@@ -5,6 +5,7 @@
 
 #ifdef _DEBUG
 #include<hgl/graph/VKDebugMaker.h>
+#include<hgl/graph/VKDebugUtils.h>
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
@@ -37,7 +38,7 @@ struct GPUDeviceAttribute
 
     VkSurfaceTransformFlagBitsKHR       preTransform;
     VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-
+    
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
 
@@ -47,6 +48,7 @@ struct GPUDeviceAttribute
     
 #ifdef _DEBUG
     DebugMaker *                        debug_maker     =nullptr;
+    DebugUtils *                        debug_utils     =nullptr;
 #endif//_DEBUG
 
 public:

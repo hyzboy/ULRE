@@ -5,18 +5,31 @@
 #include<hgl/type/Color4f.h>
 
 VK_NAMESPACE_BEGIN
-class VKDebugUtils
+struct DebugUtilsFunction
+{
+    PFN_vkSetDebugUtilsObjectNameEXT     SetName;
+    PFN_vkCmdBeginDebugUtilsLabelEXT     Begin;
+    PFN_vkCmdEndDebugUtilsLabelEXT       End;
+};//struct DebugUtilsFunction    
+
+class DebugUtils
 {
     VkDevice device;
-    
-    PFN_vkSetDebugUtilsObjectNameEXT     s_vkSetDebugUtilsObjectName;
-    PFN_vkCmdBeginDebugUtilsLabelEXT     s_vkCmdBeginDebugUtilsLabel;
-    PFN_vkCmdEndDebugUtilsLabelEXT       s_vkCmdEndDebugUtilsLabel;
-    
-public:
 
-    VKDebugUtils(VkDevice dev);
-    ~VKDebugUtils()=default;
+    DebugUtilsFunction duf;
+
+private:
+    
+    friend DebugUtils *CreateDebugUtils(VkDevice);    
+
+    DebugUtils(VkDevice dev,const DebugUtilsFunction &f)
+    {
+        device=dev;
+        duf=f;
+    }
+
+public:
+    ~DebugUtils()=default;
 
     void SetName(VkObjectType,uint64_t,const char *);
 
@@ -47,11 +60,7 @@ public:
     void SetCommandPool         (VkCommandPool          cp,     const char *name){SetName(VK_OBJECT_TYPE_COMMAND_POOL,          (uint64_t)cp,       name);}
     
     void Begin(VkCommandBuffer,const char *,const Color4f &color=Color4f(1,1,1,1));
-    void End(VkCommandBuffer cmd_buf)
-    {
-        if(s_vkCmdEndDebugUtilsLabel)
-            s_vkCmdEndDebugUtilsLabel(cmd_buf);
-    }
-};//class VKDebugUtils
+    void End(VkCommandBuffer cmd_buf){duf.End(cmd_buf);}
+};//class DebugUtils
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DEBUG_UTILS_INCLUDE
