@@ -176,7 +176,6 @@ private:
 
         sp->pipeline_fan        =gbuffer.rp->CreatePipeline(sp->material_instance,InlinePipeline::Solid3D,Prim::Fan);
 
-
         return sp->pipeline_fan;
     }
 
