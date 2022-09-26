@@ -33,32 +33,57 @@ public:
 
     void SetName(VkObjectType,uint64_t,const char *);
 
-    void SetInstance            (VkInstance             inst,   const char *name){SetName(VK_OBJECT_TYPE_INSTANCE,              (uint64_t)inst,     name);}
-    void SetPhysicsDevice       (VkPhysicalDevice       pd,     const char *name){SetName(VK_OBJECT_TYPE_PHYSICAL_DEVICE,       (uint64_t)pd,       name);}
-    void SetDevice              (VkDevice               dev,    const char *name){SetName(VK_OBJECT_TYPE_DEVICE,                (uint64_t)dev,      name);}
-    void SetQueue               (VkQueue                queue,  const char *name){SetName(VK_OBJECT_TYPE_QUEUE,                 (uint64_t)queue,    name);}
-    void SetSemaphore           (VkSemaphore            sema,   const char *name){SetName(VK_OBJECT_TYPE_SEMAPHORE,             (uint64_t)sema,     name);}
-    void SetCommandBuffer       (VkCommandBuffer        cb,     const char *name){SetName(VK_OBJECT_TYPE_COMMAND_BUFFER,        (uint64_t)cb,       name);}
-    void SetFence               (VkFence                fence,  const char *name){SetName(VK_OBJECT_TYPE_FENCE,                 (uint64_t)fence,    name);}    
-    void SetDeviceMemory        (VkDeviceMemory         mem,    const char *name){SetName(VK_OBJECT_TYPE_DEVICE_MEMORY,         (uint64_t)mem,      name);}
-    void SetBuffer              (VkBuffer               buf,    const char *name){SetName(VK_OBJECT_TYPE_BUFFER,                (uint64_t)buf,      name);}
-    void SetImage               (VkImage                img,    const char *name){SetName(VK_OBJECT_TYPE_IMAGE,                 (uint64_t)img,      name);}
-    void SetEvent               (VkEvent                event,  const char *name){SetName(VK_OBJECT_TYPE_EVENT,                 (uint64_t)event,    name);}
-    void SetQueryPool           (VkQueryPool            qpool,  const char *name){SetName(VK_OBJECT_TYPE_QUERY_POOL,            (uint64_t)qpool,    name);}
-    void SetBufferView          (VkBufferView           bview,  const char *name){SetName(VK_OBJECT_TYPE_BUFFER_VIEW,           (uint64_t)bview,    name);}
-    void SetImageView           (VkImageView            iview,  const char *name){SetName(VK_OBJECT_TYPE_IMAGE_VIEW,            (uint64_t)iview,    name);}
-    void SetShaderModule        (VkShaderModule         smod,   const char *name){SetName(VK_OBJECT_TYPE_SHADER_MODULE,         (uint64_t)smod,     name);}
-    void SetPipelineCache       (VkPipelineCache        pcache, const char *name){SetName(VK_OBJECT_TYPE_PIPELINE_CACHE,        (uint64_t)pcache,   name);}
-    void SetPipelineLayout      (VkPipelineLayout       playout,const char *name){SetName(VK_OBJECT_TYPE_PIPELINE_LAYOUT,       (uint64_t)playout,  name);}
-    void SetRenderPass          (VkRenderPass           rpass,  const char *name){SetName(VK_OBJECT_TYPE_RENDER_PASS,           (uint64_t)rpass,    name);}
-    void SetPipeline            (VkPipeline             pipe,   const char *name){SetName(VK_OBJECT_TYPE_PIPELINE,              (uint64_t)pipe,     name);}
-    void SetDescriptorSetLayout (VkDescriptorSetLayout  dsl,    const char *name){SetName(VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, (uint64_t)dsl,      name);}
-    void SetSampler             (VkSampler              s,      const char *name){SetName(VK_OBJECT_TYPE_SAMPLER,               (uint64_t)s,        name);}
-    void SetDescriptorPool      (VkDescriptorPool       dp,     const char *name){SetName(VK_OBJECT_TYPE_DESCRIPTOR_POOL,       (uint64_t)dp,       name);}
-    void SetDescriptorSet       (VkDescriptorSet        ds,     const char *name){SetName(VK_OBJECT_TYPE_DESCRIPTOR_SET,        (uint64_t)ds,       name);}
-    void SetFrameBuffer         (VkFramebuffer          fbo,    const char *name){SetName(VK_OBJECT_TYPE_FRAMEBUFFER,           (uint64_t)fbo,      name);}
-    void SetCommandPool         (VkCommandPool          cp,     const char *name){SetName(VK_OBJECT_TYPE_COMMAND_POOL,          (uint64_t)cp,       name);}
-    
+#define DU_FUNC(n,N)    void Set##n(Vk##n obj,const char *name){SetName(VK_OBJECT_TYPE_##N,(uint64_t)obj,name);}
+
+    DU_FUNC(Instance            ,INSTANCE              )
+    DU_FUNC(PhysicalDevice      ,PHYSICAL_DEVICE       )
+    DU_FUNC(Device              ,DEVICE                )
+    DU_FUNC(Queue               ,QUEUE                 )
+    DU_FUNC(Semaphore           ,SEMAPHORE             )
+    DU_FUNC(CommandBuffer       ,COMMAND_BUFFER        )
+    DU_FUNC(Fence               ,FENCE                 )
+    DU_FUNC(DeviceMemory        ,DEVICE_MEMORY         )
+    DU_FUNC(Buffer              ,BUFFER                )
+    DU_FUNC(Image               ,IMAGE                 )
+    DU_FUNC(Event               ,EVENT                 )
+    DU_FUNC(QueryPool           ,QUERY_POOL            )
+    DU_FUNC(BufferView          ,BUFFER_VIEW           )
+    DU_FUNC(ImageView           ,IMAGE_VIEW            )
+    DU_FUNC(ShaderModule        ,SHADER_MODULE         )
+    DU_FUNC(PipelineCache       ,PIPELINE_CACHE        )
+    DU_FUNC(PipelineLayout      ,PIPELINE_LAYOUT       )
+    DU_FUNC(RenderPass          ,RENDER_PASS           )
+    DU_FUNC(Pipeline            ,PIPELINE              )
+    DU_FUNC(DescriptorSetLayout ,DESCRIPTOR_SET_LAYOUT )
+    DU_FUNC(Sampler             ,SAMPLER               )
+    DU_FUNC(DescriptorPool      ,DESCRIPTOR_POOL       )
+    DU_FUNC(DescriptorSet       ,DESCRIPTOR_SET        )
+    DU_FUNC(Framebuffer         ,FRAMEBUFFER           )
+    DU_FUNC(CommandPool         ,COMMAND_POOL          )
+        
+    DU_FUNC(SamplerYcbcrConversion,     SAMPLER_YCBCR_CONVERSION)
+    DU_FUNC(DescriptorUpdateTemplate,   DESCRIPTOR_UPDATE_TEMPLATE)
+    DU_FUNC(PrivateDataSlot,            PRIVATE_DATA_SLOT)
+    DU_FUNC(SurfaceKHR,                 SURFACE_KHR)
+    DU_FUNC(SwapchainKHR,               SWAPCHAIN_KHR)
+    DU_FUNC(DisplayKHR,                 DISPLAY_KHR)
+    DU_FUNC(DisplayModeKHR,             DISPLAY_MODE_KHR)
+    DU_FUNC(DebugReportCallbackEXT,     DEBUG_REPORT_CALLBACK_EXT)
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+    DU_FUNC(VideoSessionKHR,            VIDEO_SESSION_KHR)
+    DU_FUNC(VideoSessionParametersKHR,  VIDEO_SESSION_PARAMETERS_KH)
+#endif//VK_ENABLE_BETA_EXTENSIONS
+    DU_FUNC(CuModuleNVX,                    CU_MODULE_NVX)
+    DU_FUNC(CuFunctionNVX,                  CU_FUNCTION_NVX)
+    DU_FUNC(DebugUtilsMessengerEXT,         DEBUG_UTILS_MESSENGER_EXT)
+    DU_FUNC(AccelerationStructureKHR,       ACCELERATION_STRUCTURE_KHR)
+    DU_FUNC(ValidationCacheEXT,             VALIDATION_CACHE_EXT)
+    DU_FUNC(AccelerationStructureNV,        ACCELERATION_STRUCTURE_NV)
+    DU_FUNC(PerformanceConfigurationINTEL,  PERFORMANCE_CONFIGURATION_INTEL)
+    DU_FUNC(DeferredOperationKHR,           DEFERRED_OPERATION_KHR)
+    DU_FUNC(IndirectCommandsLayoutNV,       INDIRECT_COMMANDS_LAYOUT_NV)
+//    DU_FUNC(BufferCollectionFuchsia,        BUFFER_COLLECTION_FUCHSIA)
+   
     void Begin(VkCommandBuffer,const char *,const Color4f &color=Color4f(1,1,1,1));
     void End(VkCommandBuffer cmd_buf){duf.End(cmd_buf);}
 };//class DebugUtils
