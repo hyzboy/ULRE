@@ -41,7 +41,7 @@ void GPUCmdBuffer::BeginRegion(const char *region_name,const Color4f &color)
         dev_attr->debug_maker->Begin(cmd_buf,region_name,color);
 
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->Begin(cmd_buf,region_name,color);
+        dev_attr->debug_utils->CmdBegin(cmd_buf,region_name,color);
 }
 
 void GPUCmdBuffer::EndRegion()
@@ -50,7 +50,7 @@ void GPUCmdBuffer::EndRegion()
         dev_attr->debug_maker->End(cmd_buf);
 
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->End(cmd_buf);
+        dev_attr->debug_utils->CmdEnd(cmd_buf);
 }
 #endif
 VK_NAMESPACE_END

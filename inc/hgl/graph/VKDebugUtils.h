@@ -7,9 +7,16 @@
 VK_NAMESPACE_BEGIN
 struct DebugUtilsFunction
 {
-    PFN_vkSetDebugUtilsObjectNameEXT     SetName;
-    PFN_vkCmdBeginDebugUtilsLabelEXT     Begin;
-    PFN_vkCmdEndDebugUtilsLabelEXT       End;
+    PFN_vkSetDebugUtilsObjectNameEXT    SetName;
+    PFN_vkSetDebugUtilsObjectTagEXT     SetTag;
+
+    PFN_vkQueueBeginDebugUtilsLabelEXT  QueueBegin;
+    PFN_vkQueueEndDebugUtilsLabelEXT    QueueEnd;
+    PFN_vkQueueInsertDebugUtilsLabelEXT QueueInsert;
+    
+    PFN_vkCmdBeginDebugUtilsLabelEXT    CmdBegin;
+    PFN_vkCmdEndDebugUtilsLabelEXT      CmdEnd;    
+    PFN_vkCmdInsertDebugUtilsLabelEXT   CmdInsert;
 };//struct DebugUtilsFunction    
 
 class DebugUtils
@@ -83,9 +90,14 @@ public:
     DU_FUNC(DeferredOperationKHR,           DEFERRED_OPERATION_KHR)
     DU_FUNC(IndirectCommandsLayoutNV,       INDIRECT_COMMANDS_LAYOUT_NV)
 //    DU_FUNC(BufferCollectionFuchsia,        BUFFER_COLLECTION_FUCHSIA)
-   
-    void Begin(VkCommandBuffer,const char *,const Color4f &color=Color4f(1,1,1,1));
-    void End(VkCommandBuffer cmd_buf){duf.End(cmd_buf);}
+    
+    void QueueBegin  (VkQueue,const char *,const Color4f &color=Color4f(1,1,1,1));
+    void QueueEnd    (VkQueue q){duf.QueueEnd(q);}
+    void QueueInsert (VkQueue q,const char *,const Color4f &color=Color4f(1,1,1,1));
+    
+    void CmdBegin    (VkCommandBuffer,const char *,const Color4f &color=Color4f(1,1,1,1));
+    void CmdEnd      (VkCommandBuffer cmd_buf){duf.CmdEnd(cmd_buf);}
+    void CmdInsert   (VkCommandBuffer cmd_buf,const char *,const Color4f &color=Color4f(1,1,1,1));
 };//class DebugUtils
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DEBUG_UTILS_INCLUDE

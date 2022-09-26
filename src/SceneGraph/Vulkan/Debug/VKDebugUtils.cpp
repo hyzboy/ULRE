@@ -1,6 +1,26 @@
 #include<hgl/graph/VKDebugUtils.h>
 
 VK_NAMESPACE_BEGIN
+DebugUtils *CreateDebugUtils(VkDevice device)
+{
+    DebugUtilsFunction duf;
+
+#define DUF_GETFUNC(n,N)    duf.n=(PFN_vk##N##EXT)vkGetDeviceProcAddr(device,"vk"#N"EXT");if(!duf.##n)return(nullptr);
+
+    DUF_GETFUNC(SetName,    SetDebugUtilsObjectName     );
+    DUF_GETFUNC(SetTag,     SetDebugUtilsObjectTag      );
+    
+    DUF_GETFUNC(QueueBegin, QueueBeginDebugUtilsLabel   );
+    DUF_GETFUNC(QueueEnd,   QueueEndDebugUtilsLabel     );
+    DUF_GETFUNC(QueueInsert,QueueInsertDebugUtilsLabel  );
+
+    DUF_GETFUNC(CmdBegin,   CmdBeginDebugUtilsLabel     );
+    DUF_GETFUNC(CmdEnd,     CmdEndDebugUtilsLabel       );
+    DUF_GETFUNC(CmdInsert,  CmdInsertDebugUtilsLabel    );
+
+    return(new DebugUtils(device,duf));
+}
+
 void DebugUtils::SetName(VkObjectType type,uint64_t handle,const char *name)
 {
     VkDebugUtilsObjectNameInfoEXT name_info={};
@@ -13,30 +33,45 @@ void DebugUtils::SetName(VkObjectType type,uint64_t handle,const char *name)
     duf.SetName(device,&name_info);
 }
 
-void DebugUtils::Begin(VkCommandBuffer cmd_buf,const char *name,const Color4f &color)
+struct DebugUtilsLabel:public VkDebugUtilsLabelEXT
 {
-    VkDebugUtilsLabelEXT label={};
+    DebugUtilsLabel(const char *n,const Color4f &c)
+    {
+        sType=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        pNext=nullptr;
+        pLabelName=n;
+        color[0]=c.r;
+        color[1]=c.g;
+        color[2]=c.b;
+        color[3]=c.a;
+    }
+};//struct DebugUtilsLabel
 
-    label.sType=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-    label.pLabelName=name;
-    memcpy(label.color,&color,sizeof(float)*4);
+void DebugUtils::QueueBegin(VkQueue q,const char *name,const Color4f &color)
+{
+    DebugUtilsLabel label(name,color);
 
-    duf.Begin(cmd_buf,&label);
+    duf.QueueBegin(q,&label);
 }
 
-DebugUtils *CreateDebugUtils(VkDevice device)
+void DebugUtils::QueueInsert(VkQueue q,const char *name,const Color4f &color)
 {
-    DebugUtilsFunction duf;
+    DebugUtilsLabel label(name,color);
 
-    duf.SetName =(PFN_vkSetDebugUtilsObjectNameEXT  )vkGetDeviceProcAddr(device,"vkSetDebugUtilsObjectNameEXT");
-    duf.Begin   =(PFN_vkCmdBeginDebugUtilsLabelEXT  )vkGetDeviceProcAddr(device,"vkCmdBeginDebugUtilsLabelEXT");
-    duf.End     =(PFN_vkCmdEndDebugUtilsLabelEXT    )vkGetDeviceProcAddr(device,"vkCmdEndDebugUtilsLabelEXT");
+    duf.QueueInsert(q,&label);
+}
 
-    if(!duf.SetName
-     ||!duf.Begin
-     ||!duf.End)
-        return(nullptr);
+void DebugUtils::CmdBegin(VkCommandBuffer cmd_buf,const char *name,const Color4f &color)
+{
+    DebugUtilsLabel label(name,color);
 
-    return(new DebugUtils(device,duf));
+    duf.CmdBegin(cmd_buf,&label);
+}
+
+void DebugUtils::CmdInsert(VkCommandBuffer cmd_buf,const char *name,const Color4f &color)
+{
+    DebugUtilsLabel label(name,color);
+
+    duf.CmdInsert(cmd_buf,&label);
 }
 VK_NAMESPACE_END
