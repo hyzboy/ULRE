@@ -17,6 +17,7 @@ Swapchain *CreateSwapchain(const GPUDeviceAttribute *attr,const VkExtent2D &acqu
 
 #ifdef _DEBUG
 DebugMaker *CreateDebugMaker(VkDevice);
+DebugUtils *CreateDebugUtils(VkDevice);
 #endif//_DEBUG
 
 namespace
@@ -540,6 +541,7 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
 
 #ifdef _DEBUG
     device_attr->debug_maker=CreateDebugMaker(device_attr->device);
+    device_attr->debug_utils=CreateDebugUtils(device_attr->device);
 #endif//_DEBUG
 
     GetDeviceQueue(device_attr);
@@ -559,7 +561,7 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
     if(!device_attr->pipeline_cache)
         return(nullptr);
 
-    auto_delete.Discard();
+    auto_delete.Discard();  //discard autodelete
 
     return(new GPUDevice(device_attr));
 }

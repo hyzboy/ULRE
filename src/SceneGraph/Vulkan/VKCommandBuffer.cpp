@@ -29,19 +29,28 @@ bool GPUCmdBuffer::Begin()
 void GPUCmdBuffer::SetDebugName(const char *object_name)
 {
     if(dev_attr->debug_maker)
-        dev_attr->debug_maker->SetCommandBufferName(cmd_buf,object_name);
+        dev_attr->debug_maker->SetCommandBuffer(cmd_buf,object_name);
+    
+    if(dev_attr->debug_utils)
+        dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name);
 }
 
 void GPUCmdBuffer::BeginRegion(const char *region_name,const Color4f &color)
 {
     if(dev_attr->debug_maker)
         dev_attr->debug_maker->Begin(cmd_buf,region_name,color);
+
+    if(dev_attr->debug_utils)
+        dev_attr->debug_utils->Begin(cmd_buf,region_name,color);
 }
 
 void GPUCmdBuffer::EndRegion()
 {
     if(dev_attr->debug_maker)
         dev_attr->debug_maker->End(cmd_buf);
+
+    if(dev_attr->debug_utils)
+        dev_attr->debug_utils->End(cmd_buf);
 }
 #endif
 VK_NAMESPACE_END

@@ -21,6 +21,13 @@ GPUDeviceAttribute::GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDev
 
 GPUDeviceAttribute::~GPUDeviceAttribute()
 {
+#ifdef _DEBUG
+    if(debug_maker)
+        delete debug_maker;
+    if(debug_utils)
+        delete debug_utils;
+#endif//_DEBUG
+    
     if(pipeline_cache)
     {
         SavePipelineCacheData(device,pipeline_cache,physical_device->GetProperties());

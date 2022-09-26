@@ -41,7 +41,7 @@ public:
 	void Insert(VkCommandBuffer cmdbuffer, const char *markerName, const Color4f &color);
 	void End(VkCommandBuffer cmdBuffer);
 	
-	#define DEBUG_MAKER_SET_FUNC(type,MNAME)	void Set##type##Name(Vk##type obj,const char *name){SetObjectName((uint64_t)obj,VK_DEBUG_REPORT_OBJECT_TYPE_##MNAME##_EXT,name);}
+	#define DEBUG_MAKER_SET_FUNC(type,MNAME)	void Set##type(Vk##type obj,const char *name){SetObjectName((uint64_t)obj,VK_DEBUG_REPORT_OBJECT_TYPE_##MNAME##_EXT,name);}
 
 	DEBUG_MAKER_SET_FUNC(CommandBuffer,			COMMAND_BUFFER)
 	DEBUG_MAKER_SET_FUNC(Queue,					QUEUE)
