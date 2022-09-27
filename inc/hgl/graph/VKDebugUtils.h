@@ -90,6 +90,8 @@ public:
     DU_FUNC(DeferredOperationKHR,           DEFERRED_OPERATION_KHR)
     DU_FUNC(IndirectCommandsLayoutNV,       INDIRECT_COMMANDS_LAYOUT_NV)
 //    DU_FUNC(BufferCollectionFuchsia,        BUFFER_COLLECTION_FUCHSIA)
+
+#undef DU_FUNC
     
     void QueueBegin  (VkQueue,const char *,const Color4f &color=Color4f(1,1,1,1));
     void QueueEnd    (VkQueue q){duf.QueueEnd(q);}

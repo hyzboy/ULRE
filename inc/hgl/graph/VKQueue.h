@@ -26,6 +26,8 @@ private:
 public:
 
     virtual ~GPUQueue();
+
+    operator VkQueue(){return queue;}
     
     VkResult Present(const VkPresentInfoKHR *pi){return vkQueuePresentKHR(queue,pi);}
 
