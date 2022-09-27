@@ -28,7 +28,18 @@ class GPUPhysicalDevice
 private:
 
     bool dynamic_state=false;
+    
+public:    
 
+    const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
+    const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
+    const VkPhysicalDeviceVulkan12Features &GetFeatures12       ()const{return features12;}
+    const VkPhysicalDeviceVulkan13Features &GetFeatures13       ()const{return features13;}
+
+    const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
+    const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
+    const VkPhysicalDeviceLimits &          GetLimits           ()const{return properties.limits;}
+    
 public:
 
     GPUPhysicalDevice(VkInstance,VkPhysicalDevice);
@@ -41,21 +52,10 @@ public:
 
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}
     const char *            GetDeviceName()const{return properties.deviceName;}
-
-    const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
-    const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
-    const VkPhysicalDeviceVulkan12Features &GetFeatures12       ()const{return features12;}
-    const VkPhysicalDeviceVulkan13Features &GetFeatures13       ()const{return features13;}
-
-    const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
-    const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
-    const VkPhysicalDeviceLimits &          GetLimits           ()const{return properties.limits;}
     
     const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
     const uint32_t          GetExtensionVersion(const AnsiString &name)const;
     const bool              CheckExtensionSupport(const AnsiString &name)const;
-
-public:
 
     const uint32_t          GetUBORange     ()const{return properties.limits.maxUniformBufferRange;}
     const VkDeviceSize      GetUBOAlign     ()const{return properties.limits.minUniformBufferOffsetAlignment;}
@@ -63,7 +63,7 @@ public:
     const uint32_t          GetSSBORange    ()const{return properties.limits.maxStorageBufferRange;}
     const VkDeviceSize      GetSSBOAlign    ()const{return properties.limits.minStorageBufferOffsetAlignment;}
 
-    const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}
+    const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}    
 
 public:
 
@@ -114,7 +114,6 @@ public:
     const bool IsSTBAtomicSupport   (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT);}
     const bool IsVBOSupport         (const VkFormat format)const{return BufferSupport(format,VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT);}
 
-
 public:
 
     const VkBool32  SupportGeometryShader       ()const{return features.geometryShader;}
@@ -122,26 +121,26 @@ public:
 
     // support != open, so please don't direct use GetFeatures().
     // open any features in CreateDevice()&SetDeviceFeatures() functions.
-    const bool              SupportMDI          ()const
+    const bool      SupportMDI                  ()const
     {
         // the device is supported MDI, but MaxDrawIndirectCount is 1.
 
         return (features.multiDrawIndirect&&properties.limits.maxDrawIndirectCount>1);
     }
 
-    const uint32_t          GetMaxMDICount      ()const
+    const uint32_t  GetMaxMDICount              ()const
     {
         return properties.limits.maxDrawIndirectCount;
     }
 
-    const uint32_t  GetMaxImage1D            ()const{return properties.limits.maxImageDimension1D;}
-    const uint32_t  GetMaxImage2D            ()const{return properties.limits.maxImageDimension2D;}
-    const uint32_t  GetMaxImage3D            ()const{return properties.limits.maxImageDimension3D;}
-    const uint32_t  GetMaxImageCube          ()const{return properties.limits.maxImageDimensionCube;}
-    const uint32_t  GetMaxImageArrayLayers   ()const{return properties.limits.maxImageArrayLayers;}
-    const uint32_t  GetMaxUBORange           ()const{return properties.limits.maxUniformBufferRange;}
-    const uint32_t  GetMaxSSBORange          ()const{return properties.limits.maxStorageBufferRange;}
-    const uint32_t  GetMaxBoundDescriptorSets()const{return properties.limits.maxBoundDescriptorSets;}
+    const uint32_t  GetMaxImage1D               ()const{return properties.limits.maxImageDimension1D;}
+    const uint32_t  GetMaxImage2D               ()const{return properties.limits.maxImageDimension2D;}
+    const uint32_t  GetMaxImage3D               ()const{return properties.limits.maxImageDimension3D;}
+    const uint32_t  GetMaxImageCube             ()const{return properties.limits.maxImageDimensionCube;}
+    const uint32_t  GetMaxImageArrayLayers      ()const{return properties.limits.maxImageArrayLayers;}
+    const uint32_t  GetMaxUBORange              ()const{return properties.limits.maxUniformBufferRange;}
+    const uint32_t  GetMaxSSBORange             ()const{return properties.limits.maxStorageBufferRange;}
+    const uint32_t  GetMaxBoundDescriptorSets   ()const{return properties.limits.maxBoundDescriptorSets;}
 
     const uint32_t  GetMaxVertexInputAttributes ()const{return properties.limits.maxVertexInputAttributes;}
     const uint32_t  GetMaxVertexInputBindings   ()const{return properties.limits.maxVertexInputBindings;}
