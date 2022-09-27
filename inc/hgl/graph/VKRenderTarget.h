@@ -41,6 +41,7 @@ public:
 
     virtual ~RenderTarget();
     
+                    GPUQueue *      GetQueue            ()      {return queue;}
             const   VkExtent2D &    GetExtent           ()const {return extent;}
     virtual         RenderPass *    GetRenderPass       ()      {return render_pass;}
     virtual const   VkRenderPass    GetVkRenderPass     ()const {return render_pass->GetVkRenderPass();}

@@ -83,6 +83,23 @@ public:
     const bool isIntegratedGPU  ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);}         ///<是否是集成显卡
     const bool isVirtualGPU     ()const{return(properties.deviceType==VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);}            ///<是否是虚拟显卡
 
+#define HGL_VK_IS_BRAND(name)   (hgl::stricmp(properties.deviceName,#name,sizeof(#name))==0)
+
+    const bool isMicrosoft  ()const{return HGL_VK_IS_BRAND(Microsoft);}
+    const bool isMesa       ()const{return HGL_VK_IS_BRAND(Mesa     );}
+    const bool isAMD        ()const{return HGL_VK_IS_BRAND(AMD      )
+                                         ||HGL_VK_IS_BRAND(ATI      );}
+    const bool isNvidia     ()const{return HGL_VK_IS_BRAND(nVidia   );}
+    const bool isIntel      ()const{return HGL_VK_IS_BRAND(Intel    );}
+    const bool isQualcomm   ()const{return HGL_VK_IS_BRAND(Adreno   );}
+    const bool isApple      ()const{return HGL_VK_IS_BRAND(Apple    );}
+    const bool isImgTec     ()const{return HGL_VK_IS_BRAND(ImgTec   )
+                                         ||HGL_VK_IS_BRAND(PowerVR  );}
+    const bool isARM        ()const{return HGL_VK_IS_BRAND(Arm      )
+                                         ||HGL_VK_IS_BRAND(Mali     );}
+
+#undef HGL_VK_IS_BRAND
+
 public:
 
     VkFormatProperties GetFormatProperties(const VkFormat format)const

@@ -154,6 +154,39 @@ private:
 
         CreateGBufferSampler();
 
+    #ifdef _DEBUG
+        {
+            auto da=device->GetDeviceAttribute();
+
+            VkQueue           q=*(gbuffer.rt->GetQueue());
+            VkFramebuffer   fbo=  gbuffer.rt->GetFramebuffer()->GetFramebuffer();
+            VkRenderPass     rp=  gbuffer.rp->GetVkRenderPass();
+            VkSemaphore     sem=*(gbuffer.rt->GetRenderCompleteSemaphore());
+            VkCommandBuffer  cb=*(gbuffer.cmd);
+            VkSampler         s=*(gbuffer.sampler);
+
+            if(da->debug_maker)
+            {
+                da->debug_maker->SetQueue(          q,  "[debug maker] GBufferQueue");
+                da->debug_maker->SetFramebuffer(    fbo,"[debug maker] GBufferFBO");
+                da->debug_maker->SetRenderPass(     rp, "[debug maker] GBufferRenderpass");
+                da->debug_maker->SetCommandBuffer(  cb, "[debug maker] GBufferCommandBuffer");
+                da->debug_maker->SetSampler(        s,  "[debug maker] GBufferSampler");
+                da->debug_maker->SetSemaphore(      sem,"[debug maker] GBufferSemaphore");
+            }
+
+            if(da->debug_utils)
+            {
+                da->debug_utils->SetQueue(          q,  "[debug utils] GBufferQueue");
+                da->debug_utils->SetFramebuffer(    fbo,"[debug utils] GBufferFBO");
+                da->debug_utils->SetRenderPass(     rp, "[debug utils] GBufferRenderpass");
+                da->debug_utils->SetCommandBuffer(  cb, "[debug utils] GBufferCommandBuffer");
+                da->debug_utils->SetSampler(        s,  "[debug utils] GBufferSampler");
+                da->debug_utils->SetSemaphore(      sem,"[debug utils] GBufferSemaphore");
+            }
+        }
+    #endif//_DEBUG
+
         return(gbuffer.rt);
     }
 
@@ -361,7 +394,7 @@ private:
             if(!gbuffer.cmd->BindFramebuffer(gbuffer.rt->GetRenderPass(),gbuffer.rt->GetFramebuffer()))
                 return(false);
 
-            gbuffer.cmd->BeginRegion("GBuffer",Color4f(1,0,0,1));
+            gbuffer.cmd->BeginRegion("GBuffer Begin",Color4f(1,0,0,1));
             if(!gbuffer.cmd->BeginRenderPass())
                 return(false);
 
@@ -405,13 +438,13 @@ public:
     {
         const double timer=GetDoubleTime();
         
-		// White
-		lights.position = Vector4f(0.0f, 0.0f, 25.0f, 0.0f);
-		lights.color = Vector4f(15.0f);
-		lights.radius = 155.0f;
+        // White
+        lights.position = Vector4f(0.0f, 0.0f, 25.0f, 0.0f);
+        lights.color = Vector4f(15.0f);
+        lights.radius = 155.0f;
 
-		lights.position.x = sin(rad2deg(timer/100)) * 100.0f;
-		lights.position.y = cos(rad2deg(timer/100)) * 100.0f;
+        lights.position.x = sin(rad2deg(timer/100)) * 100.0f;
+        lights.position.y = cos(rad2deg(timer/100)) * 100.0f;
 
         ubo_lights->Write(&lights);
     }
