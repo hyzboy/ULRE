@@ -138,9 +138,9 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
         const UTF8String name=ToUTF8String(filename);
         
         if(da->debug_maker)
-            da->debug_maker->SetImage(tex->GetImage(),name);
+            da->debug_maker->SetImage(tex->GetImage(),"[debug maker] "+name);
         if(da->debug_utils)
-            da->debug_utils->SetImage(tex->GetImage(),name);
+            da->debug_utils->SetImage(tex->GetImage(),"[debug utils] "+name);
     #endif//_DEBUG
     }
 

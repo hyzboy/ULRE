@@ -24,6 +24,19 @@ const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,
 
     shader_module_by_name.Add(filename,sm);
 
+    #ifdef _DEBUG
+        {
+            auto da=device->GetDeviceAttribute();
+            const UTF8String sn=ToUTF8String(filename);
+            
+            if(da->debug_maker)
+                da->debug_maker->SetShaderModule(*sm,sn);
+
+            if(da->debug_utils)
+                da->debug_utils->SetShaderModule(*sm,sn);
+        }
+    #endif//_DEBUG
+
     return sm;
 }
 
