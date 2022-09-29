@@ -45,6 +45,8 @@ public:
     const bool                              IsMesh          ()const{return stage_create_info->stage==VK_SHADER_STAGE_MESH_BIT_NV;}
 
     const VkPipelineShaderStageCreateInfo * GetCreateInfo   ()const{return stage_create_info;}
+
+    operator VkShaderModule                                 ()const{return stage_create_info->module;}
 };//class ShaderModule
 
 /**

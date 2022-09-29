@@ -136,6 +136,22 @@ private:
         };
 
         gbuffer.sampler=db->CreateSampler(&sci);
+        
+    #ifdef _DEBUG
+        {
+            auto da=device->GetDeviceAttribute();
+
+            if(da->debug_maker)
+            {
+                da->debug_maker->SetSampler(*(gbuffer.sampler), "[debug maker] GBuffer_Sampler");
+            }
+
+            if(da->debug_utils)
+            {
+                da->debug_utils->SetSampler(*(gbuffer.sampler), "[debug utils] GBuffer_Sampler");
+            }
+        }
+    #endif//_DEBUG
     }
 
     bool InitGBuffer()
@@ -208,8 +224,28 @@ private:
             return(false);
 
         sp->pipeline_fan        =gbuffer.rp->CreatePipeline(sp->material_instance,InlinePipeline::Solid3D,Prim::Fan);
+        if(!sp->pipeline_fan)
+            return(false);
 
-        return sp->pipeline_fan;
+    #ifdef _DEBUG
+        {
+            auto da=device->GetDeviceAttribute();
+
+            if(da->debug_maker)
+            {
+                da->debug_maker->SetPipeline(*(sp->pipeline_triangles), "[debug maker] GBuffer_Pipeline_Triangles");
+                da->debug_maker->SetPipeline(*(sp->pipeline_fan),       "[debug maker] GBuffer_Pipeline_Fan");
+            }
+
+            if(da->debug_utils)
+            {
+                da->debug_utils->SetPipeline(*(sp->pipeline_triangles), "[debug utils] GBuffer_Pipeline_Triangles");
+                da->debug_utils->SetPipeline(*(sp->pipeline_fan),       "[debug utils] GBuffer_Pipeline_Fan");
+            }
+        }
+    #endif//_DEBUG
+
+        return(true);
     }
 
     bool InitCompositionPipeline(SubpassParam *sp)
