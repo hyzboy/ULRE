@@ -84,15 +84,15 @@ namespace hgl
 
             //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
             {
-                VABConfigInfo vab_config;
+                VILConfig vil_config;
                 VAConfig va_cfg;
 
                 va_cfg.format=VF_V4I16;
                 va_cfg.instance=false;
 
-                vab_config.Add("Position",va_cfg);
+                vil_config.Add("Position",va_cfg);
 
-                material_instance=db->CreateMaterialInstance(material,&vab_config);
+                material_instance=db->CreateMaterialInstance(material,&vil_config);
                 if(!material_instance)return(false);
             }
 

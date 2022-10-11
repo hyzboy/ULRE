@@ -23,12 +23,12 @@ RenderPass::~RenderPass()
     vkDestroyRenderPass(device,render_pass,nullptr);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,PipelineData *pd,const VAB *vab)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,PipelineData *pd,const VIL *vil)
 {
     VkPipeline graphicsPipeline;
 
     pd->InitShaderStage(mtl->GetStageList());
-    pd->InitVertexInputState(vab);
+    pd->InitVertexInputState(vil);
 
     pd->SetColorAttachments(color_formats.GetCount());
 
@@ -58,7 +58,7 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *da
 
     PipelineData *pd=new PipelineData(data);
 
-    return CreatePipeline(mtl,pd,mi->GetVAB());
+    return CreatePipeline(mtl,pd,mi->GetVIL());
 }
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip)
@@ -80,7 +80,7 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &
 
     pd->Set(prim,prim_restart);
 
-    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVAB());
+    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVIL());
 
     if(p)
         pipeline_list.Add(p);
@@ -94,7 +94,7 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cp
 
     pd->Set(prim,prim_restart);
 
-    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVAB());
+    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVIL());
 
     if(p)
         pipeline_list.Add(p);

@@ -25,7 +25,7 @@ protected:
 
     ObjectList<Pipeline> pipeline_list;
 
-    Pipeline *CreatePipeline(Material *,PipelineData *,const VAB *);
+    Pipeline *CreatePipeline(Material *,PipelineData *,const VIL *);
 
 private:
 

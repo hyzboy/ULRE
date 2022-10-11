@@ -90,8 +90,8 @@ public: //Material
     const ShaderModule *CreateShaderModule(const OSString &filename,ShaderResource *shader_resource);
     
     Material *          CreateMaterial(const OSString &);
-    MaterialInstance *  CreateMaterialInstance(Material *,const VABConfigInfo *vab_cfg=nullptr);
-    MaterialInstance *  CreateMaterialInstance(const OSString &,const VABConfigInfo *vab_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(const OSString &,const VILConfig *vil_cfg=nullptr);
 
     Primitive *         CreatePrimitive(const uint32_t vertex_count=0);
 

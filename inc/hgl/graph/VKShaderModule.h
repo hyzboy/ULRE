@@ -62,7 +62,7 @@ class VertexShaderModule:public ShaderModule
 
 private:
     
-    SortedSets<VAB *> vab_sets;
+    SortedSets<VIL *> vil_sets;
 
 public:
 
@@ -87,9 +87,9 @@ public:
 
 public:
 
-    VAB *                                       CreateVAB(const VABConfigInfo *format_map=nullptr);
-    bool                                        Release(VAB *);
-    const uint32_t                              GetInstanceCount()const{return vab_sets.GetCount();}
+    VIL *                                       CreateVIL(const VILConfig *format_map=nullptr);
+    bool                                        Release(VIL *);
+    const uint32_t                              GetInstanceCount()const{return vil_sets.GetCount();}
 };//class VertexShaderModule:public ShaderModule
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE

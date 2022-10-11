@@ -4,7 +4,7 @@
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKDescriptorSets.h>
 #include<hgl/graph/VKShaderModuleMap.h>
-#include<hgl/graph/VKVertexAttributeBinding.h>
+#include<hgl/graph/VKVertexInputLayout.h>
 #include"VKPipelineLayoutData.h"
 
 VK_NAMESPACE_BEGIN

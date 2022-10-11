@@ -64,7 +64,7 @@ private:
 
     void CreateRenderObject()
     {
-        ro_sphere=inline_geometry::CreateSphere(db,envmap_mi->GetVAB(),128);
+        ro_sphere=inline_geometry::CreateSphere(db,envmap_mi->GetVIL(),128);
     }
 
     bool InitUBO()

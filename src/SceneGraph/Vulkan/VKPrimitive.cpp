@@ -4,19 +4,19 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
-//bool Renderable::Set(const int stage_input_binding,VAB *vab,VkDeviceSize offset)
+//bool Renderable::Set(const int stage_input_binding,VIL *vil,VkDeviceSize offset)
 //{
-//    if(stage_input_binding<0||stage_input_binding>=buf_count||!vab)return(false);
+//    if(stage_input_binding<0||stage_input_binding>=buf_count||!vil)return(false);
 //
 //    const VkVertexInputBindingDescription *desc=vertex_sm->GetDesc(stage_input_binding);
 //    const VkVertexInputAttributeDescription *attr=vertex_sm->GetAttr(stage_input_binding);
 //
-//    if(vab->GetFormat()!=attr->format)return(false);
-//    if(vab->GetStride()!=desc->stride)return(false);
+//    if(vil->GetFormat()!=attr->format)return(false);
+//    if(vil->GetStride()!=desc->stride)return(false);
 //
 //    //format信息来自于shader，实际中可以不一样。但那样需要为每一个格式产生一个同样shader的material instance，不同的格式又需要不同的pipeline，我们不支持这种行为
 //
-//    buf_list[stage_input_binding]=vab->GetBuffer();
+//    buf_list[stage_input_binding]=vil->GetBuffer();
 //    buf_offset[stage_input_binding]=offset;
 //
 //    return(true);

@@ -67,7 +67,7 @@ private:
 
     void CreateRenderObject()
     {
-        primitive=inline_geometry::CreateSphere(db,material_instance->GetVAB(),40);
+        primitive=inline_geometry::CreateSphere(db,material_instance->GetVIL(),40);
     }
 
     bool InitUBO()

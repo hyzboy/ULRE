@@ -5,10 +5,10 @@ namespace hgl
 {
     namespace graph
     {
-        PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VAB *v)
+        PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VIL *v)
         {
             db              =sdb;
-            vab             =v;
+            vil             =v;
 
             vertices_number =0;
             ibo             =nullptr;
@@ -25,10 +25,10 @@ namespace hgl
 
         VAD *PrimitiveCreater::CreateVAD(const AnsiString &name)
         {
-            if(!vab)return(nullptr);
+            if(!vil)return(nullptr);
             if(name.IsEmpty())return(nullptr);
             
-            const auto *va=vab->GetVertexAttribute(name);
+            const auto *va=vil->GetConfig(name);
 
             if(!va)
                 return(nullptr);
@@ -58,7 +58,7 @@ namespace hgl
 
         bool PrimitiveCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
         {
-            if(!vab)return(false);
+            if(!vil)return(false);
             if(name.IsEmpty())return(false);
             if(!data)return(false);
             if(!bytes)return(false);
@@ -68,7 +68,7 @@ namespace hgl
             if(ssb_map.Get(name,ssb))
                 return false;
 
-            const auto *va=vab->GetVertexAttribute(name);
+            const auto *va=vil->GetConfig(name);
 
             if(!va)
                 return(false);
@@ -107,7 +107,7 @@ namespace hgl
 
         Primitive *PrimitiveCreater::Finish()
         {
-            const uint si_count=vab->GetVertexAttrCount();
+            const uint si_count=vil->GetAttrCount();
 
             if(ssb_map.GetCount()!=si_count)
                 return(nullptr);
