@@ -28,7 +28,7 @@ constexpr uint32_t SCREEN_HEIGHT=720;
         /**
          * 创建一个地形网格
          */
-        Primitive *CreateRenderableTerrain(RenderResource *db,const VAB *vab,const TerrainCreateInfo *tci)
+        Primitive *CreateRenderableTerrain(RenderResource *db,const VIL *vil,const TerrainCreateInfo *tci)
         {
         }
 
@@ -95,9 +95,9 @@ private:
         pgci.color.Set(0.75,0.75,0.75);
         pgci.side_color.Set(1,0,0,1);
 
-        const VAB *vab=material_instance->GetVAB();
+        const VIL *vil=material_instance->GetVIL();
 
-        renderable=CreatePlaneGrid(db,vab,&pgci);
+        renderable=CreatePlaneGrid(db,vil,&pgci);
     }
 
     bool InitScene()

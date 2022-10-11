@@ -128,17 +128,17 @@ private:
 
             aci.size=GetCameraInfo().zfar;
 
-            ro_axis=CreateAxis(db,axis_mi->GetVAB(),&aci);
+            ro_axis=CreateAxis(db,axis_mi->GetVIL(),&aci);
         }
         
         {
             struct CubeCreateInfo cci;
 
-            ro_cube=CreateCube(db,sky_mi->GetVAB(),&cci);
+            ro_cube=CreateCube(db,sky_mi->GetVIL(),&cci);
         }
 
         {
-            ro_sphere=CreateSphere(db,envmap_mi->GetVAB(),64);
+            ro_sphere=CreateSphere(db,envmap_mi->GetVIL(),64);
         }
     }
 

@@ -154,10 +154,10 @@ private:
 
             aci.size=200;
 
-            ro_axis=CreateAxis(db,axis_mi->GetVAB(),&aci);
+            ro_axis=CreateAxis(db,axis_mi->GetVIL(),&aci);
         }
 
-        const VAB *vab=material_instance->GetVAB();
+        const VIL *vil=material_instance->GetVIL();
         
         {
             struct CubeCreateInfo cci;
@@ -166,11 +166,11 @@ private:
             cci.tex_coord=true;
             cci.color_type=CubeCreateInfo::ColorType::SameColor;
             cci.color[0]=Vector4f(1,1,1,1);
-            ro_cube=CreateCube(db,vab,&cci);
+            ro_cube=CreateCube(db,vil,&cci);
         }
         
         {
-            ro_sphere=CreateSphere(db,vab,64);
+            ro_sphere=CreateSphere(db,vil,64);
         }
 
         {
@@ -185,7 +185,7 @@ private:
             tci.uv_scale.x=4;
             tci.uv_scale.y=1;
 
-            ro_torus=CreateTorus(db,vab,&tci);
+            ro_torus=CreateTorus(db,vil,&tci);
         }
 
         {
@@ -195,7 +195,7 @@ private:
             cci.radius=10;
             cci.numberSlices=32;
 
-            ro_cylinder=CreateCylinder(db,vab,&cci);
+            ro_cylinder=CreateCylinder(db,vil,&cci);
         }
 
         {
@@ -206,7 +206,7 @@ private:
             cci.numberSlices=128;
             cci.numberStacks=32;
 
-            ro_cone=CreateCone(db,vab,&cci);
+            ro_cone=CreateCone(db,vil,&cci);
         }
     }
 

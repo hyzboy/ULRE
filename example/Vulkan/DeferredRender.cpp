@@ -339,22 +339,22 @@ private:
         return(true);
     }
 
-    void CreateRenderObject(const VAB *vab)
+    void CreateRenderObject(const VIL *vil)
     {
         using namespace inline_geometry;
 
         {
             struct PlaneCreateInfo pci;
-            ro_plane=CreatePlane(db,vab,&pci);
+            ro_plane=CreatePlane(db,vil,&pci);
         }
 
         {
             struct CubeCreateInfo cci;            
-            ro_cube=CreateCube(db,vab,&cci);
+            ro_cube=CreateCube(db,vil,&cci);
         }
 
         {        
-            ro_sphere=CreateSphere(db,vab,64);
+            ro_sphere=CreateSphere(db,vil,64);
         }
 
         {
@@ -369,7 +369,7 @@ private:
             tci.uv_scale.x=4;
             tci.uv_scale.y=1;
 
-            ro_torus=CreateTorus(db,vab,&tci);
+            ro_torus=CreateTorus(db,vil,&tci);
         }
 
         {
@@ -379,7 +379,7 @@ private:
             cci.radius=10;
             cci.numberSlices=32;
 
-            ro_cylinder=CreateCylinder(db,vab,&cci);
+            ro_cylinder=CreateCylinder(db,vil,&cci);
         }
 
         {
@@ -390,13 +390,13 @@ private:
             cci.numberSlices=128;
             cci.numberStacks=32;
 
-            ro_cone=CreateCone(db,vab,&cci);
+            ro_cone=CreateCone(db,vil,&cci);
         }
     }
 
     bool InitCompositionRenderable()
     {
-        ro_gbc_plane=inline_geometry::CreateGBufferCompositionRectangle(db,sp_composition.material_instance->GetVAB());
+        ro_gbc_plane=inline_geometry::CreateGBufferCompositionRectangle(db,sp_composition.material_instance->GetVIL());
         if(!ro_gbc_plane)return(false);
 
         ro_gbc_plane_ri=db->CreateRenderable(ro_gbc_plane,sp_composition.material_instance,sp_composition.pipeline_fan);
@@ -407,7 +407,7 @@ private:
 
     bool InitScene(SubpassParam *sp)
     {
-        CreateRenderObject(sp->material_instance->GetVAB());
+        CreateRenderObject(sp->material_instance->GetVIL());
         render_root.CreateSubNode(                      scale(100,100,1),   db->CreateRenderable(ro_plane      ,sp->material_instance,sp->pipeline_fan      ));
         render_root.CreateSubNode(                                          db->CreateRenderable(ro_torus      ,sp->material_instance,sp->pipeline_triangles));
         render_root.CreateSubNode(                      scale(20,20,20),    db->CreateRenderable(ro_sphere     ,sp->material_instance,sp->pipeline_triangles));

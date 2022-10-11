@@ -97,9 +97,9 @@ private:
             pgci.color.Set(0.25,0,0,1);
             pgci.side_color.Set(1,0,0,1);
 
-            const VAB *vab=material_instance->GetVAB();
+            const VIL *vil=material_instance->GetVIL();
 
-            ro_plane_grid=CreatePlaneGrid(db,vab,&pgci);
+            ro_plane_grid=CreatePlaneGrid(db,vil,&pgci);
         }
 
         {

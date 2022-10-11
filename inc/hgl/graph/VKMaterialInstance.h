@@ -8,7 +8,7 @@ class MaterialInstance
 {
     Material *material;
 
-    VAB *vab;
+    VIL *vil;
 
     MaterialParameters *mp_value;
 
@@ -16,7 +16,7 @@ private:
 
     friend class GPUDevice;
 
-    MaterialInstance(Material *,VAB *,MaterialParameters *);
+    MaterialInstance(Material *,VIL *,MaterialParameters *);
 
 public:
 
@@ -24,7 +24,7 @@ public:
 
     Material *GetMaterial(){return material;}
 
-    const VAB *GetVAB()const{return vab;}
+    const VIL *GetVIL()const{return vil;}
     MaterialParameters *GetMP(){return mp_value;}
     MaterialParameters *GetMP(const DescriptorSetsType &type);
     

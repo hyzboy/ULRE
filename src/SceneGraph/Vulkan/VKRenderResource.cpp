@@ -50,11 +50,11 @@ IndexBuffer *RenderResource::CreateIBO(IndexType index_type,uint32_t count,const
     return(buf);
 }
         
-MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VABConfigInfo *vab_cfg)
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
 {
     if(!mtl)return(nullptr);
 
-    MaterialInstance *mi=device->CreateMI(mtl,vab_cfg);
+    MaterialInstance *mi=device->CreateMI(mtl,vil_cfg);
 
     if(mi)
         Add(mi);
@@ -62,14 +62,14 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VAB
     return mi;
 }
 
-MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_filename,const VABConfigInfo *vab_cfg)
+MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_filename,const VILConfig *vil_cfg)
 {
     Material *mtl=this->CreateMaterial(mtl_filename);
 
     if(!mtl)
         return(nullptr);
 
-    return CreateMaterialInstance(mtl,vab_cfg);
+    return CreateMaterialInstance(mtl,vil_cfg);
 }
 
 Primitive *RenderResource::CreatePrimitive(const uint32_t vertex_count)

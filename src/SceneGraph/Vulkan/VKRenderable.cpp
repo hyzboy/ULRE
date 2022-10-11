@@ -36,8 +36,8 @@ Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!r||!mi||!p)return(nullptr);
 
-    const VAB *vab=mi->GetVAB();
-    const int input_count=vab->GetVertexAttrCount();
+    const VIL *vil=mi->GetVIL();
+    const int input_count=vil->GetAttrCount();
     const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
     if(r->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
@@ -51,9 +51,9 @@ Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
     AutoDeleteArray<VkDeviceSize> buffer_size(input_count);
 
     VBO *vbo;
-    const AnsiString **                         name_list=vab->GetVertexNameList();
-    const VkVertexInputBindingDescription *     bind_list=vab->GetVertexBindingList();
-    const VkVertexInputAttributeDescription *   attr_list=vab->GetVertexAttributeList();
+    const AnsiString **                         name_list=vil->GetNameList();
+    const VkVertexInputBindingDescription *     bind_list=vil->GetBindingList();
+    const VkVertexInputAttributeDescription *   attr_list=vil->GetAttributeList();
 
     for(int i=0;i<input_count;i++)
     {
@@ -61,7 +61,7 @@ Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
 
         if(!vbo)
         {
-            LOG_ERROR("[FATAL ERROR] can't find VBO \""+**name_list+"\" in Material: "+mtl_name);
+            LOG_ERROR("[FATAL ERROR] not found VBO \""+**name_list+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 

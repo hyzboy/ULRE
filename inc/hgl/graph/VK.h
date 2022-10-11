@@ -125,10 +125,10 @@ public:
     CompOperatorMemcmp(const VAConfig &);
 };
 
-using VABConfigInfo=Map<AnsiString,VAConfig>;
+using VILConfig=Map<AnsiString,VAConfig>;
 
-class VertexAttributeBinding;
-using VAB=VertexAttributeBinding;
+class VertexInputLayout;
+using VIL=VertexInputLayout;
 
 class Primitive;
 class Renderable;

@@ -88,9 +88,9 @@ private:
 
     void CreateRenderObject()
     {
-        const VAB *vab=material_instance->GetVAB();
+        const VIL *vil=material_instance->GetVIL();
 
-        ro_skyphere=inline_geometry::CreateDome(db,vab,64);
+        ro_skyphere=inline_geometry::CreateDome(db,vil,64);
     }
 
     bool InitScene()

@@ -76,18 +76,18 @@ private:
         pgci.color.Set(0.5,0,0,1);
         pgci.side_color.Set(1,0,0,1);
 
-        const VAB *vab=material_instance->GetVAB();
+        const VIL *vil=material_instance->GetVIL();
 
-        ro_plane_grid[0]=CreatePlaneGrid(db,vab,&pgci);
+        ro_plane_grid[0]=CreatePlaneGrid(db,vil,&pgci);
 
         pgci.color.Set(0,0.5,0,1);
         pgci.side_color.Set(0,1,0,1);
 
-        ro_plane_grid[1]=CreatePlaneGrid(db,vab,&pgci);
+        ro_plane_grid[1]=CreatePlaneGrid(db,vil,&pgci);
 
         pgci.color.Set(0,0,0.5,1);
         pgci.side_color.Set(0,0,1,1);
-        ro_plane_grid[2]=CreatePlaneGrid(db,vab,&pgci);
+        ro_plane_grid[2]=CreatePlaneGrid(db,vil,&pgci);
     }
 
     bool InitScene()

@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/VKShaderModule.h>
-#include<hgl/graph/VKVertexAttributeBinding.h>
+#include<hgl/graph/VKVertexInputLayout.h>
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
@@ -60,7 +60,7 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateI
 
 VertexShaderModule::~VertexShaderModule()
 {
-    if(vab_sets.GetCount()>0)
+    if(vil_sets.GetCount()>0)
     {
         //还有在用的，这是个错误
     }
@@ -69,7 +69,7 @@ VertexShaderModule::~VertexShaderModule()
     delete[] name_list;
 }
 
-VAB *VertexShaderModule::CreateVAB(const VABConfigInfo *cfg)
+VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
 {
     VkVertexInputBindingDescription *binding_list=new VkVertexInputBindingDescription[attr_count];
     VkVertexInputAttributeDescription *attribute_list=new VkVertexInputAttributeDescription[attr_count];
@@ -126,15 +126,15 @@ VAB *VertexShaderModule::CreateVAB(const VABConfigInfo *cfg)
         ++si;
     }
 
-    VAB *vab=new VAB(attr_count,name_list,type_list,binding_list,attribute_list);
+    VIL *vil=new VIL(attr_count,name_list,type_list,binding_list,attribute_list);
 
-    vab_sets.Add(vab);
+    vil_sets.Add(vil);
 
-    return(vab);
+    return(vil);
 }
 
-bool VertexShaderModule::Release(VAB *vab)
+bool VertexShaderModule::Release(VIL *vil)
 {
-    return vab_sets.Delete(vab);
+    return vil_sets.Delete(vil);
 }
 VK_NAMESPACE_END

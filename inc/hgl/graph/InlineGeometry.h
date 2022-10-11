@@ -20,12 +20,12 @@ namespace hgl
                 RectScope2f scope;
             };//struct RectangleCreateInfo
 
-            Primitive *CreateRectangle(RenderResource *db,const VAB *vab,const RectangleCreateInfo *rci);
+            Primitive *CreateRectangle(RenderResource *db,const VIL *vil,const RectangleCreateInfo *rci);
 
             /**
              * 创建延迟渲染用全屏平面
              */
-            Primitive *CreateGBufferCompositionRectangle(RenderResource *db,const VAB *vab);
+            Primitive *CreateGBufferCompositionRectangle(RenderResource *db,const VIL *vil);
 
             /**
              * 圆角矩形创建信息(扇形/线圈)
@@ -36,7 +36,7 @@ namespace hgl
                 uint32_t round_per;     ///<圆角精度
             };//struct RoundRectangleCreateInfo:public RectangleCreateInfo
 
-            Primitive *CreateRoundRectangle(RenderResource *db,const VAB *vab,const RoundRectangleCreateInfo *rci);
+            Primitive *CreateRoundRectangle(RenderResource *db,const VIL *vil,const RoundRectangleCreateInfo *rci);
 
             /**
              * 圆形创建信息
@@ -56,7 +56,7 @@ namespace hgl
             /**
              * 创建一个2D圆形(扇形/线圈)
              */
-            Primitive *CreateCircle(RenderResource *db,const VAB *vab,const CircleCreateInfo *cci);
+            Primitive *CreateCircle(RenderResource *db,const VIL *vil,const CircleCreateInfo *cci);
 
             /**
              * 平面网格创建信息
@@ -75,7 +75,7 @@ namespace hgl
             /**
              * 创建一个平面网格(线条)
              */
-            Primitive *CreatePlaneGrid(RenderResource *db,const VAB *vab,const PlaneGridCreateInfo *pgci);
+            Primitive *CreatePlaneGrid(RenderResource *db,const VIL *vil,const PlaneGridCreateInfo *pgci);
 
             struct PlaneCreateInfo
             {
@@ -93,7 +93,7 @@ namespace hgl
             /**
              * 创建一个平面(三角形)
              */
-            Primitive *CreatePlane(RenderResource *db,const VAB *vab,const PlaneCreateInfo *pci);
+            Primitive *CreatePlane(RenderResource *db,const VIL *vil,const PlaneCreateInfo *pci);
 
             struct CubeCreateInfo
             {
@@ -129,7 +129,7 @@ namespace hgl
             /**
              * 创建一个立方体(三角形)
              */
-            Primitive *CreateCube(RenderResource *db,const VAB *vab,const CubeCreateInfo *cci);
+            Primitive *CreateCube(RenderResource *db,const VIL *vil,const CubeCreateInfo *cci);
 
             struct BoundingBoxCreateInfo
             {
@@ -160,17 +160,17 @@ namespace hgl
             /**
              *  创建一个绑定盒(线条)
              */
-            Primitive *CreateBoundingBox(RenderResource *db,const VAB *vab,const BoundingBoxCreateInfo *cci);
+            Primitive *CreateBoundingBox(RenderResource *db,const VIL *vil,const BoundingBoxCreateInfo *cci);
 
             /**
              * 创建一个球心坐标为0,0,0，半径为1的球体(三角形)
              */
-            Primitive *CreateSphere(RenderResource *db,const VAB *vab,const uint numberSlices);
+            Primitive *CreateSphere(RenderResource *db,const VIL *vil,const uint numberSlices);
 
             /**
              * 创建一个穹顶(三角形)
              */
-            Primitive *CreateDome(RenderResource *db,const VAB *vab, const uint numberSlices);
+            Primitive *CreateDome(RenderResource *db,const VIL *vil, const uint numberSlices);
 
             struct TorusCreateInfo
             {
@@ -186,7 +186,7 @@ namespace hgl
             /**
              * 创建一个圆环(三角形)
              */
-            Primitive *CreateTorus(RenderResource *db,const VAB *vab,const TorusCreateInfo *tci);
+            Primitive *CreateTorus(RenderResource *db,const VIL *vil,const TorusCreateInfo *tci);
 
             struct CylinderCreateInfo
             {
@@ -198,7 +198,7 @@ namespace hgl
             /**
              * 创建一个圆柱(三角形)
              */
-            Primitive *CreateCylinder(RenderResource *db,const VAB *vab,const CylinderCreateInfo *cci);
+            Primitive *CreateCylinder(RenderResource *db,const VIL *vil,const CylinderCreateInfo *cci);
 
             struct ConeCreateInfo
             {
@@ -211,7 +211,7 @@ namespace hgl
             /**
              * 创建一个圆锥(三角形)
              */
-            Primitive *CreateCone(RenderResource *db,const VAB *vab,const ConeCreateInfo *cci);
+            Primitive *CreateCone(RenderResource *db,const VIL *vil,const ConeCreateInfo *cci);
 
             struct AxisCreateInfo
             {
@@ -232,7 +232,7 @@ namespace hgl
             /**
              * 创建一个坐标线(线条)
              */
-            Primitive *CreateAxis(RenderResource *db,const VAB *vab,const AxisCreateInfo *aci);
+            Primitive *CreateAxis(RenderResource *db,const VIL *vil,const AxisCreateInfo *aci);
         }//namespace inline_geometry
     }//namespace graph
 };//namespace hgl

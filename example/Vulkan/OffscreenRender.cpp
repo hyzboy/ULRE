@@ -107,7 +107,7 @@ public:
             cci.center_color=Vector4f(1,1,1,1);
             cci.border_color=Vector4f(1,1,1,0);
 
-            Primitive *primitive=CreateCircle(db,os.material_instance->GetVAB(),&cci);
+            Primitive *primitive=CreateCircle(db,os.material_instance->GetVIL(),&cci);
             if(!primitive)return(false);
 
             os.renderable=db->CreateRenderable(primitive,os.material_instance,os.pipeline);
@@ -145,7 +145,7 @@ public:
 
             cci.tex_coord=true;
 
-            Primitive *primitive=CreateCube(db,cube.material_instance->GetVAB(),&cci);
+            Primitive *primitive=CreateCube(db,cube.material_instance->GetVIL(),&cci);
             if(!primitive)return(false);
 
             cube.renderable=db->CreateRenderable(primitive,cube.material_instance,cube.pipeline);
