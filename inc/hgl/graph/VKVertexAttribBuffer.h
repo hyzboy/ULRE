@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        class VertexAttribBuffer:public GPUBuffer
+        class VertexAttribBuffer:public DeviceBuffer
         {
             VkFormat format;                    ///<数据格式
             uint32_t stride;                    ///<单个数据字节数
@@ -17,7 +17,7 @@ namespace hgl
 
             friend class GPUDevice;
 
-            VertexAttribBuffer(VkDevice d,const GPUBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):GPUBuffer(d,vb)
+            VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):DeviceBuffer(d,vb)
             {
                 format=fmt;
                 stride=_stride;
@@ -31,7 +31,7 @@ namespace hgl
             const VkFormat GetFormat()const { return format; }
             const uint32_t GetStride()const { return stride; }
             const uint32_t GetCount ()const { return count; }
-        };//class VertexAttribBuffer:public GPUBuffer
+        };//class VertexAttribBuffer:public DeviceBuffer
 
         using VBO=VertexAttribBuffer;
     }//namespace graph

@@ -5,7 +5,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/SortedSets.h>
 VK_NAMESPACE_BEGIN
-class GPUBuffer;
+class DeviceBuffer;
 
 class DescriptorSets
 {
@@ -49,10 +49,10 @@ public:
 
     void Clear();
 
-    bool BindUBO    (const int binding,const GPUBuffer *buf,bool dynamic=false);
-    bool BindUBO    (const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
-    bool BindSSBO   (const int binding,const GPUBuffer *buf,bool dynamic=false);
-    bool BindSSBO   (const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindUBO    (const int binding,const DeviceBuffer *buf,bool dynamic=false);
+    bool BindUBO    (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
+    bool BindSSBO   (const int binding,const DeviceBuffer *buf,bool dynamic=false);
+    bool BindSSBO   (const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic=false);
 
     bool BindSampler(const int binding,Texture *,Sampler *);
     bool BindInputAttachment(const int binding,ImageView *);

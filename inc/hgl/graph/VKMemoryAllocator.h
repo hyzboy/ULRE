@@ -11,7 +11,7 @@ class VKMemoryAllocator:public AbstractMemoryAllocator
 
     uint32_t buffer_usage_flag_bits;
 
-    GPUBuffer *gpu_buffer;
+    DeviceBuffer *gpu_buffer;
 
     VkDeviceSize range;         //ubo之类需要一个一次访问范围
 
@@ -25,7 +25,7 @@ public:
 
     const uint32_t  GetBufferUsageFlagBits  ()const{return buffer_usage_flag_bits;}
 
-    GPUBuffer *     GetBuffer               (){return gpu_buffer;}
+    DeviceBuffer *     GetBuffer               (){return gpu_buffer;}
 
 public:
 

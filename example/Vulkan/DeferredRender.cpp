@@ -67,7 +67,7 @@ private:
 
     PhongPointLight lights;
 
-    GPUBuffer *ubo_lights;
+    DeviceBuffer *ubo_lights;
 
     struct SubpassParam
     {

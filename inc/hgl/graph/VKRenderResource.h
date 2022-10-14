@@ -41,7 +41,7 @@ class RenderResource
     IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
     IDResManage<DescriptorSetsID,       DescriptorSets>     rm_desc_sets;               ///<描述符合集
     IDResManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
-    IDResManage<BufferID,               GPUBuffer>          rm_buffers;                 ///<顶点缓冲区合集
+    IDResManage<BufferID,               DeviceBuffer>          rm_buffers;                 ///<顶点缓冲区合集
     IDResManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
@@ -57,7 +57,7 @@ public: //Add
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
     DescriptorSetsID        Add(DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
-    BufferID                Add(GPUBuffer *         buf ){return rm_buffers.Add(buf);}
+    BufferID                Add(DeviceBuffer *         buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
@@ -68,8 +68,8 @@ public: // VBO/VAO
     VBO *CreateVBO(VkFormat format,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateVBO(format,count,nullptr,sm);}
     VBO *CreateVBO(const VAD *vad,SharingMode sm=SharingMode::Exclusive){return CreateVBO(vad->GetVulkanFormat(),vad->GetCount(),vad->GetData(),sm);}
 
-    #define SCENE_DB_CREATE_FUNC(name)  GPUBuffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
-                                        GPUBuffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive);
+    #define SCENE_DB_CREATE_FUNC(name)  DeviceBuffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
+                                        DeviceBuffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive);
 
             SCENE_DB_CREATE_FUNC(UBO)
             SCENE_DB_CREATE_FUNC(SSBO)
@@ -111,7 +111,7 @@ public: //Get
     MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
     DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
     Primitive *         GetPrimitive            (const PrimitiveID          &id){return rm_primitives.Get(id);}
-    GPUBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
+    DeviceBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
     Renderable *        GetRenderable           (const RenderableID &id){return rm_renderables.Get(id);}

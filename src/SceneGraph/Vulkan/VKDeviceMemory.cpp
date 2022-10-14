@@ -1,13 +1,13 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-GPUMemory *GPUDevice::CreateMemory(VkImage image,const uint32_t flag)
+DeviceMemory *GPUDevice::CreateMemory(VkImage image,const uint32_t flag)
 {
     VkMemoryRequirements memReqs;
 
     vkGetImageMemoryRequirements(attr->device,image,&memReqs);
 
-    GPUMemory *mem=CreateMemory(memReqs,flag);
+    DeviceMemory *mem=CreateMemory(memReqs,flag);
     
     if(!mem)return(nullptr);
 

@@ -78,7 +78,7 @@ namespace hgl
             return(true);
         }
 
-        bool TextRender::InitMaterial(RenderPass *rp,GPUBuffer *ubo_camera_info)
+        bool TextRender::InitMaterial(RenderPass *rp,DeviceBuffer *ubo_camera_info)
         {
             material=db->CreateMaterial(OS_TEXT("res/material/LumTextureRect2D"));
 
@@ -127,7 +127,7 @@ namespace hgl
             return(true);
         }
 
-        bool TextRender::Init(RenderPass *rp,GPUBuffer *ubo_camera_info,int limit)
+        bool TextRender::Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
         {
             if(!InitTileFont(limit))
                 return(false);
@@ -212,7 +212,7 @@ namespace hgl
             return AcquireFontSource(fnt);
         }
 
-        TextRender *CreateTextRender(GPUDevice *dev,FontSource *fs,RenderPass *rp,GPUBuffer *ubo_camera_info,int limit)
+        TextRender *CreateTextRender(GPUDevice *dev,FontSource *fs,RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
         {
             if(!dev||!rp||!ubo_camera_info)
                 return(nullptr);

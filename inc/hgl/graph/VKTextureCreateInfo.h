@@ -20,13 +20,13 @@ struct TextureCreateInfo
     VkImageLayout       image_layout;
 
     VkImage             image;          //如果没有IMAGE，则创建。（交换链等会直接提供image，所以存在外部传入现像)
-    GPUMemory *         memory;         //同时需分配内存并绑定
+    DeviceMemory *         memory;         //同时需分配内存并绑定
 
     ImageView *         image_view;     //如果没有imageview，则创建
 
     void *              pixels;         //如果没有buffer但有pixels，则根据pixels和以上条件创建buffer
     VkDeviceSize        total_bytes;
-    GPUBuffer *         buffer;         //如果pixels也没有，则代表不会立即写入图像数据
+    DeviceBuffer *         buffer;         //如果pixels也没有，则代表不会立即写入图像数据
 
 public:
 
@@ -152,7 +152,7 @@ public:
         return(true);
     }
 
-    bool SetData(GPUBuffer *buf,const VkExtent3D &ext)
+    bool SetData(DeviceBuffer *buf,const VkExtent3D &ext)
     {
         if(!buf)return(false);
         if(ext.width<=0||ext.height<=0||ext.depth<=0)return(false);
@@ -292,7 +292,7 @@ struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 
 struct TextureData
 {
-    GPUMemory *         memory;
+    DeviceMemory *         memory;
     VkImage             image;
     VkImageLayout       image_layout;
     ImageView *         image_view;

@@ -44,8 +44,8 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
 
-    GPUBuffer *         ubo_camera_info     =nullptr;
-    GPUBuffer *         ubo_rb_config       =nullptr;
+    DeviceBuffer *         ubo_camera_info     =nullptr;
+    DeviceBuffer *         ubo_rb_config       =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -74,9 +74,9 @@ private:
         return(true);
     }
 
-    GPUBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
+    DeviceBuffer *CreateUBO(const AnsiString &name,const VkDeviceSize size,void *data)
     {
-        GPUBuffer *ubo=db->CreateUBO(size,data);
+        DeviceBuffer *ubo=db->CreateUBO(size,data);
 
         if(!ubo)
             return(nullptr);

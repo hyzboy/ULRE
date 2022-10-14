@@ -49,8 +49,8 @@ private:
     Pipeline *          axis_pipeline       =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
 
-    GPUBuffer *         ubo_light           =nullptr;
-    GPUBuffer *         ubo_phong           =nullptr;
+    DeviceBuffer *         ubo_light           =nullptr;
+    DeviceBuffer *         ubo_phong           =nullptr;
 
     struct
     {

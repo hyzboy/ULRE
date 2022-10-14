@@ -11,7 +11,7 @@ template<typename T,typename TL> class VkTextureLoader:public TL
 protected:
 
     GPUDevice *device;
-    GPUBuffer *buf;
+    DeviceBuffer *buf;
     T *tex;
 
     bool auto_mipmaps;

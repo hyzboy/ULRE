@@ -4,19 +4,19 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
 VK_NAMESPACE_BEGIN
-struct GPUBufferData
+struct DeviceBufferData
 {
-    VkBuffer                buffer;
-    GPUMemory *             memory=nullptr;
+    VkBuffer                buffer=nullptr;
+    DeviceMemory *          memory=nullptr;
     VkDescriptorBufferInfo  info;
-};//struct GPUBufferData
+};//struct DeviceBufferData
 
-class GPUBuffer
+class DeviceBuffer
 {
 protected:
 
     VkDevice device;
-    GPUBufferData buf;
+    DeviceBufferData buf;
 
 private:
 
@@ -24,7 +24,7 @@ private:
     friend class VertexAttribBuffer;
     friend class IndexBuffer;
 
-    GPUBuffer(VkDevice d,const GPUBufferData &b)
+    DeviceBuffer(VkDevice d,const DeviceBufferData &b)
     {
         device=d;
         buf=b;
@@ -32,10 +32,10 @@ private:
 
 public:
 
-    virtual ~GPUBuffer();
+    virtual ~DeviceBuffer();
 
             VkBuffer                    GetBuffer       ()const{return buf.buffer;}
-            GPUMemory *                 GetMemory       ()const{return buf.memory;}
+            DeviceMemory *              GetMemory       ()const{return buf.memory;}
     const   VkDescriptorBufferInfo *    GetBufferInfo   ()const{return &buf.info;}
 
             void *  Map     ()                                              {return buf.memory->Map();}
@@ -47,6 +47,6 @@ public:
             bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
             bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
             bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
-};//class GPUBuffer
+};//class DeviceBuffer
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_BUFFER_INCLUDE

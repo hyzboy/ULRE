@@ -21,7 +21,7 @@ class TestApp:public CameraAppFramework
 {
     SkyColorConfig scc;
 
-    GPUBuffer *ubo_color=nullptr;
+    DeviceBuffer *ubo_color=nullptr;
 
 private:
 
@@ -32,7 +32,7 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    GPUBuffer *         ubo_sky_color       =nullptr;
+    DeviceBuffer *         ubo_sky_color       =nullptr;
 
     Primitive        * ro_skyphere         =nullptr;
 
