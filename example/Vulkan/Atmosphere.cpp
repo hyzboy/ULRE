@@ -40,10 +40,10 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline_solid      =nullptr;
     
-    GPUBuffer *         ubo_atomsphere      =nullptr;
+    DeviceBuffer *      ubo_atomsphere      =nullptr;
     AtmosphereData      atomsphere_data;
 
-    Primitive *        ro_sphere           =nullptr;
+    Primitive *         ro_sphere           =nullptr;
 
 private:
 

@@ -16,7 +16,7 @@ class TestApp:public CameraAppFramework
         Camera cam;
 
         MaterialInstance *  material_instance   =nullptr;
-        GPUBuffer *         ubo_camera_info     =nullptr;
+        DeviceBuffer *         ubo_camera_info     =nullptr;
     };
 
     struct:public RenderObject

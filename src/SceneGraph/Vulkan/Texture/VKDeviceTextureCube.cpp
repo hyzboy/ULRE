@@ -83,7 +83,7 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
     return tex;
 }
 
-bool GPUDevice::CommitTextureCube(TextureCube *tex,GPUBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
+bool GPUDevice::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||!mipmaps_zero_bytes)return(false);
     
@@ -92,7 +92,7 @@ bool GPUDevice::CommitTextureCube(TextureCube *tex,GPUBuffer *buf,const uint32_t
     return CommitTexture(tex,buf,&buffer_image_copy,1,6,destinationStage);
 }
 
-bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
       ||extent.width*extent.height<=0)
@@ -142,7 +142,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const V
     return CommitTexture(tex,buf,buffer_image_copy,miplevel,6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+//bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf||ir_list.GetCount()<=0)
 //        return(false);
@@ -182,7 +182,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const V
 //    return result;
 //}
 //
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,GPUBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
+//bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf
 //        ||left<0||left+width>tex->GetWidth()
@@ -208,7 +208,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,GPUBuffer *buf,const V
 //        ||size<=0)
 //        return(false);
 //
-//    GPUBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+//    DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 //
 //    bool result=ChangeTexture2D(tex,buf,left,top,width,height,destinationStage);    
 //

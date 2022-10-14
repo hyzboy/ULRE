@@ -45,7 +45,7 @@ MaterialParameters *MaterialInstance::GetMP(const DescriptorSetsType &type)
     return material->GetMP(type);
 }
 
-bool MaterialInstance::BindUBO(const DescriptorSetsType &type,const AnsiString &name,GPUBuffer *ubo,bool dynamic)
+bool MaterialInstance::BindUBO(const DescriptorSetsType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     MaterialParameters *mp_global=GetMP(type);
         
@@ -58,7 +58,7 @@ bool MaterialInstance::BindUBO(const DescriptorSetsType &type,const AnsiString &
     return(true);
 }
 
-bool MaterialInstance::BindSSBO(const DescriptorSetsType &type,const AnsiString &name,GPUBuffer *ubo,bool dynamic)
+bool MaterialInstance::BindSSBO(const DescriptorSetsType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     MaterialParameters *mp_global=GetMP(type);
         

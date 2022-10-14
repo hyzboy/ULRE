@@ -33,8 +33,8 @@ private:
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
 
-    GPUBuffer *         ubo_color           =nullptr;
-    GPUBuffer *         ubo_sun             =nullptr;
+    DeviceBuffer *         ubo_color           =nullptr;
+    DeviceBuffer *         ubo_sun             =nullptr;
 
     Primitive *         primitive           =nullptr;
 

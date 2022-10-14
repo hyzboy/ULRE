@@ -9,7 +9,7 @@ const VkDeviceSize GPUDevice::GetUBOAlign()
     return attr->physical_device->GetUBOAlign();
 }
 
-bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     BufferCreateInfo buf_info;
 
@@ -26,7 +26,7 @@ bool GPUDevice::CreateBuffer(GPUBufferData *buf,VkBufferUsageFlags buf_usage,VkD
 
     vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
 
-    GPUMemory *dm=CreateMemory(mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    DeviceMemory *dm=CreateMemory(mem_reqs,VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     if(dm&&dm->BindBuffer(buf->buffer))
     {
@@ -61,7 +61,7 @@ VBO *GPUDevice::CreateVBO(VkFormat format,uint32_t count,const void *data,Sharin
 
     const VkDeviceSize size=stride*count;
 
-    GPUBufferData buf;
+    DeviceBufferData buf;
 
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,size,size,data,sharing_mode))
         return(nullptr);
@@ -79,7 +79,7 @@ IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void
 
     const VkDeviceSize size=stride*count;
 
-    GPUBufferData buf;
+    DeviceBufferData buf;
 
     if(!CreateBuffer(&buf,VK_BUFFER_USAGE_INDEX_BUFFER_BIT,size,data,sharing_mode))
         return(nullptr);
@@ -87,13 +87,13 @@ IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void
     return(new IndexBuffer(attr->device,buf,index_type,count));
 }
 
-GPUBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+DeviceBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
-    GPUBufferData buf;
+    DeviceBufferData buf;
 
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode))
         return(nullptr);
 
-    return(new GPUBuffer(attr->device,buf));
+    return(new DeviceBuffer(attr->device,buf));
 }
 VK_NAMESPACE_END

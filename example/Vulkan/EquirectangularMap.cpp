@@ -26,8 +26,8 @@ private:
 
     Pipeline *          solid_pipeline      =nullptr;
 
-    GPUBuffer *         ubo_light           =nullptr;
-    GPUBuffer *         ubo_phong           =nullptr;
+    DeviceBuffer *         ubo_light           =nullptr;
+    DeviceBuffer *         ubo_phong           =nullptr;
 
     Sampler *           sampler             =nullptr;
     Texture2D *         texture             =nullptr;

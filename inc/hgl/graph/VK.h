@@ -51,9 +51,9 @@ class TextureCubeArray;
 
 class Sampler;
 
-class GPUMemory;
-class GPUBuffer;
-struct GPUBufferData;
+class DeviceMemory;
+class DeviceBuffer;
+struct DeviceBufferData;
 
 class VertexAttribBuffer;
 using VBO=VertexAttribBuffer;

@@ -59,7 +59,7 @@ namespace hgl
                 return coll->GetUnitBytes();
             }
 
-            GPUBuffer *GetBuffer()
+            DeviceBuffer *GetBuffer()
             {
                 return vk_ma->GetBuffer();
             }

@@ -39,7 +39,7 @@ namespace
     {
     public:
 
-        DescriptorBufferInfo(const GPUBuffer *buf,const VkDeviceSize off,const VkDeviceSize rng)
+        DescriptorBufferInfo(const DeviceBuffer *buf,const VkDeviceSize off,const VkDeviceSize rng)
         {
             buffer=buf->GetBuffer();
             offset=off;
@@ -76,7 +76,7 @@ void DescriptorSets::Clear()
     is_dirty=true;
 }
 
-bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,bool dynamic)
+bool DescriptorSets::BindUBO(const int binding,const DeviceBuffer *buf,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -92,7 +92,7 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,bool dynamic
     return(true);
 }
 
-bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+bool DescriptorSets::BindUBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -112,7 +112,7 @@ bool DescriptorSets::BindUBO(const int binding,const GPUBuffer *buf,const VkDevi
     return(true);
 }
 
-bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,bool dynamic)
+bool DescriptorSets::BindSSBO(const int binding,const DeviceBuffer *buf,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -128,7 +128,7 @@ bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,bool dynami
     return(true);
 }
 
-bool DescriptorSets::BindSSBO(const int binding,const GPUBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+bool DescriptorSets::BindSSBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);

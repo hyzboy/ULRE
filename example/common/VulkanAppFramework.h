@@ -61,7 +61,7 @@ protected:
 protected:
     
     Camera *                camera                      =nullptr;
-    GPUBuffer *             ubo_camera_info             =nullptr;
+    DeviceBuffer *             ubo_camera_info             =nullptr;
 
 public:
 
@@ -149,7 +149,7 @@ public:
         return camera->info;
     }
 
-    GPUBuffer *GetCameraInfoBuffer()
+    DeviceBuffer *GetCameraInfoBuffer()
     {
         return ubo_camera_info;
     }

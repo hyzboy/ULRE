@@ -23,7 +23,7 @@ void GPUDevice::Clear(TextureCreateInfo *tci)
     delete tci;
 }
 
-bool GPUDevice::CommitTexture(Texture *tex,GPUBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool GPUDevice::CommitTexture(Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf)
         return(false);

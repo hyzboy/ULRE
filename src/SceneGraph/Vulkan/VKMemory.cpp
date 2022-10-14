@@ -2,7 +2,7 @@
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 VK_NAMESPACE_BEGIN
-GPUMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
+DeviceMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
 {
     const int index=attr->physical_device->GetMemoryType(req.memoryTypeBits,properties);
 
@@ -16,10 +16,10 @@ GPUMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t prop
     if(vkAllocateMemory(attr->device,&alloc_info,nullptr,&memory)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new GPUMemory(attr->device,memory,req,index,properties,attr->physical_device->GetLimits().nonCoherentAtomSize));
+    return(new DeviceMemory(attr->device,memory,req,index,properties,attr->physical_device->GetLimits().nonCoherentAtomSize));
 }
 
-GPUMemory::GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p,const VkDeviceSize cas)
+DeviceMemory::DeviceMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &mr,const uint32 i,const uint32_t p,const VkDeviceSize cas)
 {
     device=dev;
     memory=dm;
@@ -34,12 +34,12 @@ GPUMemory::GPUMemory(VkDevice dev,VkDeviceMemory dm,const VkMemoryRequirements &
     nonCoherentAtomSize=cas;
 }
 
-GPUMemory::~GPUMemory()
+DeviceMemory::~DeviceMemory()
 {
     vkFreeMemory(device,memory,nullptr);
 }
 
-void *GPUMemory::Map()
+void *DeviceMemory::Map()
 {
     void *result;
 
@@ -49,7 +49,7 @@ void *GPUMemory::Map()
     return(nullptr);
 }
 
-void *GPUMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
+void *DeviceMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
 {
     if(offset<0||offset+size>=req.size)
         return(nullptr);
@@ -62,12 +62,12 @@ void *GPUMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
     return(nullptr);
 }
 
-void GPUMemory::Unmap()
+void DeviceMemory::Unmap()
 {
     vkUnmapMemory(device,memory);
 }
 
-void GPUMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
+void DeviceMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
 {
     memory_range.offset =offset;
     memory_range.size   =size>0?hgl_align(size,nonCoherentAtomSize):0;
@@ -75,7 +75,7 @@ void GPUMemory::Flush(VkDeviceSize offset,VkDeviceSize size)
     vkFlushMappedMemoryRanges(device,1,&memory_range);
 }
 
-bool GPUMemory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
+bool DeviceMemory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
 {
     if(!ptr)return(false);
 
@@ -89,14 +89,14 @@ bool GPUMemory::Write(const void *ptr,VkDeviceSize start,VkDeviceSize size)
     return(true);
 }
 
-bool GPUMemory::BindBuffer(VkBuffer buffer)
+bool DeviceMemory::BindBuffer(VkBuffer buffer)
 {
     if(!buffer)return(false);
 
     return(vkBindBufferMemory(device,buffer,memory,0)==VK_SUCCESS);
 }
 
-bool GPUMemory::BindImage(VkImage image)
+bool DeviceMemory::BindImage(VkImage image)
 {
     if(!image)return(false);
 

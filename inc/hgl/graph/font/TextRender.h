@@ -31,25 +31,25 @@ namespace hgl
             TextLayout *        tl_engine;
     
             Color4f             color;
-            GPUBuffer *         ubo_color;
+            DeviceBuffer *         ubo_color;
 
             SortedSets<TextPrimitive *> tr_sets;
 
         private:
 
-            friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *,int limit=-1);
+            friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
             TextRender(GPUDevice *dev,FontSource *);
 
             bool InitTileFont(int limit);
             bool InitTextLayoutEngine();
             bool InitUBO();
-            bool InitMaterial(RenderPass *,GPUBuffer *);
+            bool InitMaterial(RenderPass *,DeviceBuffer *);
 
         public:
 
             ~TextRender();
 
-            bool Init(RenderPass *rp,GPUBuffer *ubo_camera_info,int limit);
+            bool Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit);
 
         public:
 
@@ -82,7 +82,7 @@ namespace hgl
          * 创建一个文本渲染器
          * @param limit 节数限制(-1表示自动)
          */
-        TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,GPUBuffer *,int limit);
+        TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_RENDER_INCLUDE

@@ -48,7 +48,7 @@ namespace hgl
 
         protected:
 
-            GPUBuffer *tile_buffer;                                                                                     ///<Tile暂存缓冲区
+            DeviceBuffer *tile_buffer;                                                                                     ///<Tile暂存缓冲区
 
             List<Image2DRegion> commit_list;
             uint8 *commit_ptr;

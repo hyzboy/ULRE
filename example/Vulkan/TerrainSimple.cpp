@@ -36,7 +36,7 @@ class TestApp:public CameraAppFramework
 {
     Color4f color;
 
-    GPUBuffer *ubo_color=nullptr;
+    DeviceBuffer *ubo_color=nullptr;
 
 private:
 

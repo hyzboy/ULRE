@@ -35,8 +35,8 @@ private:
     Pipeline *          sky_pipeline        =nullptr;
     Pipeline *          solid_pipeline      =nullptr;
 
-    GPUBuffer *         ubo_light           =nullptr;
-    GPUBuffer *         ubo_phong           =nullptr;
+    DeviceBuffer *         ubo_light           =nullptr;
+    DeviceBuffer *         ubo_phong           =nullptr;
 
     Sampler *           sampler             =nullptr;
     TextureCube *       texture             =nullptr;

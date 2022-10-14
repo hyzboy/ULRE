@@ -16,7 +16,7 @@ MaterialParameters::~MaterialParameters()
     delete descriptor_sets;
 }
 
-bool MaterialParameters::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dynamic)
+bool MaterialParameters::BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     if(name.IsEmpty()||!ubo)
         return(false);
@@ -32,7 +32,7 @@ bool MaterialParameters::BindUBO(const AnsiString &name,GPUBuffer *ubo,bool dyna
     return(true);
 }
 
-bool MaterialParameters::BindSSBO(const AnsiString &name,GPUBuffer *ssbo,bool dynamic)
+bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool dynamic)
 {
     if(name.IsEmpty()||!ssbo)
         return(false);
