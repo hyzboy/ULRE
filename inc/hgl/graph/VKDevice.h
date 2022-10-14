@@ -43,7 +43,7 @@ class GPUDevice
 {
     GPUDeviceAttribute *attr;
 
-    GPUQueue *texture_queue;
+    Queue *texture_queue;
     TextureCmdBuffer *texture_cmd_buf;
 
 private:
@@ -241,9 +241,9 @@ public:
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 
     Fence *      CreateFence(bool);
-    GPUSemaphore *  CreateGPUSemaphore();
+    Semaphore *  CreateGPUSemaphore();
 
-    GPUQueue *      CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
+    Queue *      CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
 
 public: //FrameBuffer相关
 

@@ -59,7 +59,7 @@ private:
 
     public:
 
-        bool Submit(GPUSemaphore *sem)
+        bool Submit(Semaphore *sem)
         {
             return rt->Submit(cmd,sem);
         }

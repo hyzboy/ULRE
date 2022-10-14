@@ -7,7 +7,7 @@ namespace
     const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 }//namespace
 
-GPUQueue::GPUQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
+Queue::Queue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 {
     device=dev;
     queue=q;
@@ -19,12 +19,12 @@ GPUQueue::GPUQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
     submit_info.pWaitDstStageMask       = &pipe_stage_flags;
 }
 
-GPUQueue::~GPUQueue()
+Queue::~Queue()
 {
     SAFE_CLEAR_OBJECT_ARRAY(fence_list,fence_count)
 }
 
-bool GPUQueue::WaitQueue()
+bool Queue::WaitQueue()
 {
     VkResult result=vkQueueWaitIdle(queue);
     
@@ -34,7 +34,7 @@ bool GPUQueue::WaitQueue()
     return(true);
 }
 
-bool GPUQueue::WaitFence(const bool wait_all,uint64_t time_out)
+bool Queue::WaitFence(const bool wait_all,uint64_t time_out)
 {
     VkResult result;
     VkFence fence=*fence_list[current_fence];
@@ -48,7 +48,7 @@ bool GPUQueue::WaitFence(const bool wait_all,uint64_t time_out)
     return(true);
 }
 
-bool GPUQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem)
+bool Queue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,Semaphore *wait_sem,Semaphore *complete_sem)
 {
     VkSemaphore ws;
     VkSemaphore cs;
@@ -91,7 +91,7 @@ bool GPUQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,GPU
     return(result==VK_SUCCESS);
 }
 
-bool GPUQueue::Submit(const VkCommandBuffer &cmd_buf,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem)
+bool Queue::Submit(const VkCommandBuffer &cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
 {
     return Submit(&cmd_buf,1,wait_sem,complete_sem);
 }

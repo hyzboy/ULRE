@@ -128,7 +128,7 @@ Fence *GPUDevice::CreateFence(bool create_signaled)
     return(new Fence(attr->device,fence));
 }
 
-GPUSemaphore *GPUDevice::CreateGPUSemaphore()
+Semaphore *GPUDevice::CreateGPUSemaphore()
 {
     SemaphoreCreateInfo SemaphoreCreateInfo;
 
@@ -137,10 +137,10 @@ GPUSemaphore *GPUDevice::CreateGPUSemaphore()
     if(vkCreateSemaphore(attr->device, &SemaphoreCreateInfo, nullptr, &sem)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new GPUSemaphore(attr->device,sem));
+    return(new Semaphore(attr->device,sem));
 }
 
-GPUQueue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
+Queue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
 {
     if(fence_count<=0)return(nullptr);
 
@@ -149,6 +149,6 @@ GPUQueue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_si
     for(uint32_t i=0;i<fence_count;i++)
         fence_list[i]=CreateFence(create_signaled);
 
-    return(new GPUQueue(attr->device,attr->graphics_queue,fence_list,fence_count));
+    return(new Queue(attr->device,attr->graphics_queue,fence_list,fence_count));
 }
 VK_NAMESPACE_END

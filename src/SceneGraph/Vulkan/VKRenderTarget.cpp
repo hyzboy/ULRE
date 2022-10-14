@@ -6,7 +6,7 @@
 #include<hgl/graph/VKFramebuffer.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget::RenderTarget(GPUQueue *q,GPUSemaphore *s)
+RenderTarget::RenderTarget(Queue *q,Semaphore *s)
 {
     queue=q;
     render_pass=nullptr;
@@ -18,7 +18,7 @@ RenderTarget::RenderTarget(GPUQueue *q,GPUSemaphore *s)
     render_complete_semaphore=s;
 }
 
-RenderTarget::RenderTarget(GPUQueue *q,GPUSemaphore *s,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt)
+RenderTarget::RenderTarget(Queue *q,Semaphore *s,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt)
 {
     queue=q;
     render_pass=_rp;
@@ -59,7 +59,7 @@ RenderTarget::~RenderTarget()
     SAFE_CLEAR(fbo);
 }
 
-bool RenderTarget::Submit(RenderCmdBuffer *command_buffer,GPUSemaphore *present_complete_semaphore)
+bool RenderTarget::Submit(RenderCmdBuffer *command_buffer,Semaphore *present_complete_semaphore)
 {
     return queue->Submit(*command_buffer,present_complete_semaphore,render_complete_semaphore);
 }
