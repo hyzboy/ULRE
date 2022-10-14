@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/VKFence.h>
 VK_NAMESPACE_BEGIN
-GPUFence::~GPUFence()
+Fence::~Fence()
 {
     vkDestroyFence(device,fence,nullptr);
 }
