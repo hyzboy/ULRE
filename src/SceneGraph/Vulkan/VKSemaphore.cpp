@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/VKSemaphore.h>
 VK_NAMESPACE_BEGIN
-GPUSemaphore::~GPUSemaphore()
+Semaphore::~Semaphore()
 {
     vkDestroySemaphore(device,sem,nullptr);
 }

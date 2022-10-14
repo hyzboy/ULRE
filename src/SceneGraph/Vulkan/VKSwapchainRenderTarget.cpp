@@ -3,7 +3,7 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,GPUQueue *q,GPUSemaphore *rcs,GPUSemaphore *pcs,RenderPass *rp):RenderTarget(q,rcs)
+SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,Queue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp):RenderTarget(q,rcs)
 {
     device=dev;
 
@@ -70,7 +70,7 @@ bool SwapchainRenderTarget::Submit(VkCommandBuffer cb)
     return queue->Submit(cb,present_complete_semaphore,render_complete_semaphore);
 }
 
-bool SwapchainRenderTarget::Submit(VkCommandBuffer cb,GPUSemaphore *pce)
+bool SwapchainRenderTarget::Submit(VkCommandBuffer cb,Semaphore *pce)
 {
     return queue->Submit(cb,pce,render_complete_semaphore);
 }

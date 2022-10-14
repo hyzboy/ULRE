@@ -3,7 +3,7 @@
 
 #include<hgl/graph/VK.h>
 VK_NAMESPACE_BEGIN
-class GPUSemaphore
+class Semaphore
 {
     VkDevice device;
     VkSemaphore sem;
@@ -12,7 +12,7 @@ private:
 
     friend class GPUDevice;
 
-    GPUSemaphore(VkDevice d,VkSemaphore s)
+    Semaphore(VkDevice d,VkSemaphore s)
     {
         device=d;
         sem=s;
@@ -20,11 +20,11 @@ private:
 
 public:
 
-    ~GPUSemaphore();
+    ~Semaphore();
 
     operator VkSemaphore(){return sem;}
 
     operator const VkSemaphore *()const{return &sem;}
-};//class GPUSemaphore
+};//class Semaphore
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SEMAPHORE_INCLUDE

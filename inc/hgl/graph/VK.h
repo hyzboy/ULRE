@@ -33,7 +33,7 @@ class VulkanInstance;
 class GPUPhysicalDevice;
 class GPUDevice;
 struct GPUDeviceAttribute;
-class GPUQueue;
+class Queue;
 class ImageView;
 class Framebuffer;
 struct Swapchain;
@@ -68,7 +68,7 @@ class RenderPass;
 class DeviceRenderPassManage;
 
 class Fence;
-class GPUSemaphore;
+class Semaphore;
 
 enum class DescriptorSetsType
 {

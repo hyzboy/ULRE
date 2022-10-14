@@ -4,7 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKFence.h>
 VK_NAMESPACE_BEGIN
-class GPUQueue
+class Queue
 {
 protected:
 
@@ -21,11 +21,11 @@ private:
 
     friend class GPUDevice;
 
-    GPUQueue(VkDevice dev,VkQueue q,Fence **,const uint32_t fc);
+    Queue(VkDevice dev,VkQueue q,Fence **,const uint32_t fc);
 
 public:
 
-    virtual ~GPUQueue();
+    virtual ~Queue();
 
     operator VkQueue(){return queue;}
     
@@ -33,8 +33,8 @@ public:
 
     bool WaitQueue();
     bool WaitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
-    bool Submit(const VkCommandBuffer &cmd_buf,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem);
-    bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,GPUSemaphore *wait_sem,GPUSemaphore *complete_sem);
+    bool Submit(const VkCommandBuffer &cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem);
+    bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,Semaphore *wait_sem,Semaphore *complete_sem);
 };//class SumbitQueue
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SUBMIT_QUEUE_INCLUDE
