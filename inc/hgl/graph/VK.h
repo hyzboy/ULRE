@@ -67,7 +67,7 @@ class TextureCmdBuffer;
 class RenderPass;
 class DeviceRenderPassManage;
 
-class GPUFence;
+class Fence;
 class GPUSemaphore;
 
 enum class DescriptorSetsType

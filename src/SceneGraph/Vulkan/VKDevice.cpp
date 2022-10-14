@@ -116,7 +116,7 @@ TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer()
  * 创建栅栏
  * @param create_signaled 是否创建初始信号
  */
-GPUFence *GPUDevice::CreateFence(bool create_signaled)
+Fence *GPUDevice::CreateFence(bool create_signaled)
 {
     FenceCreateInfo fenceInfo(create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0);
 
@@ -125,7 +125,7 @@ GPUFence *GPUDevice::CreateFence(bool create_signaled)
     if(vkCreateFence(attr->device, &fenceInfo, nullptr, &fence)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new GPUFence(attr->device,fence));
+    return(new Fence(attr->device,fence));
 }
 
 GPUSemaphore *GPUDevice::CreateGPUSemaphore()
@@ -144,7 +144,7 @@ GPUQueue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_si
 {
     if(fence_count<=0)return(nullptr);
 
-    GPUFence **fence_list=new GPUFence *[fence_count];
+    Fence **fence_list=new Fence *[fence_count];
 
     for(uint32_t i=0;i<fence_count;i++)
         fence_list[i]=CreateFence(create_signaled);

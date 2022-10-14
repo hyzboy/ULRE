@@ -12,7 +12,7 @@ protected:
     VkQueue queue;
     
     uint32_t current_fence;
-    GPUFence **fence_list;
+    Fence **fence_list;
     uint32_t fence_count;
 
     SubmitInfo submit_info;
@@ -21,7 +21,7 @@ private:
 
     friend class GPUDevice;
 
-    GPUQueue(VkDevice dev,VkQueue q,GPUFence **,const uint32_t fc);
+    GPUQueue(VkDevice dev,VkQueue q,Fence **,const uint32_t fc);
 
 public:
 

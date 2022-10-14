@@ -240,7 +240,7 @@ public:
 
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 
-    GPUFence *      CreateFence(bool);
+    Fence *      CreateFence(bool);
     GPUSemaphore *  CreateGPUSemaphore();
 
     GPUQueue *      CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);

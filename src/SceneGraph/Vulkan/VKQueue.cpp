@@ -7,7 +7,7 @@ namespace
     const VkPipelineStageFlags pipe_stage_flags=VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 }//namespace
 
-GPUQueue::GPUQueue(VkDevice dev,VkQueue q,GPUFence **fl,const uint32_t fc)
+GPUQueue::GPUQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 {
     device=dev;
     queue=q;
