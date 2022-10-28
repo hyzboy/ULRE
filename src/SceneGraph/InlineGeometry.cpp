@@ -132,7 +132,7 @@ namespace hgl
                 }
 
                 AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
-                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::BaseColor);
+                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
                 if(!vertex)
                     return(nullptr);
@@ -186,7 +186,7 @@ namespace hgl
                                       to(pgci->coord[0],pgci->coord[3],pos));
                 }
 
-                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::BaseColor);
+                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
                 if(color)
                 {
                     for(uint row=0;row<=pgci->step.x;row++)
@@ -323,7 +323,7 @@ namespace hgl
                 {                
                     ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
 
-                    AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::BaseColor);
+                    AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
                     if(color)
                     {
@@ -1151,7 +1151,7 @@ namespace hgl
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::BaseColor);
+                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
                 if(!vertex||!color)
                     return(nullptr);
@@ -1205,7 +1205,7 @@ namespace hgl
                 {
                     ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
 
-                    AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::BaseColor);
+                    AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
                     if(color)
                     {

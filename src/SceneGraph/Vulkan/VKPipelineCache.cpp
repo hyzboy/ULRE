@@ -55,11 +55,8 @@ namespace
 
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &pdp)
 {
-    VkPipelineCacheCreateInfo pipelineCache;
-
-    pipelineCache.sType             = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-    pipelineCache.pNext             = nullptr;
-    pipelineCache.flags             = 0;
+    PipelineCacheCreateInfo pipelineCache;
+    
     pipelineCache.initialDataSize   = 0;
     pipelineCache.pInitialData      = nullptr;
 

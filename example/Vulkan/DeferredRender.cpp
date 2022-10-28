@@ -262,7 +262,7 @@ private:
     }
 
     Sampler *CreateSampler(Texture *tex)
-    {    
+    {
         VkSamplerCreateInfo sci=
         {
             VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,

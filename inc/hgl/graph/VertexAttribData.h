@@ -14,7 +14,7 @@ namespace hgl
             #define VAN_DEFINE(name)    constexpr char name[]=#name;
             VAN_DEFINE(Position)
             VAN_DEFINE(Normal)
-            VAN_DEFINE(BaseColor)
+            VAN_DEFINE(Color)
             VAN_DEFINE(Tangent)
             VAN_DEFINE(Bitangent)
             VAN_DEFINE(TexCoord)
