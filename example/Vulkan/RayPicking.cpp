@@ -107,7 +107,7 @@ private:
             if(!ro_line)return(false);
             
             if(!ro_line->Set(VAN::Position,  vbo_pos=db->CreateVBO(VF_V3F,2,position_data   )))return(false);
-            if(!ro_line->Set(VAN::BaseColor,         db->CreateVBO(VF_V4F,2,color_data      )))return(false);
+            if(!ro_line->Set(VAN::Color,         db->CreateVBO(VF_V4F,2,color_data      )))return(false);
         }
 
         return(true);

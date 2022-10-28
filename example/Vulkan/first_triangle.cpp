@@ -57,10 +57,10 @@ private:
         if(!primitive)return(false);
 
         if(!primitive->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data  )))return(false);
-        if(!primitive->Set(VAN::BaseColor, db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data     )))return(false);
+        if(!primitive->Set(VAN::Color, db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data     )))return(false);
         
         render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
-        return(true);
+        return(render_obj);
     }
 
 public:
