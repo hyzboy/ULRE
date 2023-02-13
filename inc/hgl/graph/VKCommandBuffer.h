@@ -105,7 +105,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(DescriptorSets *dsl)
+    bool BindDescriptorSets(DescriptorSet *dsl)
     {
         if(!dsl)return(false);
 
@@ -118,7 +118,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(DescriptorSets *dsl,const uint32_t offset)
+    bool BindDescriptorSets(DescriptorSet *dsl,const uint32_t offset)
     {
         if(!dsl)return(false);
 

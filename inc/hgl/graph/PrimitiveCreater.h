@@ -23,7 +23,7 @@ namespace hgl
             }
         };//struct ShaderStageBind
 
-        using ShaderStageBindMap=MapObject<AnsiString,ShaderStageBind>;
+        using ShaderStageBindMap=ObjectMap<AnsiString,ShaderStageBind>;
 
         /**
          * 可绘制图元创建器

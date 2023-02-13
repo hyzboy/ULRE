@@ -8,9 +8,9 @@
 #include"VKPipelineLayoutData.h"
 
 VK_NAMESPACE_BEGIN
-DescriptorSets *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetsType &type)const
+DescriptorSet *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetsType &type)const
 {
-    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(type);
+    RANGE_CHECK_RETURN_NULLPTR(type);
 
     const uint32_t binding_count=pld->binding_count[size_t(type)];
 
@@ -28,7 +28,7 @@ DescriptorSets *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,co
     if(vkAllocateDescriptorSets(attr->device,&alloc_info,&desc_set)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new DescriptorSets(attr->device,binding_count,pld->pipeline_layout,desc_set));
+    return(new DescriptorSet(attr->device,binding_count,pld->pipeline_layout,desc_set));
 }
 
 MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const PipelineLayoutData *pld,const DescriptorSetsType &desc_set_type)
@@ -37,7 +37,7 @@ MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const 
     if(!RangeCheck<DescriptorSetsType>(desc_set_type))
         return(nullptr);
 
-    DescriptorSets *ds=CreateDescriptorSets(pld,desc_set_type);
+    DescriptorSet *ds=CreateDescriptorSets(pld,desc_set_type);
 
     if(!ds)return(nullptr);
 

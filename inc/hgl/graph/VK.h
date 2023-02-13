@@ -92,13 +92,13 @@ constexpr char *DescriptSetsTypeName[]=
 
 inline const char *GetDescriptorSetsTypeName(const enum class DescriptorSetsType &type)
 {
-    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(type);
+    RANGE_CHECK_RETURN_NULLPTR(type);
 
     return DescriptSetsTypeName[(size_t)type];
 }
 
 struct PipelineLayoutData;
-class DescriptorSets;
+class DescriptorSet;
 
 struct ShaderStage;
 

@@ -120,11 +120,11 @@ private: //Buffer相关
 
 public: //Buffer相关
 
-    DeviceBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive);
-    DeviceBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,range,size,nullptr,sm);}
-
-    DeviceBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,data,sm);}
-    DeviceBuffer *     CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,nullptr,sm);}
+    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive);
+    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,range,size,nullptr,sm);}
+    
+    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,const void *data,   SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,data,sm);}
+    DeviceBuffer *  CreateBuffer(VkBufferUsageFlags buf_usage,                   VkDeviceSize size,                    SharingMode sm=SharingMode::Exclusive){return CreateBuffer(buf_usage,size,size,nullptr,sm);}
 
     VBO *           CreateVBO   (VkFormat format, uint32_t count,const void *data,    SharingMode sm=SharingMode::Exclusive);
     VBO *           CreateVBO   (VkFormat format, uint32_t count,                     SharingMode sm=SharingMode::Exclusive){return CreateVBO(format,count,nullptr,sm);}
@@ -219,7 +219,7 @@ public: //shader & material
     PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorSets *);
     void Destroy(PipelineLayoutData *);
 
-    DescriptorSets *    CreateDescriptorSets(const PipelineLayoutData *,const DescriptorSetsType &type)const;
+    DescriptorSet *    CreateDescriptorSets(const PipelineLayoutData *,const DescriptorSetsType &type)const;
     MaterialParameters *CreateMP(const MaterialDescriptorSets *,const PipelineLayoutData *,const DescriptorSetsType &);
     MaterialParameters *CreateMP(Material *,const DescriptorSetsType &);
     
@@ -238,7 +238,7 @@ public: //Command Buffer 相关
     
 public:
 
-    RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
+    RenderPass * AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 
     Fence *      CreateFence(bool);
     Semaphore *  CreateGPUSemaphore();

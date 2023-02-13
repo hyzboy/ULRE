@@ -40,7 +40,7 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
     }
     else
     {
-        //没有任何DescriptorSets的情况也是存在的
+        //没有任何DescriptorSet的情况也是存在的
     }
 
     //VkPushConstantRange push_constant_range;

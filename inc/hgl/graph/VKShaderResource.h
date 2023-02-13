@@ -16,7 +16,7 @@ struct ShaderStage
     VertexAttribType    type;       ///<成份数量(如vec4中的4)
 
     bool                global;     ///<是否全局数据
-    bool                dynamic;    ///<是否动态数量
+    bool                dynamic;    ///<是否动态数据
 };//struct ShaderStage
 
 using ShaderStageList       =ObjectList<ShaderStage>;
@@ -29,7 +29,7 @@ class ShaderResource
     uint32 spv_size;
 
     ShaderStageList stage_inputs;
-    ShaderStageList stage_outputs;
+//    ShaderStageList stage_outputs;
 
 public:
 
@@ -43,10 +43,10 @@ public:
     const   uint32_t                GetCodeSize         ()const {return spv_size;}
 
             ShaderStageList &       GetStageInputs      ()      {return stage_inputs;}
-            ShaderStageList &       GetStageOutputs     ()      {return stage_outputs;}
+//            ShaderStageList &       GetStageOutputs     ()      {return stage_outputs;}
 
     const   uint                    GetStageInputCount  ()const {return stage_inputs.GetCount();}
-    const   uint                    GetStageOutputCount ()const {return stage_outputs.GetCount();}
+//    const   uint                    GetStageOutputCount ()const {return stage_outputs.GetCount();}
 
     const   ShaderStage *           GetStageInput       (const AnsiString &)const;
     const   int                     GetStageInputBinding(const AnsiString &)const;

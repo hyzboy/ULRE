@@ -73,7 +73,7 @@ namespace hgl
 
             SortedSets<void *> ref_object;
 
-            MapObject<u32char,CLA> cla_cache;
+            ObjectMap<u32char,CLA> cla_cache;
 
         public:
 
@@ -98,7 +98,7 @@ namespace hgl
 
             Font fnt;
 
-            MapObject<u32char,FontBitmap> chars_bitmap;												///<字符位图
+            ObjectMap<u32char,FontBitmap> chars_bitmap;												///<字符位图
 
         protected:
 

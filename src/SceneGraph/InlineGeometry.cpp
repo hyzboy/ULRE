@@ -321,7 +321,7 @@ namespace hgl
 
                 if(cci->color_type!=CubeCreateInfo::ColorType::NoColor)
                 {                
-                    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
+                    RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
                     AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
@@ -1203,7 +1203,7 @@ namespace hgl
 
                 if(cci->color_type!=BoundingBoxCreateInfo::ColorType::NoColor)
                 {
-                    ENUM_CLASS_RANGE_ERROR_RETURN_NULLPTR(cci->color_type);
+                    RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
                     AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
 
