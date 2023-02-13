@@ -7,7 +7,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKDeviceRenderPassManage.h>
 
 VK_NAMESPACE_BEGIN

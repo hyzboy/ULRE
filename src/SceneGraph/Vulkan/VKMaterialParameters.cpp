@@ -1,7 +1,7 @@
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialDescriptorSets.h>
 #include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/graph/VKDescriptorSet.h>
 
 VK_NAMESPACE_BEGIN
 MaterialParameters::MaterialParameters(const MaterialDescriptorSets *_mds,const DescriptorSetsType &type,DescriptorSet *ds)

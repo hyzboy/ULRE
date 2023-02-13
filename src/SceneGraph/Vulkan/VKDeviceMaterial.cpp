@@ -2,7 +2,7 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialDescriptorSets.h>
 #include<hgl/graph/VKMaterialParameters.h>
-#include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKVertexInputLayout.h>
 #include"VKPipelineLayoutData.h"
