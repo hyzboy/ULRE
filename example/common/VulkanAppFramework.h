@@ -8,7 +8,7 @@
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKImageView.h>
 #include<hgl/graph/VKPrimitive.h>
-#include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>

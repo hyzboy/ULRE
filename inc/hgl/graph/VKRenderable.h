@@ -3,7 +3,7 @@
 
 #include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VKPipeline.h>
-#include<hgl/graph/VKDescriptorSets.h>
+#include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>

@@ -157,8 +157,8 @@ SOURCE_GROUP("Vulkan\\Device\\Memory"           FILES ${VK_MEMORY_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Texture"          FILES ${VK_DEVICE_TEXTURE_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Texture\\Loader"  FILES ${VK_TEXTURE_LOADER_SOURCE})
 
-SET(VK_DESCRIPTOR_SETS_SOURCE   ${SG_INCLUDE_PATH}/VKDescriptorSets.h
-                                Vulkan/VKDescriptorSets.cpp
+SET(VK_DESCRIPTOR_SETS_SOURCE   ${SG_INCLUDE_PATH}/VKDescriptorSet.h
+                                Vulkan/VKDescriptorSet.cpp
                                 Vulkan/VKPipelineLayoutData.h                                
                                 Vulkan/VKPipelineLayoutData.cpp)
 
