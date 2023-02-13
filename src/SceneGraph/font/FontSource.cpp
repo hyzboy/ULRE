@@ -32,7 +32,7 @@ namespace hgl
             constexpr int       CurrencySymbolsCount=(sizeof(CurrencySymbols)/sizeof(u32char))-1;
             constexpr int       VRotateSymbolsCount =(sizeof(VRotateSymbols) /sizeof(u32char))-1;
 
-            MapObject<u32char,CharAttributes> all_char_attrs;
+            ObjectMap<u32char,CharAttributes> all_char_attrs;
         }//namespace
 
         const CLA *FontSource::GetCLA(const u32char &ch)

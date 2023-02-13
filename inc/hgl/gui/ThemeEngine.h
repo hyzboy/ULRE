@@ -21,7 +21,7 @@ namespace hgl
 
             GPUDevice *device;
 
-            MapObject<Form *,ThemeForm> form_list;
+            ObjectMap<Form *,ThemeForm> form_list;
 
             RenderTarget *CreateRenderTarget(const uint32_t,const uint32_t,const VkFormat);
 

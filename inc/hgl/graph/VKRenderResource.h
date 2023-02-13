@@ -18,7 +18,7 @@ VK_NAMESPACE_BEGIN
 using MaterialID            =int;
 using MaterialInstanceID    =int;
 using BufferID              =int;
-using DescriptorSetsID      =int;
+using DescriptorSetID       =int;
 using PrimitiveID           =int;
 using RenderableID          =int;
 using SamplerID             =int;
@@ -33,13 +33,13 @@ class RenderResource
 {
     GPUDevice *device;
     
-    MapObject<OSString,ShaderModule> shader_module_by_name;
+    ObjectMap<OSString,ShaderModule> shader_module_by_name;
     Map<OSString,Material *> material_by_name;
     Map<OSString,Texture *> texture_by_name;
     
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
-    IDResManage<DescriptorSetsID,       DescriptorSets>     rm_desc_sets;               ///<描述符合集
+    IDResManage<DescriptorSetID,        DescriptorSet>     rm_desc_sets;               ///<描述符合集
     IDResManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
     IDResManage<BufferID,               DeviceBuffer>          rm_buffers;                 ///<顶点缓冲区合集
     IDResManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
@@ -55,9 +55,9 @@ public: //Add
 
     MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
-    DescriptorSetsID        Add(DescriptorSets *    ds  ){return rm_desc_sets.Add(ds);}
+    DescriptorSetID         Add(DescriptorSet *     ds  ){return rm_desc_sets.Add(ds);}
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
-    BufferID                Add(DeviceBuffer *         buf ){return rm_buffers.Add(buf);}
+    BufferID                Add(DeviceBuffer *      buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
@@ -109,9 +109,9 @@ public: //Get
 
     Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
-    DescriptorSets *    GetDescSets             (const DescriptorSetsID     &id){return rm_desc_sets.Get(id);}
+    DescriptorSet *     GetDescSets             (const DescriptorSetID      &id){return rm_desc_sets.Get(id);}
     Primitive *         GetPrimitive            (const PrimitiveID          &id){return rm_primitives.Get(id);}
-    DeviceBuffer *         GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
+    DeviceBuffer *      GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
     Renderable *        GetRenderable           (const RenderableID &id){return rm_renderables.Get(id);}

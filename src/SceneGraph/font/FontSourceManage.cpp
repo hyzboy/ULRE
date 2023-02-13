@@ -5,7 +5,7 @@ namespace hgl
     {        
         FontSource *CreateFontSource(const Font &f);        //各平台独立提供
 
-        static MapObject<Font,FontSource> FontStorage;
+        static ObjectMap<Font,FontSource> FontStorage;
 
         FontSource *AcquireFontSource(const Font &f)
         {

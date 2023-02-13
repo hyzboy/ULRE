@@ -11,18 +11,18 @@ class MaterialParameters
 
     DescriptorSetsType ds_type;
 
-    DescriptorSets *descriptor_sets;
+    DescriptorSet *descriptor_sets;
 
 private:
 
     friend class GPUDevice;
 
-    MaterialParameters(const MaterialDescriptorSets *,const DescriptorSetsType &type,DescriptorSets *);
+    MaterialParameters(const MaterialDescriptorSets *,const DescriptorSetsType &type,DescriptorSet *);
 
 public:
 
     const   DescriptorSetsType  GetType             (){return ds_type;}
-            DescriptorSets *    GetDescriptorSet    (){return descriptor_sets;}
+            DescriptorSet *    GetDescriptorSet    (){return descriptor_sets;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
 
     const   uint32_t            GetCount            ()const{return descriptor_sets->GetCount();}

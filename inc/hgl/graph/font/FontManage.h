@@ -14,9 +14,9 @@ namespace hgl
          */
         class FontManage
         {
-            MapObject<Font,FontSource> sources;
+            ObjectMap<Font,FontSource> sources;
 
-            MapObject<FontConfig,TileFont> tilefonts;
+            ObjectMap<FontConfig,TileFont> tilefonts;
         };//class FontManage
     }//namespace graph
 }//namespace hgl

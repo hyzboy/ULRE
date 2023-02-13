@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 class DeviceBuffer;
 
-class DescriptorSets
+class DescriptorSet
 {
     VkDevice device;
     int binding_count;
@@ -27,7 +27,7 @@ private:
 
     friend class GPUDevice;
 
-    DescriptorSets(VkDevice dev,const int bc,VkPipelineLayout pl,VkDescriptorSet ds)
+    DescriptorSet(VkDevice dev,const int bc,VkPipelineLayout pl,VkDescriptorSet ds)
     {
         device          =dev;
         binding_count   =bc;
@@ -39,7 +39,7 @@ private:
 
 public:
 
-    ~DescriptorSets()=default;
+    ~DescriptorSet()=default;
 
     const uint32_t          GetCount            ()const{return binding_count;}
     const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
@@ -57,6 +57,6 @@ public:
     bool BindSampler(const int binding,Texture *,Sampler *);
     bool BindInputAttachment(const int binding,ImageView *);
     void Update();
-};//class DescriptorSets
+};//class DescriptorSet
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DESCRIPTOR_SETS_LAYOUT_INCLUDE

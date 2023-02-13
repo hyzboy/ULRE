@@ -44,8 +44,8 @@ private:
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
 
-    DeviceBuffer *         ubo_camera_info     =nullptr;
-    DeviceBuffer *         ubo_rb_config       =nullptr;
+    DeviceBuffer *      ubo_camera_info     =nullptr;
+    DeviceBuffer *      ubo_rb_config       =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 

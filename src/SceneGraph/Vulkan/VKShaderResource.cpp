@@ -21,7 +21,7 @@ VK_NAMESPACE_BEGIN
 
     namespace
     {
-        MapObject<OSString,ShaderResource> shader_resource_by_filename;
+        ObjectMap<OSString,ShaderResource> shader_resource_by_filename;
 
         const uint8 *LoadShaderStages(ShaderStageList &ss_list,const uint8 *data)
         {
@@ -138,7 +138,7 @@ VK_NAMESPACE_BEGIN
         filedata+=spv_size;
 
         filedata=LoadShaderStages(sr->GetStageInputs(),filedata);
-        filedata=LoadShaderStages(sr->GetStageOutputs(),filedata);
+        //filedata=LoadShaderStages(sr->GetStageOutputs(),filedata);
 
         return sr;
     }

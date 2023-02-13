@@ -67,7 +67,7 @@ namespace
     };//struct DescriptorImageInfo:public VkDescriptorImageInfo
 }//namespace
 
-void DescriptorSets::Clear()
+void DescriptorSet::Clear()
 {
     buffer_list.ClearData();
     image_list.ClearData();
@@ -76,7 +76,7 @@ void DescriptorSets::Clear()
     is_dirty=true;
 }
 
-bool DescriptorSets::BindUBO(const int binding,const DeviceBuffer *buf,bool dynamic)
+bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -92,7 +92,7 @@ bool DescriptorSets::BindUBO(const int binding,const DeviceBuffer *buf,bool dyna
     return(true);
 }
 
-bool DescriptorSets::BindUBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -112,7 +112,7 @@ bool DescriptorSets::BindUBO(const int binding,const DeviceBuffer *buf,const VkD
     return(true);
 }
 
-bool DescriptorSets::BindSSBO(const int binding,const DeviceBuffer *buf,bool dynamic)
+bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -128,7 +128,7 @@ bool DescriptorSets::BindSSBO(const int binding,const DeviceBuffer *buf,bool dyn
     return(true);
 }
 
-bool DescriptorSets::BindSSBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
+bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkDeviceSize offset,const VkDeviceSize range,bool dynamic)
 {
     if(binding<0||!buf)
         return(false);
@@ -148,7 +148,7 @@ bool DescriptorSets::BindSSBO(const int binding,const DeviceBuffer *buf,const Vk
     return(true);
 }
 
-bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler)
+bool DescriptorSet::BindSampler(const int binding,Texture *tex,Sampler *sampler)
 {
     if(binding<0||!tex||!sampler)
         return(false);
@@ -166,7 +166,7 @@ bool DescriptorSets::BindSampler(const int binding,Texture *tex,Sampler *sampler
     return(true);
 }
 
-bool DescriptorSets::BindInputAttachment(const int binding,ImageView *iv)
+bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
 {
     if(binding<0||!iv)
         return(false);
@@ -184,7 +184,7 @@ bool DescriptorSets::BindInputAttachment(const int binding,ImageView *iv)
     return(true);
 }
 
-void DescriptorSets::Update()
+void DescriptorSet::Update()
 {
     if(!is_dirty)return;
 

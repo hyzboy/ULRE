@@ -40,7 +40,7 @@ namespace hgl
             List<Renderable *> ri_list;
 
             VkDescriptorSet ds_list[(size_t)DescriptorSetsType::RANGE_SIZE];
-            DescriptorSets *renderable_desc_sets;
+            DescriptorSet *renderable_desc_sets;
 
             uint32_t ubo_offset;
             uint32_t ubo_align;
