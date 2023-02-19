@@ -16,7 +16,7 @@ void LogSurfaceFormat(const List<VkSurfaceFormatKHR> &surface_format_list)
     const uint32_t format_count=surface_format_list.GetCount();
     const VkSurfaceFormatKHR *sf=surface_format_list.GetData();
 
-    LOG_INFO(OS_TEXT("Current physics device support ")+OSString::valueOf(format_count)+OS_TEXT(" surface format"));
+    LOG_INFO(OS_TEXT("Current physics device support ")+OSString::numberOf(format_count)+OS_TEXT(" surface format"));
 
     const VulkanFormat *vf;
     const VulkanColorSpace *cs;
@@ -26,7 +26,7 @@ void LogSurfaceFormat(const List<VkSurfaceFormatKHR> &surface_format_list)
         vf=GetVulkanFormat(sf->format);
         cs=GetVulkanColorSpace(sf->colorSpace);
 
-        LOG_INFO("  "+AnsiString::valueOf(i)+": "+AnsiString(vf->name)+", "+AnsiString(cs->name));
+        LOG_INFO("  "+AnsiString::numberOf(i)+": "+AnsiString(vf->name)+", "+AnsiString(cs->name));
 
         ++sf;
     }

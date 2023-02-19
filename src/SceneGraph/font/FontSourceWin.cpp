@@ -1,5 +1,5 @@
 ﻿#include"FontSourceWin.h"
-#include<hgl/type/ColorSpace.h>
+#include<hgl/color/Gamma.h>
 
 namespace hgl
 {

@@ -20,7 +20,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
-#include<hgl/type/Color.h>
+#include<hgl/color/Color.h>
 #include<hgl/Time.h>
 
 //#include<hgl/graph/LookAtCameraControl.h>

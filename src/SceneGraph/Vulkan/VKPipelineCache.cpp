@@ -18,9 +18,9 @@ namespace
 
         sl.Add(app_data);
         sl.Add(OS_TEXT("VkPipelineCache.com"));
-        sl.Add(OSString::valueOf(VK_PIPELINE_CACHE_HEADER_VERSION_ONE));
-        sl.Add(OSString::valueOf(pdp.vendorID));
-        sl.Add(OSString::valueOf(pdp.deviceID));
+        sl.Add(OSString::numberOf(VK_PIPELINE_CACHE_HEADER_VERSION_ONE));
+        sl.Add(OSString::numberOf(pdp.vendorID));
+        sl.Add(OSString::numberOf(pdp.deviceID));
 
         return ComboFilename(sl);
     }

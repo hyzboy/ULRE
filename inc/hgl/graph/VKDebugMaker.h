@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_DEBUG_MAKER_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/type/Color4f.h>
+#include<hgl/color/Color4f.h>
 
 VK_NAMESPACE_BEGIN
 struct DebugMakerFunction
