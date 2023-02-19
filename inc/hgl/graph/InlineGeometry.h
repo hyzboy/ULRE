@@ -4,7 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
-#include<hgl/type/Color4f.h>
+#include<hgl/color/Color4f.h>
 #include<hgl/graph/AABB.h>
 namespace hgl
 {

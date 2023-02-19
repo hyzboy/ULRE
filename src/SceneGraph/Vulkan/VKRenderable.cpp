@@ -79,8 +79,8 @@ Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
         {
             LOG_ERROR(  "[FATAL ERROR] VBO \""+**name_list+
                         UTF8String("\" stride can't match Renderable, Material(")+mtl_name+
-                        UTF8String(") stride(")+UTF8String::valueOf(bind_list->stride)+
-                        UTF8String("), VBO stride(")+UTF8String::valueOf(vbo->GetStride())+
+                        UTF8String(") stride(")+UTF8String::numberOf(bind_list->stride)+
+                        UTF8String("), VBO stride(")+UTF8String::numberOf(vbo->GetStride())+
                         ")");
             return(nullptr);
         }

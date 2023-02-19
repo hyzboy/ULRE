@@ -1,8 +1,8 @@
 ﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
 #define HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
 
-#include<hgl/type/Color3f.h>
-#include<hgl/type/Color4f.h>
+#include<hgl/color/Color3f.h>
+#include<hgl/color/Color4f.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VertexAttribData.h>
@@ -60,7 +60,7 @@ namespace hgl
             {
                 if(!data||offset>=count)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Get() out,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Get() out,offset:")+OSString::numberOf(offset));
                     return(nullptr);
                 }
 
@@ -76,7 +76,7 @@ namespace hgl
             {
                 if(access)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,offset:")+OSString::valueOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,offset:")+OSString::numberOf(offset));
                     return(nullptr);
                 }
 
@@ -106,7 +106,7 @@ namespace hgl
             {
                 if(!this->access||this->access+C*number>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Write(const T *,number) out,number:")+OSString::valueOf(number));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Write(const T *,number) out,number:")+OSString::numberOf(number));
                     return(false);
                 }
 
@@ -201,7 +201,7 @@ namespace hgl
             {
                 if(!this->access||this->access+count>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const T,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const T,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -328,7 +328,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<1)>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const Vector2f &,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess1::Write(const Vector2f &,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -633,7 +633,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -657,7 +657,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -948,7 +948,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -973,7 +973,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->data_end)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::valueOf(count)+OS_TEXT(") out"));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 

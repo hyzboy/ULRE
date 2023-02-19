@@ -7,7 +7,7 @@
 #include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/SceneInfo.h>
-#include<hgl/type/Color4f.h>
+#include<hgl/color/Color4f.h>
 #include<hgl/type/SortedSets.h>
 namespace hgl
 {
