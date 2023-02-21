@@ -61,7 +61,7 @@ protected:
 protected:
     
     Camera *                camera                      =nullptr;
-    DeviceBuffer *             ubo_camera_info             =nullptr;
+    DeviceBuffer *          ubo_camera_info             =nullptr;
 
 public:
 

@@ -3,6 +3,7 @@
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
+#include<hgl/math/HalfFloat.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
 
@@ -14,18 +15,46 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
-constexpr float position_data[VERTEX_COUNT][2]=
+constexpr float position_data_float[VERTEX_COUNT*2]=
 {
-    { 0.0, -0.5},
-    {-0.5,  0.5},
-    { 0.5,  0.5}
+     0.0, -0.5,
+    -0.5,  0.5,
+     0.5,  0.5
 };
 
-constexpr float color_data[VERTEX_COUNT][4]=
-{   {1,0,0,1},
-    {0,1,0,1},
-    {0,0,1,1}
+#define USE_HALF_FLOAT_POSITION
+
+#ifdef USE_HALF_FLOAT_POSITION
+constexpr VkFormat PositionFormat=VF_V2HF;
+
+half_float position_data_hf[VERTEX_COUNT*2];
+
+#define position_data   position_data_hf
+#else
+constexpr VkFormat PositionFormat=VF_V2F;
+
+#define position_data   position_data_float
+#endif//USE_HALF_FLOAT_POSITION
+
+#define USE_UNORM8_COLOR
+
+#ifdef USE_UNORM8_COLOR
+constexpr uint8 color_data[VERTEX_COUNT*4]=
+{   255,0,0,255,
+    0,255,0,255,
+    0,0,255,255
 };
+
+constexpr VkFormat ColorFormat=VF_V4UN8;
+#else
+constexpr float color_data[VERTEX_COUNT*4]=
+{   1,0,0,1,
+    0,1,0,1,
+    0,0,1,1
+};
+
+constexpr VkFormat ColorFormat=VF_V4F;
+#endif//USE_UNORM8_COLOR
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -40,11 +69,25 @@ private:
 
     bool InitMaterial()
     {
+#if defined(USE_HALF_FLOAT_POSITION)||defined(USE_UNORM8_COLOR)
+        VILConfig vil_config;
+
+    #ifdef USE_HALF_FLOAT_POSITION
+        vil_config.Add(VAN::Position,PositionFormat);
+    #endif//USE_HALF_FLOAT_POSITION
+
+    #ifdef USE_UNORM8_COLOR
+        vil_config.Add(VAN::Color,ColorFormat);
+    #endif//USE_HALF_FLOAT_POSITION
+
+        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"),&vil_config);
+#else
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"));
+#endif//
 
         if(!material_instance)
             return(false);
-            
+
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
@@ -56,8 +99,12 @@ private:
         Primitive *primitive=db->CreatePrimitive(VERTEX_COUNT);
         if(!primitive)return(false);
 
-        if(!primitive->Set(VAN::Position,   db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data  )))return(false);
-        if(!primitive->Set(VAN::Color,      db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data     )))return(false);
+#ifdef USE_HALF_FLOAT_POSITION
+        Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
+#endif//USE_HALF_FLOAT_POSITION
+
+        if(!primitive->Set(VAN::Position,   db->CreateVBO(PositionFormat,   VERTEX_COUNT,position_data  )))return(false);
+        if(!primitive->Set(VAN::Color,      db->CreateVBO(ColorFormat,      VERTEX_COUNT,color_data     )))return(false);
         
         render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
         return(render_obj);
