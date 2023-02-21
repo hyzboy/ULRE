@@ -117,15 +117,37 @@ class Pipeline;
 
 struct VAConfig
 {
-    VkFormat format=PF_UNDEFINED;
-    bool instance=false;
+    VkFormat format;
+    bool instance;
 
 public:
+
+    VAConfig()
+    {
+        format=PF_UNDEFINED;
+        instance=false;
+    }
+
+    VAConfig(const VkFormat fmt,bool inst=false)
+    {
+        format=fmt;
+        instance=inst;
+    }
 
     CompOperatorMemcmp(const VAConfig &);
 };
 
-using VILConfig=Map<AnsiString,VAConfig>;
+class VILConfig:public Map<AnsiString,VAConfig>
+{
+public:
+
+    using Map<AnsiString,VAConfig>::Map;
+
+    bool Add(const AnsiString &name,const VkFormat fmt,const bool inst=false)
+    {
+        return Map<AnsiString,VAConfig>::Add(name,VAConfig(fmt,inst));
+    }
+};
 
 class VertexInputLayout;
 using VIL=VertexInputLayout;
