@@ -79,10 +79,10 @@ public:
 
     //const uint32_t                              GetAttrCount()const{return attr_count;}
 
-    //const VkVertexInputBindingDescription *     GetDescList ()const{return binding_list;}
+    //const VkVertexInputBindingDescription *     GetBindList ()const{return binding_list;}
     //const VkVertexInputAttributeDescription *   GetAttrList ()const{return attribute_list;}
 
-    //const VkVertexInputBindingDescription *     GetDesc     (const uint32_t index)const{return (index>=attr_count?nullptr:binding_list+index);}
+    //const VkVertexInputBindingDescription *     GetBind     (const uint32_t index)const{return (index>=attr_count?nullptr:binding_list+index);}
     //const VkVertexInputAttributeDescription *   GetAttr     (const uint32_t index)const{return (index>=attr_count?nullptr:attribute_list+index);}
 
 public:

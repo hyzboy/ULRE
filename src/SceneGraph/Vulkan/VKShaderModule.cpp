@@ -114,10 +114,6 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
             bind->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
         }
 
-        //
-        {
-        }
-
         bind->stride    =GetStrideByFormat(attr->format);
 
         ++attr;
