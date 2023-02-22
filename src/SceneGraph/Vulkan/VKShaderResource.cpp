@@ -5,18 +5,6 @@
 
 VK_NAMESPACE_BEGIN
 
-    const DescriptorSetsType CheckDescriptorSetsType(const char *str)
-    {
-        if(str[1]=='_')
-        {
-            if(str[0]=='m')return DescriptorSetsType::Material;
-            if(str[0]=='g')return DescriptorSetsType::Global;
-            if(str[0]=='r')return DescriptorSetsType::Primitive;
-        }
-
-        return DescriptorSetsType::Value;
-    }
-
     #define AccessByPointer(data,type)  *(type *)data;data+=sizeof(type);
 
     namespace

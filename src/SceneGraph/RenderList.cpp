@@ -151,7 +151,7 @@ namespace hgl
             //为所有的材质绑定
             for(Material *mtl:material_sets)
             {
-                MaterialParameters *mp=mtl->GetMP(DescriptorSetsType::Primitive);
+                MaterialParameters *mp=mtl->GetMP(DescriptorSetsType::PerObject);
 
                 if(mp)
                 {
@@ -219,7 +219,7 @@ namespace hgl
                 MaterialParameters *mp;
 
                 for(int i=(int)DescriptorSetsType::BEGIN_RANGE;
-                        i<(int)DescriptorSetsType::Primitive;
+                        i<(int)DescriptorSetsType::PerObject;
                         i++)
                 {
                     mp=ri->GetMP((DescriptorSetsType)i);
@@ -242,13 +242,13 @@ namespace hgl
                 }
 
                 {
-                    mp=ri->GetMP(DescriptorSetsType::Primitive);
+                    mp=ri->GetMP(DescriptorSetsType::PerObject);
 
                     if(mp)
                     {
                         ds_list[ds_count]=mp->GetVkDescriptorSet();
                         ++ds_count;
-                        
+
                         cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),first_set,ds_list,ds_count,&ubo_offset,1);
                     }
                     else

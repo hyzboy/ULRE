@@ -108,9 +108,19 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     CreateShaderStageList(data->shader_stage_list,shader_maps);
 
     data->pipeline_layout_data=pld;
-    data->mp.m=CreateMP(mds,pld,DescriptorSetsType::Material     );
-    data->mp.r=CreateMP(mds,pld,DescriptorSetsType::Primitive   );
-    data->mp.g=CreateMP(mds,pld,DescriptorSetsType::Global       );
+
+    if(mds)
+    {
+        ENUM_CLASS_FOR(DescriptorSetsType,int,dst)
+        {
+            if(mds->hasSet((DescriptorSetsType)dst))
+                data->mp_array[dst]=CreateMP(mds,pld,(DescriptorSetsType)dst);
+            else
+                data->mp_array[dst]=nullptr;
+        }
+    }
+    else
+        hgl_zero(data->mp_array);
 
     return(new Material(data));
 }

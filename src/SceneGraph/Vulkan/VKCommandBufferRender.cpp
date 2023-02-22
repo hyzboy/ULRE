@@ -123,7 +123,7 @@ bool RenderCmdBuffer::BindDescriptorSets(Renderable *ri)
                 ds[count]=mp->GetVkDescriptorSet();
                 ++count;
 
-                if((DescriptorSetsType)i==DescriptorSetsType::Primitive)
+                if((DescriptorSetsType)i==DescriptorSetsType::PerObject)
                 {
                     dynamic_count=mp->GetCount();
 
