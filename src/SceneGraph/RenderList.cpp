@@ -218,10 +218,10 @@ namespace hgl
                 uint32_t first_set=0;
                 MaterialParameters *mp;
 
-                for(int i=(int)DescriptorSetType::BEGIN_RANGE;
-                        i<(int)DescriptorSetType::PerObject;
-                        i++)
+                ENUM_CLASS_FOR(DescriptorSetType,int,i)
                 {
+                    if(i==(int)DescriptorSetType::PerObject)continue;
+
                     mp=ri->GetMP((DescriptorSetType)i);
 
                     if(last_mp[i]!=mp)
