@@ -71,7 +71,7 @@ private:
         if(!ubo_sky_color)
             return(false);
 
-        if(!material_instance->BindUBO(DescriptorSetsType::Value,"sky_color",ubo_sky_color))
+        if(!material_instance->BindUBO(DescriptorSetType::Value,"sky_color",ubo_sky_color))
             return(false);
 
         return(true);

@@ -129,7 +129,7 @@ private:
             if(!material_instance)return(false);
 
             {            
-                MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetsType::Value);
+                MaterialParameters *mp_texture=material_instance->GetMP(DescriptorSetType::Value);
         
                 if(!mp_texture)
                     return(false);
@@ -216,7 +216,7 @@ private:
         ubo_phong=db->CreateUBO(sizeof(PhongMaterial),&phong);
         
         {
-            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetsType::Value);
+            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetType::Value);
         
             if(!mp_value)
                 return(false);

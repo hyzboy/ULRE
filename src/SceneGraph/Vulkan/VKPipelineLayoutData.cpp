@@ -10,9 +10,9 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
 
     if(mds)
     {
-        ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+        ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
-            const DescriptorSetLayoutCreateInfo *dslci=mds->GetDSLCI((DescriptorSetsType)i);
+            const DescriptorSetLayoutCreateInfo *dslci=mds->GetDSLCI((DescriptorSetType)i);
 
             if(!dslci||dslci->bindingCount<=0)
                 continue;
@@ -71,7 +71,7 @@ PipelineLayoutData::~PipelineLayoutData()
 {
     vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
 
-    ENUM_CLASS_FOR(DescriptorSetsType,int,i)
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
         if(layouts[i])
             vkDestroyDescriptorSetLayout(device,layouts[i],nullptr);
 }

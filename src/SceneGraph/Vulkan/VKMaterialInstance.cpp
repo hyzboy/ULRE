@@ -23,10 +23,10 @@ MaterialInstance::MaterialInstance(Material *mtl,VIL *v)
 
     vil=v;
 
-    mp_per_mi=mtl->GetMP(DescriptorSetsType::PerMaterial);
+    mp_per_mi=mtl->GetMP(DescriptorSetType::PerMaterial);
 }
 
-bool MaterialInstance::BindUBO(const DescriptorSetsType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
+bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
         
@@ -39,7 +39,7 @@ bool MaterialInstance::BindUBO(const DescriptorSetsType &type,const AnsiString &
     return(true);
 }
 
-bool MaterialInstance::BindSSBO(const DescriptorSetsType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
+bool MaterialInstance::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     MaterialParameters *mp=GetMP(type);
         
@@ -52,7 +52,7 @@ bool MaterialInstance::BindSSBO(const DescriptorSetsType &type,const AnsiString 
     return(true);
 }
 
-bool MaterialInstance::BindSampler(const DescriptorSetsType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
+bool MaterialInstance::BindSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
         

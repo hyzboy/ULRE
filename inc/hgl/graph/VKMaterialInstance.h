@@ -26,11 +26,11 @@ public:
 
     const VIL *GetVIL()const{return vil;}
     MaterialParameters *GetMP(){return mp_per_mi;}
-    MaterialParameters *GetMP(const DescriptorSetsType &type){return material->GetMP(type);}
+    MaterialParameters *GetMP(const DescriptorSetType &type){return material->GetMP(type);}
     
-    bool BindUBO(const DescriptorSetsType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
-    bool BindSSBO(const DescriptorSetsType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
-    bool BindSampler(const DescriptorSetsType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
+    bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
+    bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
+    bool BindSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
 };//class MaterialInstance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE

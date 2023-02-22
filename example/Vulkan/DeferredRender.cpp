@@ -311,7 +311,7 @@ private:
         BindCameraUBO(sp_gbuffer.material_instance);
 
         {
-            MaterialParameters *mp=sp_gbuffer.material_instance->GetMP(DescriptorSetsType::Value);
+            MaterialParameters *mp=sp_gbuffer.material_instance->GetMP(DescriptorSetType::Value);
 
             if(!mp)
                 return(false);
@@ -324,7 +324,7 @@ private:
         BindCameraUBO(sp_composition.material_instance);
 
         {            
-            MaterialParameters *mp=sp_composition.material_instance->GetMP(DescriptorSetsType::Value);
+            MaterialParameters *mp=sp_composition.material_instance->GetMP(DescriptorSetType::Value);
         
             if(!mp)
                 return(false);

@@ -8,7 +8,7 @@
 VK_NAMESPACE_BEGIN
 using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
 
-using MaterialParameterArray=MaterialParameters *[size_t(DescriptorSetsType::RANGE_SIZE)];
+using MaterialParameterArray=MaterialParameters *[size_t(DescriptorSetType::RANGE_SIZE)];
 
 struct MaterialData
 {
@@ -63,14 +63,14 @@ public:
 
 public:
 
-            MaterialParameters *                GetMP                   (const DescriptorSetsType &type)
+            MaterialParameters *                GetMP                   (const DescriptorSetType &type)
             {
                 RANGE_CHECK_RETURN_NULLPTR(type)
 
                 return data->mp_array[size_t(type)];
             }
 
-    const   bool                                hasSet                  (const DescriptorSetsType &type)const;
+    const   bool                                hasSet                  (const DescriptorSetType &type)const;
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
