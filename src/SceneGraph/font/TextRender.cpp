@@ -98,7 +98,7 @@ namespace hgl
             sampler=db->CreateSampler();
         
             {
-                MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+                MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
         
                 if(!mp_global)
                     return(false);
@@ -109,7 +109,7 @@ namespace hgl
             }
 
             {
-                MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::PerMaterial);
+                MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::PerMaterial);
         
                 if(!mp)
                     return(false);

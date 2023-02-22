@@ -54,7 +54,7 @@ private:
             envmap_mi=db->CreateMaterialInstance(OS_TEXT("res/material/EnvEquirectangularMap"));
             if(!envmap_mi)return(false);
 
-            if(!envmap_mi->BindSampler(DescriptorSetsType::Value,"Envmap"    ,texture,    sampler))return(false);
+            if(!envmap_mi->BindSampler(DescriptorSetType::Value,"Envmap"    ,texture,    sampler))return(false);
         }
 
         solid_pipeline=CreatePipeline(envmap_mi,InlinePipeline::Solid3D,Prim::Triangles);

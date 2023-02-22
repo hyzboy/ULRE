@@ -70,7 +70,7 @@ class DeviceRenderPassManage;
 class Fence;
 class Semaphore;
 
-enum class DescriptorSetsType
+enum class DescriptorSetType
 {
     //设计使其对应shader中的set
     
@@ -90,7 +90,7 @@ constexpr char *DescriptSetsTypeName[]=
     "Global","PerFrame","PerMaterial","PerObject","Instance","Skeleton"
 };
 
-inline const char *GetDescriptorSetsTypeName(const enum class DescriptorSetsType &type)
+inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
 {
     RANGE_CHECK_RETURN_NULLPTR(type);
 

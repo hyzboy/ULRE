@@ -156,7 +156,7 @@ public:
 
     bool BindCameraUBO(MaterialInstance *mi)
     {
-        return mi->BindUBO(DescriptorSetsType::Global,"g_camera",ubo_camera_info);
+        return mi->BindUBO(DescriptorSetType::Global,"g_camera",ubo_camera_info);
     }
 
     virtual void Resize(int w,int h)

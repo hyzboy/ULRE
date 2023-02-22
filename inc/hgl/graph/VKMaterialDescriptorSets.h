@@ -10,7 +10,7 @@ struct ShaderDescriptor
     char name[128];
 
     VkDescriptorType desc_type;
-    DescriptorSetsType set_type;
+    DescriptorSetType set_type;
     uint32_t set;
     uint32_t binding;
     uint32_t stage_flag;
@@ -26,7 +26,7 @@ class MaterialDescriptorSets
     uint sd_count;
 
     ShaderDescriptorList descriptor_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
-    ShaderDescriptorList descriptor_list_by_set_type[size_t(DescriptorSetsType::RANGE_SIZE)];
+    ShaderDescriptorList descriptor_list_by_set_type[size_t(DescriptorSetType::RANGE_SIZE)];
 
     Map<AnsiString,ShaderDescriptor *> sd_by_name;
     Map<AnsiString,int> binding_map[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
@@ -35,7 +35,7 @@ class MaterialDescriptorSets
 
 private:
 
-    DescriptorSetLayoutCreateInfo dsl_ci[size_t(DescriptorSetsType::RANGE_SIZE)];
+    DescriptorSetLayoutCreateInfo dsl_ci[size_t(DescriptorSetType::RANGE_SIZE)];
 
 public:
 
@@ -51,11 +51,11 @@ public:
     const int GetSampler    (const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
     const int GetAttachment (const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,name);}
 
-    const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetsType &type)const{return dsl_ci+size_t(type);}
+    const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 
-    const ShaderDescriptorList &GetDescriptorList(const DescriptorSetsType &type)const{return descriptor_list_by_set_type[size_t(type)];}
+    const ShaderDescriptorList &GetDescriptorList(const DescriptorSetType &type)const{return descriptor_list_by_set_type[size_t(type)];}
 
-    const bool hasSet(const DescriptorSetsType &type)const{return !descriptor_list_by_set_type[size_t(type)].IsEmpty();}
+    const bool hasSet(const DescriptorSetType &type)const{return !descriptor_list_by_set_type[size_t(type)].IsEmpty();}
 };//class MaterialDescriptorSets
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE

@@ -84,7 +84,7 @@ private:
         if(!ubo_sun)return(false);
 
         {
-            MaterialParameters *mp=material_instance->GetMP(DescriptorSetsType::Value);
+            MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::Value);
 
             if(!mp)return(false);
 

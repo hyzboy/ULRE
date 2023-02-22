@@ -98,7 +98,7 @@ private:
             sky_mi=db->CreateMaterialInstance(sky_material);
             if(!sky_mi)return(false);
 
-            if(!sky_mi->BindSampler(DescriptorSetsType::Value,"tex"    ,texture,    sampler))return(false);
+            if(!sky_mi->BindSampler(DescriptorSetType::Value,"tex"    ,texture,    sampler))return(false);
 
             sky_pipeline=CreatePipeline(sky_mi,InlinePipeline::Sky,Prim::Triangles);
             if(!sky_pipeline)return(false);
@@ -111,7 +111,7 @@ private:
             envmap_mi=db->CreateMaterialInstance(envmap_material);
             if(!envmap_mi)return(false);
 
-            if(!envmap_mi->BindSampler(DescriptorSetsType::Value,"EnvCubemap"    ,texture,    sampler))return(false);
+            if(!envmap_mi->BindSampler(DescriptorSetType::Value,"EnvCubemap"    ,texture,    sampler))return(false);
 
             solid_pipeline=CreatePipeline(envmap_mi,InlinePipeline::Solid3D,Prim::Triangles);
         }

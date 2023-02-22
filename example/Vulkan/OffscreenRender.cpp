@@ -135,7 +135,7 @@ public:
         cube.sampler=db->CreateSampler();
         if(!cube.sampler)return(false);
         
-        if(!cube.material_instance->BindSampler(DescriptorSetsType::Value,"tex",os.render_taget->GetColorTexture(),cube.sampler))
+        if(!cube.material_instance->BindSampler(DescriptorSetType::Value,"tex",os.render_taget->GetColorTexture(),cube.sampler))
             return(false);
 
         {   

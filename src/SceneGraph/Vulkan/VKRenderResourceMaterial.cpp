@@ -56,14 +56,14 @@ void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint
         }
 
         if(ver==3)
-            sd->set_type    =(DescriptorSetsType)*data++;
+            sd->set_type    =(DescriptorSetType)*data++;
         else
         if(ver==2)      //以下是旧的，未来不用了，现仅保证能运行
         {
-            if(sd->name[0]=='g')sd->set_type=DescriptorSetsType::Global;else
-            if(sd->name[0]=='m')sd->set_type=DescriptorSetsType::PerMaterial;else
-            if(sd->name[0]=='r')sd->set_type=DescriptorSetsType::PerObject;else
-                sd->set_type=DescriptorSetsType::PerFrame;
+            if(sd->name[0]=='g')sd->set_type=DescriptorSetType::Global;else
+            if(sd->name[0]=='m')sd->set_type=DescriptorSetType::PerMaterial;else
+            if(sd->name[0]=='r')sd->set_type=DescriptorSetType::PerObject;else
+                sd->set_type=DescriptorSetType::PerFrame;
         }
 
         sd->set         =*data++;
@@ -71,7 +71,7 @@ void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint
         sd->stage_flag  =*(uint32 *)data;
         data+=sizeof(uint32);
 
-        if(sd->set_type==DescriptorSetsType::PerObject)
+        if(sd->set_type==DescriptorSetType::PerObject)
         {
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;

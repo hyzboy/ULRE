@@ -82,7 +82,7 @@ private:
         cam.RefreshCameraInfo();
 
         {
-            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetsType::Global);
+            MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
         
             if(!mp_global)
                 return(false);
@@ -95,7 +95,7 @@ private:
 
         {
         
-            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetsType::Value);
+            MaterialParameters *mp_value=material_instance->GetMP(DescriptorSetType::Value);
         
             if(!mp_value)
                 return(false);

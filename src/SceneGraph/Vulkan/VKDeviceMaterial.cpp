@@ -8,7 +8,7 @@
 #include"VKPipelineLayoutData.h"
 
 VK_NAMESPACE_BEGIN
-DescriptorSet *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetsType &type)const
+DescriptorSet *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetType &type)const
 {
     RANGE_CHECK_RETURN_NULLPTR(type);
 
@@ -31,10 +31,10 @@ DescriptorSet *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,con
     return(new DescriptorSet(attr->device,binding_count,pld->pipeline_layout,desc_set));
 }
 
-MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const PipelineLayoutData *pld,const DescriptorSetsType &desc_set_type)
+MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
 {
     if(!mds||!pld)return(nullptr);
-    if(!RangeCheck<DescriptorSetsType>(desc_set_type))
+    if(!RangeCheck<DescriptorSetType>(desc_set_type))
         return(nullptr);
 
     DescriptorSet *ds=CreateDescriptorSets(pld,desc_set_type);
@@ -44,13 +44,13 @@ MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const 
 #ifdef _DEBUG
     const UTF8String addr_string=HexToString<char,uint64_t>((uint64_t)(ds->GetDescriptorSet()));
 
-    LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+("] OK! Material Name: \"")+mds->GetMaterialName()+U8_TEXT("\" Type: ")+GetDescriptorSetsTypeName(desc_set_type));
+    LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+("] OK! Material Name: \"")+mds->GetMaterialName()+U8_TEXT("\" Type: ")+GetDescriptorSetTypeName(desc_set_type));
 #endif//_DEBUG
 
     return(new MaterialParameters(mds,desc_set_type,ds));
 }
 
-MaterialParameters *GPUDevice::CreateMP(Material *mtl,const DescriptorSetsType &desc_set_type)
+MaterialParameters *GPUDevice::CreateMP(Material *mtl,const DescriptorSetType &desc_set_type)
 {
     if(!mtl)return(nullptr);
 
@@ -111,10 +111,10 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     if(mds)
     {
-        ENUM_CLASS_FOR(DescriptorSetsType,int,dst)
+        ENUM_CLASS_FOR(DescriptorSetType,int,dst)
         {
-            if(mds->hasSet((DescriptorSetsType)dst))
-                data->mp_array[dst]=CreateMP(mds,pld,(DescriptorSetsType)dst);
+            if(mds->hasSet((DescriptorSetType)dst))
+                data->mp_array[dst]=CreateMP(mds,pld,(DescriptorSetType)dst);
             else
                 data->mp_array[dst]=nullptr;
         }
