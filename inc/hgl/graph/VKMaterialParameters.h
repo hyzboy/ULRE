@@ -22,7 +22,7 @@ private:
 public:
 
     const   DescriptorSetsType  GetType             (){return ds_type;}
-            DescriptorSet *    GetDescriptorSet    (){return descriptor_sets;}
+            DescriptorSet *     GetDescriptorSet    (){return descriptor_sets;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
 
     const   uint32_t            GetCount            ()const{return descriptor_sets->GetCount();}
@@ -31,10 +31,11 @@ public:
 public:
 
     #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetsType::name;}
-        MP_TYPE_IS(Material)
-//        MP_TYPE_IS(Texture)
-        MP_TYPE_IS(Value)
-        MP_TYPE_IS(Primitive)
+        MP_TYPE_IS(Skeleton)
+        MP_TYPE_IS(Instance)
+        MP_TYPE_IS(PerObject)
+        MP_TYPE_IS(PerMaterial)
+        MP_TYPE_IS(PerFrame)
         MP_TYPE_IS(Global)
     #undef MP_TYPE_IS
 

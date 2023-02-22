@@ -40,7 +40,7 @@ const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,
     return sm;
 }
 
-void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint count)
+void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint count,const uint8 ver)
 {
     ShaderDescriptor *sd=sd_list;
     uint str_len;
@@ -55,14 +55,23 @@ void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint
             data+=str_len;
         }
 
+        if(ver==3)
+            sd->set_type    =(DescriptorSetsType)*data++;
+        else
+        if(ver==2)      //以下是旧的，未来不用了，现仅保证能运行
+        {
+            if(sd->name[0]=='g')sd->set_type=DescriptorSetsType::Global;else
+            if(sd->name[0]=='m')sd->set_type=DescriptorSetsType::PerMaterial;else
+            if(sd->name[0]=='r')sd->set_type=DescriptorSetsType::PerObject;else
+                sd->set_type=DescriptorSetsType::PerFrame;
+        }
+
         sd->set         =*data++;
         sd->binding     =*data++;
         sd->stage_flag  =*(uint32 *)data;
         data+=sizeof(uint32);
 
-        sd->set_type=CheckDescriptorSetsType(sd->name);
-
-        if(sd->set_type==DescriptorSetsType::Primitive)
+        if(sd->set_type==DescriptorSetsType::PerObject)
         {
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -107,7 +116,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     const uint8 ver=*sp;
     ++sp;
 
-    if(ver!=2)
+    if(ver<2||ver>3)
         return(nullptr);
 
     const uint32_t shader_bits=*(uint32_t *)sp;
@@ -160,7 +169,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         {
             ShaderDescriptor *sd_list=hgl_zero_new<ShaderDescriptor>(count);
 
-            LoadShaderDescriptor(sp,sd_list,count);
+            LoadShaderDescriptor(sp,sd_list,count,ver);
         
             mds=new MaterialDescriptorSets(mtl_name,sd_list,count);
         }

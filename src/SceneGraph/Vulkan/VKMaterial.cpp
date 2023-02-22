@@ -5,9 +5,9 @@
 VK_NAMESPACE_BEGIN
 MaterialData::~MaterialData()
 {
-    SAFE_CLEAR(mp.m);
-    SAFE_CLEAR(mp.r);
-    SAFE_CLEAR(mp.g);
+    for(int i=0;i<int(DescriptorSetsType::RANGE_SIZE);i++)
+        if(mp_array[i])
+            delete mp_array[i];
 
     delete shader_maps;
     SAFE_CLEAR(mds);
@@ -22,5 +22,10 @@ Material::~Material()
 const VkPipelineLayout Material::GetPipelineLayout()const
 {
     return data->pipeline_layout_data->pipeline_layout;
+}
+
+const bool Material::hasSet(const DescriptorSetsType &dst)const
+{
+    return data->mds->hasSet(dst);
 }
 VK_NAMESPACE_END

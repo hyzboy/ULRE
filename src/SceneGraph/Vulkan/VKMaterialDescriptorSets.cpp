@@ -23,8 +23,8 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
     {
         ENUM_CLASS_FOR(DescriptorSetsType,int,i)
         {
-            sds[i].bindingCount=0;
-            sds[i].pBindings=nullptr;
+            dsl_ci[i].bindingCount=0;
+            dsl_ci[i].pBindings=nullptr;
         }
 
         {
@@ -39,7 +39,9 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
                 sd_by_name.Add(sp->name,sp);
                 binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
 
-                ++sds[size_t(sp->set_type)].bindingCount;
+                ++dsl_ci[size_t(sp->set_type)].bindingCount;
+
+                descriptor_list_by_set_type[size_t(sp->set_type)].Add(sp);
 
                 ++sp;
             }
@@ -49,10 +51,10 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
 
         {
             ENUM_CLASS_FOR(DescriptorSetsType,int,i)
-                if(sds[i].bindingCount>0)
+                if(dsl_ci[i].bindingCount>0)
                 {
-                    sds[i].pBindings=new VkDescriptorSetLayoutBinding[sds[i].bindingCount];
-                    sds_ptr[i]=(VkDescriptorSetLayoutBinding *)sds[i].pBindings;
+                    dsl_ci[i].pBindings=new VkDescriptorSetLayoutBinding[dsl_ci[i].bindingCount];
+                    sds_ptr[i]=(VkDescriptorSetLayoutBinding *)dsl_ci[i].pBindings;
                 }
         }
 
@@ -94,8 +96,8 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
 MaterialDescriptorSets::~MaterialDescriptorSets()
 {
     ENUM_CLASS_FOR(DescriptorSetsType,int,i)
-        if(sds[i].bindingCount)
-            delete[] sds[i].pBindings;
+        if(dsl_ci[i].bindingCount)
+            delete[] dsl_ci[i].pBindings;
 
     delete[] sd_list;       //"delete[] nullptr" isn't bug.
 }

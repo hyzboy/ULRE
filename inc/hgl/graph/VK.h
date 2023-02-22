@@ -75,19 +75,19 @@ enum class DescriptorSetsType
     //设计使其对应shader中的set
     
     Global=0,   ///<全局参数(如太阳光等)
-    Material,   ///<材质中永远不变的参数
-//    Texture,    ///<材质中的纹理参数
-    Value,      ///<材质中的变量参数
-    Primitive, ///<渲染实例参数(如Local2World matrix)
+    PerFrame,   ///<帧参数(如摄像机等)
+    PerMaterial,///<材质参数(如纹理等)
+    PerObject,  ///<对象参数(如模型矩阵等)
 
-    ENUM_CLASS_RANGE(Global,Primitive)
+    Instance,
+    Skeleton,
+
+    ENUM_CLASS_RANGE(Global,Skeleton)
 };//
-
-const DescriptorSetsType CheckDescriptorSetsType(const char *str);
 
 constexpr char *DescriptSetsTypeName[]=
 {
-    "Global","Material","Value","Renderable"
+    "Global","PerFrame","PerMaterial","PerObject","Instance","Skeleton"
 };
 
 inline const char *GetDescriptorSetsTypeName(const enum class DescriptorSetsType &type)

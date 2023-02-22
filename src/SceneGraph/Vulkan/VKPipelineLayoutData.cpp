@@ -12,7 +12,7 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
     {
         ENUM_CLASS_FOR(DescriptorSetsType,int,i)
         {
-            const DescriptorSetLayoutCreateInfo *dslci=mds->GetBinding((DescriptorSetsType)i);
+            const DescriptorSetLayoutCreateInfo *dslci=mds->GetDSLCI((DescriptorSetsType)i);
 
             if(!dslci||dslci->bindingCount<=0)
                 continue;

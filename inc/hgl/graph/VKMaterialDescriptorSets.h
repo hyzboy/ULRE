@@ -26,6 +26,7 @@ class MaterialDescriptorSets
     uint sd_count;
 
     ShaderDescriptorList descriptor_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
+    ShaderDescriptorList descriptor_list_by_set_type[size_t(DescriptorSetsType::RANGE_SIZE)];
 
     Map<AnsiString,ShaderDescriptor *> sd_by_name;
     Map<AnsiString,int> binding_map[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
@@ -34,7 +35,7 @@ class MaterialDescriptorSets
 
 private:
 
-    DescriptorSetLayoutCreateInfo sds[size_t(DescriptorSetsType::RANGE_SIZE)];
+    DescriptorSetLayoutCreateInfo dsl_ci[size_t(DescriptorSetsType::RANGE_SIZE)];
 
 public:
 
@@ -50,7 +51,11 @@ public:
     const int GetSampler    (const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
     const int GetAttachment (const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,name);}
 
-    const DescriptorSetLayoutCreateInfo *GetBinding(const DescriptorSetsType &type)const{return sds+size_t(type);}
+    const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetsType &type)const{return dsl_ci+size_t(type);}
+
+    const ShaderDescriptorList &GetDescriptorList(const DescriptorSetsType &type)const{return descriptor_list_by_set_type[size_t(type)];}
+
+    const bool hasSet(const DescriptorSetsType &type)const{return !descriptor_list_by_set_type[size_t(type)].IsEmpty();}
 };//class MaterialDescriptorSets
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE
