@@ -47,14 +47,14 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
             }
         }
 
-        VkDescriptorSetLayoutBinding *sds_ptr[size_t(DescriptorSetType::RANGE_SIZE)];
+        VkDescriptorSetLayoutBinding *dsl_bind[size_t(DescriptorSetType::RANGE_SIZE)];
 
         {
             ENUM_CLASS_FOR(DescriptorSetType,int,i)
                 if(dsl_ci[i].bindingCount>0)
                 {
                     dsl_ci[i].pBindings=new VkDescriptorSetLayoutBinding[dsl_ci[i].bindingCount];
-                    sds_ptr[i]=(VkDescriptorSetLayoutBinding *)dsl_ci[i].pBindings;
+                    dsl_bind[i]=(VkDescriptorSetLayoutBinding *)dsl_ci[i].pBindings;
                 }
         }
 
@@ -67,25 +67,25 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
             {
                 if(sdl->GetCount()>0)
                 {
-                    binding_list[i]=new int[sdl->GetCount()];
+//                    binding_list[i]=new int[sdl->GetCount()];
 
                     sdp=sdl->GetData();
                     for(int j=0;j<sdl->GetCount();j++)
                     {
-                        binding_list[i][j]=(*sdp)->binding;
+//                        binding_list[i][j]=(*sdp)->binding;
 
-                        WriteDescriptorSetLayoutBinding(sds_ptr[size_t((*sdp)->set_type)],
+                        WriteDescriptorSetLayoutBinding(dsl_bind[size_t((*sdp)->set_type)],
                                                         *sdp);
 
-                        ++sds_ptr[size_t((*sdp)->set_type)];
+                        ++dsl_bind[size_t((*sdp)->set_type)];
 
                         ++sdp;
                     }
                 }
-                else
-                {
-                    binding_list[i]=nullptr;
-                }
+                //else
+                //{
+                //    binding_list[i]=nullptr;
+                //}
 
                 ++sdl;
             }
@@ -100,6 +100,13 @@ MaterialDescriptorSets::~MaterialDescriptorSets()
             delete[] dsl_ci[i].pBindings;
 
     delete[] sd_list;       //"delete[] nullptr" isn't bug.
+
+    //for(uint i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;
+    //        i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)
+    //{
+    //    if(binding_list[i])
+    //        delete[] binding_list[i];
+    //}
 }
     
 const int MaterialDescriptorSets::GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const
