@@ -94,7 +94,7 @@ private:
 
         return pipeline;
     }
-   
+
     bool InitVBO()
     {
         RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);

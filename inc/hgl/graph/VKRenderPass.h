@@ -25,7 +25,7 @@ protected:
 
     ObjectList<Pipeline> pipeline_list;
 
-    Pipeline *CreatePipeline(Material *,PipelineData *,const VIL *);
+    Pipeline *CreatePipeline(PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 
 private:
 
@@ -51,11 +51,6 @@ public:
     const VkFormat          GetDepthFormat()const{return depth_format;}
 
     const VkExtent2D &      GetGranularity()const{return granularity;}
-
-public:
-
-    Pipeline *CreatePipeline(MaterialInstance *,  const PipelineData *);
-    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &);
 
 public:
 
