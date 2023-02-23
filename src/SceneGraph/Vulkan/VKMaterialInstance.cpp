@@ -23,7 +23,7 @@ MaterialInstance::MaterialInstance(Material *mtl,VIL *v)
 
     vil=v;
 
-    mp_per_mi=mtl->GetMP(DescriptorSetType::PerMaterial);
+    mp_per_mi=mtl->GetMP(DescriptorSetType::PerMaterialInstance);
 }
 
 bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)

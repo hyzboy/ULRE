@@ -109,7 +109,7 @@ namespace hgl
             }
 
             {
-                MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::PerMaterial);
+                MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::PerMaterialInstance);
         
                 if(!mp)
                     return(false);

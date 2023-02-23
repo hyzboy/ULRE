@@ -9,9 +9,9 @@ class MaterialParameters
 {
     const MaterialDescriptorSets *mds;
 
-    DescriptorSetType ds_type;
+    DescriptorSetType set_type;
 
-    DescriptorSet *descriptor_sets;
+    DescriptorSet *descriptor_set;
 
 private:
 
@@ -21,20 +21,20 @@ private:
 
 public:
 
-    const   DescriptorSetType  GetType             (){return ds_type;}
-            DescriptorSet *     GetDescriptorSet    (){return descriptor_sets;}
-    const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_sets->GetDescriptorSet();}
+    const   DescriptorSetType   GetType             (){return set_type;}
+            DescriptorSet *     GetDescriptorSet    (){return descriptor_set;}
+    const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_set->GetDescriptorSet();}
 
-    const   uint32_t            GetCount            ()const{return descriptor_sets->GetCount();}
-    const   bool                IsReady             ()const{return descriptor_sets->IsReady();}
+    const   uint32_t            GetCount            ()const{return descriptor_set->GetCount();}
+    const   bool                IsReady             ()const{return descriptor_set->IsReady();}
 
 public:
 
-    #define MP_TYPE_IS(name)    const   bool is##name()const{return ds_type==DescriptorSetType::name;}
+    #define MP_TYPE_IS(name)    const   bool is##name()const{return set_type==DescriptorSetType::name;}
         MP_TYPE_IS(Skeleton)
         MP_TYPE_IS(Instance)
         MP_TYPE_IS(PerObject)
-        MP_TYPE_IS(PerMaterial)
+        MP_TYPE_IS(PerMaterialInstance)
         MP_TYPE_IS(PerFrame)
         MP_TYPE_IS(Global)
     #undef MP_TYPE_IS
