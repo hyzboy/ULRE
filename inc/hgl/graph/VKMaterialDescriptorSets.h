@@ -11,9 +11,9 @@ struct ShaderDescriptor
 
     VkDescriptorType desc_type;
     DescriptorSetType set_type;
-    uint32_t set;
-    uint32_t binding;
-    uint32_t stage_flag;
+    uint8 set;
+    uint8 binding;
+    uint32 stage_flag;
 };
 
 using ShaderDescriptorList=List<ShaderDescriptor *>;
