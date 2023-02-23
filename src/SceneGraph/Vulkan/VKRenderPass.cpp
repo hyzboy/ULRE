@@ -23,16 +23,16 @@ RenderPass::~RenderPass()
     vkDestroyRenderPass(device,render_pass,nullptr);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,PipelineData *pd,const VIL *vil)
+Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
     VkPipeline graphicsPipeline;
 
-    pd->InitShaderStage(mtl->GetStageList());
+    pd->InitShaderStage(ssci_list);
     pd->InitVertexInputState(vil);
 
     pd->SetColorAttachments(color_formats.GetCount());
 
-    pd->pipeline_info.layout = mtl->GetPipelineLayout();
+    pd->pipeline_info.layout = pl;
 
     {
         pd->pipeline_info.renderPass = render_pass;
@@ -45,6 +45,8 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,PipelineData *pd,const VIL *v
         nullptr,
         &graphicsPipeline) != VK_SUCCESS)
     {
+        //有一种常见问题就是PipelineData未调用SetPrim
+
         delete pd;
         return(nullptr);
     }
@@ -52,35 +54,18 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,PipelineData *pd,const VIL *v
     return(new Pipeline(device,graphicsPipeline,pd));
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *data)
-{
-    Material *mtl=mi->GetMaterial();
-
-    PipelineData *pd=new PipelineData(data);
-
-    return CreatePipeline(mtl,pd,mi->GetVIL());
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip)
-{
-    const PipelineData *pd=GetPipelineData(ip);
-
-    if(!pd)return(nullptr);
-
-    return CreatePipeline(mi,pd);
-}
-
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
 {
     if(!mi)return(nullptr);
-
+    
+    Material *mtl=mi->GetMaterial();
     const PipelineData *cpd=GetPipelineData(ip);
 
     PipelineData *pd=new PipelineData(cpd);
 
-    pd->Set(prim,prim_restart);
+    pd->SetPrim(prim,prim_restart);
 
-    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVIL());
+    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),mi->GetVIL());
 
     if(p)
         pipeline_list.Add(p);
@@ -90,11 +75,12 @@ Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
 {
+    Material *mtl=mi->GetMaterial();
     PipelineData *pd=new PipelineData(cpd);
 
-    pd->Set(prim,prim_restart);
-
-    Pipeline *p=CreatePipeline(mi->GetMaterial(),pd,mi->GetVIL());
+    pd->SetPrim(prim,prim_restart);
+    
+    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),mi->GetVIL());
 
     if(p)
         pipeline_list.Add(p);
