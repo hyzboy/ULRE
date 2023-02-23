@@ -31,7 +31,7 @@ class MaterialDescriptorSets
     Map<AnsiString,ShaderDescriptor *> sd_by_name;
     Map<AnsiString,int> binding_map[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
-    int *binding_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
+//    int *binding_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
 private:
 
