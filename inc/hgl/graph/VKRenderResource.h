@@ -39,9 +39,9 @@ class RenderResource
     
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDResManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
-    IDResManage<DescriptorSetID,        DescriptorSet>     rm_desc_sets;               ///<描述符合集
+    IDResManage<DescriptorSetID,        DescriptorSet>      rm_desc_sets;               ///<描述符合集
     IDResManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
-    IDResManage<BufferID,               DeviceBuffer>          rm_buffers;                 ///<顶点缓冲区合集
+    IDResManage<BufferID,               DeviceBuffer>       rm_buffers;                 ///<顶点缓冲区合集
     IDResManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集

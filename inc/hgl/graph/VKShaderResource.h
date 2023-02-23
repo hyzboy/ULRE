@@ -5,13 +5,14 @@
 #include<hgl/type/List.h>
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VK.h>
+#include<hgl/io/ConstBufferReader.h>
 
 VK_NAMESPACE_BEGIN
 
 struct ShaderStage
 {
     AnsiString          name;
-    uint                location;
+    uint8               location;
 
     VertexAttribType    type;       ///<成份数量(如vec4中的4)
 
@@ -51,7 +52,7 @@ public:
     const   int                     GetStageInputBinding(const AnsiString &)const;
 };//class ShaderResource
 
-ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize);
+ShaderResource *LoadShaderResource(io::ConstBufferReader &);
 
 struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
 {

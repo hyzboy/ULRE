@@ -2,23 +2,22 @@
 #include<hgl/graph/VKFormat.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/type/Map.h>
+#include<hgl/io/ConstBufferReader.h>
 
 VK_NAMESPACE_BEGIN
-
-    #define AccessByPointer(data,type)  *(type *)data;data+=sizeof(type);
 
     namespace
     {
         ObjectMap<OSString,ShaderResource> shader_resource_by_filename;
 
-        const uint8 *LoadShaderStages(ShaderStageList &ss_list,const uint8 *data)
+        const bool LoadShaderStages(ShaderStageList &ss_list,io::ConstBufferReader &cbr)
         {
-            const uint count=*data++;
+            uint count;
+
+            cbr.CastRead<uint8>(count);
 
             if(count<=0)
-                return(data);
-
-            int str_len;
+                return(false);
 
             ShaderStage *ss;
 
@@ -26,18 +25,16 @@ VK_NAMESPACE_BEGIN
             {
                 ss=new ShaderStage;
 
-                ss->location        =*data++;
-                ss->type.basetype   =(VertexAttribBaseType)*data++;
-                ss->type.vec_size   =*data++;
+                cbr.Read(ss->location);
+                cbr.CastRead<uint8>(ss->type.basetype);
+                cbr.CastRead<uint8>(ss->type.vec_size);
 
-                str_len=*data++;
-                ss->name.SetString((char *)data,str_len);
-                data+=str_len;
+                cbr.ReadTinyString(ss->name);
 
                 ss_list.Add(ss);
             }
 
-            return data;
+            return true;
         }
     }//namespcae
 
@@ -108,25 +105,20 @@ VK_NAMESPACE_BEGIN
         return -1;
     }
 
-    ShaderResource *LoadShaderResource(const uint8 *origin_filedata,const int64 filesize)
+    ShaderResource *LoadShaderResource(io::ConstBufferReader &cbr)
     {
-        if(!origin_filedata)return(nullptr);
-
-        const uint8 *filedata=origin_filedata;
-        const uint8 *file_end=filedata+filesize;
-
         VkShaderStageFlagBits   flag;
         uint32                  spv_size;
 
-        flag    =(const VkShaderStageFlagBits)AccessByPointer(filedata,uint32);
-        spv_size=AccessByPointer(filedata,uint32);
+        cbr.CastRead<uint32>(flag);
+        cbr.Read(spv_size);
 
-        ShaderResource *sr=new ShaderResource(flag,filedata,spv_size);
+        ShaderResource *sr=new ShaderResource(flag,cbr.CurPointer(),spv_size);
 
-        filedata+=spv_size;
+        cbr.Skip(spv_size);
 
-        filedata=LoadShaderStages(sr->GetStageInputs(),filedata);
-        //filedata=LoadShaderStages(sr->GetStageOutputs(),filedata);
+        LoadShaderStages(sr->GetStageInputs(),cbr);
+//        LoadShaderStages(sr->GetStageOutputs(),cbr);
 
         return sr;
     }

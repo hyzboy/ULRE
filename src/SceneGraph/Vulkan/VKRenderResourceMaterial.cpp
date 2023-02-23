@@ -6,6 +6,7 @@
 #include<hgl/graph/VKMaterialDescriptorSets.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderResource.h>
+#include<hgl/io/ConstBufferReader.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -40,23 +41,17 @@ const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,
     return sm;
 }
 
-void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint count,const uint8 ver)
+void LoadShaderDescriptor(io::ConstBufferReader &cbr,ShaderDescriptor *sd_list,const uint count,const uint8 ver)
 {
     ShaderDescriptor *sd=sd_list;
-    uint str_len;
 
     for(uint i=0;i<count;i++)
     {
-        sd->desc_type=VkDescriptorType(*data++);
-
-        {
-            str_len=*data++;
-            memcpy(sd->name,(char *)data,str_len);
-            data+=str_len;
-        }
+        cbr.CastRead<uint8>(sd->desc_type);
+        cbr.ReadTinyString(sd->name);
 
         if(ver==3)
-            sd->set_type    =(DescriptorSetType)*data++;
+            cbr.CastRead<uint8>(sd->set_type);
         else
         if(ver==2)      //以下是旧的，未来不用了，现仅保证能运行
         {
@@ -66,10 +61,9 @@ void LoadShaderDescriptor(const uint8 *data,ShaderDescriptor *sd_list,const uint
                 sd->set_type=DescriptorSetType::PerFrame;
         }
 
-        sd->set         =*data++;
-        sd->binding     =*data++;
-        sd->stage_flag  =*(uint32 *)data;
-        data+=sizeof(uint32);
+        cbr.Read(sd->set);
+        cbr.Read(sd->binding);
+        cbr.Read(sd->stage_flag);
 
         if(sd->set_type==DescriptorSetType::PerObject)
         {
@@ -105,22 +99,23 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     if(filesize<MaterialFileHeaderLength)
         return(nullptr);
 
-    const uint8 *sp=origin_filedata;
-    const uint8 *end=sp+filesize;
+    io::ConstBufferReader cbr(filedata,filesize);
 
-    if(memcmp(sp,MaterialFileHeader,MaterialFileHeaderLength)!=0)
+    if(memcmp(cbr.CurPointer(),MaterialFileHeader,MaterialFileHeaderLength)!=0)
         return(nullptr);
 
-    sp+=MaterialFileHeaderLength;
+    cbr.Skip(MaterialFileHeaderLength);
 
-    const uint8 ver=*sp;
-    ++sp;
+    uint8 ver;
+
+    cbr.Read(ver);
 
     if(ver<2||ver>3)
         return(nullptr);
 
-    const uint32_t shader_bits=*(uint32_t *)sp;
-    sp+=sizeof(uint32_t);
+    uint32_t shader_bits;
+
+    cbr.Read(shader_bits);
 
     const uint count=GetShaderCountByBits(shader_bits);
     uint32_t size;
@@ -135,11 +130,10 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
     for(uint i=0;i<count;i++)
     {
-        size=*(uint32_t *)sp;
-        sp+=sizeof(uint32_t);
+        cbr.Read(size);
 
-        sr=LoadShaderResource(sp,size);
-        sp+=size;
+        sr=LoadShaderResource(io::ConstBufferReader(cbr,size));     //有一个stage output没读，放弃了，所以不能直接用上一级的cbr
+        cbr.Skip(size);
 
         if(sr)
         {
@@ -162,14 +156,14 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
     MaterialDescriptorSets *mds=nullptr;
     {
-        const uint8 count=*sp;
-        ++sp;
+        uint8 count;
+        cbr.Read(count);
 
         if(count>0)
         {
             ShaderDescriptor *sd_list=new ShaderDescriptor[count];
 
-            LoadShaderDescriptor(sp,sd_list,count,ver);
+            LoadShaderDescriptor(cbr,sd_list,count,ver);
         
             mds=new MaterialDescriptorSets(mtl_name,sd_list,count);
         }
