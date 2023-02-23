@@ -6,6 +6,7 @@
 #include<hgl/math/HalfFloat.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
+#include<hgl/graph/VKRenderablePrimitiveCreater.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -96,17 +97,16 @@ private:
    
     bool InitVBO()
     {
-        Primitive *primitive=db->CreatePrimitive(VERTEX_COUNT);
-        if(!primitive)return(false);
+        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
 #ifdef USE_HALF_FLOAT_POSITION
         Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
 #endif//USE_HALF_FLOAT_POSITION
 
-        if(!primitive->Set(VAN::Position,   db->CreateVBO(PositionFormat,   VERTEX_COUNT,position_data  )))return(false);
-        if(!primitive->Set(VAN::Color,      db->CreateVBO(ColorFormat,      VERTEX_COUNT,color_data     )))return(false);
+        if(!rpc.SetVBO(VAN::Position,   PositionFormat, position_data))return(false);
+        if(!rpc.SetVBO(VAN::Color,      ColorFormat,    color_data   ))return(false);
         
-        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=rpc.Create(material_instance,pipeline);
         return(render_obj);
     }
 

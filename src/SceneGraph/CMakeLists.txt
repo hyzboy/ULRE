@@ -83,6 +83,7 @@ SOURCE_GROUP("Header Files" FILES ${SCENE_GRAPH_HEADER})
 SOURCE_GROUP("Source Files" FILES ${SCENE_GRAPH_SOURCE})
 
 SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h
+                        ${SG_INCLUDE_PATH}/VKRenderablePrimitiveCreater.h
                         Vulkan/VKRenderResource.cpp
                         Vulkan/VKRenderResourceMaterial.cpp)
 
