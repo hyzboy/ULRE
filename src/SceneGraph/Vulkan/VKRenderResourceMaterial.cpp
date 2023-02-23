@@ -167,7 +167,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
         if(count>0)
         {
-            ShaderDescriptor *sd_list=hgl_zero_new<ShaderDescriptor>(count);
+            ShaderDescriptor *sd_list=new ShaderDescriptor[count];
 
             LoadShaderDescriptor(sp,sd_list,count,ver);
         

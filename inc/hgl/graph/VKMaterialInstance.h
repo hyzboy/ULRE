@@ -30,7 +30,7 @@ public:
     
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
-    bool BindSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
+    bool BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
 };//class MaterialInstance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE

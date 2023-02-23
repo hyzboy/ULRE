@@ -25,10 +25,10 @@ class MaterialDescriptorSets
     ShaderDescriptor *sd_list;
     uint sd_count;
 
-    ShaderDescriptorList descriptor_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
-    ShaderDescriptorList descriptor_list_by_set_type[size_t(DescriptorSetType::RANGE_SIZE)];
+    ShaderDescriptorList sd_list_by_desc_type[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
+    ShaderDescriptorList sd_list_by_set_type[size_t(DescriptorSetType::RANGE_SIZE)];
 
-    Map<AnsiString,ShaderDescriptor *> sd_by_name;
+//    Map<AnsiString,ShaderDescriptor *> sd_by_name;
     Map<AnsiString,int> binding_map[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
 //    int *binding_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
@@ -46,16 +46,16 @@ public:
 
     const int GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const;
 
-    const int GetUBO        (const AnsiString &name,bool dynamic)const{return GetBinding(dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,name);}
-    const int GetSSBO       (const AnsiString &name,bool dynamic)const{return GetBinding(dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,name);}
-    const int GetSampler    (const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
-    const int GetAttachment (const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,name);}
+    const int GetUBO            (const AnsiString &name,bool dynamic)const{return GetBinding(dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,name);}
+    const int GetSSBO           (const AnsiString &name,bool dynamic)const{return GetBinding(dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,name);}
+    const int GetImageSampler   (const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,name);}
+    const int GetInputAttachment(const AnsiString &name             )const{return GetBinding(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,name);}
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 
-    const ShaderDescriptorList &GetDescriptorList(const DescriptorSetType &type)const{return descriptor_list_by_set_type[size_t(type)];}
+    const ShaderDescriptorList &GetDescriptorList(const DescriptorSetType &type)const{return sd_list_by_set_type[size_t(type)];}
 
-    const bool hasSet(const DescriptorSetType &type)const{return !descriptor_list_by_set_type[size_t(type)].IsEmpty();}
+    const bool hasSet(const DescriptorSetType &type)const{return !sd_list_by_set_type[size_t(type)].IsEmpty();}
 };//class MaterialDescriptorSets
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE

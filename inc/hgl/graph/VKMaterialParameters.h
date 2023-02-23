@@ -45,7 +45,7 @@ public:
 
     bool BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
-    bool BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
+    bool BindImageSampler(const AnsiString &name,Texture *tex,Sampler *sampler);
     bool BindInputAttachment(const AnsiString &name,ImageView *);
     
     void Update();

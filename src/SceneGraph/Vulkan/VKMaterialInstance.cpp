@@ -52,14 +52,14 @@ bool MaterialInstance::BindSSBO(const DescriptorSetType &type,const AnsiString &
     return(true);
 }
 
-bool MaterialInstance::BindSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
+bool MaterialInstance::BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     MaterialParameters *mp=GetMP(type);
         
     if(!mp)
         return(false);
 
-    if(!mp->BindSampler(name,tex,sampler))return(false);
+    if(!mp->BindImageSampler(name,tex,sampler))return(false);
 
     mp->Update();
     return(true);
