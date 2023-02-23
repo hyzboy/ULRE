@@ -25,6 +25,8 @@ RenderPass::~RenderPass()
 
 Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
+    //以后要做一个缓冲，以Material为基准创建一个pipeline，其它MaterialInstance的pipeline全部以它为基础，这样可以提升性能。
+
     VkPipeline graphicsPipeline;
 
     pd->InitShaderStage(ssci_list);
