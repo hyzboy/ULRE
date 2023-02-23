@@ -114,7 +114,7 @@ namespace hgl
                 if(!mp)
                     return(false);
             
-                if(!mp->BindSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);
+                if(!mp->BindImageSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);
                 if(!mp->BindUBO("color_material",ubo_color))return(false);
 
                 mp->Update();

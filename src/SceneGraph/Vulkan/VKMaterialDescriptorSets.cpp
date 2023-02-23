@@ -34,14 +34,14 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
             {
                 if(sp->desc_type>=VK_DESCRIPTOR_TYPE_BEGIN_RANGE
                  &&sp->desc_type<=VK_DESCRIPTOR_TYPE_END_RANGE)
-                    descriptor_list[(size_t)sp->desc_type].Add(sp);
+                    sd_list_by_desc_type[(size_t)sp->desc_type].Add(sp);
 
-                sd_by_name.Add(sp->name,sp);
+//                sd_by_name.Add(sp->name,sp);
                 binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
 
                 ++dsl_ci[size_t(sp->set_type)].bindingCount;
 
-                descriptor_list_by_set_type[size_t(sp->set_type)].Add(sp);
+                sd_list_by_set_type[size_t(sp->set_type)].Add(sp);
 
                 ++sp;
             }
@@ -59,7 +59,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
         }
 
         {
-            ShaderDescriptorList *sdl=descriptor_list;
+            ShaderDescriptorList *sdl=sd_list_by_desc_type;
             ShaderDescriptor **sdp;
 
             for(uint i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;

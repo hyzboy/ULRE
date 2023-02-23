@@ -48,17 +48,17 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool
     return(true);
 }
 
-bool MaterialParameters::BindSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
+bool MaterialParameters::BindImageSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     if(name.IsEmpty()||!tex||!sampler)
         return(false);
 
-    const int index=mds->GetSampler(name);
+    const int index=mds->GetImageSampler(name);
 
     if(index<0)
         return(false);
 
-    if(!descriptor_set->BindSampler(index,tex,sampler))
+    if(!descriptor_set->BindImageSampler(index,tex,sampler))
         return(false);
 
     return(true);
@@ -69,7 +69,7 @@ bool MaterialParameters::BindInputAttachment(const AnsiString &name,ImageView *i
     if(name.IsEmpty()||!iv)
         return(false);
 
-    const int index=mds->GetAttachment(name);
+    const int index=mds->GetInputAttachment(name);
 
     if(index<0)
         return(false);

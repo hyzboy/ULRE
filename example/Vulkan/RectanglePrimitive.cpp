@@ -59,7 +59,7 @@ private:
 
         sampler=db->CreateSampler();
 
-        if(!material_instance->BindSampler(DescriptorSetType::Value,"tex",texture,sampler))return(false);
+        if(!material_instance->BindImageSampler(DescriptorSetType::Value,"tex",texture,sampler))return(false);
 
         return(true);
     }

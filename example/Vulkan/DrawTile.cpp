@@ -165,7 +165,7 @@ private:
 
         sampler=db->CreateSampler();        
 
-        if(!material_instance->BindSampler(DescriptorSetType::Value,"tex",tile_data->GetTexture(),sampler))return(false);
+        if(!material_instance->BindImageSampler(DescriptorSetType::Value,"tex",tile_data->GetTexture(),sampler))return(false);
 
         return(true);
     }

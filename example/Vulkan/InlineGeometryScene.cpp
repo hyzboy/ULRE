@@ -134,8 +134,8 @@ private:
                 if(!mp_texture)
                     return(false);
 
-                mp_texture->BindSampler("TexColor"    ,texture.color,    texture.sampler);
-                mp_texture->BindSampler("TexNormal"   ,texture.normal,   texture.sampler);
+                mp_texture->BindImageSampler("TexColor"    ,texture.color,    texture.sampler);
+                mp_texture->BindImageSampler("TexNormal"   ,texture.normal,   texture.sampler);
             }
         }
 

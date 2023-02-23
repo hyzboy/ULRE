@@ -316,8 +316,8 @@ private:
             if(!mp)
                 return(false);
 
-            mp->BindSampler("TexColor"    ,texture.color,    texture.color_sampler);
-            mp->BindSampler("TexNormal"   ,texture.normal,   texture.normal_sampler);
+            mp->BindImageSampler("TexColor"    ,texture.color,    texture.color_sampler);
+            mp->BindImageSampler("TexNormal"   ,texture.normal,   texture.normal_sampler);
             mp->Update();
         }
         
@@ -330,9 +330,9 @@ private:
                 return(false);
 
             mp->BindUBO("lights",ubo_lights);
-            mp->BindSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),gbuffer.sampler);
-            mp->BindSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),gbuffer.sampler);
-            mp->BindSampler("GB_Depth"    ,gbuffer.rt->GetDepthTexture(),gbuffer.sampler);
+            mp->BindImageSampler("GB_Color"    ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Color),gbuffer.sampler);
+            mp->BindImageSampler("GB_Normal"   ,gbuffer.rt->GetColorTexture((uint)GBufferAttachment::Normal),gbuffer.sampler);
+            mp->BindImageSampler("GB_Depth"    ,gbuffer.rt->GetDepthTexture(),gbuffer.sampler);
             mp->Update();
         }
 
