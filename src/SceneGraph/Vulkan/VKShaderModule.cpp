@@ -54,7 +54,7 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateI
     for(uint i=0;i<attr_count;i++)
     {
         name_list[i]=&(ssi_list[i]->name);
-        type_list[i]= ssi_list[i]->type;
+        type_list[i]=  ssi_list[i]->type;
     }
 }
 
