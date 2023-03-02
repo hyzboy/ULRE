@@ -51,17 +51,17 @@ Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
     AutoDeleteArray<VkDeviceSize> buffer_size(input_count);
 
     VBO *vbo;
-    const AnsiString **                         name_list=vil->GetNameList();
+    const char **                               name_list=vil->GetNameList();
     const VkVertexInputBindingDescription *     bind_list=vil->GetBindingList();
     const VkVertexInputAttributeDescription *   attr_list=vil->GetAttributeList();
 
     for(int i=0;i<input_count;i++)
     {
-        vbo=r->GetVBO(**name_list,buffer_size+i);
+        vbo=r->GetVBO(*name_list,buffer_size+i);
 
         if(!vbo)
         {
-            LOG_ERROR("[FATAL ERROR] not found VBO \""+**name_list+"\" in Material: "+mtl_name);
+            LOG_ERROR("[FATAL ERROR] not found VBO \""+AnsiString(*name_list)+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 

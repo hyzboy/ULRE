@@ -1,7 +1,9 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
+#include<hgl/graph/VK.h>
 #include<hgl/graph/VKShaderResource.h>
+#include<hgl/graph/VKVertexInputLayout.h>
 #include<hgl/type/SortedSets.h>
 
 VK_NAMESPACE_BEGIN
@@ -57,7 +59,7 @@ class VertexShaderModule:public ShaderModule
 {
     uint32_t attr_count;
     VertexAttribType *type_list;
-    const AnsiString **name_list;
+    const char **name_list;
     ShaderStage **ssi_list;
 
 private:

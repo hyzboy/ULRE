@@ -4,6 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKDescriptorSet.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 VK_NAMESPACE_BEGIN
 class MaterialParameters
 {

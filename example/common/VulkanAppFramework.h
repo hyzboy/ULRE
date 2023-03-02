@@ -59,8 +59,11 @@ protected:
     RenderResource *        db                          =nullptr;
     
 protected:
-    
+
+    ViewportInfo            vp_info;
     Camera *                camera                      =nullptr;
+    CameraInfo              camera_info;
+
     DeviceBuffer *          ubo_camera_info             =nullptr;
 
 public:
@@ -129,16 +132,13 @@ public:
         {
             camera=new Camera;
 
-            camera->width=w;
-            camera->height=h;
-            camera->vp_width=w;
-            camera->vp_height=h;
-
             camera->pos=Vector3f(10,10,10);
+
+            vp_info.Set(w,h);
         
-            camera->RefreshCameraInfo();
+            RefreshCameraInfo(&camera_info,&vp_info,camera);
         
-            ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera->info);
+            ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera_info);
         }
 
         return(true);
@@ -146,7 +146,7 @@ public:
 
     const CameraInfo &GetCameraInfo()
     {
-        return camera->info;
+        return camera_info;
     }
 
     DeviceBuffer *GetCameraInfoBuffer()
@@ -161,14 +161,11 @@ public:
 
     virtual void Resize(int w,int h)
     {
-        camera->width=w;
-        camera->height=h;
-        camera->vp_width=w;
-        camera->vp_height=h;
+        vp_info.Set(w,h);
 
-        camera->RefreshCameraInfo();
+        RefreshCameraInfo(&camera_info,&vp_info,camera);
 
-        ubo_camera_info->Write(&camera->info);
+        ubo_camera_info->Write(&camera_info);
     }
 
     void SetClearColor(const Color4f &cc)
@@ -482,7 +479,7 @@ public:
 
     virtual void InitCamera(int w,int h)
     {
-        camera_control=new FirstPersonCameraControl(camera);
+        camera_control=new FirstPersonCameraControl(&vp_info,camera);
 
         camera_control->Refresh();      //更新矩阵计算
 
@@ -495,14 +492,11 @@ public:
 
     void Resize(int w,int h)override
     {
-        camera->width=w;
-        camera->height=h;
-        camera->vp_width=w;
-        camera->vp_height=h;
+        vp_info.Set(w,h);
 
         camera_control->Refresh();
 
-        ubo_camera_info->Write(&camera->info);
+        ubo_camera_info->Write(&camera_info);
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;
@@ -510,6 +504,7 @@ public:
     virtual void Draw()override
     {
         camera_control->Refresh();                //更新相机矩阵
+
         ubo_camera_info->Write(&camera->info);    //写入缓冲区
 
         const uint32_t index=AcquireNextImage();

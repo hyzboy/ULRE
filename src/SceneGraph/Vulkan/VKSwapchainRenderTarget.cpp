@@ -3,7 +3,7 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,Queue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp):RenderTarget(q,rcs)
+SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp):RenderTarget(q,rcs)
 {
     device=dev;
 

@@ -24,6 +24,7 @@ SET(ULRE    CMCore
             CMSceneGraph
             CMUtil
             ULRE.Util
+#            ULRE.ShaderGen
             ULRE.SceneGraph
             ${HGL_GLM_LIB}
             ${RENDER_LIBRARY}

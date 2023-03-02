@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKShaderResource.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/SortedSets.h>
 VK_NAMESPACE_BEGIN
