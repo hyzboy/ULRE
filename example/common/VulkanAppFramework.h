@@ -61,16 +61,11 @@ protected:
 protected:
 
     ViewportInfo            vp_info;
-    Camera *                camera                      =nullptr;
-    CameraInfo              camera_info;
-
-    DeviceBuffer *          ubo_camera_info             =nullptr;
 
 public:
 
     virtual ~VulkanApplicationFramework()
     {
-        SAFE_CLEAR(camera);
         win->Unjoin(this);
 
         SAFE_CLEAR(db);
@@ -129,43 +124,14 @@ public:
 
         win->Join(this);
 
-        {
-            camera=new Camera;
-
-            camera->pos=Vector3f(10,10,10);
-
-            vp_info.Set(w,h);
-        
-            RefreshCameraInfo(&camera_info,&vp_info,camera);
-        
-            ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera_info);
-        }
+        vp_info.Set(w,h);
 
         return(true);
-    }
-
-    const CameraInfo &GetCameraInfo()
-    {
-        return camera_info;
-    }
-
-    DeviceBuffer *GetCameraInfoBuffer()
-    {
-        return ubo_camera_info;
-    }
-
-    bool BindCameraUBO(MaterialInstance *mi)
-    {
-        return mi->BindUBO(DescriptorSetType::Global,"g_camera",ubo_camera_info);
     }
 
     virtual void Resize(int w,int h)
     {
         vp_info.Set(w,h);
-
-        RefreshCameraInfo(&camera_info,&vp_info,camera);
-
-        ubo_camera_info->Write(&camera_info);
     }
 
     void SetClearColor(const Color4f &cc)
@@ -453,6 +419,10 @@ class CameraAppFramework:public VulkanApplicationFramework
 
 protected:
 
+    Camera *                camera                      =nullptr;
+
+    DeviceBuffer *          ubo_camera_info             =nullptr;
+
     FirstPersonCameraControl *camera_control=nullptr;
 
     CameraKeyboardControl * ckc=nullptr;
@@ -466,6 +436,7 @@ public:
     {
         SAFE_CLEAR(ckc);
         SAFE_CLEAR(cmc);
+        SAFE_CLEAR(camera);
     }
 
     virtual bool Init(int w,int h)
@@ -488,6 +459,14 @@ public:
 
         win->Join(ckc);
         win->Join(cmc);
+
+        camera=new Camera;
+
+        camera->pos=Vector3f(10,10,10);
+
+        RefreshCameraInfo(&camera_control->GetCameraInfo(),&vp_info,camera);
+        
+        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera_control->GetCameraInfo());
     }
 
     void Resize(int w,int h)override
@@ -496,16 +475,31 @@ public:
 
         camera_control->Refresh();
 
-        ubo_camera_info->Write(&camera_info);
+        ubo_camera_info->Write(&camera_control->GetCameraInfo());
+    }
+
+    const CameraInfo &GetCameraInfo()
+    {
+        return camera_control->GetCameraInfo();
+    }
+
+    DeviceBuffer *GetCameraInfoBuffer()
+    {
+        return ubo_camera_info;
+    }
+
+    bool BindCameraUBO(MaterialInstance *mi)
+    {
+        return mi->BindUBO(DescriptorSetType::Global,"g_camera",ubo_camera_info);
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;
 
     virtual void Draw()override
     {
-        camera_control->Refresh();                //更新相机矩阵
+        camera_control->Refresh();                                  //更新相机矩阵
 
-        ubo_camera_info->Write(&camera->info);    //写入缓冲区
+        ubo_camera_info->Write(&camera_control->GetCameraInfo());    //写入缓冲区
 
         const uint32_t index=AcquireNextImage();
 
