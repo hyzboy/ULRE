@@ -26,8 +26,8 @@ VK_NAMESPACE_BEGIN
                 ss=new ShaderStage;
 
                 cbr.Read(ss->location);
-                cbr.CastRead<uint8>(ss->type.basetype);
-                cbr.CastRead<uint8>(ss->type.vec_size);
+                cbr.CastRead<uint8>(ss->basetype);
+                cbr.CastRead<uint8>(ss->vec_size);
 
                 cbr.ReadTinyString(ss->name);
 
@@ -43,34 +43,6 @@ VK_NAMESPACE_BEGIN
         stage_flag=flag;
         spv_data=sd;
         spv_size=size;            
-    }
-
-    const os_char *ShaderStageName[]=
-    {
-        OS_TEXT("vert"),
-        OS_TEXT("tesc"),
-        OS_TEXT("tese"),
-        OS_TEXT("geom"),
-        OS_TEXT("frag"),
-        OS_TEXT("comp"),
-        OS_TEXT("task"),
-        OS_TEXT("mesh")
-    };
-    
-    const os_char *ShaderResource::GetStageName() const
-    {
-        switch(stage_flag)
-        {
-            case VK_SHADER_STAGE_VERTEX_BIT:                    return ShaderStageName[0];
-            case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:      return ShaderStageName[1];
-            case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:   return ShaderStageName[2];
-            case VK_SHADER_STAGE_GEOMETRY_BIT:                  return ShaderStageName[3];
-            case VK_SHADER_STAGE_FRAGMENT_BIT:                  return ShaderStageName[4];
-            case VK_SHADER_STAGE_COMPUTE_BIT:                   return ShaderStageName[5];
-            case VK_SHADER_STAGE_TASK_BIT_NV:                   return ShaderStageName[6];
-            case VK_SHADER_STAGE_MESH_BIT_NV:                   return ShaderStageName[7];
-            default:                                            return nullptr;
-        }
     }
 
     const ShaderStage *ShaderResource::GetStageInput(const AnsiString &name) const

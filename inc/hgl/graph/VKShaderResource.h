@@ -4,22 +4,10 @@
 #include<hgl/type/String.h>
 #include<hgl/type/List.h>
 #include<hgl/type/StringList.h>
-#include<hgl/graph/VK.h>
-#include<hgl/io/ConstBufferReader.h>
+#include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VKStruct.h>
 
 VK_NAMESPACE_BEGIN
-
-struct ShaderStage
-{
-    AnsiString          name;
-    uint8               location;
-
-    VertexAttribType    type;       ///<成份数量(如vec4中的4)
-
-    bool                dynamic;    ///<是否动态数据
-};//struct ShaderStage
-
-using ShaderStageList       =ObjectList<ShaderStage>;
 
 class ShaderResource
 {
@@ -37,7 +25,7 @@ public:
     virtual ~ShaderResource()=default;
 
     const   VkShaderStageFlagBits   GetStage            ()const {return stage_flag;}
-    const   os_char *               GetStageName        ()const;
+    const   char *                  GetStageName        ()const {return GetShaderStageName(stage_flag);}
 
     const   uint32_t *              GetCode             ()const {return (uint32_t *)spv_data;}
     const   uint32_t                GetCodeSize         ()const {return spv_size;}
@@ -51,8 +39,6 @@ public:
     const   ShaderStage *           GetStageInput       (const AnsiString &)const;
     const   int                     GetStageInputBinding(const AnsiString &)const;
 };//class ShaderResource
-
-ShaderResource *LoadShaderResource(io::ConstBufferReader &);
 
 struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
 {

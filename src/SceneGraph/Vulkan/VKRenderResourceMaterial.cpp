@@ -75,6 +75,8 @@ void LoadShaderDescriptor(io::ConstBufferReader &cbr,ShaderDescriptor *sd_list,c
     }
 }
 
+ShaderResource *LoadShaderResource(io::ConstBufferReader &cbr);
+
 Material *RenderResource::CreateMaterial(const OSString &filename)
 {
     Material *mtl;
@@ -137,7 +139,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
         if(sr)
         {
-            shader_name=filename+OS_TEXT("?")+OSString(sr->GetStageName());
+            shader_name=filename+OS_TEXT("?")+ToOSString(sr->GetStageName());
 
             sm=CreateShaderModule(shader_name,sr);
 

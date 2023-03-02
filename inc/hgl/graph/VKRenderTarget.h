@@ -15,7 +15,7 @@ class RenderTarget
 {
 protected:
 
-    Queue *queue;
+    DeviceQueue *queue;
 
     RenderPass *render_pass;
     Framebuffer *fbo;
@@ -34,14 +34,14 @@ protected:
 
     friend class GPUDevice;
 
-    RenderTarget(Queue *,Semaphore *);
-    RenderTarget(Queue *,Semaphore *,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture);
+    RenderTarget(DeviceQueue *,Semaphore *);
+    RenderTarget(DeviceQueue *,Semaphore *,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture);
 
 public:
 
     virtual ~RenderTarget();
     
-                    Queue *      GetQueue            ()      {return queue;}
+                    DeviceQueue *   GetQueue            ()      {return queue;}
             const   VkExtent2D &    GetExtent           ()const {return extent;}
     virtual         RenderPass *    GetRenderPass       ()      {return render_pass;}
     virtual const   VkRenderPass    GetVkRenderPass     ()const {return render_pass->GetVkRenderPass();}
@@ -53,7 +53,7 @@ public:
 
 public: // command buffer
 
-            Semaphore *  GetRenderCompleteSemaphore  (){return render_complete_semaphore;}
+            Semaphore *     GetRenderCompleteSemaphore  (){return render_complete_semaphore;}
     virtual bool            Submit                      (RenderCmdBuffer *,Semaphore *present_complete_semaphore=nullptr);
 
             bool            WaitQueue(){return queue->WaitQueue();}
@@ -75,7 +75,7 @@ class SwapchainRenderTarget:public RenderTarget
 
 public:
 
-    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,Queue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
+    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
     ~SwapchainRenderTarget();
 
                     Framebuffer *   GetFramebuffer  ()override                  {return swapchain->render_frame[current_frame];}
@@ -90,7 +90,7 @@ public:
 public:
 
             const   uint32_t        GetCurrentFrameIndices      ()const {return current_frame;}
-                    Semaphore *  GetPresentCompleteSemaphore ()      {return present_complete_semaphore;}
+                    Semaphore *     GetPresentCompleteSemaphore ()      {return present_complete_semaphore;}
 
 public:
 

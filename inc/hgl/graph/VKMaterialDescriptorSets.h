@@ -2,22 +2,9 @@
 #define HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE
 
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKShaderDescriptor.h>
 
 VK_NAMESPACE_BEGIN
-
-struct ShaderDescriptor
-{
-    char name[128];
-
-    VkDescriptorType desc_type;
-    DescriptorSetType set_type;
-    uint8 set;
-    uint8 binding;
-    uint32 stage_flag;
-};
-
-using ShaderDescriptorList=List<ShaderDescriptor *>;
-
 class MaterialDescriptorSets
 {
     UTF8String mtl_name;

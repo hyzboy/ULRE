@@ -140,7 +140,7 @@ Semaphore *GPUDevice::CreateGPUSemaphore()
     return(new Semaphore(attr->device,sem));
 }
 
-Queue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
+DeviceQueue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
 {
     if(fence_count<=0)return(nullptr);
 
@@ -149,6 +149,6 @@ Queue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signa
     for(uint32_t i=0;i<fence_count;i++)
         fence_list[i]=CreateFence(create_signaled);
 
-    return(new Queue(attr->device,attr->graphics_queue,fence_list,fence_count));
+    return(new DeviceQueue(attr->device,attr->graphics_queue,fence_list,fence_count));
 }
 VK_NAMESPACE_END

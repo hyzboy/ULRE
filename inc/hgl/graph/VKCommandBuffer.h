@@ -147,7 +147,7 @@ public:
         vkCmdPushDescriptorSetKHR(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,set,count,write_desc_set);
     }
 
-    void PushConstants(ShaderStageBit shader_stage_bit,uint32_t offset,uint32_t size,const void *pValues)
+    void PushConstants(VkShaderStageFlagBits shader_stage_bit,uint32_t offset,uint32_t size,const void *pValues)
     {
         vkCmdPushConstants(cmd_buf,pipeline_layout,(VkShaderStageFlagBits)shader_stage_bit,offset,size,pValues);
     }

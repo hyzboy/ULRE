@@ -33,7 +33,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,RenderPas
 
     if(fb)
     {
-        Queue *q=CreateQueue(fence_count,false);
+        DeviceQueue *q=CreateQueue(fence_count,false);
         Semaphore *render_complete_semaphore=CreateGPUSemaphore();
 
         RenderTarget *rt=new RenderTarget(q,render_complete_semaphore,rp,fb,color_texture_list,color_count,depth_texture);
@@ -64,7 +64,7 @@ SwapchainRenderTarget *GPUDevice::CreateSwapchainRenderTarget()
     if(!sc)
         return(false);
 
-    Queue *q=CreateQueue(sc->color_count,false);
+    DeviceQueue *q=CreateQueue(sc->color_count,false);
     Semaphore *render_complete_semaphore=CreateGPUSemaphore();
     Semaphore *present_complete_semaphore=CreateGPUSemaphore();
 

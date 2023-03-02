@@ -33,7 +33,7 @@ class VulkanInstance;
 class GPUPhysicalDevice;
 class GPUDevice;
 struct GPUDeviceAttribute;
-class Queue;
+class DeviceQueue;
 class ImageView;
 class Framebuffer;
 struct Swapchain;
@@ -69,33 +69,6 @@ class DeviceRenderPassManage;
 
 class Fence;
 class Semaphore;
-
-enum class DescriptorSetType
-{
-    //设计使其对应shader中的set
-    
-    Global=0,           ///<全局参数(如太阳光等)
-    PerFrame,           ///<帧参数(如摄像机等)
-    PerMaterialInstance,///<材质实例参数(如纹理等)
-    PerObject,          ///<对象参数(如模型矩阵等)
-
-    Instance,
-    Skeleton,
-
-    ENUM_CLASS_RANGE(Global,Skeleton)
-};//
-
-constexpr char *DescriptSetsTypeName[]=
-{
-    "Global","PerFrame","PerMaterialInstance","PerObject","Instance","Skeleton"
-};
-
-inline const char *GetDescriptorSetTypeName(const enum class DescriptorSetType &type)
-{
-    RANGE_CHECK_RETURN_NULLPTR(type);
-
-    return DescriptSetsTypeName[(size_t)type];
-}
 
 struct PipelineLayoutData;
 class DescriptorSet;
@@ -193,32 +166,6 @@ enum IndexType
     U16=0,
     U32
 };
-
-enum class ShaderStageBit
-{
-    Vertex      =VK_SHADER_STAGE_VERTEX_BIT,
-    TessControl =VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
-    TessEval    =VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
-    Geometry    =VK_SHADER_STAGE_GEOMETRY_BIT,
-    Fragment    =VK_SHADER_STAGE_FRAGMENT_BIT,
-    Compute     =VK_SHADER_STAGE_COMPUTE_BIT
-};//enum class ShaderStageBit
-
-inline const uint GetShaderCountByBits(const uint32_t bits)
-{
-    uint comp=(uint)VK_SHADER_STAGE_VERTEX_BIT;
-    uint result=0;
-
-    for(uint i=0;i<6;i++)
-    {
-        if(bits&comp)
-            ++result;
-
-        comp<<=1;
-    }
-
-    return result;
-}
 
 /**
  * max-lengths:

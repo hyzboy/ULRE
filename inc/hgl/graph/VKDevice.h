@@ -15,6 +15,7 @@
 #include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 
 namespace hgl
 {
@@ -43,7 +44,7 @@ class GPUDevice
 {
     GPUDeviceAttribute *attr;
 
-    Queue *texture_queue;
+    DeviceQueue *texture_queue;
     TextureCmdBuffer *texture_cmd_buf;
 
 private:
@@ -243,7 +244,7 @@ public:
     Fence *      CreateFence(bool);
     Semaphore *  CreateGPUSemaphore();
 
-    Queue *      CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
+    DeviceQueue *CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
 
 public: //FrameBuffer相关
 

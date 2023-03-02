@@ -99,49 +99,49 @@ namespace hgl
             uint8                   channels;   //颜色通道数
             char                    colors[4];
             uint8                   bits[4];
-            VulkanFormat::BaseType  type;
+            VulkanBaseType          type;
         };//
 
         constexpr VulkanTexturePixelFormat pf_list[]=
         {
-            { PF_RGBA4,      4,{'R','G','B','A'},{ 4, 4, 4, 4},VulkanFormat::BaseType::UNORM},      //Android 部分不支持
-            { PF_BGRA4,      4,{'B','G','R','A'},{ 4, 4, 4, 4},VulkanFormat::BaseType::UNORM},      //ios不支持这个
-            {UPF_RGB565,     3,{'R','G','B', 0 },{ 5, 6, 5, 0},VulkanFormat::BaseType::UNORM},
-            {UPF_A1RGB5,     4,{'A','R','G','B'},{ 1, 5, 5, 5},VulkanFormat::BaseType::UNORM},
-            {UPF_R8,         1,{'R', 0 , 0 , 0 },{ 8, 0, 0, 0},VulkanFormat::BaseType::UNORM},
-            {UPF_RG8,        2,{'R','G', 0 , 0 },{ 8, 8, 0, 0},VulkanFormat::BaseType::UNORM},
-            {UPF_RGBA8,      4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanFormat::BaseType::UNORM},
-            {UPF_RGBA8S,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanFormat::BaseType::SNORM},
-            {UPF_RGBA8U,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanFormat::BaseType::UINT},
-            {UPF_RGBA8I,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanFormat::BaseType::SINT},
-            {UPF_ABGR8,      4,{'A','B','G','R'},{ 8, 8, 8, 8},VulkanFormat::BaseType::UNORM},
-            {UPF_A2BGR10,    4,{'A','B','G','R'},{ 2,10,10,10},VulkanFormat::BaseType::UNORM},
-            {UPF_R16,        1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanFormat::BaseType::UNORM},
-            {UPF_R16U,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanFormat::BaseType::UINT},
-            {UPF_R16I,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanFormat::BaseType::SINT},
-            {UPF_R16F,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanFormat::BaseType::SFLOAT},
-            {UPF_RG16,       2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanFormat::BaseType::UNORM},
-            {UPF_RG16U,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanFormat::BaseType::UINT},
-            {UPF_RG16I,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanFormat::BaseType::SINT},
-            {UPF_RG16F,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanFormat::BaseType::SFLOAT},
-            { PF_RGBA16UN,   4,{'R','G','B','A'},{16,16,16,16},VulkanFormat::BaseType::UNORM},
-            { PF_RGBA16SN,   4,{'R','G','B','A'},{16,16,16,16},VulkanFormat::BaseType::SNORM},
-            {UPF_RGBA16U,    4,{'R','G','B','A'},{16,16,16,16},VulkanFormat::BaseType::UINT},
-            {UPF_RGBA16I,    4,{'R','G','B','A'},{16,16,16,16},VulkanFormat::BaseType::SINT},
-            {UPF_RGBA16F,    4,{'R','G','B','A'},{16,16,16,16},VulkanFormat::BaseType::SFLOAT},
-            {UPF_R32U,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanFormat::BaseType::UINT},
-            {UPF_R32I,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanFormat::BaseType::SINT},
-            {UPF_R32F,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanFormat::BaseType::SFLOAT},
-            {UPF_RG32U,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanFormat::BaseType::UINT},
-            {UPF_RG32I,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanFormat::BaseType::SINT},
-            {UPF_RG32F,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanFormat::BaseType::SFLOAT},
-            { PF_RGB32U,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanFormat::BaseType::UINT},
-            { PF_RGB32I,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanFormat::BaseType::SINT},
-            { PF_RGB32F,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanFormat::BaseType::SFLOAT},
-            {UPF_RGBA32U,    4,{'R','G','B','A'},{32,32,32,32},VulkanFormat::BaseType::UINT},
-            {UPF_RGBA32I,    4,{'R','G','B','A'},{32,32,32,32},VulkanFormat::BaseType::SINT},
-            {UPF_RGBA32F,    4,{'R','G','B','A'},{32,32,32,32},VulkanFormat::BaseType::SFLOAT},
-            {UPF_B10GR11UF,  3,{'B','G','R', 0 },{10,11,11, 0},VulkanFormat::BaseType::UFLOAT}
+            { PF_RGBA4,      4,{'R','G','B','A'},{ 4, 4, 4, 4},VulkanBaseType::UNORM},      //Android 部分不支持
+            { PF_BGRA4,      4,{'B','G','R','A'},{ 4, 4, 4, 4},VulkanBaseType::UNORM},      //ios不支持这个
+            {UPF_RGB565,     3,{'R','G','B', 0 },{ 5, 6, 5, 0},VulkanBaseType::UNORM},
+            {UPF_A1RGB5,     4,{'A','R','G','B'},{ 1, 5, 5, 5},VulkanBaseType::UNORM},
+            {UPF_R8,         1,{'R', 0 , 0 , 0 },{ 8, 0, 0, 0},VulkanBaseType::UNORM},
+            {UPF_RG8,        2,{'R','G', 0 , 0 },{ 8, 8, 0, 0},VulkanBaseType::UNORM},
+            {UPF_RGBA8,      4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanBaseType::UNORM},
+            {UPF_RGBA8S,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanBaseType::SNORM},
+            {UPF_RGBA8U,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanBaseType::UINT},
+            {UPF_RGBA8I,     4,{'R','G','B','A'},{ 8, 8, 8, 8},VulkanBaseType::SINT},
+            {UPF_ABGR8,      4,{'A','B','G','R'},{ 8, 8, 8, 8},VulkanBaseType::UNORM},
+            {UPF_A2BGR10,    4,{'A','B','G','R'},{ 2,10,10,10},VulkanBaseType::UNORM},
+            {UPF_R16,        1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanBaseType::UNORM},
+            {UPF_R16U,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanBaseType::UINT},
+            {UPF_R16I,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanBaseType::SINT},
+            {UPF_R16F,       1,{'R', 0 , 0 , 0 },{16, 0, 0, 0},VulkanBaseType::SFLOAT},
+            {UPF_RG16,       2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanBaseType::UNORM},
+            {UPF_RG16U,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanBaseType::UINT},
+            {UPF_RG16I,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanBaseType::SINT},
+            {UPF_RG16F,      2,{'R','G', 0 , 0 },{16,16, 0, 0},VulkanBaseType::SFLOAT},
+            { PF_RGBA16UN,   4,{'R','G','B','A'},{16,16,16,16},VulkanBaseType::UNORM},
+            { PF_RGBA16SN,   4,{'R','G','B','A'},{16,16,16,16},VulkanBaseType::SNORM},
+            {UPF_RGBA16U,    4,{'R','G','B','A'},{16,16,16,16},VulkanBaseType::UINT},
+            {UPF_RGBA16I,    4,{'R','G','B','A'},{16,16,16,16},VulkanBaseType::SINT},
+            {UPF_RGBA16F,    4,{'R','G','B','A'},{16,16,16,16},VulkanBaseType::SFLOAT},
+            {UPF_R32U,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanBaseType::UINT},
+            {UPF_R32I,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanBaseType::SINT},
+            {UPF_R32F,       1,{'R', 0 , 0 , 0 },{32, 0, 0, 0},VulkanBaseType::SFLOAT},
+            {UPF_RG32U,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanBaseType::UINT},
+            {UPF_RG32I,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanBaseType::SINT},
+            {UPF_RG32F,      2,{'R','G', 0 , 0 },{32,32, 0, 0},VulkanBaseType::SFLOAT},
+            { PF_RGB32U,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanBaseType::UINT},
+            { PF_RGB32I,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanBaseType::SINT},
+            { PF_RGB32F,     3,{'R','G','B', 0 },{32,32,32, 0},VulkanBaseType::SFLOAT},
+            {UPF_RGBA32U,    4,{'R','G','B','A'},{32,32,32,32},VulkanBaseType::UINT},
+            {UPF_RGBA32I,    4,{'R','G','B','A'},{32,32,32,32},VulkanBaseType::SINT},
+            {UPF_RGBA32F,    4,{'R','G','B','A'},{32,32,32,32},VulkanBaseType::SFLOAT},
+            {UPF_B10GR11UF,  3,{'B','G','R', 0 },{10,11,11, 0},VulkanBaseType::UFLOAT}
         };
 
         constexpr uint VulkanTexturePixelFormatCount=sizeof(pf_list)/sizeof(VulkanTexturePixelFormat);

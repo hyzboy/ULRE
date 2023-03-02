@@ -5,6 +5,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 VK_NAMESPACE_BEGIN
 using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
 

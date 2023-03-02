@@ -1,4 +1,5 @@
 #include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/TypeFunc.h>
 
 VK_NAMESPACE_BEGIN

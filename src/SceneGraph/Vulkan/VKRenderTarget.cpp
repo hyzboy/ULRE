@@ -6,7 +6,7 @@
 #include<hgl/graph/VKFramebuffer.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget::RenderTarget(Queue *q,Semaphore *s)
+RenderTarget::RenderTarget(DeviceQueue *q,Semaphore *s)
 {
     queue=q;
     render_pass=nullptr;
@@ -18,7 +18,7 @@ RenderTarget::RenderTarget(Queue *q,Semaphore *s)
     render_complete_semaphore=s;
 }
 
-RenderTarget::RenderTarget(Queue *q,Semaphore *s,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt)
+RenderTarget::RenderTarget(DeviceQueue *q,Semaphore *s,RenderPass *_rp,Framebuffer *_fb,Texture2D **ctl,const uint32_t cc,Texture2D *dt)
 {
     queue=q;
     render_pass=_rp;
