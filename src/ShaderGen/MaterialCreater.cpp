@@ -5,6 +5,7 @@
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/shadergen/MaterialDescriptorManager.h>
 #include<hgl/shadergen/ShaderDescriptorManager.h>
+#include<hgl/graph/VKSamplerType.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -22,7 +23,7 @@ public:
 
 public:
 
-    ShaderCreater(VkShaderStageFlagBits ss,MaterialDescriptorManager *mdm):sdm(ss,mdm)
+    ShaderCreater(VkShaderStageFlagBits ss):sdm(ss)
     {
         shader_stage=ss;
     }
@@ -58,7 +59,7 @@ class VertexShaderCreater:public ShaderCreater
 
 public:
 
-    VertexShaderCreater(MaterialDescriptorManager *mdm):ShaderCreater(VK_SHADER_STAGE_VERTEX_BIT,mdm){}
+    VertexShaderCreater():ShaderCreater(VK_SHADER_STAGE_VERTEX_BIT){}
     ~VertexShaderCreater()=default;
 
     int AddInput(const AnsiString &name,const VertexAttribType &type)
@@ -79,7 +80,7 @@ class GeometryShaderCreater:public ShaderCreater
 {
 public:
 
-    GeometryShaderCreater(MaterialDescriptorManager *mdm):ShaderCreater(VK_SHADER_STAGE_GEOMETRY_BIT,mdm){}
+    GeometryShaderCreater():ShaderCreater(VK_SHADER_STAGE_GEOMETRY_BIT){}
     ~GeometryShaderCreater()=default;
 };
 
@@ -87,7 +88,7 @@ class FragmentShaderCreater:public ShaderCreater
 {
 public:
 
-    FragmentShaderCreater(MaterialDescriptorManager *mdm):ShaderCreater(VK_SHADER_STAGE_FRAGMENT_BIT,mdm){}
+    FragmentShaderCreater():ShaderCreater(VK_SHADER_STAGE_FRAGMENT_BIT){}
     ~FragmentShaderCreater()=default;
 };
 
@@ -123,9 +124,9 @@ public:
         rt_count=rc;
         shader_stage=ss;
 
-        if(hasVertex    ())shader_map.Add(vert=new VertexShaderCreater  (&MDM));else vert=nullptr;
-        if(hasGeometry  ())shader_map.Add(geom=new GeometryShaderCreater(&MDM));else geom=nullptr;
-        if(hasFragment  ())shader_map.Add(frag=new FragmentShaderCreater(&MDM));else frag=nullptr;
+        if(hasVertex    ())shader_map.Add(vert=new VertexShaderCreater  );else vert=nullptr;
+        if(hasGeometry  ())shader_map.Add(geom=new GeometryShaderCreater);else geom=nullptr;
+        if(hasFragment  ())shader_map.Add(frag=new FragmentShaderCreater);else frag=nullptr;
     }
 
     ~MaterialCreater()
@@ -139,9 +140,20 @@ public:
         return vert->AddInput(name,type);
     }
 
+    bool AddUBOCode(const AnsiString &ubo_typename,const AnsiString &codes)
+    {
+        if(ubo_typename.IsEmpty()||codes.IsEmpty())
+            return(false);
+
+        return MDM.AddUBOCode(ubo_typename,codes);
+    }
+
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
     {
         if(!shader_map.KeyExist(flag_bits))
+            return(false);
+
+        if(!MDM.hasUBOCode(type_name))
             return(false);
 
         ShaderCreater *sc=shader_map[flag_bits];
@@ -154,13 +166,15 @@ public:
         ubo->type=type_name;
         ubo->name=name;
 
-        return sc->sdm.AddUBO(set_type,ubo);
+        return sc->sdm.AddUBO(set_type,MDM.AddUBO(flag_bits,set_type,ubo));
     }
 
-    bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
+    bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
     {
         if(!shader_map.KeyExist(flag_bits))
             return(false);
+
+        RANGE_CHECK_RETURN_FALSE(st);
 
         ShaderCreater *sc=shader_map[flag_bits];
 
@@ -169,10 +183,10 @@ public:
 
         SamplerDescriptor *sampler=new SamplerDescriptor();
 
-        sampler->type=type_name;
+        sampler->type=GetSamplerTypeName(st);
         sampler->name=name;
 
-        return sc->sdm.AddSampler(set_type,sampler);
+        return sc->sdm.AddSampler(set_type,MDM.AddSampler(flag_bits,set_type,sampler));
     }
 };//class MaterialCreater
 

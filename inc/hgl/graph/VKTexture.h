@@ -27,7 +27,7 @@ public:
     VkImageLayout               GetImageLayout      ()      {return data?data->image_layout:VK_IMAGE_LAYOUT_UNDEFINED;}
     VkImageView                 GetVulkanImageView  ()      {return data?data->image_view->GetImageView():VK_NULL_HANDLE;}
 
-    DeviceMemory *                 GetMemory           ()      {return data?data->memory:nullptr;}
+    DeviceMemory *              GetMemory           ()      {return data?data->memory:nullptr;}
     ImageView *                 GetImageView        ()      {return data?data->image_view:nullptr;}
 
     const uint32                GetMipLevel         ()const {return data?data->miplevel:0;}

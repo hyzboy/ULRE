@@ -7,6 +7,10 @@
 #include<hgl/shadergen/MaterialDescriptorManager.h>
 
 SHADERGEN_NAMESPACE_BEGIN
+
+using ConstUBODescriptorList=List<const UBODescriptor *>;
+using ConstSamplerDescriptorList=List<const SamplerDescriptor *>;
+
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计
 */
@@ -14,11 +18,9 @@ class ShaderDescriptorManager
 {
     ShaderStageIO stage_io;
     
-    MaterialDescriptorManager *         material_descriptor_manager;
-
     //ubo/object在这里以及MaterialDescriptorManager中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
-    List<const UBODescriptor *>         ubo_list;
-    List<const SamplerDescriptor *>     sampler_list;
+    ConstUBODescriptorList              ubo_list;
+    ConstSamplerDescriptorList          sampler_list;
     
     ObjectList<ConstValueDescriptor>    const_value_list;
     ObjectList<SubpassInputDescriptor>  subpass_input;
@@ -29,7 +31,7 @@ class ShaderDescriptorManager
 
 public:
 
-    ShaderDescriptorManager(VkShaderStageFlagBits,MaterialDescriptorManager *);
+    ShaderDescriptorManager(VkShaderStageFlagBits);
     ~ShaderDescriptorManager()=default;
 
     const VkShaderStageFlagBits GetStageBits()const { return stage_io.cur; }
@@ -42,8 +44,8 @@ public:
 
     const ShaderStageIO &                       GetShaderStageIO()const{return stage_io;}
 
-    const List<const UBODescriptor *> &         GetUBOList()const{return ubo_list;}
-    const List<const SamplerDescriptor *> &     GetSamplerList()const{return sampler_list;}
+    const ConstUBODescriptorList &              GetUBOList()const{return ubo_list;}
+    const ConstSamplerDescriptorList &          GetSamplerList()const{return sampler_list;}
 
     const ObjectList<ConstValueDescriptor> &    GetConstList()const{return const_value_list;}
 
@@ -56,8 +58,8 @@ public:
     bool AddInput(ShaderStage *);
     bool AddOutput(ShaderStage *);
 
-    bool AddUBO(DescriptorSetType type,UBODescriptor *sd);
-    bool AddSampler(DescriptorSetType type,SamplerDescriptor *sd);
+    bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
+    bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);
 
     bool AddConstValue(ConstValueDescriptor *sd);    
     bool AddSubpassInput(const AnsiString name,uint8_t index);
