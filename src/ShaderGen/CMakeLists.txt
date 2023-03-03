@@ -8,9 +8,13 @@ SET(SHADERGEN_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShadingProgram.h
                             ${SHADERGEN_INCLUDE_PATH}/ShaderCommon.h
                             ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorManager.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorManager.h
+                            ${SHADERGEN_INCLUDE_PATH}/VertexPolicy.h
+                            ${SHADERGEN_INCLUDE_PATH}/MaterialGen.h
 )
 
-SET(SHADERGEN_SOURCE_FILES  PMC.cpp
+SET(SHADERGEN_SOURCE_FILES  
+#PMC.cpp
+#                            VertexPolicy.cpp
                             ShaderDescriptorManager.cpp
                             MaterialDescriptorManager.cpp
 )
@@ -20,4 +24,5 @@ SET(SHADERGEN_SOURCE_FILES  PMC.cpp
 
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_HEADER_FILES} 
                                         ${SHADERGEN_SOURCE_FILES}
-                                        ShaderGen.cpp)
+                                        ShaderGen.cpp
+                                        MaterialCreater.cpp)
