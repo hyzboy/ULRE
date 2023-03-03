@@ -1,10 +1,8 @@
 #include<hgl/shadergen/ShaderDescriptorManager.h>
 
 SHADERGEN_NAMESPACE_BEGIN
-ShaderDescriptorManager::ShaderDescriptorManager(VkShaderStageFlagBits cur,MaterialDescriptorManager *mdm)
+ShaderDescriptorManager::ShaderDescriptorManager(VkShaderStageFlagBits cur)
 {
-    material_descriptor_manager=mdm;
-
     stage_io.cur=cur;
     stage_io.prev=(VkShaderStageFlagBits)0;
     stage_io.next=(VkShaderStageFlagBits)0;
@@ -46,26 +44,22 @@ bool ShaderDescriptorManager::AddOutput(ShaderStage *ss)
     return(true);
 }
 
-bool ShaderDescriptorManager::AddUBO(DescriptorSetType type,UBODescriptor *sd)
+bool ShaderDescriptorManager::AddUBO(DescriptorSetType type,const UBODescriptor *ubo)
 {
-    const UBODescriptor *obj=material_descriptor_manager->AddUBO(stage_io.cur,type,sd);
-
-    if(!obj)
+    if(!ubo)
         return(false);
 
-    ubo_list.Add(obj);
-    return obj;
+    ubo_list.Add(ubo);
+    return true;
 }
 
-bool ShaderDescriptorManager::AddSampler(DescriptorSetType type,SamplerDescriptor *sd)
+bool ShaderDescriptorManager::AddSampler(DescriptorSetType type,const SamplerDescriptor *sampler)
 {
-    const SamplerDescriptor *obj=material_descriptor_manager->AddSampler(stage_io.cur,type,sd);
-
-    if(!obj)
+    if(!sampler)
         return(false);
 
-    sampler_list.Add(obj);
-    return obj;
+    sampler_list.Add(sampler);
+    return true;
 }
 
 bool ShaderDescriptorManager::AddConstValue(ConstValueDescriptor *sd)

@@ -22,10 +22,10 @@ class MaterialDescriptorManager
         int set;
         int count;
 
-        ObjectMap<UTF8String,ShaderDescriptor>  descriptor_map;
+        ObjectMap<AnsiString,ShaderDescriptor>  descriptor_map;
 
-        List<const UBODescriptor *>             ubo_list;
-        List<const SamplerDescriptor *>         sampler_list;
+        ObjectList<UBODescriptor>               ubo_list;
+        ObjectList<SamplerDescriptor>           sampler_list;
 
     public:
 
@@ -36,13 +36,34 @@ class MaterialDescriptorManager
 
     ShaderDescriptorSetArray desc_set_array;
 
+    Map<AnsiString,AnsiString> ubo_code_map;
+
 public:
     
     MaterialDescriptorManager();
     ~MaterialDescriptorManager()=default;
 
-    const UBODescriptor *AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType type,UBODescriptor *sd);
-    const SamplerDescriptor *AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType type,SamplerDescriptor *sd);
+    bool AddUBOCode(const AnsiString &name,const AnsiString &code)
+    {
+        if(ubo_code_map.KeyExist(name))
+            return(false);
+
+        ubo_code_map.Add(name,code);
+        return(true);
+    }
+
+    bool GetUBOCode(const AnsiString &name,AnsiString &code) const
+    {
+        return(ubo_code_map.Get(name,code));
+    }
+
+    bool hasUBOCode(const AnsiString &name) const
+    {
+        return(ubo_code_map.KeyExist(name));
+    }
+
+    const UBODescriptor *AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd);
+    const SamplerDescriptor *AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd);
 
     const DescriptorSetType GetSetType(const AnsiString &)const;
 

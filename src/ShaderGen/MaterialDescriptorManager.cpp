@@ -34,6 +34,7 @@ const ShaderDescriptor *MaterialDescriptorManager::ShaderDescriptorSet::AddDescr
     
     if(descriptor_map.Get(new_sd->name,sd))
     {
+        delete new_sd;
         sd->stage_flag|=ssb;
         return(sd);
     }
@@ -50,12 +51,12 @@ const ShaderDescriptor *MaterialDescriptorManager::ShaderDescriptorSet::AddDescr
     }
 }
 
-const UBODescriptor *MaterialDescriptorManager::AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType type,UBODescriptor *sd)
+const UBODescriptor *MaterialDescriptorManager::AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
-    RANGE_CHECK_RETURN_NULLPTR(type);
+    RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
 
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)type;
+    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
     const ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
     
@@ -65,12 +66,12 @@ const UBODescriptor *MaterialDescriptorManager::AddUBO(VkShaderStageFlagBits ssb
     return((UBODescriptor *)obj);
 }
 
-const SamplerDescriptor *MaterialDescriptorManager::AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType type,SamplerDescriptor *sd)
+const SamplerDescriptor *MaterialDescriptorManager::AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd)
 {
-    RANGE_CHECK_RETURN_NULLPTR(type);
+    RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
     
-    ShaderDescriptorSet *sds=desc_set_array+(size_t)type;
+    ShaderDescriptorSet *sds=desc_set_array+(size_t)set_type;
 
     const ShaderDescriptor *obj=sds->AddDescriptor(ssb,sd);
 
