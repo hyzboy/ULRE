@@ -49,12 +49,12 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateI
     attr_count=stage_input_list.GetCount();
     ssi_list=stage_input_list.GetData();
     name_list=new const char *[attr_count];
-    type_list=new VertexAttribType[attr_count];
+    type_list=new VAT[attr_count];
     
     for(uint i=0;i<attr_count;i++)
     {
         name_list[i]            =ssi_list[i]->name;
-        type_list[i].basetype   =VertexAttribType::BaseType(ssi_list[i]->basetype);
+        type_list[i].basetype   =VATBaseType(ssi_list[i]->basetype);
         type_list[i].vec_size   =ssi_list[i]->vec_size;
     }
 }
@@ -70,7 +70,7 @@ VertexShaderModule::~VertexShaderModule()
     delete[] name_list;
 }
 
-const VkFormat GetVulkanFormat(const VertexAttribType::BaseType &base_type,const uint vec_size);    //VertexAttrib.cpp
+const VkFormat GetVulkanFormat(const VATBaseType &base_type,const uint vec_size);    //VertexAttrib.cpp
 
 VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
 {
@@ -100,7 +100,7 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
 
         if(!cfg||!cfg->Get((*si)->name,vac))
         {
-            attr->format    =GetVulkanFormat(VertexAttribType::BaseType((*si)->basetype),(*si)->vec_size);
+            attr->format    =GetVulkanFormat(VATBaseType((*si)->basetype),(*si)->vec_size);
 
             //if(memcmp((*si)->name.c_str(),"Inst_",5)==0)                //不可以使用CaseComp("Inst_",5)会被认为是比较一个5字长的字符串，而不是只比较5个字符
             //    bind->inputRate =VK_VERTEX_INPUT_RATE_INSTANCE;
@@ -112,7 +112,7 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
             if(vac.format!=PF_UNDEFINED)
                 attr->format    =vac.format;
             else                
-                attr->format    =GetVulkanFormat(VertexAttribType::BaseType((*si)->basetype),(*si)->vec_size);
+                attr->format    =GetVulkanFormat(VATBaseType((*si)->basetype),(*si)->vec_size);
 
             bind->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
         }

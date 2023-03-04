@@ -31,6 +31,55 @@ public:
     ~ShaderCreater()
     {
     }
+
+    int AddInput(const VAT &type,const AnsiString &name)
+    {
+        ShaderStage *ss=new ShaderStage;
+
+        hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
+
+        ss->basetype=(uint8) type.basetype;
+        ss->vec_size=        type.vec_size;
+
+        return sdm.AddInput(ss);
+    }
+
+    int AddInput(const AnsiString &type,const AnsiString &name)
+    {
+        VAT vat;
+
+        if(!ParseVertexAttribType(&vat,type))
+            return(-2);
+
+        return AddInput(vat,name);
+    }
+
+    int AddOutput(const VAT &type,const AnsiString &name)
+    {
+        ShaderStage *ss=new ShaderStage;
+
+        hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
+
+        ss->basetype=(uint8) type.basetype;
+        ss->vec_size=        type.vec_size;
+
+        return sdm.AddOutput(ss);
+    }
+
+    int AddOutput(const AnsiString &type,const AnsiString &name)
+    {
+        VAT vat;
+
+        if(!ParseVertexAttribType(&vat,type))
+            return(-2);
+
+        return AddOutput(vat,name);
+    }
+
+    bool AddFunction(const AnsiString &return_type,const AnsiString &func_name,const AnsiString &param_list,const AnsiString &codes)
+    {
+        //return sdm.AddFunction(return_type,func_name,param_list,code);
+    }
 };
 
 class ShaderCreaterMap:public ObjectMap<VkShaderStageFlagBits,ShaderCreater>
@@ -55,25 +104,10 @@ public:
 
 class VertexShaderCreater:public ShaderCreater
 {
-    List<ShaderStage> input;
-
 public:
 
     VertexShaderCreater():ShaderCreater(VK_SHADER_STAGE_VERTEX_BIT){}
     ~VertexShaderCreater()=default;
-
-    int AddInput(const AnsiString &name,const VertexAttribType &type)
-    {
-        ShaderStage ss;
-
-        hgl::strcpy(ss.name,sizeof(ss.name),name.c_str());
-
-        ss.location=input.GetCount();
-        ss.basetype=(uint8) type.basetype;
-        ss.vec_size=        type.vec_size;
-
-        return input.Add(ss);
-    }
 };
 
 class GeometryShaderCreater:public ShaderCreater
@@ -117,9 +151,13 @@ public:
     bool hasFragment()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
 //    bool hasCompute ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
 
+    VertexShaderCreater *   GetVS(){return vert;}
+    GeometryShaderCreater * GetGS(){return geom;}
+    FragmentShaderCreater * GetFS(){return frag;}
+
 public:
 
-    MaterialCreater(const uint rc,const uint32 ss)
+    MaterialCreater(const uint rc,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT)
     {
         rt_count=rc;
         shader_stage=ss;
@@ -133,19 +171,12 @@ public:
     {
     }
 
-    int AddVertexInput(const AnsiString &name,const VertexAttribType &type)
-    {
-        if(!vert)return(-1);
-
-        return vert->AddInput(name,type);
-    }
-
-    bool AddUBOCode(const AnsiString &ubo_typename,const AnsiString &codes)
+    bool AddUBOStruct(const AnsiString &ubo_typename,const AnsiString &codes)
     {
         if(ubo_typename.IsEmpty()||codes.IsEmpty())
             return(false);
 
-        return MDM.AddUBOCode(ubo_typename,codes);
+        return MDM.AddUBOStruct(ubo_typename,codes);
     }
 
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
@@ -153,7 +184,7 @@ public:
         if(!shader_map.KeyExist(flag_bits))
             return(false);
 
-        if(!MDM.hasUBOCode(type_name))
+        if(!MDM.hasUBOStruct(type_name))
             return(false);
 
         ShaderCreater *sc=shader_map[flag_bits];
@@ -161,12 +192,26 @@ public:
         if(!sc)
             return(false);
 
-        UBODescriptor *ubo=new UBODescriptor();
+        UBODescriptor *ubo=MDM.GetUBO(name);
 
-        ubo->type=type_name;
-        ubo->name=name;
+        if(ubo)
+        {
+            if(ubo->type!=type_name)
+                return(false);
 
-        return sc->sdm.AddUBO(set_type,MDM.AddUBO(flag_bits,set_type,ubo));
+            ubo->stage_flag|=flag_bits;
+            
+            return sc->sdm.AddUBO(set_type,ubo);
+        }
+        else
+        {
+            ubo=new UBODescriptor();
+
+            ubo->type=type_name;
+            ubo->name=name;
+
+            return sc->sdm.AddUBO(set_type,MDM.AddUBO(flag_bits,set_type,ubo));
+        }
     }
 
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
@@ -181,19 +226,85 @@ public:
         if(!sc)
             return(false);
 
-        SamplerDescriptor *sampler=new SamplerDescriptor();
+        SamplerDescriptor *sampler=MDM.GetSampler(name);
 
-        sampler->type=GetSamplerTypeName(st);
-        sampler->name=name;
+        AnsiString st_name=GetSamplerTypeName(st);
 
-        return sc->sdm.AddSampler(set_type,MDM.AddSampler(flag_bits,set_type,sampler));
+        if(sampler)
+        {
+            if(sampler->type!=st_name)
+                return(false);
+
+            sampler->stage_flag|=flag_bits;
+
+            return sc->sdm.AddSampler(set_type,sampler);
+        }
+        else
+        {
+            sampler=new SamplerDescriptor();
+
+            sampler->type=st_name;
+            sampler->name=name;
+
+            return sc->sdm.AddSampler(set_type,MDM.AddSampler(flag_bits,set_type,sampler));
+        }
     }
 };//class MaterialCreater
 
-int main()
+#ifdef _DEBUG
+
+bool PureColorMaterial()
 {
-    MaterialCreater mc(1,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
+    MaterialCreater mc(1);                                  //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
+
+    //vertex部分
+    {
+        VertexShaderCreater *vsc=mc.GetVS();                //获取vertex shader creater
+
+        vsc->AddInput("vec3","Position");                   //添加一个vec3类型的position属性输入
+
+        //以下代码会被合并成 vec3 GetPosition(/**/){return Position;}
+        vsc->AddFunction("vec3","GetPosition","/**/","return Position;");
+    }
+
+    //添加一个名称为ColorMaterial的UBO定义,其内部有一个vec4 color的属性
+    //该代码会被展开为
+    /*
+        struct ColorMaterial
+        {
+            vec4 color;
+        };
+     */
+    mc.AddUBOStruct("ColorMaterial","vec4 color;");
+
+    //添加一个UBO，该代码会被展开为
+    /*
+        layout(set=SET_PerMI,binding=?) uniform ColorMaterial mtl;
+    */
+    mc.AddUBO(  VK_SHADER_STAGE_FRAGMENT_BIT,               //这个UBO出现在fragment shader
+                DescriptorSetType::PerMaterialInstance,     //它属于材质实例合集
+                "ColorMaterial",                            //UBO名称为ColorMaterial
+                "mtl");                                     //UBO变量名称为mtl
+
+    //fragment部分
+    {
+        FragmentShaderCreater *fsc=mc.GetFS();              //获取fragment shader creater
+
+        //以下代码会被合并成 vec4 GetColor(/**/){return mtl.color;}
+        fsc->AddFunction("vec4","GetColor","/**/","return mtl.color;");
+
+        fsc->AddOutput("vec4","Color");                     //添加一个vec4类型的color属性输出
+        
+    }
+
+    return(false);
+}
+
+int MaterialCreaterTest()
+{
+        
 
     return 0;
 }
+#endif//_DEBUG
 SHADERGEN_NAMESPACE_END

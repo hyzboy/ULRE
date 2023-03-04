@@ -58,7 +58,7 @@ public:
 class VertexShaderModule:public ShaderModule
 {
     uint32_t attr_count;
-    VertexAttribType *type_list;
+    VAT *type_list;
     const char **name_list;
     ShaderStage **ssi_list;
 
