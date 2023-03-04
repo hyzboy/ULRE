@@ -24,46 +24,48 @@ class MaterialDescriptorManager
 
         ObjectMap<AnsiString,ShaderDescriptor>  descriptor_map;
 
-        ObjectList<UBODescriptor>               ubo_list;
-        ObjectList<SamplerDescriptor>           sampler_list;
-
     public:
 
-        const ShaderDescriptor *AddDescriptor(VkShaderStageFlagBits ssb,ShaderDescriptor *new_sd);                       ///<添加一个描述符，如果它本身存在，则返回false
+        ShaderDescriptor *AddDescriptor(VkShaderStageFlagBits ssb,ShaderDescriptor *new_sd);                       ///<添加一个描述符，如果它本身存在，则返回false
     };
 
     using ShaderDescriptorSetArray=ShaderDescriptorSet[size_t(DescriptorSetType::RANGE_SIZE)];
 
     ShaderDescriptorSetArray desc_set_array;
 
-    Map<AnsiString,AnsiString> ubo_code_map;
+    Map<AnsiString,AnsiString> ubo_struct_map;
+    Map<AnsiString,UBODescriptor *> ubo_map;
+    Map<AnsiString,SamplerDescriptor *> sampler_map;
 
 public:
     
     MaterialDescriptorManager();
     ~MaterialDescriptorManager()=default;
 
-    bool AddUBOCode(const AnsiString &name,const AnsiString &code)
+    bool AddUBOStruct(const AnsiString &name,const AnsiString &code)
     {
-        if(ubo_code_map.KeyExist(name))
+        if(ubo_struct_map.KeyExist(name))
             return(false);
 
-        ubo_code_map.Add(name,code);
+        ubo_struct_map.Add(name,code);
         return(true);
     }
 
-    bool GetUBOCode(const AnsiString &name,AnsiString &code) const
+    bool GetUBOStruct(const AnsiString &name,AnsiString &code) const
     {
-        return(ubo_code_map.Get(name,code));
+        return(ubo_struct_map.Get(name,code));
     }
 
-    bool hasUBOCode(const AnsiString &name) const
+    bool hasUBOStruct(const AnsiString &name) const
     {
-        return(ubo_code_map.KeyExist(name));
+        return(ubo_struct_map.KeyExist(name));
     }
 
     const UBODescriptor *AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd);
     const SamplerDescriptor *AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd);
+
+    UBODescriptor *GetUBO(const AnsiString &name);
+    SamplerDescriptor *GetSampler(const AnsiString &name);
 
     const DescriptorSetType GetSetType(const AnsiString &)const;
 
