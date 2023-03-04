@@ -56,7 +56,7 @@ void LoadShaderDescriptor(io::ConstBufferReader &cbr,ShaderDescriptor *sd_list,c
         if(ver==2)      //以下是旧的，未来不用了，现仅保证能运行
         {
             if(sd->name[0]=='g')sd->set_type=DescriptorSetType::Global;else
-            if(sd->name[0]=='m')sd->set_type=DescriptorSetType::PerMaterialInstance;else
+            if(sd->name[0]=='m')sd->set_type=DescriptorSetType::PerMaterial;else
             if(sd->name[0]=='r')sd->set_type=DescriptorSetType::PerObject;else
                 sd->set_type=DescriptorSetType::PerFrame;
         }

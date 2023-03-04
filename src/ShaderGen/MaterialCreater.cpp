@@ -252,7 +252,6 @@ public:
 };//class MaterialCreater
 
 #ifdef _DEBUG
-
 bool PureColorMaterial()
 {
     MaterialCreater mc(1);                                  //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
@@ -282,7 +281,7 @@ bool PureColorMaterial()
         layout(set=SET_PerMI,binding=?) uniform ColorMaterial mtl;
     */
     mc.AddUBO(  VK_SHADER_STAGE_FRAGMENT_BIT,               //这个UBO出现在fragment shader
-                DescriptorSetType::PerMaterialInstance,     //它属于材质实例合集
+                DescriptorSetType::PerMaterial,             //它属于材质合集
                 "ColorMaterial",                            //UBO名称为ColorMaterial
                 "mtl");                                     //UBO变量名称为mtl
 
