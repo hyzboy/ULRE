@@ -260,10 +260,20 @@ bool PureColorMaterial()
     {
         VertexShaderCreater *vsc=mc.GetVS();                //获取vertex shader creater
 
+        //以下代码会被展开为
+        /*
+            layout(location=?) in vec3 Position;             //位置属性
+        */
         vsc->AddInput("vec3","Position");                   //添加一个vec3类型的position属性输入
 
-        //以下代码会被合并成 vec3 GetPosition(/**/){return Position;}
-        vsc->AddFunction("vec3","GetPosition","/**/","return Position;");
+        //以下代码会被展开为
+        /*
+            vec3 GetPosition(void)
+            {
+                return Position;
+            }
+        */
+        vsc->AddFunction("vec3","GetPosition","void","return Position;");
     }
 
     //添加一个名称为ColorMaterial的UBO定义,其内部有一个vec4 color的属性
@@ -278,7 +288,7 @@ bool PureColorMaterial()
 
     //添加一个UBO，该代码会被展开为
     /*
-        layout(set=SET_PerMI,binding=?) uniform ColorMaterial mtl;
+        layout(set=?,binding=?) uniform ColorMaterial mtl;
     */
     mc.AddUBO(  VK_SHADER_STAGE_FRAGMENT_BIT,               //这个UBO出现在fragment shader
                 DescriptorSetType::PerMaterial,             //它属于材质合集
