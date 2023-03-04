@@ -35,7 +35,7 @@ public:
         MP_TYPE_IS(Skeleton)
         MP_TYPE_IS(Instance)
         MP_TYPE_IS(PerObject)
-        MP_TYPE_IS(PerMaterialInstance)
+        MP_TYPE_IS(PerMaterial)
         MP_TYPE_IS(PerFrame)
         MP_TYPE_IS(Global)
     #undef MP_TYPE_IS
