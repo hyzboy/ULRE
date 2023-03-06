@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VKShaderDescriptor.h>
 #include<hgl/graph/VKDescriptorSetType.h>
-#include<hgl/shadergen/ShaderCommon.h>
+#include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/type/Map.h>
 
 using namespace hgl;
