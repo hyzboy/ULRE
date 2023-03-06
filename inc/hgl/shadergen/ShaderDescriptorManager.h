@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/shadergen/ShaderCommon.h>
+#include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/type/Map.h>
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKDescriptorSetType.h>
