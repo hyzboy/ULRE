@@ -10,7 +10,7 @@ class ShaderCreater
 
 protected:
 
-    AnsiString main_codes;
+    AnsiString shader_codes;
 
 public:
 
@@ -27,13 +27,15 @@ public:
 
     virtual ~ShaderCreater()=default;
 
-    int AddInput(const VAT &type,const AnsiString &name);
-    int AddInput(const AnsiString &type,const AnsiString &name);
-
     int AddOutput(const VAT &type,const AnsiString &name);
     int AddOutput(const AnsiString &type,const AnsiString &name);
 
-    bool AddFunction(const AnsiString &return_type,const AnsiString &func_name,const AnsiString &param_list,const AnsiString &codes);
+    void SetShaderCodes(const AnsiString &str)
+    {
+        shader_codes;
+    }
+
+    bool CompileToSPV();
 };//class ShaderCreater
 SHADERGEN_NAMESPACE_END
 #endif//HGL_SHADER_CREATER_INCLUDE

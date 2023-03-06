@@ -3,6 +3,11 @@
 #include<hgl/shadergen/ShaderCreater.h>
 
 SHADERGEN_NAMESPACE_BEGIN
+enum class MaterialType
+{
+    Color,                              ///<´¿É«²ÄÖÊ
+};
+
 class ShaderCreaterFragment:public ShaderCreater
 {
 public:
