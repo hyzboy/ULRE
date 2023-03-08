@@ -23,8 +23,6 @@ void main()
 {
     gl_Position=vec4(Position,0,1);
 })");
-
-        vsc->CompileToSPV();
     }
 
     //添加一个名称为ColorMaterial的UBO定义,其内部有一个vec4 color的属性
@@ -63,12 +61,12 @@ void main()
 })");
     }
 
+    mc.CompileShader();
+
     return(false);
 }
 
 int MaterialCreaterTest()
 {
-        
-
     return 0;
 }

@@ -19,30 +19,30 @@ bool MaterialCreater::AddUBOStruct(const AnsiString &ubo_typename,const AnsiStri
     if(ubo_typename.IsEmpty()||codes.IsEmpty())
         return(false);
 
-    return MDM.AddUBOStruct(ubo_typename,codes);
+    return mdm.AddUBOStruct(ubo_typename,codes);
 }
 
-bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
+bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
 {
-    if(!shader_map.KeyExist(flag_bits))
+    if(!shader_map.KeyExist(flag_bit))
         return(false);
 
-    if(!MDM.hasUBOStruct(type_name))
+    if(!mdm.hasUBOStruct(type_name))
         return(false);
 
-    ShaderCreater *sc=shader_map[flag_bits];
+    ShaderCreater *sc=shader_map[flag_bit];
 
     if(!sc)
         return(false);
 
-    UBODescriptor *ubo=MDM.GetUBO(name);
+    UBODescriptor *ubo=mdm.GetUBO(name);
 
     if(ubo)
     {
         if(ubo->type!=type_name)
             return(false);
 
-        ubo->stage_flag|=flag_bits;
+        ubo->stage_flag|=flag_bit;
 
         return sc->sdm.AddUBO(set_type,ubo);
     }
@@ -53,23 +53,23 @@ bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bits,const Descrip
         ubo->type=type_name;
         ubo->name=name;
 
-        return sc->sdm.AddUBO(set_type,MDM.AddUBO(flag_bits,set_type,ubo));
+        return sc->sdm.AddUBO(set_type,mdm.AddUBO(flag_bit,set_type,ubo));
     }
 }
 
-bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
+bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
 {
-    if(!shader_map.KeyExist(flag_bits))
+    if(!shader_map.KeyExist(flag_bit))
         return(false);
 
     RANGE_CHECK_RETURN_FALSE(st);
 
-    ShaderCreater *sc=shader_map[flag_bits];
+    ShaderCreater *sc=shader_map[flag_bit];
 
     if(!sc)
         return(false);
 
-    SamplerDescriptor *sampler=MDM.GetSampler(name);
+    SamplerDescriptor *sampler=mdm.GetSampler(name);
 
     AnsiString st_name=GetSamplerTypeName(st);
 
@@ -78,7 +78,7 @@ bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bits,const Des
         if(sampler->type!=st_name)
             return(false);
 
-        sampler->stage_flag|=flag_bits;
+        sampler->stage_flag|=flag_bit;
 
         return sc->sdm.AddSampler(set_type,sampler);
     }
@@ -89,7 +89,63 @@ bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bits,const Des
         sampler->type=st_name;
         sampler->name=name;
 
-        return sc->sdm.AddSampler(set_type,MDM.AddSampler(flag_bits,set_type,sampler));
+        return sc->sdm.AddSampler(set_type,mdm.AddSampler(flag_bit,set_type,sampler));
     }
+}
+
+void MaterialCreater::SetContext()
+{
+    //ShaderMap使用ObjectMap保存,ObjectMap本质附带排序功能，所以这里无需再排序，直接设定prev,next即可
+
+    LOG_INFO("Resort Shader.");
+
+    ShaderCreater *prev,*cur,*next;
+
+    auto *it=shader_map.GetDataList();
+
+    const int count=shader_map.GetCount();
+
+    for(int i=0; i<count; i++)
+    {
+        cur=(*it)->right;
+        ++it;
+
+        if(i>0)
+            cur->sdm.SetPrevShader(prev->GetShaderStage());
+
+        if(i<count-1)
+        {
+            next=(*it)->right;
+            cur->sdm.SetNextShader(next->GetShaderStage());
+        }
+
+#ifdef _DEBUG
+        cur->sdm.DebugOutput(i);
+#endif//_DEBUG
+            
+        prev=cur;
+    }
+}
+
+bool MaterialCreater::CompileShader()
+{
+    if(shader_map.IsEmpty())
+        return(false);
+
+    SetContext();       //设定上下文
+
+    ShaderCreater *sc;
+
+    for(int i=0;i<shader_map.GetCount();i++)
+    {
+        if(!shader_map.GetValue(i,sc))
+            return(false);
+
+        if(!sc->CompileToSPV())
+            return(false);
+    }
+
+    return(true);
+    
 }
 SHADERGEN_NAMESPACE_END

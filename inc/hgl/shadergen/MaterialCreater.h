@@ -14,13 +14,17 @@ class MaterialCreater
 
     uint32_t shader_stage;                                  ///<着色器阶段
 
-    MaterialDescriptorManager MDM;                          ///<材质描述符管理器
+    MaterialDescriptorManager mdm;                          ///<材质描述符管理器
 
     ShaderCreaterMap shader_map;                            ///<着色器列表
 
     ShaderCreaterVertex *vert;
     ShaderCreaterGeometry *geom;
     ShaderCreaterFragment *frag;
+
+private:
+
+    void SetContext();
 
 public:
 
@@ -46,5 +50,7 @@ public:
 
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
+
+    bool CompileShader();
 };//class MaterialCreater
 SHADERGEN_NAMESPACE_END
