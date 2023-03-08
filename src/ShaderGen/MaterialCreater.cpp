@@ -93,59 +93,26 @@ bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bit,const Desc
     }
 }
 
-void MaterialCreater::SetContext()
-{
-    //ShaderMap使用ObjectMap保存,ObjectMap本质附带排序功能，所以这里无需再排序，直接设定prev,next即可
-
-    LOG_INFO("Resort Shader.");
-
-    ShaderCreater *prev,*cur,*next;
-
-    auto *it=shader_map.GetDataList();
-
-    const int count=shader_map.GetCount();
-
-    for(int i=0; i<count; i++)
-    {
-        cur=(*it)->right;
-        ++it;
-
-        if(i>0)
-            cur->sdm.SetPrevShader(prev->GetShaderStage());
-
-        if(i<count-1)
-        {
-            next=(*it)->right;
-            cur->sdm.SetNextShader(next->GetShaderStage());
-        }
-
-#ifdef _DEBUG
-        cur->sdm.DebugOutput(i);
-#endif//_DEBUG
-            
-        prev=cur;
-    }
-}
-
 bool MaterialCreater::CompileShader()
 {
     if(shader_map.IsEmpty())
         return(false);
 
-    SetContext();       //设定上下文
-
-    ShaderCreater *sc;
+    ShaderCreater *sc,*last=nullptr;
 
     for(int i=0;i<shader_map.GetCount();i++)
     {
         if(!shader_map.GetValue(i,sc))
             return(false);
 
-        if(!sc->CompileToSPV())
-            return(false);
+        sc->CreateShader(last);
+
+        //if(!sc->CompileToSPV())
+            //return(false);
+
+        last=sc;
     }
 
     return(true);
-    
 }
 SHADERGEN_NAMESPACE_END

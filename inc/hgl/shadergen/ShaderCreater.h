@@ -12,6 +12,16 @@ protected:
 
     AnsiString shader_codes;
 
+    AnsiString output_struct;
+
+    AnsiString final_shader;
+
+protected:
+
+    virtual void ProcHeader(){}
+    virtual void ProcInput();
+    virtual void ProcOutput();
+
 public:
 
     ShaderDescriptorManager sdm;
@@ -34,6 +44,10 @@ public:
     {
         shader_codes=str;
     }
+
+    const AnsiString &GetOutputStruct()const{return output_struct;}
+
+    bool CreateShader(ShaderCreater *);
 
     bool CompileToSPV();
 };//class ShaderCreater

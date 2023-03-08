@@ -22,4 +22,24 @@ int ShaderCreaterVertex::AddInput(const AnsiString &type,const AnsiString &name)
 
     return AddInput(vat,name);
 }
+
+void ShaderCreaterVertex::ProcInput()
+{    
+    const auto &io=sdm.GetShaderStageIO();
+
+    if(!io.input.IsEmpty())
+    {
+        for(auto *ss:io.input)
+        {
+            final_shader+="layout(location=";
+            final_shader+=UTF8String::numberOf(ss->location);
+            final_shader+=") in ";
+            final_shader+=UTF8String(GetShaderStageTypeName(ss));
+            final_shader+="\t"+UTF8String(ss->name);
+            final_shader+=";\n";
+        }
+
+        final_shader+="\n";
+    }
+}
 SHADERGEN_NAMESPACE_END

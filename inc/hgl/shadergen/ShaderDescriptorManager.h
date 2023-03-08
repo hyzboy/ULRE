@@ -16,6 +16,8 @@ using ConstSamplerDescriptorList=List<const SamplerDescriptor *>;
 */
 class ShaderDescriptorManager
 {
+    VkShaderStageFlagBits shader_stage;
+
     ShaderStageIO stage_io;
     
     //ubo/object在这里以及MaterialDescriptorManager中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
@@ -32,12 +34,9 @@ public:
     ShaderDescriptorManager(VkShaderStageFlagBits);
     ~ShaderDescriptorManager()=default;
 
-    const VkShaderStageFlagBits GetStageBits()const { return stage_io.cur; }
-    const AnsiString            GetStageName()const { return AnsiString(GetShaderStageName(stage_io.cur)); }
+    const VkShaderStageFlagBits GetStageBits()const { return shader_stage; }
+    const AnsiString            GetStageName()const { return AnsiString(GetShaderStageName(shader_stage)); }
    
-    void SetPrevShader(VkShaderStageFlagBits prev) { stage_io.prev=prev; }
-    void SetNextShader(VkShaderStageFlagBits next) { stage_io.next=next; }
-
 public:
 
     const ShaderStageIO &                       GetShaderStageIO()const{return stage_io;}

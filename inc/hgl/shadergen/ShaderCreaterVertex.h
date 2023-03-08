@@ -5,6 +5,8 @@
 SHADERGEN_NAMESPACE_BEGIN
 class ShaderCreaterVertex:public ShaderCreater
 {
+    virtual void ProcInput() override;
+
 public:
 
     ShaderCreaterVertex():ShaderCreater(VK_SHADER_STAGE_VERTEX_BIT){}
