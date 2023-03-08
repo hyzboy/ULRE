@@ -22,10 +22,6 @@ class MaterialCreater
     ShaderCreaterGeometry *geom;
     ShaderCreaterFragment *frag;
 
-private:
-
-    void SetContext();
-
 public:
 
     bool hasShader(const VkShaderStageFlagBits ss)const{return shader_stage&ss;}

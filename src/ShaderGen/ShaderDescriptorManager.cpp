@@ -1,11 +1,9 @@
 #include<hgl/shadergen/ShaderDescriptorManager.h>
 
 SHADERGEN_NAMESPACE_BEGIN
-ShaderDescriptorManager::ShaderDescriptorManager(VkShaderStageFlagBits cur)
+ShaderDescriptorManager::ShaderDescriptorManager(VkShaderStageFlagBits flag_bit)
 {
-    stage_io.cur=cur;
-    stage_io.prev=(VkShaderStageFlagBits)0;
-    stage_io.next=(VkShaderStageFlagBits)0;
+    shader_stage=flag_bit;
     
     hgl_zero(push_constant);
 }
@@ -101,13 +99,9 @@ void ShaderDescriptorManager::SetPushConstant(const UTF8String name,uint8_t offs
 #ifdef _DEBUG
 void ShaderDescriptorManager::DebugOutput(int index)
 {
-    UTF8String name=GetShaderStageName(stage_io.cur);
-    UTF8String prev_name=GetShaderStageName(stage_io.prev);
-    UTF8String next_name=GetShaderStageName(stage_io.next);
+    UTF8String name=GetStageName();
     
     LOG_INFO(UTF8String::numberOf(index)+": "+name+" shader");
-    LOG_INFO("\tprev next is "+prev_name);
-    LOG_INFO("\tnext next is "+next_name);
 
     if(stage_io.input.GetCount()>0)
     {
