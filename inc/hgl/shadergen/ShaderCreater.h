@@ -32,7 +32,7 @@ public:
 
     void SetShaderCodes(const AnsiString &str)
     {
-        shader_codes;
+        shader_codes=str;
     }
 
     bool CompileToSPV();

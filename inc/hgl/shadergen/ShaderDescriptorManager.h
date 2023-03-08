@@ -27,8 +27,6 @@ class ShaderDescriptorManager
     
     ShaderPushConstant                  push_constant;
 
-    AnsiString                          source_codes;
-
 public:
 
     ShaderDescriptorManager(VkShaderStageFlagBits);
@@ -50,8 +48,6 @@ public:
     const ObjectList<ConstValueDescriptor> &    GetConstList()const{return const_value_list;}
 
     const ObjectList<SubpassInputDescriptor> &  GetSubpassInputList()const { return subpass_input; }
-
-    const AnsiString &GetSources()const{return source_codes;}
     
 public:
 
@@ -65,12 +61,6 @@ public:
     bool AddSubpassInput(const AnsiString name,uint8_t index);
     
     void SetPushConstant(const AnsiString name,uint8_t offset,uint8_t size);
-
-    void AddSource(const AnsiString &str)
-    {
-        source_codes+=str;
-        source_codes+="\n";
-    }
 
 #ifdef _DEBUG
     void DebugOutput(int);
