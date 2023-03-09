@@ -6,7 +6,11 @@
 SHADERGEN_NAMESPACE_BEGIN
 class ShaderCreater
 {
+protected:
+
     VkShaderStageFlagBits shader_stage;                      ///<着色器阶段
+
+    MaterialDescriptorManager *mdm;
 
 protected:
 
@@ -18,9 +22,16 @@ protected:
 
 protected:
 
-    virtual void ProcHeader(){}
-    virtual void ProcInput();
-    virtual void ProcOutput();
+    virtual bool ProcHeader(){return(true);}
+    virtual bool ProcSubpassInput();
+    virtual bool ProcInput(ShaderCreater *);
+    virtual bool ProcOutput();
+
+    virtual bool ProcStruct();
+
+    virtual bool ProcUBO();
+    virtual bool ProcSSBO();
+    virtual bool ProcConst();
 
 public:
 
@@ -30,9 +41,10 @@ public:
 
 public:
 
-    ShaderCreater(VkShaderStageFlagBits ss):sdm(ss)
+    ShaderCreater(VkShaderStageFlagBits ss,MaterialDescriptorManager *m):sdm(ss)
     {
         shader_stage=ss;
+        mdm=m;
     }
 
     virtual ~ShaderCreater()=default;

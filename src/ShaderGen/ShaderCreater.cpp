@@ -26,18 +26,34 @@ int ShaderCreater::AddOutput(const AnsiString &type,const AnsiString &name)
     return AddOutput(vat,name);
 }
 
-void ShaderCreater::ProcInput()
+bool ShaderCreater::ProcSubpassInput()
 {
-    
+
 }
 
-void ShaderCreater::ProcOutput()
+bool ShaderCreater::ProcInput(ShaderCreater *last_sc)
+{
+    if(!last_sc)
+        return;
+
+    AnsiString last_output=last_sc->GetOutputStruct();
+
+    if(last_output.IsEmpty())
+        return;
+
+    final_shader+="layout(location=0) in ";
+    final_shader+=last_output;
+    final_shader+="Input;\n\n";
+}
+
+bool ShaderCreater::ProcOutput()
 {
     final_shader+="layout(location=0) out ";
-    final_shader+=GetShaderStageName(shader_stage);
-    final_shader+="_Output\n{";
 
     output_struct.Clear();
+
+    output_struct=GetShaderStageName(shader_stage);
+    output_struct+="_Output\n{\n";
 
     for(auto *ss:sdm.GetShaderStageIO().output)
     {
@@ -48,15 +64,47 @@ void ShaderCreater::ProcOutput()
         output_struct+=";\n";
     }
 
+    output_struct+="}";
+
     final_shader+=output_struct;
-    final_shader+="}Output;\n\n";
+    final_shader+="Output;\n\n";
+}
+
+bool ShaderCreater::ProcStruct()
+{
+    const AnsiStringList struct_list=sdm.GetStructList();
+
+    AnsiString codes;
+
+    for(const AnsiString &str:struct_list)
+    {
+        if(!mdm->GetStruct(str,codes))
+            return(false);
+        
+    }
+
+    return(true);
+}
+
+bool ShaderCreater::ProcUBO()
+{
+}
+
+bool ShaderCreater::ProcSSBO()
+{
+}
+
+bool ShaderCreater::ProcConst()
+{
 }
 
 bool ShaderCreater::CreateShader(ShaderCreater *last_sc)
 {
     final_shader="#version 460 core\n";
 
-    
+    ProcInput(last_sc);
+
+    ProcOutput();
 }
 
 bool ShaderCreater::CompileToSPV()

@@ -12,7 +12,7 @@ class ShaderCreaterFragment:public ShaderCreater
 {
 public:
 
-    ShaderCreaterFragment():ShaderCreater(VK_SHADER_STAGE_FRAGMENT_BIT){}
+    ShaderCreaterFragment(MaterialDescriptorManager *m):ShaderCreater(VK_SHADER_STAGE_FRAGMENT_BIT,m){}
     ~ShaderCreaterFragment()=default;
 
     void UseDefaultMain();

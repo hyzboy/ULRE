@@ -9,17 +9,17 @@ MaterialCreater::MaterialCreater(const uint rc,const uint32 ss)
     rt_count=rc;
     shader_stage=ss;
 
-    if(hasVertex    ())shader_map.Add(vert=new ShaderCreaterVertex  );else vert=nullptr;
-    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreaterGeometry);else geom=nullptr;
-    if(hasFragment  ())shader_map.Add(frag=new ShaderCreaterFragment);else frag=nullptr;
+    if(hasVertex    ())shader_map.Add(vert=new ShaderCreaterVertex  (&mdm));else vert=nullptr;
+    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreaterGeometry(&mdm));else geom=nullptr;
+    if(hasFragment  ())shader_map.Add(frag=new ShaderCreaterFragment(&mdm));else frag=nullptr;
 }
 
-bool MaterialCreater::AddUBOStruct(const AnsiString &ubo_typename,const AnsiString &codes)
+bool MaterialCreater::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
 {
-    if(ubo_typename.IsEmpty()||codes.IsEmpty())
+    if(struct_name.IsEmpty()||codes.IsEmpty())
         return(false);
 
-    return mdm.AddUBOStruct(ubo_typename,codes);
+    return mdm.AddStruct(struct_name,codes);
 }
 
 bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
@@ -27,7 +27,7 @@ bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const Descript
     if(!shader_map.KeyExist(flag_bit))
         return(false);
 
-    if(!mdm.hasUBOStruct(type_name))
+    if(!mdm.hasStruct(type_name))
         return(false);
 
     ShaderCreater *sc=shader_map[flag_bit];

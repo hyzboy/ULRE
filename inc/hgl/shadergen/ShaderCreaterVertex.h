@@ -9,7 +9,7 @@ class ShaderCreaterVertex:public ShaderCreater
 
 public:
 
-    ShaderCreaterVertex():ShaderCreater(VK_SHADER_STAGE_VERTEX_BIT){}
+    ShaderCreaterVertex(MaterialDescriptorManager *m):ShaderCreater(VK_SHADER_STAGE_VERTEX_BIT,m){}
     ~ShaderCreaterVertex()=default;
 
     int AddInput(const VAT &type,const AnsiString &name);

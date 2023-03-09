@@ -2,6 +2,7 @@
 
 #include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/type/Map.h>
+#include<hgl/type/StringList.h>
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/shadergen/MaterialDescriptorManager.h>
@@ -20,6 +21,8 @@ class ShaderDescriptorManager
 
     ShaderStageIO stage_io;
     
+    AnsiStringList                      struct_list;        //用到的结构列表
+
     //ubo/object在这里以及MaterialDescriptorManager中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
     ConstUBODescriptorList              ubo_list;
     ConstSamplerDescriptorList          sampler_list;
@@ -40,6 +43,8 @@ public:
 public:
 
     const ShaderStageIO &                       GetShaderStageIO()const{return stage_io;}
+
+    const AnsiStringList &                      GetStructList()const{return struct_list;}
 
     const ConstUBODescriptorList &              GetUBOList()const{return ubo_list;}
     const ConstSamplerDescriptorList &          GetSamplerList()const{return sampler_list;}

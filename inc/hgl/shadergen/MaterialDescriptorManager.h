@@ -33,7 +33,7 @@ class MaterialDescriptorManager
 
     ShaderDescriptorSetArray desc_set_array;
 
-    Map<AnsiString,AnsiString> ubo_struct_map;
+    Map<AnsiString,AnsiString> struct_map;
     Map<AnsiString,UBODescriptor *> ubo_map;
     Map<AnsiString,SamplerDescriptor *> sampler_map;
 
@@ -42,23 +42,23 @@ public:
     MaterialDescriptorManager();
     ~MaterialDescriptorManager()=default;
 
-    bool AddUBOStruct(const AnsiString &name,const AnsiString &code)
+    bool AddStruct(const AnsiString &name,const AnsiString &code)
     {
-        if(ubo_struct_map.KeyExist(name))
+        if(struct_map.KeyExist(name))
             return(false);
 
-        ubo_struct_map.Add(name,code);
+        struct_map.Add(name,code);
         return(true);
     }
 
-    bool GetUBOStruct(const AnsiString &name,AnsiString &code) const
+    bool GetStruct(const AnsiString &name,AnsiString &code) const
     {
-        return(ubo_struct_map.Get(name,code));
+        return(struct_map.Get(name,code));
     }
 
-    bool hasUBOStruct(const AnsiString &name) const
+    bool hasStruct(const AnsiString &name) const
     {
-        return(ubo_struct_map.KeyExist(name));
+        return(struct_map.KeyExist(name));
     }
 
     const UBODescriptor *AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd);

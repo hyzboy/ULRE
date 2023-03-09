@@ -42,7 +42,7 @@ public:
     MaterialCreater(const uint rc,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
     ~MaterialCreater()=default;
 
-    bool AddUBOStruct(const AnsiString &ubo_typename,const AnsiString &codes);
+    bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
 
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
