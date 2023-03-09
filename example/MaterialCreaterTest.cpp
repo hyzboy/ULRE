@@ -33,7 +33,7 @@ void main()
             vec4 color;
         };
      */
-    mc.AddUBOStruct("ColorMaterial","vec4 color;");
+    mc.AddStruct("ColorMaterial","vec4 color;");
 
     //添加一个UBO，该代码会被展开为
     /*

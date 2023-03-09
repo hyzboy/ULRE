@@ -47,6 +47,8 @@ bool ShaderDescriptorManager::AddUBO(DescriptorSetType type,const UBODescriptor 
     if(!ubo)
         return(false);
 
+    struct_list.AddUnique(ubo->type);
+
     ubo_list.Add(ubo);
     return true;
 }

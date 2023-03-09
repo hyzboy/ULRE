@@ -7,7 +7,7 @@ class ShaderCreaterGeometry:public ShaderCreater
 {
 public:
 
-    ShaderCreaterGeometry():ShaderCreater(VK_SHADER_STAGE_GEOMETRY_BIT){}
+    ShaderCreaterGeometry(MaterialDescriptorManager *m):ShaderCreater(VK_SHADER_STAGE_GEOMETRY_BIT,m){}
     ~ShaderCreaterGeometry()=default;
 };
 SHADERGEN_NAMESPACE_END
