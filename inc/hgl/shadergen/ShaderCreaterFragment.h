@@ -10,6 +10,8 @@ enum class MaterialType
 
 class ShaderCreaterFragment:public ShaderCreater
 {
+    bool ProcOutput() override;
+
 public:
 
     ShaderCreaterFragment(MaterialDescriptorManager *m):ShaderCreater(VK_SHADER_STAGE_FRAGMENT_BIT,m){}
