@@ -32,6 +32,7 @@ protected:
     virtual bool ProcUBO();
     virtual bool ProcSSBO();
     virtual bool ProcConst();
+    virtual bool ProcSampler();
 
 public:
 

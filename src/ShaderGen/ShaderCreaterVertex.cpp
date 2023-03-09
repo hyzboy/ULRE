@@ -23,11 +23,17 @@ int ShaderCreaterVertex::AddInput(const AnsiString &type,const AnsiString &name)
     return AddInput(vat,name);
 }
 
-void ShaderCreaterVertex::ProcInput()
+bool ShaderCreaterVertex::ProcInput(ShaderCreater *)
 {    
     const auto &io=sdm.GetShaderStageIO();
 
-    if(!io.input.IsEmpty())
+    if(io.input.IsEmpty())
+    {
+        //no input ? this isn't a bug.
+        //maybe position info from UBO/SBBO/Texture.
+        return(true);
+    }
+
     {
         for(auto *ss:io.input)
         {
@@ -41,5 +47,7 @@ void ShaderCreaterVertex::ProcInput()
 
         final_shader+="\n";
     }
+
+    return(true);
 }
 SHADERGEN_NAMESPACE_END
