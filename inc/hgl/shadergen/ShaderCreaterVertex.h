@@ -5,7 +5,7 @@
 SHADERGEN_NAMESPACE_BEGIN
 class ShaderCreaterVertex:public ShaderCreater
 {
-    virtual void ProcInput() override;
+    bool ProcInput(ShaderCreater *) override;
 
 public:
 
