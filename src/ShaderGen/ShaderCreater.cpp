@@ -1,4 +1,5 @@
 #include<hgl/shadergen/ShaderCreater.h>
+#include"GLSLCompiler.h"
 
 SHADERGEN_NAMESPACE_BEGIN
 int ShaderCreater::AddOutput(const VAT &type,const AnsiString &name)
@@ -230,16 +231,23 @@ bool ShaderCreater::CreateShader(ShaderCreater *last_sc)
 
     ProcOutput();
 
+    final_shader+="\n";
 
+    final_shader+=main_codes;
 
     return(true);
 }
 
 bool ShaderCreater::CompileToSPV()
 {
-    if(shader_codes.IsEmpty())
+    if(main_codes.IsEmpty())
         return(false);
 
-    
+    glsl_compiler::SPVData *spv_data=glsl_compiler::Compile(shader_stage,final_shader.c_str());
+
+    if(!spv_data)
+        return(false);
+
+
 }
 SHADERGEN_NAMESPACE_END

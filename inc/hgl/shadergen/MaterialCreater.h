@@ -10,7 +10,10 @@
 SHADERGEN_NAMESPACE_BEGIN
 class MaterialCreater
 {
-    uint rt_count;                                          ///<输出的RT数量
+protected:
+
+    uint rt_color_count;                                    ///<输出的RT数量
+    bool rt_depth;                                          ///<是否输出深度
 
     uint32_t shader_stage;                                  ///<着色器阶段
 
@@ -39,7 +42,7 @@ public:
 
 public:
 
-    MaterialCreater(const uint rc,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
+    MaterialCreater(const uint rc,const bool rd,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
     ~MaterialCreater()=default;
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);

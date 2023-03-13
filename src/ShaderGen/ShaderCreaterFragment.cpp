@@ -4,7 +4,7 @@ SHADERGEN_NAMESPACE_BEGIN
 
 void ShaderCreaterFragment::UseDefaultMain()
 {
-    shader_codes="void main()\n{\n";
+    main_codes="void main()\n{\n";
 
     const auto &output_list=sdm.GetShaderStageIO().output;
 
@@ -13,16 +13,16 @@ void ShaderCreaterFragment::UseDefaultMain()
 
     for(uint i=0;i<count;i++)
     {
-        shader_codes+="\t";
-        shader_codes+=(*o)->name;
-        shader_codes+="=Get";
-        shader_codes+=(*o)->name;
-        shader_codes+="();\n";
+        main_codes+="\t";
+        main_codes+=(*o)->name;
+        main_codes+="=Get";
+        main_codes+=(*o)->name;
+        main_codes+="();\n";
 
         ++o;
     }
 
-    shader_codes+="}";
+    main_codes+="}";
 }
 
 bool ShaderCreaterFragment::ProcOutput()

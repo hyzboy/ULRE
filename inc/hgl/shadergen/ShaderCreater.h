@@ -14,7 +14,7 @@ protected:
 
 protected:
 
-    AnsiString shader_codes;
+    AnsiString main_codes;
 
     AnsiString output_struct;
 
@@ -55,7 +55,7 @@ public:
 
     void SetShaderCodes(const AnsiString &str)
     {
-        shader_codes=str;
+        main_codes=str;
     }
 
     const AnsiString &GetOutputStruct()const{return output_struct;}
