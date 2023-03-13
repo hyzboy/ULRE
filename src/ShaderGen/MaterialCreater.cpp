@@ -4,9 +4,11 @@ using namespace hgl;
 using namespace hgl::graph;
 
 SHADERGEN_NAMESPACE_BEGIN
-MaterialCreater::MaterialCreater(const uint rc,const uint32 ss)
+MaterialCreater::MaterialCreater(const uint rc,const bool rd,const uint32 ss)
 {
-    rt_count=rc;
+    rt_color_count=rc;
+    rt_depth=rd;
+
     shader_stage=ss;
 
     if(hasVertex    ())shader_map.Add(vert=new ShaderCreaterVertex  (&mdm));else vert=nullptr;
