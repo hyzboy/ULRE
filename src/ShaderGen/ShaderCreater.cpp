@@ -34,8 +34,8 @@ bool ShaderCreater::ProcSubpassInput()
     if(sil.IsEmpty())
         return(true);
 
-    const auto si=sil.GetData();
-    const int si_count=sil.GetCount();
+    auto si=sil.GetData();
+    int si_count=sil.GetCount();
 
     for(int i=0;i<si_count;i++)
     {
@@ -46,6 +46,8 @@ bool ShaderCreater::ProcSubpassInput()
         final_shader+=") uniform subpassInput ";
         final_shader+=(*si)->name;
         final_shader+=";\n";
+
+        ++si;
     }
 
     final_shader+="\n";
@@ -73,14 +75,16 @@ bool ShaderCreater::ProcInput(ShaderCreater *last_sc)
 
 bool ShaderCreater::ProcOutput()
 {
-    final_shader+="layout(location=0) out ";
-
     output_struct.Clear();
+
+    const ShaderStageList &ssl=sdm.GetShaderStageIO().output;
+
+    if(ssl.GetCount()<=0)return(true);
 
     output_struct=GetShaderStageName(shader_stage);
     output_struct+="_Output\n{\n";
 
-    for(auto *ss:sdm.GetShaderStageIO().output)
+    for(auto *ss:ssl)
     {
         output_struct+="\t";
         output_struct+=GetShaderStageTypeName(ss);
@@ -91,6 +95,7 @@ bool ShaderCreater::ProcOutput()
 
     output_struct+="}";
 
+    final_shader+="layout(location=0) out ";
     final_shader+=output_struct;
     final_shader+="Output;\n\n";
 
@@ -112,7 +117,7 @@ bool ShaderCreater::ProcStruct()
         final_shader+=*str;
         final_shader+="\n{\n";
         final_shader+=codes;
-        final_shader+="};\n\n";
+        final_shader+="\n};\n\n";
     }
 
     return(true);
@@ -153,7 +158,8 @@ bool ShaderCreater::ProcSSBO()
 }
 
 bool ShaderCreater::ProcConst()
-{auto const_list=sdm.GetConstList();
+{
+    auto const_list=sdm.GetConstList();
 
     const int count=const_list.GetCount();
 
@@ -220,14 +226,14 @@ bool ShaderCreater::CreateShader(ShaderCreater *last_sc)
     if(!ProcStruct())
         return(false);
 
-    if(!ProcUBO())
-        return(false);
-    //if(!ProcSSBO())
-        //return(false);
-    if(!ProcConst())
-        return(false);
-    if(!ProcSampler())
-        return(false);
+    //if(!ProcUBO())
+    //    return(false);
+    ////if(!ProcSSBO())
+    //    //return(false);
+    //if(!ProcConst())
+    //    return(false);
+    //if(!ProcSampler())
+    //    return(false);
 
     ProcOutput();
 

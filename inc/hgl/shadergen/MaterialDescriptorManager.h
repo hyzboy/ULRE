@@ -44,9 +44,6 @@ public:
 
     bool AddStruct(const AnsiString &name,const AnsiString &code)
     {
-        if(struct_map.KeyExist(name))
-            return(false);
-
         struct_map.Add(name,code);
         return(true);
     }
