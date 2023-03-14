@@ -6,7 +6,7 @@ using namespace hgl::shadergen;
 
 bool PureColor2DMaterial()
 {
-    MaterialCreater mc(1);                                  //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
+    MaterialCreater mc(1,false);                            //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
 
     //vertex部分
     {
@@ -14,7 +14,7 @@ bool PureColor2DMaterial()
 
         //以下代码会被展开为
         /*
-            layout(location=?) in vec3 Position;             //位置属性
+            layout(location=?) in vec3 Position;            //位置属性
         */
         vsc->AddInput("vec2","Position");                   //添加一个vec3类型的position属性输入
 
@@ -61,12 +61,14 @@ void main()
 })");
     }
 
-    mc.CompileShader();
+    mc.CreateShader();
 
     return(false);
 }
 
-int MaterialCreaterTest()
+int main()
 {
+    PureColor2DMaterial();
+
     return 0;
 }

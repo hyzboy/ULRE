@@ -43,7 +43,7 @@ ShaderDescriptor *MaterialDescriptorManager::ShaderDescriptorSet::AddDescriptor(
         new_sd->set_type=set_type;
         new_sd->stage_flag=ssb;
 
-        descriptor_map.Add(new_sd->name, new_sd);
+        descriptor_map.Add(new_sd->name,new_sd);
 
         count++;
 

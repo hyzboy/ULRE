@@ -50,6 +50,6 @@ public:
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-    bool CompileShader();
+    bool CreateShader();
 };//class MaterialCreater
 SHADERGEN_NAMESPACE_END

@@ -41,7 +41,7 @@ bool ShaderCreaterVertex::ProcInput(ShaderCreater *)
             final_shader+=UTF8String::numberOf(ss->location);
             final_shader+=") in ";
             final_shader+=UTF8String(GetShaderStageTypeName(ss));
-            final_shader+="\t"+UTF8String(ss->name);
+            final_shader+=" "+UTF8String(ss->name);
             final_shader+=";\n";
         }
 

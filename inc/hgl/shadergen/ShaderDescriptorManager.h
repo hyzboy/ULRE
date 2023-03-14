@@ -20,7 +20,7 @@ class ShaderDescriptorManager
     VkShaderStageFlagBits shader_stage;
 
     ShaderStageIO stage_io;
-    
+
     AnsiStringList                      struct_list;        //用到的结构列表
 
     //ubo/object在这里以及MaterialDescriptorManager中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
@@ -39,7 +39,7 @@ public:
 
     const VkShaderStageFlagBits GetStageBits()const { return shader_stage; }
     const AnsiString            GetStageName()const { return AnsiString(GetShaderStageName(shader_stage)); }
-   
+
 public:
 
     const ShaderStageIO &                       GetShaderStageIO()const{return stage_io;}
@@ -51,8 +51,8 @@ public:
 
     const ObjectList<ConstValueDescriptor> &    GetConstList()const{return const_value_list;}
 
-    const ObjectList<SubpassInputDescriptor> &  GetSubpassInputList()const { return subpass_input; }
-    
+    const ObjectList<SubpassInputDescriptor> &  GetSubpassInputList()const{return subpass_input;}
+
 public:
 
     bool AddInput(ShaderStage *);

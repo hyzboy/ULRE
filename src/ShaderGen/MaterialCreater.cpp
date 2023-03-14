@@ -95,25 +95,27 @@ bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bit,const Desc
     }
 }
 
-bool MaterialCreater::CompileShader()
+bool MaterialCreater::CreateShader()
 {
     if(shader_map.IsEmpty())
         return(false);
 
+    //mdm.Resort();
+
     ShaderCreater *sc,*last=nullptr;
 
-    for(int i=0;i<shader_map.GetCount();i++)
-    {
-        if(!shader_map.GetValue(i,sc))
-            return(false);
+    //for(int i=0;i<shader_map.GetCount();i++)
+    //{
+    //    if(!shader_map.GetValue(i,sc))
+    //        return(false);
 
-        sc->CreateShader(last);
+    //    sc->CreateShader(last);
 
-        //if(!sc->CompileToSPV())
-            //return(false);
+    //    last=sc;
+    //}
 
-        last=sc;
-    }
+    //vert->CreateShader(nullptr);
+    frag->CreateShader(vert);
 
     return(true);
 }

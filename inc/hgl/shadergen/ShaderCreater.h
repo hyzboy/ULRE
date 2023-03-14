@@ -62,6 +62,8 @@ public:
 
     bool CreateShader(ShaderCreater *);
 
+    const AnsiString &GetShaderSource()const{return final_shader;}
+
     bool CompileToSPV();
 };//class ShaderCreater
 SHADERGEN_NAMESPACE_END
