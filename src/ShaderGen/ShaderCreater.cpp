@@ -1,7 +1,20 @@
 #include<hgl/shadergen/ShaderCreater.h>
+#include<hgl/shadergen/ShaderDescriptorManager.h>
 #include"GLSLCompiler.h"
 
 SHADERGEN_NAMESPACE_BEGIN
+ShaderCreater::ShaderCreater(VkShaderStageFlagBits ss,MaterialDescriptorManager *m)
+{
+    shader_stage=ss;
+    mdm=m;
+    sdm=new ShaderDescriptorManager(ss);
+}
+
+ShaderCreater::~ShaderCreater()
+{
+    delete sdm;
+}
+
 int ShaderCreater::AddOutput(const VAT &type,const AnsiString &name)
 {
     ShaderStage *ss=new ShaderStage;
@@ -11,7 +24,7 @@ int ShaderCreater::AddOutput(const VAT &type,const AnsiString &name)
     ss->basetype=(uint8) type.basetype;
     ss->vec_size=        type.vec_size;
 
-    return sdm.AddOutput(ss);
+    return sdm->AddOutput(ss);
 }
 
 int ShaderCreater::AddOutput(const AnsiString &type,const AnsiString &name)
@@ -29,7 +42,7 @@ int ShaderCreater::AddOutput(const AnsiString &type,const AnsiString &name)
 
 bool ShaderCreater::ProcSubpassInput()
 {
-    auto sil=sdm.GetSubpassInputList();
+    auto sil=sdm->GetSubpassInputList();
 
     if(sil.IsEmpty())
         return(true);
@@ -53,7 +66,6 @@ bool ShaderCreater::ProcSubpassInput()
     final_shader+="\n";
 
     return(true);
-
 }
 
 bool ShaderCreater::ProcInput(ShaderCreater *last_sc)
@@ -77,7 +89,7 @@ bool ShaderCreater::ProcOutput()
 {
     output_struct.Clear();
 
-    const ShaderStageList &ssl=sdm.GetShaderStageIO().output;
+    const ShaderStageList &ssl=sdm->GetShaderStageIO().output;
 
     if(ssl.GetCount()<=0)return(true);
 
@@ -104,7 +116,7 @@ bool ShaderCreater::ProcOutput()
 
 bool ShaderCreater::ProcStruct()
 {
-    const AnsiStringList struct_list=sdm.GetStructList();
+    const AnsiStringList struct_list=sdm->GetStructList();
 
     AnsiString codes;
 
@@ -125,7 +137,7 @@ bool ShaderCreater::ProcStruct()
 
 bool ShaderCreater::ProcUBO()
 {
-    auto ubo_list=sdm.GetUBOList();
+    auto ubo_list=sdm->GetUBOList();
 
     const int count=ubo_list.GetCount();
 
@@ -159,7 +171,7 @@ bool ShaderCreater::ProcSSBO()
 
 bool ShaderCreater::ProcConst()
 {
-    auto const_list=sdm.GetConstList();
+    auto const_list=sdm->GetConstList();
 
     const int count=const_list.GetCount();
 
@@ -188,7 +200,7 @@ bool ShaderCreater::ProcConst()
 
 bool ShaderCreater::ProcSampler()
 {
-    auto sampler_list=sdm.GetSamplerList();
+    auto sampler_list=sdm->GetSamplerList();
 
     const int count=sampler_list.GetCount();
 

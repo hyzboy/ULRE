@@ -1,12 +1,15 @@
 #include<hgl/shadergen/ShaderCreaterFragment.h>
+#include<hgl/shadergen/ShaderDescriptorManager.h>
 
 SHADERGEN_NAMESPACE_BEGIN
+
+using namespace hgl::graph;
 
 void ShaderCreaterFragment::UseDefaultMain()
 {
     main_codes="void main()\n{\n";
 
-    const auto &output_list=sdm.GetShaderStageIO().output;
+    const auto &output_list=sdm->GetShaderStageIO().output;
 
     const uint count=output_list.GetCount();
     ShaderStage **o=output_list.GetData();
@@ -27,7 +30,7 @@ void ShaderCreaterFragment::UseDefaultMain()
 
 bool ShaderCreaterFragment::ProcOutput()
 {
-    const auto &output_list=sdm.GetShaderStageIO().output;
+    const auto &output_list=sdm->GetShaderStageIO().output;
 
     const uint count=output_list.GetCount();
     ShaderStage **o=output_list.GetData();

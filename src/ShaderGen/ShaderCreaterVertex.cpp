@@ -1,6 +1,13 @@
 #include<hgl/shadergen/ShaderCreaterVertex.h>
+#include<hgl/shadergen/ShaderDescriptorManager.h>
+#include<hgl/graph/VertexAttrib.h>
+#include<hgl/graph/VKShaderStage.h>
 
 SHADERGEN_NAMESPACE_BEGIN
+
+using namespace hgl;
+using namespace hgl::graph;
+
 int ShaderCreaterVertex::AddInput(const VAT &type,const AnsiString &name)
 {
     ShaderStage *ss=new ShaderStage;
@@ -10,7 +17,7 @@ int ShaderCreaterVertex::AddInput(const VAT &type,const AnsiString &name)
     ss->basetype=(uint8) type.basetype;
     ss->vec_size=        type.vec_size;
 
-    return sdm.AddInput(ss);
+    return sdm->AddInput(ss);
 }
 
 int ShaderCreaterVertex::AddInput(const AnsiString &type,const AnsiString &name)
@@ -25,7 +32,7 @@ int ShaderCreaterVertex::AddInput(const AnsiString &type,const AnsiString &name)
 
 bool ShaderCreaterVertex::ProcInput(ShaderCreater *)
 {    
-    const auto &io=sdm.GetShaderStageIO();
+    const auto &io=sdm->GetShaderStageIO();
 
     if(io.input.IsEmpty())
     {
