@@ -116,7 +116,7 @@ bool ShaderCreater::ProcOutput()
 
 bool ShaderCreater::ProcStruct()
 {
-    const AnsiStringList struct_list=sdm->GetStructList();
+    const AnsiStringList &struct_list=sdm->GetStructList();
 
     AnsiString codes;
 
