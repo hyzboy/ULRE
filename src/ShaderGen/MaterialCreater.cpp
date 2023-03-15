@@ -101,22 +101,19 @@ bool MaterialCreater::CreateShader()
     if(shader_map.IsEmpty())
         return(false);
 
-    //mdm.Resort();
+    mdm.Resort();
 
     ShaderCreater *sc,*last=nullptr;
 
-    //for(int i=0;i<shader_map.GetCount();i++)
-    //{
-    //    if(!shader_map.GetValue(i,sc))
-    //        return(false);
+    for(int i=0;i<shader_map.GetCount();i++)
+    {
+        if(!shader_map.GetValue(i,sc))
+            return(false);
 
-    //    sc->CreateShader(last);
+        sc->CreateShader(last);
 
-    //    last=sc;
-    //}
-
-    //vert->CreateShader(nullptr);
-    frag->CreateShader(vert);
+        last=sc;
+    }
 
     return(true);
 }
