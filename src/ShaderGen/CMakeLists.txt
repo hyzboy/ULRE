@@ -37,8 +37,8 @@ SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
 
 SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 
-#SOURCE_GROUP("Pixel Material Components" FILES  ${SHADERGEN_HEADER_FILES} 
-#                                                ${SHADERGEN_SOURCE_FILES})
+SOURCE_GROUP("Material Creater\\DescriptorManager" FILES    ${SHADERGEN_HEADER_FILES} 
+                                                            ${SHADERGEN_SOURCE_FILES})
 
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_HEADER_FILES} 
                                         ${SHADERGEN_SOURCE_FILES}
