@@ -9,8 +9,10 @@
 
 SHADERGEN_NAMESPACE_BEGIN
 
-using ConstUBODescriptorList=List<const UBODescriptor *>;
-using ConstSamplerDescriptorList=List<const SamplerDescriptor *>;
+using UBODescriptorList=List<const UBODescriptor *>;
+using SamplerDescriptorList=List<const SamplerDescriptor *>;
+using ConstValueDescriptorList=ObjectList<ConstValueDescriptor>;
+using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计
@@ -24,11 +26,11 @@ class ShaderDescriptorManager
     AnsiStringList                      struct_list;        //用到的结构列表
 
     //ubo/object在这里以及MaterialDescriptorManager中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
-    ConstUBODescriptorList              ubo_list;
-    ConstSamplerDescriptorList          sampler_list;
+    UBODescriptorList                   ubo_list;
+    SamplerDescriptorList               sampler_list;
     
-    ObjectList<ConstValueDescriptor>    const_value_list;
-    ObjectList<SubpassInputDescriptor>  subpass_input;
+    ConstValueDescriptorList            const_value_list;
+    SubpassInputDescriptorList          subpass_input;
     
     ShaderPushConstant                  push_constant;
 
@@ -42,16 +44,16 @@ public:
 
 public:
 
-    const ShaderStageIO &                       GetShaderStageIO()const{return stage_io;}
+    const ShaderStageIO &               GetShaderStageIO()const{return stage_io;}
 
-    const AnsiStringList &                      GetStructList()const{return struct_list;}
+    const AnsiStringList &              GetStructList()const{return struct_list;}
 
-    const ConstUBODescriptorList &              GetUBOList()const{return ubo_list;}
-    const ConstSamplerDescriptorList &          GetSamplerList()const{return sampler_list;}
+    const UBODescriptorList &           GetUBOList()const{return ubo_list;}
+    const SamplerDescriptorList &       GetSamplerList()const{return sampler_list;}
 
-    const ObjectList<ConstValueDescriptor> &    GetConstList()const{return const_value_list;}
+    const ConstValueDescriptorList &    GetConstList()const{return const_value_list;}
 
-    const ObjectList<SubpassInputDescriptor> &  GetSubpassInputList()const{return subpass_input;}
+    const SubpassInputDescriptorList &  GetSubpassInputList()const{return subpass_input;}
 
 public:
 
