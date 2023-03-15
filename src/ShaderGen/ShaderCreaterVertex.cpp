@@ -32,17 +32,20 @@ int ShaderCreaterVertex::AddInput(const AnsiString &type,const AnsiString &name)
 
 bool ShaderCreaterVertex::ProcInput(ShaderCreater *)
 {    
-    const auto &io=sdm->GetShaderStageIO();
+    const auto &input=sdm->GetShaderStageIO().input;
 
-    if(io.input.IsEmpty())
+    if(input.IsEmpty())
     {
         //no input ? this isn't a bug.
         //maybe position info from UBO/SBBO/Texture.
         return(true);
     }
 
+    if(!input.IsEmpty())
     {
-        for(auto *ss:io.input)
+        final_shader+="\n";
+
+        for(auto *ss:input)
         {
             final_shader+="layout(location=";
             final_shader+=UTF8String::numberOf(ss->location);
@@ -51,8 +54,6 @@ bool ShaderCreaterVertex::ProcInput(ShaderCreater *)
             final_shader+=" "+UTF8String(ss->name);
             final_shader+=";\n";
         }
-
-        final_shader+="\n";
     }
 
     return(true);

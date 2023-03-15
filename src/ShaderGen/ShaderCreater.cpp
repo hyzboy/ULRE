@@ -238,20 +238,24 @@ bool ShaderCreater::CreateShader(ShaderCreater *last_sc)
     if(!ProcStruct())
         return(false);
 
-    //if(!ProcUBO())
-    //    return(false);
-    ////if(!ProcSSBO())
-    //    //return(false);
-    //if(!ProcConst())
-    //    return(false);
-    //if(!ProcSampler())
-    //    return(false);
+    if(!ProcUBO())
+        return(false);
+    //if(!ProcSSBO())
+        //return(false);
+    if(!ProcConst())
+        return(false);
+    if(!ProcSampler())
+        return(false);
 
     ProcOutput();
 
-    final_shader+="\n";
-
     final_shader+=main_codes;
+
+#ifdef _DEBUG
+
+    LOG_INFO(AnsiString(GetShaderStageName(shader_stage))+" shader: \n"+final_shader);
+
+#endif//_DEBUG
 
     return(true);
 }
