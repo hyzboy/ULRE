@@ -257,19 +257,21 @@ bool ShaderCreater::CreateShader(ShaderCreater *last_sc)
 
 #endif//_DEBUG
 
+    if(!CompileToSPV())
+        return(false);
+
     return(true);
 }
 
 bool ShaderCreater::CompileToSPV()
 {
-    if(main_codes.IsEmpty())
-        return(false);
-
     glsl_compiler::SPVData *spv_data=glsl_compiler::Compile(shader_stage,final_shader.c_str());
 
     if(!spv_data)
         return(false);
+    
+    glsl_compiler::Free(spv_data);
 
-
+    return(true);
 }
 SHADERGEN_NAMESPACE_END

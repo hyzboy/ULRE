@@ -38,6 +38,8 @@ protected:
     virtual bool ProcConst();
     virtual bool ProcSampler();
 
+    bool CompileToSPV();
+
 public:
 
     ShaderDescriptorManager *sdm;
@@ -58,12 +60,9 @@ public:
     }
 
     const AnsiString &GetOutputStruct()const{return output_struct;}
-
-    bool CreateShader(ShaderCreater *);
-
     const AnsiString &GetShaderSource()const{return final_shader;}
 
-    bool CompileToSPV();
+    bool CreateShader(ShaderCreater *);
 };//class ShaderCreater
 SHADERGEN_NAMESPACE_END
 #endif//HGL_SHADER_CREATER_INCLUDE
