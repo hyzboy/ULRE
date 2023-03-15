@@ -1,4 +1,5 @@
 ﻿#include<hgl/shadergen/MaterialCreater.h>
+#include<hgl/shadergen/ShaderDescriptorManager.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -46,7 +47,7 @@ bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const Descript
 
         ubo->stage_flag|=flag_bit;
 
-        return sc->sdm.AddUBO(set_type,ubo);
+        return sc->sdm->AddUBO(set_type,ubo);
     }
     else
     {
@@ -55,7 +56,7 @@ bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const Descript
         ubo->type=type_name;
         ubo->name=name;
 
-        return sc->sdm.AddUBO(set_type,mdm.AddUBO(flag_bit,set_type,ubo));
+        return sc->sdm->AddUBO(set_type,mdm.AddUBO(flag_bit,set_type,ubo));
     }
 }
 
@@ -82,7 +83,7 @@ bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bit,const Desc
 
         sampler->stage_flag|=flag_bit;
 
-        return sc->sdm.AddSampler(set_type,sampler);
+        return sc->sdm->AddSampler(set_type,sampler);
     }
     else
     {
@@ -91,7 +92,7 @@ bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bit,const Desc
         sampler->type=st_name;
         sampler->name=name;
 
-        return sc->sdm.AddSampler(set_type,mdm.AddSampler(flag_bit,set_type,sampler));
+        return sc->sdm->AddSampler(set_type,mdm.AddSampler(flag_bit,set_type,sampler));
     }
 }
 

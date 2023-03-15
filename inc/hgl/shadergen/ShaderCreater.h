@@ -1,9 +1,13 @@
 #ifndef HGL_SHADER_CREATER_INCLUDE
 #define HGL_SHADER_CREATER_INCLUDE
 
-#include<hgl/shadergen/ShaderDescriptorManager.h>
-
+#include<hgl/shadergen/ShaderGenNamespace.h>
+#include<hgl/graph/VertexAttrib.h>
 SHADERGEN_NAMESPACE_BEGIN
+
+class MaterialDescriptorManager;
+class ShaderDescriptorManager;
+
 class ShaderCreater
 {
 protected:
@@ -36,21 +40,16 @@ protected:
 
 public:
 
-    ShaderDescriptorManager sdm;
+    ShaderDescriptorManager *sdm;
 
     VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
 
 public:
 
-    ShaderCreater(VkShaderStageFlagBits ss,MaterialDescriptorManager *m):sdm(ss)
-    {
-        shader_stage=ss;
-        mdm=m;
-    }
+    ShaderCreater(VkShaderStageFlagBits ss,MaterialDescriptorManager *m);
+    virtual ~ShaderCreater();
 
-    virtual ~ShaderCreater()=default;
-
-    int AddOutput(const VAT &type,const AnsiString &name);
+    int AddOutput(const graph::VAT &type,const AnsiString &name);
     int AddOutput(const AnsiString &type,const AnsiString &name);
 
     void SetShaderCodes(const AnsiString &str)
