@@ -40,6 +40,11 @@ SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 SOURCE_GROUP("Material Creater\\DescriptorManager" FILES    ${SHADERGEN_HEADER_FILES} 
                                                             ${SHADERGEN_SOURCE_FILES})
 
+SET(STANDARD_MATERIAL_SOURCE    ${SHADERGEN_INCLUDE_PATH}/StandardMaterial.h
+                                StandardMaterial.cpp)
+
+SOURCE_GROUP("Standard Material" FILES ${STANDARD_MATERIAL_SOURCE})
+
 add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_HEADER_FILES} 
                                         ${SHADERGEN_SOURCE_FILES}
                                         ${MATERIAL_CREATER_HEADER_FILES}
@@ -47,4 +52,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${SHADERGEN_HEADER_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
                                         ${GLSL_COMPILER_SOURCE}
+                                        ${STANDARD_MATERIAL_SOURCE}
 )
