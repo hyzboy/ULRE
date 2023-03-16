@@ -98,8 +98,7 @@ void main()
 void main()
 {
     Color=Input.Color;
-}
-)");
+})");
     }
 
     mc.CreateShader();
