@@ -89,20 +89,24 @@ bool ShaderCreateInfo::ProcOutput()
 {
     output_struct.Clear();
 
-    const ShaderAttributeList &ssl=sdm->GetShaderStageIO().output;
+    const ShaderAttributeArray &ssd=sdm->GetShaderStageIO().output;
 
-    if(ssl.GetCount()<=0)return(true);
+    if(ssd.count<=0)return(true);
 
     output_struct=GetShaderStageName(shader_stage);
     output_struct+="_Output\n{\n";
 
-    for(auto *ss:ssl)
+    const ShaderAttribute *ss=ssd.items;
+
+    for(uint i=0;i<ssd.count;i++)
     {
         output_struct+="\t";
         output_struct+=GetShaderAttributeTypename(ss);
         output_struct+=" ";
         output_struct+=ss->name;
         output_struct+=";\n";
+
+        ++ss;
     }
 
     output_struct+="}";

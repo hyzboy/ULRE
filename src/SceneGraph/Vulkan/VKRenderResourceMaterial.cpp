@@ -7,6 +7,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/io/ConstBufferReader.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -185,5 +186,19 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     
     material_by_name.Add(filename,mtl);    
     return(mtl);
+}
+
+Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInfo *mci)
+{
+    SHADERGEN_NAMESPACE_USING
+
+    if(!mci)
+        return(nullptr);
+
+    const uint count=GetShaderCountByBits(mci->GetShaderStage());
+    ShaderModuleMap *smm=new ShaderModuleMap;
+
+
+
 }
 VK_NAMESPACE_END

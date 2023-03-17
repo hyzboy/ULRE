@@ -14,6 +14,7 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/ResManage.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 VK_NAMESPACE_BEGIN
 using MaterialID            =int;
 using MaterialInstanceID    =int;
@@ -90,6 +91,8 @@ public: //Material
     const ShaderModule *CreateShaderModule(const OSString &filename,ShaderResource *shader_resource);
     
     Material *          CreateMaterial(const OSString &);
+    Material *          CreateMaterial(const hgl::shadergen::MaterialCreateInfo *);
+
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
     MaterialInstance *  CreateMaterialInstance(const OSString &,const VILConfig *vil_cfg=nullptr);
 

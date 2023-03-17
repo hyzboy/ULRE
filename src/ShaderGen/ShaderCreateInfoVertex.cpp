@@ -34,26 +34,27 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
 {    
     const auto &input=sdm->GetShaderStageIO().input;
 
-    if(input.IsEmpty())
+    if(input.count<=0)
     {
         //no input ? this isn't a bug.
         //maybe position info from UBO/SBBO/Texture.
         return(true);
     }
 
-    if(!input.IsEmpty())
-    {
-        final_shader+="\n";
+    final_shader+="\n";
 
-        for(auto *ss:input)
-        {
-            final_shader+="layout(location=";
-            final_shader+=AnsiString::numberOf(ss->location);
-            final_shader+=") in ";
-            final_shader+=GetShaderAttributeTypename(ss);
-            final_shader+=" "+AnsiString(ss->name);
-            final_shader+=";\n";
-        }
+    const ShaderAttribute *ss=input.items;
+
+    for(uint i=0;i<input.count;i++)
+    {
+        final_shader+="layout(location=";
+        final_shader+=AnsiString::numberOf(ss->location);
+        final_shader+=") in ";
+        final_shader+=GetShaderAttributeTypename(ss);
+        final_shader+=" "+AnsiString(ss->name);
+        final_shader+=";\n";
+
+        ++ss;
     }
 
     return(true);

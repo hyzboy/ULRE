@@ -10,6 +10,8 @@
 SHADERGEN_NAMESPACE_BEGIN
 class MaterialCreateInfo
 {
+    AnsiString shader_name;
+
 protected:
 
     uint rt_color_count;                                    ///<输出的RT数量
@@ -27,6 +29,10 @@ protected:
 
 public:
 
+    const AnsiString &GetName()const{return shader_name;}
+
+    const uint32 GetShaderStage()const{return shader_stage;}
+
     bool hasShader(const VkShaderStageFlagBits ss)const{return shader_stage&ss;}
 
     bool hasVertex  ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
@@ -42,7 +48,7 @@ public:
 
 public:
 
-    MaterialCreateInfo(const uint rc,const bool rd,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
+    MaterialCreateInfo(const AnsiString &,const uint rc,const bool rd,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
     ~MaterialCreateInfo()=default;
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);

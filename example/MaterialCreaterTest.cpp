@@ -6,7 +6,7 @@ using namespace hgl::shadergen;
 
 bool PureColor2DMaterial()
 {
-    MaterialCreateInfo mc(1,false);                            //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
+    MaterialCreateInfo mc("PureColor2D",1,false);                            //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
 
     //vertex部分
     {
@@ -68,7 +68,7 @@ void main()
 
 bool VertexColor2DMaterial()
 {
-    MaterialCreateInfo mc(1,false);
+    MaterialCreateInfo mc("VertexColor2D",1,false);
 
     //vertex部分
     {

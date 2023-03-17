@@ -25,7 +25,7 @@ class ShaderDescriptorInfo
 
     AnsiStringList                      struct_list;        //用到的结构列表
 
-    //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
+    //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdi中的用于产生set/binding号，这里的用于产生shader
     UBODescriptorList                   ubo_list;
     SamplerDescriptorList               sampler_list;
     

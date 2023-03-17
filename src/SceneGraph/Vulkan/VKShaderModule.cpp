@@ -44,18 +44,18 @@ ShaderModule::~ShaderModule()
 
 VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,pssci,sr)
 {
-    const ShaderAttributeList &stage_input_list=sr->GetInputs();
+    const ShaderAttributeArray &stage_input_list=sr->GetInputs();
 
-    attr_count=stage_input_list.GetCount();
-    ssi_list=stage_input_list.GetData();
+    attr_count=stage_input_list.count;
+    attr_list=stage_input_list.items;
     name_list=new const char *[attr_count];
     type_list=new VAT[attr_count];
     
     for(uint i=0;i<attr_count;i++)
     {
-        name_list[i]            =ssi_list[i]->name;
-        type_list[i].basetype   =VATBaseType(ssi_list[i]->basetype);
-        type_list[i].vec_size   =ssi_list[i]->vec_size;
+        name_list[i]            =attr_list[i].name;
+        type_list[i].basetype   =VATBaseType(attr_list[i].basetype);
+        type_list[i].vec_size   =attr_list[i].vec_size;
     }
 }
 
@@ -70,8 +70,6 @@ VertexShaderModule::~VertexShaderModule()
     delete[] name_list;
 }
 
-const VkFormat GetVulkanFormat(const VATBaseType &base_type,const uint vec_size);    //VertexAttrib.cpp
-
 VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
 {
     VkVertexInputBindingDescription *binding_list=new VkVertexInputBindingDescription[attr_count];
@@ -80,7 +78,7 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
     VkVertexInputBindingDescription *bind=binding_list;
     VkVertexInputAttributeDescription *attr=attribute_list;
 
-    ShaderAttribute **si=ssi_list;
+    const ShaderAttribute *si=attr_list;
     VAConfig vac;
 
     for(uint i=0;i<attr_count;i++)
@@ -91,16 +89,16 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
         //但在我们的设计中，仅支持一个流传递一个attrib
 
         attr->binding   =i;
-        attr->location  =(*si)->location;               //此值对应shader中的layout(location=
+        attr->location  =si->location;               //此值对应shader中的layout(location=
         
         attr->offset    =0;
 
         bind->binding   =i;                             //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
                                                         //在Renderable类中，buffer_list必需严格按照本此binding为序列号排列
 
-        if(!cfg||!cfg->Get((*si)->name,vac))
+        if(!cfg||!cfg->Get(si->name,vac))
         {
-            attr->format    =GetVulkanFormat(VATBaseType((*si)->basetype),(*si)->vec_size);
+            attr->format    =GetVulkanFormat(si);
 
             //if(memcmp((*si)->name.c_str(),"Inst_",5)==0)                //不可以使用CaseComp("Inst_",5)会被认为是比较一个5字长的字符串，而不是只比较5个字符
             //    bind->inputRate =VK_VERTEX_INPUT_RATE_INSTANCE;
@@ -112,7 +110,7 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
             if(vac.format!=PF_UNDEFINED)
                 attr->format    =vac.format;
             else                
-                attr->format    =GetVulkanFormat(VATBaseType((*si)->basetype),(*si)->vec_size);
+                attr->format    =GetVulkanFormat(si);
 
             bind->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
         }
