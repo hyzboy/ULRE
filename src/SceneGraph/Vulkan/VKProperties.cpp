@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/VK.h>
 #include<hgl/graph/VKInstance.h>
+#include"DebugOutProperties.h"
 
 VK_NAMESPACE_BEGIN
 

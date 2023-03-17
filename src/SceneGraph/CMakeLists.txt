@@ -148,7 +148,8 @@ SET(VK_DEVICE_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
 
 SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
                             Vulkan/VKPhysicalDevice.cpp
-                            Vulkan/VKProperties.cpp)
+                            Vulkan/VKProperties.cpp
+                            Vulkan/DebugOutProperties.h)
 
 SOURCE_GROUP("Vulkan\\Device"                   FILES ${VK_DEVICE_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Debug"            FILES ${VK_DEBUG_SOURCE})

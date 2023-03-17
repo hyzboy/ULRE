@@ -7,6 +7,7 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDebugMaker.h>
+#include<hgl/graph/VKUUID.h>
 
 #include<iostream>
 #include<iomanip>
