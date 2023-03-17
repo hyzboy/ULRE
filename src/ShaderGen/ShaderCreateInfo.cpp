@@ -1,21 +1,21 @@
-#include<hgl/shadergen/ShaderCreater.h>
+#include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorManager.h>
 #include"GLSLCompiler.h"
 
 SHADERGEN_NAMESPACE_BEGIN
-ShaderCreater::ShaderCreater(VkShaderStageFlagBits ss,MaterialDescriptorManager *m)
+ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorManager *m)
 {
     shader_stage=ss;
     mdm=m;
     sdm=new ShaderDescriptorManager(ss);
 }
 
-ShaderCreater::~ShaderCreater()
+ShaderCreateInfo::~ShaderCreateInfo()
 {
     delete sdm;
 }
 
-int ShaderCreater::AddOutput(const VAT &type,const AnsiString &name)
+int ShaderCreateInfo::AddOutput(const VAT &type,const AnsiString &name)
 {
     ShaderStage *ss=new ShaderStage;
 
@@ -27,7 +27,7 @@ int ShaderCreater::AddOutput(const VAT &type,const AnsiString &name)
     return sdm->AddOutput(ss);
 }
 
-int ShaderCreater::AddOutput(const AnsiString &type,const AnsiString &name)
+int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name)
 {
     VAT vat;
 
@@ -40,7 +40,7 @@ int ShaderCreater::AddOutput(const AnsiString &type,const AnsiString &name)
     return AddOutput(vat,name);
 }
 
-bool ShaderCreater::ProcSubpassInput()
+bool ShaderCreateInfo::ProcSubpassInput()
 {
     auto sil=sdm->GetSubpassInputList();
 
@@ -68,7 +68,7 @@ bool ShaderCreater::ProcSubpassInput()
     return(true);
 }
 
-bool ShaderCreater::ProcInput(ShaderCreater *last_sc)
+bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
 {
     if(!last_sc)
         return(false);
@@ -85,7 +85,7 @@ bool ShaderCreater::ProcInput(ShaderCreater *last_sc)
     return(true);
 }
 
-bool ShaderCreater::ProcOutput()
+bool ShaderCreateInfo::ProcOutput()
 {
     output_struct.Clear();
 
@@ -114,7 +114,7 @@ bool ShaderCreater::ProcOutput()
     return(true);
 }
 
-bool ShaderCreater::ProcStruct()
+bool ShaderCreateInfo::ProcStruct()
 {
     const AnsiStringList &struct_list=sdm->GetStructList();
 
@@ -135,7 +135,7 @@ bool ShaderCreater::ProcStruct()
     return(true);
 }
 
-bool ShaderCreater::ProcUBO()
+bool ShaderCreateInfo::ProcUBO()
 {
     auto ubo_list=sdm->GetUBOList();
 
@@ -164,12 +164,12 @@ bool ShaderCreater::ProcUBO()
     return(true);
 }
 
-bool ShaderCreater::ProcSSBO()
+bool ShaderCreateInfo::ProcSSBO()
 {
     return(false);
 }
 
-bool ShaderCreater::ProcConst()
+bool ShaderCreateInfo::ProcConst()
 {
     auto const_list=sdm->GetConstList();
 
@@ -198,7 +198,7 @@ bool ShaderCreater::ProcConst()
     return(true);
 }
 
-bool ShaderCreater::ProcSampler()
+bool ShaderCreateInfo::ProcSampler()
 {
     auto sampler_list=sdm->GetSamplerList();
 
@@ -227,7 +227,7 @@ bool ShaderCreater::ProcSampler()
     return(true);
 }
 
-bool ShaderCreater::CreateShader(ShaderCreater *last_sc)
+bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 {
     final_shader="#version 460 core\n";
 
@@ -263,7 +263,7 @@ bool ShaderCreater::CreateShader(ShaderCreater *last_sc)
     return(true);
 }
 
-bool ShaderCreater::CompileToSPV()
+bool ShaderCreateInfo::CompileToSPV()
 {
     glsl_compiler::SPVData *spv_data=glsl_compiler::Compile(shader_stage,final_shader.c_str());
 

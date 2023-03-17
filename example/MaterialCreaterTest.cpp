@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/MaterialCreater.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -6,11 +6,11 @@ using namespace hgl::shadergen;
 
 bool PureColor2DMaterial()
 {
-    MaterialCreater mc(1,false);                            //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
+    MaterialCreateInfo mc(1,false);                            //一个新材质，1个RT输出，默认使用Vertex/Fragment shader
 
     //vertex部分
     {
-        ShaderCreaterVertex *vsc=mc.GetVS();                //获取vertex shader creater
+        ShaderCreateInfoVertex *vsc=mc.GetVS();                //获取vertex shader creater
 
         //以下代码会被展开为
         /*
@@ -46,7 +46,7 @@ void main()
 
     //fragment部分
     {
-        ShaderCreaterFragment *fsc=mc.GetFS();              //获取fragment shader creater
+        ShaderCreateInfoFragment *fsc=mc.GetFS();              //获取fragment shader creater
 
         //以下代码会被展开为
         /*
@@ -68,11 +68,11 @@ void main()
 
 bool VertexColor2DMaterial()
 {
-    MaterialCreater mc(1,false);
+    MaterialCreateInfo mc(1,false);
 
     //vertex部分
     {
-        ShaderCreaterVertex *vsc=mc.GetVS();
+        ShaderCreateInfoVertex *vsc=mc.GetVS();
 
         vsc->AddInput("vec2","Position");
         vsc->AddInput("vec4","Color");
@@ -90,7 +90,7 @@ void main()
 
     //fragment部分
     {
-        ShaderCreaterFragment *fsc=mc.GetFS();
+        ShaderCreateInfoFragment *fsc=mc.GetFS();
 
         fsc->AddOutput("vec4","Color");
 

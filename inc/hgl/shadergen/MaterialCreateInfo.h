@@ -1,14 +1,14 @@
 #pragma once
 
 #include<hgl/shadergen/MaterialDescriptorManager.h>
-#include<hgl/shadergen/ShaderCreaterVertex.h>
-#include<hgl/shadergen/ShaderCreaterGeometry.h>
-#include<hgl/shadergen/ShaderCreaterFragment.h>
-#include<hgl/shadergen/ShaderCreaterMap.h>
+#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include<hgl/shadergen/ShaderCreateInfoFragment.h>
+#include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/graph/VKSamplerType.h>
 
 SHADERGEN_NAMESPACE_BEGIN
-class MaterialCreater
+class MaterialCreateInfo
 {
 protected:
 
@@ -19,11 +19,11 @@ protected:
 
     MaterialDescriptorManager mdm;                          ///<材质描述符管理器
 
-    ShaderCreaterMap shader_map;                            ///<着色器列表
+    ShaderCreateInfoMap shader_map;                            ///<着色器列表
 
-    ShaderCreaterVertex *vert;
-    ShaderCreaterGeometry *geom;
-    ShaderCreaterFragment *frag;
+    ShaderCreateInfoVertex *vert;
+    ShaderCreateInfoGeometry *geom;
+    ShaderCreateInfoFragment *frag;
 
 public:
 
@@ -36,14 +36,14 @@ public:
     bool hasFragment()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
 //    bool hasCompute ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
 
-    ShaderCreaterVertex *   GetVS(){return vert;}
-    ShaderCreaterGeometry * GetGS(){return geom;}
-    ShaderCreaterFragment * GetFS(){return frag;}
+    ShaderCreateInfoVertex *   GetVS(){return vert;}
+    ShaderCreateInfoGeometry * GetGS(){return geom;}
+    ShaderCreateInfoFragment * GetFS(){return frag;}
 
 public:
 
-    MaterialCreater(const uint rc,const bool rd,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
-    ~MaterialCreater()=default;
+    MaterialCreateInfo(const uint rc,const bool rd,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
+    ~MaterialCreateInfo()=default;
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
 
@@ -51,5 +51,5 @@ public:
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
     bool CreateShader();
-};//class MaterialCreater
+};//class MaterialCreateInfo
 SHADERGEN_NAMESPACE_END

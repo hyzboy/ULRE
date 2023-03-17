@@ -1,5 +1,5 @@
-#ifndef HGL_SHADER_CREATER_INCLUDE
-#define HGL_SHADER_CREATER_INCLUDE
+#ifndef HGL_SHADER_CREATE_INFO_INCLUDE
+#define HGL_SHADER_CREATE_INFO_INCLUDE
 
 #include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/graph/VertexAttrib.h>
@@ -8,7 +8,7 @@ SHADERGEN_NAMESPACE_BEGIN
 class MaterialDescriptorManager;
 class ShaderDescriptorManager;
 
-class ShaderCreater
+class ShaderCreateInfo
 {
 protected:
 
@@ -28,7 +28,7 @@ protected:
 
     virtual bool ProcHeader(){return(true);}
     virtual bool ProcSubpassInput();
-    virtual bool ProcInput(ShaderCreater *);
+    virtual bool ProcInput(ShaderCreateInfo *);
     virtual bool ProcOutput();
 
     virtual bool ProcStruct();
@@ -48,8 +48,8 @@ public:
 
 public:
 
-    ShaderCreater(VkShaderStageFlagBits ss,MaterialDescriptorManager *m);
-    virtual ~ShaderCreater();
+    ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorManager *m);
+    virtual ~ShaderCreateInfo();
 
     int AddOutput(const graph::VAT &type,const AnsiString &name);
     int AddOutput(const AnsiString &type,const AnsiString &name);
@@ -62,7 +62,7 @@ public:
     const AnsiString &GetOutputStruct()const{return output_struct;}
     const AnsiString &GetShaderSource()const{return final_shader;}
 
-    bool CreateShader(ShaderCreater *);
-};//class ShaderCreater
+    bool CreateShader(ShaderCreateInfo *);
+};//class ShaderCreateInfo
 SHADERGEN_NAMESPACE_END
-#endif//HGL_SHADER_CREATER_INCLUDE
+#endif//HGL_SHADER_CREATE_INFO_INCLUDE
