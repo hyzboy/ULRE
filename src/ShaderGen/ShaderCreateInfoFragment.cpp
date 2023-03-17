@@ -1,5 +1,5 @@
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
-#include<hgl/shadergen/ShaderDescriptorManager.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 SHADERGEN_NAMESPACE_BEGIN
 

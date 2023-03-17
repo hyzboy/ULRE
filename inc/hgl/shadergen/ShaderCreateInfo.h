@@ -5,8 +5,8 @@
 #include<hgl/graph/VertexAttrib.h>
 SHADERGEN_NAMESPACE_BEGIN
 
-class MaterialDescriptorManager;
-class ShaderDescriptorManager;
+class MaterialDescriptorInfo;
+class ShaderDescriptorInfo;
 
 class ShaderCreateInfo
 {
@@ -14,7 +14,7 @@ protected:
 
     VkShaderStageFlagBits shader_stage;                      ///<着色器阶段
 
-    MaterialDescriptorManager *mdm;
+    MaterialDescriptorInfo *mdm;
 
 protected:
 
@@ -42,13 +42,13 @@ protected:
 
 public:
 
-    ShaderDescriptorManager *sdm;
+    ShaderDescriptorInfo *sdm;
 
     VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
 
 public:
 
-    ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorManager *m);
+    ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m);
     virtual ~ShaderCreateInfo();
 
     int AddOutput(const graph::VAT &type,const AnsiString &name);

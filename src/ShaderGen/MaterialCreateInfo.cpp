@@ -1,5 +1,5 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/shadergen/ShaderDescriptorManager.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 using namespace hgl;
 using namespace hgl::graph;

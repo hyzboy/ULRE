@@ -13,7 +13,7 @@ SHADERGEN_NAMESPACE_BEGIN
 * 材质描述符管理</p>
 * 该类使用于SHADER生成前，用于统计编号set/binding
 */
-class MaterialDescriptorManager
+class MaterialDescriptorInfo
 {
     struct ShaderDescriptorSet
     {
@@ -39,8 +39,8 @@ class MaterialDescriptorManager
 
 public:
     
-    MaterialDescriptorManager();
-    ~MaterialDescriptorManager()=default;
+    MaterialDescriptorInfo();
+    ~MaterialDescriptorInfo()=default;
 
     bool AddStruct(const AnsiString &name,const AnsiString &code)
     {

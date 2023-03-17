@@ -1,7 +1,7 @@
-﻿#include<hgl/shadergen/MaterialDescriptorManager.h>
+﻿#include<hgl/shadergen/MaterialDescriptorInfo.h>
 
 SHADERGEN_NAMESPACE_BEGIN
-MaterialDescriptorManager::MaterialDescriptorManager()
+MaterialDescriptorInfo::MaterialDescriptorInfo()
 {
     int set_type=(int)DescriptorSetType::BEGIN_RANGE;
 
@@ -16,7 +16,7 @@ MaterialDescriptorManager::MaterialDescriptorManager()
     }
 }
 
-const DescriptorSetType MaterialDescriptorManager::GetSetType(const AnsiString &name)const
+const DescriptorSetType MaterialDescriptorInfo::GetSetType(const AnsiString &name)const
 {
     for(auto &sds:desc_set_array)
         if(sds.descriptor_map.KeyExist(name))
@@ -28,7 +28,7 @@ const DescriptorSetType MaterialDescriptorManager::GetSetType(const AnsiString &
 /**
 * 添加一个描述符，如果它本身存在，则返回false
 */
-ShaderDescriptor *MaterialDescriptorManager::ShaderDescriptorSet::AddDescriptor(VkShaderStageFlagBits ssb,ShaderDescriptor *new_sd)
+ShaderDescriptor *MaterialDescriptorInfo::ShaderDescriptorSet::AddDescriptor(VkShaderStageFlagBits ssb,ShaderDescriptor *new_sd)
 {
     ShaderDescriptor *sd;
     
@@ -51,7 +51,7 @@ ShaderDescriptor *MaterialDescriptorManager::ShaderDescriptorSet::AddDescriptor(
     }
 }
 
-const UBODescriptor *MaterialDescriptorManager::AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd)
+const UBODescriptor *MaterialDescriptorInfo::AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -64,7 +64,7 @@ const UBODescriptor *MaterialDescriptorManager::AddUBO(VkShaderStageFlagBits ssb
     return((UBODescriptor *)obj);
 }
 
-const SamplerDescriptor *MaterialDescriptorManager::AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd)
+const SamplerDescriptor *MaterialDescriptorInfo::AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -77,7 +77,7 @@ const SamplerDescriptor *MaterialDescriptorManager::AddSampler(VkShaderStageFlag
     return((SamplerDescriptor *)obj);
 }
 
-UBODescriptor *MaterialDescriptorManager::GetUBO(const AnsiString &name)
+UBODescriptor *MaterialDescriptorInfo::GetUBO(const AnsiString &name)
 {
     UBODescriptor *sd;
 
@@ -87,7 +87,7 @@ UBODescriptor *MaterialDescriptorManager::GetUBO(const AnsiString &name)
     return(nullptr);
 }
 
-SamplerDescriptor *MaterialDescriptorManager::GetSampler(const AnsiString &name)
+SamplerDescriptor *MaterialDescriptorInfo::GetSampler(const AnsiString &name)
 {
     SamplerDescriptor *sd;
 
@@ -97,7 +97,7 @@ SamplerDescriptor *MaterialDescriptorManager::GetSampler(const AnsiString &name)
     return(nullptr);
 }
 
-void MaterialDescriptorManager::Resort()
+void MaterialDescriptorInfo::Resort()
 {
     //重新生成set/binding
     {

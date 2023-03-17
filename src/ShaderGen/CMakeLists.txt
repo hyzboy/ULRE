@@ -22,14 +22,14 @@ SOURCE_GROUP("Material Create Info" FILES   ${MATERIAL_CREATE_INFO_HEADER_FILES}
                                             ${MATERIAL_CREATE_INFO_SOURCE_FILES})
 
 SET(SHADERGEN_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderGenNamespace.h
-                            ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorManager.h
-                            ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorManager.h)
+                            ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorInfo.h
+                            ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
 
 SET(SHADERGEN_SOURCE_FILES  
 #PMC.cpp
 #                            VertexPolicy.cpp
-                            ShaderDescriptorManager.cpp
-                            MaterialDescriptorManager.cpp
+                            ShaderDescriptorInfo.cpp
+                            MaterialDescriptorInfo.cpp
 )
 
 SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h

@@ -1,13 +1,13 @@
 #include<hgl/shadergen/ShaderCreateInfo.h>
-#include<hgl/shadergen/ShaderDescriptorManager.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include"GLSLCompiler.h"
 
 SHADERGEN_NAMESPACE_BEGIN
-ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorManager *m)
+ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
 {
     shader_stage=ss;
     mdm=m;
-    sdm=new ShaderDescriptorManager(ss);
+    sdm=new ShaderDescriptorInfo(ss);
 }
 
 ShaderCreateInfo::~ShaderCreateInfo()

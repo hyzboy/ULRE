@@ -1,5 +1,5 @@
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/ShaderDescriptorManager.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKShaderStage.h>
 
