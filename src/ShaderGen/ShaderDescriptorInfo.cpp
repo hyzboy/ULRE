@@ -3,14 +3,14 @@
 SHADERGEN_NAMESPACE_BEGIN
 ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
 {
-    shader_stage=flag_bit;
+    stage_flag=flag_bit;
     
     hgl_zero(push_constant);
 }
 
 namespace
 {
-    bool Find(ObjectList<ShaderStage> &ol,const ShaderStage *ss)
+    bool Find(ObjectList<ShaderAttribute> &ol,const ShaderAttribute *ss)
     {
         for(int i=0;i<ol.GetCount();i++)
             if(hgl::strcmp(ol[i]->name,ss->name)==0)
@@ -20,7 +20,7 @@ namespace
     }
 }//namespace
 
-bool ShaderDescriptorInfo::AddInput(ShaderStage *ss)
+bool ShaderDescriptorInfo::AddInput(ShaderAttribute *ss)
 {
     if(!ss)return(false);
 
@@ -31,7 +31,7 @@ bool ShaderDescriptorInfo::AddInput(ShaderStage *ss)
     return(true);
 }
 
-bool ShaderDescriptorInfo::AddOutput(ShaderStage *ss)
+bool ShaderDescriptorInfo::AddOutput(ShaderAttribute *ss)
 {
     if(!ss)return(false);
 
@@ -110,7 +110,7 @@ void ShaderDescriptorInfo::DebugOutput(int index)
         LOG_INFO("\tStage Input "+UTF8String::numberOf(stage_io.input.GetCount()));
 
         for(auto *ss:stage_io.input)
-            LOG_INFO("\t\tlayout(location="+UTF8String::numberOf(ss->location)+") in "+UTF8String(GetShaderStageTypeName(ss))+"\t"+UTF8String(ss->name));
+            LOG_INFO("\t\tlayout(location="+UTF8String::numberOf(ss->location)+") in "+GetShaderAttributeTypename(ss)+"\t"+UTF8String(ss->name));
     }
 
     if(stage_io.output.GetCount()>0)
@@ -118,7 +118,7 @@ void ShaderDescriptorInfo::DebugOutput(int index)
         LOG_INFO("\tStage Output "+UTF8String::numberOf(stage_io.output.GetCount()));
 
         for(auto *ss:stage_io.output)
-            LOG_INFO("\t\tlayout(location="+UTF8String::numberOf(ss->location)+") out "+UTF8String(GetShaderStageTypeName(ss))+"\t"+UTF8String(ss->name));
+            LOG_INFO("\t\tlayout(location="+UTF8String::numberOf(ss->location)+") out "+GetShaderAttributeTypename(ss)+"\t"+UTF8String(ss->name));
     }
     
     if(ubo_list.GetCount()>0)

@@ -16,27 +16,26 @@ class ShaderResource
     const void *spv_data;
     uint32 spv_size;
 
-    ShaderStageList stage_inputs;
-//    ShaderStageList stage_outputs;
+    ShaderStageIO stage_io;
 
 public:
 
     ShaderResource(const VkShaderStageFlagBits &,const void *,const uint32);
     virtual ~ShaderResource()=default;
 
-    const   VkShaderStageFlagBits   GetStage            ()const {return stage_flag;}
-    const   char *                  GetStageName        ()const {return GetShaderStageName(stage_flag);}
+    const   VkShaderStageFlagBits   GetStageFlagBit     ()const {return stage_flag;}
+    const   char *                  GetStageFlagName    ()const {return GetShaderStageName(stage_flag);}
 
     const   uint32_t *              GetCode             ()const {return (uint32_t *)spv_data;}
     const   uint32_t                GetCodeSize         ()const {return spv_size;}
 
-            ShaderStageList &       GetStageInputs      ()      {return stage_inputs;}
-//            ShaderStageList &       GetStageOutputs     ()      {return stage_outputs;}
+            ShaderAttributeList &   GetStageInputs      ()      {return stage_io.input;}
+//          ShaderAttributeList &   GetStageOutputs     ()      {return stage_io.output;}
 
-    const   uint                    GetStageInputCount  ()const {return stage_inputs.GetCount();}
-//    const   uint                    GetStageOutputCount ()const {return stage_outputs.GetCount();}
+    const   uint                    GetStageInputCount  ()const {return stage_io.input.GetCount();}
+//  const   uint                    GetStageOutputCount ()const {return stage_io.output.GetCount();}
 
-    const   ShaderStage *           GetStageInput       (const AnsiString &)const;
+    const   ShaderAttribute *       GetStageInput       (const AnsiString &)const;
     const   int                     GetStageInputBinding(const AnsiString &)const;
 };//class ShaderResource
 

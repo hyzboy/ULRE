@@ -10,7 +10,7 @@ using namespace hgl::graph;
 
 int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name)
 {
-    ShaderStage *ss=new ShaderStage;
+    ShaderAttribute *ss=new ShaderAttribute;
 
     hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
 
@@ -48,10 +48,10 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
         for(auto *ss:input)
         {
             final_shader+="layout(location=";
-            final_shader+=UTF8String::numberOf(ss->location);
+            final_shader+=AnsiString::numberOf(ss->location);
             final_shader+=") in ";
-            final_shader+=UTF8String(GetShaderStageTypeName(ss));
-            final_shader+=" "+UTF8String(ss->name);
+            final_shader+=GetShaderAttributeTypename(ss);
+            final_shader+=" "+AnsiString(ss->name);
             final_shader+=";\n";
         }
     }

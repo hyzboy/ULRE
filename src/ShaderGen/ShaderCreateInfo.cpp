@@ -17,7 +17,7 @@ ShaderCreateInfo::~ShaderCreateInfo()
 
 int ShaderCreateInfo::AddOutput(const VAT &type,const AnsiString &name)
 {
-    ShaderStage *ss=new ShaderStage;
+    ShaderAttribute *ss=new ShaderAttribute;
 
     hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
 
@@ -89,7 +89,7 @@ bool ShaderCreateInfo::ProcOutput()
 {
     output_struct.Clear();
 
-    const ShaderStageList &ssl=sdm->GetShaderStageIO().output;
+    const ShaderAttributeList &ssl=sdm->GetShaderStageIO().output;
 
     if(ssl.GetCount()<=0)return(true);
 
@@ -99,7 +99,7 @@ bool ShaderCreateInfo::ProcOutput()
     for(auto *ss:ssl)
     {
         output_struct+="\t";
-        output_struct+=GetShaderStageTypeName(ss);
+        output_struct+=GetShaderAttributeTypename(ss);
         output_struct+=" ";
         output_struct+=ss->name;
         output_struct+=";\n";

@@ -12,7 +12,7 @@ void ShaderCreateInfoFragment::UseDefaultMain()
     const auto &output_list=sdm->GetShaderStageIO().output;
 
     const uint count=output_list.GetCount();
-    ShaderStage **o=output_list.GetData();
+    ShaderAttribute **o=output_list.GetData();
 
     for(uint i=0;i<count;i++)
     {
@@ -33,14 +33,14 @@ bool ShaderCreateInfoFragment::ProcOutput()
     const auto &output_list=sdm->GetShaderStageIO().output;
 
     const uint count=output_list.GetCount();
-    ShaderStage **o=output_list.GetData();
+    ShaderAttribute **o=output_list.GetData();
 
     for(uint i=0;i<count;i++)
     {
         final_shader+="layout(location=";
         final_shader+=AnsiString::numberOf(i);
         final_shader+=") out ";
-        final_shader+=GetShaderStageTypeName(*o);
+        final_shader+=GetShaderAttributeTypename(*o);
         final_shader+=" ";
         final_shader+=(*o)->name;
         final_shader+=";\n";

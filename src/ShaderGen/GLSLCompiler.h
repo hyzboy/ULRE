@@ -37,7 +37,7 @@ namespace glsl_compiler
     
     constexpr size_t SHADER_RESOURCE_NAME_MAX_LENGTH=32;
 
-    struct ShaderStage
+    struct ShaderAttribute
     {
         char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
         uint8_t location;
@@ -48,7 +48,7 @@ namespace glsl_compiler
     struct ShaderStageData
     {
         uint32_t count;
-        ShaderStage *items;
+        ShaderAttribute *items;
     };
 
     struct Descriptor

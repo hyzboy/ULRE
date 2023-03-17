@@ -37,8 +37,8 @@ SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
 
 SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 
-SOURCE_GROUP("Material Create Info\\Descriptor Manager" FILES   ${SHADERGEN_HEADER_FILES} 
-                                                                ${SHADERGEN_SOURCE_FILES})
+SOURCE_GROUP("Material Create Info\\Descriptor Info" FILES  ${SHADERGEN_HEADER_FILES} 
+                                                            ${SHADERGEN_SOURCE_FILES})
 
 SET(STANDARD_MATERIAL_SOURCE    ${SHADERGEN_INCLUDE_PATH}/StandardMaterial.h
                                 StandardMaterial.cpp)
