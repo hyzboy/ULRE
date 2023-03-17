@@ -1,11 +1,11 @@
-#include<hgl/shadergen/ShaderCreaterFragment.h>
+#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderDescriptorManager.h>
 
 SHADERGEN_NAMESPACE_BEGIN
 
 using namespace hgl::graph;
 
-void ShaderCreaterFragment::UseDefaultMain()
+void ShaderCreateInfoFragment::UseDefaultMain()
 {
     main_codes="void main()\n{\n";
 
@@ -28,7 +28,7 @@ void ShaderCreaterFragment::UseDefaultMain()
     main_codes+="}";
 }
 
-bool ShaderCreaterFragment::ProcOutput()
+bool ShaderCreateInfoFragment::ProcOutput()
 {
     const auto &output_list=sdm->GetShaderStageIO().output;
 

@@ -1,23 +1,23 @@
-﻿#include<hgl/shadergen/MaterialCreater.h>
+﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorManager.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
 SHADERGEN_NAMESPACE_BEGIN
-MaterialCreater::MaterialCreater(const uint rc,const bool rd,const uint32 ss)
+MaterialCreateInfo::MaterialCreateInfo(const uint rc,const bool rd,const uint32 ss)
 {
     rt_color_count=rc;
     rt_depth=rd;
 
     shader_stage=ss;
 
-    if(hasVertex    ())shader_map.Add(vert=new ShaderCreaterVertex  (&mdm));else vert=nullptr;
-    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreaterGeometry(&mdm));else geom=nullptr;
-    if(hasFragment  ())shader_map.Add(frag=new ShaderCreaterFragment(&mdm));else frag=nullptr;
+    if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdm));else vert=nullptr;
+    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdm));else geom=nullptr;
+    if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdm));else frag=nullptr;
 }
 
-bool MaterialCreater::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
+bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
 {
     if(struct_name.IsEmpty()||codes.IsEmpty())
         return(false);
@@ -25,7 +25,7 @@ bool MaterialCreater::AddStruct(const AnsiString &struct_name,const AnsiString &
     return mdm.AddStruct(struct_name,codes);
 }
 
-bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
+bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
 {
     if(!shader_map.KeyExist(flag_bit))
         return(false);
@@ -33,7 +33,7 @@ bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const Descript
     if(!mdm.hasStruct(type_name))
         return(false);
 
-    ShaderCreater *sc=shader_map[flag_bit];
+    ShaderCreateInfo *sc=shader_map[flag_bit];
 
     if(!sc)
         return(false);
@@ -60,14 +60,14 @@ bool MaterialCreater::AddUBO(const VkShaderStageFlagBits flag_bit,const Descript
     }
 }
 
-bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
+bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
 {
     if(!shader_map.KeyExist(flag_bit))
         return(false);
 
     RANGE_CHECK_RETURN_FALSE(st);
 
-    ShaderCreater *sc=shader_map[flag_bit];
+    ShaderCreateInfo *sc=shader_map[flag_bit];
 
     if(!sc)
         return(false);
@@ -96,14 +96,14 @@ bool MaterialCreater::AddSampler(const VkShaderStageFlagBits flag_bit,const Desc
     }
 }
 
-bool MaterialCreater::CreateShader()
+bool MaterialCreateInfo::CreateShader()
 {
     if(shader_map.IsEmpty())
         return(false);
 
     mdm.Resort();
 
-    ShaderCreater *sc,*last=nullptr;
+    ShaderCreateInfo *sc,*last=nullptr;
 
     for(int i=0;i<shader_map.GetCount();i++)
     {

@@ -102,7 +102,7 @@ public:
     }
 };//struct Standard2DMaterial:public StandardMaterial
 
-class MaterialCreater;
+class MaterialCreateInfo;
 
 Material *CreateMaterial()
 {
