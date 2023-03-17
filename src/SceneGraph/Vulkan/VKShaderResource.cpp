@@ -10,7 +10,7 @@ VK_NAMESPACE_BEGIN
     {
         ObjectMap<OSString,ShaderResource> shader_resource_by_filename;
 
-        const bool LoadShaderStageAttributes(ShaderAttributeList &ss_list,io::ConstBufferReader &cbr)
+        const bool LoadShaderStageAttributes(ShaderAttributeArray &ss_list,io::ConstBufferReader &cbr)
         {
             uint count;
 
@@ -19,19 +19,19 @@ VK_NAMESPACE_BEGIN
             if(count<=0)
                 return(false);
 
-            ShaderAttribute *ss;
+            Init(ss_list,count);
+
+            ShaderAttribute *ss=ss_list.items;
 
             for(uint i=0;i<count;i++)
             {
-                ss=new ShaderAttribute;
-
                 cbr.Read(ss->location);
                 cbr.CastRead<uint8>(ss->basetype);
                 cbr.CastRead<uint8>(ss->vec_size);
 
                 cbr.ReadTinyString(ss->name);
 
-                ss_list.Add(ss);
+                ++ss;
             }
 
             return true;
@@ -42,18 +42,26 @@ VK_NAMESPACE_BEGIN
     {
         stage_flag=flag;
         spv_data=sd;
-        spv_size=size;            
+        spv_size=size;
+
+        Init(stage_io);
+    }
+
+    ShaderResource::~ShaderResource()
+    {
+        Clear(stage_io);
     }
 
     const ShaderAttribute *ShaderResource::GetInput(const AnsiString &name) const
     {
-        const int count=stage_io.input.GetCount();
-        ShaderAttribute **ss=stage_io.input.GetData();
+        if(stage_io.input.count<=0)return(nullptr);
 
-        for(int i=0;i<count;i++)
+        const ShaderAttribute *ss=stage_io.input.items;
+
+        for(uint i=0;i<stage_io.input.count;i++)
         {
-            if(name==(*ss)->name)
-                return *ss;
+            if(name==ss->name)
+                return ss;
 
             ++ss;
         }
@@ -63,12 +71,13 @@ VK_NAMESPACE_BEGIN
 
     const int ShaderResource::GetInputBinding(const AnsiString &name) const
     {
-        const int count=stage_io.input.GetCount();
-        ShaderAttribute **ss=stage_io.input.GetData();
+        if(stage_io.input.count<=0)return(-1);
 
-        for(int i=0;i<count;i++)
+        const ShaderAttribute *ss=stage_io.input.items;
+
+        for(uint i=0;i<stage_io.input.count;i++)
         {
-            if(name==(*ss)->name)
+            if(name==ss->name)
                 return i;
 
             ++ss;

@@ -4,16 +4,21 @@ SHADERGEN_NAMESPACE_BEGIN
 ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
 {
     stage_flag=flag_bit;
+
+    Init(stage_io);
     
     hgl_zero(push_constant);
 }
 
 namespace
 {
-    bool Find(ObjectList<ShaderAttribute> &ol,const ShaderAttribute *ss)
+    bool Find(ShaderAttributeArray &sad,const ShaderAttribute *ss)
     {
-        for(int i=0;i<ol.GetCount();i++)
-            if(hgl::strcmp(ol[i]->name,ss->name)==0)
+        if(sad.count<=0)
+            return(false);
+
+        for(uint i=0;i<sad.count;i++)
+            if(hgl::strcmp(sad.items[i].name,ss->name)==0)
                 return(true);
 
         return(false);
@@ -26,8 +31,9 @@ bool ShaderDescriptorInfo::AddInput(ShaderAttribute *ss)
 
     if(Find(stage_io.input,ss))return(false);
 
-    ss->location=stage_io.input.GetCount();
-    stage_io.input.Add(ss);
+    ss->location=stage_io.input.count;
+
+    Append(stage_io.input,ss);
     return(true);
 }
 
@@ -37,8 +43,9 @@ bool ShaderDescriptorInfo::AddOutput(ShaderAttribute *ss)
 
     if(Find(stage_io.output,ss))return(false);
     
-    ss->location=stage_io.output.GetCount();
-    stage_io.output.Add(ss);
+    ss->location=stage_io.output.count;
+
+    Append(stage_io.output,ss);
     return(true);
 }
 
@@ -105,20 +112,30 @@ void ShaderDescriptorInfo::DebugOutput(int index)
     
     LOG_INFO(UTF8String::numberOf(index)+": "+name+" shader");
 
-    if(stage_io.input.GetCount()>0)
+    if(stage_io.input.count>0)
     {
-        LOG_INFO("\tStage Input "+UTF8String::numberOf(stage_io.input.GetCount()));
+        LOG_INFO("\tStage Input "+UTF8String::numberOf(stage_io.input.count));
 
-        for(auto *ss:stage_io.input)
+        const ShaderAttribute *ss=stage_io.input.items;
+
+        for(uint i=0;i<stage_io.input.count;i++)
+        {
             LOG_INFO("\t\tlayout(location="+UTF8String::numberOf(ss->location)+") in "+GetShaderAttributeTypename(ss)+"\t"+UTF8String(ss->name));
+            ++ss;
+        }
     }
 
-    if(stage_io.output.GetCount()>0)
+    if(stage_io.output.count>0)
     {
-        LOG_INFO("\tStage Output "+UTF8String::numberOf(stage_io.output.GetCount()));
+        LOG_INFO("\tStage Output "+UTF8String::numberOf(stage_io.output.count));
 
-        for(auto *ss:stage_io.output)
+        const ShaderAttribute *ss=stage_io.output.items;
+
+        for(uint i=0;i<stage_io.output.count;i++)
+        {
             LOG_INFO("\t\tlayout(location="+UTF8String::numberOf(ss->location)+") out "+GetShaderAttributeTypename(ss)+"\t"+UTF8String(ss->name));
+            ++ss;
+        }
     }
     
     if(ubo_list.GetCount()>0)

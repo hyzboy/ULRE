@@ -4,6 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/type/Map.h>
 #include<stdint.h>
+#include<hgl/graph/VKShaderStage.h>
 
 namespace hgl
 {
@@ -17,6 +18,7 @@ namespace hgl
 namespace glsl_compiler
 {
     using namespace hgl;
+    using namespace hgl::graph;
 
     enum class DescriptorType         //等同VkDescriptorType
     {
@@ -35,22 +37,6 @@ namespace glsl_compiler
         ENUM_CLASS_RANGE(SAMPLER,INPUT_ATTACHMENT)
     };
     
-    constexpr size_t SHADER_RESOURCE_NAME_MAX_LENGTH=32;
-
-    struct ShaderAttribute
-    {
-        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
-        uint8_t location;
-        uint8_t basetype;      //现在改对应hgl/graph/VertexAttrib.h中的enum class VertexAttribType::BaseType
-        uint8_t vec_size;
-    };//
-
-    struct ShaderStageData
-    {
-        uint32_t count;
-        ShaderAttribute *items;
-    };
-
     struct Descriptor
     {
         char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
@@ -90,8 +76,7 @@ namespace glsl_compiler
         uint32_t *spv_data;
         uint32_t spv_length;
 
-        ShaderStageData                     input,
-                                            output;
+        ShaderStageIO                       stage_io;
         ShaderDescriptorResource            resource;
         ShaderResourceData<PushConstant>    push_constant;
         ShaderResourceData<SubpassInput>    subpass_input;

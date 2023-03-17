@@ -60,7 +60,7 @@ class VertexShaderModule:public ShaderModule
     uint32_t attr_count;
     VAT *type_list;
     const char **name_list;
-    ShaderAttribute **ssi_list;
+    ShaderAttribute *attr_list;
 
 private:
     
@@ -77,7 +77,7 @@ public:
     const int                                   GetInputBinding(const AnsiString &name)const{return shader_resource->GetInputBinding(name);}
     const ShaderAttribute *                     GetInput       (const AnsiString &name)const{return shader_resource->GetInput(name);}
     const uint                                  GetInputCount  ()                      const{return shader_resource->GetInputCount();}    
-    const ShaderAttributeList &                 GetInputs      ()                      const{return shader_resource->GetInputs();}
+    const ShaderAttributeArray &                 GetInputs      ()                      const{return shader_resource->GetInputs();}
 
     //const uint32_t                              GetAttrCount()const{return attr_count;}
 

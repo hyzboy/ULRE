@@ -11,15 +11,14 @@ void ShaderCreateInfoFragment::UseDefaultMain()
 
     const auto &output_list=sdm->GetShaderStageIO().output;
 
-    const uint count=output_list.GetCount();
-    ShaderAttribute **o=output_list.GetData();
+    const ShaderAttribute *o=output_list.items;
 
-    for(uint i=0;i<count;i++)
+    for(uint i=0;i<output_list.count;i++)
     {
         main_codes+="\t";
-        main_codes+=(*o)->name;
+        main_codes+=o->name;
         main_codes+="=Get";
-        main_codes+=(*o)->name;
+        main_codes+=o->name;
         main_codes+="();\n";
 
         ++o;
@@ -32,17 +31,16 @@ bool ShaderCreateInfoFragment::ProcOutput()
 {
     const auto &output_list=sdm->GetShaderStageIO().output;
 
-    const uint count=output_list.GetCount();
-    ShaderAttribute **o=output_list.GetData();
+    const ShaderAttribute *o=output_list.items;
 
-    for(uint i=0;i<count;i++)
+    for(uint i=0;i<output_list.count;i++)
     {
         final_shader+="layout(location=";
         final_shader+=AnsiString::numberOf(i);
         final_shader+=") out ";
-        final_shader+=GetShaderAttributeTypename(*o);
+        final_shader+=GetShaderAttributeTypename(o);
         final_shader+=" ";
-        final_shader+=(*o)->name;
+        final_shader+=o->name;
         final_shader+=";\n";
 
         ++o;
