@@ -73,7 +73,7 @@ class Semaphore;
 struct PipelineLayoutData;
 class DescriptorSet;
 
-struct ShaderStage;
+struct ShaderAttribute;
 
 class ShaderResource;
 class ShaderModule;

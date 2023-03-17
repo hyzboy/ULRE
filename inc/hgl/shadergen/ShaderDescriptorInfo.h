@@ -19,7 +19,7 @@ using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 */
 class ShaderDescriptorInfo
 {
-    VkShaderStageFlagBits shader_stage;
+    VkShaderStageFlagBits stage_flag;
 
     ShaderStageIO stage_io;
 
@@ -39,8 +39,8 @@ public:
     ShaderDescriptorInfo(VkShaderStageFlagBits);
     ~ShaderDescriptorInfo()=default;
 
-    const VkShaderStageFlagBits GetStageBits()const { return shader_stage; }
-    const AnsiString            GetStageName()const { return AnsiString(GetShaderStageName(shader_stage)); }
+    const VkShaderStageFlagBits         GetStageFlag()const { return stage_flag; }
+    const AnsiString                    GetStageName()const { return AnsiString(GetShaderStageName(stage_flag)); }
 
 public:
 
@@ -57,8 +57,8 @@ public:
 
 public:
 
-    bool AddInput(ShaderStage *);
-    bool AddOutput(ShaderStage *);
+    bool AddInput(ShaderAttribute *);
+    bool AddOutput(ShaderAttribute *);
 
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);

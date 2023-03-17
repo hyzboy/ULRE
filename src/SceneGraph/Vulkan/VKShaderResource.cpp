@@ -10,7 +10,7 @@ VK_NAMESPACE_BEGIN
     {
         ObjectMap<OSString,ShaderResource> shader_resource_by_filename;
 
-        const bool LoadShaderStages(ShaderStageList &ss_list,io::ConstBufferReader &cbr)
+        const bool LoadShaderStages(ShaderAttributeList &ss_list,io::ConstBufferReader &cbr)
         {
             uint count;
 
@@ -19,11 +19,11 @@ VK_NAMESPACE_BEGIN
             if(count<=0)
                 return(false);
 
-            ShaderStage *ss;
+            ShaderAttribute *ss;
 
             for(uint i=0;i<count;i++)
             {
-                ss=new ShaderStage;
+                ss=new ShaderAttribute;
 
                 cbr.Read(ss->location);
                 cbr.CastRead<uint8>(ss->basetype);
@@ -45,10 +45,10 @@ VK_NAMESPACE_BEGIN
         spv_size=size;            
     }
 
-    const ShaderStage *ShaderResource::GetStageInput(const AnsiString &name) const
+    const ShaderAttribute *ShaderResource::GetStageInput(const AnsiString &name) const
     {
-        const int count=stage_inputs.GetCount();
-        ShaderStage **ss=stage_inputs.GetData();
+        const int count=stage_io.input.GetCount();
+        ShaderAttribute **ss=stage_io.input.GetData();
 
         for(int i=0;i<count;i++)
         {
@@ -63,8 +63,8 @@ VK_NAMESPACE_BEGIN
 
     const int ShaderResource::GetStageInputBinding(const AnsiString &name) const
     {
-        const int count=stage_inputs.GetCount();
-        ShaderStage **ss=stage_inputs.GetData();
+        const int count=stage_io.input.GetCount();
+        ShaderAttribute **ss=stage_io.input.GetData();
 
         for(int i=0;i<count;i++)
         {
