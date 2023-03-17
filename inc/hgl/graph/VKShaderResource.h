@@ -23,20 +23,20 @@ public:
     ShaderResource(const VkShaderStageFlagBits &,const void *,const uint32);
     virtual ~ShaderResource()=default;
 
-    const   VkShaderStageFlagBits   GetStageFlagBit     ()const {return stage_flag;}
-    const   char *                  GetStageFlagName    ()const {return GetShaderStageName(stage_flag);}
+    const   VkShaderStageFlagBits   GetStage        ()const {return stage_flag;}
+    const   char *                  GetStageName    ()const {return GetShaderStageName(stage_flag);}
 
-    const   uint32_t *              GetCode             ()const {return (uint32_t *)spv_data;}
-    const   uint32_t                GetCodeSize         ()const {return spv_size;}
+    const   uint32_t *              GetCode         ()const {return (uint32_t *)spv_data;}
+    const   uint32_t                GetCodeSize     ()const {return spv_size;}
 
-            ShaderAttributeList &   GetStageInputs      ()      {return stage_io.input;}
-//          ShaderAttributeList &   GetStageOutputs     ()      {return stage_io.output;}
+            ShaderAttributeList &   GetInputs       ()      {return stage_io.input;}
+//          ShaderAttributeList &   GetOutputs      ()      {return stage_io.output;}
 
-    const   uint                    GetStageInputCount  ()const {return stage_io.input.GetCount();}
-//  const   uint                    GetStageOutputCount ()const {return stage_io.output.GetCount();}
+    const   uint                    GetInputCount   ()const {return stage_io.input.GetCount();}
+//  const   uint                    GetOutputCount  ()const {return stage_io.output.GetCount();}
 
-    const   ShaderAttribute *       GetStageInput       (const AnsiString &)const;
-    const   int                     GetStageInputBinding(const AnsiString &)const;
+    const   ShaderAttribute *       GetInput        (const AnsiString &)const;
+    const   int                     GetInputBinding (const AnsiString &)const;
 };//class ShaderResource
 
 struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>

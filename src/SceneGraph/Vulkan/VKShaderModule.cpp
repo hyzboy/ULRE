@@ -7,7 +7,7 @@ ShaderModule *GPUDevice::CreateShaderModule(ShaderResource *sr)
 {
     if(!sr)return(nullptr);
 
-    PipelineShaderStageCreateInfo *shader_stage=new PipelineShaderStageCreateInfo(sr->GetStageFlagBit());
+    PipelineShaderStageCreateInfo *shader_stage=new PipelineShaderStageCreateInfo(sr->GetStage());
 
     ShaderModuleCreateInfo moduleCreateInfo(sr);
 
@@ -16,7 +16,7 @@ ShaderModule *GPUDevice::CreateShaderModule(ShaderResource *sr)
 
     ShaderModule *sm;
 
-    if(sr->GetStageFlagBit()==VK_SHADER_STAGE_VERTEX_BIT)
+    if(sr->GetStage()==VK_SHADER_STAGE_VERTEX_BIT)
         sm=new VertexShaderModule(attr->device,shader_stage,sr);
     else
         sm=new ShaderModule(attr->device,shader_stage,sr);
@@ -44,7 +44,7 @@ ShaderModule::~ShaderModule()
 
 VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,pssci,sr)
 {
-    const ShaderAttributeList &stage_input_list=sr->GetStageInputs();
+    const ShaderAttributeList &stage_input_list=sr->GetInputs();
 
     attr_count=stage_input_list.GetCount();
     ssi_list=stage_input_list.GetData();
