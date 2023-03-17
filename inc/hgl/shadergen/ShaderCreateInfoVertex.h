@@ -9,7 +9,7 @@ class ShaderCreateInfoVertex:public ShaderCreateInfo
 
 public:
 
-    ShaderCreateInfoVertex(MaterialDescriptorManager *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m){}
+    ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m){}
     ~ShaderCreateInfoVertex()=default;
 
     int AddInput(const graph::VAT &type,const AnsiString &name);

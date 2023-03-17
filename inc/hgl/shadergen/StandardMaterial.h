@@ -1,4 +1,4 @@
-﻿#include<hgl/shadergen/ShaderDescriptorManager.h>
+﻿#include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/CompOperator.h>
 
 SHADERGEN_NAMESPACE_BEGIN
@@ -106,5 +106,6 @@ class MaterialCreateInfo;
 
 Material *CreateMaterial()
 {
+    return nullptr;
 }
 SHADERGEN_NAMESPACE_END

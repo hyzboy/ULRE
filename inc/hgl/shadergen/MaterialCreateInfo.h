@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/shadergen/MaterialDescriptorManager.h>
+#include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
@@ -17,7 +17,7 @@ protected:
 
     uint32_t shader_stage;                                  ///<着色器阶段
 
-    MaterialDescriptorManager mdm;                          ///<材质描述符管理器
+    MaterialDescriptorInfo mdm;                          ///<材质描述符管理器
 
     ShaderCreateInfoMap shader_map;                            ///<着色器列表
 

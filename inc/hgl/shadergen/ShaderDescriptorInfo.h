@@ -5,7 +5,7 @@
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKDescriptorSetType.h>
-#include<hgl/shadergen/MaterialDescriptorManager.h>
+#include<hgl/shadergen/MaterialDescriptorInfo.h>
 
 SHADERGEN_NAMESPACE_BEGIN
 
@@ -17,7 +17,7 @@ using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 /**
 * Shader数据管理器,用于生成正式Shader前的资源统计
 */
-class ShaderDescriptorManager
+class ShaderDescriptorInfo
 {
     VkShaderStageFlagBits shader_stage;
 
@@ -25,7 +25,7 @@ class ShaderDescriptorManager
 
     AnsiStringList                      struct_list;        //用到的结构列表
 
-    //ubo/object在这里以及MaterialDescriptorManager中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
+    //ubo/object在这里以及MaterialDescriptorInfo中均有一份，mdm中的用于产生set/binding号，这里的用于产生shader
     UBODescriptorList                   ubo_list;
     SamplerDescriptorList               sampler_list;
     
@@ -36,8 +36,8 @@ class ShaderDescriptorManager
 
 public:
 
-    ShaderDescriptorManager(VkShaderStageFlagBits);
-    ~ShaderDescriptorManager()=default;
+    ShaderDescriptorInfo(VkShaderStageFlagBits);
+    ~ShaderDescriptorInfo()=default;
 
     const VkShaderStageFlagBits GetStageBits()const { return shader_stage; }
     const AnsiString            GetStageName()const { return AnsiString(GetShaderStageName(shader_stage)); }
@@ -71,5 +71,5 @@ public:
 #ifdef _DEBUG
     void DebugOutput(int);
 #endif//_DEBUG
-};//class ShaderDescriptorManager
+};//class ShaderDescriptorInfo
 SHADERGEN_NAMESPACE_END

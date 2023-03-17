@@ -14,7 +14,7 @@ class ShaderCreateInfoFragment:public ShaderCreateInfo
 
 public:
 
-    ShaderCreateInfoFragment(MaterialDescriptorManager *m):ShaderCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT,m){}
+    ShaderCreateInfoFragment(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT,m){}
     ~ShaderCreateInfoFragment()=default;
 
     void UseDefaultMain();

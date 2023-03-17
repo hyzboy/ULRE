@@ -1,7 +1,7 @@
-#include<hgl/shadergen/ShaderDescriptorManager.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 SHADERGEN_NAMESPACE_BEGIN
-ShaderDescriptorManager::ShaderDescriptorManager(VkShaderStageFlagBits flag_bit)
+ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
 {
     shader_stage=flag_bit;
     
@@ -20,7 +20,7 @@ namespace
     }
 }//namespace
 
-bool ShaderDescriptorManager::AddInput(ShaderStage *ss)
+bool ShaderDescriptorInfo::AddInput(ShaderStage *ss)
 {
     if(!ss)return(false);
 
@@ -31,7 +31,7 @@ bool ShaderDescriptorManager::AddInput(ShaderStage *ss)
     return(true);
 }
 
-bool ShaderDescriptorManager::AddOutput(ShaderStage *ss)
+bool ShaderDescriptorInfo::AddOutput(ShaderStage *ss)
 {
     if(!ss)return(false);
 
@@ -42,7 +42,7 @@ bool ShaderDescriptorManager::AddOutput(ShaderStage *ss)
     return(true);
 }
 
-bool ShaderDescriptorManager::AddUBO(DescriptorSetType type,const UBODescriptor *ubo)
+bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ubo)
 {
     if(!ubo)
         return(false);
@@ -53,7 +53,7 @@ bool ShaderDescriptorManager::AddUBO(DescriptorSetType type,const UBODescriptor 
     return true;
 }
 
-bool ShaderDescriptorManager::AddSampler(DescriptorSetType type,const SamplerDescriptor *sampler)
+bool ShaderDescriptorInfo::AddSampler(DescriptorSetType type,const SamplerDescriptor *sampler)
 {
     if(!sampler)
         return(false);
@@ -62,7 +62,7 @@ bool ShaderDescriptorManager::AddSampler(DescriptorSetType type,const SamplerDes
     return true;
 }
 
-bool ShaderDescriptorManager::AddConstValue(ConstValueDescriptor *sd)
+bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
 {
     if(!sd)return(false);
 
@@ -74,7 +74,7 @@ bool ShaderDescriptorManager::AddConstValue(ConstValueDescriptor *sd)
     return(true);
 }
 
-bool ShaderDescriptorManager::AddSubpassInput(const UTF8String name,uint8_t index)
+bool ShaderDescriptorInfo::AddSubpassInput(const UTF8String name,uint8_t index)
 {
     for(auto *si:subpass_input)
     {
@@ -91,7 +91,7 @@ bool ShaderDescriptorManager::AddSubpassInput(const UTF8String name,uint8_t inde
     return(true);
 }
 
-void ShaderDescriptorManager::SetPushConstant(const UTF8String name,uint8_t offset,uint8_t size)
+void ShaderDescriptorInfo::SetPushConstant(const UTF8String name,uint8_t offset,uint8_t size)
 {
     push_constant.name  =name;
     push_constant.offset=offset;
@@ -99,7 +99,7 @@ void ShaderDescriptorManager::SetPushConstant(const UTF8String name,uint8_t offs
 }
 
 #ifdef _DEBUG
-void ShaderDescriptorManager::DebugOutput(int index)
+void ShaderDescriptorInfo::DebugOutput(int index)
 {
     UTF8String name=GetStageName();
     
