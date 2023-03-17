@@ -2,10 +2,8 @@
 #define HGL_GRAPH_VULKAN_INCLUDE
 
 #include<hgl/math/Math.h>
-#include<hgl/type/List.h>
 #include<hgl/type/String.h>
 #include<hgl/type/Map.h>
-#include<iostream>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/VKPrimitiveType.h>
@@ -186,62 +184,6 @@ inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d,const uint32 depth=1)
     e3d.width   =e2d.width;
     e3d.height  =e2d.height;
     e3d.depth   =depth;
-}
-
-inline void debug_out_vk_version(const uint32_t version)
-{
-    std::cout<<VK_VERSION_MAJOR(version)<<"."
-             <<VK_VERSION_MINOR(version)<<"."
-             <<VK_VERSION_PATCH(version);
-}
-
-template<typename T>
-inline hgl::String<T> VkUUID2String(const uint8_t *pipelineCacheUUID)
-{
-    T *hstr=new T[VK_UUID_SIZE*2+1];
-    
-    DataToLowerHexStr(hstr,pipelineCacheUUID,VK_UUID_SIZE);
-
-    return hgl::String<T>::newOf(hstr,VK_UUID_SIZE*2);
-}
-
-inline void debug_out(const char *front,const hgl::List<VkLayerProperties> &layer_properties)
-{
-    const int property_count=layer_properties.GetCount();
-
-    if(property_count<=0)return;
-
-    const VkLayerProperties *lp=layer_properties.GetData();
-
-    for(int i=0;i<property_count;i++)
-    {
-        std::cout<<front<<" Layer Propertyes ["<<i<<"] : "<<lp->layerName<<" [spec: ";        
-        debug_out_vk_version(lp->specVersion);
-        
-        std::cout<<", impl: ";
-        debug_out_vk_version(lp->implementationVersion);
-
-        std::cout<<"] desc: "<<lp->description<<std::endl;
-        ++lp;
-    }
-}
-
-inline void debug_out(const char *front,const hgl::List<VkExtensionProperties> &extension_properties)
-{
-    const int extension_count=extension_properties.GetCount();
-
-    if(extension_count<=0)return;
-
-    VkExtensionProperties *ep=extension_properties.GetData();
-    for(int i=0;i<extension_count;i++)
-    {
-        std::cout<<front<<" Extension Propertyes ["<<i<<"] : "<<ep->extensionName<<" ver: ";
-        
-        debug_out_vk_version(ep->specVersion);
-        
-        std::cout<<std::endl;
-        ++ep;
-    }
 }
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INCLUDE

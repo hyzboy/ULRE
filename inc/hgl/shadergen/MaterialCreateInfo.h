@@ -17,9 +17,9 @@ protected:
 
     uint32_t shader_stage;                                  ///<着色器阶段
 
-    MaterialDescriptorInfo mdm;                          ///<材质描述符管理器
+    MaterialDescriptorInfo mdm;                             ///<材质描述符管理器
 
-    ShaderCreateInfoMap shader_map;                            ///<着色器列表
+    ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
     ShaderCreateInfoVertex *vert;
     ShaderCreateInfoGeometry *geom;

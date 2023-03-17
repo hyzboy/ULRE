@@ -1,4 +1,5 @@
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKUUID.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/type/StringList.h>
 #include<hgl/type/StrChar.h>
