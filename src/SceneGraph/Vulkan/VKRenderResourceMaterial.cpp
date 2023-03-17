@@ -139,7 +139,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
         if(sr)
         {
-            shader_name=filename+OS_TEXT("?")+ToOSString(sr->GetStageFlagName());
+            shader_name=filename+OS_TEXT("?")+ToOSString(sr->GetStageName());
 
             sm=CreateShaderModule(shader_name,sr);
 

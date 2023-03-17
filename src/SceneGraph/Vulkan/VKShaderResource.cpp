@@ -10,7 +10,7 @@ VK_NAMESPACE_BEGIN
     {
         ObjectMap<OSString,ShaderResource> shader_resource_by_filename;
 
-        const bool LoadShaderStages(ShaderAttributeList &ss_list,io::ConstBufferReader &cbr)
+        const bool LoadShaderStageAttributes(ShaderAttributeList &ss_list,io::ConstBufferReader &cbr)
         {
             uint count;
 
@@ -45,7 +45,7 @@ VK_NAMESPACE_BEGIN
         spv_size=size;            
     }
 
-    const ShaderAttribute *ShaderResource::GetStageInput(const AnsiString &name) const
+    const ShaderAttribute *ShaderResource::GetInput(const AnsiString &name) const
     {
         const int count=stage_io.input.GetCount();
         ShaderAttribute **ss=stage_io.input.GetData();
@@ -61,7 +61,7 @@ VK_NAMESPACE_BEGIN
         return nullptr;
     }
 
-    const int ShaderResource::GetStageInputBinding(const AnsiString &name) const
+    const int ShaderResource::GetInputBinding(const AnsiString &name) const
     {
         const int count=stage_io.input.GetCount();
         ShaderAttribute **ss=stage_io.input.GetData();
@@ -89,8 +89,8 @@ VK_NAMESPACE_BEGIN
 
         cbr.Skip(spv_size);
 
-        LoadShaderStages(sr->GetStageInputs(),cbr);
-//        LoadShaderStages(sr->GetStageOutputs(),cbr);
+        LoadShaderStageAttributes(sr->GetInputs(),cbr);
+//        LoadShaderStageAttributes(sr->GetStageOutputs(),cbr);
 
         return sr;
     }
