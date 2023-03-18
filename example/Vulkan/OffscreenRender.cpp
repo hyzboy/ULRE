@@ -80,7 +80,7 @@ public:
     {
         FramebufferInfo fbi(UPF_RGBA8,OFFSCREEN_SIZE,OFFSCREEN_SIZE);
 
-        os.render_taget=device->CreateRenderTarget(&fbi);
+        os.render_taget=device->CreateRT(&fbi);
         if(!os.render_taget)return(false);
 
         os.command_buffer=device->CreateRenderCommandBuffer();

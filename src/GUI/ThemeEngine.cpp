@@ -27,14 +27,14 @@ namespace hgl
             return GetDefaultThemeEngine();
         }
 
-        RenderTarget *ThemeEngine::CreateRenderTarget(const uint32_t w,const uint32_t h,const VkFormat format)
+        RenderTarget *ThemeEngine::CreateRT(const uint32_t w,const uint32_t h,const VkFormat format)
         {
             const uint width=power_to_2(w);
             const uint height=power_to_2(h);
 
             FramebufferInfo fbi(format,w,h);
 
-            return device->CreateRenderTarget(&fbi);
+            return device->CreateRT(&fbi);
         }
         
         bool ThemeEngine::Registry(Form *f,const VkFormat format)
@@ -46,7 +46,7 @@ namespace hgl
 
             Vector2f size=f->GetSize();
 
-            RenderTarget *rt=CreateRenderTarget(size.x,size.y,format);
+            RenderTarget *rt=CreateRT(size.x,size.y,format);
 
             if(!rt)return(false);
            
@@ -97,7 +97,7 @@ namespace hgl
                 }
             }
                 
-            graph::RenderTarget *rt=CreateRenderTarget(w,h,format);
+            graph::RenderTarget *rt=CreateRT(w,h,format);
 
             if(!rt)return(false);
 

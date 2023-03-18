@@ -8,7 +8,7 @@
 #include"VKPipelineLayoutData.h"
 
 VK_NAMESPACE_BEGIN
-DescriptorSet *GPUDevice::CreateDescriptorSets(const PipelineLayoutData *pld,const DescriptorSetType &type)const
+DescriptorSet *GPUDevice::CreateDS(const PipelineLayoutData *pld,const DescriptorSetType &type)const
 {
     RANGE_CHECK_RETURN_NULLPTR(type);
 
@@ -37,7 +37,7 @@ MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const 
     if(!RangeCheck<DescriptorSetType>(desc_set_type))
         return(nullptr);
 
-    DescriptorSet *ds=CreateDescriptorSets(pld,desc_set_type);
+    DescriptorSet *ds=CreateDS(pld,desc_set_type);
 
     if(!ds)return(nullptr);
 

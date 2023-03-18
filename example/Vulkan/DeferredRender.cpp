@@ -160,7 +160,7 @@ private:
 
         fbi.SetExtent(SCREEN_WIDTH,SCREEN_HEIGHT);
 
-        gbuffer.rt=device->CreateRenderTarget(&fbi);
+        gbuffer.rt=device->CreateRT(&fbi);
 
         if(!gbuffer.rt)return(false);
 

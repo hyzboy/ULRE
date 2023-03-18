@@ -20,7 +20,7 @@ VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExt
     return fb;
 }
 
-Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
+Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
 {
     uint att_count=color_count;
 
@@ -78,7 +78,7 @@ Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,
     return(new Framebuffer(GetDevice(),fbo,extent,rp->GetVkRenderPass(),color_count,depth));
 }
 //
-//Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
+//Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
 //{    
 //    if(!rp)return(nullptr);
 //
@@ -86,27 +86,27 @@ Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView **color_list,
 //
 //    if(color.GetCount()==0&&!depth)return(nullptr);
 //
-//    return CreateFramebuffer(rp,color.GetData(),color.GetCount(),depth);
+//    return CreateFBO(rp,color.GetData(),color.GetCount(),depth);
 //}
 
-Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView *color,ImageView *depth)
+Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView *color,ImageView *depth)
 {
     if(!rp)return(nullptr);
     if(!color&&!depth)return(nullptr);
 
-    return CreateFramebuffer(rp,&color,1,depth);
+    return CreateFBO(rp,&color,1,depth);
 }
 
-Framebuffer *GPUDevice::CreateFramebuffer(RenderPass *rp,ImageView *iv)
+Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView *iv)
 {
     if(!rp)return(nullptr);
     if(!iv)return(nullptr);
 
     if(iv->hasColor())
-        return CreateFramebuffer(rp,&iv,1,nullptr);
+        return CreateFBO(rp,&iv,1,nullptr);
     else
     if(iv->hasDepth())
-        return CreateFramebuffer(rp,nullptr,0,iv);
+        return CreateFBO(rp,nullptr,0,iv);
     else
         return nullptr;
 }

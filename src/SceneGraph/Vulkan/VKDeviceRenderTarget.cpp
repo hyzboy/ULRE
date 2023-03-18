@@ -1,7 +1,7 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
+RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
     if(!rp)return(nullptr);
@@ -29,7 +29,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,RenderPas
 
     Texture2D *depth_texture=(depth_format!=PF_UNDEFINED)?CreateTexture2D(new DepthAttachmentTextureCreateInfo(depth_format,extent)):nullptr;
 
-    Framebuffer *fb=CreateFramebuffer(rp,color_iv_list,color_count,depth_texture?depth_texture->GetImageView():nullptr);
+    Framebuffer *fb=CreateFBO(rp,color_iv_list,color_count,depth_texture?depth_texture->GetImageView():nullptr);
 
     if(fb)
     {
@@ -46,7 +46,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,RenderPas
     return nullptr;
 }
 
-RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uint32_t fence_count)
+RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
 
@@ -54,7 +54,7 @@ RenderTarget *GPUDevice::CreateRenderTarget(const FramebufferInfo *fbi,const uin
 
     if(!rp)return(nullptr);
 
-    return CreateRenderTarget(fbi,rp,fence_count);
+    return CreateRT(fbi,rp,fence_count);
 }
 
 SwapchainRenderTarget *GPUDevice::CreateSwapchainRenderTarget()
