@@ -33,7 +33,7 @@ bool ShaderDescriptorInfo::AddInput(ShaderAttribute *ss)
 
     ss->location=stage_io.input.count;
 
-    Append(stage_io.input,ss);
+    Append(&stage_io.input,ss);
     return(true);
 }
 
@@ -45,7 +45,7 @@ bool ShaderDescriptorInfo::AddOutput(ShaderAttribute *ss)
     
     ss->location=stage_io.output.count;
 
-    Append(stage_io.output,ss);
+    Append(&stage_io.output,ss);
     return(true);
 }
 
