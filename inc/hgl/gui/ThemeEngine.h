@@ -23,7 +23,7 @@ namespace hgl
 
             ObjectMap<Form *,ThemeForm> form_list;
 
-            RenderTarget *CreateRenderTarget(const uint32_t,const uint32_t,const VkFormat);
+            RenderTarget *CreateRT(const uint32_t,const uint32_t,const VkFormat);
 
         protected:
 

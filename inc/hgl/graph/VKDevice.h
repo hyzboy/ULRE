@@ -220,7 +220,7 @@ public: //shader & material
     PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorSets *);
     void Destroy(PipelineLayoutData *);
 
-    DescriptorSet *     CreateDescriptorSets(const PipelineLayoutData *,const DescriptorSetType &type)const;
+    DescriptorSet *     CreateDS(const PipelineLayoutData *,const DescriptorSetType &type)const;
     MaterialParameters *CreateMP(const MaterialDescriptorSets *,const PipelineLayoutData *,const DescriptorSetType &);
     MaterialParameters *CreateMP(Material *,const DescriptorSetType &);
     
@@ -248,21 +248,21 @@ public:
 
 public: //FrameBuffer相关
 
-    Framebuffer *CreateFramebuffer(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
-//    Framebuffer *CreateFramebuffer(RenderPass *,List<ImageView *> &color,ImageView *depth);
-    Framebuffer *CreateFramebuffer(RenderPass *,ImageView *color,ImageView *depth);
-    Framebuffer *CreateFramebuffer(RenderPass *,ImageView *);
+    Framebuffer *CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
+//    Framebuffer *CreateFBO(RenderPass *,List<ImageView *> &color,ImageView *depth);
+    Framebuffer *CreateFBO(RenderPass *,ImageView *color,ImageView *depth);
+    Framebuffer *CreateFBO(RenderPass *,ImageView *);
 
 public:
     
-    RenderTarget *CreateRenderTarget(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
-    RenderTarget *CreateRenderTarget(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
+    RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
+    RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
 
 public:
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
-    TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                  ///<创建一个Tile字体
+    TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class GPUDevice
 
 GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *physical_device=nullptr);

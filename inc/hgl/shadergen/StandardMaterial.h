@@ -101,11 +101,4 @@ public:
         hgl_zero(*this);
     }
 };//struct Standard2DMaterial:public StandardMaterial
-
-class MaterialCreateInfo;
-
-Material *CreateMaterial()
-{
-    return nullptr;
-}
 SHADERGEN_NAMESPACE_END

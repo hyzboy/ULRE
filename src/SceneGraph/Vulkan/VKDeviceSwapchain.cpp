@@ -93,7 +93,7 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
         if(!swapchain->sc_color[i])
             return(false);
 
-        swapchain->render_frame[i]=CreateFramebuffer(   device_render_pass,
+        swapchain->render_frame[i]=CreateFBO(   device_render_pass,
                                                         swapchain->sc_color[i]->GetImageView(),
                                                         swapchain->sc_depth->GetImageView());
     }

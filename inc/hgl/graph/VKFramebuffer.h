@@ -35,5 +35,7 @@ public:
     const   uint32_t        GetColorCount       ()const{return color_count;}                        ///<取得颜色成分数量
     const   bool            HasDepth            ()const{return has_depth;}                          ///<是否包含深度成分
 };//class Framebuffer
+
+using FBO=Framebuffer;
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
