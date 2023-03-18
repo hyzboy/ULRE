@@ -10,7 +10,7 @@ VK_NAMESPACE_BEGIN
     {
         ObjectMap<OSString,ShaderResource> shader_resource_by_filename;
 
-        const bool LoadShaderStageAttributes(ShaderAttributeArray &ss_list,io::ConstBufferReader &cbr)
+        const bool LoadShaderStageAttributes(ShaderAttributeArray &sa_array,io::ConstBufferReader &cbr)
         {
             uint count;
 
@@ -19,9 +19,9 @@ VK_NAMESPACE_BEGIN
             if(count<=0)
                 return(false);
 
-            Init(ss_list,count);
+            Init(&sa_array,count);
 
-            ShaderAttribute *ss=ss_list.items;
+            ShaderAttribute *ss=sa_array.items;
 
             for(uint i=0;i<count;i++)
             {
