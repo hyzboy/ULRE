@@ -42,9 +42,9 @@ public:
     bool hasFragment()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
 //    bool hasCompute ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
 
-    ShaderCreateInfoVertex *   GetVS(){return vert;}
-    ShaderCreateInfoGeometry * GetGS(){return geom;}
-    ShaderCreateInfoFragment * GetFS(){return frag;}
+    const ShaderCreateInfoVertex *   GetVS()const{return vert;}
+    const ShaderCreateInfoGeometry * GetGS()const{return geom;}
+    const ShaderCreateInfoFragment * GetFS()const{return frag;}
 
 public:
 
