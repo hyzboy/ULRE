@@ -8,9 +8,7 @@ MaterialInstance *GPUDevice::CreateMI(Material *mtl,const VILConfig *vil_cfg)
 {
     if(!mtl)return(nullptr);
 
-    VertexShaderModule *vsm=mtl->GetVertexShaderModule();
-
-    VIL *vil=vsm->CreateVIL(vil_cfg);
+    VIL *vil=mtl->CreateVIL(vil_cfg);
 
     if(!vil)return(nullptr);
 

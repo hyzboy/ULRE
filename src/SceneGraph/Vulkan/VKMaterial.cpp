@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKVertexInput.h>
 #include"VKPipelineLayoutData.h"
 VK_NAMESPACE_BEGIN
 MaterialData::~MaterialData()
@@ -11,6 +12,8 @@ MaterialData::~MaterialData()
 
     delete shader_maps;
     SAFE_CLEAR(mds);
+
+    delete vertex_input;
 }
 
 Material::~Material()
@@ -27,5 +30,20 @@ const VkPipelineLayout Material::GetPipelineLayout()const
 const bool Material::hasSet(const DescriptorSetType &dst)const
 {
     return data->mds->hasSet(dst);
+}
+
+VIL *Material::CreateVIL(const VILConfig *format_map)
+{
+    return data->vertex_input->CreateVIL(format_map);
+}
+
+bool Material::Release(VIL *vil)
+{
+    return data->vertex_input->Release(vil);
+}
+
+const uint Material::GetVILCount()
+{
+    return data->vertex_input->GetInstanceCount();
 }
 VK_NAMESPACE_END

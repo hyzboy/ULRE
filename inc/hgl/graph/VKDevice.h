@@ -224,11 +224,9 @@ public: //shader & material
     MaterialParameters *CreateMP(const MaterialDescriptorSets *,const PipelineLayoutData *,const DescriptorSetType &);
     MaterialParameters *CreateMP(Material *,const DescriptorSetType &);
     
-    ShaderModule *CreateShaderModule(ShaderResource *);
+    ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const void *,const size_t);
     
-    Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *);
-    Material *CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *);
-    Material *CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *);
+    Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *,VertexInput *);
 
     MaterialInstance *CreateMI(Material *,const VILConfig *vil_cfg=nullptr);
 

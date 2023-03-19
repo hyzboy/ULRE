@@ -77,16 +77,11 @@ void CreateShaderStageList(List<VkPipelineShaderStageCreateInfo> &shader_stage_l
     }
 }
 
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *mds)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *mds,VertexInput *vi)
 {
     const int shader_count=shader_maps->GetCount();
 
-    if(shader_count<2)
-        return(nullptr);
-
-    const ShaderModule *vsm;
-
-    if(!shader_maps->Get(VK_SHADER_STAGE_VERTEX_BIT,vsm))
+    if(shader_count<1)
         return(nullptr);
 
     PipelineLayoutData *pld=CreatePipelineLayoutData(mds);
@@ -103,7 +98,7 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     data->name          =mtl_name;
     data->shader_maps   =shader_maps;
     data->mds           =mds;
-    data->vertex_sm     =(VertexShaderModule *)vsm;
+    data->vertex_input  =vi;
 
     CreateShaderStageList(data->shader_stage_list,shader_maps);
 
@@ -123,41 +118,5 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
         hgl_zero(data->mp_array);
 
     return(new Material(data));
-}
-
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *mds)
-{
-    if(!vertex_shader_module||!fragment_shader_module)
-        return(nullptr);
-
-    if(!vertex_shader_module->IsVertex())return(nullptr);
-    if(!fragment_shader_module->IsFragment())return(nullptr);
-
-    ShaderModuleMap *smm=new ShaderModuleMap;
-
-    smm->Add(vertex_shader_module);
-    smm->Add(fragment_shader_module);
-
-    return CreateMaterial(mtl_name,smm,mds);
-}
-
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,const VertexShaderModule *vertex_shader_module,const ShaderModule *geometry_shader_module,const ShaderModule *fragment_shader_module,MaterialDescriptorSets *mds)
-{
-    if(!vertex_shader_module
-     ||!geometry_shader_module
-     ||!fragment_shader_module)
-        return(nullptr);
-
-    if(!vertex_shader_module->IsVertex())return(nullptr);
-    if(!geometry_shader_module->IsGeometry())return(nullptr);
-    if(!fragment_shader_module->IsFragment())return(nullptr);
-
-    ShaderModuleMap *smm=new ShaderModuleMap;
-
-    smm->Add(vertex_shader_module);
-    smm->Add(geometry_shader_module);
-    smm->Add(fragment_shader_module);
-
-    return CreateMaterial(mtl_name,smm,mds);
 }
 VK_NAMESPACE_END

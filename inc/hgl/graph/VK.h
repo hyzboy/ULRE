@@ -75,7 +75,6 @@ struct ShaderAttribute;
 
 class ShaderResource;
 class ShaderModule;
-class VertexShaderModule;
 class ShaderModuleMap;
 class MaterialDescriptorSets;
 
@@ -86,39 +85,9 @@ struct PipelineData;
 enum class InlinePipeline;
 class Pipeline;
 
-struct VAConfig
-{
-    VkFormat format;
-    bool instance;
-
-public:
-
-    VAConfig()
-    {
-        format=PF_UNDEFINED;
-        instance=false;
-    }
-
-    VAConfig(const VkFormat fmt,bool inst=false)
-    {
-        format=fmt;
-        instance=inst;
-    }
-
-    CompOperatorMemcmp(const VAConfig &);
-};
-
-class VILConfig:public Map<AnsiString,VAConfig>
-{
-public:
-
-    using Map<AnsiString,VAConfig>::Map;
-
-    bool Add(const AnsiString &name,const VkFormat fmt,const bool inst=false)
-    {
-        return Map<AnsiString,VAConfig>::Add(name,VAConfig(fmt,inst));
-    }
-};
+struct VAConfig;
+class VILConfig;
+class VertexInput;
 
 class VertexInputLayout;
 using VIL=VertexInputLayout;

@@ -3,135 +3,42 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-ShaderModule *GPUDevice::CreateShaderModule(ShaderResource *sr)
+struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
 {
-    if(!sr)return(nullptr);
+public:
 
-    PipelineShaderStageCreateInfo *shader_stage=new PipelineShaderStageCreateInfo(sr->GetStage());
+    ShaderModuleCreateInfo(const void *spv_data,const size_t spv_size)
+    {
+        codeSize=spv_size;
+        pCode   =(const uint32_t *)spv_data;
+    }
+};//struct ShaderModuleCreateInfo
 
-    ShaderModuleCreateInfo moduleCreateInfo(sr);
+ShaderModule *GPUDevice::CreateShaderModule(VkShaderStageFlagBits shader_stage,const void *spv_data,const size_t spv_size)
+{
+    if(!spv_data||spv_size<4)return(nullptr);
 
-    if(vkCreateShaderModule(attr->device,&moduleCreateInfo,nullptr,&(shader_stage->module))!=VK_SUCCESS)
+    PipelineShaderStageCreateInfo *pss_ci=new PipelineShaderStageCreateInfo(shader_stage);
+
+    ShaderModuleCreateInfo moduleCreateInfo(spv_data,spv_size);
+
+    if(vkCreateShaderModule(attr->device,&moduleCreateInfo,nullptr,&(pss_ci->module))!=VK_SUCCESS)
         return(nullptr);
 
-    ShaderModule *sm;
-
-    if(sr->GetStage()==VK_SHADER_STAGE_VERTEX_BIT)
-        sm=new VertexShaderModule(attr->device,shader_stage,sr);
-    else
-        sm=new ShaderModule(attr->device,shader_stage,sr);
-
-    return sm;
+    return(new ShaderModule(attr->device,pss_ci));
 }
 
-ShaderModule::ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *sci,ShaderResource *sr)
+ShaderModule::ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *sci)
 {
     device=dev;
     ref_count=0;
 
     stage_create_info=sci;
-
-    shader_resource=sr;
 }
 
 ShaderModule::~ShaderModule()
 {
     vkDestroyShaderModule(device,stage_create_info->module,nullptr);
     //这里不用删除stage_create_info，材质中会删除的
-
-    SAFE_CLEAR(shader_resource);
-}
-
-VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr):ShaderModule(dev,pssci,sr)
-{
-    const ShaderAttributeArray &stage_input_list=sr->GetInputs();
-
-    attr_count=stage_input_list.count;
-    shader_attr_list=stage_input_list.items;
-    name_list=new const char *[attr_count];
-    type_list=new VAT[attr_count];
-    
-    for(uint i=0;i<attr_count;i++)
-    {
-        name_list[i]            =shader_attr_list[i].name;
-        type_list[i].basetype   =VATBaseType(shader_attr_list[i].basetype);
-        type_list[i].vec_size   =shader_attr_list[i].vec_size;
-    }
-}
-
-VertexShaderModule::~VertexShaderModule()
-{
-    if(vil_sets.GetCount()>0)
-    {
-        //还有在用的，这是个错误
-    }
-
-    delete[] type_list;
-    delete[] name_list;
-}
-
-VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
-{
-    VkVertexInputBindingDescription *binding_list=new VkVertexInputBindingDescription[attr_count];
-    VkVertexInputAttributeDescription *attribute_list=new VkVertexInputAttributeDescription[attr_count];
-
-    VkVertexInputBindingDescription *bind_desc=binding_list;
-    VkVertexInputAttributeDescription *attr_desc=attribute_list;
-
-    const ShaderAttribute *sa=shader_attr_list;
-    VAConfig vac;
-
-    for(uint i=0;i<attr_count;i++)
-    {
-        //binding对应的是第几个数据输入流
-        //实际使用一个binding可以绑定多个attrib
-        //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
-        //但在我们的设计中，仅支持一个流传递一个attrib
-
-        attr_desc->binding   =i;
-        attr_desc->location  =sa->location;                 //此值对应shader中的layout(location=
-        
-        attr_desc->offset    =0;
-
-        bind_desc->binding   =i;                            //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
-                                                            //在Renderable类中，buffer_list必需严格按照本此binding为序列号排列
-
-        if(!cfg||!cfg->Get(sa->name,vac))
-        {
-            attr_desc->format    =GetVulkanFormat(sa);
-
-            //if(memcmp((*sa)->name.c_str(),"Inst_",5)==0)                //不可以使用CaseComp("Inst_",5)会被认为是比较一个5字长的字符串，而不是只比较5个字符
-            //    bind_desc->inputRate =VK_VERTEX_INPUT_RATE_INSTANCE;
-            //else
-                bind_desc->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
-        }
-        else
-        {
-            if(vac.format!=PF_UNDEFINED)
-                attr_desc->format    =vac.format;
-            else                
-                attr_desc->format    =GetVulkanFormat(sa);
-
-            bind_desc->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
-        }
-
-        bind_desc->stride    =GetStrideByFormat(attr_desc->format);
-
-        ++attr_desc;
-        ++bind_desc;
-
-        ++sa;
-    }
-
-    VIL *vil=new VIL(attr_count,name_list,type_list,binding_list,attribute_list);
-
-    vil_sets.Add(vil);
-
-    return(vil);
-}
-
-bool VertexShaderModule::Release(VIL *vil)
-{
-    return vil_sets.Delete(vil);
 }
 VK_NAMESPACE_END

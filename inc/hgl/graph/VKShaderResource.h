@@ -38,16 +38,5 @@ public:
     const   ShaderAttribute *       GetInput        (const AnsiString &)const;
     const   int                     GetInputBinding (const AnsiString &)const;
 };//class ShaderResource
-
-struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO>
-{
-public:
-
-    ShaderModuleCreateInfo(ShaderResource *sr)
-    {
-        codeSize=sr->GetCodeSize();
-        pCode   =sr->GetCode();
-    }
-};//struct ShaderModuleCreateInfo
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SHADER_RESOURCE_INCLUDE

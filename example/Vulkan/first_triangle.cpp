@@ -6,6 +6,7 @@
 #include<hgl/math/HalfFloat.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
+#include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
 
 using namespace hgl;
