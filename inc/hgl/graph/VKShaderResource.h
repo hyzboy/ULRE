@@ -13,14 +13,14 @@ class ShaderResource
 {
     VkShaderStageFlagBits stage_flag;
 
-    const void *spv_data;
+    const uint32_t *spv_data;
     uint32 spv_size;
 
     ShaderStageIO stage_io;
 
 public:
 
-    ShaderResource(const VkShaderStageFlagBits &,const void *,const uint32);
+    ShaderResource(const VkShaderStageFlagBits &,const uint32_t *,const uint32);
     virtual ~ShaderResource();
 
     const   VkShaderStageFlagBits   GetStage        ()const {return stage_flag;}

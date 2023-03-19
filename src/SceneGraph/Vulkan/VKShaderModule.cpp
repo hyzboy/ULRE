@@ -7,14 +7,14 @@ struct ShaderModuleCreateInfo:public vkstruct_flag<VkShaderModuleCreateInfo,VK_S
 {
 public:
 
-    ShaderModuleCreateInfo(const void *spv_data,const size_t spv_size)
+    ShaderModuleCreateInfo(const uint32_t *spv_data,const size_t spv_size)
     {
         codeSize=spv_size;
-        pCode   =(const uint32_t *)spv_data;
+        pCode   =spv_data;
     }
 };//struct ShaderModuleCreateInfo
 
-ShaderModule *GPUDevice::CreateShaderModule(VkShaderStageFlagBits shader_stage,const void *spv_data,const size_t spv_size)
+ShaderModule *GPUDevice::CreateShaderModule(VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size)
 {
     if(!spv_data||spv_size<4)return(nullptr);
 

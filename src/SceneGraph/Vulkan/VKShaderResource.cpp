@@ -38,7 +38,7 @@ VK_NAMESPACE_BEGIN
         }
     }//namespcae
 
-    ShaderResource::ShaderResource(const VkShaderStageFlagBits &flag,const void *sd,const uint32 size)
+    ShaderResource::ShaderResource(const VkShaderStageFlagBits &flag,const uint32_t *sd,const uint32 size)
     {
         stage_flag=flag;
         spv_data=sd;
@@ -94,7 +94,7 @@ VK_NAMESPACE_BEGIN
         cbr.CastRead<uint32>(flag);
         cbr.Read(spv_size);
 
-        ShaderResource *sr=new ShaderResource(flag,cbr.CurPointer(),spv_size);
+        ShaderResource *sr=new ShaderResource(flag,(const uint32_t *)cbr.CurPointer(),spv_size);
 
         cbr.Skip(spv_size);
 
