@@ -177,6 +177,8 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
             LoadShaderDescriptor(cbr,sd_list,count,ver);
         
             mds=new MaterialDescriptorSets(mtl_name,sd_list,count);
+
+            delete[] sd_list;
         }
     }
 
