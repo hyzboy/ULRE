@@ -3,6 +3,7 @@
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/color/Color.h>
 
 namespace hgl

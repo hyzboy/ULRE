@@ -4,6 +4,7 @@
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKShaderResource.h>
 #include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKVertexInput.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/io/ConstBufferReader.h>
@@ -11,18 +12,19 @@
 
 VK_NAMESPACE_BEGIN
 
-const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,ShaderResource *shader_resource)
+const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,VkShaderStageFlagBits shader_stage,const void *spv_data,const size_t spv_size)
 {
     if(!device)return(nullptr);
     if(filename.IsEmpty())return(nullptr);
-    if(!shader_resource)return(nullptr);
+    if(!spv_data)return(nullptr);
+    if(spv_size<4)return(nullptr);
 
     ShaderModule *sm;
 
     if(shader_module_by_name.Get(filename,sm))
         return sm;
 
-    sm=device->CreateShaderModule(shader_resource);
+    sm=device->CreateShaderModule(shader_stage,spv_data,spv_size);
 
     shader_module_by_name.Add(filename,sm);
 
@@ -128,6 +130,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     
     bool result=true;
     ShaderModuleMap *smm=new ShaderModuleMap;
+    VertexInput *vertex_input=nullptr;
 
     OSString shader_name;
 
@@ -142,12 +145,17 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         {
             shader_name=filename+OS_TEXT("?")+ToOSString(sr->GetStageName());
 
-            sm=CreateShaderModule(shader_name,sr);
+            sm=CreateShaderModule(shader_name,sr->GetStage(),sr->GetCode(),sr->GetCodeSize());
 
             if(sm)
             {
                 if(smm->Add(sm))
+                {
+                    if(sr->GetStage()==VK_SHADER_STAGE_VERTEX_BIT)
+                        vertex_input=new VertexInput(sr->GetInputs());
+
                     continue;
+                }
             }
         }   
     
@@ -172,9 +180,9 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         }
     }
 
-    if(result)
+    if(result&&vertex_input)
     {
-        mtl=device->CreateMaterial(mtl_name,smm,mds);
+        mtl=device->CreateMaterial(mtl_name,smm,mds,vertex_input);
         Add(mtl);
     }
     else

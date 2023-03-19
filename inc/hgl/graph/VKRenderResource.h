@@ -88,7 +88,7 @@ public: // VBO/VAO
 
 public: //Material
 
-    const ShaderModule *CreateShaderModule(const OSString &filename,ShaderResource *shader_resource);
+    const ShaderModule *CreateShaderModule(const OSString &filename,VkShaderStageFlagBits shader_stage,const void *spv_data,const size_t spv_size);
     
     Material *          CreateMaterial(const OSString &);
     Material *          CreateMaterial(const hgl::shadergen::MaterialCreateInfo *);

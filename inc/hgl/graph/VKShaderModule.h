@@ -2,7 +2,6 @@
 #define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKShaderResource.h>
 #include<hgl/graph/VKVertexInputLayout.h>
 #include<hgl/type/SortedSets.h>
 
@@ -21,13 +20,9 @@ private:
 
     VkPipelineShaderStageCreateInfo *stage_create_info;
 
-protected:
-
-    ShaderResource *shader_resource;
-
 public:
 
-    ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *);
+    ShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci);
     virtual ~ShaderModule();
 
     const int IncRef(){return ++ref_count;}
@@ -50,48 +45,5 @@ public:
 
     operator VkShaderModule                                 ()const{return stage_create_info->module;}
 };//class ShaderModule
-
-/**
- * 顶点Shader模块<br>
- * 由于顶点shader在最前方执行，所以它比其它shader多了VertexInput的数据
- */
-class VertexShaderModule:public ShaderModule
-{
-    uint32_t attr_count;
-    VAT *type_list;
-    const char **name_list;
-    ShaderAttribute *shader_attr_list;
-
-private:
-    
-    SortedSets<VIL *> vil_sets;
-
-public:
-
-    VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateInfo *pssci,ShaderResource *sr);
-    virtual ~VertexShaderModule();
-
-    /**
-     * 获取输入流绑定点，需要注意的时，这里获取的binding并非是shader中的binding/location，而是绑定顺序的序列号。对应vkCmdBindVertexBuffer的缓冲区序列号
-     */
-    const int                                   GetInputBinding(const AnsiString &name)const{return shader_resource->GetInputBinding(name);}
-    const ShaderAttribute *                     GetInput       (const AnsiString &name)const{return shader_resource->GetInput(name);}
-    const uint                                  GetInputCount  ()                      const{return shader_resource->GetInputCount();}    
-    const ShaderAttributeArray &                GetInputs      ()                      const{return shader_resource->GetInputs();}
-
-    //const uint32_t                              GetAttrCount()const{return attr_count;}
-
-    //const VkVertexInputBindingDescription *     GetBindList ()const{return binding_list;}
-    //const VkVertexInputAttributeDescription *   GetAttrList ()const{return attribute_list;}
-
-    //const VkVertexInputBindingDescription *     GetBind     (const uint32_t index)const{return (index>=attr_count?nullptr:binding_list+index);}
-    //const VkVertexInputAttributeDescription *   GetAttr     (const uint32_t index)const{return (index>=attr_count?nullptr:attribute_list+index);}
-
-public:
-
-    VIL *                                       CreateVIL(const VILConfig *format_map=nullptr);
-    bool                                        Release(VIL *);
-    const uint32_t                              GetInstanceCount()const{return vil_sets.GetCount();}
-};//class VertexShaderModule:public ShaderModule
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE

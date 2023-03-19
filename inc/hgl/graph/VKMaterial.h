@@ -15,10 +15,11 @@ struct MaterialData
 {
     UTF8String name;
 
-    ShaderModuleMap *shader_maps;
-    MaterialDescriptorSets *mds;
+    VertexInput *vertex_input;
 
-    VertexShaderModule *vertex_sm;
+    ShaderModuleMap *shader_maps;
+
+    MaterialDescriptorSets *mds;
 
     ShaderStageCreateInfoList shader_stage_list;
 
@@ -54,7 +55,7 @@ public:
 
     const   UTF8String &                        GetName                 ()const{return data->name;}
 
-            VertexShaderModule *                GetVertexShaderModule   ()     {return data->vertex_sm;}
+    const   VertexInput *                       GetVertexInput          ()const{return data->vertex_input;}
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return data->shader_stage_list;}
 
@@ -72,6 +73,10 @@ public:
             }
 
     const   bool                                hasSet                  (const DescriptorSetType &type)const;
+
+            VIL *                               CreateVIL(const VILConfig *format_map=nullptr);
+            bool                                Release(VIL *);
+    const   uint                                GetVILCount();
 };//class Material
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
