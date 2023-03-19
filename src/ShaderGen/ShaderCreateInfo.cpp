@@ -8,10 +8,15 @@ ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorIn
     shader_stage=ss;
     mdm=m;
     sdm=new ShaderDescriptorInfo(ss);
+
+    spv_data=nullptr;
 }
 
 ShaderCreateInfo::~ShaderCreateInfo()
 {
+    if(spv_data)
+        glsl_compiler::Free(spv_data);
+
     delete sdm;
 }
 
@@ -269,13 +274,21 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
 bool ShaderCreateInfo::CompileToSPV()
 {
-    glsl_compiler::SPVData *spv_data=glsl_compiler::Compile(shader_stage,final_shader.c_str());
+    spv_data=glsl_compiler::Compile(shader_stage,final_shader.c_str());
 
     if(!spv_data)
         return(false);
     
-    glsl_compiler::Free(spv_data);
-
     return(true);
+}
+
+const uint32_t *ShaderCreateInfo::GetCode()const
+{
+    return spv_data?spv_data->spv_data:nullptr;
+}
+
+const size_t ShaderCreateInfo::GetCodeSize()const
+{
+    return spv_data?spv_data->spv_length:0;
 }
 SHADERGEN_NAMESPACE_END
