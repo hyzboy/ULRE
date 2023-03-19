@@ -47,15 +47,15 @@ VertexShaderModule::VertexShaderModule(VkDevice dev,VkPipelineShaderStageCreateI
     const ShaderAttributeArray &stage_input_list=sr->GetInputs();
 
     attr_count=stage_input_list.count;
-    attr_list=stage_input_list.items;
+    shader_attr_list=stage_input_list.items;
     name_list=new const char *[attr_count];
     type_list=new VAT[attr_count];
     
     for(uint i=0;i<attr_count;i++)
     {
-        name_list[i]            =attr_list[i].name;
-        type_list[i].basetype   =VATBaseType(attr_list[i].basetype);
-        type_list[i].vec_size   =attr_list[i].vec_size;
+        name_list[i]            =shader_attr_list[i].name;
+        type_list[i].basetype   =VATBaseType(shader_attr_list[i].basetype);
+        type_list[i].vec_size   =shader_attr_list[i].vec_size;
     }
 }
 
@@ -75,10 +75,10 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
     VkVertexInputBindingDescription *binding_list=new VkVertexInputBindingDescription[attr_count];
     VkVertexInputAttributeDescription *attribute_list=new VkVertexInputAttributeDescription[attr_count];
 
-    VkVertexInputBindingDescription *bind=binding_list;
-    VkVertexInputAttributeDescription *attr=attribute_list;
+    VkVertexInputBindingDescription *bind_desc=binding_list;
+    VkVertexInputAttributeDescription *attr_desc=attribute_list;
 
-    const ShaderAttribute *si=attr_list;
+    const ShaderAttribute *sa=shader_attr_list;
     VAConfig vac;
 
     for(uint i=0;i<attr_count;i++)
@@ -88,39 +88,39 @@ VIL *VertexShaderModule::CreateVIL(const VILConfig *cfg)
         //比如在一个流中传递{pos,color}这样两个数据，就需要两个attrib
         //但在我们的设计中，仅支持一个流传递一个attrib
 
-        attr->binding   =i;
-        attr->location  =si->location;               //此值对应shader中的layout(location=
+        attr_desc->binding   =i;
+        attr_desc->location  =sa->location;                 //此值对应shader中的layout(location=
         
-        attr->offset    =0;
+        attr_desc->offset    =0;
 
-        bind->binding   =i;                             //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
-                                                        //在Renderable类中，buffer_list必需严格按照本此binding为序列号排列
+        bind_desc->binding   =i;                            //binding对应在vkCmdBindVertexBuffer中设置的缓冲区的序列号，所以这个数字必须从0开始，而且紧密排列。
+                                                            //在Renderable类中，buffer_list必需严格按照本此binding为序列号排列
 
-        if(!cfg||!cfg->Get(si->name,vac))
+        if(!cfg||!cfg->Get(sa->name,vac))
         {
-            attr->format    =GetVulkanFormat(si);
+            attr_desc->format    =GetVulkanFormat(sa);
 
-            //if(memcmp((*si)->name.c_str(),"Inst_",5)==0)                //不可以使用CaseComp("Inst_",5)会被认为是比较一个5字长的字符串，而不是只比较5个字符
-            //    bind->inputRate =VK_VERTEX_INPUT_RATE_INSTANCE;
+            //if(memcmp((*sa)->name.c_str(),"Inst_",5)==0)                //不可以使用CaseComp("Inst_",5)会被认为是比较一个5字长的字符串，而不是只比较5个字符
+            //    bind_desc->inputRate =VK_VERTEX_INPUT_RATE_INSTANCE;
             //else
-                bind->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
+                bind_desc->inputRate =VK_VERTEX_INPUT_RATE_VERTEX;
         }
         else
         {
             if(vac.format!=PF_UNDEFINED)
-                attr->format    =vac.format;
+                attr_desc->format    =vac.format;
             else                
-                attr->format    =GetVulkanFormat(si);
+                attr_desc->format    =GetVulkanFormat(sa);
 
-            bind->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
+            bind_desc->inputRate =vac.instance?VK_VERTEX_INPUT_RATE_INSTANCE:VK_VERTEX_INPUT_RATE_VERTEX;
         }
 
-        bind->stride    =GetStrideByFormat(attr->format);
+        bind_desc->stride    =GetStrideByFormat(attr_desc->format);
 
-        ++attr;
-        ++bind;
+        ++attr_desc;
+        ++bind_desc;
 
-        ++si;
+        ++sa;
     }
 
     VIL *vil=new VIL(attr_count,name_list,type_list,binding_list,attribute_list);
