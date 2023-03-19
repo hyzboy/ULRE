@@ -3,6 +3,12 @@
 
 #include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/graph/VertexAttrib.h>
+
+namespace glsl_compiler
+{
+    struct SPVData;
+}
+
 SHADERGEN_NAMESPACE_BEGIN
 
 class MaterialDescriptorInfo;
@@ -23,6 +29,8 @@ protected:
     AnsiString output_struct;
 
     AnsiString final_shader;
+
+    glsl_compiler::SPVData *spv_data;
 
 protected:
 
@@ -63,6 +71,9 @@ public:
     const AnsiString &GetShaderSource()const{return final_shader;}
 
     bool CreateShader(ShaderCreateInfo *);
+
+    const uint32_t *GetCode()const;
+    const size_t GetCodeSize()const;
 };//class ShaderCreateInfo
 SHADERGEN_NAMESPACE_END
 #endif//HGL_SHADER_CREATE_INFO_INCLUDE
