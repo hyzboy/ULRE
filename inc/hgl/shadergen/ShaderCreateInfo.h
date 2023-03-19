@@ -72,8 +72,8 @@ public:
 
     bool CreateShader(ShaderCreateInfo *);
 
-    const uint32_t *GetCode()const;
-    const size_t GetCodeSize()const;
+    const uint32_t *GetSPVData()const;
+    const size_t GetSPVSize()const;
 };//class ShaderCreateInfo
 SHADERGEN_NAMESPACE_END
 #endif//HGL_SHADER_CREATE_INFO_INCLUDE
