@@ -2,6 +2,7 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKShaderStage.h>
+#include"GLSLCompiler.h"
 
 SHADERGEN_NAMESPACE_BEGIN
 
@@ -58,5 +59,10 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
     }
 
     return(true);
+}
+
+const hgl::graph::ShaderAttributeArray &ShaderCreateInfoVertex::GetInput()const
+{
+    return spv_data->stage_io.input;
 }
 SHADERGEN_NAMESPACE_END
