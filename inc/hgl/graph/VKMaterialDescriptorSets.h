@@ -12,8 +12,8 @@ class MaterialDescriptorSets
     ShaderDescriptor *sd_list;
     uint sd_count;
 
-    ShaderDescriptorList sd_list_by_desc_type[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
-    ShaderDescriptorList sd_list_by_set_type[size_t(DescriptorSetType::RANGE_SIZE)];
+    //ShaderDescriptorList sd_list_by_set_type[size_t(DescriptorSetType::RANGE_SIZE)];
+    bool set_has_desc[size_t(DescriptorSetType::RANGE_SIZE)];
 
 //    Map<AnsiString,ShaderDescriptor *> sd_by_name;
     Map<AnsiString,int> binding_map[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
@@ -40,9 +40,10 @@ public:
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 
-    const ShaderDescriptorList &GetDescriptorList(const DescriptorSetType &type)const{return sd_list_by_set_type[size_t(type)];}
+    //const ShaderDescriptorList &GetDescriptorList(const DescriptorSetType &type)const{return sd_list_by_set_type[size_t(type)];}
 
-    const bool hasSet(const DescriptorSetType &type)const{return !sd_list_by_set_type[size_t(type)].IsEmpty();}
+    const bool hasSet(const DescriptorSetType &type)const{return set_has_desc[size_t(type)];}
+//!sd_list_by_set_type[size_t(type)].IsEmpty();}
 };//class MaterialDescriptorSets
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE

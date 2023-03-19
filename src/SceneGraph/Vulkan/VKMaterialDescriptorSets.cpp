@@ -21,6 +21,10 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
 
     if(sd_count<=0)return;
 
+    ShaderDescriptorList sd_list_by_desc_type[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
+
+    hgl_zero(set_has_desc);
+
     {
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
@@ -42,7 +46,8 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
 
                 ++dsl_ci[size_t(sp->set_type)].bindingCount;
 
-                sd_list_by_set_type[size_t(sp->set_type)].Add(sp);
+                //sd_list_by_set_type[size_t(sp->set_type)].Add(sp);
+                set_has_desc[size_t(sp->set_type)]=true;
 
                 ++sp;
             }

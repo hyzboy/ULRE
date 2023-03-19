@@ -12,7 +12,7 @@
 
 VK_NAMESPACE_BEGIN
 
-const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,VkShaderStageFlagBits shader_stage,const void *spv_data,const size_t spv_size)
+const ShaderModule *RenderResource::CreateShaderModule(const OSString &filename,VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size)
 {
     if(!device)return(nullptr);
     if(filename.IsEmpty())return(nullptr);
@@ -198,14 +198,57 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
 Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInfo *mci)
 {
-    SHADERGEN_NAMESPACE_USING
-
     if(!mci)
         return(nullptr);
 
-    const uint count=GetShaderCountByBits(mci->GetShaderStage());
-    ShaderModuleMap *smm=new ShaderModuleMap;
+    SHADERGEN_NAMESPACE_USING
 
+    const uint count=GetShaderCountByBits(mci->GetShaderStage());
+    const ShaderModule *sm;
+
+    ShaderModuleMap *smm=new ShaderModuleMap;
+    VertexInput *vertex_input=nullptr;
+
+    const OSString mtl_name=ToOSString(mci->GetName());
+
+    const ShaderCreateInfoVertex *vert=mci->GetVS();
+
+    if(vert)
+    {    
+        sm=CreateShaderModule(  mtl_name+OS_TEXT("?Vertex"),
+                                VK_SHADER_STAGE_VERTEX_BIT,
+                                vert->GetCode(),vert->GetCodeSize());
+
+        if(sm)
+        {
+            if(smm->Add(sm))
+                vertex_input=new VertexInput(vert->GetInput());
+        }
+
+        smm->Add(sm);
+    }
+
+    const ShaderCreateInfoGeometry *geom=mci->GetGS();
+
+    if(geom)
+    {
+        sm=CreateShaderModule(  mtl_name+OS_TEXT("?Geometry"),
+                                VK_SHADER_STAGE_GEOMETRY_BIT,
+                                geom->GetCode(),geom->GetCodeSize());
+
+        smm->Add(sm);
+    }
+
+    const ShaderCreateInfoFragment *frag=mci->GetFS();
+
+    if(frag)
+    {
+        sm=CreateShaderModule(  mtl_name+OS_TEXT("?Fragment"),
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                                frag->GetCode(),frag->GetCodeSize());
+
+        smm->Add(sm);
+    }
 
 
 }
