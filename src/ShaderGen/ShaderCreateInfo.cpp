@@ -282,12 +282,12 @@ bool ShaderCreateInfo::CompileToSPV()
     return(true);
 }
 
-const uint32_t *ShaderCreateInfo::GetCode()const
+const uint32_t *ShaderCreateInfo::GetSPVData()const
 {
     return spv_data?spv_data->spv_data:nullptr;
 }
 
-const size_t ShaderCreateInfo::GetCodeSize()const
+const size_t ShaderCreateInfo::GetSPVSize()const
 {
     return spv_data?spv_data->spv_length:0;
 }

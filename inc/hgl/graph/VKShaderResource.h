@@ -26,8 +26,8 @@ public:
     const   VkShaderStageFlagBits   GetStage        ()const {return stage_flag;}
     const   char *                  GetStageName    ()const {return GetShaderStageName(stage_flag);}
 
-    const   uint32_t *              GetCode         ()const {return (uint32_t *)spv_data;}
-    const   uint32_t                GetCodeSize     ()const {return spv_size;}
+    const   uint32_t *              GetSPVData      ()const {return spv_data;}
+    const   uint32_t                GetSPVSize      ()const {return spv_size;}
 
             ShaderAttributeArray &  GetInputs       ()      {return stage_io.input;}
 //          ShaderAttributeArray &  GetOutputs      ()      {return stage_io.output;}

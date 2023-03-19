@@ -145,7 +145,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         {
             shader_name=filename+OS_TEXT("?")+ToOSString(sr->GetStageName());
 
-            sm=CreateShaderModule(shader_name,sr->GetStage(),sr->GetCode(),sr->GetCodeSize());
+            sm=CreateShaderModule(shader_name,sr->GetStage(),sr->GetSPVData(),sr->GetSPVSize());
 
             if(sm)
             {
@@ -217,7 +217,7 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
     {    
         sm=CreateShaderModule(  mtl_name+OS_TEXT("?Vertex"),
                                 VK_SHADER_STAGE_VERTEX_BIT,
-                                vert->GetCode(),vert->GetCodeSize());
+                                vert->GetSPVData(),vert->GetSPVSize());
 
         if(sm)
         {
@@ -234,7 +234,7 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
     {
         sm=CreateShaderModule(  mtl_name+OS_TEXT("?Geometry"),
                                 VK_SHADER_STAGE_GEOMETRY_BIT,
-                                geom->GetCode(),geom->GetCodeSize());
+                                geom->GetSPVData(),geom->GetSPVSize());
 
         smm->Add(sm);
     }
@@ -245,7 +245,7 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
     {
         sm=CreateShaderModule(  mtl_name+OS_TEXT("?Fragment"),
                                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                                frag->GetCode(),frag->GetCodeSize());
+                                frag->GetSPVData(),frag->GetSPVSize());
 
         smm->Add(sm);
     }
