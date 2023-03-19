@@ -12,12 +12,9 @@ void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDe
     dslb->pImmutableSamplers=nullptr;
 }
 
-MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDescriptor *sd,const uint count)
+MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDescriptor *sd_list,const uint sd_count)
 {
     mtl_name=name;
-
-    sd_list=sd;
-    sd_count=count;
 
     if(sd_count<=0)return;
 
@@ -104,8 +101,6 @@ MaterialDescriptorSets::~MaterialDescriptorSets()
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
         if(dsl_ci[i].bindingCount)
             delete[] dsl_ci[i].pBindings;
-
-    delete[] sd_list;       //"delete[] nullptr" isn't bug.
 
     //for(uint i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;
     //        i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)

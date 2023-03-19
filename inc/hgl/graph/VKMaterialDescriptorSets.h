@@ -9,9 +9,6 @@ class MaterialDescriptorSets
 {
     UTF8String mtl_name;
 
-    ShaderDescriptor *sd_list;
-    uint sd_count;
-
     //ShaderDescriptorList sd_list_by_set_type[size_t(DescriptorSetType::RANGE_SIZE)];
     bool set_has_desc[size_t(DescriptorSetType::RANGE_SIZE)];
 
