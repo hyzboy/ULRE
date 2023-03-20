@@ -9,7 +9,7 @@
 VK_NAMESPACE_BEGIN
 using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
 
-using MaterialParameterArray=MaterialParameters *[size_t(DescriptorSetType::RANGE_SIZE)];
+using MaterialParameterArray=MaterialParameters *[DESCRIPTOR_SET_TYPE_COUNT];
 
 struct MaterialData
 {
