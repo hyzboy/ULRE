@@ -50,7 +50,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
             }
         }
 
-        VkDescriptorSetLayoutBinding *dsl_bind[size_t(DescriptorSetType::RANGE_SIZE)];
+        VkDescriptorSetLayoutBinding *dsl_bind[DESCRIPTOR_SET_TYPE_COUNT];
 
         {
             ENUM_CLASS_FOR(DescriptorSetType,int,i)

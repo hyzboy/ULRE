@@ -9,10 +9,10 @@ struct PipelineLayoutData
 {
     VkDevice device;
 
-    int binding_count[size_t(DescriptorSetType::RANGE_SIZE)];
-    VkDescriptorSetLayout layouts[size_t(DescriptorSetType::RANGE_SIZE)];
+    int binding_count[DESCRIPTOR_SET_TYPE_COUNT];
+    VkDescriptorSetLayout layouts[DESCRIPTOR_SET_TYPE_COUNT];
 
-    VkDescriptorSetLayout fin_dsl[size_t(DescriptorSetType::RANGE_SIZE)];
+    VkDescriptorSetLayout fin_dsl[DESCRIPTOR_SET_TYPE_COUNT];
     uint32_t fin_dsl_count;
 
     VkPipelineLayout pipeline_layout;

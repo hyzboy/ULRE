@@ -29,7 +29,7 @@ class MaterialDescriptorInfo
         ShaderDescriptor *AddDescriptor(VkShaderStageFlagBits ssb,ShaderDescriptor *new_sd);                       ///<添加一个描述符，如果它本身存在，则返回false
     };
 
-    using ShaderDescriptorSetArray=ShaderDescriptorSet[size_t(DescriptorSetType::RANGE_SIZE)];
+    using ShaderDescriptorSetArray=ShaderDescriptorSet[DESCRIPTOR_SET_TYPE_COUNT];
 
     ShaderDescriptorSetArray desc_set_array;
 
@@ -67,5 +67,10 @@ public:
     const DescriptorSetType GetSetType(const AnsiString &)const;
 
     void Resort();      //排序产生set号与binding号
+
+    const bool hasSet(const DescriptorSetType &type)const
+    {
+        return desc_set_array[size_t(type)].count>0;
+    }
 };
 SHADERGEN_NAMESPACE_END
