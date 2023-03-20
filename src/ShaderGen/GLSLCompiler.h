@@ -75,7 +75,10 @@ namespace glsl_compiler
 
         uint32_t *spv_data;
         uint32_t spv_length;
+    };
 
+    struct SPVParseData
+    {
         ShaderStageIO                       stage_io;
         ShaderDescriptorResource            resource;
         ShaderResourceData<PushConstant>    push_constant;
@@ -92,5 +95,8 @@ namespace glsl_compiler
     
     SPVData *   Compile (const uint32_t type,const char *source);
     void        Free    (SPVData *spv_data);
+
+    SPVParseData *  ParseSPV(SPVData *spv_data);
+    void            FreeSPVParse(SPVParseData *spv);
 }//namespace glsl_compiler
 #endif//HGL_GLSL_COMPILER_INCLUDE

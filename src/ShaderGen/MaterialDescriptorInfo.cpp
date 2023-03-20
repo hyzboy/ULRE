@@ -25,32 +25,6 @@ const DescriptorSetType MaterialDescriptorInfo::GetSetType(const AnsiString &nam
     return DescriptorSetType::Global;
 }
 
-/**
-* 添加一个描述符，如果它本身存在，则返回false
-*/
-ShaderDescriptor *MaterialDescriptorInfo::ShaderDescriptorSet::AddDescriptor(VkShaderStageFlagBits ssb,ShaderDescriptor *new_sd)
-{
-    ShaderDescriptor *sd;
-    
-    if(descriptor_map.Get(new_sd->name,sd))
-    {
-        delete new_sd;
-        sd->stage_flag|=ssb;
-        return(sd);
-    }
-    else
-    {
-        new_sd->set_type=set_type;
-        new_sd->stage_flag=ssb;
-
-        descriptor_map.Add(new_sd->name,new_sd);
-
-        count++;
-
-        return(new_sd);
-    }
-}
-
 const UBODescriptor *MaterialDescriptorInfo::AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);

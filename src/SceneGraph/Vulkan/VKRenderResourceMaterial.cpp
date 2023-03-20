@@ -9,6 +9,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/io/ConstBufferReader.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -224,7 +225,7 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
         if(sm)
         {
             if(smm->Add(sm))
-                vertex_input=new VertexInput(vert->GetInput());
+                vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
         }
 
         smm->Add(sm);
@@ -252,6 +253,16 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
         smm->Add(sm);
     }
 
+    MaterialDescriptorManager *mdm=new MaterialDescriptorManager(mci->GetName(),mci->GetMDI().Get());
 
+    Material *mtl=device->CreateMaterial(mci->GetName(),smm,mdm,vertex_input);
+
+    if(!mtl)
+    {
+        delete mdm;
+        delete smm;
+    }
+
+    return mtl;    
 }
 VK_NAMESPACE_END

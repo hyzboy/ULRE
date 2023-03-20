@@ -43,6 +43,9 @@ namespace glsl_compiler
         SPVData *   (*CompileFromPath)(const uint32_t stage,const char *shader_filename, const CompileInfo *compile_info);
 
         void        (*Free)(SPVData *);
+
+        SPVParseData *(*ParseSPV)(SPVData *spv_data);
+        void        (*FreeParseSPVData)(SPVParseData *);
     };
 
     ExternalModule *gsi_module=nullptr;
@@ -140,6 +143,17 @@ namespace glsl_compiler
     {
         if(gsi)
             gsi->Free(spv_data);
+    }
+
+    SPVParseData *ParseSPV(SPVData *spv_data)
+    {
+        return gsi?gsi->ParseSPV(spv_data):nullptr;
+    }
+
+    void FreeSPVParse(SPVParseData *spv)
+    {
+        if(gsi&&spv)
+            gsi->FreeParseSPVData(spv);
     }
 
     SPVData *Compile(const uint32_t type,const char *source)

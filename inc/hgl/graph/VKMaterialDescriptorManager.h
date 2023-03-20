@@ -2,14 +2,12 @@
 #define HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_MANAGER_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKShaderDescriptor.h>
+#include<hgl/graph/VKShaderDescriptorSet.h>
 
 VK_NAMESPACE_BEGIN
 class MaterialDescriptorManager
 {
     UTF8String mtl_name;
-
-    bool set_has_desc[DESCRIPTOR_SET_TYPE_COUNT];
 
     Map<AnsiString,int> binding_map[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
@@ -22,6 +20,7 @@ private:
 public:
 
     MaterialDescriptorManager(const UTF8String &,ShaderDescriptor *,const uint);
+    MaterialDescriptorManager(const UTF8String &,const ShaderDescriptorSetArray &);
     ~MaterialDescriptorManager();
 
     const UTF8String &GetMaterialName()const{return mtl_name;}
@@ -35,9 +34,7 @@ public:
 
     const DescriptorSetLayoutCreateInfo *GetDSLCI(const DescriptorSetType &type)const{return dsl_ci+size_t(type);}
 
-    //const ShaderDescriptorList &GetDescriptorList(const DescriptorSetType &type)const{return sd_list_by_set_type[size_t(type)];}
-
-    const bool hasSet(const DescriptorSetType &type)const{return set_has_desc[size_t(type)];}
+    const bool hasSet(const DescriptorSetType &type)const{return dsl_ci[size_t(type)].bindingCount>0;}
 //!sd_list_by_set_type[size_t(type)].IsEmpty();}
 };//class MaterialDescriptorManager
 VK_NAMESPACE_END

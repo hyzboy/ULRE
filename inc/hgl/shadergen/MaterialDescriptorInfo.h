@@ -1,7 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKShaderDescriptor.h>
-#include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/graph/VKShaderDescriptorSet.h>
 #include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/type/Map.h>
 
@@ -15,22 +14,6 @@ SHADERGEN_NAMESPACE_BEGIN
 */
 class MaterialDescriptorInfo
 {
-    struct ShaderDescriptorSet
-    {
-        DescriptorSetType set_type;
-
-        int set;
-        int count;
-
-        ObjectMap<AnsiString,ShaderDescriptor>  descriptor_map;
-
-    public:
-
-        ShaderDescriptor *AddDescriptor(VkShaderStageFlagBits ssb,ShaderDescriptor *new_sd);                       ///<添加一个描述符，如果它本身存在，则返回false
-    };
-
-    using ShaderDescriptorSetArray=ShaderDescriptorSet[DESCRIPTOR_SET_TYPE_COUNT];
-
     ShaderDescriptorSetArray desc_set_array;
 
     Map<AnsiString,AnsiString> struct_map;
@@ -67,6 +50,11 @@ public:
     const DescriptorSetType GetSetType(const AnsiString &)const;
 
     void Resort();      //排序产生set号与binding号
+
+    const ShaderDescriptorSetArray &Get()const
+    {
+        return desc_set_array;
+    }
 
     const bool hasSet(const DescriptorSetType &type)const
     {
