@@ -76,7 +76,7 @@ struct ShaderAttribute;
 class ShaderResource;
 class ShaderModule;
 class ShaderModuleMap;
-class MaterialDescriptorSets;
+class MaterialDescriptorManager;
 
 class Material;
 class MaterialParameters;

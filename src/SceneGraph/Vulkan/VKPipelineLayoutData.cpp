@@ -1,10 +1,10 @@
 ﻿#include"VKPipelineLayoutData.h"
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKMaterialDescriptorManager.h>
 
 VK_NAMESPACE_BEGIN
-PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptorSets *mds)
+PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *mds)
 {
     PipelineLayoutData *pld=hgl_zero_new<PipelineLayoutData>();
 

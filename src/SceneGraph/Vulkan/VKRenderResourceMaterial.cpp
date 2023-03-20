@@ -3,7 +3,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKShaderResource.h>
-#include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKVertexInput.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderResource.h>
@@ -165,7 +165,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
     const UTF8String mtl_name=ToUTF8String(filename);
 
-    MaterialDescriptorSets *mds=nullptr;
+    MaterialDescriptorManager *mds=nullptr;
     {
         uint8 count;
         cbr.Read(count);
@@ -176,7 +176,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
             LoadShaderDescriptor(cbr,sd_list,count,ver);
         
-            mds=new MaterialDescriptorSets(mtl_name,sd_list,count);
+            mds=new MaterialDescriptorManager(mtl_name,sd_list,count);
 
             delete[] sd_list;
         }

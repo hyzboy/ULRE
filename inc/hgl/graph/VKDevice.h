@@ -217,16 +217,16 @@ public: //
 
 public: //shader & material
 
-    PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorSets *);
+    PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorManager *);
     void Destroy(PipelineLayoutData *);
 
     DescriptorSet *     CreateDS(const PipelineLayoutData *,const DescriptorSetType &type)const;
-    MaterialParameters *CreateMP(const MaterialDescriptorSets *,const PipelineLayoutData *,const DescriptorSetType &);
+    MaterialParameters *CreateMP(const MaterialDescriptorManager *,const PipelineLayoutData *,const DescriptorSetType &);
     MaterialParameters *CreateMP(Material *,const DescriptorSetType &);
     
     ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const uint32_t *,const size_t);
     
-    Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *,VertexInput *);
+    Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *,VertexInput *);
 
     MaterialInstance *CreateMI(Material *,const VILConfig *vil_cfg=nullptr);
 

@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
-#include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKVertexInput.h>
 #include"VKPipelineLayoutData.h"
 VK_NAMESPACE_BEGIN
