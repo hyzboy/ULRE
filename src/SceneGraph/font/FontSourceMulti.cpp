@@ -29,7 +29,7 @@ namespace hgl
 
             get_max(max_char_height,fs->GetCharHeight());
 
-            source_map.Update(ub,fs);
+            source_map.ChangeOrAdd(ub,fs);
         }
 
         void FontSourceMulti::RefreshMaxCharHeight()
