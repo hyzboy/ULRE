@@ -16,7 +16,5 @@ public:
 
     int AddInput(const graph::VAT &type,const AnsiString &name);
     int AddInput(const AnsiString &type,const AnsiString &name);
-
-    const hgl::graph::ShaderAttributeArray &GetInput()const;
 };
 SHADERGEN_NAMESPACE_END

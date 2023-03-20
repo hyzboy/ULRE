@@ -60,9 +60,4 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
 
     return(true);
 }
-
-const hgl::graph::ShaderAttributeArray &ShaderCreateInfoVertex::GetInput()const
-{
-    return spv_data->stage_io.input;
-}
 SHADERGEN_NAMESPACE_END

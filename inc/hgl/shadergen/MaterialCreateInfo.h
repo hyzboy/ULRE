@@ -57,5 +57,7 @@ public:
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
     bool CreateShader();
+
+    const MaterialDescriptorInfo &GetMDI()const{return mdm;}
 };//class MaterialCreateInfo
 SHADERGEN_NAMESPACE_END

@@ -18,54 +18,38 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,Shad
 
     if(sd_count<=0)return;
 
-    ShaderDescriptorList sd_list_by_desc_type[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
-
-    hgl_zero(set_has_desc);
-
-    uint dslb_count=0;
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
+    {
+        dsl_ci[i].bindingCount=0;
+        dsl_ci[i].pBindings=nullptr;
+    }
 
     {
-        ENUM_CLASS_FOR(DescriptorSetType,int,i)
+        ShaderDescriptor *sp=sd_list;
+
+        for(uint i=0;i<sd_count;i++)
         {
-            dsl_ci[i].bindingCount=0;
-            dsl_ci[i].pBindings=nullptr;
+            binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
+
+            ++dsl_ci[size_t(sp->set_type)].bindingCount;
+
+            ++sp;
         }
+    }
 
-        {
-            ShaderDescriptor *sp=sd_list;
+    all_dslb=new VkDescriptorSetLayoutBinding[sd_count];
 
-            for(uint i=0;i<sd_count;i++)
-            {
-                if(sp->desc_type>=VK_DESCRIPTOR_TYPE_BEGIN_RANGE
-                 &&sp->desc_type<=VK_DESCRIPTOR_TYPE_END_RANGE)
-                    sd_list_by_desc_type[(size_t)sp->desc_type].Add(sp);
-
-                binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
-
-                ++dsl_ci[size_t(sp->set_type)].bindingCount;
-
-                ++dslb_count;
-
-                set_has_desc[size_t(sp->set_type)]=true;
-
-                ++sp;
-            }
-        }
-
-        all_dslb=new VkDescriptorSetLayoutBinding[dslb_count];
-
+    {
         VkDescriptorSetLayoutBinding *dsl_bind[DESCRIPTOR_SET_TYPE_COUNT];
         VkDescriptorSetLayoutBinding *dslp=all_dslb;
 
-        {
-            ENUM_CLASS_FOR(DescriptorSetType,int,i)
-                if(dsl_ci[i].bindingCount>0)
-                {
-                    dsl_ci[i].pBindings=dslp;
-                    dsl_bind[i]=dslp;
-                    dslp+=dsl_ci[i].bindingCount;
-                }
-        }
+        ENUM_CLASS_FOR(DescriptorSetType,int,i)
+            if(dsl_ci[i].bindingCount>0)
+            {
+                dsl_ci[i].pBindings=dslp;
+                dsl_bind[i]=dslp;
+                dslp+=dsl_ci[i].bindingCount;
+            }
 
         {
             ShaderDescriptor *sp=sd_list;
@@ -75,6 +59,58 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,Shad
                 WriteDescriptorSetLayoutBinding(dsl_bind[size_t(sp->set_type)],sp);
 
                 ++dsl_bind[size_t(sp->set_type)];
+
+                ++sp;                                
+            }
+        }
+    }
+}
+
+MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,const ShaderDescriptorSetArray &sds_array)
+{
+    mtl_name=name;
+
+    uint sd_count=0;
+
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
+    {
+        dsl_ci[i].bindingCount=sds_array[i].count;
+        dsl_ci[i].pBindings=nullptr;
+
+        sd_count+=sds_array[i].count;
+
+    }
+
+    if(sd_count<=0)return;
+
+    all_dslb=new VkDescriptorSetLayoutBinding[sd_count];
+
+    {
+        VkDescriptorSetLayoutBinding *dsl_bind[DESCRIPTOR_SET_TYPE_COUNT];
+        VkDescriptorSetLayoutBinding *dslp=all_dslb;
+
+        ENUM_CLASS_FOR(DescriptorSetType,int,i)
+            if(dsl_ci[i].bindingCount>0)
+            {
+                dsl_ci[i].pBindings=dslp;
+                dsl_bind[i]=dslp;
+                dslp+=dsl_ci[i].bindingCount;
+            }
+
+        ENUM_CLASS_FOR(DescriptorSetType,int,i)
+        {
+            auto *sp=sds_array[i].descriptor_map.GetDataList();
+            ShaderDescriptor *sd;
+
+            for(int j=0;j<sds_array[i].count;j++)
+            {
+                sd=(*sp)->right;
+
+                binding_map[size_t(sd->desc_type)].Add(sd->name,sd->binding);
+
+                WriteDescriptorSetLayoutBinding(dsl_bind[i],sd);
+
+                ++dsl_bind[i];
 
                 ++sp;                                
             }
