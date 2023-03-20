@@ -1,4 +1,4 @@
-#include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/TypeFunc.h>
 
@@ -12,7 +12,7 @@ void WriteDescriptorSetLayoutBinding(VkDescriptorSetLayoutBinding *dslb,ShaderDe
     dslb->pImmutableSamplers=nullptr;
 }
 
-MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDescriptor *sd_list,const uint sd_count)
+MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,ShaderDescriptor *sd_list,const uint sd_count)
 {
     mtl_name=name;
 
@@ -82,12 +82,12 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
     }
 }
 
-MaterialDescriptorSets::~MaterialDescriptorSets()
+MaterialDescriptorManager::~MaterialDescriptorManager()
 {
     delete[] all_dslb;
 }
     
-const int MaterialDescriptorSets::GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const
+const int MaterialDescriptorManager::GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const
 {
     if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
      ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)

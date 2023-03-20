@@ -1,11 +1,11 @@
-#ifndef HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE
-#define HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE
+#ifndef HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_MANAGER_INCLUDE
+#define HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_MANAGER_INCLUDE
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKShaderDescriptor.h>
 
 VK_NAMESPACE_BEGIN
-class MaterialDescriptorSets
+class MaterialDescriptorManager
 {
     UTF8String mtl_name;
 
@@ -21,8 +21,8 @@ private:
 
 public:
 
-    MaterialDescriptorSets(const UTF8String &,ShaderDescriptor *,const uint);
-    ~MaterialDescriptorSets();
+    MaterialDescriptorManager(const UTF8String &,ShaderDescriptor *,const uint);
+    ~MaterialDescriptorManager();
 
     const UTF8String &GetMaterialName()const{return mtl_name;}
 
@@ -39,6 +39,6 @@ public:
 
     const bool hasSet(const DescriptorSetType &type)const{return set_has_desc[size_t(type)];}
 //!sd_list_by_set_type[size_t(type)].IsEmpty();}
-};//class MaterialDescriptorSets
+};//class MaterialDescriptorManager
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_SETS_INCLUDE
+#endif//HGL_GRAPH_VULKAN_MATERIAL_DESCRIPTOR_MANAGER_INCLUDE

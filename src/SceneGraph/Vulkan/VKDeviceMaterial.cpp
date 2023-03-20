@@ -1,6 +1,6 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKMaterialDescriptorSets.h>
+#include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKShaderModuleMap.h>
@@ -31,7 +31,7 @@ DescriptorSet *GPUDevice::CreateDS(const PipelineLayoutData *pld,const Descripto
     return(new DescriptorSet(attr->device,binding_count,pld->pipeline_layout,desc_set));
 }
 
-MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorSets *mds,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
+MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *mds,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
 {
     if(!mds||!pld)return(nullptr);
     if(!RangeCheck<DescriptorSetType>(desc_set_type))
@@ -77,7 +77,7 @@ void CreateShaderStageList(List<VkPipelineShaderStageCreateInfo> &shader_stage_l
     }
 }
 
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorSets *mds,VertexInput *vi)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *mds,VertexInput *vi)
 {
     const int shader_count=shader_maps->GetCount();
 

@@ -8,7 +8,7 @@
 VK_NAMESPACE_BEGIN
 class MaterialParameters
 {
-    const MaterialDescriptorSets *mds;
+    const MaterialDescriptorManager *mds;
 
     DescriptorSetType set_type;
 
@@ -18,7 +18,7 @@ private:
 
     friend class GPUDevice;
 
-    MaterialParameters(const MaterialDescriptorSets *,const DescriptorSetType &type,DescriptorSet *);
+    MaterialParameters(const MaterialDescriptorManager *,const DescriptorSetType &type,DescriptorSet *);
 
 public:
 

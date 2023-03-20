@@ -94,8 +94,8 @@ SET(VK_RR_SHADER_FILES  ${SG_INCLUDE_PATH}/VKShaderResource.h
 
 SOURCE_GROUP("Vulkan\\RenderResource\\Shader" FILES ${VK_RR_SHADER_FILES})
 
-SET(VK_RR_MATERIAL_FILES    ${SG_INCLUDE_PATH}/VKMaterialDescriptorSets.h
-                            Vulkan/VKMaterialDescriptorSets.cpp)
+SET(VK_RR_MATERIAL_FILES    ${SG_INCLUDE_PATH}/VKMaterialDescriptorManager.h
+                            Vulkan/VKMaterialDescriptorManager.cpp)
 
 SOURCE_GROUP("Vulkan\\RenderResource\\Material" FILES   ${VK_RR_MATERIAL_FILES})
 
