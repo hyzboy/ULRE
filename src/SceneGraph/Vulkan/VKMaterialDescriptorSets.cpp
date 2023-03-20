@@ -22,6 +22,8 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
 
     hgl_zero(set_has_desc);
 
+    uint dslb_count=0;
+
     {
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
@@ -38,59 +40,43 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
                  &&sp->desc_type<=VK_DESCRIPTOR_TYPE_END_RANGE)
                     sd_list_by_desc_type[(size_t)sp->desc_type].Add(sp);
 
-//                sd_by_name.Add(sp->name,sp);
                 binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
 
                 ++dsl_ci[size_t(sp->set_type)].bindingCount;
 
-                //sd_list_by_set_type[size_t(sp->set_type)].Add(sp);
+                ++dslb_count;
+
                 set_has_desc[size_t(sp->set_type)]=true;
 
                 ++sp;
             }
         }
 
+        all_dslb=new VkDescriptorSetLayoutBinding[dslb_count];
+
         VkDescriptorSetLayoutBinding *dsl_bind[DESCRIPTOR_SET_TYPE_COUNT];
+        VkDescriptorSetLayoutBinding *dslp=all_dslb;
 
         {
             ENUM_CLASS_FOR(DescriptorSetType,int,i)
                 if(dsl_ci[i].bindingCount>0)
                 {
-                    dsl_ci[i].pBindings=new VkDescriptorSetLayoutBinding[dsl_ci[i].bindingCount];
-                    dsl_bind[i]=(VkDescriptorSetLayoutBinding *)dsl_ci[i].pBindings;
+                    dsl_ci[i].pBindings=dslp;
+                    dsl_bind[i]=dslp;
+                    dslp+=dsl_ci[i].bindingCount;
                 }
         }
 
         {
-            ShaderDescriptorList *sdl=sd_list_by_desc_type;
-            ShaderDescriptor **sdp;
+            ShaderDescriptor *sp=sd_list;
 
-            for(uint i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;
-                     i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)
+            for(uint i=0;i<sd_count;i++)
             {
-                if(sdl->GetCount()>0)
-                {
-//                    binding_list[i]=new int[sdl->GetCount()];
+                WriteDescriptorSetLayoutBinding(dsl_bind[size_t(sp->set_type)],sp);
 
-                    sdp=sdl->GetData();
-                    for(int j=0;j<sdl->GetCount();j++)
-                    {
-//                        binding_list[i][j]=(*sdp)->binding;
+                ++dsl_bind[size_t(sp->set_type)];
 
-                        WriteDescriptorSetLayoutBinding(dsl_bind[size_t((*sdp)->set_type)],
-                                                        *sdp);
-
-                        ++dsl_bind[size_t((*sdp)->set_type)];
-
-                        ++sdp;
-                    }
-                }
-                //else
-                //{
-                //    binding_list[i]=nullptr;
-                //}
-
-                ++sdl;
+                ++sp;                                
             }
         }
     }
@@ -98,16 +84,7 @@ MaterialDescriptorSets::MaterialDescriptorSets(const UTF8String &name,ShaderDesc
 
 MaterialDescriptorSets::~MaterialDescriptorSets()
 {
-    ENUM_CLASS_FOR(DescriptorSetType,int,i)
-        if(dsl_ci[i].bindingCount)
-            delete[] dsl_ci[i].pBindings;
-
-    //for(uint i=VK_DESCRIPTOR_TYPE_BEGIN_RANGE;
-    //        i<=VK_DESCRIPTOR_TYPE_END_RANGE;i++)
-    //{
-    //    if(binding_list[i])
-    //        delete[] binding_list[i];
-    //}
+    delete[] all_dslb;
 }
     
 const int MaterialDescriptorSets::GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const

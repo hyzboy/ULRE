@@ -9,15 +9,13 @@ class MaterialDescriptorSets
 {
     UTF8String mtl_name;
 
-    //ShaderDescriptorList sd_list_by_set_type[DESCRIPTOR_SET_TYPE_COUNT];
     bool set_has_desc[DESCRIPTOR_SET_TYPE_COUNT];
 
-//    Map<AnsiString,ShaderDescriptor *> sd_by_name;
     Map<AnsiString,int> binding_map[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
-//    int *binding_list[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
-
 private:
+
+    VkDescriptorSetLayoutBinding *all_dslb;
 
     DescriptorSetLayoutCreateInfo dsl_ci[DESCRIPTOR_SET_TYPE_COUNT];
 
