@@ -81,7 +81,11 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,cons
 
     }
 
-    if(sd_count<=0)return;
+    if(sd_count<=0)
+    {
+        all_dslb=nullptr;
+        return;
+    }
 
     all_dslb=new VkDescriptorSetLayoutBinding[sd_count];
 
