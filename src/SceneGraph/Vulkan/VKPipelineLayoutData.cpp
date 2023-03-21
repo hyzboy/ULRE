@@ -69,6 +69,9 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
 
 PipelineLayoutData::~PipelineLayoutData()
 {
+    if(!pipeline_layout)
+        return;
+
     vkDestroyPipelineLayout(device,pipeline_layout,nullptr);
 
     ENUM_CLASS_FOR(DescriptorSetType,int,i)
