@@ -25,6 +25,13 @@ public:
 
     const UTF8String &GetMaterialName()const{return mtl_name;}
 
+    const uint GetBindCount(const DescriptorSetType &set_type)const
+    {
+        RANGE_CHECK_RETURN(set_type,0)
+
+        return dsl_ci[size_t(set_type)].bindingCount;
+    }
+
     const int GetBinding(const DescriptorSetType &set_type,const VkDescriptorType &desc_type,const AnsiString &name)const;
 
     const int GetUBO            (const DescriptorSetType &set_type,const AnsiString &name,bool dynamic)const{return GetBinding(set_type,dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,name);}
