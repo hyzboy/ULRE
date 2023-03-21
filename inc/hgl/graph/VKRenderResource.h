@@ -95,6 +95,7 @@ public: //Material
 
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
     MaterialInstance *  CreateMaterialInstance(const OSString &,const VILConfig *vil_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(const hgl::shadergen::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
     Primitive *         CreatePrimitive(const uint32_t vertex_count=0);
 
