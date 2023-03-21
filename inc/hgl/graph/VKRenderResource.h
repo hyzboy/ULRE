@@ -47,7 +47,8 @@ class RenderResource
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
-    Map<AnsiString,DeviceBuffer *> global_buffer_map;                                      ///<全局UBO
+    Map<AnsiString,DeviceBuffer *> global_buffer_map;                                   ///<全局Buffer(UBO/SSBO)
+    Map<AnsiString,Texture *> global_texture_map;                                       ///<全局Texture
 
 public:
 
@@ -65,13 +66,15 @@ public: //Add
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
 
-public: //全局属性
+public: //全局属性(对应shader中的PerGlobal set合集)
 
     void SetGlobal(const AnsiString &name,DeviceBuffer *buf);
 
     DeviceBuffer *GetGlobal(const AnsiString &name);
 
     void Free(DeviceBuffer *);
+
+    void BindGlobalDescriptor(MaterialInstance *);
 
 public: // VBO/VAO
 
