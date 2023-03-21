@@ -47,6 +47,8 @@ class RenderResource
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
+    Map<AnsiString,DeviceBuffer *> global_buffer_map;                                      ///<全局UBO
+
 public:
 
     RenderResource(GPUDevice *dev):device(dev){}
@@ -62,6 +64,14 @@ public: //Add
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
+
+public: //全局属性
+
+    void SetGlobal(const AnsiString &name,DeviceBuffer *buf);
+
+    DeviceBuffer *GetGlobal(const AnsiString &name);
+
+    void Free(DeviceBuffer *);
 
 public: // VBO/VAO
 

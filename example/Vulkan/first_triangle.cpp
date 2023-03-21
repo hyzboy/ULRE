@@ -98,7 +98,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        auto *mci=mtl::CreateVertexColor2DNDC();
+        MaterialCreateInfo *mci=mtl::CreateVertexColor2DNDC();
 
         material_instance=db->CreateMaterialInstance(mci,&vil_config);
 
