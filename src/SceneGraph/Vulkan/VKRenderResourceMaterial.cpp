@@ -195,7 +195,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
         mtl=nullptr;
     }
     
-    material_by_name.Add(filename,mtl);    
+    material_by_name.Add(filename,mtl);
     return(mtl);
 }
 
@@ -203,6 +203,13 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
 {
     if(!mci)
         return(nullptr);
+
+    Material *mtl;
+
+    const OSString mtl_name=ToOSString(mci->GetName());
+
+    if(material_by_name.Get(mtl_name,mtl))
+        return mtl;
 
     SHADERGEN_NAMESPACE_USING
 
@@ -212,8 +219,6 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
     ShaderModuleMap *smm=new ShaderModuleMap;
     VertexInput *vertex_input=nullptr;
 
-    const OSString mtl_name=ToOSString(mci->GetName());
-
     const ShaderCreateInfoVertex *vert=mci->GetVS();
 
     if(vert)
@@ -222,13 +227,11 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
                                 VK_SHADER_STAGE_VERTEX_BIT,
                                 vert->GetSPVData(),vert->GetSPVSize());
 
-        if(sm)
-        {
-            if(smm->Add(sm))
-                vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
-        }
+        if(!sm)
+            return(false);
 
-        smm->Add(sm);
+        if(smm->Add(sm))
+            vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
     }
 
     const ShaderCreateInfoGeometry *geom=mci->GetGS();
@@ -253,9 +256,16 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
         smm->Add(sm);
     }
 
-    MaterialDescriptorManager *mdm=new MaterialDescriptorManager(mci->GetName(),mci->GetMDI().Get());
+    MaterialDescriptorManager *mdm=nullptr;
 
-    Material *mtl=device->CreateMaterial(mci->GetName(),smm,mdm,vertex_input);
+    {
+        const auto &mdi=mci->GetMDI();
+
+        if(mdi.GetCount()>0)
+            mdm=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
+    }
+
+    mtl=device->CreateMaterial(mci->GetName(),smm,mdm,vertex_input);
 
     if(!mtl)
     {
@@ -263,6 +273,7 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
         delete smm;
     }
 
+    material_by_name.Add(mtl_name,mtl);
     return mtl;    
 }
 VK_NAMESPACE_END

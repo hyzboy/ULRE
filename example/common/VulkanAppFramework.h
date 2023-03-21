@@ -33,6 +33,12 @@ using namespace hgl;
 using namespace hgl::io;
 using namespace hgl::graph;
 
+namespace glsl_compiler
+{
+    bool Init();
+    void Close();
+}//namespace glsl_compiler
+
 class VulkanApplicationFramework:WindowEvent
 {
 protected:
@@ -66,6 +72,8 @@ public:
 
     virtual ~VulkanApplicationFramework()
     {
+        glsl_compiler::Close();
+
         win->Unjoin(this);
 
         SAFE_CLEAR(db);
@@ -78,6 +86,9 @@ public:
 
     virtual bool Init(int w,int h)
     {
+        if(!glsl_compiler::Init())
+            return(false);
+
         clear_color.Set(0,0,0,1);
 
     #ifdef _DEBUG
