@@ -1,6 +1,6 @@
 ﻿#include<hgl/shadergen/MaterialDescriptorInfo.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 MaterialDescriptorInfo::MaterialDescriptorInfo()
 {
     int set_type=(int)DescriptorSetType::BEGIN_RANGE;
@@ -103,4 +103,4 @@ void MaterialDescriptorInfo::Resort()
         }
     }
 }
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

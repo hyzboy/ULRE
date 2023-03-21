@@ -1,14 +1,13 @@
 #pragma once
 
-#include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 
-SHADERGEN_NAMESPACE_BEGIN
-
+namespace hgl{namespace graph
+{
 using UBODescriptorList=List<const UBODescriptor *>;
 using SamplerDescriptorList=List<const SamplerDescriptor *>;
 using ConstValueDescriptorList=ObjectList<ConstValueDescriptor>;
@@ -72,4 +71,4 @@ public:
     void DebugOutput(int);
 #endif//_DEBUG
 };//class ShaderDescriptorInfo
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

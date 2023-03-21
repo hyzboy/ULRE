@@ -4,7 +4,7 @@
 #include<hgl/graph/VKShaderStage.h>
 #include"GLSLCompiler.h"
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -60,4 +60,4 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
 
     return(true);
 }
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

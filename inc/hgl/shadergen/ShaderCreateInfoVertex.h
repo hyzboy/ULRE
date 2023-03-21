@@ -4,7 +4,7 @@
 #include<hgl/graph/VKShaderStage.h>
 
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 class ShaderCreateInfoVertex:public ShaderCreateInfo
 {
     bool ProcInput(ShaderCreateInfo *) override;
@@ -17,4 +17,4 @@ public:
     int AddInput(const graph::VAT &type,const AnsiString &name);
     int AddInput(const AnsiString &type,const AnsiString &name);
 };
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

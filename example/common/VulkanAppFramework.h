@@ -33,11 +33,11 @@ using namespace hgl;
 using namespace hgl::io;
 using namespace hgl::graph;
 
-namespace glsl_compiler
+namespace hgl{namespace graph
 {
-    bool Init();
-    void Close();
-}//namespace glsl_compiler
+    bool InitShaderCompiler();
+    void CloseShaderCompiler();
+}}//namespace hgl::graph
 
 class VulkanApplicationFramework:WindowEvent
 {
@@ -72,7 +72,7 @@ public:
 
     virtual ~VulkanApplicationFramework()
     {
-        glsl_compiler::Close();
+        CloseShaderCompiler();
 
         win->Unjoin(this);
 
@@ -86,7 +86,7 @@ public:
 
     virtual bool Init(int w,int h)
     {
-        if(!glsl_compiler::Init())
+        if(!InitShaderCompiler())
             return(false);
 
         clear_color.Set(0,0,0,1);

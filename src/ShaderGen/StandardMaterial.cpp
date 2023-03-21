@@ -1,7 +1,7 @@
 #include<hgl/shadergen/StandardMaterial.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 
 
 
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

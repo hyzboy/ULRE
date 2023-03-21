@@ -2,7 +2,7 @@
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 class ShaderCreateInfoGeometry:public ShaderCreateInfo
 {
 public:
@@ -10,4 +10,4 @@ public:
     ShaderCreateInfoGeometry(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_GEOMETRY_BIT,m){}
     ~ShaderCreateInfoGeometry()=default;
 };
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph
