@@ -14,6 +14,7 @@ SHADERGEN_NAMESPACE_BEGIN
 */
 class MaterialDescriptorInfo
 {
+    uint descriptor_count;
     ShaderDescriptorSetArray desc_set_array;
 
     Map<AnsiString,AnsiString> struct_map;
@@ -50,6 +51,11 @@ public:
     const DescriptorSetType GetSetType(const AnsiString &)const;
 
     void Resort();      //排序产生set号与binding号
+
+    const uint GetCount()const
+    {
+        return descriptor_count;
+    }
 
     const ShaderDescriptorSetArray &Get()const
     {

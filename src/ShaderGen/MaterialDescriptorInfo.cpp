@@ -14,6 +14,8 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
         p.set=-1;
         p.count=0;
     }
+
+    descriptor_count=0;
 }
 
 const DescriptorSetType MaterialDescriptorInfo::GetSetType(const AnsiString &name)const
@@ -73,6 +75,8 @@ SamplerDescriptor *MaterialDescriptorInfo::GetSampler(const AnsiString &name)
 
 void MaterialDescriptorInfo::Resort()
 {
+    descriptor_count=0;
+
     //重新生成set/binding
     {
         int set=0;
@@ -81,6 +85,8 @@ void MaterialDescriptorInfo::Resort()
         {
             if(p.count>0)
             {
+                descriptor_count+=p.count;
+
                 p.set=set;
 
                 auto *sdp=p.descriptor_map.GetDataList();
