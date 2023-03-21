@@ -72,6 +72,16 @@ MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_fil
     return CreateMaterialInstance(mtl,vil_cfg);
 }
 
+MaterialInstance *RenderResource::CreateMaterialInstance(const hgl::shadergen::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
+{
+    Material *mtl=this->CreateMaterial(mci);
+
+    if(!mtl)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl,vil_cfg);
+}
+
 Primitive *RenderResource::CreatePrimitive(const uint32_t vertex_count)
 {
     if(!vertex_count)return(nullptr);
