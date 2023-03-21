@@ -32,6 +32,34 @@ void RenderResource::Free(DeviceBuffer *buf)
     global_buffer_map.DeleteByValue(buf);
 }
 
+void RenderResource::BindGlobalDescriptor(MaterialInstance *mi)
+{
+    if(!mi)return;
+
+    const uint count=global_buffer_map.GetCount();
+
+    if(count<=0)return;
+
+    auto **gb_list=global_buffer_map.GetDataList();
+
+    auto *mp=mi->GetMP(DescriptorSetType::Global);
+
+    if(!mp)
+        return;
+
+    if(mp->GetDescriptorCount()<=0)
+        return;
+
+    for(uint i=0;i<count;i++)
+    {
+        mp->BindUBO((*gb_list)->left,(*gb_list)->right);
+
+        ++gb_list;
+    }
+
+    mp->Update();
+}
+
 VBO *RenderResource::CreateVBO(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     VBO *vb=device->CreateVBO(format,count,data,sharing_mode);
