@@ -99,16 +99,18 @@ private:
 
     bool InitAutoMaterial()
     {
-        MaterialCreateInfo mc("VertexColor2D",1,false);
+        MaterialCreateInfo mci("VertexColor2DNDC",      ///<名称，随便起
+                                1,                      ///<最终一个RT输出
+                                false);                 ///<无深度输出
 
         //vertex部分
         {
-            ShaderCreateInfoVertex *vsc=mc.GetVS();
+            ShaderCreateInfoVertex *vsc=mci.GetVS();
 
-            vsc->AddInput("vec2",VAN::Position);
-            vsc->AddInput("vec4",VAN::Color);
+            vsc->AddInput(VAT_VEC2,VAN::Position);
+            vsc->AddInput(VAT_VEC4,VAN::Color);
 
-            vsc->AddOutput("vec4","Color");
+            vsc->AddOutput(VAT_VEC4,"Color");
 
             vsc->SetShaderCodes(R"(
     void main()
@@ -121,9 +123,9 @@ private:
 
         //fragment部分
         {
-            ShaderCreateInfoFragment *fsc=mc.GetFS();
+            ShaderCreateInfoFragment *fsc=mci.GetFS();
 
-            fsc->AddOutput("vec4","Color");
+            fsc->AddOutput(VAT_VEC4,"Color");
 
             fsc->SetShaderCodes(R"(
     void main()
@@ -132,12 +134,10 @@ private:
     })");
         }
 
-        if(!mc.CreateShader())
+        if(!mci.CreateShader())
             return(false);
 
-        Material *m=db->CreateMaterial(&mc);
-        
-        material_instance=db->CreateMaterialInstance(m,&vil_config);
+        material_instance=db->CreateMaterialInstance(&mci,&vil_config);
 
         return material_instance;
     }
