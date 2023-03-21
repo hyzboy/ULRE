@@ -31,9 +31,9 @@ DescriptorSet *GPUDevice::CreateDS(const PipelineLayoutData *pld,const Descripto
     return(new DescriptorSet(attr->device,binding_count,pld->pipeline_layout,desc_set));
 }
 
-MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *mds,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
+MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
 {
-    if(!mds||!pld)return(nullptr);
+    if(!desc_manager||!pld)return(nullptr);
     if(!RangeCheck<DescriptorSetType>(desc_set_type))
         return(nullptr);
 
@@ -44,10 +44,10 @@ MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *mds,con
 #ifdef _DEBUG
     const UTF8String addr_string=HexToString<char,uint64_t>((uint64_t)(ds->GetDescriptorSet()));
 
-    LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+("] OK! Material Name: \"")+mds->GetMaterialName()+U8_TEXT("\" Type: ")+GetDescriptorSetTypeName(desc_set_type));
+    LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+("] OK! Material Name: \"")+desc_manager->GetMaterialName()+U8_TEXT("\" Type: ")+GetDescriptorSetTypeName(desc_set_type));
 #endif//_DEBUG
 
-    return(new MaterialParameters(mds,desc_set_type,ds));
+    return(new MaterialParameters(desc_manager,desc_set_type,ds));
 }
 
 MaterialParameters *GPUDevice::CreateMP(Material *mtl,const DescriptorSetType &desc_set_type)
@@ -77,19 +77,19 @@ void CreateShaderStageList(List<VkPipelineShaderStageCreateInfo> &shader_stage_l
     }
 }
 
-Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *mds,VertexInput *vi)
+Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *desc_manager,VertexInput *vi)
 {
     const int shader_count=shader_maps->GetCount();
 
     if(shader_count<1)
         return(nullptr);
 
-    PipelineLayoutData *pld=CreatePipelineLayoutData(mds);
+    PipelineLayoutData *pld=CreatePipelineLayoutData(desc_manager);
     
     if(!pld)
     {
         delete shader_maps;
-        SAFE_CLEAR(mds);
+        SAFE_CLEAR(desc_manager);
         return(nullptr);
     }
 
@@ -97,19 +97,19 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     data->name          =mtl_name;
     data->shader_maps   =shader_maps;
-    data->mds           =mds;
+    data->desc_manager           =desc_manager;
     data->vertex_input  =vi;
 
     CreateShaderStageList(data->shader_stage_list,shader_maps);
 
     data->pipeline_layout_data=pld;
 
-    if(mds)
+    if(desc_manager)
     {
         ENUM_CLASS_FOR(DescriptorSetType,int,dst)
         {
-            if(mds->hasSet((DescriptorSetType)dst))
-                data->mp_array[dst]=CreateMP(mds,pld,(DescriptorSetType)dst);
+            if(desc_manager->hasSet((DescriptorSetType)dst))
+                data->mp_array[dst]=CreateMP(desc_manager,pld,(DescriptorSetType)dst);
             else
                 data->mp_array[dst]=nullptr;
         }

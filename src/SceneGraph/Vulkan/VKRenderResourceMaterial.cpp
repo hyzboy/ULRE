@@ -166,7 +166,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
     const UTF8String mtl_name=ToUTF8String(filename);
 
-    MaterialDescriptorManager *mds=nullptr;
+    MaterialDescriptorManager *desc_manager=nullptr;
     {
         uint8 count;
         cbr.Read(count);
@@ -177,7 +177,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
             LoadShaderDescriptor(cbr,sd_list,count,ver);
         
-            mds=new MaterialDescriptorManager(mtl_name,sd_list,count);
+            desc_manager=new MaterialDescriptorManager(mtl_name,sd_list,count);
 
             delete[] sd_list;
         }
@@ -185,12 +185,12 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
 
     if(result&&vertex_input)
     {
-        mtl=device->CreateMaterial(mtl_name,smm,mds,vertex_input);
+        mtl=device->CreateMaterial(mtl_name,smm,desc_manager,vertex_input);
         Add(mtl);
     }
     else
     {
-        SAFE_CLEAR(mds);
+        SAFE_CLEAR(desc_manager);
         delete smm;
         mtl=nullptr;
     }

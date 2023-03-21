@@ -11,7 +11,7 @@ MaterialData::~MaterialData()
             delete mp_array[i];
 
     delete shader_maps;
-    SAFE_CLEAR(mds);
+    SAFE_CLEAR(desc_manager);
 
     delete vertex_input;
 }
@@ -29,7 +29,7 @@ const VkPipelineLayout Material::GetPipelineLayout()const
 
 const bool Material::hasSet(const DescriptorSetType &dst)const
 {
-    return data->mds->hasSet(dst);
+    return data->desc_manager->hasSet(dst);
 }
 
 VIL *Material::CreateVIL(const VILConfig *format_map)
