@@ -8,7 +8,7 @@
 VK_NAMESPACE_BEGIN
 class MaterialParameters
 {
-    const MaterialDescriptorManager *mds;
+    const MaterialDescriptorManager *desc_manager;
 
     DescriptorSetType set_type;
 

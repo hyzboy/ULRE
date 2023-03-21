@@ -4,9 +4,9 @@
 #include<hgl/graph/VKDescriptorSet.h>
 
 VK_NAMESPACE_BEGIN
-MaterialParameters::MaterialParameters(const MaterialDescriptorManager *_mds,const DescriptorSetType &type,DescriptorSet *ds)
+MaterialParameters::MaterialParameters(const MaterialDescriptorManager *mdm,const DescriptorSetType &type,DescriptorSet *ds)
 {
-    mds=_mds;
+    desc_manager=mdm;
     set_type=type;
     descriptor_set=ds;
 }
@@ -21,7 +21,7 @@ bool MaterialParameters::BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool d
     if(name.IsEmpty()||!ubo)
         return(false);
 
-    const int index=mds->GetUBO(name,dynamic);
+    const int index=desc_manager->GetUBO(name,dynamic);
 
     if(index<0)
         return(false);
@@ -37,7 +37,7 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool
     if(name.IsEmpty()||!ssbo)
         return(false);
 
-    const int index=mds->GetSSBO(name,dynamic);
+    const int index=desc_manager->GetSSBO(name,dynamic);
 
     if(index<0)
         return(false);
@@ -53,7 +53,7 @@ bool MaterialParameters::BindImageSampler(const AnsiString &name,Texture *tex,Sa
     if(name.IsEmpty()||!tex||!sampler)
         return(false);
 
-    const int index=mds->GetImageSampler(name);
+    const int index=desc_manager->GetImageSampler(name);
 
     if(index<0)
         return(false);
@@ -69,7 +69,7 @@ bool MaterialParameters::BindInputAttachment(const AnsiString &name,ImageView *i
     if(name.IsEmpty()||!iv)
         return(false);
 
-    const int index=mds->GetInputAttachment(name);
+    const int index=desc_manager->GetInputAttachment(name);
 
     if(index<0)
         return(false);

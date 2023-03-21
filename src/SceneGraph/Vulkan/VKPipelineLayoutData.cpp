@@ -4,15 +4,15 @@
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 
 VK_NAMESPACE_BEGIN
-PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *mds)
+PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager)
 {
     PipelineLayoutData *pld=hgl_zero_new<PipelineLayoutData>();
 
-    if(mds)
+    if(desc_manager)
     {
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
-            const DescriptorSetLayoutCreateInfo *dslci=mds->GetDSLCI((DescriptorSetType)i);
+            const DescriptorSetLayoutCreateInfo *dslci=desc_manager->GetDSLCI((DescriptorSetType)i);
 
             if(!dslci||dslci->bindingCount<=0)
                 continue;
