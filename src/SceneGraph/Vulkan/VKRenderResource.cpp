@@ -5,6 +5,33 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
+void RenderResource::SetGlobal(const AnsiString &name,DeviceBuffer *buf)
+{
+    if(!buf)return;
+    if(name.IsEmpty())return;
+
+    global_buffer_map.Add(name,buf);
+}
+
+DeviceBuffer *RenderResource::GetGlobal(const AnsiString &name)
+{
+    if(name.IsEmpty())return(nullptr);
+
+    DeviceBuffer *buf;
+
+    if(global_buffer_map.Get(name,buf))
+        return buf;
+    else
+        return nullptr;
+}
+
+void RenderResource::Free(DeviceBuffer *buf)
+{
+    rm_buffers.Release(buf);
+
+    global_buffer_map.DeleteByValue(buf);
+}
+
 VBO *RenderResource::CreateVBO(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     VBO *vb=device->CreateVBO(format,count,data,sharing_mode);

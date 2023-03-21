@@ -59,7 +59,7 @@ public:
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return data->shader_stage_list;}
 
-    const   MaterialDescriptorManager *            GetDescriptorSets       ()const{return data->mds;}
+    const   MaterialDescriptorManager *         GetDescriptorSets       ()const{return data->mds;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
     const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return data->pipeline_layout_data;}
 
