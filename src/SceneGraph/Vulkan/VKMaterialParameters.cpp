@@ -21,7 +21,7 @@ bool MaterialParameters::BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool d
     if(name.IsEmpty()||!ubo)
         return(false);
 
-    const int index=desc_manager->GetUBO(name,dynamic);
+    const int index=desc_manager->GetUBO(set_type,name,dynamic);
 
     if(index<0)
         return(false);
@@ -37,7 +37,7 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool
     if(name.IsEmpty()||!ssbo)
         return(false);
 
-    const int index=desc_manager->GetSSBO(name,dynamic);
+    const int index=desc_manager->GetSSBO(set_type,name,dynamic);
 
     if(index<0)
         return(false);
@@ -53,7 +53,7 @@ bool MaterialParameters::BindImageSampler(const AnsiString &name,Texture *tex,Sa
     if(name.IsEmpty()||!tex||!sampler)
         return(false);
 
-    const int index=desc_manager->GetImageSampler(name);
+    const int index=desc_manager->GetImageSampler(set_type,name);
 
     if(index<0)
         return(false);
@@ -69,7 +69,7 @@ bool MaterialParameters::BindInputAttachment(const AnsiString &name,ImageView *i
     if(name.IsEmpty()||!iv)
         return(false);
 
-    const int index=desc_manager->GetInputAttachment(name);
+    const int index=desc_manager->GetInputAttachment(set_type,name);
 
     if(index<0)
         return(false);
