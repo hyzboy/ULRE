@@ -7,7 +7,7 @@
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
 #include<hgl/graph/VKSamplerType.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 class MaterialCreateInfo
 {
     AnsiString shader_name;
@@ -60,4 +60,4 @@ public:
 
     const MaterialDescriptorInfo &GetMDI()const{return mdm;}
 };//class MaterialCreateInfo
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

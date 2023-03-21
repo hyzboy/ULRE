@@ -1,7 +1,7 @@
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 
 using namespace hgl::graph;
 
@@ -48,4 +48,4 @@ bool ShaderCreateInfoFragment::ProcOutput()
 
     return(true);
 }
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

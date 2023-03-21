@@ -21,8 +21,7 @@ SET(MATERIAL_CREATE_INFO_SOURCE_FILES MaterialCreateInfo.cpp)
 SOURCE_GROUP("Material Create Info" FILES   ${MATERIAL_CREATE_INFO_HEADER_FILES}
                                             ${MATERIAL_CREATE_INFO_SOURCE_FILES})
 
-SET(SHADERGEN_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderGenNamespace.h
-                            ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorInfo.h
+SET(SHADERGEN_HEADER_FILES  ${SHADERGEN_INCLUDE_PATH}/ShaderDescriptorInfo.h
                             ${SHADERGEN_INCLUDE_PATH}/MaterialDescriptorInfo.h)
 
 SET(SHADERGEN_SOURCE_FILES  

@@ -2,7 +2,7 @@
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 enum class MaterialType
 {
     Color,                              ///<´¿É«²ÄÖÊ
@@ -19,4 +19,4 @@ public:
 
     void UseDefaultMain();
 };
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

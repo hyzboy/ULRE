@@ -2,7 +2,7 @@
 
 #include<hgl/shadergen/ShaderCreateInfo.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 class ShaderCreateInfoMap:public ObjectMap<VkShaderStageFlagBits,ShaderCreateInfo>
 {
 public:
@@ -22,4 +22,4 @@ public:
         return(true);
     }
 };
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

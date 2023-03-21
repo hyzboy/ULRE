@@ -1,13 +1,9 @@
 ﻿#pragma once
 
 #include<hgl/graph/VKShaderDescriptorSet.h>
-#include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/type/Map.h>
 
-using namespace hgl;
-using namespace hgl::graph;
-
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 /**
 * 材质描述符管理</p>
 * 该类使用于SHADER生成前，用于统计编号set/binding
@@ -66,5 +62,5 @@ public:
     {
         return desc_set_array[size_t(type)].count>0;
     }
-};
-SHADERGEN_NAMESPACE_END
+};//class MaterialDescriptorInfo
+}}//namespace hgl::graph

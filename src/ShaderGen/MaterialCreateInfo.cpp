@@ -4,7 +4,7 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 MaterialCreateInfo::MaterialCreateInfo(const AnsiString &n,const uint rc,const bool rd,const uint32 ss)
 {
     shader_name=n;
@@ -119,4 +119,4 @@ bool MaterialCreateInfo::CreateShader()
 
     return(true);
 }
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

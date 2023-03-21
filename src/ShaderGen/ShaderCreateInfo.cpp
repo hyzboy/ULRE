@@ -2,7 +2,7 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include"GLSLCompiler.h"
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
 {
     shader_stage=ss;
@@ -15,7 +15,7 @@ ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorIn
 ShaderCreateInfo::~ShaderCreateInfo()
 {
     if(spv_data)
-        glsl_compiler::Free(spv_data);
+        FreeSPVData(spv_data);
 
     delete sdm;
 }
@@ -274,7 +274,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
 bool ShaderCreateInfo::CompileToSPV()
 {
-    spv_data=glsl_compiler::Compile(shader_stage,final_shader.c_str());
+    spv_data=CompileShader(shader_stage,final_shader.c_str());
 
     if(!spv_data)
         return(false);
@@ -282,7 +282,7 @@ bool ShaderCreateInfo::CompileToSPV()
     return(true);
 }
 
-const uint32_t *ShaderCreateInfo::GetSPVData()const
+const uint32 *ShaderCreateInfo::GetSPVData()const
 {
     return spv_data?spv_data->spv_data:nullptr;
 }
@@ -291,4 +291,4 @@ const size_t ShaderCreateInfo::GetSPVSize()const
 {
     return spv_data?spv_data->spv_length:0;
 }
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

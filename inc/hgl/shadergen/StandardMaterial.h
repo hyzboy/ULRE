@@ -1,7 +1,7 @@
 ﻿#include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/CompOperator.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 
 using ParamPreciseFlagBits=uint8;
 using PPFB=ParamPreciseFlagBits;
@@ -101,4 +101,4 @@ public:
         hgl_zero(*this);
     }
 };//struct Standard2DMaterial:public StandardMaterial
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph

@@ -1,15 +1,12 @@
 #ifndef HGL_SHADER_CREATE_INFO_INCLUDE
 #define HGL_SHADER_CREATE_INFO_INCLUDE
 
-#include<hgl/shadergen/ShaderGenNamespace.h>
 #include<hgl/graph/VertexAttrib.h>
+#include<hgl/graph/VK.h>
 
-namespace glsl_compiler
+namespace hgl{namespace graph
 {
-    struct SPVData;
-}
-
-SHADERGEN_NAMESPACE_BEGIN
+struct SPVData;
 
 class MaterialDescriptorInfo;
 class ShaderDescriptorInfo;
@@ -30,7 +27,7 @@ protected:
 
     AnsiString final_shader;
 
-    glsl_compiler::SPVData *spv_data;
+    SPVData *spv_data;
 
 protected:
 
@@ -72,8 +69,8 @@ public:
 
     bool CreateShader(ShaderCreateInfo *);
 
-    const uint32_t *GetSPVData()const;
+    const uint32 *GetSPVData()const;
     const size_t GetSPVSize()const;
 };//class ShaderCreateInfo
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph
 #endif//HGL_SHADER_CREATE_INFO_INCLUDE

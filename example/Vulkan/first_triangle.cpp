@@ -12,7 +12,6 @@
 
 using namespace hgl;
 using namespace hgl::graph;
-using namespace hgl::shadergen;
 
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;

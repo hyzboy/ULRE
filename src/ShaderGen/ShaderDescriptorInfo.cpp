@@ -1,6 +1,6 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
-SHADERGEN_NAMESPACE_BEGIN
+namespace hgl{namespace graph{
 ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
 {
     stage_flag=flag_bit;
@@ -155,4 +155,4 @@ void ShaderDescriptorInfo::DebugOutput(int index)
     }
 }
 #endif//_DEBUG
-SHADERGEN_NAMESPACE_END
+}}//namespace hgl::graph
