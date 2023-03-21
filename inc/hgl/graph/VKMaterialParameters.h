@@ -5,6 +5,7 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/graph/VKMaterialDescriptorManager.h>
 VK_NAMESPACE_BEGIN
 class MaterialParameters
 {
@@ -26,8 +27,10 @@ public:
             DescriptorSet *     GetDescriptorSet    (){return descriptor_set;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_set->GetDescriptorSet();}
 
-    const   uint32_t            GetCount            ()const{return descriptor_set->GetCount();}
-    const   bool                IsReady             ()const{return descriptor_set->IsReady();}
+    const   uint32_t            GetDescriptorCount  ()const{return desc_manager->GetBindCount(set_type);}   ///<获取总共需要绑定的描述符数量
+
+    const   uint32_t            GetBoundCount       ()const{return descriptor_set->GetCount();}             ///<获取已经绑好的数量
+    const   bool                IsReady             ()const{return descriptor_set->IsReady();}              ///<是否全部绑好了
 
 public:
 
