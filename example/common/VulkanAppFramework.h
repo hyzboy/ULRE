@@ -20,6 +20,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/color/Color.h>
 #include<hgl/Time.h>
 
@@ -67,6 +68,7 @@ protected:
 protected:
 
     ViewportInfo            vp_info;
+    DeviceBuffer *          ubo_vp_info                 =nullptr;
 
 public:
 
@@ -135,7 +137,13 @@ public:
 
         win->Join(this);
 
-        vp_info.Set(w,h);
+        {
+            vp_info.Set(w,h);
+
+            ubo_vp_info=db->CreateUBO(sizeof(ViewportInfo),&vp_info);
+
+            db->SetGlobal(GlobalShaderUBO::ViewportInfo,ubo_vp_info);
+        }
 
         return(true);
     }
@@ -143,6 +151,7 @@ public:
     virtual void Resize(int w,int h)
     {
         vp_info.Set(w,h);
+        ubo_vp_info->Write(&vp_info);
     }
 
     void SetClearColor(const Color4f &cc)
