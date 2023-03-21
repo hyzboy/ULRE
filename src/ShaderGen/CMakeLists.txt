@@ -39,8 +39,8 @@ set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
 SET(STD_MTL_2D_HEADER_PATH ${STD_MTL_HEADER_PATH}/2d)
 
-SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/VertexColor2DNDC.h
-                            2d/VertexColor2DNDC.cpp)
+SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/VertexColor2D.h
+                            2d/VertexColor2D.cpp)
 
 SET(STANDARD_MATERIAL_SOURCE    ${STD_MTL_HEADER_PATH}/StdMaterial.h)
 
