@@ -199,7 +199,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     return(mtl);
 }
 
-Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInfo *mci)
+Material *RenderResource::CreateMaterial(const MaterialCreateInfo *mci)
 {
     if(!mci)
         return(nullptr);
@@ -210,8 +210,6 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
 
     if(material_by_name.Get(mtl_name,mtl))
         return mtl;
-
-    SHADERGEN_NAMESPACE_USING
 
     const uint count=GetShaderCountByBits(mci->GetShaderStage());
     const ShaderModule *sm;
@@ -271,6 +269,10 @@ Material *RenderResource::CreateMaterial(const hgl::shadergen::MaterialCreateInf
     {
         delete mdm;
         delete smm;
+    }
+    else
+    {
+        Add(mtl);
     }
 
     material_by_name.Add(mtl_name,mtl);
