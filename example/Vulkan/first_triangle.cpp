@@ -8,7 +8,7 @@
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/graph/mtl/2d/VertexColor2DNDC.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -98,45 +98,11 @@ private:
 
     bool InitAutoMaterial()
     {
-        MaterialCreateInfo mci("VertexColor2DNDC",      ///<名称，随便起
-                                1,                      ///<最终一个RT输出
-                                false);                 ///<无深度输出
+        auto *mci=mtl::CreateVertexColor2DNDC();
 
-        //vertex部分
-        {
-            ShaderCreateInfoVertex *vsc=mci.GetVS();
+        material_instance=db->CreateMaterialInstance(mci,&vil_config);
 
-            vsc->AddInput(VAT_VEC2,VAN::Position);
-            vsc->AddInput(VAT_VEC4,VAN::Color);
-
-            vsc->AddOutput(VAT_VEC4,"Color");
-
-            vsc->SetShaderCodes(R"(
-    void main()
-    {
-        Output.Color=Color;
-
-        gl_Position=vec4(Position,0,1);
-    })");
-        }
-
-        //fragment部分
-        {
-            ShaderCreateInfoFragment *fsc=mci.GetFS();
-
-            fsc->AddOutput(VAT_VEC4,"Color");
-
-            fsc->SetShaderCodes(R"(
-    void main()
-    {
-        Color=Input.Color;
-    })");
-        }
-
-        if(!mci.CreateShader())
-            return(false);
-
-        material_instance=db->CreateMaterialInstance(&mci,&vil_config);
+        delete mci;
 
         return material_instance;
     }
