@@ -29,7 +29,7 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,Shad
 
         for(uint i=0;i<sd_count;i++)
         {
-            binding_map[size_t(sp->desc_type)].Add(sp->name,sp->binding);
+            binding_map[size_t(sp->set_type)][size_t(sp->desc_type)].Add(sp->name,sp->binding);
 
             ++dsl_ci[size_t(sp->set_type)].bindingCount;
 
@@ -110,7 +110,7 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,cons
             {
                 sd=(*sp)->right;
 
-                binding_map[size_t(sd->desc_type)].Add(sd->name,sd->binding);
+                binding_map[size_t(sd->set_type)][size_t(sd->desc_type)].Add(sd->name,sd->binding);
 
                 WriteDescriptorSetLayoutBinding(dsl_bind[i],sd);
 
@@ -127,8 +127,10 @@ MaterialDescriptorManager::~MaterialDescriptorManager()
     delete[] all_dslb;
 }
     
-const int MaterialDescriptorManager::GetBinding(const VkDescriptorType &desc_type,const AnsiString &name)const
+const int MaterialDescriptorManager::GetBinding(const DescriptorSetType &set_type,const VkDescriptorType &desc_type,const AnsiString &name)const
 {
+    RANGE_CHECK_RETURN(set_type,-1)
+
     if(desc_type<VK_DESCRIPTOR_TYPE_BEGIN_RANGE
      ||desc_type>VK_DESCRIPTOR_TYPE_END_RANGE)
         return -1;
@@ -137,6 +139,6 @@ const int MaterialDescriptorManager::GetBinding(const VkDescriptorType &desc_typ
 
     int result;
 
-    return(binding_map[size_t(desc_type)].Get(name,result)?result:-1);
+    return(binding_map[size_t(set_type)][size_t(desc_type)].Get(name,result)?result:-1);
 }
 VK_NAMESPACE_END
