@@ -8,9 +8,11 @@
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 
 using namespace hgl;
 using namespace hgl::graph;
+using namespace hgl::shadergen;
 
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
@@ -62,6 +64,10 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
+#if defined(USE_HALF_FLOAT_POSITION)||defined(USE_UNORM8_COLOR)
+    VILConfig vil_config;
+#endif
+
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
 
@@ -69,11 +75,8 @@ private:
 
 private:
 
-    bool InitMaterial()
+    void InitVIL()
     {
-#if defined(USE_HALF_FLOAT_POSITION)||defined(USE_UNORM8_COLOR)
-        VILConfig vil_config;
-
     #ifdef USE_HALF_FLOAT_POSITION
         vil_config.Add(VAN::Position,PositionFormat);
     #endif//USE_HALF_FLOAT_POSITION
@@ -81,19 +84,70 @@ private:
     #ifdef USE_UNORM8_COLOR
         vil_config.Add(VAN::Color,ColorFormat);
     #endif//USE_HALF_FLOAT_POSITION
+    }
 
+    bool InitMaterial()
+    {
+#if defined(USE_HALF_FLOAT_POSITION)||defined(USE_UNORM8_COLOR)
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"),&vil_config);
 #else
         material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"));
 #endif//
 
-        if(!material_instance)
+        return material_instance;
+    }
+
+    bool InitAutoMaterial()
+    {
+        MaterialCreateInfo mc("VertexColor2D",1,false);
+
+        //vertex部分
+        {
+            ShaderCreateInfoVertex *vsc=mc.GetVS();
+
+            vsc->AddInput("vec2",VAN::Position);
+            vsc->AddInput("vec4",VAN::Color);
+
+            vsc->AddOutput("vec4","Color");
+
+            vsc->SetShaderCodes(R"(
+    void main()
+    {
+        Output.Color=Color;
+
+        gl_Position=vec4(Position,0,1);
+    })");
+        }
+
+        //fragment部分
+        {
+            ShaderCreateInfoFragment *fsc=mc.GetFS();
+
+            fsc->AddOutput("vec4","Color");
+
+            fsc->SetShaderCodes(R"(
+    void main()
+    {
+        Color=Input.Color;
+    })");
+        }
+
+        if(!mc.CreateShader())
             return(false);
 
+        Material *m=db->CreateMaterial(&mc);
+        
+        material_instance=db->CreateMaterialInstance(m,&vil_config);
+
+        return material_instance;
+    }
+
+    bool InitPipeline()
+    {
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
-        return pipeline;
+        return pipeline;    
     }
 
     bool InitVBO()
@@ -118,7 +172,12 @@ public:
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        if(!InitMaterial())
+        InitVIL();
+
+        if(!InitAutoMaterial())
+            return(false);
+
+        if(!InitPipeline())
             return(false);
 
         if(!InitVBO())
