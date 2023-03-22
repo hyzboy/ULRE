@@ -97,7 +97,7 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     data->name          =mtl_name;
     data->shader_maps   =shader_maps;
-    data->desc_manager           =desc_manager;
+    data->desc_manager  =desc_manager;
     data->vertex_input  =vi;
 
     CreateShaderStageList(data->shader_stage_list,shader_maps);

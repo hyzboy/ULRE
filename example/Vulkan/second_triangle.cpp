@@ -5,6 +5,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
+#include<hgl/graph/mtl/2d/VertexColor2D.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -40,8 +41,14 @@ private:
 private:
 
     bool InitMaterial()
-    {
-        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
+    {        
+        MaterialCreateInfo *mci=mtl::CreateVertexColor2D(CoordinateSystem2D::Ortho);
+
+        //material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
+
+        material_instance=db->CreateMaterialInstance(mci);
+
+        delete mci;
 
         if(!material_instance)
             return(false);

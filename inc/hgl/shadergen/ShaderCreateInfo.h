@@ -17,7 +17,7 @@ protected:
 
     VkShaderStageFlagBits shader_stage;                      ///<着色器阶段
 
-    MaterialDescriptorInfo *mdm;
+    MaterialDescriptorInfo *mdi;
 
 protected:
 

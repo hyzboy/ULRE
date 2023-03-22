@@ -14,9 +14,9 @@ MaterialCreateInfo::MaterialCreateInfo(const AnsiString &n,const uint rc,const b
 
     shader_stage=ss;
 
-    if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdm));else vert=nullptr;
-    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdm));else geom=nullptr;
-    if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdm));else frag=nullptr;
+    if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdi));else vert=nullptr;
+    if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
+    if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
 }
 
 bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
@@ -24,7 +24,7 @@ bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiStrin
     if(struct_name.IsEmpty()||codes.IsEmpty())
         return(false);
 
-    return mdm.AddStruct(struct_name,codes);
+    return mdi.AddStruct(struct_name,codes);
 }
 
 bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
@@ -32,7 +32,7 @@ bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const Descr
     if(!shader_map.KeyExist(flag_bit))
         return(false);
 
-    if(!mdm.hasStruct(type_name))
+    if(!mdi.hasStruct(type_name))
         return(false);
 
     ShaderCreateInfo *sc=shader_map[flag_bit];
@@ -40,7 +40,7 @@ bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const Descr
     if(!sc)
         return(false);
 
-    UBODescriptor *ubo=mdm.GetUBO(name);
+    UBODescriptor *ubo=mdi.GetUBO(name);
 
     if(ubo)
     {
@@ -56,9 +56,9 @@ bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const Descr
         ubo=new UBODescriptor();
 
         ubo->type=type_name;
-        ubo->name=name;
+        hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
-        return sc->sdm->AddUBO(set_type,mdm.AddUBO(flag_bit,set_type,ubo));
+        return sc->sdm->AddUBO(set_type,mdi.AddUBO(flag_bit,set_type,ubo));
     }
 }
 
@@ -74,7 +74,7 @@ bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const D
     if(!sc)
         return(false);
 
-    SamplerDescriptor *sampler=mdm.GetSampler(name);
+    SamplerDescriptor *sampler=mdi.GetSampler(name);
 
     AnsiString st_name=GetSamplerTypeName(st);
 
@@ -92,9 +92,9 @@ bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const D
         sampler=new SamplerDescriptor();
 
         sampler->type=st_name;
-        sampler->name=name;
+        hgl::strcpy(sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
-        return sc->sdm->AddSampler(set_type,mdm.AddSampler(flag_bit,set_type,sampler));
+        return sc->sdm->AddSampler(set_type,mdi.AddSampler(flag_bit,set_type,sampler));
     }
 }
 
@@ -103,7 +103,7 @@ bool MaterialCreateInfo::CreateShader()
     if(shader_map.IsEmpty())
         return(false);
 
-    mdm.Resort();
+    mdi.Resort();
 
     ShaderCreateInfo *sc,*last=nullptr;
 
