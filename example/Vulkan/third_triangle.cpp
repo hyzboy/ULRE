@@ -4,6 +4,8 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
+#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/mtl/2d/VertexColor2D.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -15,9 +17,9 @@ constexpr uint32_t VERTEX_COUNT=3;
 
 constexpr float position_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75}
+    {0.5,   0.25},
+    {0.25,  0.75},
+    {0.75,  0.75}
 };
 
 constexpr float color_data[VERTEX_COUNT][4]=
@@ -42,12 +44,12 @@ private:
 
     bool InitMaterial()
     {
-        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
+        AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(CoordinateSystem2D::ZeroToOne);
+
+        material_instance=db->CreateMaterialInstance(mci);
 
         if(!material_instance)
             return(false);
-
-        BindCameraUBO(material_instance);
             
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
@@ -57,13 +59,12 @@ private:
 
     bool InitVBO()
     {
-        Primitive *primitive=db->CreatePrimitive(VERTEX_COUNT);
-        if(!primitive)return(false);
+        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
-        if(!primitive->Set(VAN::Position,   db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data  )))return(false);
-        if(!primitive->Set(VAN::Color,      db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data     )))return(false);
+        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
+        if(!rpc.SetVBO(VAN::Color,      VF_V4F, color_data   ))return(false);
         
-        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=rpc.Create(material_instance,pipeline);
 
         if(!render_obj)
             return(false);
