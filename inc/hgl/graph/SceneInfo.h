@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        /** 
+        /**
          * MVP矩阵
          */
         struct MVPMatrix

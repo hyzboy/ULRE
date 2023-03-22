@@ -15,11 +15,11 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
-constexpr float position_data[VERTEX_COUNT][2]=
+static float position_data[VERTEX_COUNT][2]=
 {
-    {SCREEN_WIDTH*0.5,   SCREEN_HEIGHT*0.25},
-    {SCREEN_WIDTH*0.75,  SCREEN_HEIGHT*0.75},
-    {SCREEN_WIDTH*0.25,  SCREEN_HEIGHT*0.75}
+    {0.5,   0.25},
+    {0.75,  0.75},
+    {0.25,  0.75}
 };
 
 constexpr float color_data[VERTEX_COUNT][4]=
@@ -28,6 +28,8 @@ constexpr float color_data[VERTEX_COUNT][4]=
     {0,1,0,1},
     {0,0,1,1}
 };
+
+#define USE_ZERO2ONE_COORD      //使用左上角0,0右下角1,1的坐标系
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -41,8 +43,12 @@ private:
 private:
 
     bool InitMaterial()
-    {        
+    {
+#ifdef USE_ZERO2ONE_COORD
+        MaterialCreateInfo *mci=mtl::CreateVertexColor2D(CoordinateSystem2D::ZeroToOne);
+#else
         MaterialCreateInfo *mci=mtl::CreateVertexColor2D(CoordinateSystem2D::Ortho);
+#endif//USE_ZERO2ONE_COORD
 
         //material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));
 
@@ -65,6 +71,16 @@ private:
     {
         Primitive *primitive=db->CreatePrimitive(VERTEX_COUNT);
         if(!primitive)return(false);
+
+#ifndef USE_ZERO2ONE_COORD      //使用ortho坐标系
+
+        for(uint i=0;i<VERTEX_COUNT;i++)
+        {
+            position_data[i][0]*=SCREEN_WIDTH;
+            position_data[i][1]*=SCREEN_HEIGHT;
+        }
+
+#endif//USE_ZERO2ONE_COORD
 
         if(!primitive->Set(VAN::Position,   db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data  )))return(false);
         if(!primitive->Set(VAN::Color,      db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data     )))return(false);
