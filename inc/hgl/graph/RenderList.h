@@ -39,7 +39,7 @@ namespace hgl
             MVPArrayBuffer *mvp_array;
             List<Renderable *> ri_list;
 
-            VkDescriptorSet ds_list[(size_t)DescriptorSetType::RANGE_SIZE];
+            VkDescriptorSet ds_list[DESCRIPTOR_SET_TYPE_COUNT];
             DescriptorSet *renderable_desc_sets;
 
             uint32_t ubo_offset;
@@ -54,7 +54,7 @@ namespace hgl
         private:
 
             Pipeline *          last_pipeline;
-            MaterialParameters *last_mp[(size_t)DescriptorSetType::RANGE_SIZE];
+            MaterialParameters *last_mp[DESCRIPTOR_SET_TYPE_COUNT];
             uint32_t            last_vbo;
 
             void Render(Renderable *);
@@ -67,7 +67,7 @@ namespace hgl
             virtual bool Expend(const CameraInfo &,SceneNode *);
 
             virtual bool Render(RenderCmdBuffer *);
-        };//class RenderList        
+        };//class RenderList
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_RENDER_LIST_INCLUDE
