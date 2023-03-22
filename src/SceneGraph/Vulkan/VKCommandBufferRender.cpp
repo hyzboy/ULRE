@@ -112,7 +112,7 @@ bool RenderCmdBuffer::BindDescriptorSets(Renderable *ri)
         uint32_t count=0;
 
         MaterialParameters *mp;
-        VkDescriptorSet ds[(size_t)DescriptorSetType::RANGE_SIZE];
+        VkDescriptorSet ds[DESCRIPTOR_SET_TYPE_COUNT];
 
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
         {
