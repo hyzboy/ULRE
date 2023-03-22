@@ -13,7 +13,6 @@ namespace hgl
 {
     namespace graph
     {
-        using MVPArrayBuffer=GPUArrayBuffer<MVPMatrix>;
         using MaterialSets=SortedSets<Material *>;
 
         /**
@@ -22,13 +21,13 @@ namespace hgl
          */
         class RenderList
         {
+        protected:  
+
             GPUDevice *     device;
             RenderCmdBuffer *cmd_buf;
 
         private:
 
-            CameraInfo      camera_info;
-            
             RenderNodeList  render_node_list;       ///<场景节点列表
             MaterialSets    material_sets;          ///<材质合集
 
@@ -36,7 +35,6 @@ namespace hgl
 
         private:
 
-            MVPArrayBuffer *mvp_array;
             List<Renderable *> ri_list;
 
             VkDescriptorSet ds_list[DESCRIPTOR_SET_TYPE_COUNT];
@@ -68,6 +66,29 @@ namespace hgl
 
             virtual bool Render(RenderCmdBuffer *);
         };//class RenderList
+
+        class RenderList2D:public RenderList
+        {
+        };
+
+        class RenderList3D:public RenderList
+        {
+        protected:
+
+            CameraInfo      camera_info;            
+            GPUArrayBuffer *mvp_array;
+
+        protected:
+
+            virtual bool    Begin() override;
+            virtual bool    Expend(SceneNode *) override;
+            virtual void    End() override;
+
+        public:
+
+            RenderList3D();
+            virtual ~RenderList3D() override;
+        };
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_RENDER_LIST_INCLUDE

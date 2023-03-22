@@ -80,11 +80,7 @@ namespace hgl
         {
             device          =dev;
             cmd_buf         =nullptr;
-            
-            hgl_zero(camera_info);
 
-            mvp_array       =new MVPArrayBuffer(device,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-            
             ubo_offset      =0;
             ubo_align       =0;
 
@@ -95,13 +91,11 @@ namespace hgl
 
         RenderList::~RenderList()
         {
-            delete mvp_array;
         }        
 
         bool RenderList::Begin()
         {
             render_node_list.ClearData();
-            mvp_array->Clear();
             ri_list.ClearData();
 
             material_sets.ClearData();
@@ -252,7 +246,7 @@ namespace hgl
                         cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),first_set,ds_list,ds_count,&ubo_offset,1);
                     }
                     else
-                    {                        
+                    {
                         cmd_buf->BindDescriptorSets(ri->GetPipelineLayout(),first_set,ds_list,ds_count,nullptr,0);
                     }
 
