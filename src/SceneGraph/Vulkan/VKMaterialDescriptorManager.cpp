@@ -78,7 +78,6 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,cons
         dsl_ci[i].pBindings=nullptr;
 
         sd_count+=sds_array[i].count;
-
     }
 
     if(sd_count<=0)
@@ -116,7 +115,7 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,cons
 
                 ++dsl_bind[i];
 
-                ++sp;                                
+                ++sp;
             }
         }
     }
