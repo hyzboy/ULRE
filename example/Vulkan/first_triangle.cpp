@@ -98,11 +98,9 @@ private:
 
     bool InitAutoMaterial()
     {
-        MaterialCreateInfo *mci=mtl::CreateVertexColor2D(CoordinateSystem2D::NDC);
+        AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(CoordinateSystem2D::NDC);
 
         material_instance=db->CreateMaterialInstance(mci,&vil_config);
-
-        delete mci;
 
         return material_instance;
     }
