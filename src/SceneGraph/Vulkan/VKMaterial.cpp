@@ -6,7 +6,7 @@
 VK_NAMESPACE_BEGIN
 MaterialData::~MaterialData()
 {
-    for(int i=0;i<int(DescriptorSetType::RANGE_SIZE);i++)
+    for(int i=0;i<DESCRIPTOR_SET_TYPE_COUNT;i++)
         if(mp_array[i])
             delete mp_array[i];
 
