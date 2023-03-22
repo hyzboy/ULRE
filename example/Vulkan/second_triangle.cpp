@@ -5,6 +5,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
+#include<hgl/graph/VKRenderablePrimitiveCreater.h>
 #include<hgl/graph/mtl/2d/VertexColor2D.h>
 
 using namespace hgl;
@@ -69,8 +70,7 @@ private:
    
     bool InitVBO()
     {
-        Primitive *primitive=db->CreatePrimitive(VERTEX_COUNT);
-        if(!primitive)return(false);
+        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
 #ifndef USE_ZERO2ONE_COORD      //使用ortho坐标系
 
@@ -82,10 +82,10 @@ private:
 
 #endif//USE_ZERO2ONE_COORD
 
-        if(!primitive->Set(VAN::Position,   db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data  )))return(false);
-        if(!primitive->Set(VAN::Color,      db->CreateVBO(VF_V4F,VERTEX_COUNT,color_data     )))return(false);
+        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
+        if(!rpc.SetVBO(VAN::Color,      VF_V4F, color_data   ))return(false);
         
-        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=rpc.Create(material_instance,pipeline);
         return(true);
     }
 
