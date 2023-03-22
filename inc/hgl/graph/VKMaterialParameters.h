@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_MATERIAL_PARAMETERS_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_MATERIAL_PARAMETERS_INCLUDE
 #define HGL_GRAPH_VULKAN_MATERIAL_PARAMETERS_INCLUDE
 
 #include<hgl/graph/VK.h>
@@ -27,10 +27,10 @@ public:
             DescriptorSet *     GetDescriptorSet    (){return descriptor_set;}
     const   VkDescriptorSet     GetVkDescriptorSet  ()const{return descriptor_set->GetDescriptorSet();}
 
-    const   uint32_t            GetDescriptorCount  ()const{return desc_manager->GetBindCount(set_type);}   ///<»ñÈ¡×Ü¹²ÐèÒª°ó¶¨µÄÃèÊö·ûÊýÁ¿
+    const   uint32_t            GetDescriptorCount  ()const{return desc_manager->GetBindCount(set_type);}   ///<èŽ·å–æ€»å…±éœ€è¦ç»‘å®šçš„æè¿°ç¬¦æ•°é‡
 
-    const   uint32_t            GetBoundCount       ()const{return descriptor_set->GetCount();}             ///<»ñÈ¡ÒÑ¾­°óºÃµÄÊýÁ¿
-    const   bool                IsReady             ()const{return descriptor_set->IsReady();}              ///<ÊÇ·ñÈ«²¿°óºÃÁË
+    const   uint32_t            GetBoundCount       ()const{return descriptor_set->GetCount();}             ///<èŽ·å–å·²ç»ç»‘å¥½çš„æ•°é‡
+    const   bool                IsReady             ()const{return descriptor_set->IsReady();}              ///<æ˜¯å¦å…¨éƒ¨ç»‘å¥½äº†
 
 public:
 

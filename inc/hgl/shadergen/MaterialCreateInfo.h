@@ -5,6 +5,7 @@
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
+#include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/VKSamplerType.h>
 
 namespace hgl{namespace graph{
@@ -19,7 +20,7 @@ protected:
 
     uint32_t shader_stage;                                  ///<着色器阶段
 
-    MaterialDescriptorInfo mdm;                             ///<材质描述符管理器
+    MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
 
     ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
@@ -52,12 +53,24 @@ public:
     ~MaterialCreateInfo()=default;
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
+    bool AddStruct(const GlobalDescriptor::ShaderStruct &ss)
+    {
+        return AddStruct(ss.struct_name,ss.codes);
+    }
 
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
+    bool AddUBO(const VkShaderStageFlagBits flag_bits,const GlobalDescriptor::ShaderStruct &ss)
+    {
+        if(!mdi.hasStruct(ss.struct_name))
+            mdi.AddStruct(ss.struct_name,ss.codes);
+
+        return AddUBO(flag_bits,DescriptorSetType::Global,ss.struct_name,ss.name);
+    }
+
     bool CreateShader();
 
-    const MaterialDescriptorInfo &GetMDI()const{return mdm;}
+    const MaterialDescriptorInfo &GetMDI()const{return mdi;}
 };//class MaterialCreateInfo
 }}//namespace hgl::graph

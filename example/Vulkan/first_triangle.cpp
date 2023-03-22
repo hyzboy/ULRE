@@ -8,7 +8,7 @@
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/VertexColor2DNDC.h>
+#include<hgl/graph/mtl/2d/VertexColor2D.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -98,7 +98,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        MaterialCreateInfo *mci=mtl::CreateVertexColor2DNDC();
+        MaterialCreateInfo *mci=mtl::CreateVertexColor2D(CoordinateSystem2D::NDC);
 
         material_instance=db->CreateMaterialInstance(mci,&vil_config);
 

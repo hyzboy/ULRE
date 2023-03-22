@@ -42,7 +42,8 @@ SET(STD_MTL_2D_HEADER_PATH ${STD_MTL_HEADER_PATH}/2d)
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/VertexColor2D.h
                             2d/VertexColor2D.cpp)
 
-SET(STANDARD_MATERIAL_SOURCE    ${STD_MTL_HEADER_PATH}/StdMaterial.h)
+SET(STANDARD_MATERIAL_SOURCE    ${STD_MTL_HEADER_PATH}/StdMaterial.h
+                                GlobalShaderUBO.cpp)
 
 SOURCE_GROUP("Standard Material" FILES ${STANDARD_MATERIAL_SOURCE})
 SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})

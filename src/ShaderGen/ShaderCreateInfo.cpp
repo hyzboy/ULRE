@@ -6,7 +6,7 @@ namespace hgl{namespace graph{
 ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
 {
     shader_stage=ss;
-    mdm=m;
+    mdi=m;
     sdm=new ShaderDescriptorInfo(ss);
 
     spv_data=nullptr;
@@ -81,7 +81,10 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
     AnsiString last_output=last_sc->GetOutputStruct();
 
     if(last_output.IsEmpty())
+    {
+        final_shader+="\n";
         return(true);
+    }
 
     final_shader+="layout(location=0) in ";
     final_shader+=last_output;
@@ -131,14 +134,14 @@ bool ShaderCreateInfo::ProcStruct()
 
     for(auto &str:struct_list)
     {
-        if(!mdm->GetStruct(*str,codes))
+        if(!mdi->GetStruct(*str,codes))
             return(false);
 
         final_shader+="struct ";
         final_shader+=*str;
-        final_shader+="\n{\n";
+        final_shader+="\n{";
         final_shader+=codes;
-        final_shader+="\n};\n\n";
+        final_shader+="};\n\n";
     }
 
     return(true);
@@ -154,6 +157,8 @@ bool ShaderCreateInfo::ProcUBO()
 
     auto ubo=ubo_list.GetData();
 
+    AnsiString struct_codes;
+
     for(int i=0;i<count;i++)
     {
         final_shader+="layout(set=";
@@ -162,9 +167,16 @@ bool ShaderCreateInfo::ProcUBO()
         final_shader+=AnsiString::numberOf((*ubo)->binding);
         final_shader+=") uniform ";
         final_shader+=(*ubo)->type;
-        final_shader+=" ";
+        final_shader+="{\n";
+
+        if(!mdi->GetStruct((*ubo)->type,struct_codes))
+            return(false);
+
+        final_shader+=struct_codes;
+
+        final_shader+="\n}";
         final_shader+=(*ubo)->name;
-        final_shader+="\n";
+        final_shader+=";\n";
 
         ++ubo;
     }
@@ -244,8 +256,8 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
         return(false);
     if(!ProcInput(last_sc))
         return(false);
-    if(!ProcStruct())
-        return(false);
+//    if(!ProcStruct())
+//        return(false);
 
     if(!ProcUBO())
         return(false);

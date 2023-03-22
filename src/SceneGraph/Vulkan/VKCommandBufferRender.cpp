@@ -125,7 +125,7 @@ bool RenderCmdBuffer::BindDescriptorSets(Renderable *ri)
 
                 if((DescriptorSetType)i==DescriptorSetType::PerObject)
                 {
-                    dynamic_count=mp->GetCount();
+                    dynamic_count=mp->GetBoundCount();
 
                     dynamic_offset=hgl_zero_new<uint32_t>(dynamic_count);
                 }

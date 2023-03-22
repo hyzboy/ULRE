@@ -116,7 +116,7 @@ public:
 
             cili.lunarg.standard_validation = true;
             cili.khronos.validation = true;
-            //cili.RenderDoc.Capture = true;
+            cili.RenderDoc.Capture = true;
 
             inst=CreateInstance("VulkanTest",nullptr,&cili);
 
@@ -142,7 +142,7 @@ public:
 
             ubo_vp_info=db->CreateUBO(sizeof(ViewportInfo),&vp_info);
 
-            db->SetGlobal(GlobalShaderUBO::ViewportInfo,ubo_vp_info);
+            db->SetGlobal(GlobalDescriptor::ViewportInfo.name,ubo_vp_info);
         }
 
         return(true);

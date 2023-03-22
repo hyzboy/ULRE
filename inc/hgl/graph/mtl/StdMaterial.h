@@ -12,8 +12,50 @@ enum class CoordinateSystem2D
     Ortho               //左上角为0,0；右下角为(width-1),(height-1)
 };
 
-namespace GlobalShaderUBO
+namespace GlobalDescriptor
 {
-    constexpr const char ViewportInfo[]="ViewportInfo";
-    constexpr const char CameraInfo[]="CameraInfo";
+    struct ShaderStruct
+    {
+        const char *struct_name;
+        const char *name;
+        const char *codes;
+    };
+
+    constexpr const ShaderStruct ViewportInfo=
+    {
+        "ViewportInfo",
+        "viewport",
+
+        R"(
+mat4 ortho_matrix;
+
+vec2 canvas_resolution;
+vec2 viewport_resolution;
+vec2 inv_viewport_resolution;
+)"
+    };
+
+    constexpr const ShaderStruct CameraInfo=
+    {
+        "CameraInfo",
+        "camera",
+
+        R"(
+mat4 projection;
+mat4 inverse_projection;
+
+mat4 view;
+mat4 inverse_view;
+
+mat4 vp;
+mat4 inverse_vp;
+
+mat4 sky;
+
+vec3 pos;                   //eye
+vec3 view_line;             //pos-target
+vec3 world_up;
+
+float znear,zfar;)"
+    };
 }
