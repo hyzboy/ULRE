@@ -69,7 +69,7 @@ void LoadShaderDescriptor(io::ConstBufferReader &cbr,ShaderDescriptor *sd_list,c
         cbr.Read(sd->binding);
         cbr.Read(sd->stage_flag);
 
-        if(sd->set_type==DescriptorSetType::PerObject)
+        if(sd->set_type>=DescriptorSetType::PerObject)
         {
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
             if(sd->desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;

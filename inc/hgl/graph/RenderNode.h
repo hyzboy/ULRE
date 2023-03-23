@@ -10,14 +10,17 @@ namespace hgl
     {
         class Renderable;
 
-        struct RenderNode
+        constexpr double RenderNode3DDistanceFactor=100.0;
+
+        struct RenderNode3D
         {
             MVPMatrix matrix;
 
             Vector3f WorldCenter;
 
-            float distance_to_camera_square;
-//            float distance_to_camera;
+            double distance_to_camera_square;
+
+            double distance_to_camera;
 
             Renderable *ri;
 
@@ -29,11 +32,10 @@ namespace hgl
             virtual const uint32 GetUBOBytes()const{return sizeof(MVPMatrix);}
         };//struct RenderNode
 
-        using RenderNodeList=List<RenderNode *>;
+        using RenderNode3DList=List<RenderNode3D *>;
     }//namespace graph
 }//namespace hgl
 
-using RenderNodePointer=hgl::graph::RenderNode *;
-using RenderNodeComparator=Comparator<RenderNodePointer>;
-
+using RenderNode3DPointer=hgl::graph::RenderNode3D *;
+using RenderNode3DComparator=Comparator<RenderNode3DPointer>;
 #endif//HGL_GRAPH_RENDER_NODE_INCLUDE

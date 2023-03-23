@@ -18,32 +18,36 @@ SET(TILE_SOURCE ${SG_INCLUDE_PATH}/TileData.h
 
 SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 
-SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/Light.h
-                        ${SG_INCLUDE_PATH}/SceneInfo.h
+SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
+                    #${SG_INCLUDE_PATH}/Mesh.h
+                    #${SG_INCLUDE_PATH}/Spline.h
+                    InlineGeometry.cpp
+                    #Mesh.cpp
+                    ${SG_INCLUDE_PATH}/PrimitiveCreater.h
+                    PrimitiveCreater.cpp
+)
+
+SOURCE_GROUP("Geometry" FILES ${GEOMETRY_FILES})
+
+SET(LIGHT_FILES ${SG_INCLUDE_PATH}/Light.h)
+
+source_group("Light" FILES ${LIGHT_FILES})
+
+SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneInfo.h
                         ${SG_INCLUDE_PATH}/SceneNode.h
                         ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/SceneOrient.h
                         ${SG_INCLUDE_PATH}/RenderList.h
-                        ${SG_INCLUDE_PATH}/InlineGeometry.h
-                        #${SG_INCLUDE_PATH}/Mesh.h
-                        #${SG_INCLUDE_PATH}/Material.h
-                        #${SG_INCLUDE_PATH}/Spline.h
+                        ${SG_INCLUDE_PATH}/RenderList2D.h
                         )
 
 SET(SCENE_GRAPH_SOURCE  RenderList.cpp
+				        RenderList2D.cpp
+				        RenderList3D.cpp
                         SceneNode.cpp
-                        SceneOrient.cpp
-                        InlineGeometry.cpp
-                        #InlinePipeline.cpp
-                        #Material.cpp
-                        #Mesh.cpp
-                        #SceneFile.cpp
-                        )
+                        SceneOrient.cpp)
 
-SET(PRIMITIVE_CREATER_FILES ${SG_INCLUDE_PATH}/PrimitiveCreater.h
-                            PrimitiveCreater.cpp)
-
-SOURCE_GROUP("PrimitiveCreater" FILES ${PRIMITIVE_CREATER_FILES})
+SOURCE_GROUP("Scene Graph" FILES ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOURCE})
 
 SET(FONT_MANAGE_SOURCE  ${SG_INCLUDE_PATH}/font/Font.h
                         ${SG_INCLUDE_PATH}/font/FontManage.h
@@ -78,9 +82,6 @@ IF(WIN32)
 
     SOURCE_GROUP("Font\\Source\\Windows" FILES ${FONT_SOURCE_OS})
 ENDIF(WIN32)
-
-SOURCE_GROUP("Header Files" FILES ${SCENE_GRAPH_HEADER})
-SOURCE_GROUP("Source Files" FILES ${SCENE_GRAPH_SOURCE})
 
 SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h
                         ${SG_INCLUDE_PATH}/VKRenderablePrimitiveCreater.h
@@ -263,12 +264,12 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SCENE_GRAPH_SOURCE}
+                                        ${GEOMETRY_FILES}
+                                        ${LIGHT_FILES}
 
                                         ${SG_TEXTURE_SOURCE}
                                         ${TILE_SOURCE}
                                         ${SG_VAD_SOURCE}
-
-                                        ${PRIMITIVE_CREATER_FILES}
 
                                         ${FONT_MANAGE_SOURCE}
                                         ${FONT_SOURCE}

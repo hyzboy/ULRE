@@ -32,11 +32,9 @@ public:
 
     const   uint32_t            GetDescriptorCount  ()const{return desc_manager->GetBindCount(set_type);}   ///<获取总共需要绑定的描述符数量
 
-    const   uint32_t            GetDynamicCount     ()const
+    const   uint32_t            GetDynamicCount     ()const     //返回动态ubo/ssbo总量
     {
-        //返回动态ubo/ssbo总量
 
-        //考虑将
     }
 
     const   uint32_t            GetBoundCount       ()const{return descriptor_set->GetCount();}             ///<获取已经绑好的数量
