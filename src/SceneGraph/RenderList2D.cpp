@@ -1,5 +1,4 @@
-﻿#include<hgl/graph/RenderList.h>
-#include<hgl/graph/Camera.h>
+﻿#include<hgl/graph/RenderList2D.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKPrimitive.h>
@@ -15,11 +14,10 @@
 *   for(pipeline)
 *       for(material_instance)
 *           for(vbo)
-*               for(distance)
 */
 
 template<> 
-int Comparator<RenderNode3DPointer>::compare(const RenderNode3DPointer &obj_one,const RenderNode3DPointer &obj_two) const
+int Comparator<RenderNode2DPointer>::compare(const RenderNode2DPointer &obj_one,const RenderNode2DPointer &obj_two) const
 {
     int off;
 
@@ -58,17 +56,6 @@ int Comparator<RenderNode3DPointer>::compare(const RenderNode3DPointer &obj_one,
             return off;
     }
 
-    //比较距离
-    {
-        const double dist=obj_one->distance_to_camera_square-
-                          obj_two->distance_to_camera_square;
-
-        //由于距离差距可能会小于1，但又返回int，所以需要做如此处理
-
-        if(dist>0)return  1;else
-        if(dist<0)return -1;
-    }
-
     return 0;
 }
 
@@ -76,7 +63,7 @@ namespace hgl
 {
     namespace graph
     {
-        RenderList::RenderList(GPUDevice *dev)
+        RenderList2D::RenderList2D(GPUDevice *dev)
         {
             device          =dev;
             cmd_buf         =nullptr;
@@ -87,13 +74,15 @@ namespace hgl
             last_pipeline   =nullptr;
             hgl_zero(last_mp);
             last_vbo        =0;
+
+//            mvp_array       =new GPUArrayBuffer(device,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,MVPMatrixBytes);
         }
 
-        RenderList::~RenderList()
+        RenderList2D::~RenderList2D()
         {
         }
 
-        bool RenderList::Begin()
+        bool RenderList2D::Begin()
         {
             render_node_list.ClearData();
             ri_list.ClearData();
@@ -103,7 +92,7 @@ namespace hgl
             return(true);
         }
 
-        void RenderList::End()
+        void RenderList2D::End()
         {
             if(render_node_list.GetCount()<=0)return;
 
@@ -116,46 +105,46 @@ namespace hgl
 
                 {
                     //按当前总节点数量分配UBO
-                    mvp_array->Alloc(count);
-                    mvp_array->Clear();
+//                    mvp_array->Alloc(count);
+//                    mvp_array->Clear();
 
                     ri_list.ClearData();
-                    ri_list.SetCount(count);       
+                    ri_list.SetCount(count);
                 }
 
                 {
-                    ubo_align=mvp_array->GetUnitSize();
+//                    ubo_align=mvp_array->GetUnitSize();
                     
-                    char *mp=(char *)(mvp_array->Map(0,count));
+//                    char *mp=(char *)(mvp_array->Map(0,count));
                     Renderable **ri=ri_list.GetData();
 
-                    for(RenderNode *node:render_node_list)                  //未来可能要在Expend处考虑做去重
+                    for(RenderNode2D *node:render_node_list)                  //未来可能要在Expend处考虑做去重
                     {
-                        memcpy(mp,&(node->matrix),MVPMatrixBytes);
-                        mp+=ubo_align;
+//                        memcpy(mp,&(node->matrix),MVPMatrixBytes);
+//                        mp+=ubo_align;
 
                         (*ri)=node->ri;
                         ++ri;
                     }
 
-                    mvp_array->Flush(count);
+//                    mvp_array->Flush(count);
                 }
             }
 
             //为所有的材质绑定
-            for(Material *mtl:material_sets)
-            {
-                MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerObject);
+            //for(Material *mtl:material_sets)
+            //{
+            //    MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerObject);
 
-                if(mp)
-                {
-                    if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
-                        mp->Update();
-                }
-            }
+            //    if(mp)
+            //    {
+            //        if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
+            //            mp->Update();
+            //    }
+            //}
         }
 
-        bool RenderList::Expend(SceneNode *sn)
+        bool RenderList2D::ExpendNode(SceneNode *sn)
         {
             if(!sn)return(false);
 
@@ -163,14 +152,9 @@ namespace hgl
 
             if(ri)
             {
-                RenderNode *rn=new RenderNode;
+                RenderNode2D *rn=new RenderNode2D;
 
-                rn->matrix.Set(sn->GetLocalToWorldMatrix(),camera_info.vp,camera_info.view);
-
-                rn->WorldCenter=sn->GetWorldCenter();
-
-                rn->distance_to_camera_square=length_squared(rn->WorldCenter,camera_info.pos);
-//                rn->distance_to_camera=sqrtf(rn->distance_to_camera_square);
+                rn->local_to_world=sn->GetLocalToWorldMatrix();
 
                 rn->ri=ri;
 
@@ -185,20 +169,18 @@ namespace hgl
             return(true);
         }
 
-        bool RenderList::Expend(const CameraInfo &ci,SceneNode *sn)
+        bool RenderList2D::Expend(SceneNode *sn)
         {
             if(!device|!sn)return(false);
 
-            camera_info=ci;
-
             Begin();
-            Expend(sn);
+            ExpendNode(sn);
             End();
 
             return(true);
         }
 
-        void RenderList::Render(Renderable *ri)
+        void RenderList2D::Render(Renderable *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
             {
@@ -273,7 +255,7 @@ namespace hgl
             }
         }
 
-        bool RenderList::Render(RenderCmdBuffer *cb) 
+        bool RenderList2D::Render(RenderCmdBuffer *cb) 
         {
             if(!cb)
                 return(false);
