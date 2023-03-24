@@ -1,60 +1,65 @@
 ﻿#include<hgl/graph/VKArrayBuffer.h>
+#include<hgl/graph/VKMemoryAllocator.h>
+#include<hgl/type/Collection.h>
+#include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/VKDevice.h>
 
 namespace hgl
 {
     namespace graph
     {
-        /**
-        * 本类构造函数
-        * @param d 设备指针
-        * @param s 单个数据长度
-        * @param c 数据个数
-        */
-        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *d,const uint32_t s,const uint32_t c)
+        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il)
         {
-            device=d;
+            device=dev;
+            buffer_usage_flags=flags;
+            item_length=il;
 
-            item_size=s;
-            count=c;
-            alloc_count=power_to_2(c);
+            ubo_offset_alignment=device->GetUBOAlign();
 
-            buf_gpu=nullptr;
-            buf_cpu=nullptr;
-            offset=nullptr;
+            const uint32_t unit_size=hgl_align<uint32_t>(item_length,ubo_offset_alignment);
+
+            vk_ma=new VKMemoryAllocator(device,buffer_usage_flags,unit_size);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
+            MemoryBlock *mb=new MemoryBlock(vk_ma);
+
+            coll=new Collection(unit_size,mb);
         }
 
         GPUArrayBuffer::~GPUArrayBuffer()
         {
-            SAFE_CLEAR_ARRAY(offset);
-            SAFE_CLEAR(buf_gpu);
+            delete coll;
+        }
+
+        const uint32_t GPUArrayBuffer::GetUnitSize()const
+        {
+            return coll->GetUnitBytes();
+        }
+
+        DeviceBuffer *GPUArrayBuffer::GetBuffer()
+        {
+            return vk_ma->GetBuffer();
+        }
+
+        uint32 GPUArrayBuffer::Alloc(const uint32 max_count)            ///<预分配空间
+        {
+            if(!coll->Alloc(max_count))
+                return(0);
+
+            return coll->GetAllocCount();
         }
 
         void GPUArrayBuffer::Clear()
         {
-            count=0;
+            coll->Clear();
         }
 
-        bool GPUArrayBuffer::Init(const uint32_t c)
+        void *GPUArrayBuffer::Map(const uint32 start,const uint32 count)
         {
-            if(c<=0)return(false);
+            return coll->Map(start,count);
+        }
 
-            if(!buf_gpu)
-            {
-                count=c;
-                alloc_count=power_to_2(count);
-
-                total_bytes=item_size*alloc_count;
-
-                if(total_bytes<=0)return(false);
-
-                buf_gpu=device->CreateUBO(total_bytes);
-                buf_cpu=(uint8 *)(buf_gpu->Map());
-
-                offset=new uint32_t[alloc_count];
-            }
-            else
-            {
-            }
+        void GPUArrayBuffer::Flush(const uint32 count)
+        {
+            vk_ma->Flush(count*GetUnitSize());
         }
     }//namespace graph
 }//namespace hgl
