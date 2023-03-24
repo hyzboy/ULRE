@@ -78,5 +78,7 @@ public:
             bool                                Release(VIL *);
     const   uint                                GetVILCount();
 };//class Material
+
+using MaterialSets=SortedSets<Material *>;
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
