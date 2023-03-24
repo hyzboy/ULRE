@@ -25,16 +25,16 @@ namespace hgl
 
             VKMemoryAllocator *vk_ma;
 
-            uint32_t ubo_offset_alignment;
+            uint32_t offset_alignment;
 
             Collection *coll;
 
         public:
         
-            GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il);
+            GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il,VkDescriptorType dt);
             virtual ~GPUArrayBuffer();
 
-            const uint32_t  GetOffsetAlignment()const{return ubo_offset_alignment;}
+            const uint32_t  GetOffsetAlignment()const{return offset_alignment;}
             const uint32_t  GetUnitSize()const;
             DeviceBuffer *  GetBuffer();
 

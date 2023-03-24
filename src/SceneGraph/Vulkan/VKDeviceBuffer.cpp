@@ -9,6 +9,11 @@ const VkDeviceSize GPUDevice::GetUBOAlign()
     return attr->physical_device->GetUBOAlign();
 }
 
+const VkDeviceSize GPUDevice::GetSSBOAlign()
+{
+    return attr->physical_device->GetSSBOAlign();
+}
+
 bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     BufferCreateInfo buf_info;
