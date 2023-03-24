@@ -8,15 +8,23 @@ namespace hgl
 {
     namespace graph
     {
-        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il)
+        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il,VkDescriptorType dt)
         {
             device=dev;
             buffer_usage_flags=flags;
             item_length=il;
 
-            ubo_offset_alignment=device->GetUBOAlign();
+            if(dt==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+             ||dt==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+                offset_alignment=device->GetUBOAlign();
+            else
+            if(dt==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+             ||dt==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+                offset_alignment=device->GetSSBOAlign();
+            else
+                offset_alignment=0;
 
-            const uint32_t unit_size=hgl_align<uint32_t>(item_length,ubo_offset_alignment);
+            const uint32_t unit_size=hgl_align<uint32_t>(item_length,offset_alignment);
 
             vk_ma=new VKMemoryAllocator(device,buffer_usage_flags,unit_size);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
             MemoryBlock *mb=new MemoryBlock(vk_ma);
