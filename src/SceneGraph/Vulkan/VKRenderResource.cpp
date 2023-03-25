@@ -5,61 +5,6 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
-void RenderResource::SetGlobal(const AnsiString &name,DeviceBuffer *buf)
-{
-    if(!buf)return;
-    if(name.IsEmpty())return;
-
-    global_buffer_map.Add(name,buf);
-}
-
-DeviceBuffer *RenderResource::GetGlobal(const AnsiString &name)
-{
-    if(name.IsEmpty())return(nullptr);
-
-    DeviceBuffer *buf;
-
-    if(global_buffer_map.Get(name,buf))
-        return buf;
-    else
-        return nullptr;
-}
-
-void RenderResource::Free(DeviceBuffer *buf)
-{
-    rm_buffers.Release(buf);
-
-    global_buffer_map.DeleteByValue(buf);
-}
-
-void RenderResource::BindGlobalDescriptor(MaterialInstance *mi)
-{
-    if(!mi)return;
-
-    const uint count=global_buffer_map.GetCount();
-
-    if(count<=0)return;
-
-    auto **gb_list=global_buffer_map.GetDataList();
-
-    auto *mp=mi->GetMP(DescriptorSetType::Global);
-
-    if(!mp)
-        return;
-
-    if(mp->GetDescriptorCount()<=0)
-        return;
-
-    for(uint i=0;i<count;i++)
-    {
-        mp->BindUBO((*gb_list)->left,(*gb_list)->right);
-
-        ++gb_list;
-    }
-
-    mp->Update();
-}
-
 VBO *RenderResource::CreateVBO(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     VBO *vb=device->CreateVBO(format,count,data,sharing_mode);
