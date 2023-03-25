@@ -17,17 +17,12 @@
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 
-namespace hgl
-{
-    namespace graph
-    {
-        class TileData;
-        class TileFont;
-        class FontSource;
-    }//namespace graph
-}//namespace hgl
-
 VK_NAMESPACE_BEGIN
+
+class TileData;
+class TileFont;
+class FontSource;
+
 /*
  * GPU设备创建信息
  */
