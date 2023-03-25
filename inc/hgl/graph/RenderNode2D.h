@@ -1,30 +1,16 @@
 ﻿#ifndef HGL_GRAPH_RENDER_NODE_2D_INCLUDE
 #define HGL_GRAPH_RENDER_NODE_2D_INCLUDE
 
-#include<hgl/math/Vector.h>
-#include<hgl/type/List.h>
-#include<hgl/graph/SceneInfo.h>
+#include<hgl/math/Math.h>
 namespace hgl
 {
     namespace graph
     {
         class Renderable;
 
-        struct Transiton2D
-        {
-            Vector2f move;
-            Vector2f center;        //中心点
-
-            //下方的不管是缩放还是旋转，均以上面的center为中心变换
-
-            Vector2f scale;
-            float rotate;
-            float z;
-        };
-
         struct RenderNode2D
         {
-            Transiton2D trans;            
+            Matrix3x4f local_to_world;
 
             Renderable *ri;
         };

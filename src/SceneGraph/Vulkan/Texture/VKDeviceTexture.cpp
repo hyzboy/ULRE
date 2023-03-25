@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
 bool GPUDevice::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling) const

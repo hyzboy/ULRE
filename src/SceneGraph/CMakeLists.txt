@@ -41,9 +41,10 @@ SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneInfo.h
                         ${SG_INCLUDE_PATH}/RenderList2D.h
                         )
 
-SET(SCENE_GRAPH_SOURCE  RenderList.cpp
+SET(SCENE_GRAPH_SOURCE  
+                        #RenderList.cpp
 				        RenderList2D.cpp
-				        RenderList3D.cpp
+				        #RenderList3D.cpp
                         SceneNode.cpp
                         SceneOrient.cpp)
 
@@ -118,6 +119,7 @@ SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
                         Vulkan/VKMemory.cpp
                         Vulkan/VKMemoryAllocator.cpp
                         Vulkan/VKBuffer.cpp
+                        Vulkan/VKArrayBuffer.cpp
                         )
 
 SET(VK_DEVICE_TEXTURE_SOURCE    Vulkan/Texture/BufferImageCopy2D.h
@@ -182,6 +184,8 @@ SET(VK_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/VKImageView.h
 SET(VK_MATERIAL_SOURCE  ${SG_INCLUDE_PATH}/VKMaterial.h
                         ${SG_INCLUDE_PATH}/VKMaterialParameters.h
                         ${SG_INCLUDE_PATH}/VKMaterialInstance.h
+                        ${SG_INCLUDE_PATH}/VKDescriptorBindingManage.h
+                        Vulkan/VKDescriptorBindingManage.cpp
                         Vulkan/VKMaterial.cpp
                         Vulkan/VKMaterialParameters.cpp
                         Vulkan/VKMaterialInstance.cpp)
