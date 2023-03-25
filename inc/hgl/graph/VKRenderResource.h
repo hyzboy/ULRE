@@ -15,6 +15,8 @@
 #include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/ResManage.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/graph/VKDescriptorBindingManage.h>
+
 VK_NAMESPACE_BEGIN
 using MaterialID            =int;
 using MaterialInstanceID    =int;
@@ -47,8 +49,7 @@ class RenderResource
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
-    Map<AnsiString,DeviceBuffer *> global_buffer_map;                                   ///<全局Buffer(UBO/SSBO)
-    Map<AnsiString,Texture *> global_texture_map;                                       ///<全局Texture
+    DescriptorBinding global_binding;                                            ///<全局属性描述符绑定管理
 
 public:
 
@@ -68,13 +69,10 @@ public: //Add
 
 public: //全局属性(对应shader中的PerGlobal set合集)
 
-    void SetGlobal(const AnsiString &name,DeviceBuffer *buf);
+    void AddGlobalUBO(const AnsiString &name,DeviceBuffer *buf){global_binding.AddUBO(name,buf);}
+    void AddGlobalSSBO(const AnsiString &name,DeviceBuffer *buf){global_binding.AddSSBO(name,buf);}
 
-    DeviceBuffer *GetGlobal(const AnsiString &name);
-
-    void Free(DeviceBuffer *);
-
-    void BindGlobalDescriptor(MaterialInstance *);
+    bool BindGlobal(MaterialInstance *mi){return global_binding.Bind(mi->GetMP(DescriptorSetType::Global));}
 
 public: // VBO/VAO
 
