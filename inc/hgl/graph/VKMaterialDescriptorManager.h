@@ -5,11 +5,14 @@
 #include<hgl/graph/VKShaderDescriptorSet.h>
 
 VK_NAMESPACE_BEGIN
+using BindingMap=Map<AnsiString,int>;
+using BindingMapArray=BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
+
 class MaterialDescriptorManager
 {
     UTF8String mtl_name;
 
-    Map<AnsiString,int> binding_map[DESCRIPTOR_SET_TYPE_COUNT][VK_DESCRIPTOR_TYPE_RANGE_SIZE];
+    BindingMapArray binding_map[DESCRIPTOR_SET_TYPE_COUNT];
 
 private:
 
@@ -30,6 +33,11 @@ public:
         RANGE_CHECK_RETURN(set_type,0)
 
         return dsl_ci[size_t(set_type)].bindingCount;
+    }
+
+    const BindingMapArray &GetBindingMap(const DescriptorSetType &set_type)const
+    {
+        return binding_map[size_t(set_type)];
     }
 
     const int GetBinding(const DescriptorSetType &set_type,const VkDescriptorType &desc_type,const AnsiString &name)const;
