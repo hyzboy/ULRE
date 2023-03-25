@@ -6,6 +6,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
 #include<hgl/graph/mtl/2d/VertexColor2D.h>
+#include<hgl/graph/RenderList2D.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -33,7 +34,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     SceneNode           render_root;
-    RenderList *        render_list         =nullptr;
+    RenderList2D *      render_list         =nullptr;
 
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
@@ -73,7 +74,7 @@ private:
 
         render_root.RefreshMatrix();
 
-        render_list->Expend(GetCameraInfo(),&render_root);
+        render_list->Expend(&render_root);
 
         return(true);
     }
@@ -90,7 +91,7 @@ public:
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        render_list=new RenderList(device);
+        render_list=new RenderList2D(device);
 
         if(!InitMaterial())
             return(false);
