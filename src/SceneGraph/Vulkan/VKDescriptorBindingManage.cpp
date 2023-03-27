@@ -13,38 +13,49 @@ bool DescriptorBinding::Bind(MaterialInstance *mi)
     if(!mp)
         return(false);
 
-    {
-        const auto *dp=ubo_map.GetDataList();
+    const BindingMapArray &bma=mp->GetBindingMap();
 
-        for(uint i=0;i<ubo_map.GetCount();i++)
+    const BindingMap &ubo_bm=bma[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER];
+    const BindingMap &ubo_dynamic_bm=bma[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC];
+
+//    const BindingMap &ssbo_bm=bma[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER];
+//    const BindingMap &ssbo_dynamic_bm=bma[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC];
+
+//    const BindingMap &texture_bm=bma[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];
+
+    DeviceBuffer *buf=nullptr;
+
+    if(ubo_bm.GetCount()>0)
+    {
+        const auto *dp=ubo_bm.GetDataList();
+        const uint count=ubo_bm.GetCount();
+
+        for(uint i=0;i<count;i++)
         {
-            mp->BindUBO((*dp)->left,(*dp)->right);
+            buf=GetUBO((*dp)->left);
+
+            if(buf)
+                mp->BindUBO((*dp)->right,buf,false);
 
             ++dp;
         }
     }
 
+    if(ubo_dynamic_bm.GetCount()>0)
     {
-        const auto *dp=ssbo_map.GetDataList();
+        const auto *dp=ubo_dynamic_bm.GetDataList();
+        const uint count=ubo_dynamic_bm.GetCount();
 
-        for(uint i=0;i<ssbo_map.GetCount();i++)
+        for(uint i=0;i<count;i++)
         {
-            mp->BindSSBO((*dp)->left,(*dp)->right);
+            buf=GetUBO((*dp)->left);
+
+            if(buf)
+                mp->BindUBO((*dp)->right,buf,true);
 
             ++dp;
         }
     }
-
-    //{
-    //    const auto *dp=texture_map.GetDataList();
-
-    //    for(uint i=0;i<texture_map.GetCount();i++)
-    //    {
-    //        mp->BindImageSampler((*dp)->left,(*dp)->right);
-
-    //        ++dp;
-    //    }
-    //}
 
     mp->Update();
     return(true);
