@@ -142,7 +142,7 @@ public:
 
             ubo_vp_info=db->CreateUBO(sizeof(ViewportInfo),&vp_info);
 
-            db->AddGlobalUBO(GlobalDescriptor::ViewportInfo.name,ubo_vp_info);
+            db->global_descriptor.AddUBO(GlobalDescriptor::ViewportInfo.name,ubo_vp_info);
         }
 
         return(true);

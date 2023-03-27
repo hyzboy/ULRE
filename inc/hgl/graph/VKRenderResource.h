@@ -49,11 +49,14 @@ class RenderResource
     IDResManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDResManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
-    DescriptorBinding global_binding;                                            ///<全局属性描述符绑定管理
+public:
+
+    //注：并非一定要走这里，这里只是提供一个注册和自动绑定的机制
+    DescriptorBinding global_descriptor;                                                ///<全局属性描述符绑定管理
 
 public:
 
-    RenderResource(GPUDevice *dev):device(dev){}
+    RenderResource(GPUDevice *dev):device(dev),global_descriptor(DescriptorSetType::Global){}
     virtual ~RenderResource()=default;
 
 public: //Add
@@ -66,13 +69,6 @@ public: //Add
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
-
-public: //全局属性(对应shader中的PerGlobal set合集)
-
-    void AddGlobalUBO(const AnsiString &name,DeviceBuffer *buf){global_binding.AddUBO(name,buf);}
-    void AddGlobalSSBO(const AnsiString &name,DeviceBuffer *buf){global_binding.AddSSBO(name,buf);}
-
-    bool BindGlobal(MaterialInstance *mi){return global_binding.Bind(mi->GetMP(DescriptorSetType::Global));}
 
 public: // VBO/VAO
 

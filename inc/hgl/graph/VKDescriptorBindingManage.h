@@ -2,21 +2,29 @@
 #define HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
 
 #include<hgl/type/Map.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 namespace hgl
 {
     namespace graph
     {
         class DeviceBuffer;
         class Texture;
-        class MaterialParameters;
+        class MaterialInstance;
 
         class DescriptorBinding
         {
+            DescriptorSetType set_type;
+
             Map<AnsiString,DeviceBuffer *> ubo_map;
             Map<AnsiString,DeviceBuffer *> ssbo_map;
             Map<AnsiString,Texture *> texture_map;
 
         public:
+
+            DescriptorBinding(const DescriptorSetType &dst)
+            {
+                set_type=dst;
+            }
 
             bool AddUBO(const AnsiString &name,DeviceBuffer *buf)
             {
@@ -84,7 +92,7 @@ namespace hgl
                 texture_map.DeleteByValue(tex);
             }
 
-            bool Bind(MaterialParameters *);
+            bool Bind(MaterialInstance *);
         };//class DescriptorBinding
     }//namespace graph
 }//namespace hgl
