@@ -16,6 +16,17 @@ MaterialParameters::~MaterialParameters()
     delete descriptor_set;
 }
 
+bool MaterialParameters::BindUBO(const int &index,DeviceBuffer *ubo,bool dynamic)
+{
+    if(index<0||!ubo)
+        return(false);
+
+    if(!descriptor_set->BindUBO(index,ubo,dynamic))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialParameters::BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
     if(name.IsEmpty()||!ubo)
@@ -27,6 +38,17 @@ bool MaterialParameters::BindUBO(const AnsiString &name,DeviceBuffer *ubo,bool d
         return(false);
 
     if(!descriptor_set->BindUBO(index,ubo,dynamic))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindSSBO(const int &index,DeviceBuffer *ssbo,bool dynamic)
+{
+    if(index<0||!ssbo)
+        return(false);
+
+    if(!descriptor_set->BindSSBO(index,ssbo,dynamic))
         return(false);
 
     return(true);
@@ -48,6 +70,17 @@ bool MaterialParameters::BindSSBO(const AnsiString &name,DeviceBuffer *ssbo,bool
     return(true);
 }
 
+bool MaterialParameters::BindImageSampler(const int &index,Texture *tex,Sampler *sampler)
+{
+    if(index<0||!tex||!sampler)
+        return(false);
+
+    if(!descriptor_set->BindImageSampler(index,tex,sampler))
+        return(false);
+
+    return(true);
+}
+
 bool MaterialParameters::BindImageSampler(const AnsiString &name,Texture *tex,Sampler *sampler)
 {
     if(name.IsEmpty()||!tex||!sampler)
@@ -59,6 +92,17 @@ bool MaterialParameters::BindImageSampler(const AnsiString &name,Texture *tex,Sa
         return(false);
 
     if(!descriptor_set->BindImageSampler(index,tex,sampler))
+        return(false);
+
+    return(true);
+}
+
+bool MaterialParameters::BindInputAttachment(const int &index,ImageView *iv)
+{
+    if(index<0||!iv)
+        return(false);
+
+    if(!descriptor_set->BindInputAttachment(index,iv))
         return(false);
 
     return(true);
