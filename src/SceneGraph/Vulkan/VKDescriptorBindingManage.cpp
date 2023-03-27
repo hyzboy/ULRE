@@ -1,10 +1,17 @@
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/VKMaterialParameters.h>
+#include<hgl/graph/VKMaterialInstance.h>
 
 VK_NAMESPACE_BEGIN
-bool DescriptorBinding::Bind(MaterialParameters *mp)
+bool DescriptorBinding::Bind(MaterialInstance *mi)
 {
-    if(!mp)return(false);
+    if(!mi)
+        return(false);
+
+    MaterialParameters *mp=mi->GetMP(set_type);
+
+    if(!mp)
+        return(false);
 
     {
         const auto *dp=ubo_map.GetDataList();
@@ -40,5 +47,6 @@ bool DescriptorBinding::Bind(MaterialParameters *mp)
     //}
 
     mp->Update();
+    return(true);
 }
 VK_NAMESPACE_END
