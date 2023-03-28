@@ -22,6 +22,7 @@ VK_NAMESPACE_BEGIN
 class TileData;
 class TileFont;
 class FontSource;
+class GPUArrayBuffer;
 
 /*
  * GPU设备创建信息
@@ -147,6 +148,9 @@ public: //Buffer相关
     CREATE_BUFFER_OBJECT(INBO,INDIRECT)
 
 #undef CREATE_BUFFER_OBJECT
+
+    GPUArrayBuffer *CreateUBO(const VkDeviceSize &uint_size);
+    GPUArrayBuffer *CreateSSBO(const VkDeviceSize &uint_size);
 
 public: //Image
 
