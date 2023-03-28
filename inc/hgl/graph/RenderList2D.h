@@ -46,8 +46,12 @@ namespace hgl
             virtual bool    ExpendNode(SceneNode *);
             virtual void    End();
 
+            bool BindPerFrameDescriptor();
+            bool BindPerMaterialDescriptor();
+
         private:
 
+            Material *          last_mtl;
             Pipeline *          last_pipeline;
             MaterialParameters *last_mp[DESCRIPTOR_SET_TYPE_COUNT];
             uint32_t            last_vbo;

@@ -11,9 +11,10 @@
 /**
 * 理论上讲，我们需要按以下顺序排序
 *
-*   for(pipeline)
-*       for(material_instance)
-*           for(vbo)
+*   for(material)
+*       for(pipeline)
+*           for(material_instance)
+*               for(vbo)
 */
 
 template<> 
@@ -23,6 +24,15 @@ int Comparator<RenderNode2DPointer>::compare(const RenderNode2DPointer &obj_one,
 
     hgl::graph::Renderable *ri_one=obj_one->ri;
     hgl::graph::Renderable *ri_two=obj_two->ri;
+
+    //比较材质
+    {
+        off=ri_one->GetMaterial()
+           -ri_two->GetMaterial();
+
+        if(off)
+            return off;
+    }
 
     //比较管线
     {
@@ -34,18 +44,18 @@ int Comparator<RenderNode2DPointer>::compare(const RenderNode2DPointer &obj_one,
     }
 
     //比较材质实例
-    {
-        for(int i =(int)hgl::graph::DescriptorSetType::BEGIN_RANGE;
-                i<=(int)hgl::graph::DescriptorSetType::END_RANGE;
-                i++)
-        {
-            off=ri_one->GetMP((hgl::graph::DescriptorSetType)i)
-               -ri_two->GetMP((hgl::graph::DescriptorSetType)i);
+    //{
+    //    for(int i =(int)hgl::graph::DescriptorSetType::BEGIN_RANGE;
+    //            i<=(int)hgl::graph::DescriptorSetType::END_RANGE;
+    //            i++)
+    //    {
+    //        off=ri_one->GetMP((hgl::graph::DescriptorSetType)i)
+    //           -ri_two->GetMP((hgl::graph::DescriptorSetType)i);
 
-            if(off)
-                return off;
-        }
-    }
+    //        if(off)
+    //            return off;
+    //    }
+    //}
 
     //比较vbo+ebo
     {
@@ -71,6 +81,7 @@ namespace hgl
             ubo_offset      =0;
             ubo_align       =0;
 
+            last_mtl        =nullptr;
             last_pipeline   =nullptr;
             hgl_zero(last_mp);
             last_vbo        =0;
@@ -180,6 +191,41 @@ namespace hgl
             return(true);
         }
 
+        bool RenderList2D::BindPerFrameDescriptor()
+        {
+            if(!cmd_buf)return(false);
+
+            for(Material *mtl:material_sets)
+            {
+                MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerFrame);
+
+                if(!mp)continue;
+                
+                //if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
+                  //  mp->Update();
+            }
+
+            return(true);
+        }
+
+        bool RenderList2D::BindPerMaterialDescriptor()
+        {
+            //为每个材质实例，绑定它们的描述符
+            if(!cmd_buf)return(false);
+
+            for(Material *mtl:material_sets)
+            {
+                MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerMaterial);
+
+                if(!mp)continue;
+                
+                //if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
+                //    mp->Update();
+            }
+
+            return(true);
+        }
+
         void RenderList2D::Render(Renderable *ri)
         {
             if(last_pipeline!=ri->GetPipeline())
@@ -265,10 +311,13 @@ namespace hgl
 
             cmd_buf=cb;
 
-            last_pipeline=nullptr;            
+            last_mtl=nullptr;
+            last_pipeline=nullptr;
             hgl_zero(last_mp);
             last_vbo=0;
             ubo_offset=0;
+
+            BindPerFrameDescriptor();
 
             for(Renderable *ri:ri_list)
                 Render(ri);
