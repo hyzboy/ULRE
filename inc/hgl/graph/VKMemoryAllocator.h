@@ -25,7 +25,7 @@ public:
 
     const uint32_t  GetBufferUsageFlagBits  ()const{return buffer_usage_flag_bits;}
 
-    DeviceBuffer *     GetBuffer               (){return gpu_buffer;}
+    DeviceBuffer *  GetBuffer               (){return gpu_buffer;}
 
 public:
 

@@ -23,10 +23,9 @@ namespace hgl
             VkBufferUsageFlags buffer_usage_flags;
 
             uint item_length;                        ///<单个数据长度
+            uint unit_size;
 
             VKMemoryAllocator *vk_ma;
-
-            uint32_t offset_alignment;
 
             Collection *coll;
 
@@ -35,13 +34,17 @@ namespace hgl
             void *          Map(const uint32 start,const uint32 count);
             void            Flush(const uint32 count);
 
+        private:
+
+            GPUArrayBuffer(GPUDevice *dev,const VkBufferUsageFlags &flag,const uint il,const uint us);
+
+            friend class GPUDevice;
+
         public:
         
-            GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il,VkDescriptorType dt);
             virtual ~GPUArrayBuffer();
 
-            const uint32_t  GetOffsetAlignment()const{return offset_alignment;}
-            const uint32_t  GetUnitSize()const;
+            const uint32_t  GetUnitSize()const{return unit_size;}
             DeviceBuffer *  GetBuffer();
 
             uint32          Alloc(const uint32 max_count);            ///<预分配空间
@@ -56,7 +59,7 @@ namespace hgl
 
                 if(!ptr)return(false);
 
-                ubo_access->Start((uchar *)ptr,offset_alignment,count);
+                ubo_access->Start((uchar *)ptr,start,count);
                 return(true);
             }
 

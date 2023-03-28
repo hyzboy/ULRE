@@ -8,23 +8,13 @@ namespace hgl
 {
     namespace graph
     {
-        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il,VkDescriptorType dt)
+        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *dev,const VkBufferUsageFlags &flag,const uint il,const uint us)
         {
             device=dev;
-            buffer_usage_flags=flags;
             item_length=il;
+            buffer_usage_flags=flag;
 
-            if(dt==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-             ||dt==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
-                offset_alignment=device->GetUBOAlign();
-            else
-            if(dt==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-             ||dt==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
-                offset_alignment=device->GetSSBOAlign();
-            else
-                offset_alignment=0;
-
-            const uint32_t unit_size=hgl_align<uint32_t>(item_length,offset_alignment);
+            unit_size=hgl_align<VkDeviceSize>(item_length,us);
 
             vk_ma=new VKMemoryAllocator(device,buffer_usage_flags,unit_size);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
             MemoryBlock *mb=new MemoryBlock(vk_ma);
@@ -35,11 +25,6 @@ namespace hgl
         GPUArrayBuffer::~GPUArrayBuffer()
         {
             delete coll;
-        }
-
-        const uint32_t GPUArrayBuffer::GetUnitSize()const
-        {
-            return coll->GetUnitBytes();
         }
 
         DeviceBuffer *GPUArrayBuffer::GetBuffer()
@@ -68,6 +53,22 @@ namespace hgl
         void GPUArrayBuffer::Flush(const uint32 count)
         {
             vk_ma->Flush(count*GetUnitSize());
+        }
+
+        GPUArrayBuffer *GPUDevice::CreateUBO(const VkDeviceSize &uint_size)
+        {
+            return(new GPUArrayBuffer(  this,
+                                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                        uint_size,
+                                        GetUBOAlign()));
+        }
+
+        GPUArrayBuffer *GPUDevice::CreateSSBO(const VkDeviceSize &uint_size)
+        {
+            return(new GPUArrayBuffer(  this,
+                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                        uint_size,
+                                        GetSSBOAlign()));
         }
     }//namespace graph
 }//namespace hgl
