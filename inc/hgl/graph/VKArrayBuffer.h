@@ -2,6 +2,7 @@
 #define HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
 
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKUBODynamic.h>
 namespace hgl
 {
     class Collection;
@@ -29,6 +30,11 @@ namespace hgl
 
             Collection *coll;
 
+        protected:
+
+            void *          Map(const uint32 start,const uint32 count);
+            void            Flush(const uint32 count);
+
         public:
         
             GPUArrayBuffer(GPUDevice *dev,VkBufferUsageFlags flags,const uint il,VkDescriptorType dt);
@@ -41,8 +47,27 @@ namespace hgl
             uint32          Alloc(const uint32 max_count);            ///<预分配空间
             void            Clear();
 
-            void *          Map(const uint32 start,const uint32 count);
-            void            Flush(const uint32 count);
+            template<typename T>
+            bool            Start(UBODynamicAccess<T> *ubo_access,const uint32 start,const uint32 count)
+            {
+                if(!ubo_access)return(false);
+
+                void *ptr=Map(start,count);
+
+                if(!ptr)return(false);
+
+                ubo_access->Start((uchar *)ptr,offset_alignment,count);
+                return(true);
+            }
+
+            void            End(UBODynamicAccess<void> *ubo_access)
+            {
+                if(!ubo_access)return;
+
+                Flush(ubo_access->GetCount());
+
+                ubo_access->Restart();
+            }
         };//class GPUArrayBuffer
     }//namespace graph
 }//namespace hgl

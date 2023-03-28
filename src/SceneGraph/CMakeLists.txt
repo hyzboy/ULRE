@@ -185,6 +185,7 @@ SET(VK_MATERIAL_SOURCE  ${SG_INCLUDE_PATH}/VKMaterial.h
                         ${SG_INCLUDE_PATH}/VKMaterialParameters.h
                         ${SG_INCLUDE_PATH}/VKMaterialInstance.h
                         ${SG_INCLUDE_PATH}/VKDescriptorBindingManage.h
+                        ${SG_INCLUDE_PATH}/VKUBODynamic.h
                         Vulkan/VKDescriptorBindingManage.cpp
                         Vulkan/VKMaterial.cpp
                         Vulkan/VKMaterialParameters.cpp

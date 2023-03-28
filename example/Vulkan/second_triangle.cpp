@@ -30,7 +30,7 @@ constexpr float color_data[VERTEX_COUNT][4]=
     {0,0,1,1}
 };
 
-#define USE_ZERO2ONE_COORD      //使用左上角0,0右下角1,1的坐标系
+//#define USE_ZERO2ONE_COORD      //使用左上角0,0右下角1,1的坐标系
 
 class TestApp:public VulkanApplicationFramework
 {
