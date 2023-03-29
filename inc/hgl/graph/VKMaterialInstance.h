@@ -34,4 +34,3 @@ public:
 };//class MaterialInstance
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INSTANCE_INCLUDE
- 
