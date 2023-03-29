@@ -26,7 +26,13 @@ public:
 
     const VIL *GetVIL()const{return vil;}
     MaterialParameters *GetMP(){return mp_per_mi;}
-    MaterialParameters *GetMP(const DescriptorSetType &type){return material->GetMP(type);}
+    MaterialParameters *GetMP(const DescriptorSetType &type)
+    {
+        if(type==DescriptorSetType::PerMaterial)
+            return mp_per_mi;
+        else
+            return material->GetMP(type);
+    }
     
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
