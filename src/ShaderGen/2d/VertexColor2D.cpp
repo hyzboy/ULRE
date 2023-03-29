@@ -22,7 +22,9 @@ MaterialCreateInfo *CreateVertexColor2D(const CoordinateSystem2D &cs)
 
     if(cs==CoordinateSystem2D::Ortho)
     {
-        mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,GlobalDescriptor::ViewportInfo);
+        mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
+                    DescriptorSetType::Global,
+                    GlobalDescriptor::ViewportInfo);
 
         sfGetPosition="vec4 GetPosition(){return viewport.ortho_matrix*vec4(Position,0,1);}";
     }
