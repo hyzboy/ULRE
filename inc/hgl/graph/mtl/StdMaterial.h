@@ -12,7 +12,7 @@ enum class CoordinateSystem2D
     Ortho               //左上角为0,0；右下角为(width-1),(height-1)
 };
 
-namespace GlobalDescriptor
+namespace InlineDescriptor
 {
     struct ShaderStruct
     {
