@@ -61,12 +61,12 @@ public:
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-    bool AddUBO(const VkShaderStageFlagBits flag_bits,const GlobalDescriptor::ShaderStruct &ss)
+    bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType &set_type,const GlobalDescriptor::ShaderStruct &ss)
     {
         if(!mdi.hasStruct(ss.struct_name))
             mdi.AddStruct(ss.struct_name,ss.codes);
 
-        return AddUBO(flag_bits,DescriptorSetType::Global,ss.struct_name,ss.name);
+        return AddUBO(flag_bits,set_type,ss.struct_name,ss.name);
     }
 
     bool CreateShader();
