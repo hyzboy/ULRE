@@ -19,10 +19,6 @@ namespace hgl
         {
         protected:
 
-            GPUDevice *device;
-            VkBufferUsageFlags buffer_usage_flags;
-
-            uint item_length;                        ///<单个数据长度
             uint unit_size;
 
             VKMemoryAllocator *vk_ma;
@@ -36,7 +32,7 @@ namespace hgl
 
         private:
 
-            GPUArrayBuffer(GPUDevice *dev,const VkBufferUsageFlags &flag,const uint il,const uint us);
+            GPUArrayBuffer(VKMemoryAllocator *,const uint);
 
             friend class GPUDevice;
 
@@ -59,11 +55,12 @@ namespace hgl
 
                 if(!ptr)return(false);
 
-                ubo_access->Start((uchar *)ptr,start,count);
+                ubo_access->Start((uchar *)ptr,unit_size,count);
                 return(true);
             }
 
-            void            End(UBODynamicAccess<void> *ubo_access)
+            template<typename T>
+            void            End(UBODynamicAccess<T> *ubo_access)
             {
                 if(!ubo_access)return;
 

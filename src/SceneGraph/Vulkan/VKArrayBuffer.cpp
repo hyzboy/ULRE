@@ -8,15 +8,11 @@ namespace hgl
 {
     namespace graph
     {
-        GPUArrayBuffer::GPUArrayBuffer(GPUDevice *dev,const VkBufferUsageFlags &flag,const uint il,const uint us)
+        GPUArrayBuffer::GPUArrayBuffer(VKMemoryAllocator *va,const uint us)
         {
-            device=dev;
-            item_length=il;
-            buffer_usage_flags=flag;
+            vk_ma=va;
+            unit_size=us;
 
-            unit_size=hgl_align<VkDeviceSize>(item_length,us);
-
-            vk_ma=new VKMemoryAllocator(device,buffer_usage_flags,unit_size);     // construct function is going to set AllocUnitSize by minUniformOffsetAlignment
             MemoryBlock *mb=new MemoryBlock(vk_ma);
 
             coll=new Collection(unit_size,mb);
@@ -52,23 +48,25 @@ namespace hgl
 
         void GPUArrayBuffer::Flush(const uint32 count)
         {
-            vk_ma->Flush(count*GetUnitSize());
+            vk_ma->Flush(count*unit_size);
         }
 
-        GPUArrayBuffer *GPUDevice::CreateUBO(const VkDeviceSize &uint_size)
+        GPUArrayBuffer *GPUDevice::CreateUBO(const VkDeviceSize &item_length)
         {
-            return(new GPUArrayBuffer(  this,
-                                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                        uint_size,
-                                        GetUBOAlign()));
+            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetUBOAlign());
+            
+            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,unit_size);
+
+            return(new GPUArrayBuffer(vk_ma,unit_size));
         }
 
-        GPUArrayBuffer *GPUDevice::CreateSSBO(const VkDeviceSize &uint_size)
+        GPUArrayBuffer *GPUDevice::CreateSSBO(const VkDeviceSize &item_length)
         {
-            return(new GPUArrayBuffer(  this,
-                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                        uint_size,
-                                        GetSSBOAlign()));
+            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetSSBOAlign());
+            
+            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,unit_size);
+
+            return(new GPUArrayBuffer(vk_ma,unit_size));
         }
     }//namespace graph
 }//namespace hgl
