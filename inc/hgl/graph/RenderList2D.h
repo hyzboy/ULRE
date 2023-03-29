@@ -12,7 +12,7 @@ namespace hgl
     {
         using RenderableList=List<Renderable *>;
 
-        struct RenderableList
+        struct MaterialRenderableList
         {
             Material *mtl;
 
