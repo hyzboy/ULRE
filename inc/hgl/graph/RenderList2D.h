@@ -10,6 +10,18 @@ namespace hgl
 {
     namespace graph
     {
+        using RenderableList=List<Renderable *>;
+
+        struct RenderableList
+        {
+            Material *mtl;
+
+            RenderableList ri_list;
+
+            GPUArrayBuffer *.........array;
+
+        };
+
         /**
          * 渲染对象列表<br>
          * 已经展开的渲染对象列表，产生mvp用UBO/SSBO等数据，最终创建RenderCommandBuffer
@@ -32,7 +44,9 @@ namespace hgl
 
         private:
 
-            List<Renderable *> ri_list;
+            RenderableList ri_list;
+
+             *ri_list_by_mtl;         按材质区分的渲染列表
 
             VkDescriptorSet ds_list[DESCRIPTOR_SET_TYPE_COUNT];
             DescriptorSet *renderable_desc_sets;
