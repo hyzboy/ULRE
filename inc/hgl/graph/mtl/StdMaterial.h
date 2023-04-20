@@ -3,7 +3,11 @@
 #define STD_MTL_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace mtl{
 #define STD_MTL_NAMESPACE_END   }}}
 
-#define STD_MTL_NAMESPACE_USING using namespace hgl::graph::mtl
+#define STD_MTL_NAMESPACE_USING using namespace hgl::graph::mtl;
+
+#include<hgl/graph/mtl/ShaderBuffer.h>
+
+STD_MTL_NAMESPACE_BEGIN
 
 enum class CoordinateSystem2D
 {
@@ -12,35 +16,26 @@ enum class CoordinateSystem2D
     Ortho               //左上角为0,0；右下角为(width-1),(height-1)
 };
 
-namespace InlineDescriptor
+constexpr const ShaderBufferSource SBS_ViewportInfo=
 {
-    struct ShaderStruct
-    {
-        const char *struct_name;
-        const char *name;
-        const char *codes;
-    };
+    "ViewportInfo",
+    "viewport",
 
-    constexpr const ShaderStruct ViewportInfo=
-    {
-        "ViewportInfo",
-        "viewport",
-
-        R"(
+    R"(
 mat4 ortho_matrix;
 
 vec2 canvas_resolution;
 vec2 viewport_resolution;
 vec2 inv_viewport_resolution;
 )"
-    };
+};
 
-    constexpr const ShaderStruct CameraInfo=
-    {
-        "CameraInfo",
-        "camera",
+constexpr const ShaderBufferSource SBS_CameraInfo=
+{
+    "CameraInfo",
+    "camera",
 
-        R"(
+    R"(
 mat4 projection;
 mat4 inverse_projection;
 
@@ -57,5 +52,6 @@ vec3 view_line;             //pos-target
 vec3 world_up;
 
 float znear,zfar;)"
-    };
-}
+};
+
+STD_MTL_NAMESPACE_END

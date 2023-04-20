@@ -92,8 +92,8 @@ void MaterialDescriptorInfo::Resort()
                 auto *sdp=p.descriptor_map.GetDataList();
                 for(int i=0;i<p.descriptor_map.GetCount();i++)
                 {
-                    (*sdp)->right->set=set;
-                    (*sdp)->right->binding=i;
+                    (*sdp)->value->set=set;
+                    (*sdp)->value->binding=i;
 
                     ++sdp;
                 }

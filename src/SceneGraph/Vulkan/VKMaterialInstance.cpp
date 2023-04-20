@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDevice.h>
+ï»¿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKShaderModule.h>
@@ -21,10 +21,13 @@ MaterialInstance::MaterialInstance(Material *mtl,VIL *v)
 
     vil=v;
 
-    mp_per_mi=
-            device->CreateMP(desc_manager,pld,(DescriptorSetType)dst);
-PerMaterialµÄÊôĞÔÃ¿¸öMaterialInstance²»Ò»Ñù£¬ËùÒÔĞèÒªÔÚÕâÀï·ÖÅä×Ô¼ºµÄMP×ö°ó¶¨¼ÇÂ¼
-mtl->GetMP(DescriptorSetType::PerMaterial);
+    mp_per_mi=mtl->GetMP(DescriptorSetType::PerMaterial);
+
+    /*
+        ç”±äºPerMaterialçš„å±æ€§æ¯ä¸ªMaterialInstanceä¸ä¸€æ ·ï¼Œ
+        æ‰€ä»¥ç†è®ºä¸Šéœ€è¦åœ¨è¿™é‡Œåˆ†é…å±äºå®ƒè‡ªå·±çš„MPåšç»‘å®šè®°å½•
+
+    */
 }
 
 bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)

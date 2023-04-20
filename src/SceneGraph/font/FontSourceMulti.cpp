@@ -42,7 +42,7 @@ namespace hgl
 
             for(int i=0;i<count;i++)
             {
-                get_max(max_char_height,(*fsp)->right->GetCharHeight());
+                get_max(max_char_height,(*fsp)->value->GetCharHeight());
 
                 ++fsp;
             }
@@ -93,8 +93,8 @@ namespace hgl
 
                 for(int i=0;i<count;i++)
                 {
-                    if(IsInUnicodeBlock((*fsp)->left,ch))
-                        return (*fsp)->right;
+                    if(IsInUnicodeBlock((*fsp)->key,ch))
+                        return (*fsp)->value;
 
                     ++fsp;
                 }

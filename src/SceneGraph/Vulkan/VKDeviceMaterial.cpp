@@ -69,7 +69,7 @@ void CreateShaderStageList(List<VkPipelineShaderStageCreateInfo> &shader_stage_l
     auto **itp=shader_maps->GetDataList();
     for(int i=0;i<shader_count;i++)
     {
-        sm=(*itp)->right;
+        sm=(*itp)->value;
         hgl_cpy(p,sm->GetCreateInfo(),1);
 
         ++p;

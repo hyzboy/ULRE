@@ -8,6 +8,27 @@ namespace hgl
 {
     namespace graph
     {
+        GPUArrayBuffer *GPUDevice::CreateUBO(const VkDeviceSize &item_length)
+        {
+            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetUBOAlign());
+            
+            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,unit_size);
+
+            return(new GPUArrayBuffer(vk_ma,unit_size));
+        }
+
+        GPUArrayBuffer *GPUDevice::CreateSSBO(const VkDeviceSize &item_length)
+        {
+            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetSSBOAlign());
+            
+            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,unit_size);
+
+            return(new GPUArrayBuffer(vk_ma,unit_size));
+        }
+    }//namespace graph
+
+    namespace graph
+    {
         GPUArrayBuffer::GPUArrayBuffer(VKMemoryAllocator *va,const uint us)
         {
             vk_ma=va;
@@ -49,24 +70,6 @@ namespace hgl
         void GPUArrayBuffer::Flush(const uint32 count)
         {
             vk_ma->Flush(count*unit_size);
-        }
-
-        GPUArrayBuffer *GPUDevice::CreateUBO(const VkDeviceSize &item_length)
-        {
-            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetUBOAlign());
-            
-            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,unit_size);
-
-            return(new GPUArrayBuffer(vk_ma,unit_size));
-        }
-
-        GPUArrayBuffer *GPUDevice::CreateSSBO(const VkDeviceSize &item_length)
-        {
-            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetSSBOAlign());
-            
-            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,unit_size);
-
-            return(new GPUArrayBuffer(vk_ma,unit_size));
         }
     }//namespace graph
 }//namespace hgl
