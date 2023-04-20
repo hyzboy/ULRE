@@ -117,10 +117,10 @@ namespace hgl
             const auto *sp=ssb_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
-                if((*sp)->right->vbo)
-                    primitive->Set((*sp)->left,(*sp)->right->vbo);                    
+                if((*sp)->value->vbo)
+                    primitive->Set((*sp)->key,(*sp)->value->vbo);                    
                 else
-                    primitive->Set((*sp)->left,db->CreateVBO((*sp)->right->data));
+                    primitive->Set((*sp)->key,db->CreateVBO((*sp)->value->data));
 
                 ++sp;
             }

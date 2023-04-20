@@ -107,7 +107,7 @@ MaterialDescriptorManager::MaterialDescriptorManager(const UTF8String &name,cons
 
             for(int j=0;j<sds_array[i].count;j++)
             {
-                sd=(*sp)->right;
+                sd=(*sp)->value;
 
                 binding_map[size_t(sd->set_type)][size_t(sd->desc_type)].Add(sd->name,sd->binding);
 

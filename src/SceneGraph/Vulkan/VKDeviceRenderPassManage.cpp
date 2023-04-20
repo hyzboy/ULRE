@@ -202,7 +202,7 @@ DeviceRenderPassManage::~DeviceRenderPassManage()
 
     for(int i=0;i<count;i++)
     {
-        delete (*obj)->right;
+        delete (*obj)->value;
 
         ++obj;
     }

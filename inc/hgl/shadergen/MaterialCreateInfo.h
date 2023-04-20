@@ -53,7 +53,7 @@ public:
     ~MaterialCreateInfo()=default;
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
-    bool AddStruct(const InlineDescriptor::ShaderStruct &ss)
+    bool AddStruct(const InlineDescriptor::ShaderBufferSource &ss)
     {
         return AddStruct(ss.struct_name,ss.codes);
     }
@@ -61,7 +61,7 @@ public:
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-    bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType &set_type,const InlineDescriptor::ShaderStruct &ss)
+    bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType &set_type,const InlineDescriptor::ShaderBufferSource &ss)
     {
         if(!mdi.hasStruct(ss.struct_name))
             mdi.AddStruct(ss.struct_name,ss.codes);

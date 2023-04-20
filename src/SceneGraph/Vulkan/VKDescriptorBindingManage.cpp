@@ -32,10 +32,10 @@ bool DescriptorBinding::Bind(MaterialInstance *mi)
 
         for(uint i=0;i<count;i++)
         {
-            buf=GetUBO((*dp)->left);
+            buf=GetUBO((*dp)->key);
 
             if(buf)
-                mp->BindUBO((*dp)->right,buf,false);
+                mp->BindUBO((*dp)->value,buf,false);
 
             ++dp;
         }
@@ -48,10 +48,10 @@ bool DescriptorBinding::Bind(MaterialInstance *mi)
 
         for(uint i=0;i<count;i++)
         {
-            buf=GetUBO((*dp)->left);
+            buf=GetUBO((*dp)->key);
 
             if(buf)
-                mp->BindUBO((*dp)->right,buf,true);
+                mp->BindUBO((*dp)->value,buf,true);
 
             ++dp;
         }
