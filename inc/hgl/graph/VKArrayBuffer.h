@@ -19,7 +19,8 @@ namespace hgl
         {
         protected:
 
-            uint unit_size;
+            uint align_size;
+            uint range_size;
 
             VKMemoryAllocator *vk_ma;
 
@@ -32,7 +33,7 @@ namespace hgl
 
         private:
 
-            GPUArrayBuffer(VKMemoryAllocator *,const uint);
+            GPUArrayBuffer(VKMemoryAllocator *,const uint,const uint);
 
             friend class GPUDevice;
 
@@ -40,10 +41,12 @@ namespace hgl
         
             virtual ~GPUArrayBuffer();
 
-            const uint32_t  GetUnitSize()const{return unit_size;}
+            const uint32_t  GetAlignSize()const{return align_size;}     ///<数据对齐字节数
+            const uint32_t  GetRangeSize()const{return range_size;}     ///<单次渲染访问最大字节数
+
             DeviceBuffer *  GetBuffer();
 
-            uint32          Alloc(const uint32 max_count);            ///<预分配空间
+            uint32          Alloc(const uint32 max_count);              ///<预分配空间
             void            Clear();
 
             template<typename T>
@@ -55,7 +58,7 @@ namespace hgl
 
                 if(!ptr)return(false);
 
-                ubo_access->Start((uchar *)ptr,unit_size,count);
+                ubo_access->Start((uchar *)ptr,align_size,count);
                 return(true);
             }
 

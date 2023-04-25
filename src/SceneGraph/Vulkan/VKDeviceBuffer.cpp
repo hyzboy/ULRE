@@ -4,15 +4,10 @@
 #include<hgl/graph/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
-const VkDeviceSize GPUDevice::GetUBOAlign()
-{
-    return attr->physical_device->GetUBOAlign();
-}
-
-const VkDeviceSize GPUDevice::GetSSBOAlign()
-{
-    return attr->physical_device->GetSSBOAlign();
-}
+const VkDeviceSize GPUDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
+const VkDeviceSize GPUDevice::GetSSBOAlign  (){return attr->physical_device->GetSSBOAlign();}
+const VkDeviceSize GPUDevice::GetUBORange   (){return attr->physical_device->GetUBORange();}
+const VkDeviceSize GPUDevice::GetSSBORange  (){return attr->physical_device->GetSSBORange();}
 
 bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
