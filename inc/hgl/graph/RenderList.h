@@ -13,9 +13,10 @@ namespace hgl
 {
     namespace graph
     {
+
         /**
          * 渲染对象列表<br>
-         * 已经展开的渲染对象列表，产生mvp用UBO/SSBO等数据，最终创建RenderCommandBuffer
+         * 已经展开的渲染对象列表，最终创建RenderCommandBuffer
          */
         class RenderList
         {
@@ -26,13 +27,11 @@ namespace hgl
 
         private:
 
-            GPUArrayBuffer *    mvp_array;
             CameraInfo          camera_info;
 
-            RenderNode3DList    render_node_list;       ///<场景节点列表
-            MaterialSets        material_sets;          ///<材质合集
+            MaterialRenderMap   mrl_map;
 
-            RenderNode3DComparator *render_node_comparator;
+            RenderNodeComparator *render_node_comparator;
 
         private:
 

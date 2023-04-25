@@ -10,9 +10,23 @@ namespace hgl
     {
         class Renderable;
 
+        struct RenderNode
+        {
+            Renderable *render_obj;
+        };
+
+        using RenderNodeList=List<RenderNode *>;
+
+        struct RenderNode2D:public RenderNode
+        {
+            Matrix3x4f local_to_world;
+        };
+
+        using RenderNode2DList=List<RenderNode2D *>;
+
         constexpr double RenderNode3DDistanceFactor=100.0;
 
-        struct RenderNode3D
+        struct RenderNode3D:public RenderNode
         {
             MVPMatrix matrix;
 
@@ -22,19 +36,17 @@ namespace hgl
 
             double distance_to_camera;
 
-            Renderable *ri;
-
-        public:
-
-            /**
-             * 取得渲染对象ubo独占区大小
-             */
-            virtual const uint32 GetUBOBytes()const{return sizeof(MVPMatrix);}
         };//struct RenderNode
 
         using RenderNode3DList=List<RenderNode3D *>;
     }//namespace graph
 }//namespace hgl
+
+using RenderNodePointer=hgl::graph::RenderNode *;
+using RenderNodeComparator=Comparator<RenderNodePointer>;
+
+using RenderNode2DPointer=hgl::graph::RenderNode2D *;
+using RenderNode2DComparator=Comparator<RenderNode2DPointer>;
 
 using RenderNode3DPointer=hgl::graph::RenderNode3D *;
 using RenderNode3DComparator=Comparator<RenderNode3DPointer>;
