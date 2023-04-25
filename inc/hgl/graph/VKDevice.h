@@ -137,6 +137,8 @@ public: //Buffer相关
 
     const VkDeviceSize GetUBOAlign();
     const VkDeviceSize GetSSBOAlign();
+    const VkDeviceSize GetUBORange();
+    const VkDeviceSize GetSSBORange();
 
 #define CREATE_BUFFER_OBJECT(LargeName,type)    DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      sm);} \
                                                 DeviceBuffer *Create##LargeName(                   VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,nullptr,   sm);} \

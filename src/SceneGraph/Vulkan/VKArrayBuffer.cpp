@@ -10,33 +10,34 @@ namespace hgl
     {
         GPUArrayBuffer *GPUDevice::CreateUBO(const VkDeviceSize &item_length)
         {
-            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetUBOAlign());
+            const uint align_size=hgl_align<VkDeviceSize>(item_length,GetUBOAlign());
             
-            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,unit_size);
+            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,align_size);
 
-            return(new GPUArrayBuffer(vk_ma,unit_size));
+            return(new GPUArrayBuffer(vk_ma,align_size,GetUBORange()));
         }
 
         GPUArrayBuffer *GPUDevice::CreateSSBO(const VkDeviceSize &item_length)
         {
-            const uint unit_size=hgl_align<VkDeviceSize>(item_length,GetSSBOAlign());
+            const uint align_size=hgl_align<VkDeviceSize>(item_length,GetSSBOAlign());
             
-            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,unit_size);
+            auto vk_ma=new VKMemoryAllocator(this,VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,align_size);
 
-            return(new GPUArrayBuffer(vk_ma,unit_size));
+            return(new GPUArrayBuffer(vk_ma,align_size,GetSSBORange()));
         }
     }//namespace graph
 
     namespace graph
     {
-        GPUArrayBuffer::GPUArrayBuffer(VKMemoryAllocator *va,const uint us)
+        GPUArrayBuffer::GPUArrayBuffer(VKMemoryAllocator *va,const uint as,const uint rs)
         {
             vk_ma=va;
-            unit_size=us;
+            align_size=as;
+            range_size=rs;
 
             MemoryBlock *mb=new MemoryBlock(vk_ma);
 
-            coll=new Collection(unit_size,mb);
+            coll=new Collection(align_size,mb);
         }
 
         GPUArrayBuffer::~GPUArrayBuffer()
@@ -69,7 +70,7 @@ namespace hgl
 
         void GPUArrayBuffer::Flush(const uint32 count)
         {
-            vk_ma->Flush(count*unit_size);
+            vk_ma->Flush(count*align_size);
         }
     }//namespace graph
 }//namespace hgl
