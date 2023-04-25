@@ -8,68 +8,6 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/util/sort/Sort.h>
 
-/**
-* 
-* 理论上讲，我们需要按以下顺序排序
-*
-*   for(material)
-*       for(pipeline)
-*           for(material_instance)
-*               for(vbo)
-*/
-
-template<> 
-int Comparator<RenderNode2DPointer>::compare(const RenderNode2DPointer &obj_one,const RenderNode2DPointer &obj_two) const
-{
-    int off;
-
-    hgl::graph::Renderable *ri_one=obj_one->ri;
-    hgl::graph::Renderable *ri_two=obj_two->ri;
-
-    //比较材质
-    {
-        off=ri_one->GetMaterial()
-           -ri_two->GetMaterial();
-
-        if(off)
-            return off;
-    }
-
-    //比较管线
-    {
-        off=ri_one->GetPipeline()
-           -ri_two->GetPipeline();
-
-        if(off)
-            return off;
-    }
-
-    //比较材质实例
-    //{
-    //    for(int i =(int)hgl::graph::DescriptorSetType::BEGIN_RANGE;
-    //            i<=(int)hgl::graph::DescriptorSetType::END_RANGE;
-    //            i++)
-    //    {
-    //        off=ri_one->GetMP((hgl::graph::DescriptorSetType)i)
-    //           -ri_two->GetMP((hgl::graph::DescriptorSetType)i);
-
-    //        if(off)
-    //            return off;
-    //    }
-    //}
-
-    //比较vbo+ebo
-    {
-        off=ri_one->GetBufferHash()
-           -ri_two->GetBufferHash();
-
-        if(off)
-            return off;
-    }
-
-    return 0;
-}
-
 namespace hgl
 {
     namespace graph
@@ -79,7 +17,6 @@ namespace hgl
             device          =dev;
             cmd_buf         =nullptr;
 
-            last_mtl        =nullptr;
             last_pipeline   =nullptr;
             hgl_zero(last_mp);
             last_vbo        =0;
@@ -91,61 +28,66 @@ namespace hgl
 
         bool RenderList2D::Begin()
         {
-            mrl_map.ClearData();
+            renderable_count=0;
+            mrl_map.Begin();
 
             return(true);
         }
 
         void RenderList2D::End()
         {
-            if(render_node_list.GetCount()<=0)return;
-
-            //排序
-            Sort(render_node_list,&render_node_comparator);
-
-            //产生MVP矩阵UBO数据
-            {
-                const uint32_t count=render_node_list.GetCount();
-
-                {
-                    //按当前总节点数量分配UBO
-//                    mvp_array->Alloc(count);
-//                    mvp_array->Clear();
-
-                    ri_list.ClearData();
-                    ri_list.SetCount(count);
-                }
-
-                {
-//                    ubo_align=mvp_array->GetAlignSize();
-                    
-//                    char *mp=(char *)(mvp_array->Map(0,count));
-                    Renderable **ri=ri_list.GetData();
-
-                    for(RenderNode2D *node:render_node_list)                  //未来可能要在Expend处考虑做去重
-                    {
-//                        memcpy(mp,&(node->matrix),MVPMatrixBytes);
-//                        mp+=ubo_align;
-
-                        (*ri)=node->ri;
-                        ++ri;
-                    }
-
-//                    mvp_array->Flush(count);
-                }
-            }
-
-            //为所有的材质绑定
-            //for(Material *mtl:material_sets)
-            //{
-            //    MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerObject);
-
-            //    if(mp)
-            //    {
-            //        if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
-            //            mp->Update();
-            //    }
-            //}
+            if(renderable_count<=0)return;
+            
+            mrl_map.End();
+            
+            
+//
+//            //排序
+//            Sort(render_node_list,&render_node_comparator);
+//
+//            //产生MVP矩阵UBO数据
+//            {
+//                const uint32_t count=render_node_list.GetCount();
+//
+//                {
+//                    //按当前总节点数量分配UBO
+////                    mvp_array->Alloc(count);
+////                    mvp_array->Clear();
+//
+//                    ri_list.ClearData();
+//                    ri_list.SetCount(count);
+//                }
+//
+//                {
+////                    ubo_align=mvp_array->GetAlignSize();
+//                    
+////                    char *mp=(char *)(mvp_array->Map(0,count));
+//                    Renderable **ri=ri_list.GetData();
+//
+//                    for(RenderNode2D *node:render_node_list)                  //未来可能要在Expend处考虑做去重
+//                    {
+////                        memcpy(mp,&(node->matrix),MVPMatrixBytes);
+////                        mp+=ubo_align;
+//
+//                        (*ri)=node->ri;
+//                        ++ri;
+//                    }
+//
+////                    mvp_array->Flush(count);
+//                }
+//            }
+//
+//            //为所有的材质绑定
+//            //for(Material *mtl:material_sets)
+//            //{
+//            //    MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerObject);
+//
+//            //    if(mp)
+//            //    {
+//            //        if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
+//            //            mp->Update();
+//            //    }
+//            //}
         }
 
         bool RenderList2D::ExpendNode(SceneNode *sn)
@@ -156,15 +98,19 @@ namespace hgl
 
             if(ri)
             {
-                RenderNode2D *rn=new RenderNode2D;
+                Material *mtl=ri->GetMaterial();
+                MaterialRenderList2D *mrl;
 
-                rn->local_to_world=sn->GetLocalToWorldMatrix();
+                if(!mrl_map.Get(mtl,mrl))
+                {
+                    mrl=new MaterialRenderList2D(mtl);
 
-                rn->ri=ri;
+                    mrl_map.Add(mtl,mrl);
+                }
+                
+                mrl->Add(ri,sn->GetLocalToWorldMatrix());
 
-                render_node_list.Add(rn);
-
-                material_sets.Add(ri->GetMaterial());
+                ++renderable_count;
             }
 
             for(SceneNode *sub:sn->SubNode)
@@ -179,45 +125,45 @@ namespace hgl
 
             Begin();
             ExpendNode(sn);
-            End();
+//            End();
 
             return(true);
         }
 
-        bool RenderList2D::BindPerFrameDescriptor()
-        {
-            if(!cmd_buf)return(false);
+        //bool RenderList2D::BindPerFrameDescriptor()
+        //{
+        //    if(!cmd_buf)return(false);
 
-            for(Material *mtl:material_sets)
-            {
-                MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerFrame);
+        //    for(Material *mtl:material_sets)
+        //    {
+        //        MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerFrame);
 
-                if(!mp)continue;
-                
-                //if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
-                  //  mp->Update();
-            }
+        //        if(!mp)continue;
+        //        
+        //        //if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
+        //          //  mp->Update();
+        //    }
 
-            return(true);
-        }
+        //    return(true);
+        //}
 
-        bool RenderList2D::BindPerMaterialDescriptor()
-        {
-            //为每个材质实例，绑定它们的描述符
-            if(!cmd_buf)return(false);
+        //bool RenderList2D::BindPerMaterialDescriptor()
+        //{
+        //    //为每个材质实例，绑定它们的描述符
+        //    if(!cmd_buf)return(false);
 
-            for(Material *mtl:material_sets)
-            {
-                MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerMaterial);
+        //    for(Material *mtl:material_sets)
+        //    {
+        //        MaterialParameters *mp=mtl->GetMP(DescriptorSetType::PerMaterial);
 
-                if(!mp)continue;
-                
-                //if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
-                //    mp->Update();
-            }
+        //        if(!mp)continue;
+        //        
+        //        //if(mp->BindUBO("r_scene_info",mvp_array->GetBuffer(),true))
+        //        //    mp->Update();
+        //    }
 
-            return(true);
-        }
+        //    return(true);
+        //}
 
         void RenderList2D::Render(Renderable *ri)
         {
