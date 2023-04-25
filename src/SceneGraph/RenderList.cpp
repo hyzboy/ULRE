@@ -124,7 +124,7 @@ namespace hgl
                 }
 
                 {
-                    ubo_align=mvp_array->GetUnitSize();
+                    ubo_align=mvp_array->GetAlignSize();
                     
                     char *mp=(char *)(mvp_array->Map(0,count));
                     Renderable **ri=ri_list.GetData();
