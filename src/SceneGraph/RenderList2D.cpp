@@ -79,15 +79,10 @@ namespace hgl
             device          =dev;
             cmd_buf         =nullptr;
 
-            ubo_offset      =0;
-            ubo_align       =0;
-
             last_mtl        =nullptr;
             last_pipeline   =nullptr;
             hgl_zero(last_mp);
             last_vbo        =0;
-
-//            mvp_array       =new GPUArrayBuffer(device,VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,MVPMatrixBytes);
         }
 
         RenderList2D::~RenderList2D()
@@ -96,10 +91,7 @@ namespace hgl
 
         bool RenderList2D::Begin()
         {
-            render_node_list.ClearData();
-            ri_list.ClearData();
-
-            material_sets.ClearData();
+            mrl_map.ClearData();
 
             return(true);
         }
