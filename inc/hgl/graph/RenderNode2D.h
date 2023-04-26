@@ -17,16 +17,32 @@ namespace hgl
             Renderable *ri;
         };
 
-        using RenderNode2DList=List<RenderNode2D *>;
+        using RenderNode2DList=List<RenderNode2D>;
 
         /**
          * 同一材质的对象渲染列表
          */
-        struct MaterialRenderList2D
+        class MaterialRenderList2D
         {
             Material *mtl;
 
             RenderNode2DList rn_list;
+
+        public:
+
+            MaterialRenderList2D(Material *m)
+            {
+                mtl=m;
+            }
+
+            void Add(Renderable *ri,const Matrix3x4f &mat);
+
+            void ClearData()
+            {
+                rn_list.ClearData();
+            }
+
+            void End();
         };
 
         class MaterialRenderMap2D:public ObjectMap<Material *,MaterialRenderList2D>
@@ -36,15 +52,18 @@ namespace hgl
             MaterialRenderMap2D()=default;
             virtual ~MaterialRenderMap2D()=default;
 
-            void ClearData()
+            void Begin()
             {
                 for(auto *it:data_list)
-                    it->value->rn_list.ClearData();
+                    it->value->ClearData();
+            }
+
+            void End()
+            {
+                for(auto *it:data_list)
+                    it->value->End();
             }
         };
     }//namespace graph
 }//namespace hgl
-
-using RenderNode2DPointer=hgl::graph::RenderNode2D *;
-using RenderNode2DComparator=Comparator<RenderNode2DPointer>;
 #endif//HGL_GRAPH_RENDER_NODE_2D_INCLUDE

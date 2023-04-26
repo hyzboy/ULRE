@@ -1,10 +1,10 @@
-#include<hgl/graph/RenderNode2D.h>
+ï»¿#include<hgl/graph/RenderNode2D.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/util/sort/Sort.h>
 
 /**
 * 
-* ÀíÂÛÉÏ½²£¬ÎÒÃÇĞèÒª°´ÒÔÏÂË³ĞòÅÅĞò
+* ç†è®ºä¸Šè®²ï¼Œæˆ‘ä»¬éœ€è¦æŒ‰ä»¥ä¸‹é¡ºåºæ’åº
 *
 *   for(material)
 *       for(pipeline)
@@ -20,7 +20,7 @@ int Comparator<hgl::graph::RenderNode2D>::compare(const hgl::graph::RenderNode2D
     hgl::graph::Renderable *ri_one=obj_one.ri;
     hgl::graph::Renderable *ri_two=obj_two.ri;
 
-    //±È½Ï¹ÜÏß
+    //æ¯”è¾ƒç®¡çº¿
     {
         off=ri_one->GetPipeline()
            -ri_two->GetPipeline();
@@ -29,7 +29,7 @@ int Comparator<hgl::graph::RenderNode2D>::compare(const hgl::graph::RenderNode2D
             return off;
     }
 
-    //±È½Ï²ÄÖÊÊµÀı
+    //æ¯”è¾ƒæè´¨å®ä¾‹
     //{
     //    for(int i =(int)hgl::graph::DescriptorSetType::BEGIN_RANGE;
     //            i<=(int)hgl::graph::DescriptorSetType::END_RANGE;
@@ -43,7 +43,7 @@ int Comparator<hgl::graph::RenderNode2D>::compare(const hgl::graph::RenderNode2D
     //    }
     //}
 
-    //±È½Ïvbo+ebo
+    //æ¯”è¾ƒvbo+ebo
     {
         off=ri_one->GetBufferHash()
            -ri_two->GetBufferHash();
@@ -71,11 +71,17 @@ namespace hgl
 
         void MaterialRenderList2D::End()
         {
-            Comparator<hgl::graph::RenderNode2D> rnc;
+            //æ’åº
+            {
+                Comparator<hgl::graph::RenderNode2D> rnc;
 
-            Sort(rn_list,&rnc);
+                Sort(rn_list,&rnc);
+            }
 
-            
+            //åˆ›å»ºUBO/SSBOç»‘å®šæ•°æ®
+            {
+                mtl->
+            }
         }
     }//namespace graph
 }//namespace hgl
