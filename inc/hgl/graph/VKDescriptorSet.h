@@ -23,11 +23,6 @@ class DescriptorSet
 
     bool is_dirty;
 
-protected:  //动态UBO/SSBO记录
-
-    
-
-
 private:
 
     friend class GPUDevice;
