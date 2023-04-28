@@ -53,5 +53,4 @@ vec3 world_up;
 
 float znear,zfar;)"
 };
-
 STD_MTL_NAMESPACE_END

@@ -10,7 +10,7 @@ namespace hgl
         struct ShaderBufferSource
         {
             const char *struct_name;
-            const char *value_name;
+            const char *name;
             const char *codes;
         };
     }//namespace graph

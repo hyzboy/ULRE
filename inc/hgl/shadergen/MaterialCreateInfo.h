@@ -66,7 +66,7 @@ public:
         if(!mdi.hasStruct(ss.struct_name))
             mdi.AddStruct(ss.struct_name,ss.codes);
 
-        return AddUBO(flag_bits,set_type,ss.struct_name,ss.value_name);
+        return AddUBO(flag_bits,set_type,ss.struct_name,ss.name);
     }
 
     bool CreateShader();
