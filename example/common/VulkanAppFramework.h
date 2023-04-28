@@ -19,7 +19,7 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/RenderList2D.h>
+//#include<hgl/graph/RenderList2D.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/color/Color.h>
 #include<hgl/Time.h>
@@ -142,7 +142,7 @@ public:
 
             ubo_vp_info=db->CreateUBO(sizeof(ViewportInfo),&vp_info);
 
-            db->global_descriptor.AddUBO(InlineDescriptor::ViewportInfo.name,ubo_vp_info);
+            db->global_descriptor.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
         }
 
         return(true);
@@ -248,31 +248,31 @@ public:
         return BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),ri);
     }
 
-    void BuildCommandBuffer(uint32_t index,RenderList2D *rl)
-    {
-        if(!rl)return;
+    //void BuildCommandBuffer(uint32_t index,RenderList2D *rl)
+    //{
+    //    if(!rl)return;
 
-        RenderCmdBuffer *cb=cmd_buf[index];
+    //    RenderCmdBuffer *cb=cmd_buf[index];
 
-        cb->Begin();
-        cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
-        cb->SetClearColor(0,clear_color);
-            cb->BeginRenderPass();
-                rl->Render(cb);
-            cb->EndRenderPass();
-        cb->End();
-    }
+    //    cb->Begin();
+    //    cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
+    //    cb->SetClearColor(0,clear_color);
+    //        cb->BeginRenderPass();
+    //            rl->Render(cb);
+    //        cb->EndRenderPass();
+    //    cb->End();
+    //}
 
-    void BuildCommandBuffer(RenderList2D *rl)
-    {
-        for(int32_t i=0;i<swap_chain_count;i++)
-            BuildCommandBuffer(i,rl);
-    }
+    //void BuildCommandBuffer(RenderList2D *rl)
+    //{
+    //    for(int32_t i=0;i<swap_chain_count;i++)
+    //        BuildCommandBuffer(i,rl);
+    //}
 
-    void BuildCurrentCommandBuffer(RenderList2D *rl)
-    {
-        BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),rl);
-    }
+    //void BuildCurrentCommandBuffer(RenderList2D *rl)
+    //{
+    //    BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),rl);
+    //}
 
     template<typename ...ARGS>
     Pipeline *CreatePipeline(ARGS...args){return device_render_pass->CreatePipeline(args...);}

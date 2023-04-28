@@ -60,20 +60,20 @@ void LoadShaderDescriptor(io::ConstBufferReader &cbr,ShaderDescriptor *sd_list,c
         if(ver==2)      //以下是旧的，未来不用了，现仅保证能运行
         {
             if(sd->name[0]=='g')sd->set_type=DescriptorSetType::Global;else
-            if(sd->name[0]=='m')sd->set_type=DescriptorSetType::PerMaterial;else
-            if(sd->name[0]=='r')sd->set_type=DescriptorSetType::PerObject;else
-                sd->set_type=DescriptorSetType::PerFrame;
+            //if(sd->name[0]=='m')sd->set_type=DescriptorSetType::PerMaterial;else
+            //if(sd->name[0]=='r')sd->set_type=DescriptorSetType::PerObject;else
+                sd->set_type=DescriptorSetType::PerMaterial;
         }
 
         cbr.Read(sd->set);
         cbr.Read(sd->binding);
         cbr.Read(sd->stage_flag);
 
-        if(sd->set_type>=DescriptorSetType::PerObject)
-        {
-            if(sd->desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
-            if(sd->desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-        }
+        //if(sd->set_type>=DescriptorSetType::PerObject)
+        //{
+        //    if(sd->desc_type==VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;else
+        //    if(sd->desc_type==VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)sd->desc_type=VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        //}
 
         ++sd;
     }

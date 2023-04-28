@@ -30,18 +30,13 @@ int Comparator<hgl::graph::RenderNode2D>::compare(const hgl::graph::RenderNode2D
     }
 
     //比较材质实例
-    //{
-    //    for(int i =(int)hgl::graph::DescriptorSetType::BEGIN_RANGE;
-    //            i<=(int)hgl::graph::DescriptorSetType::END_RANGE;
-    //            i++)
-    //    {
-    //        off=ri_one->GetMP((hgl::graph::DescriptorSetType)i)
-    //           -ri_two->GetMP((hgl::graph::DescriptorSetType)i);
+    {
+        off=ri_one->GetMaterialInstance()
+           -ri_two->GetMaterialInstance();
 
-    //        if(off)
-    //            return off;
-    //    }
-    //}
+        if(off)
+            return off;
+    }
 
     //比较vbo+ebo
     {
@@ -78,9 +73,9 @@ namespace hgl
                 Sort(rn_list,&rnc);
             }
 
-            //创建UBO/SSBO绑定数据
+            //生成mvp数据
             {
-                mtl->
+                                
             }
         }
     }//namespace graph
