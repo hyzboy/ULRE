@@ -138,12 +138,12 @@ bool RenderCmdBuffer::BindVBO(Renderable *ri)
     if(!ri)
         return(false);
 
-    const uint count=ri->GetBufferCount();
+    const VertexInputData *vid=ri->GetVertexInputData();
 
-    if(count<=0)
+    if(vid->count<=0)
         return(false);
 
-    vkCmdBindVertexBuffers(cmd_buf,0,count,ri->GetBuffer(),ri->GetBufferSize());
+    vkCmdBindVertexBuffers(cmd_buf,0,vid->count,vid->buffer_list,vid->buffer_offset);
 
     IndexBuffer *indices_buffer=ri->GetIndexBuffer();
 
