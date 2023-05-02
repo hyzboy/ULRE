@@ -47,15 +47,15 @@ Renderable::~Renderable()
     delete vertex_input_data;
 }
 
-Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
+Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 {
-    if(!r||!mi||!p)return(nullptr);
+    if(!prim||!mi||!p)return(nullptr);
 
     const VIL *vil=mi->GetVIL();
     const int input_count=vil->GetAttrCount();
     const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
-    if(r->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
+    if(prim->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
         LOG_ERROR("[FATAL ERROR] input buffer count of Renderable lesser than Material, Material name: "+mtl_name);
 
@@ -69,7 +69,7 @@ Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
 
     for(int i=0;i<input_count;i++)
     {
-        vbo=r->GetVBO(vid->name_list[i],vid->buffer_offset+i);
+        vbo=prim->GetVBO(vid->name_list[i],vid->buffer_offset+i);
 
         name=vid->name_list[i];
 
@@ -104,6 +104,6 @@ Renderable *CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
         vid->buffer_list[i]=vbo->GetBuffer();
     }
 
-    return(new Renderable(r,mi,p,vid));
+    return(new Renderable(prim,mi,p,vid));
 }
 VK_NAMESPACE_END
