@@ -138,12 +138,22 @@ bool RenderCmdBuffer::BindVBO(Renderable *ri)
     if(!ri)
         return(false);
 
-    const VertexInputData *vid=ri->GetVertexInputData();
+    uint count=0;
 
-    if(vid->count<=0)
+    ENUM_CLASS_FOR(VertexInputGroup,uint,i)
+    {
+        const VertexInputData *vid=ri->GetVertexInputData(VertexInputGroup(i));
+
+        if(vid->binding_count<=0)
+            continue;
+
+        vkCmdBindVertexBuffers(cmd_buf,vid->first_binding,vid->binding_count,vid->buffer_list,vid->buffer_offset);
+
+        count+=vid->binding_count;
+    }
+
+    if(count==0)
         return(false);
-
-    vkCmdBindVertexBuffers(cmd_buf,0,vid->count,vid->buffer_list,vid->buffer_offset);
 
     IndexBuffer *indices_buffer=ri->GetIndexBuffer();
 
