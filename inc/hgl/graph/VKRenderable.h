@@ -7,22 +7,27 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/VertexAttrib.h>
 VK_NAMESPACE_BEGIN
 
 struct VertexInputData
 {
-    uint32_t count;
-
-    const char **name_list;
-    const VkVertexInputBindingDescription *bind_list;
-    const VkVertexInputAttributeDescription *attr_list;
+    uint32_t first_binding;
+    uint32_t binding_count;
     VkBuffer *buffer_list;
     VkDeviceSize *buffer_offset;
+};
+
+struct VertexInputDataGroup
+{
+    const VIL *vil;
+
+    VertexInputData vid[size_t(VertexInputGroup::RANGE_SIZE)];
 
 public:
 
-    VertexInputData(const VIL *vil);
-    ~VertexInputData();
+    VertexInputDataGroup(const VIL *);
+    ~VertexInputDataGroup();
 };
 
 /**
@@ -34,15 +39,13 @@ class Renderable                                                                
     MaterialInstance *  mat_inst;
     Primitive *         primitive;
 
-    VertexInputData *   vertex_input_data;
-
-    uint32_t            buffer_hash;
+    VertexInputDataGroup *vid_group;
 
 private:
 
     friend Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    Renderable(Primitive *,MaterialInstance *,Pipeline *,VertexInputData *);
+    Renderable(Primitive *,MaterialInstance *,Pipeline *,VertexInputDataGroup *);
 
 public:
 
@@ -57,13 +60,16 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   VertexInputData *   GetVertexInputData  ()const{return vertex_input_data;}
+    const   VertexInputData *   GetVertexInputData  (const VertexInputGroup &vig)const
+    {
+        RANGE_CHECK_RETURN_NULLPTR(vig)
+
+        return vid_group->vid+size_t(vig);
+    }
 
             IndexBuffer *       GetIndexBuffer      ()const{return primitive->GetIndexBuffer();}
     const   uint32_t            GetIndexBufferOffset()const{return primitive->GetIndexBufferOffset();}
     const   uint32_t            GetDrawCount        ()const{return primitive->GetDrawCount();}
-
-    const   uint32_t            GetBufferHash       ()const{return buffer_hash;}
 
             MaterialParameters *GetMP               (const DescriptorSetType &type){return mat_inst->GetMP(type);}
 

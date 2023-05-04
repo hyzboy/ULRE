@@ -48,9 +48,9 @@ private:
         AutoDelete<MaterialCreateInfo> mci;
 
 #ifdef USE_ZERO2ONE_COORD
-        mci=mtl::CreateVertexColor2D(CoordinateSystem2D::ZeroToOne);
+        mci=mtl::CreateVertexColor2D(mtl::CoordinateSystem2D::ZeroToOne);
 #else
-        mci=mtl::CreateVertexColor2D(CoordinateSystem2D::Ortho);
+        mci=mtl::CreateVertexColor2D(mtl::CoordinateSystem2D::Ortho);
 #endif//USE_ZERO2ONE_COORD
 
         //material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2D"));

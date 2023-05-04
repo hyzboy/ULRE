@@ -3,48 +3,52 @@
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
-#include<hgl/util/hash/Hash.h>
 
 VK_NAMESPACE_BEGIN
-using namespace util;
-
-VertexInputData::VertexInputData(const VIL *vil)
+VertexInputDataGroup::VertexInputDataGroup(const VIL *vd)
 {
-    count=vil->GetAttrCount();
+    vil=vd;
 
-    name_list=vil->GetNameList();
-    bind_list=vil->GetBindingList();
-    attr_list=vil->GetAttributeList();
+    uint first_binding=0;
 
-    buffer_list=new VkBuffer[count];
-    buffer_offset=new VkDeviceSize[count];
+    for(uint i=0;i<size_t(VertexInputGroup::RANGE_SIZE);i++)
+    {
+        vid[i].binding_count=vil->GetCount(VertexInputGroup(i));
+
+        if(vid[i].binding_count>0)
+        {
+            vid[i].first_binding=vil->GetFirstBinding(VertexInputGroup(i));
+
+            vid[i].buffer_list=new VkBuffer[vid[i].binding_count];
+            vid[i].buffer_offset=new VkDeviceSize[vid[i].binding_count];
+        }
+    }
 }
 
-VertexInputData::~VertexInputData()
+VertexInputDataGroup::~VertexInputDataGroup()
 {
-    delete[] buffer_list;
-    delete[] buffer_offset;
+    for(uint i=0;i<size_t(VertexInputGroup::RANGE_SIZE);i++)
+        if(vid[i].binding_count>0)
+        {
+            delete[] vid[i].buffer_list;
+            delete[] vid[i].buffer_offset;
+        }
 }
 
-Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,VertexInputData *vid)
+Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,VertexInputDataGroup *vidg)
 {
     primitive=r;
     pipeline=p;
     mat_inst=mi;
 
-    vertex_input_data=vid;
-
-    if(vertex_input_data->count>0)
-        CountHash<HASH::Adler32>(vertex_input_data->buffer_list,vertex_input_data->count*sizeof(VkBuffer),(void *)&buffer_hash);
-    else
-        buffer_hash=0;
+    vid_group=vidg;
 }
  
 Renderable::~Renderable()
 {
     //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
-    delete vertex_input_data;
+    delete vid_group;
 }
 
 Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
@@ -52,7 +56,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     if(!prim||!mi||!p)return(nullptr);
 
     const VIL *vil=mi->GetVIL();
-    const int input_count=vil->GetAttrCount();
+    const uint input_count=vil->GetCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
     const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
     if(prim->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
@@ -63,47 +67,47 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     }
 
     VBO *vbo;
-    const char *name;
 
-    VertexInputData *vid=new VertexInputData(vil);
+    VertexInputDataGroup *vid_group=new VertexInputDataGroup(vil);
 
-    for(int i=0;i<input_count;i++)
+    VertexInputData &vid=vid_group->vid[size_t(VertexInputGroup::Basic)];
+
+    const VertexInputFormat *vif=vil->GetFormatList(VertexInputGroup::Basic);
+
+    for(uint i=0;i<input_count;i++)
     {
-        vbo=prim->GetVBO(vid->name_list[i],vid->buffer_offset+i);
-
-        name=vid->name_list[i];
+        vbo=prim->GetVBO(vif->name,vid.buffer_offset+i);
 
         if(!vbo)
         {
-            LOG_ERROR("[FATAL ERROR] not found VBO \""+AnsiString(vid->name_list[i])+"\" in Material: "+mtl_name);
+            LOG_ERROR("[FATAL ERROR] not found VBO \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 
-        if(vbo->GetFormat()!=vid->attr_list[i].format)
+        if(vbo->GetFormat()!=vif->format)
         {
-            LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(name)+
+            LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(vif->name)+
                         UTF8String("\" format can't match Renderable, Material(")+mtl_name+
-                        UTF8String(") Format(")+GetVulkanFormatName(vid->attr_list[i].format)+
+                        UTF8String(") Format(")+GetVulkanFormatName(vif->format)+
                         UTF8String("), VBO Format(")+GetVulkanFormatName(vbo->GetFormat())+
                         ")");
-            delete vid;
             return(nullptr);
         }
 
-        if(vbo->GetStride()!=vid->bind_list[i].stride)
+        if(vbo->GetStride()!=vif->stride)
         {
-            LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(name)+
+            LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(vif->name)+
                         UTF8String("\" stride can't match Renderable, Material(")+mtl_name+
-                        UTF8String(") stride(")+UTF8String::numberOf(vid->bind_list[i].stride)+
+                        UTF8String(") stride(")+UTF8String::numberOf(vif->stride)+
                         UTF8String("), VBO stride(")+UTF8String::numberOf(vbo->GetStride())+
                         ")");
-            delete vid;
             return(nullptr);
         }
 
-        vid->buffer_list[i]=vbo->GetBuffer();
+        vid.buffer_list[i]=vbo->GetBuffer();
+        ++vif;
     }
 
-    return(new Renderable(prim,mi,p,vid));
+    return(new Renderable(prim,mi,p,vid_group));
 }
 VK_NAMESPACE_END
