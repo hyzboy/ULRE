@@ -38,9 +38,7 @@ namespace hgl
             }
 
             const   VkFormat    GetFormat       ()const{return format;}                             ///<取得数据类型
-//          const   uint32_t    GetVecSize      ()const{return vec_size;}                           ///<取数缓冲区元数据成份数量
             const   uint32_t    GetCount        ()const{return count;}                              ///<取得数据数量
-//          const   uint32_t    GetStride       ()const{return stride;}                             ///<取得每一组数据字节数
                     void *      GetData         ()const{return mem_data;}                           ///<取得数据指针
             const   uint32_t    GetTotalBytes   ()const{return total_bytes;}                        ///<取得数据字节数
         };//class VertexAttribData

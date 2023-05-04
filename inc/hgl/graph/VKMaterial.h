@@ -55,7 +55,7 @@ public:
 
     const   UTF8String &                        GetName                 ()const{return data->name;}
 
-//    const   VertexInput *                       GetVertexInput          ()const{return data->vertex_input;}
+    const   VertexInput *                       GetVertexInput          ()const{return data->vertex_input;}
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return data->shader_stage_list;}
 
