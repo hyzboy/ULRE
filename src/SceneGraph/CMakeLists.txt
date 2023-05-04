@@ -268,8 +268,8 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_RENDERABLE_SOURCE}
                             ${VK_RENDER_DEVICE_SOURCE})
 
-add_cm_library(ULRE.SceneGraph "ULRE"   #${SCENE_GRAPH_HEADER}
-                                        #${SCENE_GRAPH_SOURCE}
+add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
+                                        ${SCENE_GRAPH_SOURCE}
                                         ${GEOMETRY_FILES}
                                         ${LIGHT_FILES}
 

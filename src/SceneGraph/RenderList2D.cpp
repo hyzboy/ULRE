@@ -103,7 +103,7 @@ namespace hgl
 
                 if(!mrl_map.Get(mtl,mrl))
                 {
-                    mrl=new MaterialRenderList2D(mtl);
+                    mrl=new MaterialRenderList2D(device,mtl);
 
                     mrl_map.Add(mtl,mrl);
                 }
