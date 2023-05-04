@@ -89,6 +89,8 @@ struct VAConfig;
 class VILConfig;
 class VertexInput;
 
+struct VertexInputFormat;
+
 class VertexInputLayout;
 using VIL=VertexInputLayout;
 

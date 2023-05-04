@@ -28,9 +28,9 @@ namespace hgl
             if(!vil)return(nullptr);
             if(name.IsEmpty())return(nullptr);
             
-            const auto *va=vil->GetConfig(name);
+            const VertexInputFormat *vif=vil->GetConfig(name);
 
-            if(!va)
+            if(!vif)
                 return(nullptr);
 
             ShaderStageBind *ssb;
@@ -38,7 +38,7 @@ namespace hgl
             if(ssb_map.Get(name,ssb))
                 return ssb->data;
 
-            VAD *vad=hgl::graph::CreateVertexAttribData(vertices_number,va->format,va->vec_size,va->stride);
+            VAD *vad=hgl::graph::CreateVertexAttribData(vertices_number,vif);
 
             if(!vad)
                 return(nullptr);
@@ -47,7 +47,7 @@ namespace hgl
 
             ssb->data   =vad;
             ssb->name   =name;
-            ssb->binding=va->binding;
+            ssb->binding=vif->binding;
             
             ssb->vbo    =nullptr;
 
@@ -68,21 +68,21 @@ namespace hgl
             if(ssb_map.Get(name,ssb))
                 return false;
 
-            const auto *va=vil->GetConfig(name);
+            const VertexInputFormat *vif=vil->GetConfig(name);
 
-            if(!va)
+            if(!vif)
                 return(false);
 
-            if(va->stride*vertices_number!=bytes)
+            if(vif->stride*vertices_number!=bytes)
                 return(false);
                
             ssb=new ShaderStageBind;
 
             ssb->data   =nullptr;
             ssb->name   =name;
-            ssb->binding=va->binding;
+            ssb->binding=vif->binding;
 
-            ssb->vbo    =db->CreateVBO(va->format,vertices_number,data);
+            ssb->vbo    =db->CreateVBO(vif->format,vertices_number,data);
 
             ssb_map.Add(name,ssb);
 
