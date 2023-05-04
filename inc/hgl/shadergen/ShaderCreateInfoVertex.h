@@ -3,18 +3,44 @@
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/graph/VKShaderStage.h>
 
-
-namespace hgl{namespace graph{
-class ShaderCreateInfoVertex:public ShaderCreateInfo
+namespace hgl
 {
-    bool ProcInput(ShaderCreateInfo *) override;
+    namespace graph
+    {
+        class ShaderCreateInfoVertex:public ShaderCreateInfo
+        {
+            bool ProcInput(ShaderCreateInfo *) override;
 
-public:
+        public:
 
-    ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m){}
-    ~ShaderCreateInfoVertex()=default;
+            ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m){}
+            ~ShaderCreateInfoVertex()=default;
 
-    int AddInput(const graph::VAT &type,const AnsiString &name);
-    int AddInput(const AnsiString &type,const AnsiString &name);
-};
-}}//namespace hgl::graph
+            int AddInput(const graph::VAT &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
+            int AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
+
+            void AddBone()
+            {
+                VAT id      {VertexAttribType::BaseType::UInt,4};
+                VAT weight  {VertexAttribType::BaseType::Float,4};
+
+                AddInput(id,    VAN::BoneID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::Bone);
+                AddInput(weight,VAN::BoneWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::Bone);
+            }
+
+            void AddLocalToWorld(const uint count)
+            {
+                VAT l2w{VertexAttribType::BaseType::Float,4};
+
+                char name[]= "LocalToWorld_?";
+
+                for(uint i=0;i<count;i++)
+                {
+                    name[sizeof(name)-2]='0'+i;
+
+                    AddInput(l2w,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
+                }
+            }
+        };//class ShaderCreateInfoVertex:public ShaderCreateInfo
+    }//namespace graph
+}//namespace hgl::graph
