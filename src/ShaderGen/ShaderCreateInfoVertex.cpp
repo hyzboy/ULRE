@@ -9,7 +9,7 @@ namespace hgl{namespace graph{
 using namespace hgl;
 using namespace hgl::graph;
 
-int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name)
+int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
     ShaderAttribute *ss=new ShaderAttribute;
 
@@ -18,17 +18,20 @@ int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name)
     ss->basetype=(uint8) type.basetype;
     ss->vec_size=        type.vec_size;
 
+    ss->input_rate      =input_rate;
+    ss->group           =group;
+
     return sdm->AddInput(ss);
 }
 
-int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &name)
+int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
     VAT vat;
 
     if(!ParseVertexAttribType(&vat,type))
         return(-2);
 
-    return AddInput(vat,name);
+    return AddInput(vat,name,input_rate,group);
 }
 
 bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
