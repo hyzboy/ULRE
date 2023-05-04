@@ -107,7 +107,7 @@ namespace hgl
 
         Primitive *PrimitiveCreater::Finish()
         {
-            const uint si_count=vil->GetAttrCount();
+            const uint si_count=vil->GetCount();
 
             if(ssb_map.GetCount()!=si_count)
                 return(nullptr);
@@ -118,7 +118,7 @@ namespace hgl
             for(uint i=0;i<si_count;i++)
             {
                 if((*sp)->value->vbo)
-                    primitive->Set((*sp)->key,(*sp)->value->vbo);                    
+                    primitive->Set((*sp)->key,(*sp)->value->vbo);
                 else
                     primitive->Set((*sp)->key,db->CreateVBO((*sp)->value->data));
 

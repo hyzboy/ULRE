@@ -56,7 +56,7 @@ namespace hgl
             template<typename T> 
                     T *                     CreateVADA(const AnsiString &name)                                          ///<创建一个顶点属性缓冲区以及访问器
                     {
-                        const VkFormat format=vil->GetFormat(name);
+                        const VkFormat format=vil->GetVulkanFormat(name);
 
                         if(format!=T::GetVulkanFormat())
                             return(nullptr);
