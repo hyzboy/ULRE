@@ -134,7 +134,7 @@ namespace hgl
             {
                 if(!vad)return(nullptr);
 
-                if(vad->GetVulkanFormat()!=VKFMT)
+                if(vad->GetFormat()!=VKFMT)
                     return(nullptr);
 
                 return(new VertexAttribDataAccess1<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
@@ -227,7 +227,7 @@ namespace hgl
             {
                 if(!vad)return(nullptr);
 
-                if(vad->GetVulkanFormat()!=VKFMT)
+                if(vad->GetFormat()!=VKFMT)
                     return(nullptr);
 
                 return(new VertexAttribDataAccess2<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
@@ -526,7 +526,7 @@ namespace hgl
             {
                 if(!vad)return(nullptr);
 
-                if(vad->GetVulkanFormat()!=VKFMT)
+                if(vad->GetFormat()!=VKFMT)
                     return(nullptr);
 
                 return(new VertexAttribDataAccess3<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
@@ -798,7 +798,7 @@ namespace hgl
             {
                 if(!vad)return(nullptr);
 
-                if(vad->GetVulkanFormat()!=VKFMT)
+                if(vad->GetFormat()!=VKFMT)
                     return(nullptr);
 
                 return(new VertexAttribDataAccess4<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
