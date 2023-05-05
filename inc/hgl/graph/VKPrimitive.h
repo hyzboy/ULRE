@@ -7,6 +7,12 @@
 #include<hgl/math/Math.h>
 #include<hgl/graph/AABB.h>
 VK_NAMESPACE_BEGIN
+struct IndexBufferData
+{
+    IndexBuffer *buffer;
+    VkDeviceSize offset;
+};
+
 /**
  * 单一图元数据
  */
@@ -26,10 +32,9 @@ class Primitive
 
 protected:
 
-    uint32_t draw_count;
+    uint32_t vertex_count;
 
-    IndexBuffer *indices_buffer=nullptr;
-    VkDeviceSize indices_offset=0;
+    IndexBufferData index_buffer_data;
 
 protected:
 
@@ -46,42 +51,34 @@ protected:
 
 public:
 
-    Primitive(const uint32_t dc=0):draw_count(dc){}
+    Primitive(const uint32_t vc=0):vertex_count(vc){}
     virtual ~Primitive()=default;
 
     const   uint    GetRefCount()const{return ref_count;}
 
-    void            SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
+            void    SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
     const   AABB &  GetBoundingBox()const           {return BoundingBox;}
 
-            bool Set(const AnsiString &name,VBO *vb,VkDeviceSize offset=0);
+            bool    Set(const AnsiString &name,VBO *vb,VkDeviceSize offset=0);
 
-            bool Set(IndexBuffer *ib,VkDeviceSize offset=0)
+            bool    Set(IndexBuffer *ib,VkDeviceSize offset=0)
             {
                 if(!ib)return(false);
 
-                indices_buffer=ib;
-                indices_offset=offset;
+                index_buffer_data.buffer=ib;
+                index_buffer_data.offset=offset;
                 return(true);
             }
 
 public:
 
-                    void            SetDrawCount(const uint32_t dc){draw_count=dc;} ///<设置当前对象绘制需要多少个顶点
-    virtual const   uint32_t        GetDrawCount()const                             ///<取得当前对象绘制需要多少个顶点
-    {
-        if(indices_buffer)
-            return indices_buffer->GetCount();
+    const   uint32_t            GetVertexCount      ()const {return vertex_count;}
 
-        return draw_count;
-    }
+            VBO *               GetVBO              (const AnsiString &,VkDeviceSize *);
+            VkBuffer            GetBuffer           (const AnsiString &,VkDeviceSize *);
+    const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
-                    VBO *           GetVBO              (const AnsiString &,VkDeviceSize *);
-                    VkBuffer        GetBuffer           (const AnsiString &,VkDeviceSize *);
-            const   int             GetBufferCount      ()const {return buffer_list.GetCount();}
-
-                    IndexBuffer *   GetIndexBuffer      ()      {return indices_buffer;}
-            const   VkDeviceSize    GetIndexBufferOffset()const {return indices_offset;}
+    const   IndexBufferData *   GetIndexBuffer      ()const {return &index_buffer_data;}
 };//class Primitive
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE
