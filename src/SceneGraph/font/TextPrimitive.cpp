@@ -26,7 +26,7 @@ namespace hgl
 
         void TextPrimitive::SetCharCount(const uint cc)
         {
-            this->draw_count=cc;
+            this->vertex_count=cc;
             if(cc<=max_count)return;
 
             max_count=power_to_2(cc);
@@ -48,7 +48,7 @@ namespace hgl
             }
         }
 
-        bool TextPrimitive::WriteVertex    (const int16 *fp){if(!fp)return(false);if(!vbo_position )return(false);return vbo_position  ->Write(fp,draw_count*4*sizeof(int16));}
-        bool TextPrimitive::WriteTexCoord  (const float *fp){if(!fp)return(false);if(!vbo_tex_coord)return(false);return vbo_tex_coord ->Write(fp,draw_count*4*sizeof(float));}
+        bool TextPrimitive::WriteVertex    (const int16 *fp){if(!fp)return(false);if(!vbo_position )return(false);return vbo_position  ->Write(fp,vertex_count*4*sizeof(int16));}
+        bool TextPrimitive::WriteTexCoord  (const float *fp){if(!fp)return(false);if(!vbo_tex_coord)return(false);return vbo_tex_coord ->Write(fp,vertex_count*4*sizeof(float));}
     }//namespace graph
 }//namespace hgl

@@ -11,6 +11,8 @@ namespace hgl
         class Renderable;
         class Material;
         class GPUDevice;
+        struct VertexInputData;
+        struct IndexBufferData;
 
         struct RenderNode2D
         {
@@ -35,7 +37,28 @@ namespace hgl
 
             RenderNode2DList rn_list;
 
+        private:
+
             RenderNode2DExtraBuffer *extra_buffer;
+
+            struct RenderItem
+            {
+                        uint32_t            first;
+                        uint32_t            count;
+
+                        Pipeline *          pipeline;
+                        MaterialInstance *  mi;
+                const   VertexInputData *   vid;
+
+            public:
+
+                void Set(Renderable *);
+            };
+
+            List<RenderItem> ri_list;
+            uint ri_count;
+
+            void Stat();
 
         protected:
 
@@ -43,12 +66,15 @@ namespace hgl
             VkBuffer *buffer_list;
             VkDeviceSize *buffer_offset;
 
-            MaterialInstance *last_mi;
-            Pipeline *last_pipeline;
-            Primitive *last_primitive;
-            uint first_index;
+                  MaterialInstance *  last_mi;
+                  Pipeline *          last_pipeline;
+            const VertexInputData *   last_vid;
+                  uint                last_index;
 
-            void Render(const uint index,Renderable *);
+            void Bind(MaterialInstance *);
+            bool Bind(const VertexInputData *,const uint);
+
+            void Render(RenderItem *);
 
         public:
 

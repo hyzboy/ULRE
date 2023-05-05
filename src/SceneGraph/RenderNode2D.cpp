@@ -67,6 +67,8 @@ namespace hgl
 
             VBO *local_to_world[3];
 
+            VkBuffer buffer[3];
+
         public:
 
             RenderNode2DExtraBuffer()
@@ -92,9 +94,11 @@ namespace hgl
                 Clear();
                 count=power_to_2(c);
 
-                local_to_world[0]=dev->CreateVBO(VF_V4F,count);
-                local_to_world[1]=dev->CreateVBO(VF_V4F,count);
-                local_to_world[2]=dev->CreateVBO(VF_V4F,count);
+                for(uint i=0;i<3;i++)
+                {
+                    local_to_world[i]=dev->CreateVBO(VF_V4F,count);
+                    buffer[i]=local_to_world[i]->GetBuffer();
+                }
             }
 
             void WriteData(RenderNode2D *render_node,const uint count)
@@ -178,52 +182,175 @@ namespace hgl
             }
         }
 
-        void MaterialRenderList2D::Render(const uint index,Renderable *ri)
+        void MaterialRenderList2D::RenderItem::Set(Renderable *ri)
         {
-            if(last_mi!=ri->GetMaterialInstance())
-            {
-                
+            pipeline    =ri->GetPipeline();
+            mi          =ri->GetMaterialInstance();
+            vid         =ri->GetVertexInputData();
+        }
 
-                last_pipeline=nullptr;
-                last_primitive=nullptr;
+        void MaterialRenderList2D::Stat()
+        {
+            const uint count=rn_list.GetCount();
+            RenderNode2D *rn=rn_list.GetData();
+
+            ri_list.ClearData();
+            ri_list.PreMalloc(count);
+
+            RenderItem *ri=ri_list.GetData();
+            
+            ri_count=1;
+
+            ri->first=0;
+            ri->count=1;
+            ri->Set(rn->ri);
+
+            last_pipeline   =ri->pipeline;
+            last_mi         =ri->mi;
+            last_vid        =ri->vid;
+
+            ++rn;
+
+            for(uint i=1;i<count;i++)
+            {   
+                if(last_pipeline==rn->ri->GetPipeline())
+                    if(last_mi==rn->ri->GetMaterialInstance())
+                        if(last_vid==rn->ri->GetVertexInputData())
+                        {
+                            ++ri->count;
+                            ++rn;
+                            continue;
+                        }
+
+                ++ri_count;
+
+                ++ri;
+                ri->first=i;
+                ri->count=1;
+                ri->Set(rn->ri);
+
+                last_pipeline   =ri->pipeline;
+                last_mi         =ri->mi;
+                last_vid        =ri->vid;
+
+                ++rn;
+            }
+        }
+
+        void MaterialRenderList2D::Bind(MaterialInstance *mi)
+        {
+        }
+
+        bool MaterialRenderList2D::Bind(const VertexInputData *vid,const uint first)
+        {
+            //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
+
+            const VIL *vil=last_mi->GetVIL();
+
+            if(vil->GetCount(VertexInputGroup::Basic)!=vid->binding_count)
+                return(false);                                              //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
+
+            uint count=0;
+
+            //vid信息来自于Primitive，它只提供模型本身的vbo数据
+            hgl_cpy(buffer_list,vid->buffer_list,vid->binding_count);
+            hgl_cpy(buffer_offset,vid->buffer_offset,vid->binding_count);
+
+            if(binding_count==vid->binding_count)
+                return(true);
+
+            count=vid->binding_count;
+
+            const uint bone_binding_count=vil->GetCount(VertexInputGroup::Bone);
+
+            if(bone_binding_count>0)                    //有骨骼矩阵信息
+            {
+                if(bone_binding_count!=2)               //只有BoneID/BondWeight，，，不是2的话根本就不对
+                    return(false);
+
+                count+=bone_binding_count;
             }
 
-            if(last_pipeline!=ri->GetPipeline())
+            const uint l2w_binding_count=vil->GetCount(VertexInputGroup::LocalToWorld);
+
+            if(l2w_binding_count>0)               //有变换矩阵信息
             {
-                last_pipeline=ri->GetPipeline();
+                if(vil->GetCount(VertexInputGroup::LocalToWorld)!=3)        //2D的l2w使用mat3x4，应该只有3个
+                    return(false);
 
-                cmd_buf->BindPipeline(last_pipeline);
+                hgl_cpy(buffer_list+count,extra_buffer->buffer,3);
 
-                last_primitive=nullptr;
+                for(uint i=0;i<3;i++)
+                    buffer_offset[count+i]=first*16;                //16
+
+                count+=l2w_binding_count;
             }
 
-            if(last_primitive!=ri->GetPrimitive())
+            if(count!=binding_count)
             {
-                //把之前的一次性画了
+                //还有没支持的绑定组？？？？
 
-                last_primitive=ri->GetPrimitive();
-
-                first_index=index;
+                return(false);
             }
+
+            return(true);
+        }
+
+        void MaterialRenderList2D::Render(RenderItem *ri)
+        {
+            if(last_pipeline!=ri->pipeline)
+            {
+                cmd_buf->BindPipeline(ri->pipeline);
+                last_pipeline=ri->pipeline;
+
+                last_mi=nullptr;
+                last_vid=nullptr;
+
+                //这里未来尝试换pipeline，但是不换mi/primitive是否需要重新绑定
+            }
+
+            if(last_mi!=ri->mi)
+            {
+                Bind(ri->mi);
+                last_mi=ri->mi;
+
+                last_vid=nullptr;
+            }
+
+            if(!last_vid->Comp(ri->vid))
+            {
+                Bind(ri->vid,ri->first);
+                last_vid=ri->vid;
+            }
+
+            const IndexBufferData *ibd=last_primitive->GetIndexBuffer();
+
+            if(ib)
+                cmd_buf->DrawIndexed(ib->GetCount(),ri->count);
+            else
+                cmd_buf->Draw(last_primitive->GetDrawCount(),ri->count);
         }
 
         void MaterialRenderList2D::Render()
         {
-            last_mi=nullptr;
-            last_pipeline=nullptr;
-            last_primitive=nullptr;
-            first_index=0;
-
             const uint count=rn_list.GetCount();
 
             if(count<=0)return;
 
-            RenderNode2D *rn=rn_list.GetData();
+            Stat();
 
-            for(uint i=0;i<count;i++)
+            if(ri_count<=0)return;
+
+            RenderItem *ri=ri_list.GetData();
+
+            last_pipeline   =nullptr;
+            last_mi         =nullptr;
+            last_vid        =nullptr;
+
+            for(uint i=0;i<ri_count;i++)
             {
-                Render(i,rn->ri);
-                ++rn;
+                Render(ri);
+                ++ri;
             }
         }
     }//namespace graph
