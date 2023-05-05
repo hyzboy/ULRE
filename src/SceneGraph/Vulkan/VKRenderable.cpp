@@ -5,50 +5,38 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
-VertexInputDataGroup::VertexInputDataGroup(const VIL *vd)
+VertexInputData::VertexInputData(const uint32_t c,const uint32_t vc,const IndexBufferData *ibd)
 {
-    vil=vd;
+    binding_count=c;
 
-    uint first_binding=0;
+    buffer_list=new VkBuffer[binding_count];
+    buffer_offset=new VkDeviceSize[binding_count];
 
-    for(uint i=0;i<size_t(VertexInputGroup::RANGE_SIZE);i++)
-    {
-        vid[i].binding_count=vil->GetCount(VertexInputGroup(i));
+    vertex_count=vc;
 
-        if(vid[i].binding_count>0)
-        {
-            vid[i].first_binding=vil->GetFirstBinding(VertexInputGroup(i));
-
-            vid[i].buffer_list=new VkBuffer[vid[i].binding_count];
-            vid[i].buffer_offset=new VkDeviceSize[vid[i].binding_count];
-        }
-    }
+    index_buffer=ibd;
 }
 
-VertexInputDataGroup::~VertexInputDataGroup()
+VertexInputData::~VertexInputData()
 {
-    for(uint i=0;i<size_t(VertexInputGroup::RANGE_SIZE);i++)
-        if(vid[i].binding_count>0)
-        {
-            delete[] vid[i].buffer_list;
-            delete[] vid[i].buffer_offset;
-        }
+    delete[] buffer_list;
+    delete[] buffer_offset;
 }
 
-Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,VertexInputDataGroup *vidg)
+Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,VertexInputData *vi)
 {
     primitive=r;
     pipeline=p;
     mat_inst=mi;
 
-    vid_group=vidg;
+    vertex_input=vi;
 }
  
 Renderable::~Renderable()
 {
     //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
-    delete vid_group;
+    delete vertex_input;
 }
 
 Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
@@ -56,7 +44,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     if(!prim||!mi||!p)return(nullptr);
 
     const VIL *vil=mi->GetVIL();
-    const uint input_count=vil->GetCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
+    const uint32_t input_count=vil->GetCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
     const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
     if(prim->GetBufferCount()<input_count)        //小于材质要求的数量？那自然是不行的
@@ -68,15 +56,13 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     VBO *vbo;
 
-    VertexInputDataGroup *vid_group=new VertexInputDataGroup(vil);
-
-    VertexInputData &vid=vid_group->vid[size_t(VertexInputGroup::Basic)];
+    VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBuffer());
 
     const VertexInputFormat *vif=vil->GetFormatList(VertexInputGroup::Basic);
 
     for(uint i=0;i<input_count;i++)
     {
-        vbo=prim->GetVBO(vif->name,vid.buffer_offset+i);
+        vbo=prim->GetVBO(vif->name,vid->buffer_offset+i);
 
         if(!vbo)
         {
@@ -104,10 +90,10 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
-        vid.buffer_list[i]=vbo->GetBuffer();
+        vid->buffer_list[i]=vbo->GetBuffer();
         ++vif;
     }
 
-    return(new Renderable(prim,mi,p,vid_group));
+    return(new Renderable(prim,mi,p,vid));
 }
 VK_NAMESPACE_END

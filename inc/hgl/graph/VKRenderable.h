@@ -9,26 +9,38 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttrib.h>
 VK_NAMESPACE_BEGIN
-
 struct VertexInputData
 {
-    uint32_t first_binding;
     uint32_t binding_count;
     VkBuffer *buffer_list;
     VkDeviceSize *buffer_offset;
-};
 
-struct VertexInputDataGroup
-{
-    const VIL *vil;
+    uint32_t vertex_count;
 
-    VertexInputData vid[size_t(VertexInputGroup::RANGE_SIZE)];
+    const IndexBufferData *index_buffer;
 
 public:
 
-    VertexInputDataGroup(const VIL *);
-    ~VertexInputDataGroup();
-};
+    VertexInputData(const uint32_t,const uint32_t,const IndexBufferData *);
+    ~VertexInputData();
+
+    const bool Comp(const VertexInputData *vid)const
+    {
+        if(binding_count!=vid->binding_count)return(false);
+
+        for(uint32_t i=0;i<binding_count;i++)
+        {
+            if(buffer_list[i]!=vid->buffer_list[i])return(false);
+            if(buffer_offset[i]!=vid->buffer_offset[i])return(false);
+        }
+
+        if(vertex_count!=vid->vertex_count)return(false);
+
+        if(index_buffer!=vid->index_buffer)return(false);
+
+        return(true);
+    }
+};//struct VertexInputData
 
 /**
 * 可渲染对象<br>
@@ -39,13 +51,13 @@ class Renderable                                                                
     MaterialInstance *  mat_inst;
     Primitive *         primitive;
 
-    VertexInputDataGroup *vid_group;
+    VertexInputData *   vertex_input;
 
 private:
 
     friend Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    Renderable(Primitive *,MaterialInstance *,Pipeline *,VertexInputDataGroup *);
+    Renderable(Primitive *,MaterialInstance *,Pipeline *,VertexInputData *);
 
 public:
 
@@ -60,16 +72,7 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   VertexInputData *   GetVertexInputData  (const VertexInputGroup &vig)const
-    {
-        RANGE_CHECK_RETURN_NULLPTR(vig)
-
-        return vid_group->vid+size_t(vig);
-    }
-
-            IndexBuffer *       GetIndexBuffer      ()const{return primitive->GetIndexBuffer();}
-    const   uint32_t            GetIndexBufferOffset()const{return primitive->GetIndexBufferOffset();}
-    const   uint32_t            GetDrawCount        ()const{return primitive->GetDrawCount();}
+    const   VertexInputData *   GetVertexInputData  ()const{return vertex_input;}
 
             MaterialParameters *GetMP               (const DescriptorSetType &type){return mat_inst->GetMP(type);}
 
