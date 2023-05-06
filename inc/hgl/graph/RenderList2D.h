@@ -12,50 +12,31 @@ namespace hgl
     {
         /**
          * 渲染对象列表<br>
-         * 已经展开的渲染对象列表，产生mvp用UBO/SSBO等数据，最终创建RenderCommandBuffer
+         * 该类会长期保存使用过的材质信息，避重新分配造成的时间和空间浪费。如需彻底清空列表请使用Clear()函数
          */
         class RenderList2D
         {
         protected:  
 
             GPUDevice *         device;
-            RenderCmdBuffer *   cmd_buf;        
 
-        private:
-
-            uint                    renderable_count;           ///<可渲染对象数量
-
-            MaterialRenderMap2D     mrl_map;                    ///<按材质分类的渲染列表
-
-            RenderNode2DComparator  render_node_comparator;
-
-        private:
-
-            VkDescriptorSet ds_list[DESCRIPTOR_SET_TYPE_COUNT];
-            DescriptorSet *renderable_desc_sets;
+            uint                renderable_count;               ///<可渲染对象数量
+            MaterialRenderMap2D mrl_map;                        ///<按材质分类的渲染列表
 
         protected:
 
-            virtual bool    Begin();
-            virtual bool    ExpendNode(SceneNode *);
-            virtual void    End();
-
-        private:
-
-            Pipeline *          last_pipeline;
-            MaterialParameters *last_mp[DESCRIPTOR_SET_TYPE_COUNT];
-            uint32_t            last_vbo;
-
-            void Render(Renderable *);
+            virtual bool ExpendNode(SceneNode *);
 
         public:
 
             RenderList2D(GPUDevice *);
             virtual ~RenderList2D();
             
-            virtual bool Expend(SceneNode *);
+            virtual bool Expend(SceneNode *);                   ///<展开场景树到渲染列表
 
-            virtual bool Render(RenderCmdBuffer *);
+            virtual bool Render(RenderCmdBuffer *);             ///<渲染所有对象
+
+            virtual void Clear();                               ///<彻底清理
         };//class RenderList2D
     }//namespace graph
 }//namespace hgl

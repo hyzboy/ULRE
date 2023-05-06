@@ -123,10 +123,10 @@ namespace hgl
             }
         };//struct RenderNode2DExtraBuffer
 
-        MaterialRenderList2D::MaterialRenderList2D(GPUDevice *d,RenderCmdBuffer *rcb,Material *m)
+        MaterialRenderList2D::MaterialRenderList2D(GPUDevice *d,Material *m)
         {
             device=d;
-            cmd_buf=rcb;
+            cmd_buf=nullptr;
             mtl=m;
             extra_buffer=nullptr;
 
@@ -256,13 +256,10 @@ namespace hgl
                 hgl_cpy(buffer_list,vid->buffer_list,vid->binding_count);
                 hgl_cpy(buffer_offset,vid->buffer_offset,vid->binding_count);
 
-                if(binding_count==vid->binding_count)
-                    return(true);
-
                 count=vid->binding_count;
             }
 
-            //Bone组，暂未支持
+            if(count<binding_count) //Bone组，暂未支持            
             {
                 const uint bone_binding_count=vil->GetCount(VertexInputGroup::Bone);
 
@@ -275,7 +272,7 @@ namespace hgl
                 }
             }
 
-            //LocalToWorld组，由RenderList合成
+            if(count<binding_count)//LocalToWorld组，由RenderList合成
             {
                 const uint l2w_binding_count=vil->GetCount(VertexInputGroup::LocalToWorld);
 
@@ -293,13 +290,14 @@ namespace hgl
                 }
             }
 
-            //
             if(count!=binding_count)
             {
                 //还有没支持的绑定组？？？？
 
                 return(false);
             }
+
+            cmd_buf->BindVBO(0,count,buffer_list,buffer_offset);
 
             return(true);
         }
@@ -314,7 +312,7 @@ namespace hgl
                 last_mi=nullptr;
                 last_vid=nullptr;
 
-                //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定primitive
+                //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定mi/primitive
             }
 
             if(last_mi!=ri->mi)
@@ -325,22 +323,29 @@ namespace hgl
                 last_vid=nullptr;
             }
 
-            if(!last_vid->Comp(ri->vid))
+            if(!ri->vid->Comp(last_vid))
             {
                 Bind(ri->vid,ri->first);
                 last_vid=ri->vid;
             }
 
-            const IndexBufferData *ibd=last_primitive->GetIndexBuffer();
+            const IndexBufferData *ibd=last_vid->index_buffer;
 
-            if(ib)
-                cmd_buf->DrawIndexed(ib->GetCount(),ri->count);
+            if(ibd->buffer)
+            {
+                cmd_buf->BindIBO(ibd);
+
+                cmd_buf->DrawIndexed(ibd->buffer->GetCount(),ri->count);
+            }
             else
-                cmd_buf->Draw(last_primitive->GetDrawCount(),ri->count);
+            {
+                cmd_buf->Draw(last_vid->vertex_count,ri->count);
+            }
         }
 
-        void MaterialRenderList2D::Render()
+        void MaterialRenderList2D::Render(RenderCmdBuffer *rcb)
         {
+            if(!rcb)return;
             const uint count=rn_list.GetCount();
 
             if(count<=0)return;
@@ -348,6 +353,8 @@ namespace hgl
             Stat();
 
             if(ri_count<=0)return;
+
+            cmd_buf=rcb;
 
             RenderItem *ri=ri_list.GetData();
 
