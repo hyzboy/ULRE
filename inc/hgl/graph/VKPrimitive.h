@@ -7,12 +7,6 @@
 #include<hgl/math/Math.h>
 #include<hgl/graph/AABB.h>
 VK_NAMESPACE_BEGIN
-struct IndexBufferData
-{
-    IndexBuffer *buffer;
-    VkDeviceSize offset;
-};
-
 /**
  * 单一图元数据
  */
@@ -78,7 +72,7 @@ public:
             VkBuffer            GetBuffer           (const AnsiString &,VkDeviceSize *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
-    const   IndexBufferData *   GetIndexBuffer      ()const {return &index_buffer_data;}
+    const   IndexBufferData *   GetIndexBufferData  ()const {return &index_buffer_data;}
 };//class Primitive
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE
