@@ -58,6 +58,12 @@ using VBO=VertexAttribBuffer;
 
 class IndexBuffer;
 
+struct IndexBufferData
+{
+    IndexBuffer *buffer=nullptr;
+    VkDeviceSize offset=0;
+};
+
 class GPUCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;

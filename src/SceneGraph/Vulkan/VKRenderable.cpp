@@ -56,7 +56,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     VBO *vbo;
 
-    VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBuffer());
+    VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBufferData());
 
     const VertexInputFormat *vif=vil->GetFormatList(VertexInputGroup::Basic);
 
