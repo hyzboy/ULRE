@@ -78,7 +78,7 @@ namespace hgl
 
         public:
 
-            MaterialRenderList2D(GPUDevice *d,RenderCmdBuffer *,Material *m);
+            MaterialRenderList2D(GPUDevice *d,Material *m);
             ~MaterialRenderList2D();
 
             void Add(Renderable *ri,const Matrix3x4f &mat);
@@ -90,7 +90,7 @@ namespace hgl
 
             void End();
 
-            void Render();
+            void Render(RenderCmdBuffer *);
         };
 
         class MaterialRenderMap2D:public ObjectMap<Material *,MaterialRenderList2D>
@@ -110,6 +110,14 @@ namespace hgl
             {
                 for(auto *it:data_list)
                     it->value->End();
+            }
+
+            void Render(RenderCmdBuffer *rcb)
+            {
+                if(!rcb)return;
+
+                for(auto *it:data_list)
+                    it->value->Render(rcb);
             }
         };
     }//namespace graph

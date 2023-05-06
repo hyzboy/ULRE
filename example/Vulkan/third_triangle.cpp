@@ -45,7 +45,7 @@ private:
 
     bool InitMaterial()
     {
-        AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(CoordinateSystem2D::ZeroToOne);
+        AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(mtl::CoordinateSystem2D::ZeroToOne);
 
         material_instance=db->CreateMaterialInstance(mci);
 

@@ -26,6 +26,8 @@ public:
 
     const bool Comp(const VertexInputData *vid)const
     {
+        if(!vid)return(false);
+
         if(binding_count!=vid->binding_count)return(false);
 
         for(uint32_t i=0;i<binding_count;i++)
@@ -75,10 +77,6 @@ public:
     const   VertexInputData *   GetVertexInputData  ()const{return vertex_input;}
 
             MaterialParameters *GetMP               (const DescriptorSetType &type){return mat_inst->GetMP(type);}
-
-public: //instance support
-
-    virtual const uint32_t      GetInstanceCount    ()const{return 1;}
 };//class Renderable
 
 Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
