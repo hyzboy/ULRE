@@ -155,6 +155,13 @@ public:
     void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,       size,data);}
     void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,offset,  size,data);}
 
+    void BindVBO(const uint32_t first,const uint32_t count,const VkBuffer *vbo,const VkDeviceSize *offsets)
+    {
+        vkCmdBindVertexBuffers(cmd_buf,first,count,vbo,offsets);
+    }
+
+    void BindIBO(const IndexBufferData *);
+
     bool BindVBO(Renderable *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
