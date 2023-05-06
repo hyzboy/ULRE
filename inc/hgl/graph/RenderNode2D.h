@@ -16,7 +16,7 @@ namespace hgl
 
         struct RenderNode2D
         {
-            Matrix3x4f local_to_world;
+            Matrix4f local_to_world;
 
             Renderable *ri;
         };
@@ -81,7 +81,7 @@ namespace hgl
             MaterialRenderList2D(GPUDevice *d,Material *m);
             ~MaterialRenderList2D();
 
-            void Add(Renderable *ri,const Matrix3x4f &mat);
+            void Add(Renderable *ri,const Matrix4f &mat);
 
             void ClearData()
             {

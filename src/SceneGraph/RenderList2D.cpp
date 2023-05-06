@@ -46,7 +46,7 @@ namespace hgl
             }
 
             for(SceneNode *sub:sn->SubNode)
-                Expend(sub);
+                ExpendNode(sub);
 
             return(true);
         }

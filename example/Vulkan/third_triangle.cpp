@@ -45,9 +45,16 @@ private:
 
     bool InitMaterial()
     {
-        AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(mtl::CoordinateSystem2D::ZeroToOne);
+        {
+            mtl::Material2DConfig cfg;
 
-        material_instance=db->CreateMaterialInstance(mci);
+            cfg.coordinate_system=mtl::CoordinateSystem2D::ZeroToOne;
+            cfg.local_to_world=true;
+
+            AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
+
+            material_instance=db->CreateMaterialInstance(mci);
+        }
 
         if(!material_instance)
             return(false);
@@ -70,7 +77,8 @@ private:
         if(!render_obj)
             return(false);
 
-        render_root.CreateSubNode(render_obj);
+        render_root.CreateSubNode(translate(-0.25,0),render_obj);
+        render_root.CreateSubNode(translate( 0.25,0),render_obj);
 
         render_root.RefreshMatrix();
 

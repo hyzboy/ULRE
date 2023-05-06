@@ -5,6 +5,7 @@
 
 #define STD_MTL_NAMESPACE_USING using namespace hgl::graph::mtl;
 
+#include<hgl/TypeFunc.h>
 #include<hgl/graph/mtl/ShaderBuffer.h>
 
 STD_MTL_NAMESPACE_BEGIN
@@ -13,7 +14,9 @@ enum class CoordinateSystem2D
 {
     NDC,
     ZeroToOne,          //左上角为0,0；右下角为1,1
-    Ortho               //左上角为0,0；右下角为(width-1),(height-1)
+    Ortho,              //左上角为0,0；右下角为(width-1),(height-1)
+
+    ENUM_CLASS_RANGE(NDC,Ortho)
 };
 
 constexpr const ShaderBufferSource SBS_ViewportInfo=
@@ -53,4 +56,17 @@ vec3 world_up;
 
 float znear,zfar;)"
 };
+
+namespace func
+{
+    constexpr const char GetLocalToWorld[]=R"(
+mat4 GetLocalToWorld()
+{
+    return mat4(LocalToWorld_0,
+                LocalToWorld_1,
+                LocalToWorld_2,
+                LocalToWorld_3);
+}
+)";
+}//namespace func
 STD_MTL_NAMESPACE_END

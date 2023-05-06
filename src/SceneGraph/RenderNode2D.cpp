@@ -65,8 +65,8 @@ namespace hgl
         {
             uint count;
 
-            VBO *l2w_vbo[3];
-            VkBuffer l2w_buffer[3];
+            VBO *l2w_vbo[4];
+            VkBuffer l2w_buffer[4];
 
         public:
 
@@ -85,6 +85,7 @@ namespace hgl
                 SAFE_CLEAR(l2w_vbo[0])
                 SAFE_CLEAR(l2w_vbo[1])
                 SAFE_CLEAR(l2w_vbo[2])
+                SAFE_CLEAR(l2w_vbo[3])
                 count=0;
             }
 
@@ -93,7 +94,7 @@ namespace hgl
                 Clear();
                 count=power_to_2(c);
 
-                for(uint i=0;i<3;i++)
+                for(uint i=0;i<4;i++)
                 {
                     l2w_vbo[i]=dev->CreateVBO(VF_V4F,count);
                     l2w_buffer[i]=l2w_vbo[i]->GetBuffer();
@@ -105,7 +106,7 @@ namespace hgl
                 RenderNode2D *rn;
                 glm::vec4 *tp;
 
-                for(uint col=0;col<3;col++)
+                for(uint col=0;col<4;col++)
                 {
                     tp=(glm::vec4 *)(l2w_vbo[col]->Map());
 
@@ -145,7 +146,7 @@ namespace hgl
             SAFE_CLEAR(extra_buffer)
         }
 
-        void MaterialRenderList2D::Add(Renderable *ri,const Matrix3x4f &mat)
+        void MaterialRenderList2D::Add(Renderable *ri,const Matrix4f &mat)
         {
             RenderNode2D rn;
 
@@ -278,12 +279,12 @@ namespace hgl
 
                 if(l2w_binding_count>0)                                         //有变换矩阵信息
                 {
-                    if(l2w_binding_count!=3)                                    //2D的l2w使用mat3x4f，应该只有3个
+                    if(l2w_binding_count!=4)
                         return(false);
 
-                    hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,3);
+                    hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,4);
 
-                    for(uint i=0;i<3;i++)
+                    for(uint i=0;i<4;i++)
                         buffer_offset[count+i]=first*16;                        //mat3x4f每列都是rgba32f，自然是16字节
 
                     count+=l2w_binding_count;
