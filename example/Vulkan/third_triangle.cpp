@@ -16,11 +16,11 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
-constexpr float position_data[VERTEX_COUNT][2]=
+constexpr float position_data[VERTEX_COUNT*2]=
 {
-    {0.5,   0.25},
-    {0.25,  0.75},
-    {0.75,  0.75}
+     0.0,  0.0,
+    -0.1,  0.9,
+     0.1,  0.9
 };
 
 constexpr float color_data[VERTEX_COUNT][4]=
@@ -48,7 +48,7 @@ private:
         {
             mtl::Material2DConfig cfg;
 
-            cfg.coordinate_system=mtl::CoordinateSystem2D::ZeroToOne;
+            cfg.coordinate_system=mtl::CoordinateSystem2D::NDC;
             cfg.local_to_world=true;
 
             AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
@@ -76,9 +76,9 @@ private:
 
         if(!render_obj)
             return(false);
-
-        render_root.CreateSubNode(translate(-0.25,0),render_obj);
-        render_root.CreateSubNode(translate( 0.25,0),render_obj);
+        
+        for(uint i=0;i<12;i++)
+            render_root.CreateSubNode(rotate(deg2rad(30*i),Vector3f(0,0,1)),render_obj);
 
         render_root.RefreshMatrix();
 
