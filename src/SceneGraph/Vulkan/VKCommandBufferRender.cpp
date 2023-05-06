@@ -133,32 +133,30 @@ bool RenderCmdBuffer::BindDescriptorSets(Renderable *ri)
     return(true);
 }
 
+void RenderCmdBuffer::BindIBO(const IndexBufferData *ibd)
+{
+    vkCmdBindIndexBuffer(   cmd_buf,
+                            ibd->buffer->GetBuffer(),
+                            ibd->offset,
+                            VkIndexType(ibd->buffer->GetType()));
+}
+
 bool RenderCmdBuffer::BindVBO(Renderable *ri)
 {
     if(!ri)
         return(false);
 
-    uint count=0;
+    const VertexInputData *vid=ri->GetVertexInputData();
 
-    ENUM_CLASS_FOR(VertexInputGroup,uint,i)
-    {
-        const VertexInputData *vid=ri->GetVertexInputData(VertexInputGroup(i));
-
-        if(vid->binding_count<=0)
-            continue;
-
-        vkCmdBindVertexBuffers(cmd_buf,vid->first_binding,vid->binding_count,vid->buffer_list,vid->buffer_offset);
-
-        count+=vid->binding_count;
-    }
-
-    if(count==0)
+    if(vid->binding_count<=0)
         return(false);
 
-    IndexBuffer *indices_buffer=ri->GetIndexBuffer();
+    vkCmdBindVertexBuffers(cmd_buf,0,vid->binding_count,vid->buffer_list,vid->buffer_offset);
+
+    IndexBuffer *indices_buffer=vid->index_buffer->buffer;
 
     if(indices_buffer)
-        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),ri->GetIndexBufferOffset(),VkIndexType(indices_buffer->GetType()));
+        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),vid->index_buffer->offset,VkIndexType(indices_buffer->GetType()));
 
     return(true);
 }
