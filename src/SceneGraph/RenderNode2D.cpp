@@ -65,9 +65,8 @@ namespace hgl
         {
             uint count;
 
-            VBO *local_to_world[3];
-
-            VkBuffer buffer[3];
+            VBO *l2w_vbo[3];
+            VkBuffer l2w_buffer[3];
 
         public:
 
@@ -83,9 +82,9 @@ namespace hgl
 
             void Clear()
             {
-                SAFE_CLEAR(local_to_world[0])
-                SAFE_CLEAR(local_to_world[1])
-                SAFE_CLEAR(local_to_world[2])
+                SAFE_CLEAR(l2w_vbo[0])
+                SAFE_CLEAR(l2w_vbo[1])
+                SAFE_CLEAR(l2w_vbo[2])
                 count=0;
             }
 
@@ -96,8 +95,8 @@ namespace hgl
 
                 for(uint i=0;i<3;i++)
                 {
-                    local_to_world[i]=dev->CreateVBO(VF_V4F,count);
-                    buffer[i]=local_to_world[i]->GetBuffer();
+                    l2w_vbo[i]=dev->CreateVBO(VF_V4F,count);
+                    l2w_buffer[i]=l2w_vbo[i]->GetBuffer();
                 }
             }
 
@@ -108,7 +107,7 @@ namespace hgl
 
                 for(uint col=0;col<3;col++)
                 {
-                    tp=(glm::vec4 *)(local_to_world[col]->Map());
+                    tp=(glm::vec4 *)(l2w_vbo[col]->Map());
 
                     rn=render_node;
 
@@ -119,7 +118,7 @@ namespace hgl
                         ++rn;
                     }
 
-                    local_to_world[col]->Unmap();
+                    l2w_vbo[col]->Unmap();
                 }
             }
         };//struct RenderNode2DExtraBuffer
@@ -248,44 +247,53 @@ namespace hgl
             const VIL *vil=last_mi->GetVIL();
 
             if(vil->GetCount(VertexInputGroup::Basic)!=vid->binding_count)
-                return(false);                                              //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
+                return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
 
             uint count=0;
 
-            //vid信息来自于Primitive，它只提供模型本身的vbo数据
-            hgl_cpy(buffer_list,vid->buffer_list,vid->binding_count);
-            hgl_cpy(buffer_offset,vid->buffer_offset,vid->binding_count);
-
-            if(binding_count==vid->binding_count)
-                return(true);
-
-            count=vid->binding_count;
-
-            const uint bone_binding_count=vil->GetCount(VertexInputGroup::Bone);
-
-            if(bone_binding_count>0)                    //有骨骼矩阵信息
+            //Basic组，它所有的VBO信息均来自于Primitive，由vid参数传递进来
             {
-                if(bone_binding_count!=2)               //只有BoneID/BondWeight，，，不是2的话根本就不对
-                    return(false);
+                hgl_cpy(buffer_list,vid->buffer_list,vid->binding_count);
+                hgl_cpy(buffer_offset,vid->buffer_offset,vid->binding_count);
 
-                count+=bone_binding_count;
+                if(binding_count==vid->binding_count)
+                    return(true);
+
+                count=vid->binding_count;
             }
 
-            const uint l2w_binding_count=vil->GetCount(VertexInputGroup::LocalToWorld);
-
-            if(l2w_binding_count>0)               //有变换矩阵信息
+            //Bone组，暂未支持
             {
-                if(vil->GetCount(VertexInputGroup::LocalToWorld)!=3)        //2D的l2w使用mat3x4，应该只有3个
-                    return(false);
+                const uint bone_binding_count=vil->GetCount(VertexInputGroup::Bone);
 
-                hgl_cpy(buffer_list+count,extra_buffer->buffer,3);
+                if(bone_binding_count>0)                                        //有骨骼矩阵信息
+                {
+                    if(bone_binding_count!=2)                                   //只有BoneID/BondWeight，，，不是2的话根本就不对
+                        return(false);
 
-                for(uint i=0;i<3;i++)
-                    buffer_offset[count+i]=first*16;                //16
-
-                count+=l2w_binding_count;
+                    count+=bone_binding_count;
+                }
             }
 
+            //LocalToWorld组，由RenderList合成
+            {
+                const uint l2w_binding_count=vil->GetCount(VertexInputGroup::LocalToWorld);
+
+                if(l2w_binding_count>0)                                         //有变换矩阵信息
+                {
+                    if(l2w_binding_count!=3)                                    //2D的l2w使用mat3x4f，应该只有3个
+                        return(false);
+
+                    hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,3);
+
+                    for(uint i=0;i<3;i++)
+                        buffer_offset[count+i]=first*16;                        //mat3x4f每列都是rgba32f，自然是16字节
+
+                    count+=l2w_binding_count;
+                }
+            }
+
+            //
             if(count!=binding_count)
             {
                 //还有没支持的绑定组？？？？
@@ -306,7 +314,7 @@ namespace hgl
                 last_mi=nullptr;
                 last_vid=nullptr;
 
-                //这里未来尝试换pipeline，但是不换mi/primitive是否需要重新绑定
+                //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定primitive
             }
 
             if(last_mi!=ri->mi)
