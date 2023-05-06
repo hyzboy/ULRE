@@ -121,7 +121,7 @@ bool ShaderCreateInfo::ProcOutput()
 
     final_shader+="layout(location=0) out ";
     final_shader+=output_struct;
-    final_shader+="Output;\n\n";
+    final_shader+="Output;\n";
 
     return(true);
 }
@@ -270,7 +270,11 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     ProcOutput();
 
-    final_shader+=main_codes;
+    for(uint i=0;i<function_list.GetCount();i++)
+    {
+        final_shader+="\n";
+        final_shader+=function_list[i];
+    }
 
 #ifdef _DEBUG
 

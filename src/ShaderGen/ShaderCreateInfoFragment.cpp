@@ -7,7 +7,7 @@ using namespace hgl::graph;
 
 void ShaderCreateInfoFragment::UseDefaultMain()
 {
-    main_codes="void main()\n{\n";
+    AnsiString main_codes="void main()\n{\n";
 
     const auto &output_list=sdm->GetShaderStageIO().output;
 
@@ -25,6 +25,8 @@ void ShaderCreateInfoFragment::UseDefaultMain()
     }
 
     main_codes+="}";
+
+    AddFunction(main_codes);
 }
 
 bool ShaderCreateInfoFragment::ProcOutput()

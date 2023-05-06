@@ -28,17 +28,17 @@ namespace hgl
                 AddInput(weight,VAN::BoneWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::Bone);
             }
 
-            void AddLocalToWorld(const uint count)
+            void AddLocalToWorld()
             {
-                VAT l2w{VertexAttribType::BaseType::Float,4};
+                VAT vat{VertexAttribType::BaseType::Float,4};
 
                 char name[]= "LocalToWorld_?";
 
-                for(uint i=0;i<count;i++)
+                for(uint i=0;i<4;i++)
                 {
                     name[sizeof(name)-2]='0'+i;
 
-                    AddInput(l2w,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
+                    AddInput(vat,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
                 }
             }
         };//class ShaderCreateInfoVertex:public ShaderCreateInfo

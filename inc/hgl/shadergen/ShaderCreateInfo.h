@@ -3,6 +3,7 @@
 
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VK.h>
+#include<hgl/type/StringList.h>
 
 namespace hgl{namespace graph
 {
@@ -21,9 +22,9 @@ protected:
 
 protected:
 
-    AnsiString main_codes;
-
     AnsiString output_struct;
+
+    AnsiStringList function_list;
 
     AnsiString final_shader;
 
@@ -59,10 +60,7 @@ public:
     int AddOutput(const graph::VAT &type,const AnsiString &name);
     int AddOutput(const AnsiString &type,const AnsiString &name);
 
-    void SetShaderCodes(const AnsiString &str)
-    {
-        main_codes=str;
-    }
+    void AddFunction(const AnsiString &str){function_list.Add(str);}
 
     const AnsiString &GetOutputStruct()const{return output_struct;}
     const AnsiString &GetShaderSource()const{return final_shader;}
