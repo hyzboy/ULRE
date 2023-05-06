@@ -6,13 +6,13 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
 #include<hgl/graph/mtl/2d/VertexColor2D.h>
-#include<hgl/graph/RenderList2D.h>
+#include<hgl/graph/RenderList.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
+constexpr uint32_t SCREEN_WIDTH=1024;
+constexpr uint32_t SCREEN_HEIGHT=1024;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
@@ -34,7 +34,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     SceneNode           render_root;
-    RenderList2D *      render_list         =nullptr;
+    RenderList *        render_list         =nullptr;
 
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
@@ -99,7 +99,7 @@ public:
         if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
             return(false);
 
-        render_list=new RenderList2D(device);
+        render_list=new RenderList(device);
 
         if(!InitMaterial())
             return(false);

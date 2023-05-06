@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/RenderNode2D.h>
+﻿#include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
@@ -17,7 +17,7 @@
 */
 
 template<> 
-int Comparator<hgl::graph::RenderNode2D>::compare(const hgl::graph::RenderNode2D &obj_one,const hgl::graph::RenderNode2D &obj_two) const
+int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &obj_one,const hgl::graph::RenderNode &obj_two) const
 {
     int off;
 
@@ -61,7 +61,7 @@ namespace hgl
         /*
          * 2D渲染节点额外提供的VBO数据
          */
-        struct RenderNode2DExtraBuffer
+        struct RenderNodeExtraBuffer
         {
             uint count;
 
@@ -70,12 +70,12 @@ namespace hgl
 
         public:
 
-            RenderNode2DExtraBuffer()
+            RenderNodeExtraBuffer()
             {
                 hgl_zero(*this);
             }
 
-            ~RenderNode2DExtraBuffer()
+            ~RenderNodeExtraBuffer()
             {
                 Clear();
             }
@@ -101,9 +101,9 @@ namespace hgl
                 }
             }
 
-            void WriteData(RenderNode2D *render_node,const uint count)
+            void WriteData(RenderNode *render_node,const uint count)
             {
-                RenderNode2D *rn;
+                RenderNode *rn;
                 glm::vec4 *tp;
 
                 for(uint col=0;col<4;col++)
@@ -122,9 +122,9 @@ namespace hgl
                     l2w_vbo[col]->Unmap();
                 }
             }
-        };//struct RenderNode2DExtraBuffer
+        };//struct RenderNodeExtraBuffer
 
-        MaterialRenderList2D::MaterialRenderList2D(GPUDevice *d,Material *m)
+        MaterialRenderList::MaterialRenderList(GPUDevice *d,Material *m)
         {
             device=d;
             cmd_buf=nullptr;
@@ -138,7 +138,7 @@ namespace hgl
             buffer_offset=new VkDeviceSize[binding_count];                        
         }
 
-        MaterialRenderList2D::~MaterialRenderList2D()
+        MaterialRenderList::~MaterialRenderList()
         {
             delete[] buffer_offset;
             delete[] buffer_list;
@@ -146,9 +146,9 @@ namespace hgl
             SAFE_CLEAR(extra_buffer)
         }
 
-        void MaterialRenderList2D::Add(Renderable *ri,const Matrix4f &mat)
+        void MaterialRenderList::Add(Renderable *ri,const Matrix4f &mat)
         {
-            RenderNode2D rn;
+            RenderNode rn;
 
             rn.local_to_world=mat;
             rn.ri=ri;
@@ -156,11 +156,11 @@ namespace hgl
             rn_list.Add(rn);
         }
 
-        void MaterialRenderList2D::End()
+        void MaterialRenderList::End()
         {
             //排序
             {
-                Comparator<hgl::graph::RenderNode2D> rnc;
+                Comparator<hgl::graph::RenderNode> rnc;
 
                 Sort(rn_list,&rnc);
             }
@@ -172,7 +172,7 @@ namespace hgl
                 if(count<=0)return;
 
                 if(!extra_buffer)
-                    extra_buffer=new RenderNode2DExtraBuffer;
+                    extra_buffer=new RenderNodeExtraBuffer;
 
                 if(extra_buffer->count<count)
                     extra_buffer->Alloc(device,count);
@@ -182,17 +182,17 @@ namespace hgl
             }
         }
 
-        void MaterialRenderList2D::RenderItem::Set(Renderable *ri)
+        void MaterialRenderList::RenderItem::Set(Renderable *ri)
         {
             pipeline    =ri->GetPipeline();
             mi          =ri->GetMaterialInstance();
             vid         =ri->GetVertexInputData();
         }
 
-        void MaterialRenderList2D::Stat()
+        void MaterialRenderList::Stat()
         {
             const uint count=rn_list.GetCount();
-            RenderNode2D *rn=rn_list.GetData();
+            RenderNode *rn=rn_list.GetData();
 
             ri_list.ClearData();
             ri_list.PreMalloc(count);
@@ -237,11 +237,11 @@ namespace hgl
             }
         }
 
-        void MaterialRenderList2D::Bind(MaterialInstance *mi)
+        void MaterialRenderList::Bind(MaterialInstance *mi)
         {
         }
 
-        bool MaterialRenderList2D::Bind(const VertexInputData *vid,const uint first)
+        bool MaterialRenderList::Bind(const VertexInputData *vid,const uint first)
         {
             //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
@@ -285,7 +285,7 @@ namespace hgl
                     hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,4);
 
                     for(uint i=0;i<4;i++)
-                        buffer_offset[count+i]=first*16;                        //mat3x4f每列都是rgba32f，自然是16字节
+                        buffer_offset[count+i]=first*16;                        //mat4每列都是rgba32f，自然是16字节
 
                     count+=l2w_binding_count;
                 }
@@ -303,7 +303,7 @@ namespace hgl
             return(true);
         }
 
-        void MaterialRenderList2D::Render(RenderItem *ri)
+        void MaterialRenderList::Render(RenderItem *ri)
         {
             if(last_pipeline!=ri->pipeline)
             {
@@ -344,7 +344,7 @@ namespace hgl
             }
         }
 
-        void MaterialRenderList2D::Render(RenderCmdBuffer *rcb)
+        void MaterialRenderList::Render(RenderCmdBuffer *rcb)
         {
             if(!rcb)return;
             const uint count=rn_list.GetCount();

@@ -19,7 +19,7 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/RenderList2D.h>
+#include<hgl/graph/RenderList.h>
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/color/Color.h>
 #include<hgl/Time.h>
@@ -248,7 +248,7 @@ public:
         return BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),ri);
     }
 
-    void BuildCommandBuffer(uint32_t index,RenderList2D *rl)
+    void BuildCommandBuffer(uint32_t index,RenderList *rl)
     {
         if(!rl)return;
 
@@ -263,13 +263,13 @@ public:
         cb->End();
     }
 
-    void BuildCommandBuffer(RenderList2D *rl)
+    void BuildCommandBuffer(RenderList *rl)
     {
         for(int32_t i=0;i<swap_chain_count;i++)
             BuildCommandBuffer(i,rl);
     }
 
-    void BuildCurrentCommandBuffer(RenderList2D *rl)
+    void BuildCurrentCommandBuffer(RenderList *rl)
     {
         BuildCommandBuffer(sc_render_target->GetCurrentFrameIndices(),rl);
     }
