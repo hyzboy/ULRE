@@ -20,14 +20,6 @@ MaterialInstance::MaterialInstance(Material *mtl,VIL *v)
     material=mtl;
 
     vil=v;
-
-    mp_per_mi=mtl->GetMP(DescriptorSetType::PerMaterial);
-
-    /*
-        由于PerMaterial的属性每个MaterialInstance不一样，
-        所以理论上需要在这里分配属于它自己的MP做绑定记录
-
-    */
 }
 
 bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
