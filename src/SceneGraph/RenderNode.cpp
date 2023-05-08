@@ -298,7 +298,7 @@ namespace hgl
                     hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,4);
 
                     for(uint i=0;i<4;i++)
-                        buffer_offset[count+i]=first*16;                        //mat3x4f每列都是rgba32f，自然是16字节
+                        buffer_offset[count+i]=first*16;                        //mat4每列都是rgba32f，自然是16字节
 
                     count+=l2w_binding_count;
                 }
