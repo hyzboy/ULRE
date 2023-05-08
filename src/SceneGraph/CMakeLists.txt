@@ -35,17 +35,14 @@ source_group("Light" FILES ${LIGHT_FILES})
 
 SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneInfo.h
                         ${SG_INCLUDE_PATH}/SceneNode.h
-                        ${SG_INCLUDE_PATH}/RenderNode2D.h
+                        ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/SceneOrient.h
-                        #${SG_INCLUDE_PATH}/RenderList.h
-                        ${SG_INCLUDE_PATH}/RenderList2D.h
+                        ${SG_INCLUDE_PATH}/RenderList.h
                         )
 
 SET(SCENE_GRAPH_SOURCE  
-                        #RenderList.cpp
-                        RenderNode2D.cpp
-				        RenderList2D.cpp
-				        #RenderList3D.cpp
+                        RenderList.cpp
+                        RenderNode.cpp
                         SceneNode.cpp
                         SceneOrient.cpp)
 

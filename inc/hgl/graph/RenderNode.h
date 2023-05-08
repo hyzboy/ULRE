@@ -1,53 +1,125 @@
 ﻿#ifndef HGL_GRAPH_RENDER_NODE_INCLUDE
 #define HGL_GRAPH_RENDER_NODE_INCLUDE
 
-#include<hgl/math/Vector.h>
-#include<hgl/type/List.h>
-#include<hgl/graph/SceneInfo.h>
+#include<hgl/math/Math.h>
+#include<hgl/type/Map.h>
+#include<hgl/graph/VK.h>
 namespace hgl
 {
     namespace graph
     {
         class Renderable;
+        class Material;
+        class GPUDevice;
+        struct VertexInputData;
+        struct IndexBufferData;
 
         struct RenderNode
         {
-            Renderable *render_obj;
+            Matrix4f local_to_world;
+
+            Renderable *ri;
         };
 
-        using RenderNodeList=List<RenderNode *>;
+        using RenderNodeList=List<RenderNode>;
 
-        struct RenderNode2D:public RenderNode
+        struct RenderNodeExtraBuffer;
+
+        /**
+         * 同一材质的对象渲染列表
+         */
+        class MaterialRenderList
         {
-            Matrix3x4f local_to_world;
+            GPUDevice *device;
+            RenderCmdBuffer *cmd_buf;
+
+            Material *mtl;
+
+            RenderNodeList rn_list;
+
+        private:
+
+            RenderNodeExtraBuffer *extra_buffer;
+
+            struct RenderItem
+            {
+                        uint32_t            first;
+                        uint32_t            count;
+
+                        Pipeline *          pipeline;
+                        MaterialInstance *  mi;
+                const   VertexInputData *   vid;
+
+            public:
+
+                void Set(Renderable *);
+            };
+
+            List<RenderItem> ri_list;
+            uint ri_count;
+
+            void Stat();
+
+        protected:
+
+            uint32_t binding_count;
+            VkBuffer *buffer_list;
+            VkDeviceSize *buffer_offset;
+
+                  MaterialInstance *  last_mi;
+                  Pipeline *          last_pipeline;
+            const VertexInputData *   last_vid;
+                  uint                last_index;
+
+            void Bind(MaterialInstance *);
+            bool Bind(const VertexInputData *,const uint);
+
+            void Render(RenderItem *);
+
+        public:
+
+            MaterialRenderList(GPUDevice *d,Material *m);
+            ~MaterialRenderList();
+
+            void Add(Renderable *ri,const Matrix4f &mat);
+
+            void ClearData()
+            {
+                rn_list.ClearData();
+            }
+
+            void End();
+
+            void Render(RenderCmdBuffer *);
         };
 
-        using RenderNode2DList=List<RenderNode2D *>;
-
-        constexpr double RenderNode3DDistanceFactor=100.0;
-
-        struct RenderNode3D:public RenderNode
+        class MaterialRenderMap:public ObjectMap<Material *,MaterialRenderList>
         {
-            MVPMatrix matrix;
+        public:
 
-            Vector3f WorldCenter;
+            MaterialRenderMap()=default;
+            virtual ~MaterialRenderMap()=default;
 
-            double distance_to_camera_square;
+            void Begin()
+            {
+                for(auto *it:data_list)
+                    it->value->ClearData();
+            }
 
-            double distance_to_camera;
+            void End()
+            {
+                for(auto *it:data_list)
+                    it->value->End();
+            }
 
-        };//struct RenderNode
+            void Render(RenderCmdBuffer *rcb)
+            {
+                if(!rcb)return;
 
-        using RenderNode3DList=List<RenderNode3D *>;
+                for(auto *it:data_list)
+                    it->value->Render(rcb);
+            }
+        };
     }//namespace graph
 }//namespace hgl
-
-using RenderNodePointer=hgl::graph::RenderNode *;
-using RenderNodeComparator=Comparator<RenderNodePointer>;
-
-using RenderNode2DPointer=hgl::graph::RenderNode2D *;
-using RenderNode2DComparator=Comparator<RenderNode2DPointer>;
-
-using RenderNode3DPointer=hgl::graph::RenderNode3D *;
-using RenderNode3DComparator=Comparator<RenderNode3DPointer>;
 #endif//HGL_GRAPH_RENDER_NODE_INCLUDE
