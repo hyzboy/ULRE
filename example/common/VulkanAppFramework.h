@@ -205,7 +205,7 @@ public:
                 cb->BindDescriptorSets(ri);
                 cb->BindVBO(ri);
 
-                    if (vid->index_buffer)
+                    if (vid->index_buffer->buffer)
                         cb->DrawIndexed(vid->index_buffer->buffer->GetCount());
                     else
                         cb->Draw(vid->vertex_count);
