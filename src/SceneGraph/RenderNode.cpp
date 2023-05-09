@@ -65,6 +65,12 @@ namespace hgl
         {
             uint count;
 
+            VBO *mi_id;
+            VkBuffer *mi_id_buffer;
+
+            VBO *bone_id,*bone_weight;
+            VkBuffer bone_id_buffer,bone_weight_buffer;
+
             VBO *l2w_vbo[4];
             VkBuffer l2w_buffer[4];
 
@@ -82,6 +88,11 @@ namespace hgl
 
             void Clear()
             {
+                SAFE_CLEAR(mi_id)
+
+                SAFE_CLEAR(bone_id)
+                SAFE_CLEAR(bone_weight)
+
                 SAFE_CLEAR(l2w_vbo[0])
                 SAFE_CLEAR(l2w_vbo[1])
                 SAFE_CLEAR(l2w_vbo[2])
@@ -262,7 +273,7 @@ namespace hgl
 
             if(count<binding_count) //材质组
             {
-                const uint mtl_binding_count=vil->GetCount(VertexInputGroup::Material);
+                const uint mtl_binding_count=vil->GetCount(VertexInputGroup::MaterialID);
 
                 if(mtl_binding_count>0)
                 {
@@ -273,16 +284,31 @@ namespace hgl
                 }
             }
 
-            if(count<binding_count) //Bone组，暂未支持            
+            if(count<binding_count) //Bone组，暂未支持
             {
-                const uint bone_binding_count=vil->GetCount(VertexInputGroup::Bone);
+                const uint boneId_binding_count=vil->GetCount(VertexInputGroup::BoneID);
 
-                if(bone_binding_count>0)                                        //有骨骼矩阵信息
+                if(boneId_binding_count>0)                                        //有骨骼矩阵信息
                 {
-                    if(bone_binding_count!=2)                                   //只有BoneID/BondWeight，，，不是2的话根本就不对
-                        return(false);
+                    count+=boneId_binding_count;
 
-                    count+=bone_binding_count;
+                    if(count<binding_count) //BoneWeight组
+                    {
+                        const uint boneWeight_binding_count=vil->GetCount(VertexInputGroup::BoneWeight);
+
+                        if(boneWeight_binding_count!=1)
+                        {
+                            ++count;
+                        }
+                        else //BoneWieght不为1是个bug，除非未来支持8骨骼权重
+                        {
+                            return(false);
+                        }
+                    }
+                    else //有BoneID没有BoneWeight? 这是个BUG
+                    {
+                        return(false);
+                    }
                 }
             }
 

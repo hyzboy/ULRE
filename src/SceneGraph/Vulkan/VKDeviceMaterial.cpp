@@ -117,6 +117,19 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     else
         hgl_zero(data->mp_array);
 
+    const VkDeviceSize ubo_range=this->GetUBORange();
+
+    if(desc_manager->hasSet(DescriptorSetType::PerMaterial))
+    {
+        data->mi_data=new uint8[ubo_range];
+        data->mi_size
+    }
+    else
+    {
+        data->mi_data=nullptr;
+        data->mi_size=0;
+    }
+
     return(new Material(data));
 }
 VK_NAMESPACE_END
