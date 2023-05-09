@@ -57,6 +57,16 @@ vec3 world_up;
 float znear,zfar;)"
 };
 
+constexpr const ShaderBufferSource SBS_BoneInfo=
+{
+    "BoneInfo",
+    "bone",
+
+R"(
+    mat4 bone_mats[];
+)"
+};
+
 namespace func
 {
     constexpr const char GetLocalToWorld[]=R"(
@@ -66,6 +76,16 @@ mat4 GetLocalToWorld()
                 LocalToWorld_1,
                 LocalToWorld_2,
                 LocalToWorld_3);
+}
+)";
+
+    constexpr const char GetBoneMatrix[]=R"(
+mat4 GetBoneMatrix()
+{
+    return  bone_mats[BoneID.x]*BoneWeight.x+
+            bone_mats[BoneID.y]*BoneWeight.y+
+            bone_mats[BoneID.z]*BoneWeight.z+
+            bone_mats[BoneID.w]*BoneWeight.w;
 }
 )";
 }//namespace func

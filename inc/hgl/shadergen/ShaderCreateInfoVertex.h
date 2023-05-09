@@ -21,23 +21,23 @@ namespace hgl
 
             void AddMaterialID()
             {
-                VAT vat{VertexAttribType::BaseType::UInt,1};        //使用uint16
+                constexpr const VAT vat{VertexAttribType::BaseType::UInt,1};        //使用uint8
 
-                AddInput(vat,VAN::MaterialID,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::Material);
+                AddInput(vat,VAN::MaterialID,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::MaterialID);
             }
 
             void AddBone()
             {
-                VAT id      {VertexAttribType::BaseType::UInt,4};   //使用uint8[4]
-                VAT weight  {VertexAttribType::BaseType::Float,4};  //使用uint8[4]
+                constexpr const VAT id      {VertexAttribType::BaseType::UInt,4};   //使用uint8[4]
+                constexpr const VAT weight  {VertexAttribType::BaseType::Float,4};  //使用uint8[4]
 
-                AddInput(id,    VAN::BoneID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::Bone);
-                AddInput(weight,VAN::BoneWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::Bone);
+                AddInput(id,    VAN::BoneID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::BoneID);
+                AddInput(weight,VAN::BoneWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::BoneWeight);
             }
 
             void AddLocalToWorld()
             {
-                VAT vat{VertexAttribType::BaseType::Float,4};       //使用float[4]
+                constexpr const VAT vat{VertexAttribType::BaseType::Float,4};       //使用float[4]
 
                 char name[]= "LocalToWorld_?";
 

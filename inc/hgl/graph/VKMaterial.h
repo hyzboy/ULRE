@@ -27,6 +27,9 @@ struct MaterialData
 
     MaterialParameterArray mp_array;
 
+    uint8 *mi_data;         ///<材质实例数据区
+    uint32_t mi_size;       ///<单个材质实例数据长度
+
 private:
 
     friend class Material;
@@ -42,6 +45,8 @@ class Material
 {
     MaterialData *data;
 
+    uint32_t mi_count;      ///<材质数量
+
 private:
 
     friend GPUDevice;
@@ -50,8 +55,8 @@ private:
 
 public:
 
-    Material(MaterialData *md):data(md){}
-    ~Material();
+    Material(MaterialData *);
+    virtual ~Material();
 
     const   UTF8String &                        GetName                 ()const{return data->name;}
 
@@ -62,6 +67,25 @@ public:
     const   MaterialDescriptorManager *         GetDescriptorSets       ()const{return data->desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
     const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return data->pipeline_layout_data;}
+
+public:
+
+    const   uint32_t                            GetMICount              ()const{return mi_count;}
+    const   uint32_t                            GetMISize               ()const{return mi_size;}
+    const   void *                              GetMIData               ()const{return data->mi_data;}
+
+    template<typename T>
+            T *                                 GetMIData               (const uint32_t index)const{return data->mi_data?(T *)(data->mi_data+index*mi_size):nullptr;}
+
+    template<typename T>
+            bool                                WriteMIData             (const uint32_t index,const T *data)
+    {
+        if(!data->mi_data)return(false);
+        if(index>=mi_count)return(false);
+
+        memcpy(mi_data+index*mi_size,data,mi_size);
+        return(true);
+    }
 
 public:
 
