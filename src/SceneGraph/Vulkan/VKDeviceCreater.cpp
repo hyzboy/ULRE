@@ -62,7 +62,7 @@ namespace
 
 //        FEATURE_COPY(imageCubeArray);
 //        FEATURE_COPY(fullDrawIndexUint32);
-//        FEATURE_COPY(wideLines)
+        FEATURE_COPY(wideLines)
 //        FEATURE_COPY(largePoints)
 
         #undef FEATURE_COPY

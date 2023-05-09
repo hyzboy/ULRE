@@ -18,7 +18,6 @@ MaterialData::~MaterialData()
 
 Material::Material(MaterialData *md):data(md)
 {
-    mi_size=0;
     mi_count=0;
 }
 

@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDevice.h>
+﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKMaterialParameters.h>
@@ -119,15 +119,20 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     const VkDeviceSize ubo_range=this->GetUBORange();
 
+    //手机一般ubo_range为16k,PC独显一般为64k
+    //intel 核显随显存基本无限制
+    //我们使用uint8类型在vertex input中保存MaterialInstance ID，表示范围0-255。
+    //所以MaterialInstance结构容量在手机上尽量不要超过64字节，在PC上不要超过256字节，当然intel核显无所谓
+
     if(desc_manager->hasSet(DescriptorSetType::PerMaterial))
     {
-        data->mi_data=new uint8[ubo_range];
         data->mi_size
+        data->mi_data=new uint8[data->mi_size*256];
     }
     else
     {
-        data->mi_data=nullptr;
         data->mi_size=0;
+        data->mi_data=nullptr;
     }
 
     return(new Material(data));

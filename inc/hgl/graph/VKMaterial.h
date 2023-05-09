@@ -71,19 +71,25 @@ public:
 public:
 
     const   uint32_t                            GetMICount              ()const{return mi_count;}
-    const   uint32_t                            GetMISize               ()const{return mi_size;}
+    const   uint32_t                            GetMISize               ()const{return data->mi_size;}
     const   void *                              GetMIData               ()const{return data->mi_data;}
 
     template<typename T>
-            T *                                 GetMIData               (const uint32_t index)const{return data->mi_data?(T *)(data->mi_data+index*mi_size):nullptr;}
+            T *                                 GetMIData               (const uint32_t index)const
+    {
+        if(!data->mi_data)return(nullptr);
+        if(index>=mi_count)return(nullptr);
+
+        return data->mi_data+index*mi_size;
+    }
 
     template<typename T>
-            bool                                WriteMIData             (const uint32_t index,const T *data)
+            bool                                WriteMIData             (const uint32_t index,const T *write_data)
     {
         if(!data->mi_data)return(false);
         if(index>=mi_count)return(false);
 
-        memcpy(mi_data+index*mi_size,data,mi_size);
+        memcpy(data->mi_data+index*mi_size,write_data,data->mi_size);
         return(true);
     }
 
