@@ -9,18 +9,28 @@
 #include<hgl/graph/VKSamplerType.h>
 
 namespace hgl{namespace graph{
+
+struct RenderTargetOutputConfig
+{
+    uint color;
+    bool depth;
+    bool stencil;
+};
+
 class MaterialCreateInfo
 {
     AnsiString shader_name;
 
 protected:
 
-    uint rt_color_count;                                    ///<输出的RT数量
-    bool rt_depth;                                          ///<是否输出深度
+    RenderTargetOutputConfig rto_cfg;                       ///<输出配置
 
     uint32_t shader_stage;                                  ///<着色器阶段
 
     MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
+
+    AnsiString mi_codes;                                    ///<MaterialInstance代码
+    uint32_t mi_length;                                     ///<MaterialInstance长度
 
     ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
@@ -49,8 +59,22 @@ public:
 
 public:
 
-    MaterialCreateInfo(const AnsiString &,const uint rc,const bool rd,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
+    MaterialCreateInfo(const AnsiString &,const RenderTargetOutputConfig &,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
     ~MaterialCreateInfo()=default;
+
+    bool SetMaterialInstance(const AnsiString &codes,const uint32_t length)
+    {
+        if(length>64)return(false);
+
+        if(length>0&&codes.Length()<4)return(false);
+
+        mi_length=length;
+
+        if(length>0)
+            mi_codes=codes;
+
+        return(true);
+    }
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
     bool AddStruct(const ShaderBufferSource &ss)

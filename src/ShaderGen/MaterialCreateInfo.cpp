@@ -5,12 +5,11 @@ using namespace hgl;
 using namespace hgl::graph;
 
 namespace hgl{namespace graph{
-MaterialCreateInfo::MaterialCreateInfo(const AnsiString &n,const uint rc,const bool rd,const uint32 ss)
+MaterialCreateInfo::MaterialCreateInfo(const AnsiString &n,const RenderTargetOutputConfig &cfg,const uint32 ss)
 {
     shader_name=n;
 
-    rt_color_count=rc;
-    rt_depth=rd;
+    rto_cfg=cfg;
 
     shader_stage=ss;
 
