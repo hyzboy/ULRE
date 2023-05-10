@@ -24,6 +24,54 @@ class TileFont;
 class FontSource;
 class GPUArrayBuffer;
 
+struct VulkanHardwareRequirement
+{
+    uint min_1d_image_size;
+    uint min_2d_image_size;
+    uint min_3d_image_size;
+    uint min_cube_image_size;
+    uint min_array_image_layers;
+
+    uint min_vertex_input_attribute;            ///<最小顶点输入属性数量需求
+    uint min_color_attachments;                 ///<最小颜色输出成份数量需求
+
+    uint min_push_constant_size;                ///<最小push constant大小
+    uint min_ubo_range;                         ///<最小ubo range需求
+    uint min_ssbo_range;                        ///<最小ssbo range需求
+
+    uint min_draw_indirect_count;               ///<最小间接绘制次数需求
+
+    bool geometry_shader;                       ///<要求支持几何着色器
+    bool tessellation_shader;                   ///<要求支持细分着色器
+//    bool compute_shader;                        ///<要求支持计算着色器
+
+    bool multi_draw_indirect;                   ///<要求支持MultiDrawIndirect
+
+    bool wide_lines;                            ///<要求支持宽线条
+    bool large_points;                          ///<要求支持绘制大点
+
+    bool texture_cube_array;                    ///<要求支持立方体数组纹理
+
+    bool uint32_draw_index;                     ///<要求支持32位索引(不建议使用)
+
+    struct
+    {
+        bool bc,etc2,astc_ldr,astc_hdr,pvrtc;   ///<要求支持的压缩纹理格式
+    }texture_compression;
+
+    // 1.3 特性
+    bool dynamic_rendering;                     ///<要求支持动态渲染
+};
+
+struct VulkanDeviceCreateInfo
+{
+    VulkanInstance *instance;
+    Window *window;
+    const GPUPhysicalDevice *physical_device;
+
+    VulkanHardwareRequirement require;
+};
+
 /*
  * GPU设备创建信息
  */
@@ -65,7 +113,7 @@ private:
 
 private:
 
-    friend GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent);
+    friend GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *,VkSurfaceKHR surface,const VkExtent2D &extent);
 
     GPUDevice(GPUDeviceAttribute *da);
 
@@ -265,6 +313,6 @@ public:
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class GPUDevice
 
-GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *physical_device=nullptr);
+GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *);
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DEVICE_INCLUDE

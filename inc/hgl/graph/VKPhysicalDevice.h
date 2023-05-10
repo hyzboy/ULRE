@@ -155,8 +155,6 @@ public:
     const uint32_t  GetMaxImage3D               ()const{return properties.limits.maxImageDimension3D;}
     const uint32_t  GetMaxImageCube             ()const{return properties.limits.maxImageDimensionCube;}
     const uint32_t  GetMaxImageArrayLayers      ()const{return properties.limits.maxImageArrayLayers;}
-    const uint32_t  GetMaxUBORange              ()const{return properties.limits.maxUniformBufferRange;}
-    const uint32_t  GetMaxSSBORange             ()const{return properties.limits.maxStorageBufferRange;}
     const uint32_t  GetMaxBoundDescriptorSets   ()const{return properties.limits.maxBoundDescriptorSets;}
 
     const uint32_t  GetMaxVertexInputAttributes ()const{return properties.limits.maxVertexInputAttributes;}

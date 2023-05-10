@@ -119,10 +119,18 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     const VkDeviceSize ubo_range=this->GetUBORange();
 
-    //手机一般ubo_range为16k,PC独显一般为64k
-    //intel 核显随显存基本无限制
-    //我们使用uint8类型在vertex input中保存MaterialInstance ID，表示范围0-255。
-    //所以MaterialInstance结构容量在手机上尽量不要超过64字节，在PC上不要超过256字节，当然intel核显无所谓
+    // ubo_range大致分为三档，16k,64k,>64k
+    // 只有手机平台少量老旧GPU为16k，大部分手机与PC均为64k
+    // Intel 核显与 PowerVR 为128MB或更高，可视为无上限。
+    // 
+    // 我们使用uint8类型在vertex input中保存MaterialInstance ID，表示范围0-255。
+    // 所以MaterialInstance结构容量按16k/64k分为两个档次，64字节和256字节
+
+    // 如果一定要使用超过16K/64K硬件限制的容量，有两种办法
+    // 一、分多次渲染，使用UBO Offset偏移UBO数据区。
+    // 二、使用SSBO，但这样会导致性能下降，所以不推荐使用。
+
+    // 但只要我们限制一个MI数据不超过64/256字节，一次渲染不超过256种材质实例，就无需解决此问题。
 
     if(desc_manager->hasSet(DescriptorSetType::PerMaterial))
     {
