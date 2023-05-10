@@ -51,6 +51,9 @@ namespace
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
 
+        if(require.line_rasterization)
+            ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
+
         if(require.texture_compression.pvrtc)                   //前面检测过了，所以这里不用再次检测是否支持
             ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
     }
@@ -622,6 +625,8 @@ bool RequirementCheck(const VulkanHardwareRequirement &require,const GPUPhysical
     if(require.dynamic_state[0]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME   )))return(false);
     if(require.dynamic_state[1]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME )))return(false);
     if(require.dynamic_state[2]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )))return(false);
+
+    if(require.line_rasterization&&(!pd->CheckExtensionSupport(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)))return(false);
 
     return(true);
 }

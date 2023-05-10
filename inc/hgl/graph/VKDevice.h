@@ -48,6 +48,7 @@ struct VulkanHardwareRequirement
     bool multi_draw_indirect;                   ///<要求支持MultiDrawIndirect
 
     bool wide_lines;                            ///<要求支持宽线条
+    bool line_rasterization;                    ///<要支持线条特性
     bool large_points;                          ///<要求支持绘制大点
 
     bool texture_cube_array;                    ///<要求支持立方体数组纹理
