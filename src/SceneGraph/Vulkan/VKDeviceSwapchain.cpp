@@ -78,13 +78,13 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
     if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
         return(false);
 
-    swapchain->sc_depth     =CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
+    swapchain->sc_depth =CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
 
     if(!swapchain->sc_depth)
         return(false);
 
-    swapchain->sc_color     =hgl_zero_new<Texture2D *>(swapchain->color_count);
-    swapchain->render_frame =hgl_zero_new<Framebuffer *>(swapchain->color_count);
+    swapchain->sc_color =hgl_zero_new<Texture2D *>(swapchain->color_count);
+    swapchain->sc_fbo   =hgl_zero_new<Framebuffer *>(swapchain->color_count);
 
     for(uint32_t i=0;i<swapchain->color_count;i++)
     {
@@ -93,9 +93,9 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
         if(!swapchain->sc_color[i])
             return(false);
 
-        swapchain->render_frame[i]=CreateFBO(   device_render_pass,
-                                                        swapchain->sc_color[i]->GetImageView(),
-                                                        swapchain->sc_depth->GetImageView());
+        swapchain->sc_fbo[i]=CreateFBO( device_render_pass,
+                                        swapchain->sc_color[i]->GetImageView(),
+                                        swapchain->sc_depth->GetImageView());
     }
 
     return(true);

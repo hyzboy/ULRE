@@ -78,8 +78,8 @@ public:
     SwapchainRenderTarget(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
     ~SwapchainRenderTarget();
 
-                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->render_frame[current_frame];}
-                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->render_frame[index];}
+                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_fbo[current_frame];}
+                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->sc_fbo[index];}
 
             const   uint32_t        GetColorCount   ()const override            {return 1;}
             const   uint32_t        GetImageCount   ()const                     {return swapchain->color_count;}
