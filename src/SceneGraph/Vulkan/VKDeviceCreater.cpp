@@ -32,9 +32,9 @@ namespace
         #ifdef _DEBUG
             VK_EXT_DEBUG_MARKER_EXTENSION_NAME,
         #endif//_DEBUG
-//            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
-//            VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
-//            VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME,
+            VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
 //            VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME,
             VK_EXT_PRIMITIVE_TOPOLOGY_LIST_RESTART_EXTENSION_NAME,
 //            VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
@@ -617,11 +617,11 @@ bool RequirementCheck(const VulkanHardwareRequirement &require,const GPUPhysical
 
     if(require.texture_compression.astc_hdr &&(!features13.textureCompressionASTC_HDR))return(false);
 
-    if(require.texture_compression.pvrtc)
-    {
-        if(!pd->CheckExtensionSupport(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME))
-            return(false);
-    }
+    if(require.texture_compression.pvrtc&&(!pd->CheckExtensionSupport(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME)))return(false);
+
+    if(require.dynamic_state[0]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME   )))return(false);
+    if(require.dynamic_state[1]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME )))return(false);
+    if(require.dynamic_state[2]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )))return(false);
 
     return(true);
 }

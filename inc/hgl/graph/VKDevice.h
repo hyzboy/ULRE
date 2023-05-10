@@ -59,6 +59,45 @@ struct VulkanHardwareRequirement
         bool bc,etc2,astc_ldr,astc_hdr,pvrtc;   ///<要求支持的压缩纹理格式
     }texture_compression;
 
+    //dynamic_state VK_EXT_extended_dynamic_state
+    //  cull mode
+    //  front face
+    //  primitive topology
+    //  viewport
+    //  scissor
+    //  bind vbo
+    //  depth test
+    //  depth write
+    //  depth compare op
+    //  depth bounds test
+    //  stencil test
+    //  stencil op
+    //dynamic_state[1] VK_EXT_extended_dynamic_state2
+    //  patch control points
+    //  rasterizer discard
+    //  depth bias
+    //  logic op
+    //  primitive restart
+    //dynamic_state[2] VK_EXT_extended_dynamic_state3
+    //  tess domain origin
+    //  depth clamp
+    //  discard polygon mode
+    //  rasterization samples
+    //  sample mask
+    //  alpha to coverage
+    //  alpha to one
+    //  logic op enable
+    //  color blend
+    //  color blend equation
+    //  color write mask
+    //  depth clamp
+    //  Color blend advanced
+    //  line rasterization mode
+    //  line stipple
+    //  depth clip -1 to 1
+    //  shading rate image enable
+    bool dynamic_state[3];                      ///<要求支持动态状态
+
     // 1.3 特性
     bool dynamic_rendering;                     ///<要求支持动态渲染
 };
