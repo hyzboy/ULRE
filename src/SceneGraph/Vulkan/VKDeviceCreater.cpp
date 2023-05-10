@@ -23,7 +23,7 @@ DebugUtils *CreateDebugUtils(VkDevice);
 
 namespace
 {
-    void SetDeviceExtension(CharPointerList *ext_list,const GPUPhysicalDevice *physical_device)
+    void SetDeviceExtension(CharPointerList *ext_list,const GPUPhysicalDevice *physical_device,const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -50,25 +50,31 @@ namespace
         for(const char *ext_name:require_ext_list)
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
+
+        if(require.texture_compression.pvrtc)                   //前面检测过了，所以这里不用再次检测是否支持
+            ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
     }
 
-    void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf)
+    void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
     {
         #define FEATURE_COPY(name)  features->name=pdf.name;
 
-        FEATURE_COPY(geometryShader);
-        FEATURE_COPY(multiDrawIndirect);
-        FEATURE_COPY(samplerAnisotropy);
+        if(require.geometry_shader)     FEATURE_COPY(geometryShader);
+//        if(require.compute_shader)      FEATURE_COPY(computeShader);
 
-//        FEATURE_COPY(imageCubeArray);
-//        FEATURE_COPY(fullDrawIndexUint32);
-        FEATURE_COPY(wideLines)
-//        FEATURE_COPY(largePoints)
+                                        FEATURE_COPY(multiDrawIndirect);
+
+                                        FEATURE_COPY(samplerAnisotropy);
+
+        if(require.texture_cube_array)  FEATURE_COPY(imageCubeArray);
+        if(require.uint32_draw_index)   FEATURE_COPY(fullDrawIndexUint32);
+        if(require.wide_lines)          FEATURE_COPY(wideLines)
+        if(require.large_points)        FEATURE_COPY(largePoints)
 
         #undef FEATURE_COPY
     }
 
-    VkDevice CreateDevice(VkInstance instance,const GPUPhysicalDevice *physical_device,uint32_t graphics_family)
+    VkDevice CreateDevice(VulkanDeviceCreateInfo *vdci,uint32_t graphics_family)
     {
         float queue_priorities[1]={0.0};
 
@@ -84,8 +90,8 @@ namespace
         CharPointerList ext_list;
         VkPhysicalDeviceFeatures features={};
 
-        SetDeviceExtension(&ext_list,physical_device);
-        SetDeviceFeatures(&features,physical_device->GetFeatures10());
+        SetDeviceExtension(&ext_list,vdci->physical_device,vdci->require);
+        SetDeviceFeatures(&features,vdci->physical_device->GetFeatures10(),vdci->require);
 
         create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         create_info.pNext                   =nullptr;
@@ -100,7 +106,7 @@ namespace
 
         VkDevice device;
 
-        if(vkCreateDevice(*physical_device,&create_info,nullptr,&device)==VK_SUCCESS)
+        if(vkCreateDevice(*(vdci->physical_device),&create_info,nullptr,&device)==VK_SUCCESS)
             return device;
 
         return nullptr;
@@ -519,26 +525,26 @@ namespace
 constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEGIN_RANGE+1;
 #endif//VK_DRIVER_ID_RANGE_SIZE
 
-GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *physical_device,VkSurfaceKHR surface,const VkExtent2D &extent)
+GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *vdci,VkSurfaceKHR surface,const VkExtent2D &extent)
 {
     #ifdef _DEBUG
     {
-        DebugOut(physical_device->GetProperties());
-        DebugOut(physical_device->GetFeatures10());
-        DebugOut(physical_device->GetFeatures11());
-        DebugOut(physical_device->GetFeatures12());
-        DebugOut(physical_device->GetFeatures13());
+        DebugOut(vdci->physical_device->GetProperties());
+        DebugOut(vdci->physical_device->GetFeatures10());
+        DebugOut(vdci->physical_device->GetFeatures11());
+        DebugOut(vdci->physical_device->GetFeatures12());
+        DebugOut(vdci->physical_device->GetFeatures13());
     }
     #endif//_DEBUG
 
-    GPUDeviceAttribute *device_attr=new GPUDeviceAttribute(inst,physical_device,surface);
+    GPUDeviceAttribute *device_attr=new GPUDeviceAttribute(vdci->instance,vdci->physical_device,surface);
 
     AutoDelete<GPUDeviceAttribute> auto_delete(device_attr);
 
     if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    device_attr->device=CreateDevice(*inst,physical_device,device_attr->graphics_family);
+    device_attr->device=CreateDevice(vdci,device_attr->graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
@@ -560,7 +566,7 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
     if(!device_attr->desc_pool)
         return(nullptr);
 
-    device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,physical_device->GetProperties());
+    device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,vdci->physical_device->GetProperties());
 
     if(!device_attr->pipeline_cache)
         return(nullptr);
@@ -570,33 +576,90 @@ GPUDevice *CreateRenderDevice(VulkanInstance *inst,const GPUPhysicalDevice *phys
     return(new GPUDevice(device_attr));
 }
 
-GPUDevice *CreateRenderDevice(VulkanInstance *inst,Window *win,const GPUPhysicalDevice *pd)
+bool RequirementCheck(const VulkanHardwareRequirement &require,const GPUPhysicalDevice *pd)
 {
-    if(!inst)
+    const VkPhysicalDeviceLimits &limits=pd->GetLimits();
+
+    if(require.min_1d_image_size        >0&&require.min_1d_image_size       >limits.maxImageDimension1D     )return(false);
+    if(require.min_2d_image_size        >0&&require.min_2d_image_size       >limits.maxImageDimension2D     )return(false);
+    if(require.min_3d_image_size        >0&&require.min_3d_image_size       >limits.maxImageDimension3D     )return(false);
+    if(require.min_cube_image_size      >0&&require.min_cube_image_size     >limits.maxImageDimensionCube   )return(false);
+    if(require.min_array_image_layers   >0&&require.min_array_image_layers  >limits.maxImageArrayLayers     )return(false);
+
+    if(require.min_vertex_input_attribute   >0&&require.min_vertex_input_attribute  >limits.maxVertexInputAttributes)return(false);
+    if(require.min_color_attachments        >0&&require.min_color_attachments       >limits.maxColorAttachments     )return(false);
+
+    if(require.min_push_constant_size       >0&&require.min_push_constant_size      >limits.maxPushConstantsSize    )return(false);
+    if(require.min_ubo_range                >0&&require.min_ubo_range               >limits.maxUniformBufferRange   )return(false);
+    if(require.min_ssbo_range               >0&&require.min_ssbo_range              >limits.maxStorageBufferRange   )return(false);
+
+    if(require.min_draw_indirect_count      >0&&require.min_draw_indirect_count     >limits.maxDrawIndirectCount    )return(false);
+
+    const VkPhysicalDeviceFeatures &features10=pd->GetFeatures10();
+
+    if(require.geometry_shader      &&(!features10.geometryShader       ))return(false);
+    if(require.tessellation_shader  &&(!features10.tessellationShader   ))return(false);
+
+    if(require.multi_draw_indirect  &&(!features10.multiDrawIndirect    ))return(false);
+
+    if(require.wide_lines           &&(!features10.wideLines            ))return(false);
+    if(require.large_points         &&(!features10.largePoints          ))return(false);
+    if(require.texture_cube_array   &&(!features10.imageCubeArray       ))return(false);
+    if(require.uint32_draw_index    &&(!features10.fullDrawIndexUint32  ))return(false);
+
+    if(require.texture_compression.bc       &&(!features10.textureCompressionBC))return(false);
+    if(require.texture_compression.etc2     &&(!features10.textureCompressionETC2))return(false);
+    if(require.texture_compression.astc_ldr &&(!features10.textureCompressionASTC_LDR))return(false);
+
+    const VkPhysicalDeviceVulkan13Features &features13=pd->GetFeatures13();
+
+    if(require.dynamic_rendering&&(!features13.dynamicRendering))return(false);
+
+    if(require.texture_compression.astc_hdr &&(!features13.textureCompressionASTC_HDR))return(false);
+
+    if(require.texture_compression.pvrtc)
+    {
+        if(!pd->CheckExtensionSupport(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME))
+            return(false);
+    }
+
+    return(true);
+}
+
+GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *vdci)
+{
+    if(!vdci||!vdci->instance)
         return(nullptr);
 
-    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
-    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
-    if(!pd)pd=inst->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
+    const GPUPhysicalDevice *pd=vdci->physical_device;
+
+    if(!pd)pd=vdci->instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
+    if(!pd)pd=vdci->instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
+    if(!pd)pd=vdci->instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
 
     if(!pd)
         return(nullptr);
 
-    VkSurfaceKHR surface=CreateVulkanSurface(*inst,win);
+    vdci->physical_device=pd;
+
+    if(!RequirementCheck(vdci->require,pd))
+        return(nullptr);
+
+    VkSurfaceKHR surface=CreateVulkanSurface(*(vdci->instance),vdci->window);
 
     if(!surface)
         return(nullptr);
         
     VkExtent2D extent;
     
-    extent.width=win->GetWidth();
-    extent.height=win->GetHeight();
+    extent.width    =vdci->window->GetWidth();
+    extent.height   =vdci->window->GetHeight();
 
-    GPUDevice *device=CreateRenderDevice(inst,pd,surface,extent);
+    GPUDevice *device=CreateRenderDevice(vdci,surface,extent);
 
     if(!device)
     {
-        vkDestroySurfaceKHR(*inst,surface,nullptr);
+        vkDestroySurfaceKHR(*(vdci->instance), surface, nullptr);
         return(nullptr);
     }
 
