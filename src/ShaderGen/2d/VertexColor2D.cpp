@@ -13,9 +13,14 @@ MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
 
     AnsiString mtl_name;
 
-    MaterialCreateInfo *mci=new MaterialCreateInfo( mtl_name,               ///<名称
-                                                    1,                      ///<最终一个RT输出
-                                                    false);                 ///<无深度输出
+    const RenderTargetOutputConfig rtoc
+    {
+        1,      //输出一个颜色
+        false,  //不输出深度
+        false   //不输出stencil
+    };
+
+    MaterialCreateInfo *mci=new MaterialCreateInfo(mtl_name,rtoc);                 
 
     AnsiString sfComputePosition;
 
