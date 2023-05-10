@@ -4,7 +4,7 @@
 VK_NAMESPACE_BEGIN
 Swapchain::~Swapchain()
 {
-    SAFE_CLEAR_OBJECT_ARRAY(render_frame,color_count);
+    SAFE_CLEAR_OBJECT_ARRAY(sc_fbo,color_count);
     SAFE_CLEAR(sc_depth);
     SAFE_CLEAR_OBJECT_ARRAY(sc_color,color_count)
 

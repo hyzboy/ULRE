@@ -15,12 +15,12 @@ public:
 
     VkSwapchainKHR          swap_chain      =VK_NULL_HANDLE;
 
-    uint32_t                color_count=0;
+    uint32_t                color_count     =0;
 
     Texture2D **            sc_color        =nullptr;
     Texture2D *             sc_depth        =nullptr;
 
-    Framebuffer **          render_frame    =nullptr;
+    Framebuffer **          sc_fbo          =nullptr;
 
 public:
 
