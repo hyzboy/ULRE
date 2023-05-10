@@ -103,26 +103,103 @@ struct VulkanHardwareRequirement
     bool dynamic_rendering;                     ///<要求支持动态渲染
 };
 
-struct VulkanDeviceCreateInfo
+constexpr const VkFormat SwapchainPreferFormatsLDR[]=
 {
+    PF_RGB5A1,
+    PF_BGR5A1,
+    PF_A1RGB5,
+    PF_RGB565,
+    PF_BGR565,
+};
+
+constexpr const VkFormat SwapchainPreferFormatsSDR[]=
+{
+    PF_RGBA8UN,PF_RGBA8s,
+    PF_BGRA8UN,PF_BGRA8s,
+    PF_ABGR8UN,PF_ABGR8s,
+    PF_A2RGB10UN,
+    PF_A2BGR10UN,
+    PF_B10GR11UF
+};
+
+constexpr const VkFormat SwapchainPreferFormatsHDR16[]=
+{
+    PF_RGBA16UN,PF_RGBA16SN,PF_RGBA16F
+};
+
+constexpr const VkFormat SwapchainPreferFormatsHDR32[]=
+{
+    PF_RGB32F,
+    PF_RGBA32F
+};
+
+constexpr const VkFormat SwapchainPreferFormatsDepth[]=
+{
+    PF_D16UN,
+    PF_X8_D24UN,
+    PF_D16UN_S8U,
+    PF_D24UN_S8U,
+    PF_D32F,
+    PF_D32F_S8U
+};
+
+struct PreferFormats
+{
+    //偏好格式需从低质量到高质量排列
+    const VkFormat *formats;
+    uint count;
+};
+
+constexpr const PreferFormats PreferLDR  {SwapchainPreferFormatsLDR,     sizeof(SwapchainPreferFormatsLDR    )/sizeof(VkFormat)};
+constexpr const PreferFormats PreferSDR  {SwapchainPreferFormatsSDR,     sizeof(SwapchainPreferFormatsSDR    )/sizeof(VkFormat)};
+constexpr const PreferFormats PreferHDR16{SwapchainPreferFormatsHDR16,   sizeof(SwapchainPreferFormatsHDR16  )/sizeof(VkFormat)};
+constexpr const PreferFormats PreferHDR32{SwapchainPreferFormatsHDR32,   sizeof(SwapchainPreferFormatsHDR32  )/sizeof(VkFormat)};
+constexpr const PreferFormats PreferDepth{SwapchainPreferFormatsDepth,   sizeof(SwapchainPreferFormatsDepth  )/sizeof(VkFormat)};
+
+class VulkanDeviceCreateInfo
+{
+protected:
+
     VulkanInstance *instance;
     Window *window;
     const GPUPhysicalDevice *physical_device;
 
     VulkanHardwareRequirement require;
+
+    const PreferFormats *perfer_color_formats;
+    const PreferFormats *perfer_depth_formats;
+
+public:
+
+    VulkanDeviceCreateInfo( VulkanInstance *vi,
+                            Window *win,
+                            const PreferFormats *spf_color=&PreferSDR,
+                            const PreferFormats *spf_depth=&PreferDepth)
+    {
+        instance=vi;
+        window=win;
+
+        physical_device=nullptr;
+
+        hgl_zero(require);
+
+        perfer_color_formats=spf_color;
+        perfer_depth_formats=spf_depth;
+    }
+
+    virtual bool ChoosePhysicalDevice()
+    {
+        physical_device=nullptr;
+
+        if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
+        if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
+        if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
+        
+        return physical_device;
+    }
+
+    virtual bool RequirementCheck();
 };
-
-/*
- * GPU设备创建信息
- */
-struct GPUDeviceCreateInfo
-{
-    VkPhysicalDeviceType    device_type             =VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM;
-
-    uint32_t                swapchain_image_count   =0;
-    VkSurfaceFormatKHR      color_format            ={PF_A2BGR10UN,VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
-    VkFormat                depth_format            =VK_FORMAT_UNDEFINED;
-};//struct GPUDeviceCreateInfo
 
 class GPUDevice
 {
