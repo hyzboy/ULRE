@@ -111,7 +111,7 @@ constexpr const VkFormat SwapchainPreferFormatsSDR[]=
     PF_ABGR8UN,PF_ABGR8s,
     PF_A2RGB10UN,
     PF_A2BGR10UN,
-    PF_B10GR11UF
+//    PF_B10GR11UF
 };
 
 constexpr const VkFormat SwapchainPreferFormatsHDR16[]=
@@ -135,6 +135,29 @@ constexpr const VkFormat SwapchainPreferFormatsDepth[]=
     PF_D32F_S8U
 };
 
+constexpr const VkColorSpaceKHR SwapchainPreferColorSpacesNonlinear[]=
+{
+    VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+    VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT,
+    VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT,
+    VK_COLOR_SPACE_BT709_NONLINEAR_EXT,
+    VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT,
+    VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT,
+    VK_COLOR_SPACE_DISPLAY_NATIVE_AMD,
+};
+
+constexpr const VkColorSpaceKHR SwapchainPreferColorSpacesLinear[]=
+{
+    VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
+    VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT,
+    VK_COLOR_SPACE_BT709_LINEAR_EXT,
+    VK_COLOR_SPACE_BT2020_LINEAR_EXT,
+    VK_COLOR_SPACE_HDR10_ST2084_EXT,
+    VK_COLOR_SPACE_DOLBYVISION_EXT,
+    VK_COLOR_SPACE_HDR10_HLG_EXT,
+    VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT,
+};
+
 struct PreferFormats
 {
     //偏好格式需从低质量到高质量排列
@@ -153,14 +176,36 @@ public:
     }
 };
 
+struct PreferColorSpaces
+{
+    //偏好格式需从低质量到高质量排列
+    const VkColorSpaceKHR *colorspaces;
+    uint count;
+
+public:
+
+    const int Find(const VkColorSpaceKHR cs)const
+    {
+        for(int i=0;i<count;i++)
+            if(cs==colorspaces[i])
+                return i;
+
+        return -1;
+    }
+};
+
 constexpr const PreferFormats PreferLDR  {SwapchainPreferFormatsLDR,     sizeof(SwapchainPreferFormatsLDR    )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferSDR  {SwapchainPreferFormatsSDR,     sizeof(SwapchainPreferFormatsSDR    )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferHDR16{SwapchainPreferFormatsHDR16,   sizeof(SwapchainPreferFormatsHDR16  )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferHDR32{SwapchainPreferFormatsHDR32,   sizeof(SwapchainPreferFormatsHDR32  )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferDepth{SwapchainPreferFormatsDepth,   sizeof(SwapchainPreferFormatsDepth  )/sizeof(VkFormat)};
 
+constexpr const PreferColorSpaces PreferNonlinear   {SwapchainPreferColorSpacesNonlinear,   sizeof(SwapchainPreferColorSpacesNonlinear  )/sizeof(VkColorSpaceKHR)};
+constexpr const PreferColorSpaces PreferLinear      {SwapchainPreferColorSpacesLinear,      sizeof(SwapchainPreferColorSpacesLinear     )/sizeof(VkColorSpaceKHR)};
+
 /**
-* Vulkan设备创建器
+* Vulkan设备创建器<br>
+* 将此功能定义为类是为了让开发者方便重载处理
 */
 class VulkanDeviceCreater
 {
@@ -174,20 +219,18 @@ protected:
 
     VkExtent2D extent;
 
-    const PreferFormats *perfer_color_formats;
-    const PreferFormats *perfer_depth_formats;
+    const PreferFormats *       perfer_color_formats;
+    const PreferColorSpaces *   perfer_color_spaces;
+    const PreferFormats *       perfer_depth_formats;
 
     VkSurfaceKHR surface;
 
     VkSurfaceFormatKHR surface_format;
-    VkSurfaceFormat2KHR surface_format2;
 
     CharPointerList ext_list;
     VkPhysicalDeviceFeatures features={};
 
 protected:
-
-    
 
     VkDevice CreateDevice(const uint32_t);
 
@@ -196,6 +239,7 @@ public:
     VulkanDeviceCreater(VulkanInstance *vi,
                         Window *win,
                         const PreferFormats *spf_color,
+                        const PreferColorSpaces *spf_color_space,
                         const PreferFormats *spf_depth,
                         const VulkanHardwareRequirement *req);
 
@@ -223,11 +267,12 @@ public:
 
 inline GPUDevice *CreateRenderDevice(   VulkanInstance *vi,
                                         Window *win,
-                                        const PreferFormats *spf_color=&PreferSDR,
-                                        const PreferFormats *spf_depth=&PreferDepth,
+                                        const PreferFormats *       spf_color       =&PreferSDR,
+                                        const PreferColorSpaces *   spf_color_space =&PreferNonlinear,
+                                        const PreferFormats *       spf_depth       =&PreferDepth,
                                         const VulkanHardwareRequirement *req=nullptr)
 {
-    VulkanDeviceCreater vdc(vi,win,spf_color,spf_depth,req);
+    VulkanDeviceCreater vdc(vi,win,spf_color,spf_color_space,spf_depth,req);
 
     return vdc.Create();
 }
