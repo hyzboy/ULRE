@@ -339,7 +339,7 @@ namespace
     }
 }//namespace
 
-void OutputPhysicalDeviceCaps(GPUPhysicalDevice *pd)
+void OutputPhysicalDeviceCaps(const GPUPhysicalDevice *pd)
 {
     DebugOut(pd->GetProperties());
     DebugOut(pd->GetFeatures10());

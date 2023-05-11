@@ -119,9 +119,13 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     const VkDeviceSize ubo_range=this->GetUBORange();
 
-    // ubo_range大致分为三档，16k,64k,>64k
-    // 只有手机平台少量老旧GPU为16k，大部分手机与PC均为64k
-    // Intel 核显与 PowerVR 为128MB或更高，可视为无上限。
+    // ubo_range大致分为三档:
+    //
+    //  16k: Mali-T系列或更早、Mali-G71、nVidia GeForce RTX 3070 Laptop为16k
+    // 
+    //  64k: 大部分手机与PC均为64k
+    // 
+    // >64k: Intel 核显与 PowerVR 为128MB，AMD显卡为4GB，可视为随显存无上限。
     // 
     // 我们使用uint8类型在vertex input中保存MaterialInstance ID，表示范围0-255。
     // 所以MaterialInstance结构容量按16k/64k分为两个档次，64字节和256字节
