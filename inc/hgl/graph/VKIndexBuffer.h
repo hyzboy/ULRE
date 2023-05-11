@@ -26,8 +26,8 @@ namespace hgl
 
             ~IndexBuffer()=default;
 
-            const IndexType GetType ()const{return index_type;}
-            const uint32    GetCount()const{return count;}
+            const IndexType     GetType ()const{return index_type;}
+            const uint32        GetCount()const{return count;}
         };//class IndexBuffer:public DeviceBuffer
     }//namespace graph
 }//namespace hgl

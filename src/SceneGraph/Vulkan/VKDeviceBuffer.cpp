@@ -76,6 +76,7 @@ IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void
 {
     uint32_t stride;
 
+    if(index_type==IndexType::U8 )stride=1;else
     if(index_type==IndexType::U16)stride=2;else
     if(index_type==IndexType::U32)stride=4;else
         return(nullptr);
