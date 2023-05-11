@@ -125,6 +125,12 @@ constexpr const VkFormat SwapchainPreferFormatsHDR32[]=
     PF_RGBA32F
 };
 
+constexpr const VkFormat SwapchainPreferFormatsHDR[]=
+{
+    PF_RGBA16UN,PF_RGBA16SN,PF_RGBA16F,
+    PF_RGB32F,PF_RGBA32F
+};
+
 constexpr const VkFormat SwapchainPreferFormatsDepth[]=
 {
     PF_D16UN,
@@ -198,6 +204,7 @@ constexpr const PreferFormats PreferLDR  {SwapchainPreferFormatsLDR,     sizeof(
 constexpr const PreferFormats PreferSDR  {SwapchainPreferFormatsSDR,     sizeof(SwapchainPreferFormatsSDR    )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferHDR16{SwapchainPreferFormatsHDR16,   sizeof(SwapchainPreferFormatsHDR16  )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferHDR32{SwapchainPreferFormatsHDR32,   sizeof(SwapchainPreferFormatsHDR32  )/sizeof(VkFormat)};
+constexpr const PreferFormats PreferHDR  {SwapchainPreferFormatsHDR,     sizeof(SwapchainPreferFormatsHDR    )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferDepth{SwapchainPreferFormatsDepth,   sizeof(SwapchainPreferFormatsDepth  )/sizeof(VkFormat)};
 
 constexpr const PreferColorSpaces PreferNonlinear   {SwapchainPreferColorSpacesNonlinear,   sizeof(SwapchainPreferColorSpacesNonlinear  )/sizeof(VkColorSpaceKHR)};
@@ -275,5 +282,40 @@ inline GPUDevice *CreateRenderDevice(   VulkanInstance *vi,
     VulkanDeviceCreater vdc(vi,win,spf_color,spf_color_space,spf_depth,req);
 
     return vdc.Create();
+}
+
+inline GPUDevice *CreateRenderDeviceLDR(VulkanInstance *vi,
+                                        Window *win,
+                                        const VulkanHardwareRequirement *req=nullptr)
+{
+    return CreateRenderDevice(vi,win,&PreferLDR,&PreferNonlinear,&PreferDepth,req);
+}
+
+inline GPUDevice *CreateRenderDeviceSDR(VulkanInstance *vi,
+                                        Window *win,
+                                        const VulkanHardwareRequirement *req=nullptr)
+{
+    return CreateRenderDevice(vi,win,&PreferSDR,&PreferNonlinear,&PreferDepth,req);
+}
+
+inline GPUDevice *CreateRenderDeviceHDR16(  VulkanInstance *vi,
+                                            Window *win,
+                                            const VulkanHardwareRequirement *req=nullptr)
+{
+    return CreateRenderDevice(vi,win,&PreferHDR16,&PreferLinear,&PreferDepth,req);
+}
+
+inline GPUDevice *CreateRenderDeviceHDR32(  VulkanInstance *vi,
+                                            Window *win,
+                                            const VulkanHardwareRequirement *req=nullptr)
+{
+    return CreateRenderDevice(vi,win,&PreferHDR32,&PreferLinear,&PreferDepth,req);
+}
+
+inline GPUDevice *CreateRenderDeviceHDR(VulkanInstance *vi,
+                                        Window *win,
+                                        const VulkanHardwareRequirement *req=nullptr)
+{
+    return CreateRenderDevice(vi,win,&PreferHDR,&PreferLinear,&PreferDepth,req);
 }
 VK_NAMESPACE_END
