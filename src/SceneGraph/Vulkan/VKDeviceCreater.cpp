@@ -5,6 +5,7 @@
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKDeviceCreater.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDebugMaker.h>
 
@@ -52,6 +53,9 @@ namespace
 
         if(require.texture_compression.pvrtc)                   //前面检测过了，所以这里不用再次检测是否支持
             ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
+
+        if(require.uint8_draw_index)
+            ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
     }
 
     void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
@@ -71,44 +75,6 @@ namespace
         if(require.large_points)        FEATURE_COPY(largePoints)
 
         #undef FEATURE_COPY
-    }
-
-    VkDevice CreateDevice(VulkanDeviceCreateInfo *vdci,uint32_t graphics_family)
-    {
-        float queue_priorities[1]={0.0};
-
-        VkDeviceQueueCreateInfo queue_info;
-        queue_info.sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_info.pNext            =nullptr;
-        queue_info.queueFamilyIndex =graphics_family;
-        queue_info.queueCount       =1;
-        queue_info.pQueuePriorities =queue_priorities;
-        queue_info.flags            =0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
-
-        VkDeviceCreateInfo create_info;
-        CharPointerList ext_list;
-        VkPhysicalDeviceFeatures features={};
-
-        SetDeviceExtension(&ext_list,vdci->physical_device,vdci->require);
-        SetDeviceFeatures(&features,vdci->physical_device->GetFeatures10(),vdci->require);
-
-        create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.pNext                   =nullptr;
-        create_info.flags                   =0;
-        create_info.queueCreateInfoCount    =1;
-        create_info.pQueueCreateInfos       =&queue_info;
-        create_info.enabledExtensionCount   =ext_list.GetCount();
-        create_info.ppEnabledExtensionNames =ext_list.GetData();
-        create_info.enabledLayerCount       =0;
-        create_info.ppEnabledLayerNames     =nullptr;
-        create_info.pEnabledFeatures        =&features;
-
-        VkDevice device;
-
-        if(vkCreateDevice(*(vdci->physical_device),&create_info,nullptr,&device)==VK_SUCCESS)
-            return device;
-
-        return nullptr;
     }
 
     void GetDeviceQueue(GPUDeviceAttribute *attr)
@@ -195,23 +161,55 @@ constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEG
 #endif//VK_DRIVER_ID_RANGE_SIZE
 
 #ifdef _DEBUG
-void OutputPhysicalDeviceCaps(GPUPhysicalDevice *);
+void OutputPhysicalDeviceCaps(const GPUPhysicalDevice *);
 #endif//_DEBUG
 
-GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *vdci,VkSurfaceKHR surface,const VkExtent2D &extent)
+VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 {
-    #ifdef _DEBUG
-        OutputPhysicalDeviceCaps(physical_device);
-    #endif//_DEBUG
+    float queue_priorities[1]={0.0};
 
-    GPUDeviceAttribute *device_attr=new GPUDeviceAttribute(vdci->instance,vdci->physical_device,surface);
+    VkDeviceQueueCreateInfo queue_info;
+    queue_info.sType            =VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_info.pNext            =nullptr;
+    queue_info.queueFamilyIndex =graphics_family;
+    queue_info.queueCount       =1;
+    queue_info.pQueuePriorities =queue_priorities;
+    queue_info.flags            =0;     //如果这里写VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT，会导致vkGetDeviceQueue调用崩溃
+
+    VkDeviceCreateInfo create_info;
+
+    create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    create_info.pNext                   =nullptr;
+    create_info.flags                   =0;
+    create_info.queueCreateInfoCount    =1;
+    create_info.pQueueCreateInfos       =&queue_info;
+    create_info.enabledExtensionCount   =ext_list.GetCount();
+    create_info.ppEnabledExtensionNames =ext_list.GetData();
+    create_info.enabledLayerCount       =0;
+    create_info.ppEnabledLayerNames     =nullptr;
+    create_info.pEnabledFeatures        =&features;
+
+    VkDevice device;
+
+    if(vkCreateDevice(*physical_device,&create_info,nullptr,&device)==VK_SUCCESS)
+        return device;
+
+    return nullptr;
+}
+
+GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
+{
+    GPUDeviceAttribute *device_attr=new GPUDeviceAttribute(instance,physical_device,surface);
 
     AutoDelete<GPUDeviceAttribute> auto_delete(device_attr);
 
     if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
-    device_attr->device=CreateDevice(vdci,device_attr->graphics_family);
+    SetDeviceExtension(&ext_list,physical_device,require);
+    SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
+
+    device_attr->device=CreateDevice(device_attr->graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
@@ -228,12 +226,12 @@ GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *vdci,VkSurfaceKHR surface,
     if(!device_attr->cmd_pool)
         return(nullptr);
         
-    device_attr->desc_pool=CreateDescriptorPool(device_attr->device,1024);
+    device_attr->desc_pool=CreateDescriptorPool(device_attr->device,require.descriptor_pool);
 
     if(!device_attr->desc_pool)
         return(nullptr);
 
-    device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,vdci->physical_device->GetProperties());
+    device_attr->pipeline_cache=CreatePipelineCache(device_attr->device,physical_device->GetProperties());
 
     if(!device_attr->pipeline_cache)
         return(nullptr);
@@ -243,15 +241,33 @@ GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *vdci,VkSurfaceKHR surface,
     return(new GPUDevice(device_attr));
 }
 
-bool RequirementCheck(const VulkanHardwareRequirement &require,const GPUPhysicalDevice *pd)
+VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
+                                            Window *win,
+                                            const PreferFormats *spf_color,
+                                            const PreferFormats *spf_depth,
+                                            const VulkanHardwareRequirement *req)
 {
-    const VkPhysicalDeviceLimits &limits=pd->GetLimits();
+    instance=vi;
+    window=win;
 
-    if(require.min_1d_image_size        >0&&require.min_1d_image_size       >limits.maxImageDimension1D     )return(false);
-    if(require.min_2d_image_size        >0&&require.min_2d_image_size       >limits.maxImageDimension2D     )return(false);
-    if(require.min_3d_image_size        >0&&require.min_3d_image_size       >limits.maxImageDimension3D     )return(false);
-    if(require.min_cube_image_size      >0&&require.min_cube_image_size     >limits.maxImageDimensionCube   )return(false);
-    if(require.min_array_image_layers   >0&&require.min_array_image_layers  >limits.maxImageArrayLayers     )return(false);
+    physical_device=nullptr;
+
+    perfer_color_formats=spf_color;
+    perfer_depth_formats=spf_depth;
+
+    if(req)
+        hgl_cpy(require,*req);
+}
+
+bool VulkanDeviceCreater::RequirementCheck()
+{
+    const VkPhysicalDeviceLimits &limits=physical_device->GetLimits();
+
+    if(require.min_1d_image_size            >0&&require.min_1d_image_size           >limits.maxImageDimension1D     )return(false);
+    if(require.min_2d_image_size            >0&&require.min_2d_image_size           >limits.maxImageDimension2D     )return(false);
+    if(require.min_3d_image_size            >0&&require.min_3d_image_size           >limits.maxImageDimension3D     )return(false);
+    if(require.min_cube_image_size          >0&&require.min_cube_image_size         >limits.maxImageDimensionCube   )return(false);
+    if(require.min_array_image_layers       >0&&require.min_array_image_layers      >limits.maxImageArrayLayers     )return(false);
 
     if(require.min_vertex_input_attribute   >0&&require.min_vertex_input_attribute  >limits.maxVertexInputAttributes)return(false);
     if(require.min_color_attachments        >0&&require.min_color_attachments       >limits.maxColorAttachments     )return(false);
@@ -262,7 +278,8 @@ bool RequirementCheck(const VulkanHardwareRequirement &require,const GPUPhysical
 
     if(require.min_draw_indirect_count      >0&&require.min_draw_indirect_count     >limits.maxDrawIndirectCount    )return(false);
 
-    const VkPhysicalDeviceFeatures &features10=pd->GetFeatures10();
+    const VkPhysicalDeviceFeatures &features10=physical_device->GetFeatures10();
+    const VkPhysicalDeviceVulkan13Features &features13=physical_device->GetFeatures13();
 
     if(require.geometry_shader      &&(!features10.geometryShader       ))return(false);
     if(require.tessellation_shader  &&(!features10.tessellationShader   ))return(false);
@@ -272,63 +289,56 @@ bool RequirementCheck(const VulkanHardwareRequirement &require,const GPUPhysical
     if(require.wide_lines           &&(!features10.wideLines            ))return(false);
     if(require.large_points         &&(!features10.largePoints          ))return(false);
     if(require.texture_cube_array   &&(!features10.imageCubeArray       ))return(false);
+
+    if(require.uint8_draw_index     &&(!physical_device->CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)))return(false);
     if(require.uint32_draw_index    &&(!features10.fullDrawIndexUint32  ))return(false);
 
     if(require.texture_compression.bc       &&(!features10.textureCompressionBC))return(false);
     if(require.texture_compression.etc2     &&(!features10.textureCompressionETC2))return(false);
     if(require.texture_compression.astc_ldr &&(!features10.textureCompressionASTC_LDR))return(false);
-
-    const VkPhysicalDeviceVulkan13Features &features13=pd->GetFeatures13();
+    if(require.texture_compression.astc_hdr &&(!features13.textureCompressionASTC_HDR))return(false);
+    if(require.texture_compression.pvrtc    &&(!physical_device->CheckExtensionSupport(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME)))return(false);
 
     if(require.dynamic_rendering&&(!features13.dynamicRendering))return(false);
 
-    if(require.texture_compression.astc_hdr &&(!features13.textureCompressionASTC_HDR))return(false);
+    if(require.dynamic_state[0]&&(!physical_device->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME   )))return(false);
+    if(require.dynamic_state[1]&&(!physical_device->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME )))return(false);
+    if(require.dynamic_state[2]&&(!physical_device->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )))return(false);
 
-    if(require.texture_compression.pvrtc&&(!pd->CheckExtensionSupport(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME)))return(false);
-
-    if(require.dynamic_state[0]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME   )))return(false);
-    if(require.dynamic_state[1]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME )))return(false);
-    if(require.dynamic_state[2]&&(!pd->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )))return(false);
-
-    if(require.line_rasterization&&(!pd->CheckExtensionSupport(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)))return(false);
+    if(require.line_rasterization&&(!physical_device->CheckExtensionSupport(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)))return(false);
 
     return(true);
 }
 
-GPUDevice *CreateRenderDevice(VulkanDeviceCreateInfo *vdci)
+GPUDevice *VulkanDeviceCreater::Create()
 {
-    if(!vdci||!vdci->instance)
+    if(!instance||!window)
         return(nullptr);
 
-    const GPUPhysicalDevice *pd=vdci->physical_device;
+    if(!ChoosePhysicalDevice())
+        return(false);
 
-    if(!pd)pd=vdci->instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
-    if(!pd)pd=vdci->instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
-    if(!pd)pd=vdci->instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
+    #ifdef _DEBUG
+        OutputPhysicalDeviceCaps(physical_device);
+    #endif//_DEBUG
 
-    if(!pd)
-        return(nullptr);
 
-    vdci->physical_device=pd;
+    if(!RequirementCheck())
+        return(false);
 
-    if(!RequirementCheck(vdci->require,pd))
-        return(nullptr);
-
-    VkSurfaceKHR surface=CreateVulkanSurface(*(vdci->instance),vdci->window);
+    surface=CreateVulkanSurface(*instance,window);
 
     if(!surface)
         return(nullptr);
-        
-    VkExtent2D extent;
-    
-    extent.width    =vdci->window->GetWidth();
-    extent.height   =vdci->window->GetHeight();
 
-    GPUDevice *device=CreateRenderDevice(vdci,surface,extent);
+    extent.width    =window->GetWidth();
+    extent.height   =window->GetHeight();
+
+    GPUDevice *device=CreateRenderDevice();
 
     if(!device)
     {
-        vkDestroySurfaceKHR(*(vdci->instance), surface, nullptr);
+        vkDestroySurfaceKHR(*instance,surface,nullptr);
         return(nullptr);
     }
 
