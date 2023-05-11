@@ -231,19 +231,23 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
 
     if (vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, surface, &format_count, surface_formats_list) == VK_SUCCESS)
     {
-        int index=-1;
-        int result;
+        int fmt_index=-1;
+        int cs_index=-1;
+        int fmt;
+        int cs;
         uint32_t sel=0;
 
         for(uint32_t i=0;i<format_count;i++)
         {
-            result=perfer_color_formats->Find(surface_formats_list[i].format);
+            fmt=perfer_color_formats->Find(surface_formats_list[i].format);
+            cs=perfer_color_spaces->Find(surface_formats_list[i].colorSpace);
 
-            if(result>index)
+            if((fmt==fmt_index&&cs>cs_index)||fmt>fmt_index)
             {
                 surface_format=surface_formats_list[i];
 
-                index=result;
+                fmt_index=fmt;
+                cs_index=cs;
                 sel=i;
             }
         }
@@ -252,7 +256,7 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
         LogSurfaceFormat(surface_formats_list,format_count,sel);
         #endif//_DEBUG
 
-        if(index!=-1)
+        if(fmt_index!=-1)
             return;
     }
 
@@ -311,6 +315,7 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
 VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
                                             Window *win,
                                             const PreferFormats *spf_color,
+                                            const PreferColorSpaces *spf_color_space,
                                             const PreferFormats *spf_depth,
                                             const VulkanHardwareRequirement *req)
 {
@@ -320,6 +325,7 @@ VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
     physical_device=nullptr;
 
     perfer_color_formats=spf_color;
+    perfer_color_spaces =spf_color_space;
     perfer_depth_formats=spf_depth;
 
     if(req)
