@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 struct VulkanHardwareRequirement
