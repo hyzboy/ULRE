@@ -1,4 +1,5 @@
 ﻿#include<iostream>
+#include<iomanip>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKInstance.h>
@@ -86,35 +87,39 @@ int main(int,char **)
 
     for(uint32_t i=0;i<count;i++)
     {
-        std::cout<<i<<". ";
+        std::cout<<std::setw(4)<<i<<". ";
         
-        std::cout<<" Format [ID:"<<vf->format<<"]["<<vf->name<<"] ";
+        std::cout<<"Format [ID:"<<std::setw(10)<<vf->format<<"]["<<std::setw(16)<<vf->name<<"]";
 
-        if(vf->compress_type!=TextureCompressType::NONE)
-            std::cout<<"use "<<texture_compress_name[size_t(vf->compress_type)]<<" compress.";
-        else
-            std::cout<<vf->bytes<<" bytes/pixel.";
-
-        if(vf->depth!=VulkanNumberType::NONE)
-            std::cout<<"[Depth:"<<data_type_name[size_t(vf->depth)]<<"]";
+        if(vf->depth!=VulkanBaseType::NONE)
+            std::cout<<"[  Depth:"<<std::setw(8)<<data_type_name[size_t(vf->depth)]<<"]";
         
-        if(vf->stencil!=VulkanNumberType::NONE)
-            std::cout<<"[Stencil:"<<data_type_name[size_t(vf->stencil)]<<"]";
+        if(vf->stencil!=VulkanBaseType::NONE)
+            std::cout<<"[Stencil:"<<std::setw(8)<<data_type_name[size_t(vf->stencil)]<<"]";
 
-        if((vf->depth==VulkanNumberType::NONE)
-         &&(vf->stencil==VulkanNumberType::NONE))
-            std::cout<<"[Color:"<<data_type_name[size_t(vf->color)]<<"]";
+        if((vf->depth==VulkanBaseType::NONE)
+         &&(vf->stencil==VulkanBaseType::NONE))
+            std::cout<<"[  Color:"<<std::setw(8)<<data_type_name[size_t(vf->color)]<<"]";
 
         {
             const VkFormatProperties fp=physical_device->GetFormatProperties(vf->format);
 
+            char olb[]="[   ]";
+
             if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-                std::cout<<"[Optimal]";
+                olb[1]='O';
             if(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-                std::cout<<"[Linear]";
+                olb[2]='L';
             if(fp.bufferFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-                std::cout<<"[Buffer]";
+                olb[2]='B';
+
+            std::cout<<olb;
         }
+
+        if(vf->compress_type!=TextureCompressType::NONE)
+            std::cout<<" use "<<texture_compress_name[size_t(vf->compress_type)]<<" compress.";
+        else
+            std::cout<<std::setw(4)<<vf->bytes<<" bytes/pixel.";
             
         std::cout<<std::endl;
 
