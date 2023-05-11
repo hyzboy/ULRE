@@ -16,6 +16,29 @@ VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProper
 #ifdef _DEBUG
 DebugMaker *CreateDebugMaker(VkDevice);
 DebugUtils *CreateDebugUtils(VkDevice);
+
+void LogSurfaceFormat(const VkSurfaceFormatKHR *surface_format_list,const uint32_t format_count,const uint32_t select)
+{
+    const VkSurfaceFormatKHR *sf=surface_format_list;
+
+    std::cout<<"Current physics device support "<<format_count<<" surface format"<<std::endl;
+
+    const VulkanFormat *vf;
+    const VulkanColorSpace *cs;
+
+    for(uint32_t i=0;i<format_count;i++)
+    {
+        vf=GetVulkanFormat(sf->format);
+        cs=GetVulkanColorSpace(sf->colorSpace);
+
+        if(select==i)
+            std::cout<<"  * "<<i<<": "<<vf->name<<", "<<cs->name<<std::endl;
+        else
+            std::cout<<"    "<<i<<": "<<vf->name<<", "<<cs->name<<std::endl;
+
+        ++sf;
+    }
+}
 #endif//_DEBUG
 
 namespace
@@ -197,6 +220,46 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     return nullptr;
 }
 
+void VulkanDeviceCreater::ChooseSurfaceFormat()
+{
+    uint32_t format_count;
+
+    if (vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, surface, &format_count, nullptr) != VK_SUCCESS)
+        return;
+
+    AutoDeleteArray<VkSurfaceFormatKHR> surface_formats_list(format_count);
+
+    if (vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, surface, &format_count, surface_formats_list) == VK_SUCCESS)
+    {
+        int index=-1;
+        int result;
+        uint32_t sel=0;
+
+        for(uint32_t i=0;i<format_count;i++)
+        {
+            result=perfer_color_formats->Find(surface_formats_list[i].format);
+
+            if(result>index)
+            {
+                surface_format=surface_formats_list[i];
+
+                index=result;
+                sel=i;
+            }
+        }
+
+        #ifdef _DEBUG
+        LogSurfaceFormat(surface_formats_list,format_count,sel);
+        #endif//_DEBUG
+
+        if(index!=-1)
+            return;
+    }
+
+    surface_format.format=PF_RGBA8s;
+    surface_format.colorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+}
+
 GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
 {
     GPUDeviceAttribute *device_attr=new GPUDeviceAttribute(instance,physical_device,surface);
@@ -208,6 +271,10 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     SetDeviceExtension(&ext_list,physical_device,require);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
+
+    ChooseSurfaceFormat();
+
+    device_attr->surface_format=surface_format;
 
     device_attr->device=CreateDevice(device_attr->graphics_family);
 
@@ -321,7 +388,6 @@ GPUDevice *VulkanDeviceCreater::Create()
     #ifdef _DEBUG
         OutputPhysicalDeviceCaps(physical_device);
     #endif//_DEBUG
-
 
     if(!RequirementCheck())
         return(false);

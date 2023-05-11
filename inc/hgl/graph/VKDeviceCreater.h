@@ -140,6 +140,17 @@ struct PreferFormats
     //偏好格式需从低质量到高质量排列
     const VkFormat *formats;
     uint count;
+
+public:
+
+    const int Find(const VkFormat fmt)const
+    {
+        for(int i=0;i<count;i++)
+            if(fmt==formats[i])
+                return i;
+
+        return -1;
+    }
 };
 
 constexpr const PreferFormats PreferLDR  {SwapchainPreferFormatsLDR,     sizeof(SwapchainPreferFormatsLDR    )/sizeof(VkFormat)};
@@ -168,10 +179,15 @@ protected:
 
     VkSurfaceKHR surface;
 
+    VkSurfaceFormatKHR surface_format;
+    VkSurfaceFormat2KHR surface_format2;
+
     CharPointerList ext_list;
     VkPhysicalDeviceFeatures features={};
 
 protected:
+
+    
 
     VkDevice CreateDevice(const uint32_t);
 
@@ -195,6 +211,8 @@ public:
     }
 
     virtual bool RequirementCheck();
+
+    virtual void ChooseSurfaceFormat();
 
     virtual GPUDevice *CreateRenderDevice();
 

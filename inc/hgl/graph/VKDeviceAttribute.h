@@ -32,7 +32,6 @@ struct GPUDeviceAttribute
     List<VkQueueFamilyProperties>       family_properties;
     List<VkBool32>                      supports_present;
 
-    List<VkSurfaceFormatKHR>            surface_formats_list;
     VkSurfaceFormatKHR                  surface_format;
     List<VkPresentModeKHR>              present_modes;
 

@@ -136,12 +136,12 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
 
     // 但只要我们限制一个MI数据不超过64/256字节，一次渲染不超过256种材质实例，就无需解决此问题。
 
-    if(desc_manager->hasSet(DescriptorSetType::PerMaterial))
-    {
-        data->mi_size
-        data->mi_data=new uint8[data->mi_size*256];
-    }
-    else
+    //if(desc_manager->hasSet(DescriptorSetType::PerMaterial))
+    //{
+    //    data->mi_size
+    //    data->mi_data=new uint8[data->mi_size*256];
+    //}
+    //else
     {
         data->mi_size=0;
         data->mi_data=nullptr;

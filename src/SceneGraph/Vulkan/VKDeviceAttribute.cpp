@@ -14,7 +14,6 @@ GPUDeviceAttribute::GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDev
     surface=s;
 
     RefreshSurfaceCaps();
-    GetSurfaceFormatList();
     GetSurfacePresentMode();
     GetQueueFamily();
 }
@@ -80,49 +79,6 @@ void GPUDeviceAttribute::RefreshSurfaceCaps()
                 compositeAlpha = flags;
                 break;
             }
-    }
-}
-
-void GPUDeviceAttribute::GetSurfaceFormatList()
-{
-    VkPhysicalDevice pdevice = *physical_device;
-
-    {
-        uint32_t format_count;
-
-        surface_format.format       = PF_A2BGR10UN;
-        surface_format.colorSpace   = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-
-        if (vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &format_count, nullptr) == VK_SUCCESS)
-        {
-            surface_formats_list.SetCount(format_count);
-
-            if (vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &format_count, surface_formats_list.GetData()) != VK_SUCCESS)
-            {
-                surface_formats_list.Clear();
-            }
-            //else
-            //{
-            //    VkSurfaceFormatKHR *sf = surface_formats_list.GetData();
-
-            //    if (format_count == 1 && sf->format == VK_FORMAT_UNDEFINED)
-            //    {
-            //    }
-            //    else
-            //    {
-            //        surface_format.format=VK_FORMAT_UNDEFINED;
-
-            //        for(uint32_t i=0;i<format_count;i++)
-            //        {
-            //            if(sf->format>surface_format.format
-            //             &&sf->colorSpace==VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-            //                surface_format=*sf;
-
-            //            ++sf;
-            //        }
-            //    }
-            //}
-        }
     }
 }
 
