@@ -250,16 +250,7 @@ public:
                         const PreferFormats *spf_depth,
                         const VulkanHardwareRequirement *req);
 
-    virtual bool ChoosePhysicalDevice()
-    {
-        physical_device=nullptr;
-
-        if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
-        if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
-        if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
-        
-        return physical_device;
-    }
+    virtual bool ChoosePhysicalDevice();
 
     virtual bool RequirementCheck();
 

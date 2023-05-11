@@ -9,6 +9,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDebugMaker.h>
 
+#include<iomanip>
 
 VK_NAMESPACE_BEGIN
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
@@ -32,9 +33,11 @@ void LogSurfaceFormat(const VkSurfaceFormatKHR *surface_format_list,const uint32
         cs=GetVulkanColorSpace(sf->colorSpace);
 
         if(select==i)
-            std::cout<<"  * "<<i<<": "<<vf->name<<", "<<cs->name<<std::endl;
+            std::cout<<"  *";
         else
-            std::cout<<"    "<<i<<": "<<vf->name<<", "<<cs->name<<std::endl;
+            std::cout<<"   ";
+
+        std::cout<<std::setw(3)<<i<<": "<<std::setw(10)<<vf->name<<", "<<cs->name<<std::endl;
 
         ++sf;
     }
@@ -332,6 +335,17 @@ VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
         hgl_cpy(require,*req);
 }
 
+bool VulkanDeviceCreater::ChoosePhysicalDevice()
+{
+    physical_device=nullptr;
+
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);      //先找独显
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU);    //再找集显
+    if(!physical_device)physical_device=instance->GetDevice(VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU);       //最后找虚拟显卡
+        
+    return physical_device;
+}
+
 bool VulkanDeviceCreater::RequirementCheck()
 {
     const VkPhysicalDeviceLimits &limits=physical_device->GetLimits();
@@ -389,14 +403,14 @@ GPUDevice *VulkanDeviceCreater::Create()
         return(nullptr);
 
     if(!ChoosePhysicalDevice())
-        return(false);
+        return(nullptr);
 
     #ifdef _DEBUG
         OutputPhysicalDeviceCaps(physical_device);
     #endif//_DEBUG
 
     if(!RequirementCheck())
-        return(false);
+        return(nullptr);
 
     surface=CreateVulkanSurface(*instance,window);
 
