@@ -57,6 +57,14 @@ vec3 world_up;
 float znear,zfar;)"
 };
 
+constexpr const ShaderBufferSource SBS_MaterialInstance=
+{
+    "MaterialInstanceData",
+    "mtl",
+
+    "MaterialInstance mi[256];"
+};
+
 constexpr const ShaderBufferSource SBS_BoneInfo=
 {
     "BoneInfo",
@@ -86,6 +94,13 @@ mat4 GetBoneMatrix()
             bone_mats[BoneID.y]*BoneWeight.y+
             bone_mats[BoneID.z]*BoneWeight.z+
             bone_mats[BoneID.w]*BoneWeight.w;
+}
+)";
+
+    constexpr const char GetMI[]=R"(
+MaterialInstance GetMI()
+{
+    return mtl.mi[MaterialInstanceID];
 }
 )";
 }//namespace func
