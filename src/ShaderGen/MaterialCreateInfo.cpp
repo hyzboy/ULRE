@@ -16,6 +16,8 @@ MaterialCreateInfo::MaterialCreateInfo(const AnsiString &n,const RenderTargetOut
     if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdi));else vert=nullptr;
     if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
     if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
+
+    mi_length=0;
 }
 
 bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
@@ -97,10 +99,39 @@ bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const D
     }
 }
 
+bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss)
+{
+    if(flag_bits==0)return(false);          //没有任何SHADER用？
+
+    if(!mdi.hasStruct(ss.struct_name))
+        mdi.AddStruct(ss.struct_name,ss.codes);
+
+    uint result=0;
+    VkShaderStageFlagBits bit;
+
+    for(uint i=0;i<shader_map.GetCount();i++)
+    {
+        shader_map.GetKey(i,bit);
+
+        if(flag_bits&bit)
+            if(AddUBO(bit,set_type,ss.struct_name,ss.name))
+                ++result;
+    }
+
+    return(result==shader_map.GetCount());
+}
+
 bool MaterialCreateInfo::CreateShader()
 {
     if(shader_map.IsEmpty())
         return(false);
+
+    if(mi_length>0)
+    {
+        AddUBO( shader_stage,
+                DescriptorSetType::Global,
+                mtl::SBS_MaterialInstance);
+    }
 
     mdi.Resort();
 

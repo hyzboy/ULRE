@@ -30,7 +30,7 @@ protected:
     MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
 
     AnsiString mi_codes;                                    ///<MaterialInstance代码
-    uint32_t mi_length;                                     ///<MaterialInstance长度
+    uint32_t mi_length;                                     ///<MaterialInstance数据长度
 
     ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
@@ -85,13 +85,7 @@ public:
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-    bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss)
-    {
-        if(!mdi.hasStruct(ss.struct_name))
-            mdi.AddStruct(ss.struct_name,ss.codes);
-
-        return AddUBO(flag_bits,set_type,ss.struct_name,ss.name);
-    }
+    bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss);
 
     bool CreateShader();
 
