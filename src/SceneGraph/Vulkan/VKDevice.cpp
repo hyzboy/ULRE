@@ -47,7 +47,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
 
     swapchainRT=CreateSwapchainRenderTarget();
 
-    return(true);
+    return(swapchainRT);
 }
 
 VkCommandBuffer GPUDevice::CreateCommandBuffer()

@@ -26,13 +26,13 @@ namespace hgl
                 AddInput(vat,VAN::MaterialInstanceID,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::MaterialInstanceID);
             }
 
-            void AddBone()
+            void AddJoint()
             {
                 constexpr const VAT id      {VertexAttribType::BaseType::UInt,4};   //使用uint8[4]
                 constexpr const VAT weight  {VertexAttribType::BaseType::Float,4};  //使用uint8[4]
 
-                AddInput(id,    VAN::BoneID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::BoneID);
-                AddInput(weight,VAN::BoneWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::BoneWeight);
+                AddInput(id,    VAN::JointID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointID);
+                AddInput(weight,VAN::JointWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointWeight);
             }
 
             void AddLocalToWorld()
