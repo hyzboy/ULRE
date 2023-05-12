@@ -8,7 +8,7 @@ namespace hgl
 {
     namespace graph
     {
-        GPUArrayBuffer *GPUDevice::CreateUBO(const VkDeviceSize &item_length)
+        GPUArrayBuffer *GPUDevice::CreateArrayInUBO(const VkDeviceSize &item_length)
         {
             const uint align_size=hgl_align<VkDeviceSize>(item_length,GetUBOAlign());
             
@@ -17,7 +17,7 @@ namespace hgl
             return(new GPUArrayBuffer(vk_ma,align_size,GetUBORange()));
         }
 
-        GPUArrayBuffer *GPUDevice::CreateSSBO(const VkDeviceSize &item_length)
+        GPUArrayBuffer *GPUDevice::CreateArrayInSSBO(const VkDeviceSize &item_length)
         {
             const uint align_size=hgl_align<VkDeviceSize>(item_length,GetSSBOAlign());
             
