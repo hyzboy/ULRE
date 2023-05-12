@@ -273,11 +273,11 @@ namespace hgl
 
             if(count<binding_count) //材质组
             {
-                const uint mtl_binding_count=vil->GetCount(VertexInputGroup::MaterialID);
+                const uint mtl_binding_count=vil->GetCount(VertexInputGroup::MaterialInstanceID);
 
                 if(mtl_binding_count>0)
                 {
-                    if(mtl_binding_count!=1)                                    //只有MaterialID
+                    if(mtl_binding_count!=1)                                    //只有MaterialInstanceID
                         return(false);
 
                     count+=mtl_binding_count;

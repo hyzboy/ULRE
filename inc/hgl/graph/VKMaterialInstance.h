@@ -8,7 +8,7 @@ VK_NAMESPACE_BEGIN
 /**
 * <summary>
 * 
-*    layout(location=?) in uint MaterialID
+*    layout(location=?) in uint MaterialInstanceID
 *
 *    #define MI_MAX_COUNT ???                //该值由引擎根据 UBORange/sizeof(MaterialInstance) 计算出来
 *
@@ -26,7 +26,7 @@ VK_NAMESPACE_BEGIN
 *
 *    void main()
 *    {
-*        MaterialInstance mi=mtl.mi[(MaterialID>=MI_MAX_COUNT)?:0:MaterialID];   //如果超出范围则使用0号材质实例数据
+*        MaterialInstance mi=mtl.mi[(MaterialInstanceID>=MI_MAX_COUNT)?:0:MaterialInstanceID];   //如果超出范围则使用0号材质实例数据
 *
 *        vec4 BaseColor  =mi.BaseColor;
 *        vec4 Emissive   =mi.Emissive;

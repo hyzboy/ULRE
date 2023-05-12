@@ -23,7 +23,7 @@ namespace hgl
             {
                 constexpr const VAT vat{VertexAttribType::BaseType::UInt,1};        //使用uint8
 
-                AddInput(vat,VAN::MaterialID,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::MaterialID);
+                AddInput(vat,VAN::MaterialInstanceID,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::MaterialInstanceID);
             }
 
             void AddBone()
