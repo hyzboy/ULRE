@@ -60,9 +60,15 @@ namespace
         }
 
         VkSwapchainKHR swap_chain;
+        VkResult result;
 
-        if(vkCreateSwapchainKHR(dev_attr->device,&swapchain_ci,nullptr,&swap_chain)==VK_SUCCESS)
+        result=vkCreateSwapchainKHR(dev_attr->device,&swapchain_ci,nullptr,&swap_chain);
+
+        if(result==VK_SUCCESS)
             return(swap_chain);
+
+        //LOG_ERROR(OS_TEXT("vkCreateSwapchainKHR failed, result = ")+OSString(result));
+        os_err<<"vkCreateSwapchainKHR failed, result="<<result<<std::endl;
 
         return(VK_NULL_HANDLE);
     }

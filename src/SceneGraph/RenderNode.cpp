@@ -329,28 +329,28 @@ namespace hgl
                 }
             }
 
-            if(count<binding_count) //Bone组，暂未支持
+            if(count<binding_count) //Joint组，暂未支持
             {
-                const uint boneId_binding_count=vil->GetCount(VertexInputGroup::BoneID);
+                const uint joint_id_binding_count=vil->GetCount(VertexInputGroup::JointID);
 
-                if(boneId_binding_count>0)                                        //有骨骼矩阵信息
+                if(joint_id_binding_count>0)                                        //有矩阵信息
                 {
-                    count+=boneId_binding_count;
+                    count+=joint_id_binding_count;
 
-                    if(count<binding_count) //BoneWeight组
+                    if(count<binding_count) //JointWeight组
                     {
-                        const uint boneWeight_binding_count=vil->GetCount(VertexInputGroup::BoneWeight);
+                        const uint joing_weight_binding_count=vil->GetCount(VertexInputGroup::JointWeight);
 
-                        if(boneWeight_binding_count!=1)
+                        if(joing_weight_binding_count!=1)
                         {
                             ++count;
                         }
-                        else //BoneWieght不为1是个bug，除非未来支持8骨骼权重
+                        else //JointWieght不为1是个bug，除非未来支持8权重
                         {
                             return(false);
                         }
                     }
-                    else //有BoneID没有BoneWeight? 这是个BUG
+                    else //有JointID没有JointWeight? 这是个BUG
                     {
                         return(false);
                     }

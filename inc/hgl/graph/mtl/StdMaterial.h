@@ -65,13 +65,13 @@ constexpr const ShaderBufferSource SBS_MaterialInstance=
     "MaterialInstance mi[256];"
 };
 
-constexpr const ShaderBufferSource SBS_BoneInfo=
+constexpr const ShaderBufferSource SBS_JointInfo=
 {
-    "BoneInfo",
-    "bone",
+    "JointInfo",
+    "joint",
 
 R"(
-    mat4 bone_mats[];
+    mat4 mats[];
 )"
 };
 
@@ -87,13 +87,13 @@ mat4 GetLocalToWorld()
 }
 )";
 
-    constexpr const char GetBoneMatrix[]=R"(
-mat4 GetBoneMatrix()
+    constexpr const char GetJointMatrix[]=R"(
+mat4 GetJointMatrix()
 {
-    return  bone_mats[BoneID.x]*BoneWeight.x+
-            bone_mats[BoneID.y]*BoneWeight.y+
-            bone_mats[BoneID.z]*BoneWeight.z+
-            bone_mats[BoneID.w]*BoneWeight.w;
+    return  joint.mats[JointID.x]*JointWeight.x+
+            joint.mats[JointID.y]*JointWeight.y+
+            joint.mats[JointID.z]*JointWeight.z+
+            joint.mats[JointID.w]*JointWeight.w;
 }
 )";
 

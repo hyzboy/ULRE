@@ -106,12 +106,9 @@ int main(int,char **)
 
             char olb[]="[   ]";
 
-            if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-                olb[1]='O';
-            if(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-                olb[2]='L';
-            if(fp.bufferFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
-                olb[2]='B';
+            if(fp.optimalTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT )olb[1]='O';
+            if(fp.linearTilingFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT  )olb[2]='L';
+            if(fp.bufferFeatures&VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT        )olb[2]='B';
 
             std::cout<<olb;
         }
