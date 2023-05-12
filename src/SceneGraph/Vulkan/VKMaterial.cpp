@@ -16,15 +16,8 @@ MaterialData::~MaterialData()
     delete vertex_input;
 }
 
-Material::Material(MaterialData *md):data(md)
-{
-    mi_count=0;
-}
-
 Material::~Material()
 {
-    delete[] data->mi_data;
-
     delete data->pipeline_layout_data;
     delete data;
 }
