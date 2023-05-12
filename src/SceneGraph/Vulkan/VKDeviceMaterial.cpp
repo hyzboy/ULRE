@@ -134,14 +134,23 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     // 一、分多次渲染，使用UBO Offset偏移UBO数据区。
     // 二、使用SSBO，但这样会导致性能下降，所以不推荐使用。
 
-    // 但只要我们限制一个MI数据不超过64/256字节，一次渲染不超过256种材质实例，就无需解决此问题。
+    // 但我们不解决这个问题
+    // 我们天然要求将材质实例数据分为两个等级，同时要求一次渲染不能超过256种材质实例。
+    // 所以 UBO Range为16k时，实例数据不能超过64字节。UBO Range为64k时，实例数据不能超过256字节。
 
-    //if(desc_manager->hasSet(DescriptorSetType::PerMaterial))
-    //{
-    //    data->mi_size
-    //    data->mi_data=new uint8[data->mi_size*256];
-    //}
-    //else
+    if(desc_manager->hasSet(DescriptorSetType::PerMaterial))
+    {
+        uint size;
+
+        if(ubo_range>=64*1024)
+            size=64*1024;
+        else
+            size=ubo_range;
+
+        data->mi_size=0;
+        data->mi_data=new uint8[size];
+    }
+    else
     {
         data->mi_size=0;
         data->mi_data=nullptr;
