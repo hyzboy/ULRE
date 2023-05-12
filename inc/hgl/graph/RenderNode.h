@@ -3,6 +3,7 @@
 
 #include<hgl/math/Math.h>
 #include<hgl/type/Map.h>
+#include<hgl/type/SortedSets.h>
 #include<hgl/graph/VK.h>
 namespace hgl
 {
@@ -55,6 +56,7 @@ namespace hgl
                 void Set(Renderable *);
             };
 
+            SortedSets<MaterialInstance *> mi_set;
             List<RenderItem> ri_list;
             uint ri_count;
 

@@ -58,15 +58,38 @@ namespace hgl
 {
     namespace graph
     {
+    // ubo_range大致分为三档:
+    //
+    //  16k: Mali-T系列或更早、Mali-G71、nVidia GeForce RTX 3070 Laptop为16k
+    // 
+    //  64k: 大部分手机与PC均为64k
+    // 
+    // >64k: Intel 核显与 PowerVR 为128MB，AMD显卡为4GB，可视为随显存无上限。
+    // 
+    // 我们使用uint8类型在vertex input中保存MaterialInstance ID，表示范围0-255。
+    // 所以MaterialInstance结构容量按16k/64k分为两个档次，64字节和256字节
+
+    // 如果一定要使用超过16K/64K硬件限制的容量，有两种办法
+    // 一、分多次渲染，使用UBO Offset偏移UBO数据区。
+    // 二、使用SSBO，但这样会导致性能下降，所以不推荐使用。
+
+    // 但我们不解决这个问题
+    // 我们天然要求将材质实例数据分为两个等级，同时要求一次渲染不能超过256种材质实例。
+    // 所以 UBO Range为16k时，实例数据不能超过64字节。UBO Range为64k时，实例数据不能超过256字节。
+
         /*
-         * 2D渲染节点额外提供的VBO数据
+         * 渲染节点额外提供的数据
          */
         struct RenderNodeExtraBuffer
         {
-            uint count;
+            uint node_count;                            ///<渲染节点数量
+            uint mi_count;                              ///<材质实例数量
+
+            uint mi_size;                               ///<单个材质实例数量长度
+            DeviceBuffer *mi_data_buffer;               ///<材质实例数据UBO
 
             VBO *mi_id;
-            VkBuffer *mi_id_buffer;
+            VkBuffer mi_id_buffer;
 
             VBO *bone_id,*bone_weight;
             VkBuffer bone_id_buffer,bone_weight_buffer;
@@ -89,6 +112,7 @@ namespace hgl
             void Clear()
             {
                 SAFE_CLEAR(mi_id)
+                SAFE_CLEAR(mi_data_buffer);
 
                 SAFE_CLEAR(bone_id)
                 SAFE_CLEAR(bone_weight)
@@ -97,19 +121,31 @@ namespace hgl
                 SAFE_CLEAR(l2w_vbo[1])
                 SAFE_CLEAR(l2w_vbo[2])
                 SAFE_CLEAR(l2w_vbo[3])
-                count=0;
+                node_count=0;
             }
 
-            void Alloc(GPUDevice *dev,const uint c)
+            void NodeAlloc(GPUDevice *dev,const uint c)
             {
                 Clear();
-                count=power_to_2(c);
+                node_count=power_to_2(c);
 
                 for(uint i=0;i<4;i++)
                 {
-                    l2w_vbo[i]=dev->CreateVBO(VF_V4F,count);
+                    l2w_vbo[i]=dev->CreateVBO(VF_V4F,node_count);
                     l2w_buffer[i]=l2w_vbo[i]->GetBuffer();
                 }
+            }
+
+            void MIAlloc(GPUDevice *dev,const uint c)
+            {
+                if(c<=0||mi_size<=0)return;
+    
+                mi_count=power_to_2(c);
+
+                mi_id=dev->CreateVBO(VF_V1U8,mi_count);
+                mi_id_buffer=mi_id->GetBuffer();
+
+                mi_data_buffer=dev->CreateUBO(mi_count*mi_size);
             }
 
             void WriteData(RenderNode *render_node,const uint count)
@@ -185,12 +221,14 @@ namespace hgl
                 if(!extra_buffer)
                     extra_buffer=new RenderNodeExtraBuffer;
 
-                if(extra_buffer->count<count)
-                    extra_buffer->Alloc(device,count);
+                if(extra_buffer->node_count<count)
+                    extra_buffer->NodeAlloc(device,count);
 
                 //写入数据
                 extra_buffer->WriteData(rn_list.GetData(),count);
             }
+
+            Stat();
         }
 
         void MaterialRenderList::RenderItem::Set(Renderable *ri)
@@ -208,6 +246,8 @@ namespace hgl
             ri_list.ClearData();
             ri_list.PreMalloc(count);
 
+            mi_set.ClearData();
+
             RenderItem *ri=ri_list.GetData();
             
             ri_count=1;
@@ -219,6 +259,8 @@ namespace hgl
             last_pipeline   =ri->pipeline;
             last_mi         =ri->mi;
             last_vid        =ri->vid;
+
+            mi_set.Add(last_mi);
 
             ++rn;
 
@@ -234,11 +276,14 @@ namespace hgl
                         }
 
                 ++ri_count;
-
                 ++ri;
+
                 ri->first=i;
                 ri->count=1;
                 ri->Set(rn->ri);
+
+                if(last_mi!=ri->mi)
+                    mi_set.Add(ri->mi);
 
                 last_pipeline   =ri->pipeline;
                 last_mi         =ri->mi;
@@ -389,8 +434,6 @@ namespace hgl
             const uint count=rn_list.GetCount();
 
             if(count<=0)return;
-
-            Stat();
 
             if(ri_count<=0)return;
 
