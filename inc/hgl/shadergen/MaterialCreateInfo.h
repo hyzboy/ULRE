@@ -64,8 +64,6 @@ public:
 
     bool SetMaterialInstance(const AnsiString &codes,const uint32_t length)
     {
-        if(length>64)return(false);
-
         if(length>0&&codes.Length()<4)return(false);
 
         mi_length=length;
