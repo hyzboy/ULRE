@@ -141,8 +141,8 @@ public: //Buffer相关
 
 #undef CREATE_BUFFER_OBJECT
 
-    GPUArrayBuffer *CreateUBO(const VkDeviceSize &uint_size);
-    GPUArrayBuffer *CreateSSBO(const VkDeviceSize &uint_size);
+    GPUArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
+    GPUArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
 
 public: //Image
 
