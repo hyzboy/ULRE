@@ -86,7 +86,7 @@ namespace hgl
             uint mi_count;                              ///<材质实例数量
 
             uint mi_size;                               ///<单个材质实例数量长度
-            DeviceBuffer *mi_data_buffer;               ///<材质实例数据UBO
+            DeviceBuffer *mi_data_buffer;               ///<材质实例数据UBO/SSBO
 
             VBO *mi_id;
             VkBuffer mi_id_buffer;
