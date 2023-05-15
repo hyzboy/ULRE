@@ -13,23 +13,12 @@ MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
 
     RANGE_CHECK_RETURN_NULLPTR(cfg->coordinate_system)
 
-    AnsiString mtl_name;
-
-    const RenderTargetOutputConfig rtoc
-    {
-        1,      //输出一个颜色
-        false,  //不输出深度
-        false   //不输出stencil
-    };
-
     MaterialCreateInfo *mci=new MaterialCreateInfo(cfg);
 
     AnsiString sfComputePosition;
 
     if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
-    {
-        mtl_name="VertexColor2DOrtho";
-    
+    {    
         mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
                     DescriptorSetType::Global,
                     SBS_ViewportInfo);
@@ -39,14 +28,10 @@ MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
     else
     if(cfg->coordinate_system==CoordinateSystem2D::ZeroToOne)
     {
-        mtl_name="VertexColor2DZeroToOne";
-
         sfComputePosition="vec4 ComputePosition(vec4 pos){return vec4(pos.xy*2-1,pos.z,pos.w);}";
     }
     else
     {
-        mtl_name="VertexColor2DNDC";
-
         sfComputePosition="vec4 ComputePosition(vec4 pos){return pos;}";
     }
 
