@@ -3,7 +3,7 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include"common/UBOCommon.h"
+#include<hgl/graph/mtl/UBOCommon.h>
 #include"common/MFCommon.h"
 
 STD_MTL_NAMESPACE_BEGIN

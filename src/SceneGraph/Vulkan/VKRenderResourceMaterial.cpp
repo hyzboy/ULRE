@@ -199,7 +199,7 @@ Material *RenderResource::CreateMaterial(const OSString &filename)
     return(mtl);
 }
 
-Material *RenderResource::CreateMaterial(const MaterialCreateInfo *mci)
+Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 {
     if(!mci)
         return(nullptr);
