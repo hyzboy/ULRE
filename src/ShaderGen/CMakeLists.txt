@@ -34,15 +34,15 @@ SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
 
 SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 
+set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
-SET(SHADERGEN_COMMON_FILES  common/UBOCommon.h
-                            common/MFCommon.h)
+SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
+                            common/MFCommon.h
+                            common/MFGetPosition.h)
 
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
-set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
 SET(STD_MTL_2D_HEADER_PATH ${STD_MTL_HEADER_PATH}/2d)
 

@@ -72,7 +72,7 @@ MaterialInstance *RenderResource::CreateMaterialInstance(const OSString &mtl_fil
     return CreateMaterialInstance(mtl,vil_cfg);
 }
 
-MaterialInstance *RenderResource::CreateMaterialInstance(const MaterialCreateInfo *mci,const VILConfig *vil_cfg)
+MaterialInstance *RenderResource::CreateMaterialInstance(const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
 {
     Material *mtl=this->CreateMaterial(mci);
 
