@@ -35,18 +35,29 @@ SET(GLSL_COMPILER_SOURCE	GLSLCompiler.h
 SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 
 
+SET(SHADERGEN_COMMON_FILES  common/UBOCommon.h
+                            common/MFCommon.h)
+
+SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
 SET(STD_MTL_2D_HEADER_PATH ${STD_MTL_HEADER_PATH}/2d)
 
-SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/VertexColor2D.h
+SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/Material2DConfig.h
+                            ${STD_MTL_2D_HEADER_PATH}/VertexColor2D.h
+                            2d/Std2DMaterial.h
+                            2d/Std2DMaterial.cpp
                             2d/VertexColor2D.cpp)
 
-SET(STANDARD_MATERIAL_SOURCE    ${STD_MTL_HEADER_PATH}/StdMaterial.h
-                                ${STD_MTL_HEADER_PATH}/ShaderBuffer.h
-                                StandardMaterial.cpp)
+SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
+                    ${STD_MTL_HEADER_PATH}/StdMaterial.h
+                    ${STD_MTL_HEADER_PATH}/ShaderBuffer.h
+                    StandardMaterial.cpp)
 
-SOURCE_GROUP("Standard Material" FILES ${STANDARD_MATERIAL_SOURCE})
+SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
 
 add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
@@ -55,7 +66,8 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
                                         ${MATERIAL_CREATE_INFO_SOURCE_FILES}
                                         ${SHADER_CREATER_HEADER_FILES}
                                         ${SHADER_CREATER_SOURCE_FILES}
-                                        ${GLSL_COMPILER_SOURCE}
-                                        ${STANDARD_MATERIAL_SOURCE}
+                                        ${GLSL_COMPILER_SOURCE}                                        
+                                        ${SHADERGEN_COMMON_FILES}
+                                        ${STD_MTL_SOURCE}
                                         ${STD_MTL_2D_SOURCE_FILES}
 )

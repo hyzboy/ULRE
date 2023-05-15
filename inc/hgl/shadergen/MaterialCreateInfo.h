@@ -5,27 +5,17 @@
 #include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 #include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderCreateInfoMap.h>
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/graph/RenderTargetOutputConfig.h>
+#include<hgl/graph/mtl/MaterialConfig.h>
+#include<hgl/graph/mtl/ShaderBuffer.h>
 #include<hgl/graph/VKSamplerType.h>
 
-namespace hgl{namespace graph{
-
-struct RenderTargetOutputConfig
-{
-    uint color;
-    bool depth;
-    bool stencil;
-};
-
+STD_MTL_NAMESPACE_BEGIN
 class MaterialCreateInfo
 {
-    AnsiString shader_name;
-
 protected:
 
-    RenderTargetOutputConfig rto_cfg;                       ///<输出配置
-
-    uint32_t shader_stage;                                  ///<着色器阶段
+    const MaterialConfig *config;
 
     MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
 
@@ -40,11 +30,11 @@ protected:
 
 public:
 
-    const AnsiString &GetName()const{return shader_name;}
+    const AnsiString &GetName()const{return config->mtl_name;}
 
-    const uint32 GetShaderStage()const{return shader_stage;}
+    const uint32 GetShaderStage()const{return config->shader_stage;}
 
-    bool hasShader(const VkShaderStageFlagBits ss)const{return shader_stage&ss;}
+    bool hasShader(const VkShaderStageFlagBits ss)const{return config->shader_stage&ss;}
 
     bool hasVertex  ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
 //    bool hasTessCtrl()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);}
@@ -59,7 +49,7 @@ public:
 
 public:
 
-    MaterialCreateInfo(const AnsiString &,const RenderTargetOutputConfig &,const uint32 ss=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
+    MaterialCreateInfo(const MaterialConfig *);
     ~MaterialCreateInfo()=default;
 
     bool SetMaterialInstance(const AnsiString &codes,const uint32_t length)
@@ -89,4 +79,4 @@ public:
 
     const MaterialDescriptorInfo &GetMDI()const{return mdi;}
 };//class MaterialCreateInfo
-}}//namespace hgl::graph
+STD_MTL_NAMESPACE_END

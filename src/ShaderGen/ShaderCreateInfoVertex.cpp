@@ -4,11 +4,7 @@
 #include<hgl/graph/VKShaderStage.h>
 #include"GLSLCompiler.h"
 
-namespace hgl{namespace graph{
-
-using namespace hgl;
-using namespace hgl::graph;
-
+VK_NAMESPACE_BEGIN
 int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
     ShaderAttribute *ss=new ShaderAttribute;
@@ -63,4 +59,4 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
 
     return(true);
 }
-}}//namespace hgl::graph
+VK_NAMESPACE_END
