@@ -270,7 +270,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     ProcOutput();
 
-    for(uint i=0;i<function_list.GetCount();i++)
+    for(int i=0;i<function_list.GetCount();i++)
     {
         final_shader+="\n";
         final_shader+=function_list[i];

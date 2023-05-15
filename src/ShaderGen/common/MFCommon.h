@@ -31,5 +31,7 @@ MaterialInstance GetMI()
     return mtl.mi[MaterialInstanceID];
 }
 )";
+
+
 }//namespace func
 STD_MTL_NAMESPACE_END

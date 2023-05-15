@@ -15,9 +15,9 @@ public:
 
     Material2DConfig(const AnsiString &name):MaterialConfig(name)
     {
-        rt_output.color=1;
-        rt_output.depth=false;
-        rt_output.stencil=false;
+        rt_output.color=1;          //输出一个颜色
+        rt_output.depth=false;      //不输出深度
+        rt_output.stencil=false;    //不输出stencil
 
         coordinate_system=CoordinateSystem2D::NDC;
         local_to_world=false;
