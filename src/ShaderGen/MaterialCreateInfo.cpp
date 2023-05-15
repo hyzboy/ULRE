@@ -1,17 +1,14 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include"common/UBOCommon.h"
 
 using namespace hgl;
 using namespace hgl::graph;
 
-namespace hgl{namespace graph{
-MaterialCreateInfo::MaterialCreateInfo(const AnsiString &n,const RenderTargetOutputConfig &cfg,const uint32 ss)
+STD_MTL_NAMESPACE_BEGIN
+MaterialCreateInfo::MaterialCreateInfo(const MaterialConfig *mc)
 {
-    shader_name=n;
-
-    rto_cfg=cfg;
-
-    shader_stage=ss;
+    config=mc;
 
     if(hasVertex    ())shader_map.Add(vert=new ShaderCreateInfoVertex  (&mdi));else vert=nullptr;
     if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
@@ -109,7 +106,7 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
     uint result=0;
     VkShaderStageFlagBits bit;
 
-    for(uint i=0;i<shader_map.GetCount();i++)
+    for(int i=0;i<shader_map.GetCount();i++)
     {
         shader_map.GetKey(i,bit);
 
@@ -128,7 +125,7 @@ bool MaterialCreateInfo::CreateShader()
 
     if(mi_length>0)
     {
-        AddUBO( shader_stage,
+        AddUBO( config->shader_stage,
                 DescriptorSetType::Global,
                 mtl::SBS_MaterialInstance);
     }
@@ -149,4 +146,4 @@ bool MaterialCreateInfo::CreateShader()
 
     return(true);
 }
-}}//namespace hgl::graph
+STD_MTL_NAMESPACE_END

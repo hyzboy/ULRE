@@ -1,8 +1,10 @@
-﻿#include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/graph/mtl/2d/VertexColor2D.h>
+﻿#include<hgl/graph/mtl/2d/VertexColor2D.h>
+#include<hgl/graph/mtl/2d/Material2DConfig.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include"common/UBOCommon.h"
+#include"common/MFCommon.h"
 
 STD_MTL_NAMESPACE_BEGIN
 MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
@@ -20,7 +22,7 @@ MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
         false   //不输出stencil
     };
 
-    MaterialCreateInfo *mci=new MaterialCreateInfo(mtl_name,rtoc);                 
+    MaterialCreateInfo *mci=new MaterialCreateInfo(cfg);
 
     AnsiString sfComputePosition;
 

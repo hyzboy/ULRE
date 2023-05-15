@@ -1,26 +1,10 @@
 ﻿#ifndef HGL_GRAPH_MTL_2D_VERTEX2D_INCLUDE
 #define HGL_GRAPH_MTL_2D_VERTEX2D_INCLUDE
 
-#include<hgl/graph/mtl/StdMaterial.h>
+#include"Std2DMaterial.h"
+#include<hgl/graph/CoordinateSystem.h>
 
-namespace hgl
-{
-    namespace graph
-    {
-        class MaterialCreateInfo;
-
-        namespace mtl
-        {
-            struct Material2DConfig
-            {
-                CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
-
-                bool                local_to_world=false;   ///<包含LocalToWorld矩阵
-            };
-
-            MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *);
-        }//namespace mtl
-    }//namespace graph
-}//namespace hgl
-
+STD_MTL_NAMESPACE_BEGIN
+MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *);
+STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_2D_VERTEX2D_INCLUDE
