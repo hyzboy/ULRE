@@ -1,88 +1,56 @@
-﻿#include<hgl/graph/mtl/2d/VertexColor2D.h>
-#include<hgl/graph/mtl/2d/Material2DConfig.h>
-#include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKDevice.h>
+﻿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/UBOCommon.h>
-#include"common/MFCommon.h"
 
 STD_MTL_NAMESPACE_BEGIN
-MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
+namespace
 {
-    if(!cfg)return(nullptr);
+    constexpr const char vs_main[]=R"(
+void main()
+{
+    Output.Color=Color;
 
-    RANGE_CHECK_RETURN_NULLPTR(cfg->coordinate_system)
+    gl_Position=GetPosition2D();
+})";
 
-    MaterialCreateInfo *mci=new MaterialCreateInfo(cfg);
-
-    AnsiString sfComputePosition;
-
-    if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
-    {    
-        mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
-                    DescriptorSetType::Global,
-                    SBS_ViewportInfo);
-
-        sfComputePosition="vec4 ComputePosition(vec4 pos){return viewport.ortho_matrix*pos;}";
-    }
-    else
-    if(cfg->coordinate_system==CoordinateSystem2D::ZeroToOne)
-    {
-        sfComputePosition="vec4 ComputePosition(vec4 pos){return vec4(pos.xy*2-1,pos.z,pos.w);}";
-    }
-    else
-    {
-        sfComputePosition="vec4 ComputePosition(vec4 pos){return pos;}";
-    }
-
-    //vertex部分
-    {
-        ShaderCreateInfoVertex *vsc=mci->GetVS();
-
-        vsc->AddOutput(VAT_VEC4,"Color");
-
-        vsc->AddInput(VAT_VEC2,VAN::Position);
-        vsc->AddInput(VAT_VEC4,VAN::Color);
-
-        vsc->AddFunction(sfComputePosition);
-
-        AnsiString main_codes="void main()\n{\n\tOutput.Color=Color;\n";
-
-        if(cfg->local_to_world)
-        {
-            vsc->AddLocalToWorld();
-            
-            vsc->AddFunction(mtl::func::GetLocalToWorld);
-
-            main_codes+="\tvec4 pos=GetLocalToWorld()*vec4(Position,0,1);\n";
-        }
-        else
-        {
-            main_codes+="\tvec4 pos=vec4(Position,0,1);\n";
-        }
-
-        main_codes+="\tgl_Position=ComputePosition(pos);\n}";
-
-        vsc->AddFunction(main_codes);
-    }
-
-    //fragment部分
-    {
-        ShaderCreateInfoFragment *fsc=mci->GetFS();
-
-        fsc->AddOutput(VAT_VEC4,"Color");
-
-        fsc->AddFunction(R"(
+    constexpr const char fs_main[]=R"(
 void main()
 {
     Color=Input.Color;
-})");
-    }
+})";
 
-    if(mci->CreateShader())
-        return mci;
+    class MaterialVertexColor2D:public Std2DMaterial
+    {
+    public:
 
-    delete mci;
-    return(nullptr);
+        using Std2DMaterial::Std2DMaterial;
+        ~MaterialVertexColor2D()=default;
+
+        bool CreateVertexShader(ShaderCreateInfoVertex *vsc) override
+        {
+            if(!Std2DMaterial::CreateVertexShader(vsc))
+                return(false);
+
+            vsc->AddOutput(VAT_VEC4,"Color");
+            vsc->AddInput(VAT_VEC4,VAN::Color);
+
+            vsc->AddFunction(vs_main);
+            return(true);
+        }
+
+        bool CreateFragmentShader(ShaderCreateInfoFragment *fsc) override
+        {
+            fsc->AddOutput(VAT_VEC4,"Color");
+
+            fsc->AddFunction(fs_main);
+            return(true);
+        }
+    };//class MaterialVertexColor2D:public Std2DMaterial
+}//namespace
+
+MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
+{
+    MaterialVertexColor2D mvc2d(cfg);
+
+    return mvc2d.Create();
 }
 STD_MTL_NAMESPACE_END

@@ -1,6 +1,6 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
-#include"common/UBOCommon.h"
+#include<hgl/graph/mtl/UBOCommon.h>
 
 using namespace hgl;
 using namespace hgl::graph;

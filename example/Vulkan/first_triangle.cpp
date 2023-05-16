@@ -85,25 +85,14 @@ private:
     #endif//USE_HALF_FLOAT_POSITION
     }
 
-    bool InitMaterial()
-    {
-#if defined(USE_HALF_FLOAT_POSITION)||defined(USE_UNORM8_COLOR)
-        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"),&vil_config);
-#else
-        material_instance=db->CreateMaterialInstance(OS_TEXT("res/material/VertexColor2DNDC"));
-#endif//
-
-        return material_instance;
-    }
-
     bool InitAutoMaterial()
     {
-        mtl::Material2DConfig cfg;
+        mtl::Material2DConfig cfg("VertexColor2d");
 
-        cfg.coordinate_system=mtl::CoordinateSystem2D::NDC;
+        cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
 
-        AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
 
         material_instance=db->CreateMaterialInstance(mci,&vil_config);
 
