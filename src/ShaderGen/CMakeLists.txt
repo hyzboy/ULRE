@@ -47,7 +47,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 SET(STD_MTL_2D_HEADER_PATH ${STD_MTL_HEADER_PATH}/2d)
 
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/Material2DConfig.h
-                            ${STD_MTL_2D_HEADER_PATH}/VertexColor2D.h
                             2d/Std2DMaterial.h
                             2d/Std2DMaterial.cpp
                             2d/VertexColor2D.cpp)

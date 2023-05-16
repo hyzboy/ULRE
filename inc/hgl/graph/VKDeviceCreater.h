@@ -174,7 +174,7 @@ public:
 
     const int Find(const VkFormat fmt)const
     {
-        for(int i=0;i<count;i++)
+        for(uint i=0;i<count;i++)
             if(fmt==formats[i])
                 return i;
 
@@ -192,7 +192,7 @@ public:
 
     const int Find(const VkColorSpaceKHR cs)const
     {
-        for(int i=0;i<count;i++)
+        for(uint i=0;i<count;i++)
             if(cs==colorspaces[i])
                 return i;
 
