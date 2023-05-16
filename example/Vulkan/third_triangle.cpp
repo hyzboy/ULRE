@@ -5,7 +5,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/VertexColor2D.h>
+#include<hgl/graph/mtl/2d/Material2DConfig.h>
 #include<hgl/graph/RenderList.h>
 
 using namespace hgl;

@@ -8,7 +8,7 @@
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/VertexColor2D.h>
+#include<hgl/graph/mtl/2d/Material2DConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
