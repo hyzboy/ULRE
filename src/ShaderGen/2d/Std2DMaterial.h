@@ -7,6 +7,7 @@ namespace hgl
     namespace graph
     {
         class ShaderCreateInfoVertex;
+        class ShaderCreateInfoGeometry;
         class ShaderCreateInfoFragment;
 
         namespace mtl
@@ -18,21 +19,22 @@ namespace hgl
             {
             protected:
 
-                Material2DConfig *cfg;
+                const Material2DConfig *cfg;
 
                 MaterialCreateInfo *mci;
 
             protected:
 
-                virtual bool CreateVertexShader(ShaderCreateInfoVertex *)=0;
+                virtual bool CreateVertexShader(ShaderCreateInfoVertex *);
+                virtual bool CreateGeometryShader(ShaderCreateInfoGeometry *){return false;}
                 virtual bool CreateFragmentShader(ShaderCreateInfoFragment *)=0;
 
             public:
 
                 Std2DMaterial(const Material2DConfig *);
-                virtual ~Std2DMaterial();
+                virtual ~Std2DMaterial()=default;
     
-                virtual bool Create()=0;
+                virtual MaterialCreateInfo *Create();
             };//class Std2DMaterial
         }//namespace mtl
     }//namespace graph

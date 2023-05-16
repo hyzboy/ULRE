@@ -46,12 +46,12 @@ private:
     bool InitMaterial()
     {
         {
-            mtl::Material2DConfig cfg;
+            mtl::Material2DConfig cfg("VertexColor2D");
 
-            cfg.coordinate_system=mtl::CoordinateSystem2D::NDC;
+            cfg.coordinate_system=CoordinateSystem2D::NDC;
             cfg.local_to_world=true;
 
-            AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
+            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
 
             material_instance=db->CreateMaterialInstance(mci);
         }

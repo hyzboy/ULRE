@@ -20,7 +20,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
-#include<hgl/graph/mtl/StdMaterial.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/color/Color.h>
 #include<hgl/Time.h>
 

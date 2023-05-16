@@ -45,17 +45,17 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DConfig cfg;
+        mtl::Material2DConfig cfg("VertexColor2D");
 
 #ifdef USE_ZERO2ONE_COORD
-        cfg.coordinate_system=mtl::CoordinateSystem2D::ZeroToOne;
+        cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
 #else
-        cfg.coordinate_system=mtl::CoordinateSystem2D::Ortho;
+        cfg.coordinate_system=CoordinateSystem2D::Ortho;
 #endif//USE_ZERO2ONE_COORD
 
         cfg.local_to_world=false;
 
-        AutoDelete<MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
 
         material_instance=db->CreateMaterialInstance(mci);
 
