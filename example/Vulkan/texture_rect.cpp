@@ -50,7 +50,7 @@ private:
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        renderable =nullptr;
+    Renderable *        renderable          =nullptr;
     Pipeline *          pipeline            =nullptr;
 
 private:
