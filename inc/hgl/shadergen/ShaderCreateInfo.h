@@ -3,6 +3,7 @@
 
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKInterpolation.h>
 #include<hgl/type/StringList.h>
 
 namespace hgl{namespace graph
@@ -57,8 +58,8 @@ public:
     ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m);
     virtual ~ShaderCreateInfo();
 
-    int AddOutput(const graph::VAT &type,const AnsiString &name);
-    int AddOutput(const AnsiString &type,const AnsiString &name);
+    int AddOutput(const graph::VAT &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
+    int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
 
     void AddFunction(const AnsiString &str){function_list.Add(str);}
 

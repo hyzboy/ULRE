@@ -20,19 +20,20 @@ ShaderCreateInfo::~ShaderCreateInfo()
     delete sdm;
 }
 
-int ShaderCreateInfo::AddOutput(const VAT &type,const AnsiString &name)
+int ShaderCreateInfo::AddOutput(const VAT &type,const AnsiString &name,Interpolation inter)
 {
     ShaderAttribute *ss=new ShaderAttribute;
 
     hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
 
-    ss->basetype=(uint8) type.basetype;
-    ss->vec_size=        type.vec_size;
+    ss->basetype        =(uint8)type.basetype;
+    ss->vec_size        =       type.vec_size;
+    ss->interpolation   =       inter;
 
     return sdm->AddOutput(ss);
 }
 
-int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name)
+int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter)
 {
     VAT vat;
 
@@ -42,7 +43,7 @@ int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name)
     if(!ParseVertexAttribType(&vat,type))
         return -2;
 
-    return AddOutput(vat,name);
+    return AddOutput(vat,name,inter);
 }
 
 bool ShaderCreateInfo::ProcSubpassInput()
@@ -109,6 +110,14 @@ bool ShaderCreateInfo::ProcOutput()
     for(uint i=0;i<ssd.count;i++)
     {
         output_struct+="\t";
+
+        if(ss->interpolation!=Interpolation::Smooth)
+        {
+            output_struct+=InterpolationName[size_t(ss->interpolation)];
+
+            output_struct+=" ";
+        }
+
         output_struct+=GetShaderAttributeTypename(ss);
         output_struct+=" ";
         output_struct+=ss->name;
