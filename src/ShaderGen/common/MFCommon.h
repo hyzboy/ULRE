@@ -25,13 +25,17 @@ mat4 GetJointMatrix()
 }
 )";
 
+    constexpr const char HandoverMI[]=R"(
+void HandoverMI()
+{
+    Output.MaterialInstanceID=MaterialInstanceID;
+})";
+
     constexpr const char GetMI[]=R"(
 MaterialInstance GetMI()
 {
-    return mtl.mi[MaterialInstanceID];
+    return mtl.mi[Input.MaterialInstanceID];
 }
 )";
-
-
 }//namespace func
 STD_MTL_NAMESPACE_END
