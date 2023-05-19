@@ -12,9 +12,8 @@ void main()
     gl_Position=GetPosition2D();
 })";
 
-    //一个shader中所有向下一个shader输出，会被定义在一个名为Output的结构中。
-    //而同时，这个Output结构，会在下一个Shader中，以Input名称出现使用。
-    //也就是说：在此材质中，VertexShader中的Output等于FragmentShader中的Input
+    //一个shader中输出的所有数据，会被定义在一个名为Output的结构中。所以编写时要用Output.XXXX来使用。
+    //而同时，这个结构在下一个Shader中以Input名称出现，使用时以Input.XXX的形式使用。
 
     constexpr const char fs_main[]=R"(
 void main()

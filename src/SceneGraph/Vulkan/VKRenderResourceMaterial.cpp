@@ -220,7 +220,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     const ShaderCreateInfoVertex *vert=mci->GetVS();
 
     if(vert)
-    {    
+    {
         sm=CreateShaderModule(  mtl_name+OS_TEXT("?Vertex"),
                                 VK_SHADER_STAGE_VERTEX_BIT,
                                 vert->GetSPVData(),vert->GetSPVSize());
