@@ -39,7 +39,7 @@ bool Std2DMaterial::CreateVertexShader(ShaderCreateInfoVertex *vsc)
 
     return(true);
 }
-    
+
 MaterialCreateInfo *Std2DMaterial::Create()
 {
     if(mci->hasVertex())

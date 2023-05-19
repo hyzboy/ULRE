@@ -21,14 +21,14 @@ class TestApp:public CameraAppFramework
 
 private:
 
-    SceneNode   render_root;
-    RenderList *render_list=nullptr;
+    SceneNode           render_root;
+    RenderList *        render_list         =nullptr;
 
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Primitive        * ro_plane_grid[3];
+    Primitive *         ro_plane_grid[3]{};
 
 private:
 

@@ -7,7 +7,6 @@
 #include<hgl/graph/VK.h>
 
 STD_MTL_NAMESPACE_BEGIN
-
 class MaterialCreateInfo;
 
 /**
