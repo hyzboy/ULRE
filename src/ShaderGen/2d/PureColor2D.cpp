@@ -1,4 +1,4 @@
-#include"Std2DMaterial.h"
+ï»¿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 STD_MTL_NAMESPACE_BEGIN
@@ -7,7 +7,7 @@ namespace
     constexpr const char vs_main[]=R"(
 void main()
 {
-    HandoverMI();               //½»½Ó²ÄÖÊÊµÀýID¸øÏÂÒ»¸öShader
+    HandoverMI();               //äº¤æŽ¥æè´¨å®žä¾‹IDç»™ä¸‹ä¸€ä¸ªShader
 
     gl_Position=GetPosition2D();
 })";
@@ -40,7 +40,7 @@ void main()
 
         bool CreateFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shaderµÄÊä³öµÈÓÚ×îÖÕµÄRTÁË£¬ËùÒÔÕâ¸öÃû³ÆÆäÊµËæ±ãÆð¡£
+            fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shaderçš„è¾“å‡ºç­‰äºŽæœ€ç»ˆçš„RTäº†ï¼Œæ‰€ä»¥è¿™ä¸ªåç§°å…¶å®žéšä¾¿èµ·ã€‚
 
             fsc->AddFunction(fs_main);
             return(true);
