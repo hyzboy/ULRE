@@ -49,7 +49,7 @@ IndexBuffer *RenderResource::CreateIBO(IndexType index_type,uint32_t count,const
     rm_buffers.Add(buf);
     return(buf);
 }
-        
+
 MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
 {
     if(!mtl)return(nullptr);
