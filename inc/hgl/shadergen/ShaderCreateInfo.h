@@ -13,6 +13,8 @@ struct SPVData;
 class MaterialDescriptorInfo;
 class ShaderDescriptorInfo;
 
+struct UBODescriptor;
+
 class ShaderCreateInfo
 {
 protected:
@@ -62,6 +64,8 @@ public:
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
 
     void AddFunction(const AnsiString &str){function_list.Add(str);}
+
+    void SetMaterialInstance(UBODescriptor *);
 
     const AnsiString &GetOutputStruct()const{return output_struct;}
     const AnsiString &GetShaderSource()const{return final_shader;}

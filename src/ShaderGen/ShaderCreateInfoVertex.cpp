@@ -3,6 +3,7 @@
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKShaderStage.h>
 #include"GLSLCompiler.h"
+#include"common/MFCommon.h"
 
 VK_NAMESPACE_BEGIN
 int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
@@ -28,6 +29,33 @@ int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &na
         return(-2);
 
     return AddInput(vat,name,input_rate,group);
+}
+
+void ShaderCreateInfoVertex::AddMaterialInstanceID()
+{
+    AddInput(VAT_UINT,  VAN::MaterialInstanceID,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::MaterialInstanceID);
+
+    AddFunction(mtl::func::HandoverMI);
+}
+
+void ShaderCreateInfoVertex::AddJoint()
+{
+    AddInput(VAT_UVEC4, VAN::JointID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointID);
+    AddInput(VAT_VEC4,  VAN::JointWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointWeight);
+}
+
+void ShaderCreateInfoVertex::AddLocalToWorld()
+{
+    char name[]= "LocalToWorld_?";
+
+    for(uint i=0;i<4;i++)
+    {
+        name[sizeof(name)-2]='0'+i;
+
+        AddInput(VAT_VEC4,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
+    }
+
+    AddFunction(mtl::func::GetLocalToWorld);
 }
 
 bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)

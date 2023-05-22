@@ -52,23 +52,7 @@ public:
     MaterialCreateInfo(const MaterialConfig *);
     ~MaterialCreateInfo()=default;
 
-    /**
-     * 设置材质实例代码与数据长度
-     * @param mi_glsl_codes     材质实例GLSL代码
-     * @param mi_struct_bytes   单个材质实例数据长度
-     * @return 是否设置成功
-     */
-    bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes)
-    {
-        if(mi_struct_bytes>0&&mi_glsl_codes.Length()<4)return(false);
-
-        mi_length=mi_struct_bytes;
-
-        if(mi_struct_bytes>0)
-            mi_codes=mi_glsl_codes;
-
-        return(true);
-    }
+    bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage);
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
     bool AddStruct(const ShaderBufferSource &ss)

@@ -1,6 +1,8 @@
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include"GLSLCompiler.h"
+#include<hgl/graph/mtl/UBOCommon.h>
+#include"common/MFCommon.h"
 
 namespace hgl{namespace graph{
 ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
@@ -72,6 +74,13 @@ bool ShaderCreateInfo::ProcSubpassInput()
     final_shader+="\n";
 
     return(true);
+}
+
+void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
+{
+    sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
+    sdm->AddStruct(mtl::MaterialInstanceStruct);
+    AddFunction(mtl::func::GetMI);
 }
 
 bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)

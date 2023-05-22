@@ -1,6 +1,7 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include"common/MFCommon.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -118,17 +119,53 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
     return(result==shader_map.GetCount());
 }
 
+/**
+* 设置材质实例代码与数据长度
+* @param mi_glsl_codes     材质实例GLSL代码
+* @param mi_struct_bytes   单个材质实例数据长度
+* @param shader_stage      具体使用材质实例的shader
+* @return 是否设置成功
+*/
+bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage)
+{
+    if(mi_length>0)return(false);           //已经有数据了
+
+    if(shader_stage==0)return(false);
+
+    if(mi_struct_bytes>0&&mi_glsl_codes.Length()<4)return(false);
+
+    mi_length=mi_struct_bytes;
+
+    if(mi_struct_bytes>0)
+        mi_codes=mi_glsl_codes;
+
+    mdi.AddStruct(MaterialInstanceStruct,mi_codes);
+
+    UBODescriptor *ubo=new UBODescriptor();
+
+    ubo->type=SBS_MaterialInstanceData.struct_name;
+    hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
+    ubo->stage_flag=shader_stage;
+
+    mdi.AddUBO(shader_stage,DescriptorSetType::PerMaterial,ubo);
+
+    auto *it=shader_map.GetDataList();
+
+    for(int i=0;i<shader_map.GetCount();i++)
+    {
+        if((*it)->key&shader_stage)
+            (*it)->value->SetMaterialInstance(ubo);
+    }
+
+    vert->AddMaterialInstanceID();           //增加一个材质实例ID
+
+    return(true);
+}
+
 bool MaterialCreateInfo::CreateShader()
 {
     if(shader_map.IsEmpty())
         return(false);
-
-    if(mi_length>0)
-    {
-        AddUBO( config->shader_stage,
-                DescriptorSetType::Global,
-                mtl::SBS_MaterialInstance);
-    }
 
     mdi.Resort();
 

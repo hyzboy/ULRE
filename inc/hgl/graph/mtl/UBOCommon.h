@@ -42,7 +42,9 @@ vec3 world_up;
 float znear,zfar;)"
 };
 
-constexpr const ShaderBufferSource SBS_MaterialInstance=
+constexpr const char MaterialInstanceStruct[]="MaterialInstance";
+
+constexpr const ShaderBufferSource SBS_MaterialInstanceData=
 {
     "MaterialInstanceData",
     "mtl",
