@@ -46,8 +46,6 @@ private:
 
     friend GPUDevice;
 
-    MaterialData *GetMaterialData(){return data;}
-
 public:
 
     Material(MaterialData *md):data(md){}
