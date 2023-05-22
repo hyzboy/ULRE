@@ -125,7 +125,7 @@ public: //Get
     DeviceBuffer *      GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
-    Renderable *        GetRenderable           (const RenderableID &id){return rm_renderables.Get(id);}
+    Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
 };//class RenderResource
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DATABASE_INCLUDE
