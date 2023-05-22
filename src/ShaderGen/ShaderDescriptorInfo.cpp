@@ -49,6 +49,11 @@ bool ShaderDescriptorInfo::AddOutput(ShaderAttribute *ss)
     return(true);
 }
 
+void ShaderDescriptorInfo::AddStruct(const AnsiString &name)
+{
+    struct_list.AddUnique(name);
+}
+
 bool ShaderDescriptorInfo::AddUBO(DescriptorSetType type,const UBODescriptor *ubo)
 {
     if(!ubo)
