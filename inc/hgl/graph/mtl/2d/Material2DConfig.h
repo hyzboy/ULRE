@@ -25,5 +25,6 @@ public:
 };//struct Material2DConfig:public MaterialConfig
 
 MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *);
+MaterialCreateInfo *CreatePureColor2D(const Material2DConfig *);
 STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_2D_CONFIG_INCLUDE

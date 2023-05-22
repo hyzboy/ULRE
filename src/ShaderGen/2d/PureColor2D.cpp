@@ -1,9 +1,13 @@
 ﻿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/math/Vector.h>
 
 STD_MTL_NAMESPACE_BEGIN
 namespace
 {
+    constexpr const char mi_codes[]="vec4 Color;";          //材质实例代码
+    constexpr const uint32_t mi_bytes=sizeof(Vector4f);     //材质实例数据大小
+
     constexpr const char vs_main[]=R"(
 void main()
 {
@@ -13,20 +17,26 @@ void main()
 })";
 
     constexpr const char fs_main[]=R"(
-
-
 void main()
 {
     MaterialInstance mi=GetMI();
 
     Color=mi.Color;
-})";
+})";// ^       ^
+    // |       |
+    // |       +--ps:这里的mi.Color是材质实例中的数据，MaterialInstance结构对应上面C++代码中的mi_codes
+    // +--ps:这里的Color就是最终的RT
 
     class MaterialPureColor2D:public Std2DMaterial
     {
     public:
 
-        using Std2DMaterial::Std2DMaterial;
+        MaterialPureColor2D(const Material2DConfig *c):Std2DMaterial(c)
+        {
+            mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
+                                        mi_bytes,                       //材质实例数据大小
+                                        VK_SHADER_STAGE_FRAGMENT_BIT);  //只在Fragment Shader中使用材质实例最终数据
+        }
         ~MaterialPureColor2D()=default;
 
         bool CreateVertexShader(ShaderCreateInfoVertex *vsc) override

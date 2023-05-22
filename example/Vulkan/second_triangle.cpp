@@ -1,5 +1,5 @@
-﻿// third_triangle
-// 该范例主要演示使用2D坐系统直接绘制一个渐变色的三角形
+﻿// second_triangle
+// 该范例主要演示使用2D坐系统直接绘制一个渐变色的三角形,使用UBO传递Viewport信息
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>

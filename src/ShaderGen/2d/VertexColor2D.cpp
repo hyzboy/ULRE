@@ -19,7 +19,10 @@ void main()
 void main()
 {
     Color=Input.Color;
-})";
+})";// ^       ^
+    // |       |
+    // |       +--ps:这里的Input.Color就是上一个Shader中的Output.Color
+    // +--ps:这里的Color就是最终的RT
 
     class MaterialVertexColor2D:public Std2DMaterial
     {
