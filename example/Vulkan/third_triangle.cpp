@@ -1,4 +1,4 @@
-﻿// second_triangle
+﻿// third_triangle
 // 该范例主要演示使用场景树系统绘制三角形
 
 #include"VulkanAppFramework.h"
