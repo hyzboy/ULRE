@@ -28,7 +28,7 @@ public:
         return(true);
     }
 
-    bool GetStruct(const AnsiString &name,AnsiString &code) const
+    bool GetStruct(const AnsiString &name,AnsiString &code)
     {
         return(struct_map.Get(name,code));
     }
@@ -38,8 +38,8 @@ public:
         return(struct_map.KeyExist(name));
     }
 
-    const UBODescriptor *AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd);
-    const SamplerDescriptor *AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd);
+    const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
+    const SamplerDescriptor *AddSampler(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,SamplerDescriptor *sd);
 
     UBODescriptor *GetUBO(const AnsiString &name);
     SamplerDescriptor *GetSampler(const AnsiString &name);

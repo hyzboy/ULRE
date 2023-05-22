@@ -3,7 +3,6 @@
 #include<hgl/graph/mtl/2d/Material2DConfig.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include"common/MFGetPosition.h"
-#include"common/MFCommon.h"
 
 STD_MTL_NAMESPACE_BEGIN
 Std2DMaterial::Std2DMaterial(const Material2DConfig *c)
@@ -23,7 +22,6 @@ bool Std2DMaterial::CreateVertexShader(ShaderCreateInfoVertex *vsc)
     if(cfg->local_to_world)
     {
         vsc->AddLocalToWorld();
-        vsc->AddFunction(func::GetLocalToWorld);
 
         vsc->AddFunction(func::GetPosition2DL2W[size_t(cfg->coordinate_system)]);
     }

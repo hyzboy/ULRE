@@ -27,7 +27,7 @@ const DescriptorSetType MaterialDescriptorInfo::GetSetType(const AnsiString &nam
     return DescriptorSetType::Global;
 }
 
-const UBODescriptor *MaterialDescriptorInfo::AddUBO(VkShaderStageFlagBits ssb,DescriptorSetType set_type,UBODescriptor *sd)
+const UBODescriptor *MaterialDescriptorInfo::AddUBO(uint32_t ssb,DescriptorSetType set_type,UBODescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);
@@ -40,7 +40,7 @@ const UBODescriptor *MaterialDescriptorInfo::AddUBO(VkShaderStageFlagBits ssb,De
     return((UBODescriptor *)obj);
 }
 
-const SamplerDescriptor *MaterialDescriptorInfo::AddSampler(VkShaderStageFlagBits ssb,DescriptorSetType set_type,SamplerDescriptor *sd)
+const SamplerDescriptor *MaterialDescriptorInfo::AddSampler(uint32_t ssb,DescriptorSetType set_type,SamplerDescriptor *sd)
 {
     RANGE_CHECK_RETURN_NULLPTR(set_type);
     if(!sd)return(nullptr);

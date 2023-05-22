@@ -35,7 +35,6 @@ void HandoverMI()
 MaterialInstance GetMI()
 {
     return mtl.mi[Input.MaterialInstanceID];
-}
-)";
+})";
 }//namespace func
 STD_MTL_NAMESPACE_END
