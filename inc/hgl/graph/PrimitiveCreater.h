@@ -8,28 +8,28 @@ namespace hgl
 {
     namespace graph
     {
-        struct ShaderStageBind
-        {
-            AnsiString      name;
-            uint            binding;
-            VAD *           data    =nullptr;
-            VBO *           vbo     =nullptr;
-
-        public:
-
-            ~ShaderStageBind()
-            {
-                SAFE_CLEAR(data);
-            }
-        };//struct ShaderStageBind
-
-        using ShaderStageBindMap=ObjectMap<AnsiString,ShaderStageBind>;
-
         /**
          * 可绘制图元创建器
          */
         class PrimitiveCreater
         {
+            struct PrimitiveVertexBuffer
+            {
+                AnsiString      name;
+                uint            binding;
+                VAD *           data    =nullptr;
+                VBO *           vbo     =nullptr;
+
+            public:
+
+                ~PrimitiveVertexBuffer()
+                {
+                    SAFE_CLEAR(data);
+                }
+            };//struct PrimitiveVertexBuffer
+
+            using PVBMap=ObjectMap<AnsiString,PrimitiveVertexBuffer>;
+
         protected:
 
             RenderResource *db;
@@ -42,7 +42,7 @@ namespace hgl
             uint32              vertices_number;
 
             IndexBuffer *       ibo;
-            ShaderStageBindMap  ssb_map;
+            PVBMap              vbo_map;
 
         public:
 

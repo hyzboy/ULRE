@@ -33,27 +33,27 @@ namespace hgl
             if(!vif)
                 return(nullptr);
 
-            ShaderStageBind *ssb;
+            PrimitiveVertexBuffer *pvb;
 
-            if(ssb_map.Get(name,ssb))
-                return ssb->data;
+            if(vbo_map.Get(name,pvb))
+                return pvb->data;
 
             VAD *vad=hgl::graph::CreateVertexAttribData(vertices_number,vif);
 
             if(!vad)
                 return(nullptr);
 
-            ssb=new ShaderStageBind;
+            pvb=new PrimitiveVertexBuffer;
 
-            ssb->data   =vad;
-            ssb->name   =name;
-            ssb->binding=vif->binding;
+            pvb->data   =vad;
+            pvb->name   =name;
+            pvb->binding=vif->binding;
             
-            ssb->vbo    =nullptr;
+            pvb->vbo    =nullptr;
 
-            ssb_map.Add(name,ssb);
+            vbo_map.Add(name,pvb);
 
-            return ssb->data;
+            return pvb->data;
         }
 
         bool PrimitiveCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
@@ -63,9 +63,9 @@ namespace hgl
             if(!data)return(false);
             if(!bytes)return(false);
             
-            ShaderStageBind *ssb;
+            PrimitiveVertexBuffer *pvb;
 
-            if(ssb_map.Get(name,ssb))
+            if(vbo_map.Get(name,pvb))
                 return false;
 
             const VertexInputFormat *vif=vil->GetConfig(name);
@@ -76,15 +76,15 @@ namespace hgl
             if(vif->stride*vertices_number!=bytes)
                 return(false);
                
-            ssb=new ShaderStageBind;
+            pvb=new PrimitiveVertexBuffer;
 
-            ssb->data   =nullptr;
-            ssb->name   =name;
-            ssb->binding=vif->binding;
+            pvb->data   =nullptr;
+            pvb->name   =name;
+            pvb->binding=vif->binding;
 
-            ssb->vbo    =db->CreateVBO(vif->format,vertices_number,data);
+            pvb->vbo    =db->CreateVBO(vif->format,vertices_number,data);
 
-            ssb_map.Add(name,ssb);
+            vbo_map.Add(name,pvb);
 
             return true;
         }
@@ -109,12 +109,12 @@ namespace hgl
         {
             const uint si_count=vil->GetCount();
 
-            if(ssb_map.GetCount()!=si_count)
+            if(vbo_map.GetCount()!=si_count)
                 return(nullptr);
 
             Primitive *primitive=db->CreatePrimitive(vertices_number);
 
-            const auto *sp=ssb_map.GetDataList();
+            const auto *sp=vbo_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
                 if((*sp)->value->vbo)
