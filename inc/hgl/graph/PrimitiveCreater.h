@@ -54,7 +54,7 @@ namespace hgl
                     VAD *                   CreateVAD(const AnsiString &name);                                          ///<创建一个顶点属性缓冲区
 
             template<typename T> 
-                    T *                     CreateVADA(const AnsiString &name)                                          ///<创建一个顶点属性缓冲区以及访问器
+                    T *                     AccessVAD(const AnsiString &name)                                           ///<创建一个顶点属性缓冲区以及访问器
                     {
                         const VkFormat format=vil->GetVulkanFormat(name);
 
@@ -66,11 +66,11 @@ namespace hgl
                         if(!vad)
                             return(nullptr);
 
-                        T *vada=T::Create(vad);
+                        T *access=T::Create(vad);
 
-                        vada->Begin();
+                        access->Begin();
 
-                        return vada;
+                        return access;
                     }
 
                     bool                    WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据

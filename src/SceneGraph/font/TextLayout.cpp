@@ -162,8 +162,8 @@ namespace hgl
         //    if(!rc->Init(draw_chars_count))
         //        return(-4);
 
-        //    vertex      =rc->CreateVADA<VB4f>(VAN::Position);
-        //    tex_coord   =rc->CreateVADA<VB4f>(VAN::TexCoord);
+        //    vertex      =rc->AccessVAD<VB4f>(VAN::Position);
+        //    tex_coord   =rc->AccessVAD<VB4f>(VAN::TexCoord);
 
         //    if(!vertex||!tex_coord)
         //        return(-5);

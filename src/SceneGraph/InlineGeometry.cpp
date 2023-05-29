@@ -21,7 +21,7 @@ namespace hgl
                 if(!rc.Init(4))
                     return(nullptr);
 
-                AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
+                AutoDelete<VB2f> vertex=rc.AccessVAD<VB2f>(VAN::Position);
 
                 if(!vertex)
                     return(nullptr);
@@ -49,7 +49,7 @@ namespace hgl
                     if(!rc.Init(4))
                         return(nullptr);
                     
-                    AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
+                    AutoDelete<VB2f> vertex=rc.AccessVAD<VB2f>(VAN::Position);
 
                     vertex->WriteRectFan(rci->scope);
                 }
@@ -63,7 +63,7 @@ namespace hgl
                     if(!rc.Init(rci->round_per*4))
                         return(nullptr);
                 
-                    AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
+                    AutoDelete<VB2f> vertex=rc.AccessVAD<VB2f>(VAN::Position);
 
                     Vector2f *coord=new Vector2f[rci->round_per];
 
@@ -131,8 +131,8 @@ namespace hgl
                     if(!rc.Init(cci->field_count))return(nullptr);
                 }
 
-                AutoDelete<VB2f> vertex=rc.CreateVADA<VB2f>(VAN::Position);
-                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+                AutoDelete<VB2f> vertex=rc.AccessVAD<VB2f>(VAN::Position);
+                AutoDelete<VB4f> color=rc.AccessVAD<VB4f>(VAN::Color);
 
                 if(!vertex)
                     return(nullptr);
@@ -169,7 +169,7 @@ namespace hgl
                 if(!rc.Init(((pgci->step.x+1)+(pgci->step.y+1))*2))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
                 for(uint row=0;row<=pgci->step.x;row++)
                 {
                     float pos=float(row)/float(pgci->step.x);
@@ -186,7 +186,7 @@ namespace hgl
                                       to(pgci->coord[0],pgci->coord[3],pos));
                 }
 
-                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+                AutoDelete<VB4f> color=rc.AccessVAD<VB4f>(VAN::Color);
                 if(color)
                 {
                     for(uint row=0;row<=pgci->step.x;row++)
@@ -224,19 +224,19 @@ namespace hgl
                 rc.WriteVAD(VAN::Position,xy_vertices,sizeof(xy_vertices));
 
                 {
-                    AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
+                    AutoDelete<VB3f> normal=rc.AccessVAD<VB3f>(VAN::Normal);
 
                     if(normal)normal->RepeatWrite(xy_normal,4);
                 }
 
                 {
-                    AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
+                    AutoDelete<VB3f> tangent=rc.AccessVAD<VB3f>(VAN::Tangent);
 
                     tangent->RepeatWrite(xy_tangent,4);
                 }
 
                 {
-                    AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
+                    AutoDelete<VB2f> tex_coord=rc.AccessVAD<VB2f>(VAN::TexCoord);
 
                     if(tex_coord)
                     {
@@ -323,7 +323,7 @@ namespace hgl
                 {                
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+                    AutoDelete<VB4f> color=rc.AccessVAD<VB4f>(VAN::Color);
 
                     if(color)
                     {
@@ -461,10 +461,10 @@ namespace hgl
                 if(!rc.Init(numberVertices))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
+                AutoDelete<VB3f> normal=rc.AccessVAD<VB3f>(VAN::Normal);
+                AutoDelete<VB3f> tangent=rc.AccessVAD<VB3f>(VAN::Tangent);
+                AutoDelete<VB2f> tex_coord=rc.AccessVAD<VB2f>(VAN::TexCoord);
 
                 float *vp=vertex->Get();
                 float *np=normal?normal->Get():nullptr;
@@ -542,10 +542,10 @@ namespace hgl
                 if(!rc.Init(numberVertices))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
+                AutoDelete<VB3f> normal=rc.AccessVAD<VB3f>(VAN::Normal);
+                AutoDelete<VB3f> tangent=rc.AccessVAD<VB3f>(VAN::Tangent);
+                AutoDelete<VB2f> tex_coord=rc.AccessVAD<VB2f>(VAN::TexCoord);
             
                 float *vp=vertex->Get();
                 float *np=normal?normal->Get():nullptr;
@@ -679,10 +679,10 @@ namespace hgl
                 if(!rc.Init(numberVertices))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
+                AutoDelete<VB3f> normal=rc.AccessVAD<VB3f>(VAN::Normal);
+                AutoDelete<VB3f> tangent=rc.AccessVAD<VB3f>(VAN::Tangent);
+                AutoDelete<VB2f> tex_coord=rc.AccessVAD<VB2f>(VAN::TexCoord);
 
                 float *vp=vertex->Get();
                 float *np=normal?normal->Get():nullptr;
@@ -814,10 +814,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
+                AutoDelete<VB3f> normal=rc.AccessVAD<VB3f>(VAN::Normal);
+                AutoDelete<VB3f> tangent=rc.AccessVAD<VB3f>(VAN::Tangent);
+                AutoDelete<VB2f> tex_coord=rc.AccessVAD<VB2f>(VAN::TexCoord);
 
                 float *vp=vertex->Get();
                 float *np=normal?normal->Get():nullptr;
@@ -1036,10 +1036,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || cci->numberStacks < 1 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.CreateVADA<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.CreateVADA<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.CreateVADA<VB2f>(VAN::TexCoord);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
+                AutoDelete<VB3f> normal=rc.AccessVAD<VB3f>(VAN::Normal);
+                AutoDelete<VB3f> tangent=rc.AccessVAD<VB3f>(VAN::Tangent);
+                AutoDelete<VB2f> tex_coord=rc.AccessVAD<VB2f>(VAN::TexCoord);
 
                 float *vp=vertex->Get();
                 float *np=normal?normal->Get():nullptr;
@@ -1150,8 +1150,8 @@ namespace hgl
                 if(!rc.Init(6))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
-                AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
+                AutoDelete<VB4f> color=rc.AccessVAD<VB4f>(VAN::Color);
 
                 if(!vertex||!color)
                     return(nullptr);
@@ -1195,7 +1195,7 @@ namespace hgl
                 if(!rc.Init(8))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.CreateVADA<VB3f>(VAN::Position);
+                AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
 
                 if(!vertex)return(nullptr);
 
@@ -1205,7 +1205,7 @@ namespace hgl
                 {
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    AutoDelete<VB4f> color=rc.CreateVADA<VB4f>(VAN::Color);
+                    AutoDelete<VB4f> color=rc.AccessVAD<VB4f>(VAN::Color);
 
                     if(color)
                     {
