@@ -22,29 +22,31 @@ struct GPUDeviceAttribute
     VkSurfaceKHR                        surface         =VK_NULL_HANDLE;
     VkSurfaceCapabilitiesKHR            surface_caps;
 
-    uint32_t                            graphics_family =ERROR_FAMILY_INDEX;
-    uint32_t                            present_family  =ERROR_FAMILY_INDEX;
-    uint32_t                            compute_family  =ERROR_FAMILY_INDEX;
+    uint32_t                            graphics_family     =ERROR_FAMILY_INDEX;
+    uint32_t                            present_family      =ERROR_FAMILY_INDEX;
+    uint32_t                            compute_family      =ERROR_FAMILY_INDEX;
+    uint32_t                            video_decode_family =ERROR_FAMILY_INDEX;
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+    uint32_t                            video_encode_family =ERROR_FAMILY_INDEX;
+#endif//VK_ENABLE_BETA_EXTENSIONS
 
     VkQueue                             graphics_queue  =VK_NULL_HANDLE;
     VkQueue                             present_queue   =VK_NULL_HANDLE;
-
-    List<VkQueueFamilyProperties>       family_properties;
-    List<VkBool32>                      supports_present;
 
     VkSurfaceFormatKHR                  surface_format;
     List<VkPresentModeKHR>              present_modes;
 
     VkSurfaceTransformFlagBitsKHR       preTransform;
     VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    
+
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
 
     VkDescriptorPool                    desc_pool       =VK_NULL_HANDLE;
 
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
-    
+
 #ifdef _DEBUG
     DebugMaker *                        debug_maker     =nullptr;
     DebugUtils *                        debug_utils     =nullptr;
