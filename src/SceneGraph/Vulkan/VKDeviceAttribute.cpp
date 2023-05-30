@@ -101,14 +101,21 @@ void GPUDeviceAttribute::GetQueueFamily()
 {
     VkPhysicalDevice pdevice = *physical_device;
 
+    AutoDeleteArray<VkQueueFamilyProperties>       family_properties;
+    AutoDeleteArray<VkBool32>                      supports_present;
+
     uint32_t family_count;
+
     vkGetPhysicalDeviceQueueFamilyProperties(pdevice, &family_count, nullptr);
-    family_properties.SetCount(family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(pdevice, &family_count, family_properties.GetData());
+
+    family_properties.alloc(family_count);
+    supports_present.alloc(family_count);
+
+    vkGetPhysicalDeviceQueueFamilyProperties(pdevice, &family_count, family_properties);
 
     {
-        supports_present.SetCount(family_count);
-        VkBool32 *sp = supports_present.GetData();
+        VkBool32 *sp = supports_present;
+
         for (uint32_t i = 0; i < family_count; i++)
         {
             vkGetPhysicalDeviceSurfaceSupportKHR(pdevice, i, surface, sp);
@@ -117,10 +124,25 @@ void GPUDeviceAttribute::GetQueueFamily()
     }
 
     {
-        VkQueueFamilyProperties *fp = family_properties.GetData();
-        VkBool32 *sp = supports_present.GetData();
+        VkQueueFamilyProperties *fp = family_properties;
+        VkBool32 *sp = supports_present;
+
         for (uint32_t i = 0; i < family_count; i++)
         {
+            if(fp->queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR)
+            {
+                if (video_decode_family == ERROR_FAMILY_INDEX)
+                    video_decode_family = i;
+            }
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+            if(fp->queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR)
+            {
+                if (video_encode_family == ERROR_FAMILY_INDEX)
+                    video_encode_family = i;
+            }
+#endif//VK_ENABLE_BETA_EXTENSIONS
+
             if(fp->queueFlags & VK_QUEUE_COMPUTE_BIT)
             {
                 if(compute_family==ERROR_FAMILY_INDEX)
@@ -136,7 +158,6 @@ void GPUDeviceAttribute::GetQueueFamily()
                 {
                     graphics_family = i;
                     present_family = i;
-                    break;
                 }
             }
 
@@ -147,7 +168,8 @@ void GPUDeviceAttribute::GetQueueFamily()
 
     if (present_family == ERROR_FAMILY_INDEX)
     {
-        VkBool32 *sp = supports_present.GetData();
+        VkBool32 *sp = supports_present;
+
         for (uint32_t i = 0; i < family_count; i++)
         {
             if (*sp)

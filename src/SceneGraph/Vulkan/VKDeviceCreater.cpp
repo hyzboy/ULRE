@@ -68,6 +68,8 @@ namespace
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 
 //            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
+
+            VK_KHR_SPIRV_1_4_EXTENSION_NAME,
         };
 
         for(const char *ext_name:require_ext_list)
@@ -99,6 +101,10 @@ namespace
         if(require.uint32_draw_index)   FEATURE_COPY(fullDrawIndexUint32);
         if(require.wide_lines)          FEATURE_COPY(wideLines)
         if(require.large_points)        FEATURE_COPY(largePoints)
+
+        if(require.texture_compression.bc)FEATURE_COPY(textureCompressionBC);
+        if(require.texture_compression.etc2)FEATURE_COPY(textureCompressionETC2);
+        if(require.texture_compression.astc_ldr)FEATURE_COPY(textureCompressionASTC_LDR);
 
         #undef FEATURE_COPY
     }
