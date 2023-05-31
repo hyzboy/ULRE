@@ -14,6 +14,8 @@
 VK_NAMESPACE_BEGIN
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
 
+void SetShaderCompilerVersion(const GPUPhysicalDevice *);
+
 #ifdef _DEBUG
 DebugMaker *CreateDebugMaker(VkDevice);
 DebugUtils *CreateDebugUtils(VkDevice);
@@ -414,6 +416,8 @@ GPUDevice *VulkanDeviceCreater::Create()
     #ifdef _DEBUG
         OutputPhysicalDeviceCaps(physical_device);
     #endif//_DEBUG
+
+    SetShaderCompilerVersion(physical_device);
 
     if(!RequirementCheck())
         return(nullptr);

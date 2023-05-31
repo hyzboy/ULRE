@@ -86,7 +86,9 @@ void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *lay
 
 #define VK_LAYER_KHRONOS_ADD(name)      VK_LAYER_CHECK(khronos,"KHRONOS",name)
 
+    VK_LAYER_KHRONOS_ADD(synchronization2)
     VK_LAYER_KHRONOS_ADD(validation)
+    VK_LAYER_KHRONOS_ADD(profiles)
 
 #define VK_LAYER_NV_ADD(name)           VK_LAYER_CHECK(nv,"NV",name)
 

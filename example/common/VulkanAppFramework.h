@@ -116,7 +116,6 @@ public:
 
             cili.lunarg.standard_validation = true;
             cili.khronos.validation = true;
-            cili.RenderDoc.Capture = true;
 
             inst=CreateInstance("VulkanTest",nullptr,&cili);
 
