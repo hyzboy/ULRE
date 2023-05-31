@@ -16,6 +16,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialConfig *mc)
     if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
 
     mi_length=0;
+    mi_shader_stage=0;
 }
 
 bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
@@ -159,6 +160,8 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &mi_glsl_codes,con
 
     vert->AddMaterialInstanceID();           //增加一个材质实例ID
 
+    mi_shader_stage=shader_stage;
+
     return(true);
 }
 
@@ -175,6 +178,13 @@ bool MaterialCreateInfo::CreateShader()
     {
         if(!shader_map.GetValue(i,sc))
             return(false);
+
+        if(mi_shader_stage)
+            if(sc->GetShaderStage()<mi_shader_stage)
+            {
+                sc->AddOutput(VAT_UINT,VAN::MaterialInstanceID,Interpolation::Flat);
+                sc->AddFunction(mtl::func::HandoverMI);
+            }
 
         sc->CreateShader(last);
 
