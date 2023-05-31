@@ -28,6 +28,7 @@ protected:
     AnsiString output_struct;
 
     AnsiStringList function_list;
+    AnsiString main_function;
 
     AnsiString final_shader;
 
@@ -66,6 +67,8 @@ public:
     void AddFunction(const AnsiString &str){function_list.Add(str);}
 
     void SetMaterialInstance(UBODescriptor *);
+
+    void SetMain(const AnsiString &str){main_function=str;}
 
     const AnsiString &GetOutputStruct()const{return output_struct;}
     const AnsiString &GetShaderSource()const{return final_shader;}

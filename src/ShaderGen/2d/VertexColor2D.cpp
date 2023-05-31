@@ -40,7 +40,7 @@ void main()
 
             vsc->AddOutput(VAT_VEC4,"Color");
 
-            vsc->AddFunction(vs_main);
+            vsc->SetMain(vs_main);
             return(true);
         }
 
@@ -48,7 +48,7 @@ void main()
         {
             fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
-            fsc->AddFunction(fs_main);
+            fsc->SetMain(fs_main);
             return(true);
         }
     };//class MaterialVertexColor2D:public Std2DMaterial

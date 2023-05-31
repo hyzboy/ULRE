@@ -98,7 +98,7 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
 
     final_shader+="layout(location=0) in ";
     final_shader+=last_output;
-    final_shader+="Input;\n\n";
+    final_shader+="Input;\n";
 
     return(true);
 }
@@ -110,6 +110,8 @@ bool ShaderCreateInfo::ProcOutput()
     const ShaderAttributeArray &ssd=sdm->GetShaderStageIO().output;
 
     if(ssd.count<=0)return(true);
+
+    output_struct="\n";
 
     output_struct=GetShaderStageName(shader_stage);
     output_struct+="_Output\n{\n";
@@ -139,7 +141,7 @@ bool ShaderCreateInfo::ProcOutput()
 
     final_shader+="layout(location=0) out ";
     final_shader+=output_struct;
-    final_shader+="Output;\n";
+    final_shader+="Output;";
 
     return(true);
 }
@@ -268,6 +270,9 @@ bool ShaderCreateInfo::ProcSampler()
 
 bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 {
+    if(main_function.IsEmpty())
+        return(false);
+
     final_shader="#version 460 core\n";
 
     if(!ProcSubpassInput())
@@ -293,6 +298,9 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
         final_shader+="\n";
         final_shader+=function_list[i];
     }
+
+    final_shader+="\n";
+    final_shader+=main_function;
 
 #ifdef _DEBUG
 
