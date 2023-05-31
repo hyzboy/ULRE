@@ -22,8 +22,7 @@ mat4 GetJointMatrix()
             joint.mats[JointID.y]*JointWeight.y+
             joint.mats[JointID.z]*JointWeight.z+
             joint.mats[JointID.w]*JointWeight.w;
-}
-)";
+})";
 
     constexpr const char HandoverMI[]=R"(
 void HandoverMI()

@@ -34,8 +34,6 @@ int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &na
 void ShaderCreateInfoVertex::AddMaterialInstanceID()
 {
     AddInput(VAT_UINT,  VAN::MaterialInstanceID,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::MaterialInstanceID);
-
-    AddFunction(mtl::func::HandoverMI);
 }
 
 void ShaderCreateInfoVertex::AddJoint()

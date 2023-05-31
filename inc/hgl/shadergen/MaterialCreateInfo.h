@@ -21,6 +21,7 @@ protected:
 
     AnsiString mi_codes;                                    ///<MaterialInstance代码
     uint32_t mi_length;                                     ///<MaterialInstance数据长度
+    uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
 
     ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
