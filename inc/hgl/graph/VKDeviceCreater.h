@@ -106,9 +106,9 @@ constexpr const VkFormat SwapchainPreferFormatsLDR[]=
 
 constexpr const VkFormat SwapchainPreferFormatsSDR[]=
 {
-    PF_RGBA8UN,PF_RGBA8s,
-    PF_BGRA8UN,PF_BGRA8s,
-    PF_ABGR8UN,PF_ABGR8s,
+    PF_RGBA8UN,//PF_RGBA8s,
+    PF_BGRA8UN,//PF_BGRA8s,
+    PF_ABGR8UN,//PF_ABGR8s,
     PF_A2RGB10UN,
     PF_A2BGR10UN,
 //    PF_B10GR11UF

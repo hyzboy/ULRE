@@ -23,7 +23,9 @@ VK_NAMESPACE_BEGIN
 
         struct
         {
+            VK_BOOL1BIT(synchronization2)
             VK_BOOL1BIT(validation)
+            VK_BOOL1BIT(profiles)
         }khronos;
 
         struct
