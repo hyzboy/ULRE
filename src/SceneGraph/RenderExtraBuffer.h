@@ -4,7 +4,7 @@
 VK_NAMESPACE_BEGIN
 // ubo_range大致分为三档:
 //
-//  16k: Mali-T系列或更早、Mali-G71、nVidia GeForce RTX 3070 Laptop为16k
+//  16k: Mali-T系列或更早、Mali-G71为16k
 // 
 //  64k: 大部分手机与PC均为64k
 // 
@@ -24,7 +24,7 @@ VK_NAMESPACE_BEGIN
 /*
 * 渲染节点额外提供的数据
 */
-struct RenderNodeExtraBuffer
+struct RenderExtraBuffer
 {
     uint node_count;                            ///<渲染节点数量
     uint mi_count;                              ///<材质实例数量
@@ -35,32 +35,26 @@ struct RenderNodeExtraBuffer
     VBO *mi_id;
     VkBuffer mi_id_buffer;
 
-    VBO *bone_id,*bone_weight;
-    VkBuffer bone_id_buffer,bone_weight_buffer;
+//    VBO *bone_id,*bone_weight;
+//    VkBuffer bone_id_buffer,bone_weight_buffer;
 
     VBO *l2w_vbo[4];
     VkBuffer l2w_buffer[4];
 
 public:
 
-    RenderNodeExtraBuffer()
+    RenderExtraBuffer()
     {
         hgl_zero(*this);
     }
 
-    ~RenderNodeExtraBuffer()
+    ~RenderExtraBuffer()
     {
         Clear();
     }
 
-    void Clear()
+    void ClearNode()
     {
-        SAFE_CLEAR(mi_id)
-        SAFE_CLEAR(mi_data_buffer);
-
-        SAFE_CLEAR(bone_id)
-        SAFE_CLEAR(bone_weight)
-
         SAFE_CLEAR(l2w_vbo[0])
         SAFE_CLEAR(l2w_vbo[1])
         SAFE_CLEAR(l2w_vbo[2])
@@ -68,9 +62,26 @@ public:
         node_count=0;
     }
 
+    void ClearMI()
+    {
+        SAFE_CLEAR(mi_id)
+        SAFE_CLEAR(mi_data_buffer);
+        mi_count=0;
+        mi_size=0;
+    }
+
+    void Clear()
+    {
+        ClearNode();
+        ClearMI();
+
+//        SAFE_CLEAR(bone_id)
+//        SAFE_CLEAR(bone_weight)
+    }
+
     void NodeAlloc(GPUDevice *dev,const uint c)
     {
-        Clear();
+        ClearNode();
         node_count=power_to_2(c);
 
         for(uint i=0;i<4;i++)
@@ -80,11 +91,13 @@ public:
         }
     }
 
-    void MIAlloc(GPUDevice *dev,const uint c)
+    void MIAlloc(GPUDevice *dev,const uint c,const uint mis)
     {
+        ClearMI();
         if(c<=0||mi_size<=0)return;
     
         mi_count=power_to_2(c);
+        mi_size=mis;
 
         mi_id=dev->CreateVBO(VF_V1U8,mi_count);
         mi_id_buffer=mi_id->GetBuffer();
@@ -92,7 +105,7 @@ public:
         mi_data_buffer=dev->CreateUBO(mi_count*mi_size);
     }
 
-    void WriteData(RenderNode *render_node,const uint count)
+    void WriteLocalToWorld(RenderNode *render_node,const uint count)
     {
         RenderNode *rn;
         glm::vec4 *tp;
@@ -113,5 +126,39 @@ public:
             l2w_vbo[col]->Unmap();
         }
     }
-};//struct RenderNodeExtraBuffer
+
+    void WriteMaterialInstance(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)
+    {
+        //MaterialInstance ID
+        {
+            uint8 *tp=(uint8 *)(mi_id->Map());
+
+            for(uint i=0;i<count;i++)
+            {
+                *tp=mi_set.Find(render_node->ri->GetMaterialInstance());
+                ++tp;
+                ++render_node;
+            }
+            mi_id->Unmap();
+        }
+
+        //MaterialInstance Data
+        {
+            const uint count=mi_set.GetCount();
+
+            uint8 *tp=(uint8 *)(mi_data_buffer->Map());
+            const MaterialInstance **mi=mi_set.GetData();
+
+            for(uint i=0;i<count;i++)
+            {
+                memcpy(tp,(*mi)->GetData(),mi_size);
+    
+                ++mi;
+                tp+=mi_size;
+            }
+
+            mi_data_buffer->Unmap();
+        }
+    }
+};//struct RenderExtraBuffer
 VK_NAMESPACE_END
