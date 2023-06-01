@@ -3,7 +3,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/RenderNode.h>
+#include<hgl/graph/MaterialRenderMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKMaterial.h>
 namespace hgl

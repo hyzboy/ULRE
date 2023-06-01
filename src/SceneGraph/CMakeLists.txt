@@ -38,11 +38,13 @@ SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneInfo.h
                         ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/SceneOrient.h
                         ${SG_INCLUDE_PATH}/RenderList.h
+                        ${SG_INCLUDE_PATH}/MaterialRenderList.h
+                        ${SG_INCLUDE_PATH}/MaterialRenderMap.h
                         )
 
-SET(SCENE_GRAPH_SOURCE  
-                        RenderList.cpp
-                        RenderNode.cpp
+SET(SCENE_GRAPH_SOURCE  RenderList.cpp
+                        MaterialRenderList.cpp
+                        RenderExtraBuffer.h
                         SceneNode.cpp
                         SceneOrient.cpp)
 
