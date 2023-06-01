@@ -27,6 +27,8 @@ protected:
 
     AnsiString output_struct;
 
+    AnsiString mi_codes;
+
     AnsiStringList function_list;
     AnsiString main_function;
 
@@ -42,6 +44,8 @@ protected:
     virtual bool ProcOutput();
 
     virtual bool ProcStruct();
+
+    virtual bool ProcMI();
 
     virtual bool ProcUBO();
     virtual bool ProcSSBO();
@@ -66,7 +70,7 @@ public:
 
     void AddFunction(const AnsiString &str){function_list.Add(str);}
 
-    void SetMaterialInstance(UBODescriptor *);
+    void SetMaterialInstance(UBODescriptor *,const AnsiString &);
 
     void SetMain(const AnsiString &str){main_function=str;}
 

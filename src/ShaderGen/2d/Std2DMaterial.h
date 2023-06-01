@@ -25,9 +25,13 @@ namespace hgl
 
             protected:
 
+                virtual bool BeforeCreateShader(){return true;/*some work before creating shader*/};
+
                 virtual bool CreateVertexShader(ShaderCreateInfoVertex *);
                 virtual bool CreateGeometryShader(ShaderCreateInfoGeometry *){return false;}
                 virtual bool CreateFragmentShader(ShaderCreateInfoFragment *)=0;
+
+                virtual bool AfterCreateShader(){return true;/*some work after creating shader*/};
 
             public:
 

@@ -11,7 +11,7 @@ namespace
     constexpr const char vs_main[]=R"(
 void main()
 {
-    HandoverMI();               //交接材质实例ID给下一个Shader
+    HandoverMI();
 
     gl_Position=GetPosition2D();
 })";
@@ -31,12 +31,8 @@ void main()
     {
     public:
 
-        MaterialPureColor2D(const Material2DConfig *c):Std2DMaterial(c)
-        {
-            mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
-                                        mi_bytes,                       //材质实例数据大小
-                                        VK_SHADER_STAGE_FRAGMENT_BIT);  //只在Fragment Shader中使用材质实例最终数据
-        }
+        using Std2DMaterial::Std2DMaterial;
+
         ~MaterialPureColor2D()=default;
 
         bool CreateVertexShader(ShaderCreateInfoVertex *vsc) override
@@ -53,6 +49,15 @@ void main()
             fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
             fsc->SetMain(fs_main);
+            return(true);
+        }
+
+        bool AfterCreateShader() override
+        {
+            mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
+                                        mi_bytes,                       //材质实例数据大小
+                                        VK_SHADER_STAGE_FRAGMENT_BIT);  //只在Fragment Shader中使用材质实例最终数据
+
             return(true);
         }
     };//class MaterialPureColor2D:public Std2DMaterial

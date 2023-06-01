@@ -4,6 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<vulkan/vulkan.h>
 #include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/log/Logger.h>
 
 namespace hgl
 {
@@ -171,6 +172,8 @@ namespace hgl
 
             if(!result)
             {
+                LOG_ERROR(U8_TEXT("Compile shader failed, error info: ")+UTF8String(spv->log));
+
                 FreeSPVData(spv);
                 return(nullptr);
             }

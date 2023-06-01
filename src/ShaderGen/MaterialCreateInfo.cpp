@@ -148,6 +148,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &mi_glsl_codes,con
     hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
     ubo->stage_flag=shader_stage;
 
+    mdi.AddStruct(SBS_MaterialInstanceData.struct_name,SBS_MaterialInstanceData.codes);
     mdi.AddUBO(shader_stage,DescriptorSetType::PerMaterial,ubo);
 
     auto *it=shader_map.GetDataList();
@@ -155,7 +156,9 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &mi_glsl_codes,con
     for(int i=0;i<shader_map.GetCount();i++)
     {
         if((*it)->key&shader_stage)
-            (*it)->value->SetMaterialInstance(ubo);
+            (*it)->value->SetMaterialInstance(ubo,mi_codes);
+
+        ++it;
     }
 
     vert->AddMaterialInstanceID();           //增加一个材质实例ID

@@ -76,11 +76,13 @@ bool ShaderCreateInfo::ProcSubpassInput()
     return(true);
 }
 
-void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo)
+void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
 {
     sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
     sdm->AddStruct(mtl::MaterialInstanceStruct);
     AddFunction(mtl::func::GetMI);
+
+    mi_codes=mi;
 }
 
 bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
@@ -120,7 +122,7 @@ bool ShaderCreateInfo::ProcOutput()
 
     for(uint i=0;i<ssd.count;i++)
     {
-        output_struct+="\t";
+        output_struct+="    ";
 
         if(ss->interpolation!=Interpolation::Smooth)
         {
@@ -167,6 +169,17 @@ bool ShaderCreateInfo::ProcStruct()
     return(true);
 }
 
+bool ShaderCreateInfo::ProcMI()
+{
+    if(mi_codes.IsEmpty())
+        return(true);
+
+    final_shader+="struct MaterialInstance\n{\n";
+    final_shader+=mi_codes;
+    final_shader+="\n};\n";
+    return(true);
+}
+
 bool ShaderCreateInfo::ProcUBO()
 {
     auto ubo_list=sdm->GetUBOList();
@@ -187,7 +200,7 @@ bool ShaderCreateInfo::ProcUBO()
         final_shader+=AnsiString::numberOf((*ubo)->binding);
         final_shader+=") uniform ";
         final_shader+=(*ubo)->type;
-        final_shader+="{\n";
+        final_shader+="\n{";
 
         if(!mdi->GetStruct((*ubo)->type,struct_codes))
             return(false);
@@ -281,6 +294,8 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
         return(false);
 //    if(!ProcStruct())
 //        return(false);
+
+    ProcMI();
 
     if(!ProcUBO())
         return(false);
