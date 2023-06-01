@@ -88,6 +88,8 @@ public:
 
     virtual bool Init(int w,int h)
     {
+        logger::InitLogger(OS_TEXT("VulkanTest"));
+
         if(!InitShaderCompiler())
             return(false);
 
