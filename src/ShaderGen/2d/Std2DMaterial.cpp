@@ -40,6 +40,9 @@ bool Std2DMaterial::CreateVertexShader(ShaderCreateInfoVertex *vsc)
 
 MaterialCreateInfo *Std2DMaterial::Create()
 {
+    if(!BeforeCreateShader())
+        return(nullptr);
+
     if(mci->hasVertex())
         if(!CreateVertexShader(mci->GetVS()))
             return(nullptr);
@@ -51,6 +54,9 @@ MaterialCreateInfo *Std2DMaterial::Create()
     if(mci->hasFragment())
         if(!CreateFragmentShader(mci->GetFS()))
             return(nullptr);
+
+    if(!AfterCreateShader())
+        return(false);
 
     if(!mci->CreateShader())
         return(nullptr);
