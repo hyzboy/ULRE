@@ -2,7 +2,7 @@
 #include<hgl/graph/RenderNode.h>
 
 VK_NAMESPACE_BEGIN
-struct RenderNodeExtraBuffer;
+struct RenderExtraBuffer;
 
 /**
 * 同一材质的对象渲染列表
@@ -18,7 +18,7 @@ class MaterialRenderList
 
 private:
 
-    RenderNodeExtraBuffer *extra_buffer;
+    RenderExtraBuffer *extra_buffer;
 
     struct RenderItem
     {
@@ -34,7 +34,7 @@ private:
         void Set(Renderable *);
     };
 
-    SortedSets<MaterialInstance *> mi_set;
+    MaterialInstanceSets mi_set;
     List<RenderItem> ri_list;
     uint ri_count;
 

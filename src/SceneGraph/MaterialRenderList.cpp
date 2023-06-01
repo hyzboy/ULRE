@@ -96,23 +96,28 @@ void MaterialRenderList::End()
         Sort(rn_list,&rnc);
     }
 
-    //写入LocalToWorld数据
-    {
-        uint count=rn_list.GetCount();
+    const uint node_count=rn_list.GetCount();
 
-        if(count<=0)return;
+    if(node_count<=0)return;
 
-        if(!extra_buffer)
-            extra_buffer=new RenderNodeExtraBuffer;
+    if(!extra_buffer)
+        extra_buffer=new RenderExtraBuffer;
 
-        if(extra_buffer->node_count<count)
-            extra_buffer->NodeAlloc(device,count);
-
-        //写入数据
-        extra_buffer->WriteData(rn_list.GetData(),count);
-    }
+    if(extra_buffer->node_count<node_count)
+        extra_buffer->NodeAlloc(device,node_count);
 
     Stat();
+
+    //写入LocalToWorld数据
+    extra_buffer->WriteLocalToWorld(rn_list.GetData(),node_count);
+
+    const uint mi_count=mi_set.GetCount();
+
+    if(mi_count<=0)return;
+
+    if(extra_buffer->mi_count<mi_count)
+        extra_buffer->MIAlloc(device,mi_count,);
+    extra_buffer->WriteMaterialInstance(rn_list.GetData(),node_count,mi_set);
 }
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)
@@ -181,7 +186,7 @@ void MaterialRenderList::Bind(MaterialInstance *mi)
 {
 }
 
-bool MaterialRenderList::Bind(const VertexInputData *vid,const uint first)
+bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
@@ -253,7 +258,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint first)
             hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,4);
 
             for(uint i=0;i<4;i++)
-                buffer_offset[count+i]=first*16;                        //mat4每列都是rgba32f，自然是16字节
+                buffer_offset[count+i]=ri_index*16;                        //mat4每列都是rgba32f，自然是16字节
 
             count+=l2w_binding_count;
         }
