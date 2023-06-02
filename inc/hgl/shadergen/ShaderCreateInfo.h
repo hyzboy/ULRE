@@ -25,6 +25,11 @@ protected:
 
 protected:
 
+    AnsiStringList define_macro_list;
+    AnsiStringList define_value_list;
+    uint32_t define_macro_max_length;
+    uint32_t define_value_max_length;
+
     AnsiString output_struct;
 
     AnsiString mi_codes;
@@ -39,6 +44,9 @@ protected:
 protected:
 
     virtual bool ProcHeader(){return(true);}
+
+    virtual bool ProcDefine();
+
     virtual bool ProcSubpassInput();
     virtual bool ProcInput(ShaderCreateInfo *);
     virtual bool ProcOutput();
@@ -64,6 +72,8 @@ public:
 
     ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m);
     virtual ~ShaderCreateInfo();
+
+    bool AddDefine(const AnsiString &m,const AnsiString &v);
 
     int AddOutput(const graph::VAT &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);

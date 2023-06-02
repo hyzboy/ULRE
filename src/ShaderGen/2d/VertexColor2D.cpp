@@ -31,9 +31,9 @@ void main()
         using Std2DMaterial::Std2DMaterial;
         ~MaterialVertexColor2D()=default;
 
-        bool CreateVertexShader(ShaderCreateInfoVertex *vsc) override
+        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
-            if(!Std2DMaterial::CreateVertexShader(vsc))
+            if(!Std2DMaterial::CustomVertexShader(vsc))
                 return(false);
 
             vsc->AddInput(VAT_VEC4,VAN::Color);
@@ -44,7 +44,7 @@ void main()
             return(true);
         }
 
-        bool CreateFragmentShader(ShaderCreateInfoFragment *fsc) override
+        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
             fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
@@ -54,7 +54,7 @@ void main()
     };//class MaterialVertexColor2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *cfg)
+MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *cfg)
 {
     MaterialVertexColor2D mvc2d(cfg);
 

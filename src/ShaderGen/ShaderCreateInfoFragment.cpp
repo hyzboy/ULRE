@@ -35,6 +35,8 @@ bool ShaderCreateInfoFragment::ProcOutput()
 
     const ShaderAttribute *o=output_list.items;
 
+        final_shader+="\n";
+
     for(uint i=0;i<output_list.count;i++)
     {
         final_shader+="layout(location=";

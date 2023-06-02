@@ -1,18 +1,18 @@
 #include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/mtl/2d/Material2DConfig.h>
+#include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include"common/MFGetPosition.h"
 
 STD_MTL_NAMESPACE_BEGIN
-Std2DMaterial::Std2DMaterial(const Material2DConfig *c)
+Std2DMaterial::Std2DMaterial(const Material2DCreateConfig *c)
 {
     mci=new MaterialCreateInfo(c);
 
     cfg=c;
 }
 
-bool Std2DMaterial::CreateVertexShader(ShaderCreateInfoVertex *vsc)
+bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
 
@@ -39,25 +39,25 @@ bool Std2DMaterial::CreateVertexShader(ShaderCreateInfoVertex *vsc)
 
 MaterialCreateInfo *Std2DMaterial::Create()
 {
-    if(!BeforeCreateShader())
+    if(!BeginCustomShader())
         return(nullptr);
 
     if(mci->hasVertex())
-        if(!CreateVertexShader(mci->GetVS()))
+        if(!CustomVertexShader(mci->GetVS()))
             return(nullptr);
 
     if(mci->hasGeometry())
-        if(!CreateGeometryShader(mci->GetGS()))
+        if(!CustomGeometryShader(mci->GetGS()))
             return(nullptr);
 
     if(mci->hasFragment())
-        if(!CreateFragmentShader(mci->GetFS()))
+        if(!CustomFragmentShader(mci->GetFS()))
             return(nullptr);
 
-    if(!AfterCreateShader())
+    if(!EndCustomShader())
         return(false);
 
-    if(!mci->CreateShader())
+    if(!mci->CreateShader(cfg->dev_attr))
         return(nullptr);
 
     return(mci);

@@ -1,11 +1,11 @@
-﻿#ifndef HGL_GRAPH_MTL_2D_CONFIG_INCLUDE
-#define HGL_GRAPH_MTL_2D_CONFIG_INCLUDE
+﻿#ifndef HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE
+#define HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE
 
 #include<hgl/graph/mtl/MaterialConfig.h>
 #include<hgl/graph/CoordinateSystem.h>
 
 STD_MTL_NAMESPACE_BEGIN
-struct Material2DConfig:public MaterialConfig
+struct Material2DCreateConfig:public MaterialCreateConfig
 {
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
 
@@ -13,7 +13,7 @@ struct Material2DConfig:public MaterialConfig
 
 public:
 
-    Material2DConfig(const AnsiString &name):MaterialConfig(name)
+    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name):MaterialCreateConfig(da,name)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
@@ -22,9 +22,9 @@ public:
         coordinate_system=CoordinateSystem2D::NDC;
         local_to_world=false;
     }
-};//struct Material2DConfig:public MaterialConfig
+};//struct Material2DCreateConfig:public MaterialCreateConfig
 
-MaterialCreateInfo *CreateVertexColor2D(const Material2DConfig *);
-MaterialCreateInfo *CreatePureColor2D(const Material2DConfig *);
+MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
+MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
 STD_MTL_NAMESPACE_END
-#endif//HGL_GRAPH_MTL_2D_CONFIG_INCLUDE
+#endif//HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE

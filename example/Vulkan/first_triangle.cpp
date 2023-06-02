@@ -8,7 +8,7 @@
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/Material2DConfig.h>
+#include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -87,7 +87,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DConfig cfg("VertexColor2d");
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2d");
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;

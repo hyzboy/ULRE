@@ -6,6 +6,8 @@ namespace hgl
 {
     namespace graph
     {
+        struct GPUDeviceAttribute;
+
         class ShaderCreateInfoVertex;
         class ShaderCreateInfoGeometry;
         class ShaderCreateInfoFragment;
@@ -13,29 +15,29 @@ namespace hgl
         namespace mtl
         {
             class MaterialCreateInfo;
-            struct Material2DConfig;
+            struct Material2DCreateConfig;
 
             class Std2DMaterial
             {
             protected:
 
-                const Material2DConfig *cfg;
+                const Material2DCreateConfig *cfg;
 
                 MaterialCreateInfo *mci;
 
             protected:
 
-                virtual bool BeforeCreateShader(){return true;/*some work before creating shader*/};
+                virtual bool BeginCustomShader(){return true;/*some work before creating shader*/};
 
-                virtual bool CreateVertexShader(ShaderCreateInfoVertex *);
-                virtual bool CreateGeometryShader(ShaderCreateInfoGeometry *){return false;}
-                virtual bool CreateFragmentShader(ShaderCreateInfoFragment *)=0;
+                virtual bool CustomVertexShader(ShaderCreateInfoVertex *);
+                virtual bool CustomGeometryShader(ShaderCreateInfoGeometry *){return false;}
+                virtual bool CustomFragmentShader(ShaderCreateInfoFragment *)=0;
 
-                virtual bool AfterCreateShader(){return true;/*some work after creating shader*/};
+                virtual bool EndCustomShader(){return true;/*some work after creating shader*/};
 
             public:
 
-                Std2DMaterial(const Material2DConfig *);
+                Std2DMaterial(const Material2DCreateConfig *);
                 virtual ~Std2DMaterial()=default;
     
                 virtual MaterialCreateInfo *Create();

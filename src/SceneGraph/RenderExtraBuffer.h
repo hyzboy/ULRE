@@ -144,20 +144,20 @@ public:
 
         //MaterialInstance Data
         {
-            const uint count=mi_set.GetCount();
+            //const uint count=mi_set.GetCount();
 
-            uint8 *tp=(uint8 *)(mi_data_buffer->Map());
-            const MaterialInstance **mi=mi_set.GetData();
+            //uint8 *tp=(uint8 *)(mi_data_buffer->Map());
+            //const MaterialInstance **mi=mi_set.GetData();
 
-            for(uint i=0;i<count;i++)
-            {
-                memcpy(tp,(*mi)->GetData(),mi_size);
+            //for(uint i=0;i<count;i++)
+            //{
+            //    memcpy(tp,(*mi)->GetData(),mi_size);
     
-                ++mi;
-                tp+=mi_size;
-            }
+            //    ++mi;
+            //    tp+=mi_size;
+            //}
 
-            mi_data_buffer->Unmap();
+            //mi_data_buffer->Unmap();
         }
     }
 };//struct RenderExtraBuffer

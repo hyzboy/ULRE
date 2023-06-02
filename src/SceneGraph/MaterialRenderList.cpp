@@ -115,9 +115,9 @@ void MaterialRenderList::End()
 
     if(mi_count<=0)return;
 
-    if(extra_buffer->mi_count<mi_count)
-        extra_buffer->MIAlloc(device,mi_count,);
-    extra_buffer->WriteMaterialInstance(rn_list.GetData(),node_count,mi_set);
+    //if(extra_buffer->mi_count<mi_count)
+    //    extra_buffer->MIAlloc(device,mi_count,);
+    //extra_buffer->WriteMaterialInstance(rn_list.GetData(),node_count,mi_set);
 }
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)

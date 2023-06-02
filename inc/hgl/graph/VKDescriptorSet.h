@@ -23,9 +23,7 @@ class DescriptorSet
 
     bool is_dirty;
 
-private:
-
-    friend class GPUDevice;
+public:
 
     DescriptorSet(VkDevice dev,const int bc,VkPipelineLayout pl,VkDescriptorSet ds)
     {
@@ -36,8 +34,6 @@ private:
 
         is_dirty=true;
     }
-
-public:
 
     ~DescriptorSet()=default;
 

@@ -10,64 +10,72 @@
 #include<hgl/graph/mtl/ShaderBuffer.h>
 #include<hgl/graph/VKSamplerType.h>
 
-STD_MTL_NAMESPACE_BEGIN
-class MaterialCreateInfo
+namespace hgl{namespace graph
 {
-protected:
+    struct GPUDeviceAttribute;
 
-    const MaterialConfig *config;
+    namespace mtl
+    {
+        class MaterialCreateInfo
+        {
+        protected:
 
-    MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
+            const MaterialCreateConfig *config;
 
-    AnsiString mi_codes;                                    ///<MaterialInstance代码
-    uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
-    uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
+            MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
 
-    ShaderCreateInfoMap shader_map;                         ///<着色器列表
+            AnsiString mi_codes;                                    ///<MaterialInstance代码
+            uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
+            uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
 
-    ShaderCreateInfoVertex *vert;
-    ShaderCreateInfoGeometry *geom;
-    ShaderCreateInfoFragment *frag;
+            ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
-public:
+            ShaderCreateInfoVertex *vert;
+            ShaderCreateInfoGeometry *geom;
+            ShaderCreateInfoFragment *frag;
 
-    const   AnsiString &GetName         ()const{return config->mtl_name;}
+        public:
 
-    const   uint32      GetShaderStage  ()const{return config->shader_stage;}
+            const   AnsiString &GetName         ()const{return config->mtl_name;}
 
-            bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage&ss;}
+            const   uint32      GetShaderStage  ()const{return config->shader_stage;}
 
-            bool        hasVertex       ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
-//          bool        hasTessCtrl     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);}
-//          bool        hasTessEval     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);}
-            bool        hasGeometry     ()const{return hasShader(VK_SHADER_STAGE_GEOMETRY_BIT);}
-            bool        hasFragment     ()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
-//          bool        hasCompute      ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
+                    bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage&ss;}
 
-    ShaderCreateInfoVertex *   GetVS()const{return vert;}
-    ShaderCreateInfoGeometry * GetGS()const{return geom;}
-    ShaderCreateInfoFragment * GetFS()const{return frag;}
+                    bool        hasVertex       ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
+        //          bool        hasTessCtrl     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);}
+        //          bool        hasTessEval     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);}
+                    bool        hasGeometry     ()const{return hasShader(VK_SHADER_STAGE_GEOMETRY_BIT);}
+                    bool        hasFragment     ()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
+        //          bool        hasCompute      ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
 
-public:
+            ShaderCreateInfoVertex *   GetVS()const{return vert;}
+            ShaderCreateInfoGeometry * GetGS()const{return geom;}
+            ShaderCreateInfoFragment * GetFS()const{return frag;}
 
-    const MaterialDescriptorInfo &GetMDI()const{return mdi;}
-    const uint32_t GetMIDataBytes()const{return mi_data_bytes;}
+        public:
 
-public:
+            const MaterialDescriptorInfo &GetMDI()const{return mdi;}
+            const uint32_t GetMIDataBytes()const{return mi_data_bytes;}
 
-    MaterialCreateInfo(const MaterialConfig *);
-    ~MaterialCreateInfo()=default;
+        public:
 
-    bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage);
+            MaterialCreateInfo(const MaterialCreateConfig *);
+            ~MaterialCreateInfo()=default;
 
-    bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
-    bool AddStruct(const ShaderBufferSource &ss){return AddStruct(ss.struct_name,ss.codes);}
+            bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage);
 
-    bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
-    bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
+            bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
+            bool AddStruct(const ShaderBufferSource &ss){return AddStruct(ss.struct_name,ss.codes);}
 
-    bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss);
+            bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
+            bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-    bool CreateShader();
-};//class MaterialCreateInfo
-STD_MTL_NAMESPACE_END
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss);
+
+            bool CreateShader(const GPUDeviceAttribute *);
+        };//class MaterialCreateInfo
+    }//namespace mtl
+}//namespace graph
+}//namespace hgl
+
