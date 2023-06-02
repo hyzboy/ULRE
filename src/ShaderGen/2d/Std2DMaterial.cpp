@@ -14,8 +14,7 @@ Std2DMaterial::Std2DMaterial(const Material2DConfig *c)
 
 bool Std2DMaterial::CreateVertexShader(ShaderCreateInfoVertex *vsc)
 {
-    if(!RangeCheck(cfg->coordinate_system))
-        return(false);
+    RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
 
     vsc->AddInput(VAT_VEC2,VAN::Position);
 

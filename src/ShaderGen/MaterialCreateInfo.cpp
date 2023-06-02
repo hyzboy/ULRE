@@ -15,7 +15,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialConfig *mc)
     if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
     if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
 
-    mi_length=0;
+    mi_data_bytes=0;
     mi_shader_stage=0;
 }
 
@@ -129,13 +129,13 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 */
 bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage)
 {
-    if(mi_length>0)return(false);           //已经有数据了
+    if(mi_data_bytes>0)return(false);           //已经有数据了
 
     if(shader_stage==0)return(false);
 
     if(mi_struct_bytes>0&&mi_glsl_codes.Length()<4)return(false);
 
-    mi_length=mi_struct_bytes;
+    mi_data_bytes=mi_struct_bytes;
 
     if(mi_struct_bytes>0)
         mi_codes=mi_glsl_codes;
