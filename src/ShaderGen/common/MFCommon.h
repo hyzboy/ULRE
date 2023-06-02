@@ -22,18 +22,21 @@ mat4 GetJointMatrix()
             joint.mats[JointID.y]*JointWeight.y+
             joint.mats[JointID.z]*JointWeight.z+
             joint.mats[JointID.w]*JointWeight.w;
-})";
+}
+)";
 
     constexpr const char HandoverMI[]=R"(
 void HandoverMI()
 {
     Output.MaterialInstanceID=MaterialInstanceID;
-})";
+}
+)";
 
     constexpr const char GetMI[]=R"(
 MaterialInstance GetMI()
 {
     return mtl.mi[Input.MaterialInstanceID];
-})";
+}
+)";
 }//namespace func
 STD_MTL_NAMESPACE_END

@@ -12,6 +12,9 @@ ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorIn
     sdm=new ShaderDescriptorInfo(ss);
 
     spv_data=nullptr;
+
+    define_macro_max_length=0;
+    define_value_max_length=0;
 }
 
 ShaderCreateInfo::~ShaderCreateInfo()
@@ -20,6 +23,70 @@ ShaderCreateInfo::~ShaderCreateInfo()
         FreeSPVData(spv_data);
 
     delete sdm;
+}
+
+bool ShaderCreateInfo::AddDefine(const AnsiString &m,const AnsiString &v)
+{
+    if(define_macro_list.Find(m)!=-1)
+        return(false);
+
+    define_macro_list.Add(m);
+    define_value_list.Add(v);
+
+    if(m.Length()>define_macro_max_length)
+        define_macro_max_length=m.Length();
+
+    if(v.Length()>define_value_max_length)
+        define_value_max_length=v.Length();
+
+    return(true);
+}
+
+bool ShaderCreateInfo::ProcDefine()
+{
+    const uint count=define_macro_list.GetCount();
+
+    if(count<=0)return(true);
+
+    final_shader+="\n";
+
+    constexpr const char GLSL_DEFINE_FRONT[]="#define ";
+    constexpr const uint GLSL_DEFINE_FRONT_LENGTH=sizeof(GLSL_DEFINE_FRONT)-1;
+
+    const uint32_t total_length=GLSL_DEFINE_FRONT_LENGTH+define_macro_max_length+define_value_max_length+3;
+
+    char *tmp=new char[total_length];
+
+    memcpy(tmp,GLSL_DEFINE_FRONT,GLSL_DEFINE_FRONT_LENGTH);
+
+    uint macro_length;
+    uint value_length;
+
+    AnsiString m;
+    AnsiString v;
+
+    for(uint i=0;i<count;i++)
+    {
+        m=define_macro_list.GetString(i);
+        v=define_value_list.GetString(i);
+
+        macro_length=m.Length();
+        value_length=v.Length();
+
+        memcpy(tmp+GLSL_DEFINE_FRONT_LENGTH,m.c_str(),macro_length);
+
+        tmp[GLSL_DEFINE_FRONT_LENGTH+macro_length]=' ';
+
+        memcpy(tmp+GLSL_DEFINE_FRONT_LENGTH+macro_length+1,v.c_str(),value_length);
+
+        tmp[GLSL_DEFINE_FRONT_LENGTH+macro_length+1+value_length]='\n';
+
+        final_shader.Strcat(tmp,GLSL_DEFINE_FRONT_LENGTH+macro_length+value_length+2);
+    }
+
+    delete[] tmp;
+
+    return(true);
 }
 
 int ShaderCreateInfo::AddOutput(const VAT &type,const AnsiString &name,Interpolation inter)
@@ -55,6 +122,8 @@ bool ShaderCreateInfo::ProcSubpassInput()
     if(sil.IsEmpty())
         return(true);
 
+    final_shader+="\n";
+
     auto si=sil.GetData();
     int si_count=sil.GetCount();
 
@@ -70,8 +139,6 @@ bool ShaderCreateInfo::ProcSubpassInput()
 
         ++si;
     }
-
-    final_shader+="\n";
 
     return(true);
 }
@@ -98,7 +165,7 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
         return(true);
     }
 
-    final_shader+="layout(location=0) in ";
+    final_shader+="\nlayout(location=0) in ";
     final_shader+=last_output;
     final_shader+="Input;\n";
 
@@ -112,8 +179,6 @@ bool ShaderCreateInfo::ProcOutput()
     const ShaderAttributeArray &ssd=sdm->GetShaderStageIO().output;
 
     if(ssd.count<=0)return(true);
-
-    output_struct="\n";
 
     output_struct=GetShaderStageName(shader_stage);
     output_struct+="_Output\n{\n";
@@ -141,9 +206,9 @@ bool ShaderCreateInfo::ProcOutput()
 
     output_struct+="}";
 
-    final_shader+="layout(location=0) out ";
+    final_shader+="\nlayout(location=0) out ";
     final_shader+=output_struct;
-    final_shader+="Output;";
+    final_shader+="Output;\n";
 
     return(true);
 }
@@ -159,11 +224,11 @@ bool ShaderCreateInfo::ProcStruct()
         if(!mdi->GetStruct(*str,codes))
             return(false);
 
-        final_shader+="struct ";
+        final_shader+="\nstruct ";
         final_shader+=*str;
         final_shader+="\n{";
         final_shader+=codes;
-        final_shader+="};\n\n";
+        final_shader+="};\n";
     }
 
     return(true);
@@ -174,7 +239,7 @@ bool ShaderCreateInfo::ProcMI()
     if(mi_codes.IsEmpty())
         return(true);
 
-    final_shader+="struct MaterialInstance\n{\n";
+    final_shader+="\nstruct MaterialInstance\n{\n";
     final_shader+=mi_codes;
     final_shader+="\n};\n";
     return(true);
@@ -187,6 +252,8 @@ bool ShaderCreateInfo::ProcUBO()
     const int count=ubo_list.GetCount();
 
     if(count<=0)return(true);
+
+    final_shader+="\n";
 
     auto ubo=ubo_list.GetData();
 
@@ -214,7 +281,6 @@ bool ShaderCreateInfo::ProcUBO()
         ++ubo;
     }
 
-    final_shader+="\n";
     return(true);
 }
 
@@ -230,6 +296,8 @@ bool ShaderCreateInfo::ProcConst()
     const int count=const_list.GetCount();
 
     if(count<=0)return(true);
+
+    final_shader+="\n";
 
     auto const_data=const_list.GetData();
 
@@ -248,7 +316,6 @@ bool ShaderCreateInfo::ProcConst()
         ++const_data;
     }
 
-    final_shader+="\n";
     return(true);
 }
 
@@ -259,6 +326,8 @@ bool ShaderCreateInfo::ProcSampler()
     const int count=sampler_list.GetCount();
 
     if(count<=0)return(true);
+
+    final_shader+="\n";
 
     auto sampler=sampler_list.GetData();
 
@@ -277,7 +346,6 @@ bool ShaderCreateInfo::ProcSampler()
         ++sampler;
     }
 
-    final_shader+="\n";
     return(true);
 }
 
@@ -287,6 +355,8 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
         return(false);
 
     final_shader="#version 460 core\n";
+
+    ProcDefine();
 
     if(!ProcSubpassInput())
         return(false);
@@ -310,11 +380,9 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     for(int i=0;i<function_list.GetCount();i++)
     {
-        final_shader+="\n";
         final_shader+=function_list[i];
     }
 
-    final_shader+="\n";
     final_shader+=main_function;
 
 #ifdef _DEBUG

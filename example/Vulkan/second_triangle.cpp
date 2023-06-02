@@ -6,7 +6,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/Material2DConfig.h>
+#include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -45,7 +45,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DConfig cfg("VertexColor2D");
+        mtl::Material2DCreateConfig cfg("VertexColor2D");
 
 #ifdef USE_ZERO2ONE_COORD
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;

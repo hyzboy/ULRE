@@ -12,8 +12,10 @@ class MaterialCreateInfo;
 /**
  * 材质配置结构
  */
-struct MaterialConfig
+struct MaterialCreateConfig
 {
+    const GPUDeviceAttribute *dev_attr;
+
     AnsiString mtl_name;                                    ///<材质名称
 
     RenderTargetOutputConfig rt_output;                     ///<渲染目标输出配置
@@ -22,12 +24,14 @@ struct MaterialConfig
 
 public:
 
-    MaterialConfig(const AnsiString &name)
+    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name)
     {
+        dev_attr=da;
+
         mtl_name=name;
 
         shader_stage=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
     }
-};//struct MaterialConfig
+};//struct MaterialCreateConfig
 STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_CONFIG_INCLUDE

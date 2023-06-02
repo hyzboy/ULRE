@@ -35,16 +35,16 @@ void main()
 
         ~MaterialPureColor2D()=default;
 
-        bool CreateVertexShader(ShaderCreateInfoVertex *vsc) override
+        bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
-            if(!Std2DMaterial::CreateVertexShader(vsc))
+            if(!Std2DMaterial::CustomVertexShader(vsc))
                 return(false);
 
             vsc->SetMain(vs_main);
             return(true);
         }
 
-        bool CreateFragmentShader(ShaderCreateInfoFragment *fsc) override
+        bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
             fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
@@ -52,7 +52,7 @@ void main()
             return(true);
         }
 
-        bool AfterCreateShader() override
+        bool EndCustomShader() override
         {
             mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
                                         mi_bytes,                       //材质实例数据大小
@@ -63,7 +63,7 @@ void main()
     };//class MaterialPureColor2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureColor2D(const Material2DConfig *cfg)
+MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *cfg)
 {
     MaterialPureColor2D mpc2d(cfg);
 

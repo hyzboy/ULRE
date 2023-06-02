@@ -1,13 +1,14 @@
 ﻿#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/VKDeviceAttribute.h>
 #include"common/MFCommon.h"
 
 using namespace hgl;
 using namespace hgl::graph;
 
 STD_MTL_NAMESPACE_BEGIN
-MaterialCreateInfo::MaterialCreateInfo(const MaterialConfig *mc)
+MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
 {
     config=mc;
 
@@ -140,7 +141,11 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
+    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();
+    AnsiString MI_MAX_COUNT=AnsiString::numberOf(ubo_range/data_bytes);
+
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
+    mdi.AddStruct(SBS_MaterialInstanceData);
 
     UBODescriptor *ubo=new UBODescriptor();
 
@@ -148,7 +153,6 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
     ubo->stage_flag=shader_stage;
 
-    mdi.AddStruct(SBS_MaterialInstanceData.struct_name,SBS_MaterialInstanceData.codes);
     mdi.AddUBO(shader_stage,DescriptorSetType::PerMaterial,ubo);
 
     auto *it=shader_map.GetDataList();
@@ -156,7 +160,10 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     for(int i=0;i<shader_map.GetCount();i++)
     {
         if((*it)->key&shader_stage)
+        {
+            (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT);
             (*it)->value->SetMaterialInstance(ubo,mi_codes);
+        }
 
         ++it;
     }
@@ -168,7 +175,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     return(true);
 }
 
-bool MaterialCreateInfo::CreateShader()
+bool MaterialCreateInfo::CreateShader(const GPUDeviceAttribute *dev_attr)
 {
     if(shader_map.IsEmpty())
         return(false);
@@ -182,12 +189,11 @@ bool MaterialCreateInfo::CreateShader()
         if(!shader_map.GetValue(i,sc))
             return(false);
 
-        if(mi_shader_stage)
-            if(sc->GetShaderStage()<mi_shader_stage)
-            {
-                sc->AddOutput(VAT_UINT,VAN::MaterialInstanceID,Interpolation::Flat);
-                sc->AddFunction(mtl::func::HandoverMI);
-            }
+        if(sc->GetShaderStage()<mi_shader_stage)
+        {
+            sc->AddOutput(VAT_UINT,VAN::MaterialInstanceID,Interpolation::Flat);
+            sc->AddFunction(mtl::func::HandoverMI);
+        }
 
         sc->CreateShader(last);
 

@@ -209,10 +209,6 @@ public: //
 
 public: //shader & material
 
-    PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorManager *);
-    void Destroy(PipelineLayoutData *);
-
-    DescriptorSet *     CreateDS(const PipelineLayoutData *,const DescriptorSetType &type)const;
     MaterialParameters *CreateMP(const MaterialDescriptorManager *,const PipelineLayoutData *,const DescriptorSetType &);
     MaterialParameters *CreateMP(Material *,const DescriptorSetType &);
     

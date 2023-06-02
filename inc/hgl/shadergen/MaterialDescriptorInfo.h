@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VKShaderDescriptorSet.h>
+#include<hgl/graph/mtl/ShaderBuffer.h>
 #include<hgl/type/Map.h>
 
 namespace hgl{namespace graph{
@@ -26,6 +27,11 @@ public:
     {
         struct_map.Add(name,code);
         return(true);
+    }
+
+    bool AddStruct(const ShaderBufferSource &ss)
+    {
+        return(AddStruct(ss.struct_name,ss.codes));
     }
 
     bool GetStruct(const AnsiString &name,AnsiString &code)

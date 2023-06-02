@@ -8,35 +8,61 @@
 #include"VKPipelineLayoutData.h"
 
 VK_NAMESPACE_BEGIN
-DescriptorSet *GPUDevice::CreateDS(const PipelineLayoutData *pld,const DescriptorSetType &type)const
+
+PipelineLayoutData *CreatePipelineLayoutData(VkDevice device,const MaterialDescriptorManager *desc_manager);
+
+namespace
 {
-    RANGE_CHECK_RETURN_NULLPTR(type);
+    DescriptorSet *CreateDS(VkDevice device,VkDescriptorPool desc_pool,const PipelineLayoutData *pld,const DescriptorSetType &type)
+    {
+        RANGE_CHECK_RETURN_NULLPTR(type);
 
-    const uint32_t binding_count=pld->binding_count[size_t(type)];
+        const uint32_t binding_count=pld->binding_count[size_t(type)];
 
-    if(!binding_count)
-        return(nullptr);
+        if(!binding_count)
+            return(nullptr);
 
-    DescriptorSetAllocateInfo alloc_info;
+        DescriptorSetAllocateInfo alloc_info;
 
-    alloc_info.descriptorPool       = attr->desc_pool;
-    alloc_info.descriptorSetCount   = 1;
-    alloc_info.pSetLayouts          = pld->layouts+size_t(type);
+        alloc_info.descriptorPool       = desc_pool;
+        alloc_info.descriptorSetCount   = 1;
+        alloc_info.pSetLayouts          = pld->layouts+size_t(type);
 
-    VkDescriptorSet desc_set;
+        VkDescriptorSet desc_set;
 
-    if(vkAllocateDescriptorSets(attr->device,&alloc_info,&desc_set)!=VK_SUCCESS)
-        return(nullptr);
+        if(vkAllocateDescriptorSets(device,&alloc_info,&desc_set)!=VK_SUCCESS)
+            return(nullptr);
 
-    return(new DescriptorSet(attr->device,binding_count,pld->pipeline_layout,desc_set));
-}
+        return(new DescriptorSet(device,binding_count,pld->pipeline_layout,desc_set));
+    }
+
+    void CreateShaderStageList(List<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
+    {
+        const ShaderModule *sm;
+
+        const int shader_count=shader_maps->GetCount();
+        shader_stage_list.SetCount(shader_count);
+    
+        VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();        
+
+        auto **itp=shader_maps->GetDataList();
+        for(int i=0;i<shader_count;i++)
+        {
+            sm=(*itp)->value;
+            hgl_cpy(p,sm->GetCreateInfo(),1);
+
+            ++p;
+            ++itp;
+        }
+    }
+}//namespace
 
 MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
 {
     if(!desc_manager||!pld)return(nullptr);
     RANGE_CHECK_RETURN_NULLPTR(desc_set_type)
 
-    DescriptorSet *ds=CreateDS(pld,desc_set_type);
+    DescriptorSet *ds=CreateDS(attr->device,attr->desc_pool,pld,desc_set_type);
 
     if(!ds)return(nullptr);
 
@@ -56,26 +82,6 @@ MaterialParameters *GPUDevice::CreateMP(Material *mtl,const DescriptorSetType &d
     return CreateMP(mtl->GetDescriptorSets(),mtl->GetPipelineLayoutData(),desc_set_type);
 }
 
-void CreateShaderStageList(List<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
-{
-    const ShaderModule *sm;
-
-    const int shader_count=shader_maps->GetCount();
-    shader_stage_list.SetCount(shader_count);
-    
-    VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();        
-
-    auto **itp=shader_maps->GetDataList();
-    for(int i=0;i<shader_count;i++)
-    {
-        sm=(*itp)->value;
-        hgl_cpy(p,sm->GetCreateInfo(),1);
-
-        ++p;
-        ++itp;
-    }
-}
-
 Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *desc_manager,VertexInput *vi)
 {
     const int shader_count=shader_maps->GetCount();
@@ -83,7 +89,7 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
     if(shader_count<1)
         return(nullptr);
 
-    PipelineLayoutData *pld=CreatePipelineLayoutData(desc_manager);
+    PipelineLayoutData *pld=CreatePipelineLayoutData(attr->device,desc_manager);
     
     if(!pld)
     {

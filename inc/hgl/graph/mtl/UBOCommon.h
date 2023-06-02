@@ -50,7 +50,7 @@ constexpr const ShaderBufferSource SBS_MaterialInstanceData=
     "mtl",
 
     R"(
-    MaterialInstance mi[256];)"
+    MaterialInstance mi[MI_MAX_COUNT];)"
 };
 
 constexpr const ShaderBufferSource SBS_JointInfo=
