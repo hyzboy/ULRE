@@ -122,23 +122,23 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 
 /**
 * 设置材质实例代码与数据长度
-* @param mi_glsl_codes     材质实例GLSL代码
-* @param mi_struct_bytes   单个材质实例数据长度
-* @param shader_stage      具体使用材质实例的shader
+* @param glsl_codes     材质实例GLSL代码
+* @param data_bytes     单个材质实例数据长度
+* @param shader_stage   具体使用材质实例的shader
 * @return 是否设置成功
 */
-bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage)
+bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage)
 {
     if(mi_data_bytes>0)return(false);           //已经有数据了
 
     if(shader_stage==0)return(false);
 
-    if(mi_struct_bytes>0&&mi_glsl_codes.Length()<4)return(false);
+    if(data_bytes>0&&glsl_codes.Length()<4)return(false);
 
-    mi_data_bytes=mi_struct_bytes;
+    mi_data_bytes=data_bytes;
 
-    if(mi_struct_bytes>0)
-        mi_codes=mi_glsl_codes;
+    if(data_bytes>0)
+        mi_codes=glsl_codes;
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
 
