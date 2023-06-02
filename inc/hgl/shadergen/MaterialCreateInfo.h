@@ -20,7 +20,7 @@ protected:
     MaterialDescriptorInfo mdi;                             ///<材质描述符管理器
 
     AnsiString mi_codes;                                    ///<MaterialInstance代码
-    uint32_t mi_length;                                     ///<MaterialInstance数据长度
+    uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
     uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
 
     ShaderCreateInfoMap shader_map;                         ///<着色器列表
@@ -31,22 +31,27 @@ protected:
 
 public:
 
-    const AnsiString &GetName()const{return config->mtl_name;}
+    const   AnsiString &GetName         ()const{return config->mtl_name;}
 
-    const uint32 GetShaderStage()const{return config->shader_stage;}
+    const   uint32      GetShaderStage  ()const{return config->shader_stage;}
 
-    bool hasShader(const VkShaderStageFlagBits ss)const{return config->shader_stage&ss;}
+            bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage&ss;}
 
-    bool hasVertex  ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
-//    bool hasTessCtrl()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);}
-//    bool hasTessEval()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);}
-    bool hasGeometry()const{return hasShader(VK_SHADER_STAGE_GEOMETRY_BIT);}
-    bool hasFragment()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
-//    bool hasCompute ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
+            bool        hasVertex       ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
+//          bool        hasTessCtrl     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);}
+//          bool        hasTessEval     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);}
+            bool        hasGeometry     ()const{return hasShader(VK_SHADER_STAGE_GEOMETRY_BIT);}
+            bool        hasFragment     ()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
+//          bool        hasCompute      ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
 
     ShaderCreateInfoVertex *   GetVS()const{return vert;}
     ShaderCreateInfoGeometry * GetGS()const{return geom;}
     ShaderCreateInfoFragment * GetFS()const{return frag;}
+
+public:
+
+    const MaterialDescriptorInfo &GetMDI()const{return mdi;}
+    const uint32_t GetMIDataBytes()const{return mi_data_bytes;}
 
 public:
 
@@ -56,10 +61,7 @@ public:
     bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage);
 
     bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
-    bool AddStruct(const ShaderBufferSource &ss)
-    {
-        return AddStruct(ss.struct_name,ss.codes);
-    }
+    bool AddStruct(const ShaderBufferSource &ss){return AddStruct(ss.struct_name,ss.codes);}
 
     bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
     bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
@@ -67,7 +69,5 @@ public:
     bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss);
 
     bool CreateShader();
-
-    const MaterialDescriptorInfo &GetMDI()const{return mdi;}
 };//class MaterialCreateInfo
 STD_MTL_NAMESPACE_END

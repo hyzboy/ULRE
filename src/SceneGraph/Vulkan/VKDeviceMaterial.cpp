@@ -34,8 +34,7 @@ DescriptorSet *GPUDevice::CreateDS(const PipelineLayoutData *pld,const Descripto
 MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
 {
     if(!desc_manager||!pld)return(nullptr);
-    if(!RangeCheck<DescriptorSetType>(desc_set_type))
-        return(nullptr);
+    RANGE_CHECK_RETURN_NULLPTR(desc_set_type)
 
     DescriptorSet *ds=CreateDS(pld,desc_set_type);
 
