@@ -23,11 +23,14 @@ constexpr float position_data[VERTEX_COUNT*2]=
      0.1,  0.9
 };
 
-constexpr float color_data[3][4]=
+constexpr float color_data[6][4]=
 {
     {1,0,0,1},
+    {1,1,0,1},
     {0,1,0,1},
-    {0,0,1,1}
+    {0,1,1,1},
+    {0,0,1,1},
+    {1,0,1,1},
 };
 
 class TestApp:public VulkanApplicationFramework
@@ -37,8 +40,8 @@ private:
     SceneNode           render_root;
     RenderList *        render_list         =nullptr;
 
-    MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    MaterialInstance *  material_instance[6]={nullptr,nullptr,nullptr,nullptr,nullptr,nullptr};
+    Renderable *        render_obj[6]       ={nullptr,nullptr,nullptr,nullptr,nullptr,nullptr};
 
     Pipeline *          pipeline            =nullptr;
 
@@ -54,36 +57,42 @@ private:
 
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);
 
-            material_instance=db->CreateMaterialInstance(mci);
-        }
+/*            for(uint i=0;i<6;i++)
+            {
+                material_instance[i]=db->CreateMaterialInstance(mci);
 
-        if(!material_instance)
-            return(false);
+                if(!material_instance[i])
+                    return(false);
+
+                material_instance[i]->SetFloat4(0,color_data[i]);
+            }*/
+        }
             
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+//        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
         
         return pipeline;
     }
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
+        //RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
-        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
-        if(!rpc.SetVBO(VAN::Color,      VF_V4F, color_data   ))return(false);
-        
-        render_obj=rpc.Create(material_instance,pipeline);
+        //if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
+        //
+        //render_obj=rpc.Create(material_instance,pipeline);
 
-        if(!render_obj)
-            return(false);
-        
-        for(uint i=0;i<12;i++)
-            render_root.CreateSubNode(rotate(deg2rad(30*i),Vector3f(0,0,1)),render_obj);
+        //if(!render_obj)
+        //    return(false);
+        //
+        //for(uint i=0;i<6;i++)
+        //{
+        //    render_root.CreateSubNode(rotate(deg2rad(60*i),Vector3f(0,0,1)),render_obj);
+        //}
 
-        render_root.RefreshMatrix();
+        //render_root.RefreshMatrix();
 
-        render_list->Expend(&render_root);
+        //render_list->Expend(&render_root);
 
         return(true);
     }

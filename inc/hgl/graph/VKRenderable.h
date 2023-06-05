@@ -75,8 +75,6 @@ public:
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
     const   VertexInputData *   GetVertexInputData  ()const{return vertex_input;}
-
-            MaterialParameters *GetMP               (const DescriptorSetType &type){return mat_inst->GetMP(type);}
 };//class Renderable
 
 Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
