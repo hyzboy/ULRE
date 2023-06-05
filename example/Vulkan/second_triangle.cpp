@@ -45,7 +45,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg("VertexColor2D");
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2D");
 
 #ifdef USE_ZERO2ONE_COORD
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
