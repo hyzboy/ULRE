@@ -56,6 +56,7 @@ bool ShaderCreateInfo::ProcDefine()
     const uint32_t total_length=GLSL_DEFINE_FRONT_LENGTH+define_macro_max_length+define_value_max_length+3;
 
     char *tmp=new char[total_length];
+    char *p;
 
     memcpy(tmp,GLSL_DEFINE_FRONT,GLSL_DEFINE_FRONT_LENGTH);
 
@@ -65,6 +66,7 @@ bool ShaderCreateInfo::ProcDefine()
     AnsiString m;
     AnsiString v;
 
+
     for(uint i=0;i<count;i++)
     {
         m=define_macro_list.GetString(i);
@@ -73,15 +75,21 @@ bool ShaderCreateInfo::ProcDefine()
         macro_length=m.Length();
         value_length=v.Length();
 
-        memcpy(tmp+GLSL_DEFINE_FRONT_LENGTH,m.c_str(),macro_length);
+        p=tmp+GLSL_DEFINE_FRONT_LENGTH;
 
-        tmp[GLSL_DEFINE_FRONT_LENGTH+macro_length]=' ';
+        memcpy(p,m.c_str(),macro_length);
 
-        memcpy(tmp+GLSL_DEFINE_FRONT_LENGTH+macro_length+1,v.c_str(),value_length);
+        p+=macro_length;
 
-        tmp[GLSL_DEFINE_FRONT_LENGTH+macro_length+1+value_length]='\n';
+        *p=' ';
+        ++p;
 
-        final_shader.Strcat(tmp,GLSL_DEFINE_FRONT_LENGTH+macro_length+value_length+2);
+        memcpy(p,v.c_str(),value_length);
+
+        p+=value_length;
+        *p='\n';
+
+        final_shader.Strcat(tmp,p-tmp+1);
     }
 
     delete[] tmp;
@@ -403,7 +411,7 @@ bool ShaderCreateInfo::CompileToSPV()
 
     if(!spv_data)
         return(false);
-    
+
     return(true);
 }
 
