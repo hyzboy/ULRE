@@ -36,8 +36,8 @@ class RenderResource
 {
     GPUDevice *device;
     
-    ObjectMap<OSString,ShaderModule> shader_module_by_name;
-    Map<OSString,Material *> material_by_name;
+    ObjectMap<AnsiString,ShaderModule> shader_module_by_name;
+    Map<AnsiString,Material *> material_by_name;
     Map<OSString,Texture *> texture_by_name;
     
     IDResManage<MaterialID,             Material>           rm_material;                ///<材质合集
@@ -95,7 +95,7 @@ public: // VBO/VAO
 
 public: //Material
 
-    const ShaderModule *CreateShaderModule(const OSString &filename,VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size);
+    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size);
     
     Material *          CreateMaterial(const mtl::MaterialCreateInfo *);
 
