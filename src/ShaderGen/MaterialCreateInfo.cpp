@@ -141,8 +141,10 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
-    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();
-    AnsiString MI_MAX_COUNT=AnsiString::numberOf(ubo_range/data_bytes);
+    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();              //小部分为16k，大部分为64k，Intel核显为128M，AMD显卡无限制
+    const uint32_t mi_max_count=ubo_range/data_bytes;
+
+    const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count>256?256:mi_max_count);  //我们使用uint8传递材质实例ID，所以最大数量为256。未来如考虑使用更多，需综合考虑
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
     mdi.AddStruct(SBS_MaterialInstanceData);

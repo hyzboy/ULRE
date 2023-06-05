@@ -22,7 +22,7 @@ MaterialInstance::MaterialInstance(Material *mtl,VIL *v)
 
 bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
-    MaterialParameters *mp=GetMP(type);
+    MaterialParameters *mp=material->GetMP(type);
         
     if(!mp)
         return(false);
@@ -35,7 +35,7 @@ bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &n
 
 bool MaterialInstance::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
 {
-    MaterialParameters *mp=GetMP(type);
+    MaterialParameters *mp=material->GetMP(type);
         
     if(!mp)
         return(false);
@@ -48,7 +48,7 @@ bool MaterialInstance::BindSSBO(const DescriptorSetType &type,const AnsiString &
 
 bool MaterialInstance::BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
 {
-    MaterialParameters *mp=GetMP(type);
+    MaterialParameters *mp=material->GetMP(type);
         
     if(!mp)
         return(false);

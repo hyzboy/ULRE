@@ -3,12 +3,12 @@
 #include<hgl/graph/VKMaterialInstance.h>
 
 VK_NAMESPACE_BEGIN
-bool DescriptorBinding::Bind(MaterialInstance *mi)
+bool DescriptorBinding::Bind(Material *mtl)
 {
-    if(!mi)
+    if(!mtl)
         return(false);
 
-    MaterialParameters *mp=mi->GetMP(set_type);
+    MaterialParameters *mp=mtl->GetMP(set_type);
 
     if(!mp)
         return(false);

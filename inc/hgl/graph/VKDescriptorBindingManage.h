@@ -9,7 +9,7 @@ namespace hgl
     {
         class DeviceBuffer;
         class Texture;
-        class MaterialInstance;
+        class Material;
 
         class DescriptorBinding
         {
@@ -92,7 +92,7 @@ namespace hgl
                 texture_map.DeleteByValue(tex);
             }
 
-            bool Bind(MaterialInstance *);
+            bool Bind(Material *);
         };//class DescriptorBinding
     }//namespace graph
 }//namespace hgl

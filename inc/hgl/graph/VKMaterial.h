@@ -4,12 +4,11 @@
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
+#include<hgl/type/Collection.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 VK_NAMESPACE_BEGIN
 using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
-
-using MaterialParameterArray=MaterialParameters *[DESCRIPTOR_SET_TYPE_COUNT];
 
 struct MaterialData
 {
@@ -25,7 +24,9 @@ struct MaterialData
 
     PipelineLayoutData *pipeline_layout_data;
 
-    MaterialParameterArray mp_array;
+    MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
+
+    uint32_t mi_data_bytes;
 
 private:
 
@@ -41,6 +42,8 @@ private:
 class Material
 {
     MaterialData *data;
+
+    Collection *mi_data;
 
 private:
 
