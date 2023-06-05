@@ -67,9 +67,5 @@ public:
     bool AddSubpassInput(const AnsiString name,uint8_t index);
     
     void SetPushConstant(const AnsiString name,uint8_t offset,uint8_t size);
-
-#ifdef _DEBUG
-    void DebugOutput(int);
-#endif//_DEBUG
 };//class ShaderDescriptorInfo
 }}//namespace hgl::graph

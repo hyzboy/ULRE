@@ -281,11 +281,11 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${TILE_SOURCE}
                                         ${SG_VAD_SOURCE}
 
-                                        ${FONT_MANAGE_SOURCE}
-                                        ${FONT_SOURCE}
-                                        ${FONT_SOURCE_OS}
-                                        ${TILE_FONT_SOURCE}
-                                        ${FONT_LAYOUT_SOURCE}
-                                        ${TEXT_RENDERABLE_SOURCE}
+#                                        ${FONT_MANAGE_SOURCE}
+#                                        ${FONT_SOURCE}
+#                                        ${FONT_SOURCE_OS}
+#                                        ${TILE_FONT_SOURCE}
+#                                        ${FONT_LAYOUT_SOURCE}
+#                                        ${TEXT_RENDERABLE_SOURCE}
 
                                         ${VULKAN_RENDER_SOURCE})
