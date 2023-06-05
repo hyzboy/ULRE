@@ -97,11 +97,9 @@ public: //Material
 
     const ShaderModule *CreateShaderModule(const OSString &filename,VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size);
     
-    Material *          CreateMaterial(const OSString &);
     Material *          CreateMaterial(const mtl::MaterialCreateInfo *);
 
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
-    MaterialInstance *  CreateMaterialInstance(const OSString &,const VILConfig *vil_cfg=nullptr);
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
     Primitive *         CreatePrimitive(const uint32_t vertex_count=0);
