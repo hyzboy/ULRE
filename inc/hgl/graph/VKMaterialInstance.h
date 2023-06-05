@@ -50,30 +50,21 @@ protected:
 
     VIL *vil;
 
-    uint8 mi_id;        //材质实例ID
+public:
+
+            Material *  GetMaterial ()      {return material;}
+
+    const   VIL *       GetVIL      ()const {return vil;}
 
 private:
 
-    friend class GPUDevice;
+    friend class Material;
 
     MaterialInstance(Material *,VIL *);
 
 public:
 
     virtual ~MaterialInstance()=default;
-
-    Material *GetMaterial(){return material;}
-
-    const uint8_t GetID()const{return mi_id;}                                                       ///<获取材质实例ID
-
-    template<typename T>
-    T *GetData(){return material->GetMIData<T>(mi_id);}                                             ///<获取材质实例数据
-
-    template<typename T>
-    bool WriteData(const T *data){return material->WriteMIData(mi_id,data);}                        ///<写入材质实例数据
-
-    const VIL *GetVIL()const{return vil;}
-    MaterialParameters *GetMP(const DescriptorSetType &type){return material->GetMP(type);}
     
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
