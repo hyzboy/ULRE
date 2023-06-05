@@ -4,15 +4,13 @@
 #include<hgl/graph/VKShaderModule.h>
 
 VK_NAMESPACE_BEGIN
-MaterialInstance *GPUDevice::CreateMI(Material *mtl,const VILConfig *vil_cfg)
+MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
 {
-    if(!mtl)return(nullptr);
-
-    VIL *vil=mtl->CreateVIL(vil_cfg);
+    VIL *vil=CreateVIL(vil_cfg);
 
     if(!vil)return(nullptr);
 
-    return(new MaterialInstance(mtl,vil));
+    return(new MaterialInstance(this,vil));
 }
 
 MaterialInstance::MaterialInstance(Material *mtl,VIL *v)

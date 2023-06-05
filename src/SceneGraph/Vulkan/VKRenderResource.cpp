@@ -54,7 +54,7 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL
 {
     if(!mtl)return(nullptr);
 
-    MaterialInstance *mi=device->CreateMI(mtl,vil_cfg);
+    MaterialInstance *mi=mtl->CreateMI(vil_cfg);
 
     if(mi)
         Add(mi);

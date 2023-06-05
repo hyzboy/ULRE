@@ -75,6 +75,10 @@ public:
             VIL *                               CreateVIL(const VILConfig *format_map=nullptr);
             bool                                Release(VIL *);
     const   uint                                GetVILCount();
+
+public:
+
+    MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 
 using MaterialSets=SortedSets<Material *>;

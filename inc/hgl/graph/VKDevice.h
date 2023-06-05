@@ -216,8 +216,6 @@ public: //shader & material
     
     Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *,VertexInput *);
 
-    MaterialInstance *CreateMI(Material *,const VILConfig *vil_cfg=nullptr);
-
 public: //Command Buffer 相关
 
     RenderCmdBuffer * CreateRenderCommandBuffer();
