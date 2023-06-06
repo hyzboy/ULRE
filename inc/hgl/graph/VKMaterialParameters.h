@@ -18,12 +18,6 @@ protected:
 
     DescriptorSet *descriptor_set;
 
-private:
-
-    friend class GPUDevice;
-
-    MaterialParameters(const MaterialDescriptorManager *,const DescriptorSetType &type,DescriptorSet *);
-
 public:
 
     const   DescriptorSetType   GetType             (){return set_type;}
@@ -47,6 +41,7 @@ public:
 
 public:
 
+    MaterialParameters(const MaterialDescriptorManager *,const DescriptorSetType &type,DescriptorSet *);
     virtual ~MaterialParameters();
 
     bool BindUBO(const int &index,DeviceBuffer *ubo,bool dynamic=false);

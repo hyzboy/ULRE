@@ -55,25 +55,25 @@ namespace
             ++itp;
         }
     }
+
+    MaterialParameters *CreateMP(VkDevice device,VkDescriptorPool desc_pool,const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
+    {
+        if(!desc_manager||!pld)return(nullptr);
+        RANGE_CHECK_RETURN_NULLPTR(desc_set_type)
+
+        DescriptorSet *ds=CreateDS(device,desc_pool,pld,desc_set_type);
+
+        if(!ds)return(nullptr);
+
+    #ifdef _DEBUG
+        const UTF8String addr_string=HexToString<char,uint64_t>((uint64_t)(ds->GetDescriptorSet()));
+
+        LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+("] OK! Material Name: \"")+desc_manager->GetMaterialName()+U8_TEXT("\" Type: ")+GetDescriptorSetTypeName(desc_set_type));
+    #endif//_DEBUG
+
+        return(new MaterialParameters(desc_manager,desc_set_type,ds));
+    }
 }//namespace
-
-MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type)
-{
-    if(!desc_manager||!pld)return(nullptr);
-    RANGE_CHECK_RETURN_NULLPTR(desc_set_type)
-
-    DescriptorSet *ds=CreateDS(attr->device,attr->desc_pool,pld,desc_set_type);
-
-    if(!ds)return(nullptr);
-
-#ifdef _DEBUG
-    const UTF8String addr_string=HexToString<char,uint64_t>((uint64_t)(ds->GetDescriptorSet()));
-
-    LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+("] OK! Material Name: \"")+desc_manager->GetMaterialName()+U8_TEXT("\" Type: ")+GetDescriptorSetTypeName(desc_set_type));
-#endif//_DEBUG
-
-    return(new MaterialParameters(desc_manager,desc_set_type,ds));
-}
 
 Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *desc_manager,VertexInput *vi)
 {
@@ -107,7 +107,7 @@ Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *
         ENUM_CLASS_FOR(DescriptorSetType,int,dst)
         {
             if(desc_manager->hasSet((DescriptorSetType)dst))
-                data->mp_array[dst]=CreateMP(desc_manager,pld,(DescriptorSetType)dst);
+                data->mp_array[dst]=CreateMP(attr->device,attr->desc_pool,desc_manager,pld,(DescriptorSetType)dst);
             else
                 data->mp_array[dst]=nullptr;
         }
