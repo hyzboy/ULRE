@@ -4,7 +4,6 @@
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
-#include<hgl/type/Collection.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 VK_NAMESPACE_BEGIN
@@ -42,8 +41,6 @@ private:
 class Material
 {
     MaterialData *data;
-
-    Collection *mi_data;
 
 private:
 
