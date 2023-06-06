@@ -75,13 +75,6 @@ MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *desc_ma
     return(new MaterialParameters(desc_manager,desc_set_type,ds));
 }
 
-MaterialParameters *GPUDevice::CreateMP(Material *mtl,const DescriptorSetType &desc_set_type)
-{
-    if(!mtl)return(nullptr);
-
-    return CreateMP(mtl->GetDescriptorSets(),mtl->GetPipelineLayoutData(),desc_set_type);
-}
-
 Material *GPUDevice::CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *desc_manager,VertexInput *vi)
 {
     const int shader_count=shader_maps->GetCount();

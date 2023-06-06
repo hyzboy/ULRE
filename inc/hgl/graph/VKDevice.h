@@ -210,7 +210,6 @@ public: //
 public: //shader & material
 
     MaterialParameters *CreateMP(const MaterialDescriptorManager *,const PipelineLayoutData *,const DescriptorSetType &);
-    MaterialParameters *CreateMP(Material *,const DescriptorSetType &);
     
     ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const uint32_t *,const size_t);
     
