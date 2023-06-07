@@ -175,32 +175,9 @@ public: //Texture
 
     void Clear(TextureCreateInfo *);
 
-    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf, const List<Image2DRegion> &,                                            VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf, uint32_t left,uint32_t top,uint32_t width,uint32_t height,              VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2D(Texture2D *,void *data,        uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-    template<typename T>
-    bool ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope2<T> &rs)
-    {
-        return ChangeTexture2D( tex,
-                                buf,
-                                rs.GetLeft(),
-                                rs.GetTop(),
-                                rs.GetWidth(),
-                                rs.GetHeight());
-    }
-    
-    template<typename T>
-    bool ChangeTexture2D(Texture2D *tex,void *data,const RectScope2<T> &rs,uint32_t size)
-    {
-        return ChangeTexture2D( tex,
-                                data,
-                                rs.GetLeft(),
-                                rs.GetTop(),
-                                rs.GetWidth(),
-                                rs.GetHeight(),
-                                size);
-    }
+    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,             const List<Image2DRegion> &,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,             const RectScope2ui &,       VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool ChangeTexture2D(Texture2D *,void *data,const uint32_t size,const RectScope2ui &,       VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
 public: //
 
