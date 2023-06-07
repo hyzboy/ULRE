@@ -183,15 +183,16 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Imag
     return result;
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
+bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf
-        ||left<0||left+width>tex->GetWidth()
-        ||top<0||top+height>tex->GetHeight()
-        ||width<=0||height<=0)
+        ||scope.GetWidth()<=0
+        ||scope.GetHeight()<=0
+        ||scope.GetRight()>tex->GetWidth()
+        ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
-    BufferImageCopy buffer_image_copy(tex);
+    BufferImageCopy buffer_image_copy(tex,scope);
 
     texture_cmd_buf->Begin();
     bool result=CommitTexture(tex,buf,&buffer_image_copy,1,1,destinationStage);
@@ -200,18 +201,19 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,u
     return result;
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags destinationStage)
+bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,const uint32_t size,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!data
-        ||left<0||left+width>tex->GetWidth()
-        ||top<0||top+height>tex->GetHeight()
-        ||width<=0||height<=0
-        ||size<=0)
+        ||size<=0
+        ||scope.GetWidth()<=0
+        ||scope.GetHeight()<=0
+        ||scope.GetRight()>tex->GetWidth()
+        ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
     DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
 
-    bool result=ChangeTexture2D(tex,buf,left,top,width,height,destinationStage);    
+    bool result=ChangeTexture2D(tex,buf,scope,destinationStage);
 
     delete buf;
     return(result);
