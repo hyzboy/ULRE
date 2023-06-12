@@ -125,14 +125,14 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 * 设置材质实例代码与数据长度
 * @param glsl_codes     材质实例GLSL代码
 * @param data_bytes     单个材质实例数据长度
-* @param shader_stage   具体使用材质实例的shader
+* @param shader_stage_flag_bit   具体使用材质实例的shader
 * @return 是否设置成功
 */
-bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage)
+bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bit)
 {
     if(mi_data_bytes>0)return(false);           //已经有数据了
 
-    if(shader_stage==0)return(false);
+    if(shader_stage_flag_bit==0)return(false);
 
     if(data_bytes>0&&glsl_codes.Length()<4)return(false);
 
@@ -153,15 +153,15 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     ubo->type=SBS_MaterialInstanceData.struct_name;
     hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
-    ubo->stage_flag=shader_stage;
+    ubo->stage_flag=shader_stage_flag_bit;
 
-    mdi.AddUBO(shader_stage,DescriptorSetType::PerMaterial,ubo);
+    mdi.AddUBO(shader_stage_flag_bit,DescriptorSetType::PerMaterial,ubo);
 
     auto *it=shader_map.GetDataList();
 
     for(int i=0;i<shader_map.GetCount();i++)
     {
-        if((*it)->key&shader_stage)
+        if((*it)->key&shader_stage_flag_bit)
         {
             (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT);
             (*it)->value->SetMaterialInstance(ubo,mi_codes);
@@ -172,7 +172,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     vert->AddMaterialInstanceID();           //增加一个材质实例ID
 
-    mi_shader_stage=shader_stage;
+    mi_shader_stage=shader_stage_flag_bit;
 
     return(true);
 }
