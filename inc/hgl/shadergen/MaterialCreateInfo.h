@@ -38,9 +38,9 @@ namespace hgl{namespace graph
 
             const   AnsiString &GetName         ()const{return config->mtl_name;}
 
-            const   uint32      GetShaderStage  ()const{return config->shader_stage;}
+            const   uint32      GetShaderStage  ()const{return config->shader_stage_flag_bit;}
 
-                    bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage&ss;}
+                    bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage_flag_bit&ss;}
 
                     bool        hasVertex       ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
         //          bool        hasTessCtrl     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);}
@@ -63,7 +63,7 @@ namespace hgl{namespace graph
             MaterialCreateInfo(const MaterialCreateConfig *);
             ~MaterialCreateInfo()=default;
 
-            bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage);
+            bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bit);
 
             bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
             bool AddStruct(const ShaderBufferSource &ss){return AddStruct(ss.struct_name,ss.codes);}
@@ -78,4 +78,3 @@ namespace hgl{namespace graph
     }//namespace mtl
 }//namespace graph
 }//namespace hgl
-

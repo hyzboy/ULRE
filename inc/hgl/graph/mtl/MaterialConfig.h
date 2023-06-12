@@ -20,7 +20,7 @@ struct MaterialCreateConfig
 
     RenderTargetOutputConfig rt_output;                     ///<渲染目标输出配置
 
-    uint32 shader_stage;                                    ///<需要的shader
+    uint32 shader_stage_flag_bit;                           ///<需要的shader
 
 public:
 
@@ -30,7 +30,7 @@ public:
 
         mtl_name=name;
 
-        shader_stage=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
+        shader_stage_flag_bit=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
     }
 };//struct MaterialCreateConfig
 STD_MTL_NAMESPACE_END

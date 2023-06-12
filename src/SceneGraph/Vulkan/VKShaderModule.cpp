@@ -14,11 +14,11 @@ public:
     }
 };//struct ShaderModuleCreateInfo
 
-ShaderModule *GPUDevice::CreateShaderModule(VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size)
+ShaderModule *GPUDevice::CreateShaderModule(VkShaderStageFlagBits shader_stage_flag_bit,const uint32_t *spv_data,const size_t spv_size)
 {
     if(!spv_data||spv_size<4)return(nullptr);
 
-    PipelineShaderStageCreateInfo *pss_ci=new PipelineShaderStageCreateInfo(shader_stage);
+    PipelineShaderStageCreateInfo *pss_ci=new PipelineShaderStageCreateInfo(shader_stage_flag_bit);
 
     ShaderModuleCreateInfo moduleCreateInfo(spv_data,spv_size);
 
