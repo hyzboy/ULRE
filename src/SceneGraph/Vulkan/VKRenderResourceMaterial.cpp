@@ -12,21 +12,28 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 VK_NAMESPACE_BEGIN
-const ShaderModule *RenderResource::CreateShaderModule(const AnsiString &sm_name,VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size)
+const ShaderModule *RenderResource::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
 {
     if(!device)return(nullptr);
     if(sm_name.IsEmpty())return(nullptr);
-    if(!spv_data)return(nullptr);
-    if(spv_size<4)return(nullptr);
+
+    const int bit_offset=GetBitOffset((uint32_t)sci->GetShaderStage());
+
+    if(bit_offset<0||bit_offset>VK_SHADER_STAGE_TYPE_COUNT)return(nullptr);
 
     ShaderModule *sm;
 
-    if(shader_module_by_name.Get(sm_name,sm))
+    ShaderModuleMapByName &sm_map=shader_module_by_name[bit_offset];
+
+    if(sm_map.Get(sm_name,sm))
         return sm;
 
-    sm=device->CreateShaderModule(shader_stage,spv_data,spv_size);
+    sm=device->CreateShaderModule(sci->GetShaderStage(),sci->GetSPVData(),sci->GetSPVSize());
 
-    shader_module_by_name.Add(sm_name,sm);
+    if(!sm)
+        return(nullptr);
+
+    sm_map.Add(sm_name,sm);
 
     #ifdef _DEBUG
         {
@@ -65,9 +72,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
     if(vert)
     {
-        sm=CreateShaderModule(  mtl_name+U8_TEXT("?Vertex"),
-                                VK_SHADER_STAGE_VERTEX_BIT,
-                                vert->GetSPVData(),vert->GetSPVSize());
+        sm=CreateShaderModule(mtl_name,vert);
 
         if(!sm)
             return(false);
@@ -80,9 +85,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
     if(geom)
     {
-        sm=CreateShaderModule(  mtl_name+U8_TEXT("?Geometry"),
-                                VK_SHADER_STAGE_GEOMETRY_BIT,
-                                geom->GetSPVData(),geom->GetSPVSize());
+        sm=CreateShaderModule(mtl_name,geom);
 
         smm->Add(sm);
     }
@@ -91,9 +94,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
     if(frag)
     {
-        sm=CreateShaderModule(  mtl_name+U8_TEXT("?Fragment"),
-                                VK_SHADER_STAGE_FRAGMENT_BIT,
-                                frag->GetSPVData(),frag->GetSPVSize());
+        sm=CreateShaderModule(mtl_name,frag);
 
         smm->Add(sm);
     }
