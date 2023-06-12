@@ -34,7 +34,7 @@ public:
 
     #define MP_TYPE_IS(name)    const   bool is##name()const{return set_type==DescriptorSetType::name;}
         MP_TYPE_IS(Instance)
-        //MP_TYPE_IS(PerMaterial)
+        MP_TYPE_IS(PerMaterial)
         MP_TYPE_IS(PerFrame)
         MP_TYPE_IS(Global)
     #undef MP_TYPE_IS

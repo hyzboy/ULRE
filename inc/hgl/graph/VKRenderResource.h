@@ -29,6 +29,9 @@ using TextureID             =int;
 
 class VertexAttribData;
 
+using ShaderModuleMapByName=ObjectMap<AnsiString,ShaderModule>;
+constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT=20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
+
 /**
  * 资源管理，用于管理场景内所需的所有数据
  */
@@ -36,7 +39,7 @@ class RenderResource
 {
     GPUDevice *device;
     
-    ObjectMap<AnsiString,ShaderModule> shader_module_by_name;
+    ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     Map<AnsiString,Material *> material_by_name;
     Map<OSString,Texture *> texture_by_name;
     
@@ -95,7 +98,7 @@ public: // VBO/VAO
 
 public: //Material
 
-    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,VkShaderStageFlagBits shader_stage,const uint32_t *spv_data,const size_t spv_size);
+    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,const ShaderCreateInfo *);
     
     Material *          CreateMaterial(const mtl::MaterialCreateInfo *);
 
