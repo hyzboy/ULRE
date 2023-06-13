@@ -125,14 +125,14 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 * 设置材质实例代码与数据长度
 * @param glsl_codes     材质实例GLSL代码
 * @param data_bytes     单个材质实例数据长度
-* @param shader_stage_flag_bit   具体使用材质实例的shader
+* @param shader_stage_flag_bits   具体使用材质实例的shader
 * @return 是否设置成功
 */
-bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bit)
+bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const uint32_t data_bytes,const uint32_t shader_stage_flag_bits)
 {
     if(mi_data_bytes>0)return(false);           //已经有数据了
 
-    if(shader_stage_flag_bit==0)return(false);
+    if(shader_stage_flag_bits==0)return(false);
 
     if(data_bytes>0&&glsl_codes.Length()<4)return(false);
 
@@ -141,7 +141,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
-    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();              //小部分为16k，大部分为64k，Intel核显为128M，AMD显卡无限制
+    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，Intel/PowerVR为128M，AMD无限制。nVidia和Mali-G除G71外为64k
     const uint32_t mi_max_count=ubo_range/data_bytes;
 
     const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count>256?256:mi_max_count);  //我们使用uint8传递材质实例ID，所以最大数量为256。未来如考虑使用更多，需综合考虑
@@ -153,15 +153,15 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     ubo->type=SBS_MaterialInstanceData.struct_name;
     hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
-    ubo->stage_flag=shader_stage_flag_bit;
+    ubo->stage_flag=shader_stage_flag_bits;
 
-    mdi.AddUBO(shader_stage_flag_bit,DescriptorSetType::PerMaterial,ubo);
+    mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerMaterial,ubo);
 
     auto *it=shader_map.GetDataList();
 
     for(int i=0;i<shader_map.GetCount();i++)
     {
-        if((*it)->key&shader_stage_flag_bit)
+        if((*it)->key&shader_stage_flag_bits)
         {
             (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT);
             (*it)->value->SetMaterialInstance(ubo,mi_codes);
@@ -172,7 +172,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     vert->AddMaterialInstanceID();           //增加一个材质实例ID
 
-    mi_shader_stage=shader_stage_flag_bit;
+    mi_shader_stage=shader_stage_flag_bits;
 
     return(true);
 }
