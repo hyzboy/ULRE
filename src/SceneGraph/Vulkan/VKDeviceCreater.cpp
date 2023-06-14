@@ -287,10 +287,6 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
     SetDeviceExtension(&ext_list,physical_device,require);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
-    ChooseSurfaceFormat();
-
-    device_attr->surface_format=surface_format;
-
     device_attr->device=CreateDevice(device_attr->graphics_family);
 
     if(!device_attr->device)
@@ -300,6 +296,10 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
     device_attr->debug_maker=CreateDebugMaker(device_attr->device);
     device_attr->debug_utils=CreateDebugUtils(device_attr->device);
 #endif//_DEBUG
+
+    ChooseSurfaceFormat();
+
+    device_attr->surface_format=surface_format;
 
     GetDeviceQueue(device_attr);
 

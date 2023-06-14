@@ -133,7 +133,7 @@ SET(VK_TEXTURE_LOADER_SOURCE    ${SG_INCLUDE_PATH}/VKTextureCreateInfo.h
                                 Vulkan/Texture/VKTexture2DLoader.cpp
                                 Vulkan/Texture/VKTextureCubeLoader.cpp)
 
-SET(VK_DEVICE_MAIN_SOURCE   ${SG_INCLUDE_PATH}/VKDevice.h
+SET(VK_DEVICE_CREATER_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                             ${SG_INCLUDE_PATH}/VKDeviceAttribute.h
                             ${SG_INCLUDE_PATH}/VKDeviceCreater.h
                             Vulkan/VKDeviceAttribute.cpp
@@ -158,7 +158,7 @@ SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
                             Vulkan/Debug/VKPhysicalDeviceCapsOutput.cpp)
 
 SOURCE_GROUP("Vulkan\\Device"                   FILES ${VK_DEVICE_SOURCE})
-SOURCE_GROUP("Vulkan\\Device\\Main"             FILES ${VK_DEVICE_MAIN_SOURCE})
+SOURCE_GROUP("Vulkan\\Device\\Creater"          FILES ${VK_DEVICE_CREATER_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Debug"            FILES ${VK_DEBUG_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Instance"         FILES ${VK_INST_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Physical Device"  FILES ${VK_PHYSICAL_DEVICE_SOURCE})
@@ -258,7 +258,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_DEBUG_SOURCE}
                             ${VK_MEMORY_SOURCE}
                             ${VK_DEVICE_SOURCE}
-                            ${VK_DEVICE_MAIN_SOURCE}
+                            ${VK_DEVICE_CREATER_SOURCE}
                             ${VK_DEVICE_TEXTURE_SOURCE}
                             ${VK_TEXTURE_LOADER_SOURCE}
                             ${VK_PHYSICAL_DEVICE_SOURCE}
