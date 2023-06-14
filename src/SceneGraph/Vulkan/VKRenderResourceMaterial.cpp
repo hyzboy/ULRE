@@ -111,13 +111,17 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
             data->shader_maps->Add(sm);
 
-            if((*sci)->key==VK_SHADER_STAGE_VERTEX_BIT)
-                data->vertex_input=new VertexInput((*sci)->value->sdm->GetShaderStageIO().input);
-
             ++sci;
         }
 
         CreateShaderStageList(data->shader_stage_list,data->shader_maps);
+
+        {
+            ShaderCreateInfoVertex *vert=mci->GetVS();
+
+            if(vert)
+                data->vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
+        }
     }
 
     {
