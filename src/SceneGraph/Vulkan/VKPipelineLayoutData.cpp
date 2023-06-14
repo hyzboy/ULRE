@@ -4,7 +4,7 @@
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 
 VK_NAMESPACE_BEGIN
-PipelineLayoutData *CreatePipelineLayoutData(VkDevice device,const MaterialDescriptorManager *desc_manager)
+PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager)
 {
     PipelineLayoutData *pld=hgl_zero_new<PipelineLayoutData>();
 
@@ -18,9 +18,9 @@ PipelineLayoutData *CreatePipelineLayoutData(VkDevice device,const MaterialDescr
                 continue;
 
             if(pld->layouts[i])
-                vkDestroyDescriptorSetLayout(device,pld->layouts[i],nullptr);
+                vkDestroyDescriptorSetLayout(attr->device,pld->layouts[i],nullptr);
 
-            if(vkCreateDescriptorSetLayout(device,dslci,nullptr,pld->layouts+i)!=VK_SUCCESS)
+            if(vkCreateDescriptorSetLayout(attr->device,dslci,nullptr,pld->layouts+i)!=VK_SUCCESS)
             {
                 delete pld;
                 return(nullptr);
@@ -56,9 +56,9 @@ PipelineLayoutData *CreatePipelineLayoutData(VkDevice device,const MaterialDescr
     pPipelineLayoutCreateInfo.pushConstantRangeCount    = 0;//1;
     pPipelineLayoutCreateInfo.pPushConstantRanges       = nullptr;//&push_constant_range;
 
-    pld->device=device;
+    pld->device=attr->device;
 
-    if(vkCreatePipelineLayout(device,&pPipelineLayoutCreateInfo,nullptr,&(pld->pipeline_layout))!=VK_SUCCESS)
+    if(vkCreatePipelineLayout(attr->device,&pPipelineLayoutCreateInfo,nullptr,&(pld->pipeline_layout))!=VK_SUCCESS)
     {
         delete pld;
         return(nullptr);

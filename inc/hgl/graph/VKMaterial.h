@@ -11,7 +11,7 @@ using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
 
 struct MaterialData
 {
-    UTF8String name;
+    AnsiString name;
 
     VertexInput *vertex_input;
 
@@ -25,12 +25,12 @@ struct MaterialData
 
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
-    uint32_t mi_data_bytes;
+    uint32_t mi_data_bytes;             ///<实例数据大小
+    uint32_t mi_max_count;              ///<最大实例数量(注：代表一次drawcall大小，而不是整个的大小)
 
-private:
+public:
 
-    friend class Material;
-
+    MaterialData(const AnsiString &n);
     ~MaterialData();
 };//struct MaterialData
 

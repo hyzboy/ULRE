@@ -141,10 +141,14 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
-    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，Intel/PowerVR为128M，AMD无限制。nVidia和Mali-G除G71外为64k
-    const uint32_t mi_max_count=ubo_range/data_bytes;
+    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
+    
+    mi_max_count=ubo_range/data_bytes;
+    
+    if(mi_max_count>256)        //我们使用uint8传递材质实例ID，所以最大数量为256。未来如考虑使用更多，需综合考虑
+        mi_max_count=256;
 
-    const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count>256?256:mi_max_count);  //我们使用uint8传递材质实例ID，所以最大数量为256。未来如考虑使用更多，需综合考虑
+    const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count);
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
     mdi.AddStruct(SBS_MaterialInstanceData);
