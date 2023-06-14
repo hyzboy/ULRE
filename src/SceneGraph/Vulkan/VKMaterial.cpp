@@ -4,16 +4,33 @@
 #include<hgl/graph/VKVertexInput.h>
 #include"VKPipelineLayoutData.h"
 VK_NAMESPACE_BEGIN
+MaterialData::MaterialData(const AnsiString &n)
+{
+    name=n;
+
+    vertex_input=nullptr;
+    shader_maps=new ShaderModuleMap;
+    desc_manager=nullptr;
+    pipeline_layout_data=nullptr;
+
+    hgl_zero(mp_array);
+
+    mi_data_bytes=0;
+    mi_max_count=0;
+}
+
 MaterialData::~MaterialData()
 {
-    for(int i=0;i<DESCRIPTOR_SET_TYPE_COUNT;i++)
-        if(mp_array[i])
-            delete mp_array[i];
-
-    delete shader_maps;
+    SAFE_CLEAR(vertex_input);
+    delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
     SAFE_CLEAR(desc_manager);
+    SAFE_CLEAR(pipeline_layout_data);
 
-    delete vertex_input;
+    for(int i=0;i<DESCRIPTOR_SET_TYPE_COUNT;i++)
+        SAFE_CLEAR(mp_array[i]);
+
+    mi_data_bytes=0;
+    mi_max_count=0;
 }
 
 Material::~Material()

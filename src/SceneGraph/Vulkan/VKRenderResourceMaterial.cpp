@@ -12,6 +12,30 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 VK_NAMESPACE_BEGIN
+
+namespace
+{
+    void CreateShaderStageList(List<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
+    {
+        const ShaderModule *sm;
+
+        const int shader_count=shader_maps->GetCount();
+        shader_stage_list.SetCount(shader_count);
+    
+        VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();        
+
+        auto **itp=shader_maps->GetDataList();
+        for(int i=0;i<shader_count;i++)
+        {
+            sm=(*itp)->value;
+            hgl_cpy(p,sm->GetCreateInfo(),1);
+
+            ++p;
+            ++itp;
+        }
+    }
+}//namespace
+
 const ShaderModule *RenderResource::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
 {
     if(!device)return(nullptr);
@@ -62,63 +86,65 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     if(material_by_name.Get(mtl_name,mtl))
         return mtl;
 
-    const uint count=GetShaderCountByBits(mci->GetShaderStage());
-    const ShaderModule *sm;
+    const ShaderCreateInfoMap &sci_map=mci->GetShaderMap();
+    const uint sci_count=sci_map.GetCount();
 
-    ShaderModuleMap *smm=new ShaderModuleMap;
-    VertexInput *vertex_input=nullptr;
+    if(sci_count<2)
+        return(nullptr);
 
-    const ShaderCreateInfoVertex *vert=mci->GetVS();
+    if(!mci->GetFS())
+        return(nullptr);
 
-    if(vert)
+    AutoDelete<MaterialData> data=new MaterialData(mtl_name);
+
     {
-        sm=CreateShaderModule(mtl_name,vert);
+        const ShaderModule *sm;
 
-        if(!sm)
-            return(false);
+        auto **sci=sci_map.GetDataList();
 
-        if(smm->Add(sm))
-            vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
+        for(uint i=0;i<sci_count;i++)
+        {
+            sm=CreateShaderModule(mtl_name,(*sci)->value);
+
+            if(!sm)
+                return(nullptr);
+
+            data->shader_maps->Add(sm);
+
+            if((*sci)->key==VK_SHADER_STAGE_VERTEX_BIT)
+                data->vertex_input=new VertexInput((*sci)->value->sdm->GetShaderStageIO().input);
+
+            ++sci;
+        }
+
+        CreateShaderStageList(data->shader_stage_list,data->shader_maps);
     }
-
-    const ShaderCreateInfoGeometry *geom=mci->GetGS();
-
-    if(geom)
-    {
-        sm=CreateShaderModule(mtl_name,geom);
-
-        smm->Add(sm);
-    }
-
-    const ShaderCreateInfoFragment *frag=mci->GetFS();
-
-    if(frag)
-    {
-        sm=CreateShaderModule(mtl_name,frag);
-
-        smm->Add(sm);
-    }
-
-    MaterialDescriptorManager *mdm=nullptr;
 
     {
         const auto &mdi=mci->GetMDI();
 
         if(mdi.GetCount()>0)
-            mdm=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
+            data->desc_manager=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
     }
 
-    mtl=device->CreateMaterial(mci->GetName(),smm,mdm,vertex_input);
+    data->pipeline_layout_data=device->CreatePipelineLayoutData(data->desc_manager);
 
-    if(!mtl)
+    if(data->desc_manager)
     {
-        delete mdm;
-        delete smm;
+        ENUM_CLASS_FOR(DescriptorSetType,int,dst)
+        {
+            if(data->desc_manager->hasSet((DescriptorSetType)dst))
+                data->mp_array[dst]=device->CreateMP(data->desc_manager,data->pipeline_layout_data,(DescriptorSetType)dst);
+        }
     }
-    else
-    {
-        Add(mtl);
-    }
+
+    data->mi_data_bytes =mci->GetMIDataBytes();
+    data->mi_max_count  =mci->GetMIMaxCount();
+
+    mtl=new Material(data);
+    data.Discard();     //mtl已经接管了data的内容，这里不需要再释放
+
+    Add(mtl);
 
     material_by_name.Add(mtl_name,mtl);
     return mtl;

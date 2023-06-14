@@ -18,7 +18,6 @@
 #include<hgl/graph/VKDescriptorSetType.h>
 
 VK_NAMESPACE_BEGIN
-
 class TileData;
 class TileFont;
 class FontSource;
@@ -187,8 +186,10 @@ public: //
 public: //shader & material
 
     ShaderModule *CreateShaderModule(VkShaderStageFlagBits,const uint32_t *,const size_t);
-    
-    Material *CreateMaterial(const UTF8String &mtl_name,ShaderModuleMap *shader_maps,MaterialDescriptorManager *,VertexInput *);
+
+    PipelineLayoutData *CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager);
+
+    MaterialParameters *CreateMP(const MaterialDescriptorManager *desc_manager,const PipelineLayoutData *pld,const DescriptorSetType &desc_set_type);
 
 public: //Command Buffer 相关
 

@@ -27,6 +27,7 @@ namespace hgl{namespace graph
             AnsiString mi_codes;                                    ///<MaterialInstance代码
             uint32_t mi_data_bytes;                                 ///<MaterialInstance数据长度
             uint32_t mi_shader_stage;                               ///<MaterialInstance着色器阶段
+            uint32_t mi_max_count;                                  ///<MaterialInstance最大数量
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 
@@ -53,10 +54,14 @@ namespace hgl{namespace graph
             ShaderCreateInfoGeometry * GetGS()const{return geom;}
             ShaderCreateInfoFragment * GetFS()const{return frag;}
 
+            const ShaderCreateInfoMap &GetShaderMap()const{return shader_map;}
+
         public:
 
             const MaterialDescriptorInfo &GetMDI()const{return mdi;}
-            const uint32_t GetMIDataBytes()const{return mi_data_bytes;}
+
+            const uint32_t GetMIDataBytes   ()const{return mi_data_bytes;}
+            const uint32_t GetMIMaxCount    ()const{return mi_max_count;}
 
         public:
 
