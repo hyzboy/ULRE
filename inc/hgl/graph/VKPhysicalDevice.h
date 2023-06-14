@@ -48,6 +48,8 @@ public:
     operator        VkPhysicalDevice()      {return physical_device;}
     operator const  VkPhysicalDevice()const {return physical_device;}
 
+    const uint32_t          GetVulkanVersion()const{return properties.apiVersion;}
+
     const int               GetMemoryType(uint32_t,VkMemoryPropertyFlags)const;
 
     VkPhysicalDeviceType    GetDeviceType()const{return properties.deviceType;}

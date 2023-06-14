@@ -61,6 +61,10 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
     physical_device=pd;
 
     {
+        hgl_zero(features11);
+        hgl_zero(features12);
+        hgl_zero(features13);
+
         auto func=(PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceFeatures2KHR");
 
         if(func)
@@ -86,14 +90,14 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         else
         {
             vkGetPhysicalDeviceFeatures(physical_device,&features);
-
-            hgl_zero(features11);
-            hgl_zero(features12);
-            hgl_zero(features13);
         }
     }
 
     {
+        hgl_zero(properties11);
+        hgl_zero(properties12);
+        hgl_zero(properties13);
+
         auto func=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceProperties2KHR");
 
         if(func)
@@ -119,10 +123,6 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         else
         {
             vkGetPhysicalDeviceProperties(physical_device,&properties);
-
-            hgl_zero(properties11);
-            hgl_zero(properties12);
-            hgl_zero(properties13);
         }
     }
 
