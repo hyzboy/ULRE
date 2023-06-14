@@ -4,7 +4,7 @@
 #include<hgl/graph/VKVertexInput.h>
 #include"VKPipelineLayoutData.h"
 VK_NAMESPACE_BEGIN
-MaterialData::MaterialData(const AnsiString &n)
+Material::Material(const AnsiString &n)
 {
     name=n;
 
@@ -19,7 +19,7 @@ MaterialData::MaterialData(const AnsiString &n)
     mi_max_count=0;
 }
 
-MaterialData::~MaterialData()
+Material::~Material()
 {
     SAFE_CLEAR(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
@@ -33,34 +33,28 @@ MaterialData::~MaterialData()
     mi_max_count=0;
 }
 
-Material::~Material()
-{
-    delete data->pipeline_layout_data;
-    delete data;
-}
-
 const VkPipelineLayout Material::GetPipelineLayout()const
 {
-    return data->pipeline_layout_data->pipeline_layout;
+    return pipeline_layout_data->pipeline_layout;
 }
 
 const bool Material::hasSet(const DescriptorSetType &dst)const
 {
-    return data->desc_manager->hasSet(dst);
+    return desc_manager->hasSet(dst);
 }
 
 VIL *Material::CreateVIL(const VILConfig *format_map)
 {
-    return data->vertex_input->CreateVIL(format_map);
+    return vertex_input->CreateVIL(format_map);
 }
 
 bool Material::Release(VIL *vil)
 {
-    return data->vertex_input->Release(vil);
+    return vertex_input->Release(vil);
 }
 
 const uint Material::GetVILCount()
 {
-    return data->vertex_input->GetInstanceCount();
+    return vertex_input->GetInstanceCount();
 }
 VK_NAMESPACE_END

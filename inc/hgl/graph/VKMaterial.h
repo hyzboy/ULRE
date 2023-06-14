@@ -9,7 +9,11 @@
 VK_NAMESPACE_BEGIN
 using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
 
-struct MaterialData
+/**
+ * 材质类<br>
+ * 用于管理shader，提供DescriptorSetLayoutCreater
+ */
+class Material
 {
     AnsiString name;
 
@@ -28,38 +32,24 @@ struct MaterialData
     uint32_t mi_data_bytes;             ///<实例数据大小
     uint32_t mi_max_count;              ///<最大实例数量(注：代表一次drawcall大小，而不是整个的大小)
 
-public:
-
-    MaterialData(const AnsiString &n);
-    ~MaterialData();
-};//struct MaterialData
-
-/**
- * 材质类<br>
- * 用于管理shader，提供DescriptorSetLayoutCreater
- */
-class Material
-{
-    MaterialData *data;
-
 private:
 
-    friend GPUDevice;
+    friend class RenderResource;
 
 public:
 
-    Material(MaterialData *md):data(md){}
+    Material(const AnsiString &);
     virtual ~Material();
 
-    const   UTF8String &                        GetName                 ()const{return data->name;}
+    const   UTF8String &                        GetName                 ()const{return name;}
 
-    const   VertexInput *                       GetVertexInput          ()const{return data->vertex_input;}
+    const   VertexInput *                       GetVertexInput          ()const{return vertex_input;}
 
-    const   ShaderStageCreateInfoList &         GetStageList            ()const{return data->shader_stage_list;}
+    const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 
-    const   MaterialDescriptorManager *         GetDescriptorSets       ()const{return data->desc_manager;}
+    const   MaterialDescriptorManager *         GetDescriptorSets       ()const{return desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return data->pipeline_layout_data;}
+    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
 
 public:
 
@@ -67,7 +57,7 @@ public:
             {
                 RANGE_CHECK_RETURN_NULLPTR(type)
 
-                return data->mp_array[size_t(type)];
+                return mp_array[size_t(type)];
             }
 
     const   bool                                hasSet                  (const DescriptorSetType &type)const;

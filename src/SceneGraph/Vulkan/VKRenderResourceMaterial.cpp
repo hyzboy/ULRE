@@ -79,12 +79,14 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     if(!mci)
         return(nullptr);
 
-    Material *mtl;
-
     const AnsiString &mtl_name=mci->GetName();
 
-    if(material_by_name.Get(mtl_name,mtl))
-        return mtl;
+    {
+        Material *mtl;
+
+        if(material_by_name.Get(mtl_name,mtl))
+            return mtl;
+    }
 
     const ShaderCreateInfoMap &sci_map=mci->GetShaderMap();
     const uint sci_count=sci_map.GetCount();
@@ -95,7 +97,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     if(!mci->GetFS())
         return(nullptr);
 
-    AutoDelete<MaterialData> data=new MaterialData(mtl_name);
+    AutoDelete<Material> ad_mtl=new Material(mtl_name);
 
     {
         const ShaderModule *sm;
@@ -109,44 +111,43 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
             if(!sm)
                 return(nullptr);
 
-            data->shader_maps->Add(sm);
+            ad_mtl->shader_maps->Add(sm);
 
             ++sci;
         }
     }
 
-    CreateShaderStageList(data->shader_stage_list,data->shader_maps);
+    CreateShaderStageList(ad_mtl->shader_stage_list,ad_mtl->shader_maps);
 
     {
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
         if(vert)
-            data->vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
+            ad_mtl->vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
     }
 
     {
         const auto &mdi=mci->GetMDI();
 
         if(mdi.GetCount()>0)
-            data->desc_manager=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
+            ad_mtl->desc_manager=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
     }
 
-    data->pipeline_layout_data=device->CreatePipelineLayoutData(data->desc_manager);
+    ad_mtl->pipeline_layout_data=device->CreatePipelineLayoutData(ad_mtl->desc_manager);
 
-    if(data->desc_manager)
+    if(ad_mtl->desc_manager)
     {
         ENUM_CLASS_FOR(DescriptorSetType,int,dst)
         {
-            if(data->desc_manager->hasSet((DescriptorSetType)dst))
-                data->mp_array[dst]=device->CreateMP(data->desc_manager,data->pipeline_layout_data,(DescriptorSetType)dst);
+            if(ad_mtl->desc_manager->hasSet((DescriptorSetType)dst))
+                ad_mtl->mp_array[dst]=device->CreateMP(ad_mtl->desc_manager,ad_mtl->pipeline_layout_data,(DescriptorSetType)dst);
         }
     }
 
-    data->mi_data_bytes =mci->GetMIDataBytes();
-    data->mi_max_count  =mci->GetMIMaxCount();
+    ad_mtl->mi_data_bytes =mci->GetMIDataBytes();
+    ad_mtl->mi_max_count  =mci->GetMIMaxCount();
 
-    mtl=new Material(data);
-    data.Discard();     //mtl已经接管了data的内容，这里不需要再释放
+    Material *mtl=ad_mtl.Finish();
 
     Add(mtl);
 
