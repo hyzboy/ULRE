@@ -81,7 +81,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
     Material *mtl;
 
-    const AnsiString mtl_name=mci->GetName();
+    const AnsiString &mtl_name=mci->GetName();
 
     if(material_by_name.Get(mtl_name,mtl))
         return mtl;
@@ -113,15 +113,15 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
             ++sci;
         }
+    }
 
-        CreateShaderStageList(data->shader_stage_list,data->shader_maps);
+    CreateShaderStageList(data->shader_stage_list,data->shader_maps);
 
-        {
-            ShaderCreateInfoVertex *vert=mci->GetVS();
+    {
+        ShaderCreateInfoVertex *vert=mci->GetVS();
 
-            if(vert)
-                data->vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
-        }
+        if(vert)
+            data->vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
     }
 
     {
