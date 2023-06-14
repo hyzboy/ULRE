@@ -90,8 +90,13 @@ public:
     const bool isMicrosoft  ()const{return HGL_VK_IS_BRAND(Microsoft);}
     const bool isMesa       ()const{return HGL_VK_IS_BRAND(Mesa     );}
     const bool isAMD        ()const{return HGL_VK_IS_BRAND(AMD      )
-                                         ||HGL_VK_IS_BRAND(ATI      );}
-    const bool isNvidia     ()const{return HGL_VK_IS_BRAND(nVidia   );}
+                                         ||HGL_VK_IS_BRAND(ATI      )
+                                         ||HGL_VK_IS_BRAND(Radeon   );}
+    const bool isNvidia     ()const{return HGL_VK_IS_BRAND(nVidia   )
+                                         ||HGL_VK_IS_BRAND(GeForce  )
+                                         ||HGL_VK_IS_BRAND(Quadro   )
+                                         ||HGL_VK_IS_BRAND(TITAN    )
+                                         ||HGL_VK_IS_BRAND(Tegra    );}
     const bool isIntel      ()const{return HGL_VK_IS_BRAND(Intel    );}
     const bool isQualcomm   ()const{return HGL_VK_IS_BRAND(Adreno   );}
     const bool isApple      ()const{return HGL_VK_IS_BRAND(Apple    );}
