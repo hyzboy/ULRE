@@ -97,7 +97,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     if(!mci->GetFS())
         return(nullptr);
 
-    AutoDelete<Material> ad_mtl=new Material(mtl_name);
+    AutoDelete<Material> mtl=new Material(mtl_name);
 
     {
         const ShaderModule *sm;
@@ -111,47 +111,45 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
             if(!sm)
                 return(nullptr);
 
-            ad_mtl->shader_maps->Add(sm);
+            mtl->shader_maps->Add(sm);
 
             ++sci;
         }
     }
 
-    CreateShaderStageList(ad_mtl->shader_stage_list,ad_mtl->shader_maps);
+    CreateShaderStageList(mtl->shader_stage_list,mtl->shader_maps);
 
     {
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
         if(vert)
-            ad_mtl->vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
+            mtl->vertex_input=new VertexInput(vert->sdm->GetShaderStageIO().input);
     }
 
     {
         const auto &mdi=mci->GetMDI();
 
         if(mdi.GetCount()>0)
-            ad_mtl->desc_manager=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
+            mtl->desc_manager=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
     }
 
-    ad_mtl->pipeline_layout_data=device->CreatePipelineLayoutData(ad_mtl->desc_manager);
+    mtl->pipeline_layout_data=device->CreatePipelineLayoutData(mtl->desc_manager);
 
-    if(ad_mtl->desc_manager)
+    if(mtl->desc_manager)
     {
         ENUM_CLASS_FOR(DescriptorSetType,int,dst)
         {
-            if(ad_mtl->desc_manager->hasSet((DescriptorSetType)dst))
-                ad_mtl->mp_array[dst]=device->CreateMP(ad_mtl->desc_manager,ad_mtl->pipeline_layout_data,(DescriptorSetType)dst);
+            if(mtl->desc_manager->hasSet((DescriptorSetType)dst))
+                mtl->mp_array[dst]=device->CreateMP(mtl->desc_manager,mtl->pipeline_layout_data,(DescriptorSetType)dst);
         }
     }
 
-    ad_mtl->mi_data_bytes =mci->GetMIDataBytes();
-    ad_mtl->mi_max_count  =mci->GetMIMaxCount();
-
-    Material *mtl=ad_mtl.Finish();
+    mtl->mi_data_bytes =mci->GetMIDataBytes();
+    mtl->mi_max_count  =mci->GetMIMaxCount();
 
     Add(mtl);
 
     material_by_name.Add(mtl_name,mtl);
-    return mtl;
+    return mtl.Finish();
 }
 VK_NAMESPACE_END
