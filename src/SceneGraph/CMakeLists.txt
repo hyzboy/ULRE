@@ -249,7 +249,11 @@ IF(WIN32)
     IF(FORCE_DISCETE_GPU)
         SET(RENDER_DEVICE_SOURCE ForceDiscreteGPU.c)
     ENDIF()
+
+    SET(VK_PLATFORM_SOURCE Vulkan/Platform/WinVulkan.cpp)
 ENDIF(WIN32)
+
+SOURCE_GROUP("Vulkan\\Platform" FILES ${VK_PLATFORM_SOURCE})
 
 SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_RR_SHADER_FILES}
@@ -270,7 +274,8 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             #${VK_RENDER_CONTEXT_SOURCE}
                             ${VK_CMD_BUFFER_SOURCE}
                             ${VK_RENDERABLE_SOURCE}
-                            ${VK_RENDER_DEVICE_SOURCE})
+                            ${VK_RENDER_DEVICE_SOURCE}
+                            ${VK_PLATFORM_SOURCE})
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SCENE_GRAPH_SOURCE}
