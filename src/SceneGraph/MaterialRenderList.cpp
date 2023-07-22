@@ -133,7 +133,7 @@ void MaterialRenderList::Stat()
     RenderNode *rn=rn_list.GetData();
 
     ri_list.ClearData();
-    ri_list.PreMalloc(count);
+    ri_list.PreAlloc(count);
 
     mi_set.ClearData();
 

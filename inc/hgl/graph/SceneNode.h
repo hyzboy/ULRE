@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_SCENE_NODE_INCLUDE
 #define HGL_GRAPH_SCENE_NODE_INCLUDE
 
-#include<hgl/type/List.h>
+#include<hgl/type/ObjectList.h>
 #include<hgl/graph/SceneOrient.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/AABB.h>
