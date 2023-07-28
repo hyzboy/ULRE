@@ -93,7 +93,7 @@ void MaterialRenderList::End()
     {
         Comparator<hgl::graph::RenderNode> rnc;
 
-        Sort(rn_list,&rnc);
+        Sort(rn_list.GetArray(),&rnc);
     }
 
     const uint node_count=rn_list.GetCount();
