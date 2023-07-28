@@ -90,11 +90,7 @@ void MaterialRenderList::Add(Renderable *ri,const Matrix4f &mat)
 void MaterialRenderList::End()
 {
     //排序
-    {
-        Comparator<hgl::graph::RenderNode> rnc;
-
-        Sort(rn_list.GetArray(),&rnc);
-    }
+    Sort(rn_list.GetArray());
 
     const uint node_count=rn_list.GetCount();
 
