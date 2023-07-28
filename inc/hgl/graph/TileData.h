@@ -1,32 +1,17 @@
 ﻿#ifndef HGL_GRAPH_TILE_DATA_INCLUDE
 #define HGL_GRAPH_TILE_DATA_INCLUDE
 
-#include<hgl/type/Map.h>
 #include<hgl/type/Pool.h>
-#include<hgl/type/RectScope.h>
-#include<hgl/graph/Bitmap.h>
+#include<hgl/graph/BitmapData.h>
+#include<hgl/graph/ImageRegion.h>
+#include<hgl/graph/tile/TileObject.h>
 #include<hgl/graph/VKTexture.h>
 
 VK_NAMESPACE_USING
-
 namespace hgl
 {
     namespace graph
     {
-        using TileUVPixel=RectScope2i;
-        using TileUVFloat=RectScope2f;
-
-        using TileUVFloatList=List<TileUVFloat>;
-        using TileUVFloatMap=Map<u32char,TileUVFloat>;
-
-        struct TileObject
-        {
-            int col,row;            //当前tile在整个纹理中的tile位置
-
-            TileUVPixel uv_pixel;   //以象素为单位的tile位置和尺寸
-            TileUVFloat uv_float;   //以浮点为单位的tile位置和尺寸
-        };//struct TileObject
-
         /**
          * TileData是一种处理大量等同尺寸及格式贴图的管理机制，程序会自动根据显卡最大贴图处理能力来创建尽可能符合需求的贴图。(注：Tile的大小不必符合2次幂)
          * Tile的增加或删除，程序会自动排序，尽可能小的减少I/O消耗。

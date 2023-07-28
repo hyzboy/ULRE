@@ -3,8 +3,8 @@
 
 #include<hgl/io/InputStream.h>
 #include<hgl/type/String.h>
-#include<hgl/graph/Bitmap.h>
 #include<hgl/graph/VKFormat.h>
+#include<hgl/graph/BitmapData.h>
 namespace hgl
 {
     namespace graph

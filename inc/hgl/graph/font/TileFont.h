@@ -9,6 +9,8 @@ namespace hgl
 {
     namespace graph
     {
+        using TileUVFloatMap=Map<u32char,RectScope2f>;
+
         using TileResPool=ResPool<u32char,TileObject *>;
 
         /**

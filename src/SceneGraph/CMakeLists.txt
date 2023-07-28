@@ -249,7 +249,29 @@ IF(WIN32)
     IF(FORCE_DISCETE_GPU)
         SET(RENDER_DEVICE_SOURCE ForceDiscreteGPU.c)
     ENDIF()
+
+    SET(VULKAN_SURFACE_SOURCE   Vulkan/Platform/WinVulkan.cpp)
 ENDIF(WIN32)
+
+IF(UNIX)
+
+    IF(ANDROID)
+        SET(VULKAN_SURFACE_SOURCE   Vulkan/Platform/AndroidVulkan.cpp)
+    ELSE()
+        IF(APPLE)
+
+
+
+        ELSE()
+
+            SET(VULKAN_SURFACE_SOURCE   Vulkan/Platform/XCBVulkan.cpp)
+        ENDIF()
+
+    ENDIF()
+
+ENDIF(UNIX)
+
+SOURCE_GROUP("Vulkan\\Surface" FILES ${VULKAN_SURFACE_SOURCE})
 
 SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_RR_SHADER_FILES}
@@ -288,4 +310,5 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
 #                                        ${FONT_LAYOUT_SOURCE}
 #                                        ${TEXT_RENDERABLE_SOURCE}
 
-                                        ${VULKAN_RENDER_SOURCE})
+                                        ${VULKAN_RENDER_SOURCE}
+                                        ${VULKAN_SURFACE_SOURCE})

@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
+#include<iostream>
 
 VK_NAMESPACE_BEGIN
 namespace

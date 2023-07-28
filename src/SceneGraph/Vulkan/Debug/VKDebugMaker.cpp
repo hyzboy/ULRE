@@ -38,7 +38,7 @@ void DebugMaker::Begin(VkCommandBuffer cmdbuffer, const char * pMarkerName, cons
 	
 	VkDebugMarkerMarkerInfoEXT markerInfo = {};
 	markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-	memcpy(markerInfo.color, &color, sizeof(float) * 4);
+	memcpy(markerInfo.stop_color, &color, sizeof(float) * 4);
 	markerInfo.pMarkerName = pMarkerName;
 	
 	dmf.Begin(cmdbuffer, &markerInfo);
@@ -51,7 +51,7 @@ void DebugMaker::Insert(VkCommandBuffer cmdbuffer, const char *markerName, const
 	
 	VkDebugMarkerMarkerInfoEXT markerInfo = {};
 	markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
-	memcpy(markerInfo.color, &color, sizeof(float) * 4);
+	memcpy(markerInfo.stop_color, &color, sizeof(float) * 4);
 	markerInfo.pMarkerName = markerName;
 
 	dmf.Insert(cmdbuffer, &markerInfo);

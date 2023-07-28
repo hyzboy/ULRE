@@ -2,6 +2,7 @@
 #define HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
 
 #include<hgl/type/Map.h>
+#include<hgl/type/String.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 namespace hgl
 {

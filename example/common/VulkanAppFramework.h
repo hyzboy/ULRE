@@ -23,6 +23,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/color/Color.h>
 #include<hgl/Time.h>
+#include<hgl/log/LogInfo.h>
 
 //#include<hgl/graph/LookAtCameraControl.h>
 #include<hgl/graph/FirstPersonCameraControl.h>

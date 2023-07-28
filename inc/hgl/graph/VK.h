@@ -1,6 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_INCLUDE
 #define HGL_GRAPH_VULKAN_INCLUDE
 
+#include<hgl/type/List.h>
 #include<hgl/math/Math.h>
 #include<hgl/type/String.h>
 #include<hgl/type/Map.h>
