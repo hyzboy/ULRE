@@ -22,7 +22,7 @@ namespace hgl
             tile_max_count=tile_rows*tile_cols;
             tile_count=0;
 
-            to_pool.PreMalloc(tile_max_count);
+            to_pool.PreAlloc(tile_max_count);
             {
                 int col=0,row=0;
                 TileObject **to=to_pool.GetInactiveData();

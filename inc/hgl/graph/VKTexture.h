@@ -4,7 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKImageView.h>
-#include<hgl/graph/Bitmap.h>
+#include<hgl/graph/BitmapData.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKTextureCreateInfo.h>
 VK_NAMESPACE_BEGIN

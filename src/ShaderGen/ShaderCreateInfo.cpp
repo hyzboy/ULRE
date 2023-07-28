@@ -1,7 +1,9 @@
 #include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
-#include"GLSLCompiler.h"
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/log/LogInfo.h>
+
+#include"GLSLCompiler.h"
 #include"common/MFCommon.h"
 
 namespace hgl{namespace graph{

@@ -40,10 +40,10 @@ struct DebugUtilsLabel:public VkDebugUtilsLabelEXT
         sType=VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
         pNext=nullptr;
         pLabelName=n;
-        color[0]=c.r;
-        color[1]=c.g;
-        color[2]=c.b;
-        color[3]=c.a;
+        stop_color[0]=c.r;
+        stop_color[1]=c.g;
+        stop_color[2]=c.b;
+        stop_color[3]=c.a;
     }
 };//struct DebugUtilsLabel
 

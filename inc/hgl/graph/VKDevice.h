@@ -5,8 +5,9 @@
 #include<hgl/type/String.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/RectScope.h>
+#include<hgl/graph/ImageRegion.h>
 #include<hgl/platform/Window.h>
-#include<hgl/graph/Bitmap.h>
+#include<hgl/graph/BitmapData.h>
 #include<hgl/graph/font/Font.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKDeviceAttribute.h>

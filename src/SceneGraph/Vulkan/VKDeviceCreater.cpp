@@ -9,6 +9,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDebugMaker.h>
 
+#include<iostream>
 #include<iomanip>
 
 VK_NAMESPACE_BEGIN

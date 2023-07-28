@@ -2,6 +2,7 @@
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKPhysicalDevice.h>
+#include<iostream>
 
 VK_NAMESPACE_BEGIN
 const VkDeviceSize GPUDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}

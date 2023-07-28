@@ -3,6 +3,7 @@
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 VertexInputData::VertexInputData(const uint32_t c,const uint32_t vc,const IndexBufferData *ibd)
