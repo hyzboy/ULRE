@@ -11,6 +11,8 @@ struct Material2DCreateConfig:public MaterialCreateConfig
 
     bool                local_to_world;         ///<包含LocalToWorld矩阵
 
+    bool                use_8bit_color;         ///<使用rgba8格式颜色(默认使用rgba32f)
+
 public:
 
     Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name):MaterialCreateConfig(da,name)

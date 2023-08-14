@@ -69,10 +69,10 @@ namespace
 
 void DescriptorSet::Clear()
 {
-    buffer_list.ClearData();
-    image_list.ClearData();
-    wds_list.ClearData();
-    binded_sets.ClearData();
+    buffer_list.Clear();
+    image_list.Clear();
+    wds_list.Clear();
+    binded_sets.Clear();
     is_dirty=true;
 }
 

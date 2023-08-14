@@ -128,10 +128,10 @@ void MaterialRenderList::Stat()
     const uint count=rn_list.GetCount();
     RenderNode *rn=rn_list.GetData();
 
-    ri_list.ClearData();
+    ri_list.Clear();
     ri_list.PreAlloc(count);
 
-    mi_set.ClearData();
+    mi_set.Clear();
 
     RenderItem *ri=ri_list.GetData();
             
