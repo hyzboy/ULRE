@@ -3,7 +3,7 @@
 
 #include<hgl/graph/TileData.h>
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/type/ResPool.h>
+#include<hgl/type/RefObjectPool.h>
 
 namespace hgl
 {
@@ -11,7 +11,7 @@ namespace hgl
     {
         using TileUVFloatMap=Map<u32char,RectScope2f>;
 
-        using TileResPool=ResPool<u32char,TileObject *>;
+        using TileResPool=RefObjectPool<u32char,TileObject *>;
 
         /**
          * Tile字符管理<br>

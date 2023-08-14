@@ -12,7 +12,7 @@ public:
     void Begin()
     {
         for(auto *it:data_list)
-            it->value->ClearData();
+            it->value->Clear();
     }
 
     void End()

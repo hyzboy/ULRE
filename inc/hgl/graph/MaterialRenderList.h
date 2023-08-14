@@ -63,9 +63,9 @@ public:
 
     void Add(Renderable *ri,const Matrix4f &mat);
 
-    void ClearData()
+    void Clear()
     {
-        rn_list.ClearData();
+        rn_list.Clear();
     }
 
     void End();

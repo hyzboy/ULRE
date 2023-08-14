@@ -25,14 +25,14 @@ namespace hgl
             to_pool.PreAlloc(tile_max_count);
             {
                 int col=0,row=0;
-                TileObject **to=to_pool.GetInactiveData();
+                TileObject *to=new TileObject;
 
                 for(uint i=0;i<tile_max_count;i++)
                 {
-                    (*to)->col  =col;
-                    (*to)->row  =row;
+                    to->col  =col;
+                    to->row  =row;
 
-                    (*to)->uv_pixel.Set(col*tile_width,
+                    to->uv_pixel.Set(col*tile_width,
                                         row*tile_height,
                                         0,
                                         0);
@@ -45,6 +45,8 @@ namespace hgl
                         ++row;
                         col=0;
                     }
+
+                    to_pool.AppendToIdle(to);
                 }
             }
 
@@ -63,7 +65,7 @@ namespace hgl
 
         void TileData::BeginCommit()
         {
-            commit_list.ClearData();
+            commit_list.Clear();
             commit_ptr=(uint8 *)tile_buffer->Map();
         }
 
@@ -82,7 +84,7 @@ namespace hgl
 
             const int result=commit_list.GetCount();
 
-            commit_list.ClearData();
+            commit_list.Clear();
             return result; 
         }
         

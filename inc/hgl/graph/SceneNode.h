@@ -43,7 +43,7 @@ namespace hgl
 
             void Clear()
             {
-                SubNode.ClearData();
+                SubNode.Clear();
                 render_obj=nullptr;
             }
 
