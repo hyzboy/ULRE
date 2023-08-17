@@ -3,7 +3,7 @@
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
-SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp):RenderTarget(q,rcs)
+RTSwapchain::RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp):RenderTarget(q,rcs)
 {
     device=dev;
 
@@ -24,13 +24,13 @@ SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,DeviceQu
     present_complete_semaphore=pcs;
 }
 
-SwapchainRenderTarget::~SwapchainRenderTarget()
+RTSwapchain::~RTSwapchain()
 {
     delete present_complete_semaphore;
     delete swapchain;
 }
     
-int SwapchainRenderTarget::AcquireNextImage()
+int RTSwapchain::AcquireNextImage()
 {
     if(vkAcquireNextImageKHR(device,swapchain->swap_chain,UINT64_MAX,*(this->present_complete_semaphore),VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
         return current_frame;
@@ -38,7 +38,7 @@ int SwapchainRenderTarget::AcquireNextImage()
     return -1;
 }
 
-bool SwapchainRenderTarget::PresentBackbuffer(VkSemaphore *wait_semaphores,const uint32_t count)
+bool RTSwapchain::PresentBackbuffer(VkSemaphore *wait_semaphores,const uint32_t count)
 {
     present_info.waitSemaphoreCount =count;
     present_info.pWaitSemaphores    =wait_semaphores;
@@ -58,19 +58,19 @@ bool SwapchainRenderTarget::PresentBackbuffer(VkSemaphore *wait_semaphores,const
     return(true);
 }
 
-bool SwapchainRenderTarget::PresentBackbuffer()
+bool RTSwapchain::PresentBackbuffer()
 {
     VkSemaphore sem=*render_complete_semaphore;
 
     return this->PresentBackbuffer(&sem,1);
 }
     
-bool SwapchainRenderTarget::Submit(VkCommandBuffer cb)
+bool RTSwapchain::Submit(VkCommandBuffer cb)
 {
     return queue->Submit(cb,present_complete_semaphore,render_complete_semaphore);
 }
 
-bool SwapchainRenderTarget::Submit(VkCommandBuffer cb,Semaphore *pce)
+bool RTSwapchain::Submit(VkCommandBuffer cb,Semaphore *pce)
 {
     return queue->Submit(cb,pce,render_complete_semaphore);
 }

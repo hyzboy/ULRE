@@ -57,7 +57,7 @@ RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,const uint32_t fenc
     return CreateRT(fbi,rp,fence_count);
 }
 
-SwapchainRenderTarget *GPUDevice::CreateSwapchainRenderTarget()
+RTSwapchain *GPUDevice::CreateSwapchainRenderTarget()
 {
     Swapchain *sc=CreateSwapchain(attr->surface_caps.currentExtent);
 
@@ -68,13 +68,13 @@ SwapchainRenderTarget *GPUDevice::CreateSwapchainRenderTarget()
     Semaphore *render_complete_semaphore=CreateGPUSemaphore();
     Semaphore *present_complete_semaphore=CreateGPUSemaphore();
 
-    SwapchainRenderTarget *srt=new SwapchainRenderTarget(   attr->device,
-                                                            sc,
-                                                            q,
-                                                            render_complete_semaphore,
-                                                            present_complete_semaphore,
-                                                            device_render_pass
-                                                            );
+    RTSwapchain *srt=new RTSwapchain(   attr->device,
+                                        sc,
+                                        q,
+                                        render_complete_semaphore,
+                                        present_complete_semaphore,
+                                        device_render_pass
+                                        );
 
     return srt;
 }

@@ -63,7 +63,7 @@ public: // command buffer
 /**
  * 交换链专用渲染目标
  */
-class SwapchainRenderTarget:public RenderTarget
+class RTSwapchain:public RenderTarget
 {
     VkDevice device;
     Swapchain *swapchain;
@@ -75,8 +75,8 @@ class SwapchainRenderTarget:public RenderTarget
 
 public:
 
-    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
-    ~SwapchainRenderTarget();
+    RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
+    ~RTSwapchain();
 
                     Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_fbo[current_frame];}
                     Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->sc_fbo[index];}
@@ -110,6 +110,6 @@ public:
 
     bool Submit(VkCommandBuffer);
     bool Submit(VkCommandBuffer,Semaphore *);
-};//class SwapchainRenderTarget:public RenderTarget
+};//class RTSwapchain:public RenderTarget
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_TARGET_INCLUDE

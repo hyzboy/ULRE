@@ -36,9 +36,9 @@ private:
     DeviceRenderPassManage *render_pass_manage;
     RenderPass *device_render_pass;
 
-    SwapchainRenderTarget *swapchainRT;
+    RTSwapchain *sc_rt;
 
-    SwapchainRenderTarget *CreateSwapchainRenderTarget();
+    RTSwapchain *CreateSwapchainRenderTarget();
 
     void InitRenderPassManage();
     void ClearRenderPassManage();
@@ -77,9 +77,9 @@ public:
 
                 RenderPass *        GetRenderPass       ()      {return device_render_pass;}
 
-    SwapchainRenderTarget *         GetSwapchainRT      ()      {return swapchainRT;}
+                RTSwapchain *       GetSwapchainRT      ()      {return sc_rt;}
 
-    const       VkExtent2D &        GetSwapchainSize    ()const {return swapchainRT->GetExtent();}
+    const       VkExtent2D &        GetSwapchainSize    ()const {return sc_rt->GetExtent();}
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
 

@@ -20,7 +20,7 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 
     InitRenderPassManage();
 
-    swapchainRT=nullptr;
+    sc_rt=nullptr;
     Resize(attr->surface_caps.currentExtent);
 
     texture_cmd_buf=CreateTextureCommandBuffer();
@@ -31,7 +31,7 @@ GPUDevice::~GPUDevice()
 {
     ClearRenderPassManage();
 
-    SAFE_CLEAR(swapchainRT);
+    SAFE_CLEAR(sc_rt);
 
     SAFE_CLEAR(texture_queue);
     SAFE_CLEAR(texture_cmd_buf);
@@ -41,13 +41,13 @@ GPUDevice::~GPUDevice()
 
 bool GPUDevice::Resize(const VkExtent2D &extent)
 {
-    SAFE_CLEAR(swapchainRT);
+    SAFE_CLEAR(sc_rt);
 
     attr->RefreshSurfaceCaps();
 
-    swapchainRT=CreateSwapchainRenderTarget();
+    sc_rt=CreateSwapchainRenderTarget();
 
-    return(swapchainRT);
+    return(sc_rt);
 }
 
 VkCommandBuffer GPUDevice::CreateCommandBuffer()
