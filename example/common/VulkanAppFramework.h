@@ -52,7 +52,7 @@ protected:
 
     GPUDevice *             device                      =nullptr;
     RenderPass *            device_render_pass          =nullptr;
-    SwapchainRenderTarget * sc_render_target            =nullptr;
+    RTSwapchain *           sc_render_target            =nullptr;
 
 protected:
 
