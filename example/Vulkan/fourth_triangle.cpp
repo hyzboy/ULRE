@@ -40,8 +40,8 @@ private:
     SceneNode           render_root;
     RenderList *        render_list         =nullptr;
 
-    MaterialInstance *  material_instance[6]={nullptr,nullptr,nullptr,nullptr,nullptr,nullptr};
-    Renderable *        render_obj[6]       ={nullptr,nullptr,nullptr,nullptr,nullptr,nullptr};
+    MaterialInstance *  material_instance[6]{};
+    Renderable *        render_obj[6]       {};
 
     Pipeline *          pipeline            =nullptr;
 
