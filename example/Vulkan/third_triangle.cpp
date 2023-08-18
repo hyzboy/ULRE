@@ -5,6 +5,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
 #include<hgl/graph/RenderList.h>
 
@@ -23,10 +24,10 @@ constexpr float position_data[VERTEX_COUNT*2]=
      0.1,  0.9
 };
 
-constexpr float color_data[VERTEX_COUNT][4]=
-{   {1,0,0,1},
-    {0,1,0,1},
-    {0,0,1,1}
+constexpr uint8 color_data[VERTEX_COUNT][4]=
+{   {255,0,0,255},
+    {0,255,0,255},
+    {0,0,255,255}
 };
 
 class TestApp:public VulkanApplicationFramework
@@ -53,15 +54,19 @@ private:
 
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
 
-            material_instance=db->CreateMaterialInstance(mci);
+            VILConfig vil_config;
+
+            vil_config.Add(VAN::Color,VF_V4UN8);
+
+            material_instance=db->CreateMaterialInstance(mci,&vil_config);
         }
 
         if(!material_instance)
             return(false);
-            
+
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
-        
+
         return pipeline;
     }
 
@@ -69,8 +74,8 @@ private:
     {
         RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
-        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
-        if(!rpc.SetVBO(VAN::Color,      VF_V4F, color_data   ))return(false);
+        if(!rpc.SetVBO(VAN::Position,   VF_V2F,     position_data))return(false);
+        if(!rpc.SetVBO(VAN::Color,      VF_V4UN8,   color_data   ))return(false);
         
         render_obj=rpc.Create(material_instance,pipeline);
 
