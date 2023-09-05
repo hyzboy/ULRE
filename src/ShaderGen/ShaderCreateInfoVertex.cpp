@@ -31,27 +31,17 @@ int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &na
     return AddInput(vat,name,input_rate,group);
 }
 
-void ShaderCreateInfoVertex::AddMaterialInstanceID()
-{
-    AddInput(VAT_UINT,  VAN::MaterialInstanceID,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::MaterialInstanceID);
-}
-
 void ShaderCreateInfoVertex::AddJoint()
 {
     AddInput(VAT_UVEC4, VAN::JointID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointID);
     AddInput(VAT_VEC4,  VAN::JointWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointWeight);
 }
 
-void ShaderCreateInfoVertex::AddLocalToWorld()
+void ShaderCreateInfoVertex::AddAssign()
 {
-    char name[]= "LocalToWorld_?";
+    char name[]="Assign";
 
-    for(uint i=0;i<4;i++)
-    {
-        name[sizeof(name)-2]='0'+i;
-
-        AddInput(VAT_VEC4,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
-    }
+    AddInput(VAT_UINT,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::Assign);
 
     AddFunction(mtl::func::GetLocalToWorld);
 }

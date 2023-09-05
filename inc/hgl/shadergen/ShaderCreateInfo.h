@@ -81,6 +81,7 @@ public:
     void AddFunction(const AnsiString &str){function_list.Add(str);}
 
     void SetMaterialInstance(UBODescriptor *,const AnsiString &);
+    void SetLocalToWorld(UBODescriptor *);
 
     void SetMain(const AnsiString &str){main_function=str;}
 

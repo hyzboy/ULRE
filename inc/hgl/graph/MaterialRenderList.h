@@ -1,5 +1,6 @@
 #pragma once
 #include<hgl/graph/RenderNode.h>
+#include<hgl/graph/VKVBOList.h>
 
 VK_NAMESPACE_BEGIN
 struct RenderExtraBuffer;
@@ -42,9 +43,7 @@ private:
 
 protected:
 
-    uint32_t binding_count;
-    VkBuffer *buffer_list;
-    VkDeviceSize *buffer_offset;
+            VBOList *           vbo_list;
 
             MaterialInstance *  last_mi;
             Pipeline *          last_pipeline;

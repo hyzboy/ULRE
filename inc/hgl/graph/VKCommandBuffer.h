@@ -2,6 +2,7 @@
 #define HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
 
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKVBOList.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/color/Color4f.h>
@@ -140,7 +141,7 @@ public:
         return(true);
     }
 
-    bool BindDescriptorSets(Renderable *ri);
+    bool BindDescriptorSets(Material *);
 
     bool PushDescriptorSet(VkPipelineLayout pipeline_layout,uint32_t set,uint32_t count,const VkWriteDescriptorSet *write_desc_set)
     {
@@ -158,6 +159,17 @@ public:
     void BindVBO(const uint32_t first,const uint32_t count,const VkBuffer *vbo,const VkDeviceSize *offsets)
     {
         vkCmdBindVertexBuffers(cmd_buf,first,count,vbo,offsets);
+    }
+
+    bool BindVBO(VBOList *vbo_list)
+    {
+        if(!vbo_list)return(false);
+
+        if(!vbo_list->IsFull())return(false);
+
+        vkCmdBindVertexBuffers(cmd_buf,0,vbo_list->binding_count,vbo_list->buffer_list,vbo_list->buffer_offset);
+
+        return(true);
     }
 
     void BindIBO(const IndexBufferData *);

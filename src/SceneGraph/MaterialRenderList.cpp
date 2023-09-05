@@ -62,18 +62,12 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,Material *m)
     mtl=m;
     extra_buffer=nullptr;
 
-    const VertexInput *vi=mtl->GetVertexInput();
-
-    binding_count=vi->GetCount();
-    buffer_list=new VkBuffer[binding_count];
-    buffer_offset=new VkDeviceSize[binding_count];                        
+    vbo_list=new VBOList(mtl->GetVertexInput()->GetCount());
 }
 
 MaterialRenderList::~MaterialRenderList()
 {
-    delete[] buffer_offset;
-    delete[] buffer_list;
-
+    SAFE_CLEAR(vbo_list);
     SAFE_CLEAR(extra_buffer)
 }
 
@@ -180,6 +174,19 @@ void MaterialRenderList::Stat()
 
 void MaterialRenderList::Bind(MaterialInstance *mi)
 {
+    if(!mi)return;
+
+    const VIL *vil=mi->GetVIL();
+
+    const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
+
+    if(assign_binding_count>0)
+    {
+        mi->BindUBO(DescriptorSetType::PerFrame,"l2w",extra_buffer->assigns_l2w);
+//        mi->BindUBO(DescriptorSetType::PerFrame,"Assign",extra_buffer->assigns_mi);
+    }
+
+    cmd_buf->BindDescriptorSets(mi->GetMaterial());
 }
 
 bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
@@ -191,83 +198,82 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     if(vil->GetCount(VertexInputGroup::Basic)!=vid->binding_count)
         return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
 
-    uint count=0;
+    vbo_list->Restart();
 
     //Basic组，它所有的VBO信息均来自于Primitive，由vid参数传递进来
     {
-        hgl_cpy(buffer_list,vid->buffer_list,vid->binding_count);
-        hgl_cpy(buffer_offset,vid->buffer_offset,vid->binding_count);
-
-        count=vid->binding_count;
+        vbo_list->Add(vid->buffer_list,vid->buffer_offset,vid->binding_count);
     }
 
-    if(count<binding_count) //材质组
-    {
-        const uint mtl_binding_count=vil->GetCount(VertexInputGroup::MaterialInstanceID);
+    //if(!vbo_list.IsFull()) //Joint组，暂未支持
+    //{
+    //    const uint joint_id_binding_count=vil->GetCount(VertexInputGroup::JointID);
 
-        if(mtl_binding_count>0)
+    //    if(joint_id_binding_count>0)                                        //有矩阵信息
+    //    {
+    //        count+=joint_id_binding_count;
+
+    //        if(count<binding_count) //JointWeight组
+    //        {
+    //            const uint joing_weight_binding_count=vil->GetCount(VertexInputGroup::JointWeight);
+
+    //            if(joing_weight_binding_count!=1)
+    //            {
+    //                ++count;
+    //            }
+    //            else //JointWieght不为1是个bug，除非未来支持8权重
+    //            {
+    //                return(false);
+    //            }
+    //        }
+    //        else //有JointID没有JointWeight? 这是个BUG
+    //        {
+    //            return(false);
+    //        }
+    //    }
+    //}
+
+    //if(count<binding_count)//LocalToWorld组，由RenderList合成
+    //{
+    //    const uint l2w_binding_count=vil->GetCount(VertexInputGroup::LocalToWorld);
+
+    //    if(l2w_binding_count>0)                                         //有变换矩阵信息
+    //    {
+    //        if(l2w_binding_count!=4)
+    //            return(false);
+
+    //        hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,4);
+
+    //        for(uint i=0;i<4;i++)
+    //            buffer_offset[count+i]=ri_index*16;                        //mat4每列都是rgba32f，自然是16字节
+
+    //        count+=l2w_binding_count;
+    //    }
+    //}
+
+    if(!vbo_list->IsFull())
+    {
+        const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
+
+        if(assign_binding_count>0)
         {
-            if(mtl_binding_count!=1)                                    //只有MaterialInstanceID
+            if(assign_binding_count!=1)
                 return(false);
 
-            count+=mtl_binding_count;
+            vbo_list->Add(extra_buffer->assigns_vbo->GetBuffer(),extra_buffer->assigns_vbo_strip*ri_index);
         }
     }
 
-    if(count<binding_count) //Joint组，暂未支持
-    {
-        const uint joint_id_binding_count=vil->GetCount(VertexInputGroup::JointID);
 
-        if(joint_id_binding_count>0)                                        //有矩阵信息
-        {
-            count+=joint_id_binding_count;
+    //if(count!=binding_count)
+    //{
+    //    //还有没支持的绑定组？？？？
 
-            if(count<binding_count) //JointWeight组
-            {
-                const uint joing_weight_binding_count=vil->GetCount(VertexInputGroup::JointWeight);
+    //    return(false);
+    //}
 
-                if(joing_weight_binding_count!=1)
-                {
-                    ++count;
-                }
-                else //JointWieght不为1是个bug，除非未来支持8权重
-                {
-                    return(false);
-                }
-            }
-            else //有JointID没有JointWeight? 这是个BUG
-            {
-                return(false);
-            }
-        }
-    }
-
-    if(count<binding_count)//LocalToWorld组，由RenderList合成
-    {
-        const uint l2w_binding_count=vil->GetCount(VertexInputGroup::LocalToWorld);
-
-        if(l2w_binding_count>0)                                         //有变换矩阵信息
-        {
-            if(l2w_binding_count!=4)
-                return(false);
-
-            hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,4);
-
-            for(uint i=0;i<4;i++)
-                buffer_offset[count+i]=ri_index*16;                        //mat4每列都是rgba32f，自然是16字节
-
-            count+=l2w_binding_count;
-        }
-    }
-
-    if(count!=binding_count)
-    {
-        //还有没支持的绑定组？？？？
-
-        return(false);
-    }
-
-    cmd_buf->BindVBO(0,count,buffer_list,buffer_offset);
+    //cmd_buf->BindVBO(0,count,buffer_list,buffer_offset);
+    cmd_buf->BindVBO(vbo_list);
 
     return(true);
 }

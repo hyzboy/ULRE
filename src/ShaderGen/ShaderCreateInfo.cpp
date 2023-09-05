@@ -157,9 +157,18 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
 {
     sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
     sdm->AddStruct(mtl::MaterialInstanceStruct);
-    AddFunction(mtl::func::GetMI);
+
+    if(shader_stage==VK_SHADER_STAGE_VERTEX_BIT)
+        AddFunction(mtl::func::GetMI_VS);
+    else
+        AddFunction(mtl::func::GetMI);
 
     mi_codes=mi;
+}
+
+void ShaderCreateInfo::SetLocalToWorld(UBODescriptor *ubo)
+{
+    sdm->AddUBO(DescriptorSetType::PerFrame,ubo);
 }
 
 bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)

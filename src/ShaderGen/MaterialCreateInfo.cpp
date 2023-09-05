@@ -16,8 +16,25 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
     if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
 
-    mi_data_bytes=0;
-    mi_shader_stage=0;
+    ubo_range=config->dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
+    ssbo_range=config->dev_attr->physical_device->GetSSBORange();
+
+    {
+        mi_data_bytes=0;
+        mi_shader_stage=0;
+        mi_max_count=0;
+        mi_ubo=nullptr;
+    }
+
+    {
+        l2w_max_count=ubo_range/sizeof(Matrix4f);
+
+        if(l2w_max_count>HGL_U16_MAX)
+            l2w_max_count=HGL_U16_MAX;
+
+        l2w_shader_stage=0;
+        l2w_ubo=nullptr;
+    }
 }
 
 bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
@@ -141,25 +158,25 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
-    const uint32_t ubo_range=config->dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
+    {    
+        mi_max_count=ubo_range/data_bytes;
     
-    mi_max_count=ubo_range/data_bytes;
-    
-    if(mi_max_count>256)        //我们使用uint8传递材质实例ID，所以最大数量为256。未来如考虑使用更多，需综合考虑
-        mi_max_count=256;
-
-    const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count);
+        if(mi_max_count>HGL_U16_MAX)        //我们使用uint16传递材质实例ID，所以最大数量为65535。未来如考虑使用更多，需综合考虑
+            mi_max_count=HGL_U16_MAX;
+    }
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
     mdi.AddStruct(SBS_MaterialInstanceData);
 
-    UBODescriptor *ubo=new UBODescriptor();
+    mi_ubo=new UBODescriptor();
 
-    ubo->type=SBS_MaterialInstanceData.struct_name;
-    hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
-    ubo->stage_flag=shader_stage_flag_bits;
+    mi_ubo->type=SBS_MaterialInstanceData.struct_name;
+    hgl::strcpy(mi_ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
+    mi_ubo->stage_flag=shader_stage_flag_bits;
 
-    mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerMaterial,ubo);
+    mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerMaterial,mi_ubo);
+
+    const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count);
 
     auto *it=shader_map.GetDataList();
 
@@ -168,20 +185,52 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
         if((*it)->key&shader_stage_flag_bits)
         {
             (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT);
-            (*it)->value->SetMaterialInstance(ubo,mi_codes);
+            (*it)->value->SetMaterialInstance(mi_ubo,mi_codes);
         }
 
         ++it;
     }
-
-    vert->AddMaterialInstanceID();           //增加一个材质实例ID
 
     mi_shader_stage=shader_stage_flag_bits;
 
     return(true);
 }
 
-bool MaterialCreateInfo::CreateShader(const GPUDeviceAttribute *dev_attr)
+bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
+{
+    if(shader_stage_flag_bits==0)return(false);
+
+    mdi.AddStruct(SBS_LocalToWorld);
+
+    l2w_ubo=new UBODescriptor();
+
+    l2w_ubo->type=SBS_LocalToWorld.struct_name;
+    hgl::strcpy(l2w_ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_LocalToWorld.name);
+    l2w_ubo->stage_flag=shader_stage_flag_bits;
+
+    mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerFrame,l2w_ubo);
+
+    const AnsiString L2W_MAX_COUNT=AnsiString::numberOf(l2w_max_count);
+
+    auto *it=shader_map.GetDataList();
+
+    for(int i=0;i<shader_map.GetCount();i++)
+    {
+        if((*it)->key&shader_stage_flag_bits)
+        {
+            (*it)->value->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT);
+            (*it)->value->SetLocalToWorld(l2w_ubo);
+        }
+
+        ++it;
+    }
+
+    l2w_shader_stage=shader_stage_flag_bits;
+
+    return(true);
+}
+
+bool MaterialCreateInfo::CreateShader()
 {
     if(shader_map.IsEmpty())
         return(false);
@@ -198,7 +247,11 @@ bool MaterialCreateInfo::CreateShader(const GPUDeviceAttribute *dev_attr)
         if(sc->GetShaderStage()<mi_shader_stage)
         {
             sc->AddOutput(VAT_UINT,VAN::MaterialInstanceID,Interpolation::Flat);
-            sc->AddFunction(mtl::func::HandoverMI);
+
+            if(sc->GetShaderStage()==VK_SHADER_STAGE_VERTEX_BIT)
+                sc->AddFunction(mtl::func::HandoverMI_VS);
+            else
+                sc->AddFunction(mtl::func::HandoverMI);
         }
 
         sc->CreateShader(last);
