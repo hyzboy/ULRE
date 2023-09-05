@@ -38,9 +38,6 @@ struct RenderAssignBuffer
 //    VBO *bone_id,*bone_weight;
 //    VkBuffer bone_id_buffer,bone_weight_buffer;
 
-    VBO *l2w_vbo[4];
-    VkBuffer l2w_buffer[4];
-
 //------------------------------------------------------------
 
     //Assign UBO
@@ -70,10 +67,6 @@ public:
         SAFE_CLEAR(assigns_mi);
         SAFE_CLEAR(assigns_vbo);
 
-        SAFE_CLEAR(l2w_vbo[0])
-        SAFE_CLEAR(l2w_vbo[1])
-        SAFE_CLEAR(l2w_vbo[2])
-        SAFE_CLEAR(l2w_vbo[3])
         node_count=0;
     }
 
@@ -99,12 +92,6 @@ public:
         ClearNode();
         node_count=power_to_2(c);
 
-        for(uint i=0;i<4;i++)
-        {
-            l2w_vbo[i]=dev->CreateVBO(VF_V4F,node_count);
-            l2w_buffer[i]=l2w_vbo[i]->GetBuffer();
-        }
-
         assigns_l2w=dev->CreateUBO(node_count*sizeof(Matrix4f));
         //assigns_mi=dev->CreateUBO(node_count*sizeof(uint8));
         assigns_vbo=dev->CreateVBO(VF_V1U16,node_count);
@@ -127,27 +114,6 @@ public:
     void WriteLocalToWorld(RenderNode *render_node,const uint count)
     {
         RenderNode *rn;
-
-        //old l2w in vertex input stream
-        {
-            glm::vec4 *tp;
-
-            for(uint col=0;col<4;col++)
-            {
-                tp=(glm::vec4 *)(l2w_vbo[col]->Map());
-
-                rn=render_node;
-
-                for(uint i=0;i<count;i++)
-                {
-                    *tp=rn->local_to_world[col];
-                    ++tp;
-                    ++rn;
-                }
-
-                l2w_vbo[col]->Unmap();
-            }
-        }
 
         //new l2w array in ubo
         {
