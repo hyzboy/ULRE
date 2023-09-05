@@ -27,10 +27,7 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     }
 
     {
-        l2w_max_count=ubo_range/sizeof(Matrix4f);
-
-        if(l2w_max_count>HGL_U16_MAX)
-            l2w_max_count=HGL_U16_MAX;
+        l2w_max_count=hgl_min<uint32_t>(ubo_range/sizeof(Matrix4f),HGL_U16_MAX);
 
         l2w_shader_stage=0;
         l2w_ubo=nullptr;
@@ -158,12 +155,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     if(data_bytes>0)
         mi_codes=glsl_codes;
 
-    {    
-        mi_max_count=ubo_range/data_bytes;
-    
-        if(mi_max_count>HGL_U16_MAX)        //我们使用uint16传递材质实例ID，所以最大数量为65535。未来如考虑使用更多，需综合考虑
-            mi_max_count=HGL_U16_MAX;
-    }
+    mi_max_count=hgl_min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
     mdi.AddStruct(SBS_MaterialInstanceData);
