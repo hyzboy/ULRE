@@ -204,7 +204,7 @@ public:
             cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
-                cb->BindDescriptorSets(ri);
+                cb->BindDescriptorSets(ri->GetMaterial());
                 cb->BindVBO(ri);
 
                     if (vid->index_buffer->buffer)

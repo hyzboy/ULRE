@@ -101,15 +101,14 @@ bool RenderCmdBuffer::BeginRenderPass()
     return(true);
 }
 
-bool RenderCmdBuffer::BindDescriptorSets(Renderable *ri)
+bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
 {
-    if(!ri)return(false);
+    if(!mtl)return(false);
 
     {
         uint32_t count=0;
 
         MaterialParameters *mp;
-        Material *mtl=ri->GetMaterial();
         VkDescriptorSet ds[DESCRIPTOR_SET_TYPE_COUNT];
 
         ENUM_CLASS_FOR(DescriptorSetType,int,i)
@@ -125,7 +124,7 @@ bool RenderCmdBuffer::BindDescriptorSets(Renderable *ri)
 
         if(count>0)
         {
-            pipeline_layout=ri->GetPipelineLayout();
+            pipeline_layout=mtl->GetPipelineLayout();
 
             vkCmdBindDescriptorSets(cmd_buf,VK_PIPELINE_BIND_POINT_GRAPHICS,pipeline_layout,0,count,ds,0,0);
         }

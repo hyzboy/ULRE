@@ -41,6 +41,17 @@ struct RenderExtraBuffer
     VBO *l2w_vbo[4];
     VkBuffer l2w_buffer[4];
 
+//------------------------------------------------------------
+
+    //Assign UBO
+    DeviceBuffer *assigns_l2w;
+    DeviceBuffer *assigns_mi;
+    
+    //Assign VBO
+    VBO *assigns_vbo;           ///<RG16UI格式的VertexInputStream,,,,X:L2W ID,Y:MI ID
+
+    const uint assigns_vbo_strip=2;     ///<Assign VBO的每个节点的字节数
+
 public:
 
     RenderExtraBuffer()
@@ -55,6 +66,10 @@ public:
 
     void ClearNode()
     {
+        SAFE_CLEAR(assigns_l2w);
+        SAFE_CLEAR(assigns_mi);
+        SAFE_CLEAR(assigns_vbo);
+
         SAFE_CLEAR(l2w_vbo[0])
         SAFE_CLEAR(l2w_vbo[1])
         SAFE_CLEAR(l2w_vbo[2])
@@ -89,6 +104,10 @@ public:
             l2w_vbo[i]=dev->CreateVBO(VF_V4F,node_count);
             l2w_buffer[i]=l2w_vbo[i]->GetBuffer();
         }
+
+        assigns_l2w=dev->CreateUBO(node_count*sizeof(Matrix4f));
+        //assigns_mi=dev->CreateUBO(node_count*sizeof(uint8));
+        assigns_vbo=dev->CreateVBO(VF_V1U16,node_count);
     }
 
     //void MIAlloc(GPUDevice *dev,const uint c,const uint mis)
@@ -108,22 +127,48 @@ public:
     void WriteLocalToWorld(RenderNode *render_node,const uint count)
     {
         RenderNode *rn;
-        glm::vec4 *tp;
 
-        for(uint col=0;col<4;col++)
+        //old l2w in vertex input stream
         {
-            tp=(glm::vec4 *)(l2w_vbo[col]->Map());
+            glm::vec4 *tp;
+
+            for(uint col=0;col<4;col++)
+            {
+                tp=(glm::vec4 *)(l2w_vbo[col]->Map());
+
+                rn=render_node;
+
+                for(uint i=0;i<count;i++)
+                {
+                    *tp=rn->local_to_world[col];
+                    ++tp;
+                    ++rn;
+                }
+
+                l2w_vbo[col]->Unmap();
+            }
+        }
+
+        //new l2w array in ubo
+        {
+            Matrix4f *tp=(hgl::Matrix4f *)(assigns_l2w->Map());
+            uint16 *idp=(uint16 *)(assigns_vbo->Map());
 
             rn=render_node;
 
             for(uint i=0;i<count;i++)
             {
-                *tp=rn->local_to_world[col];
+                *tp=rn->local_to_world;
                 ++tp;
+
+                *idp=i;
+                ++idp;
+
                 ++rn;
             }
 
-            l2w_vbo[col]->Unmap();
+            assigns_vbo->Unmap();
+            assigns_l2w->Unmap();
         }
     }
 
