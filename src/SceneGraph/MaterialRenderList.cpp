@@ -3,8 +3,9 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKVertexInput.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/util/sort/Sort.h>
-#include"RenderExtraBuffer.h"
+#include"RenderAssignBuffer.h"
 
 /**
 * 
@@ -60,7 +61,7 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,Material *m)
     device=d;
     cmd_buf=nullptr;
     mtl=m;
-    extra_buffer=nullptr;
+    assign_buffer=nullptr;
 
     vbo_list=new VBOList(mtl->GetVertexInput()->GetCount());
 }
@@ -68,7 +69,7 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,Material *m)
 MaterialRenderList::~MaterialRenderList()
 {
     SAFE_CLEAR(vbo_list);
-    SAFE_CLEAR(extra_buffer)
+    SAFE_CLEAR(assign_buffer)
 }
 
 void MaterialRenderList::Add(Renderable *ri,const Matrix4f &mat)
@@ -90,24 +91,24 @@ void MaterialRenderList::End()
 
     if(node_count<=0)return;
 
-    if(!extra_buffer)
-        extra_buffer=new RenderExtraBuffer;
+    if(!assign_buffer)
+        assign_buffer=new RenderAssignBuffer;
 
-    if(extra_buffer->node_count<node_count)
-        extra_buffer->NodeAlloc(device,node_count);
+    if(assign_buffer->node_count<node_count)
+        assign_buffer->NodeAlloc(device,node_count);
 
     Stat();
 
     //写入LocalToWorld数据
-    extra_buffer->WriteLocalToWorld(rn_list.GetData(),node_count);
+    assign_buffer->WriteLocalToWorld(rn_list.GetData(),node_count);
 
     const uint mi_count=mi_set.GetCount();
 
     if(mi_count<=0)return;
 
-    //if(extra_buffer->mi_count<mi_count)
-    //    extra_buffer->MIAlloc(device,mi_count,);
-    //extra_buffer->WriteMaterialInstance(rn_list.GetData(),node_count,mi_set);
+    //if(assign_buffer->mi_count<mi_count)
+    //    assign_buffer->MIAlloc(device,mi_count,);
+    //assign_buffer->WriteMaterialInstance(rn_list.GetData(),node_count,mi_set);
 }
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)
@@ -182,8 +183,8 @@ void MaterialRenderList::Bind(MaterialInstance *mi)
 
     if(assign_binding_count>0)
     {
-        mi->BindUBO(DescriptorSetType::PerFrame,"l2w",extra_buffer->assigns_l2w);
-//        mi->BindUBO(DescriptorSetType::PerFrame,"Assign",extra_buffer->assigns_mi);
+        mi->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,assign_buffer->assigns_l2w);
+//        mi->BindUBO(DescriptorSetType::PerFrame,"Assign",assign_buffer->assigns_mi);
     }
 
     cmd_buf->BindDescriptorSets(mi->GetMaterial());
@@ -242,7 +243,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //        if(l2w_binding_count!=4)
     //            return(false);
 
-    //        hgl_cpy(buffer_list+count,extra_buffer->l2w_buffer,4);
+    //        hgl_cpy(buffer_list+count,assign_buffer->l2w_buffer,4);
 
     //        for(uint i=0;i<4;i++)
     //            buffer_offset[count+i]=ri_index*16;                        //mat4每列都是rgba32f，自然是16字节
@@ -260,7 +261,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
             if(assign_binding_count!=1)
                 return(false);
 
-            vbo_list->Add(extra_buffer->assigns_vbo->GetBuffer(),extra_buffer->assigns_vbo_strip*ri_index);
+            vbo_list->Add(assign_buffer->assigns_vbo->GetBuffer(),assign_buffer->assigns_vbo_strip*ri_index);
         }
     }
 
