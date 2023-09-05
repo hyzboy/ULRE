@@ -24,7 +24,7 @@ VK_NAMESPACE_BEGIN
 /*
 * 渲染节点额外提供的数据
 */
-struct RenderExtraBuffer
+struct RenderAssignBuffer
 {
     uint node_count;                            ///<渲染节点数量
 //    uint mi_count;                              ///<材质实例数量
@@ -54,12 +54,12 @@ struct RenderExtraBuffer
 
 public:
 
-    RenderExtraBuffer()
+    RenderAssignBuffer()
     {
         hgl_zero(*this);
     }
 
-    ~RenderExtraBuffer()
+    ~RenderAssignBuffer()
     {
         Clear();
     }
@@ -205,5 +205,5 @@ public:
     //        //mi_data_buffer->Unmap();
     //    }
     //}
-};//struct RenderExtraBuffer
+};//struct RenderAssignBuffer
 VK_NAMESPACE_END

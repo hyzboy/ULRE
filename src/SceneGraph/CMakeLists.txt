@@ -44,7 +44,7 @@ SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneInfo.h
 
 SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         MaterialRenderList.cpp
-                        RenderExtraBuffer.h
+                        RenderAssignBuffer.h
                         SceneNode.cpp
                         SceneOrient.cpp)
 

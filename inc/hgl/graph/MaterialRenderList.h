@@ -1,12 +1,12 @@
-#pragma once
+ï»¿#pragma once
 #include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKVBOList.h>
 
 VK_NAMESPACE_BEGIN
-struct RenderExtraBuffer;
+struct RenderAssignBuffer;
 
 /**
-* Í¬Ò»²ÄÖÊµÄ¶ÔÏóäÖÈ¾ÁĞ±í
+* åŒä¸€æè´¨çš„å¯¹è±¡æ¸²æŸ“åˆ—è¡¨
 */
 class MaterialRenderList
 {
@@ -19,7 +19,7 @@ class MaterialRenderList
 
 private:
 
-    RenderExtraBuffer *extra_buffer;
+    RenderAssignBuffer *assign_buffer;
 
     struct RenderItem
     {
