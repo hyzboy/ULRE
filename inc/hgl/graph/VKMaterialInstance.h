@@ -50,8 +50,6 @@ protected:
 
     VIL *vil;
 
-    
-
 public:
 
             Material *  GetMaterial ()      {return material;}

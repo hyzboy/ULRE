@@ -128,12 +128,12 @@ void MaterialRenderList::Stat()
     const uint count=rn_list.GetCount();
     RenderNode *rn=rn_list.GetData();
 
-    ri_list.Clear();
-    ri_list.PreAlloc(count);
+    ri_array.Clear();
+    ri_array.Alloc(count);
 
     mi_set.Clear();
 
-    RenderItem *ri=ri_list.GetData();
+    RenderItem *ri=ri_array.GetData();
             
     ri_count=1;
 
@@ -324,7 +324,7 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
 
     cmd_buf=rcb;
 
-    RenderItem *ri=ri_list.GetData();
+    RenderItem *ri=ri_array.GetData();
 
     last_pipeline   =nullptr;
     last_mi         =nullptr;

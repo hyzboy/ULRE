@@ -67,7 +67,7 @@ private:
                 material_instance[i]->SetFloat4(0,color_data[i]);
             }*/
         }
-            
+
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
 //        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
         

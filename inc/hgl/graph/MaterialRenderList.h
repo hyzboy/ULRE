@@ -35,7 +35,7 @@ private:
     };
 
     MaterialInstanceSets mi_set;
-    List<RenderItem> ri_list;
+    DataArray<RenderItem> ri_array;
     uint ri_count;
 
     void Stat();

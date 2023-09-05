@@ -27,13 +27,13 @@ VK_NAMESPACE_BEGIN
 struct RenderExtraBuffer
 {
     uint node_count;                            ///<渲染节点数量
-    uint mi_count;                              ///<材质实例数量
+//    uint mi_count;                              ///<材质实例数量
 
-    uint mi_size;                               ///<单个材质实例数量长度
-    DeviceBuffer *mi_data_buffer;               ///<材质实例数据UBO/SSBO
+    //uint mi_size;                               ///<单个材质实例数量长度
+    //DeviceBuffer *mi_data_buffer;               ///<材质实例数据UBO/SSBO
 
-    VBO *mi_id;
-    VkBuffer mi_id_buffer;
+    //VBO *mi_id;
+    //VkBuffer mi_id_buffer;
 
 //    VBO *bone_id,*bone_weight;
 //    VkBuffer bone_id_buffer,bone_weight_buffer;
@@ -62,18 +62,18 @@ public:
         node_count=0;
     }
 
-    void ClearMI()
-    {
-        SAFE_CLEAR(mi_id)
-        SAFE_CLEAR(mi_data_buffer);
-        mi_count=0;
-        mi_size=0;
-    }
+    //void ClearMI()
+    //{
+    //    SAFE_CLEAR(mi_id)
+    //    SAFE_CLEAR(mi_data_buffer);
+    //    mi_count=0;
+    //    mi_size=0;
+    //}
 
     void Clear()
     {
         ClearNode();
-        ClearMI();
+//        ClearMI();
 
 //        SAFE_CLEAR(bone_id)
 //        SAFE_CLEAR(bone_weight)
@@ -91,19 +91,19 @@ public:
         }
     }
 
-    void MIAlloc(GPUDevice *dev,const uint c,const uint mis)
-    {
-        ClearMI();
-        if(c<=0||mi_size<=0)return;
-    
-        mi_count=power_to_2(c);
-        mi_size=mis;
+    //void MIAlloc(GPUDevice *dev,const uint c,const uint mis)
+    //{
+    //    ClearMI();
+    //    if(c<=0||mi_size<=0)return;
+    //
+    //    mi_count=power_to_2(c);
+    //    mi_size=mis;
 
-        mi_id=dev->CreateVBO(VF_V1U8,mi_count);
-        mi_id_buffer=mi_id->GetBuffer();
+    //    mi_id=dev->CreateVBO(VF_V1U8,mi_count);
+    //    mi_id_buffer=mi_id->GetBuffer();
 
-        mi_data_buffer=dev->CreateUBO(mi_count*mi_size);
-    }
+    //    mi_data_buffer=dev->CreateUBO(mi_count*mi_size);
+    //}
 
     void WriteLocalToWorld(RenderNode *render_node,const uint count)
     {
@@ -127,38 +127,38 @@ public:
         }
     }
 
-    void WriteMaterialInstance(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)
-    {
-        //MaterialInstance ID
-        {
-            uint8 *tp=(uint8 *)(mi_id->Map());
+    //void WriteMaterialInstance(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)
+    //{
+    //    //MaterialInstance ID
+    //    {
+    //        uint8 *tp=(uint8 *)(mi_id->Map());
 
-            for(uint i=0;i<count;i++)
-            {
-                *tp=mi_set.Find(render_node->ri->GetMaterialInstance());
-                ++tp;
-                ++render_node;
-            }
-            mi_id->Unmap();
-        }
+    //        for(uint i=0;i<count;i++)
+    //        {
+    //            *tp=mi_set.Find(render_node->ri->GetMaterialInstance());
+    //            ++tp;
+    //            ++render_node;
+    //        }
+    //        mi_id->Unmap();
+    //    }
 
-        //MaterialInstance Data
-        {
-            //const uint count=mi_set.GetCount();
+    //    //MaterialInstance Data
+    //    {
+    //        //const uint count=mi_set.GetCount();
 
-            //uint8 *tp=(uint8 *)(mi_data_buffer->Map());
-            //const MaterialInstance **mi=mi_set.GetData();
+    //        //uint8 *tp=(uint8 *)(mi_data_buffer->Map());
+    //        //const MaterialInstance **mi=mi_set.GetData();
 
-            //for(uint i=0;i<count;i++)
-            //{
-            //    memcpy(tp,(*mi)->GetData(),mi_size);
-    
-            //    ++mi;
-            //    tp+=mi_size;
-            //}
+    //        //for(uint i=0;i<count;i++)
+    //        //{
+    //        //    memcpy(tp,(*mi)->GetData(),mi_size);
+    //
+    //        //    ++mi;
+    //        //    tp+=mi_size;
+    //        //}
 
-            //mi_data_buffer->Unmap();
-        }
-    }
+    //        //mi_data_buffer->Unmap();
+    //    }
+    //}
 };//struct RenderExtraBuffer
 VK_NAMESPACE_END
