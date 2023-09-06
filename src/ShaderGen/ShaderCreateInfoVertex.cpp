@@ -2,6 +2,7 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VKRenderAssign.h>
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
 
@@ -39,9 +40,10 @@ void ShaderCreateInfoVertex::AddJoint()
 
 void ShaderCreateInfoVertex::AddAssign()
 {
-    char name[]="Assign";
-
-    AddInput(VAT_UINT,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::Assign);
+    AddInput(   ASSIGN_VAT_FMT,
+                ASSIGN_VIS_NAME,
+                VK_VERTEX_INPUT_RATE_INSTANCE,
+                VertexInputGroup::Assign);
 
     AddFunction(mtl::func::GetLocalToWorld);
 }

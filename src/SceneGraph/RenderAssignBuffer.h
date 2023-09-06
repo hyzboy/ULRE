@@ -21,7 +21,6 @@ VK_NAMESPACE_BEGIN
 // 我们天然要求将材质实例数据分为两个等级，同时要求一次渲染不能超过256种材质实例。
 // 所以 UBO Range为16k时，实例数据不能超过64字节。UBO Range为64k时，实例数据不能超过256字节。
 
-constexpr const uint ASSIGNS_VBO_STRIP_BYTES=2;     ///<Assign VBO的每个节点的字节数
 
 struct RenderNode;
 class MaterialInstance;
