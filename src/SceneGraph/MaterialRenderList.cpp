@@ -183,8 +183,8 @@ void MaterialRenderList::Bind(MaterialInstance *mi)
 
     if(assign_binding_count>0)
     {
-        mi->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,assign_buffer->assigns_l2w);
-//        mi->BindUBO(DescriptorSetType::PerFrame,"Assign",assign_buffer->assigns_mi);
+        mi->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,assign_buffer->ubo_l2w);
+//        mi->BindUBO(DescriptorSetType::PerFrame,"Assign",assign_buffer->ubo_mi);
     }
 
     cmd_buf->BindDescriptorSets(mi->GetMaterial());
@@ -261,7 +261,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
             if(assign_binding_count!=1)
                 return(false);
 
-            vbo_list->Add(assign_buffer->assigns_vbo->GetBuffer(),assign_buffer->assigns_vbo_strip*ri_index);
+            vbo_list->Add(assign_buffer->vbo_assigns->GetBuffer(),ASSIGNS_VBO_STRIP_BYTES*ri_index);
         }
     }
 
