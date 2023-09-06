@@ -3,6 +3,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKVertexInput.h>
+#include<hgl/graph/VKRenderAssign.h>
 #include<hgl/util/sort/Sort.h>
 #include"RenderAssignBuffer.h"
 
@@ -225,24 +226,6 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //    }
     //}
 
-    //if(count<binding_count)//LocalToWorld组，由RenderList合成
-    //{
-    //    const uint l2w_binding_count=vil->GetCount(VertexInputGroup::LocalToWorld);
-
-    //    if(l2w_binding_count>0)                                         //有变换矩阵信息
-    //    {
-    //        if(l2w_binding_count!=4)
-    //            return(false);
-
-    //        hgl_cpy(buffer_list+count,assign_buffer->l2w_buffer,4);
-
-    //        for(uint i=0;i<4;i++)
-    //            buffer_offset[count+i]=ri_index*16;                        //mat4每列都是rgba32f，自然是16字节
-
-    //        count+=l2w_binding_count;
-    //    }
-    //}
-
     if(!vbo_list->IsFull())
     {
         const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
@@ -252,7 +235,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
             if(assign_binding_count!=1)
                 return(false);
 
-            vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGNS_VBO_STRIP_BYTES*ri_index);
+            vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGN_VBO_STIDE_BYTES*ri_index);
         }
     }
 
@@ -264,7 +247,6 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //    return(false);
     //}
 
-    //cmd_buf->BindVBO(0,count,buffer_list,buffer_offset);
     cmd_buf->BindVBO(vbo_list);
 
     return(true);

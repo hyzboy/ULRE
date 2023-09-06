@@ -3,6 +3,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/RenderNode.h>
+#include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
 VK_NAMESPACE_BEGIN
@@ -49,7 +50,7 @@ void RenderAssignBuffer::NodeAlloc(GPUDevice *dev,const uint c)
 
     ubo_l2w=dev->CreateUBO(node_count*sizeof(Matrix4f));
     //ubo_mi=dev->CreateUBO(node_count*sizeof(uint8));
-    vbo_assigns=dev->CreateVBO(VF_V1U16,node_count);
+    vbo_assigns=dev->CreateVBO(ASSIGN_VBO_FMT,node_count);
 }
 
 //void MIAlloc(GPUDevice *dev,const uint c,const uint mis)
