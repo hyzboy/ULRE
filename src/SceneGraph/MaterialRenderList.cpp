@@ -3,7 +3,6 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKVertexInput.h>
-#include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/util/sort/Sort.h>
 #include"RenderAssignBuffer.h"
 
@@ -177,15 +176,7 @@ void MaterialRenderList::Bind(MaterialInstance *mi)
 {
     if(!mi)return;
 
-    const VIL *vil=mi->GetVIL();
-
-    const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
-
-    if(assign_binding_count>0)
-    {
-        mi->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,assign_buffer->ubo_l2w);
-//        mi->BindUBO(DescriptorSetType::PerFrame,"Assign",assign_buffer->ubo_mi);
-    }
+    assign_buffer->Bind(mi);
 
     cmd_buf->BindDescriptorSets(mi->GetMaterial());
 }
@@ -261,7 +252,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
             if(assign_binding_count!=1)
                 return(false);
 
-            vbo_list->Add(assign_buffer->vbo_assigns->GetBuffer(),ASSIGNS_VBO_STRIP_BYTES*ri_index);
+            vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGNS_VBO_STRIP_BYTES*ri_index);
         }
     }
 
