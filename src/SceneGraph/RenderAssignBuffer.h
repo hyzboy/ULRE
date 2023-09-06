@@ -1,6 +1,5 @@
 ﻿#pragma once
-//#include<hgl/graph/VK.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VK.h>
 
 VK_NAMESPACE_BEGIN
 // ubo_range大致分为三档:
@@ -23,6 +22,9 @@ VK_NAMESPACE_BEGIN
 // 所以 UBO Range为16k时，实例数据不能超过64字节。UBO Range为64k时，实例数据不能超过256字节。
 
 constexpr const uint ASSIGNS_VBO_STRIP_BYTES=2;     ///<Assign VBO的每个节点的字节数
+
+struct RenderNode;
+class MaterialInstance;
 
 /*
 * 渲染节点额外提供的数据
@@ -52,125 +54,21 @@ struct RenderAssignBuffer
 
 public:
 
-    RenderAssignBuffer()
-    {
-        hgl_zero(*this);
-    }
+    VkBuffer GetAssignVBO()const;
 
-    ~RenderAssignBuffer()
-    {
-        Clear();
-    }
+    void Bind(MaterialInstance *)const;
 
-    void ClearNode()
-    {
-        SAFE_CLEAR(ubo_l2w);
-        SAFE_CLEAR(ubo_mi);
-        SAFE_CLEAR(vbo_assigns);
+public:
 
-        node_count=0;
-    }
+    RenderAssignBuffer(){hgl_zero(*this);}
+    ~RenderAssignBuffer(){Clear();}
 
-    //void ClearMI()
-    //{
-    //    SAFE_CLEAR(mi_id)
-    //    SAFE_CLEAR(mi_data_buffer);
-    //    mi_count=0;
-    //    mi_size=0;
-    //}
+    void ClearNode();
 
-    void Clear()
-    {
-        ClearNode();
-//        ClearMI();
+    void Clear();
 
-//        SAFE_CLEAR(bone_id)
-//        SAFE_CLEAR(bone_weight)
-    }
+    void NodeAlloc(GPUDevice *dev,const uint c);
+    void WriteLocalToWorld(RenderNode *render_node,const uint count);
 
-    void NodeAlloc(GPUDevice *dev,const uint c)
-    {
-        ClearNode();
-        node_count=power_to_2(c);
-
-        ubo_l2w=dev->CreateUBO(node_count*sizeof(Matrix4f));
-        //ubo_mi=dev->CreateUBO(node_count*sizeof(uint8));
-        vbo_assigns=dev->CreateVBO(VF_V1U16,node_count);
-    }
-
-    //void MIAlloc(GPUDevice *dev,const uint c,const uint mis)
-    //{
-    //    ClearMI();
-    //    if(c<=0||mi_size<=0)return;
-    //
-    //    mi_count=power_to_2(c);
-    //    mi_size=mis;
-
-    //    mi_id=dev->CreateVBO(VF_V1U8,mi_count);
-    //    mi_id_buffer=mi_id->GetBuffer();
-
-    //    mi_data_buffer=dev->CreateUBO(mi_count*mi_size);
-    //}
-
-    void WriteLocalToWorld(RenderNode *render_node,const uint count)
-    {
-        RenderNode *rn;
-
-        //new l2w array in ubo
-        {
-            Matrix4f *tp=(hgl::Matrix4f *)(ubo_l2w->Map());
-            uint16 *idp=(uint16 *)(vbo_assigns->Map());
-
-            rn=render_node;
-
-            for(uint i=0;i<count;i++)
-            {
-                *tp=rn->local_to_world;
-                ++tp;
-
-                *idp=i;
-                ++idp;
-
-                ++rn;
-            }
-
-            vbo_assigns->Unmap();
-            ubo_l2w->Unmap();
-        }
-    }
-
-    //void WriteMaterialInstance(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)
-    //{
-    //    //MaterialInstance ID
-    //    {
-    //        uint8 *tp=(uint8 *)(mi_id->Map());
-
-    //        for(uint i=0;i<count;i++)
-    //        {
-    //            *tp=mi_set.Find(render_node->ri->GetMaterialInstance());
-    //            ++tp;
-    //            ++render_node;
-    //        }
-    //        mi_id->Unmap();
-    //    }
-
-    //    //MaterialInstance Data
-    //    {
-    //        //const uint count=mi_set.GetCount();
-
-    //        //uint8 *tp=(uint8 *)(mi_data_buffer->Map());
-    //        //const MaterialInstance **mi=mi_set.GetData();
-
-    //        //for(uint i=0;i<count;i++)
-    //        //{
-    //        //    memcpy(tp,(*mi)->GetData(),mi_size);
-    //
-    //        //    ++mi;
-    //        //    tp+=mi_size;
-    //        //}
-
-    //        //mi_data_buffer->Unmap();
-    //    }
-    //}
 };//struct RenderAssignBuffer
 VK_NAMESPACE_END
