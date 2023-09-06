@@ -235,7 +235,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
             if(assign_binding_count!=1)
                 return(false);
 
-            vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGN_VBO_STIDE_BYTES*ri_index);
+            vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGN_VBO_STRIDE_BYTES*ri_index);
         }
     }
 
