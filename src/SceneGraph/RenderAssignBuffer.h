@@ -1,4 +1,5 @@
 ﻿#pragma once
+//#include<hgl/graph/VK.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
@@ -21,6 +22,8 @@ VK_NAMESPACE_BEGIN
 // 我们天然要求将材质实例数据分为两个等级，同时要求一次渲染不能超过256种材质实例。
 // 所以 UBO Range为16k时，实例数据不能超过64字节。UBO Range为64k时，实例数据不能超过256字节。
 
+constexpr const uint ASSIGNS_VBO_STRIP_BYTES=2;     ///<Assign VBO的每个节点的字节数
+
 /*
 * 渲染节点额外提供的数据
 */
@@ -41,13 +44,11 @@ struct RenderAssignBuffer
 //------------------------------------------------------------
 
     //Assign UBO
-    DeviceBuffer *assigns_l2w;
-    DeviceBuffer *assigns_mi;
+    DeviceBuffer *ubo_l2w;
+    DeviceBuffer *ubo_mi;
     
     //Assign VBO
-    VBO *assigns_vbo;           ///<RG16UI格式的VertexInputStream,,,,X:L2W ID,Y:MI ID
-
-    const uint assigns_vbo_strip=2;     ///<Assign VBO的每个节点的字节数
+    VBO *vbo_assigns;                   ///<RG16UI格式的VertexInputStream,,,,X:L2W ID,Y:MI ID
 
 public:
 
@@ -63,9 +64,9 @@ public:
 
     void ClearNode()
     {
-        SAFE_CLEAR(assigns_l2w);
-        SAFE_CLEAR(assigns_mi);
-        SAFE_CLEAR(assigns_vbo);
+        SAFE_CLEAR(ubo_l2w);
+        SAFE_CLEAR(ubo_mi);
+        SAFE_CLEAR(vbo_assigns);
 
         node_count=0;
     }
@@ -92,9 +93,9 @@ public:
         ClearNode();
         node_count=power_to_2(c);
 
-        assigns_l2w=dev->CreateUBO(node_count*sizeof(Matrix4f));
-        //assigns_mi=dev->CreateUBO(node_count*sizeof(uint8));
-        assigns_vbo=dev->CreateVBO(VF_V1U16,node_count);
+        ubo_l2w=dev->CreateUBO(node_count*sizeof(Matrix4f));
+        //ubo_mi=dev->CreateUBO(node_count*sizeof(uint8));
+        vbo_assigns=dev->CreateVBO(VF_V1U16,node_count);
     }
 
     //void MIAlloc(GPUDevice *dev,const uint c,const uint mis)
@@ -117,8 +118,8 @@ public:
 
         //new l2w array in ubo
         {
-            Matrix4f *tp=(hgl::Matrix4f *)(assigns_l2w->Map());
-            uint16 *idp=(uint16 *)(assigns_vbo->Map());
+            Matrix4f *tp=(hgl::Matrix4f *)(ubo_l2w->Map());
+            uint16 *idp=(uint16 *)(vbo_assigns->Map());
 
             rn=render_node;
 
@@ -133,8 +134,8 @@ public:
                 ++rn;
             }
 
-            assigns_vbo->Unmap();
-            assigns_l2w->Unmap();
+            vbo_assigns->Unmap();
+            ubo_l2w->Unmap();
         }
     }
 
