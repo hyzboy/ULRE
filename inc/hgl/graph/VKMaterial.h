@@ -68,6 +68,9 @@ public:
 
 public:
 
+    const uint32_t GetMIDataBytes   ()const{return mi_data_bytes;}
+    const uint32_t GetMIMaxCount    ()const{return mi_max_count;}
+
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 

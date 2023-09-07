@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/graph/VK.h>
+#include<hgl/graph/RenderNode.h>
 
 VK_NAMESPACE_BEGIN
 // ubo_range大致分为三档:
@@ -28,28 +28,27 @@ class MaterialInstance;
 /*
 * 渲染节点额外提供的数据
 */
-struct RenderAssignBuffer
+class RenderAssignBuffer
 {
-    uint node_count;                            ///<渲染节点数量
-//    uint mi_count;                              ///<材质实例数量
+private:
 
-    //uint mi_size;                               ///<单个材质实例数量长度
-    //DeviceBuffer *mi_data_buffer;               ///<材质实例数据UBO/SSBO
+    GPUDevice *device;
 
-    //VBO *mi_id;
-    //VkBuffer mi_id_buffer;
+    uint node_count;                    ///<渲染节点数量
+    DeviceBuffer *ubo_l2w;              ///<Local2World数据
 
-//    VBO *bone_id,*bone_weight;
-//    VkBuffer bone_id_buffer,bone_weight_buffer;
-
-//------------------------------------------------------------
-
-    //Assign UBO
-    DeviceBuffer *ubo_l2w;
-    DeviceBuffer *ubo_mi;
+    uint mi_count;                      ///<材质实例数量
+    uint mi_data_bytes;                 ///<单个材质实例数据字节数
+    DeviceBuffer *ubo_mi;               ///<材质实例数据
     
     //Assign VBO
     VBO *vbo_assigns;                   ///<RG16UI格式的VertexInputStream,,,,X:L2W ID,Y:MI ID
+
+private:
+
+    void Alloc(const uint nc,const uint mc);
+
+    void Clear();
 
 public:
 
@@ -59,15 +58,18 @@ public:
 
 public:
 
-    RenderAssignBuffer(){hgl_zero(*this);}
+    RenderAssignBuffer(GPUDevice *dev,const uint mi_bytes)
+    {
+        hgl_zero(*this);
+
+        device=dev;
+
+        mi_data_bytes=mi_bytes;
+    }
+
     ~RenderAssignBuffer(){Clear();}
 
-    void ClearNode();
-
-    void Clear();
-
-    void NodeAlloc(GPUDevice *dev,const uint c);
-    void WriteLocalToWorld(RenderNode *render_node,const uint count);
+    void WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set);
 
 };//struct RenderAssignBuffer
 VK_NAMESPACE_END
