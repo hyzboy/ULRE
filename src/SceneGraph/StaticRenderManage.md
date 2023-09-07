@@ -12,7 +12,7 @@
 
     1.Material 材质可以简单理解为是Shader的包装。
 
-    2.Material Instance 材质实例是指同一材质下，不同的参数配置或不同的顶点输入格式。
+    2.Material Instance 材质实例是指同一材质下，不同的参数配置。
 
 ## 我们需要做什么?
 
@@ -43,7 +43,7 @@ layout(set=?,binding=?) uniform MaterialInstanceData
 2.建立一个RG8UI或RG16UI的Vertex Input Stream,用于保存访问LocalToWorld/MaterialInstance的索引
 
 ```glsl
-layout(location=?) in uvec2 Assign;
+layout(location=?) in uvec2 Assign;     //Local To World矩阵ID与材质ID输入数据流
 
 mat4 GetLocalToWorld()
 {

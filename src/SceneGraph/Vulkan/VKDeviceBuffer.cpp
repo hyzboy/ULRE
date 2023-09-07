@@ -12,6 +12,8 @@ const VkDeviceSize GPUDevice::GetSSBORange  (){return attr->physical_device->Get
 
 bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
+    if(size<=0)return(false);
+
     BufferCreateInfo buf_info;
 
     buf_info.usage                  = buf_usage;
@@ -55,6 +57,8 @@ bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,
 
 VBO *GPUDevice::CreateVBO(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
+    if(count==0)return(nullptr);
+
     const uint32_t stride=GetStrideByFormat(format);
 
     if(stride==0)
@@ -75,6 +79,8 @@ VBO *GPUDevice::CreateVBO(VkFormat format,uint32_t count,const void *data,Sharin
 
 IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
+    if(count==0)return(nullptr);
+
     uint32_t stride;
 
     if(index_type==IndexType::U8 )stride=1;else
@@ -94,6 +100,8 @@ IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void
 
 DeviceBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
+    if(size<=0)return(nullptr);
+
     DeviceBufferData buf;
 
     if(!CreateBuffer(&buf,buf_usage,range,size,data,sharing_mode))

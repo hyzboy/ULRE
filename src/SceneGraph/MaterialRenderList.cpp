@@ -61,7 +61,7 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,Material *m)
     device=d;
     cmd_buf=nullptr;
     mtl=m;
-    assign_buffer=nullptr;
+    assign_buffer=new RenderAssignBuffer(d,mtl->GetMIDataBytes());
 
     vbo_list=new VBOList(mtl->GetVertexInput()->GetCount());
 }
@@ -91,24 +91,10 @@ void MaterialRenderList::End()
 
     if(node_count<=0)return;
 
-    if(!assign_buffer)
-        assign_buffer=new RenderAssignBuffer;
-
-    if(assign_buffer->node_count<node_count)
-        assign_buffer->NodeAlloc(device,node_count);
-
     Stat();
 
     //写入LocalToWorld数据
-    assign_buffer->WriteLocalToWorld(rn_list.GetData(),node_count);
-
-    const uint mi_count=mi_set.GetCount();
-
-    if(mi_count<=0)return;
-
-    //if(assign_buffer->mi_count<mi_count)
-    //    assign_buffer->MIAlloc(device,mi_count,);
-    //assign_buffer->WriteMaterialInstance(rn_list.GetData(),node_count,mi_set);
+    assign_buffer->WriteNode(rn_list.GetData(),node_count,mi_set);
 }
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)
@@ -226,7 +212,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //    }
     //}
 
-    if(!vbo_list->IsFull())
+    if(!vbo_list->IsFull()) //Assign组
     {
         const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
 
@@ -238,7 +224,6 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
             vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGN_VBO_STRIDE_BYTES*ri_index);
         }
     }
-
 
     //if(count!=binding_count)
     //{

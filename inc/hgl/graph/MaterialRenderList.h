@@ -3,7 +3,7 @@
 #include<hgl/graph/VKVBOList.h>
 
 VK_NAMESPACE_BEGIN
-struct RenderAssignBuffer;
+class RenderAssignBuffer;
 
 /**
 * 同一材质的对象渲染列表
