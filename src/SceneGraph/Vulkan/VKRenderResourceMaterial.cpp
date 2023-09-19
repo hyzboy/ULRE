@@ -146,7 +146,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     }
 
     mtl->mi_data_bytes =mci->GetMIDataBytes();
-    //mtl->mi_max_count  =mci->GetMIMaxCount();
+    mtl->mi_max_count  =mci->GetMIMaxCount();
 
     if(mtl->mi_data_bytes>0)
     {
