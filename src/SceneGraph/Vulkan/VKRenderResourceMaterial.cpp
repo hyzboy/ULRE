@@ -10,6 +10,7 @@
 #include<hgl/io/ConstBufferReader.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
+#include<hgl/type/ActiveMemoryBlockManager.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -145,7 +146,12 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     }
 
     mtl->mi_data_bytes =mci->GetMIDataBytes();
-    mtl->mi_max_count  =mci->GetMIMaxCount();
+    //mtl->mi_max_count  =mci->GetMIMaxCount();
+
+    if(mtl->mi_data_bytes>0)
+    {
+        mtl->mi_data_manager=new ActiveMemoryBlockManager(mtl->mi_data_bytes);
+    }
 
     Add(mtl);
 

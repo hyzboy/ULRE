@@ -3,6 +3,8 @@
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKVertexInput.h>
 #include"VKPipelineLayoutData.h"
+#include<hgl/type/ActiveMemoryBlockManager.h>
+
 VK_NAMESPACE_BEGIN
 Material::Material(const AnsiString &n)
 {
@@ -16,11 +18,13 @@ Material::Material(const AnsiString &n)
     hgl_zero(mp_array);
 
     mi_data_bytes=0;
-    mi_max_count=0;
+    mi_data_manager=nullptr;
 }
 
 Material::~Material()
 {
+    SAFE_CLEAR(mi_data_manager);
+
     SAFE_CLEAR(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
     SAFE_CLEAR(desc_manager);
@@ -28,9 +32,6 @@ Material::~Material()
 
     for(int i=0;i<DESCRIPTOR_SET_TYPE_COUNT;i++)
         SAFE_CLEAR(mp_array[i]);
-
-    mi_data_bytes=0;
-    mi_max_count=0;
 }
 
 const VkPipelineLayout Material::GetPipelineLayout()const

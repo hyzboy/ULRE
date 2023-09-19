@@ -50,6 +50,8 @@ protected:
 
     VIL *vil;
 
+    int mi_id;
+
 public:
 
             Material *  GetMaterial ()      {return material;}
@@ -60,11 +62,17 @@ private:
 
     friend class Material;
 
-    MaterialInstance(Material *,VIL *);
+    MaterialInstance(Material *,VIL *,const int);
 
 public:
 
-    virtual ~MaterialInstance()=default;
+    virtual ~MaterialInstance()
+    {
+        material->ReleaseMI(mi_id);
+    }
+
+    void *GetMIData(){return material->GetMIData(mi_id);}
+    void WriteMIData(const void *data,const int size);
     
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
