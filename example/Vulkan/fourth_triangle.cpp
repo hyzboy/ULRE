@@ -57,15 +57,15 @@ private:
 
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);
 
-/*            for(uint i=0;i<6;i++)
+            for(uint i=0;i<6;i++)
             {
                 material_instance[i]=db->CreateMaterialInstance(mci);
 
                 if(!material_instance[i])
                     return(false);
 
-                material_instance[i]->SetFloat4(0,color_data[i]);
-            }*/
+                material_instance[i]->WriteMIData(color_data[i],sizeof(float)*4);       //设置MaterialInstance的数据
+            }
         }
 
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));

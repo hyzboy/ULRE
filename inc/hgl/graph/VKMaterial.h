@@ -6,6 +6,11 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKDescriptorSetType.h>
+
+namespace hgl
+{
+    class ActiveMemoryBlockManager;
+}
 VK_NAMESPACE_BEGIN
 using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
 
@@ -30,15 +35,17 @@ class Material
     MaterialParameters *mp_array[DESCRIPTOR_SET_TYPE_COUNT];
 
     uint32_t mi_data_bytes;             ///<实例数据大小
-    uint32_t mi_max_count;              ///<最大实例数量(注：代表一次drawcall大小，而不是整个的大小)
+    
+    ActiveMemoryBlockManager *mi_data_manager;
 
 private:
 
     friend class RenderResource;
 
+    Material(const AnsiString &);
+
 public:
 
-    Material(const AnsiString &);
     virtual ~Material();
 
     const   UTF8String &                        GetName                 ()const{return name;}
@@ -69,7 +76,9 @@ public:
 public:
 
     const uint32_t GetMIDataBytes   ()const{return mi_data_bytes;}
-    const uint32_t GetMIMaxCount    ()const{return mi_max_count;}
+
+    void ReleaseMI(int);    ///<释放材质实例
+    void *GetMIData(int);   ///<取得指定ID号的材质实例数据访问指针
 
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material

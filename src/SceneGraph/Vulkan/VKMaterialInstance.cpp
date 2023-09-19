@@ -2,6 +2,7 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKShaderModule.h>
+#include<hgl/type/ActiveMemoryBlockManager.h>
 
 VK_NAMESPACE_BEGIN
 MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
@@ -10,14 +11,48 @@ MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
 
     if(!vil)return(nullptr);
 
-    return(new MaterialInstance(this,vil));
+    int mi_id=-1;
+
+    if(mi_data_manager)
+        mi_data_manager->GetOrCreate(&mi_id,1);
+    else 
+        mi_id=-1;
+
+    return(new MaterialInstance(this,vil,mi_id));
 }
 
-MaterialInstance::MaterialInstance(Material *mtl,VIL *v)
+void Material::ReleaseMI(int mi_id)
+{
+    if(mi_id<0||!mi_data_manager)return;
+
+    mi_data_manager->Release(&mi_id,1);
+}
+
+void *Material::GetMIData(int id)
+{
+    if(!mi_data_manager)
+        return(nullptr);
+
+    return mi_data_manager->GetData(id);
+}
+ 
+void MaterialInstance::WriteMIData(const void *data,const int size)
+{
+    if(!data||size<=0||size>material->GetMIDataBytes())return;
+
+    void *tp=GetMIData();
+
+    if(tp)
+        memcpy(tp,data,size);
+}
+
+MaterialInstance::MaterialInstance(Material *mtl,VIL *v,const int id)
 {
     material=mtl;
 
     vil=v;
+
+    mi_id=id;
 }
 
 bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
