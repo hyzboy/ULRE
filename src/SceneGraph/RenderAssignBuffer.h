@@ -37,8 +37,6 @@ private:
     uint node_count;                    ///<渲染节点数量
     DeviceBuffer *ubo_l2w;              ///<Local2World数据
 
-    uint mi_count;                      ///<材质实例数量
-    uint mi_data_bytes;                 ///<单个材质实例数据字节数
     DeviceBuffer *ubo_mi;               ///<材质实例数据
     
     //Assign VBO
@@ -58,17 +56,10 @@ public:
 
 public:
 
-    RenderAssignBuffer(GPUDevice *dev,const uint mi_bytes)
-    {
-        hgl_zero(*this);
-
-        device=dev;
-
-        mi_data_bytes=mi_bytes;
-    }
-
+    RenderAssignBuffer(GPUDevice *dev,const uint mi_total_bytes);
     ~RenderAssignBuffer(){Clear();}
 
+    bool WriteMIData(void *,const uint);
     void WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set);
 
 };//struct RenderAssignBuffer

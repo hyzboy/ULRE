@@ -91,7 +91,9 @@ void MaterialRenderList::End()
 
     if(node_count<=0)return;
 
-    StatMI();
+    if(mtl->HasMI())
+        StatMI();
+
     Stat();
 
     //写入LocalToWorld数据
@@ -116,6 +118,8 @@ void MaterialRenderList::StatMI()
     {
         //超出最大数量了怎么办？？？
     }
+
+    
 }
 
 void MaterialRenderList::Stat()
