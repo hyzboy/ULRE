@@ -91,6 +91,7 @@ void MaterialRenderList::End()
 
     if(node_count<=0)return;
 
+    StatMI();
     Stat();
 
     //写入LocalToWorld数据
@@ -104,6 +105,19 @@ void MaterialRenderList::RenderItem::Set(Renderable *ri)
     vid         =ri->GetVertexInputData();
 }
 
+void MaterialRenderList::StatMI()
+{
+    mi_id_set.Clear();
+
+    for(RenderNode &rn:rn_list)
+        mi_id_set.Add(rn.ri->GetMaterialInstance()->GetMIID());
+
+    if(mi_id_set.GetCount()>mtl->GetMIMaxCount())
+    {
+        //超出最大数量了怎么办？？？
+    }
+}
+
 void MaterialRenderList::Stat()
 {
     const uint count=rn_list.GetCount();
@@ -111,8 +125,6 @@ void MaterialRenderList::Stat()
 
     ri_array.Clear();
     ri_array.Alloc(count);
-
-    mi_set.Clear();
 
     RenderItem *ri=ri_array.GetData();
             
@@ -131,7 +143,7 @@ void MaterialRenderList::Stat()
     ++rn;
 
     for(uint i=1;i<count;i++)
-    {   
+    {
         if(last_pipeline==rn->ri->GetPipeline())
             if(last_mi==rn->ri->GetMaterialInstance())
                 if(last_vid==rn->ri->GetVertexInputData())

@@ -35,10 +35,11 @@ private:
         void Set(Renderable *);
     };
 
-    MaterialInstanceSets mi_set;
+    SortedSets<int> mi_id_set;
     DataArray<RenderItem> ri_array;
     uint ri_count;
 
+    void StatMI();
     void Stat();
 
 protected:

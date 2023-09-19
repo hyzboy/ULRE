@@ -22,8 +22,6 @@ namespace hgl
         };
 
         using RenderNodeList=List<RenderNode>;
-
-        using MaterialInstanceSets=SortedSets<MaterialInstance *>;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_RENDER_NODE_INCLUDE
