@@ -76,8 +76,9 @@ public:
 
 public:
 
-    const uint32_t GetMIDataBytes   ()const{return mi_data_bytes;}
-    const uint32_t GetMIMaxCount    ()const{return mi_max_count;}
+    const bool      HasMI           ()const{return !mi_data_bytes;}
+    const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
+    const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
 
     void ReleaseMI(int);    ///<释放材质实例
     void *GetMIData(int);   ///<取得指定ID号的材质实例数据访问指针

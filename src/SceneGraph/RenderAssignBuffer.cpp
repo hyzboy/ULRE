@@ -8,6 +8,18 @@
 
 VK_NAMESPACE_BEGIN
 
+RenderAssignBuffer::RenderAssignBuffer(GPUDevice *dev,const uint mi_total_bytes)
+{
+    hgl_zero(*this);
+
+    device=dev;
+
+    if(mi_total_bytes>0)
+        ubo_mi=device->CreateUBO(mi_total_bytes);
+    else
+        ubo_mi=nullptr;
+}
+
 VkBuffer RenderAssignBuffer::GetAssignVBO()const
 {
     return vbo_assigns->GetBuffer();
@@ -44,13 +56,14 @@ void RenderAssignBuffer::Alloc(const uint nc,const uint mc)
         ubo_l2w=device->CreateUBO(node_count*sizeof(Matrix4f));
     }
 
-    {
-        mi_count=power_to_2(mc);
-
-        ubo_mi=device->CreateUBO(mi_count*mi_data_bytes);
-    }
-
     vbo_assigns=device->CreateVBO(ASSIGN_VBO_FMT,node_count);
+}
+
+bool RenderAssignBuffer::WriteMIData(void *mi_data,const uint bytes)
+{
+    if(!mi_data||!bytes||!ubo_mi)return(false);
+
+    return ubo_mi->Write(mi_data,bytes);
 }
 
 void RenderAssignBuffer::WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)
