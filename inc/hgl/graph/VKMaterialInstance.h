@@ -71,8 +71,9 @@ public:
         material->ReleaseMI(mi_id);
     }
 
-    void *GetMIData(){return material->GetMIData(mi_id);}
-    void WriteMIData(const void *data,const int size);
+    const   int     GetMIID     ()const{return mi_id;}                          ///<取得材质实例ID
+            void *  GetMIData   (){return material->GetMIData(mi_id);}          ///<取得材质实例数据
+            void    WriteMIData (const void *data,const int size);              ///<写入材质实例数据
     
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
