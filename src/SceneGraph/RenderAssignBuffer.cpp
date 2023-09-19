@@ -59,6 +59,7 @@ void RenderAssignBuffer::WriteNode(RenderNode *render_node,const uint count,cons
 
     Alloc(count,mi_set.GetCount());
 
+    if(ubo_mi)
     {
         uint8 *mip=(uint8 *)(ubo_mi->Map());
 
