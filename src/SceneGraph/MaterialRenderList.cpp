@@ -34,10 +34,10 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
             return off;
     }
 
-    //比较材质实例
+    //比较顶点输入格式
     {
-        off=ri_one->GetMaterialInstance()
-           -ri_two->GetMaterialInstance();
+        off=ri_one->GetMaterialInstance()->GetVIL()
+           -ri_two->GetMaterialInstance()->GetVIL();
 
         if(off)
             return off;
