@@ -1,5 +1,5 @@
-﻿// third_triangle
-// 该范例主要演示使用场景树系统绘制多个三角形，并利用RenderList进行排序以及自动合并进行Instance渲染
+﻿// AutoInstance
+// 该范例主要演示使用RenderList系统绘制多个三角形，并利用RenderList进行排序以及自动合并进行Instance渲染
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>

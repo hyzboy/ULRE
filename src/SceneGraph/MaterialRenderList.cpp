@@ -109,17 +109,15 @@ void MaterialRenderList::RenderItem::Set(Renderable *ri)
 
 void MaterialRenderList::StatMI()
 {
-    mi_id_set.Clear();
+    mi_set.Clear();
 
     for(RenderNode &rn:rn_list)
-        mi_id_set.Add(rn.ri->GetMaterialInstance()->GetMIID());
+        mi_set.Add(rn.ri->GetMaterialInstance());
 
-    if(mi_id_set.GetCount()>mtl->GetMIMaxCount())
+    if(mi_set.GetCount()>mtl->GetMIMaxCount())
     {
         //超出最大数量了怎么办？？？
     }
-
-    
 }
 
 void MaterialRenderList::Stat()
@@ -131,7 +129,7 @@ void MaterialRenderList::Stat()
     ri_array.Alloc(count);
 
     RenderItem *ri=ri_array.GetData();
-            
+
     ri_count=1;
 
     ri->first=0;
@@ -141,8 +139,6 @@ void MaterialRenderList::Stat()
     last_pipeline   =ri->pipeline;
     last_mi         =ri->mi;
     last_vid        =ri->vid;
-
-    mi_set.Add(last_mi);
 
     ++rn;
 
@@ -163,9 +159,6 @@ void MaterialRenderList::Stat()
         ri->first=i;
         ri->count=1;
         ri->Set(rn->ri);
-
-        if(last_mi!=ri->mi)
-            mi_set.Add(ri->mi);
 
         last_pipeline   =ri->pipeline;
         last_mi         =ri->mi;

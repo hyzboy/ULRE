@@ -10,10 +10,10 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan/${group}")
 endmacro()
 
-CreateProject("Basic" 1st_draw_triangle_in_NDC          first_triangle.cpp)
-CreateProject("Basic" 2nd_draw_triangle_use_UBO         second_triangle.cpp)
-CreateProject("Basic" 3rd_draw_triangle_use_RenderList  third_triangle.cpp)
-CreateProject("Basic" 4th_draw_triangle_use_MaterialInstance  fourth_triangle.cpp)
+CreateProject("Basic" 1st_draw_triangle_in_NDC        first_triangle.cpp)
+CreateProject("Basic" 2nd_draw_triangle_use_UBO       second_triangle.cpp)
+CreateProject("Basic" 3rd_AutoInstance                third_triangle.cpp)
+CreateProject("Basic" 4th_AutoMergeMaterialInstance   fourth_triangle.cpp)
 
 #CreateProject("Basic" FragCoord             FragCoordTest.cpp)
 #CreateProject("Basic" indices_rect          indices_rect.cpp)
