@@ -35,7 +35,7 @@ private:
         void Set(Renderable *);
     };
 
-    SortedSets<int> mi_id_set;
+    MaterialInstanceSets mi_set;
     DataArray<RenderItem> ri_array;
     uint ri_count;
 
