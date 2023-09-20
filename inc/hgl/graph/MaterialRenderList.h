@@ -46,7 +46,7 @@ protected:
 
             VBOList *           vbo_list;
 
-            MaterialInstance *  last_mi;
+    const   VIL *               last_vil;
             Pipeline *          last_pipeline;
     const   VertexInputData *   last_vid;
             uint                last_index;

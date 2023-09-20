@@ -137,7 +137,7 @@ void MaterialRenderList::Stat()
     ri->Set(rn->ri);
 
     last_pipeline   =ri->pipeline;
-    last_mi         =ri->mi;
+    last_vil        =ri->mi->GetVIL();
     last_vid        =ri->vid;
 
     ++rn;
@@ -145,7 +145,7 @@ void MaterialRenderList::Stat()
     for(uint i=1;i<count;i++)
     {
         if(last_pipeline==rn->ri->GetPipeline())
-            if(last_mi==rn->ri->GetMaterialInstance())
+            if(last_vil==rn->ri->GetMaterialInstance()->GetVIL())
                 if(last_vid==rn->ri->GetVertexInputData())
                 {
                     ++ri->count;
@@ -161,7 +161,7 @@ void MaterialRenderList::Stat()
         ri->Set(rn->ri);
 
         last_pipeline   =ri->pipeline;
-        last_mi         =ri->mi;
+        last_vil        =ri->mi->GetVIL();
         last_vid        =ri->vid;
 
         ++rn;
@@ -181,7 +181,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
-    const VIL *vil=last_mi->GetVIL();
+    const VIL *vil=last_vil;
 
     if(vil->GetCount(VertexInputGroup::Basic)!=vid->binding_count)
         return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
@@ -253,16 +253,15 @@ void MaterialRenderList::Render(RenderItem *ri)
         cmd_buf->BindPipeline(ri->pipeline);
         last_pipeline=ri->pipeline;
 
-        last_mi=nullptr;
         last_vid=nullptr;
 
         //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定mi/primitive
     }
 
-    if(last_mi!=ri->mi)
+    if(last_vil!=ri->mi->GetVIL())
     {
         Bind(ri->mi);
-        last_mi=ri->mi;
+        last_vil=ri->mi->GetVIL();
 
         last_vid=nullptr;
     }
@@ -301,7 +300,7 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
     RenderItem *ri=ri_array.GetData();
 
     last_pipeline   =nullptr;
-    last_mi         =nullptr;
+    last_vil        =nullptr;
     last_vid        =nullptr;
 
     for(uint i=0;i<ri_count;i++)
