@@ -33,9 +33,9 @@ void RenderAssignBuffer::Bind(MaterialInstance *mi)const
     const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
 
     if(assign_binding_count<=0)return;
-    
+
     mi->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,ubo_l2w);
-//        mi->BindUBO(DescriptorSetType::PerFrame,"Assign",assign_buffer->ubo_mi);
+    mi->BindUBO(DescriptorSetType::PerMaterial,mtl::SBS_MaterialInstance.name,ubo_mi);
 }
 
 void RenderAssignBuffer::Clear()
@@ -91,13 +91,14 @@ void RenderAssignBuffer::WriteNode(RenderNode *render_node,const uint count,cons
 
     {
         Matrix4f *tp=(hgl::Matrix4f *)(ubo_l2w->Map());
+        Matrix4f *l2w=tp;
 
         rn=render_node;
 
         for(uint i=0;i<count;i++)
         {
-            *tp=rn->local_to_world;
-            ++tp;
+            *l2w=rn->local_to_world;
+            ++l2w;
 
             *idp=i;
             ++idp;

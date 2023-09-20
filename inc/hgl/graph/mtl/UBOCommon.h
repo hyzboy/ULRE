@@ -56,7 +56,7 @@ constexpr const ShaderBufferSource SBS_LocalToWorld=
 
 constexpr const char MaterialInstanceStruct[]="MaterialInstance";
 
-constexpr const ShaderBufferSource SBS_MaterialInstanceData=
+constexpr const ShaderBufferSource SBS_MaterialInstance=
 {
     "MaterialInstanceData",
     "mtl",

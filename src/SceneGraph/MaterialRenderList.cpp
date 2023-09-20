@@ -146,7 +146,7 @@ void MaterialRenderList::Stat()
     {
         if(last_pipeline==rn->ri->GetPipeline())
             if(last_vil==rn->ri->GetMaterialInstance()->GetVIL())
-                if(last_vid==rn->ri->GetVertexInputData())
+                if(last_vid->Comp(rn->ri->GetVertexInputData()))
                 {
                     ++ri->count;
                     ++rn;

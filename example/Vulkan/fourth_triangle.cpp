@@ -7,6 +7,7 @@
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
 #include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/color/Color.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -23,15 +24,7 @@ constexpr float position_data[VERTEX_COUNT*2]=
      0.1,  0.9
 };
 
-constexpr float color_data[6][4]=
-{
-    {1,0,0,1},
-    {1,1,0,1},
-    {0,1,0,1},
-    {0,1,1,1},
-    {0,0,1,1},
-    {1,0,1,1},
-};
+constexpr uint DRAW_OBJECT_COUNT=12;
 
 class TestApp:public VulkanApplicationFramework
 {
@@ -40,8 +33,13 @@ private:
     SceneNode           render_root;
     RenderList *        render_list         =nullptr;
 
-    MaterialInstance *  material_instance[6]{};
-    Renderable *        render_obj[6]       {};
+    Material *          material            =nullptr;
+
+    struct
+    {
+        MaterialInstance *  mi;
+        Renderable *        r;
+    }render_obj[DRAW_OBJECT_COUNT]{};
 
     Pipeline *          pipeline            =nullptr;
 
@@ -57,42 +55,48 @@ private:
 
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);
 
-            for(uint i=0;i<6;i++)
-            {
-                material_instance[i]=db->CreateMaterialInstance(mci);
+            material=db->CreateMaterial(mci);
 
-                if(!material_instance[i])
+            if(!material)
+                return(false);
+
+            for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
+            {
+                render_obj[i].mi=db->CreateMaterialInstance(material);
+
+                if(!render_obj[i].mi)
                     return(false);
 
-                material_instance[i]->WriteMIData(color_data[i],sizeof(float)*4);       //设置MaterialInstance的数据
+                Color4f color=GetColor4f((COLOR)(i+int(COLOR::Blue)),1.0);
+
+                render_obj[i].mi->WriteMIData(color,sizeof(Color4f));       //设置MaterialInstance的数据
             }
         }
 
-//        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-//        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::Triangles);
         
         return pipeline;
     }
 
     bool InitVBO()
     {
-        //RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
+        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
-        //if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
-        //
-        //render_obj=rpc.Create(material_instance,pipeline);
+        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
+        
+        for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
+        {
+            render_obj[i].r=rpc.Create(render_obj[i].mi,pipeline);
 
-        //if(!render_obj)
-        //    return(false);
-        //
-        //for(uint i=0;i<6;i++)
-        //{
-        //    render_root.CreateSubNode(rotate(deg2rad(60*i),Vector3f(0,0,1)),render_obj);
-        //}
+            if(!render_obj[i].r)
+                return(false);
 
-        //render_root.RefreshMatrix();
+            render_root.CreateSubNode(rotate(deg2rad(360/DRAW_OBJECT_COUNT*i),Vector3f(0,0,1)),render_obj[i].r);
+        }
 
-        //render_list->Expend(&render_root);
+        render_root.RefreshMatrix();
+
+        render_list->Expend(&render_root);
 
         return(true);
     }
