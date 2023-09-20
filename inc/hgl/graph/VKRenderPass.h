@@ -53,10 +53,12 @@ public:
     const VkExtent2D &      GetGranularity()const{return granularity;}
 
 public:
+    Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const Prim &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const Prim &,const bool prim_restart=false);
 
-    Pipeline *CreatePipeline(MaterialInstance *,  const InlinePipeline &,  const Prim &prim,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,  const PipelineData *,    const Prim &prim,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,  const OSString &,        const Prim &prim,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const Prim &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const Prim &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const Prim &,const bool prim_restart=false);
 };//class RenderPass
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE

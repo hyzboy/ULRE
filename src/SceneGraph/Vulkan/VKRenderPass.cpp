@@ -56,38 +56,38 @@ Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInf
     return(new Pipeline(device,graphicsPipeline,pd));
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
 {
-    if(!mi)return(nullptr);
-    
-    Material *mtl=mi->GetMaterial();
-    const PipelineData *cpd=GetPipelineData(ip);
-
-    PipelineData *pd=new PipelineData(cpd);
-
-    pd->SetPrim(prim,prim_restart);
-
-    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),mi->GetVIL());
-
-    if(p)
-        pipeline_list.Add(p);
-
-    return p;
-}
-
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
-{
-    Material *mtl=mi->GetMaterial();
     PipelineData *pd=new PipelineData(cpd);
 
     pd->SetPrim(prim,prim_restart);
     
-    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),mi->GetVIL());
+    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
 
     if(p)
         pipeline_list.Add(p);
 
     return(p);
+}
+
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+{
+    if(!mtl)return(nullptr);
+
+    return CreatePipeline(mtl,vil,GetPipelineData(ip),prim,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+{
+    if(!mi)return(nullptr);
+    
+    return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
+{
+    return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim,prim_restart);
 }
 
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
