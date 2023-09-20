@@ -53,8 +53,12 @@ public:
     const VkExtent2D &      GetGranularity()const{return granularity;}
 
 public:
+
     Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const Prim &,const bool prim_restart=false);
     Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const Prim &,const bool prim_restart=false);
+
+    Pipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const Prim &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const Prim &,const bool prim_restart=false);
 
     Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const Prim &,const bool prim_restart=false);
     Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const Prim &,const bool prim_restart=false);

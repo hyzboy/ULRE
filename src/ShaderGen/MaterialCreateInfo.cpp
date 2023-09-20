@@ -158,12 +158,12 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     mi_max_count=hgl_min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
-    mdi.AddStruct(SBS_MaterialInstanceData);
+    mdi.AddStruct(SBS_MaterialInstance);
 
     mi_ubo=new UBODescriptor();
 
-    mi_ubo->type=SBS_MaterialInstanceData.struct_name;
-    hgl::strcpy(mi_ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstanceData.name);
+    mi_ubo->type=SBS_MaterialInstance.struct_name;
+    hgl::strcpy(mi_ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstance.name);
     mi_ubo->stage_flag=shader_stage_flag_bits;
 
     mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerMaterial,mi_ubo);

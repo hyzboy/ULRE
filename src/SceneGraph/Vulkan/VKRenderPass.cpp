@@ -78,6 +78,16 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePi
     return CreatePipeline(mtl,vil,GetPipelineData(ip),prim,prim_restart);
 }
 
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const PipelineData *pd,   const Prim &prim,const bool prim_restart)
+{
+    return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim,prim_restart);
+}
+
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const InlinePipeline &ip, const Prim &prim,const bool prim_restart)
+{
+    return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim,prim_restart);
+}
+
 Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
 {
     if(!mi)return(nullptr);

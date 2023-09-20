@@ -70,13 +70,14 @@ public:
 
     const   bool                                hasSet                  (const DescriptorSetType &type)const;
 
+    const   VIL *                               GetDefaultVIL()const;
             VIL *                               CreateVIL(const VILConfig *format_map=nullptr);
             bool                                Release(VIL *);
     const   uint                                GetVILCount();
 
 public:
 
-    const bool      HasMI           ()const{return !mi_data_bytes;}
+    const bool      HasMI           ()const{return mi_data_bytes>0;}
     const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
     const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
 

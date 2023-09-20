@@ -6,6 +6,9 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 
 VK_NAMESPACE_BEGIN
+
+void ReleaseVertexInput(VertexInput *vi);
+
 Material::Material(const AnsiString &n)
 {
     name=n;
@@ -25,7 +28,7 @@ Material::~Material()
 {
     SAFE_CLEAR(mi_data_manager);
 
-    SAFE_CLEAR(vertex_input);
+    ReleaseVertexInput(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
     SAFE_CLEAR(desc_manager);
     SAFE_CLEAR(pipeline_layout_data);
@@ -42,6 +45,11 @@ const VkPipelineLayout Material::GetPipelineLayout()const
 const bool Material::hasSet(const DescriptorSetType &dst)const
 {
     return desc_manager->hasSet(dst);
+}
+
+const VIL *Material::GetDefaultVIL()const
+{
+    return vertex_input->GetDefaultVIL();
 }
 
 VIL *Material::CreateVIL(const VILConfig *format_map)
