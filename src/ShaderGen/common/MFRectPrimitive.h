@@ -17,7 +17,7 @@ vec4 GetPosition2D()
 R"(
 vec4 GetPosition2D()
 {
-    return vec4(Position.xy*2-1,Position.zw*2-1);
+    return Position*2-1;
 }
 )",
 

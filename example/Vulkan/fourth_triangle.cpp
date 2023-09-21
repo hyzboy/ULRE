@@ -78,7 +78,7 @@ private:
         return pipeline;
     }
 
-    bool InitVBO()
+    bool InitVBOAndRenderList()
     {
         RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
@@ -118,7 +118,7 @@ public:
         if(!InitMaterial())
             return(false);
 
-        if(!InitVBO())
+        if(!InitVBOAndRenderList())
             return(false);
 
         BuildCommandBuffer(render_list);
