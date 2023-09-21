@@ -69,7 +69,7 @@ private:
 
                 Color4f color=GetColor4f((COLOR)(i+int(COLOR::Blue)),1.0);
 
-                render_obj[i].mi->WriteMIData(color,sizeof(Color4f));       //设置MaterialInstance的数据
+                render_obj[i].mi->WriteMIData(color);       //设置MaterialInstance的数据
             }
         }
 
