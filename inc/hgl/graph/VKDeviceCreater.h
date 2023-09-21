@@ -92,6 +92,8 @@ public:
         hgl_zero(*this);
 
         descriptor_pool=1024;
+
+        geometry_shader=true;
     }
 };
 

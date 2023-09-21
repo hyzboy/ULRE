@@ -15,5 +15,7 @@ public:
     ~ShaderCreateInfoGeometry()=default;
 
     bool SetGeom(const Prim &ip,const Prim &op,const uint32_t mv);
+
+    bool ProcLayout() override;
 };
 }}//namespace hgl::graph

@@ -1,4 +1,4 @@
-#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+﻿#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
 
 namespace hgl
 {
@@ -22,6 +22,14 @@ namespace hgl
                 return(false);
 
             max_vertices=mv;
+            return(true);
+        }
+
+        bool ShaderCreateInfoGeometry::ProcLayout()
+        {
+            final_shader+="layout("+input_prim+") in;\n"
+                          "layout("+output_prim+", max_vertices = "+AnsiString::numberOf(max_vertices)+") out;\n";
+
             return(true);
         }
     }//namespace graph

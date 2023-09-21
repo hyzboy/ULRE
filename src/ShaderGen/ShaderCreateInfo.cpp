@@ -186,7 +186,11 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
 
     final_shader+="\nlayout(location=0) in ";
     final_shader+=last_output;
-    final_shader+="Input;\n";
+
+    if(shader_stage==VK_SHADER_STAGE_GEOMETRY_BIT)
+        final_shader+="Input[];\n";
+    else
+        final_shader+="Input;\n";
 
     return(true);
 }
@@ -308,7 +312,7 @@ bool ShaderCreateInfo::ProcSSBO()
     return(false);
 }
 
-bool ShaderCreateInfo::ProcConst()
+bool ShaderCreateInfo::ProcConstantID()
 {
     auto const_list=sdm->GetConstList();
 
@@ -377,6 +381,9 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     ProcDefine();
 
+    if(!ProcLayout())
+        return(false);
+
     if(!ProcSubpassInput())
         return(false);
     if(!ProcInput(last_sc))
@@ -390,7 +397,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
         return(false);
     //if(!ProcSSBO())
         //return(false);
-    if(!ProcConst())
+    if(!ProcConstantID())
         return(false);
     if(!ProcSampler())
         return(false);
