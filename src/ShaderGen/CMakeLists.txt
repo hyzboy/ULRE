@@ -49,9 +49,10 @@ SET(STD_MTL_2D_HEADER_PATH ${STD_MTL_HEADER_PATH}/2d)
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/Material2DCreateConfig.h
                             2d/Std2DMaterial.h
                             2d/Std2DMaterial.cpp
-                            2d/VertexColor2D.cpp
-                            2d/PureColor2D.cpp
-                            2d/PureTexture2D.cpp)
+                            2d/M_VertexColor2D.cpp
+                            2d/M_PureColor2D.cpp
+                            2d/M_PureTexture2D.cpp
+                            2d/M_RectTexture2D.cpp)
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
