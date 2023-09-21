@@ -155,7 +155,7 @@ bool ShaderCreateInfo::ProcSubpassInput()
 
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
 {
-    sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
+    sdm->AddUBO(DescriptorSetType::MaterialInstance,ubo);
     sdm->AddStruct(mtl::MaterialInstanceStruct);
 
     if(shader_stage==VK_SHADER_STAGE_VERTEX_BIT)
