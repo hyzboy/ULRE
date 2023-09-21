@@ -25,16 +25,16 @@ constexpr float position_data[VERTEX_COUNT][2]=
 {
     {-1, -1},
     { 1, -1},
+    { 1,  1},
     {-1,  1},
-    { 1,  1}
 };
 
 constexpr float tex_coord_data[VERTEX_COUNT][2]=
 {
     {0,0},
     {1,0},
-    {0,1},
-    {1,1}
+    {1,1},
+    {0,1}
 };
 
 constexpr float color_data[VERTEX_COUNT][4]=
@@ -43,14 +43,6 @@ constexpr float color_data[VERTEX_COUNT][4]=
     {1,1,0,1},
     {0,1,0,1},
     {0,1,1,1}
-};
-
-constexpr uint32_t INDEX_COUNT=6;
-
-constexpr uint16 index_data[INDEX_COUNT]=
-{
-    0,1,3,
-    0,3,2
 };
 
 class TestApp:public VulkanApplicationFramework
@@ -80,7 +72,7 @@ private:
             return(false);
 
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Fan);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);
@@ -101,8 +93,6 @@ private:
 
         if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
         if(!rpc.SetVBO(VAN::Color,      VF_V4F, color_data   ))return(false);
-
-        if(!rpc.SetIBO(IndexType::U16,index_data,INDEX_COUNT))return(false);
 
         render_obj=rpc.Create(material_instance,pipeline);
         return(render_obj);
