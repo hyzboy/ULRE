@@ -46,6 +46,7 @@ protected:
     virtual bool ProcHeader(){return(true);}
 
     virtual bool ProcDefine();
+    virtual bool ProcLayout(){return(true);}
 
     virtual bool ProcSubpassInput();
     virtual bool ProcInput(ShaderCreateInfo *);
@@ -57,7 +58,7 @@ protected:
 
     virtual bool ProcUBO();
     virtual bool ProcSSBO();
-    virtual bool ProcConst();
+    virtual bool ProcConstantID();
     virtual bool ProcSampler();
 
     bool CompileToSPV();

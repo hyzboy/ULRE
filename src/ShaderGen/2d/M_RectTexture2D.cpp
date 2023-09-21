@@ -12,7 +12,7 @@ void main()
 {
     Output.TexCoord=TexCoord;
 
-    gl_Position=RectVertexPosition(GetPosition2D());
+    gl_Position=GetPosition2D();
 })";
 
     //一个shader中输出的所有数据，会被定义在一个名为Output的结构中。所以编写时要用Output.XXXX来使用。
@@ -23,8 +23,8 @@ void main()
 {
     vec2 vlt=gl_in[0].gl_Position.xy;
     vec2 vrb=gl_in[0].gl_Position.zw;
-    vec2 tlt=Input.TexCoord[0].xy;
-    vec2 trb=Input.TexCoord[0].zw;
+    vec2 tlt=Input[0].TexCoord.xy;
+    vec2 trb=Input[0].TexCoord.zw;
 
     gl_Position=vec4(vlt,           vec2(0,1));Output.TexCoord=tlt;                EmitVertex();
     gl_Position=vec4(vlt.x, vrb.y,  vec2(0,1));Output.TexCoord=vec2(tlt.x,trb.y);  EmitVertex();
@@ -40,12 +40,12 @@ void main()
     Color=texture(TextureColor,Input.TexCoord);
 })";
 
-    class MaterialPureTexture2D:public Std2DMaterial
+    class MaterialRectTexture2D:public Std2DMaterial
     {
     public:
 
         using Std2DMaterial::Std2DMaterial;
-        ~MaterialPureTexture2D()=default;
+        ~MaterialRectTexture2D()=default;
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {            
@@ -68,8 +68,6 @@ void main()
 
             vsc->AddOutput(VAT_VEC4,"TexCoord");
 
-            vsc->AddFunction(func::RectVertexPosition);
-
             vsc->SetMain(vs_main);
             return(true);
         }
@@ -80,7 +78,7 @@ void main()
 
             gsc->AddOutput(VAT_VEC2,"TexCoord");
 
-            gsc->SetMain(fs_main);
+            gsc->SetMain(gs_main);
             return(true);
         }
 
@@ -93,12 +91,17 @@ void main()
             fsc->SetMain(fs_main);
             return(true);
         }
-    };//class MaterialPureTexture2D:public Std2DMaterial
+    };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureTexture2D(const mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateRectTexture2D(mtl::Material2DCreateConfig *cfg)
 {
-    MaterialPureTexture2D mvc2d(cfg);
+    if(!cfg)
+        return(nullptr);
+
+    cfg->shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
+
+    MaterialRectTexture2D mvc2d(cfg);
 
     return mvc2d.Create();
 }

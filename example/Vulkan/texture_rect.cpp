@@ -21,8 +21,10 @@ constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr float position_data[4]=
 {
-    -1,-1,
-    2,2
+    -1,     //left
+    -1,     //top
+     1,     //right
+     1      //bottom;
 };
 
 constexpr float tex_coord_data[4]=
