@@ -48,7 +48,7 @@ void main()
         ~MaterialRectTexture2D()=default;
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
-        {            
+        {
             {
                 RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
 
