@@ -24,7 +24,13 @@ public:
     }
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
+namespace SamplerName
+{
+    constexpr const char Color[]="TextureColor";
+}
+
 MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
+MaterialCreateInfo *CreatePureTexture2D(const Material2DCreateConfig *);
 STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE

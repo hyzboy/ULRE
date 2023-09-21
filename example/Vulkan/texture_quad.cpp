@@ -49,8 +49,8 @@ class TestApp:public VulkanApplicationFramework
 {
 private:
 
-//    Texture2D *         texture             =nullptr;
-//    Sampler *           sampler             =nullptr;
+    Texture2D *         texture             =nullptr;
+    Sampler *           sampler             =nullptr;
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     Pipeline *          pipeline            =nullptr;
@@ -59,12 +59,12 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2d");
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"PureTexture2d");
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
 
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureTexture2D(&cfg);
 
         material_instance=db->CreateMaterialInstance(mci);
 
@@ -77,12 +77,16 @@ private:
         if(!pipeline)
             return(false);
 
-        //texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
-        //if(!texture)return(false);
+        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        if(!texture)return(false);
 
-        //sampler=db->CreateSampler();
+        sampler=db->CreateSampler();
 
-        //if(!material_instance->BindImageSampler(DescriptorSetType::Value,"tex",texture,sampler))return(false);
+        if(!material_instance->BindImageSampler(DescriptorSetType::PerMaterial,     ///<描述符合集
+                                                mtl::SamplerName::Color,            ///<采样器名称
+                                                texture,                            ///<纹理
+                                                sampler))                           ///<采样器
+            return(false);
 
         return(true);
     }
@@ -92,7 +96,7 @@ private:
         RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
         if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
-        if(!rpc.SetVBO(VAN::Color,      VF_V4F, color_data   ))return(false);
+        if(!rpc.SetVBO(VAN::TexCoord,   VF_V2F, tex_coord_data))return(false);
 
         render_obj=rpc.Create(material_instance,pipeline);
         return(render_obj);
