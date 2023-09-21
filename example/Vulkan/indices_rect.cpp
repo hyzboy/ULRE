@@ -55,7 +55,7 @@ private:
     }
 
     bool InitVBO()
-    {        
+    {
         auto primitive=db->CreatePrimitive(VERTEX_COUNT);
         if(!primitive)return(false);
 
