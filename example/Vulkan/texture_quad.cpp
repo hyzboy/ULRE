@@ -37,14 +37,6 @@ constexpr float tex_coord_data[VERTEX_COUNT][2]=
     {0,1}
 };
 
-constexpr float color_data[VERTEX_COUNT][4]=
-{   
-    {1,0,0,1},
-    {1,1,0,1},
-    {0,1,0,1},
-    {0,1,1,1}
-};
-
 class TestApp:public VulkanApplicationFramework
 {
 private:
