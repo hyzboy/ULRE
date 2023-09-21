@@ -21,10 +21,10 @@ constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr float position_data[4]=
 {
-    -1,     //left
-    -1,     //top
+    0,     //left
+    0,     //top
      1,     //right
-     1      //bottom;
+     1      //bottom
 };
 
 constexpr float tex_coord_data[4]=
@@ -49,7 +49,7 @@ private:
     {
         mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2D");
 
-        cfg.coordinate_system=CoordinateSystem2D::NDC;
+        cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
         cfg.local_to_world=false;
 
         AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateRectTexture2D(&cfg);
