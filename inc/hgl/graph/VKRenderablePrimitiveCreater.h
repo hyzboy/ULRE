@@ -33,9 +33,9 @@ public:
         return(true);
     }
 
-    bool SetIBO(const IndexType &it,const void *buf)
+    bool SetIBO(const IndexType &it,const void *buf,const uint32_t index_count)
     {
-        IndexBuffer *ibo=rr->CreateIBO(it,vertex_count,buf);
+        IndexBuffer *ibo=rr->CreateIBO(it,index_count,buf);
     
         if(!ibo)
             return(false);
