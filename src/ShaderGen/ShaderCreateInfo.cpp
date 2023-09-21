@@ -360,7 +360,7 @@ bool ShaderCreateInfo::ProcSampler()
         final_shader+=(*sampler)->type;
         final_shader+=" ";
         final_shader+=(*sampler)->name;
-        final_shader+="\n";
+        final_shader+=";\n";
 
         ++sampler;
     }
