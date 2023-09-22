@@ -23,8 +23,8 @@ constexpr float position_data[4]=
 {
     0,     //left
     0,     //top
-     1,     //right
-     1      //bottom
+    1,     //right
+    1      //bottom
 };
 
 constexpr float tex_coord_data[4]=

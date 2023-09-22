@@ -16,9 +16,6 @@ CreateProject("Basic" 03_auto_instance                  third_triangle.cpp)
 CreateProject("Basic" 04_auto_merge_material_instance   fourth_triangle.cpp)
 
 #CreateProject("Basic" FragCoord             FragCoordTest.cpp)
-#CreateProject("Basic" indices_rect          indices_rect.cpp)
-#CreateProject("Basic" FullScreenTriangle    FullScreenTriangle.cpp)
-#CreateProject("Basic" InstanceTriangle      InstanceTriangle.cpp)
 
 CreateProject("Texture" 05_texture_format   TextureFormat.cpp)
 CreateProject("Texture" 06_texture_quad     texture_quad.cpp)
@@ -26,7 +23,6 @@ CreateProject("Texture" 07_texture_rect     texture_rect.cpp)
 #CreateProject("Texture" HQFilterTexture HQFilterTexture.cpp)
 #CreateProject(06.Geometry2D Geometry2D.cpp)
 
-#CreateProject("Geometry2D" RectanglePrimitive    RectanglePrimitive.cpp)
 #CreateProject("Tile" DrawTile              DrawTile.cpp)
 #CreateProject("Tile" DrawText              DrawText.cpp)
 
