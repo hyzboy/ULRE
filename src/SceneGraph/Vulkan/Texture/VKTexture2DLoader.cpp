@@ -22,6 +22,6 @@ Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename,bo
     if(!loader.Load(filename))
         return(nullptr);
 
-    return loader.GetTexture();
+    return loader.CreateTexture();
 }
 VK_NAMESPACE_END

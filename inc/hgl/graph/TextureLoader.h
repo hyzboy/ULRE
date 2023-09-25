@@ -86,7 +86,7 @@ namespace hgl
         protected:
 
             virtual void *OnBegin(uint32)=0;
-            virtual void  OnEnd()=0;
+            virtual bool  OnEnd()=0;
             virtual void  OnError(){}
 
         public:
