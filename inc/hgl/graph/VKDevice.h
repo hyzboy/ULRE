@@ -182,6 +182,7 @@ public: //Texture
 
     Texture2DArray *CreateTexture2DArray(TextureData *);
     Texture2DArray *CreateTexture2DArray(TextureCreateInfo *ci);
+    Texture2DArray *CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const bool mipmaps);
 
     TextureCube *CreateTextureCube(TextureData *);
     TextureCube *CreateTextureCube(TextureCreateInfo *ci);
