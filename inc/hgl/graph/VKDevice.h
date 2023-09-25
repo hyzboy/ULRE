@@ -24,16 +24,7 @@ class TileFont;
 class FontSource;
 class GPUArrayBuffer;
 
-struct CopyBufferToImageInfo
-{
-    VkImage                     image;
-    VkBuffer                    buffer;
-
-    VkImageSubresourceRange     isr;
-
-    const VkBufferImageCopy *   bic_list;
-    uint32_t                    bic_count;
-};
+struct CopyBufferToImageInfo;
 
 class GPUDevice
 {
