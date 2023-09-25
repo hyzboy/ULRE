@@ -510,9 +510,9 @@ public:
         return ubo_camera_info;
     }
 
-    bool BindCameraUBO(MaterialInstance *mi)
+    bool BindCameraUBO(Material *mtl)
     {
-        return mi->BindUBO(DescriptorSetType::Global,"g_camera",ubo_camera_info);
+        return mtl->BindUBO(DescriptorSetType::Global,"g_camera",ubo_camera_info);
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;

@@ -33,8 +33,10 @@ void RenderAssignBuffer::Bind(MaterialInstance *mi)const
 
     if(assign_binding_count<=0)return;
 
-    mi->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,ubo_l2w);
-    mi->BindUBO(DescriptorSetType::MaterialInstance,mtl::SBS_MaterialInstance.name,ubo_mi);
+    Material *mtl=mi->GetMaterial();
+
+    mtl->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,ubo_l2w);
+    mtl->BindUBO(DescriptorSetType::MaterialInstance,mtl::SBS_MaterialInstance.name,ubo_mi);
 }
 
 void RenderAssignBuffer::Clear()

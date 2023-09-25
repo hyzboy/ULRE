@@ -7,9 +7,13 @@
 STD_MTL_NAMESPACE_BEGIN
 namespace
 {
+    constexpr const char mi_codes[]="uvec4 id;";          //材质实例代码
+    constexpr const uint32_t mi_bytes=sizeof(Vector4u);       //材质实例数据大小
+
     constexpr const char vs_main[]=R"(
 void main()
 {
+    HandoverMI();
     Output.TexCoord=TexCoord;
 
     gl_Position=GetPosition2D();
@@ -26,26 +30,20 @@ void main()
     vec2 tlt=Input[0].TexCoord.xy;
     vec2 trb=Input[0].TexCoord.zw;
 
-    gl_Position=vec4(vlt,           vec2(0,1));Output.TexCoord=tlt;                EmitVertex();
-    gl_Position=vec4(vlt.x, vrb.y,  vec2(0,1));Output.TexCoord=vec2(tlt.x,trb.y);  EmitVertex();
-    gl_Position=vec4(vrb.x, vlt.y,  vec2(0,1));Output.TexCoord=vec2(trb.x,tlt.y);  EmitVertex();
-    gl_Position=vec4(vrb,           vec2(0,1));Output.TexCoord=trb;                EmitVertex();
+    HandoverMI();gl_Position=vec4(vlt,           vec2(0,1));Output.TexCoord=tlt;                EmitVertex();
+    HandoverMI();gl_Position=vec4(vlt.x, vrb.y,  vec2(0,1));Output.TexCoord=vec2(tlt.x,trb.y);  EmitVertex();
+    HandoverMI();gl_Position=vec4(vrb.x, vlt.y,  vec2(0,1));Output.TexCoord=vec2(trb.x,tlt.y);  EmitVertex();
+    HandoverMI();gl_Position=vec4(vrb,           vec2(0,1));Output.TexCoord=trb;                EmitVertex();
 
     EndPrimitive();
 })";
 
-    constexpr const ShaderBufferSource SBS_TextureID=
-    {
-        "TextureID",
-        "TexID",
-
-        "uint id;"
-    };
-
     constexpr const char fs_main[]=R"(
 void main()
 {
-    Color=texture(TextureColor,vec3(Input.TexCoord,TexID.id));
+    MaterialInstance mi=GetMI();
+
+    Color=texture(TextureColor,vec3(Input.TexCoord,mi.id.x));
 })";
 
     class MaterialRectTexture2D:public Std2DMaterial
@@ -57,19 +55,26 @@ void main()
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
+            RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
+
+            vsc->AddInput(VAT_VEC4,VAN::Position);
+
+            if(cfg->local_to_world)
             {
-                RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
+                mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-                vsc->AddInput(VAT_VEC4,VAN::Position);
+                vsc->AddAssign();
 
+                vsc->AddFunction(func::GetPosition2DRectL2W[size_t(cfg->coordinate_system)]);
+            }
+            else
                 vsc->AddFunction(func::GetPosition2DRect[size_t(cfg->coordinate_system)]);
 
-                if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
-                {
-                    mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
-                                DescriptorSetType::Global,
-                                SBS_ViewportInfo);
-                }
+            if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
+            {
+                mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
+                            DescriptorSetType::Global,
+                            SBS_ViewportInfo);
             }
 
             vsc->AddInput(VAT_VEC4,VAN::TexCoord);
@@ -92,10 +97,6 @@ void main()
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            mci->AddUBO(VK_SHADER_STAGE_FRAGMENT_BIT,
-                        DescriptorSetType::Global,
-                        SBS_TextureID);
-
             mci->AddSampler(VK_SHADER_STAGE_FRAGMENT_BIT,DescriptorSetType::PerMaterial,SamplerType::Sampler2DArray,mtl::SamplerName::Color);
 
             fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
@@ -103,6 +104,16 @@ void main()
             fsc->SetMain(fs_main);
             return(true);
         }
+
+        bool EndCustomShader() override
+        {
+            mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
+                                        mi_bytes,                       //材质实例数据大小
+                                        VK_SHADER_STAGE_FRAGMENT_BIT);  //只在Fragment Shader中使用材质实例最终数据
+
+            return(true);
+        }
+
     };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 

@@ -54,43 +54,4 @@ MaterialInstance::MaterialInstance(Material *mtl,VIL *v,const int id)
 
     mi_id=id;
 }
-
-bool MaterialInstance::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
-{
-    MaterialParameters *mp=material->GetMP(type);
-        
-    if(!mp)
-        return(false);
-
-    if(!mp->BindUBO(name,ubo,dynamic))return(false);
-
-    mp->Update();
-    return(true);
-}
-
-bool MaterialInstance::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
-{
-    MaterialParameters *mp=material->GetMP(type);
-        
-    if(!mp)
-        return(false);
-
-    if(!mp->BindSSBO(name,ubo,dynamic))return(false);
-
-    mp->Update();
-    return(true);
-}
-
-bool MaterialInstance::BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
-{
-    MaterialParameters *mp=material->GetMP(type);
-        
-    if(!mp)
-        return(false);
-
-    if(!mp->BindImageSampler(name,tex,sampler))return(false);
-
-    mp->Update();
-    return(true);
-}
 VK_NAMESPACE_END
