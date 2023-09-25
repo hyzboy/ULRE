@@ -75,7 +75,7 @@ bool GPUDevice::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipelineSt
     return(true);
 }
 
-bool GPUDevice::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool GPUDevice::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf)
         return(false);
@@ -88,7 +88,7 @@ bool GPUDevice::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferI
     info.isr.aspectMask     =tex->GetAspect();
     info.isr.baseMipLevel   =0;
     info.isr.levelCount     =tex->GetMipLevel();
-    info.isr.baseArrayLayer =0;
+    info.isr.baseArrayLayer =base_layer;
     info.isr.layerCount     =layer_count;
 
     info.bic_list           =buffer_image_copy;
