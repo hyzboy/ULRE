@@ -118,6 +118,7 @@ Sampler *RenderResource::CreateSampler(Texture *tex)
 }
 
 Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
+Texture2DArray *CreateTexture2DArrayFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
 
 Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
 {

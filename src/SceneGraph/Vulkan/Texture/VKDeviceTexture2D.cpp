@@ -95,8 +95,6 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStage
 
     BufferImageCopy buffer_image_copy(tex);
 
-    //CopyBufferToImageInfo info(tex,buf->GetBuffer(),&buffer_image_copy);
-
     return CopyBufferToImage(tex,buf,&buffer_image_copy,destinationStage);
 }
 

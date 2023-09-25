@@ -63,8 +63,8 @@ class Texture2D:public Texture
 {
 public:
 
-    Texture2D(VkDevice dev,TextureData *td):Texture(dev,td){}
-    ~Texture2D()=default;
+    using Texture::Texture;
+    virtual ~Texture2D()=default;
 
     static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_2D;}
 
@@ -72,10 +72,19 @@ public:
     const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
 };//class Texture2D:public Texture
 
-//class Texture2DArray:public Texture
-//{
-//    uint32_t width,height,count;
-//};//class Texture2DArray:public Texture
+class Texture2DArray:public Texture
+{
+public:
+
+    using Texture::Texture;
+    virtual ~Texture2DArray()=default;
+
+    static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_2D_ARRAY;}
+
+    const uint32_t GetWidth ()const{return data?data->image_view->GetExtent().width:0;}
+    const uint32_t GetHeight()const{return data?data->image_view->GetExtent().height:0;}
+    const uint32_t GetLayer ()const{return data?data->image_view->GetExtent().depth:0;}
+};//class Texture2DArray:public Texture
 
 //class Texture3D:public Texture
 //{

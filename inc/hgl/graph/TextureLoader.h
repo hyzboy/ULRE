@@ -207,7 +207,7 @@ namespace hgl
         {
         protected:  // override functions
 
-            uint32 GetPixelsCount()const override{return file_header.length;}
+            uint32 GetPixelsCount()const override{return file_header.length*file_header.layers;}
             uint32 GetTotalBytes()const override
             {
                 if(file_header.mipmaps<=1)
@@ -230,7 +230,7 @@ namespace hgl
         {
         protected:  // override functions
 
-            uint32 GetPixelsCount()const override{return file_header.width*file_header.height;}
+            uint32 GetPixelsCount()const override{return file_header.width*file_header.height*file_header.layers;}
             uint32 GetTotalBytes()const override
             {
                 if(file_header.mipmaps<=1)
