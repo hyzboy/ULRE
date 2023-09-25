@@ -52,7 +52,9 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/Material2DCreateConfig.h
                             2d/M_VertexColor2D.cpp
                             2d/M_PureColor2D.cpp
                             2d/M_PureTexture2D.cpp
-                            2d/M_RectTexture2D.cpp)
+                            2d/M_RectTexture2D.cpp
+                            2d/M_RectTexture2DArray.cpp
+)
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h

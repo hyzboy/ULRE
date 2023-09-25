@@ -59,6 +59,8 @@ public:
         return(true);
     }
 
+    DeviceBuffer *GetBuffer(){return buf;}
+
     T *CreateTexture()
     {
         TextureCreateInfo *tci=new TextureCreateInfo(format);

@@ -215,7 +215,7 @@ bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
-    BufferImageCopy buffer_image_copy(tex,scope);
+    BufferImageCopy buffer_image_copy(tex,scope,base_layer,layer_count);
 
     texture_cmd_buf->Begin();
     bool result=CopyBufferToImage(tex,buf,&buffer_image_copy,1,base_layer,layer_count,destinationStage);
