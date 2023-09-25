@@ -21,7 +21,7 @@ namespace hgl
             ~Bitmap2DLoader();
 
             void *OnBegin(uint32 total_bytes) override;
-            void OnEnd() override {}
+            bool OnEnd() override {return(false);}
 
             BitmapData *GetBitmap();
         };//class Bitmap2DLoader

@@ -48,12 +48,19 @@ public:
     }
 
     void OnExtent(VkExtent3D &extent);
+
     T *OnCreateTexture(TextureCreateInfo *);
 
-    void OnEnd() override
+    bool OnEnd() override
     {
+        if(!buf)return(false);
         buf->Unmap();
 
+        return(true);
+    }
+
+    T *CreateTexture()
+    {
         TextureCreateInfo *tci=new TextureCreateInfo(format);
 
         VkExtent3D extent;
@@ -82,12 +89,11 @@ public:
         SAFE_CLEAR(tex);
         tex=OnCreateTexture(tci);
 
-        if(tex)
-            buf=nullptr;
-    }
+        if(!tex)
+            return nullptr;
+        
+        buf=nullptr;
 
-    T *GetTexture()
-    {
         T *result=tex;
         tex=nullptr;
         return result;

@@ -22,6 +22,6 @@ TextureCube *CreateTextureCubeFromFile(GPUDevice *device,const OSString &filenam
     if(!loader.Load(filename))
         return(nullptr);
 
-    return loader.GetTexture();
+    return loader.CreateTexture();
 }
 VK_NAMESPACE_END
