@@ -24,29 +24,16 @@ class TileFont;
 class FontSource;
 class GPUArrayBuffer;
 
-struct Image2DSubresourceRange:public VkImageSubresourceRange
+struct CopyBufferToImageInfo
 {
-    Image2DSubresourceRange(Texture2D *tex)
-    {
-        this->aspectMask    =tex->GetAspect();
-        this->baseMipLevel  =0;
-        this->levelCount    =tex->GetMipLevel();
-        this->baseArrayLayer=0;
-        this->layerCount    =1;
-    }
-};//struct Image2DSubresourceRange:public VkImageSubresourceRange
+    VkImage                     image;
+    VkBuffer                    buffer;
 
-struct ImageCubeSubresourceRange:public VkImageSubresourceRange
-{
-    ImageCubeSubresourceRange(TextureCube *tex)
-    {
-        this->aspectMask    =tex->GetAspect();
-        this->baseMipLevel  =0;
-        this->levelCount    =tex->GetMipLevel();
-        this->baseArrayLayer=0;
-        this->layerCount    =6;
-    }
-};//struct ImageCubeSubresourceRange:public VkImageSubresourceRange
+    VkImageSubresourceRange     isr;
+
+    const VkBufferImageCopy *   bic_list;
+    uint32_t                    bic_count;
+};
 
 class GPUDevice
 {
@@ -174,6 +161,8 @@ public: //Image
     void    DestroyImage        (VkImage);
 
 private:    //texture
+
+    bool CopyBufferToImage      (const CopyBufferToImageInfo *info,VkPipelineStageFlags destinationStage);
 
     bool CopyBufferToImage          (Texture *,DeviceBuffer *buf,const VkBufferImageCopy *,const int count,const uint32_t layer_count,VkPipelineStageFlags);//=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
