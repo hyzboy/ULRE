@@ -94,7 +94,7 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStage
 
     BufferImageCopy buffer_image_copy(tex);
 
-    return CommitTexture(tex,buf,&buffer_image_copy,1,1,destinationStage);
+    return CopyBufferToImage(tex,buf,&buffer_image_copy,1,1,destinationStage);
 }
 
 bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
@@ -140,7 +140,7 @@ bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const Vk
         if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CommitTexture(tex,buf,buffer_image_copy,miplevel,1,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CopyBufferToImage(tex,buf,buffer_image_copy,miplevel,1,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
 bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
@@ -177,7 +177,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Imag
     }
 
     texture_cmd_buf->Begin();
-    bool result=CommitTexture(tex,buf,buffer_image_copy,ir_count,1,destinationStage);
+    bool result=CopyBufferToImage(tex,buf,buffer_image_copy,ir_count,1,destinationStage);
     texture_cmd_buf->End();
     SubmitTexture(*texture_cmd_buf);
     return result;
@@ -195,7 +195,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope
     BufferImageCopy buffer_image_copy(tex,scope);
 
     texture_cmd_buf->Begin();
-    bool result=CommitTexture(tex,buf,&buffer_image_copy,1,1,destinationStage);
+    bool result=CopyBufferToImage(tex,buf,&buffer_image_copy,1,1,destinationStage);
     texture_cmd_buf->End();
     SubmitTexture(*texture_cmd_buf);
     return result;
