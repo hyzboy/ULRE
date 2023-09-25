@@ -30,6 +30,19 @@ public:
         SetRectScope(rs);
     }
 
+    BufferImageCopy(const Texture2DArray *tex):BufferImageCopy()
+    {
+        imageSubresource.aspectMask=tex->GetAspect();
+        SetRectScope(tex->GetWidth(),tex->GetHeight());
+    }
+
+    template<typename T>
+    BufferImageCopy(const Texture2DArray *tex,const RectScope2<T> &rs):BufferImageCopy()
+    {
+        imageSubresource.aspectMask=tex->GetAspect();
+        SetRectScope(rs);
+    }
+
     BufferImageCopy(const TextureCube *tex):BufferImageCopy()
     {
         imageSubresource.aspectMask=tex->GetAspect();

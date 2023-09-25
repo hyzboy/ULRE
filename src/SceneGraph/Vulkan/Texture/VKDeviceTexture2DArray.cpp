@@ -164,7 +164,7 @@ Texture2DArray *GPUDevice::CreateTexture2DArray(const uint32_t w,const uint32_t 
 //    return CopyBufferToImageArray(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 //}
 //
-//bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+//bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf||ir_list.GetCount()<=0)
 //        return(false);
@@ -184,8 +184,8 @@ Texture2DArray *GPUDevice::CreateTexture2DArray(const uint32_t w,const uint32_t 
 //        tp->bufferImageHeight = 0;
 //        tp->imageSubresource.aspectMask       = tex->GetAspect();
 //        tp->imageSubresource.mipLevel         = 0;
-//        tp->imageSubresource.baseArrayLayer   = 0;
-//        tp->imageSubresource.layerCount       = 1;
+//        tp->imageSubresource.baseArrayLayer   = base_layer;
+//        tp->imageSubresource.layerCount       = layer_count;
 //        tp->imageOffset.x     = sp.left;
 //        tp->imageOffset.y     = sp.top;
 //        tp->imageOffset.z     = 0;
@@ -203,40 +203,44 @@ Texture2DArray *GPUDevice::CreateTexture2DArray(const uint32_t w,const uint32_t 
 //    SubmitTexture(*texture_cmd_buf);
 //    return result;
 //}
-//
-//bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
-//{
-//    if(!tex||!buf
-//        ||scope.GetWidth()<=0
-//        ||scope.GetHeight()<=0
-//        ||scope.GetRight()>tex->GetWidth()
-//        ||scope.GetBottom()>tex->GetHeight())
-//        return(false);
-//
-//    BufferImageCopy buffer_image_copy(tex,scope);
-//
-//    texture_cmd_buf->Begin();
-//    bool result=CopyBufferToImageArray(tex,buf,&buffer_image_copy,1,1,destinationStage);
-//    texture_cmd_buf->End();
-//    SubmitTexture(*texture_cmd_buf);
-//    return result;
-//}
-//
-//bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,void *data,const uint32_t size,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
-//{
-//    if(!tex||!data
-//        ||size<=0
-//        ||scope.GetWidth()<=0
-//        ||scope.GetHeight()<=0
-//        ||scope.GetRight()>tex->GetWidth()
-//        ||scope.GetBottom()>tex->GetHeight())
-//        return(false);
-//
-//    DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
-//
-//    bool result=ChangeTexture2DArray(tex,buf,scope,destinationStage);
-//
-//    delete buf;
-//    return(result);
-//}
+
+bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+{
+    if(!tex||!buf
+        ||base_layer<0
+        ||layer_count<=0
+        ||scope.GetWidth()<=0
+        ||scope.GetHeight()<=0
+        ||scope.GetRight()>tex->GetWidth()
+        ||scope.GetBottom()>tex->GetHeight())
+        return(false);
+
+    BufferImageCopy buffer_image_copy(tex,scope);
+
+    texture_cmd_buf->Begin();
+    bool result=CopyBufferToImage(tex,buf,&buffer_image_copy,1,base_layer,layer_count,destinationStage);
+    texture_cmd_buf->End();
+    SubmitTexture(*texture_cmd_buf);
+    return result;
+}
+
+bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,void *data,const uint32_t size,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+{
+    if(!tex||!data
+        ||size<=0
+        ||base_layer<0
+        ||layer_count<=0
+        ||scope.GetWidth()<=0
+        ||scope.GetHeight()<=0
+        ||scope.GetRight()>tex->GetWidth()
+        ||scope.GetBottom()>tex->GetHeight())
+        return(false);
+
+    DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+
+    bool result=ChangeTexture2DArray(tex,buf,scope,base_layer,layer_count,destinationStage);
+
+    delete buf;
+    return(result);
+}
 VK_NAMESPACE_END
