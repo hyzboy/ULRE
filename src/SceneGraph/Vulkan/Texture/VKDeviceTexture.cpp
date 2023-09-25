@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
+#include"CopyBufferToImage.h"
 
 VK_NAMESPACE_BEGIN
 bool GPUDevice::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling) const
@@ -94,52 +95,6 @@ bool GPUDevice::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferI
     info.bic_count          =count;
     
     return CopyBufferToImage(&info,destinationStage);
-
-    //下面这段是原始能跑的，上面的是走新的接口的，本质一样，待完全测试后，删掉下面的。
-//--------------------------------------------------------------------------------------------------
-
-    //ImageSubresourceRange subresourceRange(tex->GetAspect(),tex->GetMipLevel(),layer_count);
-
-    //texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-    //    VK_PIPELINE_STAGE_HOST_BIT,
-    //    VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //    0,
-    //    VK_ACCESS_TRANSFER_WRITE_BIT,
-    //    VK_IMAGE_LAYOUT_UNDEFINED,
-    //    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //    subresourceRange);
-
-    //texture_cmd_buf->CopyBufferToImage(
-    //    buf->GetBuffer(),
-    //    tex->GetImage(),
-    //    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //    count,
-    //    buffer_image_copy);
-
-    //if(destinationStage==VK_PIPELINE_STAGE_TRANSFER_BIT)                            //接下来还有，一般是给自动生成mipmaps
-    //{
-    //    //texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-    //    //    VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //    //    VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //    //    VK_ACCESS_TRANSFER_WRITE_BIT,
-    //    //    VK_ACCESS_TRANSFER_READ_BIT,
-    //    //    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //    //    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-    //    //    subresourceRange);
-    //}
-    //else// if(destinationStage==VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)              //接下来就给fragment shader用了，证明是最后一步
-    //{
-    //    texture_cmd_buf->ImageMemoryBarrier(tex->GetImage(),
-    //        VK_PIPELINE_STAGE_TRANSFER_BIT,
-    //        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-    //        VK_ACCESS_TRANSFER_WRITE_BIT,
-    //        VK_ACCESS_SHADER_READ_BIT,
-    //        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    //        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    //        subresourceRange);
-    //}
-
-    //return(true);
 }
 
 bool GPUDevice::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)

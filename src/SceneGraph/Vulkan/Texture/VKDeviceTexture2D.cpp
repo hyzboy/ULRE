@@ -2,7 +2,8 @@
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
-#include"BufferImageCopy2D.h"
+#include<hgl/graph/VKTexture.h>
+#include"CopyBufferToImage.h"
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
@@ -94,7 +95,9 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStage
 
     BufferImageCopy buffer_image_copy(tex);
 
-    return CopyBufferToImage(tex,buf,&buffer_image_copy,1,1,destinationStage);
+    CopyBufferToImageInfo info(tex,buf->GetBuffer(),&buffer_image_copy);
+
+    return CopyBufferToImage(&info,destinationStage);
 }
 
 bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
@@ -140,7 +143,9 @@ bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const Vk
         if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CopyBufferToImage(tex,buf,buffer_image_copy,miplevel,1,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    CopyBufferToImageMipmapsInfo info(tex,buf->GetBuffer(),buffer_image_copy,miplevel);
+
+    return CopyBufferToImage(&info,VK_PIPELINE_STAGE_TRANSFER_BIT);
 }
 
 bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
