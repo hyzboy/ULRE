@@ -90,7 +90,7 @@ bool GPUDevice::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint3
     
     BufferImageCopy buffer_image_copy(tex);
 
-    return CommitTexture(tex,buf,&buffer_image_copy,1,6,destinationStage);
+    return CopyBufferToImage(tex,buf,&buffer_image_copy,1,6,destinationStage);
 }
 
 bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
@@ -140,7 +140,7 @@ bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,cons
         if(height>1){height>>=1;total_bytes>>=1;}
     }
 
-    return CommitTexture(tex,buf,buffer_image_copy,miplevel,6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    return CopyBufferToImage(tex,buf,buffer_image_copy,miplevel,6,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
 //bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)

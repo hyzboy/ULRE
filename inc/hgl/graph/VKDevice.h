@@ -24,6 +24,30 @@ class TileFont;
 class FontSource;
 class GPUArrayBuffer;
 
+struct Image2DSubresourceRange:public VkImageSubresourceRange
+{
+    Image2DSubresourceRange(Texture2D *tex)
+    {
+        this->aspectMask    =tex->GetAspect();
+        this->baseMipLevel  =0;
+        this->levelCount    =tex->GetMipLevel();
+        this->baseArrayLayer=0;
+        this->layerCount    =1;
+    }
+};//struct Image2DSubresourceRange:public VkImageSubresourceRange
+
+struct ImageCubeSubresourceRange:public VkImageSubresourceRange
+{
+    ImageCubeSubresourceRange(TextureCube *tex)
+    {
+        this->aspectMask    =tex->GetAspect();
+        this->baseMipLevel  =0;
+        this->levelCount    =tex->GetMipLevel();
+        this->baseArrayLayer=0;
+        this->layerCount    =6;
+    }
+};//struct ImageCubeSubresourceRange:public VkImageSubresourceRange
+
 class GPUDevice
 {
     GPUDeviceAttribute *attr;
@@ -151,7 +175,7 @@ public: //Image
 
 private:    //texture
 
-    bool CommitTexture          (Texture *,DeviceBuffer *buf,const VkBufferImageCopy *,const int count,const uint32_t layer_count,VkPipelineStageFlags);//=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    bool CopyBufferToImage          (Texture *,DeviceBuffer *buf,const VkBufferImageCopy *,const int count,const uint32_t layer_count,VkPipelineStageFlags);//=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
     bool CommitTexture2D        (Texture2D *,DeviceBuffer *buf,VkPipelineStageFlags stage);
     bool CommitTexture2DMipmaps (Texture2D *,DeviceBuffer *buf,const VkExtent3D &,uint32_t);
