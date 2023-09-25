@@ -243,6 +243,9 @@ bool MaterialCreateInfo::CreateShader()
             if(sc->GetShaderStage()==VK_SHADER_STAGE_VERTEX_BIT)
                 sc->AddFunction(mtl::func::HandoverMI_VS);
             else
+            if(sc->GetShaderStage()==VK_SHADER_STAGE_GEOMETRY_BIT)
+                sc->AddFunction(mtl::func::HandoverMI_GS);
+            else
                 sc->AddFunction(mtl::func::HandoverMI);
         }
 

@@ -77,6 +77,12 @@ public:
 
 public:
 
+    bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
+    bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
+    bool BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
+
+public:
+
     const bool      HasMI           ()const{return mi_data_bytes>0;}
     const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
     const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}

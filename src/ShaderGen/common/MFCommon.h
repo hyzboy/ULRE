@@ -21,10 +21,17 @@ void HandoverMI()
 }
 )";
 
+constexpr const char HandoverMI_GS[]=R"(
+void HandoverMI()
+{
+    Output.MaterialInstanceID=Input[0].MaterialInstanceID;
+}
+)";
+
 constexpr const char HandoverMI[]=R"(
 void HandoverMI()
 {
-    Output.MaterialInstanceID=Assign.y;
+    Output.MaterialInstanceID=Input.MaterialInstanceID;
 }
 )";
 

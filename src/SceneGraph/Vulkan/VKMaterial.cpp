@@ -66,4 +66,43 @@ const uint Material::GetVILCount()
 {
     return vertex_input->GetInstanceCount();
 }
+
+bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
+{
+    MaterialParameters *mp=GetMP(type);
+        
+    if(!mp)
+        return(false);
+
+    if(!mp->BindUBO(name,ubo,dynamic))return(false);
+
+    mp->Update();
+    return(true);
+}
+
+bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
+{
+    MaterialParameters *mp=GetMP(type);
+        
+    if(!mp)
+        return(false);
+
+    if(!mp->BindSSBO(name,ubo,dynamic))return(false);
+
+    mp->Update();
+    return(true);
+}
+
+bool Material::BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
+{
+    MaterialParameters *mp=GetMP(type);
+        
+    if(!mp)
+        return(false);
+
+    if(!mp->BindImageSampler(name,tex,sampler))return(false);
+
+    mp->Update();
+    return(true);
+}
 VK_NAMESPACE_END

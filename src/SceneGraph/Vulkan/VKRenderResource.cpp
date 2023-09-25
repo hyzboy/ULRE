@@ -147,6 +147,16 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
     return tex;
 }
 
+Texture2DArray *RenderResource::CreateTexture2DArray(const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps)
+{
+    Texture2DArray *ta=device->CreateTexture2DArray(width,height,layer,fmt,auto_mipmaps);
+
+    if(ta)
+        Add(ta);
+
+    return ta;
+}
+
 bool LoadTexture2DLayerFromFile(GPUDevice *device,Texture2DArray *t2d,const uint32_t layer,const OSString &filename,bool auto_mipmaps);
 
 bool RenderResource::LoadTexture2DToArray(Texture2DArray *ta,const uint32_t layer,const OSString &filename)
