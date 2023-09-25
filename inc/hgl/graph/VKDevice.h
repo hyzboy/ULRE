@@ -180,6 +180,9 @@ public: //Texture
     Texture2D *CreateTexture2D(TextureData *);
     Texture2D *CreateTexture2D(TextureCreateInfo *ci);
 
+    Texture2DArray *CreateTexture2DArray(TextureData *);
+    Texture2DArray *CreateTexture2DArray(TextureCreateInfo *ci);
+
     TextureCube *CreateTextureCube(TextureData *);
     TextureCube *CreateTextureCube(TextureCreateInfo *ci);
 
