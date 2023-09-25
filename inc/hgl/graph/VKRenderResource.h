@@ -117,6 +117,8 @@ public: //texture
     Texture2D *         LoadTexture2D(const OSString &,bool auto_mipmaps=false);
     TextureCube *       LoadTextureCube(const OSString &,bool auto_mipmaps=false);
 
+    bool                LoadTexture2DToArray(Texture2DArray *,const uint32_t layer,const OSString &);
+
 public: //Get
 
     Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}

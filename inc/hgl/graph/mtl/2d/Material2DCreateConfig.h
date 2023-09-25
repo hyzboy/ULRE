@@ -33,5 +33,6 @@ MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreatePureTexture2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreateRectTexture2D(Material2DCreateConfig *);
+MaterialCreateInfo *CreateRectTexture2DArray(Material2DCreateConfig *);
 STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE

@@ -37,9 +37,11 @@ public:
     }
 
     template<typename T>
-    BufferImageCopy(const Texture2DArray *tex,const RectScope2<T> &rs):BufferImageCopy()
+    BufferImageCopy(const Texture2DArray *tex,const RectScope2<T> &rs,const uint32_t bl,const uint32_t lc):BufferImageCopy()
     {
-        imageSubresource.aspectMask=tex->GetAspect();
+        imageSubresource.aspectMask     =tex->GetAspect();
+        imageSubresource.baseArrayLayer =bl;
+        imageSubresource.layerCount     =lc;
         SetRectScope(rs);
     }
 

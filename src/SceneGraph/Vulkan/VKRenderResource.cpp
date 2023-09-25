@@ -118,7 +118,6 @@ Sampler *RenderResource::CreateSampler(Texture *tex)
 }
 
 Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
-Texture2DArray *CreateTexture2DArrayFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
 
 Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
 {
@@ -146,6 +145,18 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
     }
 
     return tex;
+}
+
+bool LoadTexture2DLayerFromFile(GPUDevice *device,Texture2DArray *t2d,const uint32_t layer,const OSString &filename,bool auto_mipmaps);
+
+bool RenderResource::LoadTexture2DToArray(Texture2DArray *ta,const uint32_t layer,const OSString &filename)
+{
+    if(!ta)return(false);
+
+    if(!LoadTexture2DLayerFromFile(device,ta,layer,filename,false))
+        return(false);
+
+    return(true);
 }
 
 TextureCube *CreateTextureCubeFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
