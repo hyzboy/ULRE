@@ -55,27 +55,8 @@ void main()
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
-            RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
-
-            vsc->AddInput(VAT_VEC4,VAN::Position);
-
-            if(cfg->local_to_world)
-            {
-                mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
-
-                vsc->AddAssign();
-
-                vsc->AddFunction(func::GetPosition2DRectL2W[size_t(cfg->coordinate_system)]);
-            }
-            else
-                vsc->AddFunction(func::GetPosition2DRect[size_t(cfg->coordinate_system)]);
-
-            if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
-            {
-                mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
-                            DescriptorSetType::Global,
-                            SBS_ViewportInfo);
-            }
+            if(!Std2DMaterial::CustomVertexShader(vsc))
+                return(false);
 
             vsc->AddInput(VAT_VEC4,VAN::TexCoord);
 
