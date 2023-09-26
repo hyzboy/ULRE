@@ -11,6 +11,8 @@ struct Material2DCreateConfig:public MaterialCreateConfig
 
     bool                local_to_world;         ///<包含LocalToWorld矩阵
 
+    
+
 public:
 
     Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name):MaterialCreateConfig(da,name)
