@@ -39,6 +39,7 @@ private:
 
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
+    Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
     Pipeline *          pipeline            =nullptr;
@@ -54,13 +55,13 @@ private:
 
         AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateRectTexture2D(&cfg);
 
-        material_instance=db->CreateMaterialInstance(mci);
+        material=db->CreateMaterial(mci);
 
-        if(!material_instance)
+        if(!material)
             return(false);
 
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);
@@ -70,11 +71,13 @@ private:
 
         sampler=db->CreateSampler();
 
-        if(!material_instance->BindImageSampler(DescriptorSetType::PerMaterial,     ///<描述符合集
-                                                mtl::SamplerName::Color,            ///<采样器名称
-                                                texture,                            ///<纹理
-                                                sampler))                           ///<采样器
+        if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
+                                        mtl::SamplerName::Color,            ///<采样器名称
+                                        texture,                            ///<纹理
+                                        sampler))                           ///<采样器
             return(false);
+
+        material_instance=db->CreateMaterialInstance(material);
 
         return(true);
     }

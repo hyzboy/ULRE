@@ -166,7 +166,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     hgl::strcpy(mi_ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstance.name);
     mi_ubo->stage_flag=shader_stage_flag_bits;
 
-    mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::MaterialInstance,mi_ubo);
+    mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerMaterial,mi_ubo);
 
     const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count);
 
