@@ -238,7 +238,7 @@ bool MaterialCreateInfo::CreateShader()
 
         if(sc->GetShaderStage()<mi_shader_stage)
         {
-            sc->AddOutput(VAT_UINT,VAN::MaterialInstanceID,Interpolation::Flat);
+            sc->AddOutput(VAT_UINT,mtl::func::MaterialInstanceID,Interpolation::Flat);
 
             if(sc->GetShaderStage()==VK_SHADER_STAGE_VERTEX_BIT)
                 sc->AddFunction(mtl::func::HandoverMI_VS);

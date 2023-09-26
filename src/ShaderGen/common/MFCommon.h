@@ -14,6 +14,8 @@ mat4 GetLocalToWorld()
 }
 )";
 
+    constexpr const char MaterialInstanceID[]="MaterialInstanceID";
+
     constexpr const char HandoverMI_VS[]=R"(
 void HandoverMI()
 {
