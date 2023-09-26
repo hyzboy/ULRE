@@ -1,7 +1,6 @@
 ﻿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
-#include"common/MFRectPrimitive.h"
 #include<hgl/graph/mtl/UBOCommon.h>
 
 STD_MTL_NAMESPACE_BEGIN
@@ -49,20 +48,8 @@ void main()
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
-            {
-                RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
-
-                vsc->AddInput(VAT_VEC4,VAN::Position);
-
-                vsc->AddFunction(func::GetPosition2DRect[size_t(cfg->coordinate_system)]);
-
-                if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
-                {
-                    mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
-                                DescriptorSetType::Global,
-                                SBS_ViewportInfo);
-                }
-            }
+            if(!Std2DMaterial::CustomVertexShader(vsc))
+                return(false);
 
             vsc->AddInput(VAT_VEC4,VAN::TexCoord);
 
