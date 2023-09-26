@@ -90,7 +90,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2DArray");
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2DArray",Prim::SolidRectangles);
 
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
         cfg.local_to_world=true;
