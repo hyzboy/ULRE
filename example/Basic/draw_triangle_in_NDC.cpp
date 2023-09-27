@@ -1,5 +1,4 @@
-﻿// first_triangle
-// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
+﻿// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>

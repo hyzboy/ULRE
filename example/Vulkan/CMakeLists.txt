@@ -10,17 +10,7 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan/${group}")
 endmacro()
 
-CreateProject("Basic" 01_draw_triangle_in_NDC           first_triangle.cpp)
-CreateProject("Basic" 02_draw_triangle_use_UBO          second_triangle.cpp)
-CreateProject("Basic" 03_auto_instance                  third_triangle.cpp)
-CreateProject("Basic" 04_auto_merge_material_instance   fourth_triangle.cpp)
-
 #CreateProject("Basic" FragCoord             FragCoordTest.cpp)
-
-CreateProject("Texture" 05_texture_format   TextureFormat.cpp)
-CreateProject("Texture" 06_texture_quad     texture_quad.cpp)
-CreateProject("Texture" 07_texture_rect     texture_rect.cpp)
-CreateProject("Texture" 08_texture_rect_array     texture_rect_array.cpp)
 
 #CreateProject("Texture" HQFilterTexture HQFilterTexture.cpp)
 #CreateProject(06.Geometry2D Geometry2D.cpp)
