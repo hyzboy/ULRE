@@ -8,8 +8,6 @@
 STD_MTL_NAMESPACE_BEGIN
 struct Material2DCreateConfig:public MaterialCreateConfig
 {
-    Prim                prim;                   ///<图元类型
-
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
 
     bool                local_to_world;         ///<包含LocalToWorld矩阵
@@ -18,10 +16,8 @@ struct Material2DCreateConfig:public MaterialCreateConfig
 
 public:
 
-    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p):MaterialCreateConfig(da,name)
+    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p):MaterialCreateConfig(da,name,p)
     {
-        prim=p;
-
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
         rt_output.stencil=false;    //不输出stencil
@@ -36,11 +32,6 @@ public:
             position_format=VAT_VEC2;
     }
 };//struct Material2DCreateConfig:public MaterialCreateConfig
-
-namespace SamplerName
-{
-    constexpr const char Color[]="TextureColor";
-}
 
 MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);

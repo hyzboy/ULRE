@@ -7,7 +7,7 @@
         set_property(TARGET ${name} PROPERTY VS_DPI_AWARE "PerMonitor")
     ENDIF()
 
-    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Vulkan/Basic")
+    set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Basic")
 endmacro()
 
 CreateProject(01_draw_triangle_in_NDC           draw_triangle_in_NDC.cpp)

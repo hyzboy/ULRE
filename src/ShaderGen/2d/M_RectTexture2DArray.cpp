@@ -3,6 +3,7 @@
 #include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
 #include"common/MFRectPrimitive.h"
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/mtl/SamplerName.h>
 
 STD_MTL_NAMESPACE_BEGIN
 namespace
