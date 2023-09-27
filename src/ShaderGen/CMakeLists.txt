@@ -37,6 +37,7 @@ SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
 SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
+                            ${STD_MTL_HEADER_PATH}/SamplerName.h
                             common/MFCommon.h
                             common/MFGetPosition.h)
 
@@ -56,6 +57,13 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/Material2DCreateConfig.h
                             2d/M_RectTexture2DArray.cpp
 )
 
+SET(STD_MTL_3D_HEADER_PATH ${STD_MTL_HEADER_PATH}/3d)
+
+SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_3D_HEADER_PATH}/Material3DCreateConfig.h
+                            3d/Std3DMaterial.h
+                            3d/Std3DMaterial.cpp
+)
+
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
                     ${STD_MTL_HEADER_PATH}/ShaderBuffer.h
@@ -63,6 +71,7 @@ SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
+SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 
 add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
                                         ${DESC_INFO_SOURCE_FILES}
@@ -74,4 +83,5 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${STD_MTL_SOURCE}
                                         ${STD_MTL_2D_SOURCE_FILES}
+                                        ${STD_MTL_3D_SOURCE_FILES}
 )

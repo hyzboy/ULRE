@@ -22,15 +22,19 @@ struct MaterialCreateConfig
 
     uint32 shader_stage_flag_bit;                           ///<需要的shader
 
+    Prim prim;                                              ///<图元类型
+
 public:
 
-    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name)
+    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p)
     {
         dev_attr=da;
 
         mtl_name=name;
 
         shader_stage_flag_bit=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        prim=p;
     }
 };//struct MaterialCreateConfig
 STD_MTL_NAMESPACE_END
