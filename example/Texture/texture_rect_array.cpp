@@ -1,5 +1,4 @@
-﻿// texture rect
-// 画一个带纹理的矩形，2D模式专用
+﻿// 画一个带纹理的矩形，2D模式专用
 
 #include"VulkanAppFramework.h"
 #include<hgl/graph/VKTexture.h>

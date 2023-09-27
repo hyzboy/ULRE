@@ -1,5 +1,4 @@
-﻿// texture rect
-// 画一个带纹理的矩形，2D模式专用
+﻿// 画一个带纹理的四边形
 
 #include"VulkanAppFramework.h"
 #include<hgl/graph/VKTexture.h>
@@ -19,18 +18,22 @@ VK_NAMESPACE_END
 constexpr uint32_t SCREEN_WIDTH=256;
 constexpr uint32_t SCREEN_HEIGHT=256;
 
-constexpr float position_data[4]=
+constexpr uint32_t VERTEX_COUNT=4;
+
+constexpr float position_data[VERTEX_COUNT][2]=
 {
-    0,     //left
-    0,     //top
-    1,     //right
-    1      //bottom
+    {-1, -1},
+    { 1, -1},
+    { 1,  1},
+    {-1,  1},
 };
 
-constexpr float tex_coord_data[4]=
+constexpr float tex_coord_data[VERTEX_COUNT][2]=
 {
-    0,0,
-    1,1
+    {0,0},
+    {1,0},
+    {1,1},
+    {0,1}
 };
 
 class TestApp:public VulkanApplicationFramework
@@ -48,12 +51,12 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2D",Prim::SolidRectangles);
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"PureTexture2D",Prim::Fan);
 
-        cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
+        cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
 
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateRectTexture2D(&cfg);
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureTexture2D(&cfg);
 
         material=db->CreateMaterial(mci);
 
@@ -61,7 +64,7 @@ private:
             return(false);
 
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::Fan);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);
@@ -84,10 +87,10 @@ private:
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,1);
+        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
 
-        if(!rpc.SetVBO(VAN::Position,VF_V4F,position_data))return(false);
-        if(!rpc.SetVBO(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
+        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
+        if(!rpc.SetVBO(VAN::TexCoord,   VF_V2F, tex_coord_data))return(false);
 
         render_obj=rpc.Create(material_instance,pipeline);
         return(render_obj);
