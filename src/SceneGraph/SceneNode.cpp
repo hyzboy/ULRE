@@ -14,8 +14,7 @@ namespace hgl
             }
             else
             {
-                BoundingBox.minPoint=Vector3f(0,0,0);
-                BoundingBox.maxPoint=Vector3f(0,0,0);
+                BoundingBox.SetZero();
 
                 WorldBoundingBox=LocalBoundingBox=BoundingBox;
             }
