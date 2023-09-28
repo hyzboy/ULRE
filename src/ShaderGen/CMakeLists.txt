@@ -62,6 +62,7 @@ SET(STD_MTL_3D_HEADER_PATH ${STD_MTL_HEADER_PATH}/3d)
 SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_3D_HEADER_PATH}/Material3DCreateConfig.h
                             3d/Std3DMaterial.h
                             3d/Std3DMaterial.cpp
+                            3d/M_VertexColor3D.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h

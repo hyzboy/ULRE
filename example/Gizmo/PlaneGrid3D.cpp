@@ -6,6 +6,8 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/Camera.h>
+#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/mtl/3d/Material3DCreateConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -34,22 +36,28 @@ private:
 
     bool InitMDP()
     {
-        material=db->CreateMaterial(OS_TEXT("res/material/VertexColor3D"));
-        if(!material)return(false);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor3D",Prim::Lines);
 
-        material_instance=db->CreateMaterialInstance(material);
+        cfg.local_to_world=true;
+
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor3D(&cfg);
+
+        material_instance=db->CreateMaterialInstance(mci);
         if(!material_instance)return(false);
+
+        db->global_descriptor.Bind(material_instance->GetMaterial());
         
         pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Lines);
-        if(!pipeline)
-            return(false);
 
-        return(true);
+        return pipeline;
     }
     
     Renderable *Add(Primitive *r,const Matrix4f &mat)
     {
         Renderable *ri=db->CreateRenderable(r,material_instance,pipeline);
+
+        if(!ri)
+            return(nullptr);
 
         render_root.CreateSubNode(mat,ri);
 
@@ -101,7 +109,7 @@ private:
         camera_control->Refresh();
 
         render_root.RefreshMatrix();
-        render_list->Expend(camera->info,&render_root);
+        render_list->Expend(&render_root);
 
         return(true);
     }
@@ -133,9 +141,6 @@ public:
 
     void BuildCommandBuffer(uint32 index)
     {
-        render_root.RefreshMatrix();
-        render_list->Expend(GetCameraInfo(),&render_root);
-
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 
