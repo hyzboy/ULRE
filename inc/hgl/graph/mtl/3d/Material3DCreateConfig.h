@@ -33,6 +33,7 @@ public:
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
 MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);
+MaterialCreateInfo *CreateVertexLuminance3D(const Material3DCreateConfig *);
 //MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
 //MaterialCreateInfo *CreatePureTexture2D(const Material2DCreateConfig *);
 //MaterialCreateInfo *CreateRectTexture2D(Material2DCreateConfig *);

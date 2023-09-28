@@ -186,23 +186,23 @@ namespace hgl
                                       to(pgci->coord[0],pgci->coord[3],pos));
                 }
 
-                AutoDelete<VB4f> color=rc.AccessVAD<VB4f>(VAN::Color);
-                if(color)
+                AutoDelete<VB1f> lum=rc.AccessVAD<VB1f>(VAN::Luminance);
+                if(lum)
                 {
                     for(uint row=0;row<=pgci->step.x;row++)
                     {
                         if((row%pgci->side_step.x)==0)
-                            color->RepeatWrite(pgci->side_color,2);
+                            lum->RepeatWrite(pgci->side_lum,2);
                         else
-                            color->RepeatWrite(pgci->color,2);
+                            lum->RepeatWrite(pgci->lum,2);
                     }
 
                     for(uint col=0;col<=pgci->step.y;col++)
                     {
                         if((col%pgci->side_step.y)==0)
-                            color->RepeatWrite(pgci->side_color,2);
+                            lum->RepeatWrite(pgci->side_lum,2);
                         else
-                            color->RepeatWrite(pgci->color,2);
+                            lum->RepeatWrite(pgci->lum,2);
                     }
                 }
 

@@ -15,6 +15,13 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
+constexpr const Vector4f GridColor[3]=
+{
+    {1,0,0,1},
+    {0,1,0,1},
+    {0,0,1,1}
+};
+
 class TestApp:public CameraAppFramework
 {
     Color4f color;
@@ -27,44 +34,39 @@ private:
     RenderList *        render_list         =nullptr;
 
     Material *          material            =nullptr;
-    MaterialInstance *  material_instance   =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Primitive *         ro_plane_grid[3]{};
+    Primitive *         ro_plane_grid       =nullptr;
+    MaterialInstance *  material_instance[3]{};
 
 private:
 
     bool InitMDP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor3D",Prim::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
 
         cfg.local_to_world=true;
 
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor3D(&cfg);
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexLuminance3D(&cfg);
 
-        material_instance=db->CreateMaterialInstance(mci);
-        if(!material_instance)return(false);
+        material=db->CreateMaterial(mci);
+        if(!material)return(false);
 
-        db->global_descriptor.Bind(material_instance->GetMaterial());
+        db->global_descriptor.Bind(material);
+
+        for(uint i=0;i<3;i++)
+        {
+            material_instance[i]=db->CreateMaterialInstance(material);
+
+            material_instance[i]->WriteMIData(GridColor[i]);
+        }
         
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid3D,Prim::Lines);
+        pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Lines);
 
         return pipeline;
     }
-    
-    Renderable *Add(Primitive *r,const Matrix4f &mat)
-    {
-        Renderable *ri=db->CreateRenderable(r,material_instance,pipeline);
 
-        if(!ri)
-            return(nullptr);
-
-        render_root.CreateSubNode(mat,ri);
-
-        return ri;
-    }
-
-    void CreateRenderObject()
+    bool CreateRenderObject()
     {
         using namespace inline_geometry;
 
@@ -81,28 +83,31 @@ private:
         pgci.side_step.x=8;
         pgci.side_step.y=8;
 
-        pgci.color.Set(0.5,0,0,1);
-        pgci.side_color.Set(1,0,0,1);
+        pgci.lum=0.5;
+        pgci.side_lum=1.0;
 
-        const VIL *vil=material_instance->GetVIL();
+        ro_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
 
-        ro_plane_grid[0]=CreatePlaneGrid(db,vil,&pgci);
+        return ro_plane_grid;
+    }
+    
+    Renderable *Add(MaterialInstance *mi,const Matrix4f &mat)
+    {
+        Renderable *ri=db->CreateRenderable(ro_plane_grid,mi,pipeline);
 
-        pgci.color.Set(0,0.5,0,1);
-        pgci.side_color.Set(0,1,0,1);
+        if(!ri)
+            return(nullptr);
 
-        ro_plane_grid[1]=CreatePlaneGrid(db,vil,&pgci);
+        render_root.CreateSubNode(mat,ri);
 
-        pgci.color.Set(0,0,0.5,1);
-        pgci.side_color.Set(0,0,1,1);
-        ro_plane_grid[2]=CreatePlaneGrid(db,vil,&pgci);
+        return ri;
     }
 
     bool InitScene()
     {
-        Add(ro_plane_grid[0],Matrix4f(1.0f));
-        Add(ro_plane_grid[1],rotate(HGL_RAD_90,0,1,0));
-        Add(ro_plane_grid[2],rotate(HGL_RAD_90,1,0,0));
+        Add(material_instance[0],Matrix4f(1.0f));
+        Add(material_instance[1],rotate(HGL_RAD_90,0,1,0));
+        Add(material_instance[2],rotate(HGL_RAD_90,1,0,0));
 
         camera->pos=Vector3f(200,200,200);
         camera_control->SetTarget(Vector3f(0,0,0));
@@ -131,7 +136,8 @@ public:
         if(!InitMDP())
             return(false);
 
-        CreateRenderObject();
+        if(!CreateRenderObject())
+            return(false);
 
         if(!InitScene())
             return(false);
