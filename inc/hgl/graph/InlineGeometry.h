@@ -66,7 +66,7 @@ namespace hgl
                 Vector3f coord[4];
                 Vector2u step;
 
-                Vector2u side_step;   //到边界的步数
+                Vector2u side_step;     //到边界的步数
 
                 Color4f color;          //一般线条颜色
                 Color4f side_color;     //边界线条颜色
