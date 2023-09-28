@@ -107,7 +107,7 @@ namespace hgl
 
         Primitive *PrimitiveCreater::Finish()
         {
-            const uint si_count=vil->GetCount();
+            const uint si_count=vil->GetCount(VertexInputGroup::Basic);
 
             if(vbo_map.GetCount()!=si_count)
                 return(nullptr);
