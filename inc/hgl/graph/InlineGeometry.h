@@ -68,8 +68,8 @@ namespace hgl
 
                 Vector2u side_step;     //到边界的步数
 
-                Color4f color;          //一般线条颜色
-                Color4f side_color;     //边界线条颜色
+                float lum;              //一般线条颜色
+                float side_lum;         //边界线条颜色
             };//struct PlaneGridCreateInfo
 
             /**
