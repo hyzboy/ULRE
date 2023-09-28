@@ -94,7 +94,7 @@ public:
         if(!InitShaderCompiler())
             return(false);
 
-        clear_color.Set(0,0,0,1);
+        SetClearColor(COLOR::MozillaCharcoal);
 
     #ifdef _DEBUG
         if(!CheckStrideBytesByFormat())
