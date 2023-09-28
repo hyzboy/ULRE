@@ -17,15 +17,24 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     vsc->AddInput(cfg->position_format,VAN::Position);
 
+    if(cfg->camera)
+    {
+        mci->AddStruct(SBS_CameraInfo);
+
+        mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
+                    DescriptorSetType::Global,
+                    SBS_CameraInfo);
+    }
+
     if(cfg->local_to_world)
     {
         mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
 
         vsc->AddAssign();
-        vsc->AddFunction(func::GetPosition3DL2W);
+        vsc->AddFunction(cfg->camera?func::GetPosition3DL2WCamera:func::GetPosition3DL2W);
     }
     else
-        vsc->AddFunction(func::GetPosition3D);
+        vsc->AddFunction(cfg->camera?func::GetPosition3DCamera:func::GetPosition3D);
 
     mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
                 DescriptorSetType::Global,

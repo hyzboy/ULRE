@@ -7,6 +7,8 @@
 STD_MTL_NAMESPACE_BEGIN
 struct Material3DCreateConfig:public MaterialCreateConfig
 {
+    bool                camera;                 ///<包含摄像机矩阵信息
+
     bool                local_to_world;         ///<包含LocalToWorld矩阵
 
     VAT                 position_format;        ///<position格式
@@ -21,6 +23,7 @@ public:
         rt_output.depth=true;       //不输出深度
         rt_output.stencil=false;    //不输出stencil
 
+        camera=true;
         local_to_world=false;
 
         position_format=VAT_VEC3;
