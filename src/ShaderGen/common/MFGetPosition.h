@@ -52,5 +52,19 @@ vec4 GetPosition2D()
 }
 )"
     };
+
+    constexpr const char *GetPosition3D=R"(
+vec4 GetPosition3D()
+{
+    return vec4(Position,1);
+}
+)";
+
+    constexpr const char *GetPosition3DL2W=R"(
+vec4 GetPosition3D()
+{
+    return GetLocalToWorld()*vec4(Position,1);
+}
+)";
 }//namespace func
 STD_MTL_NAMESPACE_END
