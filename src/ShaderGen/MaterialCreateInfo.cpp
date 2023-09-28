@@ -135,6 +135,22 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
     return(result==shader_map.GetCount());
 }
 
+namespace
+{
+    UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits)
+    {
+        UBODescriptor *ubo=new UBODescriptor;
+
+        ubo->type=sbs.struct_name;
+
+        hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,sbs.name);
+
+        ubo->stage_flag=flag_bits;
+
+        return ubo;
+    }
+}//namespace
+
 /**
 * 设置材质实例代码与数据长度
 * @param glsl_codes     材质实例GLSL代码
@@ -160,11 +176,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
     mdi.AddStruct(SBS_MaterialInstance);
 
-    mi_ubo=new UBODescriptor();
-
-    mi_ubo->type=SBS_MaterialInstance.struct_name;
-    hgl::strcpy(mi_ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_MaterialInstance.name);
-    mi_ubo->stage_flag=shader_stage_flag_bits;
+    mi_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
 
     mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerMaterial,mi_ubo);
 
@@ -194,11 +206,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     mdi.AddStruct(SBS_LocalToWorld);
 
-    l2w_ubo=new UBODescriptor();
-
-    l2w_ubo->type=SBS_LocalToWorld.struct_name;
-    hgl::strcpy(l2w_ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,SBS_LocalToWorld.name);
-    l2w_ubo->stage_flag=shader_stage_flag_bits;
+    l2w_ubo=CreateUBODescriptor(SBS_LocalToWorld,shader_stage_flag_bits);
 
     mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerFrame,l2w_ubo);
 
