@@ -197,7 +197,7 @@ namespace hgl
              * @param v 值
              * @param count 写入数量
              */
-            bool Write(const T v,const uint32_t count)
+            bool RepeatWrite(const T v,const uint32_t count)
             {
                 if(!this->access||this->access+count>this->data_end)
                 {
