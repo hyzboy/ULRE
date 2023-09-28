@@ -72,19 +72,14 @@ private:
 
         struct PlaneGridCreateInfo pgci;
 
-        pgci.coord[0]=Vector3f(-100,-100,0);
-        pgci.coord[1]=Vector3f( 100,-100,0);
-        pgci.coord[2]=Vector3f( 100, 100,0);
-        pgci.coord[3]=Vector3f(-100, 100,0);
+        pgci.grid_size.width =32;
+        pgci.grid_size.height=32;
 
-        pgci.step.x=32;
-        pgci.step.y=32;
-
-        pgci.side_step.x=8;
-        pgci.side_step.y=8;
+        pgci.sub_count.width =8;
+        pgci.sub_count.height=8;
 
         pgci.lum=0.5;
-        pgci.side_lum=1.0;
+        pgci.sub_lum=1.0;
 
         ro_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
 
@@ -109,7 +104,7 @@ private:
         Add(material_instance[1],rotate(HGL_RAD_90,0,1,0));
         Add(material_instance[2],rotate(HGL_RAD_90,1,0,0));
 
-        camera->pos=Vector3f(200,200,200);
+        camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 
