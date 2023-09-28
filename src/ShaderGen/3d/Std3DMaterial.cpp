@@ -22,7 +22,10 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
         mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
 
         vsc->AddAssign();
+        vsc->AddFunction(func::GetPosition3DL2W);
     }
+    else
+        vsc->AddFunction(func::GetPosition3D);
 
     mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
                 DescriptorSetType::Global,

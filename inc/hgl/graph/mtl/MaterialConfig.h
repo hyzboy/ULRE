@@ -5,6 +5,7 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/RenderTargetOutputConfig.h>
 #include<hgl/graph/VK.h>
+#include<hgl/graph/mtl/SamplerName.h>
 
 STD_MTL_NAMESPACE_BEGIN
 class MaterialCreateInfo;

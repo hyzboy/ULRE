@@ -11,6 +11,8 @@ struct Material3DCreateConfig:public MaterialCreateConfig
 
     VAT                 position_format;        ///<position格式
 
+//    bool                reverse_depth;          ///<使用反向深度
+
 public:
 
     Material3DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p):MaterialCreateConfig(da,name,p)
@@ -22,10 +24,12 @@ public:
         local_to_world=false;
 
         position_format=VAT_VEC3;
+
+//        reverse_depth=false;
     }
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
-//MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
+MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);
 //MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
 //MaterialCreateInfo *CreatePureTexture2D(const Material2DCreateConfig *);
 //MaterialCreateInfo *CreateRectTexture2D(Material2DCreateConfig *);
