@@ -166,41 +166,44 @@ namespace hgl
             {
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(((pgci->step.x+1)+(pgci->step.y+1))*2))
+                if(!rc.Init(((pgci->grid_size.width+1)+(pgci->grid_size.height+1))*2))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
-                for(uint row=0;row<=pgci->step.x;row++)
-                {
-                    float pos=float(row)/float(pgci->step.x);
 
-                    vertex->WriteLine(  to(pgci->coord[0],pgci->coord[1],pos),
-                                        to(pgci->coord[3],pgci->coord[2],pos));
+                const float right=float(pgci->grid_size.width)/2.0f;
+                const float left =-right;
+
+                const float bottom=float(pgci->grid_size.height)/2.0f;
+                const float top   =-bottom;
+
+                for(int row=0;row<=pgci->grid_size.height;row++)
+                {
+                    vertex->WriteLine(  Vector3f(left ,top+row,0),
+                                        Vector3f(right,top+row,0));
                 }
 
-                for(uint col=0;col<=pgci->step.y;col++)
+                for(int col=0;col<=pgci->grid_size.width;col++)
                 {
-                    float pos=float(col)/float(pgci->step.y);
-
-                    vertex->WriteLine(to(pgci->coord[1],pgci->coord[2],pos),
-                                      to(pgci->coord[0],pgci->coord[3],pos));
+                    vertex->WriteLine(Vector3f(left+col,top,   0),
+                                      Vector3f(left+col,bottom,0));
                 }
 
                 AutoDelete<VB1f> lum=rc.AccessVAD<VB1f>(VAN::Luminance);
                 if(lum)
                 {
-                    for(uint row=0;row<=pgci->step.x;row++)
+                    for(int row=0;row<=pgci->grid_size.height;row++)
                     {
-                        if((row%pgci->side_step.x)==0)
-                            lum->RepeatWrite(pgci->side_lum,2);
+                        if((row%pgci->sub_count.height)==0)
+                            lum->RepeatWrite(pgci->sub_lum,2);
                         else
                             lum->RepeatWrite(pgci->lum,2);
                     }
 
-                    for(uint col=0;col<=pgci->step.y;col++)
+                    for(int col=0;col<=pgci->grid_size.width;col++)
                     {
-                        if((col%pgci->side_step.y)==0)
-                            lum->RepeatWrite(pgci->side_lum,2);
+                        if((col%pgci->sub_count.width)==0)
+                            lum->RepeatWrite(pgci->sub_lum,2);
                         else
                             lum->RepeatWrite(pgci->lum,2);
                     }

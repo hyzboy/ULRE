@@ -4,6 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/math/Vector.h>
 #include<hgl/type/RectScope.h>
+#include<hgl/type/Size2.h>
 #include<hgl/color/Color4f.h>
 #include<hgl/graph/AABB.h>
 namespace hgl
@@ -59,17 +60,17 @@ namespace hgl
             Primitive *CreateCircle(RenderResource *db,const VIL *vil,const CircleCreateInfo *cci);
 
             /**
-             * 平面网格创建信息
+             * 平面网格创建信息<br>
+             * 会创建一个在XY平面上居中的网格，单个格子尺寸为1。
              */
             struct PlaneGridCreateInfo
             {
-                Vector3f coord[4];
-                Vector2u step;
+                Size2u grid_size;       ///<格子数量
 
-                Vector2u side_step;     //到边界的步数
+                Size2u sub_count;       ///<细分格子数量
 
-                float lum;              //一般线条颜色
-                float side_lum;         //边界线条颜色
+                float lum;              ///<一般线条颜色
+                float sub_lum;          ///<细分及边界线条颜色
             };//struct PlaneGridCreateInfo
 
             /**
