@@ -472,6 +472,10 @@ public:
 
     virtual void InitCamera(int w,int h)
     {
+        camera=new Camera;
+
+        camera->pos=Vector3f(10,10,10);
+
         camera_control=new FirstPersonCameraControl(&vp_info,camera);
 
         camera_control->Refresh();      //更新矩阵计算
@@ -482,13 +486,11 @@ public:
         win->Join(ckc);
         win->Join(cmc);
 
-        camera=new Camera;
-
-        camera->pos=Vector3f(10,10,10);
-
         RefreshCameraInfo(&camera_control->GetCameraInfo(),&vp_info,camera);
         
         ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera_control->GetCameraInfo());
+
+        db->global_descriptor.AddUBO(mtl::SBS_CameraInfo.name,ubo_camera_info);
     }
 
     void Resize(int w,int h)override
@@ -508,11 +510,6 @@ public:
     DeviceBuffer *GetCameraInfoBuffer()
     {
         return ubo_camera_info;
-    }
-
-    bool BindCameraUBO(Material *mtl)
-    {
-        return mtl->BindUBO(DescriptorSetType::Global,"g_camera",ubo_camera_info);
     }
 
     virtual void BuildCommandBuffer(uint32_t index)=0;

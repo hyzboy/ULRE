@@ -66,5 +66,19 @@ vec4 GetPosition3D()
     return GetLocalToWorld()*vec4(Position,1);
 }
 )";
+
+constexpr const char *GetPosition3DCamera=R"(
+vec4 GetPosition3D()
+{
+    return camera.vp*vec4(Position,1);
+}
+)";
+
+    constexpr const char *GetPosition3DL2WCamera=R"(
+vec4 GetPosition3D()
+{
+    return camera.vp*GetLocalToWorld()*vec4(Position,1);
+}
+)";
 }//namespace func
 STD_MTL_NAMESPACE_END
