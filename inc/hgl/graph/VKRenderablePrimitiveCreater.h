@@ -22,26 +22,26 @@ public:
         prim=rr->CreatePrimitive(vertex_count);
     }
 
-    bool SetVBO(const AnsiString &name,const VkFormat &fmt,const void *buf)
+    VBO *SetVBO(const AnsiString &name,const VkFormat &fmt,const void *buf)
     {
         VBO *vbo=rr->CreateVBO(fmt,vertex_count,buf);
 
         if(!vbo)
-            return(false);
+            return(nullptr);
 
         prim->Set(name,vbo);
-        return(true);
+        return(vbo);
     }
 
-    bool SetIBO(const IndexType &it,const void *buf,const uint32_t index_count)
+    IndexBuffer *SetIBO(const IndexType &it,const void *buf,const uint32_t index_count)
     {
         IndexBuffer *ibo=rr->CreateIBO(it,index_count,buf);
     
         if(!ibo)
-            return(false);
+            return(nullptr);
     
         prim->Set(ibo);
-        return(true);
+        return(ibo);
     }
 
     Renderable *Create(MaterialInstance *mi,Pipeline *p)
