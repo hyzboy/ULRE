@@ -10,4 +10,6 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Gizmo")
 endmacro()
 
-CreateProject(PlaneGrid3D PlaneGrid3D.cpp)
+CreateProject(01_PlaneGrid3D PlaneGrid3D.cpp)
+CreateProject(02_RayPicking RayPicking.cpp)
+#CreateProject(03_BlenderAxis BlenderAxis.cpp)

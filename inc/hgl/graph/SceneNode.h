@@ -60,6 +60,9 @@ namespace hgl
 
             SceneNode *CreateSubNode(Renderable *ri)
             {
+                if(!ri)
+                    return(nullptr);
+
                 SceneNode *sn=new SceneNode(ri);
 
                 SubNode.Add(sn);
@@ -76,6 +79,9 @@ namespace hgl
 
             SceneNode *CreateSubNode(const Matrix4f &mat,Renderable *ri)
             {
+                if(!ri)
+                    return(nullptr);
+
                 SceneNode *sn=new SceneNode(mat,ri);
 
                 SubNode.Add(sn);
