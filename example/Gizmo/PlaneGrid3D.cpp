@@ -1,4 +1,4 @@
-﻿// 4.Geometry3D
+﻿// PlaneGrid3D
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -15,19 +15,8 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH=1280;
 constexpr uint32_t SCREEN_HEIGHT=720;
 
-constexpr const Vector4f GridColor[3]=
-{
-    {1,0,0,1},
-    {0,1,0,1},
-    {0,0,1,1}
-};
-
 class TestApp:public CameraAppFramework
 {
-    Color4f color;
-
-    DeviceBuffer *ubo_color=nullptr;
-
 private:
 
     SceneNode           render_root;
@@ -54,11 +43,18 @@ private:
 
         db->global_descriptor.Bind(material);
 
+        Color4f GridColor;
+        COLOR ce=COLOR::BlenderAxisRed;
+
         for(uint i=0;i<3;i++)
         {
             material_instance[i]=db->CreateMaterialInstance(material);
 
-            material_instance[i]->WriteMIData(GridColor[i]);
+            GridColor=GetColor4f(ce,1.0);
+
+            material_instance[i]->WriteMIData(GridColor);
+
+            ce=COLOR((int)ce+1);
         }
         
         pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Lines);
