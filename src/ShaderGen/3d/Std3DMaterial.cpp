@@ -3,6 +3,7 @@
 #include<hgl/graph/mtl/3d/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include"common/MFGetPosition.h"
+#include"common/MFGetNormal.h"
 #include"common/MFRectPrimitive.h"
 
 STD_MTL_NAMESPACE_BEGIN
@@ -35,6 +36,13 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     }
     else
         vsc->AddFunction(cfg->camera?func::GetPosition3DCamera:func::GetPosition3D);
+
+    //if(cfg->camera
+    // &&cfg->local_to_world)
+    //{
+    //    vsc->AddFunction(func::GetNormalMatrix);
+    //    vsc->AddFunction(func::GetNormal);
+    //}
 
     mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
                 DescriptorSetType::Global,
