@@ -156,6 +156,16 @@ public:
         ubo_vp_info->Write(&vp_info);
     }
 
+    ViewportInfo &GetViewportInfo()
+    {
+        return vp_info;
+    }
+
+    DeviceBuffer *GetViewportInfoBuffer()
+    {
+        return ubo_vp_info;
+    }
+
     void SetClearColor(const Color4f &cc)
     {
         clear_color=cc;
@@ -502,7 +512,7 @@ public:
         ubo_camera_info->Write(&camera_control->GetCameraInfo());
     }
 
-    const CameraInfo &GetCameraInfo()
+    CameraInfo &GetCameraInfo()
     {
         return camera_control->GetCameraInfo();
     }
