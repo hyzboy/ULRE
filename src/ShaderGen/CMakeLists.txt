@@ -41,6 +41,8 @@ SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             common/MFCommon.h
                             common/MFGetPosition.h
                             common/MFGetNormal.h
+                            common/MFCamera.h
+                            common/MFBillboard.h
 )
 
 SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
