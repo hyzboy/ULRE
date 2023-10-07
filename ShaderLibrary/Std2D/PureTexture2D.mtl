@@ -1,0 +1,41 @@
+#Material
+Name PureTexture2D
+Base Std2D
+
+#Vertex
+Input
+{
+    vec2 TexCoord
+}
+
+Output
+{
+    vec2 TexCoord
+}
+
+Code
+{
+    void main()
+    {
+        Output.TexCoord=TexCoord;
+
+        gl_Position=GetPosition2D();
+    }
+}
+
+#Fragment
+
+Sampler2D TextureColor
+
+Output
+{
+    vec4 Color;
+}
+
+Code
+{
+    void main()
+    {
+        Color=texture(TextureColor,Input.TexCoord);
+    }
+}
