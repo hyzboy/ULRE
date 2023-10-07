@@ -4,7 +4,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/color/Color.h>
 

@@ -13,7 +13,7 @@ Code
 #Vertex
 Input
 {
-    float Luminance;
+    float Luminance
 }
 
 Output

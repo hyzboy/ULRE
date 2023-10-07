@@ -7,7 +7,7 @@
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;

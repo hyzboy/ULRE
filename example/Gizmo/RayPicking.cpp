@@ -8,7 +8,7 @@
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/Ray.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
-#include<hgl/graph/mtl/3d/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/Material3DCreateConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
