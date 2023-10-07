@@ -7,7 +7,7 @@
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/3d/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/Material3DCreateConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;

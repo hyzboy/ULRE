@@ -49,9 +49,7 @@ SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-SET(STD_MTL_2D_HEADER_PATH ${STD_MTL_HEADER_PATH}/2d)
-
-SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/Material2DCreateConfig.h
+SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/Std2DMaterial.h
                             2d/Std2DMaterial.cpp
                             2d/M_VertexColor2D.cpp
@@ -61,9 +59,7 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_2D_HEADER_PATH}/Material2DCreateConfig.h
                             2d/M_RectTexture2DArray.cpp
 )
 
-SET(STD_MTL_3D_HEADER_PATH ${STD_MTL_HEADER_PATH}/3d)
-
-SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_3D_HEADER_PATH}/Material3DCreateConfig.h
+SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/Std3DMaterial.h
                             3d/Std3DMaterial.cpp
                             3d/M_VertexColor3D.cpp

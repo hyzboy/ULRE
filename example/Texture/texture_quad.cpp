@@ -5,7 +5,7 @@
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
-#include<hgl/graph/mtl/2d/Material2DCreateConfig.h>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 
 using namespace hgl;
