@@ -5,30 +5,6 @@ namespace hgl{namespace graph{
 
 using namespace hgl::graph;
 
-void ShaderCreateInfoFragment::UseDefaultMain()
-{
-    AnsiString main_codes="void main()\n{\n";
-
-    const auto &output_list=sdm->GetShaderStageIO().output;
-
-    const ShaderAttribute *o=output_list.items;
-
-    for(uint i=0;i<output_list.count;i++)
-    {
-        main_codes+="\t";
-        main_codes+=o->name;
-        main_codes+="=Get";
-        main_codes+=o->name;
-        main_codes+="();\n";
-
-        ++o;
-    }
-
-    main_codes+="}";
-
-    AddFunction(main_codes);
-}
-
 bool ShaderCreateInfoFragment::ProcOutput()
 {
     const auto &output_list=sdm->GetShaderStageIO().output;
