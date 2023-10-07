@@ -7,6 +7,7 @@
 #include"common/MFCommon.h"
 
 namespace hgl{namespace graph{
+
 ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
 {
     shader_stage=ss;
@@ -158,10 +159,7 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
     sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
     sdm->AddStruct(mtl::MaterialInstanceStruct);
 
-    if(shader_stage==VK_SHADER_STAGE_VERTEX_BIT)
-        AddFunction(mtl::func::GetMI_VS);
-    else
-        AddFunction(mtl::func::GetMI);
+    AddFunction(mtl::func::GetMI);
 
     mi_codes=mi;
 }
@@ -377,7 +375,27 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
     if(main_function.IsEmpty())
         return(false);
 
-    final_shader="#version 460 core\n";
+    //@see VKShaderStage.cpp
+
+    final_shader=R"(#version 460 core
+
+#define VertexShader        0x01
+#define TessControlShader   0x02
+#define TeseEvalShader      0x04
+#define GeometryShader      0x08
+#define FragmentShader      0x10
+#define ComputeShader       0x20
+#define TaskShader          0x40
+#define MeshShader          0x80
+
+#define ShaderStage         0x)";
+
+    {
+        char ss_hex_str[9];
+
+        final_shader+=utos(ss_hex_str,8,uint(shader_stage),16);
+        final_shader+="\n";
+    }
 
     ProcDefine();
 

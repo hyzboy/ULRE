@@ -16,38 +16,27 @@ mat4 GetLocalToWorld()
 
     constexpr const char MaterialInstanceID[]="MaterialInstanceID";
 
-    constexpr const char HandoverMI_VS[]=R"(
-void HandoverMI()
-{
-    Output.MaterialInstanceID=Assign.y;
-}
-)";
-
-constexpr const char HandoverMI_GS[]=R"(
-void HandoverMI()
-{
-    Output.MaterialInstanceID=Input[0].MaterialInstanceID;
-}
-)";
-
 constexpr const char HandoverMI[]=R"(
 void HandoverMI()
 {
+#if ShaderStage == VertexShader
+    Output.MaterialInstanceID=Assign.y;
+#elif ShaderStage == GeometryShader
+    Output.MaterialInstanceID=Input[0].MaterialInstanceID;
+#else
     Output.MaterialInstanceID=Input.MaterialInstanceID;
+#endif
 }
 )";
 
-    constexpr const char GetMI_VS[]=R"(
+    constexpr const char GetMI[]=R"(
 MaterialInstance GetMI()
 {
+#if ShaderStage == VertexShader
     return mtl.mi[Assign.y];
-}
-)";
-
-constexpr const char GetMI[]=R"(
-MaterialInstance GetMI()
-{
+#else
     return mtl.mi[Input.MaterialInstanceID];
+#endif
 }
 )";
 

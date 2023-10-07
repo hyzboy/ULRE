@@ -248,13 +248,7 @@ bool MaterialCreateInfo::CreateShader()
         {
             sc->AddOutput(VAT_UINT,mtl::func::MaterialInstanceID,Interpolation::Flat);
 
-            if(sc->GetShaderStage()==VK_SHADER_STAGE_VERTEX_BIT)
-                sc->AddFunction(mtl::func::HandoverMI_VS);
-            else
-            if(sc->GetShaderStage()==VK_SHADER_STAGE_GEOMETRY_BIT)
-                sc->AddFunction(mtl::func::HandoverMI_GS);
-            else
-                sc->AddFunction(mtl::func::HandoverMI);
+            sc->AddFunction(mtl::func::HandoverMI);
         }
 
         sc->CreateShader(last);
