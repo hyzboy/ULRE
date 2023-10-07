@@ -79,7 +79,6 @@ bool ShaderCreateInfo::ProcDefine()
     AnsiString m;
     AnsiString v;
 
-
     for(uint i=0;i<count;i++)
     {
         m=define_macro_list.GetString(i);
@@ -172,6 +171,11 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
     AddFunction(MF_GetMI);
 
     mi_codes=mi;
+}
+
+void ShaderCreateInfo::AddMaterialInstanceOutput()
+{
+    AddOutput(VAT_UINT,mtl::func::MaterialInstanceID,Interpolation::Flat);
 }
 
 void ShaderCreateInfo::SetLocalToWorld(UBODescriptor *ubo)
@@ -423,10 +427,8 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     ProcOutput();
 
-    for(int i=0;i<function_list.GetCount();i++)
-    {
-        final_shader+=function_list[i];
-    }
+    for(const char *str:function_list)
+        final_shader+=str;
 
     final_shader+=main_function;
 

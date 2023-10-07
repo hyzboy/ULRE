@@ -34,7 +34,7 @@ protected:
 
     AnsiString mi_codes;
 
-    AnsiStringList function_list;
+    List<const char *> function_list;
     AnsiString main_function;
 
     AnsiString final_shader;
@@ -79,10 +79,12 @@ public:
     int AddOutput(const graph::VAT &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
 
-    void AddFunction(const AnsiString &str){function_list.Add(str);}
-    void AddFunction(const AnsiString *str){function_list.Add(*str);}
+    void AddFunction(const char *str){function_list.Add(str);}
+    void AddFunction(const AnsiString *str){function_list.Add(str->c_str());}
 
     void SetMaterialInstance(UBODescriptor *,const AnsiString &);
+    void AddMaterialInstanceOutput();
+
     void SetLocalToWorld(UBODescriptor *);
 
     void SetMain(const AnsiString &str){main_function=str;}
