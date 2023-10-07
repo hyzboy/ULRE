@@ -13,7 +13,7 @@ namespace hgl
 
         public:
 
-            ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m){}
+            ShaderCreateInfoVertex(MaterialDescriptorInfo *);
             ~ShaderCreateInfoVertex()=default;
 
             int AddInput(const graph::VAT &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);

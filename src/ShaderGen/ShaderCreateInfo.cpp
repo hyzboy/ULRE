@@ -5,8 +5,15 @@
 
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
+#include"ShaderLibrary.h"
 
 namespace hgl{namespace graph{
+
+namespace
+{
+    const AnsiString *ShaderFileHeader=nullptr;
+    const AnsiString *MF_GetMI=nullptr;
+}//namespace
 
 ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
 {
@@ -18,6 +25,9 @@ ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorIn
 
     define_macro_max_length=0;
     define_value_max_length=0;
+
+    if(!ShaderFileHeader)ShaderFileHeader   =mtl::LoadShader("ShaderHeader");
+    if(!MF_GetMI        )MF_GetMI           =mtl::LoadShader("GetMI");
 }
 
 ShaderCreateInfo::~ShaderCreateInfo()
@@ -159,7 +169,7 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
     sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
     sdm->AddStruct(mtl::MaterialInstanceStruct);
 
-    AddFunction(mtl::func::GetMI);
+    AddFunction(MF_GetMI);
 
     mi_codes=mi;
 }
@@ -372,27 +382,18 @@ bool ShaderCreateInfo::ProcSampler()
 
 bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 {
+    if(!ShaderFileHeader)
+        return(false);
+
     if(main_function.IsEmpty())
         return(false);
 
-    //@see VKShaderStage.cpp
-
-    final_shader=R"(#version 460 core
-
-#define VertexShader        0x01
-#define TessControlShader   0x02
-#define TeseEvalShader      0x04
-#define GeometryShader      0x08
-#define FragmentShader      0x10
-#define ComputeShader       0x20
-#define TaskShader          0x40
-#define MeshShader          0x80
-
-#define ShaderStage         0x)";
+    final_shader=ShaderFileHeader->c_str();
 
     {
         char ss_hex_str[9];
 
+        final_shader+="\n#define ShaderStage         0x";
         final_shader+=utos(ss_hex_str,8,uint(shader_stage),16);
         final_shader+="\n";
     }

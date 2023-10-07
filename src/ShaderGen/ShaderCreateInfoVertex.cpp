@@ -5,8 +5,19 @@
 #include<hgl/graph/VKRenderAssign.h>
 #include"GLSLCompiler.h"
 #include"common/MFCommon.h"
+#include"ShaderLibrary.h"
 
 VK_NAMESPACE_BEGIN
+namespace
+{
+    const AnsiString *MF_GetLocalToWorld=nullptr;
+}//namespace
+
+ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m)
+{
+    if(!MF_GetLocalToWorld)MF_GetLocalToWorld=mtl::LoadShader("GetLocalToWorld");
+}
+
 int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
     ShaderAttribute *ss=new ShaderAttribute;
@@ -45,7 +56,7 @@ void ShaderCreateInfoVertex::AddAssign()
                 VK_VERTEX_INPUT_RATE_INSTANCE,
                 VertexInputGroup::Assign);
 
-    AddFunction(mtl::func::GetLocalToWorld);
+    AddFunction(MF_GetLocalToWorld);
 }
 
 bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
