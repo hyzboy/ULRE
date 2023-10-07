@@ -169,7 +169,7 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(uint32 index)
+    void BuildCommandBuffer(uint32 index) override
     {
         const CameraInfo &ci=GetCameraInfo();
         const ViewportInfo &vi=GetViewportInfo();
@@ -183,7 +183,7 @@ public:
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 
-    void Resize(int w,int h)override
+    void Resize(int w,int h) override
     {
         CameraAppFramework::Resize(w,h);
         
