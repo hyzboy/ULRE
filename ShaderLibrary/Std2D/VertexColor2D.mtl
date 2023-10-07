@@ -1,0 +1,39 @@
+#Material
+Name VertexColor2D
+Base Std2D
+
+#Vertex
+Input
+{
+    vec4 Color
+}
+
+Output
+{
+    vec4 Color
+}
+
+Code
+{
+    void main()
+    {
+        Output.Color=Color;
+
+        gl_Position=GetPosition2D();
+    }
+}
+
+#Fragment
+
+Output
+{
+    vec4 Color;
+}
+
+Code
+{
+    void main()
+    {
+        Color=Input.Color;
+    }
+}
