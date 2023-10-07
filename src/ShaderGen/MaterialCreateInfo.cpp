@@ -3,11 +3,18 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include"common/MFCommon.h"
+#include"ShaderLibrary.h"
 
 using namespace hgl;
 using namespace hgl::graph;
 
 STD_MTL_NAMESPACE_BEGIN
+
+namespace
+{
+    const AnsiString *MF_HandoverMI=nullptr;
+}//namespace
+
 MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
 {
     config=mc;
@@ -32,6 +39,9 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         l2w_shader_stage=0;
         l2w_ubo=nullptr;
     }
+
+    if(!MF_HandoverMI)
+        MF_HandoverMI=LoadShader("HandoverMI");
 }
 
 bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)
@@ -248,7 +258,7 @@ bool MaterialCreateInfo::CreateShader()
         {
             sc->AddOutput(VAT_UINT,mtl::func::MaterialInstanceID,Interpolation::Flat);
 
-            sc->AddFunction(mtl::func::HandoverMI);
+            sc->AddFunction(MF_HandoverMI);
         }
 
         sc->CreateShader(last);
