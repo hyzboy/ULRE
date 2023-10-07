@@ -256,7 +256,7 @@ bool MaterialCreateInfo::CreateShader()
 
         if(sc->GetShaderStage()<mi_shader_stage)
         {
-            sc->AddOutput(VAT_UINT,mtl::func::MaterialInstanceID,Interpolation::Flat);
+            sc->AddMaterialInstanceOutput();
 
             sc->AddFunction(MF_HandoverMI);
         }
