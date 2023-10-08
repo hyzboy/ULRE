@@ -2,12 +2,10 @@
 Name PureTexture2D
 Base Std2D
 
-#Vertex
-Input
-{
-    vec2 TexCoord
-}
+#VertexInput
+vec2 TexCoord
 
+#Vertex
 Output
 {
     vec2 TexCoord

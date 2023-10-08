@@ -3,12 +3,10 @@ Name RectTexture2D
 Base Std2D
 Prim SolidRectangles,WireRectangles
 
-#Vertex
-Input
-{
-    vec4 TexCoord
-}
+#VertexInput
+vec4 TexCoord
 
+#Vertex
 Output
 {
     vec4 TexCoord
