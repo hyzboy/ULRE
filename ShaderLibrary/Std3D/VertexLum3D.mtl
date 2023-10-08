@@ -10,12 +10,10 @@ Code
     vec4 Color
 }
 
-#Vertex
-Input
-{
-    float Luminance
-}
+#VertexInput
+float Luminance
 
+#Vertex
 Output
 {
     vec4 Color

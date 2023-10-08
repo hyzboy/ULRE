@@ -11,12 +11,10 @@ Code
     uvec4 id;
 }
 
-#Vertex
-Input
-{
-    vec4 TexCoord
-}
+#VertexInput
+vec4 TexCoord
 
+#Vertex
 Output
 {
     vec4 TexCoord

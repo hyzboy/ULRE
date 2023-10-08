@@ -2,11 +2,10 @@
 Name VertexColor3D
 Base Std3D
 
+#VertexInput
+vec4 Color
+
 #Vertex
-Input
-{
-    vec4 Color
-}
 
 Output
 {
