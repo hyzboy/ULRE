@@ -85,14 +85,44 @@ namespace
         }
     };//struct MaterialStateParse
 
+    struct CodeParse:public MaterialFileParse
+    {
+        const char *start   =nullptr;
+        const char *end     =nullptr;
+
+    public:
+
+        bool OnLine(const char *text,const int len) override
+        {
+            if(!text||!*text||len<=0)
+                return(false);
+
+            if(*text=='{')
+            {
+                ++text;
+                while(*text=='\r'||*text=='\n')++text;
+
+                start=text;
+                return(false);
+            }
+            
+            if(*text=='}')
+            {
+                end=text;
+                return(true);
+            }
+
+            return(false);
+        }
+    };
+
     struct MaterialInstanceStateParse:public MaterialFileParse
     {
-                bool    code        =false;
-        const   char *  code_sp     =nullptr;
-        const   char *  code_ep     =nullptr;
+        bool        code                    =false;
+        CodeParse   code_parse;
 
-        uint mi_bytes=0;
-        uint32_t shader_stage_flag_bits=0;
+        uint        mi_bytes                =0;
+        uint32_t    shader_stage_flag_bits  =0;
 
     public:
 
@@ -103,21 +133,8 @@ namespace
 
             if(code)
             {
-                if(*text=='{')
-                {
-                    ++text;
-                    while(*text=='\r'||*text=='\n')++text;
-
-                    code_sp=text;
-                    return(true);
-                }
-
-                if(*text=='}')
-                {
-                    code_ep=text;
+                if(code_parse.OnLine(text,len))
                     code=false;
-                    return(true);
-                }
             }
 
             if(hgl::stricmp(text,"Code",4)==0)
