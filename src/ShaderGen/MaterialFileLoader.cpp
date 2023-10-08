@@ -1,6 +1,7 @@
 #include<hgl/graph/mtl/MaterialConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/VKShaderStage.h>
 
 #include<hgl/io/TextInputStream.h>
 #include<hgl/io/FileInputStream.h>
@@ -75,10 +76,14 @@ namespace
 
     struct MaterialInstanceStateParse:public MaterialFileParse
     {
-        bool    code        =false;
-        char *  code_sp     =nullptr;
-        char *  code_ep     =nullptr;
-        int     brace_count =0;
+                bool    code        =false;
+        const   char *  code_sp     =nullptr;
+        const   char *  code_ep     =nullptr;
+
+        uint mi_bytes=0;
+        uint32_t shader_stage_flag_bits=0;
+
+    public:
 
         bool OnLine(const char *text,const int len) override
         {
@@ -87,6 +92,53 @@ namespace
 
             if(code)
             {
+                if(*text=='{')
+                {
+                    code_sp=text+1;
+                    return(true);
+                }
+
+                if(*text=='}')
+                {
+                    code_ep=text-1;
+                    code=false;
+                    return(true);
+                }
+            }
+
+            if(hgl::stricmp(text,"Code")==0)
+            {
+                code=true;
+            }
+            else
+            if(hgl::stricmp(text,"Length")==0)
+            {
+                text+=7;
+                while(*text==' '||*text=='\t')++text;
+
+                hgl::stou(text,mi_bytes);
+            }
+            else
+            if(hgl::stricmp(text,"Stage")==0)
+            {
+                const char *ep=text+len;
+                const char *sp;
+
+                text+=6;
+
+                while(*text==' '||*text=='\t')++text;
+
+                while(text<ep)
+                {
+                    sp=text;
+
+                    while(hgl::isalpha(*text))
+                        ++text;
+
+                    shader_stage_flag_bits|=GetShaderStageFlagBits(sp,text-sp);
+
+                    ++text;
+                }
             }
 
             return(true);
