@@ -2,6 +2,7 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VertexAttrib.h>
 
 #include<hgl/io/TextInputStream.h>
 #include<hgl/io/FileInputStream.h>
@@ -18,25 +19,13 @@ namespace
         
         Material,
         MaterialInstance,
-        MaterialInstanceCode,
+        VertexInput,
 
         Vertex,
-        VertexInput,
-        VertexOutput,
-        VertexCode,
-
         Geometry,
-        GeometryInput,
-        GeometryOutput,
-        GeometryCode,
-
         Fragment,
-        FragmentInput,
-        FragmentOutput,
-        FragmentCode,
 
-
-        ENUM_CLASS_RANGE(None,FragmentCode)
+        ENUM_CLASS_RANGE(None,Fragment)
     };//enum class State
 
     struct MaterialFileStateInfo
@@ -52,10 +41,13 @@ namespace
     {
         MFS(Material)
         MFS(MaterialInstance)
+        MFS(VertexInput)
         MFS(Vertex)
         MFS(Geometry)
         MFS(Fragment)
     };
+
+    #undef MFS
 
     const MaterialFileState GetMaterialFileState(const char *str,const int len)
     {
@@ -114,7 +106,7 @@ namespace
 
             return(false);
         }
-    };
+    };//struct CodeParse
 
     struct MaterialInstanceStateParse:public MaterialFileParse
     {
@@ -135,6 +127,8 @@ namespace
             {
                 if(code_parse.OnLine(text,len))
                     code=false;
+
+                return(true);
             }
 
             if(hgl::stricmp(text,"Code",4)==0)
@@ -174,7 +168,106 @@ namespace
 
             return(true);
         }
+    };//struct MaterialInstanceStateParse
+
+    struct UniformAttrib
+    {
+        VAT vat;
+        
+        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
     };
+
+    bool ParseUniformAttrib(UniformAttrib *ua,const char *str)
+    {
+        const char *sp;
+
+        while(*str==' '||*str=='\t')++str;
+
+        if(!ParseVertexAttribType(&(ua->vat),str))
+            return(false);
+
+        while(*str!=' '&&*str!='\t')++str;
+        while(*str==' '||*str=='\t')++str;
+
+        sp=str;
+
+        while(hgl::iscodechar(*str))++str;
+
+        hgl::strcpy(ua->name,SHADER_RESOURCE_NAME_MAX_LENGTH,sp,str-sp);
+
+        return(true);
+    }
+
+    struct VertexInputStateParse:public MaterialFileParse
+    {
+        List<UniformAttrib> input_list;
+
+    public:
+
+        bool OnLine(const char *text,const int len) override
+        {
+            if(!text||!*text||len<=0)
+                return(false);
+
+            UniformAttrib ua;
+
+            if(ParseUniformAttrib(&ua,text))
+                input_list.Add(ua);
+
+            return(true);
+        }
+    };//struct VertexInputStateParse
+
+    struct ShaderStateParse:public MaterialFileParse
+    {
+        bool                    output=false; 
+        List<UniformAttrib>     output_list;
+
+        bool                    code=false;
+        CodeParse               code_parse;
+
+    public:
+
+        bool OnLine(const char *text,const int len) override
+        {
+            if(!text||!*text||len<=0)
+                return(false);
+    
+            if(code)
+            {
+                if(code_parse.OnLine(text,len))
+                    code=false;
+
+                return(true);  
+            }
+
+            if(output)
+            {
+                if(*text=='}')
+                {
+                    output=false;
+                    return(true);
+                }
+
+                UniformAttrib ua;
+
+                if(ParseUniformAttrib(&ua,text))
+                    output_list.Add(ua);
+            }
+
+            if(hgl::stricmp(text,"Code",4)==0)
+            {
+                code=true;
+            }
+            else
+            if(hgl::stricmp(text,"Output",6)==0)
+            {
+                output=true;
+            }
+
+            return(true);
+        }
+    };//struct ShaderStateParse
 
     struct MaterialTextParse:public MaterialFileParse
     {
@@ -208,13 +301,15 @@ namespace
 
                 switch(state)
                 {
-                    case MaterialFileState::Material:         parse=new MaterialStateParse;break;
-                    case MaterialFileState::MaterialInstance: parse=new MaterialInstanceStateParse;break;
-//                    case MaterialFileState::Vertex:           parse=new VertexStateParse;break;
-//                    case MaterialFileState::Geometry:         parse=new GeometryStateParse;break;
-//                    case MaterialFileState::Fragment:         parse=new FragmentStateParse;break;
+                    case MaterialFileState::Material:           parse=new MaterialStateParse;break;
+                    case MaterialFileState::MaterialInstance:   parse=new MaterialInstanceStateParse;break;
+                    case MaterialFileState::VertexInput:        parse=new VertexInputStateParse;break;
+                    case MaterialFileState::Vertex:           
+                    case MaterialFileState::Fragment:           parse=new ShaderStateParse;break;
 
-                    default:                                  state=MaterialFileState::None;return(false);
+//                    case MaterialFileState::Geometry:         parse=new GeometryStateParse;break;
+
+                    default:                                    state=MaterialFileState::None;return(false);
                 }
 
                 return(true);
