@@ -269,6 +269,75 @@ namespace
         }
     };//struct ShaderStateParse
 
+    struct GeometryShaderStateParse:public ShaderStateParse
+    {
+        Prim input_prim;
+        Prim output_prim;
+        uint max_vertices;
+
+    public:
+
+        bool OnLine(const char *text,const int len) override
+        {
+            if(!text||!*text||len<=0)
+                return(false);
+
+            if(hgl::stricmp(text,"in ",3)==0)
+            {
+                text+=3;
+
+                while(*text==' '||*text=='\t')++text;
+
+                const char *sp=text;
+
+                while(hgl::isalpha(*text)||*text=='_')++text;
+
+                const Prim ip=ParsePrimName(sp,text-sp);
+
+                if(!CheckGeometryShaderIn(ip))
+                    return(false);
+
+                input_prim=ip;
+                return(true);
+            }
+            else
+            if(hgl::stricmp(text,"out ",4)==0)
+            {
+                text+=4;
+
+                while(*text==' '||*text=='\t')++text;
+
+                const char *sp=text;
+
+                while(hgl::isalpha(*text)||*text=='_')++text;
+
+                const Prim op=ParsePrimName(sp,text-sp);
+
+                if(!CheckGeometryShaderOut(op))
+                    return(false);
+
+                output_prim=op;
+
+                while(*text!=',')++text;
+
+                while(*text==' '||*text=='\t'||*text==',')++text;
+
+                hgl::stou(text,max_vertices);
+
+                if(max_vertices<=0)
+                    return(false);
+
+                return(true);
+            }
+
+            if(!ShaderStateParse::OnLine(text,len))
+                return(false);
+
+            return(true);
+        }
+        
+    };//struct GeometryShaderStateParse
+
     struct MaterialTextParse:public MaterialFileParse
     {
         MaterialFileState state;
@@ -306,8 +375,7 @@ namespace
                     case MaterialFileState::VertexInput:        parse=new VertexInputStateParse;break;
                     case MaterialFileState::Vertex:           
                     case MaterialFileState::Fragment:           parse=new ShaderStateParse;break;
-
-//                    case MaterialFileState::Geometry:         parse=new GeometryStateParse;break;
+                    case MaterialFileState::Geometry:           parse=new GeometryShaderStateParse;break;
 
                     default:                                    state=MaterialFileState::None;return(false);
                 }
