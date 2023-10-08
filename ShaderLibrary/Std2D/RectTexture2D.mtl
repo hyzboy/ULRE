@@ -58,13 +58,13 @@ Sampler2D TextureColor
 
 Output
 {
-    vec4 Color;
+    vec4 FragColor;
 }
 
 Code
 {
     void main()
     {
-        Color=texture(TextureColor,Input.TexCoord);
+        FragColor=texture(TextureColor,Input.TexCoord);
     }
 }

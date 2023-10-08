@@ -24,7 +24,7 @@ Code
 #Fragment
 Output
 {
-    vec4 Color
+    vec4 FragColor
 }
 
 Code
@@ -33,6 +33,6 @@ Code
     {
         MaterialInstance mi=GetMI();
 
-        Color=mi.Color;
+        FragColor=mi.Color;
     }
 }

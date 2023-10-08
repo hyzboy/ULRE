@@ -37,13 +37,13 @@ Code
 
 Output
 {
-    vec4 Color;
+    vec4 FragColor;
 }
 
 Code
 {
     void main()
     {
-        Color=Input.Color;
+        FragColor=Input.Color;
     }
 }
