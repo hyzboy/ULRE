@@ -35,23 +35,34 @@ namespace
         FragmentOutput,
         FragmentCode,
 
+
         ENUM_CLASS_RANGE(None,FragmentCode)
     };//enum class State
 
-    constexpr const char *StateNameList[]=
+    struct MaterialFileStateInfo
     {
-        "Material",
-        "MaterialInstance",
-        "Vertex",
-        "Geometry",
-        "Fragment",
+        const char *name;
+        const int len;
+        MaterialFileState state;
     };
 
-    const MaterialFileState GetMaterialFileState(const char *str)
+    #define MFS(name) {#name,sizeof(#name)-1,MaterialFileState::name},
+
+    constexpr const MaterialFileStateInfo state_list[]=
     {
-        for(int i=0;i<int(MaterialFileState::END_RANGE);i++)
-            if(hgl::stricmp(str,StateNameList[i])==0)
-                return MaterialFileState(i);
+        MFS(Material)
+        MFS(MaterialInstance)
+        MFS(Vertex)
+        MFS(Geometry)
+        MFS(Fragment)
+    };
+
+    const MaterialFileState GetMaterialFileState(const char *str,const int len)
+    {
+        for(const MaterialFileStateInfo &info:state_list)
+            if(len==info.len)
+                if(hgl::stricmp(str,info.name,len)==0)
+                    return info.state;
 
         return MaterialFileState::None;
     }
@@ -94,24 +105,27 @@ namespace
             {
                 if(*text=='{')
                 {
-                    code_sp=text+1;
+                    ++text;
+                    while(*text=='\r'||*text=='\n')++text;
+
+                    code_sp=text;
                     return(true);
                 }
 
                 if(*text=='}')
                 {
-                    code_ep=text-1;
+                    code_ep=text;
                     code=false;
                     return(true);
                 }
             }
 
-            if(hgl::stricmp(text,"Code")==0)
+            if(hgl::stricmp(text,"Code",4)==0)
             {
                 code=true;
             }
             else
-            if(hgl::stricmp(text,"Length")==0)
+            if(hgl::stricmp(text,"Length",6)==0)
             {
                 text+=7;
                 while(*text==' '||*text=='\t')++text;
@@ -119,7 +133,7 @@ namespace
                 hgl::stou(text,mi_bytes);
             }
             else
-            if(hgl::stricmp(text,"Stage")==0)
+            if(hgl::stricmp(text,"Stage",5)==0)
             {
                 const char *ep=text+len;
                 const char *sp;
@@ -173,15 +187,15 @@ namespace
             {
                 SAFE_CLEAR(parse)
 
-                state=GetMaterialFileState(text+1);
+                state=GetMaterialFileState(text+1,len-1);
 
                 switch(state)
                 {
                     case MaterialFileState::Material:         parse=new MaterialStateParse;break;
                     case MaterialFileState::MaterialInstance: parse=new MaterialInstanceStateParse;break;
-                    case MaterialFileState::Vertex:           parse=new VertexStateParse;break;
-                    case MaterialFileState::Geometry:         parse=new GeometryStateParse;break;
-                    case MaterialFileState::Fragment:         parse=new FragmentStateParse;break;
+//                    case MaterialFileState::Vertex:           parse=new VertexStateParse;break;
+//                    case MaterialFileState::Geometry:         parse=new GeometryStateParse;break;
+//                    case MaterialFileState::Fragment:         parse=new FragmentStateParse;break;
 
                     default:                                  state=MaterialFileState::None;return(false);
                 }

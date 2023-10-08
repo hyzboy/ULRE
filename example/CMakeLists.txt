@@ -21,4 +21,3 @@ macro(CreateProject name)
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example")
 endmacro()
 
-CreateProject(MaterialCreaterTest MaterialCreaterTest.cpp)

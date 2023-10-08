@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include<hgl/type/String.h>
+
 #define STD_MTL_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace mtl{
 #define STD_MTL_NAMESPACE_END   }}}
 
@@ -45,6 +47,9 @@ namespace hgl
     
                 virtual MaterialCreateInfo *Create()=0;
             };//class StdMaterial
+
+
+            bool LoadMaterialFromFile(const AnsiString &mtl_filename);
         }//namespace mtl
     }//namespace graph
 }//namespace hgl
