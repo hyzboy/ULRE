@@ -69,7 +69,8 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
                     ${STD_MTL_HEADER_PATH}/ShaderBuffer.h
-                    StandardMaterial.cpp)
+                    StandardMaterial.cpp
+                    MaterialFileLoader.cpp)
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
