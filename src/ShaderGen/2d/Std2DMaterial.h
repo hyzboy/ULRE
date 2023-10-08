@@ -2,46 +2,28 @@
 
 #include<hgl/graph/mtl/StdMaterial.h>
 
-namespace hgl
+STD_MTL_NAMESPACE_BEGIN
+
+struct Material2DCreateConfig;
+
+class Std2DMaterial:public StdMaterial
 {
-    namespace graph
-    {
-        struct GPUDeviceAttribute;
+protected:
 
-        class ShaderCreateInfoVertex;
-        class ShaderCreateInfoGeometry;
-        class ShaderCreateInfoFragment;
+    const Material2DCreateConfig *cfg;
 
-        namespace mtl
-        {
-            class MaterialCreateInfo;
-            struct Material2DCreateConfig;
+    MaterialCreateInfo *mci;
 
-            class Std2DMaterial
-            {
-            protected:
+protected:
 
-                const Material2DCreateConfig *cfg;
+    virtual bool CustomVertexShader(ShaderCreateInfoVertex *) override;
 
-                MaterialCreateInfo *mci;
+public:
 
-            protected:
-
-                virtual bool BeginCustomShader(){return true;/*some work before creating shader*/};
-
-                virtual bool CustomVertexShader(ShaderCreateInfoVertex *);
-                virtual bool CustomGeometryShader(ShaderCreateInfoGeometry *){return false;}
-                virtual bool CustomFragmentShader(ShaderCreateInfoFragment *)=0;
-
-                virtual bool EndCustomShader(){return true;/*some work after creating shader*/};
-
-            public:
-
-                Std2DMaterial(const Material2DCreateConfig *);
-                virtual ~Std2DMaterial()=default;
+    Std2DMaterial(const Material2DCreateConfig *);
+    virtual ~Std2DMaterial()=default;
     
-                virtual MaterialCreateInfo *Create();
-            };//class Std2DMaterial
-        }//namespace mtl
-    }//namespace graph
-}//namespace hgl
+    virtual MaterialCreateInfo *Create() override;
+};//class Std2DMaterial
+
+STD_MTL_NAMESPACE_END

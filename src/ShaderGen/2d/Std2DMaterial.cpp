@@ -6,6 +6,7 @@
 #include"common/MFRectPrimitive.h"
 
 STD_MTL_NAMESPACE_BEGIN
+
 Std2DMaterial::Std2DMaterial(const Material2DCreateConfig *c)
 {
     mci=new MaterialCreateInfo(c);
