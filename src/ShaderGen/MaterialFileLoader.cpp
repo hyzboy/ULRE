@@ -419,13 +419,6 @@ MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const MaterialCr
     return nullptr;
 }
 
-//MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const Material2DCreateConfig *cfg)
-//{
-//    Std2DMaterial *mtl=new Std2DMaterial(cfg);
-//
-//    
-//}
-//
 //MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const Material3DCreateConfig *cfg)
 //{
 //}
