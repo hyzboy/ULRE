@@ -4,7 +4,6 @@
 #include<hgl/graph/VKShaderStage.h>
 
 #include<hgl/io/TextInputStream.h>
-#include<hgl/io/FileInputStream.h>
 #include<hgl/filesystem/FileSystem.h>
 
 #include"MaterialFileData.h"
@@ -463,7 +462,7 @@ namespace
     };
 }//namespace MaterialFile
 
-MaterialFileData *LoadMaterialFromFile(const AnsiString &mtl_filename)
+MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &mtl_filename)
 {
     const OSString mtl_osfn=ToOSString(mtl_filename+".mtl");
 
@@ -472,26 +471,22 @@ MaterialFileData *LoadMaterialFromFile(const AnsiString &mtl_filename)
     if(!filesystem::FileExist(mtl_os_filename))
         return(nullptr);
 
-    io::OpenFileInputStream fis(mtl_os_filename);
+    char *data;
 
-    if(!fis)
-        return(nullptr);
+    int size=filesystem::LoadFileToMemory(mtl_os_filename,(void **)&data,true);
 
-    MaterialFileData *mfd=new MaterialFileData;
+    MaterialFileData mfd(data,size);
 
-    MaterialTextParse mtp(mfd);
+    MaterialTextParse mtp(&mfd);
 
-    io::TextInputStream tis(fis,0);
+    io::TextInputStream tis(data,size);
 
     tis.SetParseCallback(&mtp);
 
     if(!tis.Run())
-    {
-        delete mfd;
         return nullptr;
-    }
 
-    return mfd;
+    return(nullptr);
 }
 
 MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const MaterialCreateConfig *cfg)
