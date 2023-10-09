@@ -13,7 +13,7 @@ namespace
 {
     using MaterialFileParse=io::TextInputStream::ParseCallback<char>;
 
-    enum class MaterialFileState
+    enum class MaterialFileBlock
     {
         None,
         
@@ -28,16 +28,16 @@ namespace
         ENUM_CLASS_RANGE(None,Fragment)
     };//enum class State
 
-    struct MaterialFileStateInfo
+    struct MaterialFileBlockInfo
     {
         const char *name;
         const int len;
-        MaterialFileState state;
+        MaterialFileBlock state;
     };
 
-    #define MFS(name) {#name,sizeof(#name)-1,MaterialFileState::name},
+    #define MFS(name) {#name,sizeof(#name)-1,MaterialFileBlock::name},
 
-    constexpr const MaterialFileStateInfo state_list[]=
+    constexpr const MaterialFileBlockInfo material_file_block_info_list[]=
     {
         MFS(Material)
         MFS(MaterialInstance)
@@ -49,23 +49,23 @@ namespace
 
     #undef MFS
 
-    const MaterialFileState GetMaterialFileState(const char *str,const int len)
+    const MaterialFileBlock GetMaterialFileState(const char *str,const int len)
     {
-        for(const MaterialFileStateInfo &info:state_list)
+        for(const MaterialFileBlockInfo &info:material_file_block_info_list)
             if(len==info.len)
                 if(hgl::stricmp(str,info.name,len)==0)
                     return info.state;
 
-        return MaterialFileState::None;
+        return MaterialFileBlock::None;
     }
 
-    struct MaterialStateParse:public MaterialFileParse
+    struct MaterialFileBlockParse:public MaterialFileParse
     {
-        MaterialFileState state;
+        MaterialFileBlock state;
 
-        MaterialStateParse()
+        MaterialFileBlockParse()
         {
-            state=MaterialFileState::None;
+            state=MaterialFileBlock::None;
         }
 
         bool OnLine(const char *text,const int len) override
@@ -75,7 +75,7 @@ namespace
 
             return(true);    
         }
-    };//struct MaterialStateParse
+    };//struct MaterialFileBlockParse
 
     struct CodeParse:public MaterialFileParse
     {
@@ -198,7 +198,7 @@ namespace
         return(true);
     }
 
-    struct VertexInputStateParse:public MaterialFileParse
+    struct VertexInputBlockParse:public MaterialFileParse
     {
         List<UniformAttrib> input_list;
 
@@ -216,9 +216,9 @@ namespace
 
             return(true);
         }
-    };//struct VertexInputStateParse
+    };//struct VertexInputBlockParse
 
-    struct ShaderStateParse:public MaterialFileParse
+    struct ShaderBlockParse:public MaterialFileParse
     {
         bool                    output=false; 
         List<UniformAttrib>     output_list;
@@ -267,9 +267,9 @@ namespace
 
             return(true);
         }
-    };//struct ShaderStateParse
+    };//struct ShaderBlockParse
 
-    struct GeometryShaderStateParse:public ShaderStateParse
+    struct GeometryShaderBlockParse:public ShaderBlockParse
     {
         Prim input_prim;
         Prim output_prim;
@@ -330,17 +330,17 @@ namespace
                 return(true);
             }
 
-            if(!ShaderStateParse::OnLine(text,len))
+            if(!ShaderBlockParse::OnLine(text,len))
                 return(false);
 
             return(true);
         }
         
-    };//struct GeometryShaderStateParse
+    };//struct GeometryShaderBlockParse
 
     struct MaterialTextParse:public MaterialFileParse
     {
-        MaterialFileState state;
+        MaterialFileBlock state;
 
         MaterialFileParse *parse;
 
@@ -348,7 +348,7 @@ namespace
 
         MaterialTextParse()
         {
-            state=MaterialFileState::None;
+            state=MaterialFileBlock::None;
             parse=nullptr;
         }
 
@@ -370,14 +370,14 @@ namespace
 
                 switch(state)
                 {
-                    case MaterialFileState::Material:           parse=new MaterialStateParse;break;
-                    case MaterialFileState::MaterialInstance:   parse=new MaterialInstanceStateParse;break;
-                    case MaterialFileState::VertexInput:        parse=new VertexInputStateParse;break;
-                    case MaterialFileState::Vertex:           
-                    case MaterialFileState::Fragment:           parse=new ShaderStateParse;break;
-                    case MaterialFileState::Geometry:           parse=new GeometryShaderStateParse;break;
+                    case MaterialFileBlock::Material:           parse=new MaterialFileBlockParse;break;
+                    case MaterialFileBlock::MaterialInstance:   parse=new MaterialInstanceStateParse;break;
+                    case MaterialFileBlock::VertexInput:        parse=new VertexInputBlockParse;break;
+                    case MaterialFileBlock::Vertex:           
+                    case MaterialFileBlock::Fragment:           parse=new ShaderBlockParse;break;
+                    case MaterialFileBlock::Geometry:           parse=new GeometryShaderBlockParse;break;
 
-                    default:                                    state=MaterialFileState::None;return(false);
+                    default:                                    state=MaterialFileBlock::None;return(false);
                 }
 
                 return(true);
