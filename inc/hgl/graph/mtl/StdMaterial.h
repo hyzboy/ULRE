@@ -52,9 +52,6 @@ namespace hgl
     
                 virtual MaterialCreateInfo *Create();
             };//class StdMaterial
-
-
-            bool LoadMaterialFromFile(const AnsiString &mtl_filename);
         }//namespace mtl
     }//namespace graph
 }//namespace hgl
