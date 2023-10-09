@@ -37,13 +37,13 @@ namespace hgl
 
             protected:
 
-                virtual bool BeginCustomShader(){return true;/*some work before creating shader*/};
+                virtual bool BeginCustomShader(){return true;/*some work before create shader*/};
 
                 virtual bool CustomVertexShader(ShaderCreateInfoVertex *)=0;
                 virtual bool CustomGeometryShader(ShaderCreateInfoGeometry *){return false;}
                 virtual bool CustomFragmentShader(ShaderCreateInfoFragment *)=0;
 
-                virtual bool EndCustomShader(){return true;/*some work after creating shader*/};
+                virtual bool EndCustomShader(){return true;/*some work after create shader*/};
 
             public:
 
