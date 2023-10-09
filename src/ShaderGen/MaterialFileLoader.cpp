@@ -2,15 +2,19 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKShaderStage.h>
-#include<hgl/graph/VertexAttrib.h>
 
 #include<hgl/io/TextInputStream.h>
 #include<hgl/io/FileInputStream.h>
 #include<hgl/filesystem/FileSystem.h>
 
+#include"MaterialFileData.h"
+
 STD_MTL_NAMESPACE_BEGIN
+
 namespace
 {
+    using namespace material_file;
+
     using MaterialFileParse=io::TextInputStream::ParseCallback<char>;
 
     enum class MaterialFileBlock
@@ -116,7 +120,25 @@ namespace
         uint        mi_bytes                =0;
         uint32_t    shader_stage_flag_bits  =0;
 
+        MaterialInstanceData *mid=nullptr;
+
     public:
+
+        MaterialInstanceStateParse(MaterialInstanceData *d)
+        {
+            mid=d;
+        }
+
+        ~MaterialInstanceStateParse()
+        {
+            if(code_parse.start&&code_parse.end)
+            {
+                mid->code                   =code_parse.start;
+                mid->code_length            =code_parse.end-code_parse.start;
+                mid->mi_bytes               =mi_bytes;
+                mid->shader_stage_flag_bits =shader_stage_flag_bits;
+            }
+        }
 
         bool OnLine(const char *text,const int len) override
         {
@@ -170,13 +192,6 @@ namespace
         }
     };//struct MaterialInstanceStateParse
 
-    struct UniformAttrib
-    {
-        VAT vat;
-        
-        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
-    };
-
     bool ParseUniformAttrib(UniformAttrib *ua,const char *str)
     {
         const char *sp;
@@ -200,9 +215,14 @@ namespace
 
     struct VertexInputBlockParse:public MaterialFileParse
     {
-        List<UniformAttrib> input_list;
+        List<UniformAttrib> *vi_list=nullptr;
 
     public:
+
+        VertexInputBlockParse(List<UniformAttrib> *ual)
+        {
+            vi_list=ual;
+        }
 
         bool OnLine(const char *text,const int len) override
         {
@@ -212,7 +232,7 @@ namespace
             UniformAttrib ua;
 
             if(ParseUniformAttrib(&ua,text))
-                input_list.Add(ua);
+                vi_list->Add(ua);
 
             return(true);
         }
@@ -220,13 +240,19 @@ namespace
 
     struct ShaderBlockParse:public MaterialFileParse
     {
+        ShaderData *            shader_data=nullptr;
+
         bool                    output=false; 
-        List<UniformAttrib>     output_list;
 
         bool                    code=false;
         CodeParse               code_parse;
 
     public:
+
+        ShaderBlockParse(ShaderData *sd)
+        {
+            shader_data=sd;
+        }
 
         bool OnLine(const char *text,const int len) override
         {
@@ -236,7 +262,12 @@ namespace
             if(code)
             {
                 if(code_parse.OnLine(text,len))
+                {
                     code=false;
+
+                    shader_data->code=code_parse.start;
+                    shader_data->code_length=code_parse.end-code_parse.start;
+                }
 
                 return(true);  
             }
@@ -252,7 +283,7 @@ namespace
                 UniformAttrib ua;
 
                 if(ParseUniformAttrib(&ua,text))
-                    output_list.Add(ua);
+                    shader_data->output.Add(ua);
             }
 
             if(hgl::stricmp(text,"Code",4)==0)
@@ -271,11 +302,14 @@ namespace
 
     struct GeometryShaderBlockParse:public ShaderBlockParse
     {
-        Prim input_prim;
-        Prim output_prim;
-        uint max_vertices;
+        GeometryShaderData *gsd=nullptr;
 
     public:
+
+        GeometryShaderBlockParse(GeometryShaderData *sd):ShaderBlockParse(sd)
+        {
+            gsd=sd;
+        }
 
         bool OnLine(const char *text,const int len) override
         {
@@ -297,7 +331,7 @@ namespace
                 if(!CheckGeometryShaderIn(ip))
                     return(false);
 
-                input_prim=ip;
+                gsd->input_prim=ip;
                 return(true);
             }
             else
@@ -316,15 +350,15 @@ namespace
                 if(!CheckGeometryShaderOut(op))
                     return(false);
 
-                output_prim=op;
+                gsd->output_prim=op;
 
                 while(*text!=',')++text;
 
                 while(*text==' '||*text=='\t'||*text==',')++text;
 
-                hgl::stou(text,max_vertices);
+                hgl::stou(text,gsd->max_vertices);
 
-                if(max_vertices<=0)
+                if(gsd->max_vertices<=0)
                     return(false);
 
                 return(true);
@@ -344,12 +378,16 @@ namespace
 
         MaterialFileParse *parse;
 
+        MaterialFileData *mfd;
+
     public:
 
-        MaterialTextParse()
+        MaterialTextParse(MaterialFileData *fd)
         {
             state=MaterialFileBlock::None;
             parse=nullptr;
+
+            mfd=fd;
         }
 
         ~MaterialTextParse()
@@ -368,16 +406,50 @@ namespace
 
                 state=GetMaterialFileState(text+1,len-1);
 
-                switch(state)
+                if(state==MaterialFileBlock::Material)
+                    parse=new MaterialFileBlockParse;
+                else
+                if(state==MaterialFileBlock::MaterialInstance)
+                    parse=new MaterialInstanceStateParse(&(mfd->mi));
+                else
+                if(state==MaterialFileBlock::VertexInput)
+                    parse=new VertexInputBlockParse(&(mfd->vi));
+                else
+                if(state>=MaterialFileBlock::Vertex
+                 &&state<=MaterialFileBlock::Fragment)
                 {
-                    case MaterialFileBlock::Material:           parse=new MaterialFileBlockParse;break;
-                    case MaterialFileBlock::MaterialInstance:   parse=new MaterialInstanceStateParse;break;
-                    case MaterialFileBlock::VertexInput:        parse=new VertexInputBlockParse;break;
-                    case MaterialFileBlock::Vertex:           
-                    case MaterialFileBlock::Fragment:           parse=new ShaderBlockParse;break;
-                    case MaterialFileBlock::Geometry:           parse=new GeometryShaderBlockParse;break;
+                    ShaderData *sd=nullptr;
 
-                    default:                                    state=MaterialFileBlock::None;return(false);
+                    if(state==MaterialFileBlock::Vertex)
+                    {
+                        sd=new ShaderData(VK_SHADER_STAGE_VERTEX_BIT);
+
+                        parse=new ShaderBlockParse(sd);
+                    }
+                    else
+                    if(state==MaterialFileBlock::Geometry)
+                    {
+                        sd=new GeometryShaderData(VK_SHADER_STAGE_GEOMETRY_BIT);
+
+                        parse=new GeometryShaderBlockParse((GeometryShaderData *)sd);
+                    }
+                    else
+                    if(state==MaterialFileBlock::Fragment)
+                    {
+                        sd=new ShaderData(VK_SHADER_STAGE_FRAGMENT_BIT);
+
+                        parse=new ShaderBlockParse(sd);
+                    }
+
+                    if(!sd)
+                        return(false);
+
+                    mfd->shader.Add(sd->GetShaderStage(),sd);
+                }
+                else
+                {
+                    state=MaterialFileBlock::None;
+                    return(false);
                 }
 
                 return(true);
@@ -391,27 +463,35 @@ namespace
     };
 }//namespace MaterialFile
 
-bool LoadMaterialFromFile(const AnsiString &mtl_filename)
+MaterialFileData *LoadMaterialFromFile(const AnsiString &mtl_filename)
 {
     const OSString mtl_osfn=ToOSString(mtl_filename+".mtl");
 
     const OSString mtl_os_filename=filesystem::MergeFilename(OS_TEXT("ShaderLibrary"),mtl_osfn);
 
     if(!filesystem::FileExist(mtl_os_filename))
-        return(false);
+        return(nullptr);
 
     io::OpenFileInputStream fis(mtl_os_filename);
 
     if(!fis)
-        return(false);
+        return(nullptr);
 
-    MaterialTextParse mtp;
+    MaterialFileData *mfd=new MaterialFileData;
+
+    MaterialTextParse mtp(mfd);
 
     io::TextInputStream tis(fis,0);
 
     tis.SetParseCallback(&mtp);
 
-    return tis.Run();
+    if(!tis.Run())
+    {
+        delete mfd;
+        return nullptr;
+    }
+
+    return mfd;
 }
 
 MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const MaterialCreateConfig *cfg)
