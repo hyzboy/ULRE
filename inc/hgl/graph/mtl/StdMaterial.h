@@ -27,9 +27,14 @@ namespace hgl
             }//namespace func
 
             class MaterialCreateInfo;
+            struct MaterialCreateConfig;
 
             class StdMaterial
             {
+            protected:
+
+                MaterialCreateInfo *mci;
+
             protected:
 
                 virtual bool BeginCustomShader(){return true;/*some work before creating shader*/};
@@ -42,10 +47,10 @@ namespace hgl
 
             public:
 
-                StdMaterial()=default;
+                StdMaterial(const MaterialCreateConfig *);
                 virtual ~StdMaterial()=default;
     
-                virtual MaterialCreateInfo *Create()=0;
+                virtual MaterialCreateInfo *Create();
             };//class StdMaterial
 
 

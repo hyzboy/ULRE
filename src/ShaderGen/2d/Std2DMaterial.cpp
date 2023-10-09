@@ -6,14 +6,6 @@
 #include"common/MFRectPrimitive.h"
 
 STD_MTL_NAMESPACE_BEGIN
-
-Std2DMaterial::Std2DMaterial(const Material2DCreateConfig *c)
-{
-    mci=new MaterialCreateInfo(c);
-
-    cfg=c;
-}
-
 bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     RANGE_CHECK_RETURN_FALSE(cfg->coordinate_system)
@@ -49,31 +41,5 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     }
 
     return(true);
-}
-
-MaterialCreateInfo *Std2DMaterial::Create()
-{
-    if(!BeginCustomShader())
-        return(nullptr);
-
-    if(mci->hasVertex())
-        if(!CustomVertexShader(mci->GetVS()))
-            return(nullptr);
-
-    if(mci->hasGeometry())
-        if(!CustomGeometryShader(mci->GetGS()))
-            return(nullptr);
-
-    if(mci->hasFragment())
-        if(!CustomFragmentShader(mci->GetFS()))
-            return(nullptr);
-
-    if(!EndCustomShader())
-        return(false);
-
-    if(!mci->CreateShader())
-        return(nullptr);
-
-    return(mci);
 }
 STD_MTL_NAMESPACE_END
