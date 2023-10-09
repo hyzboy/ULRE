@@ -11,7 +11,7 @@
 STD_MTL_NAMESPACE_BEGIN
 namespace
 {
-    using MaterialFileParse=io::TextInputStream::ParseCallback<char>;
+    using TextParse=io::TextInputStream::ParseCallback<char>;
 
     enum class MaterialFileBlock
     {
@@ -59,7 +59,7 @@ namespace
         return MaterialFileBlock::None;
     }
 
-    struct MaterialFileBlockParse:public MaterialFileParse
+    struct MaterialFileBlockParse:public TextParse
     {
         MaterialFileBlock state;
 
@@ -77,7 +77,7 @@ namespace
         }
     };//struct MaterialFileBlockParse
 
-    struct CodeParse:public MaterialFileParse
+    struct CodeParse:public TextParse
     {
         const char *start   =nullptr;
         const char *end     =nullptr;
@@ -108,7 +108,7 @@ namespace
         }
     };//struct CodeParse
 
-    struct MaterialInstanceStateParse:public MaterialFileParse
+    struct MaterialInstanceStateParse:public TextParse
     {
         bool        code                    =false;
         CodeParse   code_parse;
@@ -198,7 +198,7 @@ namespace
         return(true);
     }
 
-    struct VertexInputBlockParse:public MaterialFileParse
+    struct VertexInputBlockParse:public TextParse
     {
         List<UniformAttrib> input_list;
 
@@ -218,7 +218,7 @@ namespace
         }
     };//struct VertexInputBlockParse
 
-    struct ShaderBlockParse:public MaterialFileParse
+    struct ShaderBlockParse:public TextParse
     {
         bool                    output=false; 
         List<UniformAttrib>     output_list;
@@ -338,21 +338,21 @@ namespace
         
     };//struct GeometryShaderBlockParse
 
-    struct MaterialTextParse:public MaterialFileParse
+    struct MaterialFileParse:public TextParse
     {
         MaterialFileBlock state;
 
-        MaterialFileParse *parse;
+        TextParse *parse;
 
     public:
 
-        MaterialTextParse()
+        MaterialFileParse()
         {
             state=MaterialFileBlock::None;
             parse=nullptr;
         }
 
-        ~MaterialTextParse()
+        ~MaterialFileParse()
         {
             SAFE_CLEAR(parse)
         }
@@ -405,7 +405,7 @@ bool LoadMaterialFromFile(const AnsiString &mtl_filename)
     if(!fis)
         return(false);
 
-    MaterialTextParse mtp;
+    MaterialFileParse mtp;
 
     io::TextInputStream tis(fis,0);
 
