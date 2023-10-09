@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include<hgl/type/Map.h>
 #include<hgl/graph/VKShaderStage.h>
 
@@ -61,6 +61,10 @@ namespace material_file
     {
     private:
 
+        //不管是文本版还是二进制版
+        //其中的代码段数据解析后都是放的指针，并无复制出来。
+        //所以这里需要保存原始的文件数据
+
         char *                  data=nullptr;
         int                     data_length=0;
     
@@ -85,5 +89,4 @@ namespace material_file
             delete[] data;
         }
     };//struct MaterialFileData
-
 }//namespace material_file

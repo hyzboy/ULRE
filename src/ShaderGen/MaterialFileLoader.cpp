@@ -1,4 +1,4 @@
-#include<hgl/graph/mtl/MaterialConfig.h>
+﻿#include<hgl/graph/mtl/MaterialConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKShaderStage.h>
@@ -33,8 +33,8 @@ namespace
 
     struct MaterialFileBlockInfo
     {
-        const char *name;
-        const int len;
+        char *name;
+        int len;
         MaterialFileBlock state;
     };
 
@@ -71,7 +71,7 @@ namespace
             state=MaterialFileBlock::None;
         }
 
-        bool OnLine(const char *text,const int len) override
+        bool OnLine(char *text,const int len) override
         {
             if(!text||!*text||len<=0)
                 return(false);
@@ -82,12 +82,12 @@ namespace
 
     struct CodeParse:public MaterialFileParse
     {
-        const char *start   =nullptr;
-        const char *end     =nullptr;
+        char *start   =nullptr;
+        char *end     =nullptr;
 
     public:
 
-        bool OnLine(const char *text,const int len) override
+        bool OnLine(char *text,const int len) override
         {
             if(!text||!*text||len<=0)
                 return(false);
@@ -103,6 +103,7 @@ namespace
             
             if(*text=='}')
             {
+                *text=0;
                 end=text;
                 return(true);
             }
@@ -139,7 +140,7 @@ namespace
             }
         }
 
-        bool OnLine(const char *text,const int len) override
+        bool OnLine(char *text,const int len) override
         {
             if(!text||!*text||len<=0)
                 return(false);
@@ -223,7 +224,7 @@ namespace
             vi_list=ual;
         }
 
-        bool OnLine(const char *text,const int len) override
+        bool OnLine(char *text,const int len) override
         {
             if(!text||!*text||len<=0)
                 return(false);
@@ -253,7 +254,7 @@ namespace
             shader_data=sd;
         }
 
-        bool OnLine(const char *text,const int len) override
+        bool OnLine(char *text,const int len) override
         {
             if(!text||!*text||len<=0)
                 return(false);
@@ -310,7 +311,7 @@ namespace
             gsd=sd;
         }
 
-        bool OnLine(const char *text,const int len) override
+        bool OnLine(char *text,const int len) override
         {
             if(!text||!*text||len<=0)
                 return(false);
@@ -394,7 +395,7 @@ namespace
             SAFE_CLEAR(parse)
         }
 
-        bool OnLine(const char *text,const int len) override
+        bool OnLine(char *text,const int len) override
         {
             if(!text||!*text||len<=0)
                 return(false);
@@ -462,22 +463,22 @@ namespace
     };
 }//namespace MaterialFile
 
-MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &mtl_filename)
+MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
 {
     const OSString mtl_osfn=ToOSString(mtl_filename+".mtl");
 
     const OSString mtl_os_filename=filesystem::MergeFilename(OS_TEXT("ShaderLibrary"),mtl_osfn);
 
     if(!filesystem::FileExist(mtl_os_filename))
-        return(nullptr);
+        return nullptr;
 
-    char *data;
+    char *data; //未来二进制版本的材质文件，也是使用LoadFileToMemory加载。这里为了统一，所以文本也这么操作。
 
     int size=filesystem::LoadFileToMemory(mtl_os_filename,(void **)&data,true);
 
-    MaterialFileData mfd(data,size);
+    MaterialFileData *mfd=new MaterialFileData(data,size);
 
-    MaterialTextParse mtp(&mfd);
+    MaterialTextParse mtp(mfd);
 
     io::TextInputStream tis(data,size);
 
@@ -486,15 +487,6 @@ MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &mtl_filename)
     if(!tis.Run())
         return nullptr;
 
-    return(nullptr);
+    return mfd;
 }
-
-MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const MaterialCreateConfig *cfg)
-{
-    return nullptr;
-}
-
-//MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const Material3DCreateConfig *cfg)
-//{
-//}
 STD_MTL_NAMESPACE_END
