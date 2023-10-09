@@ -59,11 +59,31 @@ namespace material_file
 
     struct MaterialFileData
     {
+    private:
+
+        char *                  data=nullptr;
+        int                     data_length=0;
+    
+    public:
+
         MaterialInstanceData    mi{};
 
         List<UniformAttrib>     vi;
 
         ObjectMap<VkShaderStageFlagBits,ShaderData> shader;
+
+    public:
+
+        MaterialFileData(char *d,int dl)
+        {
+            data=d;
+            data_length=dl;
+        }
+
+        ~MaterialFileData()
+        {
+            delete[] data;
+        }
     };//struct MaterialFileData
 
 }//namespace material_file
