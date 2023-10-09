@@ -18,7 +18,7 @@ void main()
     constexpr const char fs_main[]=R"(
 void main()
 {
-    Color=Input.Color;
+    FragColor=Input.Color;
 })";// ^       ^
     // |       |
     // |       +--ps:这里的Input.Color就是上一个Shader中的Output.Color
@@ -46,7 +46,7 @@ void main()
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
+            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
             fsc->SetMain(fs_main);
             return(true);

@@ -21,18 +21,17 @@ void main()
 {
     MaterialInstance mi=GetMI();
 
-    Color=mi.Color;
+    FragColor=mi.Color;
 })";// ^       ^
     // |       |
     // |       +--ps:这里的mi.Color是材质实例中的数据，MaterialInstance结构对应上面C++代码中的mi_codes
-    // +--ps:这里的Color就是最终的RT
+    // +--ps:这里的FrageColor就是最终的RT
 
     class MaterialPureColor2D:public Std2DMaterial
     {
     public:
 
         using Std2DMaterial::Std2DMaterial;
-
         ~MaterialPureColor2D()=default;
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
@@ -46,7 +45,7 @@ void main()
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
+            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
             fsc->SetMain(fs_main);
             return(true);

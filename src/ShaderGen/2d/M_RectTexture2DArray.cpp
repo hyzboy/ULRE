@@ -44,7 +44,7 @@ void main()
 {
     MaterialInstance mi=GetMI();
 
-    Color=texture(TextureColor,vec3(Input.TexCoord,mi.id.x));
+    FragColor=texture(TextureColor,vec3(Input.TexCoord,mi.id.x));
 })";
 
     class MaterialRectTexture2D:public Std2DMaterial
@@ -81,7 +81,7 @@ void main()
         {
             mci->AddSampler(VK_SHADER_STAGE_FRAGMENT_BIT,DescriptorSetType::PerMaterial,SamplerType::Sampler2DArray,mtl::SamplerName::Color);
 
-            fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
+            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
             fsc->SetMain(fs_main);
             return(true);

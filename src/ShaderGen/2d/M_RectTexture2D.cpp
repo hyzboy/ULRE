@@ -37,7 +37,7 @@ void main()
     constexpr const char fs_main[]=R"(
 void main()
 {
-    Color=texture(TextureColor,Input.TexCoord);
+    FragColor=texture(TextureColor,Input.TexCoord);
 })";
 
     class MaterialRectTexture2D:public Std2DMaterial
@@ -74,7 +74,7 @@ void main()
         {
             mci->AddSampler(VK_SHADER_STAGE_FRAGMENT_BIT,DescriptorSetType::PerMaterial,SamplerType::Sampler2D,mtl::SamplerName::Color);
 
-            fsc->AddOutput(VAT_VEC4,"Color");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
+            fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
             fsc->SetMain(fs_main);
             return(true);
