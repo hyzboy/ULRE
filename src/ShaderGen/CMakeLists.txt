@@ -72,6 +72,7 @@ SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
                     ${STD_MTL_HEADER_PATH}/ShaderBuffer.h
                     StandardMaterial.cpp
+                    MaterialFileData.h
                     MaterialFileLoader.cpp)
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})

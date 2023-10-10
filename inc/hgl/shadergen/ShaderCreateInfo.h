@@ -88,6 +88,10 @@ public:
     void SetLocalToWorld(UBODescriptor *);
 
     void SetMain(const AnsiString &str){main_function=str;}
+    void SetMain(const char *str,const int len)
+    {
+        main_function.SetString(str,len);
+    }
 
     const AnsiString &GetOutputStruct()const{return output_struct;}
     const AnsiString &GetShaderSource()const{return final_shader;}
