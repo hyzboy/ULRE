@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include<hgl/type/Map.h>
 #include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VKSamplerType.h>
 
 namespace material_file
 {
@@ -24,6 +25,13 @@ namespace material_file
         uint32_t    shader_stage_flag_bits;
     };
 
+    struct SamplerData
+    {
+        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
+
+        SamplerType type;
+    };
+
     struct ShaderData
     {
         VkShaderStageFlagBits    shader_stage;
@@ -32,6 +40,8 @@ namespace material_file
         uint        code_length;
 
         List<UniformAttrib> output;
+
+        List<SamplerData>   sampler;
 
     public:
 
@@ -76,12 +86,15 @@ namespace material_file
 
         ObjectMap<VkShaderStageFlagBits,ShaderData> shader;
 
+        uint32_t                shader_stage_flag_bit;
+
     public:
 
         MaterialFileData(char *d,int dl)
         {
             data=d;
             data_length=dl;
+            shader_stage_flag_bit=0;
         }
 
         ~MaterialFileData()

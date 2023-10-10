@@ -2,6 +2,7 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VKSamplerType.h>
 
 #include<hgl/io/TextInputStream.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -295,6 +296,33 @@ namespace
             {
                 output=true;
             }
+            else
+            if(hgl::stricmp(text,"sampler",7)==0)
+            {
+                const char *sp=text;
+
+                while(*text!=' '&&*text!='\t')++text;
+
+                SamplerType st=ParseSamplerType(sp,text-sp);
+
+                RANGE_CHECK_RETURN_FALSE(st);
+
+                while(!hgl::iscodechar(*text))++text;
+
+                sp=text;
+
+                while(hgl::iscodechar(*text))++text;
+
+                SamplerData sd;
+
+                sd.type=st;
+                hgl::strcpy(sd.name,SHADER_RESOURCE_NAME_MAX_LENGTH,sp,text-sp);
+
+                shader_data->sampler.Add(sd);
+            }
+            else
+            {
+            }
 
             return(true);
         }
@@ -445,6 +473,8 @@ namespace
                         return(false);
 
                     mfd->shader.Add(sd->GetShaderStage(),sd);
+
+                    mfd->shader_stage_flag_bit|=sd->GetShaderStage();
                 }
                 else
                 {
