@@ -25,6 +25,8 @@ constexpr float position_data[VERTEX_COUNT*2]=
 
 constexpr uint DRAW_OBJECT_COUNT=12;
 
+#define USE_MATERIAL_FILE   true        //是否使用材质文件
+
 class TestApp:public VulkanApplicationFramework
 {
 private:
@@ -52,7 +54,11 @@ private:
             cfg.coordinate_system=CoordinateSystem2D::NDC;
             cfg.local_to_world=true;
 
-            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);
+        #ifndef USE_MATERIAL_FILE
+            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);                       //走程序内置材质创建函数
+        #else
+            AutoDelete<mtl::MaterialCreateInfo> mci=LoadMaterialFromFile("Std2D/PureColor2D",&cfg);     //走材质文件加载
+        #endif//USE_MATERIAL_FILE
 
             material=db->CreateMaterial(mci);
 

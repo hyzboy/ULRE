@@ -7,7 +7,7 @@ Length 16
 Stage  Fragment
 Code
 {
-    vec4 Color
+    vec4 Color;
 }
 
 #Vertex
