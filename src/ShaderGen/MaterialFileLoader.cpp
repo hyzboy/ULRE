@@ -63,11 +63,11 @@ namespace
         return MaterialFileBlock::None;
     }
 
-    struct MaterialFileBlockParse:public TextParse
+    struct MaterialBlockParse:public TextParse
     {
         MaterialFileBlock state;
 
-        MaterialFileBlockParse()
+        MaterialBlockParse()
         {
             state=MaterialFileBlock::None;
         }
@@ -79,7 +79,7 @@ namespace
 
             return(true);    
         }
-    };//struct MaterialFileBlockParse
+    };//struct MaterialBlockParse
 
     struct CodeParse:public TextParse
     {
@@ -113,7 +113,7 @@ namespace
         }
     };//struct CodeParse
 
-    struct MaterialInstanceStateParse:public TextParse
+    struct MaterialInstanceBlockParse:public TextParse
     {
         bool        code                    =false;
         CodeParse   code_parse;
@@ -125,12 +125,12 @@ namespace
 
     public:
 
-        MaterialInstanceStateParse(MaterialInstanceData *d)
+        MaterialInstanceBlockParse(MaterialInstanceData *d)
         {
             mid=d;
         }
 
-        ~MaterialInstanceStateParse()
+        ~MaterialInstanceBlockParse()
         {
             if(code_parse.start&&code_parse.end)
             {
@@ -191,7 +191,7 @@ namespace
 
             return(true);
         }
-    };//struct MaterialInstanceStateParse
+    };//struct MaterialInstanceBlockParse
 
     bool ParseUniformAttrib(UniformAttrib *ua,const char *str)
     {
@@ -435,10 +435,10 @@ namespace
                 state=GetMaterialFileState(text+1,len-1);
 
                 if(state==MaterialFileBlock::Material)
-                    parse=new MaterialFileBlockParse;
+                    parse=new MaterialBlockParse;
                 else
                 if(state==MaterialFileBlock::MaterialInstance)
-                    parse=new MaterialInstanceStateParse(&(mfd->mi));
+                    parse=new MaterialInstanceBlockParse(&(mfd->mi));
                 else
                 if(state==MaterialFileBlock::VertexInput)
                     parse=new VertexInputBlockParse(&(mfd->vi));
