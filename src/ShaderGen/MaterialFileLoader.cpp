@@ -77,6 +77,10 @@ namespace
             if(!text||!*text||len<=0)
                 return(false);
 
+            if(hgl::stricmp(text,"Require ",8)==0)
+            {
+            }
+
             return(true);    
         }
     };//struct MaterialBlockParse
@@ -159,7 +163,7 @@ namespace
                 code=true;
             }
             else
-            if(hgl::stricmp(text,"Length",6)==0)
+            if(hgl::stricmp(text,"Length ",7)==0)
             {
                 text+=7;
                 while(*text==' '||*text=='\t')++text;
@@ -167,7 +171,7 @@ namespace
                 hgl::stou(text,mi_bytes);
             }
             else
-            if(hgl::stricmp(text,"Stage",5)==0)
+            if(hgl::stricmp(text,"Stage ",6)==0)
             {
                 const char *ep=text+len;
                 const char *sp;
