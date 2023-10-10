@@ -52,7 +52,7 @@ Code
 
 #Fragment
 
-Sampler2D TextureColor
+sampler2D TextureColor
 
 Output
 {

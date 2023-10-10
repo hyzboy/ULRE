@@ -61,7 +61,7 @@ Code
 
 #Fragment
 
-Sampler2DArray TextureColor
+sampler2DArray TextureColor
 
 Output
 {

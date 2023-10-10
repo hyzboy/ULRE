@@ -38,4 +38,12 @@ MaterialCreateInfo *CreateVertexLuminance3D(const Material3DCreateConfig *);
 //MaterialCreateInfo *CreatePureTexture2D(const Material2DCreateConfig *);
 //MaterialCreateInfo *CreateRectTexture2D(Material2DCreateConfig *);
 //MaterialCreateInfo *CreateRectTexture2DArray(Material2DCreateConfig *);
+
+/**
+ * 从文件加载材质
+ * @param mtl_name 材质名称
+ * @param cfg 材质创建参数
+ * @return 材质创建信息
+ */
+MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,Material3DCreateConfig *cfg);
 STD_MTL_NAMESPACE_END

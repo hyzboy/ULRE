@@ -39,77 +39,67 @@ namespace
             return true;
         }
 
+        material_file::ShaderData *CommonProc(VkShaderStageFlagBits ss,ShaderCreateInfo *sc)
+        {
+            material_file::ShaderData *sd=mfd->shader[ss];
+
+            if(!sd)
+                return(nullptr);
+
+            for(auto &ua:sd->output)
+                sc->AddOutput(ua.vat,ua.name);
+
+            for(auto &s:sd->sampler)
+                mci->AddSampler(ss,DescriptorSetType::PerMaterial,s.type,s.name);
+
+            sc->SetMain(sd->code,sd->code_length);     //这里会产生复制这个string，但我不希望产生这个。未来想办法改进
+
+            return sd;
+        }
+
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
             if(!Std2DMaterial::CustomVertexShader(vsc))
                 return(false);
 
-            if(mfd->vi.GetCount()>0)
-            {
-                for(auto &ua:mfd->vi)
-                    vsc->AddInput(ua.vat,ua.name);
-            }
+            for(auto &ua:mfd->vi)
+                vsc->AddInput(ua.vat,ua.name);
 
-            material_file::ShaderData *sd=mfd->shader[VK_SHADER_STAGE_VERTEX_BIT];
-
-            if(!sd)
-                return(false);
-
-            for(auto &ua:sd->output)
-                vsc->AddOutput(ua.vat,ua.name);
-
-            vsc->SetMain(sd->code,sd->code_length);     //这里会产生复制这个string，但我不希望产生这个。未来想办法改进
-
-            return true;
+            return CommonProc(VK_SHADER_STAGE_VERTEX_BIT,vsc);
         }
 
         bool CustomGeometryShader(ShaderCreateInfoGeometry *gsc) override
         {
-            if(!Std2DMaterial::CustomGeometryShader(gsc))
-                return(false);
-            
-            material_file::GeometryShaderData *sd=(material_file::GeometryShaderData *)(mfd->shader[VK_SHADER_STAGE_GEOMETRY_BIT]);
+            material_file::GeometryShaderData *sd=(material_file::GeometryShaderData *)CommonProc(VK_SHADER_STAGE_GEOMETRY_BIT,gsc);
 
             if(!sd)
                 return(false);
 
             gsc->SetGeom(sd->input_prim,sd->output_prim,sd->max_vertices);
 
-            for(auto &ua:sd->output)
-                gsc->AddOutput(ua.vat,ua.name);
-
-            gsc->SetMain(sd->code,sd->code_length);     //这里会产生复制这个string，但我不希望产生这个。未来想办法改进
-
             return true;
         }
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            material_file::ShaderData *sd=mfd->shader[VK_SHADER_STAGE_FRAGMENT_BIT];
-
-            if(!sd)
-                return(false);
-
-            for(auto &ua:sd->output)
-                fsc->AddOutput(ua.vat,ua.name);
-
-            fsc->SetMain(sd->code,sd->code_length);     //这里会产生复制这个string，但我不希望产生这个。未来想办法改进
-
-            return true;
+            return CommonProc(VK_SHADER_STAGE_FRAGMENT_BIT,fsc);
         }
-
-        bool EndCustomShader() override{return true;}
     };//class Std2DMaterialLoader:public Std2DMaterial
 }//namespace
 
 material_file::MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename);
 
-MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,const Material2DCreateConfig *cfg)
+MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,Material2DCreateConfig *cfg)
 {
+    if(name.IsEmpty()||!cfg)
+        return(nullptr);
+
     material_file::MaterialFileData *mfd=LoadMaterialDataFromFile(name);
 
     if(!mfd)
         return nullptr;
+
+    cfg->shader_stage_flag_bit=mfd->shader_stage_flag_bit;
 
     Std2DMaterialLoader mtl(mfd,cfg);
 
