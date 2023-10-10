@@ -14,7 +14,7 @@ namespace
 {
     using namespace material_file;
 
-    using MaterialFileParse=io::TextInputStream::ParseCallback<char>;
+    using TextParse=io::TextInputStream::ParseCallback<char>;
 
     enum class MaterialFileBlock
     {
@@ -62,7 +62,7 @@ namespace
         return MaterialFileBlock::None;
     }
 
-    struct MaterialFileBlockParse:public MaterialFileParse
+    struct MaterialFileBlockParse:public TextParse
     {
         MaterialFileBlock state;
 
@@ -80,7 +80,7 @@ namespace
         }
     };//struct MaterialFileBlockParse
 
-    struct CodeParse:public MaterialFileParse
+    struct CodeParse:public TextParse
     {
         char *start   =nullptr;
         char *end     =nullptr;
@@ -112,7 +112,7 @@ namespace
         }
     };//struct CodeParse
 
-    struct MaterialInstanceStateParse:public MaterialFileParse
+    struct MaterialInstanceStateParse:public TextParse
     {
         bool        code                    =false;
         CodeParse   code_parse;
@@ -213,7 +213,7 @@ namespace
         return(true);
     }
 
-    struct VertexInputBlockParse:public MaterialFileParse
+    struct VertexInputBlockParse:public TextParse
     {
         List<UniformAttrib> *vi_list=nullptr;
 
@@ -238,7 +238,7 @@ namespace
         }
     };//struct VertexInputBlockParse
 
-    struct ShaderBlockParse:public MaterialFileParse
+    struct ShaderBlockParse:public TextParse
     {
         ShaderData *            shader_data=nullptr;
 
@@ -372,11 +372,11 @@ namespace
         
     };//struct GeometryShaderBlockParse
 
-    struct MaterialTextParse:public MaterialFileParse
+    struct MaterialTextParse:public TextParse
     {
         MaterialFileBlock state;
 
-        MaterialFileParse *parse;
+        TextParse *parse;
 
         MaterialFileData *mfd;
 

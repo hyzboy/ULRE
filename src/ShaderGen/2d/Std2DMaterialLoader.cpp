@@ -34,7 +34,6 @@ namespace
                 mci->SetMaterialInstance(  mfd->mi.code,
                                            mfd->mi.mi_bytes,
                                            mfd->mi.shader_stage_flag_bits);
-                return(false);
             }
 
             return true;
@@ -86,9 +85,6 @@ namespace
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            if(!Std2DMaterial::CustomFragmentShader(fsc))
-                return(false);
-
             material_file::ShaderData *sd=mfd->shader[VK_SHADER_STAGE_FRAGMENT_BIT];
 
             if(!sd)
