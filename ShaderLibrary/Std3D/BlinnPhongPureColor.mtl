@@ -1,0 +1,32 @@
+#Material
+Name Blinn-phong shading model only color
+Base Std3D
+
+Require LocalToWorld,Camera,Sun
+
+#MaterialInstance
+
+Code
+{
+    float Diffuse;
+    float Intensity;
+}
+
+#VertexInput
+vec3 Normal
+
+#Vertex
+Output
+{
+    vec3 Normal;
+}
+
+Code
+{
+
+
+    gl_Position=GetPosition3D();
+}
+
+#Fragment
+
