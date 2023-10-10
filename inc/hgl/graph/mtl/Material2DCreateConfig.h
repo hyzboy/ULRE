@@ -50,6 +50,6 @@ MaterialCreateInfo *CreateRectTexture2DArray(Material2DCreateConfig *);
  * @param cfg 材质创建参数
  * @return 材质创建信息
  */
-MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &mtl_name,const Material2DCreateConfig *cfg);        ///<从文件加载材质
+MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
 STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE

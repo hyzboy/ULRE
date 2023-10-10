@@ -56,7 +56,8 @@ private:
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
 
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureTexture2D(&cfg);
+        //AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureTexture2D(&cfg);
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile("Std2D/PureTexture2D",&cfg);
 
         material=db->CreateMaterial(mci);
 
