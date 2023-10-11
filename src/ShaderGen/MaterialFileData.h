@@ -1,7 +1,9 @@
 ﻿#pragma once
 #include<hgl/type/Map.h>
+#include<hgl/type/StringList.h>
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKSamplerType.h>
+#include<hgl/graph/VKPrimitiveType.h>
 
 namespace material_file
 {
@@ -67,6 +69,8 @@ namespace material_file
         using ShaderData::ShaderData;        
     };
 
+    using ShaderDataMap=ObjectMap<VkShaderStageFlagBits,ShaderData>;
+
     struct MaterialFileData
     {
     private:
@@ -80,11 +84,14 @@ namespace material_file
     
     public:
 
+        AnsiStringList          require;                ///<需求的内部模块(如LocalToWorld,Sun,Shadow等系统内置元素)
+//        AnsiStringList          import;                 ///<引用的外部模块
+
         MaterialInstanceData    mi{};
 
         List<UniformAttrib>     vi;
 
-        ObjectMap<VkShaderStageFlagBits,ShaderData> shader;
+        ShaderDataMap           shader;
 
         uint32_t                shader_stage_flag_bit;
 

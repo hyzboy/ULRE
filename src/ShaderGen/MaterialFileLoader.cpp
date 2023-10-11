@@ -67,9 +67,15 @@ namespace
     {
         MaterialFileBlock state;
 
-        MaterialBlockParse()
+        AnsiStringList *require=nullptr;
+
+    public:
+
+        MaterialBlockParse(AnsiStringList *asl)
         {
             state=MaterialFileBlock::None;
+
+            require=asl;
         }
 
         bool OnLine(char *text,const int len) override
@@ -77,11 +83,27 @@ namespace
             if(!text||!*text||len<=0)
                 return(false);
 
+            char *ep=text+len;
+
             if(hgl::stricmp(text,"Require ",8)==0)
             {
+                text+=8;
+
+                char *sp=text;
+
+                while(sp<ep)
+                {
+                    while(hgl::iscodechar(*text))++text;
+
+                    require->Add(AnsiString(sp,text-sp));
+
+                    while(!hgl::iscodechar(*text))++text;
+
+                    sp=text;
+                }
             }
 
-            return(true);    
+            return(true);
         }
     };//struct MaterialBlockParse
 
@@ -439,7 +461,7 @@ namespace
                 state=GetMaterialFileState(text+1,len-1);
 
                 if(state==MaterialFileBlock::Material)
-                    parse=new MaterialBlockParse;
+                    parse=new MaterialBlockParse(&(mfd->require));
                 else
                 if(state==MaterialFileBlock::MaterialInstance)
                     parse=new MaterialInstanceBlockParse(&(mfd->mi));
