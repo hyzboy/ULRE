@@ -27,16 +27,13 @@ static float lumiance_data[2]={1,1};
 static Color4f white_color(1,1,1,1);
 static Color4f yellow_color(1,1,0,1);
 
-class TestApp:public CameraAppFramework
+class TestApp:public SceneAppFramework
 {
     Color4f color;
 
     DeviceBuffer *ubo_color=nullptr;
 
 private:
-
-    SceneNode           render_root;
-    RenderList *        render_list         =nullptr;
 
     Material *          material            =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
@@ -65,8 +62,6 @@ private:
 
         material=db->CreateMaterial(mci);
         if(!material)return(false);
-
-        db->global_descriptor.Bind(material);
 
         mi_plane_grid=db->CreateMaterialInstance(material);
         if(!mi_plane_grid)return(false);

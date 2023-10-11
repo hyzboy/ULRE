@@ -155,6 +155,8 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
     Add(mtl);
 
+    global_descriptor.Bind(mtl);
+
     material_by_name.Add(mtl_name,mtl);
     return mtl.Finish();
 }

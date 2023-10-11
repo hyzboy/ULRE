@@ -540,3 +540,54 @@ public:
         cmc->Update();
     }
 };//class CameraAppFramework
+
+class SceneAppFramework:public CameraAppFramework
+{
+protected:
+
+    SceneNode           render_root;
+    RenderList *        render_list         =nullptr;
+
+public:
+
+    SceneAppFramework()=default;
+
+    virtual ~SceneAppFramework()
+    {
+        SAFE_CLEAR(render_list);
+    }
+
+    virtual bool Init(uint width,uint height)
+    {
+        if(!CameraAppFramework::Init(width,height))
+            return(false);
+            
+        render_list=new RenderList(device);
+
+        return(true);
+    }
+
+    virtual void BuildCommandBuffer(uint32 index) override
+    {
+        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
+    }
+
+    virtual void Resize(int w,int h) override
+    {
+        CameraAppFramework::Resize(w,h);
+        
+        VulkanApplicationFramework::BuildCommandBuffer(render_list);
+    }
+};//class SceneAppFramework:public CameraAppFramework
+
+template<typename T> int RunApp(uint w,uint h)
+{
+    T app;
+
+    if(!app.Init(w,h))
+        return(-1);
+
+    while(app.Run());
+
+    return 0;
+}

@@ -12,15 +12,9 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
-
-class TestApp:public CameraAppFramework
+class TestApp:public SceneAppFramework
 {
 private:
-
-    SceneNode           render_root;
-    RenderList *        render_list         =nullptr;
 
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
@@ -41,8 +35,6 @@ private:
 
         material=db->CreateMaterial(mci);
         if(!material)return(false);
-
-        db->global_descriptor.Bind(material);
 
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
@@ -113,17 +105,10 @@ private:
 
 public:
 
-    ~TestApp()
+    bool Init(uint width,uint height) override
     {
-        SAFE_CLEAR(render_list);
-    }
-
-    bool Init()
-    {
-        if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!SceneAppFramework::Init(width,height))
             return(false);
-            
-        render_list=new RenderList(device);
 
         if(!InitMDP())
             return(false);
@@ -136,28 +121,9 @@ public:
 
         return(true);
     }
-
-    void BuildCommandBuffer(uint32 index)
-    {
-        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
-    }
-
-    void Resize(int w,int h)override
-    {
-        CameraAppFramework::Resize(w,h);
-        
-        VulkanApplicationFramework::BuildCommandBuffer(render_list);
-    }
 };//class TestApp:public CameraAppFramework
 
 int main(int,char **)
 {
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunApp<TestApp>(1280,720);
 }
