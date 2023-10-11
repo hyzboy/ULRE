@@ -160,4 +160,24 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     material_by_name.Add(mtl_name,mtl);
     return mtl.Finish();
 }
+
+namespace mtl
+{
+    MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &, Material2DCreateConfig *);
+    MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &, Material3DCreateConfig *);
+}
+
+Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)
+{
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(mtl_name,cfg);
+
+    return this->CreateMaterial(mci);
+}
+
+Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
+{
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(mtl_name,cfg);
+
+    return this->CreateMaterial(mci);
+}
 VK_NAMESPACE_END
