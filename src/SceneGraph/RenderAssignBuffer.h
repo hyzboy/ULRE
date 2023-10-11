@@ -54,7 +54,7 @@ public:
 
     VkBuffer GetAssignVBO()const;
 
-    void Bind(MaterialInstance *)const;
+    void Bind(Material *)const;
 
 public:
 

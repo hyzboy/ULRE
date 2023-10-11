@@ -25,15 +25,12 @@ VkBuffer RenderAssignBuffer::GetAssignVBO()const
     return vbo_assigns->GetBuffer();
 }
 
-void RenderAssignBuffer::Bind(MaterialInstance *mi)const
+void RenderAssignBuffer::Bind(Material *mtl)const
 {
-    const VIL *vil=mi->GetVIL();
+    if(!mtl)return;
 
-    const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
-
-    if(assign_binding_count<=0)return;
-
-    Material *mtl=mi->GetMaterial();
+    if(!mtl->hasAssign())
+        return;
 
     mtl->BindUBO(DescriptorSetType::PerFrame,mtl::SBS_LocalToWorld.name,ubo_l2w);
     mtl->BindUBO(DescriptorSetType::PerMaterial,mtl::SBS_MaterialInstance.name,ubo_mi);

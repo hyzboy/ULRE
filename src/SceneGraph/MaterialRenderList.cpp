@@ -34,15 +34,6 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
             return off;
     }
 
-    //比较顶点输入格式
-    {
-        off=ri_one->GetMaterialInstance()->GetVIL()
-           -ri_two->GetMaterialInstance()->GetVIL();
-
-        if(off)
-            return off;
-    }
-
     //比较模型
     {
         off=ri_one->GetPrimitive()
@@ -60,10 +51,14 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,Material *m)
 {
     device=d;
     cmd_buf=nullptr;
-    mtl=m;
-    assign_buffer=new RenderAssignBuffer(d,mtl->GetMIDataBytes());
+    material=m;
 
-    vbo_list=new VBOList(mtl->GetVertexInput()->GetCount());
+    if(material->hasAssign())
+        assign_buffer=new RenderAssignBuffer(d,material->GetMIDataBytes());
+    else
+        assign_buffer=nullptr;
+
+    vbo_list=new VBOList(material->GetVertexInput()->GetCount());
 }
 
 MaterialRenderList::~MaterialRenderList()
@@ -91,13 +86,16 @@ void MaterialRenderList::End()
 
     if(node_count<=0)return;
 
-    if(mtl->HasMI())
-        StatMI();
-
     Stat();
 
-    //写入LocalToWorld数据
-    assign_buffer->WriteNode(rn_list.GetData(),node_count,mi_set);
+    if(assign_buffer)
+    {
+        if(material->HasMI())
+            StatMI();
+
+        //写入LocalToWorld数据
+        assign_buffer->WriteNode(rn_list.GetData(),node_count,mi_set);
+    }
 }
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)
@@ -114,7 +112,7 @@ void MaterialRenderList::StatMI()
     for(RenderNode &rn:rn_list)
         mi_set.Add(rn.ri->GetMaterialInstance());
 
-    if(mi_set.GetCount()>mtl->GetMIMaxCount())
+    if(mi_set.GetCount()>material->GetMIMaxCount())
     {
         //超出最大数量了怎么办？？？
     }
@@ -137,7 +135,6 @@ void MaterialRenderList::Stat()
     ri->Set(rn->ri);
 
     last_pipeline   =ri->pipeline;
-    last_vil        =ri->mi->GetVIL();
     last_vid        =ri->vid;
 
     ++rn;
@@ -145,13 +142,12 @@ void MaterialRenderList::Stat()
     for(uint i=1;i<count;i++)
     {
         if(last_pipeline==rn->ri->GetPipeline())
-            if(last_vil==rn->ri->GetMaterialInstance()->GetVIL())
-                if(last_vid->Comp(rn->ri->GetVertexInputData()))
-                {
-                    ++ri->count;
-                    ++rn;
-                    continue;
-                }
+            if(last_vid->Comp(rn->ri->GetVertexInputData()))
+            {
+                ++ri->count;
+                ++rn;
+                continue;
+            }
 
         ++ri_count;
         ++ri;
@@ -161,30 +157,20 @@ void MaterialRenderList::Stat()
         ri->Set(rn->ri);
 
         last_pipeline   =ri->pipeline;
-        last_vil        =ri->mi->GetVIL();
         last_vid        =ri->vid;
 
         ++rn;
     }
 }
 
-void MaterialRenderList::Bind(MaterialInstance *mi)
-{
-    if(!mi)return;
-
-    assign_buffer->Bind(mi);
-
-    cmd_buf->BindDescriptorSets(mi->GetMaterial());
-}
-
 bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
-    const VIL *vil=last_vil;
+    //const VIL *vil=last_vil;
 
-    if(vil->GetCount(VertexInputGroup::Basic)!=vid->binding_count)
-        return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
+    //if(vil->GetCount(VertexInputGroup::Basic)!=vid->binding_count)
+    //    return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
 
     vbo_list->Restart();
 
@@ -221,17 +207,10 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //    }
     //}
 
-    if(!vbo_list->IsFull()) //Assign组
+    //if(!vbo_list->IsFull()) //Assign组
     {
-        const uint assign_binding_count=vil->GetCount(VertexInputGroup::Assign);
-
-        if(assign_binding_count>0)
-        {
-            if(assign_binding_count!=1)
-                return(false);
-
+        if(assign_buffer)
             vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGN_VBO_STRIDE_BYTES*ri_index);
-        }
     }
 
     //if(count!=binding_count)
@@ -256,14 +235,6 @@ void MaterialRenderList::Render(RenderItem *ri)
         last_vid=nullptr;
 
         //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定mi/primitive
-    }
-
-    if(last_vil!=ri->mi->GetVIL())
-    {
-        Bind(ri->mi);
-        last_vil=ri->mi->GetVIL();
-
-        last_vid=nullptr;
     }
 
     if(!ri->vid->Comp(last_vid))
@@ -300,8 +271,12 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
     RenderItem *ri=ri_array.GetData();
 
     last_pipeline   =nullptr;
-    last_vil        =nullptr;
     last_vid        =nullptr;
+
+    if(assign_buffer)
+        assign_buffer->Bind(material);
+
+    cmd_buf->BindDescriptorSets(material);
 
     for(uint i=0;i<ri_count;i++)
     {

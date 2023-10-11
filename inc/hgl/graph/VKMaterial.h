@@ -69,6 +69,7 @@ public:
             }
 
     const   bool                                hasSet                  (const DescriptorSetType &type)const;
+    const   bool                                hasAssign               ()const;
 
     const   VIL *                               GetDefaultVIL()const;
             VIL *                               CreateVIL(const VILConfig *format_map=nullptr);
