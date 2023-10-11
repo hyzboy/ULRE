@@ -3,6 +3,11 @@
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
+#ifdef _DEBUG
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKDeviceAttribute.h>
+#endif//_DEBUG
+
 VK_NAMESPACE_BEGIN
 //bool Renderable::Set(const int stage_input_binding,VIL *vil,VkDeviceSize offset)
 //{
@@ -33,6 +38,16 @@ bool Primitive::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
     bd.offset=offset;
 
     buffer_list.Add(name,bd);
+
+#ifdef _DEBUG
+    auto *da=device->GetDeviceAttribute();
+
+    if(da->debug_maker)
+        da->debug_maker->SetBuffer(vbo->GetBuffer(),"[debug maker] "+prim_name+":VBO:"+name);
+    if(da->debug_utils)
+        da->debug_utils->SetBuffer(vbo->GetBuffer(),"[debug utils] "+prim_name+":VBO:"+name);
+#endif//_DEBUG
+
     return(true);
 }
 
@@ -59,5 +74,23 @@ VkBuffer Primitive::GetBuffer(const AnsiString &name,VkDeviceSize *offset)
     if(vbo)return vbo->GetBuffer();
 
     return(VK_NULL_HANDLE);
+}
+
+bool Primitive::Set(IndexBuffer *ib,VkDeviceSize offset)
+{
+    if(!ib)return(false);
+
+    index_buffer_data.buffer=ib;
+    index_buffer_data.offset=offset;
+
+#ifdef _DEBUG
+    auto *da=device->GetDeviceAttribute();
+
+    if(da->debug_maker)
+        da->debug_maker->SetBuffer(ib->GetBuffer(),"[debug maker] "+prim_name+":IBO");
+    if(da->debug_utils)
+        da->debug_utils->SetBuffer(ib->GetBuffer(),"[debug utils] "+prim_name+":IBO");
+#endif//_DEBUG
+    return(true);
 }
 VK_NAMESPACE_END

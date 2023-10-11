@@ -14,12 +14,12 @@ class RenderablePrimitiveCreater
 
 public:
 
-    RenderablePrimitiveCreater(RenderResource *_rr,uint32_t vc)
+    RenderablePrimitiveCreater(RenderResource *_rr,const AnsiString &name,uint32_t vc)
     {
         rr=_rr;
         vertex_count=vc;
 
-        prim=rr->CreatePrimitive(vertex_count);
+        prim=rr->CreatePrimitive(name,vertex_count);
     }
 
     VBO *SetVBO(const AnsiString &name,const VkFormat &fmt,const void *buf)

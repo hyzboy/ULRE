@@ -9,6 +9,9 @@ VK_NAMESPACE_BEGIN
 class Pipeline
 {
     VkDevice device;
+
+    AnsiString name;
+
     VkPipeline pipeline;
     PipelineData *data;
 
@@ -19,8 +22,10 @@ private:
 
     friend class RenderPass;
 
-    Pipeline(VkDevice dev,VkPipeline p,PipelineData *pd)
+    Pipeline(const AnsiString &n,VkDevice dev,VkPipeline p,PipelineData *pd)
     {
+        name=n;
+
         device=dev;
         pipeline=p;
         data=pd;
@@ -32,6 +37,8 @@ private:
 public:
 
     virtual ~Pipeline();
+
+    const AnsiString &GetName()const{return name;}
 
     operator VkPipeline(){return pipeline;}
 

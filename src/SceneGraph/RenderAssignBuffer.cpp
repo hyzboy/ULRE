@@ -64,6 +64,30 @@ void RenderAssignBuffer::Alloc(const uint nc,const uint mc)
     }
 
     vbo_assigns=device->CreateVBO(ASSIGN_VBO_FMT,node_count);
+
+    #ifdef _DEBUG
+        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        
+        if(da->debug_maker)
+        {
+            da->debug_maker->SetBuffer(ubo_l2w->GetBuffer(),"[debug maker] UBO:LocalToWorld");
+
+            if(ubo_mi)
+                da->debug_maker->SetBuffer(ubo_mi->GetBuffer(),"[debug maker] UBO:MaterialInstance");
+
+            da->debug_maker->SetBuffer(vbo_assigns->GetBuffer(),"[debug maker] VBO:Assign");
+        }
+
+        if(da->debug_utils)
+        {
+            da->debug_utils->SetBuffer(ubo_l2w->GetBuffer(),"[debug utils] UBO:LocalToWorld");
+
+            if(ubo_mi)
+                da->debug_utils->SetBuffer(ubo_mi->GetBuffer(),"[debug utils] UBO:MaterialInstance");
+
+            da->debug_utils->SetBuffer(vbo_assigns->GetBuffer(),"[debug utils] VBO:Assign");
+        }
+    #endif//_DEBUG
 }
 
 void RenderAssignBuffer::WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)

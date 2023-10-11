@@ -67,7 +67,8 @@ private:
 
     bool InitTexture()
     {
-        texture=db->CreateTexture2DArray(   512,512,            ///<纹理尺寸
+        texture=db->CreateTexture2DArray(   "freepik icons",
+                                            512,512,            ///<纹理尺寸
                                             TexCount,           ///<纹理层数
                                             PF_BC1_RGBAUN,      ///<纹理格式
                                             false);             ///<是否自动产生mipmaps
@@ -127,7 +128,7 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        RenderablePrimitiveCreater rpc(db,1);
+        RenderablePrimitiveCreater rpc(db,"Rectangle",1);
 
         position_data[2]=1.0f/float(TexCount);
 

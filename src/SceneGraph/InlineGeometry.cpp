@@ -28,7 +28,7 @@ namespace hgl
 
                 vertex->WriteRectFan(rci->scope);
 
-                return rc.Finish();
+                return rc.Finish("Rectangle");
             }
 
             Primitive *CreateGBufferCompositionRectangle(RenderResource *db,const VIL *vil)
@@ -111,7 +111,7 @@ namespace hgl
                     delete[] coord;
                 }
 
-                return rc.Finish();
+                return rc.Finish("RoundRectangle");
             }
 
             Primitive *CreateCircle(RenderResource *db,const VIL *vil,const CircleCreateInfo *cci)
@@ -159,7 +159,7 @@ namespace hgl
                         color->Write(cci->border_color);
                 }
 
-                return rc.Finish();
+                return rc.Finish("Circle");
             }
 
             Primitive *CreatePlaneGrid(RenderResource *db,const VIL *vil,const PlaneGridCreateInfo *pgci)
@@ -209,7 +209,7 @@ namespace hgl
                     }
                 }
 
-                return rc.Finish();
+                return rc.Finish("PlaneGrid");
             }
 
             Primitive *CreatePlane(RenderResource *db,const VIL *vil,const PlaneCreateInfo *pci)
@@ -250,7 +250,7 @@ namespace hgl
                     }
                 }
 
-                return rc.Finish();
+                return rc.Finish("Plane");
             }
 
             Primitive *CreateCube(RenderResource *db,const VIL *vil,const CubeCreateInfo *cci)
@@ -347,7 +347,7 @@ namespace hgl
                 }
 
                 rc.CreateIBO16(6*2*3,indices);
-                return rc.Finish();
+                return rc.Finish("Cube");
             }
 
             template<typename T> void CreateSphereIndices(T *tp,uint numberParallels,const uint numberSlices)
@@ -518,7 +518,7 @@ namespace hgl
                 else
                     CreateSphereIndices<uint32>(rc.CreateIBO32(numberIndices),numberParallels,numberSlices);
 
-                return rc.Finish();
+                return rc.Finish("Sphere");
             }
 
             Primitive *CreateDome(RenderResource *db,const VIL *vil,const uint numberSlices)
@@ -604,7 +604,7 @@ namespace hgl
                 else
                     CreateSphereIndices<uint32>(rc.CreateIBO32(numberIndices),numberParallels,numberSlices);
 
-                return rc.Finish();
+                return rc.Finish("Dome");
             }
 
             namespace
@@ -745,7 +745,7 @@ namespace hgl
                 else
                     CreateTorusIndices<uint32>(rc.CreateIBO32(numberIndices),tci->numberSlices,tci->numberStacks);
 
-                return rc.Finish();
+                return rc.Finish("Torus");
             }
 
             namespace
@@ -974,7 +974,7 @@ namespace hgl
                 else
                     CreateCylinderIndices<uint32>(rc.CreateIBO32(numberIndices),cci->numberSlices);
 
-                return rc.Finish();
+                return rc.Finish("Cylinder");
             }
 
             namespace
@@ -1141,7 +1141,7 @@ namespace hgl
                 else
                     CreateConeIndices<uint32>(rc.CreateIBO32(numberIndices),cci->numberSlices,cci->numberStacks);
 
-                return rc.Finish();
+                return rc.Finish("Cone");
             }
 
             Primitive *CreateAxis(RenderResource *db,const VIL *vil,const AxisCreateInfo *aci)
@@ -1168,7 +1168,7 @@ namespace hgl
                 vertex->Write(0,0,0);color->Write(aci->color[2]);
                 vertex->Write(0,0,s);color->Write(aci->color[2]);
 
-                return rc.Finish();
+                return rc.Finish("Axis");
             }
 
             Primitive *CreateBoundingBox(RenderResource *db,const VIL *vil,const BoundingBoxCreateInfo *cci)
@@ -1222,7 +1222,7 @@ namespace hgl
 
                 rc.CreateIBO16(24,indices);
 
-                return rc.Finish();
+                return rc.Finish("BoundingBox");
             }
         }//namespace inline_geometry
     }//namespace graph
