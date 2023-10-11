@@ -57,13 +57,11 @@ private:
         material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
         if(!material)return(false);
 
-        mi_plane_grid=db->CreateMaterialInstance(material);
+        mi_plane_grid=db->CreateMaterialInstance(material,nullptr,&white_color);
         if(!mi_plane_grid)return(false);
-        mi_plane_grid->WriteMIData(white_color);
 
-        mi_line=db->CreateMaterialInstance(material);
+        mi_line=db->CreateMaterialInstance(material,nullptr,&yellow_color);
         if(!mi_line)return(false);
-        mi_line->WriteMIData(yellow_color);
 
         pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Lines);
 

@@ -62,6 +62,22 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL
     return mi;
 }
 
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const int mi_bytes)
+{
+    if(!mtl)return(nullptr);
+    if(!mi_data||mi_bytes<=0)return(nullptr);
+
+    MaterialInstance *mi=mtl->CreateMI(vil_cfg);
+
+    if(!mi)
+        return nullptr;
+
+    Add(mi);
+    mi->WriteMIData(mi_data,mi_bytes);
+
+    return mi;
+}
+
 MaterialInstance *RenderResource::CreateMaterialInstance(const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
 {
     Material *mtl=this->CreateMaterial(mci);
