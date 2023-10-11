@@ -67,7 +67,7 @@ namespace
     {
         MaterialFileBlock state;
 
-        AnsiStringList *require=nullptr;
+        AnsiStringList *require_list=nullptr;
 
     public:
 
@@ -75,7 +75,7 @@ namespace
         {
             state=MaterialFileBlock::None;
 
-            require=asl;
+            require_list=asl;
         }
 
         bool OnLine(char *text,const int len) override
@@ -95,7 +95,7 @@ namespace
                 {
                     while(hgl::iscodechar(*text))++text;
 
-                    require->Add(AnsiString(sp,text-sp));
+                    require_list->Add(AnsiString(sp,text-sp));
 
                     while(!hgl::iscodechar(*text))++text;
 
@@ -461,7 +461,7 @@ namespace
                 state=GetMaterialFileState(text+1,len-1);
 
                 if(state==MaterialFileBlock::Material)
-                    parse=new MaterialBlockParse(&(mfd->require));
+                    parse=new MaterialBlockParse(&(mfd->require_list));
                 else
                 if(state==MaterialFileBlock::MaterialInstance)
                     parse=new MaterialInstanceBlockParse(&(mfd->mi));
