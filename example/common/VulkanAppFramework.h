@@ -378,8 +378,6 @@ class CameraMouseControl:public MouseEvent
     Vector2f mouse_pos;
     Vector2f mouse_last_pos;
 
-    Vector2f ReverseDirection;
-
 protected:
 
     bool OnPressed(int x,int y,MouseButton) override
@@ -411,8 +409,6 @@ protected:
         
         Vector2f pos(x,y);
         Vector2f gap=pos-mouse_last_pos;
-
-        gap*=ReverseDirection;
         
         if(left)
         {
@@ -440,15 +436,6 @@ public:
     {
         camera=wc;
         cur_time=0;
-
-        ReverseDirection.x=1;
-        ReverseDirection.y=1;
-    }
-
-    void SetReserveDirection(bool x,bool y)
-    {
-        ReverseDirection.x=x?-1:1;
-        ReverseDirection.y=y?-1:1;
     }
 
     const Vector2f &GetMouseCoord()const{return mouse_pos;}
