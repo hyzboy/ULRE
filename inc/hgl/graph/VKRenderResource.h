@@ -18,6 +18,13 @@
 #include<hgl/graph/VKDescriptorBindingManage.h>
 
 VK_NAMESPACE_BEGIN
+
+namespace mtl
+{
+    struct Material2DCreateConfig;
+    struct Material3DCreateConfig;
+}//namespace mtl
+
 using MaterialID            =int;
 using MaterialInstanceID    =int;
 using BufferID              =int;
@@ -101,6 +108,8 @@ public: //Material
     const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,const ShaderCreateInfo *);
     
     Material *          CreateMaterial(const mtl::MaterialCreateInfo *);
+    Material *          LoadMaterial(const AnsiString &,mtl::Material2DCreateConfig *);
+    Material *          LoadMaterial(const AnsiString &,mtl::Material3DCreateConfig *);
 
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);

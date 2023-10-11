@@ -52,9 +52,7 @@ private:
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
         cfg.local_to_world=false;
 
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateRectTexture2D(&cfg);
-
-        material=db->CreateMaterial(mci);
+        material=db->LoadMaterial("Std2D/RectTexture2D",&cfg);
 
         if(!material)
             return(false);

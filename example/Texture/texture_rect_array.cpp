@@ -94,10 +94,7 @@ private:
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
         cfg.local_to_world=true;
 
-        //AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateRectTexture2DArray(&cfg);
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile("Std2D/RectTexture2DArray",&cfg);
-
-        material=db->CreateMaterial(mci);
+        material=db->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
 
         if(!material)
             return(false);

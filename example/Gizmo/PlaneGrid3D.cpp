@@ -30,10 +30,7 @@ private:
 
         cfg.local_to_world=true;
 
-        //AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexLuminance3D(&cfg);
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile("Std3D/VertexLum3D",&cfg);
-
-        material=db->CreateMaterial(mci);
+        material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
         if(!material)return(false);
 
         Color4f GridColor;

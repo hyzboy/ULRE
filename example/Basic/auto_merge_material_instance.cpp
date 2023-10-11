@@ -56,11 +56,10 @@ private:
 
         #ifndef USE_MATERIAL_FILE
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);                       //走程序内置材质创建函数
-        #else
-            AutoDelete<mtl::MaterialCreateInfo> mci=LoadMaterialFromFile("Std2D/PureColor2D",&cfg);     //走材质文件加载
-        #endif//USE_MATERIAL_FILE
-
             material=db->CreateMaterial(mci);
+        #else
+            material=db->LoadMaterial("Std2D/PureColor2D",&cfg);                                            //走材质文件加载
+        #endif//USE_MATERIAL_FILE
 
             if(!material)
                 return(false);
