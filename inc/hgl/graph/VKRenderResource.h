@@ -112,6 +112,15 @@ public: //Material
     Material *          LoadMaterial(const AnsiString &,mtl::Material3DCreateConfig *);
 
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
+
+    MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg,const void *,const int);
+
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const T *data)
+    {
+        return CreateMaterialInstance(mtl,vil_cfg,*data,sizeof(T));
+    }
+
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
     Primitive *         CreatePrimitive(const uint32_t vertex_count=0);

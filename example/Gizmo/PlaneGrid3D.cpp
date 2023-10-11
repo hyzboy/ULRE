@@ -38,11 +38,9 @@ private:
 
         for(uint i=0;i<3;i++)
         {
-            material_instance[i]=db->CreateMaterialInstance(material);
-
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i]->WriteMIData(GridColor);
+            material_instance[i]=db->CreateMaterialInstance(material,nullptr,&GridColor);
 
             ce=COLOR((int)ce+1);
         }
