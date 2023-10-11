@@ -13,7 +13,7 @@ class MaterialRenderList
     GPUDevice *device;
     RenderCmdBuffer *cmd_buf;
 
-    Material *mtl;
+    Material *material;
 
     RenderNodeList rn_list;
 
@@ -46,12 +46,10 @@ protected:
 
             VBOList *           vbo_list;
 
-    const   VIL *               last_vil;
             Pipeline *          last_pipeline;
     const   VertexInputData *   last_vid;
             uint                last_index;
 
-    void Bind(MaterialInstance *);
     bool Bind(const VertexInputData *,const uint);
 
     void Render(RenderItem *);
