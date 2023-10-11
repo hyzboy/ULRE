@@ -4,6 +4,7 @@ SET(VULKAN_APP_FRAMEWORK ${CMAKE_CURRENT_SOURCE_DIR}/common/VulkanAppFramework.h
 
 add_subdirectory(Basic)
 add_subdirectory(Texture)
+add_subdirectory(LightBasic)
 add_subdirectory(Gizmo)
 
 add_subdirectory(Vulkan)

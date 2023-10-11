@@ -84,12 +84,12 @@ namespace material_file
     
     public:
 
-        AnsiStringList          require_list;                ///<需求的内部模块(如LocalToWorld,Sun,Shadow等系统内置元素)
-//        AnsiStringList          import_list;                 ///<引用的外部模块
+        AnsiStringList          require_list;               ///<需求的内部模块(如LocalToWorld,Sun,Shadow等系统内置元素)
+//        AnsiStringList          import_list;                ///<引用的外部模块
 
         MaterialInstanceData    mi{};
 
-        List<UniformAttrib>     vi;
+        List<UniformAttrib>     vi;                         ///<Vertex Input
 
         ShaderDataMap           shader;
 
