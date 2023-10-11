@@ -81,6 +81,8 @@ public:
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
 
+    void Update();
+
 public:
 
     const bool      HasMI           ()const{return mi_data_bytes>0;}

@@ -33,8 +33,8 @@ Material::~Material()
     SAFE_CLEAR(desc_manager);
     SAFE_CLEAR(pipeline_layout_data);
 
-    for(int i=0;i<DESCRIPTOR_SET_TYPE_COUNT;i++)
-        SAFE_CLEAR(mp_array[i]);
+    for(auto &mp:mp_array)
+        SAFE_CLEAR(mp);
 }
 
 const VkPipelineLayout Material::GetPipelineLayout()const
@@ -74,10 +74,7 @@ bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,Devi
     if(!mp)
         return(false);
 
-    if(!mp->BindUBO(name,ubo,dynamic))return(false);
-
-    mp->Update();
-    return(true);
+    return mp->BindUBO(name,ubo,dynamic);
 }
 
 bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)
@@ -87,10 +84,7 @@ bool Material::BindSSBO(const DescriptorSetType &type,const AnsiString &name,Dev
     if(!mp)
         return(false);
 
-    if(!mp->BindSSBO(name,ubo,dynamic))return(false);
-
-    mp->Update();
-    return(true);
+    return mp->BindSSBO(name,ubo,dynamic);
 }
 
 bool Material::BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler)
@@ -100,9 +94,15 @@ bool Material::BindImageSampler(const DescriptorSetType &type,const AnsiString &
     if(!mp)
         return(false);
 
-    if(!mp->BindImageSampler(name,tex,sampler))return(false);
+    return mp->BindImageSampler(name,tex,sampler);
+}
 
-    mp->Update();
-    return(true);
+void Material::Update()
+{
+    for(auto &mp:mp_array)
+    {
+        if(mp)
+            mp->Update();
+    }
 }
 VK_NAMESPACE_END
