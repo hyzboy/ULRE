@@ -92,7 +92,7 @@ private:
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 
-        cmc->SetReserveDirection(true,true);        //反转x,y
+        camera_control->SetReserveDirection(true,true);        //反转x,y
 
         render_root.RefreshMatrix();
         render_list->Expend(&render_root);

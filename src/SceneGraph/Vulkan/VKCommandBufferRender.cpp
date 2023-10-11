@@ -117,6 +117,8 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
 
             if(mp)
             {
+                mp->Update();
+
                 ds[count]=mp->GetVkDescriptorSet();
                 ++count;
             }
