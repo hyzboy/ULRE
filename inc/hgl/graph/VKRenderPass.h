@@ -25,7 +25,7 @@ protected:
 
     ObjectList<Pipeline> pipeline_list;
 
-    Pipeline *CreatePipeline(PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
+    Pipeline *CreatePipeline(const AnsiString &,PipelineData *,const ShaderStageCreateInfoList &,VkPipelineLayout,const VIL *);
 
 private:
 

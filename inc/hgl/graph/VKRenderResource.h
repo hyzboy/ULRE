@@ -123,7 +123,7 @@ public: //Material
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
-    Primitive *         CreatePrimitive(const uint32_t vertex_count=0);
+    Primitive *         CreatePrimitive(const AnsiString &,const uint32_t vertex_count=0);
 
     Renderable *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
 
@@ -135,7 +135,7 @@ public: //texture
     Texture2D *         LoadTexture2D(const OSString &,bool auto_mipmaps=false);
     TextureCube *       LoadTextureCube(const OSString &,bool auto_mipmaps=false);
 
-    Texture2DArray *    CreateTexture2DArray(const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
+    Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
     bool                LoadTexture2DToArray(Texture2DArray *,const uint32_t layer,const OSString &);
 
 public: //Get

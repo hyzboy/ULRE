@@ -105,14 +105,14 @@ namespace hgl
             return (uint32 *)ibo->Map();
         }
 
-        Primitive *PrimitiveCreater::Finish()
+        Primitive *PrimitiveCreater::Finish(const AnsiString &prim_name)
         {
             const uint si_count=vil->GetCount(VertexInputGroup::Basic);
 
             if(vbo_map.GetCount()!=si_count)
                 return(nullptr);
 
-            Primitive *primitive=db->CreatePrimitive(vertices_number);
+            Primitive *primitive=db->CreatePrimitive(prim_name,vertices_number);
 
             const auto *sp=vbo_map.GetDataList();
             for(uint i=0;i<si_count;i++)

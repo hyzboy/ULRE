@@ -88,11 +88,11 @@ MaterialInstance *RenderResource::CreateMaterialInstance(const mtl::MaterialCrea
     return CreateMaterialInstance(mtl,vil_cfg);
 }
 
-Primitive *RenderResource::CreatePrimitive(const uint32_t vertex_count)
+Primitive *RenderResource::CreatePrimitive(const AnsiString &name,const uint32_t vertex_count)
 {
     if(!vertex_count)return(nullptr);
 
-    Primitive *ro=new Primitive(vertex_count);
+    Primitive *ro=new Primitive(device,name,vertex_count);
 
     if(ro)
         Add(ro);
@@ -154,21 +154,30 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
         const UTF8String name=ToUTF8String(filename);
         
         if(da->debug_maker)
-            da->debug_maker->SetImage(tex->GetImage(),"[debug maker] "+name);
+            da->debug_maker->SetImage(tex->GetImage(),"[debug maker] Tex2D:"+name);
         if(da->debug_utils)
-            da->debug_utils->SetImage(tex->GetImage(),"[debug utils] "+name);
+            da->debug_utils->SetImage(tex->GetImage(),"[debug utils] Tex2D:"+name);
     #endif//_DEBUG
     }
 
     return tex;
 }
 
-Texture2DArray *RenderResource::CreateTexture2DArray(const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps)
+Texture2DArray *RenderResource::CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps)
 {
     Texture2DArray *ta=device->CreateTexture2DArray(width,height,layer,fmt,auto_mipmaps);
 
     if(ta)
         Add(ta);
+
+    #ifdef _DEBUG
+        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        
+        if(da->debug_maker)
+            da->debug_maker->SetImage(ta->GetImage(),"[debug maker] Tex2DArray:"+name);
+        if(da->debug_utils)
+            da->debug_utils->SetImage(ta->GetImage(),"[debug utils] Tex2DArray:"+name);
+    #endif//_DEBUG
 
     return ta;
 }

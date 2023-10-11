@@ -23,7 +23,7 @@ RenderPass::~RenderPass()
     vkDestroyRenderPass(device,render_pass,nullptr);
 }
 
-Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
+Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
 {
     //以后要做一个缓冲，以Material为基准创建一个pipeline，其它MaterialInstance的pipeline全部以它为基础，这样可以提升性能。
 
@@ -53,7 +53,7 @@ Pipeline *RenderPass::CreatePipeline(PipelineData *pd,const ShaderStageCreateInf
         return(nullptr);
     }
 
-    return(new Pipeline(device,graphicsPipeline,pd));
+    return(new Pipeline(name,device,graphicsPipeline,pd));
 }
 
 
@@ -63,7 +63,7 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
 
     pd->SetPrim(prim,prim_restart);
     
-    Pipeline *p=CreatePipeline(pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
+    Pipeline *p=CreatePipeline(mtl->GetName(),pd,mtl->GetStageList(),mtl->GetPipelineLayout(),vil);
 
     if(p)
         pipeline_list.Add(p);

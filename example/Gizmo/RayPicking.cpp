@@ -106,7 +106,7 @@ private:
         }
 
         {
-            ro_line=db->CreatePrimitive(2);
+            ro_line=db->CreatePrimitive("Line",2);
             if(!ro_line)return(false);
             
             if(!ro_line->Set(VAN::Position,  vbo_pos=   db->CreateVBO(VF_V3F,2,position_data    )))return(false);

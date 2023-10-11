@@ -12,6 +12,9 @@ VK_NAMESPACE_BEGIN
  */
 class Primitive
 {
+    GPUDevice *device;
+    AnsiString prim_name;
+
     struct VBOData
     {
         VBO *buf;
@@ -45,7 +48,13 @@ protected:
 
 public:
 
-    Primitive(const uint32_t vc=0):vertex_count(vc){}
+    Primitive(GPUDevice *dev,const AnsiString &n,const uint32_t vc=0)
+    {
+        device=dev;
+        prim_name=n;
+        vertex_count=vc;
+    }
+
     virtual ~Primitive()=default;
 
     const   uint    GetRefCount()const{return ref_count;}
@@ -55,14 +64,7 @@ public:
 
             bool    Set(const AnsiString &name,VBO *vb,VkDeviceSize offset=0);
 
-            bool    Set(IndexBuffer *ib,VkDeviceSize offset=0)
-            {
-                if(!ib)return(false);
-
-                index_buffer_data.buffer=ib;
-                index_buffer_data.offset=offset;
-                return(true);
-            }
+            bool    Set(IndexBuffer *ib,VkDeviceSize offset=0);
 
 public:
 

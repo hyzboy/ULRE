@@ -19,6 +19,9 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
+#ifdef _DEBUG
+#include<hgl/graph/VKDeviceAttribute.h>
+#endif//_DEBUG
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/color/Color.h>
@@ -287,7 +290,24 @@ public:
     }
 
     template<typename ...ARGS>
-    Pipeline *CreatePipeline(ARGS...args){return device_render_pass->CreatePipeline(args...);}
+    Pipeline *CreatePipeline(ARGS...args)
+    {
+        Pipeline *p=device_render_pass->CreatePipeline(args...);
+
+        if(!p)
+            return(nullptr);
+
+    #ifdef _DEBUG
+        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        
+        if(da->debug_maker)
+            da->debug_maker->SetPipeline(*p,"[debug maker] Pipeline:"+p->GetName());
+        if(da->debug_utils)
+            da->debug_utils->SetPipeline(*p,"[debug utils] Pipeline:"+p->GetName());
+    #endif//_DEBUG
+
+        return p;
+    }
 
 public:
 
