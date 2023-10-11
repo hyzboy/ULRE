@@ -13,9 +13,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
-
 static float position_data[2][3]=
 {
     {100,100,100},
@@ -138,17 +135,10 @@ private:
 
 public:
 
-    ~TestApp()
-    {
-        SAFE_CLEAR(render_list);
-    }
-
-    bool Init()
-    {
-        if(!CameraAppFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+    bool Init(uint w,uint h)
+    {        
+        if(!SceneAppFramework::Init(w,h))
             return(false);
-            
-        render_list=new RenderList(device);
 
         if(!InitMaterialAndPipeline())
             return(false);
@@ -173,25 +163,11 @@ public:
 
         vbo_pos->Write(&pos,3*sizeof(float));                   //更新VBO上这个点的位置
 
-        VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
-    }
-
-    void Resize(int w,int h) override
-    {
-        CameraAppFramework::Resize(w,h);
-        
-        VulkanApplicationFramework::BuildCommandBuffer(render_list);
+        SceneAppFramework::BuildCommandBuffer(index);
     }
 };//class TestApp:public CameraAppFramework
 
 int main(int,char **)
 {
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunApp<TestApp>(1280,720);
 }
