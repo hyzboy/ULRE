@@ -298,12 +298,10 @@ public:
             return(nullptr);
 
     #ifdef _DEBUG
-        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        DebugUtils *du=device->GetDebugUtils();
         
-        if(da->debug_maker)
-            da->debug_maker->SetPipeline(*p,"[debug maker] Pipeline:"+p->GetName());
-        if(da->debug_utils)
-            da->debug_utils->SetPipeline(*p,"[debug utils] Pipeline:"+p->GetName());
+        if(du)
+            du->SetPipeline(*p,"Pipeline:"+p->GetName());
     #endif//_DEBUG
 
         return p;

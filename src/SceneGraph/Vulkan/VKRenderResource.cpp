@@ -150,13 +150,14 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
         Add(tex);
 
     #ifdef _DEBUG
-        GPUDeviceAttribute *da=device->GetDeviceAttribute();
-        const UTF8String name=ToUTF8String(filename);
+        DebugUtils *du=device->GetDebugUtils();
+
+        if(du)
+        {
+            const UTF8String name=ToUTF8String(filename);
         
-        if(da->debug_maker)
-            da->debug_maker->SetImage(tex->GetImage(),"[debug maker] Tex2D:"+name);
-        if(da->debug_utils)
-            da->debug_utils->SetImage(tex->GetImage(),"[debug utils] Tex2D:"+name);
+            du->SetImage(tex->GetImage(),"Tex2D:"+name);
+        }
     #endif//_DEBUG
     }
 
@@ -171,19 +172,13 @@ Texture2DArray *RenderResource::CreateTexture2DArray(const AnsiString &name,cons
         Add(ta);
 
     #ifdef _DEBUG
-        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        DebugUtils *du=device->GetDebugUtils();
         
-        if(da->debug_maker)
+        if(du)
         {
-            da->debug_maker->SetImage(ta->GetImage(),"[debug maker] Tex2DArrayImage:"+name);
-            da->debug_maker->SetDeviceMemory(ta->GetDeviceMemory(),"[debug maker] Tex2DArrayMemory:"+name);
-        }
-
-        if(da->debug_utils)
-        {
-            da->debug_utils->SetImage(ta->GetImage(),"[debug utils] Tex2DArrayImage:"+name);
-            da->debug_utils->SetImageView(ta->GetVulkanImageView(),"[debug utils] Tex2DArrayImageView:"+name);
-            da->debug_utils->SetDeviceMemory(ta->GetDeviceMemory(),"[debug utils] Tex2DArrayMemory:"+name);
+            du->SetImage(ta->GetImage(),"Tex2DArrayImage:"+name);
+            du->SetImageView(ta->GetVulkanImageView(),"Tex2DArrayImageView:"+name);
+            du->SetDeviceMemory(ta->GetDeviceMemory(),"Tex2DArrayMemory:"+name);
         }
     #endif//_DEBUG
 

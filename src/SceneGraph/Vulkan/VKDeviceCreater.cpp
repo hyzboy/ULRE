@@ -7,7 +7,6 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKDeviceCreater.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKDebugMaker.h>
 
 #include<iostream>
 #include<iomanip>
@@ -18,7 +17,6 @@ VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProper
 void SetShaderCompilerVersion(const GPUPhysicalDevice *);
 
 #ifdef _DEBUG
-DebugMaker *CreateDebugMaker(VkDevice);
 DebugUtils *CreateDebugUtils(VkDevice);
 
 void LogSurfaceFormat(const VkSurfaceFormatKHR *surface_format_list,const uint32_t format_count,const uint32_t select)
@@ -293,11 +291,6 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
     if(!device_attr->device)
         return(nullptr);
 
-#ifdef _DEBUG
-    device_attr->debug_maker=CreateDebugMaker(device_attr->device);
-    device_attr->debug_utils=CreateDebugUtils(device_attr->device);
-#endif//_DEBUG
-
     ChooseSurfaceFormat();
 
     device_attr->surface_format=surface_format;
@@ -322,24 +315,16 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
     auto_delete.Discard();  //discard autodelete
 
     #ifdef _DEBUG
-        if(device_attr->debug_maker)
-        {
-            device_attr->debug_maker->SetPhysicalDevice(*physical_device,"[debug maker] Physical Device:"+AnsiString(physical_device->GetDeviceName()));
-            device_attr->debug_maker->SetDevice(device_attr->device,"[debug maker] Device:"+AnsiString(physical_device->GetDeviceName()));
-            device_attr->debug_maker->SetSurfaceKHR(surface,"[debug maker] Surface");
-            device_attr->debug_maker->SetCommandPool(device_attr->cmd_pool,"[debug maker] Main Command Pool");
-            device_attr->debug_maker->SetDescriptorPool(device_attr->desc_pool,"[debug maker] Main Descriptor Pool");
-            device_attr->debug_maker->SetPipelineCache(device_attr->pipeline_cache,"[debug maker] Main Pipeline Cache");
-        }
+        device_attr->debug_utils=CreateDebugUtils(device_attr->device);
 
         if(device_attr->debug_utils)
         {
-            device_attr->debug_utils->SetPhysicalDevice(*physical_device,"[debug utils] Physical Device:"+AnsiString(physical_device->GetDeviceName()));
-            device_attr->debug_utils->SetDevice(device_attr->device,"[debug utils] Device:"+AnsiString(physical_device->GetDeviceName()));
-            device_attr->debug_utils->SetSurfaceKHR(surface,"[debug utils] Surface");
-            device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"[debug utils] Main Command Pool");
-            device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"[debug utils] Main Descriptor Pool");
-            device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"[debug utils] Main Pipeline Cache");
+            device_attr->debug_utils->SetPhysicalDevice(*physical_device,"Physical Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_utils->SetDevice(device_attr->device,"Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_utils->SetSurfaceKHR(surface,"Surface");
+            device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
+            device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");
+            device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main Pipeline Cache");
         }
     #endif//_DEBUG
 
