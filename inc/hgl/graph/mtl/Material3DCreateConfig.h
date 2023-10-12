@@ -30,6 +30,25 @@ public:
 
 //        reverse_depth=false;
     }
+
+    int Comp(const Material3DCreateConfig &cfg)const
+    {
+        int off=MaterialCreateConfig::Comp(cfg);
+
+        if(off)return off;
+
+        off=camera-cfg.camera;
+        if(off)return off;
+
+        off=local_to_world-cfg.local_to_world;
+        if(off)return off;
+
+        off=position_format.Comp(cfg.position_format);
+
+        return off;
+    }
+
+    CompOperator(const Material3DCreateConfig &,Comp)
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
 MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);

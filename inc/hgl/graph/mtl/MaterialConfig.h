@@ -37,6 +37,23 @@ public:
 
         prim=p;
     }
+
+    int Comp(const MaterialCreateConfig &cfg)const
+    {
+        int off;
+
+        off=hgl_cmp(rt_output,cfg.rt_output);
+
+        if(off)return(off);
+
+        off=(int)prim-(int)cfg.prim;
+
+        if(off)return(off);
+
+        return shader_stage_flag_bit-cfg.shader_stage_flag_bit;
+    }
+
+    CompOperator(const MaterialCreateConfig &,Comp)
 };//struct MaterialCreateConfig
 STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_CONFIG_INCLUDE

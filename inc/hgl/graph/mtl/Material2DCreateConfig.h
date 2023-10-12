@@ -31,6 +31,25 @@ public:
         else
             position_format=VAT_VEC2;
     }
+
+    int Comp(const Material2DCreateConfig &cfg)const
+    {
+        int off=MaterialCreateConfig::Comp(cfg);
+
+        if(off)return off;
+
+        off=(int)coordinate_system-(int)cfg.coordinate_system;
+        if(off)return off;
+
+        off=local_to_world-cfg.local_to_world;
+        if(off)return off;
+
+        off=position_format.Comp(cfg.position_format);
+        
+        return off;
+    }
+
+    CompOperator(const Material2DCreateConfig &,Comp)
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
 MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
