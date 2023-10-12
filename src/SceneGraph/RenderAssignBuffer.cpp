@@ -70,22 +70,32 @@ void RenderAssignBuffer::Alloc(const uint nc,const uint mc)
         
         if(da->debug_maker)
         {
-            da->debug_maker->SetBuffer(ubo_l2w->GetBuffer(),"[debug maker] UBO:LocalToWorld");
+            da->debug_maker->SetBuffer(ubo_l2w->GetBuffer(),"[debug maker] UBO:Buffer:LocalToWorld");
+            da->debug_maker->SetDeviceMemory(ubo_l2w->GetVkMemory(),"[debug maker] UBO:Memory:LocalToWorld");
 
             if(ubo_mi)
-                da->debug_maker->SetBuffer(ubo_mi->GetBuffer(),"[debug maker] UBO:MaterialInstance");
+            {
+                da->debug_maker->SetBuffer(ubo_mi->GetBuffer(),"[debug maker] UBO:Buffer:MaterialInstance");
+                da->debug_maker->SetDeviceMemory(ubo_mi->GetVkMemory(),"[debug maker] UBO:Memory:MaterialInstance");
+            }
 
-            da->debug_maker->SetBuffer(vbo_assigns->GetBuffer(),"[debug maker] VBO:Assign");
+            da->debug_maker->SetBuffer(vbo_assigns->GetBuffer(),"[debug maker] VBO:Buffer:Assign");
+            da->debug_maker->SetDeviceMemory(vbo_assigns->GetVkMemory(),"[debug maker] VBO:Memory:Assign");
         }
 
         if(da->debug_utils)
         {
-            da->debug_utils->SetBuffer(ubo_l2w->GetBuffer(),"[debug utils] UBO:LocalToWorld");
+            da->debug_utils->SetBuffer(ubo_l2w->GetBuffer(),"[debug utils] UBO:Buffer:LocalToWorld");
+            da->debug_utils->SetDeviceMemory(ubo_l2w->GetVkMemory(),"[debug utils] UBO:Memory:LocalToWorld");
 
             if(ubo_mi)
-                da->debug_utils->SetBuffer(ubo_mi->GetBuffer(),"[debug utils] UBO:MaterialInstance");
+            {
+                da->debug_utils->SetBuffer(ubo_mi->GetBuffer(),"[debug utils] UBO:Buffer:MaterialInstance");
+                da->debug_utils->SetDeviceMemory(ubo_mi->GetVkMemory(),"[debug utils] UBO:Memory:MaterialInstance");
+            }
 
-            da->debug_utils->SetBuffer(vbo_assigns->GetBuffer(),"[debug utils] VBO:Assign");
+            da->debug_utils->SetBuffer(vbo_assigns->GetBuffer(),"[debug utils] VBO:Buffer:Assign");
+            da->debug_utils->SetDeviceMemory(vbo_assigns->GetVkMemory(),"[debug utils] VBO:Memory:Assign");
         }
     #endif//_DEBUG
 }

@@ -65,13 +65,23 @@ namespace
 
         result=vkCreateSwapchainKHR(dev_attr->device,&swapchain_ci,nullptr,&swap_chain);
 
-        if(result==VK_SUCCESS)
-            return(swap_chain);
+        if(result!=VK_SUCCESS)
+        {
+            //LOG_ERROR(OS_TEXT("vkCreateSwapchainKHR failed, result = ")+OSString(result));
+            os_err<<"vkCreateSwapchainKHR failed, result="<<result<<std::endl;
 
-        //LOG_ERROR(OS_TEXT("vkCreateSwapchainKHR failed, result = ")+OSString(result));
-        os_err<<"vkCreateSwapchainKHR failed, result="<<result<<std::endl;
+            return(VK_NULL_HANDLE);
+        }
 
-        return(VK_NULL_HANDLE);
+    #ifdef _DEBUG
+        if(dev_attr->debug_maker)
+            dev_attr->debug_maker->SetSwapchainKHR(swap_chain,"[debug maker] SwapChain");
+
+        if(dev_attr->debug_utils)
+            dev_attr->debug_utils->SetSwapchainKHR(swap_chain,"[debug utils] SwapChain");
+    #endif//_DEBUG
+
+        return(swap_chain);
     }
 }//namespace
 
@@ -90,6 +100,21 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
     if(!swapchain->sc_depth)
         return(false);
 
+    #ifdef _DEBUG
+        if(attr->debug_maker)
+        {
+            attr->debug_maker->SetImage(swapchain->sc_depth->GetImage(),"[debug maker] SwapchainDepthImage");
+            attr->debug_maker->SetDeviceMemory(swapchain->sc_depth->GetDeviceMemory(),"[debug maker] SwapchainDepthMemory");
+        }
+
+        if(attr->debug_utils)
+        {
+            attr->debug_utils->SetImage(swapchain->sc_depth->GetImage(),"[debug utils] SwapchainDepthImage");
+            attr->debug_utils->SetImageView(swapchain->sc_depth->GetVulkanImageView(),"[debug utils] SwapchainDepthImageView");
+            attr->debug_utils->SetDeviceMemory(swapchain->sc_depth->GetDeviceMemory(),"[debug utils] SwapchainDepthMemory");
+        }
+    #endif//_DEBUG
+
     swapchain->sc_color =hgl_zero_new<Texture2D *>(swapchain->color_count);
     swapchain->sc_fbo   =hgl_zero_new<Framebuffer *>(swapchain->color_count);
 
@@ -103,6 +128,25 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
         swapchain->sc_fbo[i]=CreateFBO( device_render_pass,
                                         swapchain->sc_color[i]->GetImageView(),
                                         swapchain->sc_depth->GetImageView());
+
+    #ifdef _DEBUG
+        if(attr->debug_maker)
+        {
+            attr->debug_maker->SetImage(swapchain->sc_color[i]->GetImage(),"[debug maker] SwapchainColorImage_"+AnsiString::numberOf(i));
+            attr->debug_maker->SetDeviceMemory(swapchain->sc_color[i]->GetDeviceMemory(),"[debug maker] SwapchainColorMemory_"+AnsiString::numberOf(i));
+
+            attr->debug_maker->SetFramebuffer(swapchain->sc_fbo[i]->GetFramebuffer(),"[debug maker] SwapchainFBO_"+AnsiString::numberOf(i));
+        }
+
+        if(attr->debug_utils)
+        {
+            attr->debug_utils->SetImage(swapchain->sc_color[i]->GetImage(),"[debug utils] SwapchainColorImage_"+AnsiString::numberOf(i));
+            attr->debug_utils->SetImageView(swapchain->sc_color[i]->GetVulkanImageView(),"[debug utils] SwapchainColorImageView_"+AnsiString::numberOf(i));
+            attr->debug_utils->SetDeviceMemory(swapchain->sc_color[i]->GetDeviceMemory(),"[debug utils] SwapchainColorMemory_"+AnsiString::numberOf(i));
+
+            attr->debug_utils->SetFramebuffer(swapchain->sc_fbo[i]->GetFramebuffer(),"[debug utils] SwapchainFBO_"+AnsiString::numberOf(i));
+        }
+    #endif//_DEBUG
     }
 
     return(true);

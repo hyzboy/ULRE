@@ -47,7 +47,7 @@ private:
 
 private:
 
-    VkCommandBuffer CreateCommandBuffer();
+    VkCommandBuffer CreateCommandBuffer(const AnsiString &);
 
     bool CreateSwapchainFBO(Swapchain *);
 
@@ -212,8 +212,8 @@ public: //shader & material
 
 public: //Command Buffer 相关
 
-    RenderCmdBuffer * CreateRenderCommandBuffer();
-    TextureCmdBuffer *CreateTextureCommandBuffer();
+    RenderCmdBuffer * CreateRenderCommandBuffer(const AnsiString &);
+    TextureCmdBuffer *CreateTextureCommandBuffer(const AnsiString &);
     
 public:
 

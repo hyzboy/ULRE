@@ -292,7 +292,7 @@ struct SwapchainDepthTextureCreateInfo:public TextureCreateInfo
 
 struct TextureData
 {
-    DeviceMemory *         memory;
+    DeviceMemory *      memory;
     VkImage             image;
     VkImageLayout       image_layout;
     ImageView *         image_view;
