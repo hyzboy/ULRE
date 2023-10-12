@@ -85,7 +85,7 @@ private:
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
+        RenderablePrimitiveCreater rpc(db,"Quad",VERTEX_COUNT);
 
         if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
         if(!rpc.SetVBO(VAN::TexCoord,   VF_V2F, tex_coord_data))return(false);

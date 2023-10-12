@@ -81,7 +81,7 @@ private:
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,1);
+        RenderablePrimitiveCreater rpc(db,"Rectangle",1);
 
         if(!rpc.SetVBO(VAN::Position,VF_V4F,position_data))return(false);
         if(!rpc.SetVBO(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);

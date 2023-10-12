@@ -84,7 +84,7 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
+        RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
 
         if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
         
