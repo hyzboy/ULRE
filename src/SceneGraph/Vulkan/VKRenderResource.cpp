@@ -174,9 +174,17 @@ Texture2DArray *RenderResource::CreateTexture2DArray(const AnsiString &name,cons
         GPUDeviceAttribute *da=device->GetDeviceAttribute();
         
         if(da->debug_maker)
-            da->debug_maker->SetImage(ta->GetImage(),"[debug maker] Tex2DArray:"+name);
+        {
+            da->debug_maker->SetImage(ta->GetImage(),"[debug maker] Tex2DArrayImage:"+name);
+            da->debug_maker->SetDeviceMemory(ta->GetDeviceMemory(),"[debug maker] Tex2DArrayMemory:"+name);
+        }
+
         if(da->debug_utils)
-            da->debug_utils->SetImage(ta->GetImage(),"[debug utils] Tex2DArray:"+name);
+        {
+            da->debug_utils->SetImage(ta->GetImage(),"[debug utils] Tex2DArrayImage:"+name);
+            da->debug_utils->SetImageView(ta->GetVulkanImageView(),"[debug utils] Tex2DArrayImageView:"+name);
+            da->debug_utils->SetDeviceMemory(ta->GetDeviceMemory(),"[debug utils] Tex2DArrayMemory:"+name);
+        }
     #endif//_DEBUG
 
     return ta;

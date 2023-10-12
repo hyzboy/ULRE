@@ -321,6 +321,28 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     auto_delete.Discard();  //discard autodelete
 
+    #ifdef _DEBUG
+        if(device_attr->debug_maker)
+        {
+            device_attr->debug_maker->SetPhysicalDevice(*physical_device,"[debug maker] Physical Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_maker->SetDevice(device_attr->device,"[debug maker] Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_maker->SetSurfaceKHR(surface,"[debug maker] Surface");
+            device_attr->debug_maker->SetCommandPool(device_attr->cmd_pool,"[debug maker] Main Command Pool");
+            device_attr->debug_maker->SetDescriptorPool(device_attr->desc_pool,"[debug maker] Main Descriptor Pool");
+            device_attr->debug_maker->SetPipelineCache(device_attr->pipeline_cache,"[debug maker] Main Pipeline Cache");
+        }
+
+        if(device_attr->debug_utils)
+        {
+            device_attr->debug_utils->SetPhysicalDevice(*physical_device,"[debug utils] Physical Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_utils->SetDevice(device_attr->device,"[debug utils] Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_utils->SetSurfaceKHR(surface,"[debug utils] Surface");
+            device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"[debug utils] Main Command Pool");
+            device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"[debug utils] Main Descriptor Pool");
+            device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"[debug utils] Main Pipeline Cache");
+        }
+    #endif//_DEBUG
+
     return(new GPUDevice(device_attr));
 }
 
