@@ -4,29 +4,29 @@
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
+#include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderablePrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1280;
-constexpr uint32_t SCREEN_HEIGHT=720;
-
 constexpr uint32_t VERTEX_COUNT=3;
 
-static float position_data[VERTEX_COUNT][2]=
+static float position_data_float[VERTEX_COUNT][2]=
 {
     {0.5,   0.25},
     {0.75,  0.75},
     {0.25,  0.75}
 };
 
-constexpr float color_data[VERTEX_COUNT][4]=
+static uint16 position_data_u16[VERTEX_COUNT][2]={};
+
+constexpr uint8 color_data[VERTEX_COUNT*4]=
 {   
-    {1,0,0,1},
-    {0,1,0,1},
-    {0,0,1,1}
+    255,0,0,255,
+    0,255,0,255,
+    0,0,255,255
 };
 
 //#define USE_ZERO2ONE_COORD      //使用左上角0,0右下角1,1的坐标系
@@ -46,17 +46,27 @@ private:
     {
         mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2D",Prim::Triangles);
 
+        VILConfig vil_config;
+
 #ifdef USE_ZERO2ONE_COORD
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
 #else
         cfg.coordinate_system=CoordinateSystem2D::Ortho;
+
+        cfg.position_format         =VAT_UVEC2;     //这里指定shader中使用uvec2当做顶点输入格式
+                                //      ^
+                                //      +  这上下两种格式要配套，否则会出错
+                                //      v
+        vil_config.Add(VAN::Position,VF_V2U16);     //这里指定VBO中使用RG16U当做顶点数据格式
 #endif//USE_ZERO2ONE_COORD
+
+        vil_config.Add(VAN::Color,VF_V4UN8);        //这里指定VBO中使用RGBA8UNorm当做颜色数据格式
 
         cfg.local_to_world=false;
 
         AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
 
-        material_instance=db->CreateMaterialInstance(mci);
+        material_instance=db->CreateMaterialInstance(mci,&vil_config);
 
         if(!material_instance)
             return(false);
@@ -71,18 +81,13 @@ private:
     {
         RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
 
-#ifndef USE_ZERO2ONE_COORD      //使用ortho坐标系
-
-        for(uint i=0;i<VERTEX_COUNT;i++)
-        {
-            position_data[i][0]*=SCREEN_WIDTH;
-            position_data[i][1]*=SCREEN_HEIGHT;
-        }
-
+#ifdef USE_ZERO2ONE_COORD               //使用0 to 1坐标系
+        if(!rpc.SetVBO(VAN::Position,   VF_V2F,     position_data_float ))return(false);
+#else                                   //使用ortho坐标系
+        if(!rpc.SetVBO(VAN::Position,   VF_V2U16,   position_data_u16   ))return(false);
 #endif//USE_ZERO2ONE_COORD
 
-        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
-        if(!rpc.SetVBO(VAN::Color,      VF_V4F, color_data   ))return(false);
+        if(!rpc.SetVBO(VAN::Color,      VF_V4UN8,   color_data          ))return(false);
         
         render_obj=rpc.Create(material_instance,pipeline);
         return(true);
@@ -90,10 +95,18 @@ private:
 
 public:
 
-    bool Init()
+    bool Init(uint w,uint h)
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!VulkanApplicationFramework::Init(w,h))
             return(false);
+
+    #ifndef USE_ZERO2ONE_COORD
+        for(uint i=0;i<VERTEX_COUNT;i++)
+        {
+            position_data_u16[i][0]=position_data_float[i][0]*w;
+            position_data_u16[i][1]=position_data_float[i][1]*h;
+        }
+    #endif//
 
         if(!InitMaterial())
             return(false);
@@ -117,12 +130,5 @@ public:
 
 int main(int,char **)
 {
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    RunApp<TestApp>(1280,720);
 }
