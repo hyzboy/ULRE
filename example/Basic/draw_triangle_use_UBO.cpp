@@ -69,7 +69,7 @@ private:
    
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
+        RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
 
 #ifndef USE_ZERO2ONE_COORD      //使用ortho坐标系
 

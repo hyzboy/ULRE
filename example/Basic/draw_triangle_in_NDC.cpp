@@ -108,7 +108,7 @@ private:
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,VERTEX_COUNT);
+        RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
 
 #ifdef USE_HALF_FLOAT_POSITION
         Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
