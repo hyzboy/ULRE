@@ -69,13 +69,8 @@ VkCommandBuffer GPUDevice::CreateCommandBuffer(const AnsiString &name)
         return(VK_NULL_HANDLE);
 
 #ifdef _DEBUG
-
-    if(attr->debug_maker)
-        attr->debug_maker->SetCommandBuffer(cmd_buf,"[debug maker] "+name);
-
     if(attr->debug_utils)
-        attr->debug_utils->SetCommandBuffer(cmd_buf,"[debug utils] "+name);
-
+        attr->debug_utils->SetCommandBuffer(cmd_buf,name);
 #endif//_DEBUG
 
     return cmd_buf;

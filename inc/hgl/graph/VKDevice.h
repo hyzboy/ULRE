@@ -85,6 +85,8 @@ public:
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
 
+                DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}
+
 public:
 
                 bool                Resize              (const VkExtent2D &);

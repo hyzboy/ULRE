@@ -40,18 +40,12 @@ bool Primitive::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
     buffer_list.Add(name,bd);
 
 #ifdef _DEBUG
-    auto *da=device->GetDeviceAttribute();
+    DebugUtils *du=device->GetDebugUtils();
 
-    if(da->debug_maker)
+    if(du)
     {
-        da->debug_maker->SetBuffer(vbo->GetBuffer(),"[debug maker] "+prim_name+":VBO:Buffer:"+name);
-        da->debug_maker->SetDeviceMemory(vbo->GetVkMemory(),"[debug maker] "+prim_name+":VBO:Memory:"+name);
-    }
-
-    if(da->debug_utils)
-    {
-        da->debug_utils->SetBuffer(vbo->GetBuffer(),"[debug utils] "+prim_name+":VBO:Buffer:"+name);
-        da->debug_utils->SetDeviceMemory(vbo->GetVkMemory(),"[debug utils] "+prim_name+":VBO:Memory:"+name);
+        du->SetBuffer(vbo->GetBuffer(),prim_name+":VBO:Buffer:"+name);
+        du->SetDeviceMemory(vbo->GetVkMemory(),prim_name+":VBO:Memory:"+name);
     }
 #endif//_DEBUG
 
@@ -91,18 +85,12 @@ bool Primitive::Set(IndexBuffer *ib,VkDeviceSize offset)
     index_buffer_data.offset=offset;
 
 #ifdef _DEBUG
-    auto *da=device->GetDeviceAttribute();
+    DebugUtils *du=device->GetDebugUtils();
 
-    if(da->debug_maker)
+    if(du)
     {
-        da->debug_maker->SetBuffer(ib->GetBuffer(),"[debug maker] "+prim_name+":IBO:Buffer");
-        da->debug_maker->SetDeviceMemory(ib->GetVkMemory(),"[debug maker] "+prim_name+":IBO:Memory");
-    }
-
-    if(da->debug_utils)
-    {
-        da->debug_utils->SetBuffer(ib->GetBuffer(),"[debug utils] "+prim_name+":IBO:Buffer");
-        da->debug_utils->SetDeviceMemory(ib->GetVkMemory(),"[debug utils] "+prim_name+":IBO:Memory");
+        du->SetBuffer(ib->GetBuffer(),prim_name+":IBO:Buffer");
+        du->SetDeviceMemory(ib->GetVkMemory(),prim_name+":IBO:Memory");
     }
 #endif//_DEBUG
     return(true);

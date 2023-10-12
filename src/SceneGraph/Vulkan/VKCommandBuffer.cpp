@@ -28,27 +28,18 @@ bool GPUCmdBuffer::Begin()
 #ifdef _DEBUG
 void GPUCmdBuffer::SetDebugName(const UTF8String &object_name)
 {
-    if(dev_attr->debug_maker)
-        dev_attr->debug_maker->SetCommandBuffer(cmd_buf,"[debug_maker]"+object_name);
-    
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->SetCommandBuffer(cmd_buf,"[debug_utils]"+object_name);
+        dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name);
 }
 
 void GPUCmdBuffer::BeginRegion(const UTF8String &region_name,const Color4f &color)
 {
-    if(dev_attr->debug_maker)
-        dev_attr->debug_maker->Begin(cmd_buf,"[debug_maker]"+region_name,color);
-
     if(dev_attr->debug_utils)
-        dev_attr->debug_utils->CmdBegin(cmd_buf,"[debug_utils]"+region_name,color);
+        dev_attr->debug_utils->CmdBegin(cmd_buf,region_name,color);
 }
 
 void GPUCmdBuffer::EndRegion()
 {
-    if(dev_attr->debug_maker)
-        dev_attr->debug_maker->End(cmd_buf);
-
     if(dev_attr->debug_utils)
         dev_attr->debug_utils->CmdEnd(cmd_buf);
 }

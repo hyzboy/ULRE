@@ -4,7 +4,6 @@
 #include<hgl/graph/VKTexture.h>
 
 #ifdef _DEBUG
-#include<hgl/graph/VKDebugMaker.h>
 #include<hgl/graph/VKDebugUtils.h>
 #endif//_DEBUG
 
@@ -48,7 +47,6 @@ struct GPUDeviceAttribute
     VkPipelineCache                     pipeline_cache  =VK_NULL_HANDLE;
 
 #ifdef _DEBUG
-    DebugMaker *                        debug_maker     =nullptr;
     DebugUtils *                        debug_utils     =nullptr;
 #endif//_DEBUG
 
