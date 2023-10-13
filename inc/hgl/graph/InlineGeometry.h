@@ -78,23 +78,10 @@ namespace hgl
              */
             Primitive *CreatePlaneGrid(RenderResource *db,const VIL *vil,const PlaneGridCreateInfo *pgci);
 
-            struct PlaneCreateInfo
-            {
-                Vector2f tile;
-
-            public:
-
-                PlaneCreateInfo()
-                {
-                    tile.x=1.0f;
-                    tile.y=1.0f;
-                }
-            };//struct PlaneCreateInfo
-
             /**
              * 创建一个平面(三角形)
              */
-            Primitive *CreatePlane(RenderResource *db,const VIL *vil,const PlaneCreateInfo *pci);
+            Primitive *CreatePlane(RenderResource *db,const VIL *vil);
 
             struct CubeCreateInfo
             {
