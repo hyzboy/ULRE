@@ -23,6 +23,8 @@ DebugUtils *CreateDebugUtils(VkDevice device)
 
 void DebugUtils::SetName(VkObjectType type,uint64_t handle,const char *name)
 {
+    if(!handle||!name||!*name)return;
+
     VkDebugUtilsObjectNameInfoEXT name_info={};
 
     name_info.sType         =VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;

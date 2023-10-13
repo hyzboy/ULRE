@@ -125,7 +125,6 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
         {
             attr->debug_utils->SetImage(swapchain->sc_color[i]->GetImage(),"SwapchainColorImage_"+AnsiString::numberOf(i));
             attr->debug_utils->SetImageView(swapchain->sc_color[i]->GetVulkanImageView(),"SwapchainColorImageView_"+AnsiString::numberOf(i));
-            attr->debug_utils->SetDeviceMemory(swapchain->sc_color[i]->GetDeviceMemory(),"SwapchainColorMemory_"+AnsiString::numberOf(i));
 
             attr->debug_utils->SetFramebuffer(swapchain->sc_fbo[i]->GetFramebuffer(),"SwapchainFBO_"+AnsiString::numberOf(i));
         }

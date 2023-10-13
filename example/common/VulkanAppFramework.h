@@ -145,7 +145,7 @@ public:
         {
             vp_info.Set(w,h);
 
-            ubo_vp_info=db->CreateUBO(sizeof(ViewportInfo),&vp_info);
+            ubo_vp_info=db->CreateUBO("Viewport",sizeof(ViewportInfo),&vp_info);
 
             db->global_descriptor.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
         }
@@ -515,7 +515,7 @@ public:
 
         RefreshCameraInfo(&camera_control->GetCameraInfo(),&vp_info,camera);
         
-        ubo_camera_info=db->CreateUBO(sizeof(CameraInfo),&camera_control->GetCameraInfo());
+        ubo_camera_info=db->CreateUBO("CameraInfo",sizeof(CameraInfo),&camera_control->GetCameraInfo());
 
         db->global_descriptor.AddUBO(mtl::SBS_CameraInfo.name,ubo_camera_info);
     }
