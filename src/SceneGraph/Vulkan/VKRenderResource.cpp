@@ -17,23 +17,6 @@ VBO *RenderResource::CreateVBO(VkFormat format,uint32_t count,const void *data,S
     return vb;
 }
 
-void RenderResource::AddBuffer(const AnsiString &buf_name,DeviceBuffer *buf)
-{
-    if(!buf)return;
-
-    rm_buffers.Add(buf);
-
-#ifdef _DEBUG
-    DebugUtils *du=device->GetDebugUtils();
-
-    if(du)
-    {
-        du->SetBuffer(buf->GetBuffer(),buf_name+":Buffer");
-        du->SetDeviceMemory(buf->GetVkMemory(),buf_name+":Memory");
-    }
-#endif//_DEBUG
-}
-
 #define SCENE_DB_CREATE_BUFFER(name)    DeviceBuffer *RenderResource::Create##name(const AnsiString &buf_name,VkDeviceSize size,void *data,SharingMode sharing_mode) \
                                         {   \
                                             DeviceBuffer *buf=device->Create##name(size,data,sharing_mode);   \
