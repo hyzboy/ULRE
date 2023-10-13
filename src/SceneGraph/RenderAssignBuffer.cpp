@@ -66,26 +66,21 @@ void RenderAssignBuffer::Alloc(const uint nc,const uint mc)
     vbo_assigns=device->CreateVBO(ASSIGN_VBO_FMT,node_count);
 
     #ifdef _DEBUG
-        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        DebugUtils *du=device->GetDebugUtils();
         
-        if(da->debug_maker)
+        if(du)
         {
-            da->debug_maker->SetBuffer(ubo_l2w->GetBuffer(),"[debug maker] UBO:LocalToWorld");
+            du->SetBuffer(ubo_l2w->GetBuffer(),"UBO:Buffer:LocalToWorld");
+            du->SetDeviceMemory(ubo_l2w->GetVkMemory(),"UBO:Memory:LocalToWorld");
 
             if(ubo_mi)
-                da->debug_maker->SetBuffer(ubo_mi->GetBuffer(),"[debug maker] UBO:MaterialInstance");
+            {
+                du->SetBuffer(ubo_mi->GetBuffer(),"UBO:Buffer:MaterialInstance");
+                du->SetDeviceMemory(ubo_mi->GetVkMemory(),"UBO:Memory:MaterialInstance");
+            }
 
-            da->debug_maker->SetBuffer(vbo_assigns->GetBuffer(),"[debug maker] VBO:Assign");
-        }
-
-        if(da->debug_utils)
-        {
-            da->debug_utils->SetBuffer(ubo_l2w->GetBuffer(),"[debug utils] UBO:LocalToWorld");
-
-            if(ubo_mi)
-                da->debug_utils->SetBuffer(ubo_mi->GetBuffer(),"[debug utils] UBO:MaterialInstance");
-
-            da->debug_utils->SetBuffer(vbo_assigns->GetBuffer(),"[debug utils] VBO:Assign");
+            du->SetBuffer(vbo_assigns->GetBuffer(),"VBO:Buffer:Assign");
+            du->SetDeviceMemory(vbo_assigns->GetVkMemory(),"VBO:Memory:Assign");
         }
     #endif//_DEBUG
 }

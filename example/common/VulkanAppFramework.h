@@ -202,7 +202,7 @@ public:
             cmd_buf=hgl_zero_new<RenderCmdBuffer *>(swap_chain_count);
 
             for(int32_t i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateRenderCommandBuffer();
+                cmd_buf[i]=device->CreateRenderCommandBuffer(device->GetPhysicalDevice()->GetDeviceName()+AnsiString(":RenderCmdBuffer_")+AnsiString::numberOf(i));
         }
     }
 
@@ -298,12 +298,10 @@ public:
             return(nullptr);
 
     #ifdef _DEBUG
-        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        DebugUtils *du=device->GetDebugUtils();
         
-        if(da->debug_maker)
-            da->debug_maker->SetPipeline(*p,"[debug maker] Pipeline:"+p->GetName());
-        if(da->debug_utils)
-            da->debug_utils->SetPipeline(*p,"[debug utils] Pipeline:"+p->GetName());
+        if(du)
+            du->SetPipeline(*p,"Pipeline:"+p->GetName());
     #endif//_DEBUG
 
         return p;

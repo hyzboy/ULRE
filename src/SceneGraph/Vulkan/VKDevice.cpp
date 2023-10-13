@@ -23,7 +23,7 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
     sc_rt=nullptr;
     Resize(attr->surface_caps.currentExtent);
 
-    texture_cmd_buf=CreateTextureCommandBuffer();
+    texture_cmd_buf=CreateTextureCommandBuffer(attr->physical_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
     texture_queue=CreateQueue();
 }
 
@@ -50,7 +50,7 @@ bool GPUDevice::Resize(const VkExtent2D &extent)
     return(sc_rt);
 }
 
-VkCommandBuffer GPUDevice::CreateCommandBuffer()
+VkCommandBuffer GPUDevice::CreateCommandBuffer(const AnsiString &name)
 {
     if(!attr->cmd_pool)
         return(VK_NULL_HANDLE);
@@ -68,21 +68,26 @@ VkCommandBuffer GPUDevice::CreateCommandBuffer()
     if(res!=VK_SUCCESS)
         return(VK_NULL_HANDLE);
 
+#ifdef _DEBUG
+    if(attr->debug_utils)
+        attr->debug_utils->SetCommandBuffer(cmd_buf,name);
+#endif//_DEBUG
+
     return cmd_buf;
 }
 
-RenderCmdBuffer *GPUDevice::CreateRenderCommandBuffer()
+RenderCmdBuffer *GPUDevice::CreateRenderCommandBuffer(const AnsiString &name)
 {
-    VkCommandBuffer cb=CreateCommandBuffer();
+    VkCommandBuffer cb=CreateCommandBuffer(name);
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
     return(new RenderCmdBuffer(attr,cb));
 }
 
-TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer()
+TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer(const AnsiString &name)
 {
-    VkCommandBuffer cb=CreateCommandBuffer();
+    VkCommandBuffer cb=CreateCommandBuffer(name);
 
     if(cb==VK_NULL_HANDLE)return(nullptr);
 
