@@ -69,7 +69,7 @@ private:
 
         return ro_plane_grid;
     }
-    
+
     Renderable *Add(MaterialInstance *mi,const Matrix4f &mat)
     {
         Renderable *ri=db->CreateRenderable(ro_plane_grid,mi,pipeline);

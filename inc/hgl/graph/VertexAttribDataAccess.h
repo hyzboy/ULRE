@@ -303,6 +303,23 @@ namespace hgl
                 return(true);
             }
 
+            bool Write(const T *v,const uint count)
+            {
+                if(!this->access||this->access+2>this->data_end)
+                {
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess2::Write(T *) out"));
+                    return(false);
+                }
+
+                for(uint i=0;i<count;i++)
+                {
+                    *this->access++=*v++;
+                    *this->access++=*v++;
+                }
+
+                return(true);
+            }
+
             template<typename V2>
             bool Write(const V2 &v)
             {
