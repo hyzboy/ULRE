@@ -37,7 +37,7 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     //    vsc->AddFunction(func::GetNormal);
     //}
 
-    mci->AddUBO(VK_SHADER_STAGE_VERTEX_BIT,
+    mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
                 DescriptorSetType::Global,
                 SBS_ViewportInfo);
 
