@@ -212,7 +212,7 @@ namespace hgl
                 return rc.Finish("PlaneGrid");
             }
 
-            Primitive *CreatePlane(RenderResource *db,const VIL *vil,const PlaneCreateInfo *pci)
+            Primitive *CreatePlane(RenderResource *db,const VIL *vil)
             {
                 const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                         float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
@@ -235,19 +235,14 @@ namespace hgl
                 {
                     AutoDelete<VB3f> tangent=rc.AccessVAD<VB3f>(VAN::Tangent);
 
-                    tangent->RepeatWrite(xy_tangent,4);
+                    if(tangent)tangent->RepeatWrite(xy_tangent,4);
                 }
 
                 {
                     AutoDelete<VB2f> tex_coord=rc.AccessVAD<VB2f>(VAN::TexCoord);
 
                     if(tex_coord)
-                    {
-                        xy_tex_coord[2]=xy_tex_coord[4]=pci->tile.x;
-                        xy_tex_coord[5]=xy_tex_coord[7]=pci->tile.y;
-
-                        tex_coord->Write(xy_tex_coord);
-                    }
+                        tex_coord->Write(xy_tex_coord,4);
                 }
 
                 return rc.Finish("Plane");
