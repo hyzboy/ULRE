@@ -59,6 +59,10 @@ class RenderResource
     IDObjectManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDObjectManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
+private:
+
+    void AddBuffer(const AnsiString &buf_name,DeviceBuffer *buf);
+
 public:
 
     //注：并非一定要走这里，这里只是提供一个注册和自动绑定的机制
@@ -86,8 +90,8 @@ public: // VBO/VAO
     VBO *CreateVBO(VkFormat format,uint32_t count,SharingMode sm=SharingMode::Exclusive){return CreateVBO(format,count,nullptr,sm);}
     VBO *CreateVBO(const VAD *vad,SharingMode sm=SharingMode::Exclusive){return CreateVBO(vad->GetFormat(),vad->GetCount(),vad->GetData(),sm);}
 
-    #define SCENE_DB_CREATE_FUNC(name)  DeviceBuffer *Create##name(VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
-                                        DeviceBuffer *Create##name(VkDeviceSize size,SharingMode sm=SharingMode::Exclusive);
+    #define SCENE_DB_CREATE_FUNC(name)  DeviceBuffer *Create##name(const AnsiString &buf_name,VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
+                                        DeviceBuffer *Create##name(const AnsiString &buf_name,VkDeviceSize size,SharingMode sm=SharingMode::Exclusive){return Create##name(buf_name,size,nullptr,sm);}
 
             SCENE_DB_CREATE_FUNC(UBO)
             SCENE_DB_CREATE_FUNC(SSBO)
