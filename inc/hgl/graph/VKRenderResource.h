@@ -136,7 +136,7 @@ public: //Material
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const T *data)
     {
-        return CreateMaterialInstance(mtl,vil_cfg,*data,sizeof(T));
+        return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
     }
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);

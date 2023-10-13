@@ -12,4 +12,6 @@ endmacro()
 
 CreateProject(01_PlaneGrid3D PlaneGrid3D.cpp)
 CreateProject(02_RayPicking RayPicking.cpp)
+CreateProject(03_MetricCellsGrid MetricCellsGrid.cpp)
+
 #CreateProject(03_BlenderAxis BlenderAxis.cpp)
