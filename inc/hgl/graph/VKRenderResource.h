@@ -16,6 +16,7 @@
 #include<hgl/type/ObjectManage.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
+#include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -61,7 +62,20 @@ class RenderResource
 
 private:
 
-    void AddBuffer(const AnsiString &buf_name,DeviceBuffer *buf);
+    void AddBuffer(const AnsiString &buf_name,DeviceBuffer *buf)
+    {
+        rm_buffers.Add(buf);
+
+    #ifdef _DEBUG
+        DebugUtils *du=device->GetDebugUtils();
+
+        if(du)
+        {
+            du->SetBuffer(buf->GetBuffer(),buf_name+":Buffer");
+            du->SetDeviceMemory(buf->GetVkMemory(),buf_name+":Memory");
+        }
+    #endif//_DEBUG
+    }
 
 public:
 
