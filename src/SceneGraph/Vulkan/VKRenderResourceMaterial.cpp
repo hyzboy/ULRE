@@ -65,13 +65,10 @@ const ShaderModule *RenderResource::CreateShaderModule(const AnsiString &sm_name
 
     #ifdef _DEBUG
         {
-            auto da=device->GetDeviceAttribute();
+            DebugUtils *du=device->GetDebugUtils();
 
-            if(da->debug_maker)
-                da->debug_maker->SetShaderModule(*sm,"[debug maker] Shader:"+sm_name+AnsiString(":")+GetShaderStageName(sci->GetShaderStage()));
-
-            if(da->debug_utils)
-                da->debug_utils->SetShaderModule(*sm,"[debug utils] Shader:"+sm_name+AnsiString(":")+GetShaderStageName(sci->GetShaderStage()));
+            if(du)
+                du->SetShaderModule(*sm,"Shader:"+sm_name+AnsiString(":")+GetShaderStageName(sci->GetShaderStage()));
         }
     #endif//_DEBUG
 
@@ -140,12 +137,10 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
     mtl->pipeline_layout_data=device->CreatePipelineLayoutData(mtl->desc_manager);
 
     #ifdef _DEBUG
-        GPUDeviceAttribute *da=device->GetDeviceAttribute();
+        DebugUtils *du=device->GetDebugUtils();
 
-        if(da->debug_maker)
-            da->debug_maker->SetPipelineLayout(mtl->GetPipelineLayout(),"[debug maker] PipelineLayout:"+mtl->GetName());
-        if(da->debug_utils)
-            da->debug_utils->SetPipelineLayout(mtl->GetPipelineLayout(),"[debug utils] PipelineLayout:"+mtl->GetName());
+        if(du)
+            du->SetPipelineLayout(mtl->GetPipelineLayout(),"PipelineLayout:"+mtl->GetName());
     #endif//_DEBUG
 
     if(mtl->desc_manager)
@@ -157,22 +152,13 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
                 mtl->mp_array[dst]=device->CreateMP(mtl->desc_manager,mtl->pipeline_layout_data,(DescriptorSetType)dst);
 
             #ifdef _DEBUG
-                GPUDeviceAttribute *da=device->GetDeviceAttribute();
-
                 AnsiString debug_name=mtl->GetName()+AnsiString(":")+GetDescriptorSetTypeName((DescriptorSetType)dst);
         
-                if(da->debug_maker)
+                if(du)
                 {
-                    da->debug_maker->SetDescriptorSet(mtl->mp_array[dst]->GetVkDescriptorSet(),"[debug maker] DescSet:"+debug_name);
+                    du->SetDescriptorSet(mtl->mp_array[dst]->GetVkDescriptorSet(),"DescSet:"+debug_name);
 
-                    da->debug_maker->SetDescriptorSetLayout(mtl->pipeline_layout_data->layouts[dst],"[debug maker] DescSetLayout:"+debug_name);
-                } 
-                
-                if(da->debug_utils)
-                {
-                    da->debug_utils->SetDescriptorSet(mtl->mp_array[dst]->GetVkDescriptorSet(),"[debug utils] DescSet:"+debug_name);
-
-                    da->debug_utils->SetDescriptorSetLayout(mtl->pipeline_layout_data->layouts[dst],"[debug utils] DescSetLayout:"+debug_name);
+                    du->SetDescriptorSetLayout(mtl->pipeline_layout_data->layouts[dst],"DescSetLayout:"+debug_name);
                 }
             #endif//_DEBUG
             }

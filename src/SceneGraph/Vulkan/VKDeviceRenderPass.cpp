@@ -11,6 +11,11 @@ void GPUDevice::InitRenderPassManage()
     SwapchainRenderbufferInfo rbi(attr->surface_format.format,attr->physical_device->GetDepthFormat());
 
     device_render_pass=render_pass_manage->AcquireRenderPass(&rbi);
+
+    #ifdef _DEBUG
+        if(attr->debug_utils)
+            attr->debug_utils->SetRenderPass(device_render_pass->GetVkRenderPass(),"MainDeviceRenderPass");
+    #endif//_DEBUG
 }
 
 void GPUDevice::ClearRenderPassManage()

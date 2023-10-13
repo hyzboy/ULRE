@@ -47,7 +47,7 @@ private:
 
 private:
 
-    VkCommandBuffer CreateCommandBuffer();
+    VkCommandBuffer CreateCommandBuffer(const AnsiString &);
 
     bool CreateSwapchainFBO(Swapchain *);
 
@@ -84,6 +84,8 @@ public:
     const       VkExtent2D &        GetSwapchainSize    ()const {return sc_rt->GetExtent();}
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
+
+                DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}
 
 public:
 
@@ -212,8 +214,8 @@ public: //shader & material
 
 public: //Command Buffer 相关
 
-    RenderCmdBuffer * CreateRenderCommandBuffer();
-    TextureCmdBuffer *CreateTextureCommandBuffer();
+    RenderCmdBuffer * CreateRenderCommandBuffer(const AnsiString &);
+    TextureCmdBuffer *CreateTextureCommandBuffer(const AnsiString &);
     
 public:
 

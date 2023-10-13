@@ -36,6 +36,7 @@ public:
 
             VkBuffer                    GetBuffer       ()const{return buf.buffer;}
             DeviceMemory *              GetMemory       ()const{return buf.memory;}
+            VkDeviceMemory              GetVkMemory     ()const{return buf.memory->operator VkDeviceMemory();}
     const   VkDescriptorBufferInfo *    GetBufferInfo   ()const{return &buf.info;}
 
             void *  Map     ()                                              {return buf.memory->Map();}

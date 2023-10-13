@@ -106,10 +106,8 @@ SET(VK_INST_SOURCE      ${SG_INCLUDE_PATH}/VKInstance.h
                         Vulkan/VKInstance.cpp)
 
 SET(VK_DEBUG_SOURCE     ${SG_INCLUDE_PATH}/VKDebugOut.h
-                        ${SG_INCLUDE_PATH}/VKDebugMaker.h
                         ${SG_INCLUDE_PATH}/VKDebugUtils.h
                         Vulkan/Debug/VKDebugOut.cpp
-                        Vulkan/Debug/VKDebugMaker.cpp
                         Vulkan/Debug/VKDebugUtils.cpp)
 
 SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
