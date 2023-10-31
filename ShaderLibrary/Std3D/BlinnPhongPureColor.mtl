@@ -1,16 +1,11 @@
-#Material
-Name Blinn-phong shading model only color
-Base Std3D
+﻿#Material
+Name        BlinnPhong+HalfLambert shading model only color
+Reference   https://zhuanlan.zhihu.com/p/442023993
+Base        Std3D
 
-Require LocalToWorld,Camera,Sun
+Require     LocalToWorld,Camera,Sun
 
 #MaterialInstance
-
-Code
-{
-    float Diffuse;
-    float Intensity;
-}
 
 #VertexInput
 vec3 Normal
@@ -30,4 +25,40 @@ Code
 }
 
 #Fragment
+Output
+{
+    vec4 FragColor;
+}
 
+Code
+{
+    void main()
+    {
+        //将法线归一化
+        vec3 world_normal           =normalize(Input.Normal);
+
+        //对世界坐标下的灯光方法归一化
+        vec3 world_light_direction  =normalize(sun.direction);
+
+        //点乘法线和光照
+        vec3 diffuse                =0.5*dot(world_light_direction,world_normal)+0.5;
+
+        //直接光颜色
+        vec3 direct_color           =sun.diffuse*diffuse*sun.color;
+
+    #ifndef HAVE_SPECULAR
+        FragColor=vec4(direct_color,1.0);
+    #else
+        //归一代视角方向
+        vec3 view_direction     =normalize(camera.pos-world_position);
+
+        //世界坐标下的反射光方向
+        vec3 reflect_direction  =normalize(reflect(-world_light_direction,world_normal));
+
+        //高光
+        vec3 specular           =sun.specular*pow(saturate(dot(reflect_direction,view_direction)),gloss);
+
+        FragColor=vec4(direct_color+specular,1.0);
+    #endif//HAVE_SPECULAR
+    }
+}

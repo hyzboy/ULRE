@@ -31,7 +31,7 @@ struct MetricCellsGridData
 
 constexpr const size_t MCG_SIZE=sizeof(MetricCellsGridData);
 
-constexpr const float PLANE_SIZE=512;
+constexpr const float PLANE_SIZE=1024;
 
 class TestApp:public SceneAppFramework
 {

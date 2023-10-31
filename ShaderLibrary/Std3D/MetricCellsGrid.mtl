@@ -9,6 +9,7 @@ vec2 TexCoord
 #MaterialInstance
 Length 120
 Stage  Fragment
+
 Code
 {
     vec4 x_color;
@@ -31,6 +32,7 @@ Output
 {
     vec2 TexCoord
 }
+
 Code
 {
     void main()
@@ -72,12 +74,13 @@ Code
         // ======= AXES
         float xb = step(abs(x) - mi.axis_line_width, 0.0);
         float yb = step(abs(y) - mi.axis_line_width, 0.0);
+
         color.rgb = mix(color.rgb, mi.x_axis_color.rgb, (xb));
         color.rgb = mix(color.rgb, mi.y_axis_color.rgb, (yb));
 
         // ======= CENTER
         float cb = length(vec2(x,y))-mi.center_radius;
-        color.rgb = mix(color.rgb, mi.center_color.rgb, cb>0.0?0.0:smoothstep(0,edge*256.0,abs(cb)));
+        color.rgb = mix(color.rgb, mi.center_color.rgb, cb>0.0?0.0:smoothstep(0,edge*mi.scale.y,abs(cb)));
 
         FragColor=color;
     }

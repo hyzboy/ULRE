@@ -95,7 +95,6 @@ void main()
 
             return(true);
         }
-
     };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 
