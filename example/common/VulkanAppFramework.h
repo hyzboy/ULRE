@@ -129,10 +129,16 @@ public:
                 return(false);
         }
 
-        device=CreateRenderDevice(inst,win);
+        {
+            VulkanHardwareRequirement vh_req;
 
-        if(!device)
-            return(false);
+            vh_req.wide_lines=true;
+
+            device=CreateRenderDevice(inst,win,&vh_req);
+
+            if(!device)
+                return(false);
+        }
 
         device_render_pass=device->GetRenderPass();
 
@@ -488,7 +494,7 @@ public:
         SAFE_CLEAR(camera);
     }
 
-    virtual bool Init(int w,int h)
+    virtual bool Init(int w,int h) override
     {
         if(!VulkanApplicationFramework::Init(w,h))
             return(false);
@@ -574,7 +580,7 @@ public:
         SAFE_CLEAR(render_list);
     }
 
-    virtual bool Init(uint width,uint height)
+    virtual bool Init(int width,int height) override
     {
         if(!CameraAppFramework::Init(width,height))
             return(false);
