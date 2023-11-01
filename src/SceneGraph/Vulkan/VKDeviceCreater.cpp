@@ -333,10 +333,10 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
 
 VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
                                             Window *win,
+                                            const VulkanHardwareRequirement *req,
                                             const PreferFormats *spf_color,
                                             const PreferColorSpaces *spf_color_space,
-                                            const PreferFormats *spf_depth,
-                                            const VulkanHardwareRequirement *req)
+                                            const PreferFormats *spf_depth)
 {
     instance=vi;
     window=win;

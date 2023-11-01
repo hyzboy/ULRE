@@ -247,10 +247,10 @@ public:
 
     VulkanDeviceCreater(VulkanInstance *vi,
                         Window *win,
+                        const VulkanHardwareRequirement *req,
                         const PreferFormats *spf_color,
                         const PreferColorSpaces *spf_color_space,
-                        const PreferFormats *spf_depth,
-                        const VulkanHardwareRequirement *req);
+                        const PreferFormats *spf_depth);
 
     virtual bool ChoosePhysicalDevice();
 
@@ -267,12 +267,12 @@ public:
 
 inline GPUDevice *CreateRenderDevice(   VulkanInstance *vi,
                                         Window *win,
+                                        const VulkanHardwareRequirement *req=nullptr,
                                         const PreferFormats *       spf_color       =&PreferSDR,
                                         const PreferColorSpaces *   spf_color_space =&PreferNonlinear,
-                                        const PreferFormats *       spf_depth       =&PreferDepth,
-                                        const VulkanHardwareRequirement *req=nullptr)
+                                        const PreferFormats *       spf_depth       =&PreferDepth)
 {
-    VulkanDeviceCreater vdc(vi,win,spf_color,spf_color_space,spf_depth,req);
+    VulkanDeviceCreater vdc(vi,win,req,spf_color,spf_color_space,spf_depth);
 
     return vdc.Create();
 }
@@ -281,34 +281,34 @@ inline GPUDevice *CreateRenderDeviceLDR(VulkanInstance *vi,
                                         Window *win,
                                         const VulkanHardwareRequirement *req=nullptr)
 {
-    return CreateRenderDevice(vi,win,&PreferLDR,&PreferNonlinear,&PreferDepth,req);
+    return CreateRenderDevice(vi,win,req,&PreferLDR,&PreferNonlinear,&PreferDepth);
 }
 
 inline GPUDevice *CreateRenderDeviceSDR(VulkanInstance *vi,
                                         Window *win,
                                         const VulkanHardwareRequirement *req=nullptr)
 {
-    return CreateRenderDevice(vi,win,&PreferSDR,&PreferNonlinear,&PreferDepth,req);
+    return CreateRenderDevice(vi,win,req,&PreferSDR,&PreferNonlinear,&PreferDepth);
 }
 
 inline GPUDevice *CreateRenderDeviceHDR16(  VulkanInstance *vi,
                                             Window *win,
                                             const VulkanHardwareRequirement *req=nullptr)
 {
-    return CreateRenderDevice(vi,win,&PreferHDR16,&PreferLinear,&PreferDepth,req);
+    return CreateRenderDevice(vi,win,req,&PreferHDR16,&PreferLinear,&PreferDepth);
 }
 
 inline GPUDevice *CreateRenderDeviceHDR32(  VulkanInstance *vi,
                                             Window *win,
                                             const VulkanHardwareRequirement *req=nullptr)
 {
-    return CreateRenderDevice(vi,win,&PreferHDR32,&PreferLinear,&PreferDepth,req);
+    return CreateRenderDevice(vi,win,req,&PreferHDR32,&PreferLinear,&PreferDepth);
 }
 
 inline GPUDevice *CreateRenderDeviceHDR(VulkanInstance *vi,
                                         Window *win,
                                         const VulkanHardwareRequirement *req=nullptr)
 {
-    return CreateRenderDevice(vi,win,&PreferHDR,&PreferLinear,&PreferDepth,req);
+    return CreateRenderDevice(vi,win,req,&PreferHDR,&PreferLinear,&PreferDepth);
 }
 VK_NAMESPACE_END
