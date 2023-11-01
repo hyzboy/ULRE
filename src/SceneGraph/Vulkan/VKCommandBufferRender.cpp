@@ -14,8 +14,6 @@ RenderCmdBuffer::RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer 
     hgl_zero(render_area);
     hgl_zero(viewport);
 
-    default_line_width=1.0;
-
     fbo=nullptr;
     pipeline_layout=VK_NULL_HANDLE;
 }
@@ -94,7 +92,6 @@ bool RenderCmdBuffer::BeginRenderPass()
 
     vkCmdSetViewport(cmd_buf,0,1,&viewport);
     vkCmdSetScissor(cmd_buf,0,1,&render_area);
-    vkCmdSetLineWidth(cmd_buf,default_line_width);
 
     pipeline_layout=VK_NULL_HANDLE;
 
