@@ -43,9 +43,7 @@ class RenderCmdBuffer:public GPUCmdBuffer
     VkClearValue *clear_values;
     VkRect2D render_area;
     VkViewport viewport;
-
-    float default_line_width;
-    
+   
     Framebuffer *fbo;
     RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
@@ -178,8 +176,6 @@ public:
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}
-
-    void SetLineWidth       (float line_width)                                      {vkCmdSetLineWidth(cmd_buf,line_width);}
 
     void SetDepthBias       (float constant_factor,float clamp,float slope_factor)  {vkCmdSetDepthBias(cmd_buf,constant_factor,clamp,slope_factor);}
     void SetDepthBounds     (float min_db,float max_db)                             {vkCmdSetDepthBounds(cmd_buf,min_db,max_db);}
