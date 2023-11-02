@@ -6,7 +6,6 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/Camera.h>
-#include<hgl/graph/Ray.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 
@@ -33,10 +32,6 @@ private:
     MaterialInstance *  mi_line             =nullptr;
     Pipeline *          pipeline_vtx_color  =nullptr;
     Primitive *         ro_line             =nullptr;
-
-    VBO *               vbo_pos             =nullptr;
-
-    Ray                 ray;
 
 private:
 
@@ -169,9 +164,10 @@ private:
         }
 
         {
-            constexpr const uint  AXIS_MAX_LINES =7;
+            constexpr const uint AXIS_MAX_LINES     =7;
+            constexpr const uint AXIS_MAX_VERTICES  =AXIS_MAX_LINES*2*3;
 
-            ro_line=db->CreatePrimitive("Line",AXIS_MAX_LINES*2*3);
+            ro_line=db->CreatePrimitive("Line",AXIS_MAX_VERTICES);
             if(!ro_line)return(false);
 
             Vector3f position_data[3][AXIS_MAX_LINES*2];
@@ -186,8 +182,8 @@ private:
             for(Color4f &c:color_data[1])c=Color4f(0,1,0,1);
             for(Color4f &c:color_data[2])c=Color4f(0,0,1,1);
             
-            if(!ro_line->Set(VAN::Position,  vbo_pos=   db->CreateVBO(VF_V3F,AXIS_MAX_LINES*2*3,position_data)))return(false);
-            if(!ro_line->Set(VAN::Color,                db->CreateVBO(VF_V4F,AXIS_MAX_LINES*2*3,color_data   )))return(false);
+            if(!ro_line->Set(VAN::Position, db->CreateVBO(VF_V3F,AXIS_MAX_VERTICES,position_data)))return(false);
+            if(!ro_line->Set(VAN::Color,    db->CreateVBO(VF_V4F,AXIS_MAX_VERTICES,color_data   )))return(false);
         }
 
         return(true);
@@ -195,7 +191,7 @@ private:
 
     bool InitScene()
     {
-        //Add(ro_plane_grid,mi_plane_grid,pipeline_vtx_lum);
+        Add(ro_plane_grid,mi_plane_grid,pipeline_vtx_lum);
         Add(ro_line,mi_line,pipeline_vtx_color);
 
         camera->pos=Vector3f(32,32,32);
