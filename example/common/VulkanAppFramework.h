@@ -90,7 +90,7 @@ public:
         SAFE_CLEAR(inst);
     }
 
-    virtual bool Init(int w,int h)
+    virtual bool Init(uint w,uint h)
     {
         logger::InitLogger(OS_TEXT("VulkanTest"));
 
@@ -159,7 +159,7 @@ public:
         return(true);
     }
 
-    virtual void Resize(int w,int h)
+    virtual void Resize(uint w,uint h)
     {
         vp_info.Set(w,h);
         ubo_vp_info->Write(&vp_info);
@@ -494,7 +494,7 @@ public:
         SAFE_CLEAR(camera);
     }
 
-    virtual bool Init(int w,int h) override
+    virtual bool Init(uint w,uint h) override
     {
         if(!VulkanApplicationFramework::Init(w,h))
             return(false);
@@ -526,7 +526,7 @@ public:
         db->global_descriptor.AddUBO(mtl::SBS_CameraInfo.name,ubo_camera_info);
     }
 
-    void Resize(int w,int h)override
+    void Resize(uint w,uint h)override
     {
         vp_info.Set(w,h);
 
@@ -580,7 +580,7 @@ public:
         SAFE_CLEAR(render_list);
     }
 
-    virtual bool Init(int width,int height) override
+    virtual bool Init(uint width,uint height) override
     {
         if(!CameraAppFramework::Init(width,height))
             return(false);
@@ -595,7 +595,7 @@ public:
         VulkanApplicationFramework::BuildCommandBuffer(index,render_list);
     }
 
-    virtual void Resize(int w,int h) override
+    virtual void Resize(uint w,uint h) override
     {
         CameraAppFramework::Resize(w,h);
         
