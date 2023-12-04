@@ -34,16 +34,27 @@ namespace material_file
         SamplerType type;
     };
 
+    struct UBOData
+    {
+        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
+
+        char filename[HGL_MAX_PATH];
+
+        uint32_t shader_stage_flag_bits;
+    };
+
+    using UBODataList=List<UBOData>;
+
     struct ShaderData
     {
-        VkShaderStageFlagBits    shader_stage;
+        VkShaderStageFlagBits   shader_stage;
 
-        const char *code;
-        uint        code_length;
+        const char *            code;
+        uint                    code_length;
 
-        List<UniformAttrib> output;
+        List<UniformAttrib>     output;
 
-        List<SamplerData>   sampler;
+        List<SamplerData>       sampler;
 
     public:
 
@@ -90,6 +101,8 @@ namespace material_file
         MaterialInstanceData    mi{};
 
         List<UniformAttrib>     vi;                         ///<Vertex Input
+
+        UBODataList             ubo_list;
 
         ShaderDataMap           shader;
 

@@ -63,19 +63,113 @@ namespace
         return MaterialFileBlock::None;
     }
 
+    const uint32_t ShaderStageParse(char *text,const char *ep)
+    {
+        uint32_t shader_stage_flag_bits=0;
+        char *sp;
+
+        while(*text==' '||*text=='\t')++text;
+
+        while(text<ep)
+        {
+            sp=text;
+
+            while(hgl::isalpha(*text))
+                ++text;
+
+            shader_stage_flag_bits|=GetShaderStageFlagBits(sp,text-sp);
+
+            ++text;
+        }
+
+        return shader_stage_flag_bits;
+    }
+
+    int ClipCodeString(char *str,const int max_len,const char *text)
+    {
+        while(*text==' '||*text=='\t')++text;
+
+        const char *sp=text;
+
+        while(hgl::iscodechar(*text))++text;
+
+        hgl::strcpy(str,max_len,sp,text-sp);
+
+        return text-sp;
+    }
+
+    struct UBOParse:public TextParse
+    {
+        UBOData ubo_data;
+
+    public:
+
+        void Clear()
+        {
+            hgl_zero(ubo_data);
+        }
+
+        bool OnLine(char *text,const int len) override
+        {
+            if(!text||!*text||len<=0)
+                return(false);
+
+            if(*text=='{')
+            {
+                ++text;
+                while(*text=='\r'||*text=='\n')++text;
+
+                return(false);
+            }
+            
+            if(*text=='}')
+            {
+                *text=0;
+                return(true);
+            }
+
+            while(*text==' '||*text=='\t')++text;
+            if(text[0]=='/'&&text[1]=='/')
+                return(false);
+
+            if(hgl::stricmp(text,"File ",5)==0)
+            {
+                ClipCodeString(ubo_data.filename,sizeof(ubo_data.filename),text+5);
+            }
+            else
+            if(hgl::stricmp(text,"Name ",5)==0)
+            {
+                ClipCodeString(ubo_data.name,sizeof(ubo_data.name),text+5);
+            }
+            else
+            if(hgl::stricmp(text,"Stage ",6)==0)
+            {
+                ubo_data.shader_stage_flag_bits=ShaderStageParse(text+6,text+len);
+            }
+
+            return(false);
+        }
+    };//struct UBOParse
+
     struct MaterialBlockParse:public TextParse
     {
         MaterialFileBlock state;
 
         AnsiStringList *require_list=nullptr;
 
+        UBODataList *ubo_list=nullptr;
+
+        bool ubo=false;
+        UBOParse ubo_parse;
+
     public:
 
-        MaterialBlockParse(AnsiStringList *asl)
+        MaterialBlockParse(AnsiStringList *asl,UBODataList *udl)
         {
             state=MaterialFileBlock::None;
 
             require_list=asl;
+            ubo_list=udl;
         }
 
         bool OnLine(char *text,const int len) override
@@ -84,6 +178,19 @@ namespace
                 return(false);
 
             char *ep=text+len;
+
+            if(ubo)
+            {
+                if(ubo_parse.OnLine(text,len))
+                {
+                    ubo_list->Add(ubo_parse.ubo_data);
+
+                    ubo_parse.Clear();
+                    ubo=false;
+                }
+
+                return(true);
+            }
 
             if(hgl::stricmp(text,"Require ",8)==0)
             {
@@ -101,6 +208,11 @@ namespace
 
                     sp=text;
                 }
+            }
+            else
+            if(hgl::stricmp(text,"UBO",3)==0)
+            {
+                ubo=true;
             }
 
             return(true);
@@ -195,24 +307,7 @@ namespace
             else
             if(hgl::stricmp(text,"Stage ",6)==0)
             {
-                const char *ep=text+len;
-                const char *sp;
-
-                text+=6;
-
-                while(*text==' '||*text=='\t')++text;
-
-                while(text<ep)
-                {
-                    sp=text;
-
-                    while(hgl::isalpha(*text))
-                        ++text;
-
-                    shader_stage_flag_bits|=GetShaderStageFlagBits(sp,text-sp);
-
-                    ++text;
-                }
+                shader_stage_flag_bits=ShaderStageParse(text+6,text+len);
             }
 
             return(true);
@@ -461,7 +556,7 @@ namespace
                 state=GetMaterialFileState(text+1,len-1);
 
                 if(state==MaterialFileBlock::Material)
-                    parse=new MaterialBlockParse(&(mfd->require_list));
+                    parse=new MaterialBlockParse(&(mfd->require_list),&(mfd->ubo_list));
                 else
                 if(state==MaterialFileBlock::MaterialInstance)
                     parse=new MaterialInstanceBlockParse(&(mfd->mi));
