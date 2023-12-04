@@ -638,6 +638,24 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
     if(!tis.Run())
         return nullptr;
 
+    if(mfd->ubo_list.GetCount()>0)
+    {
+        const OSString mtl_path=filesystem::ClipPathname(mtl_os_filename,false);
+
+        for(UBOData &ud:mfd->ubo_list)
+        {
+            const OSString ubo_osfn=ToOSString(ud.filename);
+
+            const OSString ubo_os_filename=filesystem::MergeFilename(mtl_path,ubo_osfn);
+
+            if(!filesystem::FileExist(ubo_os_filename))
+                continue;
+
+            char *data;
+            int size=filesystem::LoadFileToMemory(ubo_os_filename,(void **)&data,true);
+        }        
+    }
+
     return mfd;
 }
 STD_MTL_NAMESPACE_END
