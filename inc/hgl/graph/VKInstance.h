@@ -30,6 +30,11 @@ VK_NAMESPACE_BEGIN
 
         struct
         {
+            VK_BOOL1BIT(switchable_graphics)
+        }amd;
+
+        struct
+        {
             VK_BOOL1BIT(optimus)
         }nv;
 
