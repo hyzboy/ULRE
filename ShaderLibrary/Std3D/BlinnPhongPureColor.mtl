@@ -3,7 +3,16 @@ Name        BlinnPhong+HalfLambert shading model only color
 Reference   https://zhuanlan.zhihu.com/p/442023993
 Base        Std3D
 
-Require     LocalToWorld,Camera,Sun
+//某些Require并不真的存在.ubo文件，写成一行一个是为了方便未来改成带路径的
+Require     LocalToWorld
+Require     Camera
+
+UBO
+{
+    File    Sun.ubo
+    Name    sun
+    Stage   Vertex,Fragment
+}
 
 #MaterialInstance
 
