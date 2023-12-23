@@ -10,7 +10,7 @@ namespace material_file
     using namespace hgl;
     using namespace hgl::graph;
 
-    struct UniformAttrib
+    struct ShaderIOAttrib
     {
         VAT vat;
         
@@ -52,7 +52,7 @@ namespace material_file
         const char *            code;
         uint                    code_length;
 
-        List<UniformAttrib>     output;
+        List<ShaderIOAttrib>    output;
 
         List<SamplerData>       sampler;
 
@@ -100,7 +100,7 @@ namespace material_file
 
         MaterialInstanceData    mi{};
 
-        List<UniformAttrib>     vi;                         ///<Vertex Input
+        List<ShaderIOAttrib>    vi;                         ///<Vertex Input
 
         UBODataList             ubo_list;
 

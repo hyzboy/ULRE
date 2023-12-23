@@ -144,19 +144,10 @@ enum IndexType:uint
     U8=VK_INDEX_TYPE_UINT8_EXT,
 };
 
-/**
- * max-lengths:
- *
-        256 bytes:  nvidia,arm
-        128 bytes:  amd,intel,powervr,adreno
- */
-struct PushConstant
-{
-    Matrix4f local_to_world;
-    Matrix4f normal;
-};
-
-constexpr uint32_t MAX_PUSH_CONSTANT_BYTES=sizeof(PushConstant);
+//Push Constant max-lengths:
+//
+//    256 bytes:  nvidia,arm
+//    128 bytes:  amd,intel,powervr,adreno
 
 inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d,const uint32 depth=1)
 {

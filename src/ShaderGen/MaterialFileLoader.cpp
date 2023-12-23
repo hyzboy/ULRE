@@ -314,7 +314,7 @@ namespace
         }
     };//struct MaterialInstanceBlockParse
 
-    bool ParseUniformAttrib(UniformAttrib *ua,const char *str)
+    bool ParseUniformAttrib(ShaderIOAttrib *ua,const char *str)
     {
         const char *sp;
 
@@ -337,11 +337,11 @@ namespace
 
     struct VertexInputBlockParse:public TextParse
     {
-        List<UniformAttrib> *vi_list=nullptr;
+        List<ShaderIOAttrib> *vi_list=nullptr;
 
     public:
 
-        VertexInputBlockParse(List<UniformAttrib> *ual)
+        VertexInputBlockParse(List<ShaderIOAttrib> *ual)
         {
             vi_list=ual;
         }
@@ -351,7 +351,7 @@ namespace
             if(!text||!*text||len<=0)
                 return(false);
 
-            UniformAttrib ua;
+            ShaderIOAttrib ua;
 
             if(ParseUniformAttrib(&ua,text))
                 vi_list->Add(ua);
@@ -402,7 +402,7 @@ namespace
                     return(true);
                 }
 
-                UniformAttrib ua;
+                ShaderIOAttrib ua;
 
                 if(ParseUniformAttrib(&ua,text))
                     shader_data->output.Add(ua);
