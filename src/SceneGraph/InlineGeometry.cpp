@@ -166,24 +166,24 @@ namespace hgl
             {
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(((pgci->grid_size.width+1)+(pgci->grid_size.height+1))*2))
+                if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVAD<VB3f>(VAN::Position);
 
-                const float right=float(pgci->grid_size.width)/2.0f;
+                const float right=float(pgci->grid_size.Width())/2.0f;
                 const float left =-right;
 
-                const float bottom=float(pgci->grid_size.height)/2.0f;
+                const float bottom=float(pgci->grid_size.Height())/2.0f;
                 const float top   =-bottom;
 
-                for(int row=0;row<=pgci->grid_size.height;row++)
+                for(int row=0;row<=pgci->grid_size.Height();row++)
                 {
                     vertex->WriteLine(  Vector3f(left ,top+row,0),
                                         Vector3f(right,top+row,0));
                 }
 
-                for(int col=0;col<=pgci->grid_size.width;col++)
+                for(int col=0;col<=pgci->grid_size.Width();col++)
                 {
                     vertex->WriteLine(Vector3f(left+col,top,   0),
                                       Vector3f(left+col,bottom,0));
@@ -192,17 +192,17 @@ namespace hgl
                 AutoDelete<VB1f> lum=rc.AccessVAD<VB1f>(VAN::Luminance);
                 if(lum)
                 {
-                    for(int row=0;row<=pgci->grid_size.height;row++)
+                    for(int row=0;row<=pgci->grid_size.Height();row++)
                     {
-                        if((row%pgci->sub_count.height)==0)
+                        if((row%pgci->sub_count.Height())==0)
                             lum->RepeatWrite(pgci->sub_lum,2);
                         else
                             lum->RepeatWrite(pgci->lum,2);
                     }
 
-                    for(int col=0;col<=pgci->grid_size.width;col++)
+                    for(int col=0;col<=pgci->grid_size.Width();col++)
                     {
-                        if((col%pgci->sub_count.width)==0)
+                        if((col%pgci->sub_count.Width())==0)
                             lum->RepeatWrite(pgci->sub_lum,2);
                         else
                             lum->RepeatWrite(pgci->lum,2);
