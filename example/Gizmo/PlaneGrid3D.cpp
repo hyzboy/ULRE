@@ -56,11 +56,8 @@ private:
 
         struct PlaneGridCreateInfo pgci;
 
-        pgci.grid_size.width =32;
-        pgci.grid_size.height=32;
-
-        pgci.sub_count.width =8;
-        pgci.sub_count.height=8;
+        pgci.grid_size.Set(32,32);
+        pgci.sub_count.Set(8,8);
 
         pgci.lum=0.5;
         pgci.sub_lum=1.0;
