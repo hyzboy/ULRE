@@ -31,10 +31,10 @@ class TestApp:public SceneAppFramework
 
 private:
 
-    Material *          material            =nullptr;
+    Material *          mtl_vertex_lum      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
 
-    Pipeline *          pipeline            =nullptr;
+    Pipeline *          p_line            =nullptr;
 
     Primitive *         ro_plane_grid       =nullptr;
 
@@ -48,15 +48,15 @@ private:
 
         cfg.local_to_world=true;
 
-        material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
-        if(!material)return(false);
+        mtl_vertex_lum=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
+        if(!mtl_vertex_lum)return(false);
 
-        mi_plane_grid=db->CreateMaterialInstance(material,nullptr,&white_color);
+        mi_plane_grid=db->CreateMaterialInstance(mtl_vertex_lum,nullptr,&white_color);
         if(!mi_plane_grid)return(false);
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Lines);
+        p_line=CreatePipeline(mtl_vertex_lum,InlinePipeline::Solid3D,Prim::Lines);
 
-        if(!pipeline)
+        if(!p_line)
             return(false);
 
         return(true);
@@ -64,7 +64,7 @@ private:
     
     Renderable *Add(Primitive *r,MaterialInstance *mi)
     {
-        Renderable *ri=db->CreateRenderable(r,mi,pipeline);
+        Renderable *ri=db->CreateRenderable(r,mi,p_line);
 
         if(!ri)
         {
@@ -90,7 +90,7 @@ private:
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
 
-            ro_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
+            ro_plane_grid=CreatePlaneGrid(db,mtl_vertex_lum->GetDefaultVIL(),&pgci);
         }
 
         return(true);
