@@ -34,7 +34,7 @@ private:
     Material *          mtl_vertex_lum      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
 
-    Pipeline *          p_line            =nullptr;
+    Pipeline *          p_line              =nullptr;
 
     Primitive *         ro_plane_grid       =nullptr;
 
@@ -42,7 +42,7 @@ private:
 
 private:
 
-    bool InitMaterialAndPipeline()
+    bool InitVertexLumMP()
     {
         mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
 
@@ -117,7 +117,7 @@ public:
         if(!SceneAppFramework::Init(w,h))
             return(false);
 
-        if(!InitMaterialAndPipeline())
+        if(!InitVertexLumMP())
             return(false);
 
         if(!CreateRenderObject())
