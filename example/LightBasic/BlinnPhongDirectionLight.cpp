@@ -13,32 +13,18 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-static float position_data[2][3]=
-{
-    {100,100,100},
-    {0,0,0}
-};
-
 static float lumiance_data[2]={1,1};
 
 static Color4f white_color(1,1,1,1);
 
 class TestApp:public SceneAppFramework
 {
-    Color4f color;
-
-    DeviceBuffer *ubo_color=nullptr;
-
 private:
 
     Material *          mtl_vertex_lum      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
-
     Pipeline *          p_line              =nullptr;
-
     Primitive *         ro_plane_grid       =nullptr;
-
-    VBO *               vbo_pos             =nullptr;
 
 private:
 
