@@ -49,6 +49,8 @@ SOURCE_GROUP("Common" FILES ${SHADERGEN_COMMON_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+SET(BLINN_PHONG_HEADER_FILES ${STD_MTL_HEADER_PATH}/BlinnPhong.h)
+
 SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/Std2DMaterial.h
                             2d/Std2DMaterial.cpp
@@ -76,6 +78,9 @@ SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
                     MaterialFileLoader.cpp)
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
+
+SOURCE_GROUP("Standard Material\\Light Model\\Blinn Phong" FILES ${BLINN_PHONG_HEADER_FILES})
+
 SOURCE_GROUP("Standard Material\\2D" FILES ${STD_MTL_2D_SOURCE_FILES})
 SOURCE_GROUP("Standard Material\\3D" FILES ${STD_MTL_3D_SOURCE_FILES})
 
@@ -93,6 +98,7 @@ add_cm_library(ULRE.ShaderGen "ULRE"    ${DESC_INFO_HEADER_FILES}
                                         ${SHADERGEN_COMMON_FILES}
                                         ${SHADER_LIBRARY_FILES}
                                         ${STD_MTL_SOURCE}
+                                        ${BLINN_PHONG_HEADER_FILES}
                                         ${STD_MTL_2D_SOURCE_FILES}
                                         ${STD_MTL_3D_SOURCE_FILES}
 )

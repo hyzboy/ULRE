@@ -26,7 +26,7 @@ private:
     Material *          mtl_vtx_lum         =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          pipeline_vtx_lum    =nullptr;
-    Primitive *         ro_plane_grid       =nullptr;
+    Primitive *         prim_plane_grid       =nullptr;
 
     Material *          mtl_vtx_color       =nullptr;
     MaterialInstance *  mi_line             =nullptr;
@@ -158,7 +158,7 @@ private:
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
 
-            ro_plane_grid=CreatePlaneGrid(db,mtl_vtx_lum->GetDefaultVIL(),&pgci);
+            prim_plane_grid=CreatePlaneGrid(db,mtl_vtx_lum->GetDefaultVIL(),&pgci);
         }
 
         {
@@ -189,7 +189,7 @@ private:
 
     bool InitScene()
     {
-        Add(ro_plane_grid,mi_plane_grid,pipeline_vtx_lum);
+        Add(prim_plane_grid,mi_plane_grid,pipeline_vtx_lum);
         Add(ro_line,mi_line,pipeline_vtx_color);
 
         camera->pos=Vector3f(32,32,32);
