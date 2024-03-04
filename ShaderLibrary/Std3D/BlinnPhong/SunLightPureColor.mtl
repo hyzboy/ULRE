@@ -1,17 +1,19 @@
 ﻿#Material
 Name        BlinnPhong+HalfLambert shading model only color
 Reference   https://zhuanlan.zhihu.com/p/442023993
-Base        Std3D
+Base        Std3D/BlinnPhong
 
 //某些Require并不真的存在.ubo文件，写成一行一个是为了方便未来改成带路径的
 Require     LocalToWorld
 Require     Camera
 
+define      HAVE_SPECULAR   off     //默认不定义HAVE_SPECULAR
+
 UBO
 {
-    File    Sun.ubo
-    Name    sun
-    Stage   Vertex,Fragment
+    File    Sun.ubo             //文件名
+    Name    sun                 //在代码中的变量名
+    Stage   Vertex,Fragment     //会引用的shader
 }
 
 #MaterialInstance
