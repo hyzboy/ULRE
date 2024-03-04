@@ -19,12 +19,19 @@ static Color4f white_color(1,1,1,1);
 
 class TestApp:public SceneAppFramework
 {
-private:
+private:    //plane grid
 
     Material *          mtl_vertex_lum      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          p_line              =nullptr;
-    Primitive *         ro_plane_grid       =nullptr;
+    Primitive *         prim_plane_grid     =nullptr;
+
+private:    //sphere
+
+    Material *          mtl_sun_light       =nullptr;
+    MaterialInstance *  mi_sphere           =nullptr;
+    Pipeline *          p_sphere            =nullptr;
+    Primitive *         prim_sphere         =nullptr;
 
 private:
 
@@ -47,10 +54,30 @@ private:
 
         return(true);
     }
-    
-    Renderable *Add(Primitive *r,MaterialInstance *mi)
+
+    bool InitBlinnPhongSunLightMP()
     {
-        Renderable *ri=db->CreateRenderable(r,mi,p_line);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"BlinnPhong3D",Prim::Triangles);
+
+        cfg.local_to_world=true;
+
+        mtl_sun_light=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColor",&cfg);
+        if(!mtl_sun_light)return(false);
+
+        mi_sphere=db->CreateMaterialInstance(mtl_sun_light);
+        if(!mi_sphere)return(false);
+
+        p_sphere=CreatePipeline(mtl_sun_light,InlinePipeline::Solid3D,Prim::Triangles);
+
+        if(!p_sphere)
+            return(false);
+
+        return(true);        
+    }
+    
+    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
+    {
+        Renderable *ri=db->CreateRenderable(r,mi,p);
 
         if(!ri)
         {
@@ -67,6 +94,7 @@ private:
     {
         using namespace inline_geometry;
 
+        //Plane Grid
         {
             struct PlaneGridCreateInfo pgci;
 
@@ -76,7 +104,12 @@ private:
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
 
-            ro_plane_grid=CreatePlaneGrid(db,mtl_vertex_lum->GetDefaultVIL(),&pgci);
+            prim_plane_grid=CreatePlaneGrid(db,mtl_vertex_lum->GetDefaultVIL(),&pgci);
+        }
+
+        //Sphere
+        {
+            prim_sphere=CreateSphere(db,mi_sphere->GetVIL(),16);
         }
 
         return(true);
@@ -84,7 +117,8 @@ private:
 
     bool InitScene()
     {
-        Add(ro_plane_grid,mi_plane_grid);
+        Add(prim_plane_grid,mi_plane_grid,p_line);
+        Add(prim_sphere,mi_sphere,p_sphere);
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
@@ -104,6 +138,9 @@ public:
             return(false);
 
         if(!InitVertexLumMP())
+            return(false);
+
+        if(!InitBlinnPhongSunLightMP())
             return(false);
 
         if(!CreateRenderObject())

@@ -38,7 +38,7 @@ private:
 
     Pipeline *          pipeline            =nullptr;
 
-    Primitive *         ro_plane_grid       =nullptr;
+    Primitive *         prim_plane_grid       =nullptr;
 
     Primitive *         ro_line             =nullptr;
 
@@ -99,7 +99,7 @@ private:
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
 
-            ro_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
+            prim_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
         }
 
         {
@@ -115,7 +115,7 @@ private:
 
     bool InitScene()
     {
-        Add(ro_plane_grid,mi_plane_grid);
+        Add(prim_plane_grid,mi_plane_grid);
         Add(ro_line,mi_line);
 
         camera->pos=Vector3f(32,32,32);

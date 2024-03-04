@@ -19,7 +19,7 @@ private:
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Primitive *         ro_plane_grid       =nullptr;
+    Primitive *         prim_plane_grid       =nullptr;
     MaterialInstance *  material_instance[3]{};
 
 private:
@@ -62,14 +62,14 @@ private:
         pgci.lum=0.5;
         pgci.sub_lum=1.0;
 
-        ro_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
+        prim_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
 
-        return ro_plane_grid;
+        return prim_plane_grid;
     }
 
     Renderable *Add(MaterialInstance *mi,const Matrix4f &mat)
     {
-        Renderable *ri=db->CreateRenderable(ro_plane_grid,mi,pipeline);
+        Renderable *ri=db->CreateRenderable(prim_plane_grid,mi,pipeline);
 
         if(!ri)
             return(nullptr);
