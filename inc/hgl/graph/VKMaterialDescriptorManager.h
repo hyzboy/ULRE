@@ -5,9 +5,6 @@
 #include<hgl/graph/VKShaderDescriptorSet.h>
 
 VK_NAMESPACE_BEGIN
-using BindingMap=Map<AnsiString,int>;
-using BindingMapArray=BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
-
 class MaterialDescriptorManager
 {
     UTF8String mtl_name;
