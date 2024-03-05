@@ -26,7 +26,10 @@ constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_D
 #endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
 
 using CharPointerList=hgl::List<const char *>;
-using BindingMapping=Map<uint32_t,int>;
+using BindingMapping    =Map<uint32_t,int>;
+
+using BindingMap        =Map<AnsiString, int>;
+using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
 class VulkanInstance;
 class GPUPhysicalDevice;

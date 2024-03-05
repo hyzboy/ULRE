@@ -1,8 +1,9 @@
-#ifndef HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
+﻿#ifndef HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
 #define HGL_GRAPH_DESCRIPTOR_BINDING_MANAGE_INCLUDE
 
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
+#include<hgl/graph/VK.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 namespace hgl
 {
@@ -11,10 +12,15 @@ namespace hgl
         class DeviceBuffer;
         class Texture;
         class Material;
+        class MaterialParameters;
 
+        /**
+         * 描述符绑定器<Br>
+         * 一般用于注册通用数据，为材质进行自动绑定。
+         */
         class DescriptorBinding
         {
-            DescriptorSetType set_type;
+            DescriptorSetType set_type;                     ///<描述符合集类型
 
             Map<AnsiString,DeviceBuffer *> ubo_map;
             Map<AnsiString,DeviceBuffer *> ssbo_map;
@@ -92,6 +98,12 @@ namespace hgl
 
                 texture_map.DeleteByValue(tex);
             }
+
+        private:
+
+            void BindUBO(MaterialParameters *,const BindingMap &);
+
+        public:
 
             bool Bind(Material *);
         };//class DescriptorBinding
