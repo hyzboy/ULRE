@@ -80,7 +80,6 @@ public:
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
 
     void AddFunction(const char *str){function_list.Add(str);}
-    void AddFunction(const AnsiString *str){function_list.Add(str->c_str());}
 
     void SetMaterialInstance(UBODescriptor *,const AnsiString &);
     void AddMaterialInstanceOutput();

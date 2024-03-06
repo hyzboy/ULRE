@@ -43,14 +43,17 @@ void ShaderCreateInfoVertex::AddJoint()
     AddInput(VAT_VEC4,  VAN::JointWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointWeight);
 }
 
+namespace
+{
+    constexpr const char MF_GetLocalToWorld[]="\nmat4 GetLocalToWorld(){return l2w.mats[Assign.x];}\n";
+}
+
 void ShaderCreateInfoVertex::AddAssign()
 {
     AddInput(   ASSIGN_VAT_FMT,
                 ASSIGN_VIS_NAME,
                 VK_VERTEX_INPUT_RATE_INSTANCE,
                 VertexInputGroup::Assign);
-
-    constexpr const char MF_GetLocalToWorld[]="\nmat4 GetLocalToWorld(){return l2w.mats[Assign.x];}\n";
 
     AddFunction(MF_GetLocalToWorld);
 }
