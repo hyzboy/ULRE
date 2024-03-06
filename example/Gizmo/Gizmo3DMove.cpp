@@ -26,7 +26,7 @@ private:
     Material *          mtl_vtx_lum         =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          pipeline_vtx_lum    =nullptr;
-    Primitive *         prim_plane_grid       =nullptr;
+    Primitive *         prim_plane_grid     =nullptr;
 
     Material *          mtl_vtx_color       =nullptr;
     MaterialInstance *  mi_line             =nullptr;
