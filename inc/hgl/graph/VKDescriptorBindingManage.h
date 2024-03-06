@@ -101,7 +101,7 @@ namespace hgl
 
         private:
 
-            void BindUBO(MaterialParameters *,const BindingMap &);
+            void BindUBO(MaterialParameters *,const BindingMap &,bool dynamic);
 
         public:
 
