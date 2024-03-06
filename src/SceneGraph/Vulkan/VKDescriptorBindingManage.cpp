@@ -3,24 +3,23 @@
 #include<hgl/graph/VKMaterialInstance.h>
 
 VK_NAMESPACE_BEGIN
-void DescriptorBinding::BindUBO(MaterialParameters *mp,const BindingMap &binding_map)
+void DescriptorBinding::BindUBO(MaterialParameters *mp,const BindingMap &binding_map,bool dynamic)
 {
+    if (binding_map.GetCount() <= 0)return;
+        
     DeviceBuffer* buf = nullptr;
 
-    if (binding_map.GetCount() > 0)
+    const auto *dp      =binding_map.GetDataList();
+    const uint  count   =binding_map.GetCount();
+
+    for(uint i=0;i<count;i++)
     {
-        const auto* dp = binding_map.GetDataList();
-        const uint count = binding_map.GetCount();
+        buf=GetUBO((*dp)->key);
 
-        for (uint i = 0; i < count; i++)
-        {
-            buf = GetUBO((*dp)->key);
+        if(buf)
+            mp->BindUBO((*dp)->value,buf,dynamic);
 
-            if (buf)
-                mp->BindUBO((*dp)->value, buf, false);
-
-            ++dp;
-        }
+        ++dp;
     }
 }
 
@@ -41,8 +40,8 @@ bool DescriptorBinding::Bind(Material *mtl)
 
 //    const BindingMap &texture_bm=bma[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER];
 
-    BindUBO(mp,bma[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER]);
-    BindUBO(mp,bma[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC]);
+    BindUBO(mp,bma[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER],false);
+    BindUBO(mp,bma[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC],true);
 
     mp->Update();
     return(true);
