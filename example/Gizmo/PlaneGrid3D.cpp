@@ -59,7 +59,7 @@ private:
         pgci.grid_size.Set(32,32);
         pgci.sub_count.Set(8,8);
 
-        pgci.lum=0.5;
+        pgci.lum=0.75;
         pgci.sub_lum=1.0;
 
         prim_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
