@@ -1,4 +1,4 @@
-// BlinnPhong direction light
+﻿// BlinnPhong direction light
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -63,6 +63,9 @@ private:
 
         mtl_sun_light=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColor",&cfg);
         if(!mtl_sun_light)return(false);
+
+        mtl_sun_light->BindUBO(DescriptorSetType::Global,"sun",sun_data,sizeof(sun_data));      //恢复SUN.UBO或是使用内嵌SUN定义也行，
+                                                                                                //恢复SUN.UBO的意义是让引擎支持读取外部UBO配置文件
 
         mi_sphere=db->CreateMaterialInstance(mtl_sun_light);
         if(!mi_sphere)return(false);
