@@ -9,12 +9,6 @@
 
 namespace hgl{namespace graph{
 
-namespace
-{
-    const AnsiString *ShaderFileHeader=nullptr;
-    const AnsiString *MF_GetMI=nullptr;
-}//namespace
-
 ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
 {
     shader_stage=ss;
@@ -25,9 +19,6 @@ ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorIn
 
     define_macro_max_length=0;
     define_value_max_length=0;
-
-    if(!ShaderFileHeader)ShaderFileHeader   =mtl::LoadShader("ShaderHeader");
-    if(!MF_GetMI        )MF_GetMI           =mtl::LoadShader("GetMI");
 }
 
 ShaderCreateInfo::~ShaderCreateInfo()
@@ -163,12 +154,22 @@ bool ShaderCreateInfo::ProcSubpassInput()
     return(true);
 }
 
+namespace
+{
+    constexpr const char MF_GetMI_VS    []="\nMaterialInstance GetMI(){return mtl.mi[Assign.y];}\n";
+    constexpr const char MF_GetMI_Other []="\nMaterialInstance GetMI(){return mtl.mi[Input.MaterialInstanceID];}\n";
+
+    constexpr const char MF_HandoverMI_VS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=Assign.y;}\n";
+    constexpr const char MF_HandoverMI_GS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=Input[0].MaterialInstanceID;}\n";
+    constexpr const char MF_HandoverMI_OTHER[]= "\nvoid HandoverMI(){Output.MaterialInstanceID=Input.MaterialInstanceID;}\n";
+}//namespace
+
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
 {
     sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
     sdm->AddStruct(mtl::MaterialInstanceStruct);
 
-    AddFunction(MF_GetMI);
+    AddFunction(shader_stage==VK_SHADER_STAGE_VERTEX_BIT?MF_GetMI_VS:MF_GetMI_Other);
 
     mi_codes=mi;
 }
@@ -176,6 +177,10 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
 void ShaderCreateInfo::AddMaterialInstanceOutput()
 {
     AddOutput(VAT_UINT,mtl::func::MaterialInstanceID,Interpolation::Flat);
+
+    if(shader_stage==VK_SHADER_STAGE_VERTEX_BIT)    AddFunction(MF_HandoverMI_VS);else
+    if(shader_stage==VK_SHADER_STAGE_GEOMETRY_BIT)  AddFunction(MF_HandoverMI_GS);else
+                                                    AddFunction(MF_HandoverMI_OTHER);
 }
 
 void ShaderCreateInfo::SetLocalToWorld(UBODescriptor *ubo)
@@ -386,13 +391,21 @@ bool ShaderCreateInfo::ProcSampler()
 
 bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 {
-    if(!ShaderFileHeader)
-        return(false);
-
     if(main_function.IsEmpty())
         return(false);
 
-    final_shader=ShaderFileHeader->c_str();
+    final_shader=R"(
+#version 460 core
+
+#define VertexShader        0x01
+#define TessControlShader   0x02
+#define TeseEvalShader      0x04
+#define GeometryShader      0x08
+#define FragmentShader      0x10
+#define ComputeShader       0x20
+#define TaskShader          0x40
+#define MeshShader          0x80
+)";
 
     {
         char ss_hex_str[9];
@@ -430,6 +443,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
     for(const char *str:function_list)
         final_shader+=str;
 
+    final_shader+="\n";
     final_shader+=main_function;
 
 #ifdef _DEBUG

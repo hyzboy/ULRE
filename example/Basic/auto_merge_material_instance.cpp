@@ -130,7 +130,7 @@ public:
         return(true);
     }
 
-    void Resize(int w,int h)override
+    void Resize(uint w,uint h)override
     {
         VulkanApplicationFramework::Resize(w,h);
 

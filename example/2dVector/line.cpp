@@ -143,7 +143,7 @@ public:
         return(true);
     }
 
-    void Resize(int w,int h)override
+    void Resize(uint w,uint h)override
     {
         cam.width=w;
         cam.height=h;
