@@ -11,7 +11,7 @@ define      HAVE_SPECULAR   off     //默认不定义HAVE_SPECULAR
 
 UBO
 {
-    File    Sun.ubo             //文件名
+    File    BlinnPhongSun.ubo   //文件名,如果/开头表示从ShaderLibrary根目录开始，没有则表示同一目录
     Name    sun                 //在代码中的变量名
     Stage   Vertex,Fragment     //会引用的shader
 }

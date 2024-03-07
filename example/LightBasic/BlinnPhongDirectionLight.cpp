@@ -9,6 +9,7 @@
 #include<hgl/graph/Ray.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/mtl/BlinnPhong.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -16,6 +17,12 @@ using namespace hgl::graph;
 static float lumiance_data[2]={1,1};
 
 static Color4f white_color(1,1,1,1);
+
+static mtl::blinnphong::SunLight sun_light=
+{
+    Vector3f(1,1,1),
+    Vector3f(1,0.975,0.95)
+};
 
 class TestApp:public SceneAppFramework
 {
@@ -25,6 +32,10 @@ private:    //plane grid
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          p_line              =nullptr;
     Primitive *         prim_plane_grid     =nullptr;
+
+private:
+
+    DeviceBuffer *      ubo_sun             =nullptr;
 
 private:    //sphere
 
@@ -55,6 +66,16 @@ private:
         return(true);
     }
 
+    bool CreateBlinnPhongUBO()
+    {
+        sun_light.color=Vector3f(1,1,1);
+
+        ubo_sun=db->CreateUBO("sun",sizeof(sun_light),&sun_light);
+        if(!ubo_sun)return(false);
+
+        return(true);
+    }
+
     bool InitBlinnPhongSunLightMP()
     {
         mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"BlinnPhong3D",Prim::Triangles);
@@ -64,8 +85,7 @@ private:
         mtl_sun_light=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColor",&cfg);
         if(!mtl_sun_light)return(false);
 
-        mtl_sun_light->BindUBO(DescriptorSetType::Global,"sun",sun_data,sizeof(sun_data));      //恢复SUN.UBO或是使用内嵌SUN定义也行，
-                                                                                                //恢复SUN.UBO的意义是让引擎支持读取外部UBO配置文件
+        mtl_sun_light->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
 
         mi_sphere=db->CreateMaterialInstance(mtl_sun_light);
         if(!mi_sphere)return(false);
@@ -123,7 +143,7 @@ private:
         Add(prim_plane_grid,mi_plane_grid,p_line);
         Add(prim_sphere,mi_sphere,p_sphere);
 
-        camera->pos=Vector3f(32,32,32);
+        camera->pos=Vector3f(32,15,32);
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 
