@@ -1,4 +1,4 @@
-#include<hgl/shadergen/ShaderCreateInfo.h>
+﻿#include<hgl/shadergen/ShaderCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/log/LogInfo.h>
@@ -448,6 +448,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
 #ifdef _DEBUG
 
+    //想办法存成文件或是输出行号，以方便出错了调试
     LOG_INFO(AnsiString(GetShaderStageName(shader_stage))+" shader: \n"+final_shader);
 
 #endif//_DEBUG

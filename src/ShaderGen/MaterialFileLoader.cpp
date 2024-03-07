@@ -614,11 +614,16 @@ namespace
     };
 }//namespace MaterialFile
 
+namespace
+{
+    constexpr const os_char HGL_SHADER_LIBRARY_FOLDER[]=OS_TEXT("ShaderLibrary");
+}//namespace
+
 MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
 {
     const OSString mtl_osfn=ToOSString(mtl_filename+".mtl");
 
-    const OSString mtl_os_filename=filesystem::MergeFilename(OS_TEXT("ShaderLibrary"),mtl_osfn);
+    const OSString mtl_os_filename=filesystem::MergeFilename(HGL_SHADER_LIBRARY_FOLDER,mtl_osfn);
 
     if(!filesystem::FileExist(mtl_os_filename))
         return nullptr;
@@ -653,6 +658,8 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
 
             char *data;
             int size=filesystem::LoadFileToMemory(ubo_os_filename,(void **)&data,true);
+
+            ..//读取所有的UBO文件
         }        
     }
 
