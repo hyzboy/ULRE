@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
+#include<hgl/type/AccumMemoryManager.h>
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKSamplerType.h>
 #include<hgl/graph/VKPrimitiveType.h>
@@ -42,12 +43,7 @@ namespace material_file
 
         uint32_t shader_stage_flag_bits;
 
-        const char *codes;
-        uint code_length;
-
-        //为什么不使用AnsiString保存ubo shader codes ?
-        //  1.MaterialFileData中使用UBODataList也就是List<UBOData>，会出现问题
-        //  2.后台将所有UBO文件缓存，所以只传递过来一个char *即可
+        AccumMemoryManager::Block *block;
     };
 
     using UBODataList=List<UBOData>;

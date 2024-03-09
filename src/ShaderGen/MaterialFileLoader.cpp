@@ -7,6 +7,9 @@
 #include<hgl/io/TextInputStream.h>
 #include<hgl/filesystem/FileSystem.h>
 
+#include<hgl/type/AccumMemoryManager.h>
+#include<hgl/io/FileAccess.h>
+
 #include"MaterialFileData.h"
 
 STD_MTL_NAMESPACE_BEGIN
@@ -630,6 +633,35 @@ namespace
 namespace
 {
     constexpr const os_char HGL_SHADER_LIBRARY_FOLDER[]=OS_TEXT("ShaderLibrary");
+
+    AccumMemoryManager ubo_memory;
+    hgl::Map<OSString,AccumMemoryManager::Block *> ubo_codes_map;
+
+    AccumMemoryManager::Block *GetUBOCodes(const OSString &filename)
+    {
+        AccumMemoryManager::Block *block;
+
+        if(ubo_codes_map.Get(filename,block))
+            return block;
+
+        hgl::io::FileAccess fa;
+
+        if(!fa.OpenRead(filename))
+        {
+            ubo_codes_map.Add(filename,nullptr);
+            return(nullptr);
+        }
+
+        const int64 size=fa.GetSize();
+
+        block=ubo_memory.Acquire(size);
+
+        fa.Read(ubo_memory.Access(block),size);
+
+        ubo_codes_map.Add(filename,block);
+
+        return block;
+    }
 }//namespace
 
 MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
@@ -673,11 +705,7 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
         else
             ubo_os_full_filename=filesystem::MergeFilename(mtl_path,ubo_os_fn);
 
-        if(!filesystem::FileExist(ubo_os_full_filename))
-            continue;
-
-        char *data;
-        int size=filesystem::LoadFileToMemory(ubo_os_full_filename,(void **)&data,true);
+        ud.block=GetUBOCodes(ubo_os_full_filename);
     }
 
     return mfd;
