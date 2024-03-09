@@ -40,6 +40,8 @@ Code
     void main()
     {
         HandoverMI();
+
+        Output.Normal=Normal;
         gl_Position=GetPosition3D();
     }
 }
@@ -66,7 +68,7 @@ Code
         vec3 diffuse                =vec3(0.5)*dot(world_light_direction.xyz,world_normal)+vec3(0.5);
 
         //直接光颜色
-        vec3 direct_color           =sun.color.rgb*mi.Color.rgb;
+        vec3 direct_color           =diffuse*sun.color.rgb*mi.Color.rgb;
 
 //    #ifndef HAVE_SPECULAR
         FragColor=vec4(direct_color,1.0);
