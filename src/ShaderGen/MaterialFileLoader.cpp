@@ -153,6 +153,11 @@ namespace
                 ClipFilename(ubo_data.filename,sizeof(ubo_data.filename),text+5);
             }
             else
+            if(hgl::stricmp(text,"Struct ",7)==0)
+            {
+                ClipCodeString(ubo_data.struct_name,sizeof(ubo_data.struct_name),text+7);
+            }
+            else
             if(hgl::stricmp(text,"Name ",5)==0)
             {
                 ClipCodeString(ubo_data.name,sizeof(ubo_data.name),text+5);
@@ -161,6 +166,15 @@ namespace
             if(hgl::stricmp(text,"Stage ",6)==0)
             {
                 ubo_data.shader_stage_flag_bits=ShaderStageParse(text+6,text+len);
+            }
+            else
+            if(hgl::stricmp(text,"Set ",4)==0)
+            {
+                char set_name[32];
+
+                ClipCodeString(set_name,sizeof(set_name),text+4);
+
+                ubo_data.set=GetDescriptorSetType(set_name);
             }
 
             return(false);
@@ -661,6 +675,13 @@ namespace
         fa.Read(ptr,size);
 
         ptr[size]=0;
+        
+        ptr+=size-1;
+        while(*ptr=='\r'||*ptr=='\n')
+        {
+            *ptr=0;
+            --ptr;
+        }
 
         ubo_codes_map.Add(filename,block);
 
@@ -717,6 +738,12 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
             ubo_os_full_filename=filesystem::MergeFilename(mtl_path,ubo_os_fn);
 
         ud.block=LoadUBO2Block(ubo_os_full_filename);
+
+        if(!ud.block)
+        {
+            delete mfd;
+            return nullptr;
+        }
     }
 
     return mfd;

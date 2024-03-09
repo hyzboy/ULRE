@@ -5,6 +5,7 @@
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKSamplerType.h>
 #include<hgl/graph/VKPrimitiveType.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 
 namespace material_file
 {
@@ -37,11 +38,14 @@ namespace material_file
 
     struct UBOData
     {
+        char struct_name[SHADER_RESOURCE_NAME_MAX_LENGTH];
         char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
 
         char filename[HGL_MAX_PATH];
 
         uint32_t shader_stage_flag_bits;
+
+        hgl::graph::DescriptorSetType set;
 
         AccumMemoryManager::Block *block;
     };

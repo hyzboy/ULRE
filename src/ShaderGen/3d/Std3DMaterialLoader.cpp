@@ -4,12 +4,17 @@
 
 STD_MTL_NAMESPACE_BEGIN
 
+const char *GetUBOCodes(const AccumMemoryManager::Block *block);
+
 namespace {
-class Std3DMaterialLoader : public Std3DMaterial {
+class Std3DMaterialLoader : public Std3DMaterial 
+{
 protected:
-    material_file::MaterialFileData* mfd;
+
+    material_file::MaterialFileData *mfd;
 
 public:
+
     Std3DMaterialLoader(material_file::MaterialFileData* data, const Material3DCreateConfig* cfg)
         : Std3DMaterial(cfg)
     {
@@ -26,10 +31,23 @@ public:
         if (!Std3DMaterial::BeginCustomShader())
             return (false);
 
-        if (mfd->mi.mi_bytes > 0) {
-            mci->SetMaterialInstance(mfd->mi.code,
-                mfd->mi.mi_bytes,
-                mfd->mi.shader_stage_flag_bits);
+        for(const auto ubo:mfd->ubo_list)
+        {
+            const char *ubo_codes=GetUBOCodes(ubo.block);
+
+            mci->AddStruct(ubo.struct_name,ubo_codes);
+
+            mci->AddUBO(ubo.shader_stage_flag_bits,
+                        ubo.set,
+                        ubo.struct_name,
+                        ubo.name);
+        }
+
+        if (mfd->mi.mi_bytes > 0)
+        {
+            mci->SetMaterialInstance(   mfd->mi.code,
+                                        mfd->mi.mi_bytes,
+                                        mfd->mi.shader_stage_flag_bits);
         }
 
         return true;
