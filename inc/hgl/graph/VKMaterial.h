@@ -49,15 +49,15 @@ public:
 
     virtual ~Material();
 
-    const   UTF8String &                        GetName                 ()const{return name;}
+    const   AnsiString &                        GetName                 ()const{return name;}
 
     const   VertexInput *                       GetVertexInput          ()const{return vertex_input;}
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 
-    const   MaterialDescriptorManager *         GetDescriptorSets       ()const{return desc_manager;}
+//    const   MaterialDescriptorManager *         GetDescriptorManager    ()const{return desc_manager;}
     const   VkPipelineLayout                    GetPipelineLayout       ()const;
-    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
+//    const   PipelineLayoutData *                GetPipelineLayoutData   ()const{return pipeline_layout_data;}
 
 public:
 
