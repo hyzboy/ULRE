@@ -83,10 +83,11 @@ namespace hgl{namespace graph
             bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
             bool AddStruct(const ShaderBufferSource &ss){return AddStruct(ss.struct_name,ss.codes);}
 
-            bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name);
+            bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
             bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss);
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
+            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss){return AddUBO(flag_bits,set_type,ss.struct_name,ss.name);}
 
             bool CreateShader();
         };//class MaterialCreateInfo
