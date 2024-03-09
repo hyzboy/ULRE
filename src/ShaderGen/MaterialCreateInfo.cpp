@@ -43,12 +43,12 @@ bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiStrin
     return mdi.AddStruct(struct_name,codes);
 }
 
-bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &type_name,const AnsiString &name)
+bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
 {
     if(!shader_map.KeyExist(flag_bit))
         return(false);
 
-    if(!mdi.hasStruct(type_name))
+    if(!mdi.hasStruct(struct_name))
         return(false);
 
     ShaderCreateInfo *sc=shader_map[flag_bit];
@@ -60,7 +60,7 @@ bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const Descr
 
     if(ubo)
     {
-        if(ubo->type!=type_name)
+        if(ubo->type!=struct_name)
             return(false);
 
         ubo->stage_flag|=flag_bit;
@@ -71,11 +71,33 @@ bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const Descr
     {
         ubo=new UBODescriptor();
 
-        ubo->type=type_name;
+        ubo->type=struct_name;
         hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
         return sc->sdm->AddUBO(set_type,mdi.AddUBO(flag_bit,set_type,ubo));
     }
+}
+
+bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name)
+{
+    if(flag_bits==0)return(false);          //没有任何SHADER用?
+
+    if(!mdi.hasStruct(struct_name))
+        return(false);
+    
+    uint result=0;
+    VkShaderStageFlagBits bit;
+
+    for(int i=0;i<shader_map.GetCount();i++)
+    {
+        shader_map.GetKey(i,bit);
+
+        if(flag_bits&bit)
+            if(AddUBO(bit,set_type,struct_name,name))
+                ++result;
+    }
+
+    return(result==shader_map.GetCount());
 }
 
 bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
@@ -112,28 +134,6 @@ bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const D
 
         return sc->sdm->AddSampler(set_type,mdi.AddSampler(flag_bit,set_type,sampler));
     }
-}
-
-bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss)
-{
-    if(flag_bits==0)return(false);          //没有任何SHADER用？
-
-    if(!mdi.hasStruct(ss.struct_name))
-        mdi.AddStruct(ss.struct_name,ss.codes);
-
-    uint result=0;
-    VkShaderStageFlagBits bit;
-
-    for(int i=0;i<shader_map.GetCount();i++)
-    {
-        shader_map.GetKey(i,bit);
-
-        if(flag_bits&bit)
-            if(AddUBO(bit,set_type,ss.struct_name,ss.name))
-                ++result;
-    }
-
-    return(result==shader_map.GetCount());
 }
 
 namespace
