@@ -14,11 +14,17 @@ UBO
     File    BlinnPhongSun.ubo   //文件名,如果/开头表示从ShaderLibrary根目录开始，没有则表示同一目录
     Struct  BlinnPhongSun       //结构名称
     Name    sun                 //在代码中的变量名
-    Stage   Vertex,Fragment     //会引用的shader
+    Stage   Fragment            //会引用的shader
     Set     Global              //Descriptor Set
 }
 
 #MaterialInstance
+Length 16
+Stage  Fragment
+Code
+{
+    vec4 Color;
+}
 
 #VertexInput
 vec3 Normal
@@ -33,6 +39,7 @@ Code
 {
     void main()
     {
+        HandoverMI();
         gl_Position=GetPosition3D();
     }
 }
@@ -47,31 +54,33 @@ Code
 {
     void main()
     {
+        MaterialInstance mi=GetMI();
+
         //将法线归一化
         vec3 world_normal           =normalize(Input.Normal);
 
         //对世界坐标下的灯光方法归一化
-        vec3 world_light_direction  =normalize(sun.direction);
+        vec3 world_light_direction  =normalize(sun.direction.xyz);
 
         //点乘法线和光照
-        vec3 diffuse                =0.5*dot(world_light_direction,world_normal)+0.5;
+        vec3 diffuse                =vec3(0.5)*dot(world_light_direction.xyz,world_normal)+vec3(0.5);
 
         //直接光颜色
-        vec3 direct_color           =sun.diffuse*diffuse*sun.color;
+        vec3 direct_color           =sun.color.rgb*mi.Color.rgb;
 
-    #ifndef HAVE_SPECULAR
+//    #ifndef HAVE_SPECULAR
         FragColor=vec4(direct_color,1.0);
-    #else
-        //归一代视角方向
-        vec3 view_direction     =normalize(camera.pos-world_position);
-
-        //世界坐标下的反射光方向
-        vec3 reflect_direction  =normalize(reflect(-world_light_direction,world_normal));
-
-        //高光
-        vec3 specular           =sun.specular*pow(saturate(dot(reflect_direction,view_direction)),gloss);
-
-        FragColor=vec4(direct_color+specular,1.0);
-    #endif//HAVE_SPECULAR
+//     #else
+//         //归一代视角方向
+//         vec3 view_direction     =normalize(camera.pos-world_position);
+//
+//         //世界坐标下的反射光方向
+//         vec3 reflect_direction  =normalize(reflect(-world_light_direction,world_normal));
+//
+//         //高光
+//         vec3 specular           =sun.specular*pow(saturate(dot(reflect_direction,view_direction)),gloss);
+//
+//         FragColor=vec4(direct_color+specular,1.0);
+//     #endif//HAVE_SPECULAR
     }
 }

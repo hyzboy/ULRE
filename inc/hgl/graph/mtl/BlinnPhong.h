@@ -8,8 +8,8 @@ namespace blinnphong
 {
     struct SunLight
     {
-        Vector3f direction;
-        Vector3f color;
+        Vector4f direction;
+        Vector4f color;
     };//struct SunLight
 
     constexpr const ShaderBufferSource SBS_SunLight=
@@ -18,8 +18,8 @@ namespace blinnphong
         "sun",
 
         R"(
-        vec3 direction;
-        vec3 color;
+        vec4 direction;
+        vec4 color;
 )"
     };
 }//namespace blinnphong

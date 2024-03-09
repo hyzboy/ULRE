@@ -20,8 +20,8 @@ static Color4f white_color(1,1,1,1);
 
 static mtl::blinnphong::SunLight sun_light=
 {
-    Vector3f(1,1,1),
-    Vector3f(1,0.975,0.95)
+    Vector4f(1,1,1,0),
+    Vector4f(1,0,0,1)
 };
 
 class TestApp:public SceneAppFramework
@@ -68,8 +68,6 @@ private:
 
     bool CreateBlinnPhongUBO()
     {
-        sun_light.color=Vector3f(1,1,1);
-
         ubo_sun=db->CreateUBO("sun",sizeof(sun_light),&sun_light);
         if(!ubo_sun)return(false);
 
@@ -86,8 +84,9 @@ private:
         if(!mtl_sun_light)return(false);
 
         mtl_sun_light->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
+        mtl_sun_light->Update();
 
-        mi_sphere=db->CreateMaterialInstance(mtl_sun_light);
+        mi_sphere=db->CreateMaterialInstance(mtl_sun_light,nullptr,&white_color);
         if(!mi_sphere)return(false);
 
         p_sphere=CreatePipeline(mtl_sun_light,InlinePipeline::Solid3D,Prim::Triangles);
@@ -161,6 +160,9 @@ public:
             return(false);
 
         if(!InitVertexLumMP())
+            return(false);
+        
+        if(!CreateBlinnPhongUBO())
             return(false);
 
         if(!InitBlinnPhongSunLightMP())
