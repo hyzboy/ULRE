@@ -4,6 +4,8 @@
 
 STD_MTL_NAMESPACE_BEGIN
 
+const char *GetUBOCodes(const AccumMemoryManager::Block *block);
+
 namespace
 {
     class Std2DMaterialLoader:public Std2DMaterial
@@ -34,6 +36,18 @@ namespace
                 mci->SetMaterialInstance(  mfd->mi.code,
                                            mfd->mi.mi_bytes,
                                            mfd->mi.shader_stage_flag_bits);
+            }
+
+            for(const auto ubo:mfd->ubo_list)
+            {
+                const char *ubo_codes=GetUBOCodes(ubo.block);
+
+                mci->AddStruct(ubo.struct_name,ubo_codes);
+
+                mci->AddUBO(ubo.shader_stage_flag_bits,
+                            ubo.set,
+                            ubo.struct_name,
+                            ubo.name);
             }
 
             return true;
