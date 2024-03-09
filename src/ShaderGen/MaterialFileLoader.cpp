@@ -637,7 +637,7 @@ namespace
     AccumMemoryManager ubo_memory;
     hgl::Map<OSString,AccumMemoryManager::Block *> ubo_codes_map;
 
-    AccumMemoryManager::Block *GetUBOCodes(const OSString &filename)
+    AccumMemoryManager::Block *LoadUBO2Block(const OSString &filename)
     {
         AccumMemoryManager::Block *block;
 
@@ -654,15 +654,26 @@ namespace
 
         const int64 size=fa.GetSize();
 
-        block=ubo_memory.Acquire(size);
+        block=ubo_memory.Acquire(size+1);
 
-        fa.Read(ubo_memory.Access(block),size);
+        char *ptr=(char *)ubo_memory.Access(block);
+
+        fa.Read(ptr,size);
+
+        ptr[size]=0;
 
         ubo_codes_map.Add(filename,block);
 
         return block;
     }
 }//namespace
+
+const char *GetUBOCodes(const AccumMemoryManager::Block *block)
+{
+    if(!block)return nullptr;
+
+    return (const char *)ubo_memory.Access(block);
+}
 
 MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
 {
@@ -705,7 +716,7 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
         else
             ubo_os_full_filename=filesystem::MergeFilename(mtl_path,ubo_os_fn);
 
-        ud.block=GetUBOCodes(ubo_os_full_filename);
+        ud.block=LoadUBO2Block(ubo_os_full_filename);
     }
 
     return mfd;
