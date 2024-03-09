@@ -153,7 +153,7 @@ public:
 
             ubo_vp_info=db->CreateUBO("Viewport",sizeof(ViewportInfo),&vp_info);
 
-            db->global_descriptor.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
+            db->static_descriptor.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
         }
 
         return(true);
