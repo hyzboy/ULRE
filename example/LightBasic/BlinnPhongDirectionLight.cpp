@@ -20,7 +20,7 @@ static Color4f white_color(1,1,1,1);
 
 static mtl::blinnphong::SunLight sun_light=
 {
-    Vector4f(1,1,1,0),
+    Vector4f(0,0,1,0),
     Vector4f(1,0,0,1)
 };
 
@@ -86,7 +86,13 @@ private:
         mtl_sun_light->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
         mtl_sun_light->Update();
 
-        mi_sphere=db->CreateMaterialInstance(mtl_sun_light,nullptr,&white_color);
+        float mi_data[4]=
+        {
+            1,0,0,      //color
+            4           //gloss
+        };
+
+        mi_sphere=db->CreateMaterialInstance(mtl_sun_light,nullptr,&mi_data);
         if(!mi_sphere)return(false);
 
         p_sphere=CreatePipeline(mtl_sun_light,InlinePipeline::Solid3D,Prim::Triangles);
