@@ -23,7 +23,8 @@ Length 16
 Stage  Fragment
 Code
 {
-    vec4 Color;
+    vec3 Color;
+    float Gloss;
 }
 
 #VertexInput
@@ -32,6 +33,7 @@ vec3 Normal
 #Vertex
 Output
 {
+    vec4 Position;
     vec3 Normal;
 }
 
@@ -42,7 +44,8 @@ Code
         HandoverMI();
 
         Output.Normal=Normal;
-        gl_Position=GetPosition3D();
+        Output.Position=GetPosition3D();
+        gl_Position=Output.Position;
     }
 }
 
@@ -71,18 +74,18 @@ Code
         vec3 direct_color           =diffuse*sun.color.rgb*mi.Color.rgb;
 
 //    #ifndef HAVE_SPECULAR
-        FragColor=vec4(direct_color,1.0);
+//        FragColor=vec4(direct_color,1.0);
 //     #else
-//         //归一代视角方向
-//         vec3 view_direction     =normalize(camera.pos-world_position);
-//
-//         //世界坐标下的反射光方向
-//         vec3 reflect_direction  =normalize(reflect(-world_light_direction,world_normal));
-//
-//         //高光
-//         vec3 specular           =sun.specular*pow(saturate(dot(reflect_direction,view_direction)),gloss);
-//
-//         FragColor=vec4(direct_color+specular,1.0);
+        //归一代视角方向
+        vec3 view_direction     =normalize(camera.pos-Input.Position.xyz);
+
+        //世界坐标下的反射光方向
+        vec3 reflect_direction  =normalize(reflect(-world_light_direction,world_normal));
+
+        //高光
+        float specular           =pow(clamp(dot(reflect_direction,view_direction),0.0,1.0),mi.Gloss);
+
+        FragColor               =vec4(direct_color+vec3(specular),1.0);
 //     #endif//HAVE_SPECULAR
     }
 }
