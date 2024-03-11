@@ -39,13 +39,26 @@ Output
 
 Code
 {
+    mat3 GetNormalMatrix()
+    {
+        return mat3(camera.view*GetLocalToWorld());
+    }
+
+    vec3 GetNormal(mat3 normal_matrix,vec3 normal)
+    {
+        return normalize(normal_matrix*normal);
+    }
+
     void main()
     {
+        mat3 normal_matrix=GetNormalMatrix();
+
+        Output.Normal   =GetNormal(normal_matrix,Normal);
+        Output.Position =GetPosition3D();
+        
         HandoverMI();
 
-        Output.Normal=Normal;
-        Output.Position=GetPosition3D();
-        gl_Position=Output.Position;
+        gl_Position     =Output.Position;
     }
 }
 
@@ -62,30 +75,33 @@ Code
         MaterialInstance mi=GetMI();
 
         //将法线归一化
-        vec3 world_normal           =normalize(Input.Normal);
+//        vec3 world_normal           =normalize(Input.Normal);
 
         //对世界坐标下的灯光方法归一化
-        vec3 world_light_direction  =normalize(sun.direction.xyz);
+//        vec3 world_light_direction  =normalize(sun.direction.xyz);
 
         //点乘法线和光照
-        vec3 diffuse                =vec3(0.5)*dot(world_light_direction.xyz,world_normal)+vec3(0.5);
+        float intensity=0.5*max(dot(Input.Normal,sun.direction.xyz),0.0)+0.5;
 
         //直接光颜色
-        vec3 direct_color           =diffuse*sun.color.rgb*mi.Color.rgb;
+        vec3 direct_color           =intensity*sun.color.rgb*mi.Color.rgb;
 
 //    #ifndef HAVE_SPECULAR
 //        FragColor=vec4(direct_color,1.0);
 //     #else
-        //归一代视角方向
-        vec3 view_direction     =normalize(camera.pos-Input.Position.xyz);
 
-        //世界坐标下的反射光方向
-        vec3 reflect_direction  =normalize(reflect(-world_light_direction,world_normal));
+        vec3 spec_color=vec3(0.0);
 
-        //高光
-        float specular           =pow(clamp(dot(reflect_direction,view_direction),0.0,1.0),mi.Gloss);
+        if(intensity>0.0)
+        {
+            vec3 half_vector=normalize(sun.direction.xyz+normalize(Input.Position.xyz+camera.pos));
 
-        FragColor               =vec4(direct_color+vec3(specular),1.0);
+            float specular=max(dot(half_vector,Input.Normal),0.0);
+
+            spec_color=specular*pow(specular,mi.Gloss)*sun.color.rgb;
+        }
+        
+        FragColor=vec4(direct_color+spec_color,1.0);
 //     #endif//HAVE_SPECULAR
     }
 }
