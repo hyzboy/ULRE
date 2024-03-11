@@ -21,7 +21,7 @@ static Color4f white_color(1,1,1,1);
 static mtl::blinnphong::SunLight sun_light=
 {
     Vector4f(0,0,1,0),
-    Vector4f(1,0,0,1)
+    Vector4f(1,0.95,0.9,1)
 };
 
 class TestApp:public SceneAppFramework
@@ -137,7 +137,7 @@ private:
 
         //Sphere
         {
-            prim_sphere=CreateSphere(db,mi_sphere->GetVIL(),16);
+            prim_sphere=CreateSphere(db,mi_sphere->GetVIL(),32);
         }
 
         return(true);
