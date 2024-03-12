@@ -104,7 +104,7 @@ private:
     {
         Add(material_instance,scale(PLANE_SIZE,PLANE_SIZE,1));
 
-        camera->pos=Vector3f(PLANE_SIZE/2,PLANE_SIZE/2,PLANE_SIZE/2);
+        camera->pos=Vector3f(PLANE_SIZE/2,PLANE_SIZE/4,PLANE_SIZE/2);
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 

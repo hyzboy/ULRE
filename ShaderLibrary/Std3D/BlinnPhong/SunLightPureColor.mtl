@@ -59,15 +59,11 @@ Output
 
 Code
 {
+    #define HAVE_SPECULAR
+
     void main()
     {
         MaterialInstance mi=GetMI();
-
-        //将法线归一化
-//        vec3 world_normal           =normalize(Input.Normal);
-
-        //对世界坐标下的灯光方法归一化
-//        vec3 world_light_direction  =normalize(sun.direction.xyz);
 
         //点乘法线和光照
         float intensity=0.5*max(dot(Input.Normal,sun.direction.xyz),0.0)+0.5;
@@ -75,9 +71,9 @@ Code
         //直接光颜色
         vec3 direct_color           =intensity*sun.color.rgb*mi.Color.rgb;
 
-//    #ifndef HAVE_SPECULAR
-//        FragColor=vec4(direct_color,1.0);
-//     #else
+    #ifndef HAVE_SPECULAR
+        FragColor=vec4(direct_color,1.0);
+     #else
 
         vec3 spec_color=vec3(0.0);
 
@@ -91,6 +87,6 @@ Code
         }
         
         FragColor=vec4(direct_color+spec_color,1.0);
-//     #endif//HAVE_SPECULAR
+     #endif//HAVE_SPECULAR
     }
 }
