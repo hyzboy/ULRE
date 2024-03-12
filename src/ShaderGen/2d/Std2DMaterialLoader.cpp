@@ -73,11 +73,11 @@ namespace
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
-            if(!Std2DMaterial::CustomVertexShader(vsc))
-                return(false);
-
             for(auto &ua:mfd->vi)
                 vsc->AddInput(ua.vat,ua.name);
+
+            if(!Std2DMaterial::CustomVertexShader(vsc))
+                return(false);
 
             return CommonProc(VK_SHADER_STAGE_VERTEX_BIT,vsc);
         }
