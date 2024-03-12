@@ -122,18 +122,18 @@ private:
     {
         using namespace inline_geometry;
 
-        //Plane Grid
-        {
-            struct PlaneGridCreateInfo pgci;
+        ////Plane Grid
+        //{
+        //    struct PlaneGridCreateInfo pgci;
 
-            pgci.grid_size.Set(32,32);
-            pgci.sub_count.Set(8,8);
+        //    pgci.grid_size.Set(32,32);
+        //    pgci.sub_count.Set(8,8);
 
-            pgci.lum=0.5;
-            pgci.sub_lum=0.75;
+        //    pgci.lum=0.5;
+        //    pgci.sub_lum=0.75;
 
-            prim_plane_grid=CreatePlaneGrid(db,mtl_vertex_lum->GetDefaultVIL(),&pgci);
-        }
+        //    prim_plane_grid=CreatePlaneGrid(db,mtl_vertex_lum->GetDefaultVIL(),&pgci);
+        //}
 
         //Sphere
         {
@@ -145,7 +145,7 @@ private:
 
     bool InitScene()
     {
-        Add(prim_plane_grid,mi_plane_grid,p_line);
+        //Add(prim_plane_grid,mi_plane_grid,p_line);
         Add(prim_sphere,mi_sphere,p_sphere);
 
         camera->pos=Vector3f(32,32,32);
@@ -165,8 +165,8 @@ public:
         if(!SceneAppFramework::Init(w,h))
             return(false);
 
-        if(!InitVertexLumMP())
-            return(false);
+        //if(!InitVertexLumMP())
+        //    return(false);
         
         if(!CreateBlinnPhongUBO())
             return(false);

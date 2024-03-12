@@ -42,7 +42,7 @@ Code
 
     void main()
     {
-        Output.Normal   =GetNormal(GetNormalMatrix(),Normal);
+        Output.Normal   =GetNormal();
         Output.Position =GetPosition3D();
         
         HandoverMI();
