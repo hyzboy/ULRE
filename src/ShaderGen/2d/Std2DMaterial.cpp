@@ -35,8 +35,10 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 
     if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
     {
+        mci->AddStruct(SBS_ViewportInfo);
+
         mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
-                    DescriptorSetType::Global,
+                    DescriptorSetType::Static,
                     SBS_ViewportInfo);
     }
 
