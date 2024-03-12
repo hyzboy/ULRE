@@ -30,12 +30,13 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     else
         vsc->AddFunction(cfg->camera?func::GetPosition3DCamera:func::GetPosition3D);
 
-    //if(cfg->camera
-    // &&cfg->local_to_world)
-    //{
-    //    vsc->AddFunction(func::GetNormalMatrix);
-    //    vsc->AddFunction(func::GetNormal);
-    //}
+    if(cfg->camera
+     &&cfg->local_to_world)
+    {
+        vsc->AddFunction(func::GetNormalMatrix);
+        vsc->AddFunction(func::GetNormal);
+//        vsc->AddFunction(func::GetNormalVS);
+    }
 
     mci->AddStruct(SBS_ViewportInfo);
 
