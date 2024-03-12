@@ -20,8 +20,8 @@ static Color4f white_color(1,1,1,1);
 
 static mtl::blinnphong::SunLight sun_light=
 {
-    Vector4f(0,0,1,0),
-    Vector4f(1,0.95,0.9,1)
+    Vector4f(1,1,1,0),      //direction
+    Vector4f(1,0.95,0.9,1)  //color
 };
 
 class TestApp:public SceneAppFramework
@@ -148,7 +148,7 @@ private:
         Add(prim_plane_grid,mi_plane_grid,p_line);
         Add(prim_sphere,mi_sphere,p_sphere);
 
-        camera->pos=Vector3f(32,15,32);
+        camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 
