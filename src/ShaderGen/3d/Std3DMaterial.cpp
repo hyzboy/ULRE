@@ -35,7 +35,9 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     {
         vsc->AddFunction(func::GetNormalMatrix);
         vsc->AddFunction(func::GetNormal);
-//        vsc->AddFunction(func::GetNormalVS);
+
+        if(vsc->hasInput(VAN::Normal))
+        vsc->AddFunction(func::GetNormalVS);
     }
 
     mci->AddStruct(SBS_ViewportInfo);
