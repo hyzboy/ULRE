@@ -19,6 +19,8 @@ namespace hgl
             int AddInput(const graph::VAT &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
             int AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate=VK_VERTEX_INPUT_RATE_VERTEX,const VertexInputGroup &group=VertexInputGroup::Basic);
 
+            int hasInput(const char *);
+
             void AddJoint();
             void AddAssign();
         };//class ShaderCreateInfoVertex:public ShaderCreateInfo

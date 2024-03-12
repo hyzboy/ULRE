@@ -37,6 +37,11 @@ int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &na
     return AddInput(vat,name,input_rate,group);
 }
 
+int ShaderCreateInfoVertex::hasInput(const char *name)
+{
+    return sdm->hasInput(name);
+}
+
 void ShaderCreateInfoVertex::AddJoint()
 {
     AddInput(VAT_UVEC4, VAN::JointID,    VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointID);
