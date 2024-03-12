@@ -37,8 +37,10 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     //    vsc->AddFunction(func::GetNormal);
     //}
 
+    mci->AddStruct(SBS_ViewportInfo);
+
     mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
-                DescriptorSetType::Global,
+                DescriptorSetType::Static,
                 SBS_ViewportInfo);
 
     return(true);
