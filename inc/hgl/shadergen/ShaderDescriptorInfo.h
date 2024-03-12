@@ -59,6 +59,8 @@ public:
     bool AddInput(ShaderAttribute *);
     bool AddOutput(ShaderAttribute *);
 
+    bool hasInput(const char *)const;     ///<是否有指定输入
+
     void AddStruct(const AnsiString &);
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);
