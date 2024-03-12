@@ -483,9 +483,9 @@ namespace hgl
 
                         if(np)
                         {
-                            *np=+x;++np;
-                            *np=-y;++np;
-                            *np=+z;++np;
+                            *np=x;++np;
+                            *np=y;++np;
+                            *np=z;++np;
                         }
 
                         if(tcp)
