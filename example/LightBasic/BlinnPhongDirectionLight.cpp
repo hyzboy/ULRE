@@ -39,10 +39,13 @@ private:
 
 private:    //sphere
 
-    Material *          mtl_sun_light       =nullptr;
-    MaterialInstance *  mi_sphere           =nullptr;
-    Pipeline *          p_sphere            =nullptr;
+    Material *          mtl_blinnphong      =nullptr;
+    MaterialInstance *  mi_blinnphong       =nullptr;
+    Pipeline *          p_blinnphong        =nullptr;
+
     Primitive *         prim_sphere         =nullptr;
+    Primitive *         prim_cone           =nullptr;
+    Primitive *         prim_cylinder       =nullptr;
 
 private:
 
@@ -80,11 +83,11 @@ private:
 
         cfg.local_to_world=true;
 
-        mtl_sun_light=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColor",&cfg);
-        if(!mtl_sun_light)return(false);
+        mtl_blinnphong=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColor",&cfg);
+        if(!mtl_blinnphong)return(false);
 
-        mtl_sun_light->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
-        mtl_sun_light->Update();
+        mtl_blinnphong->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
+        mtl_blinnphong->Update();
 
         float mi_data[4]=
         {
@@ -92,30 +95,15 @@ private:
             4           //gloss
         };
 
-        mi_sphere=db->CreateMaterialInstance(mtl_sun_light,nullptr,&mi_data);
-        if(!mi_sphere)return(false);
+        mi_blinnphong=db->CreateMaterialInstance(mtl_blinnphong,nullptr,&mi_data);
+        if(!mi_blinnphong)return(false);
 
-        p_sphere=CreatePipeline(mtl_sun_light,InlinePipeline::Solid3D,Prim::Triangles);
+        p_blinnphong=CreatePipeline(mtl_blinnphong,InlinePipeline::Solid3D,Prim::Triangles);
 
-        if(!p_sphere)
+        if(!p_blinnphong)
             return(false);
 
         return(true);        
-    }
-    
-    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
-    {
-        Renderable *ri=db->CreateRenderable(r,mi,p);
-
-        if(!ri)
-        {
-            LOG_ERROR(OS_TEXT("Create Renderable failed."));
-            return(nullptr);
-        }
-
-        render_root.CreateSubNode(ri);
-
-        return ri;
     }
 
     bool CreateRenderObject()
@@ -136,17 +124,56 @@ private:
         }
 
         //Sphere
+        prim_sphere=CreateSphere(db,mi_blinnphong->GetVIL(),16);
+
+        //Cone
         {
-            prim_sphere=CreateSphere(db,mi_sphere->GetVIL(),32);
+            struct ConeCreateInfo cci;
+
+            cci.radius      =1;         //圆锥半径
+            cci.halfExtend  =1;         //圆锤一半高度
+            cci.numberSlices=16;        //圆锥底部分割数
+            cci.numberStacks=8;         //圆锥高度分割数
+
+            prim_cone=CreateCone(db,mi_blinnphong->GetVIL(),&cci);
+        }
+
+        //Cyliner
+        {
+            struct CylinderCreateInfo cci;
+
+            cci.halfExtend  =4;         //圆柱一半高度
+            cci.numberSlices=16;        //圆柱底部分割数
+            cci.radius      =0.25f;     //圆柱半径
+
+            prim_cylinder=CreateCylinder(db,mi_blinnphong->GetVIL(),&cci);
         }
 
         return(true);
+    }    
+    
+    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p,const Matrix4f &mat)
+    {
+        Renderable *ri=db->CreateRenderable(r,mi,p);
+
+        if(!ri)
+        {
+            LOG_ERROR(OS_TEXT("Create Renderable failed."));
+            return(nullptr);
+        }
+
+        render_root.CreateSubNode(mat,ri);
+
+        return ri;
     }
 
     bool InitScene()
     {
-        Add(prim_plane_grid,mi_plane_grid,p_line);
-        Add(prim_sphere,mi_sphere,p_sphere);
+        Add(prim_plane_grid,mi_plane_grid,p_line,Identity4f);
+
+        Add(prim_sphere,    mi_blinnphong,p_blinnphong,translate(Vector3f(0,0,2)));
+        Add(prim_cone,      mi_blinnphong,p_blinnphong,Identity4f);
+        Add(prim_cylinder,  mi_blinnphong,p_blinnphong,translate(Vector3f(0,0,-5)));        
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
