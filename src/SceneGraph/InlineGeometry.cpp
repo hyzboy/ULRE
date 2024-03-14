@@ -712,7 +712,7 @@ namespace hgl
                             // NOTE: cos (2PIx) = cos (x) and sin (2PIx) = sin (x) so, we can use this formula
                             //       normal = {cos(2PIs)cos(2PIt) , sin(2PIs)cos(2PIt) ,sin(2PIt)}
                             *np = +cos2PIs * cos2PIt;   ++np;
-                            *np = -sin2PIt;             ++np;
+                            *np = +sin2PIt;             ++np;
                             *np = +sin2PIs * cos2PIt;   ++np;
                         }
 
@@ -943,7 +943,7 @@ namespace hgl
                         if(np)
                         {
                             *np =  cos(currentAngle);   ++np;
-                            *np =  sin(currentAngle);   ++np;
+                            *np = -sin(currentAngle);   ++np;
                             *np = 0.0f;                 ++np;
                         }
 
@@ -1112,7 +1112,7 @@ namespace hgl
                         if(np)
                         {
                             *np = h / l *  cos(currentAngle);   ++np;
-                            *np = h / l *  sin(currentAngle);   ++np;
+                            *np =-h / l *  sin(currentAngle);   ++np;
                             *np = r / l;                        ++np;
                         }
 
