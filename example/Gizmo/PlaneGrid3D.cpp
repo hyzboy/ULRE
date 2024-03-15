@@ -19,7 +19,7 @@ private:
     Material *          material            =nullptr;
     Pipeline *          pipeline            =nullptr;
 
-    Primitive *         prim_plane_grid       =nullptr;
+    Primitive *         prim_plane_grid     =nullptr;
     MaterialInstance *  material_instance[3]{};
 
 private:
