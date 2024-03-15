@@ -38,13 +38,10 @@ void RenderCmdBuffer::SetFBO(Framebuffer *fb)
         clear_values[cv_count-1].depthStencil.depth = 1.0f;
         clear_values[cv_count-1].depthStencil.stencil = 0;
     }
-    else
+    else if(clear_values)
     {
-        if(clear_values)
-        {
-            hgl_free(clear_values);
-            clear_values=nullptr;
-        }
+        hgl_free(clear_values);
+        clear_values=nullptr;
     }
 
     render_area.offset.x=0;

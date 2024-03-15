@@ -9,9 +9,13 @@ namespace hgl
             default_source=fs;
 
             if(fs)
+            {
                 fs->RefAcquire(this);
 
-            max_char_height=fs->GetCharHeight();
+                max_char_height=fs->GetCharHeight();
+            }
+            else
+                max_char_height=0;
         }
 
         FontSourceMulti::~FontSourceMulti()
