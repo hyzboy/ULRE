@@ -10,6 +10,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/BlinnPhong.h>
+#include<hgl/color/Color.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -23,6 +24,8 @@ static mtl::blinnphong::SunLight sun_light=
     Vector4f(1,1,1,0),      //direction
     Vector4f(1,0.95,0.9,1)  //color
 };
+
+constexpr const COLOR AxisColor[4]={COLOR::Red,COLOR::Green,COLOR::Blue,COLOR::White};
 
 class TestApp:public SceneAppFramework
 {
@@ -40,7 +43,7 @@ private:
 private:    //sphere
 
     Material *          mtl_blinnphong      =nullptr;
-    MaterialInstance *  mi_blinnphong       =nullptr;
+    MaterialInstance *  mi_blinnphong[4]{};
     Pipeline *          p_blinnphong        =nullptr;
 
     Primitive *         prim_sphere         =nullptr;
@@ -89,14 +92,14 @@ private:
         mtl_blinnphong->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
         mtl_blinnphong->Update();
 
-        float mi_data[4]=
+        Color4f mi_data;
+        for(uint i=0;i<4;i++)
         {
-            1,0,0,      //color
-            4           //gloss
-        };
+            mi_data=GetColor4f(AxisColor[i],4);
 
-        mi_blinnphong=db->CreateMaterialInstance(mtl_blinnphong,nullptr,&mi_data);
-        if(!mi_blinnphong)return(false);
+            mi_blinnphong[i]=db->CreateMaterialInstance(mtl_blinnphong,nullptr,&mi_data);
+            if(!mi_blinnphong[i])return(false);
+        }
 
         p_blinnphong=CreatePipeline(mtl_blinnphong,InlinePipeline::Solid3D,Prim::Triangles);
 
@@ -124,7 +127,7 @@ private:
         }
 
         //Sphere
-        prim_sphere=CreateSphere(db,mi_blinnphong->GetVIL(),16);
+        prim_sphere=CreateSphere(db,mi_blinnphong[0]->GetVIL(),16);
 
         //Cone
         {
@@ -135,7 +138,7 @@ private:
             cci.numberSlices=16;        //圆锥底部分割数
             cci.numberStacks=8;         //圆锥高度分割数
 
-            prim_cone=CreateCone(db,mi_blinnphong->GetVIL(),&cci);
+            prim_cone=CreateCone(db,mi_blinnphong[1]->GetVIL(),&cci);
         }
 
         //Cyliner
@@ -146,13 +149,13 @@ private:
             cci.numberSlices=16;        //圆柱底部分割数
             cci.radius      =0.25f;     //圆柱半径
 
-            prim_cylinder=CreateCylinder(db,mi_blinnphong->GetVIL(),&cci);
+            prim_cylinder=CreateCylinder(db,mi_blinnphong[2]->GetVIL(),&cci);
         }
 
         return(true);
     }    
     
-    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p,const Matrix4f &mat)
+    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p,const Matrix4f &mat=Identity4f)
     {
         Renderable *ri=db->CreateRenderable(r,mi,p);
 
@@ -171,9 +174,10 @@ private:
     {
         Add(prim_plane_grid,mi_plane_grid,p_line,Identity4f);
 
-        Add(prim_sphere,    mi_blinnphong,p_blinnphong,translate(Vector3f(0,0,2)));
-        Add(prim_cone,      mi_blinnphong,p_blinnphong,Identity4f);
-        Add(prim_cylinder,  mi_blinnphong,p_blinnphong,translate(Vector3f(0,0,-5)));        
+        Add(prim_sphere,    mi_blinnphong[0],p_blinnphong,translate(Vector3f(0,0,2)));
+
+        Add(prim_cone,      mi_blinnphong[1],p_blinnphong);
+        Add(prim_cylinder,  mi_blinnphong[2],p_blinnphong,translate(Vector3f(0,0,-5)));
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
