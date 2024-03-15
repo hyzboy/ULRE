@@ -460,6 +460,7 @@ public:
     {
         camera=wc;
         cur_time=0;
+        last_time=0;
     }
 
     const Vector2f &GetMouseCoord()const{return mouse_pos;}

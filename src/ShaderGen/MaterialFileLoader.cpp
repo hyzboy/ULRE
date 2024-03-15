@@ -120,6 +120,8 @@ namespace
 
     public:
 
+        UBOParse()=default;
+
         void Clear()
         {
             hgl_zero(ubo_data);

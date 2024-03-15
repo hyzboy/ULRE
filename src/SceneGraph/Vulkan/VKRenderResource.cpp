@@ -161,6 +161,8 @@ Texture2DArray *RenderResource::CreateTexture2DArray(const AnsiString &name,cons
 
     if(ta)
         Add(ta);
+    else
+        return nullptr;
 
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
