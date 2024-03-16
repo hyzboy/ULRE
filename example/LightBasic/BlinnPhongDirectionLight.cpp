@@ -25,7 +25,57 @@ static mtl::blinnphong::SunLight sun_light=
     Vector4f(1,0.95,0.9,1)  //color
 };
 
-constexpr const COLOR AxisColor[4]={COLOR::Red,COLOR::Green,COLOR::Blue,COLOR::White};
+constexpr const COLOR AxisColor[4]=
+{
+    COLOR::Red,     //X轴颜色
+    COLOR::Green,   //Y轴颜色
+    COLOR::Blue,    //Z轴颜色
+    COLOR::White    //全局颜色
+};
+
+class VertexDataManager
+{
+    uint                vi_count;       ///<顶点输入流数量
+    VertexInputFormat * vif_list;       ///<顶点输入格式列表
+    
+    VkDeviceSize        vbo_max_size;   ///<顶点缓冲区分配空间大小
+    VkDeviceSize        vbo_cur_size;   ///<顶点缓冲区当前使用大小
+    VBO **              vbo;            ///<顶点缓冲区列表
+    
+    VkDeviceSize        ibo_cur_size;   ///<索引缓冲区当前使用大小
+    IndexBuffer *       ibo;            ///<索引缓冲区
+
+    struct DataOffset
+    {
+        VkDeviceSize vbo_start;
+        VkDeviceSize vbo_size;
+
+        VkDeviceSize ibo_start;
+        VkDeviceSize ibo_size;
+    };
+
+public:
+
+    VertexDataManager(const VIL &_vil)
+    {
+        vi_count=_vil.GetCount();
+        vif_list=_vil.GetConfigList();
+
+        vbo_max_size=0;
+        vbo_cur_size=0;
+        vbo=new VBO *[vi_count];
+
+        ibo_cur_size=0;
+        ibo=nullptr;
+    }
+
+    const VkDeviceSize  GetVBOMaxCount()const{return vbo_max_size;}                                  ///<取得顶点缓冲区分配的空间最大数量
+    const VkDeviceSize  GetVBOCurCount()const{return vbo_cur_size;}                                  ///<取得顶点缓冲区当前数量
+
+    const IndexType     GetIBOType      ()const{return ibo?ibo->GetType():IndexType::ERR;}           ///<取得索引缓冲区类型
+    const VkDeviceSize  GetIBOMaxCount  ()const{return ibo?ibo->GetCount():-1;}                      ///<取得索引缓冲区分配的空间最大数量
+    const VkDeviceSize  GetIBOCurCount  ()const{return ibo?ibo_cur_size:-1;}                         ///<取得索引缓冲区当前数量
+};//class VertexDataManager
 
 class TestApp:public SceneAppFramework
 {
