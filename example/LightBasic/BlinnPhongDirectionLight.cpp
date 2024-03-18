@@ -35,8 +35,8 @@ constexpr const COLOR AxisColor[4]=
 
 class VertexDataManager
 {
-    uint                vi_count;       ///<顶点输入流数量
-    VertexInputFormat * vif_list;       ///<顶点输入格式列表
+    uint                        vi_count;       ///<顶点输入流数量
+    const VertexInputFormat *   vif_list;       ///<顶点输入格式列表
     
     VkDeviceSize        vbo_max_size;   ///<顶点缓冲区分配空间大小
     VkDeviceSize        vbo_cur_size;   ///<顶点缓冲区当前使用大小
@@ -59,11 +59,11 @@ public:
     VertexDataManager(const VIL &_vil)
     {
         vi_count=_vil.GetCount();
-        vif_list=_vil.GetConfigList();
+        vif_list=_vil.GetVIFList();
 
         vbo_max_size=0;
         vbo_cur_size=0;
-        vbo=new VBO *[vi_count];
+        vbo=hgl_zero_new<VBO *>(vi_count);
 
         ibo_cur_size=0;
         ibo=nullptr;
