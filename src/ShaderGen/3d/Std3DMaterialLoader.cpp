@@ -76,6 +76,9 @@ public:
         for (auto& ua : mfd->vi)
             vsc->AddInput(ua.vat, ua.name);
 
+        if(mfd->mi.mi_bytes>0)
+            vsc->AddMaterialInstanceID();
+
         if (!Std3DMaterial::CustomVertexShader(vsc))
             return (false);
 

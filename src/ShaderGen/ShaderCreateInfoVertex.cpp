@@ -50,17 +50,37 @@ void ShaderCreateInfoVertex::AddJoint()
 
 namespace
 {
-    constexpr const char MF_GetLocalToWorld[]="\nmat4 GetLocalToWorld(){return l2w.mats[Assign.x];}\n";
+    constexpr const char MF_GetLocalToWorld[]=R"(
+mat4 GetLocalToWorld()
+{
+    return mat4(LocalToWorld_0,
+                LocalToWorld_1,
+                LocalToWorld_2,
+                LocalToWorld_3);
+}
+)";
 }
 
-void ShaderCreateInfoVertex::AddAssign()
+void ShaderCreateInfoVertex::AddLocalToWorld()
 {
-    AddInput(   ASSIGN_VAT_FMT,
-                ASSIGN_VIS_NAME,
-                VK_VERTEX_INPUT_RATE_INSTANCE,
-                VertexInputGroup::Assign);
+    char name[]= "LocalToWorld_?";
+
+    for(uint i=0;i<4;i++)
+    {
+        name[sizeof(name)-2]='0'+i;
+
+        AddInput(VAT_VEC4,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
+    }
 
     AddFunction(MF_GetLocalToWorld);
+}
+
+void ShaderCreateInfoVertex::AddMaterialInstanceID()
+{
+    AddInput(   MI_VAT_FMT,
+                MI_VIS_NAME,
+                VK_VERTEX_INPUT_RATE_INSTANCE,
+                VertexInputGroup::MaterialInstanceID);
 }
 
 bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)

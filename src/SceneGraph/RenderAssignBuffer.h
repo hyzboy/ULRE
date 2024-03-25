@@ -35,14 +35,16 @@ private:
     GPUDevice *device;
 
     uint node_count;                    ///<渲染节点数量
-    DeviceBuffer *ubo_l2w;              ///<Local2World数据
+
+    VBO *l2w_vbo[4];
+    VkBuffer l2w_buffer[4];
 
     uint32_t mi_data_bytes;             ///<材质实例数据字节数
     uint32_t mi_count;                  ///<材质实例数量
     DeviceBuffer *ubo_mi;               ///<材质实例数据
     
-    //Assign VBO
-    VBO *vbo_assigns;                   ///<RG16UI格式的VertexInputStream,,,,X:L2W ID,Y:MI ID
+    VBO *vbo_mi;                        ///<材质实例ID(R16UI格式)
+    VkBuffer mi_buffer;
 
 private:
 
@@ -52,13 +54,14 @@ private:
 
 public:
 
-    VkBuffer GetAssignVBO()const;
+    const VkBuffer *GetLocalToWorldVBO()const{return l2w_buffer;}
+    const VkBuffer  GetMIVBO          ()const{return mi_buffer;}
 
     void Bind(Material *)const;
 
 public:
 
-    RenderAssignBuffer(GPUDevice *dev,const uint32_t mi_bytes);
+    RenderAssignBuffer(GPUDevice *dev,const bool has_l2w,const uint32_t mi_bytes);
     ~RenderAssignBuffer(){Clear();}
 
     void WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set);

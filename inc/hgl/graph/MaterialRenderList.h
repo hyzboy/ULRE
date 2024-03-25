@@ -39,6 +39,10 @@ private:
     DataArray<RenderItem> ri_array;
     uint ri_count;
 
+    bool has_l2w;
+    bool has_mi;
+    VkDeviceSize l2w_buffer_size[4];
+
     void StatMI();
     void Stat();
 
@@ -56,7 +60,7 @@ protected:
 
 public:
 
-    MaterialRenderList(GPUDevice *d,Material *m);
+    MaterialRenderList(GPUDevice *d,bool l2w,Material *m);
     ~MaterialRenderList();
 
     void Add(Renderable *ri,const Matrix4f &mat);

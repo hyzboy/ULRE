@@ -84,8 +84,6 @@ public:
     void SetMaterialInstance(UBODescriptor *,const AnsiString &);
     void AddMaterialInstanceOutput();
 
-    void SetLocalToWorld(UBODescriptor *);
-
     void SetMain(const AnsiString &str){main_function=str;}
     void SetMain(const char *str,const int len)
     {

@@ -16,9 +16,8 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 
     if(cfg->local_to_world)
     {
+        vsc->AddLocalToWorld();
         mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
-
-        vsc->AddAssign();
 
         if(is_rect)
             vsc->AddFunction(func::GetPosition2DRectL2W[size_t(cfg->coordinate_system)]);

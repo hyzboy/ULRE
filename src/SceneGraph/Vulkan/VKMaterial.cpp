@@ -47,11 +47,6 @@ const bool Material::hasSet(const DescriptorSetType &dst)const
     return desc_manager->hasSet(dst);
 }
 
-const bool Material::hasAssign()const
-{
-    return vertex_input->hasAssign();
-}
-
 const VIL *Material::GetDefaultVIL()const
 {
     return vertex_input->GetDefaultVIL();

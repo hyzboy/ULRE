@@ -47,14 +47,17 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
 }
 
 VK_NAMESPACE_BEGIN
-MaterialRenderList::MaterialRenderList(GPUDevice *d,Material *m)
+MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
 {
     device=d;
     cmd_buf=nullptr;
     material=m;
 
-    if(material->hasAssign())
-        assign_buffer=new RenderAssignBuffer(d,material->GetMIDataBytes());
+    has_l2w=l2w;
+    has_mi=material->HasMI();
+
+    if(has_l2w||has_mi)
+        assign_buffer=new RenderAssignBuffer(d,has_l2w,material->GetMIDataBytes());
     else
         assign_buffer=nullptr;
 
@@ -90,7 +93,7 @@ void MaterialRenderList::End()
 
     if(assign_buffer)
     {
-        if(material->HasMI())
+        if(has_mi)
             StatMI();
 
         //写入LocalToWorld数据
@@ -179,6 +182,17 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
         vbo_list->Add(vid->buffer_list,vid->buffer_offset,vid->binding_count);
     }
 
+    if(has_l2w)//LocalToWorld组，由RenderList合成
+    {
+        for(uint i=0;i<4;i++)
+            l2w_buffer_size[i]=ri_index*16;                        //mat4每列都是rgba32f，自然是16字节
+
+        vbo_list->Add(assign_buffer->GetLocalToWorldVBO(),l2w_buffer_size,4);
+    }
+
+    if(has_mi) //材质实例组
+        vbo_list->Add(assign_buffer->GetMIVBO(),MI_VBO_STRIDE_BYTES*ri_index);
+
     //if(!vbo_list.IsFull()) //Joint组，暂未支持
     //{
     //    const uint joint_id_binding_count=vil->GetCount(VertexInputGroup::JointID);
@@ -206,12 +220,6 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //        }
     //    }
     //}
-
-    //if(!vbo_list->IsFull()) //Assign组
-    {
-        if(assign_buffer)
-            vbo_list->Add(assign_buffer->GetAssignVBO(),ASSIGN_VBO_STRIDE_BYTES*ri_index);
-    }
 
     //if(count!=binding_count)
     //{
