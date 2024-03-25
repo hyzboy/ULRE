@@ -3,7 +3,8 @@
 #include<hgl/graph/VKVBOList.h>
 
 VK_NAMESPACE_BEGIN
-class RenderAssignBuffer;
+class RenderL2WBuffer;
+class RenderMIBuffer;
 
 /**
 * 同一材质的对象渲染列表
@@ -19,7 +20,8 @@ class MaterialRenderList
 
 private:
 
-    RenderAssignBuffer *assign_buffer;
+    RenderL2WBuffer *l2w_buffer;
+    RenderMIBuffer *mi_buffer;
 
     struct RenderItem
     {
@@ -39,8 +41,6 @@ private:
     DataArray<RenderItem> ri_array;
     uint ri_count;
 
-    bool has_l2w;
-    bool has_mi;
     VkDeviceSize l2w_buffer_size[4];
 
     void StatMI();
