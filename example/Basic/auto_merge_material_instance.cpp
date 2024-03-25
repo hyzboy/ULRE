@@ -95,7 +95,7 @@ private:
             if(!render_obj[i].r)
                 return(false);
 
-            render_root.CreateSubNode(rotate(deg2rad(360/DRAW_OBJECT_COUNT*i),Vector3f(0,0,1)),render_obj[i].r);
+            render_root.CreateSubNode(rotate(deg2rad(double(360/DRAW_OBJECT_COUNT*i)),Vector3f(0,0,1)),render_obj[i].r);
         }
 
         render_root.RefreshMatrix();

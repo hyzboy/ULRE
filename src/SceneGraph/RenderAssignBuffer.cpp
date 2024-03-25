@@ -46,18 +46,18 @@ namespace
 {
     constexpr const char *l2w_buffer_name[]=
     {
-        "UBO:Buffer:LocalToWorld:0",
-        "UBO:Buffer:LocalToWorld:1",
-        "UBO:Buffer:LocalToWorld:2",
-        "UBO:Buffer:LocalToWorld:3"
+        "VBO:Buffer:LocalToWorld:0",
+        "VBO:Buffer:LocalToWorld:1",
+        "VBO:Buffer:LocalToWorld:2",
+        "VBO:Buffer:LocalToWorld:3"
     };
 
     constexpr const char *l2w_memory_name[]=
     {
-        "UBO:Memory:LocalToWorld:0",
-        "UBO:Memory:LocalToWorld:1",
-        "UBO:Memory:LocalToWorld:2",
-        "UBO:Memory:LocalToWorld:3"
+        "VBO:Memory:LocalToWorld:0",
+        "VBO:Memory:LocalToWorld:1",
+        "VBO:Memory:LocalToWorld:2",
+        "VBO:Memory:LocalToWorld:3"
     };
 }
 #endif//_DEBUG
