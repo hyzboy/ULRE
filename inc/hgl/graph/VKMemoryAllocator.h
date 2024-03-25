@@ -35,6 +35,8 @@ public:
     void Free() override {/* DON'T RUN ANY OPERATION.*/}
 
     void Flush(const VkDeviceSize);
+
+    bool Write(const void *source,const uint64 offset,const uint64 size) override;
 };//class VKMemoryAllocator:public AbstractMemoryAllocator
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MEMORY_ALLOCATOR_INCLUDE

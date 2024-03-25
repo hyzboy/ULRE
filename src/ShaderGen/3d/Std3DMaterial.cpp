@@ -24,7 +24,7 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     {
         mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-        vsc->AddAssign();
+        vsc->AddLocalToWorld();
         vsc->AddFunction(cfg->camera?func::GetPosition3DL2WCamera:func::GetPosition3DL2W);
     }
     else

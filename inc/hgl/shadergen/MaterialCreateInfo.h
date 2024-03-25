@@ -34,8 +34,6 @@ namespace hgl{namespace graph
             UBODescriptor *mi_ubo;
 
             uint32_t l2w_shader_stage;
-            uint32_t l2w_max_count;
-            UBODescriptor *l2w_ubo;
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 

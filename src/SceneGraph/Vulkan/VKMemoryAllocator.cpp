@@ -45,4 +45,12 @@ void VKMemoryAllocator::Flush(const VkDeviceSize size)
 {
     gpu_buffer->Flush(size);
 }
+
+bool VKMemoryAllocator::Write(const void *source,const uint64 offset,const uint64 size)
+{
+    if(!source||size==0)
+        return(false);
+
+    return gpu_buffer->Write(source,offset,size);
+}
 VK_NAMESPACE_END

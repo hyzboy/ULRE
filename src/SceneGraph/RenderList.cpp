@@ -35,7 +35,7 @@ namespace hgl
 
                 if(!mrl_map.Get(mtl,mrl))
                 {
-                    mrl=new MaterialRenderList(device,mtl);
+                    mrl=new MaterialRenderList(device,true,mtl);
 
                     mrl_map.Add(mtl,mrl);
                 }
