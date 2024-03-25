@@ -8,37 +8,21 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 
 VK_NAMESPACE_BEGIN
-RenderAssignBuffer::RenderAssignBuffer(GPUDevice *dev,const bool has_l2w,const uint mi_bytes)
+RenderL2WBuffer::RenderL2WBuffer(GPUDevice *dev)
 {
     hgl_zero(*this);
 
     device=dev;
-
-    mi_data_bytes=mi_bytes;
 }
 
-void RenderAssignBuffer::Bind(Material *mtl)const
+void RenderL2WBuffer::Clear()
 {
-    if(!mtl)return;
-
-    if(!mtl->HasMI())
-        return;
-
-    mtl->BindUBO(DescriptorSetType::PerMaterial,mtl::SBS_MaterialInstance.name,ubo_mi);
-}
-
-void RenderAssignBuffer::Clear()
-{
-    SAFE_CLEAR(ubo_mi);
-    SAFE_CLEAR(vbo_mi);
-
     SAFE_CLEAR(l2w_vbo[0])
     SAFE_CLEAR(l2w_vbo[1])
     SAFE_CLEAR(l2w_vbo[2])
     SAFE_CLEAR(l2w_vbo[3])
 
     node_count=0;
-    mi_count=0;
 }
 
 #ifdef _DEBUG
@@ -62,7 +46,7 @@ namespace
 }
 #endif//_DEBUG
 
-void RenderAssignBuffer::Alloc(const uint nc,const uint mc)
+void RenderL2WBuffer::Alloc(const uint nc)
 {
     Clear();
 
@@ -75,6 +59,78 @@ void RenderAssignBuffer::Alloc(const uint nc,const uint mc)
             l2w_buffer[i]=l2w_vbo[i]->GetBuffer();
         }
     }
+
+#ifdef _DEBUG
+    DebugUtils *du=device->GetDebugUtils();
+
+    if(du)
+    {
+        for(int i=0;i<4;i++)
+        {
+            du->SetBuffer(l2w_buffer[i],l2w_buffer_name[i]);
+            du->SetDeviceMemory(l2w_vbo[i]->GetVkMemory(),l2w_memory_name[i]);
+        }
+    }
+#endif//_DEBUG
+}
+
+void RenderL2WBuffer::WriteNode(RenderNode *render_node,const uint count)
+{
+    RenderNode *rn;
+
+    Alloc(count);
+
+    glm::vec4 *tp;
+
+    for(uint col=0;col<4;col++)
+    {
+        tp=(glm::vec4 *)(l2w_vbo[col]->Map());
+
+        rn=render_node;
+
+        for(uint i=0;i<count;i++)
+        {
+            *tp=rn->local_to_world[col];
+            ++tp;
+            ++rn;
+        }
+
+        l2w_vbo[col]->Unmap();
+    }
+}
+VK_NAMESPACE_END
+
+VK_NAMESPACE_BEGIN
+RenderMIBuffer::RenderMIBuffer(GPUDevice *dev,const uint mi_bytes)
+{
+    hgl_zero(*this);
+
+    device=dev;
+
+    mi_data_bytes=mi_bytes;
+}
+
+void RenderMIBuffer::Bind(Material *mtl)const
+{
+    if(!mtl)return;
+
+    mtl->BindUBO(DescriptorSetType::PerMaterial,mtl::SBS_MaterialInstance.name,ubo_mi);
+}
+
+void RenderMIBuffer::Clear()
+{
+    SAFE_CLEAR(ubo_mi);
+    SAFE_CLEAR(vbo_mi);
+
+    mi_count=0;
+    node_count=0;
+}
+
+void RenderMIBuffer::Alloc(const uint nc,const uint mc)
+{
+    Clear();
+
+    node_count=nc;
 
     if(mi_data_bytes>0&&mc>0)
     {
@@ -91,84 +147,45 @@ void RenderAssignBuffer::Alloc(const uint nc,const uint mc)
         
         if(du)
         {
-            if(l2w_buffer[0])
-            {
-                for(int i=0;i<4;i++)
-                {
-                    du->SetBuffer(l2w_buffer[i],l2w_buffer_name[i]);
-                    du->SetDeviceMemory(l2w_vbo[i]->GetVkMemory(),l2w_memory_name[i]);
-                }
-            }
+            du->SetBuffer(ubo_mi->GetBuffer(),"UBO:Buffer:MaterialInstance");
+            du->SetDeviceMemory(ubo_mi->GetVkMemory(),"UBO:Memory:MaterialInstance");
 
-            if(ubo_mi)
-            {
-                du->SetBuffer(ubo_mi->GetBuffer(),"UBO:Buffer:MaterialInstance");
-                du->SetDeviceMemory(ubo_mi->GetVkMemory(),"UBO:Memory:MaterialInstance");
-            }
-
-            if(vbo_mi)
-            {
-                du->SetBuffer(vbo_mi->GetBuffer(),"VBO:Buffer:MaterialInstanceID");
-                du->SetDeviceMemory(vbo_mi->GetVkMemory(),"VBO:Memory:MaterialInstanceID");
-            }
+            du->SetBuffer(vbo_mi->GetBuffer(),"VBO:Buffer:MaterialInstanceID");
+            du->SetDeviceMemory(vbo_mi->GetVkMemory(),"VBO:Memory:MaterialInstanceID");
         }
     #endif//_DEBUG
 }
 
-void RenderAssignBuffer::WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)
+void RenderMIBuffer::WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set)
 {
     RenderNode *rn;
 
     Alloc(count,mi_set.GetCount());
 
-    if(l2w_buffer[0])
+    uint8 *mip=(uint8 *)(ubo_mi->Map());
+
+    for(MaterialInstance *mi:mi_set)
     {
-        glm::vec4 *tp;
+        memcpy(mip,mi->GetMIData(),mi_data_bytes);
+        mip+=mi_data_bytes;
+    }
 
-        for(uint col=0;col<4;col++)
+    ubo_mi->Unmap();
+
+    uint16 *idp=(uint16 *)(vbo_mi->Map());
+
+    {
+        rn=render_node;
+
+        for(uint i=0;i<count;i++)
         {
-            tp=(glm::vec4 *)(l2w_vbo[col]->Map());
+            *idp=mi_set.Find(rn->ri->GetMaterialInstance());
+            ++idp;
 
-            rn=render_node;
-
-            for(uint i=0;i<count;i++)
-            {
-                *tp=rn->local_to_world[col];
-                ++tp;
-                ++rn;
-            }
-
-            l2w_vbo[col]->Unmap();
+            ++rn;
         }
     }
 
-    if(ubo_mi)
-    {
-        uint8 *mip=(uint8 *)(ubo_mi->Map());
-
-        for(MaterialInstance *mi:mi_set)
-        {
-            memcpy(mip,mi->GetMIData(),mi_data_bytes);
-            mip+=mi_data_bytes;
-        }
-
-        ubo_mi->Unmap();
-
-        uint16 *idp=(uint16 *)(vbo_mi->Map());
-
-        {
-            rn=render_node;
-
-            for(uint i=0;i<count;i++)
-            {
-                *idp=mi_set.Find(rn->ri->GetMaterialInstance());
-                ++idp;
-
-                ++rn;
-            }
-        }
-
-        vbo_mi->Unmap();
-    }
+    vbo_mi->Unmap();
 }
 VK_NAMESPACE_END

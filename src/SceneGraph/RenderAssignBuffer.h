@@ -25,19 +25,43 @@ VK_NAMESPACE_BEGIN
 struct RenderNode;
 class MaterialInstance;
 
-/*
-* 渲染节点额外提供的数据
-*/
-class RenderAssignBuffer
+class RenderL2WBuffer
 {
-private:
-
     GPUDevice *device;
 
     uint node_count;                    ///<渲染节点数量
 
     VBO *l2w_vbo[4];
     VkBuffer l2w_buffer[4];
+
+private:
+
+    void Alloc(const uint nc);
+
+    void Clear();
+
+public:
+
+    const VkBuffer *GetVBO()const{return l2w_buffer;}
+
+public:
+
+    RenderL2WBuffer(GPUDevice *dev);
+    ~RenderL2WBuffer(){Clear();}
+
+    void WriteNode(RenderNode *render_node,const uint count);
+};//class RenderL2WBuffer
+
+/*
+* 渲染节点额外提供的数据
+*/
+class RenderMIBuffer
+{
+private:
+
+    GPUDevice *device;
+
+    uint node_count;                    ///<渲染节点数量
 
     uint32_t mi_data_bytes;             ///<材质实例数据字节数
     uint32_t mi_count;                  ///<材质实例数量
@@ -54,17 +78,20 @@ private:
 
 public:
 
-    const VkBuffer *GetLocalToWorldVBO()const{return l2w_buffer;}
-    const VkBuffer  GetMIVBO          ()const{return mi_buffer;}
+    const VkBuffer GetVBO()const{return mi_buffer;}
 
     void Bind(Material *)const;
 
 public:
 
-    RenderAssignBuffer(GPUDevice *dev,const bool has_l2w,const uint32_t mi_bytes);
-    ~RenderAssignBuffer(){Clear();}
+    RenderMIBuffer(GPUDevice *dev,const uint32_t mi_bytes);
+    ~RenderMIBuffer(){Clear();}
 
-    void WriteNode(RenderNode *render_node,const uint count,const MaterialInstanceSets &mi_set);
+    //下一代，将MaterialInstanceSets使用提前化，这样不用每一次绘制都重新写入MI DATA，可以提升效率。
+    //虽然这样就不自动化了，但我们要的就是不自动化。
+    //必须在外部全部准备好MaterialInstanceSets，然后一次性写入。
+    //渲染时找不到就直接用0号材质实例
 
-};//struct RenderAssignBuffer
+    void WriteNode(RenderNode *render_node,const uint nc,const MaterialInstanceSets &mi_set);
+};//struct RenderMIBuffer
 VK_NAMESPACE_END
