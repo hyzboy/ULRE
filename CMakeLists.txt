@@ -26,7 +26,7 @@ SET(ULRE    CMCore
             ULRE.Util
             ULRE.ShaderGen
             ULRE.SceneGraph
-            ${HGL_GLM_LIB}
+            ${HGL_MATH_LIB}
             ${RENDER_LIBRARY}
             ${Vulkan_LIBRARIES})
 
