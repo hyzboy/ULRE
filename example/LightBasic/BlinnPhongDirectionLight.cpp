@@ -35,15 +35,7 @@ constexpr const COLOR AxisColor[4]=
 
 class VertexDataManager
 {
-    uint                        vi_count;       ///<顶点输入流数量
-    const VertexInputFormat *   vif_list;       ///<顶点输入格式列表
-    
-    VkDeviceSize        vbo_max_size;   ///<顶点缓冲区分配空间大小
-    VkDeviceSize        vbo_cur_size;   ///<顶点缓冲区当前使用大小
-    VBO **              vbo;            ///<顶点缓冲区列表
-    
-    VkDeviceSize        ibo_cur_size;   ///<索引缓冲区当前使用大小
-    IndexBuffer *       ibo;            ///<索引缓冲区
+public:
 
     struct DataOffset
     {
@@ -53,6 +45,22 @@ class VertexDataManager
         VkDeviceSize ibo_start;
         VkDeviceSize ibo_size;
     };
+
+protected:
+
+    uint            vi_count;       ///<顶点输入流数量
+    const VIF *     vif_list;       ///<顶点输入格式列表
+    
+    VkDeviceSize    vbo_max_size;   ///<顶点缓冲区分配空间大小
+    VkDeviceSize    vbo_cur_size;   ///<顶点缓冲区当前使用大小
+    VBO **          vbo;            ///<顶点缓冲区列表
+    
+    VkDeviceSize    ibo_cur_size;   ///<索引缓冲区当前使用大小
+    IndexBuffer *   ibo;            ///<索引缓冲区
+
+protected:
+
+    //List<DataOffset> 我们可能需要一个数据块链表管理器，并且支持最小数据分块。以方便支持数据块回收。 
 
 public:
 
@@ -69,12 +77,16 @@ public:
         ibo=nullptr;
     }
 
-    const VkDeviceSize  GetVBOMaxCount()const{return vbo_max_size;}                                  ///<取得顶点缓冲区分配的空间最大数量
-    const VkDeviceSize  GetVBOCurCount()const{return vbo_cur_size;}                                  ///<取得顶点缓冲区当前数量
+    const VkDeviceSize  GetVBOMaxCount  ()const{return vbo_max_size;}                                ///<取得顶点缓冲区分配的空间最大数量
+    const VkDeviceSize  GetVBOCurCount  ()const{return vbo_cur_size;}                                ///<取得顶点缓冲区当前数量
 
     const IndexType     GetIBOType      ()const{return ibo?ibo->GetType():IndexType::ERR;}           ///<取得索引缓冲区类型
     const VkDeviceSize  GetIBOMaxCount  ()const{return ibo?ibo->GetCount():-1;}                      ///<取得索引缓冲区分配的空间最大数量
     const VkDeviceSize  GetIBOCurCount  ()const{return ibo?ibo_cur_size:-1;}                         ///<取得索引缓冲区当前数量
+
+public:
+
+
 };//class VertexDataManager
 
 class TestApp:public SceneAppFramework
