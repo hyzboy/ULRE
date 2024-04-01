@@ -11,6 +11,8 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/BlinnPhong.h>
 #include<hgl/color/Color.h>
+#include<hgl/type/DataChain.h>
+#include<hgl/type/MemoryBlock.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -35,17 +37,6 @@ constexpr const COLOR AxisColor[4]=
 
 class VertexDataManager
 {
-public:
-
-    struct DataOffset
-    {
-        VkDeviceSize vbo_start;
-        VkDeviceSize vbo_size;
-
-        VkDeviceSize ibo_start;
-        VkDeviceSize ibo_size;
-    };
-
 protected:
 
     uint            vi_count;       ///<顶点输入流数量
@@ -60,14 +51,14 @@ protected:
 
 protected:
 
-    //List<DataOffset> 我们可能需要一个数据块链表管理器，并且支持最小数据分块。以方便支持数据块回收。 
+    DataChain       data_chain;     ///<数据链
 
 public:
 
     VertexDataManager(const VIL &_vil)
     {
         vi_count=_vil.GetCount();
-        vif_list=_vil.GetVIFList();
+        vif_list=_vil.GetVIFList();     //来自于Material，不会被释放，所以指针有效
 
         vbo_max_size=0;
         vbo_cur_size=0;
@@ -75,6 +66,12 @@ public:
 
         ibo_cur_size=0;
         ibo=nullptr;
+    }
+
+    ~VertexDataManager()
+    {
+        SAFE_CLEAR_OBJECT_ARRAY(vbo,vi_count);
+        SAFE_CLEAR(ibo);
     }
 
     const VkDeviceSize  GetVBOMaxCount  ()const{return vbo_max_size;}                                ///<取得顶点缓冲区分配的空间最大数量
