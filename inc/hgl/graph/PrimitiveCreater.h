@@ -43,14 +43,16 @@ namespace hgl
             IndexBuffer *       ibo;
             PVBMap              vbo_map;
 
+        protected:
+
+                    VAD *                   CreateVAD(const AnsiString &name);                                          ///<创建一个顶点属性缓冲区
+
         public:
 
             PrimitiveCreater(RenderResource *sdb,const VIL *);
             virtual ~PrimitiveCreater()=default;
 
             virtual bool                    Init(const uint32 vertices_count);                                          ///<初始化，参数为顶点数量
-
-                    VAD *                   CreateVAD(const AnsiString &name);                                          ///<创建一个顶点属性缓冲区
 
             template<typename T> 
                     T *                     AccessVAD(const AnsiString &name)                                           ///<创建一个顶点属性缓冲区以及访问器
