@@ -68,15 +68,6 @@ VBO *Primitive::GetVBO(const AnsiString &name,VkDeviceSize *offset)
     return(nullptr);
 }
 
-VkBuffer Primitive::GetBuffer(const AnsiString &name,VkDeviceSize *offset)
-{
-    VBO *vbo=GetVBO(name,offset);
-
-    if(vbo)return vbo->GetBuffer();
-
-    return(VK_NULL_HANDLE);
-}
-
 bool Primitive::Set(IndexBuffer *ib,VkDeviceSize offset)
 {
     if(!ib)return(false);

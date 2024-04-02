@@ -71,7 +71,6 @@ public:
     const   uint32_t            GetVertexCount      ()const {return vertex_count;}
 
             VBO *               GetVBO              (const AnsiString &,VkDeviceSize *);
-            VkBuffer            GetBuffer           (const AnsiString &,VkDeviceSize *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
     const   IndexBufferData *   GetIndexBufferData  ()const {return &index_buffer_data;}
