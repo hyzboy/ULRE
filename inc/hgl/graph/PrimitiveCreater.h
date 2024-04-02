@@ -38,7 +38,7 @@ namespace hgl
 
         protected:
 
-            PrimitiveVertexBuffer *CreatePVB(const AnsiString &,const void *data);                                      ///<创建一个顶点属性数据区
+            PrimitiveVertexBuffer *AcquirePVB(const AnsiString &,const void *data);                                     ///<请求一个顶点属性数据区
 
             void ClearAllData();
 
@@ -57,7 +57,7 @@ namespace hgl
                         if(format!=T::GetVulkanFormat())
                             return(nullptr);
 
-                        PrimitiveVertexBuffer *pvb=this->CreatePVB(name,nullptr);
+                        PrimitiveVertexBuffer *pvb=this->AcquirePVB(name,nullptr);
 
                         if(!pvb)
                             return(nullptr);
