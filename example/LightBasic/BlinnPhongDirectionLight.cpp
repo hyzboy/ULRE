@@ -11,7 +11,6 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/BlinnPhong.h>
 #include<hgl/graph/VertexDataManager.h>
-#include<hgl/color/Color.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -108,7 +107,9 @@ private:
         {
             mi_data=GetColor4f(AxisColor[i],4);
 
-            mi_blinnphong[i]=db->CreateMaterialInstance(mtl_blinnphong,nullptr,&mi_data);
+            mi_blinnphong[i]=db->CreateMaterialInstance(mtl_blinnphong,     //材质
+                                                        nullptr,            //顶点输入配置,这里使用nullptr，即代表会使用默认配置，那么结果将等同于上面的mtl_blinnphong->GetDefaultVIL()
+                                                        &mi_data);          //材质实例参数
             if(!mi_blinnphong[i])return(false);
         }
 
@@ -117,7 +118,7 @@ private:
         if(!p_blinnphong)
             return(false);
 
-        return(true);        
+        return(true);
     }
 
     bool CreateRenderObject()

@@ -78,6 +78,8 @@ private:
 
 public:
 
+    GPUDevice *GetDevice(){return device;}
+
     //注：并非一定要走这里，这里只是提供一个注册和自动绑定的机制
     DescriptorBinding static_descriptor;                                                    ///<静态属性描述符绑定管理
     DescriptorBinding global_descriptor;                                                    ///<全局属性描述符绑定管理
