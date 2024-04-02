@@ -41,8 +41,6 @@ namespace hgl
 
             pvb=new PrimitiveVertexBuffer;
 
-            pvb->name   =name;
-            pvb->binding=vif->binding;
             pvb->vbo    =db->CreateVBO(vif->format,vertices_number,data);
 
             if(!data)

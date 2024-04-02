@@ -15,8 +15,6 @@ namespace hgl
         {
             struct PrimitiveVertexBuffer
             {
-                AnsiString      name;
-                int             binding;
                 VBO *           vbo;
                 void *          map_data;
             };//struct PrimitiveVertexBuffer
