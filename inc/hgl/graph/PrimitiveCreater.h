@@ -33,7 +33,6 @@ namespace hgl
         protected:
 
             RenderResource *db;
-            Material *mtl;
 
             const VIL *vil;
 
