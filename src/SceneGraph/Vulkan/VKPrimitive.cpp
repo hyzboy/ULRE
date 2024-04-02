@@ -32,12 +32,13 @@ bool Primitive::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
     if(!vbo)return(false);
     if(buffer_list.KeyExist(name))return(false);
 
-    VBOAccessData bd;
-    
-    bd.buf=vbo;
-    bd.offset=offset;
+    VBOAccessData vad;
 
-    buffer_list.Add(name,bd);
+    vad.vbo=vbo;
+    vad.offset=offset;
+    vad.size=vbo->GetBytes();
+
+    buffer_list.Add(name,vad);
 
 #ifdef _DEBUG
     DebugUtils *du=device->GetDebugUtils();
@@ -52,20 +53,12 @@ bool Primitive::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
     return(true);
 }
 
-VBO *Primitive::GetVBO(const AnsiString &name,VkDeviceSize *offset)
+bool Primitive::GetVBOAccessData(const AnsiString &name,VBOAccessData *vad)
 {
-    if(!offset)return(nullptr);
-    if(name.IsEmpty())return(nullptr);
+    if(name.IsEmpty())return(false);
+    if(!vad)return(false);
 
-    VBOAccessData bd;
-
-    if(buffer_list.Get(name,bd))
-    {
-        *offset=bd.offset;
-        return bd.buf;
-    }
-
-    return(nullptr);
+    return buffer_list.Get(name,*vad);
 }
 
 bool Primitive::Set(IndexBuffer *ib,VkDeviceSize offset)
