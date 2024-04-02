@@ -44,14 +44,6 @@ namespace hgl
         };//class VertexAttribData
 
         using VAD=VertexAttribData;
-
-        /**
-         * 根据格式要求，创建对应的顶点属性数据区(VAD)
-         * @param vertex_count  顶点数量
-         * @param vif           格式
-         */
-        VAD *CreateVertexAttribData(const uint32_t vertex_count,const VertexInputFormat *vif);
-        //这个函数比较重要，就不搞成CreateVAD的简写了
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_INCLUDE
