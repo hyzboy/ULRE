@@ -32,7 +32,7 @@ bool Primitive::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
     if(!vbo)return(false);
     if(buffer_list.KeyExist(name))return(false);
 
-    VBOData bd;
+    VBOAccessData bd;
     
     bd.buf=vbo;
     bd.offset=offset;
@@ -57,7 +57,7 @@ VBO *Primitive::GetVBO(const AnsiString &name,VkDeviceSize *offset)
     if(!offset)return(nullptr);
     if(name.IsEmpty())return(nullptr);
 
-    VBOData bd;
+    VBOAccessData bd;
 
     if(buffer_list.Get(name,bd))
     {
