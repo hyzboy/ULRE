@@ -10,7 +10,6 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/ObjectManage.h>
@@ -106,7 +105,6 @@ public: // VBO/VAO
 
     VBO *CreateVBO(VkFormat format,uint32_t count,const void *data, SharingMode sm=SharingMode::Exclusive);
     VBO *CreateVBO(VkFormat format,uint32_t count,                  SharingMode sm=SharingMode::Exclusive){return CreateVBO(format,             count,          nullptr,        sm);}
-    VBO *CreateVBO(const VAD *vad,                                  SharingMode sm=SharingMode::Exclusive){return CreateVBO(vad->GetFormat(),   vad->GetCount(),vad->GetData(), sm);}
 
     #define SCENE_DB_CREATE_FUNC(name)  DeviceBuffer *Create##name(const AnsiString &buf_name,VkDeviceSize size,void *data,SharingMode sm=SharingMode::Exclusive);   \
                                         DeviceBuffer *Create##name(const AnsiString &buf_name,VkDeviceSize size,SharingMode sm=SharingMode::Exclusive){return Create##name(buf_name,size,nullptr,sm);}

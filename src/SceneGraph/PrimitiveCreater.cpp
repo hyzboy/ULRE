@@ -5,22 +5,6 @@ namespace hgl
 {
     namespace graph
     {
-        /**
-        * 根据格式要求，创建对应的顶点属性数据区(VAD)
-        * @param vertex_count  顶点数量
-        * @param vif           格式
-        */
-        VAD *CreateVertexAttribData(const uint32_t vertex_count,const VertexInputFormat *vif)
-        {
-            if(vertex_count<=0
-               ||vif->vec_size<1||vif->vec_size>4
-               ||vif->stride<1||vif->stride>8*4
-               ||!CheckVulkanFormat(vif->format))
-                return(nullptr);
-
-            return(new VertexAttribData(vertex_count,vif->format,vif->stride*vertex_count));
-        }
-
         PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VIL *v)
         {
             db              =sdb;
@@ -39,7 +23,7 @@ namespace hgl
             return(true);
         }
 
-        VAD *PrimitiveCreater::CreateVAD(const AnsiString &name)
+        PrimitiveCreater::PrimitiveVertexBuffer *PrimitiveCreater::CreatePVB(const AnsiString &name,const void *data)
         {
             if(!vil)return(nullptr);
             if(name.IsEmpty())return(nullptr);
@@ -52,24 +36,22 @@ namespace hgl
             PrimitiveVertexBuffer *pvb;
 
             if(vbo_map.Get(name,pvb))
-                return pvb->vad;
-
-            VAD *vad=hgl::graph::CreateVertexAttribData(vertices_number,vif);
-
-            if(!vad)
-                return(nullptr);
+                return pvb;
 
             pvb=new PrimitiveVertexBuffer;
 
-            pvb->vad    =vad;
             pvb->name   =name;
             pvb->binding=vif->binding;
-            
-            pvb->vbo    =nullptr;
+            pvb->vbo    =db->CreateVBO(vif->format,vertices_number,data);
+
+            if(!data)
+                pvb->map_data=pvb->vbo->Map();
+            else
+                pvb->map_data=nullptr;
 
             vbo_map.Add(name,pvb);
 
-            return pvb->vad;
+            return pvb;
         }
 
         bool PrimitiveCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
@@ -79,11 +61,6 @@ namespace hgl
             if(!data)return(false);
             if(!bytes)return(false);
             
-            PrimitiveVertexBuffer *pvb;
-
-            if(vbo_map.Get(name,pvb))
-                return false;
-
             const VertexInputFormat *vif=vil->GetConfig(name);
 
             if(!vif)
@@ -91,18 +68,33 @@ namespace hgl
 
             if(vif->stride*vertices_number!=bytes)
                 return(false);
-               
-            pvb=new PrimitiveVertexBuffer;
 
-            pvb->vad    =nullptr;
-            pvb->name   =name;
-            pvb->binding=vif->binding;
+            return CreatePVB(name,data);
+        }
 
-            pvb->vbo    =db->CreateVBO(vif->format,vertices_number,data);
+        void PrimitiveCreater::ClearAllData()
+        {
+            if(vbo_map.GetCount()>0)
+            {
+                const auto *sp=vbo_map.GetDataList();
+                for(uint i=0;i<vbo_map.GetCount();i++)
+                {
+                    if((*sp)->value->vbo)
+                    {
+                        (*sp)->value->vbo->Unmap();
+                        delete (*sp)->value->vbo;
+                    }
+                
+                    ++sp;
+                }
+            }
 
-            vbo_map.Add(name,pvb);
-
-            return true;
+            if(ibo)
+            {
+                ibo->Unmap();
+                delete ibo;
+                ibo=nullptr;
+            }
         }
 
         Primitive *PrimitiveCreater::Finish(const AnsiString &prim_name)
@@ -118,9 +110,17 @@ namespace hgl
             for(uint i=0;i<si_count;i++)
             {
                 if((*sp)->value->vbo)
+                {
+                    if((*sp)->value->map_data)
+                        (*sp)->value->vbo->Unmap();
+
                     primitive->Set((*sp)->key,(*sp)->value->vbo);
+                }
                 else
-                    primitive->Set((*sp)->key,db->CreateVBO((*sp)->value->vad));
+                {
+                    //ClearAllData();
+                    return(nullptr);
+                }
 
                 ++sp;
             }

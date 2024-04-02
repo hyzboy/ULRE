@@ -5,7 +5,6 @@
 #include<hgl/color/Color4f.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/String.h>
-#include<hgl/graph/VertexAttribData.h>
 #include<hgl/log/LogInfo.h>
 namespace hgl
 {
@@ -130,14 +129,9 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess1<T,VKFMT> *   Create(VAD *vad)
+            static VertexAttribDataAccess1<T,VKFMT> *   Create(const VkDeviceSize vertices_number,void *vbo_data)
             {
-                if(!vad)return(nullptr);
-
-                if(vad->GetFormat()!=VKFMT)
-                    return(nullptr);
-
-                return(new VertexAttribDataAccess1<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
+                return(new VertexAttribDataAccess1<T,VKFMT>(vertices_number,(T *)vbo_data));
             }
 
             /**
@@ -223,14 +217,9 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess2<T,VKFMT> *   Create(VAD *vad)
+            static VertexAttribDataAccess2<T,VKFMT> *   Create(const VkDeviceSize vertices_number,void *vbo_data)
             {
-                if(!vad)return(nullptr);
-
-                if(vad->GetFormat()!=VKFMT)
-                    return(nullptr);
-
-                return(new VertexAttribDataAccess2<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
+                return(new VertexAttribDataAccess2<T,VKFMT>(vertices_number,(T *)vbo_data));
             }
 
             /**
@@ -539,14 +528,9 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess3<T,VKFMT> *   Create(VAD *vad)
+            static VertexAttribDataAccess3<T,VKFMT> *   Create(const VkDeviceSize vertices_number,void *vbo_data)
             {
-                if(!vad)return(nullptr);
-
-                if(vad->GetFormat()!=VKFMT)
-                    return(nullptr);
-
-                return(new VertexAttribDataAccess3<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
+                return(new VertexAttribDataAccess3<T,VKFMT>(vertices_number,(T *)vbo_data));
             }
 
             /**
@@ -811,14 +795,9 @@ namespace hgl
 
             static VkFormat GetVulkanFormat(){return VKFMT;}
 
-            static VertexAttribDataAccess4<T,VKFMT> *   Create(VAD *vad)
+            static VertexAttribDataAccess4<T,VKFMT> *   Create(const VkDeviceSize vertices_number,void *vbo_data)
             {
-                if(!vad)return(nullptr);
-
-                if(vad->GetFormat()!=VKFMT)
-                    return(nullptr);
-
-                return(new VertexAttribDataAccess4<T,VKFMT>(vad->GetCount(),(T *)vad->GetData()));
+                return(new VertexAttribDataAccess4<T,VKFMT>(vertices_number,(T *)vbo_data));
             }
 
             /**
