@@ -37,6 +37,8 @@ constexpr const COLOR AxisColor[4]=
 
 class VertexDataManager
 {
+    GPUDevice *device;
+
 protected:
 
     uint            vi_count;       ///<顶点输入流数量
@@ -55,8 +57,10 @@ protected:
 
 public:
 
-    VertexDataManager(const VIL &_vil)
+    VertexDataManager(GPUDevice *dev,const VIL &_vil)
     {
+        device=dev;
+
         vi_count=_vil.GetCount();
         vif_list=_vil.GetVIFList();     //来自于Material，不会被释放，所以指针有效
 
@@ -83,7 +87,36 @@ public:
 
 public:
 
+    bool Init(const VkDeviceSize vbo_size,const VkDeviceSize ibo_size,const IndexType index_type)
+    {
+        if(vbo[0]||ibo)     //已经初始化过了
+            return(false);
 
+        if(vbo_size<=0)
+            return(false);
+    
+        vbo_max_size=vbo_size;
+        ibo_cur_size=ibo_size;
+
+        vbo_cur_size=0;
+        ibo_cur_size=0;
+
+        for(uint i=0;i<vi_count;i++)
+        {
+            vbo[i]=device->CreateVBO(vif_list[i].format,vbo_max_size);
+            if(!vbo[i])
+                return(false);
+        }
+
+        if(ibo_size>0)
+        {
+            ibo=device->CreateIBO(index_type,ibo_size);
+            if(!ibo)
+                return(false);
+        }
+    
+        return(true);
+    }
 };//class VertexDataManager
 
 class TestApp:public SceneAppFramework
@@ -102,6 +135,8 @@ private:
 private:    //sphere
 
     Material *          mtl_blinnphong      =nullptr;
+    VertexDataManager * vdm_blinnphong      =nullptr;
+
     MaterialInstance *  mi_blinnphong[4]{};
     Pipeline *          p_blinnphong        =nullptr;
 
@@ -150,6 +185,8 @@ private:
 
         mtl_blinnphong->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
         mtl_blinnphong->Update();
+
+        vdm_blinnphong=new VertexDataManager(device,mtl_blinnphong->GetDefaultVIL());
 
         Color4f mi_data;
         for(uint i=0;i<4;i++)
