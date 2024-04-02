@@ -1,10 +1,26 @@
-#include<hgl/graph/PrimitiveCreater.h>
+﻿#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKShaderModule.h>
 
 namespace hgl
 {
     namespace graph
     {
+        /**
+        * 根据格式要求，创建对应的顶点属性数据区(VAD)
+        * @param vertex_count  顶点数量
+        * @param vif           格式
+        */
+        VAD *CreateVertexAttribData(const uint32_t vertex_count,const VertexInputFormat *vif)
+        {
+            if(vertex_count<=0
+               ||vif->vec_size<1||vif->vec_size>4
+               ||vif->stride<1||vif->stride>8*4
+               ||!CheckVulkanFormat(vif->format))
+                return(nullptr);
+
+            return(new VertexAttribData(vertex_count,vif->format,vif->stride*vertex_count));
+        }
+
         PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VIL *v)
         {
             db              =sdb;

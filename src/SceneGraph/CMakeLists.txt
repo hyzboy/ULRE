@@ -8,8 +8,7 @@ SET(SG_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/TextureLoader.h
 SOURCE_GROUP("Texture" FILES ${SG_TEXTURE_SOURCE})
 
 SET(SG_VAD_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribData.h
-                    ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
-                    VertexAttribData.cpp)
+                    ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h)
 
 SOURCE_GROUP("VertexAttribData" FILES ${SG_VAD_SOURCE})
 
