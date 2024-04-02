@@ -17,14 +17,14 @@ namespace hgl
             {
                 AnsiString      name;
                 uint            binding;
-                VAD *           data    =nullptr;
+                VAD *           vad     =nullptr;
                 VBO *           vbo     =nullptr;
 
             public:
 
                 ~PrimitiveVertexBuffer()
                 {
-                    SAFE_CLEAR(data);
+                    SAFE_CLEAR(vad);
                 }
             };//struct PrimitiveVertexBuffer
 

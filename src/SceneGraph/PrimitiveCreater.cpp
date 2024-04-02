@@ -36,7 +36,7 @@ namespace hgl
             PrimitiveVertexBuffer *pvb;
 
             if(vbo_map.Get(name,pvb))
-                return pvb->data;
+                return pvb->vad;
 
             VAD *vad=hgl::graph::CreateVertexAttribData(vertices_number,vif);
 
@@ -45,7 +45,7 @@ namespace hgl
 
             pvb=new PrimitiveVertexBuffer;
 
-            pvb->data   =vad;
+            pvb->vad    =vad;
             pvb->name   =name;
             pvb->binding=vif->binding;
             
@@ -53,7 +53,7 @@ namespace hgl
 
             vbo_map.Add(name,pvb);
 
-            return pvb->data;
+            return pvb->vad;
         }
 
         bool PrimitiveCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
@@ -78,7 +78,7 @@ namespace hgl
                
             pvb=new PrimitiveVertexBuffer;
 
-            pvb->data   =nullptr;
+            pvb->vad    =nullptr;
             pvb->name   =name;
             pvb->binding=vif->binding;
 
@@ -104,7 +104,7 @@ namespace hgl
                 if((*sp)->value->vbo)
                     primitive->Set((*sp)->key,(*sp)->value->vbo);
                 else
-                    primitive->Set((*sp)->key,db->CreateVBO((*sp)->value->data));
+                    primitive->Set((*sp)->key,db->CreateVBO((*sp)->value->vad));
 
                 ++sp;
             }
