@@ -89,22 +89,6 @@ namespace hgl
             return true;
         }
 
-        uint16 *PrimitiveCreater::CreateIBO16(uint count,const uint16 *data)
-        {
-            if(ibo)return(nullptr);
-
-            ibo=db->CreateIBO16(count,data);
-            return (uint16 *)ibo->Map();
-        }
-
-        uint32 *PrimitiveCreater::CreateIBO32(uint count,const uint32 *data)
-        {
-            if(ibo)return(nullptr);
-
-            ibo=db->CreateIBO32(count,data);
-            return (uint32 *)ibo->Map();
-        }
-
         Primitive *PrimitiveCreater::Finish(const AnsiString &prim_name)
         {
             const uint si_count=vil->GetCount(VertexInputGroup::Basic);
