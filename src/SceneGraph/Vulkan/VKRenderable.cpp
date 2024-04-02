@@ -60,16 +60,17 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBufferData());
 
     const VertexInputFormat *vif=vil->GetFormatList(VertexInputGroup::Basic);
+    VBOAccessData vad;
 
     for(uint i=0;i<input_count;i++)
     {
-        vbo=prim->GetVBO(vif->name,vid->buffer_offset+i);
-
-        if(!vbo)
+        if(!prim->GetVBOAccessData(vif->name,&vad))
         {
             LOG_ERROR("[FATAL ERROR] not found VBO \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
             return(nullptr);
         }
+
+        vbo=vad.vbo;
 
         if(vbo->GetFormat()!=vif->format)
         {
@@ -91,6 +92,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
+        vid->buffer_offset[i]=vad.offset;
         vid->buffer_list[i]=vbo->GetBuffer();
         ++vif;
     }
