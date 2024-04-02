@@ -13,6 +13,10 @@ SET(SG_VAD_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribData.h
 
 SOURCE_GROUP("VertexAttribData" FILES ${SG_VAD_SOURCE})
 
+SET(SG_VDM_SOURCE   ${SG_INCLUDE_PATH}/VertexDataManager.h)
+
+SOURCE_GROUP("VertexDataManager" FILES ${SG_VDM_SOURCE})
+
 SET(TILE_SOURCE ${SG_INCLUDE_PATH}/TileData.h
                 TileData.cpp)
 
@@ -303,6 +307,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SG_TEXTURE_SOURCE}
                                         ${TILE_SOURCE}
                                         ${SG_VAD_SOURCE}
+                                        ${SG_VDM_SOURCE}
 
 #                                        ${FONT_MANAGE_SOURCE}
 #                                        ${FONT_SOURCE}
