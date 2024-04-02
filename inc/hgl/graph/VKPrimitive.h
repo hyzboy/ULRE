@@ -15,17 +15,7 @@ class Primitive
     GPUDevice *device;
     AnsiString prim_name;
 
-    struct VBOData
-    {
-        VBO *buf;
-        VkDeviceSize offset;
-
-    public:
-
-        CompOperatorMemcmp(const VBOData &);
-    };
-
-    Map<AnsiString,VBOData> buffer_list;
+    VBOAccessMap buffer_list;
 
 protected:
 
