@@ -38,7 +38,6 @@ namespace hgl
 
                 access      =nullptr;
                 start_access=nullptr;
-
             }
 
             virtual ~VertexAttribDataAccess()=default;

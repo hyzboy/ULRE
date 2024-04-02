@@ -24,7 +24,7 @@ namespace hgl
             return(true);
         }
 
-        PrimitiveCreater::PrimitiveVertexBuffer *PrimitiveCreater::CreatePVB(const AnsiString &name,const void *data)
+        PrimitiveCreater::PrimitiveVertexBuffer *PrimitiveCreater::AcquirePVB(const AnsiString &name,const void *data)
         {
             if(!vil)return(nullptr);
             if(name.IsEmpty())return(nullptr);
@@ -70,7 +70,7 @@ namespace hgl
             if(vif->stride*vertices_number!=bytes)
                 return(false);
 
-            return CreatePVB(name,data);
+            return AcquirePVB(name,data);
         }
 
         void PrimitiveCreater::ClearAllData()
@@ -107,6 +107,12 @@ namespace hgl
 
             Primitive *primitive=db->CreatePrimitive(prim_name,vertices_number);
 
+            if(ibo)
+            {
+                ibo->Unmap();
+                primitive->Set(ibo);
+            }
+
             const auto *sp=vbo_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
@@ -124,12 +130,6 @@ namespace hgl
                 }
 
                 ++sp;
-            }
-
-            if(ibo)
-            {
-                ibo->Unmap();
-                primitive->Set(ibo);
             }
 
             db->Add(primitive);
