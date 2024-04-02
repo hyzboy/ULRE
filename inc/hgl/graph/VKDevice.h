@@ -13,7 +13,6 @@
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/VertexAttribData.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKArrayBuffer.h>
 #include<hgl/graph/VKDescriptorSetType.h>
@@ -117,7 +116,6 @@ public: //Buffer相关
 
     VBO *           CreateVBO   (VkFormat format, uint32_t count,const void *data,    SharingMode sm=SharingMode::Exclusive);
     VBO *           CreateVBO   (VkFormat format, uint32_t count,                     SharingMode sm=SharingMode::Exclusive){return CreateVBO(format,count,nullptr,sm);}
-    VBO *           CreateVBO   (const VAD *vad,                                      SharingMode sm=SharingMode::Exclusive){return CreateVBO(vad->GetFormat(),vad->GetCount(),vad->GetData(),sm);}
 
     IndexBuffer *   CreateIBO   (IndexType type,  uint32_t count,const void *  data,  SharingMode sm=SharingMode::Exclusive);
     IndexBuffer *   CreateIBO8  (                 uint32_t count,const void *  data,  SharingMode sm=SharingMode::Exclusive){return CreateIBO(IndexType::U8,  count,(void *)data,sm);}

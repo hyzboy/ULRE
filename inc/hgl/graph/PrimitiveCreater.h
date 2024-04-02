@@ -4,6 +4,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKShaderModule.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 namespace hgl
 {
     namespace graph
@@ -16,16 +17,9 @@ namespace hgl
             struct PrimitiveVertexBuffer
             {
                 AnsiString      name;
-                uint            binding;
-                VAD *           vad     =nullptr;
-                VBO *           vbo     =nullptr;
-
-            public:
-
-                ~PrimitiveVertexBuffer()
-                {
-                    SAFE_CLEAR(vad);
-                }
+                int             binding;
+                VBO *           vbo;
+                void *          map_data;
             };//struct PrimitiveVertexBuffer
 
             using PVBMap=ObjectMap<AnsiString,PrimitiveVertexBuffer>;
@@ -45,7 +39,9 @@ namespace hgl
 
         protected:
 
-                    VAD *                   CreateVAD(const AnsiString &name);                                          ///<创建一个顶点属性缓冲区
+            PrimitiveVertexBuffer *CreatePVB(const AnsiString &,const void *data);                                      ///<创建一个顶点属性数据区
+
+            void ClearAllData();
 
         public:
 
@@ -62,12 +58,12 @@ namespace hgl
                         if(format!=T::GetVulkanFormat())
                             return(nullptr);
 
-                        VAD *vad=this->CreateVAD(name);
+                        PrimitiveVertexBuffer *pvb=this->CreatePVB(name,nullptr);
 
-                        if(!vad)
+                        if(!pvb)
                             return(nullptr);
 
-                        T *access=T::Create(vad);
+                        T *access=T::Create(vertices_number,pvb->map_data);
 
                         access->Begin();
 
