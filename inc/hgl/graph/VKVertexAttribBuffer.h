@@ -31,9 +31,24 @@ namespace hgl
             const VkFormat GetFormat()const { return format; }
             const uint32_t GetStride()const { return stride; }
             const uint32_t GetCount ()const { return count; }
+
+            const VkDeviceSize GetBytes()const { return stride*count; }
         };//class VertexAttribBuffer:public DeviceBuffer
 
         using VBO=VertexAttribBuffer;
+
+        struct VBOAccessData
+        {
+            VBO *vbo;
+            VkDeviceSize offset;
+            VkDeviceSize size;
+
+        public:
+
+            CompOperatorMemcmp(const VBOAccessData &);
+        };//class VBOAccessData
+
+        using VBOAccessMap=Map<AnsiString,VBOAccessData>;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE

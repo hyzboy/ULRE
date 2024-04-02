@@ -59,18 +59,6 @@ struct DeviceBufferData;
 class VertexAttribBuffer;
 using VBO=VertexAttribBuffer;
 
-struct VBOAccessData
-{
-    VBO *buf;
-    VkDeviceSize offset;
-
-public:
-
-    CompOperatorMemcmp(const VBOAccessData &);
-};//struct VBOAccessData
-
-using VBOAccessMap=Map<AnsiString,VBOAccessData>;
-
 class IndexBuffer;
 
 struct IndexBufferData
