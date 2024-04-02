@@ -48,7 +48,7 @@ namespace hgl
             virtual bool                    Init(const uint32 vertices_count);                                          ///<初始化，参数为顶点数量
 
             template<typename T> 
-                    T *                     AccessVAD(const AnsiString &name)                                           ///<创建一个顶点属性缓冲区以及访问器
+                    T *                     AccessVAD(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
                     {
                         const VkFormat format=vil->GetVulkanFormat(name);
 
