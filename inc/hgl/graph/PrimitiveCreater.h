@@ -4,7 +4,6 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKShaderModule.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
 namespace hgl
 {
     namespace graph
