@@ -6,6 +6,7 @@
 #include<hgl/type/String.h>
 #include<hgl/math/Math.h>
 #include<hgl/graph/AABB.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 VK_NAMESPACE_BEGIN
 /**
  * 单一图元数据
@@ -60,7 +61,7 @@ public:
 
     const   uint32_t            GetVertexCount      ()const {return vertex_count;}
 
-            VBO *               GetVBO              (const AnsiString &,VkDeviceSize *);
+            bool                GetVBOAccessData    (const AnsiString &,VBOAccessData *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
     const   IndexBufferData *   GetIndexBufferData  ()const {return &index_buffer_data;}
