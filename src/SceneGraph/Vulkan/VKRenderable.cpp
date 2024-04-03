@@ -59,7 +59,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBufferData());
 
-    const VertexInputFormat *vif=vil->GetFormatList(VertexInputGroup::Basic);
+    const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
     VBOAccessData vad;
 
     for(uint i=0;i<input_count;i++)
