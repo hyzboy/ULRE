@@ -64,6 +64,9 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     for(uint i=0;i<input_count;i++)
     {
+        //注: VIF来自于材质，但VBO来自于Primitive。
+        //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
+
         if(!prim->GetVBOAccessData(vif->name,&vad))
         {
             LOG_ERROR("[FATAL ERROR] not found VBO \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);

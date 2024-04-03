@@ -25,8 +25,6 @@ constexpr size_t VK_DESCRIPTOR_TYPE_END_RANGE=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMEN
 constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_DESCRIPTOR_TYPE_BEGIN_RANGE+1;
 #endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
 
-using CharPointerList=hgl::List<const char *>;
-
 using BindingMap        =Map<AnsiString,int>;
 using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
