@@ -48,7 +48,7 @@ namespace hgl
             virtual bool                    Init(const uint32 vertices_count);                                          ///<初始化，参数为顶点数量
 
             template<typename T> 
-                    T *                     AccessVAD(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
+                    T *                     AccessVBO(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
                     {
                         const VkFormat format=vil->GetVulkanFormat(name);
 
@@ -67,10 +67,10 @@ namespace hgl
                         return access;
                     }
 
-                    bool                    WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
+                    bool                    WriteVBO(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
 
                     template<typename T,IndexType IT>
-                    T *                     CreateIBO(const uint count,const T *data=nullptr)                            ///<创建索引缓冲区
+                    T *                     CreateIBO(const uint count,const T *data=nullptr)                           ///<创建索引缓冲区
                     {
                         if(ibo)
                             return(nullptr);
