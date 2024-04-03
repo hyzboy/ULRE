@@ -53,7 +53,7 @@ namespace hgl
             return pvb;
         }
 
-        bool PrimitiveCreater::WriteVAD(const AnsiString &name,const void *data,const uint32_t bytes)
+        bool PrimitiveCreater::WriteVBO(const AnsiString &name,const void *data,const uint32_t bytes)
         {
             if(!vil)return(false);
             if(name.IsEmpty())return(false);
