@@ -1,4 +1,4 @@
-#include<hgl/graph/VertexDataManager.h>
+ï»¿#include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKVertexInputFormat.h>
 #include<hgl/graph/VKVertexInputLayout.h>
@@ -12,8 +12,9 @@ namespace hgl
         {
             device=dev;
 
+            vil=_vil;
             vi_count=_vil->GetCount();
-            vif_list=_vil->GetVIFList();     //À´×ÔÓÚMaterial£¬²»»á±»ÊÍ·Å£¬ËùÒÔÖ¸ÕëÓĞĞ§
+            vif_list=_vil->GetVIFList();     //æ¥è‡ªäºMaterialï¼Œä¸ä¼šè¢«é‡Šæ”¾ï¼Œæ‰€ä»¥æŒ‡é’ˆæœ‰æ•ˆ
 
             vbo_max_size=0;
             vbo_cur_size=0;
@@ -30,14 +31,14 @@ namespace hgl
         }
 
         /**
-        * ³õÊ¼»¯¶¥µãÊı¾İ¹ÜÀíÆ÷
-        * @param vbo_size VBO´óĞ¡
-        * @param ibo_size IBO´óĞ¡
-        * @param index_type Ë÷ÒıÀàĞÍ
+        * åˆå§‹åŒ–é¡¶ç‚¹æ•°æ®ç®¡ç†å™¨
+        * @param vbo_size VBOå¤§å°
+        * @param ibo_size IBOå¤§å°
+        * @param index_type ç´¢å¼•ç±»å‹
         */
         bool VertexDataManager::Init(const VkDeviceSize vbo_size,const VkDeviceSize ibo_size,const IndexType index_type)
         {
-            if(vbo[0]||ibo)     //ÒÑ¾­³õÊ¼»¯¹ıÁË
+            if(vbo[0]||ibo)     //å·²ç»åˆå§‹åŒ–è¿‡äº†
                 return(false);
 
             if(vbo_size<=0)

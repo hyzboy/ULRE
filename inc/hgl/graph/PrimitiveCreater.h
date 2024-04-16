@@ -8,6 +8,8 @@ namespace hgl
 {
     namespace graph
     {
+        class VertexDataManager;
+
         /**
          * 可绘制图元创建器
          */
@@ -23,6 +25,7 @@ namespace hgl
 
         protected:
 
+            VertexDataManager *vdm;
             RenderResource *db;
 
             const VIL *vil;
@@ -43,6 +46,7 @@ namespace hgl
         public:
 
             PrimitiveCreater(RenderResource *sdb,const VIL *);
+            PrimitiveCreater(VertexDataManager *);
             virtual ~PrimitiveCreater()=default;
 
             virtual bool                    Init(const uint32 vertices_count);                                          ///<初始化，参数为顶点数量

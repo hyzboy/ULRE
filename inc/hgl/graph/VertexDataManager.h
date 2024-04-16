@@ -14,6 +14,7 @@ namespace hgl
 
         protected:
 
+            VIL *           vil;            ///<顶点输入格式列表
             uint            vi_count;       ///<顶点输入流数量
             const VIF *     vif_list;       ///<顶点输入格式列表
 
@@ -33,6 +34,8 @@ namespace hgl
 
             VertexDataManager(GPUDevice *dev,const VIL *_vil);
             ~VertexDataManager();
+
+            const VIL *         GetVIL          ()const{return vil;}                                         ///<取得顶点输入格式列表
 
             const VkDeviceSize  GetVBOMaxCount  ()const{return vbo_max_size;}                                ///<取得顶点缓冲区分配的空间最大数量
             const VkDeviceSize  GetVBOCurCount  ()const{return vbo_cur_size;}                                ///<取得顶点缓冲区当前数量
