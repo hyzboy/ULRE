@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VertexDataManager.h>
 
 namespace hgl
 {
@@ -10,6 +11,15 @@ namespace hgl
         {
             db              =sdb;
             vil             =v;
+
+            vertices_number =0;
+            ibo             =nullptr;
+        }
+
+        PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
+        {
+            vdm=_vdm;
+            vil=vdm->GetVIL();
 
             vertices_number =0;
             ibo             =nullptr;
