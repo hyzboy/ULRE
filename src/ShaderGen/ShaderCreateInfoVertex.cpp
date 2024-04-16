@@ -50,7 +50,9 @@ void ShaderCreateInfoVertex::AddJoint()
 
 namespace
 {
-    constexpr const char MF_GetLocalToWorld[]=R"(
+    constexpr const char MF_GetLocalToWorld_ByID[]="\nmat4 GetLocalToWorld(){return l2w.mats[LocalToWorld_ID];}\n";
+
+    constexpr const char MF_GetLocalToWorld_by4VI[]=R"(
 mat4 GetLocalToWorld()
 {
     return mat4(LocalToWorld_0,
@@ -72,7 +74,7 @@ void ShaderCreateInfoVertex::AddLocalToWorld()
         AddInput(VAT_VEC4,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
     }
 
-    AddFunction(MF_GetLocalToWorld);
+    AddFunction(MF_GetLocalToWorld_by4VI);
 }
 
 void ShaderCreateInfoVertex::AddMaterialInstanceID()

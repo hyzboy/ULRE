@@ -23,6 +23,7 @@ namespace hgl
 
             void AddLocalToWorld();
             void AddMaterialInstanceID();
+
             void AddJoint();
         };//class ShaderCreateInfoVertex:public ShaderCreateInfo
     }//namespace graph
