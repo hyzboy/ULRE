@@ -163,6 +163,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         debug_queue_family_properties_out(debug_front.c_str(),queue_family_properties);
     }
 
+    support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 }
 

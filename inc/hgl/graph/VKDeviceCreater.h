@@ -4,8 +4,16 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
+
 struct VulkanHardwareRequirement
 {
+    enum class SupportLevel
+    {
+        DontCare=0, ///<不介意
+        Want,       ///<希望支持
+        Must,       ///<必须支持
+    };
+
     uint min_1d_image_size;
     uint min_2d_image_size;
     uint min_3d_image_size;
@@ -21,24 +29,23 @@ struct VulkanHardwareRequirement
 
     uint min_draw_indirect_count;               ///<最小间接绘制次数需求
 
-    bool geometry_shader;                       ///<要求支持几何着色器
-    bool tessellation_shader;                   ///<要求支持细分着色器
-//    bool compute_shader;                        ///<要求支持计算着色器
+    SupportLevel geometry_shader;               ///<要求支持几何着色器
+    SupportLevel tessellation_shader;           ///<要求支持细分着色器
 
-    bool multi_draw_indirect;                   ///<要求支持MultiDrawIndirect
+    SupportLevel multi_draw_indirect;           ///<要求支持MultiDrawIndirect
 
-    bool wide_lines;                            ///<要求支持宽线条
-    bool line_rasterization;                    ///<要支持线条特性(这功能mac/ios平台不支持)
-    bool large_points;                          ///<要求支持绘制大点
+    SupportLevel wide_lines;                    ///<要求支持宽线条
+    SupportLevel line_rasterization;            ///<要支持线条特性(这功能mac/ios平台不支持)
+    SupportLevel large_points;                  ///<要求支持绘制大点
 
-    bool texture_cube_array;                    ///<要求支持立方体数组纹理
+    SupportLevel texture_cube_array;            ///<要求支持立方体数组纹理
 
-    bool uint8_draw_index;                      ///<要求支持8位索引
-    bool uint32_draw_index;                     ///<要求支持32位索引(不建议使用)
+    SupportLevel uint8_draw_index;              ///<要求支持8位索引
+    SupportLevel uint32_draw_index;             ///<要求支持32位索引
 
     struct
     {
-        bool bc,etc2,astc_ldr,astc_hdr,pvrtc;   ///<要求支持的压缩纹理格式
+        SupportLevel bc,etc2,astc_ldr,astc_hdr,pvrtc;   ///<要求支持的压缩纹理格式
     }texture_compression;
 
     //dynamic_state VK_EXT_extended_dynamic_state
@@ -78,10 +85,10 @@ struct VulkanHardwareRequirement
     //  line stipple
     //  depth clip -1 to 1
     //  shading rate image enable
-    bool dynamic_state[3];                      ///<要求支持动态状态
+    SupportLevel dynamic_state[3];              ///<要求支持动态状态
 
     // 1.3 特性
-    bool dynamic_rendering;                     ///<要求支持动态渲染
+    SupportLevel dynamic_rendering;             ///<要求支持动态渲染
 
     uint32_t descriptor_pool;                   ///<描述符池大小(默认1024)
 
@@ -93,7 +100,10 @@ public:
 
         descriptor_pool=1024;
 
-        geometry_shader=true;
+        geometry_shader=SupportLevel::Want;
+
+        uint8_draw_index=SupportLevel::Want;
+        uint32_draw_index=SupportLevel::Want;
     }
 };
 

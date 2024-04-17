@@ -27,6 +27,7 @@ class GPUPhysicalDevice
 
 private:
 
+    bool support_u8_index=false;
     bool dynamic_state=false;
     
 public:    
@@ -141,7 +142,12 @@ public:
 public:
 
     const VkBool32  SupportGeometryShader       ()const{return features.geometryShader;}
+    const VkBool32  SupportTessellationShader   ()const{return features.tessellationShader;}
+
     const VkBool32  SupportCubeMapArray         ()const{return features.imageCubeArray;}
+
+    const VkBool32  SupportU32Index             ()const{return features.fullDrawIndexUint32;}
+    const VkBool32  SupportU8Index              ()const{return support_u8_index;}
 
     // support != open, so please don't direct use GetFeatures().
     // open any features in CreateDevice()&SetDeviceFeatures() functions.
