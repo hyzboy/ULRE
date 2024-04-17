@@ -100,6 +100,10 @@ namespace
         REQURE_FEATURE_COPY(texture_cube_array,             imageCubeArray);
 
         REQURE_FEATURE_COPY(uint32_draw_index,              fullDrawIndexUint32);
+        REQURE_FEATURE_COPY(sample_rate_shading,            sampleRateShading);
+
+        REQURE_FEATURE_COPY(fill_mode_non_solid,            fillModeNonSolid);
+
         REQURE_FEATURE_COPY(wide_lines,                     wideLines)
         REQURE_FEATURE_COPY(large_points,                   largePoints)
 
@@ -367,20 +371,24 @@ bool VulkanDeviceCreater::RequirementCheck()
 {
     const VkPhysicalDeviceLimits &limits=physical_device->GetLimits();
 
-    if(require.min_1d_image_size            >0&&require.min_1d_image_size           >limits.maxImageDimension1D     )return(false);
-    if(require.min_2d_image_size            >0&&require.min_2d_image_size           >limits.maxImageDimension2D     )return(false);
-    if(require.min_3d_image_size            >0&&require.min_3d_image_size           >limits.maxImageDimension3D     )return(false);
-    if(require.min_cube_image_size          >0&&require.min_cube_image_size         >limits.maxImageDimensionCube   )return(false);
-    if(require.min_array_image_layers       >0&&require.min_array_image_layers      >limits.maxImageArrayLayers     )return(false);
+#define VHR_MINCHECK(name,lname) if(require.name>0&&require.name>limits.lname)return(false);
 
-    if(require.min_vertex_input_attribute   >0&&require.min_vertex_input_attribute  >limits.maxVertexInputAttributes)return(false);
-    if(require.min_color_attachments        >0&&require.min_color_attachments       >limits.maxColorAttachments     )return(false);
+    VHR_MINCHECK(min_1d_image_size           ,maxImageDimension1D     )
+    VHR_MINCHECK(min_2d_image_size           ,maxImageDimension2D     )
+    VHR_MINCHECK(min_3d_image_size           ,maxImageDimension3D     )
+    VHR_MINCHECK(min_cube_image_size         ,maxImageDimensionCube   )
+    VHR_MINCHECK(min_array_image_layers      ,maxImageArrayLayers     )
 
-    if(require.min_push_constant_size       >0&&require.min_push_constant_size      >limits.maxPushConstantsSize    )return(false);
-    if(require.min_ubo_range                >0&&require.min_ubo_range               >limits.maxUniformBufferRange   )return(false);
-    if(require.min_ssbo_range               >0&&require.min_ssbo_range              >limits.maxStorageBufferRange   )return(false);
+    VHR_MINCHECK(min_vertex_input_attribute  ,maxVertexInputAttributes)
+    VHR_MINCHECK(min_color_attachments       ,maxColorAttachments     )
 
-    if(require.min_draw_indirect_count      >0&&require.min_draw_indirect_count     >limits.maxDrawIndirectCount    )return(false);
+    VHR_MINCHECK(min_push_constant_size      ,maxPushConstantsSize    )
+    VHR_MINCHECK(min_ubo_range               ,maxUniformBufferRange   )
+    VHR_MINCHECK(min_ssbo_range              ,maxStorageBufferRange   )
+
+    VHR_MINCHECK(min_draw_indirect_count     ,maxDrawIndirectCount    )
+
+#undef VHR_MINCHECK
 
     const VkPhysicalDeviceFeatures &features10=physical_device->GetFeatures10();
     const VkPhysicalDeviceVulkan13Features &features13=physical_device->GetFeatures13();
@@ -395,6 +403,10 @@ bool VulkanDeviceCreater::RequirementCheck()
     VHRC_F10(tessellation_shader,   tessellationShader);
 
     VHRC_F10(multi_draw_indirect,   multiDrawIndirect);
+
+    VHRC_F10(sample_rate_shading,   sampleRateShading);
+
+    VHRC_F10(fill_mode_non_solid,   fillModeNonSolid);
 
     VHRC_F10(wide_lines,            wideLines);
     VHRC_PDE(line_rasterization,    EXT_LINE_RASTERIZATION);
