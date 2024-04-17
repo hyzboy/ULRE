@@ -70,9 +70,6 @@ namespace
 
 //            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
 
-            VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
-            VK_KHR_INDEX_TYPE_UINT8_EXTENSION_NAME,
-
             VK_KHR_SPIRV_1_4_EXTENSION_NAME,
         };
 
@@ -80,36 +77,37 @@ namespace
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
 
-        if(require.line_rasterization)
+        if(require.line_rasterization>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
 
-        if(require.texture_compression.pvrtc)                   //前面检测过了，所以这里不用再次检测是否支持
+        if(require.texture_compression.pvrtc>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
             ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
 
-        if(require.uint8_draw_index)
+        if(require.uint8_draw_index>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
     }
 
     void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
     {
         #define FEATURE_COPY(name)  features->name=pdf.name;
+        #define REQURE_FEATURE_COPY(rn,fn) if(require.rn>=VulkanHardwareRequirement::SupportLevel::Want)features->fn=pdf.fn;
 
-        if(require.geometry_shader)     FEATURE_COPY(geometryShader);
-//        if(require.compute_shader)      FEATURE_COPY(computeShader);
+        FEATURE_COPY(multiDrawIndirect);
+        FEATURE_COPY(samplerAnisotropy);
 
-                                        FEATURE_COPY(multiDrawIndirect);
+        REQURE_FEATURE_COPY(geometry_shader,                geometryShader);
 
-                                        FEATURE_COPY(samplerAnisotropy);
+        REQURE_FEATURE_COPY(texture_cube_array,             imageCubeArray);
 
-        if(require.texture_cube_array)  FEATURE_COPY(imageCubeArray);
-        if(require.uint32_draw_index)   FEATURE_COPY(fullDrawIndexUint32);
-        if(require.wide_lines)          FEATURE_COPY(wideLines)
-        if(require.large_points)        FEATURE_COPY(largePoints)
+        REQURE_FEATURE_COPY(uint32_draw_index,              fullDrawIndexUint32);
+        REQURE_FEATURE_COPY(wide_lines,                     wideLines)
+        REQURE_FEATURE_COPY(large_points,                   largePoints)
 
-        if(require.texture_compression.bc)FEATURE_COPY(textureCompressionBC);
-        if(require.texture_compression.etc2)FEATURE_COPY(textureCompressionETC2);
-        if(require.texture_compression.astc_ldr)FEATURE_COPY(textureCompressionASTC_LDR);
+        REQURE_FEATURE_COPY(texture_compression.bc,         textureCompressionBC);
+        REQURE_FEATURE_COPY(texture_compression.etc2,       textureCompressionETC2);
+        REQURE_FEATURE_COPY(texture_compression.astc_ldr,   textureCompressionASTC_LDR);
 
+        #undef REQURE_FEATURE_COPY
         #undef FEATURE_COPY
     }
 
@@ -387,31 +385,42 @@ bool VulkanDeviceCreater::RequirementCheck()
     const VkPhysicalDeviceFeatures &features10=physical_device->GetFeatures10();
     const VkPhysicalDeviceVulkan13Features &features13=physical_device->GetFeatures13();
 
-    if(require.geometry_shader      &&(!features10.geometryShader       ))return(false);
-    if(require.tessellation_shader  &&(!features10.tessellationShader   ))return(false);
+#define VHRC(name,check) if(require.name>=VulkanHardwareRequirement::SupportLevel::Must&&(!check))return(false);
 
-    if(require.multi_draw_indirect  &&(!features10.multiDrawIndirect    ))return(false);
+    #define VHRC_F10(name,f10name) VHRC(name,features10.f10name)
+    #define VHRC_F13(name,f13name) VHRC(name,features13.f13name)
+    #define VHRC_PDE(name,pdename) VHRC(name,physical_device->CheckExtensionSupport(VK_##pdename##_EXTENSION_NAME))
 
-    if(require.wide_lines           &&(!features10.wideLines            ))return(false);
-    if(require.large_points         &&(!features10.largePoints          ))return(false);
-    if(require.texture_cube_array   &&(!features10.imageCubeArray       ))return(false);
+    VHRC_F10(geometry_shader,       geometryShader);
+    VHRC_F10(tessellation_shader,   tessellationShader);
 
-    if(require.uint8_draw_index     &&(!physical_device->CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME)))return(false);
-    if(require.uint32_draw_index    &&(!features10.fullDrawIndexUint32  ))return(false);
+    VHRC_F10(multi_draw_indirect,   multiDrawIndirect);
 
-    if(require.texture_compression.bc       &&(!features10.textureCompressionBC))return(false);
-    if(require.texture_compression.etc2     &&(!features10.textureCompressionETC2))return(false);
-    if(require.texture_compression.astc_ldr &&(!features10.textureCompressionASTC_LDR))return(false);
-    if(require.texture_compression.astc_hdr &&(!features13.textureCompressionASTC_HDR))return(false);
-    if(require.texture_compression.pvrtc    &&(!physical_device->CheckExtensionSupport(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME)))return(false);
+    VHRC_F10(wide_lines,            wideLines);
+    VHRC_PDE(line_rasterization,    EXT_LINE_RASTERIZATION);
+    VHRC_F10(large_points,          largePoints);
 
-    if(require.dynamic_rendering&&(!features13.dynamicRendering))return(false);
+    VHRC_F10(texture_cube_array,    imageCubeArray);
 
-    if(require.dynamic_state[0]&&(!physical_device->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME   )))return(false);
-    if(require.dynamic_state[1]&&(!physical_device->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME )))return(false);
-    if(require.dynamic_state[2]&&(!physical_device->CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME )))return(false);
+    VHRC_PDE(uint8_draw_index,      EXT_INDEX_TYPE_UINT8);
+    VHRC_F10(uint32_draw_index,     fullDrawIndexUint32);
 
-    if(require.line_rasterization&&(!physical_device->CheckExtensionSupport(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)))return(false);
+    VHRC_F10(texture_compression.bc,        textureCompressionBC);
+    VHRC_F10(texture_compression.etc2,      textureCompressionETC2);
+    VHRC_F10(texture_compression.astc_ldr,  textureCompressionASTC_LDR);
+    VHRC_F13(texture_compression.astc_hdr,  textureCompressionASTC_HDR);
+    VHRC_PDE(texture_compression.pvrtc,     IMG_FORMAT_PVRTC);
+
+    VHRC_F13(dynamic_rendering,     dynamicRendering);
+
+    VHRC_PDE(dynamic_state[0],      EXT_EXTENDED_DYNAMIC_STATE);
+    VHRC_PDE(dynamic_state[1],      EXT_EXTENDED_DYNAMIC_STATE_2);
+    VHRC_PDE(dynamic_state[2],      EXT_EXTENDED_DYNAMIC_STATE_3);
+
+#undef VHRC_PDE
+#undef VHRC_F13
+#undef VHRC_F10
+#undef VHRC
 
     return(true);
 }
