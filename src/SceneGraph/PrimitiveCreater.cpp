@@ -9,9 +9,10 @@ namespace hgl
     {
         PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VIL *v)
         {
-            device=sdb->GetDevice();
-            phy_device=device->GetPhysicalDevice();
+            device          =sdb->GetDevice();
+            phy_device      =device->GetPhysicalDevice();
 
+            vdm             =nullptr;
             db              =sdb;
             vil             =v;
 
@@ -21,16 +22,15 @@ namespace hgl
 
         PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
         {
-            device=_vdm->GetDevice();
-            phy_device=device->GetPhysicalDevice();
+            device          =_vdm->GetDevice();
+            phy_device      =device->GetPhysicalDevice();
 
-            vdm=_vdm;
-            vil=vdm->GetVIL();
+            vdm             =_vdm;
+            db              =nullptr;
+            vil             =vdm->GetVIL();
 
             vertices_number =0;
             ibo             =nullptr;
-
-
         }
 
         bool PrimitiveCreater::Init(const uint32 vertex_count,const uint32 index_count,IndexType it)
@@ -41,16 +41,48 @@ namespace hgl
 
             if(index_count>0)
             {
-                if(it==IndexType::ERR)
+                if(vdm)
                 {
-                    if(vertex_count<=0xFFFF)
-                        it=IndexType::U16;
-                    else
-                        it=IndexType::U32;
-                }
 
-                ibo=db->CreateIBO(it,index_count);
-                if(!ibo)return(false);
+                }
+                else
+                {
+                    if(it==IndexType::ERR)
+                    {
+                        if(vertex_count<=0xFF&&phy_device->SupportU8Index())
+                            it=IndexType::U8;
+                        else
+                            if(vertex_count<=0xFFFF)
+                                it=IndexType::U16;
+                            else
+                                if(phy_device->SupportU32Index())
+                                    it=IndexType::U32;
+                                else
+                                    return(false);
+                    }
+                    else if(it==IndexType::U8)
+                    {
+                        if(!phy_device->SupportU8Index()||vertex_count>0xFF)
+                            return(false);
+                    }
+                    else if(it==IndexType::U16)
+                    {
+                        if(vertex_count>0xFFFF)
+                            return(false);
+                    }
+                    else if(it==IndexType::U32)
+                    {
+                        if(!phy_device->SupportU32Index())
+                            return(false);
+                    }
+                    else
+                    {
+                        return(false);
+                    }
+
+                    ibo=db->CreateIBO(it,index_count);
+                    if(!ibo)return(false);
+                }
 
                 ibo->Map();
             }
