@@ -32,7 +32,11 @@ struct VulkanHardwareRequirement
     SupportLevel geometry_shader;               ///<要求支持几何着色器
     SupportLevel tessellation_shader;           ///<要求支持细分着色器
 
+    SupportLevel sample_rate_shading;           ///<要求支持采样率着色
+
     SupportLevel multi_draw_indirect;           ///<要求支持MultiDrawIndirect
+
+    SupportLevel fill_mode_non_solid;           ///<要求支持非实体填充模式
 
     SupportLevel wide_lines;                    ///<要求支持宽线条
     SupportLevel line_rasterization;            ///<要支持线条特性(这功能mac/ios平台不支持)
