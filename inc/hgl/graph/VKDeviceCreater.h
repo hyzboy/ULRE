@@ -14,42 +14,42 @@ struct VulkanHardwareRequirement
         Must,       ///<必须支持
     };
 
-    uint min_1d_image_size;
-    uint min_2d_image_size;
-    uint min_3d_image_size;
-    uint min_cube_image_size;
-    uint min_array_image_layers;
+    uint maxImageDimension1D;
+    uint maxImageDimension2D;
+    uint maxImageDimension3D;
+    uint maxImageDimensionCube;
+    uint maxImageArrayLayers;
 
-    uint min_vertex_input_attribute;            ///<最小顶点输入属性数量需求
-    uint min_color_attachments;                 ///<最小颜色输出成份数量需求
+    uint maxVertexInputAttributes;      ///<最大顶点输入属性数量需求
+    uint maxColorAttachments;           ///<最大颜色输出成份数量需求
 
-    uint min_push_constant_size;                ///<最小push constant大小
-    uint min_ubo_range;                         ///<最小ubo range需求
-    uint min_ssbo_range;                        ///<最小ssbo range需求
+    uint maxPushConstantsSize;          ///<最大push constant大小
+    uint maxUniformBufferRange;         ///<最大ubo range需求
+    uint maxStorageBufferRange;         ///<最大ssbo range需求
 
-    uint min_draw_indirect_count;               ///<最小间接绘制次数需求
+    uint maxDrawIndirectCount;          ///<最大间接绘制次数需求
 
-    SupportLevel geometry_shader;               ///<要求支持几何着色器
-    SupportLevel tessellation_shader;           ///<要求支持细分着色器
+    SupportLevel geometryShader;        ///<要求支持几何着色器
+    SupportLevel tessellationShader;    ///<要求支持细分着色器
 
-    SupportLevel sample_rate_shading;           ///<要求支持采样率着色
+    SupportLevel sampleRateShading;     ///<要求支持采样率着色
 
-    SupportLevel multi_draw_indirect;           ///<要求支持MultiDrawIndirect
+    SupportLevel multiDrawIndirect;     ///<要求支持MultiDrawIndirect
 
-    SupportLevel fill_mode_non_solid;           ///<要求支持非实体填充模式
+    SupportLevel fillModeNonSolid;      ///<要求支持非实体填充模式
 
-    SupportLevel wide_lines;                    ///<要求支持宽线条
-    SupportLevel line_rasterization;            ///<要支持线条特性(这功能mac/ios平台不支持)
-    SupportLevel large_points;                  ///<要求支持绘制大点
+    SupportLevel wideLines;             ///<要求支持宽线条
+    SupportLevel lineRasterization;     ///<要支持线条特性(这功能mac/ios平台不支持)
+    SupportLevel largePoints;           ///<要求支持绘制大点
 
-    SupportLevel texture_cube_array;            ///<要求支持立方体数组纹理
+    SupportLevel imageCubeArray;        ///<要求支持立方体数组纹理
 
-    SupportLevel uint8_draw_index;              ///<要求支持8位索引
-    SupportLevel uint32_draw_index;             ///<要求支持32位索引
+    SupportLevel fullDrawIndexUint8;    ///<要求支持8位索引
+    SupportLevel fullDrawIndexUint32;   ///<要求支持32位索引
 
     struct
     {
-        SupportLevel bc,etc2,astc_ldr,astc_hdr,pvrtc;   ///<要求支持的压缩纹理格式
+        SupportLevel BC,ETC2,ASTC_LDR,ASTC_HDR,PVRTC;   ///<要求支持的压缩纹理格式
     }texture_compression;
 
     //dynamic_state VK_EXT_extended_dynamic_state
@@ -89,12 +89,12 @@ struct VulkanHardwareRequirement
     //  line stipple
     //  depth clip -1 to 1
     //  shading rate image enable
-    SupportLevel dynamic_state[3];              ///<要求支持动态状态
+    SupportLevel dynamicState[3];              ///<要求支持动态状态
 
     // 1.3 特性
-    SupportLevel dynamic_rendering;             ///<要求支持动态渲染
+    SupportLevel dynamicRendering;             ///<要求支持动态渲染
 
-    uint32_t descriptor_pool;                   ///<描述符池大小(默认1024)
+    uint32_t descriptor_pool;                  ///<描述符池大小(默认1024)
 
 public:
 
@@ -104,10 +104,10 @@ public:
 
         descriptor_pool=1024;
 
-        geometry_shader=SupportLevel::Want;
+        geometryShader=SupportLevel::Want;
 
-        uint8_draw_index=SupportLevel::Want;
-        uint32_draw_index=SupportLevel::Want;
+        fullDrawIndexUint8=SupportLevel::Want;
+        fullDrawIndexUint32=SupportLevel::Want;
     }
 };
 

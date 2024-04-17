@@ -303,7 +303,7 @@ namespace hgl
 
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(24))
+                if(!rc.Init(24,6*2*3))
                     return(nullptr);
 
                 rc.WriteVBO(VAN::Position,positions,sizeof(positions));
@@ -456,7 +456,7 @@ namespace hgl
                 float helpMatrix[16];
                 float tex_x;
 
-                if(!rc.Init(numberVertices))
+                if(!rc.Init(numberVertices,numberIndices))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
@@ -537,7 +537,7 @@ namespace hgl
                 if (numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
 
-                if(!rc.Init(numberVertices))
+                if(!rc.Init(numberVertices,numberIndices))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
@@ -674,7 +674,7 @@ namespace hgl
                 sIncr = 1.0f / (float) tci->numberSlices;
                 tIncr = 1.0f / (float) tci->numberStacks;
 
-                if(!rc.Init(numberVertices))
+                if(!rc.Init(numberVertices,numberIndices))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
@@ -804,7 +804,7 @@ namespace hgl
 
                 uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
-                if(!rc.Init(numberVertices))
+                if(!rc.Init(numberVertices,numberIndices))
                     return(nullptr);
 
                 float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
@@ -1019,11 +1019,10 @@ namespace hgl
                 uint i, j;
 
                 uint numberVertices = (cci->numberSlices + 2) + (cci->numberSlices + 1) * (cci->numberStacks + 1);
-
-                if(!rc.Init(numberVertices))
-                    return(nullptr);
-
                 uint numberIndices = cci->numberSlices * 3 + cci->numberSlices * 6 * cci->numberStacks;
+
+                if(!rc.Init(numberVertices,numberIndices))
+                    return(nullptr);
 
                 float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
 
@@ -1145,7 +1144,7 @@ namespace hgl
 
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(6))
+                if(!rc.Init(6,0))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
@@ -1190,7 +1189,7 @@ namespace hgl
 
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(8))
+                if(!rc.Init(8,24))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
