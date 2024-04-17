@@ -132,7 +132,7 @@ public:
         {
             VulkanHardwareRequirement vh_req;
 
-            vh_req.wide_lines=VulkanHardwareRequirement::SupportLevel::Want;
+            vh_req.wideLines=VulkanHardwareRequirement::SupportLevel::Want;
 
             device=CreateRenderDevice(inst,win,&vh_req);
 

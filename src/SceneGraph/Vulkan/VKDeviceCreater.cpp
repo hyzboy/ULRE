@@ -77,40 +77,42 @@ namespace
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
 
-        if(require.line_rasterization>=VulkanHardwareRequirement::SupportLevel::Want)
+        if(require.lineRasterization>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
 
-        if(require.texture_compression.pvrtc>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
+        if(require.texture_compression.PVRTC>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
             ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
 
-        if(require.uint8_draw_index>=VulkanHardwareRequirement::SupportLevel::Want)
+        if(require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
     }
 
     void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
     {
         #define FEATURE_COPY(name)  features->name=pdf.name;
-        #define REQURE_FEATURE_COPY(rn,fn) if(require.rn>=VulkanHardwareRequirement::SupportLevel::Want)features->fn=pdf.fn;
+        #define REQURE_FEATURE_COPY(name) if(require.name>=VulkanHardwareRequirement::SupportLevel::Want)features->name=pdf.name;
+        #define REQURE_TEXTURE_FEATURE_COPY(name) if(require.texture_compression.name>=VulkanHardwareRequirement::SupportLevel::Want)features->textureCompression##name=pdf.textureCompression##name;
 
         FEATURE_COPY(multiDrawIndirect);
         FEATURE_COPY(samplerAnisotropy);
 
-        REQURE_FEATURE_COPY(geometry_shader,                geometryShader);
+        REQURE_FEATURE_COPY(geometryShader);
 
-        REQURE_FEATURE_COPY(texture_cube_array,             imageCubeArray);
+        REQURE_FEATURE_COPY(imageCubeArray);
 
-        REQURE_FEATURE_COPY(uint32_draw_index,              fullDrawIndexUint32);
-        REQURE_FEATURE_COPY(sample_rate_shading,            sampleRateShading);
+        REQURE_FEATURE_COPY(fullDrawIndexUint32);
+        REQURE_FEATURE_COPY(sampleRateShading);
 
-        REQURE_FEATURE_COPY(fill_mode_non_solid,            fillModeNonSolid);
+        REQURE_FEATURE_COPY(fillModeNonSolid);
 
-        REQURE_FEATURE_COPY(wide_lines,                     wideLines)
-        REQURE_FEATURE_COPY(large_points,                   largePoints)
+        REQURE_FEATURE_COPY(wideLines)
+        REQURE_FEATURE_COPY(largePoints)
 
-        REQURE_FEATURE_COPY(texture_compression.bc,         textureCompressionBC);
-        REQURE_FEATURE_COPY(texture_compression.etc2,       textureCompressionETC2);
-        REQURE_FEATURE_COPY(texture_compression.astc_ldr,   textureCompressionASTC_LDR);
+        REQURE_TEXTURE_FEATURE_COPY(BC);
+        REQURE_TEXTURE_FEATURE_COPY(ETC2);
+        REQURE_TEXTURE_FEATURE_COPY(ASTC_LDR);
 
+        #undef REQURE_TEXTURE_FEATURE_COPY
         #undef REQURE_FEATURE_COPY
         #undef FEATURE_COPY
     }
@@ -371,22 +373,22 @@ bool VulkanDeviceCreater::RequirementCheck()
 {
     const VkPhysicalDeviceLimits &limits=physical_device->GetLimits();
 
-#define VHR_MINCHECK(name,lname) if(require.name>0&&require.name>limits.lname)return(false);
+#define VHR_MINCHECK(name) if(require.name>0&&require.name>limits.name)return(false);
 
-    VHR_MINCHECK(min_1d_image_size           ,maxImageDimension1D     )
-    VHR_MINCHECK(min_2d_image_size           ,maxImageDimension2D     )
-    VHR_MINCHECK(min_3d_image_size           ,maxImageDimension3D     )
-    VHR_MINCHECK(min_cube_image_size         ,maxImageDimensionCube   )
-    VHR_MINCHECK(min_array_image_layers      ,maxImageArrayLayers     )
+    VHR_MINCHECK(maxImageDimension1D     )
+    VHR_MINCHECK(maxImageDimension2D     )
+    VHR_MINCHECK(maxImageDimension3D     )
+    VHR_MINCHECK(maxImageDimensionCube   )
+    VHR_MINCHECK(maxImageArrayLayers     )
 
-    VHR_MINCHECK(min_vertex_input_attribute  ,maxVertexInputAttributes)
-    VHR_MINCHECK(min_color_attachments       ,maxColorAttachments     )
+    VHR_MINCHECK(maxVertexInputAttributes)
+    VHR_MINCHECK(maxColorAttachments     )
 
-    VHR_MINCHECK(min_push_constant_size      ,maxPushConstantsSize    )
-    VHR_MINCHECK(min_ubo_range               ,maxUniformBufferRange   )
-    VHR_MINCHECK(min_ssbo_range              ,maxStorageBufferRange   )
+    VHR_MINCHECK(maxPushConstantsSize    )
+    VHR_MINCHECK(maxUniformBufferRange   )
+    VHR_MINCHECK(maxStorageBufferRange   )
 
-    VHR_MINCHECK(min_draw_indirect_count     ,maxDrawIndirectCount    )
+    VHR_MINCHECK(maxDrawIndirectCount    )
 
 #undef VHR_MINCHECK
 
@@ -395,39 +397,45 @@ bool VulkanDeviceCreater::RequirementCheck()
 
 #define VHRC(name,check) if(require.name>=VulkanHardwareRequirement::SupportLevel::Must&&(!check))return(false);
 
-    #define VHRC_F10(name,f10name) VHRC(name,features10.f10name)
-    #define VHRC_F13(name,f13name) VHRC(name,features13.f13name)
+    #define VHRC_F10(name) VHRC(name,features10.name)
+    #define VHRC_F13(name) VHRC(name,features13.name)
     #define VHRC_PDE(name,pdename) VHRC(name,physical_device->CheckExtensionSupport(VK_##pdename##_EXTENSION_NAME))
+    #define VHRC_TC10(name) VHRC(texture_compression.name,features10.textureCompression##name)
+    #define VHRC_TC13(name) VHRC(texture_compression.name,features13.textureCompression##name)
 
-    VHRC_F10(geometry_shader,       geometryShader);
-    VHRC_F10(tessellation_shader,   tessellationShader);
+    VHRC_F10(geometryShader);
+    VHRC_F10(tessellationShader);
 
-    VHRC_F10(multi_draw_indirect,   multiDrawIndirect);
+    VHRC_F10(multiDrawIndirect);
 
-    VHRC_F10(sample_rate_shading,   sampleRateShading);
+    VHRC_F10(sampleRateShading);
 
-    VHRC_F10(fill_mode_non_solid,   fillModeNonSolid);
+    VHRC_F10(fillModeNonSolid);
 
-    VHRC_F10(wide_lines,            wideLines);
-    VHRC_PDE(line_rasterization,    EXT_LINE_RASTERIZATION);
-    VHRC_F10(large_points,          largePoints);
+    VHRC_F10(wideLines);
 
-    VHRC_F10(texture_cube_array,    imageCubeArray);
+#ifndef __APPLE__
+    VHRC_PDE(lineRasterization,    EXT_LINE_RASTERIZATION);
+#endif//__APPLE__
 
-    VHRC_PDE(uint8_draw_index,      EXT_INDEX_TYPE_UINT8);
-    VHRC_F10(uint32_draw_index,     fullDrawIndexUint32);
+    VHRC_F10(largePoints);
 
-    VHRC_F10(texture_compression.bc,        textureCompressionBC);
-    VHRC_F10(texture_compression.etc2,      textureCompressionETC2);
-    VHRC_F10(texture_compression.astc_ldr,  textureCompressionASTC_LDR);
-    VHRC_F13(texture_compression.astc_hdr,  textureCompressionASTC_HDR);
-    VHRC_PDE(texture_compression.pvrtc,     IMG_FORMAT_PVRTC);
+    VHRC_F10(imageCubeArray);
 
-    VHRC_F13(dynamic_rendering,     dynamicRendering);
+    VHRC_PDE(fullDrawIndexUint8,      EXT_INDEX_TYPE_UINT8);
+    VHRC_F10(fullDrawIndexUint32);
 
-    VHRC_PDE(dynamic_state[0],      EXT_EXTENDED_DYNAMIC_STATE);
-    VHRC_PDE(dynamic_state[1],      EXT_EXTENDED_DYNAMIC_STATE_2);
-    VHRC_PDE(dynamic_state[2],      EXT_EXTENDED_DYNAMIC_STATE_3);
+    VHRC_TC10(BC);
+    VHRC_TC10(ETC2);
+    VHRC_TC10(ASTC_LDR);
+    VHRC_TC13(ASTC_HDR);
+    VHRC_PDE(texture_compression.PVRTC,     IMG_FORMAT_PVRTC);
+
+    VHRC_F13(dynamicRendering);
+
+    VHRC_PDE(dynamicState[0],      EXT_EXTENDED_DYNAMIC_STATE);
+    VHRC_PDE(dynamicState[1],      EXT_EXTENDED_DYNAMIC_STATE_2);
+    VHRC_PDE(dynamicState[2],      EXT_EXTENDED_DYNAMIC_STATE_3);
 
 #undef VHRC_PDE
 #undef VHRC_F13
