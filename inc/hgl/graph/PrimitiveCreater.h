@@ -25,6 +25,9 @@ namespace hgl
 
         protected:
 
+            GPUDevice *device;
+            const GPUPhysicalDevice *phy_device;
+
             VertexDataManager *vdm;
             RenderResource *db;
 
@@ -49,7 +52,7 @@ namespace hgl
             PrimitiveCreater(VertexDataManager *);
             virtual ~PrimitiveCreater()=default;
 
-            virtual bool                    Init(const uint32 vertices_count);                                          ///<初始化，参数为顶点数量
+            virtual bool                    Init(const uint32 vertices_count,const uint32 index_count,IndexType it=IndexType::ERR);                 ///<初始化，参数为顶点数量
 
             template<typename T> 
                     T *                     AccessVBO(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
