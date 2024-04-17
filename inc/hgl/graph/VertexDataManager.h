@@ -14,8 +14,8 @@ namespace hgl
 
         protected:
 
-            VIL *           vil;            ///<顶点输入格式列表
-            uint            vi_count;       ///<顶点输入流数量
+            const VIL *     vil;            ///<顶点输入格式列表
+                  uint      vi_count;       ///<顶点输入流数量
             const VIF *     vif_list;       ///<顶点输入格式列表
 
             VkDeviceSize    vbo_max_size;   ///<顶点缓冲区分配空间大小
@@ -34,6 +34,8 @@ namespace hgl
 
             VertexDataManager(GPUDevice *dev,const VIL *_vil);
             ~VertexDataManager();
+
+                  GPUDevice *   GetDevice       ()const{return device;}                                     ///<取得GPU设备
 
             const VIL *         GetVIL          ()const{return vil;}                                         ///<取得顶点输入格式列表
 

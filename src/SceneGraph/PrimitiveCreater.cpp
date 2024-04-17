@@ -9,6 +9,9 @@ namespace hgl
     {
         PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VIL *v)
         {
+            device=sdb->GetDevice();
+            phy_device=device->GetPhysicalDevice();
+
             db              =sdb;
             vil             =v;
 
@@ -18,18 +21,39 @@ namespace hgl
 
         PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
         {
+            device=_vdm->GetDevice();
+            phy_device=device->GetPhysicalDevice();
+
             vdm=_vdm;
             vil=vdm->GetVIL();
 
             vertices_number =0;
             ibo             =nullptr;
+
+
         }
 
-        bool PrimitiveCreater::Init(const uint32 count)
+        bool PrimitiveCreater::Init(const uint32 vertex_count,const uint32 index_count,IndexType it)
         {
-            if(count<=0)return(false);
+            if(vertex_count<=0)return(false);
 
-            vertices_number=count;
+            vertices_number=vertex_count;
+
+            if(index_count>0)
+            {
+                if(it==IndexType::ERR)
+                {
+                    if(vertex_count<=0xFFFF)
+                        it=IndexType::U16;
+                    else
+                        it=IndexType::U32;
+                }
+
+                ibo=db->CreateIBO(it,index_count);
+                if(!ibo)return(false);
+
+                ibo->Map();
+            }
 
             return(true);
         }

@@ -18,7 +18,7 @@ namespace hgl
             {
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(4))
+                if(!rc.Init(4,0))
                     return(nullptr);
 
                 AutoDelete<VB2f> vertex=rc.AccessVBO<VB2f>(VAN::Position);
@@ -46,7 +46,7 @@ namespace hgl
 
                 if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
                 {
-                    if(!rc.Init(4))
+                    if(!rc.Init(4,0))
                         return(nullptr);
                     
                     AutoDelete<VB2f> vertex=rc.AccessVBO<VB2f>(VAN::Position);
@@ -60,7 +60,7 @@ namespace hgl
                     if(radius>rci->scope.GetWidth()/2.0f)radius=rci->scope.GetWidth()/2.0f;
                     if(radius>rci->scope.GetHeight()/2.0f)radius=rci->scope.GetHeight()/2.0f;
 
-                    if(!rc.Init(rci->round_per*4))
+                    if(!rc.Init(rci->round_per*4,8))
                         return(nullptr);
                 
                     AutoDelete<VB2f> vertex=rc.AccessVBO<VB2f>(VAN::Position);
@@ -123,12 +123,12 @@ namespace hgl
                 if(cci->has_color)
                 {
                     edge=cci->field_count+1;
-                    if(!rc.Init(cci->field_count+2))return(nullptr);
+                    if(!rc.Init(cci->field_count+2,0))return(nullptr);
                 }
                 else
                 {
                     edge=cci->field_count;
-                    if(!rc.Init(cci->field_count))return(nullptr);
+                    if(!rc.Init(cci->field_count,0))return(nullptr);
                 }
 
                 AutoDelete<VB2f> vertex=rc.AccessVBO<VB2f>(VAN::Position);
@@ -166,7 +166,7 @@ namespace hgl
             {
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2))
+                if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,8))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
@@ -221,7 +221,7 @@ namespace hgl
 
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(4))
+                if(!rc.Init(4,8))
                     return(nullptr);
             
                 rc.WriteVBO(VAN::Position,xy_vertices,sizeof(xy_vertices));
