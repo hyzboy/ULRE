@@ -77,6 +77,30 @@ VBO *GPUDevice::CreateVBO(VkFormat format,uint32_t count,const void *data,Sharin
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
+const IndexType GPUDevice::GetIndexType(const VkDeviceSize &vertex_count)const
+{
+    if(vertex_count<=0)return(IndexType::ERR);
+
+    if(attr->uint8_index_type&&                 vertex_count<=0xFF  )return IndexType::U8;  else
+    if(                                         vertex_count<=0xFFFF)return IndexType::U16; else
+    if(attr->physical_device->SupportU32Index()                     )return IndexType::U32; else
+
+    return IndexType::ERR;
+}
+
+const bool GPUDevice::CheckIndexType(const IndexType it,const VkDeviceSize &vertex_count)const
+{
+    if(vertex_count<=0)return(false);
+
+    if(it==IndexType::U16&&vertex_count<=0xFFFF)return(true);
+
+    if(it==IndexType::U32&&attr->physical_device->SupportU32Index())return(true);
+
+    if(it==IndexType::U8 &&vertex_count<=0xFF&&attr->uint8_index_type)return(true);
+
+    return(false);
+}
+
 IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     if(count==0)return(nullptr);

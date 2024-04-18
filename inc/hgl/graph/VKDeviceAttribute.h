@@ -39,6 +39,8 @@ struct GPUDeviceAttribute
     VkSurfaceTransformFlagBitsKHR       preTransform;
     VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
+    bool                                uint8_index_type=false;
+
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
 
