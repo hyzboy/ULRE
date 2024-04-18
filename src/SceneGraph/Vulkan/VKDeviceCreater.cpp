@@ -229,6 +229,18 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     create_info.ppEnabledLayerNames     =nullptr;
     create_info.pEnabledFeatures        =&features;
 
+    VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
+
+    if(physical_device->SupportU8Index()
+     &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        create_info.pNext=&index_type_uint8_features;
+
+        index_type_uint8_features.sType         =VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
+        index_type_uint8_features.pNext         =nullptr;
+        index_type_uint8_features.indexTypeUint8=VK_TRUE;
+    }
+
     VkDevice device;
 
     if(vkCreateDevice(*physical_device,&create_info,nullptr,&device)==VK_SUCCESS)
@@ -299,6 +311,12 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
         return(nullptr);
 
     ChooseSurfaceFormat();
+
+    if(physical_device->SupportU8Index()
+     &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        device_attr->uint8_index_type=true;
+    }
 
     device_attr->surface_format=surface_format;
 

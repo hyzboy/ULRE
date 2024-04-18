@@ -138,14 +138,20 @@ inline const uint32_t GetMipLevel(const VkExtent3D &ext)
 /**
  * 索引类型,等同于VkIndexType
  */
-enum IndexType:uint
+enum IndexType:int
 {
+    AUTO=-1,
     U16=0,
     U32,
     U8=VK_INDEX_TYPE_UINT8_EXT,
 
     ERR=VK_INDEX_TYPE_MAX_ENUM
 };
+
+inline const bool IsIndexType(const IndexType it)
+{
+    return it>=U16&&it<=U8;
+}
 
 //Push Constant max-lengths:
 //
