@@ -9,8 +9,9 @@ namespace hgl
     {
         class IndexBuffer:public DeviceBuffer
         {
-            IndexType index_type;
-            uint32_t count;
+            IndexType   index_type;
+            uint        stride;
+            uint32_t    count;
 
         private:
 
@@ -20,14 +21,20 @@ namespace hgl
             {
                 index_type=it;
                 count=_count;
+
+                if(index_type==IndexType::U16)stride=2;else
+                if(index_type==IndexType::U32)stride=4;else
+                if(index_type==IndexType::U8)stride=1;else
+                    stride=0;
             }
 
         public:
 
             ~IndexBuffer()=default;
 
-            const IndexType     GetType ()const{return index_type;}
-            const uint32        GetCount()const{return count;}
+            const IndexType     GetType     ()const{return index_type;}
+            const uint          GetStride   ()const{return stride;}
+            const uint32        GetCount    ()const{return count;}
         };//class IndexBuffer:public DeviceBuffer
     }//namespace graph
 }//namespace hgl
