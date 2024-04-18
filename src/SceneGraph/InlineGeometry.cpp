@@ -166,7 +166,7 @@ namespace hgl
             {
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,8))
+                if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
@@ -303,7 +303,7 @@ namespace hgl
 
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(24,6*2*3))
+                if(!rc.Init(24,6*2*3,IndexType::U16))
                     return(nullptr);
 
                 rc.WriteVBO(VAN::Position,positions,sizeof(positions));
@@ -341,7 +341,8 @@ namespace hgl
                     }
                 }
 
-                rc.CreateIBO16(6*2*3,indices);
+                //rc.CreateIBO16(6*2*3,indices);
+                rc.WriteIBO(indices);
                 return rc.Finish("Cube");
             }
 
@@ -508,10 +509,15 @@ namespace hgl
                     }
                 }
 
-                if(numberVertices<=0xffff)
-                    CreateSphereIndices<uint16>(rc.CreateIBO16(numberIndices),numberParallels,numberSlices);
-                else
-                    CreateSphereIndices<uint32>(rc.CreateIBO32(numberIndices),numberParallels,numberSlices);
+                //索引
+                {
+                    const IndexType index_type=rc.GetIndexType();
+
+                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(rc.AccessIBO<uint16>(),numberParallels,numberSlices);else
+                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(rc.AccessIBO<uint32>(),numberParallels,numberSlices);else
+                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(rc.AccessIBO<uint8 >(),numberParallels,numberSlices);else
+                        return(nullptr);
+                }
 
                 return rc.Finish("Sphere");
             }
@@ -594,10 +600,15 @@ namespace hgl
                     }
                 }
 
-                if(numberVertices<=0xffff)
-                    CreateSphereIndices<uint16>(rc.CreateIBO16(numberIndices),numberParallels,numberSlices);
-                else
-                    CreateSphereIndices<uint32>(rc.CreateIBO32(numberIndices),numberParallels,numberSlices);
+                //索引
+                {
+                    const IndexType index_type=rc.GetIndexType();
+
+                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(rc.AccessIBO<uint16>(),numberParallels,numberSlices);else
+                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(rc.AccessIBO<uint32>(),numberParallels,numberSlices);else
+                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(rc.AccessIBO<uint8 >(),numberParallels,numberSlices);else
+                        return(nullptr);
+                }
 
                 return rc.Finish("Dome");
             }
@@ -735,11 +746,15 @@ namespace hgl
                     }
                 }
 
-                if(numberVertices<=0xffff)
-                    CreateTorusIndices<uint16>(rc.CreateIBO16(numberIndices),tci->numberSlices,tci->numberStacks);
-                else
-                    CreateTorusIndices<uint32>(rc.CreateIBO32(numberIndices),tci->numberSlices,tci->numberStacks);
+                //索引
+                {
+                    const IndexType index_type=rc.GetIndexType();
 
+                    if(index_type==IndexType::U16)CreateTorusIndices<uint16>(rc.AccessIBO<uint16>(),tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U32)CreateTorusIndices<uint32>(rc.AccessIBO<uint32>(),tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(rc.AccessIBO<uint8 >(),tci->numberSlices,tci->numberStacks);else
+                        return(nullptr);
+                }
                 return rc.Finish("Torus");
             }
 
@@ -964,10 +979,15 @@ namespace hgl
                     }
                 }
 
-                if(numberVertices<=0xffff)
-                    CreateCylinderIndices<uint16>(rc.CreateIBO16(numberIndices),cci->numberSlices);
-                else
-                    CreateCylinderIndices<uint32>(rc.CreateIBO32(numberIndices),cci->numberSlices);
+                //索引
+                {
+                    const IndexType index_type=rc.GetIndexType();
+
+                    if(index_type==IndexType::U16)CreateCylinderIndices<uint16>(rc.AccessIBO<uint16>(),cci->numberSlices);else
+                    if(index_type==IndexType::U32)CreateCylinderIndices<uint32>(rc.AccessIBO<uint32>(),cci->numberSlices);else
+                    if(index_type==IndexType::U8 )CreateCylinderIndices<uint8 >(rc.AccessIBO<uint8 >(),cci->numberSlices);else
+                        return(nullptr);
+                }
 
                 return rc.Finish("Cylinder");
             }
@@ -1130,10 +1150,15 @@ namespace hgl
                     }
                 }
 
-                if(numberVertices<=0xffff)
-                    CreateConeIndices<uint16>(rc.CreateIBO16(numberIndices),cci->numberSlices,cci->numberStacks);
-                else
-                    CreateConeIndices<uint32>(rc.CreateIBO32(numberIndices),cci->numberSlices,cci->numberStacks);
+                //索引
+                {
+                    const IndexType index_type=rc.GetIndexType();
+
+                    if(index_type==IndexType::U16)CreateConeIndices<uint16>(rc.AccessIBO<uint16>(),cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U32)CreateConeIndices<uint32>(rc.AccessIBO<uint32>(),cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U8 )CreateConeIndices<uint8 >(rc.AccessIBO<uint8 >(),cci->numberSlices,cci->numberStacks);else
+                        return(nullptr);
+                }
 
                 return rc.Finish("Cone");
             }
@@ -1189,7 +1214,7 @@ namespace hgl
 
                 PrimitiveCreater rc(db,vil);
 
-                if(!rc.Init(8,24))
+                if(!rc.Init(8,24,IndexType::U16))
                     return(nullptr);
 
                 AutoDelete<VB3f> vertex=rc.AccessVBO<VB3f>(VAN::Position);
@@ -1214,7 +1239,7 @@ namespace hgl
                     }
                 }
 
-                rc.CreateIBO16(24,indices);
+                rc.WriteIBO<uint16>(indices);
 
                 return rc.Finish("BoundingBox");
             }

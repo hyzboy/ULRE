@@ -17,7 +17,9 @@ namespace hgl
             vil             =v;
 
             vertices_number =0;
+            index_number    =0;
             ibo             =nullptr;
+            ibo_map         =nullptr;
         }
 
         PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
@@ -30,7 +32,18 @@ namespace hgl
             vil             =vdm->GetVIL();
 
             vertices_number =0;
+            index_number    =0;
             ibo             =nullptr;
+            ibo_map         =nullptr;
+        }
+
+        PrimitiveCreater::~PrimitiveCreater()
+        {
+            if(ibo)
+            {
+                ibo->Unmap();
+                delete ibo;
+            }
         }
 
         bool PrimitiveCreater::Init(const uint32 vertex_count,const uint32 index_count,IndexType it)
@@ -41,24 +54,20 @@ namespace hgl
 
             if(index_count>0)
             {
+                index_number=index_count;
+
                 if(vdm)
                 {
-
+                    
                 }
                 else
                 {
-                    if(it==IndexType::ERR)
+                    if(it==IndexType::AUTO)
                     {
-                        if(vertex_count<=0xFF&&phy_device->SupportU8Index())
-                            it=IndexType::U8;
-                        else
-                            if(vertex_count<=0xFFFF)
-                                it=IndexType::U16;
-                            else
-                                if(phy_device->SupportU32Index())
-                                    it=IndexType::U32;
-                                else
-                                    return(false);
+                        it=device->GetIndexType(vertex_count);
+
+                        if(!IsIndexType(it))
+                            return(false);
                     }
                     else if(it==IndexType::U8)
                     {
@@ -80,11 +89,12 @@ namespace hgl
                         return(false);
                     }
 
-                    ibo=db->CreateIBO(it,index_count);
+                    ibo=device->CreateIBO(it,index_count);
+                    //ibo=db->CreateIBO(it,index_count);
                     if(!ibo)return(false);
                 }
 
-                ibo->Map();
+                ibo_map=ibo->Map();
             }
 
             return(true);
@@ -171,12 +181,6 @@ namespace hgl
 
             Primitive *primitive=db->CreatePrimitive(prim_name,vertices_number);
 
-            if(ibo)
-            {
-                ibo->Unmap();
-                primitive->Set(ibo);
-            }
-
             const auto *sp=vbo_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
@@ -194,6 +198,15 @@ namespace hgl
                 }
 
                 ++sp;
+            }
+
+            if(ibo)
+            {
+                ibo->Unmap();
+                primitive->Set(ibo);
+
+                db->Add(ibo);
+                ibo=nullptr;    //避免释构函数删除
             }
 
             db->Add(primitive);

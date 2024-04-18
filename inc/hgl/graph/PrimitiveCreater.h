@@ -35,9 +35,11 @@ namespace hgl
 
         protected:
 
-            uint32              vertices_number;
+            VkDeviceSize        vertices_number;
+            VkDeviceSize        index_number;
 
             IndexBuffer *       ibo;
+            void *              ibo_map;
             PVBMap              vbo_map;
 
         protected:
@@ -50,9 +52,9 @@ namespace hgl
 
             PrimitiveCreater(RenderResource *sdb,const VIL *);
             PrimitiveCreater(VertexDataManager *);
-            virtual ~PrimitiveCreater()=default;
+            virtual ~PrimitiveCreater();
 
-            virtual bool                    Init(const uint32 vertices_count,const uint32 index_count,IndexType it=IndexType::ERR);                 ///<初始化，参数为顶点数量
+            virtual bool                    Init(const uint32 vertices_count,const uint32 index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
 
             template<typename T> 
                     T *                     AccessVBO(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
@@ -76,23 +78,42 @@ namespace hgl
 
                     bool                    WriteVBO(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
 
-                    template<typename T,IndexType IT>
-                    T *                     CreateIBO(const uint count,const T *data=nullptr)                           ///<创建索引缓冲区
+                    const IndexType         GetIndexType()const{return ibo?ibo->GetType():IndexType::ERR;}              ///<取得索引数据类型
+                    template<typename T> T *AccessIBO()
                     {
-                        if(ibo)
-                            return(nullptr);
-                    
-                        ibo=db->CreateIBO(IT,count,data);
+                        if(!ibo)return(nullptr);
+                        if(ibo->GetStride()!=sizeof(T))return(nullptr);
 
-                        if(!ibo)
-                            return(nullptr);
-
-                        return (T *)ibo->Map();
+                        return (T *)ibo_map;
                     }
 
-                    uint8 *                 CreateIBO8 (uint count,const uint8  *data=nullptr){return CreateIBO<uint8 ,IndexType::U8 >(count,data);}                         ///<创建8位的索引缓冲区
-                    uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr){return CreateIBO<uint16,IndexType::U16>(count,data);}                         ///<创建16位的索引缓冲区
-                    uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr){return CreateIBO<uint32,IndexType::U32>(count,data);}                         ///<创建32位的索引缓冲区
+                    template<typename T> bool WriteIBO(const T *data)
+                    {
+                        if(!ibo)return(false);
+                        if(ibo->GetStride()!=sizeof(T))return(false);
+
+                        hgl_cpy<T>((T *)ibo_map,data,index_number);
+
+                        return(true);
+                    }
+
+                    //template<typename T,IndexType IT>
+                    //T *                     CreateIBO(const uint count,const T *data=nullptr)                           ///<创建索引缓冲区
+                    //{
+                    //    if(ibo)
+                    //        return(nullptr);
+                    //
+                    //    ibo=db->CreateIBO(IT,count,data);
+
+                    //    if(!ibo)
+                    //        return(nullptr);
+
+                    //    return (T *)ibo->Map();
+                    //}
+
+                    //uint8 *                 CreateIBO8 (uint count,const uint8  *data=nullptr){return CreateIBO<uint8 ,IndexType::U8 >(count,data);}                         ///<创建8位的索引缓冲区
+                    //uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr){return CreateIBO<uint16,IndexType::U16>(count,data);}                         ///<创建16位的索引缓冲区
+                    //uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr){return CreateIBO<uint32,IndexType::U32>(count,data);}                         ///<创建32位的索引缓冲区
 
             virtual Primitive *             Finish(const AnsiString &);                                                                   ///<结束并创建可渲染对象
         };//class PrimitiveCreater
