@@ -64,7 +64,7 @@ namespace hgl
                 {
                     if(it==IndexType::AUTO)
                     {
-                        it=device->GetIndexType(vertex_count);
+                        it=device->ChooseIndexType(vertex_count);
 
                         if(!IsIndexType(it))
                             return(false);
