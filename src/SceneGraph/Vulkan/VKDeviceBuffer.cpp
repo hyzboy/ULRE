@@ -77,7 +77,7 @@ VBO *GPUDevice::CreateVBO(VkFormat format,uint32_t count,const void *data,Sharin
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
-const IndexType GPUDevice::GetIndexType(const VkDeviceSize &vertex_count)const
+const IndexType GPUDevice::ChooseIndexType(const VkDeviceSize &vertex_count)const
 {
     if(vertex_count<=0)return(IndexType::ERR);
 

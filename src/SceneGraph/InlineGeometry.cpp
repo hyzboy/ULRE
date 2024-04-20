@@ -177,13 +177,13 @@ namespace hgl
                 const float bottom=float(pgci->grid_size.Height())/2.0f;
                 const float top   =-bottom;
 
-                for(int row=0;row<=pgci->grid_size.Height();row++)
+                for(uint row=0;row<=pgci->grid_size.Height();row++)
                 {
                     vertex->WriteLine(  Vector3f(left ,top+row,0),
                                         Vector3f(right,top+row,0));
                 }
 
-                for(int col=0;col<=pgci->grid_size.Width();col++)
+                for(uint col=0;col<=pgci->grid_size.Width();col++)
                 {
                     vertex->WriteLine(Vector3f(left+col,top,   0),
                                       Vector3f(left+col,bottom,0));
@@ -192,7 +192,7 @@ namespace hgl
                 AutoDelete<VB1f> lum=rc.AccessVBO<VB1f>(VAN::Luminance);
                 if(lum)
                 {
-                    for(int row=0;row<=pgci->grid_size.Height();row++)
+                    for(uint row=0;row<=pgci->grid_size.Height();row++)
                     {
                         if((row%pgci->sub_count.Height())==0)
                             lum->RepeatWrite(pgci->sub_lum,2);
@@ -200,7 +200,7 @@ namespace hgl
                             lum->RepeatWrite(pgci->lum,2);
                     }
 
-                    for(int col=0;col<=pgci->grid_size.Width();col++)
+                    for(uint col=0;col<=pgci->grid_size.Width();col++)
                     {
                         if((col%pgci->sub_count.Width())==0)
                             lum->RepeatWrite(pgci->sub_lum,2);
