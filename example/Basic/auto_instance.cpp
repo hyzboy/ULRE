@@ -24,7 +24,8 @@ constexpr float position_data[VERTEX_COUNT*2]=
 };
 
 constexpr uint8 color_data[VERTEX_COUNT][4]=
-{   {255,0,0,255},
+{
+    {255,0,0,255},
     {0,255,0,255},
     {0,0,255,255}
 };

@@ -15,14 +15,6 @@ namespace hgl
          */
         class PrimitiveCreater
         {
-            struct PrimitiveVertexBuffer
-            {
-                VBO *           vbo;
-                void *          map_data;
-            };//struct PrimitiveVertexBuffer
-
-            using PVBMap=ObjectMap<AnsiString,PrimitiveVertexBuffer>;
-
         protected:
 
             GPUDevice *device;
@@ -40,11 +32,11 @@ namespace hgl
 
             IndexBuffer *       ibo;
             void *              ibo_map;
-            PVBMap              vbo_map;
+            VBOAccessMap        vbo_map;
 
         protected:
 
-            PrimitiveVertexBuffer *AcquirePVB(const AnsiString &,const void *data);                                     ///<请求一个顶点属性数据区
+            bool AcquirePVB(VBOAccessData *,const AnsiString &,const void *data);                                     ///<请求一个顶点属性数据区
 
             void ClearAllData();
 
@@ -64,12 +56,11 @@ namespace hgl
                         if(format!=T::GetVulkanFormat())
                             return(nullptr);
 
-                        PrimitiveVertexBuffer *pvb=this->AcquirePVB(name,nullptr);
-
-                        if(!pvb)
+                        VBOAccessData vad;
+                        if(!this->AcquirePVB(&vad,name,nullptr))
                             return(nullptr);
 
-                        T *access=T::Create(vertices_number,pvb->map_data);
+                        T *access=T::Create(vertices_number,vad.map_ptr);
 
                         access->Begin();
 
