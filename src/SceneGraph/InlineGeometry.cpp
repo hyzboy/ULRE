@@ -223,7 +223,7 @@ namespace hgl
 
                 if(!rc.Init(4,8))
                     return(nullptr);
-            
+
                 rc.WriteVBO(VAN::Position,xy_vertices,sizeof(xy_vertices));
 
                 {

@@ -58,7 +58,6 @@ namespace hgl
 
                 if(vdm)
                 {
-                    
                 }
                 else
                 {
@@ -69,24 +68,10 @@ namespace hgl
                         if(!IsIndexType(it))
                             return(false);
                     }
-                    else if(it==IndexType::U8)
-                    {
-                        if(!phy_device->SupportU8Index()||vertex_count>0xFF)
-                            return(false);
-                    }
-                    else if(it==IndexType::U16)
-                    {
-                        if(vertex_count>0xFFFF)
-                            return(false);
-                    }
-                    else if(it==IndexType::U32)
-                    {
-                        if(!phy_device->SupportU32Index())
-                            return(false);
-                    }
                     else
                     {
-                        return(false);
+                        if(!device->CheckIndexType(it,vertex_count))
+                            return(false);
                     }
 
                     ibo=device->CreateIBO(it,index_count);
@@ -100,33 +85,30 @@ namespace hgl
             return(true);
         }
 
-        PrimitiveCreater::PrimitiveVertexBuffer *PrimitiveCreater::AcquirePVB(const AnsiString &name,const void *data)
+        bool PrimitiveCreater::AcquirePVB(VBOAccessData *vad,const AnsiString &name,const void *data)
         {
-            if(!vil)return(nullptr);
-            if(name.IsEmpty())return(nullptr);
+            if(!vad)return(false);
+            if(!vil)return(false);
+            if(name.IsEmpty())return(false);
             
             const VertexInputFormat *vif=vil->GetConfig(name);
 
             if(!vif)
-                return(nullptr);
+                return(false);
 
-            PrimitiveVertexBuffer *pvb;
+            if(vbo_map.Get(name,*vad))
+                return true;
 
-            if(vbo_map.Get(name,pvb))
-                return pvb;
-
-            pvb=new PrimitiveVertexBuffer;
-
-            pvb->vbo    =db->CreateVBO(vif->format,vertices_number,data);
+            vad->vbo    =db->CreateVBO(vif->format,vertices_number,data);
 
             if(!data)
-                pvb->map_data=pvb->vbo->Map();
+                vad->map_ptr=vad->vbo->Map();
             else
-                pvb->map_data=nullptr;
+                vad->map_ptr=nullptr;
 
-            vbo_map.Add(name,pvb);
+            vbo_map.Add(name,*vad);
 
-            return pvb;
+            return true;
         }
 
         bool PrimitiveCreater::WriteVBO(const AnsiString &name,const void *data,const uint32_t bytes)
@@ -144,7 +126,9 @@ namespace hgl
             if(vif->stride*vertices_number!=bytes)
                 return(false);
 
-            return AcquirePVB(name,data);
+            VBOAccessData vad;
+
+            return AcquirePVB(&vad,name,data);
         }
 
         void PrimitiveCreater::ClearAllData()
@@ -154,10 +138,10 @@ namespace hgl
                 const auto *sp=vbo_map.GetDataList();
                 for(uint i=0;i<vbo_map.GetCount();i++)
                 {
-                    if((*sp)->value->vbo)
+                    if((*sp)->value.vbo)
                     {
-                        (*sp)->value->vbo->Unmap();
-                        delete (*sp)->value->vbo;
+                        (*sp)->value.vbo->Unmap();
+                        delete (*sp)->value.vbo;
                     }
                 
                     ++sp;
@@ -184,12 +168,12 @@ namespace hgl
             const auto *sp=vbo_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
-                if((*sp)->value->vbo)
+                if((*sp)->value.vbo)
                 {
-                    if((*sp)->value->map_data)
-                        (*sp)->value->vbo->Unmap();
+                    if((*sp)->value.map_ptr)
+                        (*sp)->value.vbo->Unmap();
 
-                    primitive->Set((*sp)->key,(*sp)->value->vbo);
+                    primitive->Set((*sp)->key,(*sp)->value.vbo);
                 }
                 else
                 {

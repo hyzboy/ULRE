@@ -43,6 +43,8 @@ namespace hgl
             VkDeviceSize offset;
             VkDeviceSize size;
 
+            void *map_ptr;
+
         public:
 
             CompOperatorMemcmp(const VBOAccessData &);
