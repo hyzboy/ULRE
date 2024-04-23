@@ -32,11 +32,11 @@ namespace hgl
 
             IndexBuffer *       ibo;
             void *              ibo_map;
-            VBOAccessMap        vbo_map;
+            VABAccessMap        vbo_map;
 
         protected:
 
-            bool AcquirePVB(VBOAccessData *,const AnsiString &,const void *data);                                     ///<请求一个顶点属性数据区
+            bool AcquirePVB(VABAccess *,const AnsiString &,const void *data);                                     ///<请求一个顶点属性数据区
 
             void ClearAllData();
 
@@ -49,14 +49,14 @@ namespace hgl
             virtual bool                    Init(const uint32 vertices_count,const uint32 index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
 
             template<typename T> 
-                    T *                     AccessVBO(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
+                    T *                     AccessVAB(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
                     {
                         const VkFormat format=vil->GetVulkanFormat(name);
 
                         if(format!=T::GetVulkanFormat())
                             return(nullptr);
 
-                        VBOAccessData vad;
+                        VABAccess vad;
                         if(!this->AcquirePVB(&vad,name,nullptr))
                             return(nullptr);
 
@@ -67,9 +67,10 @@ namespace hgl
                         return access;
                     }
 
-                    bool                    WriteVBO(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
+                    bool                    WriteVAB(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
 
                     const IndexType         GetIndexType()const{return ibo?ibo->GetType():IndexType::ERR;}              ///<取得索引数据类型
+
                     template<typename T> T *AccessIBO()
                     {
                         if(!ibo)return(nullptr);

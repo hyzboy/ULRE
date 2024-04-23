@@ -116,7 +116,7 @@ private:
         Primitive *primitive=db->CreatePrimitive(VERTEX_COUNT);
         if(!primitive)return(false);
 
-        if(!primitive->Set(VAN::Position,  db->CreateVBO(VF_V2F,VERTEX_COUNT,position_data)))return(false);
+        if(!primitive->Set(VAN::Position,  db->CreateVAB(VF_V2F,VERTEX_COUNT,position_data)))return(false);
         
         render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
         return(true);

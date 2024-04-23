@@ -16,8 +16,8 @@ namespace hgl
 
             uint        max_count;                                      ///<缓冲区最大容量
 
-            VBO *       vbo_position;
-            VBO *       vbo_tex_coord;
+            VAB *       vab_position;
+            VAB *       vab_tex_coord;
 
         protected:
 

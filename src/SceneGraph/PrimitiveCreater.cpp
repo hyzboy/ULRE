@@ -85,7 +85,7 @@ namespace hgl
             return(true);
         }
 
-        bool PrimitiveCreater::AcquirePVB(VBOAccessData *vad,const AnsiString &name,const void *data)
+        bool PrimitiveCreater::AcquirePVB(VABAccess *vad,const AnsiString &name,const void *data)
         {
             if(!vad)return(false);
             if(!vil)return(false);
@@ -99,10 +99,10 @@ namespace hgl
             if(vbo_map.Get(name,*vad))
                 return true;
 
-            vad->vbo    =db->CreateVBO(vif->format,vertices_number,data);
+            vad->vab    =db->CreateVAB(vif->format,vertices_number,data);
 
             if(!data)
-                vad->map_ptr=vad->vbo->Map();
+                vad->map_ptr=vad->vab->Map();
             else
                 vad->map_ptr=nullptr;
 
@@ -111,7 +111,7 @@ namespace hgl
             return true;
         }
 
-        bool PrimitiveCreater::WriteVBO(const AnsiString &name,const void *data,const uint32_t bytes)
+        bool PrimitiveCreater::WriteVAB(const AnsiString &name,const void *data,const uint32_t bytes)
         {
             if(!vil)return(false);
             if(name.IsEmpty())return(false);
@@ -126,7 +126,7 @@ namespace hgl
             if(vif->stride*vertices_number!=bytes)
                 return(false);
 
-            VBOAccessData vad;
+            VABAccess vad;
 
             return AcquirePVB(&vad,name,data);
         }
@@ -138,10 +138,10 @@ namespace hgl
                 const auto *sp=vbo_map.GetDataList();
                 for(uint i=0;i<vbo_map.GetCount();i++)
                 {
-                    if((*sp)->value.vbo)
+                    if((*sp)->value.vab)
                     {
-                        (*sp)->value.vbo->Unmap();
-                        delete (*sp)->value.vbo;
+                        (*sp)->value.vab->Unmap();
+                        delete (*sp)->value.vab;
                     }
                 
                     ++sp;
@@ -168,12 +168,12 @@ namespace hgl
             const auto *sp=vbo_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
-                if((*sp)->value.vbo)
+                if((*sp)->value.vab)
                 {
                     if((*sp)->value.map_ptr)
-                        (*sp)->value.vbo->Unmap();
+                        (*sp)->value.vab->Unmap();
 
-                    primitive->Set((*sp)->key,(*sp)->value.vbo);
+                    primitive->Set((*sp)->key,(*sp)->value.vab);
                 }
                 else
                 {

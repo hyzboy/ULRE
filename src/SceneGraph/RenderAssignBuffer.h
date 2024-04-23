@@ -31,7 +31,7 @@ class RenderL2WBuffer
 
     uint node_count;                    ///<渲染节点数量
 
-    VBO *l2w_vbo[4];
+    VAB *l2w_vbo[4];
     VkBuffer l2w_buffer[4];
 
 private:
@@ -65,9 +65,9 @@ private:
 
     uint32_t mi_data_bytes;             ///<材质实例数据字节数
     uint32_t mi_count;                  ///<材质实例数量
-    DeviceBuffer *ubo_mi;               ///<材质实例数据
+    DeviceBuffer *mi_data_buffer;       ///<材质实例数据(UBO/SSBO)
     
-    VBO *vbo_mi;                        ///<材质实例ID(R16UI格式)
+    VAB *mi_vab;                        ///<材质实例ID(R16UI格式)
     VkBuffer mi_buffer;
 
 private:

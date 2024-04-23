@@ -30,18 +30,18 @@ namespace
 {
     constexpr const char *l2w_buffer_name[]=
     {
-        "VBO:Buffer:LocalToWorld:0",
-        "VBO:Buffer:LocalToWorld:1",
-        "VBO:Buffer:LocalToWorld:2",
-        "VBO:Buffer:LocalToWorld:3"
+        "VAB:Buffer:LocalToWorld:0",
+        "VAB:Buffer:LocalToWorld:1",
+        "VAB:Buffer:LocalToWorld:2",
+        "VAB:Buffer:LocalToWorld:3"
     };
 
     constexpr const char *l2w_memory_name[]=
     {
-        "VBO:Memory:LocalToWorld:0",
-        "VBO:Memory:LocalToWorld:1",
-        "VBO:Memory:LocalToWorld:2",
-        "VBO:Memory:LocalToWorld:3"
+        "VAB:Memory:LocalToWorld:0",
+        "VAB:Memory:LocalToWorld:1",
+        "VAB:Memory:LocalToWorld:2",
+        "VAB:Memory:LocalToWorld:3"
     };
 }
 #endif//_DEBUG
@@ -55,7 +55,7 @@ void RenderL2WBuffer::Alloc(const uint nc)
 
         for(uint i=0;i<4;i++)
         {
-            l2w_vbo[i]=device->CreateVBO(VF_V4F,node_count);
+            l2w_vbo[i]=device->CreateVAB(VF_V4F,node_count);
             l2w_buffer[i]=l2w_vbo[i]->GetBuffer();
         }
     }
@@ -114,13 +114,13 @@ void RenderMIBuffer::Bind(Material *mtl)const
 {
     if(!mtl)return;
 
-    mtl->BindUBO(DescriptorSetType::PerMaterial,mtl::SBS_MaterialInstance.name,ubo_mi);
+    mtl->BindUBO(DescriptorSetType::PerMaterial,mtl::SBS_MaterialInstance.name,mi_data_buffer);
 }
 
 void RenderMIBuffer::Clear()
 {
-    SAFE_CLEAR(ubo_mi);
-    SAFE_CLEAR(vbo_mi);
+    SAFE_CLEAR(mi_data_buffer);
+    SAFE_CLEAR(mi_vab);
 
     mi_count=0;
     node_count=0;
@@ -136,22 +136,22 @@ void RenderMIBuffer::Alloc(const uint nc,const uint mc)
     {
         mi_count=mc;
 
-        ubo_mi=device->CreateUBO(mi_data_bytes*mi_count);
+        mi_data_buffer=device->CreateUBO(mi_data_bytes*mi_count);
     }
 
-    vbo_mi=device->CreateVBO(MI_VBO_FMT,node_count);
-    mi_buffer=vbo_mi->GetBuffer();
+    mi_vab=device->CreateVAB(MI_VAB_FMT,node_count);
+    mi_buffer=mi_vab->GetBuffer();
 
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
         
         if(du)
         {
-            du->SetBuffer(ubo_mi->GetBuffer(),"UBO:Buffer:MaterialInstance");
-            du->SetDeviceMemory(ubo_mi->GetVkMemory(),"UBO:Memory:MaterialInstance");
+            du->SetBuffer(mi_data_buffer->GetBuffer(),"UBO:Buffer:MaterialInstance");
+            du->SetDeviceMemory(mi_data_buffer->GetVkMemory(),"UBO:Memory:MaterialInstance");
 
-            du->SetBuffer(vbo_mi->GetBuffer(),"VBO:Buffer:MaterialInstanceID");
-            du->SetDeviceMemory(vbo_mi->GetVkMemory(),"VBO:Memory:MaterialInstanceID");
+            du->SetBuffer(mi_vab->GetBuffer(),"VAB:Buffer:MaterialInstanceID");
+            du->SetDeviceMemory(mi_vab->GetVkMemory(),"VAB:Memory:MaterialInstanceID");
         }
     #endif//_DEBUG
 }
@@ -162,7 +162,7 @@ void RenderMIBuffer::WriteNode(RenderNode *render_node,const uint count,const Ma
 
     Alloc(count,mi_set.GetCount());
 
-    uint8 *mip=(uint8 *)(ubo_mi->Map());
+    uint8 *mip=(uint8 *)(mi_data_buffer->Map());
 
     for(MaterialInstance *mi:mi_set)
     {
@@ -170,9 +170,9 @@ void RenderMIBuffer::WriteNode(RenderNode *render_node,const uint count,const Ma
         mip+=mi_data_bytes;
     }
 
-    ubo_mi->Unmap();
+    mi_data_buffer->Unmap();
 
-    uint16 *idp=(uint16 *)(vbo_mi->Map());
+    uint16 *idp=(uint16 *)(mi_vab->Map());
 
     {
         rn=render_node;
@@ -186,6 +186,6 @@ void RenderMIBuffer::WriteNode(RenderNode *render_node,const uint count,const Ma
         }
     }
 
-    vbo_mi->Unmap();
+    mi_vab->Unmap();
 }
 VK_NAMESPACE_END

@@ -55,12 +55,12 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    VBO *vbo;
+    VAB *vab;
 
     VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBufferData());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
-    VBOAccessData vad;
+    VABAccess vad;
 
     for(uint i=0;i<input_count;i++)
     {
@@ -73,30 +73,30 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
-        vbo=vad.vbo;
+        vab=vad.vab;
 
-        if(vbo->GetFormat()!=vif->format)
+        if(vab->GetFormat()!=vif->format)
         {
             LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(vif->name)+
                         UTF8String("\" format can't match Renderable, Material(")+mtl_name+
                         UTF8String(") Format(")+GetVulkanFormatName(vif->format)+
-                        UTF8String("), VBO Format(")+GetVulkanFormatName(vbo->GetFormat())+
+                        UTF8String("), VBO Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
             return(nullptr);
         }
 
-        if(vbo->GetStride()!=vif->stride)
+        if(vab->GetStride()!=vif->stride)
         {
             LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(vif->name)+
                         UTF8String("\" stride can't match Renderable, Material(")+mtl_name+
                         UTF8String(") stride(")+UTF8String::numberOf(vif->stride)+
-                        UTF8String("), VBO stride(")+UTF8String::numberOf(vbo->GetStride())+
+                        UTF8String("), VBO stride(")+UTF8String::numberOf(vab->GetStride())+
                         ")");
             return(nullptr);
         }
 
         vid->buffer_offset[i]=vad.offset;
-        vid->buffer_list[i]=vbo->GetBuffer();
+        vid->buffer_list[i]=vab->GetBuffer();
         ++vif;
     }
 
