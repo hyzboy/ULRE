@@ -45,15 +45,15 @@ bool Primitive::Set(const AnsiString &name,VAB *vab,VkDeviceSize offset)
 
     if(du)
     {
-        du->SetBuffer(vab->GetBuffer(),prim_name+":VBO:Buffer:"+name);
-        du->SetDeviceMemory(vab->GetVkMemory(),prim_name+":VBO:Memory:"+name);
+        du->SetBuffer(vab->GetBuffer(),prim_name+":VAB:Buffer:"+name);
+        du->SetDeviceMemory(vab->GetVkMemory(),prim_name+":VAB:Memory:"+name);
     }
 #endif//_DEBUG
 
     return(true);
 }
 
-bool Primitive::GetVBOAccessData(const AnsiString &name,VABAccess *vad)
+bool Primitive::GetVABAccess(const AnsiString &name,VABAccess *vad)
 {
     if(name.IsEmpty())return(false);
     if(!vad)return(false);

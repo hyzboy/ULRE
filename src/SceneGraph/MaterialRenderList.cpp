@@ -182,7 +182,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
 
     vbo_list->Restart();
 
-    //Basic组，它所有的VBO信息均来自于Primitive，由vid参数传递进来
+    //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
         vbo_list->Add(vid->buffer_list,vid->buffer_offset,vid->binding_count);
     }

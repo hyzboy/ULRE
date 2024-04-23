@@ -32,7 +32,7 @@ namespace hgl
 
         /**
         * 初始化顶点数据管理器
-        * @param vbo_size VBO大小
+        * @param vbo_size VAB大小
         * @param ibo_size IBO大小
         * @param index_type 索引类型
         */

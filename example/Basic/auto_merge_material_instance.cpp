@@ -86,7 +86,7 @@ private:
     {
         RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
 
-        if(!rpc.SetVBO(VAN::Position,   VF_V2F, position_data))return(false);
+        if(!rpc.SetVAB(VAN::Position,   VF_V2F, position_data))return(false);
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {

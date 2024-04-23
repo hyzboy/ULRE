@@ -75,7 +75,7 @@ public:
 
     const   uint32_t            GetVertexCount      ()const {return vertex_count;}
 
-            bool                GetVBOAccessData    (const AnsiString &,VABAccess *);
+            bool                GetVABAccess        (const AnsiString &,VABAccess *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
     const   IndexBufferData *   GetIndexBufferData  ()const {return &index_buffer_data;}

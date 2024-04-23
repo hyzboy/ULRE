@@ -114,8 +114,8 @@ private:
         Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
 #endif//USE_HALF_FLOAT_POSITION
 
-        if(!rpc.SetVBO(VAN::Position,   PositionFormat, position_data))return(false);
-        if(!rpc.SetVBO(VAN::Color,      ColorFormat,    color_data   ))return(false);
+        if(!rpc.SetVAB(VAN::Position,   PositionFormat, position_data))return(false);
+        if(!rpc.SetVAB(VAN::Color,      ColorFormat,    color_data   ))return(false);
         
         render_obj=rpc.Create(material_instance,pipeline);
         return(render_obj);

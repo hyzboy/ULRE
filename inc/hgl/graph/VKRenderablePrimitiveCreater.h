@@ -22,9 +22,9 @@ public:
         prim=rr->CreatePrimitive(name,vertex_count);
     }
 
-    VBO *SetVBO(const AnsiString &name,const VkFormat &fmt,const void *buf)
+    VAB *SetVAB(const AnsiString &name,const VkFormat &fmt,const void *buf)
     {
-        VBO *vab=rr->CreateVAB(fmt,vertex_count,buf);
+        VAB *vab=rr->CreateVAB(fmt,vertex_count,buf);
 
         if(!vab)
             return(nullptr);
