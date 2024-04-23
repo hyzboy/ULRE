@@ -57,10 +57,10 @@ private:
                                 //      ^
                                 //      +  这上下两种格式要配套，否则会出错
                                 //      v
-        vil_config.Add(VAN::Position,VF_V2U16);     //这里指定VBO中使用RG16U当做顶点数据格式
+        vil_config.Add(VAN::Position,VF_V2U16);     //这里指定VAB中使用RG16U当做顶点数据格式
 #endif//USE_ZERO2ONE_COORD
 
-        vil_config.Add(VAN::Color,VF_V4UN8);        //这里指定VBO中使用RGBA8UNorm当做颜色数据格式
+        vil_config.Add(VAN::Color,VF_V4UN8);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
         cfg.local_to_world=false;
 
@@ -82,12 +82,12 @@ private:
         RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
 
 #ifdef USE_ZERO2ONE_COORD               //使用0 to 1坐标系
-        if(!rpc.SetVBO(VAN::Position,   VF_V2F,     position_data_float ))return(false);
+        if(!rpc.SetVAB(VAN::Position,   VF_V2F,     position_data_float ))return(false);
 #else                                   //使用ortho坐标系
-        if(!rpc.SetVBO(VAN::Position,   VF_V2U16,   position_data_u16   ))return(false);
+        if(!rpc.SetVAB(VAN::Position,   VF_V2U16,   position_data_u16   ))return(false);
 #endif//USE_ZERO2ONE_COORD
 
-        if(!rpc.SetVBO(VAN::Color,      VF_V4UN8,   color_data          ))return(false);
+        if(!rpc.SetVAB(VAN::Color,      VF_V4UN8,   color_data          ))return(false);
         
         render_obj=rpc.Create(material_instance,pipeline);
         return(true);

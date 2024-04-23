@@ -103,7 +103,7 @@ public: //Add
     TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
 
-public: // VBO/VAO
+public: // VAB/VAO
 
     VAB *CreateVAB(VkFormat format,uint32_t count,const void *data, SharingMode sm=SharingMode::Exclusive);
     VAB *CreateVAB(VkFormat format,uint32_t count,                  SharingMode sm=SharingMode::Exclusive){return CreateVAB(format,             count,          nullptr,        sm);}

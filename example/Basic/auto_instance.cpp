@@ -74,8 +74,8 @@ private:
     {
         RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
 
-        if(!rpc.SetVBO(VAN::Position,   VF_V2F,     position_data))return(false);
-        if(!rpc.SetVBO(VAN::Color,      VF_V4UN8,   color_data   ))return(false);
+        if(!rpc.SetVAB(VAN::Position,   VF_V2F,     position_data))return(false);
+        if(!rpc.SetVAB(VAN::Color,      VF_V4UN8,   color_data   ))return(false);
         
         render_obj=rpc.Create(material_instance,pipeline);
 

@@ -132,8 +132,8 @@ private:
 
         position_data[2]=1.0f/float(TexCount);
 
-        if(!rpc.SetVBO(VAN::Position,VF_V4F,position_data))return(false);
-        if(!rpc.SetVBO(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
+        if(!rpc.SetVAB(VAN::Position,VF_V4F,position_data))return(false);
+        if(!rpc.SetVAB(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
 
         Vector3f offset(1.0f/float(TexCount),0,0);
 

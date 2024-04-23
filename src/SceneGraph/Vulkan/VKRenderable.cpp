@@ -64,12 +64,12 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     for(uint i=0;i<input_count;i++)
     {
-        //注: VIF来自于材质，但VBO来自于Primitive。
+        //注: VIF来自于材质，但VAB来自于Primitive。
         //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
 
-        if(!prim->GetVBOAccessData(vif->name,&vad))
+        if(!prim->GetVABAccess(vif->name,&vad))
         {
-            LOG_ERROR("[FATAL ERROR] not found VBO \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
+            LOG_ERROR("[FATAL ERROR] not found VAB \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 
@@ -77,20 +77,20 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
         if(vab->GetFormat()!=vif->format)
         {
-            LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(vif->name)+
+            LOG_ERROR(  "[FATAL ERROR] VAB \""+UTF8String(vif->name)+
                         UTF8String("\" format can't match Renderable, Material(")+mtl_name+
                         UTF8String(") Format(")+GetVulkanFormatName(vif->format)+
-                        UTF8String("), VBO Format(")+GetVulkanFormatName(vab->GetFormat())+
+                        UTF8String("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
             return(nullptr);
         }
 
         if(vab->GetStride()!=vif->stride)
         {
-            LOG_ERROR(  "[FATAL ERROR] VBO \""+UTF8String(vif->name)+
+            LOG_ERROR(  "[FATAL ERROR] VAB \""+UTF8String(vif->name)+
                         UTF8String("\" stride can't match Renderable, Material(")+mtl_name+
                         UTF8String(") stride(")+UTF8String::numberOf(vif->stride)+
-                        UTF8String("), VBO stride(")+UTF8String::numberOf(vab->GetStride())+
+                        UTF8String("), VAB stride(")+UTF8String::numberOf(vab->GetStride())+
                         ")");
             return(nullptr);
         }

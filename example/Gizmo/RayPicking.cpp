@@ -38,11 +38,11 @@ private:
 
     Pipeline *          pipeline            =nullptr;
 
-    Primitive *         prim_plane_grid       =nullptr;
+    Primitive *         prim_plane_grid     =nullptr;
 
     Primitive *         ro_line             =nullptr;
 
-    VBO *               vbo_pos             =nullptr;
+    VAB *               vab_pos             =nullptr;
 
     Ray                 ray;
 
@@ -106,7 +106,7 @@ private:
             ro_line=db->CreatePrimitive("Line",2);
             if(!ro_line)return(false);
             
-            if(!ro_line->Set(VAN::Position,  vbo_pos=   db->CreateVAB(VF_V3F,2,position_data    )))return(false);
+            if(!ro_line->Set(VAN::Position,  vab_pos=   db->CreateVAB(VF_V3F,2,position_data    )))return(false);
             if(!ro_line->Set(VAN::Luminance,            db->CreateVAB(VF_V1F,2,lumiance_data    )))return(false);
         }
 
@@ -156,7 +156,7 @@ public:
 
         const Vector3f pos=ray.ClosestPoint(Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
-        vbo_pos->Write(&pos,3*sizeof(float));                   //更新VBO上这个点的位置
+        vab_pos->Write(&pos,3*sizeof(float));                   //更新VAB上这个点的位置
 
         SceneAppFramework::BuildCommandBuffer(index);
     }
