@@ -8,6 +8,22 @@
 #include<hgl/graph/AABB.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 VK_NAMESPACE_BEGIN
+
+struct PrimitiveData
+{
+    uint32_t vertex_count;
+
+    uint32_t va_count;
+
+
+    
+    VABAccess *vab_list;
+
+    IndexBufferData index_buffer_data;
+
+    AABB BoundingBox;
+};
+
 /**
  * 单一图元数据
  */
@@ -16,15 +32,13 @@ class Primitive
     GPUDevice *device;
     AnsiString prim_name;
 
-    VBOAccessMap buffer_list;
-
 protected:
 
     uint32_t vertex_count;
 
-    IndexBufferData index_buffer_data;
+    VABAccessMap buffer_list;
 
-protected:
+    IndexBufferData index_buffer_data;
 
     AABB BoundingBox;
 
@@ -53,7 +67,7 @@ public:
             void    SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
     const   AABB &  GetBoundingBox()const           {return BoundingBox;}
 
-            bool    Set(const AnsiString &name,VBO *vb,VkDeviceSize offset=0);
+            bool    Set(const AnsiString &name,VAB *vb,VkDeviceSize offset=0);
 
             bool    Set(IndexBuffer *ib,VkDeviceSize offset=0);
 
@@ -61,7 +75,7 @@ public:
 
     const   uint32_t            GetVertexCount      ()const {return vertex_count;}
 
-            bool                GetVBOAccessData    (const AnsiString &,VBOAccessData *);
+            bool                GetVBOAccessData    (const AnsiString &,VABAccess *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
     const   IndexBufferData *   GetIndexBufferData  ()const {return &index_buffer_data;}

@@ -35,11 +35,11 @@ namespace hgl
             const VkDeviceSize GetBytes()const { return stride*count; }
         };//class VertexAttribBuffer:public DeviceBuffer
 
-        using VBO=VertexAttribBuffer;
+        using VAB=VertexAttribBuffer;
 
-        struct VBOAccessData
+        struct VABAccess
         {
-            VBO *vbo;
+            VAB *vab;
             VkDeviceSize offset;
             VkDeviceSize size;
 
@@ -47,10 +47,10 @@ namespace hgl
 
         public:
 
-            CompOperatorMemcmp(const VBOAccessData &);
-        };//class VBOAccessData
+            CompOperatorMemcmp(const VABAccess &);
+        };//class VABAccess
 
-        using VBOAccessMap=Map<AnsiString,VBOAccessData>;
+        using VABAccessMap=Map<AnsiString,VABAccess>;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE

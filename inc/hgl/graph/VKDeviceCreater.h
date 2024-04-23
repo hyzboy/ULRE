@@ -58,7 +58,7 @@ struct VulkanHardwareRequirement
     //  primitive topology
     //  viewport
     //  scissor
-    //  bind vbo
+    //  bind vab
     //  depth test
     //  depth write
     //  depth compare op

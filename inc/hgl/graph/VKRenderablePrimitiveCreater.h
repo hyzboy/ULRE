@@ -24,13 +24,13 @@ public:
 
     VBO *SetVBO(const AnsiString &name,const VkFormat &fmt,const void *buf)
     {
-        VBO *vbo=rr->CreateVBO(fmt,vertex_count,buf);
+        VBO *vab=rr->CreateVAB(fmt,vertex_count,buf);
 
-        if(!vbo)
+        if(!vab)
             return(nullptr);
 
-        prim->Set(name,vbo);
-        return(vbo);
+        prim->Set(name,vab);
+        return(vab);
     }
 
     IndexBuffer *SetIBO(const IndexType &it,const void *buf,const uint32_t index_count)

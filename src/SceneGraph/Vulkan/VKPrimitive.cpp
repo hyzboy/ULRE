@@ -27,16 +27,16 @@ VK_NAMESPACE_BEGIN
 //    return(true);
 //}
 
-bool Primitive::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
+bool Primitive::Set(const AnsiString &name,VAB *vab,VkDeviceSize offset)
 {
-    if(!vbo)return(false);
+    if(!vab)return(false);
     if(buffer_list.KeyExist(name))return(false);
 
-    VBOAccessData vad;
+    VABAccess vad;
 
-    vad.vbo=vbo;
+    vad.vab=vab;
     vad.offset=offset;
-    vad.size=vbo->GetBytes();
+    vad.size=vab->GetBytes();
 
     buffer_list.Add(name,vad);
 
@@ -45,15 +45,15 @@ bool Primitive::Set(const AnsiString &name,VBO *vbo,VkDeviceSize offset)
 
     if(du)
     {
-        du->SetBuffer(vbo->GetBuffer(),prim_name+":VBO:Buffer:"+name);
-        du->SetDeviceMemory(vbo->GetVkMemory(),prim_name+":VBO:Memory:"+name);
+        du->SetBuffer(vab->GetBuffer(),prim_name+":VBO:Buffer:"+name);
+        du->SetDeviceMemory(vab->GetVkMemory(),prim_name+":VBO:Memory:"+name);
     }
 #endif//_DEBUG
 
     return(true);
 }
 
-bool Primitive::GetVBOAccessData(const AnsiString &name,VBOAccessData *vad)
+bool Primitive::GetVBOAccessData(const AnsiString &name,VABAccess *vad)
 {
     if(name.IsEmpty())return(false);
     if(!vad)return(false);

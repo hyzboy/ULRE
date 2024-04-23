@@ -180,8 +180,8 @@ private:
             for(Color4f &c:color_data[1])c=Color4f(0,1,0,1);
             for(Color4f &c:color_data[2])c=Color4f(0,0,1,1);
             
-            if(!ro_line->Set(VAN::Position, db->CreateVBO(VF_V3F,AXIS_MAX_VERTICES,position_data)))return(false);
-            if(!ro_line->Set(VAN::Color,    db->CreateVBO(VF_V4F,AXIS_MAX_VERTICES,color_data   )))return(false);
+            if(!ro_line->Set(VAN::Position, db->CreateVAB(VF_V3F,AXIS_MAX_VERTICES,position_data)))return(false);
+            if(!ro_line->Set(VAN::Color,    db->CreateVAB(VF_V4F,AXIS_MAX_VERTICES,color_data   )))return(false);
         }
 
         return(true);

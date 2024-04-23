@@ -106,8 +106,8 @@ private:
             ro_line=db->CreatePrimitive("Line",2);
             if(!ro_line)return(false);
             
-            if(!ro_line->Set(VAN::Position,  vbo_pos=   db->CreateVBO(VF_V3F,2,position_data    )))return(false);
-            if(!ro_line->Set(VAN::Luminance,            db->CreateVBO(VF_V1F,2,lumiance_data    )))return(false);
+            if(!ro_line->Set(VAN::Position,  vbo_pos=   db->CreateVAB(VF_V3F,2,position_data    )))return(false);
+            if(!ro_line->Set(VAN::Luminance,            db->CreateVAB(VF_V1F,2,lumiance_data    )))return(false);
         }
 
         return(true);

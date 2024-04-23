@@ -154,9 +154,9 @@ public:
     void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,       size,data);}
     void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,offset,  size,data);}
 
-    void BindVBO(const uint32_t first,const uint32_t count,const VkBuffer *vbo,const VkDeviceSize *offsets)
+    void BindVBO(const uint32_t first,const uint32_t count,const VkBuffer *vab,const VkDeviceSize *offsets)
     {
-        vkCmdBindVertexBuffers(cmd_buf,first,count,vbo,offsets);
+        vkCmdBindVertexBuffers(cmd_buf,first,count,vab,offsets);
     }
 
     bool BindVBO(VBOList *vbo_list)

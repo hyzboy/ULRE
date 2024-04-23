@@ -55,7 +55,7 @@ bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,
     return(false);
 }
 
-VBO *GPUDevice::CreateVBO(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
+VAB *GPUDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     if(count==0)return(nullptr);
 

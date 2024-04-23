@@ -14,7 +14,7 @@
 *   for(material)
 *       for(pipeline)
 *           for(material_instance)
-*               for(vbo)
+*               for(vab)
 */
 
 template<> 
@@ -196,7 +196,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     }
 
     if(mi_buffer) //材质实例组
-        vbo_list->Add(mi_buffer->GetVBO(),MI_VBO_STRIDE_BYTES*ri_index);
+        vbo_list->Add(mi_buffer->GetVBO(),MI_VAB_STRIDE_BYTES*ri_index);
 
     //if(!vbo_list.IsFull()) //Joint组，暂未支持
     //{

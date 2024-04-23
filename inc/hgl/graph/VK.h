@@ -55,7 +55,7 @@ class DeviceBuffer;
 struct DeviceBufferData;
 
 class VertexAttribBuffer;
-using VBO=VertexAttribBuffer;
+using VAB=VertexAttribBuffer;
 
 class IndexBuffer;
 
