@@ -16,7 +16,8 @@ namespace hgl
             {
                 BoundingBox.SetZero();
 
-                WorldBoundingBox=LocalBoundingBox=BoundingBox;
+                //WorldBoundingBox=
+                    LocalBoundingBox=BoundingBox;
             }
         }
 
