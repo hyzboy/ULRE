@@ -1,27 +1,11 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE
 #define HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE
 
-#include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/math/Math.h>
-#include<hgl/graph/AABB.h>
-#include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKPrimitiveData.h>
 VK_NAMESPACE_BEGIN
-
-struct PrimitiveData
-{
-    uint32_t vertex_count;
-
-    uint32_t va_count;
-    
-    VABAccess *vab_list;
-
-    IndexBufferAccess ib_access;
-
-    AABB BoundingBox;
-};
-
 /**
  * 单一图元数据
  */
@@ -44,11 +28,6 @@ protected:
 
     friend class RenderableNode;
 
-    uint ref_count=0;
-
-    uint RefInc(){return ++ref_count;}
-    uint RefDec(){return --ref_count;}
-
 public:
 
     Primitive(GPUDevice *dev,const AnsiString &n,const uint32_t vc=0)
@@ -59,8 +38,6 @@ public:
     }
 
     virtual ~Primitive()=default;
-
-    const   uint    GetRefCount()const{return ref_count;}
 
             void    SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
     const   AABB &  GetBoundingBox()const           {return BoundingBox;}

@@ -136,7 +136,7 @@ namespace hgl
             if(vbo_map.GetCount()>0)
             {
                 const auto *sp=vbo_map.GetDataList();
-                for(uint i=0;i<vbo_map.GetCount();i++)
+                for(int i=0;i<vbo_map.GetCount();i++)
                 {
                     if((*sp)->value.vab)
                     {

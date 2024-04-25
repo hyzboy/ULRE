@@ -13,6 +13,15 @@ SET(SG_VDM_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("VertexDataManager" FILES ${SG_VDM_SOURCE})
 
+SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitiveData.h
+                        ${SG_INCLUDE_PATH}/VKPrimitive.h
+                        Vulkan/VKPrimitive.cpp
+                        ${SG_INCLUDE_PATH}/VKRenderablePrimitiveCreater.h
+                        ${SG_INCLUDE_PATH}/PrimitiveCreater.h
+                        PrimitiveCreater.cpp)
+
+SOURCE_GROUP("Primitive" FILES ${SG_PRIMITIVE_SOURCE})
+
 SET(TILE_SOURCE ${SG_INCLUDE_PATH}/TileData.h
                 TileData.cpp)
 
@@ -22,9 +31,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     #${SG_INCLUDE_PATH}/Mesh.h
                     #${SG_INCLUDE_PATH}/Spline.h
                     InlineGeometry.cpp
-                    #Mesh.cpp
-                    ${SG_INCLUDE_PATH}/PrimitiveCreater.h
-                    PrimitiveCreater.cpp
+                    #Mesh.cpp                    
 )
 
 SOURCE_GROUP("Geometry" FILES ${GEOMETRY_FILES})
@@ -86,7 +93,6 @@ IF(WIN32)
 ENDIF(WIN32)
 
 SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h
-                        ${SG_INCLUDE_PATH}/VKRenderablePrimitiveCreater.h
                         Vulkan/VKRenderResource.cpp
                         Vulkan/VKRenderResourceMaterial.cpp)
 
@@ -235,9 +241,7 @@ SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
 
 SOURCE_GROUP("Vulkan\\Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
-SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKPrimitive.h
-                            ${SG_INCLUDE_PATH}/VKRenderable.h
-                            Vulkan/VKPrimitive.cpp
+SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
                             Vulkan/VKRenderable.cpp
                             Vulkan/VKTileData.cpp
                             Vulkan/VKTileFont.cpp)
@@ -297,6 +301,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SCENE_GRAPH_SOURCE}
+                                        ${SG_PRIMITIVE_SOURCE}
                                         ${GEOMETRY_FILES}
                                         ${LIGHT_FILES}
 
