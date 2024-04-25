@@ -65,8 +65,8 @@ bool Primitive::Set(IndexBuffer *ib,VkDeviceSize offset)
 {
     if(!ib)return(false);
 
-    index_buffer_data.buffer=ib;
-    index_buffer_data.offset=offset;
+    ib_access.buffer=ib;
+    ib_access.offset=offset;
 
 #ifdef _DEBUG
     DebugUtils *du=device->GetDebugUtils();

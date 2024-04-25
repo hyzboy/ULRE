@@ -12,7 +12,7 @@ namespace hgl
         class MaterialInstance;
         class GPUDevice;
         struct VertexInputData;
-        struct IndexBufferData;
+        struct IndexBufferAccess;
 
         struct RenderNode
         {

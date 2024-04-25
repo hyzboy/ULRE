@@ -14,12 +14,10 @@ struct PrimitiveData
     uint32_t vertex_count;
 
     uint32_t va_count;
-
-
     
     VABAccess *vab_list;
 
-    IndexBufferData index_buffer_data;
+    IndexBufferAccess ib_access;
 
     AABB BoundingBox;
 };
@@ -38,7 +36,7 @@ protected:
 
     VABAccessMap buffer_list;
 
-    IndexBufferData index_buffer_data;
+    IndexBufferAccess ib_access;
 
     AABB BoundingBox;
 
@@ -78,7 +76,7 @@ public:
             bool                GetVABAccess        (const AnsiString &,VABAccess *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
-    const   IndexBufferData *   GetIndexBufferData  ()const {return &index_buffer_data;}
+    const   IndexBufferAccess * GetIndexBufferAccess()const {return &ib_access;}
 };//class Primitive
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE

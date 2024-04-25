@@ -226,8 +226,8 @@ public:
                 cb->BindDescriptorSets(ri->GetMaterial());
                 cb->BindVBO(ri);
 
-                    if (vid->index_buffer->buffer)
-                        cb->DrawIndexed(vid->index_buffer->buffer->GetCount());
+                    if (vid->ib_access->buffer)
+                        cb->DrawIndexed(vid->ib_access->buffer->GetCount());
                     else
                         cb->Draw(vid->vertex_count);
 

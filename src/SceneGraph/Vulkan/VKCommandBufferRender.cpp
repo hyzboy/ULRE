@@ -129,7 +129,7 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     return(true);
 }
 
-void RenderCmdBuffer::BindIBO(const IndexBufferData *ibd)
+void RenderCmdBuffer::BindIBO(const IndexBufferAccess *ibd)
 {
     vkCmdBindIndexBuffer(   cmd_buf,
                             ibd->buffer->GetBuffer(),
@@ -149,10 +149,13 @@ bool RenderCmdBuffer::BindVBO(Renderable *ri)
 
     vkCmdBindVertexBuffers(cmd_buf,0,vid->binding_count,vid->buffer_list,vid->buffer_offset);
 
-    IndexBuffer *indices_buffer=vid->index_buffer->buffer;
+    IndexBuffer *indices_buffer=vid->ib_access->buffer;
 
     if(indices_buffer)
-        vkCmdBindIndexBuffer(cmd_buf,indices_buffer->GetBuffer(),vid->index_buffer->offset,VkIndexType(indices_buffer->GetType()));
+        vkCmdBindIndexBuffer(cmd_buf,
+                             indices_buffer->GetBuffer(),
+                             vid->ib_access->offset,
+                             VkIndexType(indices_buffer->GetType()));
 
     return(true);
 }

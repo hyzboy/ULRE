@@ -170,7 +170,7 @@ public:
         return(true);
     }
 
-    void BindIBO(const IndexBufferData *);
+    void BindIBO(const IndexBufferAccess *);
 
     bool BindVBO(Renderable *);
 
