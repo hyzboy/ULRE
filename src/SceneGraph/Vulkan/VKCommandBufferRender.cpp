@@ -183,4 +183,12 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
     for(uint32_t i=0;i<drawCount;i++)
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
+
+void RenderCmdBuffer::Draw(const VertexInputData *vid)
+{
+    if (vid->ib_access->buffer)
+        DrawIndexed(vid->ib_access->buffer->GetCount());
+    else
+        Draw(vid->vertex_count);
+}
 VK_NAMESPACE_END

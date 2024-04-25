@@ -225,12 +225,7 @@ public:
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetMaterial());
                 cb->BindVBO(ri);
-
-                    if (vid->ib_access->buffer)
-                        cb->DrawIndexed(vid->ib_access->buffer->GetCount());
-                    else
-                        cb->Draw(vid->vertex_count);
-
+                cb->Draw(vid);
             cb->EndRenderPass();
         cb->End();
 
