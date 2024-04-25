@@ -6,7 +6,7 @@
 #include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
-VertexInputData::VertexInputData(const uint32_t c,const uint32_t vc,const IndexBufferData *ibd)
+VertexInputData::VertexInputData(const uint32_t c,const uint32_t vc,const IndexBufferAccess *iba)
 {
     binding_count=c;
 
@@ -15,7 +15,7 @@ VertexInputData::VertexInputData(const uint32_t c,const uint32_t vc,const IndexB
 
     vertex_count=vc;
 
-    index_buffer=ibd;
+    ib_access=iba;
 }
 
 VertexInputData::~VertexInputData()
@@ -57,7 +57,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     VAB *vab;
 
-    VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBufferData());
+    VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIndexBufferAccess());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
     VABAccess vad;

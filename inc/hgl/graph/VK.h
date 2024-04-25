@@ -59,7 +59,7 @@ using VAB=VertexAttribBuffer;
 
 class IndexBuffer;
 
-struct IndexBufferData
+struct IndexBufferAccess
 {
     IndexBuffer *buffer=nullptr;
     VkDeviceSize offset=0;

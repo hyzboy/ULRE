@@ -256,7 +256,7 @@ void MaterialRenderList::Render(RenderItem *ri)
         last_vid=ri->vid;
     }
 
-    const IndexBufferData *ibd=last_vid->index_buffer;
+    const IndexBufferAccess *ibd=last_vid->ib_access;
 
     if(ibd->buffer)
     {

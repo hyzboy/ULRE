@@ -17,11 +17,11 @@ struct VertexInputData
 
     uint32_t vertex_count;
 
-    const IndexBufferData *index_buffer;
+    const IndexBufferAccess *ib_access;
 
 public:
 
-    VertexInputData(const uint32_t,const uint32_t,const IndexBufferData *);
+    VertexInputData(const uint32_t,const uint32_t,const IndexBufferAccess *);
     ~VertexInputData();
 
     const bool Comp(const VertexInputData *vid)const
@@ -38,7 +38,7 @@ public:
 
         if(vertex_count!=vid->vertex_count)return(false);
 
-        if(index_buffer!=vid->index_buffer)return(false);
+        if(ib_access!=vid->ib_access)return(false);
 
         return(true);
     }

@@ -1,9 +1,12 @@
-#ifndef HGL_VK_RENDERABLE_PRIMITIVE_CREATER_INCLUDE
+﻿#ifndef HGL_VK_RENDERABLE_PRIMITIVE_CREATER_INCLUDE
 #define HGL_VK_RENDERABLE_PRIMITIVE_CREATER_INCLUDE
 
 #include<hgl/graph/VKRenderResource.h>
 
 VK_NAMESPACE_BEGIN
+/**
+* 可绘制图元创建器
+*/
 class RenderablePrimitiveCreater
 {
     RenderResource *rr;
