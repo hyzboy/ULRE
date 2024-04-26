@@ -95,7 +95,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
-        vid->buffer_offset[i]=vad.offset;
+        vid->buffer_offset[i]=vad.start;
         vid->buffer_list[i]=vab->GetBuffer();
         ++vif;
     }

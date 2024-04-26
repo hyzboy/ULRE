@@ -260,9 +260,7 @@ void MaterialRenderList::Render(RenderItem *ri)
 
     if(iba->buffer)
     {
-        cmd_buf->BindIBO(iba);
-
-        cmd_buf->DrawIndexed(iba->buffer->GetCount(),ri->count);
+        cmd_buf->DrawIndexed(iba,ri->count);
     }
     else
     {

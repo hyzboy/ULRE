@@ -89,24 +89,6 @@ namespace hgl
                         return(true);
                     }
 
-                    //template<typename T,IndexType IT>
-                    //T *                     CreateIBO(const uint count,const T *data=nullptr)                           ///<创建索引缓冲区
-                    //{
-                    //    if(ibo)
-                    //        return(nullptr);
-                    //
-                    //    ibo=db->CreateIBO(IT,count,data);
-
-                    //    if(!ibo)
-                    //        return(nullptr);
-
-                    //    return (T *)ibo->Map();
-                    //}
-
-                    //uint8 *                 CreateIBO8 (uint count,const uint8  *data=nullptr){return CreateIBO<uint8 ,IndexType::U8 >(count,data);}                         ///<创建8位的索引缓冲区
-                    //uint16 *                CreateIBO16(uint count,const uint16 *data=nullptr){return CreateIBO<uint16,IndexType::U16>(count,data);}                         ///<创建16位的索引缓冲区
-                    //uint32 *                CreateIBO32(uint count,const uint32 *data=nullptr){return CreateIBO<uint32,IndexType::U32>(count,data);}                         ///<创建32位的索引缓冲区
-
             virtual Primitive *             Finish(const AnsiString &);                                                                   ///<结束并创建可渲染对象
         };//class PrimitiveCreater
     }//namespace graph

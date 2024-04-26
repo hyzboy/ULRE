@@ -8,7 +8,7 @@ VK_NAMESPACE_BEGIN
 
 struct PrimitiveData
 {
-    uint32_t vertex_count;
+    VkDeviceSize vertex_count;
 
     uint32_t va_count;
 
