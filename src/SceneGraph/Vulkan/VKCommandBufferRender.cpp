@@ -129,12 +129,12 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     return(true);
 }
 
-void RenderCmdBuffer::BindIBO(const IndexBufferAccess *ibd)
+void RenderCmdBuffer::BindIBO(const IBAccess *iba)
 {
     vkCmdBindIndexBuffer(   cmd_buf,
-                            ibd->buffer->GetBuffer(),
-                            ibd->offset,
-                            VkIndexType(ibd->buffer->GetType()));
+                            iba->buffer->GetBuffer(),
+                            iba->offset,
+                            VkIndexType(iba->buffer->GetType()));
 }
 
 bool RenderCmdBuffer::BindVBO(Renderable *ri)

@@ -256,13 +256,13 @@ void MaterialRenderList::Render(RenderItem *ri)
         last_vid=ri->vid;
     }
 
-    const IndexBufferAccess *ibd=last_vid->ib_access;
+    const IBAccess *iba=last_vid->ib_access;
 
-    if(ibd->buffer)
+    if(iba->buffer)
     {
-        cmd_buf->BindIBO(ibd);
+        cmd_buf->BindIBO(iba);
 
-        cmd_buf->DrawIndexed(ibd->buffer->GetCount(),ri->count);
+        cmd_buf->DrawIndexed(iba->buffer->GetCount(),ri->count);
     }
     else
     {
