@@ -59,6 +59,20 @@ struct VertexInputData;
 class VertexAttribBuffer;
 using VAB=VertexAttribBuffer;
 
+struct VABAccess
+{
+    VAB *vab;
+    VkDeviceSize start;
+
+    void *map_ptr;
+
+public:
+
+    CompOperatorMemcmp(const VABAccess &);
+};//class VABAccess
+
+using VABAccessMap=Map<AnsiString,VABAccess>;
+
 class IndexBuffer;
 
 struct IndexBufferAccess

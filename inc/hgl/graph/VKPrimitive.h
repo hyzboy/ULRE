@@ -3,9 +3,11 @@
 
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
-#include<hgl/math/Math.h>
-#include<hgl/graph/VKPrimitiveData.h>
+#include<hgl/graph/AABB.h>
+#include<hgl/graph/VK.h>
+
 VK_NAMESPACE_BEGIN
+
 /**
  * 单一图元数据
  */
@@ -26,7 +28,14 @@ protected:
 
 protected:
 
-    friend class RenderableNode;
+    bool SetVAB(const AnsiString &name,VAB *vb,VkDeviceSize start=0);
+
+    bool SetIndex(IndexBuffer *ib,VkDeviceSize start,const VkDeviceSize index_count);
+
+    void SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
+
+    friend class PrimitiveCreater;
+    friend class RenderablePrimitiveCreater;
 
 public:
 
@@ -39,22 +48,14 @@ public:
 
     virtual ~Primitive()=default;
 
-            void    SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
-    const   AABB &  GetBoundingBox()const           {return BoundingBox;}
-
-            bool    SetVAB(const AnsiString &name,VAB *vb,VkDeviceSize start=0);
-
-            bool    SetIndex(IndexBuffer *ib,VkDeviceSize start,const VkDeviceSize index_count);
-
 public:
 
-    const   VkDeviceSize        GetVertexCount      ()const {return vertex_count;}
+    const   VkDeviceSize        GetVertexCount  ()const{return vertex_count;}
+    const   int                 GetVACount      ()const{return buffer_list.GetCount();}
+    const   bool                GetVABAccess    (const AnsiString &,VABAccess *);
+    const   IBAccess *          GetIBAccess     ()const{return ib_access.buffer?&ib_access:nullptr;}
 
-    const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
-
-            bool                GetVABAccess        (const AnsiString &,VABAccess *);
-
-    const   IBAccess *          GetIBAccess         ()const {return ib_access.buffer?&ib_access:nullptr;}
+    const   AABB &              GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE
