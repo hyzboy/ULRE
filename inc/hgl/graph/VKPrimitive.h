@@ -16,7 +16,7 @@ class Primitive
 
 protected:
 
-    uint32_t vertex_count;
+    VkDeviceSize vertex_count;
 
     VABAccessMap buffer_list;
 
@@ -30,7 +30,7 @@ protected:
 
 public:
 
-    Primitive(GPUDevice *dev,const AnsiString &n,const uint32_t vc=0)
+    Primitive(GPUDevice *dev,const AnsiString &n,const VkDeviceSize vc=0)
     {
         device=dev;
         prim_name=n;
@@ -42,13 +42,13 @@ public:
             void    SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
     const   AABB &  GetBoundingBox()const           {return BoundingBox;}
 
-            bool    Set(const AnsiString &name,VAB *vb,VkDeviceSize offset=0);
+            bool    SetVAB(const AnsiString &name,VAB *vb,VkDeviceSize start=0);
 
-            bool    Set(IndexBuffer *ib,VkDeviceSize offset=0);
+            bool    SetIndex(IndexBuffer *ib,VkDeviceSize start,const VkDeviceSize index_count);
 
 public:
 
-    const   uint32_t            GetVertexCount      ()const {return vertex_count;}
+    const   VkDeviceSize        GetVertexCount      ()const {return vertex_count;}
 
             bool                GetVABAccess        (const AnsiString &,VABAccess *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}

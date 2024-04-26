@@ -11,13 +11,13 @@ class RenderablePrimitiveCreater
 {
     RenderResource *rr;
 
-    uint32_t vertex_count;
+    VkDeviceSize vertex_count;
 
     Primitive *prim;
 
 public:
 
-    RenderablePrimitiveCreater(RenderResource *_rr,const AnsiString &name,uint32_t vc)
+    RenderablePrimitiveCreater(RenderResource *_rr,const AnsiString &name,VkDeviceSize vc)
     {
         rr=_rr;
         vertex_count=vc;
@@ -32,18 +32,18 @@ public:
         if(!vab)
             return(nullptr);
 
-        prim->Set(name,vab);
+        prim->SetVAB(name,vab);
         return(vab);
     }
 
-    IndexBuffer *SetIBO(const IndexType &it,const void *buf,const uint32_t index_count)
+    IndexBuffer *SetIndex(const IndexType &it,const void *buf,const VkDeviceSize index_count)
     {
         IndexBuffer *ibo=rr->CreateIBO(it,index_count,buf);
     
         if(!ibo)
             return(nullptr);
     
-        prim->Set(ibo);
+        prim->SetIndex(ibo,0,index_count);
         return(ibo);
     }
 

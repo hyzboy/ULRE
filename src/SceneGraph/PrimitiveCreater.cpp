@@ -173,7 +173,7 @@ namespace hgl
                     if((*sp)->value.map_ptr)
                         (*sp)->value.vab->Unmap();
 
-                    primitive->Set((*sp)->key,(*sp)->value.vab);
+                    primitive->SetVAB((*sp)->key,(*sp)->value.vab);
                 }
                 else
                 {
@@ -187,7 +187,7 @@ namespace hgl
             if(ibo)
             {
                 ibo->Unmap();
-                primitive->Set(ibo);
+                primitive->SetIndex(ibo,0,index_number);
 
                 db->Add(ibo);
                 ibo=nullptr;    //避免释构函数删除

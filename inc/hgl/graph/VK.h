@@ -64,7 +64,8 @@ class IndexBuffer;
 struct IndexBufferAccess
 {
     IndexBuffer *buffer=nullptr;
-    VkDeviceSize offset=0;
+    VkDeviceSize start=0;
+    VkDeviceSize count=0;
 };
 
 using IBAccess=IndexBufferAccess;

@@ -129,13 +129,13 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     return(true);
 }
 
-void RenderCmdBuffer::BindIBO(const IBAccess *iba)
-{
-    vkCmdBindIndexBuffer(   cmd_buf,
-                            iba->buffer->GetBuffer(),
-                            iba->offset,
-                            VkIndexType(iba->buffer->GetType()));
-}
+//void RenderCmdBuffer::BindIBO(const IBAccess *iba)
+//{
+//    vkCmdBindIndexBuffer(   cmd_buf,
+//                            iba->buffer->GetBuffer(),
+//                            iba->start,
+//                            VkIndexType(iba->buffer->GetType()));
+//}
 
 bool RenderCmdBuffer::BindVBO(Renderable *ri)
 {
@@ -154,7 +154,7 @@ bool RenderCmdBuffer::BindVBO(Renderable *ri)
     if(indices_buffer)
         vkCmdBindIndexBuffer(cmd_buf,
                              indices_buffer->GetBuffer(),
-                             vid->ib_access->offset,
+                             vid->ib_access->start,
                              VkIndexType(indices_buffer->GetType()));
 
     return(true);
@@ -187,8 +187,20 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
 void RenderCmdBuffer::Draw(const VertexInputData *vid)
 {
     if (vid->ib_access->buffer)
-        DrawIndexed(vid->ib_access->buffer->GetCount());
+        DrawIndexed(vid->ib_access->count);
     else
         Draw(vid->vertex_count);
+}
+
+void RenderCmdBuffer::DrawIndexed(const IBAccess *iba,const uint32_t instance_count)
+{
+    if(!iba||instance_count<=0)return;
+
+    vkCmdBindIndexBuffer(cmd_buf,
+                         iba->buffer->GetBuffer(),
+                         iba->start,
+                         VkIndexType(iba->buffer->GetType()));
+
+    vkCmdDrawIndexed(cmd_buf,iba->count,instance_count,0,0,0);
 }
 VK_NAMESPACE_END

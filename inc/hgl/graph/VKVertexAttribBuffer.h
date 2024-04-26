@@ -40,8 +40,7 @@ namespace hgl
         struct VABAccess
         {
             VAB *vab;
-            VkDeviceSize offset;
-            VkDeviceSize size;
+            VkDeviceSize start;
 
             void *map_ptr;
 

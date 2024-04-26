@@ -27,7 +27,7 @@ VK_NAMESPACE_BEGIN
 //    return(true);
 //}
 
-bool Primitive::Set(const AnsiString &name,VAB *vab,VkDeviceSize offset)
+bool Primitive::SetVAB(const AnsiString &name,VAB *vab,VkDeviceSize start)
 {
     if(!vab)return(false);
     if(buffer_list.KeyExist(name))return(false);
@@ -35,8 +35,7 @@ bool Primitive::Set(const AnsiString &name,VAB *vab,VkDeviceSize offset)
     VABAccess vad;
 
     vad.vab=vab;
-    vad.offset=offset;
-    vad.size=vab->GetBytes();
+    vad.start=start;
 
     buffer_list.Add(name,vad);
 
@@ -61,12 +60,13 @@ bool Primitive::GetVABAccess(const AnsiString &name,VABAccess *vad)
     return buffer_list.Get(name,*vad);
 }
 
-bool Primitive::Set(IndexBuffer *ib,VkDeviceSize offset)
+bool Primitive::SetIndex(IndexBuffer *ib,VkDeviceSize start,const VkDeviceSize index_count)
 {
     if(!ib)return(false);
 
     ib_access.buffer=ib;
-    ib_access.offset=offset;
+    ib_access.start=start;
+    ib_access.count=index_count;
 
 #ifdef _DEBUG
     DebugUtils *du=device->GetDebugUtils();

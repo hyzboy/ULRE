@@ -51,14 +51,14 @@ namespace hgl
 
             /**
             * 取得数据区地址
-            * @param offset 从第几个数据开始访问
+            * @param start 从第几个数据开始访问
             * @return 访问地址
             */
             T *Get(uint32_t offset=0)
             {
                 if(!data||offset>=count)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Get() out,offset:")+OSString::numberOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Get() out,start:")+OSString::numberOf(offset));
                     return(nullptr);
                 }
 
@@ -67,14 +67,14 @@ namespace hgl
 
             /**
             * 开始访问数据区
-            * @param offset 从第几个数据开始访问
+            * @param start 从第几个数据开始访问
             * @return 访问地址
             */
             T *Begin(uint32_t offset=0)
             {
                 if(access)
                 {
-                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,offset:")+OSString::numberOf(offset));
+                    LOG_HINT(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,start:")+OSString::numberOf(offset));
                     return(nullptr);
                 }
 
