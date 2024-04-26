@@ -53,7 +53,7 @@ public:
             bool                GetVABAccess        (const AnsiString &,VABAccess *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
-    const   IBAccess *          GetIBAccess         ()const {return &ib_access;}
+    const   IBAccess *          GetIBAccess         ()const {return ib_access.buffer?&ib_access:nullptr;}
 };//class Primitive
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE

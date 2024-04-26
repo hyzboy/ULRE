@@ -15,7 +15,10 @@ VertexInputData::VertexInputData(const uint32_t c,const uint32_t vc,const IBAcce
 
     vertex_count=vc;
 
-    ib_access=iba;
+    if(!iba||!iba->buffer)
+        ib_access=nullptr;
+    else
+        ib_access=iba;
 }
 
 VertexInputData::~VertexInputData()
