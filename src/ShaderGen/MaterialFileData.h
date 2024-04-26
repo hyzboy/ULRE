@@ -12,11 +12,13 @@ namespace material_file
     using namespace hgl;
     using namespace hgl::graph;
 
+    constexpr size_t SHADER_RESOURCE_NAME_MAX_LENGTH=VERTEX_ATTRIB_NAME_MAX_LENGTH;
+
     struct ShaderIOAttrib
     {
         VAT vat;
         
-        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
+        char name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
     };
 
     struct MaterialInstanceData
