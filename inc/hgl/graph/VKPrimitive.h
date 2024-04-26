@@ -50,8 +50,9 @@ public:
 
     const   VkDeviceSize        GetVertexCount      ()const {return vertex_count;}
 
-            bool                GetVABAccess        (const AnsiString &,VABAccess *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
+
+            bool                GetVABAccess        (const AnsiString &,VABAccess *);
 
     const   IBAccess *          GetIBAccess         ()const {return ib_access.buffer?&ib_access:nullptr;}
 };//class Primitive
