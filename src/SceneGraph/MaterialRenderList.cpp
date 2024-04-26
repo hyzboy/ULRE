@@ -256,11 +256,9 @@ void MaterialRenderList::Render(RenderItem *ri)
         last_vid=ri->vid;
     }
 
-    const IBAccess *iba=last_vid->ib_access;
-
-    if(iba->buffer)
+    if(last_vid->ib_access)
     {
-        cmd_buf->DrawIndexed(iba,ri->count);
+        cmd_buf->DrawIndexed(last_vid->ib_access,ri->count);
     }
     else
     {
