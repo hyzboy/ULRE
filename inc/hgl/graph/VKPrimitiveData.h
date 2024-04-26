@@ -14,9 +14,9 @@ struct PrimitiveData
 
     VABAccess *vab_list;
 
-    IndexBufferAccess ib_access;
+    IBAccess ib_access;
 
     AABB BoundingBox;
-};
+};//struct PrimitiveData
 
 VK_NAMESPACE_END

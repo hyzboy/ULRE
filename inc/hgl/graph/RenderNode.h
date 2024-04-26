@@ -8,11 +8,7 @@ namespace hgl
     namespace graph
     {
         class Renderable;
-        class Material;
         class MaterialInstance;
-        class GPUDevice;
-        struct VertexInputData;
-        struct IndexBufferAccess;
 
         struct RenderNode
         {

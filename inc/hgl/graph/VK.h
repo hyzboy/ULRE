@@ -67,6 +67,8 @@ struct IndexBufferAccess
     VkDeviceSize offset=0;
 };
 
+using IBAccess=IndexBufferAccess;
+
 class GPUCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;

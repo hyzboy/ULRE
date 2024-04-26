@@ -20,7 +20,7 @@ protected:
 
     VABAccessMap buffer_list;
 
-    IndexBufferAccess ib_access;
+    IBAccess ib_access;
 
     AABB BoundingBox;
 
@@ -53,7 +53,7 @@ public:
             bool                GetVABAccess        (const AnsiString &,VABAccess *);
     const   int                 GetBufferCount      ()const {return buffer_list.GetCount();}
 
-    const   IndexBufferAccess * GetIndexBufferAccess()const {return &ib_access;}
+    const   IBAccess *          GetIBAccess         ()const {return &ib_access;}
 };//class Primitive
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE

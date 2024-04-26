@@ -17,11 +17,11 @@ struct VertexInputData
 
     uint32_t vertex_count;
 
-    const IndexBufferAccess *ib_access;
+    const IBAccess *ib_access;
 
 public:
 
-    VertexInputData(const uint32_t,const uint32_t,const IndexBufferAccess *);
+    VertexInputData(const uint32_t,const uint32_t,const IBAccess *);
     ~VertexInputData();
 
     const bool Comp(const VertexInputData *vid)const
