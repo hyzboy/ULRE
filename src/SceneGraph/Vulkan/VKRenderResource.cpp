@@ -3,6 +3,7 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKIndexBuffer.h>
 
 VK_NAMESPACE_BEGIN
 VAB *RenderResource::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)

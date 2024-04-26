@@ -4,6 +4,7 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/graph/VKIndexBuffer.h>
 
 VK_NAMESPACE_BEGIN
 RenderCmdBuffer::RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)

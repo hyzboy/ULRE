@@ -36,20 +36,6 @@ namespace hgl
         };//class VertexAttribBuffer:public DeviceBuffer
 
         using VAB=VertexAttribBuffer;
-
-        struct VABAccess
-        {
-            VAB *vab;
-            VkDeviceSize start;
-
-            void *map_ptr;
-
-        public:
-
-            CompOperatorMemcmp(const VABAccess &);
-        };//class VABAccess
-
-        using VABAccessMap=Map<AnsiString,VABAccess>;
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE

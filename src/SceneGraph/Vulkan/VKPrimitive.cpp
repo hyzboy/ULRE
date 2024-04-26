@@ -2,6 +2,7 @@
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKIndexBuffer.h>
 
 #ifdef _DEBUG
 #include<hgl/graph/VKDevice.h>
@@ -52,7 +53,7 @@ bool Primitive::SetVAB(const AnsiString &name,VAB *vab,VkDeviceSize start)
     return(true);
 }
 
-bool Primitive::GetVABAccess(const AnsiString &name,VABAccess *vad)
+const bool Primitive::GetVABAccess(const AnsiString &name,VABAccess *vad)
 {
     if(name.IsEmpty())return(false);
     if(!vad)return(false);

@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VertexDataManager.h>
 
 namespace hgl
