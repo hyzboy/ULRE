@@ -97,7 +97,7 @@ namespace hgl
             if(!vif)
                 return(false);
 
-            if(vbo_map.Get(name,*vad))
+            if(vab_map.Get(name,*vad))
                 return true;
 
             vad->vab    =db->CreateVAB(vif->format,vertices_number,data);
@@ -107,7 +107,7 @@ namespace hgl
             else
                 vad->map_ptr=nullptr;
 
-            vbo_map.Add(name,*vad);
+            vab_map.Add(name,*vad);
 
             return true;
         }
@@ -134,10 +134,10 @@ namespace hgl
 
         void PrimitiveCreater::ClearAllData()
         {
-            if(vbo_map.GetCount()>0)
+            if(vab_map.GetCount()>0)
             {
-                const auto *sp=vbo_map.GetDataList();
-                for(int i=0;i<vbo_map.GetCount();i++)
+                const auto *sp=vab_map.GetDataList();
+                for(int i=0;i<vab_map.GetCount();i++)
                 {
                     if((*sp)->value.vab)
                     {
@@ -161,12 +161,12 @@ namespace hgl
         {
             const uint si_count=vil->GetCount(VertexInputGroup::Basic);
 
-            if(vbo_map.GetCount()!=si_count)
+            if(vab_map.GetCount()!=si_count)
                 return(nullptr);
 
             Primitive *primitive=db->CreatePrimitive(prim_name,vertices_number);
 
-            const auto *sp=vbo_map.GetDataList();
+            const auto *sp=vab_map.GetDataList();
             for(uint i=0;i<si_count;i++)
             {
                 if((*sp)->value.vab)

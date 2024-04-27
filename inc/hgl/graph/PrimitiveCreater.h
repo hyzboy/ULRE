@@ -34,7 +34,7 @@ namespace hgl
 
             IndexBuffer *       ibo;
             void *              ibo_map;
-            VABAccessMap        vbo_map;
+            VABAccessMap        vab_map;
 
         protected:
 
