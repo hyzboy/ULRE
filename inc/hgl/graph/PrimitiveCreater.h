@@ -1,98 +1,92 @@
-﻿#ifndef HGL_GRAPH_PRIMITIVE_CREATER_INCLUDE
-#define HGL_GRAPH_PRIMITIVE_CREATER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKIndexBuffer.h>
 
-namespace hgl
+VK_NAMESPACE_BEGIN
+class VertexDataManager;
+
+/**
+ * 可绘制图元创建器
+ */
+class PrimitiveCreater
 {
-    namespace graph
-    {
-        class VertexDataManager;
+protected:
 
-        /**
-         * 可绘制图元创建器
-         */
-        class PrimitiveCreater
-        {
-        protected:
+    GPUDevice *device;
+    const GPUPhysicalDevice *phy_device;
 
-            GPUDevice *device;
-            const GPUPhysicalDevice *phy_device;
+    VertexDataManager *vdm;
+    RenderResource *db;
 
-            VertexDataManager *vdm;
-            RenderResource *db;
+    const VIL *vil;
 
-            const VIL *vil;
+protected:
 
-        protected:
+    VkDeviceSize        vertices_number;
+    VkDeviceSize        index_number;
 
-            VkDeviceSize        vertices_number;
-            VkDeviceSize        index_number;
+    IndexBuffer *       ibo;
+    void *              ibo_map;
+    VABAccessMap        vab_map;
 
-            IndexBuffer *       ibo;
-            void *              ibo_map;
-            VABAccessMap        vab_map;
+protected:
 
-        protected:
+    bool AcquirePVB(VABAccess *,const AnsiString &,const void *data);                                     ///<请求一个顶点属性数据区
 
-            bool AcquirePVB(VABAccess *,const AnsiString &,const void *data);                                     ///<请求一个顶点属性数据区
+    void ClearAllData();
 
-            void ClearAllData();
+public:
 
-        public:
+    PrimitiveCreater(RenderResource *sdb,const VIL *);
+    PrimitiveCreater(VertexDataManager *);
+    virtual ~PrimitiveCreater();
 
-            PrimitiveCreater(RenderResource *sdb,const VIL *);
-            PrimitiveCreater(VertexDataManager *);
-            virtual ~PrimitiveCreater();
+    virtual bool                    Init(const uint32 vertices_count,const uint32 index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
 
-            virtual bool                    Init(const uint32 vertices_count,const uint32 index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
+    template<typename T> 
+            T *                     AccessVAB(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
+            {
+                const VkFormat format=vil->GetVulkanFormat(name);
 
-            template<typename T> 
-                    T *                     AccessVAB(const AnsiString &name)                                           ///<创建一个顶点属性数据缓冲区以及访问器
-                    {
-                        const VkFormat format=vil->GetVulkanFormat(name);
+                if(format!=T::GetVulkanFormat())
+                    return(nullptr);
 
-                        if(format!=T::GetVulkanFormat())
-                            return(nullptr);
+                VABAccess vad;
+                if(!this->AcquirePVB(&vad,name,nullptr))
+                    return(nullptr);
 
-                        VABAccess vad;
-                        if(!this->AcquirePVB(&vad,name,nullptr))
-                            return(nullptr);
+                T *access=T::Create(vertices_number,vad.map_ptr);
 
-                        T *access=T::Create(vertices_number,vad.map_ptr);
+                access->Begin();
 
-                        access->Begin();
+                return access;
+            }
 
-                        return access;
-                    }
+            bool                    WriteVAB(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
 
-                    bool                    WriteVAB(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
+            const IndexType         GetIndexType()const{return ibo?ibo->GetType():IndexType::ERR;}              ///<取得索引数据类型
 
-                    const IndexType         GetIndexType()const{return ibo?ibo->GetType():IndexType::ERR;}              ///<取得索引数据类型
+            template<typename T> T *AccessIBO()
+            {
+                if(!ibo)return(nullptr);
+                if(ibo->GetStride()!=sizeof(T))return(nullptr);
 
-                    template<typename T> T *AccessIBO()
-                    {
-                        if(!ibo)return(nullptr);
-                        if(ibo->GetStride()!=sizeof(T))return(nullptr);
+                return (T *)ibo_map;
+            }
 
-                        return (T *)ibo_map;
-                    }
+            template<typename T> bool WriteIBO(const T *data)
+            {
+                if(!ibo)return(false);
+                if(ibo->GetStride()!=sizeof(T))return(false);
 
-                    template<typename T> bool WriteIBO(const T *data)
-                    {
-                        if(!ibo)return(false);
-                        if(ibo->GetStride()!=sizeof(T))return(false);
+                hgl_cpy<T>((T *)ibo_map,data,index_number);
 
-                        hgl_cpy<T>((T *)ibo_map,data,index_number);
+                return(true);
+            }
 
-                        return(true);
-                    }
-
-            virtual Primitive *             Finish(const AnsiString &);                                                                   ///<结束并创建可渲染对象
-        };//class PrimitiveCreater
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_PRIMITIVE_CREATER_INCLUDE
+    virtual Primitive *             Finish(const AnsiString &);                                                                   ///<结束并创建可渲染对象
+};//class PrimitiveCreater
+VK_NAMESPACE_END
