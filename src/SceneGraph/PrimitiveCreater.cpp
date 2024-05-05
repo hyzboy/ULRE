@@ -5,13 +5,12 @@
 #include<hgl/graph/VertexDataManager.h>
 
 VK_NAMESPACE_BEGIN
-PrimitiveCreater::PrimitiveCreater(RenderResource *sdb,const VIL *v)
+PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
 {
-    device          =sdb->GetDevice();
+    device          =dev;
     phy_device      =device->GetPhysicalDevice();
 
     vdm             =nullptr;
-    db              =sdb;
     vil             =v;
 
     vertices_number =0;
@@ -26,7 +25,6 @@ PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
     phy_device      =device->GetPhysicalDevice();
 
     vdm             =_vdm;
-    db              =nullptr;
     vil             =vdm->GetVIL();
 
     vertices_number =0;
@@ -73,7 +71,7 @@ bool PrimitiveCreater::Init(const uint32 vertex_count,const uint32 index_count,I
             }
 
             ibo=device->CreateIBO(it,index_count);
-            //ibo=db->CreateIBO(it,index_count);
+
             if(!ibo)return(false);
         }
 
@@ -97,7 +95,7 @@ bool PrimitiveCreater::AcquirePVB(VABAccess *vad,const AnsiString &name,const vo
     if(vab_map.Get(name,*vad))
         return true;
 
-    vad->vab    =db->CreateVAB(vif->format,vertices_number,data);
+    vad->vab    =device->CreateVAB(vif->format,vertices_number,data);
 
     if(!data)
         vad->map_ptr=vad->vab->Map();
@@ -154,32 +152,45 @@ void PrimitiveCreater::ClearAllData()
     }
 }
 
-Primitive *PrimitiveCreater::Finish(const AnsiString &prim_name)
+Primitive *PrimitiveCreater::Finish(RenderResource *rr,const AnsiString &prim_name)
 {
     const uint si_count=vil->GetCount(VertexInputGroup::Basic);
 
     if(vab_map.GetCount()!=si_count)
         return(nullptr);
 
-    Primitive *primitive=db->CreatePrimitive(prim_name,vertices_number);
+    Primitive *primitive=rr->CreatePrimitive(prim_name,vertices_number);
 
-    const auto *sp=vab_map.GetDataList();
-    for(uint i=0;i<si_count;i++)
     {
-        if((*sp)->value.vab)
+        const auto *sp=vab_map.GetDataList();
+        for(uint i=0;i<si_count;i++)
         {
-            if((*sp)->value.map_ptr)
-                (*sp)->value.vab->Unmap();
+            if((*sp)->value.vab)
+            {
+                if((*sp)->value.map_ptr)
+                    (*sp)->value.vab->Unmap();
 
-            primitive->SetVAB((*sp)->key,(*sp)->value.vab);
+                primitive->SetVAB((*sp)->key,(*sp)->value.vab);
+            }
+            else
+            {
+                ClearAllData();
+                return(nullptr);
+            }
+
+            ++sp;
         }
-        else
+    }
+
+    {
+        const auto *sp=vab_map.GetDataList();
+        for(uint i=0;i<si_count;i++)
         {
-            //ClearAllData();
-            return(nullptr);
-        }
+            if((*sp)->value.vab)
+                rr->Add((*sp)->value.vab);
 
-        ++sp;
+            ++sp;
+        }
     }
 
     if(ibo)
@@ -187,11 +198,11 @@ Primitive *PrimitiveCreater::Finish(const AnsiString &prim_name)
         ibo->Unmap();
         primitive->SetIndex(ibo,0,index_number);
 
-        db->Add(ibo);
+        rr->Add(ibo);
         ibo=nullptr;    //避免释构函数删除
     }
 
-    db->Add(primitive);
+    rr->Add(primitive);
 
     return primitive;
 }
