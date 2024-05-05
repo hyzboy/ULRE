@@ -55,6 +55,7 @@ public:
                     return(nullptr);
 
                 VABAccess vad;
+
                 if(!this->AcquirePVB(&vad,name,nullptr))
                     return(nullptr);
 

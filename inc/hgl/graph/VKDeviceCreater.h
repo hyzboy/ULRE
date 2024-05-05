@@ -14,6 +14,8 @@ struct VulkanHardwareRequirement
         Must,       ///<必须支持
     };
 
+    //这里使用这种大小写是为了和VulkanSDK中的定义保持一致，cpp中使用宏比较和复制时只使用一个名字即可
+
     uint maxImageDimension1D;
     uint maxImageDimension2D;
     uint maxImageDimension3D;

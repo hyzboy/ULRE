@@ -318,6 +318,12 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->uint8_index_type=true;
     }
 
+    if(physical_device->SupportU32Index()
+     &&require.fullDrawIndexUint32>=VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        device_attr->uint32_index_type=true;
+    }
+
     device_attr->surface_format=surface_format;
 
     GetDeviceQueue(device_attr);
