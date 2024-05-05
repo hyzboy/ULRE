@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE
-#define HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE
+﻿#pragma once
 
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
@@ -58,4 +57,3 @@ public:
     const   AABB &              GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_PRIMITIVE_INCLUDE

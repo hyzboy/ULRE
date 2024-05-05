@@ -19,7 +19,6 @@ protected:
     const GPUPhysicalDevice *phy_device;
 
     VertexDataManager *vdm;
-    RenderResource *db;
 
     const VIL *vil;
 
@@ -40,7 +39,7 @@ protected:
 
 public:
 
-    PrimitiveCreater(RenderResource *sdb,const VIL *);
+    PrimitiveCreater(GPUDevice *,const VIL *);
     PrimitiveCreater(VertexDataManager *);
     virtual ~PrimitiveCreater();
 
@@ -88,6 +87,6 @@ public:
                 return(true);
             }
 
-    virtual Primitive *             Finish(const AnsiString &);                                                                   ///<结束并创建可渲染对象
+    virtual Primitive *             Finish(RenderResource *,const AnsiString &);                                                                   ///<结束并创建可渲染对象
 };//class PrimitiveCreater
 VK_NAMESPACE_END
