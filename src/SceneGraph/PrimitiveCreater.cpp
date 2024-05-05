@@ -191,6 +191,8 @@ Primitive *PrimitiveCreater::Finish(RenderResource *rr,const AnsiString &prim_na
 
             ++sp;
         }
+
+        vab_map.Clear();
     }
 
     if(ibo)
