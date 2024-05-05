@@ -81,9 +81,9 @@ const IndexType GPUDevice::ChooseIndexType(const VkDeviceSize &vertex_count)cons
 {
     if(vertex_count<=0)return(IndexType::ERR);
 
-    if(attr->uint8_index_type&&                 vertex_count<=0xFF  )return IndexType::U8;  else
-    if(                                         vertex_count<=0xFFFF)return IndexType::U16; else
-    if(attr->physical_device->SupportU32Index()                     )return IndexType::U32; else
+    if(attr->uint8_index_type&& vertex_count<=0xFF  )return IndexType::U8;  else
+    if(                         vertex_count<=0xFFFF)return IndexType::U16; else
+    if(attr->uint32_index_type  )return IndexType::U32; else
 
     return IndexType::ERR;
 }
@@ -94,9 +94,9 @@ const bool GPUDevice::CheckIndexType(const IndexType it,const VkDeviceSize &vert
 
     if(it==IndexType::U16&&vertex_count<=0xFFFF)return(true);
 
-    if(it==IndexType::U32&&attr->physical_device->SupportU32Index())return(true);
+    if(it==IndexType::U32&&                     attr->uint32_index_type)return(true);
 
-    if(it==IndexType::U8 &&vertex_count<=0xFF&&attr->uint8_index_type)return(true);
+    if(it==IndexType::U8 &&vertex_count<=0xFF&& attr->uint8_index_type)return(true);
 
     return(false);
 }
