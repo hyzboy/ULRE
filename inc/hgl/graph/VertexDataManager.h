@@ -3,11 +3,45 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/type/DataChain.h>
+#include<hgl/type/Pair.h>
 
 namespace hgl
 {
     namespace graph
     {
+        class VertexDataManager;
+
+        struct IBAccessNode:public IBAccess
+        {
+        private:
+
+            VertexDataManager *vdm;
+            DataChain::UserNode *dc_node;
+
+        public:
+
+            friend class VertexDataManager;
+
+            ~IBAccessNode();
+        };
+
+        struct VABAccessNode
+        {
+        private:
+
+            VertexDataManager *vdm;
+            DataChain::UserNode *dc_node;
+            const VIL *vil;
+
+            VABAccess **vab;
+
+        public:
+
+            friend class VertexDataManager;
+
+            ~VABAccessNode();
+        };
+
         class VertexDataManager
         {
             GPUDevice *device;
@@ -30,6 +64,14 @@ namespace hgl
             DataChain       vbo_data_chain; ///<数据链
             DataChain       ibo_data_chain; ///<数据链
 
+        protected:
+
+            friend struct IBAccessNode;
+            friend struct VABAccessNode;
+
+            bool ReleaseIB(DataChain::UserNode *);
+            bool ReleaseVAB(DataChain::UserNode *);
+
         public:
 
             VertexDataManager(GPUDevice *dev,const VIL *_vil);
@@ -49,6 +91,10 @@ namespace hgl
         public:
 
             bool Init(const VkDeviceSize vbo_size,const VkDeviceSize ibo_size,const IndexType index_type);
+
+            IBAccessNode *AcquireIB(const VkDeviceSize count);
+
+            VABAccessNode *AcquireVAB(const VkDeviceSize count);
         };//class VertexDataManager
     }//namespace graph
 }//namespace hgl

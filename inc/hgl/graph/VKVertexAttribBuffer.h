@@ -36,6 +36,21 @@ namespace hgl
         };//class VertexAttribBuffer:public DeviceBuffer
 
         using VAB=VertexAttribBuffer;
+
+        class VABView
+        {
+        public:
+
+            VABView()=default;
+            virtual ~VABView()=default;
+
+            virtual VAB *GetVAB()=0;
+            virtual VkDeviceSize GetStart()const=0;
+            virtual VkDeviceSize GetSize()const=0;
+
+            virtual void *Map()=0;
+            virtual void Unmap()=0;
+        };//class VABView
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE
