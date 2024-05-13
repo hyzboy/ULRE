@@ -8,6 +8,19 @@ namespace hgl
 {
     namespace graph
     {
+        IBAccessNode::~IBAccessNode()
+        {
+            vdm->ReleaseIB(dc_node);
+        }
+
+        VABAccessNode::~VABAccessNode()
+        {
+            vdm->ReleaseVAB(dc_node);
+        }
+    }//namespace graph
+
+    namespace graph
+    {
         VertexDataManager::VertexDataManager(GPUDevice *dev,const VIL *_vil)
         {
             device=dev;
@@ -68,6 +81,77 @@ namespace hgl
                 ibo_data_chain.Init(ibo_size);
             }
 
+            return(true);
+        }
+
+        IBAccessNode *VertexDataManager::AcquireIB(const VkDeviceSize count)
+        {
+            if(count<=0)return(false);
+
+            DataChain::UserNode *un=ibo_data_chain.Acquire(count);
+
+            if(!un)return(false);
+
+            IBAccessNode *node=new IBAccessNode;
+
+            node->vdm=this;
+            node->dc_node=un;
+
+            node->buffer=ibo;
+            node->start=un->GetStart();
+            node->count=un->GetCount();
+
+            ibo_cur_size+=count;
+
+            return(node);
+        }
+        
+        bool VertexDataManager::ReleaseIB(DataChain::UserNode *un)
+        {
+            if(!un)return(false);
+
+            const auto count=un->GetCount();
+
+            if(!ibo_data_chain.Release(un))
+                return(false);
+
+            ibo_cur_size-=count;
+            return(true);
+        }
+
+        VABAccessNode *VertexDataManager::AcquireVAB(const VkDeviceSize count)
+        {
+            if(count<=0)return(false);
+
+            DataChain::UserNode *un=vbo_data_chain.Acquire(count);
+
+            if(!un)return(false);
+
+            VABAccessNode *node=new VABAccessNode;
+
+            node->vdm=this;
+            node->dc_node=un;
+            node->vil=vil;
+
+            //node->buffer=vab[0];
+            //node->start=un->GetStart();
+            //node->count=un->GetCount();
+
+            vab_cur_size+=count;
+
+            return(node);
+        }
+
+        bool VertexDataManager::ReleaseVAB(DataChain::UserNode *un)
+        {
+            if(!un)return(false);
+
+            const auto count=un->GetCount();
+
+            if(!vbo_data_chain.Release(un))
+                return(false);
+
+            vab_cur_size-=count;
             return(true);
         }
     }//namespace graph
