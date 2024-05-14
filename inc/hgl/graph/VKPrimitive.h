@@ -8,7 +8,12 @@
 VK_NAMESPACE_BEGIN
 
 /**
- * 单一图元数据
+ * 单一图元数据访问接口<br>
+ * 
+ * 这个只是单纯的提供原始VAB/IB数据，派生为两类
+ * 
+ *  一类是传统的，使用独统的独立VAB的
+ *  一类是使用VDM的
  */
 class Primitive
 {

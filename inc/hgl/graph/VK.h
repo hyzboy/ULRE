@@ -73,8 +73,6 @@ public:
 
 using VABAccessMap=Map<AnsiString,VABAccess>;
 
-class VABView;
-
 class IndexBuffer;
 
 struct IndexBufferAccess
