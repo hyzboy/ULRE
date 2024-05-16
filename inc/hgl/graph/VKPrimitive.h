@@ -14,6 +14,12 @@ VK_NAMESPACE_BEGIN
  * 
  *  一类是传统的，使用独统的独立VAB的
  *  一类是使用VDM的
+ * 
+ * 
+ * 
+ * WIP: *** 1.将数据全部转移到PrimitiveData，完成旧的渲染测试
+ *          2.改成抽象类，将独立VAB的做成一个实现
+ *          3.实现VDM支持
  */
 class Primitive
 {
