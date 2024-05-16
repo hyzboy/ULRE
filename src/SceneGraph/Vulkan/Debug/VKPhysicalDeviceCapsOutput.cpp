@@ -306,6 +306,19 @@ namespace
     constexpr size_t VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE=VK_PHYSICAL_DEVICE_TYPE_END_RANGE-VK_PHYSICAL_DEVICE_TYPE_BEGIN_RANGE+1;
     #endif//VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE
 
+    namespace
+    {
+        struct VulkanDeviceVendor
+        {
+            uint32_t id;
+            const char *name;
+        };
+
+        //constexpr const VulkanDeviceVendor vulkan_vendor[]=
+        //{
+        //};
+    }
+
     void DebugOut(const VkPhysicalDeviceProperties &pdp)
     {
         constexpr char DeviceTypeString[VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE][16]=

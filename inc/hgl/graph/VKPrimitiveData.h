@@ -52,28 +52,16 @@ public:
         hgl_zero(*this);
     }
 
-    const int GetVABIndex(const char *name)const
+    const int GetVABIndex(const AnsiString &name)const{return vil->GetIndex(name);}
+
+    VABAccess *GetVAB(const AnsiString &name)
     {
-        for(int i=0;i<va_count;i++)
-        {
-            if(hgl::strcmp(vab_list[i].va_name,name)==0)
-                return(i);
-        }
-
-        return(-1);
-    }
-
-    VABAccess *GetVAB(const char *name)
-    {
-        if(!name||!*name)
-            return(nullptr);
-
         const int index=GetVABIndex(name);
 
         if(index==-1)
             return(nullptr);
 
-        return &(vab_list[index].vab_access);
+        return vab_access+index;
     }
 
     const int AddVAB(const char *name,VAB *vab,VkDeviceSize start=0)
