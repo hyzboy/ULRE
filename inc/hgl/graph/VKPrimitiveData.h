@@ -31,64 +31,71 @@ struct PrimitiveData
 
     VABAccess       vab_access[HGL_MAX_VERTEX_ATTRIB_COUNT];
     IBAccess        ib_access;
+};
 
-    AABB            BoundingBox;
+inline bool Init(PrimitiveData *pd,const VIL *_vil,const VkDeviceSize vc,const VkDeviceSize ic=0)
+{
+    if(!pd)return(false);
+    if(!_vil)return(false);
+    if(vc<=0)return(false);
 
-public:
+    hgl_zero(*pd);
 
-    PrimitiveData(const VIL *_vil,const VkDeviceSize vc,const VkDeviceSize ic=0,const IndexType &it=IndexType::AUTO)
-    {
-        Clear();
+    pd->vil=_vil;
+    pd->vertex_count=vc;
+    pd->ib_access.count=ic;
 
-        vil=_vil;
+    return(true);
+}
 
-        vertex_count=vc;
+inline int GetVABIndex(const PrimitiveData *pd,const AnsiString &name)
+{
+    if(!pd)return(-1);
+    if(!pd->vil)return(-1);
+    if(name.IsEmpty())return(-1);
 
-        ib_access.count=ic;
-    }
+    return pd->vil->GetIndex(name);
+}
 
-    void Clear()
-    {
-        hgl_zero(*this);
-    }
+inline const VABAccess *GetVAB(const PrimitiveData *pd,const AnsiString &name)
+{
+    if(!pd)return(nullptr);    
+    if(name.IsEmpty())return(nullptr);
 
-    const int GetVABIndex(const AnsiString &name)const{return vil->GetIndex(name);}
+    const int index=GetVABIndex(pd,name);
 
-    VABAccess *GetVAB(const AnsiString &name)
-    {
-        const int index=GetVABIndex(name);
+    if(index==-1)
+        return(nullptr);
 
-        if(index==-1)
-            return(nullptr);
+    return pd->vab_access+index;
+}
 
-        return vab_access+index;
-    }
+inline VABAccess *SetVAB(PrimitiveData *pd,const AnsiString &name,VAB *vab,VkDeviceSize start=0)
+{
+    if(!pd)return(nullptr);
+    if(name.IsEmpty())return(nullptr);
 
-    const int AddVAB(const char *name,VAB *vab,VkDeviceSize start=0)
-    {
-        if(va_count>=HGL_MAX_VERTEX_ATTRIB_COUNT)
-            return(-1);
+    const int index=GetVABIndex(pd,name);
 
-        VABAccessInfo *vai=vab_list+va_count;
+    if(index==-1)
+        return(nullptr);
 
-        hgl::strcpy(vai->va_name,VERTEX_ATTRIB_NAME_MAX_LENGTH,name);
-        vai->vab_access.vab=vab;
-        vai->vab_access.start=start;
+    VABAccess *vaba=pd->vab_access+index;
 
-    #ifdef _DEBUG
-        DebugUtils *du=device->GetDebugUtils();
+    vaba->vab=vab;
+    vaba->start=start;
 
-        if(du)
-        {
-            du->SetBuffer(vab->GetBuffer(),prim_name+":VAB:Buffer:"+name);
-            du->SetDeviceMemory(vab->GetVkMemory(),prim_name+":VAB:Memory:"+name);
-        }
-    #endif//_DEBUG
+    //#ifdef _DEBUG
+    //    DebugUtils *du=device->GetDebugUtils();
 
-        return(va_count++);
-    }
-};//struct PrimitiveData
+    //    if(du)
+    //    {
+    //        du->SetBuffer(vab->GetBuffer(),prim_name+":VAB:Buffer:"+name);
+    //        du->SetDeviceMemory(vab->GetVkMemory(),prim_name+":VAB:Memory:"+name);
+    //    }
+    //#endif//_DEBUG
 
-constexpr const uint PRIMITIVE_DATA_SIZE=sizeof(PrimitiveData);
+    return vaba;
+}
 
 VK_NAMESPACE_END

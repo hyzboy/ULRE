@@ -3,7 +3,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/AABB.h>
-#include<hgl/graph/VK.h>
+#include<hgl/graph/VKPrimitiveData.h>
 
 VK_NAMESPACE_BEGIN
 
