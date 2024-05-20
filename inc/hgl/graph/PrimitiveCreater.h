@@ -4,9 +4,11 @@
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/graph/VKPrimitiveData.h>
 
 VK_NAMESPACE_BEGIN
 class VertexDataManager;
+struct PrimitiveData;
 
 /**
  * 可绘制图元创建器
@@ -18,11 +20,12 @@ protected:
     GPUDevice *device;
     const GPUPhysicalDevice *phy_device;
 
-    VertexDataManager *vdm;
-
     const VIL *vil;
 
 protected:
+
+    PrimitiveData *     prim_data;
+
 
     VkDeviceSize        vertices_number;
     VkDeviceSize        index_number;

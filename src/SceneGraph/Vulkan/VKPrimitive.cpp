@@ -31,14 +31,14 @@ VK_NAMESPACE_BEGIN
 bool Primitive::SetVAB(const AnsiString &name,VAB *vab,VkDeviceSize start)
 {
     if(!vab)return(false);
-    if(buffer_list.KeyExist(name))return(false);
+    if(vab_access_map.KeyExist(name))return(false);
 
     VABAccess vad;
 
     vad.vab=vab;
     vad.start=start;
 
-    buffer_list.Add(name,vad);
+    vab_access_map.Add(name,vad);
 
 #ifdef _DEBUG
     DebugUtils *du=device->GetDebugUtils();
@@ -58,7 +58,7 @@ const bool Primitive::GetVABAccess(const AnsiString &name,VABAccess *vad)
     if(name.IsEmpty())return(false);
     if(!vad)return(false);
 
-    return buffer_list.Get(name,*vad);
+    return vab_access_map.Get(name,*vad);
 }
 
 bool Primitive::SetIndex(IndexBuffer *ib,VkDeviceSize start,const VkDeviceSize index_count)

@@ -23,48 +23,32 @@ VK_NAMESPACE_BEGIN
  */
 class Primitive
 {
-    GPUDevice *device;
+protected:
+
     AnsiString prim_name;
 
 protected:
 
-    VkDeviceSize vertex_count;
-
-    VABAccessMap buffer_list;
-
-    IBAccess ib_access;
-
     AABB BoundingBox;
 
-protected:
-
-    bool SetVAB(const AnsiString &name,VAB *vb,VkDeviceSize start=0);
-
-    bool SetIndex(IndexBuffer *ib,VkDeviceSize start,const VkDeviceSize index_count);
-
-    void SetBoundingBox(const AABB &aabb){BoundingBox=aabb;}
-
-    friend class PrimitiveCreater;
-    friend class RenderablePrimitiveCreater;
-
 public:
 
-    Primitive(GPUDevice *dev,const AnsiString &n,const VkDeviceSize vc=0)
+    Primitive(const AnsiString &n)
     {
-        device=dev;
         prim_name=n;
-        vertex_count=vc;
     }
 
-    virtual ~Primitive()=default;
+    virtual ~Primitive()=0;
 
 public:
 
-    const   VkDeviceSize        GetVertexCount  ()const{return vertex_count;}
-    const   int                 GetVACount      ()const{return buffer_list.GetCount();}
-    const   bool                GetVABAccess    (const AnsiString &,VABAccess *);
-    const   IBAccess *          GetIBAccess     ()const{return ib_access.buffer?&ib_access:nullptr;}
+    virtual const   VkDeviceSize    GetVertexCount  ()const=0;
+    virtual const   int             GetVACount      ()const=0;
+    virtual const   bool            GetVABAccess    (const AnsiString &,VABAccess *)=0;
+    virtual const   IBAccess *      GetIBAccess     ()const=0;
 
-    const   AABB &              GetBoundingBox  ()const{return BoundingBox;}
+            const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive
+
+Primitive *CreatePrimitive(const PrimitiveData *);
 VK_NAMESPACE_END
