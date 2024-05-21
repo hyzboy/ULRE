@@ -9,71 +9,70 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
 {
     device          =dev;
     phy_device      =device->GetPhysicalDevice();
-
-    vdm             =nullptr;
     vil             =v;
 
-    vertices_number =0;
-    index_number    =0;
+    prim_data       =hgl_zero_new<PrimitiveData>();
+
+    vertices_number=0;
+    hgl_zero(vab_ptr);
+
     ibo             =nullptr;
     ibo_map         =nullptr;
 }
 
-PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
-{
-    device          =_vdm->GetDevice();
-    phy_device      =device->GetPhysicalDevice();
-
-    vdm             =_vdm;
-    vil             =vdm->GetVIL();
-
-    vertices_number =0;
-    index_number    =0;
-    ibo             =nullptr;
-    ibo_map         =nullptr;
-}
+//PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
+//{
+//    device          =_vdm->GetDevice();
+//    phy_device      =device->GetPhysicalDevice();
+//
+//    vdm             =_vdm;
+//    vil             =vdm->GetVIL();
+//
+//    vertices_number =0;
+//    index_number    =0;
+//    ibo             =nullptr;
+//    ibo_map         =nullptr;
+//}
 
 PrimitiveCreater::~PrimitiveCreater()
 {
-    if(ibo)
+    if(prim_data)
     {
-        ibo->Unmap();
-        delete ibo;
+        if(ibo_map)
+            ibo->Unmap();
+
+        delete prim_data;
     }
 }
 
-bool PrimitiveCreater::Init(const uint32 vertex_count,const uint32 index_count,IndexType it)
+bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize index_count,IndexType it)
 {
     if(vertex_count<=0)return(false);
 
     vertices_number=vertex_count;
 
+    InitPrimitiveData(prim_data,vil,vertex_count);
+
     if(index_count>0)
     {
-        index_number=index_count;
-
-        if(vdm)
+        if(it==IndexType::AUTO)
         {
+            it=device->ChooseIndexType(vertex_count);
+
+            if(!IsIndexType(it))
+                return(false);
         }
         else
         {
-            if(it==IndexType::AUTO)
-            {
-                it=device->ChooseIndexType(vertex_count);
-
-                if(!IsIndexType(it))
-                    return(false);
-            }
-            else
-            {
-                if(!device->CheckIndexType(it,vertex_count))
-                    return(false);
-            }
-
-            ibo=device->CreateIBO(it,index_count);
-
-            if(!ibo)return(false);
+            if(!device->CheckIndexType(it,vertex_count))
+                return(false);
         }
+
+        ibo=device->CreateIBO(it,index_count);
+
+        if(!ibo)return(false);
+
+        SetIndexBuffer(prim_data,ibo,index_count);
 
         ibo_map=ibo->Map();
     }
@@ -81,19 +80,28 @@ bool PrimitiveCreater::Init(const uint32 vertex_count,const uint32 index_count,I
     return(true);
 }
 
-bool PrimitiveCreater::AcquirePVB(VABAccess *vad,const AnsiString &name,const void *data)
+VABAccess *PrimitiveCreater::AcquirePVB(const AnsiString &name,const VkFormat &acquire_format,const void *data)
 {
-    if(!vad)return(false);
-    if(!vil)return(false);
-    if(name.IsEmpty())return(false);
-            
-    const VertexInputFormat *vif=vil->GetConfig(name);
+    if(!vil)return(nullptr);
+    if(name.IsEmpty())return(nullptr);
+
+    const int index=vil->GetIndex(name);
+
+    if(index<0||index>=vil->GetCount())
+        return(nullptr);
+
+    const VertexInputFormat *vif=vil->GetConfig(index);
 
     if(!vif)
-        return(false);
+        return(nullptr);
 
-    if(vab_map.Get(name,*vad))
-        return true;
+    if(vif->format!=acquire_format)
+        return(nullptr);
+
+    VABAccess *vab=GetVAB(prim_data,index);
+
+    if(vab)
+        return vab;
 
     vad->vab    =device->CreateVAB(vif->format,vertices_number,data);
 

@@ -21,8 +21,6 @@ VK_NAMESPACE_BEGIN
         就是为了必避动态分配内存，以及可以直接memcpy处理，所以此处这样定义。
 */
 
-constexpr const uint HGL_MAX_VERTEX_ATTRIB_COUNT=16;        ///<最大顶点属性数量
-
 struct PrimitiveData
 {
     const VIL *     vil;
@@ -33,9 +31,10 @@ struct PrimitiveData
     IBAccess        ib_access;
 };//struct PrimitiveData
 
-        bool        Init(               PrimitiveData *pd,const VIL *_vil,const VkDeviceSize vc,const VkDeviceSize ic=0);
-        int         GetVABIndex(const   PrimitiveData *pd,const AnsiString &name);
-const   VABAccess * GetVAB(const        PrimitiveData *pd,const AnsiString &name);
-        VABAccess * SetVAB(             PrimitiveData *pd,const AnsiString &name,VAB *vab,VkDeviceSize start=0);
+bool        InitPrimitiveData(  PrimitiveData *pd,const VIL *_vil,const VkDeviceSize vc);
+int         GetVABIndex(const   PrimitiveData *pd,const AnsiString &name);
+VABAccess * GetVAB(             PrimitiveData *pd,const int);
+VABAccess * SetVAB(             PrimitiveData *pd,const int,VAB *vab,VkDeviceSize start,VkDeviceSize count);
+void        SetIndexBuffer(     PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic);
 
 VK_NAMESPACE_END
