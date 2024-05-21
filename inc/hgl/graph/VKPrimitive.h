@@ -27,6 +27,8 @@ protected:
 
     AnsiString prim_name;
 
+    PrimitiveData *prim_data;
+
 protected:
 
     AABB BoundingBox;

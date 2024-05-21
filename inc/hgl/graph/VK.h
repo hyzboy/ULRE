@@ -63,23 +63,20 @@ struct VABAccess
 {
     VAB *vab;
     VkDeviceSize start;
-
-    void *map_ptr;
+    VkDeviceSize count;
 
 public:
 
     CompOperatorMemcmp(const VABAccess &);
 };//class VABAccess
 
-using VABAccessMap=Map<AnsiString,VABAccess>;
-
 class IndexBuffer;
 
 struct IndexBufferAccess
 {
-    IndexBuffer *buffer=nullptr;
-    VkDeviceSize start=0;
-    VkDeviceSize count=0;
+    IndexBuffer *buffer;
+    VkDeviceSize start;
+    VkDeviceSize count;
 };
 
 using IBAccess=IndexBufferAccess;
@@ -121,6 +118,7 @@ using VIF=VertexInputFormat;
 class VertexInputLayout;
 using VIL=VertexInputLayout;
 
+struct PrimitiveData;
 class Primitive;
 class Renderable;
 

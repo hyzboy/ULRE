@@ -1,7 +1,7 @@
 #include<hgl/graph/VKPrimitiveData.h>
 
 VK_NAMESPACE_BEGIN
-bool Init(PrimitiveData *pd,const VIL *_vil,const VkDeviceSize vc,const VkDeviceSize ic=0)
+bool InitPrimitiveData(PrimitiveData *pd,const VIL *_vil,const VkDeviceSize vc)
 {
     if(!pd)return(false);
     if(!_vil)return(false);
@@ -11,7 +11,6 @@ bool Init(PrimitiveData *pd,const VIL *_vil,const VkDeviceSize vc,const VkDevice
 
     pd->vil=_vil;
     pd->vertex_count=vc;
-    pd->ib_access.count=ic;
 
     return(true);
 }
@@ -25,33 +24,26 @@ int GetVABIndex(const PrimitiveData *pd,const AnsiString &name)
     return pd->vil->GetIndex(name);
 }
 
-const VABAccess *GetVAB(const PrimitiveData *pd,const AnsiString &name)
+VABAccess *GetVAB(PrimitiveData *pd,const int index)
 {
-    if(!pd)return(nullptr);    
-    if(name.IsEmpty())return(nullptr);
-
-    const int index=GetVABIndex(pd,name);
-
-    if(index==-1)
-        return(nullptr);
+    if(!pd)return(nullptr);
+    if(!pd->vil)return(nullptr);
+    if(index<0||index>=pd->vil->GetCount())return(nullptr);
 
     return pd->vab_access+index;
 }
 
-VABAccess *SetVAB(PrimitiveData *pd,const AnsiString &name,VAB *vab,VkDeviceSize start=0)
+VABAccess *SetVAB(PrimitiveData *pd,const int index,VAB *vab,VkDeviceSize start,VkDeviceSize count)
 {
     if(!pd)return(nullptr);
-    if(name.IsEmpty())return(nullptr);
-
-    const int index=GetVABIndex(pd,name);
-
-    if(index==-1)
-        return(nullptr);
+    if(!pd->vil)return(nullptr);
+    if(index<0||index>=pd->vil->GetCount())return(nullptr);
 
     VABAccess *vaba=pd->vab_access+index;
 
     vaba->vab=vab;
     vaba->start=start;
+    vaba->count=count;
 
     //#ifdef _DEBUG
     //    DebugUtils *du=device->GetDebugUtils();
@@ -64,6 +56,15 @@ VABAccess *SetVAB(PrimitiveData *pd,const AnsiString &name,VAB *vab,VkDeviceSize
     //#endif//_DEBUG
 
     return vaba;
+}
+
+void SetIndexBuffer(PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic)
+{
+    if(!pd)return;
+    
+    pd->ib_access.buffer=ib;
+    pd->ib_access.start=0;
+    pd->ib_access.count=ic;
 }
 
 VK_NAMESPACE_END
