@@ -16,19 +16,19 @@ namespace hgl
         {
             Primitive *CreateRectangle(RenderResource *db,const VIL *vil,const RectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Rectangle");
 
                 if(!rc.Init(4,0))
                     return(nullptr);
 
-                AutoDelete<VB2f> vertex=rc.AccessVAB<VB2f>(VAN::Position);
+                VABMap2f vertex(&rc,VAN::Position);
 
-                if(!vertex)
+                if(!vertex.IsValid())
                     return(nullptr);
 
                 vertex->WriteRectFan(rci->scope);
 
-                return rc.Finish(db,"Rectangle");
+                return rc.Finish(db);
             }
 
             Primitive *CreateGBufferCompositionRectangle(RenderResource *db,const VIL *vil)
@@ -42,14 +42,14 @@ namespace hgl
 
             Primitive *CreateRoundRectangle(RenderResource *db,const VIL *vil,const RoundRectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"RoundRectangle");
 
                 if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
                 {
                     if(!rc.Init(4,0))
                         return(nullptr);
                     
-                    AutoDelete<VB2f> vertex=rc.AccessVAB<VB2f>(VAN::Position);
+                    VABMap2f vertex(&rc,VAN::Position);
 
                     vertex->WriteRectFan(rci->scope);
                 }
@@ -63,7 +63,7 @@ namespace hgl
                     if(!rc.Init(rci->round_per*4,8))
                         return(nullptr);
                 
-                    AutoDelete<VB2f> vertex=rc.AccessVAB<VB2f>(VAN::Position);
+                    VABMap2f vertex(&rc,VAN::Position);
 
                     Vector2f *coord=new Vector2f[rci->round_per];
 
@@ -111,12 +111,12 @@ namespace hgl
                     delete[] coord;
                 }
 
-                return rc.Finish(db,"RoundRectangle");
+                return rc.Finish(db);
             }
 
             Primitive *CreateCircle(RenderResource *db,const VIL *vil,const CircleCreateInfo *cci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Circle");
 
                 uint edge;
 
@@ -131,15 +131,15 @@ namespace hgl
                     if(!rc.Init(cci->field_count,0))return(nullptr);
                 }
 
-                AutoDelete<VB2f> vertex=rc.AccessVAB<VB2f>(VAN::Position);
-                AutoDelete<VB4f> color=rc.AccessVAB<VB4f>(VAN::Color);
+                VABMap2f vertex(&rc,VAN::Position);
+                VABMap4f color(&rc,VAN::Color);
 
-                if(!vertex)
+                if(!vertex.IsValid())
                     return(nullptr);
 
                 if(cci->has_color)
                 {
-                    if(!color)
+                    if(!color.IsValid())
                         return(nullptr);
 
                     vertex->Write(cci->center);
@@ -159,17 +159,17 @@ namespace hgl
                         color->Write(cci->border_color);
                 }
 
-                return rc.Finish(db,"Circle");
+                return rc.Finish(db);
             }
 
             Primitive *CreatePlaneGrid(RenderResource *db,const VIL *vil,const PlaneGridCreateInfo *pgci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"PlaneGrid");
 
                 if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
+                VABMap3f vertex(&rc,VAN::Position);
 
                 const float right=float(pgci->grid_size.Width())/2.0f;
                 const float left =-right;
@@ -189,8 +189,9 @@ namespace hgl
                                       Vector3f(left+col,bottom,0));
                 }
 
-                AutoDelete<VB1f> lum=rc.AccessVAB<VB1f>(VAN::Luminance);
-                if(lum)
+                VABMap1f lum(&rc,VAN::Luminance);
+
+                if(lum.IsValid())
                 {
                     for(uint row=0;row<=pgci->grid_size.Height();row++)
                     {
@@ -209,7 +210,7 @@ namespace hgl
                     }
                 }
 
-                return rc.Finish(db,"PlaneGrid");
+                return rc.Finish(db);
             }
 
             Primitive *CreatePlane(RenderResource *db,const VIL *vil)
@@ -219,33 +220,36 @@ namespace hgl
                 const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
                 const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Plane");
 
                 if(!rc.Init(4,8))
                     return(nullptr);
 
-                rc.WriteVAB(VAN::Position,xy_vertices,sizeof(xy_vertices));
+                if(!rc.WriteVAB(VAN::Position,VF_V3F,xy_vertices,sizeof(xy_vertices)))
+                   return(nullptr);
 
                 {
-                    AutoDelete<VB3f> normal=rc.AccessVAB<VB3f>(VAN::Normal);
+                    VABMap3f normal(&rc,VAN::Normal);
 
-                    if(normal)normal->RepeatWrite(xy_normal,4);
+                    if(normal.IsValid())
+                        normal->RepeatWrite(xy_normal,4);
                 }
 
                 {
-                    AutoDelete<VB3f> tangent=rc.AccessVAB<VB3f>(VAN::Tangent);
+                    VABMap3f tangent(&rc,VAN::Tangent);
 
-                    if(tangent)tangent->RepeatWrite(xy_tangent,4);
+                    if(tangent.IsValid())
+                        tangent->RepeatWrite(xy_tangent,4);
                 }
 
                 {
-                    AutoDelete<VB2f> tex_coord=rc.AccessVAB<VB2f>(VAN::TexCoord);
+                    VABMap2f tex_coord(&rc,VAN::TexCoord);
 
-                    if(tex_coord)
+                    if(tex_coord.IsValid())
                         tex_coord->Write(xy_tex_coord,4);
                 }
 
-                return rc.Finish(db,"Plane");
+                return rc.Finish(db);
             }
 
             Primitive *CreateCube(RenderResource *db,const VIL *vil,const CubeCreateInfo *cci)
@@ -301,29 +305,33 @@ namespace hgl
                                                 16,  17,   18,      16,   18,   19,
                                                 20,  23,   22,      20,   22,   21};
 
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Cube");
 
                 if(!rc.Init(24,6*2*3,IndexType::U16))
                     return(nullptr);
 
-                rc.WriteVAB(VAN::Position,positions,sizeof(positions));
+                if(!rc.WriteVAB(VAN::Position,VF_V3F,positions,sizeof(positions)))
+                    return(nullptr);
 
                 if(cci->normal)
-                rc.WriteVAB(VAN::Normal,normals,sizeof(normals));
+                    if(!rc.WriteVAB(VAN::Normal,VF_V3F,normals,sizeof(normals)))
+                        return(nullptr);
 
                 if(cci->tangent)
-                rc.WriteVAB(VAN::Tangent,tangents,sizeof(tangents));
+                    if(!rc.WriteVAB(VAN::Tangent,VF_V3F,tangents,sizeof(tangents)))
+                        return(nullptr);
 
                 if(cci->tex_coord)
-                rc.WriteVAB(VAN::TexCoord,tex_coords,sizeof(tex_coords));
+                    if(!rc.WriteVAB(VAN::TexCoord,VF_V2F,tex_coords,sizeof(tex_coords)))
+                        return(nullptr);
 
                 if(cci->color_type!=CubeCreateInfo::ColorType::NoColor)
                 {                
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    AutoDelete<VB4f> color=rc.AccessVAB<VB4f>(VAN::Color);
+                    VABMap4f color(&rc,VAN::Color);
 
-                    if(color)
+                    if(color.IsValid())
                     {
                         if(cci->color_type==CubeCreateInfo::ColorType::SameColor)
                             color->RepeatWrite(cci->color[0],24);
@@ -343,7 +351,7 @@ namespace hgl
 
                 //rc.CreateIBO16(6*2*3,indices);
                 rc.WriteIBO(indices);
-                return rc.Finish(db,"Cube");
+                return rc.Finish(db);
             }
 
             template<typename T> void CreateSphereIndices(T *tp,uint numberParallels,const uint numberSlices)
@@ -443,7 +451,7 @@ namespace hgl
             */
             Primitive *CreateSphere(RenderResource *db,const VIL *vil,const uint numberSlices)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Sphere");
 
                 uint numberParallels = (numberSlices+1) / 2;
                 uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
@@ -460,15 +468,18 @@ namespace hgl
                 if(!rc.Init(numberVertices,numberIndices))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.AccessVAB<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.AccessVAB<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.AccessVAB<VB2f>(VAN::TexCoord);
+                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
 
-                float *vp=vertex->Get();
-                float *np=normal?normal->Get():nullptr;
-                float *tp=tangent?tangent->Get():nullptr;
-                float *tcp=tex_coord?tex_coord->Get():nullptr;
+                float *vp=vertex;
+                float *np=normal;
+                float *tp=tangent;
+                float *tcp=tex_coord;
+
+                if(!vp)
+                    return(nullptr);
 
                 for (uint i = 0; i < numberParallels + 1; i++)
                 {
@@ -519,12 +530,12 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db,"Sphere");
+                return rc.Finish(db);
             }
 
             Primitive *CreateDome(RenderResource *db,const VIL *vil,const uint numberSlices)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Dome");
 
                 uint i, j;
 
@@ -545,16 +556,19 @@ namespace hgl
 
                 if(!rc.Init(numberVertices,numberIndices))
                     return(nullptr);
+                
+                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
 
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.AccessVAB<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.AccessVAB<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.AccessVAB<VB2f>(VAN::TexCoord);
-            
-                float *vp=vertex->Get();
-                float *np=normal?normal->Get():nullptr;
-                float *tp=tangent?tangent->Get():nullptr;
-                float *tcp=tex_coord?tex_coord->Get():nullptr;
+                float *vp=vertex;
+                float *np=normal;
+                float *tp=tangent;
+                float *tcp=tex_coord;
+
+                if(!vp)
+                    return(nullptr);
 
                 for (i = 0; i < numberParallels + 1; i++)
                 {
@@ -610,7 +624,7 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db,"Dome");
+                return rc.Finish(db);
             }
 
             namespace
@@ -650,7 +664,7 @@ namespace hgl
 
             Primitive *CreateTorus(RenderResource *db,const VIL *vil,const TorusCreateInfo *tci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Torus");
 
                 // s, t = parametric values of the equations, in the range [0,1]
                 float s = 0;
@@ -686,17 +700,20 @@ namespace hgl
                 tIncr = 1.0f / (float) tci->numberStacks;
 
                 if(!rc.Init(numberVertices,numberIndices))
+                    return(nullptr);                
+                
+                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
+
+                float *vp=vertex;
+                float *np=normal;
+                float *tp=tangent;
+                float *tcp=tex_coord;
+
+                if(!vp)
                     return(nullptr);
-
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.AccessVAB<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.AccessVAB<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.AccessVAB<VB2f>(VAN::TexCoord);
-
-                float *vp=vertex->Get();
-                float *np=normal?normal->Get():nullptr;
-                float *tp=tangent?tangent->Get():nullptr;
-                float *tcp=tex_coord?tex_coord->Get():nullptr;
 
                 // generate vertices and its attributes
                 for (sideCount = 0; sideCount <= tci->numberSlices; ++sideCount, s += sIncr)
@@ -755,7 +772,7 @@ namespace hgl
                     if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(rc.AccessIBO<uint8 >(),tci->numberSlices,tci->numberStacks);else
                         return(nullptr);
                 }
-                return rc.Finish(db,"Torus");
+                return rc.Finish(db);
             }
 
             namespace
@@ -815,7 +832,7 @@ namespace hgl
                 if(numberIndices<=0)
                     return(nullptr);
 
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Cylinder");
 
                 uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
@@ -826,16 +843,19 @@ namespace hgl
 
                 if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
+                
+                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
 
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.AccessVAB<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.AccessVAB<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.AccessVAB<VB2f>(VAN::TexCoord);
+                float *vp=vertex;
+                float *np=normal;
+                float *tp=tangent;
+                float *tcp=tex_coord;
 
-                float *vp=vertex->Get();
-                float *np=normal?normal->Get():nullptr;
-                float *tp=tangent?tangent->Get():nullptr;
-                float *tcp=tex_coord?tex_coord->Get():nullptr;
+                if(!vp)
+                    return(nullptr);
 
                 *vp =  0.0f;             ++vp;
                 *vp =  0.0f;             ++vp;
@@ -989,7 +1009,7 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db,"Cylinder");
+                return rc.Finish(db);
             }
 
             namespace
@@ -1034,7 +1054,7 @@ namespace hgl
 
             Primitive *CreateCone(RenderResource *db,const VIL *vil,const ConeCreateInfo *cci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Cone");
 
                 uint i, j;
 
@@ -1052,16 +1072,19 @@ namespace hgl
 
                 if (cci->numberSlices < 3 || cci->numberStacks < 1 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
+                
+                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
 
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
-                AutoDelete<VB3f> normal=rc.AccessVAB<VB3f>(VAN::Normal);
-                AutoDelete<VB3f> tangent=rc.AccessVAB<VB3f>(VAN::Tangent);
-                AutoDelete<VB2f> tex_coord=rc.AccessVAB<VB2f>(VAN::TexCoord);
+                float *vp=vertex;
+                float *np=normal;
+                float *tp=tangent;
+                float *tcp=tex_coord;
 
-                float *vp=vertex->Get();
-                float *np=normal?normal->Get():nullptr;
-                float *tp=tangent?tangent->Get():nullptr;
-                float *tcp=tex_coord?tex_coord->Get():nullptr;
+                if(!vp)
+                    return(nullptr);
 
                 *vp =  0.0f;            ++vp;
                 *vp =  0.0f;            ++vp;
@@ -1160,22 +1183,22 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db,"Cone");
+                return rc.Finish(db);
             }
 
             Primitive *CreateAxis(RenderResource *db,const VIL *vil,const AxisCreateInfo *aci)
             {
                 if(!db||!vil||!aci)return(nullptr);
 
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"Axis");
 
                 if(!rc.Init(6,0))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
-                AutoDelete<VB4f> color=rc.AccessVAB<VB4f>(VAN::Color);
+                VABMap3f vertex(&rc,VAN::Position);
+                VABMap4f color(&rc,VAN::Color);
 
-                if(!vertex||!color)
+                if(!vertex.IsValid()||!color.IsValid())
                     return(nullptr);
 
                 const float s=aci->size;
@@ -1187,7 +1210,7 @@ namespace hgl
                 vertex->Write(0,0,0);color->Write(aci->color[2]);
                 vertex->Write(0,0,s);color->Write(aci->color[2]);
 
-                return rc.Finish(db,"Axis");
+                return rc.Finish(db);
             }
 
             Primitive *CreateBoundingBox(RenderResource *db,const VIL *vil,const BoundingBoxCreateInfo *cci)
@@ -1212,24 +1235,21 @@ namespace hgl
                     0,4,    1,5,    2,6,    3,7
                 };
 
-                PrimitiveCreater rc(db->GetDevice(),vil);
+                PrimitiveCreater rc(db->GetDevice(),vil,"BoundingBox");
 
                 if(!rc.Init(8,24,IndexType::U16))
                     return(nullptr);
 
-                AutoDelete<VB3f> vertex=rc.AccessVAB<VB3f>(VAN::Position);
-
-                if(!vertex)return(nullptr);
-
-                rc.WriteVAB(VAN::Position,points,sizeof(points));
+                if(!rc.WriteVAB(VAN::Position,VF_V3F,points,sizeof(points)))
+                    return(nullptr);
 
                 if(cci->color_type!=BoundingBoxCreateInfo::ColorType::NoColor)
                 {
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    AutoDelete<VB4f> color=rc.AccessVAB<VB4f>(VAN::Color);
+                    VABMap4f color(&rc,VAN::Color);
 
-                    if(color)
+                    if(color.IsValid())
                     {
                         if(cci->color_type==BoundingBoxCreateInfo::ColorType::SameColor)
                             color->RepeatWrite(cci->color[0],8);
@@ -1241,7 +1261,7 @@ namespace hgl
 
                 rc.WriteIBO<uint16>(indices);
 
-                return rc.Finish(db,"BoundingBox");
+                return rc.Finish(db);
             }
         }//namespace inline_geometry
     }//namespace graph

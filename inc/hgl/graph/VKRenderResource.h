@@ -147,7 +147,8 @@ public: //Material
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
-    Primitive *         CreatePrimitive(const AnsiString &,const uint32_t vertex_count=0);
+    Primitive *         CreatePrimitive(                    const AnsiString &,PrimitiveData *);    
+    Primitive *         CreatePrimitive(VertexDataManager *,const AnsiString &,PrimitiveData *);
 
     Renderable *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
 

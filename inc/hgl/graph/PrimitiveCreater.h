@@ -7,9 +7,6 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
-class VertexDataManager;
-struct PrimitiveData;
-
 /**
  * 可绘制图元创建器
  */
@@ -24,34 +21,38 @@ protected:
 
 protected:
 
-    PrimitiveData *     prim_data;
-
-    void_pointer        vab_map_ptr[HGL_MAX_VERTEX_ATTRIB_COUNT];
+    AnsiString        prim_name;        ///<名称
+    PrimitiveData *   prim_data;        ///<图元数据
     
-    VkDeviceSize        vertices_number;
-    IndexBuffer *       ibo;
-    void *              ibo_map;
+    VkDeviceSize      vertices_number;  ///<顶点数量
+    uint              vab_proc_count;   ///<操作的vab数量
+
+    VkDeviceSize      index_number;     ///<索引数量
+    IndexBuffer *     ibo;
+    void *            ibo_map;
 
 protected:
-
-    template<typename T> friend class VABRawMap;
-    template<typename T> friend class VABMap;
-
-    VABAccess *AcquirePVB(const AnsiString &,const VkFormat &,const void *data);           ///<请求一个顶点属性数据区
 
     void ClearAllData();
 
 public:
 
-    PrimitiveCreater(GPUDevice *,const VIL *);
+    PrimitiveCreater(GPUDevice *,const VIL *,const AnsiString &name);
     //PrimitiveCreater(VertexDataManager *);
-    virtual ~PrimitiveCreater();
+    virtual ~PrimitiveCreater()
+    {
+        ClearAllData();
+    }
 
     virtual bool                    Init(const VkDeviceSize vertices_count,const VkDeviceSize index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
     
             const   VkDeviceSize    GetVertexCount()const{ return vertices_number; }                            ///<取得顶点数量
 
-                    bool            WriteVAB(const AnsiString &name,const void *data,const uint32_t bytes);     ///<直接写入顶点属性数据
+                    VABAccess *     AcquirePVB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr,const VkDeviceSize bytes=0);           ///<请求一个顶点属性数据区
+                    bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data,const uint32_t bytes)     ///<直接写入顶点属性数据
+                    {
+                        return AcquirePVB(name,format,data,bytes);
+                    }
 
             const   IndexType       GetIndexType()const{return ibo?ibo->GetType():IndexType::ERR;}              ///<取得索引数据类型
 
@@ -61,6 +62,9 @@ public:
                 if(!ibo)return(nullptr);
                 if(ibo->GetStride()!=sizeof(T))return(nullptr);
 
+                if(!ibo_map)
+                    ibo_map=ibo->Map();
+
                 return (T *)ibo_map;
             }
 
@@ -69,12 +73,19 @@ public:
                 if(!ibo)return(false);
                 if(ibo->GetStride()!=sizeof(T))return(false);
 
-                hgl_cpy<T>((T *)ibo_map,data,index_number);
+                if(ibo_map)
+                {
+                    hgl_cpy<T>((T *)ibo_map,data,index_number);
+                    ibo->Unmap();
+                    ibo_map=nullptr;
+                }
+                else
+                    ibo->Write(data);
 
                 return(true);
             }
 
-    virtual Primitive *             Finish(RenderResource *,const AnsiString &);                                                                   ///<结束并创建可渲染对象
+    virtual Primitive *             Finish(RenderResource *);                                                                   ///<结束并创建可渲染对象
 };//class PrimitiveCreater
 
 /**
@@ -87,19 +98,25 @@ template<typename T> class VABRawMap
 
 public:
 
-    VABRawMap(PrimitiveCreater *pc,const AnsiString &name)
+    VABRawMap(PrimitiveCreater *pc,const VkFormat &format,const AnsiString &name)
     {
-        vaba=pc->AcquirePVB(name,T::GetVulkanFormat(),nullptr);
+        vaba=pc->AcquirePVB(name,format);
 
-        map_ptr=(T *)(vaba->vab->Map(vaba->start,vaba->count));
+        if(vaba)
+            map_ptr=(T *)(vaba->vab->Map(vaba->start,vaba->count));
+        else
+            map_ptr=nullptr;
     }
 
     ~VABRawMap()
     {
-        vaba->vab->Unmap();
+        if(vaba)
+            vaba->vab->Unmap();
     }
 
-    T *operator->(){ return map_ptr; }
+    const bool IsValid()const{ return vaba; }
+
+    operator T *(){ return map_ptr; }
 };//template<typename T> class VABRawMap
 
 typedef VABRawMap<int8>   VABRawMapi8, VABRawMapByte;
@@ -125,22 +142,33 @@ public:
     {
         vaba=pc->AcquirePVB(name,T::GetVulkanFormat(),nullptr);
 
-        void *map_ptr=vaba->vab->Map(vaba->start,vaba->count);
+        if(vaba)
+        {
+            void *map_ptr=vaba->vab->Map(vaba->start,vaba->count);
 
-        vb=T::Create(pc->GetVertexCount(),map_ptr);
+            vb=T::Create(pc->GetVertexCount(),map_ptr);
 
-        vb->Begin();
+            vb->Begin();
+        }
+        else
+        {
+            vb=nullptr;
+        }
     }
 
     ~VABMap()
     {
-        vaba->vab->Unmap();
+        if(vaba)
+            vaba->vab->Unmap();
     }
 
     void Restart()
     {
-        vb->Begin();
+        if(vb)
+            vb->Begin();
     }
+
+    const bool IsValid()const{ return vb; }
 
     T *operator->(){ return vb; }
 };//template<typename T> class VABMap

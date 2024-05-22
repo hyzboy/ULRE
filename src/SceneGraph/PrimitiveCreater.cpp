@@ -5,16 +5,24 @@
 #include<hgl/graph/VertexDataManager.h>
 
 VK_NAMESPACE_BEGIN
-PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
+
+PrimitiveData *CreatePrimitiveData(const VIL *_vil,const VkDeviceSize vc);
+void        SetIndexBuffer( PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic);
+VABAccess * GetVABAccess(   PrimitiveData *pd,const int);
+void        Destory(        PrimitiveData *pd);
+
+PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v,const AnsiString &name)
 {
     device          =dev;
     phy_device      =device->GetPhysicalDevice();
     vil             =v;
 
-    prim_data       =hgl_zero_new<PrimitiveData>();
+    prim_name       =name;
+    prim_data       =nullptr;
 
-    vertices_number=0;
-    hgl_zero(vab_ptr);
+    vertices_number =0;
+    vab_proc_count  =0;
+    index_number    =0;
 
     ibo             =nullptr;
     ibo_map         =nullptr;
@@ -34,24 +42,15 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
 //    ibo_map         =nullptr;
 //}
 
-PrimitiveCreater::~PrimitiveCreater()
-{
-    if(prim_data)
-    {
-        if(ibo_map)
-            ibo->Unmap();
-
-        delete prim_data;
-    }
-}
-
 bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize index_count,IndexType it)
 {
     if(vertex_count<=0)return(false);
 
-    vertices_number=vertex_count;
+    prim_data=CreatePrimitiveData(vil,vertex_count);
 
-    InitPrimitiveData(prim_data,vil,vertex_count);
+    if(!prim_data)return(false);
+
+    vertices_number=vertex_count;
 
     if(index_count>0)
     {
@@ -72,15 +71,25 @@ bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize i
 
         if(!ibo)return(false);
 
-        SetIndexBuffer(prim_data,ibo,index_count);
+        index_number=index_count;
 
-        ibo_map=ibo->Map();
+        SetIndexBuffer(prim_data,ibo,index_count);
+        
+    #ifdef _DEBUG
+        DebugUtils *du=device->GetDebugUtils();
+
+        if(du)
+        {
+            du->SetBuffer(      ibo->GetBuffer(),   prim_name+":IndexBuffer:Buffer");
+            du->SetDeviceMemory(ibo->GetVkMemory(), prim_name+":IndexBuffer:Memory");
+        }
+    #endif//_DEBUG
     }
 
     return(true);
 }
 
-VABAccess *PrimitiveCreater::AcquirePVB(const AnsiString &name,const VkFormat &acquire_format,const void *data)
+VABAccess *PrimitiveCreater::AcquirePVB(const AnsiString &name,const VkFormat &acquire_format,const void *data,const VkDeviceSize bytes)
 {
     if(!vil)return(nullptr);
     if(name.IsEmpty())return(nullptr);
@@ -97,122 +106,82 @@ VABAccess *PrimitiveCreater::AcquirePVB(const AnsiString &name,const VkFormat &a
 
     if(vif->format!=acquire_format)
         return(nullptr);
+    
+    if(data)
+        if(vif->stride*vertices_number!=bytes)
+            return(nullptr);
 
-    VABAccess *vab=GetVAB(prim_data,index);
+    VABAccess *vab_access=GetVABAccess(prim_data,index);
 
-    if(vab)
-        return vab;
+    if(!vab_access)
+        return(nullptr);
 
-    vad->vab    =device->CreateVAB(vif->format,vertices_number,data);
+    if(!vab_access->vab)
+    {
+        vab_access->vab=device->CreateVAB(vif->format,vertices_number,data);
+        vab_access->start=0;
+        vab_access->count=vertices_number;
+        
+    #ifdef _DEBUG
+        DebugUtils *du=device->GetDebugUtils();
 
-    if(!data)
-        vad->map_ptr=vad->vab->Map();
-    else
-        vad->map_ptr=nullptr;
+        if(du)
+        {
+            du->SetBuffer(      vab_access->vab->GetBuffer(),   prim_name+":VAB:Buffer:"+name);
+            du->SetDeviceMemory(vab_access->vab->GetVkMemory(), prim_name+":VAB:Memory:"+name);
+        }
+    #endif//_DEBUG
 
-    vab_map.Add(name,*vad);
+        ++vab_proc_count;
+    }
 
-    return true;
-}
+    if(data)
+        vab_access->vab->Write(data,bytes);
 
-bool PrimitiveCreater::WriteVAB(const AnsiString &name,const void *data,const uint32_t bytes)
-{
-    if(!vil)return(false);
-    if(name.IsEmpty())return(false);
-    if(!data)return(false);
-    if(!bytes)return(false);
-            
-    const VertexInputFormat *vif=vil->GetConfig(name);
-
-    if(!vif)
-        return(false);
-
-    if(vif->stride*vertices_number!=bytes)
-        return(false);
-
-    VABAccess vad;
-
-    return AcquirePVB(&vad,name,data);
+    return vab_access;
 }
 
 void PrimitiveCreater::ClearAllData()
 {
-    if(vab_map.GetCount()>0)
-    {
-        const auto *sp=vab_map.GetDataList();
-        for(int i=0;i<vab_map.GetCount();i++)
-        {
-            if((*sp)->value.vab)
-            {
-                (*sp)->value.vab->Unmap();
-                delete (*sp)->value.vab;
-            }
-                
-            ++sp;
-        }
-    }
-
-    if(ibo)
+    if(ibo_map)
     {
         ibo->Unmap();
-        delete ibo;
-        ibo=nullptr;
+        ibo_map=nullptr;
+    }
+
+    ibo=nullptr;
+
+    if(prim_data)
+    {
+        Destory(prim_data);
+        prim_data=nullptr;
     }
 }
 
-Primitive *PrimitiveCreater::Finish(RenderResource *rr,const AnsiString &prim_name)
+Primitive *PrimitiveCreater::Finish(RenderResource *rr)
 {
     const uint si_count=vil->GetCount(VertexInputGroup::Basic);
 
-    if(vab_map.GetCount()!=si_count)
+    if(vab_proc_count!=si_count)
         return(nullptr);
 
-    Primitive *primitive=rr->CreatePrimitive(prim_name,vertices_number);
-
-    {
-        const auto *sp=vab_map.GetDataList();
-        for(uint i=0;i<si_count;i++)
-        {
-            if((*sp)->value.vab)
-            {
-                if((*sp)->value.map_ptr)
-                    (*sp)->value.vab->Unmap();
-
-                primitive->SetVAB((*sp)->key,(*sp)->value.vab);
-            }
-            else
-            {
-                ClearAllData();
-                return(nullptr);
-            }
-
-            ++sp;
-        }
-    }
-
-    {
-        const auto *sp=vab_map.GetDataList();
-        for(uint i=0;i<si_count;i++)
-        {
-            if((*sp)->value.vab)
-                rr->Add((*sp)->value.vab);
-
-            ++sp;
-        }
-
-        vab_map.Clear();
-    }
-
-    if(ibo)
+    if(ibo_map)
     {
         ibo->Unmap();
-        primitive->SetIndex(ibo,0,index_number);
-
-        rr->Add(ibo);
-        ibo=nullptr;    //避免释构函数删除
+        ibo_map=nullptr;
     }
 
-    rr->Add(primitive);
+    Primitive *primitive=rr->CreatePrimitive(prim_name,prim_data);
+
+    if(!primitive)
+    {
+        ClearAllData();
+        return(nullptr);
+    }
+
+    ibo_map=nullptr;
+    ibo=nullptr;
+    prim_data=nullptr;
 
     return primitive;
 }

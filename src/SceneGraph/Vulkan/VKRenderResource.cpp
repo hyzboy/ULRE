@@ -80,16 +80,34 @@ MaterialInstance *RenderResource::CreateMaterialInstance(const mtl::MaterialCrea
     return CreateMaterialInstance(mtl,vil_cfg);
 }
 
-Primitive *RenderResource::CreatePrimitive(const AnsiString &name,const uint32_t vertex_count)
+Primitive *CreatePrimitivePrivate(const AnsiString &,PrimitiveData *);
+
+Primitive *RenderResource::CreatePrimitive(const AnsiString &name,PrimitiveData *pd)
 {
-    if(!vertex_count)return(nullptr);
+    if(!pd)return(nullptr);
 
-    Primitive *ro=new Primitive(device,name,vertex_count);
+    Primitive *prim=CreatePrimitivePrivate(name,pd);
 
-    if(ro)
-        Add(ro);
+    if(prim)
+        Add(prim);
 
-    return ro;
+    return prim;
+}
+
+Primitive *CreatePrimitivePrivate(VertexDataManager *,const AnsiString &,PrimitiveData *);
+
+Primitive *RenderResource::CreatePrimitive(VertexDataManager *vdm,const AnsiString &name,PrimitiveData *pd)
+{
+    if(!vdm)return(nullptr);
+    if(!pd)return(nullptr);
+    if(name.IsEmpty())return(nullptr);
+
+    Primitive *prim=CreatePrimitivePrivate(vdm,name,pd);
+
+    if(prim)
+        Add(prim);
+
+    return prim;
 }
 
 Renderable *RenderResource::CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)

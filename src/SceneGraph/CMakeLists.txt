@@ -13,8 +13,7 @@ SET(SG_VDM_SOURCE   ${SG_INCLUDE_PATH}/VertexAttribDataAccess.h
 
 SOURCE_GROUP("VertexDataManager" FILES ${SG_VDM_SOURCE})
 
-SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitiveData.h
-                        ${SG_INCLUDE_PATH}/VKPrimitive.h
+SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitive.h
                         Vulkan/VKPrimitive.cpp
                         Vulkan/VKPrimitiveData.cpp
                         ${SG_INCLUDE_PATH}/VKRenderablePrimitiveCreater.h
