@@ -169,11 +169,18 @@ private:
     
     Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p,const Matrix4f &mat=Identity4f)
     {
+        if(!r)
+            return(nullptr);
+        if(!mi)
+            return(nullptr);
+        if(!p)
+            return(nullptr);
+
         Renderable *ri=db->CreateRenderable(r,mi,p);
 
         if(!ri)
         {
-            LOG_ERROR(OS_TEXT("Create Renderable failed."));
+            LOG_ERROR(U8_TEXT("Create Renderable failed! Primitive: ")+r->GetName());
             return(nullptr);
         }
 

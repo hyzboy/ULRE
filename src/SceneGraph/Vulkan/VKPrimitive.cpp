@@ -10,6 +10,66 @@
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
+
+const   VkDeviceSize    GetVertexCount( PrimitiveData *pd);
+const   int             GetVABCount(    PrimitiveData *pd);
+        VABAccess *     GetVABAccess(   PrimitiveData *pd,const AnsiString &name);
+        IBAccess *      GetIBAccess(    PrimitiveData *pd);
+        void            Destory(        PrimitiveData *pd);
+        void            Free(           PrimitiveData *pd);
+
+class PrimitivePrivateBuffer:public Primitive
+{
+public:
+
+    using Primitive::Primitive;
+
+    ~PrimitivePrivateBuffer() override
+    {
+        Destory(prim_data);
+    }
+    
+    friend Primitive *CreatePrimitivePrivate(const AnsiString &,PrimitiveData *);
+};//class PrimitivePrivateBuffer
+
+class PrimitiveVDM:public Primitive
+{
+    VertexDataManager *vdm;
+
+public:
+
+    PrimitiveVDM(VertexDataManager *_vdm,const AnsiString &pn,PrimitiveData *pd):Primitive(pn,pd)
+    {
+        vdm=_vdm;
+    }
+
+    ~PrimitiveVDM() override
+    {
+
+
+        Free(prim_data);
+    }
+
+    friend Primitive *CreatePrimitivePrivate(VertexDataManager *,const AnsiString &,PrimitiveData *);
+};//class PrimitiveVDM;
+
+Primitive *CreatePrimitivePrivate(const AnsiString &name,PrimitiveData *pd)
+{
+    if(!pd)return(nullptr);
+    if(name.IsEmpty())return(nullptr);
+
+    return(new PrimitivePrivateBuffer(name,pd));
+}
+
+Primitive *CreatePrimitivePrivate(VertexDataManager *vdm,const AnsiString &name,PrimitiveData *pd)
+{
+    if(!vdm)return(nullptr);
+    if(!pd)return(nullptr);
+    if(name.IsEmpty())return(nullptr);
+
+    return(new PrimitiveVDM(vdm,name,pd));
+}
+
 //bool Renderable::Set(const int stage_input_binding,VIL *vil,VkDeviceSize offset)
 //{
 //    if(stage_input_binding<0||stage_input_binding>=buf_count||!vil)return(false);
@@ -28,56 +88,24 @@ VK_NAMESPACE_BEGIN
 //    return(true);
 //}
 
-bool Primitive::SetVAB(const AnsiString &name,VAB *vab,VkDeviceSize start)
+const VkDeviceSize Primitive::GetVertexCount()const
 {
-    if(!vab)return(false);
-    if(vab_access_map.KeyExist(name))return(false);
-
-    VABAccess vad;
-
-    vad.vab=vab;
-    vad.start=start;
-
-    vab_access_map.Add(name,vad);
-
-#ifdef _DEBUG
-    DebugUtils *du=device->GetDebugUtils();
-
-    if(du)
-    {
-        du->SetBuffer(vab->GetBuffer(),prim_name+":VAB:Buffer:"+name);
-        du->SetDeviceMemory(vab->GetVkMemory(),prim_name+":VAB:Memory:"+name);
-    }
-#endif//_DEBUG
-
-    return(true);
+    return VK_NAMESPACE::GetVertexCount(prim_data);
 }
 
-const bool Primitive::GetVABAccess(const AnsiString &name,VABAccess *vad)
+const int Primitive::GetVACount()const
 {
-    if(name.IsEmpty())return(false);
-    if(!vad)return(false);
-
-    return vab_access_map.Get(name,*vad);
+    return GetVABCount(prim_data);
 }
 
-bool Primitive::SetIndex(IndexBuffer *ib,VkDeviceSize start,const VkDeviceSize index_count)
+VABAccess *Primitive::GetVABAccess(const AnsiString &name)
 {
-    if(!ib)return(false);
-
-    ib_access.buffer=ib;
-    ib_access.start=start;
-    ib_access.count=index_count;
-
-#ifdef _DEBUG
-    DebugUtils *du=device->GetDebugUtils();
-
-    if(du)
-    {
-        du->SetBuffer(ib->GetBuffer(),prim_name+":IBO:Buffer");
-        du->SetDeviceMemory(ib->GetVkMemory(),prim_name+":IBO:Memory");
-    }
-#endif//_DEBUG
-    return(true);
+    return VK_NAMESPACE::GetVABAccess(prim_data,name);
 }
+
+IBAccess *Primitive::GetIBAccess()
+{
+    return VK_NAMESPACE::GetIBAccess(prim_data);
+}
+
 VK_NAMESPACE_END

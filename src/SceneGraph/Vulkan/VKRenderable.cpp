@@ -58,48 +58,46 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    VAB *vab;
-
     VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIBAccess());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
-    VABAccess vad;
+    VABAccess *vab_access;
 
     for(uint i=0;i<input_count;i++)
     {
         //注: VIF来自于材质，但VAB来自于Primitive。
         //    两个并不一定一样，排序也不一定一样。所以不能让PRIMTIVE直接提供BUFFER_LIST/OFFSET来搞一次性绑定。
 
-        if(!prim->GetVABAccess(vif->name,&vad))
+        vab_access=prim->GetVABAccess(vif->name);
+
+        if(!vab_access||!vab_access->vab)
         {
             LOG_ERROR("[FATAL ERROR] not found VAB \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 
-        vab=vad.vab;
-
-        if(vab->GetFormat()!=vif->format)
+        if(vab_access->vab->GetFormat()!=vif->format)
         {
             LOG_ERROR(  "[FATAL ERROR] VAB \""+UTF8String(vif->name)+
                         UTF8String("\" format can't match Renderable, Material(")+mtl_name+
                         UTF8String(") Format(")+GetVulkanFormatName(vif->format)+
-                        UTF8String("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
+                        UTF8String("), VAB Format(")+GetVulkanFormatName(vab_access->vab->GetFormat())+
                         ")");
             return(nullptr);
         }
 
-        if(vab->GetStride()!=vif->stride)
+        if(vab_access->vab->GetStride()!=vif->stride)
         {
             LOG_ERROR(  "[FATAL ERROR] VAB \""+UTF8String(vif->name)+
                         UTF8String("\" stride can't match Renderable, Material(")+mtl_name+
                         UTF8String(") stride(")+UTF8String::numberOf(vif->stride)+
-                        UTF8String("), VAB stride(")+UTF8String::numberOf(vab->GetStride())+
+                        UTF8String("), VAB stride(")+UTF8String::numberOf(vab_access->vab->GetStride())+
                         ")");
             return(nullptr);
         }
 
-        vid->buffer_offset[i]=vad.start;
-        vid->buffer_list[i]=vab->GetBuffer();
+        vid->buffer_offset[i]=vab_access->start;
+        vid->buffer_list[i]=vab_access->vab->GetBuffer();
         ++vif;
     }
 

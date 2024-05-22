@@ -3,10 +3,9 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/AABB.h>
-#include<hgl/graph/VKPrimitiveData.h>
+#include<hgl/graph/VK.h>
 
 VK_NAMESPACE_BEGIN
-
 /**
  * 单一图元数据访问接口<br>
  * 
@@ -26,31 +25,35 @@ class Primitive
 protected:
 
     AnsiString prim_name;
-
     PrimitiveData *prim_data;
 
 protected:
 
     AABB BoundingBox;
 
-public:
+protected:
 
-    Primitive(const AnsiString &n)
+    Primitive(const AnsiString &pn,PrimitiveData *pd)
     {
-        prim_name=n;
+        prim_name=pn;
+        prim_data=pd;
     }
 
-    virtual ~Primitive()=0;
+public:
+
+    virtual ~Primitive()=default;
 
 public:
 
-    virtual const   VkDeviceSize    GetVertexCount  ()const=0;
-    virtual const   int             GetVACount      ()const=0;
-    virtual const   bool            GetVABAccess    (const AnsiString &,VABAccess *)=0;
-    virtual const   IBAccess *      GetIBAccess     ()const=0;
+    const   AnsiString &    GetName         ()const{ return prim_name; }
+    const   VkDeviceSize    GetVertexCount  ()const;
+    const   int             GetVACount      ()const;
+            VABAccess *     GetVABAccess    (const AnsiString &);
+            IBAccess *      GetIBAccess     ();
 
-            const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
+    const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive
 
-Primitive *CreatePrimitive(const PrimitiveData *);
+Primitive *CreatePrimitivePrivate(const AnsiString &,PrimitiveData *);
+Primitive *CreatePrimitivePrivate(VertexDataManager *,const AnsiString &,PrimitiveData *);
 VK_NAMESPACE_END

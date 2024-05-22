@@ -122,6 +122,7 @@ struct PrimitiveData;
 class Primitive;
 class Renderable;
 
+class VertexDataManager;
 class RenderResource;
 
 enum class SharingMode

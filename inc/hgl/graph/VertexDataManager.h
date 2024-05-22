@@ -9,8 +9,6 @@ namespace hgl
 {
     namespace graph
     {
-        class VertexDataManager;
-
         struct IBAccessNode:public IBAccess
         {
         private:
