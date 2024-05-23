@@ -2,7 +2,7 @@
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKPrimitive.h>
-#include<hgl/graph/VertexDataManager.h>
+//#include<hgl/graph/VertexDataManager.h>
 
 VK_NAMESPACE_BEGIN
 
