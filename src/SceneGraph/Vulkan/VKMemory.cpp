@@ -51,7 +51,7 @@ void *DeviceMemory::Map()
 
 void *DeviceMemory::Map(const VkDeviceSize offset,const VkDeviceSize size)
 {
-    if(offset<0||offset+size>=req.size)
+    if(offset<0||offset+size>req.size)
         return(nullptr);
 
     void *result;
