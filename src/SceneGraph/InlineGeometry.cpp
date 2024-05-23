@@ -354,8 +354,12 @@ namespace hgl
                 return rc.Finish(db);
             }
 
-            template<typename T> void CreateSphereIndices(T *tp,uint numberParallels,const uint numberSlices)
+            template<typename T> 
+            void CreateSphereIndices(PrimitiveCreater *pc,uint numberParallels,const uint numberSlices)
             {
+                IBMap<T> ib_map(pc);
+                T *tp=ib_map;
+
                 for (uint i = 0; i < numberParallels; i++)
                 {
                     for (uint j = 0; j < numberSlices; j++)
@@ -524,9 +528,9 @@ namespace hgl
                 {
                     const IndexType index_type=rc.GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(rc.AccessIBO<uint16>(),numberParallels,numberSlices);else
-                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(rc.AccessIBO<uint32>(),numberParallels,numberSlices);else
-                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(rc.AccessIBO<uint8 >(),numberParallels,numberSlices);else
+                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(&rc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(&rc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(&rc,numberParallels,numberSlices);else
                         return(nullptr);
                 }
 
@@ -618,9 +622,9 @@ namespace hgl
                 {
                     const IndexType index_type=rc.GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(rc.AccessIBO<uint16>(),numberParallels,numberSlices);else
-                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(rc.AccessIBO<uint32>(),numberParallels,numberSlices);else
-                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(rc.AccessIBO<uint8 >(),numberParallels,numberSlices);else
+                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(&rc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(&rc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(&rc,numberParallels,numberSlices);else
                         return(nullptr);
                 }
 
@@ -630,8 +634,11 @@ namespace hgl
             namespace
             {
                 template<typename T>
-                void CreateTorusIndices(T *tp,uint numberSlices,uint numberStacks)
+                void CreateTorusIndices(PrimitiveCreater *pc,uint numberSlices,uint numberStacks)
                 {
+                    IBMap<T> ib_map(pc);
+                    T *tp=ib_map;
+
                     // loop counters
                     uint sideCount, faceCount;
 
@@ -767,9 +774,9 @@ namespace hgl
                 {
                     const IndexType index_type=rc.GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateTorusIndices<uint16>(rc.AccessIBO<uint16>(),tci->numberSlices,tci->numberStacks);else
-                    if(index_type==IndexType::U32)CreateTorusIndices<uint32>(rc.AccessIBO<uint32>(),tci->numberSlices,tci->numberStacks);else
-                    if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(rc.AccessIBO<uint8 >(),tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U16)CreateTorusIndices<uint16>(&rc,tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U32)CreateTorusIndices<uint32>(&rc,tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(&rc,tci->numberSlices,tci->numberStacks);else
                         return(nullptr);
                 }
                 return rc.Finish(db);
@@ -778,8 +785,10 @@ namespace hgl
             namespace
             {
                 template<typename T>
-                void CreateCylinderIndices(T *tp,const uint numberSlices)
+                void CreateCylinderIndices(PrimitiveCreater *pc,const uint numberSlices)
                 {
+                    IBMap<T> ib_map(pc);
+                    T *tp=ib_map;
                     uint i;
 
                     T centerIndex = 0;
@@ -1003,9 +1012,9 @@ namespace hgl
                 {
                     const IndexType index_type=rc.GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateCylinderIndices<uint16>(rc.AccessIBO<uint16>(),cci->numberSlices);else
-                    if(index_type==IndexType::U32)CreateCylinderIndices<uint32>(rc.AccessIBO<uint32>(),cci->numberSlices);else
-                    if(index_type==IndexType::U8 )CreateCylinderIndices<uint8 >(rc.AccessIBO<uint8 >(),cci->numberSlices);else
+                    if(index_type==IndexType::U16)CreateCylinderIndices<uint16>(&rc,cci->numberSlices);else
+                    if(index_type==IndexType::U32)CreateCylinderIndices<uint32>(&rc,cci->numberSlices);else
+                    if(index_type==IndexType::U8 )CreateCylinderIndices<uint8 >(&rc,cci->numberSlices);else
                         return(nullptr);
                 }
 
@@ -1015,8 +1024,11 @@ namespace hgl
             namespace
             {
                 template<typename T>
-                void CreateConeIndices(T *tp,const uint numberSlices,const uint numberStacks)
+                void CreateConeIndices(PrimitiveCreater *pc,const uint numberSlices,const uint numberStacks)
                 {
+                    IBMap<T> ib_map(pc);
+                    T *tp=ib_map;
+
                     // Bottom
                     uint centerIndex = 0;
                     uint indexCounter = 1;
@@ -1177,9 +1189,9 @@ namespace hgl
                 {
                     const IndexType index_type=rc.GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateConeIndices<uint16>(rc.AccessIBO<uint16>(),cci->numberSlices,cci->numberStacks);else
-                    if(index_type==IndexType::U32)CreateConeIndices<uint32>(rc.AccessIBO<uint32>(),cci->numberSlices,cci->numberStacks);else
-                    if(index_type==IndexType::U8 )CreateConeIndices<uint8 >(rc.AccessIBO<uint8 >(),cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U16)CreateConeIndices<uint16>(&rc,cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U32)CreateConeIndices<uint32>(&rc,cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U8 )CreateConeIndices<uint8 >(&rc,cci->numberSlices,cci->numberStacks);else
                         return(nullptr);
                 }
 

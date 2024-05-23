@@ -144,14 +144,14 @@ VABAccess *GetVABAccess(PrimitiveData *pd,const AnsiString &name)
 //    return vaba;
 //}
 
-void SetIndexBuffer(PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic)
-{
-    if(!pd)return;
-    
-    pd->ib_access.buffer=ib;
-    pd->ib_access.start=0;
-    pd->ib_access.count=ic;
-}
+//void SetIndexBuffer(PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic)
+//{
+//    if(!pd)return;
+//    
+//    pd->ib_access.buffer=ib;
+//    pd->ib_access.start=0;
+//    pd->ib_access.count=ic;
+//}
 
 IBAccess *GetIBAccess(PrimitiveData *pd)
 {
