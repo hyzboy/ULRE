@@ -28,8 +28,7 @@ protected:
     uint              vab_proc_count;   ///<操作的vab数量
 
     VkDeviceSize      index_number;     ///<索引数量
-    IndexBuffer *     ibo;
-    void *            ibo_map;
+    IBAccess *        iba;
 
 protected:
 
@@ -54,36 +53,13 @@ public:
                         return AcquirePVB(name,format,data,bytes);
                     }
 
-            const   IndexType       GetIndexType()const{return ibo?ibo->GetType():IndexType::ERR;}              ///<取得索引数据类型
+            const   IndexType       GetIndexType()const{return iba->buffer->GetType();}
+                    IBAccess *      AcquireIBO(){return iba;}
 
-            template<typename T> 
-                    T *             AccessIBO()
-            {
-                if(!ibo)return(nullptr);
-                if(ibo->GetStride()!=sizeof(T))return(nullptr);
+                    bool            WriteIBO(const void *data,const VkDeviceSize bytes);
 
-                if(!ibo_map)
-                    ibo_map=ibo->Map();
-
-                return (T *)ibo_map;
-            }
-
-            template<typename T> bool WriteIBO(const T *data)
-            {
-                if(!ibo)return(false);
-                if(ibo->GetStride()!=sizeof(T))return(false);
-
-                if(ibo_map)
-                {
-                    hgl_cpy<T>((T *)ibo_map,data,index_number);
-                    ibo->Unmap();
-                    ibo_map=nullptr;
-                }
-                else
-                    ibo->Write(data);
-
-                return(true);
-            }
+                    template<typename T>
+                    bool            WriteIBO(const T *data){return WriteIBO(data,index_number*sizeof(T));}
 
     virtual Primitive *             Finish(RenderResource *);                                                                   ///<结束并创建可渲染对象
 };//class PrimitiveCreater
@@ -204,5 +180,42 @@ typedef VABMap<VB4u16>  VABMap4u16,VABMap4us;
 typedef VABMap<VB4u32>  VABMap4u32,VABMap4ui;
 typedef VABMap<VB4f>    VABMap4f;
 typedef VABMap<VB4d>    VABMap4d;
+
+/**
+* 索引缓冲区映射访问
+*/
+template<typename T> class IBMap
+{
+    IBAccess *iba;
+    T *map_ptr;
+
+public:
+
+    IBMap(IBAccess *a)
+    {
+        iba=a;
+
+        if(iba)
+            map_ptr=(T *)(iba->buffer->Map(iba->start,iba->count));
+        else
+            map_ptr=nullptr;
+    }
+
+    IBMap(PrimitiveCreater *pc):IBMap(pc->AcquireIBO()){}
+
+    ~IBMap()
+    {
+        if(iba)
+            iba->buffer->Unmap();
+    }
+
+    const bool IsValid()const{ return iba; }
+
+    operator T *(){ return map_ptr; }
+};//template<typename T> class IBMap
+
+using IBMapU8=IBMap<uint8>;
+using IBMapU16=IBMap<uint16>;
+using IBMapU32=IBMap<uint32>;
 
 VK_NAMESPACE_END

@@ -7,6 +7,7 @@
 VK_NAMESPACE_BEGIN
 
 PrimitiveData *CreatePrimitiveData(const VIL *_vil,const VkDeviceSize vc);
+IBAccess *  GetIBAccess(    PrimitiveData *pd);
 void        SetIndexBuffer( PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic);
 VABAccess * GetVABAccess(   PrimitiveData *pd,const int);
 void        Destory(        PrimitiveData *pd);
@@ -22,10 +23,9 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v,const AnsiString 
 
     vertices_number =0;
     vab_proc_count  =0;
-    index_number    =0;
 
-    ibo             =nullptr;
-    ibo_map         =nullptr;
+    index_number    =0;
+    iba             =nullptr;
 }
 
 //PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
@@ -67,21 +67,24 @@ bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize i
                 return(false);
         }
 
-        ibo=device->CreateIBO(it,index_count);
+        iba=GetIBAccess(prim_data);
 
-        if(!ibo)return(false);
+        iba->buffer=device->CreateIBO(it,index_count);
+
+        if(!iba->buffer)return(false);
+
+        iba->start=0;
+        iba->count=index_count;
 
         index_number=index_count;
-
-        SetIndexBuffer(prim_data,ibo,index_count);
         
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
 
         if(du)
         {
-            du->SetBuffer(      ibo->GetBuffer(),   prim_name+":IndexBuffer:Buffer");
-            du->SetDeviceMemory(ibo->GetVkMemory(), prim_name+":IndexBuffer:Memory");
+            du->SetBuffer(      iba->buffer->GetBuffer(),   prim_name+":IndexBuffer:Buffer");
+            du->SetDeviceMemory(iba->buffer->GetVkMemory(), prim_name+":IndexBuffer:Memory");
         }
     #endif//_DEBUG
     }
@@ -141,15 +144,19 @@ VABAccess *PrimitiveCreater::AcquirePVB(const AnsiString &name,const VkFormat &a
     return vab_access;
 }
 
+bool PrimitiveCreater::WriteIBO(const void *data,const VkDeviceSize bytes)
+{
+    if(!data)return(false);
+
+    if(bytes>0)
+        if(iba->buffer->GetStride()*index_number<bytes)return(false);
+
+   return iba->buffer->Write(data,bytes);
+}
+
 void PrimitiveCreater::ClearAllData()
 {
-    if(ibo_map)
-    {
-        ibo->Unmap();
-        ibo_map=nullptr;
-    }
-
-    ibo=nullptr;
+    iba=nullptr;
 
     if(prim_data)
     {
@@ -165,12 +172,6 @@ Primitive *PrimitiveCreater::Finish(RenderResource *rr)
     if(vab_proc_count!=si_count)
         return(nullptr);
 
-    if(ibo_map)
-    {
-        ibo->Unmap();
-        ibo_map=nullptr;
-    }
-
     Primitive *primitive=rr->CreatePrimitive(prim_name,prim_data);
 
     if(!primitive)
@@ -179,8 +180,7 @@ Primitive *PrimitiveCreater::Finish(RenderResource *rr)
         return(nullptr);
     }
 
-    ibo_map=nullptr;
-    ibo=nullptr;
+    iba=nullptr;
     prim_data=nullptr;
 
     return primitive;
