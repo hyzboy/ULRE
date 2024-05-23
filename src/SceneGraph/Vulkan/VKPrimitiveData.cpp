@@ -47,6 +47,32 @@ void Free(PrimitiveData *pd)
     delete pd;
 }
 
+void Destory(PrimitiveData *pd)
+{
+    if(!pd)return;
+
+    VABAccess *vab=pd->vab_access;
+
+    for(uint32_t i=0;i<pd->vil->GetCount();i++)
+    {
+        if(vab->vab)
+        {
+            delete vab->vab;
+            vab->vab=nullptr;
+        }
+
+        ++vab;
+    }
+
+    if(pd->ib_access.buffer)
+    {
+        delete pd->ib_access.buffer;
+        pd->ib_access.buffer=nullptr;
+    }
+
+    delete pd;
+}
+
 const VkDeviceSize GetVertexCount(PrimitiveData *pd)
 {
     if(!pd)return(0);
@@ -117,30 +143,6 @@ VABAccess *GetVABAccess(PrimitiveData *pd,const AnsiString &name)
 //
 //    return vaba;
 //}
-
-void Destory(PrimitiveData *pd)
-{
-    if(!pd)return;
-
-    VABAccess *vab=pd->vab_access;
-
-    for(uint32_t i=0;i<pd->vil->GetCount();i++)
-    {
-        if(vab->vab)
-        {
-            delete vab->vab;
-            vab->vab=nullptr;
-        }
-
-        ++vab;
-    }
-
-    if(pd->ib_access.buffer)
-    {
-        delete pd->ib_access.buffer;
-        pd->ib_access.buffer=nullptr;
-    }
-}
 
 void SetIndexBuffer(PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic)
 {
