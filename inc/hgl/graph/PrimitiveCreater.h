@@ -38,7 +38,7 @@ protected:
 public:
 
     PrimitiveCreater(GPUDevice *,const VIL *,const AnsiString &name);
-    //PrimitiveCreater(VertexDataManager *);
+    PrimitiveCreater(VertexDataManager *);
     virtual ~PrimitiveCreater()
     {
         ClearAllData();

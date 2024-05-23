@@ -8,15 +8,29 @@ namespace hgl
 {
     namespace graph
     {
-        IBAccessNode::~IBAccessNode()
+        class IBAccessVDM:public VDMAccess
         {
-            vdm->ReleaseIB(dc_node);
-        }
+            IBAccess *iba;
 
-        VABAccessNode::~VABAccessNode()
+        public:
+
+            ~IBAccessVDM() override
+            {
+                vdm->ReleaseIB(dc_node);
+            }
+        };//struct IBAccessVDM
+
+        class VABAccessVDM:public VDMAccess
         {
-            vdm->ReleaseVAB(dc_node);
-        }
+            VABAccess **vab;
+
+        public:
+
+            ~VABAccessVDM() override
+            {
+                vdm->ReleaseVAB(dc_node);
+            }
+        };//struct VABAccessVDM
     }//namespace graph
 
     namespace graph
@@ -84,7 +98,7 @@ namespace hgl
             return(true);
         }
 
-        IBAccessNode *VertexDataManager::AcquireIB(const VkDeviceSize count)
+        IBAccessVDM *VertexDataManager::AcquireIB(const VkDeviceSize count)
         {
             if(count<=0)return(false);
 
@@ -92,7 +106,7 @@ namespace hgl
 
             if(!un)return(false);
 
-            IBAccessNode *node=new IBAccessNode;
+            IBAccessVDM *node=new IBAccessVDM;
 
             node->vdm=this;
             node->dc_node=un;
@@ -119,7 +133,7 @@ namespace hgl
             return(true);
         }
 
-        VABAccessNode *VertexDataManager::AcquireVAB(const VkDeviceSize count)
+        VABAccessVDM *VertexDataManager::AcquireVAB(const VkDeviceSize count)
         {
             if(count<=0)return(false);
 
@@ -127,7 +141,7 @@ namespace hgl
 
             if(!un)return(false);
 
-            VABAccessNode *node=new VABAccessNode;
+            VABAccessVDM *node=new VABAccessVDM;
 
             node->vdm=this;
             node->dc_node=un;

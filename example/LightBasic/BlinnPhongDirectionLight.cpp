@@ -10,7 +10,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/BlinnPhong.h>
-#include<hgl/graph/VertexDataManager.h>
+//#include<hgl/graph/VertexDataManager.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -49,7 +49,7 @@ private:
 private:    //sphere
 
     Material *          mtl_blinnphong      =nullptr;
-    VertexDataManager * vdm_blinnphong      =nullptr;
+    //VertexDataManager * vdm_blinnphong      =nullptr;
 
     MaterialInstance *  mi_blinnphong[4]{};
     Pipeline *          p_blinnphong        =nullptr;
@@ -100,7 +100,7 @@ private:
         mtl_blinnphong->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
         mtl_blinnphong->Update();
 
-        vdm_blinnphong=new VertexDataManager(device,mtl_blinnphong->GetDefaultVIL());
+        //vdm_blinnphong=new VertexDataManager(device,mtl_blinnphong->GetDefaultVIL());
 
         Color4f mi_data;
         for(uint i=0;i<4;i++)
