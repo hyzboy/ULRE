@@ -42,11 +42,11 @@ public:
             void *  Map     ()                                              {return buf.memory->Map();}
     virtual void *  Map     (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Map(start,size);}
             void    Unmap   ()                                              {return buf.memory->Unmap();}
-            void    Flush   (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Flush(start,size);}
-            void    Flush   (VkDeviceSize size)                             {return buf.memory->Flush(size);}
+    virtual void    Flush   (VkDeviceSize start,VkDeviceSize size)          {return buf.memory->Flush(start,size);}
+    virtual void    Flush   (VkDeviceSize size)                             {return buf.memory->Flush(size);}
 
-            bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
-            bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
+    virtual bool    Write   (const void *ptr,uint32_t start,uint32_t size)  {return buf.memory->Write(ptr,start,size);}
+    virtual bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
             bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
 };//class DeviceBuffer
 VK_NAMESPACE_END

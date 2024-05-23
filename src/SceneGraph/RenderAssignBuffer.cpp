@@ -84,7 +84,7 @@ void RenderL2WBuffer::WriteNode(RenderNode *render_node,const uint count)
 
     for(uint col=0;col<4;col++)
     {
-        tp=(glm::vec4 *)(l2w_vbo[col]->Map());
+        tp=(glm::vec4 *)(l2w_vbo[col]->DeviceBuffer::Map());
 
         rn=render_node;
 
@@ -172,7 +172,7 @@ void RenderMIBuffer::WriteNode(RenderNode *render_node,const uint count,const Ma
 
     mi_data_buffer->Unmap();
 
-    uint16 *idp=(uint16 *)(mi_vab->Map());
+    uint16 *idp=(uint16 *)(mi_vab->DeviceBuffer::Map());
 
     {
         rn=render_node;

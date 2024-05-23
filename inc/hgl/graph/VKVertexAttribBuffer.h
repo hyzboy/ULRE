@@ -33,6 +33,15 @@ namespace hgl
             const uint32_t GetCount ()const { return count; }
 
             const VkDeviceSize GetBytes()const { return stride*count; }
+            
+        public:
+
+            void *  Map     (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Map(start*stride,size*stride);}
+            void    Flush   (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Flush(start*stride,size*stride); }
+            void    Flush   (VkDeviceSize size)                             override {return DeviceBuffer::Flush(size*stride);}
+            
+            bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return DeviceBuffer::Write(ptr,start*stride,size*stride);}
+            bool    Write   (const void *ptr,uint32_t size)                 override {return DeviceBuffer::Write(ptr,0,size*stride);}
         };//class VertexAttribBuffer:public DeviceBuffer
 
         using VAB=VertexAttribBuffer;
