@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKIndexBuffer.h>
-#include<hgl/graph/VDMAccess.h>
+#include<hgl/type/DataChain.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -28,20 +28,12 @@ protected:
     DataChain       vbo_data_chain; ///<数据链
     DataChain       ibo_data_chain; ///<数据链
 
-protected:
-
-    friend struct IBAccessVDM;
-    friend struct VABAccessVDM;
-
-    bool ReleaseIB(DataChain::UserNode *);
-    bool ReleaseVAB(DataChain::UserNode *);
-
 public:
 
     VertexDataManager(GPUDevice *dev,const VIL *_vil);
     ~VertexDataManager();
 
-            GPUDevice *   GetDevice       ()const{return device;}                                     ///<取得GPU设备
+          GPUDevice *   GetDevice       ()const{return device;}                                     ///<取得GPU设备
 
     const VIL *         GetVIL          ()const{return vil;}                                         ///<取得顶点输入格式列表
 
@@ -56,10 +48,13 @@ public:
 
     bool Init(const VkDeviceSize vbo_size,const VkDeviceSize ibo_size,const IndexType index_type);
 
-    IBAccessVDM *AcquireIB(const VkDeviceSize count);
-    VABAccessVDM *AcquireVAB(const VkDeviceSize count);
+    DataChain::UserNode *AcquireIB(const VkDeviceSize count);
+    DataChain::UserNode *AcquireVAB(const VkDeviceSize count);
 
-    void Release(VABAccessVDM *);
-    void Release(IBAccessVDM *);
+    bool ReleaseIB(DataChain::UserNode *);
+    bool ReleaseVAB(DataChain::UserNode *);
+
+    IndexBuffer *GetIBO(){return ibo;}
+    VAB *GetVAB(const uint index){return vab[index];}
 };//class VertexDataManager
 VK_NAMESPACE_END

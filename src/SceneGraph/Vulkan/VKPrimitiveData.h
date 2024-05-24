@@ -47,4 +47,5 @@ public:
 };//class PrimitiveData
 
 PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc);
+PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VIL *_vil,const VkDeviceSize vc);
 VK_NAMESPACE_END

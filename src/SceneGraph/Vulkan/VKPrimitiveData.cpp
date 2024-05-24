@@ -3,6 +3,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VertexDataManager.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -195,8 +196,93 @@ namespace
     */
     class PrimitiveDataVDM:public PrimitiveData
     {
+        VertexDataManager *vdm;
 
-    };
+        DataChain::UserNode *ib_node;
+        DataChain::UserNode *vab_node;
+
+    public:
+
+        PrimitiveDataVDM(VertexDataManager *_vdm,const VIL *_vil,const VkDeviceSize vc):PrimitiveData(_vil,vc)
+        {
+            vdm=_vdm;
+
+            ib_node=nullptr;
+            vab_node=vdm->AcquireVAB(vc);
+        }
+
+        ~PrimitiveDataVDM()
+        {
+            if(ib_node)
+                vdm->ReleaseIB(ib_node);
+
+            if(vab_node)
+                vdm->ReleaseVAB(vab_node);
+        }
+        
+        IBAccess *InitIBO(const VkDeviceSize index_count,IndexType it) override
+        {
+            if(index_count<=0)return(nullptr);
+            if(!vdm)return(nullptr);
+
+            if(!ib_node)
+            {
+                ib_node=vdm->AcquireIB(index_count);
+
+                if(!ib_node)
+                    return(nullptr);
+
+                ib_access.buffer=vdm->GetIBO();
+                ib_access.start =ib_node->GetStart();
+                ib_access.count =ib_node->GetCount();
+            }
+
+            return &ib_access;
+        }
+        
+        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data,const VkDeviceSize bytes)
+        {
+            if(!vdm)return(nullptr);
+            if(!vil)return(nullptr);
+            if(name.IsEmpty())return(nullptr);
+            
+            const int index=vil->GetIndex(name);
+
+            if(index<0||index>=vil->GetCount())
+                return(nullptr);
+
+            const VertexInputFormat *vif=vil->GetConfig(index);
+
+            if(!vif)return(nullptr);
+
+            if(vif->format!=format)
+                return(nullptr);
+
+            if(data)
+            {
+                if(vif->stride*vertex_count!=bytes)
+                    return(nullptr);
+            }
+
+            VABAccess *vaba=vab_access+index;
+
+            if(!vaba->vab)
+            {
+                vaba->vab=vdm->GetVAB(index);
+
+                if(!vaba->vab)
+                    return(nullptr);
+
+                vaba->start=vab_node->GetStart();
+                vaba->count=vab_node->GetCount();
+            }
+            
+            if(vaba->vab)
+                vaba->vab->Write(data,vaba->start,vaba->count);
+
+            return vaba;
+        }
+    };//class PrimitiveDataVDM:public PrimitiveData
 }//namespace
 
 PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc)
@@ -206,5 +292,14 @@ PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDevice
     if(vc<=0)return(nullptr);
 
     return(new PrimitiveDataPrivateBuffer(dev,_vil,vc));
+}
+
+PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VIL *_vil,const VkDeviceSize vc)
+{
+    if(!vdm)return(nullptr);
+    if(!_vil)return(nullptr);
+    if(vc<=0)return(nullptr);
+
+    return(new PrimitiveDataVDM(vdm,_vil,vc));
 }
 VK_NAMESPACE_END

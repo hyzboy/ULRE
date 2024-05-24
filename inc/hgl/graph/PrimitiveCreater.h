@@ -14,6 +14,7 @@ class PrimitiveCreater
 protected:
 
     GPUDevice *         device;
+    VertexDataManager * vdm;
 
     const VIL *         vil;
 
@@ -31,6 +32,7 @@ protected:
 public:
 
     PrimitiveCreater(GPUDevice *,const VIL *,const AnsiString &name);
+    PrimitiveCreater(VertexDataManager *,const VIL *,const AnsiString &name);
     virtual ~PrimitiveCreater();
 
     virtual bool                    Init(const VkDeviceSize vertices_count,const VkDeviceSize index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
@@ -39,10 +41,10 @@ public: //顶点缓冲区
 
             const   VkDeviceSize    GetVertexCount()const{ return vertices_number; }                            ///<取得顶点数量
 
-                    VABAccess *     AcquirePVB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr,const VkDeviceSize bytes=0);           ///<请求一个顶点属性数据区
+                    VABAccess *     AcquireVAB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr,const VkDeviceSize bytes=0);           ///<请求一个顶点属性数据区
                     bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data,const uint32_t bytes)     ///<直接写入顶点属性数据
                     {
-                        return AcquirePVB(name,format,data,bytes);
+                        return AcquireVAB(name,format,data,bytes);
                     }
 
 public: //索引缓冲区
@@ -52,10 +54,10 @@ public: //索引缓冲区
                     void *          MapIBO();
                     void            UnmapIBO();
 
-                    bool            WriteIBO(const void *data,const VkDeviceSize bytes);
+                    bool            WriteIBO(const void *data,const VkDeviceSize count);
 
                     template<typename T>
-                    bool            WriteIBO(const T *data){return WriteIBO(data,index_number*sizeof(T));}
+                    bool            WriteIBO(const T *data){return WriteIBO(data,index_number);}
 
 public: //创建可渲染对象
 
@@ -74,7 +76,7 @@ public:
 
     VABRawMap(PrimitiveCreater *pc,const VkFormat &format,const AnsiString &name)
     {
-        vaba=pc->AcquirePVB(name,format);
+        vaba=pc->AcquireVAB(name,format);
 
         if(vaba)
             map_ptr=(T *)(vaba->vab->Map(vaba->start,vaba->count));
@@ -114,7 +116,7 @@ public:
 
     VABMap(PrimitiveCreater *pc,const AnsiString &name)
     {
-        vaba=pc->AcquirePVB(name,T::GetVulkanFormat(),nullptr);
+        vaba=pc->AcquireVAB(name,T::GetVulkanFormat(),nullptr);
 
         if(vaba)
         {
