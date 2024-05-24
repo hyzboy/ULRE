@@ -40,7 +40,7 @@ private:    //plane grid
     Material *          mtl_vertex_lum      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          p_line              =nullptr;
-    Primitive *         prim_plane_grid     =nullptr;
+    AutoDelete<Primitive>   prim_plane_grid     =nullptr;
 
 private:
 
@@ -54,9 +54,9 @@ private:    //sphere
     MaterialInstance *  mi_blinnphong[4]{};
     Pipeline *          p_blinnphong        =nullptr;
 
-    Primitive *         prim_sphere         =nullptr;
-    Primitive *         prim_cone           =nullptr;
-    Primitive *         prim_cylinder       =nullptr;
+    AutoDelete<Primitive>   prim_sphere         =nullptr;
+    AutoDelete<Primitive>   prim_cone           =nullptr;
+    AutoDelete<Primitive>   prim_cylinder       =nullptr;
 
 private:
 
@@ -135,11 +135,11 @@ private:
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
 
-            prim_plane_grid=CreatePlaneGrid(db,mtl_vertex_lum->GetDefaultVIL(),&pgci);
+            prim_plane_grid=CreatePlaneGrid(device,mtl_vertex_lum->GetDefaultVIL(),&pgci);
         }
 
         //Sphere
-        prim_sphere=CreateSphere(db,mi_blinnphong[0]->GetVIL(),16);
+        prim_sphere=CreateSphere(device,mi_blinnphong[0]->GetVIL(),16);
 
         //Cone
         {
@@ -150,7 +150,7 @@ private:
             cci.numberSlices=16;        //圆锥底部分割数
             cci.numberStacks=8;         //圆锥高度分割数
 
-            prim_cone=CreateCone(db,mi_blinnphong[1]->GetVIL(),&cci);
+            prim_cone=CreateCone(device,mi_blinnphong[1]->GetVIL(),&cci);
         }
 
         //Cyliner
@@ -161,7 +161,7 @@ private:
             cci.numberSlices=16;        //圆柱底部分割数
             cci.radius      =0.25f;     //圆柱半径
 
-            prim_cylinder=CreateCylinder(db,mi_blinnphong[2]->GetVIL(),&cci);
+            prim_cylinder=CreateCylinder(device,mi_blinnphong[2]->GetVIL(),&cci);
         }
 
         return(true);

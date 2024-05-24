@@ -5,7 +5,6 @@
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKShaderModule.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/PrimitiveCreater.h>
 
 namespace hgl
@@ -14,9 +13,9 @@ namespace hgl
     {
         namespace inline_geometry
         {
-            Primitive *CreateRectangle(RenderResource *db,const VIL *vil,const RectangleCreateInfo *rci)
+            Primitive *CreateRectangle(GPUDevice *device,const VIL *vil,const RectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"Rectangle");
+                PrimitiveCreater rc(device,vil,"Rectangle");
 
                 if(!rc.Init(4,0))
                     return(nullptr);
@@ -28,21 +27,21 @@ namespace hgl
 
                 vertex->WriteRectFan(rci->scope);
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreateGBufferCompositionRectangle(RenderResource *db,const VIL *vil)
+            Primitive *CreateGBufferCompositionRectangle(GPUDevice *device,const VIL *vil)
             {
                 RectangleCreateInfo rci;
 
                 rci.scope.Set(-1,-1,2,2);
 
-                return CreateRectangle(db,vil,&rci);
+                return CreateRectangle(device,vil,&rci);
             }
 
-            Primitive *CreateRoundRectangle(RenderResource *db,const VIL *vil,const RoundRectangleCreateInfo *rci)
+            Primitive *CreateRoundRectangle(GPUDevice *device,const VIL *vil,const RoundRectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"RoundRectangle");
+                PrimitiveCreater rc(device,vil,"RoundRectangle");
 
                 if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
                 {
@@ -111,12 +110,12 @@ namespace hgl
                     delete[] coord;
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreateCircle(RenderResource *db,const VIL *vil,const CircleCreateInfo *cci)
+            Primitive *CreateCircle(GPUDevice *device,const VIL *vil,const CircleCreateInfo *cci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"Circle");
+                PrimitiveCreater rc(device,vil,"Circle");
 
                 uint edge;
 
@@ -159,12 +158,12 @@ namespace hgl
                         color->Write(cci->border_color);
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreatePlaneGrid(RenderResource *db,const VIL *vil,const PlaneGridCreateInfo *pgci)
+            Primitive *CreatePlaneGrid(GPUDevice *device,const VIL *vil,const PlaneGridCreateInfo *pgci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"PlaneGrid");
+                PrimitiveCreater rc(device,vil,"PlaneGrid");
 
                 if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
@@ -210,17 +209,17 @@ namespace hgl
                     }
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreatePlane(RenderResource *db,const VIL *vil)
+            Primitive *CreatePlane(GPUDevice *device,const VIL *vil)
             {
                 const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                         float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
                 const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
                 const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
-                PrimitiveCreater rc(db->GetDevice(),vil,"Plane");
+                PrimitiveCreater rc(device,vil,"Plane");
 
                 if(!rc.Init(4,8))
                     return(nullptr);
@@ -249,10 +248,10 @@ namespace hgl
                         tex_coord->Write(xy_tex_coord,4);
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreateCube(RenderResource *db,const VIL *vil,const CubeCreateInfo *cci)
+            Primitive *CreateCube(GPUDevice *device,const VIL *vil,const CubeCreateInfo *cci)
             {   
                 /**
                  *     4            5 
@@ -305,7 +304,7 @@ namespace hgl
                                                 16,  17,   18,      16,   18,   19,
                                                 20,  23,   22,      20,   22,   21};
 
-                PrimitiveCreater rc(db->GetDevice(),vil,"Cube");
+                PrimitiveCreater rc(device,vil,"Cube");
 
                 if(!rc.Init(24,6*2*3,IndexType::U16))
                     return(nullptr);
@@ -351,7 +350,7 @@ namespace hgl
 
                 //rc.CreateIBO16(6*2*3,indices);
                 rc.WriteIBO(indices);
-                return rc.Finish(db);
+                return rc.Create();
             }
 
             template<typename T> 
@@ -453,9 +452,9 @@ namespace hgl
             * @param numberSlices 切片数
             * @return 可渲染数据
             */
-            Primitive *CreateSphere(RenderResource *db,const VIL *vil,const uint numberSlices)
+            Primitive *CreateSphere(GPUDevice *device,const VIL *vil,const uint numberSlices)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"Sphere");
+                PrimitiveCreater rc(device,vil,"Sphere");
 
                 uint numberParallels = (numberSlices+1) / 2;
                 uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
@@ -534,12 +533,12 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreateDome(RenderResource *db,const VIL *vil,const uint numberSlices)
+            Primitive *CreateDome(GPUDevice *device,const VIL *vil,const uint numberSlices)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"Dome");
+                PrimitiveCreater rc(device,vil,"Dome");
 
                 uint i, j;
 
@@ -628,7 +627,7 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
             namespace
@@ -669,9 +668,9 @@ namespace hgl
                 }
             }//namespace
 
-            Primitive *CreateTorus(RenderResource *db,const VIL *vil,const TorusCreateInfo *tci)
+            Primitive *CreateTorus(GPUDevice *device,const VIL *vil,const TorusCreateInfo *tci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"Torus");
+                PrimitiveCreater rc(device,vil,"Torus");
 
                 // s, t = parametric values of the equations, in the range [0,1]
                 float s = 0;
@@ -779,7 +778,7 @@ namespace hgl
                     if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(&rc,tci->numberSlices,tci->numberStacks);else
                         return(nullptr);
                 }
-                return rc.Finish(db);
+                return rc.Create();
             }
 
             namespace
@@ -834,14 +833,14 @@ namespace hgl
                 }
             }//namespace
 
-            Primitive *CreateCylinder(RenderResource *db,const VIL *vil,const CylinderCreateInfo *cci)
+            Primitive *CreateCylinder(GPUDevice *device,const VIL *vil,const CylinderCreateInfo *cci)
             {
                 uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
                 if(numberIndices<=0)
                     return(nullptr);
 
-                PrimitiveCreater rc(db->GetDevice(),vil,"Cylinder");
+                PrimitiveCreater rc(device,vil,"Cylinder");
 
                 uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
@@ -1018,7 +1017,7 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
             namespace
@@ -1064,9 +1063,9 @@ namespace hgl
                 }
             }//namespace
 
-            Primitive *CreateCone(RenderResource *db,const VIL *vil,const ConeCreateInfo *cci)
+            Primitive *CreateCone(GPUDevice *device,const VIL *vil,const ConeCreateInfo *cci)
             {
-                PrimitiveCreater rc(db->GetDevice(),vil,"Cone");
+                PrimitiveCreater rc(device,vil,"Cone");
 
                 uint i, j;
 
@@ -1195,14 +1194,14 @@ namespace hgl
                         return(nullptr);
                 }
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreateAxis(RenderResource *db,const VIL *vil,const AxisCreateInfo *aci)
+            Primitive *CreateAxis(GPUDevice *device,const VIL *vil,const AxisCreateInfo *aci)
             {
-                if(!db||!vil||!aci)return(nullptr);
+                if(!device||!vil||!aci)return(nullptr);
 
-                PrimitiveCreater rc(db->GetDevice(),vil,"Axis");
+                PrimitiveCreater rc(device,vil,"Axis");
 
                 if(!rc.Init(6,0))
                     return(nullptr);
@@ -1222,10 +1221,10 @@ namespace hgl
                 vertex->Write(0,0,0);color->Write(aci->color[2]);
                 vertex->Write(0,0,s);color->Write(aci->color[2]);
 
-                return rc.Finish(db);
+                return rc.Create();
             }
 
-            Primitive *CreateBoundingBox(RenderResource *db,const VIL *vil,const BoundingBoxCreateInfo *cci)
+            Primitive *CreateBoundingBox(GPUDevice *device,const VIL *vil,const BoundingBoxCreateInfo *cci)
             {
                 // Points of a cube.
                 /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
@@ -1247,7 +1246,7 @@ namespace hgl
                     0,4,    1,5,    2,6,    3,7
                 };
 
-                PrimitiveCreater rc(db->GetDevice(),vil,"BoundingBox");
+                PrimitiveCreater rc(device,vil,"BoundingBox");
 
                 if(!rc.Init(8,24,IndexType::U16))
                     return(nullptr);
@@ -1273,7 +1272,7 @@ namespace hgl
 
                 rc.WriteIBO<uint16>(indices);
 
-                return rc.Finish(db);
+                return rc.Create();
             }
         }//namespace inline_geometry
     }//namespace graph
