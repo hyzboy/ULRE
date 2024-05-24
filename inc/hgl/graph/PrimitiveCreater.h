@@ -18,24 +18,26 @@ protected:
 
     const VIL *         vil;
 
-    AnsiString          prim_name;
-    PrimitiveData *     prim_data;
-
 protected:
-    
-    VkDeviceSize      vertices_number;  ///<顶点数量
 
-    VkDeviceSize      index_number;     ///<索引数量
-    IndexType         index_type;       ///<索引类型
-    IBAccess *        iba;              ///<索引缓冲区
+    AnsiString      prim_name;
+    PrimitiveData * prim_data;
+    
+    VkDeviceSize    vertices_number;  ///<顶点数量
+
+    VkDeviceSize    index_number;     ///<索引数量
+    IndexType       index_type;       ///<索引类型
+    IBAccess *      iba;              ///<索引缓冲区
 
 public:
 
-    PrimitiveCreater(GPUDevice *,const VIL *,const AnsiString &name);
-    PrimitiveCreater(VertexDataManager *,const VIL *,const AnsiString &name);
+    PrimitiveCreater(GPUDevice *,const VIL *);
+    PrimitiveCreater(VertexDataManager *,const VIL *);
     virtual ~PrimitiveCreater();
 
-    virtual bool                    Init(const VkDeviceSize vertices_count,const VkDeviceSize index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
+    virtual bool                    Init(const AnsiString &name,const VkDeviceSize vertices_count,const VkDeviceSize index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
+
+            void                    Clear();                                                                                                    ///<清除创建器数据
     
 public: //顶点缓冲区
 
@@ -61,7 +63,7 @@ public: //索引缓冲区
 
 public: //创建可渲染对象
 
-    virtual Primitive *             Create();                                                                   ///<创建一个可渲染对象
+    virtual Primitive *             Create();                                                                   ///<创建一个可渲染对象，并清除创建器数据
 };//class PrimitiveCreater
 
 /**

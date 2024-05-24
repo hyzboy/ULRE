@@ -103,7 +103,7 @@ namespace
             device=dev;
         }
 
-        ~PrimitiveDataPrivateBuffer()
+        ~PrimitiveDataPrivateBuffer() override
         {
             VABAccess *vab=vab_access;
 
@@ -211,7 +211,7 @@ namespace
             vab_node=vdm->AcquireVAB(vc);
         }
 
-        ~PrimitiveDataVDM()
+        ~PrimitiveDataVDM() override
         {
             if(ib_node)
                 vdm->ReleaseIB(ib_node);

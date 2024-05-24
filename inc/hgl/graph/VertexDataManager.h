@@ -40,9 +40,9 @@ public:
     const VkDeviceSize  GetVABMaxCount  ()const{return vab_max_size;}                                ///<取得顶点属性缓冲区分配的空间最大数量
     const VkDeviceSize  GetVABCurCount  ()const{return vab_cur_size;}                                ///<取得顶点属性缓冲区当前数量
 
-    const IndexType     GetIBOType      ()const{return ibo?ibo->GetType():IndexType::ERR;}           ///<取得索引缓冲区类型
-    const VkDeviceSize  GetIBOMaxCount  ()const{return ibo?ibo->GetCount():-1;}                      ///<取得索引缓冲区分配的空间最大数量
-    const VkDeviceSize  GetIBOCurCount  ()const{return ibo?ibo_cur_size:-1;}                         ///<取得索引缓冲区当前数量
+    const IndexType     GetIndexType      ()const{return ibo?ibo->GetType():IndexType::ERR;}         ///<取得索引缓冲区类型
+    const VkDeviceSize  GetIndexMaxCount  ()const{return ibo?ibo->GetCount():-1;}                    ///<取得索引缓冲区分配的空间最大数量
+    const VkDeviceSize  GetIndexCurCount  ()const{return ibo?ibo_cur_size:-1;}                       ///<取得索引缓冲区当前数量
 
 public:
 
