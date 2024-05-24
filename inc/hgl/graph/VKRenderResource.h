@@ -92,7 +92,7 @@ public:
     {}
     virtual ~RenderResource()=default;
 
-public: //Add
+public: //添加数据到管理器（如果指针为nullptr会返回-1）
 
     MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
@@ -146,9 +146,6 @@ public: //Material
     }
 
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
-
-    Primitive *         CreatePrimitive(                    const AnsiString &,PrimitiveData *);    
-    Primitive *         CreatePrimitive(VertexDataManager *,const AnsiString &,PrimitiveData *);
 
     Renderable *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
 
