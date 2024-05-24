@@ -16,7 +16,7 @@ protected:
           uint      vi_count;       ///<顶点输入流数量
     const VIF *     vif_list;       ///<顶点输入格式列表
 
-    VkDeviceSize    vab_max_size;   ///<顶点缓冲区分配空间大小
+    VkDeviceSize    vab_max_size;   ///<顶点缓冲区分配空间大小(顶点数)
     VkDeviceSize    vab_cur_size;   ///<顶点缓冲区当前使用大小
     VAB **          vab;            ///<顶点缓冲区列表
 

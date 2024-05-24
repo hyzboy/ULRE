@@ -75,11 +75,11 @@ namespace hgl
         {
             if(count<=0)return(nullptr);
 
-            DataChain::UserNode *un=ibo_data_chain.Acquire(count);
+            DataChain::UserNode *un=ibo_data_chain.Acquire(hgl_align<int>(count,4));
 
             if(!un)return(false);
 
-            ibo_cur_size+=count;
+            ibo_cur_size+=un->GetCount();
 
             return(un);
         }
@@ -101,11 +101,11 @@ namespace hgl
         {
             if(count<=0)return(nullptr);
 
-            DataChain::UserNode *un=vbo_data_chain.Acquire(count);
+            DataChain::UserNode *un=vbo_data_chain.Acquire(hgl_align<int>(count,4));
 
             if(!un)return(nullptr);
 
-            vab_cur_size+=count;
+            vab_cur_size+=un->GetCount();
 
             return(un);
         }

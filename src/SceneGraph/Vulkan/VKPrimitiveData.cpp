@@ -146,7 +146,7 @@ namespace
             return(&ib_access);
         }
         
-        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data,const VkDeviceSize bytes)
+        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)
         {
             if(!device)return(nullptr);
             if(!vil)return(nullptr);
@@ -163,12 +163,6 @@ namespace
 
             if(vif->format!=format)
                 return(nullptr);
-
-            if(data)
-            {
-                if(vif->stride*vertex_count!=bytes)
-                    return(nullptr);
-            }
 
             VABAccess *vaba=vab_access+index;
 
@@ -203,7 +197,7 @@ namespace
 
     public:
 
-        PrimitiveDataVDM(VertexDataManager *_vdm,const VIL *_vil,const VkDeviceSize vc):PrimitiveData(_vil,vc)
+        PrimitiveDataVDM(VertexDataManager *_vdm,const VkDeviceSize vc):PrimitiveData(_vdm->GetVIL(),vc)
         {
             vdm=_vdm;
 
@@ -240,7 +234,7 @@ namespace
             return &ib_access;
         }
         
-        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data,const VkDeviceSize bytes)
+        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)
         {
             if(!vdm)return(nullptr);
             if(!vil)return(nullptr);
@@ -258,12 +252,6 @@ namespace
             if(vif->format!=format)
                 return(nullptr);
 
-            if(data)
-            {
-                if(vif->stride*vertex_count!=bytes)
-                    return(nullptr);
-            }
-
             VABAccess *vaba=vab_access+index;
 
             if(!vaba->vab)
@@ -277,7 +265,7 @@ namespace
                 vaba->count=vab_node->GetCount();
             }
             
-            if(vaba->vab)
+            if(vaba->vab&&data)
                 vaba->vab->Write(data,vaba->start,vaba->count);
 
             return vaba;
@@ -294,12 +282,11 @@ PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDevice
     return(new PrimitiveDataPrivateBuffer(dev,_vil,vc));
 }
 
-PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VIL *_vil,const VkDeviceSize vc)
+PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VkDeviceSize vc)
 {
     if(!vdm)return(nullptr);
-    if(!_vil)return(nullptr);
     if(vc<=0)return(nullptr);
 
-    return(new PrimitiveDataVDM(vdm,_vil,vc));
+    return(new PrimitiveDataVDM(vdm,vc));
 }
 VK_NAMESPACE_END
