@@ -8,33 +8,6 @@ namespace hgl
 {
     namespace graph
     {
-        class IBAccessVDM:public VDMAccess
-        {
-            IBAccess *iba;
-
-        public:
-
-            ~IBAccessVDM() override
-            {
-                vdm->ReleaseIB(dc_node);
-            }
-        };//struct IBAccessVDM
-
-        class VABAccessVDM:public VDMAccess
-        {
-            VABAccess **vab;
-
-        public:
-
-            ~VABAccessVDM() override
-            {
-                vdm->ReleaseVAB(dc_node);
-            }
-        };//struct VABAccessVDM
-    }//namespace graph
-
-    namespace graph
-    {
         VertexDataManager::VertexDataManager(GPUDevice *dev,const VIL *_vil)
         {
             device=dev;
@@ -98,26 +71,17 @@ namespace hgl
             return(true);
         }
 
-        IBAccessVDM *VertexDataManager::AcquireIB(const VkDeviceSize count)
+        DataChain::UserNode *VertexDataManager::AcquireIB(const VkDeviceSize count)
         {
-            if(count<=0)return(false);
+            if(count<=0)return(nullptr);
 
             DataChain::UserNode *un=ibo_data_chain.Acquire(count);
 
             if(!un)return(false);
 
-            IBAccessVDM *node=new IBAccessVDM;
-
-            node->vdm=this;
-            node->dc_node=un;
-
-            node->buffer=ibo;
-            node->start=un->GetStart();
-            node->count=un->GetCount();
-
             ibo_cur_size+=count;
 
-            return(node);
+            return(un);
         }
         
         bool VertexDataManager::ReleaseIB(DataChain::UserNode *un)
@@ -133,27 +97,17 @@ namespace hgl
             return(true);
         }
 
-        VABAccessVDM *VertexDataManager::AcquireVAB(const VkDeviceSize count)
+        DataChain::UserNode *VertexDataManager::AcquireVAB(const VkDeviceSize count)
         {
-            if(count<=0)return(false);
+            if(count<=0)return(nullptr);
 
             DataChain::UserNode *un=vbo_data_chain.Acquire(count);
 
-            if(!un)return(false);
-
-            VABAccessVDM *node=new VABAccessVDM;
-
-            node->vdm=this;
-            node->dc_node=un;
-            node->vil=vil;
-
-            //node->buffer=vab[0];
-            //node->start=un->GetStart();
-            //node->count=un->GetCount();
+            if(!un)return(nullptr);
 
             vab_cur_size+=count;
 
-            return(node);
+            return(un);
         }
 
         bool VertexDataManager::ReleaseVAB(DataChain::UserNode *un)

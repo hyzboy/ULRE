@@ -3,12 +3,14 @@
 #include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKPrimitive.h>
+#include<hgl/graph/VertexDataManager.h>
 #include"vulkan/VKPrimitiveData.h"
 
 VK_NAMESPACE_BEGIN
 PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v,const AnsiString &name)
 {
     device          =dev;
+    vdm             =nullptr;
     vil             =v;
 
     prim_name       =name;
@@ -21,6 +23,12 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v,const AnsiString 
     iba             =nullptr;
 }
 
+PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm,const VIL *v,const AnsiString &name)
+    :PrimitiveCreater(_vdm->GetDevice(),v,name)
+{
+    vdm=_vdm;
+}
+
 PrimitiveCreater::~PrimitiveCreater()
 {
     SAFE_CLEAR(prim_data);
@@ -30,7 +38,10 @@ bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize i
 {
     if(vertex_count<=0)return(false);
 
-    prim_data=CreatePrimitiveData(device,vil,vertex_count);
+    if(vdm)
+        prim_data=CreatePrimitiveData(vdm,vil,vertex_count);
+    else
+        prim_data=CreatePrimitiveData(device,vil,vertex_count);
 
     if(!prim_data)return(false);
 
@@ -73,7 +84,7 @@ bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize i
     return(true);
 }
 
-VABAccess *PrimitiveCreater::AcquirePVB(const AnsiString &name,const VkFormat &acquire_format,const void *data,const VkDeviceSize bytes)
+VABAccess *PrimitiveCreater::AcquireVAB(const AnsiString &name,const VkFormat &acquire_format,const void *data,const VkDeviceSize bytes)
 {
     if(!prim_data)return(nullptr);
     if(name.IsEmpty())return(nullptr);
@@ -114,17 +125,17 @@ void PrimitiveCreater::UnmapIBO()
         iba->buffer->Unmap();
 }
 
-bool PrimitiveCreater::WriteIBO(const void *data,const VkDeviceSize bytes)
+bool PrimitiveCreater::WriteIBO(const void *data,const VkDeviceSize count)
 {
     if(!data)return(false);
     if(!prim_data)return(false);
 
     IBAccess *iba=prim_data->GetIBAccess();
 
-    if(bytes>0)
-        if(iba->buffer->GetStride()*index_number<bytes)return(false);
+    if(count>0&&count>index_number)
+        return(false);
 
-   return iba->buffer->Write(data,bytes);
+   return iba->buffer->Write(data,iba->start,count);
 }
 
 Primitive *PrimitiveCreater::Create()
