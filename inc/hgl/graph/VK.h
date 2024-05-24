@@ -118,7 +118,7 @@ using VIF=VertexInputFormat;
 class VertexInputLayout;
 using VIL=VertexInputLayout;
 
-struct PrimitiveData;
+class PrimitiveData;
 class Primitive;
 class Renderable;
 

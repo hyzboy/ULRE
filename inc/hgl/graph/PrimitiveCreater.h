@@ -1,12 +1,11 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKShaderModule.h>
-#include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
+
 /**
  * 可绘制图元创建器
  */
@@ -14,37 +13,30 @@ class PrimitiveCreater
 {
 protected:
 
-    GPUDevice *device;
-    const GPUPhysicalDevice *phy_device;
+    GPUDevice *         device;
 
     const VIL *         vil;
 
-protected:
+    AnsiString          prim_name;
+    PrimitiveData *     prim_data;
 
-    AnsiString        prim_name;        ///<名称
-    PrimitiveData *   prim_data;        ///<图元数据
+protected:
     
     VkDeviceSize      vertices_number;  ///<顶点数量
-    uint              vab_proc_count;   ///<操作的vab数量
 
     VkDeviceSize      index_number;     ///<索引数量
-    IBAccess *        iba;
-
-protected:
-
-    void ClearAllData();
+    IndexType         index_type;       ///<索引类型
+    IBAccess *        iba;              ///<索引缓冲区
 
 public:
 
     PrimitiveCreater(GPUDevice *,const VIL *,const AnsiString &name);
-    PrimitiveCreater(VertexDataManager *);
-    virtual ~PrimitiveCreater()
-    {
-        ClearAllData();
-    }
+    virtual ~PrimitiveCreater();
 
     virtual bool                    Init(const VkDeviceSize vertices_count,const VkDeviceSize index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
     
+public: //顶点缓冲区
+
             const   VkDeviceSize    GetVertexCount()const{ return vertices_number; }                            ///<取得顶点数量
 
                     VABAccess *     AcquirePVB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr,const VkDeviceSize bytes=0);           ///<请求一个顶点属性数据区
@@ -53,15 +45,21 @@ public:
                         return AcquirePVB(name,format,data,bytes);
                     }
 
-            const   IndexType       GetIndexType()const{return iba->buffer->GetType();}
-                    IBAccess *      AcquireIBO(){return iba;}
+public: //索引缓冲区
+
+            const   IndexType       GetIndexType()const{return index_type;}
+
+                    void *          MapIBO();
+                    void            UnmapIBO();
 
                     bool            WriteIBO(const void *data,const VkDeviceSize bytes);
 
                     template<typename T>
                     bool            WriteIBO(const T *data){return WriteIBO(data,index_number*sizeof(T));}
 
-    virtual Primitive *             Finish(RenderResource *);                                                                   ///<结束并创建可渲染对象
+public: //创建可渲染对象
+
+    virtual Primitive *             Create();                                                                   ///<创建一个可渲染对象
 };//class PrimitiveCreater
 
 /**
@@ -186,30 +184,28 @@ typedef VABMap<VB4d>    VABMap4d;
 */
 template<typename T> class IBMap
 {
-    IBAccess *iba;
+    PrimitiveCreater *pc;
     T *map_ptr;
 
 public:
 
-    IBMap(IBAccess *a)
+    IBMap(PrimitiveCreater *c)
     {
-        iba=a;
+        pc=c;
 
-        if(iba)
-            map_ptr=(T *)(iba->buffer->Map(iba->start,iba->count));
+        if(pc)
+            map_ptr=(T *)(pc->MapIBO());
         else
             map_ptr=nullptr;
     }
 
-    IBMap(PrimitiveCreater *pc):IBMap(pc->AcquireIBO()){}
-
     ~IBMap()
     {
-        if(iba)
-            iba->buffer->Unmap();
+        if(map_ptr&&pc)
+            pc->UnmapIBO();
     }
 
-    const bool IsValid()const{ return iba; }
+    const bool IsValid()const{ return map_ptr; }
 
     operator T *(){ return map_ptr; }
 };//template<typename T> class IBMap

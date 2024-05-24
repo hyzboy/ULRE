@@ -1,4 +1,4 @@
-#include<hgl/graph/VKRenderable.h>
+﻿#include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
@@ -51,7 +51,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     const uint32_t input_count=vil->GetCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
     const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
-    if(prim->GetVACount()<input_count)        //小于材质要求的数量？那自然是不行的
+    if(prim->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
         LOG_ERROR("[FATAL ERROR] input buffer count of Renderable lesser than Material, Material name: "+mtl_name);
 
