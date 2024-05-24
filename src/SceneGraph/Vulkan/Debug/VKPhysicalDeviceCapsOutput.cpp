@@ -1,4 +1,4 @@
-#include<hgl/graph/VK.h>
+﻿#include<hgl/graph/VK.h>
 #include<hgl/graph/VKUUID.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 
@@ -310,13 +310,31 @@ namespace
     {
         struct VulkanDeviceVendor
         {
-            uint32_t id;
+            VkVendorId id;
             const char *name;
         };
 
-        //constexpr const VulkanDeviceVendor vulkan_vendor[]=
-        //{
-        //};
+        constexpr const VulkanDeviceVendor vulkan_vendor[]=
+        {
+            {VK_VENDOR_ID_VIV,"VIV"},
+            {VK_VENDOR_ID_VSI,"VSI"},
+            {VK_VENDOR_ID_KAZAN,"KAZAN"},
+            {VK_VENDOR_ID_CODEPLAY,"CODEPLAY"},
+            {VK_VENDOR_ID_MESA,"MESA"},
+            {VK_VENDOR_ID_POCL,"POCL"},
+            {VK_VENDOR_ID_MOBILEYE,"Mobileye"}
+        };
+
+        const char *GetVendorName(const uint32_t id)
+        {
+            for(const VulkanDeviceVendor &vdv:vulkan_vendor)
+            {
+                if(vdv.id==id)
+                    return vdv.name;
+            }
+
+            return "Unknown";
+        }
     }
 
     void DebugOut(const VkPhysicalDeviceProperties &pdp)
@@ -332,7 +350,7 @@ namespace
 
         std::cout<<"       apiVersion: ";DebugOutVersion(pdp.apiVersion);
         std::cout<<"    driverVersion: ";DebugOutVersion(pdp.driverVersion);
-        std::cout<<"         vendorID: 0x"<<HexToString<char>(pdp.vendorID).c_str()<<std::endl;
+        std::cout<<"           vendor: "<<GetVendorName(pdp.vendorID)<<std::endl;
         std::cout<<"         deviceID: 0x"<<HexToString<char>(pdp.deviceID).c_str()<<std::endl;
         std::cout<<"       deviceType: "<<DeviceTypeString[pdp.deviceType]<<std::endl;
         std::cout<<"       deviceName: "<<pdp.deviceName<<std::endl;
