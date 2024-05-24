@@ -11,6 +11,7 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/BlinnPhong.h>
 #include<hgl/graph/VertexDataManager.h>
+#include<hgl/graph/PrimitiveCreater.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -49,6 +50,7 @@ private:
 private:    //sphere
 
     Material *          mtl_blinnphong      =nullptr;
+    PrimitiveCreater *  pc_blinnphong       =nullptr;
     VertexDataManager * vdm_blinnphong      =nullptr;
 
     MaterialInstance *  mi_blinnphong[4]{};
@@ -119,7 +121,7 @@ private:
         return(true);
     }
 
-    bool InitVDM()
+    bool InitVDMAndPC()
     {
         vdm_blinnphong=new VertexDataManager(device,mtl_blinnphong->GetDefaultVIL());
         if(!vdm_blinnphong->Init(   1024*1024,          //VAB最大容量
@@ -132,6 +134,9 @@ private:
             return(false);
         }
 
+        pc_blinnphong=new PrimitiveCreater(vdm_blinnphong);
+        //pc_blinnphong=new PrimitiveCreater(device,mtl_blinnphong->GetDefaultVIL());
+
         return(true);
     }
 
@@ -140,20 +145,20 @@ private:
         using namespace inline_geometry;
 
         //Plane Grid
-        {
-            struct PlaneGridCreateInfo pgci;
+        //{
+        //    struct PlaneGridCreateInfo pgci;
 
-            pgci.grid_size.Set(32,32);
-            pgci.sub_count.Set(8,8);
+        //    pgci.grid_size.Set(32,32);
+        //    pgci.sub_count.Set(8,8);
 
-            pgci.lum=0.5;
-            pgci.sub_lum=0.75;
+        //    pgci.lum=0.5;
+        //    pgci.sub_lum=0.75;
 
-            prim_plane_grid=CreatePlaneGrid(device,mtl_vertex_lum->GetDefaultVIL(),&pgci);
-        }
+        //    prim_plane_grid=CreatePlaneGrid(pc_blinnphong,mtl_vertex_lum->GetDefaultVIL(),&pgci);
+        //}
 
         //Sphere
-        prim_sphere=CreateSphere(device,mi_blinnphong[0]->GetVIL(),16);
+        prim_sphere=CreateSphere(pc_blinnphong,16);
 
         //Cone
         {
@@ -164,7 +169,7 @@ private:
             cci.numberSlices=16;        //圆锥底部分割数
             cci.numberStacks=8;         //圆锥高度分割数
 
-            prim_cone=CreateCone(device,mi_blinnphong[1]->GetVIL(),&cci);
+            prim_cone=CreateCone(pc_blinnphong,&cci);
         }
 
         //Cyliner
@@ -175,7 +180,7 @@ private:
             cci.numberSlices=16;        //圆柱底部分割数
             cci.radius      =0.25f;     //圆柱半径
 
-            prim_cylinder=CreateCylinder(device,mi_blinnphong[2]->GetVIL(),&cci);
+            prim_cylinder=CreateCylinder(pc_blinnphong,&cci);
         }
 
         return(true);
@@ -205,7 +210,7 @@ private:
 
     bool InitScene()
     {
-        Add(prim_plane_grid,mi_plane_grid,p_line,Identity4f);
+        //Add(prim_plane_grid,mi_plane_grid,p_line,Identity4f);
 
         Add(prim_sphere,    mi_blinnphong[0],p_blinnphong,translate(Vector3f(0,0,2)));
 
@@ -238,7 +243,7 @@ public:
         if(!InitBlinnPhongSunLightMP())
             return(false);
 
-        if(!InitVDM())
+        if(!InitVDMAndPC())
             return(false);
 
         if(!CreateRenderObject())
@@ -257,6 +262,7 @@ public:
         SAFE_CLEAR(prim_sphere)
         SAFE_CLEAR(prim_plane_grid)
 
+        SAFE_CLEAR(pc_blinnphong)
         SAFE_CLEAR(vdm_blinnphong)
     }
 };//class TestApp:public CameraAppFramework

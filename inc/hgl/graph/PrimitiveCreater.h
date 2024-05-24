@@ -32,7 +32,7 @@ protected:
 public:
 
     PrimitiveCreater(GPUDevice *,const VIL *);
-    PrimitiveCreater(VertexDataManager *,const VIL *);
+    PrimitiveCreater(VertexDataManager *);
     virtual ~PrimitiveCreater();
 
     virtual bool                    Init(const AnsiString &name,const VkDeviceSize vertices_count,const VkDeviceSize index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
@@ -43,10 +43,10 @@ public: //顶点缓冲区
 
             const   VkDeviceSize    GetVertexCount()const{ return vertices_number; }                            ///<取得顶点数量
 
-                    VABAccess *     AcquireVAB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr,const VkDeviceSize bytes=0);           ///<请求一个顶点属性数据区
-                    bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data,const uint32_t bytes)     ///<直接写入顶点属性数据
+                    VABAccess *     AcquireVAB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr);                       ///<请求一个顶点属性数据区
+                    bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data)                                ///<直接写入顶点属性数据
                     {
-                        return AcquireVAB(name,format,data,bytes);
+                        return AcquireVAB(name,format,data);
                     }
 
 public: //索引缓冲区

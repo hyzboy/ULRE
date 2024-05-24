@@ -43,9 +43,9 @@ public:
 public:
 
     virtual IBAccess * InitIBO(const VkDeviceSize index_count,IndexType it)=0;
-    virtual VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data,const VkDeviceSize bytes)=0;
+    virtual VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)=0;
 };//class PrimitiveData
 
 PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc);
-PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VIL *_vil,const VkDeviceSize vc);
+PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VkDeviceSize vc);
 VK_NAMESPACE_END

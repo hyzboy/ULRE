@@ -13,42 +13,42 @@ namespace hgl
     {
         namespace inline_geometry
         {
-            Primitive *CreateRectangle(GPUDevice *device,const VIL *vil,const RectangleCreateInfo *rci)
+            Primitive *CreateRectangle(PrimitiveCreater *pc,const RectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
-                if(!rc.Init("Rectangle",4,0))
+                if(!pc->Init("Rectangle",4,0))
                     return(nullptr);
 
-                VABMap2f vertex(&rc,VAN::Position);
+                VABMap2f vertex(pc,VAN::Position);
 
                 if(!vertex.IsValid())
                     return(nullptr);
 
                 vertex->WriteRectFan(rci->scope);
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreateGBufferCompositionRectangle(GPUDevice *device,const VIL *vil)
+            Primitive *CreateGBufferCompositionRectangle(PrimitiveCreater *pc)
             {
                 RectangleCreateInfo rci;
 
                 rci.scope.Set(-1,-1,2,2);
 
-                return CreateRectangle(device,vil,&rci);
+                return CreateRectangle(pc,&rci);
             }
 
-            Primitive *CreateRoundRectangle(GPUDevice *device,const VIL *vil,const RoundRectangleCreateInfo *rci)
+            Primitive *CreateRoundRectangle(PrimitiveCreater *pc,const RoundRectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
                 if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
                 {
-                    if(!rc.Init("RoundRectangle",4,0))
+                    if(!pc->Init("RoundRectangle",4,0))
                         return(nullptr);
                     
-                    VABMap2f vertex(&rc,VAN::Position);
+                    VABMap2f vertex(pc,VAN::Position);
 
                     vertex->WriteRectFan(rci->scope);
                 }
@@ -59,10 +59,10 @@ namespace hgl
                     if(radius>rci->scope.GetWidth()/2.0f)radius=rci->scope.GetWidth()/2.0f;
                     if(radius>rci->scope.GetHeight()/2.0f)radius=rci->scope.GetHeight()/2.0f;
 
-                    if(!rc.Init("RoundRectangle",rci->round_per*4,8))
+                    if(!pc->Init("RoundRectangle",rci->round_per*4,8))
                         return(nullptr);
                 
-                    VABMap2f vertex(&rc,VAN::Position);
+                    VABMap2f vertex(pc,VAN::Position);
 
                     Vector2f *coord=new Vector2f[rci->round_per];
 
@@ -110,12 +110,12 @@ namespace hgl
                     delete[] coord;
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreateCircle(GPUDevice *device,const VIL *vil,const CircleCreateInfo *cci)
+            Primitive *CreateCircle(PrimitiveCreater *pc,const CircleCreateInfo *cci)
             {
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
                 uint edge;
                 uint vertex_count;
@@ -131,10 +131,10 @@ namespace hgl
                     vertex_count=cci->field_count;
                 }
 
-                if(!rc.Init("Circle",vertex_count,0))return(nullptr);
+                if(!pc->Init("Circle",vertex_count,0))return(nullptr);
 
-                VABMap2f vertex(&rc,VAN::Position);
-                VABMap4f color(&rc,VAN::Color);
+                VABMap2f vertex(pc,VAN::Position);
+                VABMap4f color(pc,VAN::Color);
 
                 if(!vertex.IsValid())
                     return(nullptr);
@@ -161,17 +161,15 @@ namespace hgl
                         color->Write(cci->border_color);
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreatePlaneGrid(GPUDevice *device,const VIL *vil,const PlaneGridCreateInfo *pgci)
+            Primitive *CreatePlaneGrid(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci)
             {
-                PrimitiveCreater rc(device,vil);
-
-                if(!rc.Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
+                if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
 
-                VABMap3f vertex(&rc,VAN::Position);
+                VABMap3f vertex(pc,VAN::Position);
 
                 const float right=float(pgci->grid_size.Width())/2.0f;
                 const float left =-right;
@@ -191,7 +189,7 @@ namespace hgl
                                       Vector3f(left+col,bottom,0));
                 }
 
-                VABMap1f lum(&rc,VAN::Luminance);
+                VABMap1f lum(pc,VAN::Luminance);
 
                 if(lum.IsValid())
                 {
@@ -212,49 +210,49 @@ namespace hgl
                     }
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreatePlane(GPUDevice *device,const VIL *vil)
+            Primitive *CreatePlane(PrimitiveCreater *pc)
             {
                 const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                         float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
                 const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
                 const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
-                if(!rc.Init("Plane",4,8))
+                if(!pc->Init("Plane",4,8))
                     return(nullptr);
 
-                if(!rc.WriteVAB(VAN::Position,VF_V3F,xy_vertices,sizeof(xy_vertices)))
+                if(!pc->WriteVAB(VAN::Position,VF_V3F,xy_vertices))
                    return(nullptr);
 
                 {
-                    VABMap3f normal(&rc,VAN::Normal);
+                    VABMap3f normal(pc,VAN::Normal);
 
                     if(normal.IsValid())
                         normal->RepeatWrite(xy_normal,4);
                 }
 
                 {
-                    VABMap3f tangent(&rc,VAN::Tangent);
+                    VABMap3f tangent(pc,VAN::Tangent);
 
                     if(tangent.IsValid())
                         tangent->RepeatWrite(xy_tangent,4);
                 }
 
                 {
-                    VABMap2f tex_coord(&rc,VAN::TexCoord);
+                    VABMap2f tex_coord(pc,VAN::TexCoord);
 
                     if(tex_coord.IsValid())
                         tex_coord->Write(xy_tex_coord,4);
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreateCube(GPUDevice *device,const VIL *vil,const CubeCreateInfo *cci)
+            Primitive *CreateCube(PrimitiveCreater *pc,const CubeCreateInfo *cci)
             {   
                 /**
                  *     4            5 
@@ -307,31 +305,31 @@ namespace hgl
                                                 16,  17,   18,      16,   18,   19,
                                                 20,  23,   22,      20,   22,   21};
 
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
-                if(!rc.Init("Cube",24,6*2*3,IndexType::U16))
+                if(!pc->Init("Cube",24,6*2*3,IndexType::U16))
                     return(nullptr);
 
-                if(!rc.WriteVAB(VAN::Position,VF_V3F,positions,sizeof(positions)))
+                if(!pc->WriteVAB(VAN::Position,VF_V3F,positions))
                     return(nullptr);
 
                 if(cci->normal)
-                    if(!rc.WriteVAB(VAN::Normal,VF_V3F,normals,sizeof(normals)))
+                    if(!pc->WriteVAB(VAN::Normal,VF_V3F,normals))
                         return(nullptr);
 
                 if(cci->tangent)
-                    if(!rc.WriteVAB(VAN::Tangent,VF_V3F,tangents,sizeof(tangents)))
+                    if(!pc->WriteVAB(VAN::Tangent,VF_V3F,tangents))
                         return(nullptr);
 
                 if(cci->tex_coord)
-                    if(!rc.WriteVAB(VAN::TexCoord,VF_V2F,tex_coords,sizeof(tex_coords)))
+                    if(!pc->WriteVAB(VAN::TexCoord,VF_V2F,tex_coords))
                         return(nullptr);
 
                 if(cci->color_type!=CubeCreateInfo::ColorType::NoColor)
                 {                
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    VABMap4f color(&rc,VAN::Color);
+                    VABMap4f color(pc,VAN::Color);
 
                     if(color.IsValid())
                     {
@@ -351,9 +349,9 @@ namespace hgl
                     }
                 }
 
-                //rc.CreateIBO16(6*2*3,indices);
-                rc.WriteIBO(indices);
-                return rc.Create();
+                //pc->CreateIBO16(6*2*3,indices);
+                pc->WriteIBO(indices);
+                return pc->Create();
             }
 
             template<typename T> 
@@ -455,10 +453,8 @@ namespace hgl
             * @param numberSlices 切片数
             * @return 可渲染数据
             */
-            Primitive *CreateSphere(GPUDevice *device,const VIL *vil,const uint numberSlices)
+            Primitive *CreateSphere(PrimitiveCreater *pc,const uint numberSlices)
             {
-                PrimitiveCreater rc(device,vil);
-
                 uint numberParallels = (numberSlices+1) / 2;
                 uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
                 uint numberIndices = numberParallels * numberSlices * 6;
@@ -471,13 +467,13 @@ namespace hgl
                 float helpMatrix[16];
                 float tex_x;
 
-                if(!rc.Init("Sphere",numberVertices,numberIndices))
+                if(!pc->Init("Sphere",numberVertices,numberIndices))
                     return(nullptr);
 
-                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
+                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -528,20 +524,20 @@ namespace hgl
 
                 //索引
                 {
-                    const IndexType index_type=rc.GetIndexType();
+                    const IndexType index_type=pc->GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(&rc,numberParallels,numberSlices);else
-                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(&rc,numberParallels,numberSlices);else
-                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(&rc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
                         return(nullptr);
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreateDome(GPUDevice *device,const VIL *vil,const uint numberSlices)
+            Primitive *CreateDome(PrimitiveCreater *pc,const uint numberSlices)
             {
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
                 uint i, j;
 
@@ -560,13 +556,13 @@ namespace hgl
                 if (numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
 
-                if(!rc.Init("Dome",numberVertices,numberIndices))
+                if(!pc->Init("Dome",numberVertices,numberIndices))
                     return(nullptr);
                 
-                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
+                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -622,15 +618,15 @@ namespace hgl
 
                 //索引
                 {
-                    const IndexType index_type=rc.GetIndexType();
+                    const IndexType index_type=pc->GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(&rc,numberParallels,numberSlices);else
-                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(&rc,numberParallels,numberSlices);else
-                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(&rc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U16)CreateSphereIndices<uint16>(pc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U32)CreateSphereIndices<uint32>(pc,numberParallels,numberSlices);else
+                    if(index_type==IndexType::U8 )CreateSphereIndices<uint8 >(pc,numberParallels,numberSlices);else
                         return(nullptr);
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
             namespace
@@ -671,9 +667,9 @@ namespace hgl
                 }
             }//namespace
 
-            Primitive *CreateTorus(GPUDevice *device,const VIL *vil,const TorusCreateInfo *tci)
+            Primitive *CreateTorus(PrimitiveCreater *pc,const TorusCreateInfo *tci)
             {
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
                 // s, t = parametric values of the equations, in the range [0,1]
                 float s = 0;
@@ -708,13 +704,13 @@ namespace hgl
                 sIncr = 1.0f / (float) tci->numberSlices;
                 tIncr = 1.0f / (float) tci->numberStacks;
 
-                if(!rc.Init("Torus",numberVertices,numberIndices))
+                if(!pc->Init("Torus",numberVertices,numberIndices))
                     return(nullptr);                
                 
-                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
+                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -774,14 +770,14 @@ namespace hgl
 
                 //索引
                 {
-                    const IndexType index_type=rc.GetIndexType();
+                    const IndexType index_type=pc->GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateTorusIndices<uint16>(&rc,tci->numberSlices,tci->numberStacks);else
-                    if(index_type==IndexType::U32)CreateTorusIndices<uint32>(&rc,tci->numberSlices,tci->numberStacks);else
-                    if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(&rc,tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U16)CreateTorusIndices<uint16>(pc,tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U32)CreateTorusIndices<uint32>(pc,tci->numberSlices,tci->numberStacks);else
+                    if(index_type==IndexType::U8 )CreateTorusIndices<uint8 >(pc,tci->numberSlices,tci->numberStacks);else
                         return(nullptr);
                 }
-                return rc.Create();
+                return pc->Create();
             }
 
             namespace
@@ -836,18 +832,16 @@ namespace hgl
                 }
             }//namespace
 
-            Primitive *CreateCylinder(GPUDevice *device,const VIL *vil,const CylinderCreateInfo *cci)
+            Primitive *CreateCylinder(PrimitiveCreater *pc,const CylinderCreateInfo *cci)
             {
                 uint numberIndices = cci->numberSlices * 3 * 2 + cci->numberSlices * 6;
 
                 if(numberIndices<=0)
                     return(nullptr);
 
-                PrimitiveCreater rc(device,vil);
-
                 uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
-                if(!rc.Init("Cylinder",numberVertices,numberIndices))
+                if(!pc->Init("Cylinder",numberVertices,numberIndices))
                     return(nullptr);
 
                 float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
@@ -855,10 +849,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
                 
-                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
+                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -1012,15 +1006,15 @@ namespace hgl
 
                 //索引
                 {
-                    const IndexType index_type=rc.GetIndexType();
+                    const IndexType index_type=pc->GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateCylinderIndices<uint16>(&rc,cci->numberSlices);else
-                    if(index_type==IndexType::U32)CreateCylinderIndices<uint32>(&rc,cci->numberSlices);else
-                    if(index_type==IndexType::U8 )CreateCylinderIndices<uint8 >(&rc,cci->numberSlices);else
+                    if(index_type==IndexType::U16)CreateCylinderIndices<uint16>(pc,cci->numberSlices);else
+                    if(index_type==IndexType::U32)CreateCylinderIndices<uint32>(pc,cci->numberSlices);else
+                    if(index_type==IndexType::U8 )CreateCylinderIndices<uint8 >(pc,cci->numberSlices);else
                         return(nullptr);
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
             namespace
@@ -1066,16 +1060,14 @@ namespace hgl
                 }
             }//namespace
 
-            Primitive *CreateCone(GPUDevice *device,const VIL *vil,const ConeCreateInfo *cci)
+            Primitive *CreateCone(PrimitiveCreater *pc,const ConeCreateInfo *cci)
             {
-                PrimitiveCreater rc(device,vil);
-
                 uint i, j;
 
                 uint numberVertices = (cci->numberSlices + 2) + (cci->numberSlices + 1) * (cci->numberStacks + 1);
                 uint numberIndices = cci->numberSlices * 3 + cci->numberSlices * 6 * cci->numberStacks;
 
-                if(!rc.Init("Cone",numberVertices,numberIndices))
+                if(!pc->Init("Cone",numberVertices,numberIndices))
                     return(nullptr);
 
                 float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
@@ -1087,10 +1079,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || cci->numberStacks < 1 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
                 
-                VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (&rc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (&rc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(&rc,VF_V2F,VAN::TexCoord);
+                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -1189,28 +1181,28 @@ namespace hgl
 
                 //索引
                 {
-                    const IndexType index_type=rc.GetIndexType();
+                    const IndexType index_type=pc->GetIndexType();
 
-                    if(index_type==IndexType::U16)CreateConeIndices<uint16>(&rc,cci->numberSlices,cci->numberStacks);else
-                    if(index_type==IndexType::U32)CreateConeIndices<uint32>(&rc,cci->numberSlices,cci->numberStacks);else
-                    if(index_type==IndexType::U8 )CreateConeIndices<uint8 >(&rc,cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U16)CreateConeIndices<uint16>(pc,cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U32)CreateConeIndices<uint32>(pc,cci->numberSlices,cci->numberStacks);else
+                    if(index_type==IndexType::U8 )CreateConeIndices<uint8 >(pc,cci->numberSlices,cci->numberStacks);else
                         return(nullptr);
                 }
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreateAxis(GPUDevice *device,const VIL *vil,const AxisCreateInfo *aci)
+            Primitive *CreateAxis(PrimitiveCreater *pc,const AxisCreateInfo *aci)
             {
-                if(!device||!vil||!aci)return(nullptr);
+                if(!pc||!aci)return(nullptr);
 
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
-                if(!rc.Init("Axis",6,0))
+                if(!pc->Init("Axis",6,0))
                     return(nullptr);
 
-                VABMap3f vertex(&rc,VAN::Position);
-                VABMap4f color(&rc,VAN::Color);
+                VABMap3f vertex(pc,VAN::Position);
+                VABMap4f color(pc,VAN::Color);
 
                 if(!vertex.IsValid()||!color.IsValid())
                     return(nullptr);
@@ -1224,10 +1216,10 @@ namespace hgl
                 vertex->Write(0,0,0);color->Write(aci->color[2]);
                 vertex->Write(0,0,s);color->Write(aci->color[2]);
 
-                return rc.Create();
+                return pc->Create();
             }
 
-            Primitive *CreateBoundingBox(GPUDevice *device,const VIL *vil,const BoundingBoxCreateInfo *cci)
+            Primitive *CreateBoundingBox(PrimitiveCreater *pc,const BoundingBoxCreateInfo *cci)
             {
                 // Points of a cube.
                 /*     4            5 */    const float points[]={  -0.5,-0.5, 0.5,     0.5,-0.5,0.5,   0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,
@@ -1249,19 +1241,19 @@ namespace hgl
                     0,4,    1,5,    2,6,    3,7
                 };
 
-                PrimitiveCreater rc(device,vil);
+                if(!pc)return(nullptr);
 
-                if(!rc.Init("BoundingBox",8,24,IndexType::U16))
+                if(!pc->Init("BoundingBox",8,24,IndexType::U16))
                     return(nullptr);
 
-                if(!rc.WriteVAB(VAN::Position,VF_V3F,points,sizeof(points)))
+                if(!pc->WriteVAB(VAN::Position,VF_V3F,points))
                     return(nullptr);
 
                 if(cci->color_type!=BoundingBoxCreateInfo::ColorType::NoColor)
                 {
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    VABMap4f color(&rc,VAN::Color);
+                    VABMap4f color(pc,VAN::Color);
 
                     if(color.IsValid())
                     {
@@ -1273,9 +1265,9 @@ namespace hgl
                     }
                 }
 
-                rc.WriteIBO<uint16>(indices);
+                pc->WriteIBO<uint16>(indices);
 
-                return rc.Create();
+                return pc->Create();
             }
         }//namespace inline_geometry
     }//namespace graph

@@ -18,10 +18,12 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
     Clear();
 }
 
-PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm,const VIL *v)
-    :PrimitiveCreater(_vdm->GetDevice(),v)
+PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
+    :PrimitiveCreater(_vdm->GetDevice(),_vdm->GetVIL())
 {
     vdm=_vdm;
+
+    index_type=vdm->GetIndexType();
 }
 
 PrimitiveCreater::~PrimitiveCreater()
@@ -71,7 +73,7 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const VkDeviceSize vertex_co
 
     if(vdm)
     {
-        prim_data=CreatePrimitiveData(vdm,vil,vertices_number);
+        prim_data=CreatePrimitiveData(vdm,vertices_number);
 
         index_type=vdm->GetIndexType();
     }
@@ -91,12 +93,15 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const VkDeviceSize vertex_co
         }
         
     #ifdef _DEBUG
-        DebugUtils *du=device->GetDebugUtils();
-
-        if(du)
+        if(!vdm)
         {
-            du->SetBuffer(      iba->buffer->GetBuffer(),   prim_name+":IndexBuffer:Buffer");
-            du->SetDeviceMemory(iba->buffer->GetVkMemory(), prim_name+":IndexBuffer:Memory");
+            DebugUtils *du=device->GetDebugUtils();
+
+            if(du)
+            {
+                du->SetBuffer(      iba->buffer->GetBuffer(),   prim_name+":IndexBuffer:Buffer");
+                du->SetDeviceMemory(iba->buffer->GetVkMemory(), prim_name+":IndexBuffer:Memory");
+            }
         }
     #endif//_DEBUG
     }
@@ -106,19 +111,19 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const VkDeviceSize vertex_co
     return(true);
 }
 
-VABAccess *PrimitiveCreater::AcquireVAB(const AnsiString &name,const VkFormat &acquire_format,const void *data,const VkDeviceSize bytes)
+VABAccess *PrimitiveCreater::AcquireVAB(const AnsiString &name,const VkFormat &acquire_format,const void *data)
 {
     if(!prim_data)return(nullptr);
     if(name.IsEmpty())return(nullptr);
 
-    VABAccess *vab_access=prim_data->InitVAB(name,acquire_format,data,bytes);
+    VABAccess *vab_access=prim_data->InitVAB(name,acquire_format,data);
 
     if(!vab_access)
         return(nullptr);
 
-    if(vab_access->vab)
-    {  
     #ifdef _DEBUG
+    if(!vdm&&vab_access->vab)
+    {  
         DebugUtils *du=device->GetDebugUtils();
 
         if(du)
@@ -126,8 +131,8 @@ VABAccess *PrimitiveCreater::AcquireVAB(const AnsiString &name,const VkFormat &a
             du->SetBuffer(      vab_access->vab->GetBuffer(),   prim_name+":VAB:Buffer:"+name);
             du->SetDeviceMemory(vab_access->vab->GetVkMemory(), prim_name+":VAB:Memory:"+name);
         }
-    #endif//_DEBUG
     }
+    #endif//_DEBUG
 
     return vab_access;
 }

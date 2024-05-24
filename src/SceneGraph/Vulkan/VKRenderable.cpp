@@ -96,7 +96,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
-        vid->buffer_offset[i]=vab_access->start;
+        vid->buffer_offset[i]=vab_access->start*vif->stride;
         vid->buffer_list[i]=vab_access->vab->GetBuffer();
         ++vif;
     }

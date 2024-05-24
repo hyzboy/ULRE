@@ -199,7 +199,7 @@ void RenderCmdBuffer::DrawIndexed(const IBAccess *iba,const uint32_t instance_co
 
     vkCmdBindIndexBuffer(cmd_buf,
                          iba->buffer->GetBuffer(),
-                         iba->start,
+                         iba->start*iba->buffer->GetStride(),
                          VkIndexType(iba->buffer->GetType()));
 
     vkCmdDrawIndexed(cmd_buf,iba->count,instance_count,0,0,0);
