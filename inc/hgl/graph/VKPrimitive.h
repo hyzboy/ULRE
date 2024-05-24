@@ -24,36 +24,27 @@ class Primitive
 {
 protected:
 
-    AnsiString prim_name;
-    PrimitiveData *prim_data;
+    AnsiString      prim_name;
+
+    PrimitiveData * prim_data;
 
 protected:
 
     AABB BoundingBox;
-
-protected:
-
-    Primitive(const AnsiString &pn,PrimitiveData *pd)
-    {
-        prim_name=pn;
-        prim_data=pd;
-    }
-
+    
 public:
 
-    virtual ~Primitive()=default;
+    Primitive(const AnsiString &pn,PrimitiveData *pd);
+    virtual ~Primitive();
 
 public:
 
     const   AnsiString &    GetName         ()const{ return prim_name; }
     const   VkDeviceSize    GetVertexCount  ()const;
-    const   int             GetVACount      ()const;
+    const   int             GetVABCount     ()const;
             VABAccess *     GetVABAccess    (const AnsiString &);
             IBAccess *      GetIBAccess     ();
 
     const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive
-
-Primitive *CreatePrimitivePrivate(const AnsiString &,PrimitiveData *);
-Primitive *CreatePrimitivePrivate(VertexDataManager *,const AnsiString &,PrimitiveData *);
 VK_NAMESPACE_END

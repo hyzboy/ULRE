@@ -1,122 +1,55 @@
+ï»¿#include"VKPrimitiveData.h"
 #include<hgl/graph/VKVertexInputLayout.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-struct PrimitiveData
+
+PrimitiveData::PrimitiveData(const VIL *_vil,const VkDeviceSize vc)
 {
-    const VIL *     vil;
+    vil=_vil;
 
-    VkDeviceSize    vertex_count;
-    
-/*
-    1.½ØÖ¹2024.4.27£¬¸ù¾İvulkan.gpuinfo.orgÍ³¼Æ£¬Ö»ÓĞ9%µÄÉè±¸maxVertexInputAttributesÎª16£¬²»´æÔÚµÍÓÚ16µÄÉè±¸¡£
-         9.0%µÄÉè±¸Îª28 - 31
-        70.7%µÄÉè±¸Îª32
-         9.6%µÄÉè±¸Îª64
+    vertex_count=vc;
 
-        ÓÉÓÚÎÒÃÇÔİÊ±Ã»ÓĞ·¢ÏÖĞèÒªÊ¹ÓÃ16¸öÒÔÉÏÊôĞÔµÄÇé¿ö£¬ËùÒÔÕâÀïÔİ¶¨Ê¹ÓÃ16¡£
-        (Èç¹ûÊ±¼ä¹ıÈ¥¾ÃÔ¶£¬¿ÉÔÙ´Î²éÑ¯´ËÖµÊÇ·ñ¿É¸Ä³É¸ü¸ßµÄÖµ£¬ÒÔ¼°ÊÇ·ñĞèÒª)
+    vab_access=hgl_zero_new<VABAccess>(_vil->GetCount());
 
-    2.ÎªºÎva_nameÊ¹ÓÃchar[][]¶ø²»ÊÇStringÒÔ¼°¶¯Ì¬·ÖÅäÄÚ´æ£¿
-
-        ¾ÍÊÇÎªÁË±Ø±Ü¶¯Ì¬·ÖÅäÄÚ´æ£¬ÒÔ¼°¿ÉÒÔÖ±½Ómemcpy´¦Àí£¬ËùÒÔ´Ë´¦ÕâÑù¶¨Òå¡£
-*/
-
-    VABAccess       vab_access[HGL_MAX_VERTEX_ATTRIB_COUNT];
-    IBAccess        ib_access;
-};//struct PrimitiveData
-
-PrimitiveData *CreatePrimitiveData(const VIL *_vil,const VkDeviceSize vc)
-{
-    if(!_vil)return(nullptr);
-    if(vc<=0)return(nullptr);
-
-    PrimitiveData *pd=hgl_zero_new<PrimitiveData>();
-
-    pd->vil         =_vil;
-    pd->vertex_count=vc;
-
-    return(pd);
+    hgl_zero(ib_access);
 }
 
-void Free(PrimitiveData *pd)
+PrimitiveData::~PrimitiveData()
 {
-    if(!pd)return;
-
-    delete pd;
+    SAFE_CLEAR_ARRAY(vab_access);       //æ³¨æ„ï¼šè¿™é‡Œå¹¶ä¸é‡Šæ”¾VABï¼Œåœ¨æ´¾ç”Ÿç±»ä¸­é‡Šæ”¾
 }
 
-void Destory(PrimitiveData *pd)
+const int PrimitiveData::GetVABCount()const
 {
-    if(!pd)return;
-
-    VABAccess *vab=pd->vab_access;
-
-    for(uint32_t i=0;i<pd->vil->GetCount();i++)
-    {
-        if(vab->vab)
-        {
-            delete vab->vab;
-            vab->vab=nullptr;
-        }
-
-        ++vab;
-    }
-
-    if(pd->ib_access.buffer)
-    {
-        delete pd->ib_access.buffer;
-        pd->ib_access.buffer=nullptr;
-    }
-
-    delete pd;
+    return vil->GetCount();
 }
 
-const VkDeviceSize GetVertexCount(PrimitiveData *pd)
+const int PrimitiveData::GetVABIndex(const AnsiString &name) const
 {
-    if(!pd)return(0);
-
-    return pd->vertex_count;
-}
-
-const int GetVABCount(PrimitiveData *pd)
-{
-    if(!pd)return(-1);
-    if(!pd->vil)return(-2);
-
-    return pd->vil->GetCount();
-}
-
-int GetVABIndex(const PrimitiveData *pd,const AnsiString &name)
-{
-    if(!pd)return(-1);
-    if(!pd->vil)return(-1);
     if(name.IsEmpty())return(-1);
 
-    return pd->vil->GetIndex(name);
+    return vil->GetIndex(name);
 }
 
-VABAccess *GetVABAccess(PrimitiveData *pd,const int index)
+VABAccess *PrimitiveData::GetVABAccess(const int index)
 {
-    if(!pd)return(nullptr);
-    if(!pd->vil)return(nullptr);
-    if(index<0||index>=pd->vil->GetCount())return(nullptr);
+    if(index<0||index>=vil->GetCount())return(nullptr);
 
-    return pd->vab_access+index;
+    return vab_access+index;
 }
 
-VABAccess *GetVABAccess(PrimitiveData *pd,const AnsiString &name)
+VABAccess *PrimitiveData::GetVABAccess(const AnsiString &name)
 {
-    if(!pd)return(nullptr);
-    if(!pd->vil)return(nullptr);
     if(name.IsEmpty())return(nullptr);
 
-    const int index=pd->vil->GetIndex(name);
+    const int index=vil->GetIndex(name);
 
     if(index<0)return(nullptr);
 
-    return pd->vab_access+index;
+    return vab_access+index;
 }
 
 //VABAccess *SetVAB(PrimitiveData *pd,const int index,VAB *vab,VkDeviceSize start,VkDeviceSize count)
@@ -153,11 +86,125 @@ VABAccess *GetVABAccess(PrimitiveData *pd,const AnsiString &name)
 //    pd->ib_access.count=ic;
 //}
 
-IBAccess *GetIBAccess(PrimitiveData *pd)
+namespace
 {
-    if(!pd)return(nullptr);
+    /**
+    * ç›´æ¥ä½¿ç”¨GPUDeviceåˆ›å»ºVAB/IBO,å¹¶åœ¨é‡Šæ„æ—¶é‡Šæ”¾
+    */
+    class PrimitiveDataPrivateBuffer:public PrimitiveData
+    {
+        GPUDevice *device;
 
-    return &(pd->ib_access);
+    public:
+
+        PrimitiveDataPrivateBuffer(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc):PrimitiveData(_vil,vc)
+        {
+            device=dev;
+        }
+
+        ~PrimitiveDataPrivateBuffer()
+        {
+            VABAccess *vab=vab_access;
+
+            for(uint i=0;i<vil->GetCount();i++)
+            {
+                if(vab->vab)
+                {
+                    delete vab->vab;
+                    vab->vab=nullptr;
+                }
+
+                ++vab;
+            }
+
+            if(ib_access.buffer)
+            {
+                delete ib_access.buffer;
+                ib_access.buffer=nullptr;
+            }
+        }
+
+        IBAccess *InitIBO(const VkDeviceSize index_count,IndexType it) override
+        {
+            if(!device)return(nullptr);
+
+            if(ib_access.buffer)
+            {
+                delete ib_access.buffer;
+                ib_access.buffer=nullptr;
+            }
+
+            ib_access.buffer=device->CreateIBO(it,index_count);
+
+            if(!ib_access.buffer)
+                return(nullptr);
+
+            ib_access.start=0;
+            ib_access.count=index_count;
+
+            return(&ib_access);
+        }
+        
+        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data,const VkDeviceSize bytes)
+        {
+            if(!device)return(nullptr);
+            if(!vil)return(nullptr);
+            if(name.IsEmpty())return(nullptr);
+            
+            const int index=vil->GetIndex(name);
+
+            if(index<0||index>=vil->GetCount())
+                return(nullptr);
+
+            const VertexInputFormat *vif=vil->GetConfig(index);
+
+            if(!vif)return(nullptr);
+
+            if(vif->format!=format)
+                return(nullptr);
+
+            if(data)
+            {
+                if(vif->stride*vertex_count!=bytes)
+                    return(nullptr);
+            }
+
+            VABAccess *vaba=vab_access+index;
+
+            if(!vaba->vab)
+            {
+                vaba->vab=device->CreateVAB(format,vertex_count,data);
+
+                if(!vaba->vab)
+                    return(nullptr);
+
+                vaba->start=0;
+                vaba->count=vertex_count;
+            }
+            else
+            {
+                vaba->vab->Write(data,vertex_count);
+            }
+
+            return vaba;
+        }
+    };//class PrimitiveDataPrivateBuffer:public PrimitiveData
+
+    /**
+    * ä½¿ç”¨VertexDataBufferåˆ†é…VAB/IBOï¼Œåœ¨æœ¬ç±»ææ„æ—¶å½’è¿˜æ•°æ®
+    */
+    class PrimitiveDataVDM:public PrimitiveData
+    {
+
+    };
+}//namespace
+
+PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc)
+{
+    if(!dev)return(nullptr);
+    if(!_vil)return(nullptr);
+    if(vc<=0)return(nullptr);
+
+    return(new PrimitiveDataPrivateBuffer(dev,_vil,vc));
 }
-
 VK_NAMESPACE_END

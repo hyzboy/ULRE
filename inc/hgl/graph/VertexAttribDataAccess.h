@@ -6,6 +6,8 @@
 #include<hgl/type/RectScope.h>
 #include<hgl/type/String.h>
 #include<hgl/log/LogInfo.h>
+#include<hgl/graph/VKFormat.h>
+#include<hgl/graph/AABB.h>
 namespace hgl
 {
     namespace graph

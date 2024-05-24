@@ -3,6 +3,7 @@
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
+#include"VKPrimitiveData.h"
 
 #ifdef _DEBUG
 #include<hgl/graph/VKDevice.h>
@@ -10,65 +11,6 @@
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
-
-const   VkDeviceSize    GetVertexCount( PrimitiveData *pd);
-const   int             GetVABCount(    PrimitiveData *pd);
-        VABAccess *     GetVABAccess(   PrimitiveData *pd,const AnsiString &name);
-        IBAccess *      GetIBAccess(    PrimitiveData *pd);
-        void            Destory(        PrimitiveData *pd);
-        void            Free(           PrimitiveData *pd);
-
-class PrimitivePrivateBuffer:public Primitive
-{
-public:
-
-    using Primitive::Primitive;
-
-    ~PrimitivePrivateBuffer() override
-    {
-        Destory(prim_data);
-    }
-    
-    friend Primitive *CreatePrimitivePrivate(const AnsiString &,PrimitiveData *);
-};//class PrimitivePrivateBuffer
-
-class PrimitiveVDM:public Primitive
-{
-    VertexDataManager *vdm;
-
-public:
-
-    PrimitiveVDM(VertexDataManager *_vdm,const AnsiString &pn,PrimitiveData *pd):Primitive(pn,pd)
-    {
-        vdm=_vdm;
-    }
-
-    ~PrimitiveVDM() override
-    {
-
-
-        Free(prim_data);
-    }
-
-    friend Primitive *CreatePrimitivePrivate(VertexDataManager *,const AnsiString &,PrimitiveData *);
-};//class PrimitiveVDM;
-
-Primitive *CreatePrimitivePrivate(const AnsiString &name,PrimitiveData *pd)
-{
-    if(!pd)return(nullptr);
-    if(name.IsEmpty())return(nullptr);
-
-    return(new PrimitivePrivateBuffer(name,pd));
-}
-
-Primitive *CreatePrimitivePrivate(VertexDataManager *vdm,const AnsiString &name,PrimitiveData *pd)
-{
-    if(!vdm)return(nullptr);
-    if(!pd)return(nullptr);
-    if(name.IsEmpty())return(nullptr);
-
-    return(new PrimitiveVDM(vdm,name,pd));
-}
 
 //bool Renderable::Set(const int stage_input_binding,VIL *vil,VkDeviceSize offset)
 //{
@@ -88,24 +30,35 @@ Primitive *CreatePrimitivePrivate(VertexDataManager *vdm,const AnsiString &name,
 //    return(true);
 //}
 
-const VkDeviceSize Primitive::GetVertexCount()const
+Primitive::Primitive(const AnsiString &pn,PrimitiveData *pd)
 {
-    return VK_NAMESPACE::GetVertexCount(prim_data);
+    prim_name=pn;
+    prim_data=pd;
 }
 
-const int Primitive::GetVACount()const
+Primitive::~Primitive()
 {
-    return GetVABCount(prim_data);
+    SAFE_CLEAR(prim_data);
+}
+
+const VkDeviceSize Primitive::GetVertexCount()const
+{
+    return prim_data->GetVertexCount();
+}
+
+const int Primitive::GetVABCount()const
+{
+    return prim_data->GetVABCount();
 }
 
 VABAccess *Primitive::GetVABAccess(const AnsiString &name)
 {
-    return VK_NAMESPACE::GetVABAccess(prim_data,name);
+    return prim_data->GetVABAccess(name);
 }
 
 IBAccess *Primitive::GetIBAccess()
 {
-    return VK_NAMESPACE::GetIBAccess(prim_data);
+    return prim_data->GetIBAccess();
 }
 
 VK_NAMESPACE_END
