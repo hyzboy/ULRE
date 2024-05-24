@@ -1,4 +1,4 @@
-#ifndef HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE
+ï»¿#ifndef HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE
 #define HGL_GRAPH_VULKAN_VERTEX_ATTRIB_BUFFER_INCLUDE
 
 #include<hgl/graph/VKBuffer.h>
@@ -9,9 +9,9 @@ namespace hgl
     {
         class VertexAttribBuffer:public DeviceBuffer
         {
-            VkFormat format;                    ///<Êý¾Ý¸ñÊ½
-            uint32_t stride;                    ///<µ¥¸öÊý¾Ý×Ö½ÚÊý
-            uint32_t count;                     ///<Êý¾ÝÊýÁ¿
+            VkFormat format;                    ///<æ•°æ®æ ¼å¼
+            uint32_t stride;                    ///<å•ä¸ªæ•°æ®å­—èŠ‚æ•°
+            uint32_t count;                     ///<æ•°æ®æ•°é‡
 
         private:
 

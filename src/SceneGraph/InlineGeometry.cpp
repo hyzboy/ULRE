@@ -15,9 +15,9 @@ namespace hgl
         {
             Primitive *CreateRectangle(GPUDevice *device,const VIL *vil,const RectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(device,vil,"Rectangle");
+                PrimitiveCreater rc(device,vil);
 
-                if(!rc.Init(4,0))
+                if(!rc.Init("Rectangle",4,0))
                     return(nullptr);
 
                 VABMap2f vertex(&rc,VAN::Position);
@@ -41,11 +41,11 @@ namespace hgl
 
             Primitive *CreateRoundRectangle(GPUDevice *device,const VIL *vil,const RoundRectangleCreateInfo *rci)
             {
-                PrimitiveCreater rc(device,vil,"RoundRectangle");
+                PrimitiveCreater rc(device,vil);
 
                 if(rci->radius==0||rci->round_per<=1)      //这是要画矩形
                 {
-                    if(!rc.Init(4,0))
+                    if(!rc.Init("RoundRectangle",4,0))
                         return(nullptr);
                     
                     VABMap2f vertex(&rc,VAN::Position);
@@ -59,7 +59,7 @@ namespace hgl
                     if(radius>rci->scope.GetWidth()/2.0f)radius=rci->scope.GetWidth()/2.0f;
                     if(radius>rci->scope.GetHeight()/2.0f)radius=rci->scope.GetHeight()/2.0f;
 
-                    if(!rc.Init(rci->round_per*4,8))
+                    if(!rc.Init("RoundRectangle",rci->round_per*4,8))
                         return(nullptr);
                 
                     VABMap2f vertex(&rc,VAN::Position);
@@ -115,20 +115,23 @@ namespace hgl
 
             Primitive *CreateCircle(GPUDevice *device,const VIL *vil,const CircleCreateInfo *cci)
             {
-                PrimitiveCreater rc(device,vil,"Circle");
+                PrimitiveCreater rc(device,vil);
 
                 uint edge;
+                uint vertex_count;
 
                 if(cci->has_color)
                 {
                     edge=cci->field_count+1;
-                    if(!rc.Init(cci->field_count+2,0))return(nullptr);
+                    vertex_count=cci->field_count+2;
                 }
                 else
                 {
                     edge=cci->field_count;
-                    if(!rc.Init(cci->field_count,0))return(nullptr);
+                    vertex_count=cci->field_count;
                 }
+
+                if(!rc.Init("Circle",vertex_count,0))return(nullptr);
 
                 VABMap2f vertex(&rc,VAN::Position);
                 VABMap4f color(&rc,VAN::Color);
@@ -163,9 +166,9 @@ namespace hgl
 
             Primitive *CreatePlaneGrid(GPUDevice *device,const VIL *vil,const PlaneGridCreateInfo *pgci)
             {
-                PrimitiveCreater rc(device,vil,"PlaneGrid");
+                PrimitiveCreater rc(device,vil);
 
-                if(!rc.Init(((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
+                if(!rc.Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
 
                 VABMap3f vertex(&rc,VAN::Position);
@@ -219,9 +222,9 @@ namespace hgl
                 const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
                 const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
 
-                PrimitiveCreater rc(device,vil,"Plane");
+                PrimitiveCreater rc(device,vil);
 
-                if(!rc.Init(4,8))
+                if(!rc.Init("Plane",4,8))
                     return(nullptr);
 
                 if(!rc.WriteVAB(VAN::Position,VF_V3F,xy_vertices,sizeof(xy_vertices)))
@@ -304,9 +307,9 @@ namespace hgl
                                                 16,  17,   18,      16,   18,   19,
                                                 20,  23,   22,      20,   22,   21};
 
-                PrimitiveCreater rc(device,vil,"Cube");
+                PrimitiveCreater rc(device,vil);
 
-                if(!rc.Init(24,6*2*3,IndexType::U16))
+                if(!rc.Init("Cube",24,6*2*3,IndexType::U16))
                     return(nullptr);
 
                 if(!rc.WriteVAB(VAN::Position,VF_V3F,positions,sizeof(positions)))
@@ -454,7 +457,7 @@ namespace hgl
             */
             Primitive *CreateSphere(GPUDevice *device,const VIL *vil,const uint numberSlices)
             {
-                PrimitiveCreater rc(device,vil,"Sphere");
+                PrimitiveCreater rc(device,vil);
 
                 uint numberParallels = (numberSlices+1) / 2;
                 uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
@@ -468,7 +471,7 @@ namespace hgl
                 float helpMatrix[16];
                 float tex_x;
 
-                if(!rc.Init(numberVertices,numberIndices))
+                if(!rc.Init("Sphere",numberVertices,numberIndices))
                     return(nullptr);
 
                 VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
@@ -538,7 +541,7 @@ namespace hgl
 
             Primitive *CreateDome(GPUDevice *device,const VIL *vil,const uint numberSlices)
             {
-                PrimitiveCreater rc(device,vil,"Dome");
+                PrimitiveCreater rc(device,vil);
 
                 uint i, j;
 
@@ -557,7 +560,7 @@ namespace hgl
                 if (numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
 
-                if(!rc.Init(numberVertices,numberIndices))
+                if(!rc.Init("Dome",numberVertices,numberIndices))
                     return(nullptr);
                 
                 VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
@@ -670,7 +673,7 @@ namespace hgl
 
             Primitive *CreateTorus(GPUDevice *device,const VIL *vil,const TorusCreateInfo *tci)
             {
-                PrimitiveCreater rc(device,vil,"Torus");
+                PrimitiveCreater rc(device,vil);
 
                 // s, t = parametric values of the equations, in the range [0,1]
                 float s = 0;
@@ -705,7 +708,7 @@ namespace hgl
                 sIncr = 1.0f / (float) tci->numberSlices;
                 tIncr = 1.0f / (float) tci->numberStacks;
 
-                if(!rc.Init(numberVertices,numberIndices))
+                if(!rc.Init("Torus",numberVertices,numberIndices))
                     return(nullptr);                
                 
                 VABRawMapFloat vertex   (&rc,VF_V3F,VAN::Position);
@@ -840,11 +843,11 @@ namespace hgl
                 if(numberIndices<=0)
                     return(nullptr);
 
-                PrimitiveCreater rc(device,vil,"Cylinder");
+                PrimitiveCreater rc(device,vil);
 
                 uint numberVertices = (cci->numberSlices + 2) * 2 + (cci->numberSlices + 1) * 2;
 
-                if(!rc.Init(numberVertices,numberIndices))
+                if(!rc.Init("Cylinder",numberVertices,numberIndices))
                     return(nullptr);
 
                 float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
@@ -1065,14 +1068,14 @@ namespace hgl
 
             Primitive *CreateCone(GPUDevice *device,const VIL *vil,const ConeCreateInfo *cci)
             {
-                PrimitiveCreater rc(device,vil,"Cone");
+                PrimitiveCreater rc(device,vil);
 
                 uint i, j;
 
                 uint numberVertices = (cci->numberSlices + 2) + (cci->numberSlices + 1) * (cci->numberStacks + 1);
                 uint numberIndices = cci->numberSlices * 3 + cci->numberSlices * 6 * cci->numberStacks;
 
-                if(!rc.Init(numberVertices,numberIndices))
+                if(!rc.Init("Cone",numberVertices,numberIndices))
                     return(nullptr);
 
                 float angleStep = (2.0f * HGL_PI) / ((float) cci->numberSlices);
@@ -1201,9 +1204,9 @@ namespace hgl
             {
                 if(!device||!vil||!aci)return(nullptr);
 
-                PrimitiveCreater rc(device,vil,"Axis");
+                PrimitiveCreater rc(device,vil);
 
-                if(!rc.Init(6,0))
+                if(!rc.Init("Axis",6,0))
                     return(nullptr);
 
                 VABMap3f vertex(&rc,VAN::Position);
@@ -1246,9 +1249,9 @@ namespace hgl
                     0,4,    1,5,    2,6,    3,7
                 };
 
-                PrimitiveCreater rc(device,vil,"BoundingBox");
+                PrimitiveCreater rc(device,vil);
 
-                if(!rc.Init(8,24,IndexType::U16))
+                if(!rc.Init("BoundingBox",8,24,IndexType::U16))
                     return(nullptr);
 
                 if(!rc.WriteVAB(VAN::Position,VF_V3F,points,sizeof(points)))

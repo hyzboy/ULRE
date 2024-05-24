@@ -7,24 +7,19 @@
 #include"vulkan/VKPrimitiveData.h"
 
 VK_NAMESPACE_BEGIN
-PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v,const AnsiString &name)
+PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
 {
     device          =dev;
     vdm             =nullptr;
     vil             =v;
 
-    prim_name       =name;
     prim_data       =nullptr;
 
-    vertices_number =0;
-
-    index_number    =0;
-    index_type      =IndexType::ERR;
-    iba             =nullptr;
+    Clear();
 }
 
-PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm,const VIL *v,const AnsiString &name)
-    :PrimitiveCreater(_vdm->GetDevice(),v,name)
+PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm,const VIL *v)
+    :PrimitiveCreater(_vdm->GetDevice(),v)
 {
     vdm=_vdm;
 }
@@ -34,18 +29,24 @@ PrimitiveCreater::~PrimitiveCreater()
     SAFE_CLEAR(prim_data);
 }
 
-bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize index_count,IndexType it)
+void PrimitiveCreater::Clear()
 {
+    SAFE_CLEAR(prim_data);
+
+    vertices_number =0;
+
+    index_number    =0;
+    index_type      =IndexType::ERR;
+    iba             =nullptr;
+}
+
+bool PrimitiveCreater::Init(const AnsiString &pname,const VkDeviceSize vertex_count,const VkDeviceSize index_count,IndexType it)
+{
+    if(prim_data)           //已经初始化过了
+        return(false);
+
+    if(pname.IsEmpty())return(false);
     if(vertex_count<=0)return(false);
-
-    if(vdm)
-        prim_data=CreatePrimitiveData(vdm,vil,vertex_count);
-    else
-        prim_data=CreatePrimitiveData(device,vil,vertex_count);
-
-    if(!prim_data)return(false);
-
-    vertices_number=vertex_count;
 
     if(index_count>0)
     {
@@ -62,13 +63,32 @@ bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize i
                 return(false);
         }
 
-        iba=prim_data->InitIBO(index_count,it);
-
-        if(!iba)
-            return(false);
-
         index_type=it;
         index_number=index_count;
+    }
+
+    vertices_number=vertex_count;
+
+    if(vdm)
+    {
+        prim_data=CreatePrimitiveData(vdm,vil,vertices_number);
+
+        index_type=vdm->GetIndexType();
+    }
+    else
+        prim_data=CreatePrimitiveData(device,vil,vertices_number);
+
+    if(!prim_data)return(false);
+
+    if(index_number>0)
+    {
+        iba=prim_data->InitIBO(index_number,index_type);
+
+        if(!iba)
+        {
+            delete prim_data;
+            return(false);
+        }
         
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
@@ -80,6 +100,8 @@ bool PrimitiveCreater::Init(const VkDeviceSize vertex_count,const VkDeviceSize i
         }
     #endif//_DEBUG
     }
+
+    prim_name=pname;
 
     return(true);
 }
@@ -148,8 +170,9 @@ Primitive *PrimitiveCreater::Create()
     if(!primitive)
         return(nullptr);
 
-    prim_data=nullptr;
-    iba=nullptr;
+    prim_data=nullptr;      //带入Primitive后，不在这里删除
+
+    Clear();
 
     return primitive;
 }

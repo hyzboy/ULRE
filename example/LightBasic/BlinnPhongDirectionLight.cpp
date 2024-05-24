@@ -10,7 +10,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/BlinnPhong.h>
-//#include<hgl/graph/VertexDataManager.h>
+#include<hgl/graph/VertexDataManager.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -40,7 +40,7 @@ private:    //plane grid
     Material *          mtl_vertex_lum      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
     Pipeline *          p_line              =nullptr;
-    AutoDelete<Primitive>   prim_plane_grid     =nullptr;
+    Primitive *         prim_plane_grid     =nullptr;
 
 private:
 
@@ -49,14 +49,14 @@ private:
 private:    //sphere
 
     Material *          mtl_blinnphong      =nullptr;
-    //VertexDataManager * vdm_blinnphong      =nullptr;
+    VertexDataManager * vdm_blinnphong      =nullptr;
 
     MaterialInstance *  mi_blinnphong[4]{};
     Pipeline *          p_blinnphong        =nullptr;
 
-    AutoDelete<Primitive>   prim_sphere         =nullptr;
-    AutoDelete<Primitive>   prim_cone           =nullptr;
-    AutoDelete<Primitive>   prim_cylinder       =nullptr;
+    Primitive *         prim_sphere         =nullptr;
+    Primitive *         prim_cone           =nullptr;
+    Primitive *         prim_cylinder       =nullptr;
 
 private:
 
@@ -100,8 +100,6 @@ private:
         mtl_blinnphong->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
         mtl_blinnphong->Update();
 
-        //vdm_blinnphong=new VertexDataManager(device,mtl_blinnphong->GetDefaultVIL());
-
         Color4f mi_data;
         for(uint i=0;i<4;i++)
         {
@@ -117,6 +115,22 @@ private:
 
         if(!p_blinnphong)
             return(false);
+
+        return(true);
+    }
+
+    bool InitVDM()
+    {
+        vdm_blinnphong=new VertexDataManager(device,mtl_blinnphong->GetDefaultVIL());
+        if(!vdm_blinnphong->Init(   1024*1024,          //VAB最大容量
+                                    1024*1024,          //索引最大容量
+                                    IndexType::U16))    //索引类型
+        {
+            delete vdm_blinnphong;
+            vdm_blinnphong=nullptr;
+
+            return(false);
+        }
 
         return(true);
     }
@@ -224,6 +238,9 @@ public:
         if(!InitBlinnPhongSunLightMP())
             return(false);
 
+        if(!InitVDM())
+            return(false);
+
         if(!CreateRenderObject())
             return(false);
 
@@ -231,6 +248,16 @@ public:
             return(false);
 
         return(true);
+    }
+
+    ~TestApp()
+    {
+        SAFE_CLEAR(prim_cone)
+        SAFE_CLEAR(prim_cylinder)
+        SAFE_CLEAR(prim_sphere)
+        SAFE_CLEAR(prim_plane_grid)
+
+        SAFE_CLEAR(vdm_blinnphong)
     }
 };//class TestApp:public CameraAppFramework
 
