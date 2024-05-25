@@ -3,46 +3,92 @@
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include<hgl/graph/VKIndexBuffer.h>
 #include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 VertexInputData::VertexInputData(const uint32_t c,const uint32_t vc,const IBAccess *iba)
 {
-    binding_count=c;
+    vab_count=c;
 
-    buffer_list=new VkBuffer[binding_count];
-    buffer_offset=new VkDeviceSize[binding_count];
+    vab_list=hgl_zero_new<VkBuffer>(vab_count);
 
-    vertex_count=vc;
-
-    if(!iba||!iba->buffer)
-        ib_access=nullptr;
+    if(iba&&iba->buffer)
+        ibo=iba->buffer;
     else
-        ib_access=iba;
+        ibo=nullptr;
 }
 
 VertexInputData::~VertexInputData()
 {
-    delete[] buffer_list;
-    delete[] buffer_offset;
+    delete[] vab_list;
 }
 
-Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,VertexInputData *vi)
+const bool VertexInputData::Comp(const VertexInputData *vid)const
+{
+    if(!vid)return(false);
+
+    if(vab_count!=vid->vab_count)return(false);
+
+    for(uint32_t i=0;i<vab_count;i++)
+    {
+        if(vab_list[i]!=vid->vab_list[i])return(false);
+    }
+
+    if(ibo!=vid->ibo)return(false);
+
+    return(true);
+}
+
+Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,VertexInputData *vid,DrawData *dd)
 {
     primitive=r;
     pipeline=p;
     mat_inst=mi;
 
-    vertex_input=vi;
+    vertex_input_data=vid;
+    draw_data=dd;
+}
+
+DrawData::DrawData(const uint32_t bc,const VkDeviceSize vc,const IBAccess *iba)
+{
+    vab_count=bc;
+
+    vab_offset=new VkDeviceSize[vab_count];
+
+    vertex_count=vc;
+
+    if(iba&&iba->buffer)
+    {
+        index_start=iba->start;
+        index_count=iba->count;
+    }
+}
+
+DrawData::~DrawData()
+{
+    delete[] vab_offset;
+}
+
+const bool DrawData::Comp(const DrawData *dd)const
+{
+    if(!dd)return(false);
+    
+    if(vab_count!=dd->vab_count)return(false);
+
+    for(uint i=0;i<vab_count;i++)
+    {
+        if(vab_offset[i]!=dd->vab_offset[i])return(false);
+    }
+
+    if(vertex_count!=dd->vertex_count)return(false);
+
+    if(index_start!=dd->index_start)return(false);
+    if(index_count!=dd->index_count)return(false);
+
+    return(true);
 }
  
-Renderable::~Renderable()
-{
-    //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
-
-    delete vertex_input;
-}
-
 Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 {
     if(!prim||!mi||!p)return(nullptr);
@@ -58,7 +104,10 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),prim->GetIBAccess());
+    const IBAccess *iba=prim->GetIBAccess();
+
+    VertexInputData *vid=new VertexInputData(input_count,prim->GetVertexCount(),iba);
+    DrawData *dd=new DrawData(input_count,prim->GetVertexCount(),iba);
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
     VABAccess *vab_access;
@@ -96,11 +145,11 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
-        vid->buffer_offset[i]=vab_access->start*vif->stride;
-        vid->buffer_list[i]=vab_access->vab->GetBuffer();
+        dd->vab_offset[i]=vab_access->start*vif->stride;
+        vid->vab_list[i]=vab_access->vab->GetBuffer();
         ++vif;
     }
 
-    return(new Renderable(prim,mi,p,vid));
+    return(new Renderable(prim,mi,p,vid,dd));
 }
 VK_NAMESPACE_END

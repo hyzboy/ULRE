@@ -55,6 +55,7 @@ class DeviceBuffer;
 struct DeviceBufferData;
 
 struct VertexInputData;
+struct DrawData;
 
 class VertexAttribBuffer;
 using VAB=VertexAttribBuffer;

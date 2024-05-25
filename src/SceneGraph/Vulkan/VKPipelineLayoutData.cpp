@@ -26,7 +26,7 @@ PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptor
                 return(nullptr);
             }
 
-            pld->binding_count[i]=dslci->bindingCount;
+            pld->vab_count[i]=dslci->bindingCount;
 
             pld->fin_dsl[pld->fin_dsl_count]=pld->layouts[i];
             ++pld->fin_dsl_count;

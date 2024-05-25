@@ -40,10 +40,13 @@ public:
 public:
 
     const   AnsiString &    GetName         ()const{ return prim_name; }
+
     const   VkDeviceSize    GetVertexCount  ()const;
     const   int             GetVABCount     ()const;
             VABAccess *     GetVABAccess    (const AnsiString &);
+
             IBAccess *      GetIBAccess     ();
+            IndexBuffer *   GetIBO          ();
 
     const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive

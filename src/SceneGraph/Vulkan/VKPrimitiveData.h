@@ -38,7 +38,9 @@ public:
     const   int             GetVABIndex     (const AnsiString &name)const;
             VABAccess *     GetVABAccess    (const int index);            
             VABAccess *     GetVABAccess    (const AnsiString &name);
+
             IBAccess *      GetIBAccess     (){return &ib_access;}
+            IndexBuffer *   GetIBO          (){return ib_access.buffer;}
 
 public:
 

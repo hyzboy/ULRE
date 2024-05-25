@@ -3,8 +3,8 @@
 #include<hgl/graph/VKVBOList.h>
 
 VK_NAMESPACE_BEGIN
-class RenderL2WBuffer;
 class RenderAssignBuffer;
+
 
 /**
 * 同一材质的对象渲染列表
@@ -30,6 +30,7 @@ private:
                 Pipeline *          pipeline;
                 MaterialInstance *  mi;
         const   VertexInputData *   vid;
+        const   DrawData *          dd;
 
     public:
 
@@ -47,9 +48,10 @@ protected:
 
             Pipeline *          last_pipeline;
     const   VertexInputData *   last_vid;
+    const   DrawData *          last_dd;
             uint                last_index;
 
-    bool Bind(const VertexInputData *,const uint);
+    bool BindVAB(const VertexInputData *,const DrawData *,const uint);
 
     void Render(RenderItem *);
 

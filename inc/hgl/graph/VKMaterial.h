@@ -22,7 +22,7 @@ class Material
 {
     AnsiString name;
 
-    VertexInput *vertex_input;
+    VertexInput *vertex_input_data;
 
     ShaderModuleMap *shader_maps;
 
@@ -51,7 +51,7 @@ public:
 
     const   AnsiString &                        GetName                 ()const{return name;}
 
-    const   VertexInput *                       GetVertexInput          ()const{return vertex_input;}
+    const   VertexInput *                       GetVertexInput          ()const{return vertex_input_data;}
 
     const   ShaderStageCreateInfoList &         GetStageList            ()const{return shader_stage_list;}
 

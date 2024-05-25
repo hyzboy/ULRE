@@ -18,9 +18,9 @@ namespace
     {
         RANGE_CHECK_RETURN_NULLPTR(type);
 
-        const uint32_t binding_count=pld->binding_count[size_t(type)];
+        const uint32_t vab_count=pld->vab_count[size_t(type)];
 
-        if(!binding_count)
+        if(!vab_count)
             return(nullptr);
 
         DescriptorSetAllocateInfo alloc_info;
@@ -34,7 +34,7 @@ namespace
         if(vkAllocateDescriptorSets(device,&alloc_info,&desc_set)!=VK_SUCCESS)
             return(nullptr);
 
-        return(new DescriptorSet(device,binding_count,pld->pipeline_layout,desc_set));
+        return(new DescriptorSet(device,vab_count,pld->pipeline_layout,desc_set));
     }
 }//namespace
 
