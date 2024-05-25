@@ -137,7 +137,6 @@ VABAccess *PrimitiveCreater::AcquireVAB(const AnsiString &name,const VkFormat &a
     return vab_access;
 }
 
-
 void *PrimitiveCreater::MapIBO()
 {
     if(!prim_data)return(nullptr);

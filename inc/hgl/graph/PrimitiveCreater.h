@@ -35,10 +35,10 @@ public:
     PrimitiveCreater(VertexDataManager *);
     virtual ~PrimitiveCreater();
 
-    virtual bool                    Init(const AnsiString &name,const VkDeviceSize vertices_count,const VkDeviceSize index_count,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
+    virtual bool                    Init(const AnsiString &name,const VkDeviceSize vertices_count,const VkDeviceSize index_count=0,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
 
             void                    Clear();                                                                                                    ///<清除创建器数据
-    
+
 public: //顶点缓冲区
 
             const   VkDeviceSize    GetVertexCount()const{ return vertices_number; }                            ///<取得顶点数量

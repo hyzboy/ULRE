@@ -93,6 +93,30 @@ Renderable *RenderResource::CreateRenderable(Primitive *r,MaterialInstance *mi,P
     return ri;
 }
 
+Renderable *RenderResource::CreateRenderable(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p)
+{
+    if(!p||!mi||!pc)
+        return(nullptr);
+
+    Primitive *prim=pc->Create();
+
+    if(!prim)
+        return(nullptr);
+
+    Renderable *ri=VK_NAMESPACE::CreateRenderable(prim,mi,p);
+
+    if(ri)
+    {
+        Add(prim);
+        Add(ri);
+
+        return ri;
+    }
+
+    delete prim;
+    return(nullptr);
+}
+
 Sampler *RenderResource::CreateSampler(VkSamplerCreateInfo *sci)
 {
     Sampler *s=device->CreateSampler(sci);
