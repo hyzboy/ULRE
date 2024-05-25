@@ -55,7 +55,7 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
 
     assign_buffer=new RenderAssignBuffer(device,material);
 
-    vbo_list=new VBOList(material->GetVertexInput()->GetCount());
+    vbo_list=new VABList(material->GetVertexInput()->GetCount());
 }
 
 MaterialRenderList::~MaterialRenderList()
@@ -158,7 +158,9 @@ bool MaterialRenderList::BindVAB(const VertexInputData *vid,const DrawData *dd,c
 
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
-        vbo_list->Add(vid->vab_list,dd->vab_offset,vid->vab_count);
+        vbo_list->Add(vid->vab_list,
+                      nullptr,//dd->vab_offset,         //暂时不用dd->vab_offset，全部写0，测试一下是否可以使用Draw时的firstVertex或vertexOffset
+                      vid->vab_count);
     }
 
     if(assign_buffer) //L2W/MI分发组
@@ -199,7 +201,7 @@ bool MaterialRenderList::BindVAB(const VertexInputData *vid,const DrawData *dd,c
     //    return(false);
     //}
 
-    cmd_buf->BindVBO(vbo_list);
+    cmd_buf->BindVAB(vbo_list);
 
     return(true);
 }

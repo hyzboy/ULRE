@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 VK_NAMESPACE_BEGIN
-class VBOList
+class VABList
 {
     uint32_t vab_count;
     VkBuffer *vab_list;
@@ -13,7 +13,7 @@ class VBOList
 
 public:
 
-    VBOList(const uint32 bc)
+    VABList(const uint32 bc)
     {
         vab_count=bc;
         vab_list=new VkBuffer[vab_count];
@@ -22,7 +22,7 @@ public:
         write_count=0;
     }
 
-    ~VBOList()
+    ~VABList()
     {
         delete[] vab_offset;
         delete[] vab_list;
@@ -49,9 +49,13 @@ public:
     void Add(const VkBuffer *buf,const VkDeviceSize *offset,const uint32_t count)
     {
         hgl_cpy(vab_list  +write_count,buf,   count);
+
+        if(offset)
         hgl_cpy(vab_offset+write_count,offset,count);
+        else
+        hgl_set<VkDeviceSize>(vab_offset+write_count,VkDeviceSize(0),count);
 
         write_count+=count;
     }
-};//class VBOList
+};//class VABList
 VK_NAMESPACE_END

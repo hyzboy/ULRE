@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include<hgl/graph/RenderNode.h>
-#include<hgl/graph/VKVBOList.h>
+#include<hgl/graph/VKVABList.h>
 
 VK_NAMESPACE_BEGIN
 class RenderAssignBuffer;
@@ -44,7 +44,7 @@ private:
 
 protected:
 
-            VBOList *           vbo_list;
+            VABList *           vbo_list;
 
             Pipeline *          last_pipeline;
     const   VertexInputData *   last_vid;

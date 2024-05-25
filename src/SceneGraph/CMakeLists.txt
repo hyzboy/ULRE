@@ -17,7 +17,6 @@ SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitive.h
                         Vulkan/VKPrimitive.cpp
                         Vulkan/VKPrimitiveData.cpp
                         Vulkan/VKPrimitiveData.h
-                        ${SG_INCLUDE_PATH}/VKRenderablePrimitiveCreater.h
                         ${SG_INCLUDE_PATH}/PrimitiveCreater.h
                         PrimitiveCreater.cpp)
 

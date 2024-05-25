@@ -138,7 +138,7 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,VkDeviceSize offset)
                          VkIndexType(ibo->GetType()));
 }
 
-bool RenderCmdBuffer::BindVBO(Renderable *ri)
+bool RenderCmdBuffer::BindVAB(Renderable *ri)
 {
     if(!ri)
         return(false);

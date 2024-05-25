@@ -2,7 +2,7 @@
 #define HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKVBOList.h>
+#include<hgl/graph/VKVABList.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/color/Color4f.h>
@@ -154,25 +154,25 @@ public:
     void PushConstants(const void *data,const uint32_t size)                        {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,0,       size,data);}
     void PushConstants(const void *data,const uint32_t offset,const uint32_t size)  {vkCmdPushConstants(cmd_buf,pipeline_layout,VK_SHADER_STAGE_VERTEX_BIT,offset,  size,data);}
 
-    void BindVBO(const uint32_t first,const uint32_t count,const VkBuffer *vab,const VkDeviceSize *offsets)
+    void BindVAB(const uint32_t first,const uint32_t count,const VkBuffer *vab,const VkDeviceSize *offsets)
     {
         vkCmdBindVertexBuffers(cmd_buf,first,count,vab,offsets);
     }
 
-    bool BindVBO(VBOList *vbo_list)
+    bool BindVAB(VABList *vab_list)
     {
-        if(!vbo_list)return(false);
+        if(!vab_list)return(false);
 
-        if(!vbo_list->IsFull())return(false);
+        if(!vab_list->IsFull())return(false);
 
-        vkCmdBindVertexBuffers(cmd_buf,0,vbo_list->vab_count,vbo_list->vab_list,vbo_list->vab_offset);
+        vkCmdBindVertexBuffers(cmd_buf,0,vab_list->vab_count,vab_list->vab_list,vab_list->vab_offset);
 
         return(true);
     }
 
     void BindIBO(IndexBuffer *ibo,VkDeviceSize offset);     ///<绑定IBO，注意offset意为索引偏移量，不是字节
 
-    bool BindVBO(Renderable *);
+    bool BindVAB(Renderable *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}
