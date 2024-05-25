@@ -165,12 +165,12 @@ public:
 
         if(!vbo_list->IsFull())return(false);
 
-        vkCmdBindVertexBuffers(cmd_buf,0,vbo_list->binding_count,vbo_list->buffer_list,vbo_list->buffer_offset);
+        vkCmdBindVertexBuffers(cmd_buf,0,vbo_list->vab_count,vbo_list->vab_list,vbo_list->vab_offset);
 
         return(true);
     }
 
-//    void BindIBO(const IBAccess *);
+    void BindIBO(IndexBuffer *ibo,VkDeviceSize offset);     ///<绑定IBO，注意offset意为索引偏移量，不是字节
 
     bool BindVBO(Renderable *);
 
@@ -200,8 +200,8 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const VertexInputData *vid);
-                                void DrawIndexed        (const IBAccess *iba,const uint32_t instance_count);
+                                void Draw               (const VertexInputData *vid,const DrawData *dd);
+//                                void DrawIndexed        (const IBAccess *iba,const uint32_t instance_count);
 
 public: //dynamic state
 };//class RenderCmdBuffer:public GPUCmdBuffer

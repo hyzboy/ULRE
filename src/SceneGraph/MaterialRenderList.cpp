@@ -94,6 +94,7 @@ void MaterialRenderList::RenderItem::Set(Renderable *ri)
     pipeline    =ri->GetPipeline();
     mi          =ri->GetMaterialInstance();
     vid         =ri->GetVertexInputData();
+    dd          =ri->GetDrawData();
 }
 
 void MaterialRenderList::Stat()
@@ -114,6 +115,7 @@ void MaterialRenderList::Stat()
 
     last_pipeline   =ri->pipeline;
     last_vid        =ri->vid;
+    last_dd         =ri->dd;
 
     ++rn;
 
@@ -121,11 +123,12 @@ void MaterialRenderList::Stat()
     {
         if(last_pipeline==rn->ri->GetPipeline())
             if(last_vid->Comp(rn->ri->GetVertexInputData()))
-            {
-                ++ri->count;
-                ++rn;
-                continue;
-            }
+                if(last_dd->Comp(rn->ri->GetDrawData()))
+                {
+                    ++ri->count;
+                    ++rn;
+                    continue;
+                }
 
         ++ri_count;
         ++ri;
@@ -136,25 +139,26 @@ void MaterialRenderList::Stat()
 
         last_pipeline   =ri->pipeline;
         last_vid        =ri->vid;
+        last_dd         =ri->dd;
 
         ++rn;
     }
 }
 
-bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
+bool MaterialRenderList::BindVAB(const VertexInputData *vid,const DrawData *dd,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
     //const VIL *vil=last_vil;
 
-    //if(vil->GetCount(VertexInputGroup::Basic)!=vid->binding_count)
+    //if(vil->GetCount(VertexInputGroup::Basic)!=vid->vab_count)
     //    return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
 
     vbo_list->Restart();
 
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
-        vbo_list->Add(vid->buffer_list,vid->buffer_offset,vid->binding_count);
+        vbo_list->Add(vid->vab_list,dd->vab_offset,vid->vab_count);
     }
 
     if(assign_buffer) //L2W/MI分发组
@@ -168,7 +172,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //    {
     //        count+=joint_id_binding_count;
 
-    //        if(count<binding_count) //JointWeight组
+    //        if(count<vab_count) //JointWeight组
     //        {
     //            const uint joing_weight_binding_count=vil->GetCount(VertexInputGroup::JointWeight);
 
@@ -188,7 +192,7 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
     //    }
     //}
 
-    //if(count!=binding_count)
+    //if(count!=vab_count)
     //{
     //    //还有没支持的绑定组？？？？
 
@@ -214,17 +218,24 @@ void MaterialRenderList::Render(RenderItem *ri)
 
     if(!ri->vid->Comp(last_vid))
     {
-        Bind(ri->vid,ri->first);
         last_vid=ri->vid;
     }
 
-    if(last_vid->ib_access)
+    if(!ri->dd->Comp(last_dd))
     {
-        cmd_buf->DrawIndexed(last_vid->ib_access,ri->count);
+        BindVAB(ri->vid,ri->dd,ri->first);
+        last_dd=ri->dd;
+    }
+
+    if(last_vid->ibo)
+    {
+        cmd_buf->BindIBO(ri->vid->ibo,ri->dd->index_start);
+        cmd_buf->DrawIndexed(ri->dd->index_count,
+                             ri->count);
     }
     else
     {
-        cmd_buf->Draw(last_vid->vertex_count,ri->count);
+        cmd_buf->Draw(ri->dd->vertex_count,ri->count);
     }
 }
 

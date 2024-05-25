@@ -11,12 +11,12 @@ class DeviceBuffer;
 class DescriptorSet
 {
     VkDevice device;
-    int binding_count;
+    int vab_count;
     VkDescriptorSet desc_set;
 
     VkPipelineLayout pipeline_layout;
 
-    ObjectList<VkDescriptorBufferInfo> buffer_list;
+    ObjectList<VkDescriptorBufferInfo> vab_list;
     ObjectList<VkDescriptorImageInfo> image_list;
     List<VkWriteDescriptorSet> wds_list;
 
@@ -29,7 +29,7 @@ public:
     DescriptorSet(VkDevice dev,const int bc,VkPipelineLayout pl,VkDescriptorSet ds)
     {
         device          =dev;
-        binding_count   =bc;
+        vab_count   =bc;
         desc_set        =ds;
         pipeline_layout =pl;
 
@@ -38,11 +38,11 @@ public:
 
     ~DescriptorSet()=default;
 
-    const uint32_t          GetCount            ()const{return binding_count;}
+    const uint32_t          GetCount            ()const{return vab_count;}
     const VkDescriptorSet   GetDescriptorSet    ()const{return desc_set;}
     const VkPipelineLayout  GetPipelineLayout   ()const{return pipeline_layout;}
 
-    const bool              IsReady             ()const{return wds_list.GetCount()==binding_count;}
+    const bool              IsReady             ()const{return wds_list.GetCount()==vab_count;}
 
     void Clear();
 

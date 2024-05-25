@@ -61,4 +61,9 @@ IBAccess *Primitive::GetIBAccess()
     return prim_data->GetIBAccess();
 }
 
+IndexBuffer *Primitive::GetIBO()
+{
+    return prim_data->GetIBO();
+}
+
 VK_NAMESPACE_END

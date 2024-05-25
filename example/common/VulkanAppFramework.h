@@ -225,7 +225,7 @@ public:
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetMaterial());
                 cb->BindVBO(ri);
-                cb->Draw(vid);
+                cb->Draw(vid,ri->GetDrawData());
             cb->EndRenderPass();
         cb->End();
 

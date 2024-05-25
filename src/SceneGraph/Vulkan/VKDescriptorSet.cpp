@@ -69,7 +69,7 @@ namespace
 
 void DescriptorSet::Clear()
 {
-    buffer_list.Clear();
+    vab_list.Clear();
     image_list.Clear();
     wds_list.Clear();
     binded_sets.Clear();
@@ -101,7 +101,7 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDe
 
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
-    buffer_list.Add(buf_info);
+    vab_list.Add(buf_info);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     
@@ -137,7 +137,7 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
 
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
-    buffer_list.Add(buf_info);
+    vab_list.Add(buf_info);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     

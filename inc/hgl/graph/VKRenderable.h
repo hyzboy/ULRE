@@ -11,38 +11,34 @@
 VK_NAMESPACE_BEGIN
 struct VertexInputData
 {
-    uint32_t binding_count;
-    VkBuffer *buffer_list;
-    VkDeviceSize *buffer_offset;
-
-    uint32_t vertex_count;
-
-    const IBAccess *ib_access;
+    uint32_t vab_count;
+    VkBuffer *vab_list;
+    IndexBuffer *ibo;
 
 public:
 
-    VertexInputData(const uint32_t,const uint32_t,const IBAccess *);
+    VertexInputData(const uint32_t,const uint32_t,const IBAccess *iba);
     ~VertexInputData();
 
-    const bool Comp(const VertexInputData *vid)const
-    {
-        if(!vid)return(false);
-
-        if(binding_count!=vid->binding_count)return(false);
-
-        for(uint32_t i=0;i<binding_count;i++)
-        {
-            if(buffer_list[i]!=vid->buffer_list[i])return(false);
-            if(buffer_offset[i]!=vid->buffer_offset[i])return(false);
-        }
-
-        if(vertex_count!=vid->vertex_count)return(false);
-
-        if(ib_access!=vid->ib_access)return(false);
-
-        return(true);
-    }
+    const bool Comp(const VertexInputData *vid)const;
 };//struct VertexInputData
+
+struct DrawData
+{
+    uint            vab_count;
+    VkDeviceSize *  vab_offset;
+    VkDeviceSize    vertex_count;
+
+    VkDeviceSize    index_start;
+    VkDeviceSize    index_count;
+
+public:
+
+    DrawData(const uint32_t bc,const VkDeviceSize vc,const IBAccess *iba);
+    ~DrawData();
+
+    const bool Comp(const DrawData *)const;
+};
 
 /**
 * 可渲染对象<br>
@@ -53,17 +49,24 @@ class Renderable                                                                
     MaterialInstance *  mat_inst;
     Primitive *         primitive;
 
-    VertexInputData *   vertex_input;
+    VertexInputData *   vertex_input_data;
+    DrawData *          draw_data;
 
 private:
 
     friend Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    Renderable(Primitive *,MaterialInstance *,Pipeline *,VertexInputData *);
+    Renderable(Primitive *,MaterialInstance *,Pipeline *,VertexInputData *,DrawData *);
 
 public:
 
-    virtual ~Renderable();
+    virtual ~Renderable()
+    {
+        //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
+
+        SAFE_CLEAR(vertex_input_data);
+        SAFE_CLEAR(draw_data);
+    }
 
             void                UpdatePipeline      (Pipeline *p){pipeline=p;}
 
@@ -74,7 +77,8 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   VertexInputData *   GetVertexInputData  ()const{return vertex_input;}
+    const   VertexInputData *   GetVertexInputData  ()const{return vertex_input_data;}
+    const   DrawData *          GetDrawData         ()const{return draw_data;}
 };//class Renderable
 
 Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
