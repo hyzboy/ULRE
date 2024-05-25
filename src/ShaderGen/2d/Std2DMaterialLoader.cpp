@@ -16,7 +16,7 @@ namespace
 
     public:
 
-        Std2DMaterialLoader(material_file::MaterialFileData *data,const Material2DCreateConfig *cfg):Std2DMaterial(cfg)
+        Std2DMaterialLoader(material_file::MaterialFileData *data,const Material2DCreateConfig *c):Std2DMaterial(c)
         {
             mfd=data;
         }
@@ -75,9 +75,6 @@ namespace
         {
             for(auto &ua:mfd->vi)
                 vsc->AddInput(ua.vat,ua.name);
-
-            if(mfd->mi.mi_bytes>0)
-                vsc->AddMaterialInstanceID();
 
             if(!Std2DMaterial::CustomVertexShader(vsc))
                 return(false);

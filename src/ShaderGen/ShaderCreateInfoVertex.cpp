@@ -1,4 +1,4 @@
-#include<hgl/shadergen/ShaderCreateInfoVertex.h>
+﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKShaderStage.h>
@@ -48,41 +48,14 @@ void ShaderCreateInfoVertex::AddJoint()
     AddInput(VAT_VEC4,  VAN::JointWeight,VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::JointWeight);
 }
 
-namespace
+void ShaderCreateInfoVertex::AddAssign()
 {
-    constexpr const char MF_GetLocalToWorld_ByID[]="\nmat4 GetLocalToWorld(){return l2w.mats[LocalToWorld_ID];}\n";
-
-    constexpr const char MF_GetLocalToWorld_by4VI[]=R"(
-mat4 GetLocalToWorld()
-{
-    return mat4(LocalToWorld_0,
-                LocalToWorld_1,
-                LocalToWorld_2,
-                LocalToWorld_3);
-}
-)";
-}
-
-void ShaderCreateInfoVertex::AddLocalToWorld()
-{
-    char name[]= "LocalToWorld_?";
-
-    for(uint i=0;i<4;i++)
-    {
-        name[sizeof(name)-2]='0'+i;
-
-        AddInput(VAT_VEC4,name,VK_VERTEX_INPUT_RATE_INSTANCE,VertexInputGroup::LocalToWorld);
-    }
-
-    AddFunction(MF_GetLocalToWorld_by4VI);
-}
-
-void ShaderCreateInfoVertex::AddMaterialInstanceID()
-{
-    AddInput(   MI_VAT_FMT,
-                MI_VIS_NAME,
+    AddInput(   ASSIGN_VAT_FMT,
+                ASSIGN_VIS_NAME,
                 VK_VERTEX_INPUT_RATE_INSTANCE,
-                VertexInputGroup::MaterialInstanceID);
+                VertexInputGroup::Assign);
+    
+    AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
 }
 
 bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)

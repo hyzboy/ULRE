@@ -16,7 +16,7 @@ struct Material2DCreateConfig:public MaterialCreateConfig
 
 public:
 
-    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p):MaterialCreateConfig(da,name,p)
+    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const bool &mi,const Prim &p):MaterialCreateConfig(da,name,mi,p)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度

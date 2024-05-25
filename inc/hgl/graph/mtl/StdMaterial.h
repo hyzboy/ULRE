@@ -5,12 +5,14 @@
 #define STD_MTL_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace mtl{
 #define STD_MTL_NAMESPACE_END   }}}
 
-#define STD_MTL_NAMESPACE_USING using namespace hgl::graph::mtl;
+#define STD_MTL_NAMESPACE hgl::graph::mtl
+#define STD_MTL_NAMESPACE_USING using namespace STD_MTL_NAMESPACE;
 
 #define STD_MTL_FUNC_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace mtl{namespace func{
 #define STD_MTL_FUNC_NAMESPACE_END   }}}}
 
-#define STD_MTL_FUNC NAMESPACE_USING using namespace hgl::graph::mtl::func;
+#define STD_MTL_FUNC_NAMESPACE hgl::graph::mtl::func
+#define STD_MTL_FUNC_NAMESPACE_USING using namespace STD_MTL_FUNC_NAMESPACE;
 
 namespace hgl
 {

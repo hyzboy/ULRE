@@ -19,6 +19,8 @@ struct MaterialCreateConfig
 
     AnsiString mtl_name;                                    ///<材质名称
 
+    bool material_instance;                                 ///<是否包含材质实例
+
     RenderTargetOutputConfig rt_output;                     ///<渲染目标输出配置
 
     uint32 shader_stage_flag_bit;                           ///<需要的shader
@@ -27,11 +29,13 @@ struct MaterialCreateConfig
 
 public:
 
-    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p)
+    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const bool mi,const Prim &p)
     {
         dev_attr=da;
 
         mtl_name=name;
+
+        material_instance=mi;
 
         shader_stage_flag_bit=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
 

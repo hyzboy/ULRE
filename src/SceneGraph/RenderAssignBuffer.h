@@ -16,6 +16,7 @@ VK_NAMESPACE_BEGIN
 // 如果一定要使用超过16K/64K硬件限制的容量，有两种办法
 // 一、分多次渲染，使用UBO Offset偏移UBO数据区。
 // 二、使用SSBO，但这样会导致性能下降，所以不推荐使用。
+// 三、使用纹理保存材质实例数据，但这样会导致性能下降，所以不推荐使用。
 
 // 但我们不解决这个问题
 // 我们天然要求将材质实例数据分为两个等级，同时要求一次渲染不能超过256种材质实例。
@@ -25,73 +26,71 @@ VK_NAMESPACE_BEGIN
 struct RenderNode;
 class MaterialInstance;
 
-class RenderL2WBuffer
-{
-    GPUDevice *device;
-
-    uint node_count;                    ///<渲染节点数量
-
-    VAB *l2w_vbo[4];
-    VkBuffer l2w_buffer[4];
-
-private:
-
-    void Alloc(const uint nc);
-
-    void Clear();
-
-public:
-
-    const VkBuffer *GetVBO()const{return l2w_buffer;}
-
-public:
-
-    RenderL2WBuffer(GPUDevice *dev);
-    ~RenderL2WBuffer(){Clear();}
-
-    void WriteNode(RenderNode *render_node,const uint count);
-};//class RenderL2WBuffer
-
 /*
 * 渲染节点额外提供的数据
 */
-class RenderMIBuffer
+class RenderAssignBuffer
 {
+    struct AssignData
+    {
+        uint16 l2w;
+        uint16 mi;
+    };
+
+    uint LW2_MAX_COUNT;
+
 private:
 
     GPUDevice *device;
 
-    uint node_count;                    ///<渲染节点数量
+    Material *material;
 
-    uint32_t mi_data_bytes;             ///<材质实例数据字节数
-    uint32_t mi_count;                  ///<材质实例数量
-    DeviceBuffer *mi_data_buffer;       ///<材质实例数据(UBO/SSBO)
+private:    //LocalToWorld矩阵数据
+
+    uint32 l2w_buffer_max_count;        ///<LocalToWorld矩阵最大数量
+    DeviceBuffer *l2w_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
+
+    void StatL2W(const RenderNodeList &);
+
+private:    //材质实例数据
     
-    VAB *mi_vab;                        ///<材质实例ID(R16UI格式)
-    VkBuffer mi_buffer;
+    MaterialInstanceSets mi_set;
+
+    uint32_t mi_data_bytes;             ///<单个材质实例数据字节数
+    DeviceBuffer *mi_buffer;            ///<材质实例数据(UBO/SSBO)
+
+    void StatMI(const RenderNodeList &);
+    
+private:    //分发数据
+
+    uint32 node_count;                  ///<节点数量
+
+    VAB *assign_vab;                    ///<分发数据VAB(RG16UI格式，R存L2W ID，G存材质实例ID)
+    VkBuffer assign_buffer;             ///<分发数据Buffer
 
 private:
-
-    void Alloc(const uint nc,const uint mc);
 
     void Clear();
 
 public:
 
-    const VkBuffer GetVBO()const{return mi_buffer;}
+    const VkBuffer GetVAB()const{return assign_buffer;}
 
     void Bind(Material *)const;
 
 public:
 
-    RenderMIBuffer(GPUDevice *dev,const uint32_t mi_bytes);
-    ~RenderMIBuffer(){Clear();}
+    RenderAssignBuffer(GPUDevice *dev,Material *);
+    ~RenderAssignBuffer(){Clear();}
 
     //下一代，将MaterialInstanceSets使用提前化，这样不用每一次绘制都重新写入MI DATA，可以提升效率。
     //虽然这样就不自动化了，但我们要的就是不自动化。
     //必须在外部全部准备好MaterialInstanceSets，然后一次性写入。
     //渲染时找不到就直接用0号材质实例
 
-    void WriteNode(RenderNode *render_node,const uint nc,const MaterialInstanceSets &mi_set);
-};//struct RenderMIBuffer
+    //同样的LocalToWorld矩阵也可以提前化处理，这样对于静态物体，就只需要写入一次LocalToWorld矩阵了。
+
+    void WriteNode(const RenderNodeList &);
+
+};//struct RenderAssignBuffer
 VK_NAMESPACE_END

@@ -53,15 +53,7 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
     cmd_buf=nullptr;
     material=m;
 
-    if(l2w)
-        l2w_buffer=new RenderL2WBuffer(device);
-    else
-        l2w_buffer=nullptr;
-
-    if(material->HasMI())
-        mi_buffer=new RenderMIBuffer(device,material->GetMIDataBytes());
-    else
-        mi_buffer=nullptr;
+    assign_buffer=new RenderAssignBuffer(device,material);
 
     vbo_list=new VBOList(material->GetVertexInput()->GetCount());
 }
@@ -69,8 +61,7 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
 MaterialRenderList::~MaterialRenderList()
 {
     SAFE_CLEAR(vbo_list);
-    SAFE_CLEAR(mi_buffer);
-    SAFE_CLEAR(l2w_buffer);
+    SAFE_CLEAR(assign_buffer);
 }
 
 void MaterialRenderList::Add(Renderable *ri,const Matrix4f &mat)
@@ -94,16 +85,8 @@ void MaterialRenderList::End()
 
     Stat();
 
-    if(l2w_buffer)
-    {
-        l2w_buffer->WriteNode(rn_list.GetData(),node_count);
-    }
-
-    if(mi_buffer)
-    {
-        StatMI();
-        mi_buffer->WriteNode(rn_list.GetData(),node_count,mi_set);
-    }
+    if(assign_buffer)
+        assign_buffer->WriteNode(rn_list);
 }
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)
@@ -111,19 +94,6 @@ void MaterialRenderList::RenderItem::Set(Renderable *ri)
     pipeline    =ri->GetPipeline();
     mi          =ri->GetMaterialInstance();
     vid         =ri->GetVertexInputData();
-}
-
-void MaterialRenderList::StatMI()
-{
-    mi_set.Clear();
-
-    for(RenderNode &rn:rn_list)
-        mi_set.Add(rn.ri->GetMaterialInstance());
-
-    if(mi_set.GetCount()>material->GetMIMaxCount())
-    {
-        //超出最大数量了怎么办？？？
-    }
 }
 
 void MaterialRenderList::Stat()
@@ -187,16 +157,8 @@ bool MaterialRenderList::Bind(const VertexInputData *vid,const uint ri_index)
         vbo_list->Add(vid->buffer_list,vid->buffer_offset,vid->binding_count);
     }
 
-    if(l2w_buffer)//LocalToWorld组，由RenderList合成
-    {
-        for(uint i=0;i<4;i++)
-            l2w_buffer_size[i]=ri_index*16;                        //mat4每列都是rgba32f，自然是16字节
-
-        vbo_list->Add(l2w_buffer->GetVBO(),l2w_buffer_size,4);
-    }
-
-    if(mi_buffer) //材质实例组
-        vbo_list->Add(mi_buffer->GetVBO(),MI_VAB_STRIDE_BYTES*ri_index);
+    if(assign_buffer) //L2W/MI分发组
+        vbo_list->Add(assign_buffer->GetVAB(),ASSIGN_VAB_STRIDE_BYTES*ri_index);
 
     //if(!vbo_list.IsFull()) //Joint组，暂未支持
     //{
@@ -282,8 +244,8 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
     last_pipeline   =nullptr;
     last_vid        =nullptr;
 
-    if(mi_buffer)
-        mi_buffer->Bind(material);
+    if(assign_buffer)
+        assign_buffer->Bind(material);
 
     cmd_buf->BindDescriptorSets(material);
 

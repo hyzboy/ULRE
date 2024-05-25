@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
 #include<hgl/shadergen/ShaderCreateInfoVertex.h>
@@ -33,7 +33,9 @@ namespace hgl{namespace graph
             uint32_t mi_max_count;
             UBODescriptor *mi_ubo;
 
+            uint32_t l2w_max_count;
             uint32_t l2w_shader_stage;
+            UBODescriptor *l2w_ubo;
 
             ShaderCreateInfoMap shader_map;                         ///<着色器列表
 

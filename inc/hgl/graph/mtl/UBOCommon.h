@@ -42,10 +42,24 @@ constexpr const ShaderBufferSource SBS_CameraInfo=
     float znear,zfar;)"
 };
 
+constexpr const char LocalToWorldStruct[]="LocalToWorld";
+constexpr const DescriptorSetType DST_LocalToWorld=DescriptorSetType::PerFrame;
+
+constexpr const ShaderBufferSource SBS_LocalToWorld=
+{
+    "LocalToWorldData",
+    "l2w",
+
+    R"(
+    mat4 mats[L2W_MAX_COUNT];
+)"
+};
+
 // UBO必须严格指定数组的大小
 // SSBO则不需要，使用[]方式指定为动态大小数组
 
 constexpr const char MaterialInstanceStruct[]="MaterialInstance";
+constexpr const DescriptorSetType DST_MaterialInstance=DescriptorSetType::PerMaterial;
 
 constexpr const ShaderBufferSource SBS_MaterialInstance=
 {

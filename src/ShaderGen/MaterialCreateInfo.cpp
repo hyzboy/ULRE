@@ -172,9 +172,9 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     mi_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
 
-    mdi.AddUBO(shader_stage_flag_bits,DescriptorSetType::PerMaterial,mi_ubo);
+    mdi.AddUBO(shader_stage_flag_bits,DST_MaterialInstance,mi_ubo);
 
-    const AnsiString MI_MAX_COUNT=AnsiString::numberOf(mi_max_count);
+    const AnsiString MI_MAX_COUNT_STRING=AnsiString::numberOf(mi_max_count);
 
     auto *it=shader_map.GetDataList();
 
@@ -182,7 +182,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     {
         if((*it)->key&shader_stage_flag_bits)
         {
-            (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT);
+            (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT_STRING);
             (*it)->value->SetMaterialInstance(mi_ubo,mi_codes);
         }
 
@@ -197,6 +197,28 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 {
     if(shader_stage_flag_bits==0)return(false);
+
+    l2w_max_count=hgl_min<uint32_t>(ubo_range/sizeof(Matrix4f),HGL_U16_MAX);
+
+    mdi.AddStruct(SBS_LocalToWorld);
+
+    l2w_ubo=CreateUBODescriptor(SBS_LocalToWorld,shader_stage_flag_bits);
+
+    mdi.AddUBO(shader_stage_flag_bits,DST_LocalToWorld,l2w_ubo);
+
+    const AnsiString L2W_MAX_COUNT_STRING=AnsiString::numberOf(l2w_max_count);
+
+    auto *it=shader_map.GetDataList();
+
+    for(int i=0;i<shader_map.GetCount();i++)
+    {
+        if((*it)->key&shader_stage_flag_bits)
+        {
+            (*it)->value->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
+        }
+
+        ++it;
+    }
 
     l2w_shader_stage=shader_stage_flag_bits;
 
