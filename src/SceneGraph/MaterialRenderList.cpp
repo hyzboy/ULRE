@@ -164,7 +164,7 @@ bool MaterialRenderList::BindVAB(const VertexInputData *vid,const DrawData *dd,c
     }
 
     if(assign_buffer) //L2W/MI分发组
-        vbo_list->Add(assign_buffer->GetVAB(),ASSIGN_VAB_STRIDE_BYTES*ri_index);
+        vbo_list->Add(assign_buffer->GetVAB(),0);//ASSIGN_VAB_STRIDE_BYTES*ri_index);
 
     //if(!vbo_list.IsFull()) //Joint组，暂未支持
     //{
@@ -222,19 +222,18 @@ void MaterialRenderList::Render(RenderItem *ri)
     {
         last_vid=ri->vid;
         last_dd=nullptr;
-    }
 
-    if(!ri->dd->Comp(last_dd))
-    {
         BindVAB(ri->vid,ri->dd,ri->first);
-        last_dd=ri->dd;
+        cmd_buf->BindIBO(ri->vid->ibo,0);
     }
 
     if(last_vid->ibo)
     {
-        cmd_buf->BindIBO(ri->vid->ibo,ri->dd->index_start);
         cmd_buf->DrawIndexed(ri->dd->index_count,
-                             ri->count);
+                             ri->count,
+                             ri->dd->index_start,
+                             ri->dd->vab_offset[0],
+                             ri->first);
     }
     else
     {

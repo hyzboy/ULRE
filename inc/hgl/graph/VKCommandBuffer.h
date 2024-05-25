@@ -191,6 +191,15 @@ public: //draw
                                 void DrawIndexed        (const uint32_t index_count )                               {vkCmdDrawIndexed(cmd_buf,index_count,1,0,0,0);}
                                 void Draw               (const uint32_t vertex_count,const uint32_t instance_count) {vkCmdDraw(cmd_buf,vertex_count,instance_count,0,0);}
                                 void DrawIndexed        (const uint32_t index_count ,const uint32_t instance_count) {vkCmdDrawIndexed(cmd_buf,index_count,instance_count,0,0,0);}
+                                void DrawIndexed        (const uint32_t index_count ,const uint32_t instance_count,const uint32_t firstIndex,const int32_t vertexOffset,const uint32_t firstInstance) 
+                                {
+                                    vkCmdDrawIndexed(cmd_buf,
+                                                     index_count,
+                                                     instance_count,
+                                                     firstIndex,
+                                                     vertexOffset,
+                                                     firstInstance);
+                                }
 
 //    template<typename ...ARGS>  void Draw               (ARGS...args)                   {vkCmdDraw(cmd_buf,args...);}
 //    template<typename ...ARGS>  void DrawIndexed        (ARGS...args)                   {vkCmdDrawIndexed(cmd_buf,args...);}
