@@ -114,6 +114,9 @@ MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,Material3DCreate
     if(!mfd)
         return nullptr;
 
+    if(mfd->mi.mi_bytes>0)
+        cfg->material_instance=true;
+
     cfg->shader_stage_flag_bit=mfd->shader_stage_flag_bit;
 
     Std3DMaterialLoader mtl(mfd,cfg);

@@ -64,7 +64,7 @@ private:
 
     bool InitVertexLumMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",false,Prim::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
 
         cfg.local_to_world=true;
 
@@ -92,9 +92,10 @@ private:
 
     bool InitBlinnPhongSunLightMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"BlinnPhong3D",true,Prim::Triangles);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"BlinnPhong3D",Prim::Triangles);
 
         cfg.local_to_world=true;
+        cfg.material_instance=true;
 
         mtl_blinnphong=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColor",&cfg);
         if(!mtl_blinnphong)return(false);
