@@ -21,8 +21,7 @@ namespace hgl
 
             int hasInput(const char *);
 
-            void AddLocalToWorld();
-            void AddMaterialInstanceID();
+            void AddAssign();
 
             void AddJoint();
         };//class ShaderCreateInfoVertex:public ShaderCreateInfo

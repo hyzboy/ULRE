@@ -156,10 +156,11 @@ bool ShaderCreateInfo::ProcSubpassInput()
 
 namespace
 {
-    constexpr const char MF_GetMI_VS    []="\nMaterialInstance GetMI(){return mtl.mi[MaterialInstanceID];}\n";
+    constexpr const char MI_ID_OUTPUT[]="MaterialInstanceID";
+    constexpr const char MF_GetMI_VS    []="\nMaterialInstance GetMI(){return mtl.mi[Assign.y];}\n";
     constexpr const char MF_GetMI_Other []="\nMaterialInstance GetMI(){return mtl.mi[Input.MaterialInstanceID];}\n";
 
-    constexpr const char MF_HandoverMI_VS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=MaterialInstanceID;}\n";
+    constexpr const char MF_HandoverMI_VS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=Assign.y;}\n";
     constexpr const char MF_HandoverMI_GS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=Input[0].MaterialInstanceID;}\n";
     constexpr const char MF_HandoverMI_OTHER[]= "\nvoid HandoverMI(){Output.MaterialInstanceID=Input.MaterialInstanceID;}\n";
 }//namespace
@@ -176,7 +177,7 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
 
 void ShaderCreateInfo::AddMaterialInstanceOutput()
 {
-    AddOutput(VAT_UINT,mtl::func::MaterialInstanceID,Interpolation::Flat);
+    AddOutput(VAT_UINT,MI_ID_OUTPUT,Interpolation::Flat);
 
     if(shader_stage==VK_SHADER_STAGE_VERTEX_BIT)    AddFunction(MF_HandoverMI_VS);else
     if(shader_stage==VK_SHADER_STAGE_GEOMETRY_BIT)  AddFunction(MF_HandoverMI_GS);else

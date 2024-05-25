@@ -4,7 +4,7 @@
 
 VK_NAMESPACE_BEGIN
 class RenderL2WBuffer;
-class RenderMIBuffer;
+class RenderAssignBuffer;
 
 /**
 * 同一材质的对象渲染列表
@@ -20,8 +20,7 @@ class MaterialRenderList
 
 private:
 
-    RenderL2WBuffer *l2w_buffer;
-    RenderMIBuffer *mi_buffer;
+    RenderAssignBuffer *assign_buffer;
 
     struct RenderItem
     {
@@ -37,13 +36,9 @@ private:
         void Set(Renderable *);
     };
 
-    MaterialInstanceSets mi_set;
     DataArray<RenderItem> ri_array;
     uint ri_count;
 
-    VkDeviceSize l2w_buffer_size[4];
-
-    void StatMI();
     void Stat();
 
 protected:

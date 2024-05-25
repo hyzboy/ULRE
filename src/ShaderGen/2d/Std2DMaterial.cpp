@@ -1,4 +1,4 @@
-#include"Std2DMaterial.h"
+﻿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/UBOCommon.h>
@@ -13,10 +13,18 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     vsc->AddInput(cfg->position_format,VAN::Position);
 
     const bool is_rect=(cfg->prim==Prim::SolidRectangles||cfg->prim==Prim::WireRectangles);
+    
+    if(cfg->local_to_world||cfg->material_instance)
+    {
+        mci->AddStruct(SBS_LocalToWorld);
+
+        mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,DescriptorSetType::PerFrame,SBS_LocalToWorld);
+
+        vsc->AddAssign();
+    }
 
     if(cfg->local_to_world)
     {
-        vsc->AddLocalToWorld();
         mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
 
         if(is_rect)

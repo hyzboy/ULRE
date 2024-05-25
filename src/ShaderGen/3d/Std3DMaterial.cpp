@@ -1,4 +1,4 @@
-#include"Std3DMaterial.h"
+﻿#include"Std3DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/mtl/UBOCommon.h>
@@ -10,6 +10,15 @@ STD_MTL_NAMESPACE_BEGIN
 bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     vsc->AddInput(cfg->position_format,VAN::Position);
+    
+    if(cfg->camera||cfg->local_to_world||cfg->material_instance)
+    {
+        mci->AddStruct(SBS_LocalToWorld);
+
+        mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,DescriptorSetType::PerFrame,SBS_LocalToWorld);
+
+        vsc->AddAssign();
+    }
 
     if(cfg->camera)
     {
@@ -24,7 +33,6 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     {
         mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-        vsc->AddLocalToWorld();
         vsc->AddFunction(cfg->camera?func::GetPosition3DL2WCamera:func::GetPosition3DL2W);
     }
     else
