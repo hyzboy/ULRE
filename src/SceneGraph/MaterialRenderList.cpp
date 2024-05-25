@@ -219,6 +219,7 @@ void MaterialRenderList::Render(RenderItem *ri)
     if(!ri->vid->Comp(last_vid))
     {
         last_vid=ri->vid;
+        last_dd=nullptr;
     }
 
     if(!ri->dd->Comp(last_dd))

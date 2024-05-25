@@ -29,32 +29,35 @@ struct MaterialCreateConfig
 
 public:
 
-    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const bool mi,const Prim &p)
+    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p)
     {
         dev_attr=da;
 
         mtl_name=name;
 
-        material_instance=mi;
+        material_instance=false;
 
         shader_stage_flag_bit=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
 
         prim=p;
     }
 
-    int Comp(const MaterialCreateConfig &cfg)const
+    virtual int Comp(const MaterialCreateConfig &cfg)const
     {
         int off;
+        
+        off=material_instance-cfg.material_instance;
+        if(off)return(off);
 
         off=hgl_cmp(rt_output,cfg.rt_output);
-
         if(off)return(off);
 
         off=(int)prim-(int)cfg.prim;
-
         if(off)return(off);
 
-        return shader_stage_flag_bit-cfg.shader_stage_flag_bit;
+        off=shader_stage_flag_bit-cfg.shader_stage_flag_bit;
+
+        return off;
     }
 
     CompOperator(const MaterialCreateConfig &,Comp)

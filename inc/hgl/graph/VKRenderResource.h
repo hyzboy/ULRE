@@ -5,6 +5,7 @@
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKPrimitive.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKTexture.h>
@@ -148,6 +149,7 @@ public: //Material
     MaterialInstance *  CreateMaterialInstance(const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
     Renderable *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
+    Renderable *        CreateRenderable(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
     Sampler *           CreateSampler(Texture *);

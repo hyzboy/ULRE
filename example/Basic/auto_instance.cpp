@@ -3,7 +3,7 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/RenderList.h>
@@ -15,6 +15,8 @@ constexpr uint32_t SCREEN_WIDTH=1024;
 constexpr uint32_t SCREEN_HEIGHT=1024;
 
 constexpr uint32_t VERTEX_COUNT=3;
+
+constexpr uint32_t TRIANGLE_NUMBER=12;
 
 constexpr float position_data[VERTEX_COUNT*2]=
 {
@@ -72,18 +74,28 @@ private:
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
+        PrimitiveCreater rpc(device,material_instance->GetVIL());
 
-        if(!rpc.SetVAB(VAN::Position,   VF_V2F,     position_data))return(false);
-        if(!rpc.SetVAB(VAN::Color,      VF_V4UN8,   color_data   ))return(false);
+        rpc.Init("Triangle",VERTEX_COUNT);
+
+        if(!rpc.WriteVAB(VAN::Position,   VF_V2F,     position_data))return(false);
+        if(!rpc.WriteVAB(VAN::Color,      VF_V4UN8,   color_data   ))return(false);
         
-        render_obj=rpc.Create(material_instance,pipeline);
+        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
 
         if(!render_obj)
             return(false);
+
+        double rad;
+        Matrix4f mat;
         
-        for(uint i=0;i<12;i++)
-            render_root.CreateSubNode(rotate(deg2rad(30*i),Vector3f(0,0,1)),render_obj);
+        for(uint i=0;i<TRIANGLE_NUMBER;i++)
+        {
+            rad=deg2rad<double>((360/TRIANGLE_NUMBER)*i);       //这里一定要加<float>或<float>，否则结果用int保存会出现问题
+            mat=rotate(rad,Vector3f(0,0,1));
+
+            render_root.CreateSubNode(mat,render_obj);
+        }
 
         render_root.RefreshMatrix();
 

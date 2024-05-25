@@ -3,7 +3,6 @@
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/VKRenderablePrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/color/Color.h>
@@ -84,18 +83,28 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
+        PrimitiveCreater pc(device,material->GetDefaultVIL());
 
-        if(!rpc.SetVAB(VAN::Position,   VF_V2F, position_data))return(false);
+        if(!pc.Init("Triangle",VERTEX_COUNT))
+            return(false);
+
+        if(!pc.WriteVAB(VAN::Position,   VF_V2F, position_data))
+            return(false);
+
+        Primitive *prim=pc.Create();
+        if(!prim)
+            return(false);
+
+        db->Add(prim);
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
-            render_obj[i].r=rpc.Create(render_obj[i].mi,pipeline);
+            render_obj[i].r=db->CreateRenderable(prim,render_obj[i].mi,pipeline);
 
             if(!render_obj[i].r)
                 return(false);
 
-            render_root.CreateSubNode(rotate(deg2rad(double(360/DRAW_OBJECT_COUNT*i)),Vector3f(0,0,1)),render_obj[i].r);
+            render_root.CreateSubNode(rotate(deg2rad<double>(double(360/DRAW_OBJECT_COUNT*i)),Vector3f(0,0,1)),render_obj[i].r);
         }
 
         render_root.RefreshMatrix();
