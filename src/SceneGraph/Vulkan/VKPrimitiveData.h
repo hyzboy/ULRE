@@ -42,6 +42,10 @@ public:
 
 public:
 
+    virtual VertexDataManager *GetVDM()=0;
+
+public:
+
     virtual IBAccess * InitIBO(const VkDeviceSize index_count,IndexType it)=0;
     virtual VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)=0;
 };//class PrimitiveData

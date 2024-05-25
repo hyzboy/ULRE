@@ -97,6 +97,8 @@ namespace
         GPUDevice *device;
 
     public:
+        
+        VertexDataManager *GetVDM(){return nullptr;}
 
         PrimitiveDataPrivateBuffer(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc):PrimitiveData(_vil,vc)
         {
@@ -196,6 +198,8 @@ namespace
         DataChain::UserNode *vab_node;
 
     public:
+
+        VertexDataManager *GetVDM(){return vdm;}
 
         PrimitiveDataVDM(VertexDataManager *_vdm,const VkDeviceSize vc):PrimitiveData(_vdm->GetVIL(),vc)
         {
