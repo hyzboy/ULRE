@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 
 /**
- * 可绘制图元创建器
+ * 可绘制原始图形创建器
  */
 class PrimitiveCreater
 {
@@ -23,9 +23,9 @@ protected:
     AnsiString      prim_name;
     PrimitiveData * prim_data;
     
-    VkDeviceSize    vertices_number;  ///<顶点数量
+    uint32_t        vertices_number;  ///<顶点数量
 
-    VkDeviceSize    index_number;     ///<索引数量
+    uint32_t        index_number;     ///<索引数量
     IndexType       index_type;       ///<索引类型
     IBAccess *      iba;              ///<索引缓冲区
 
@@ -35,35 +35,45 @@ public:
     PrimitiveCreater(VertexDataManager *);
     virtual ~PrimitiveCreater();
 
-    virtual bool                    Init(const AnsiString &name,const VkDeviceSize vertices_count,const VkDeviceSize index_count=0,IndexType it=IndexType::AUTO);                 ///<初始化，参数为顶点数量
+            /**
+            * 初始化一个原始图形创建
+            * @parama name              原始图形名称
+            * @parama vertices_count    顶点数量
+            * @parama index_count       索引数量
+            * @parama it                索引类型(注：当使用VDM时，此值无效)
+            */
+            bool            Init(const AnsiString &name,
+                                 const uint32_t vertices_count,
+                                 const uint32_t index_count=0,IndexType it=IndexType::AUTO);
 
-            void                    Clear();                                                                                                    ///<清除创建器数据
+            void            Clear();                                                                                        ///<清除创建器数据
 
 public: //顶点缓冲区
 
-            const   VkDeviceSize    GetVertexCount()const{ return vertices_number; }                            ///<取得顶点数量
+    const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
 
-                    VABAccess *     AcquireVAB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr);                       ///<请求一个顶点属性数据区
-                    bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data)                                ///<直接写入顶点属性数据
-                    {
-                        return AcquireVAB(name,format,data);
-                    }
+            VABAccess *     AcquireVAB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr);           ///<请求一个顶点属性数据区
+            bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data)                    ///<直接写入顶点属性数据
+            {
+                return AcquireVAB(name,format,data);
+            }
 
 public: //索引缓冲区
 
-            const   IndexType       GetIndexType()const{return index_type;}
+    const   IndexType       GetIndexType()const{return index_type;}                                                         ///<取得索引类型
+    const   uint32_t        GetIndexCount()const{return index_number;}                                                      ///<取得索引数量
 
-                    void *          MapIBO();
-                    void            UnmapIBO();
+            void *          MapIBO();
+            void            UnmapIBO();
 
-                    bool            WriteIBO(const void *data,const VkDeviceSize count);
+            bool            WriteIBO(const void *data,const uint32_t count);
 
-                    template<typename T>
-                    bool            WriteIBO(const T *data){return WriteIBO(data,index_number);}
+            template<typename T>
+            bool            WriteIBO(const T *data){return WriteIBO(data,index_number);}
 
 public: //创建可渲染对象
 
-    virtual Primitive *             Create();                                                                   ///<创建一个可渲染对象，并清除创建器数据
+            Primitive *     Create();                                                                                       ///<创建一个可渲染对象，并清除创建器数据
 };//class PrimitiveCreater
 
 /**

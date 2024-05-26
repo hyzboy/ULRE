@@ -63,8 +63,8 @@ using VAB=VertexAttribBuffer;
 struct VABAccess
 {
     VAB *vab;
-    VkDeviceSize start;
-    VkDeviceSize count;
+    uint32_t start;
+    uint32_t count;
 
 public:
 
@@ -76,8 +76,8 @@ class IndexBuffer;
 struct IndexBufferAccess
 {
     IndexBuffer *buffer;
-    VkDeviceSize start;
-    VkDeviceSize count;
+    uint32_t start;
+    uint32_t count;
 };
 
 using IBAccess=IndexBufferAccess;
