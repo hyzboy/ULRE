@@ -19,12 +19,12 @@ class PrimitiveData
 {
 protected:
 
-    const VIL *     vil;
+    const VIL * vil;
 
-    uint32_t        vertex_count;
+    uint32_t    vertex_count;
     
-    VABAccess       *vab_access;
-    IBAccess        ib_access;
+    VABAccess * vab_access;
+    IBAccess    ib_access;
 
 public:
 

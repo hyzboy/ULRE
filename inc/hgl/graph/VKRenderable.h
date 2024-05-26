@@ -9,35 +9,35 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttrib.h>
 VK_NAMESPACE_BEGIN
-struct VertexInputData
+struct PrimitiveRenderBuffer
 {
-    uint32_t vab_count;
-    VkBuffer *vab_list;
-    IndexBuffer *ibo;
+    uint32_t        vab_count;
+    VkBuffer *      vab_list;
+    IndexBuffer *   ibo;
 
 public:
 
-    VertexInputData(const uint32_t,const uint32_t,const IBAccess *iba);
-    ~VertexInputData();
+    PrimitiveRenderBuffer(const uint32_t,const uint32_t,const IBAccess *iba);
+    ~PrimitiveRenderBuffer();
 
-    const bool Comp(const VertexInputData *vid)const;
-};//struct VertexInputData
+    const bool Comp(const PrimitiveRenderBuffer *prb)const;
+};//struct PrimitiveRenderBuffer
 
-struct DrawData
+struct PrimitiveRenderData
 {
     uint            vab_count;
     VkDeviceSize *  vab_offset;
-    VkDeviceSize    vertex_count;
+    uint32_t        vertex_count;
 
-    VkDeviceSize    index_start;
-    VkDeviceSize    index_count;
+    uint32_t        index_start;
+    uint32_t        index_count;
 
 public:
 
-    DrawData(const uint32_t bc,const VkDeviceSize vc,const IBAccess *iba);
-    ~DrawData();
+    PrimitiveRenderData(const uint32_t bc,const uint32_t vc,const IBAccess *iba);
+    ~PrimitiveRenderData();
 
-    const bool Comp(const DrawData *)const;
+    const bool Comp(const PrimitiveRenderData *)const;
 };
 
 /**
@@ -49,14 +49,14 @@ class Renderable                                                                
     MaterialInstance *  mat_inst;
     Primitive *         primitive;
 
-    VertexInputData *   vertex_input_data;
-    DrawData *          draw_data;
+    PrimitiveRenderBuffer * primitive_render_buffer;
+    PrimitiveRenderData *   primitive_render_data;
 
 private:
 
     friend Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    Renderable(Primitive *,MaterialInstance *,Pipeline *,VertexInputData *,DrawData *);
+    Renderable(Primitive *,MaterialInstance *,Pipeline *,PrimitiveRenderBuffer *,PrimitiveRenderData *);
 
 public:
 
@@ -64,8 +64,8 @@ public:
     {
         //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
-        SAFE_CLEAR(vertex_input_data);
-        SAFE_CLEAR(draw_data);
+        SAFE_CLEAR(primitive_render_buffer);
+        SAFE_CLEAR(primitive_render_data);
     }
 
             void                UpdatePipeline      (Pipeline *p){pipeline=p;}
@@ -77,8 +77,8 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   VertexInputData *   GetVertexInputData  ()const{return vertex_input_data;}
-    const   DrawData *          GetDrawData         ()const{return draw_data;}
+    const   PrimitiveRenderBuffer * GetRenderBuffer ()const{return primitive_render_buffer;}
+    const   PrimitiveRenderData *   GetRenderData   ()const{return primitive_render_data;}
 };//class Renderable
 
 Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);

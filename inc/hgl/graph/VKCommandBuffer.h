@@ -209,7 +209,7 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const VertexInputData *vid,const DrawData *dd);
+                                void Draw               (const PrimitiveRenderBuffer *prb,const PrimitiveRenderData *prd);
 //                                void DrawIndexed        (const IBAccess *iba,const uint32_t instance_count);
 
 public: //dynamic state

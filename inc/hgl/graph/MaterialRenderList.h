@@ -5,7 +5,6 @@
 VK_NAMESPACE_BEGIN
 class RenderAssignBuffer;
 
-
 /**
 * 同一材质的对象渲染列表
 */
@@ -24,13 +23,13 @@ private:
 
     struct RenderItem
     {
-                uint32_t            first;
-                uint32_t            count;
+                uint32_t                first;
+                uint32_t                count;
 
-                Pipeline *          pipeline;
-                MaterialInstance *  mi;
-        const   VertexInputData *   vid;
-        const   DrawData *          dd;
+                Pipeline *              pipeline;
+                MaterialInstance *      mi;
+        const   PrimitiveRenderBuffer * prb;
+        const   PrimitiveRenderData *   prd;
 
     public:
 
@@ -44,14 +43,13 @@ private:
 
 protected:
 
-            VABList *           vbo_list;
+            VABList *               vbo_list;
 
-            Pipeline *          last_pipeline;
-    const   VertexInputData *   last_vid;
-    const   DrawData *          last_dd;
-            uint                last_index;
+            Pipeline *              last_pipeline;
+    const   PrimitiveRenderBuffer * last_render_buf;
+    const   PrimitiveRenderData *   last_render_data;
 
-    bool BindVAB(const VertexInputData *,const DrawData *,const uint);
+    bool BindVAB(const PrimitiveRenderBuffer *,const PrimitiveRenderData *,const uint);
 
     void Render(RenderItem *);
 
