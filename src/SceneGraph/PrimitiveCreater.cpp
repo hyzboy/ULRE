@@ -42,7 +42,7 @@ void PrimitiveCreater::Clear()
     iba             =nullptr;
 }
 
-bool PrimitiveCreater::Init(const AnsiString &pname,const VkDeviceSize vertex_count,const VkDeviceSize index_count,IndexType it)
+bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,const uint32_t index_count,IndexType it)
 {
     if(prim_data)           //已经初始化过了
         return(false);
@@ -151,7 +151,7 @@ void PrimitiveCreater::UnmapIBO()
         iba->buffer->Unmap();
 }
 
-bool PrimitiveCreater::WriteIBO(const void *data,const VkDeviceSize count)
+bool PrimitiveCreater::WriteIBO(const void *data,const uint32_t count)
 {
     if(!data)return(false);
     if(!prim_data)return(false);

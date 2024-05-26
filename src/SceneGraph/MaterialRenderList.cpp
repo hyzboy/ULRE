@@ -234,6 +234,9 @@ void MaterialRenderList::Render(RenderItem *ri)
                              ri->dd->index_start,
                              ri->dd->vab_offset[0],
                              ri->first);
+
+        //因为vkCmdDrawIndexed的vertexOffset是针对所有VAB的，所以所有的VAB数据都必须是对齐的，最终这里使用vab_offset[0]是可以的，因为它也等于其它所有的vab_offset。
+        //未来考虑看看能不能统一成一个。
     }
     else
     {

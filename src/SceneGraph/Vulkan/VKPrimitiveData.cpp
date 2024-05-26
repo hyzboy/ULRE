@@ -7,7 +7,7 @@
 
 VK_NAMESPACE_BEGIN
 
-PrimitiveData::PrimitiveData(const VIL *_vil,const VkDeviceSize vc)
+PrimitiveData::PrimitiveData(const VIL *_vil,const uint32_t vc)
 {
     vil=_vil;
 
@@ -100,7 +100,7 @@ namespace
         
         VertexDataManager *GetVDM(){return nullptr;}
 
-        PrimitiveDataPrivateBuffer(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc):PrimitiveData(_vil,vc)
+        PrimitiveDataPrivateBuffer(GPUDevice *dev,const VIL *_vil,const uint32_t vc):PrimitiveData(_vil,vc)
         {
             device=dev;
         }
@@ -127,7 +127,7 @@ namespace
             }
         }
 
-        IBAccess *InitIBO(const VkDeviceSize index_count,IndexType it) override
+        IBAccess *InitIBO(const uint32_t index_count,IndexType it) override
         {
             if(!device)return(nullptr);
 
@@ -201,7 +201,7 @@ namespace
 
         VertexDataManager *GetVDM(){return vdm;}
 
-        PrimitiveDataVDM(VertexDataManager *_vdm,const VkDeviceSize vc):PrimitiveData(_vdm->GetVIL(),vc)
+        PrimitiveDataVDM(VertexDataManager *_vdm,const uint32_t vc):PrimitiveData(_vdm->GetVIL(),vc)
         {
             vdm=_vdm;
 
@@ -218,7 +218,7 @@ namespace
                 vdm->ReleaseVAB(vab_node);
         }
         
-        IBAccess *InitIBO(const VkDeviceSize index_count,IndexType it) override
+        IBAccess *InitIBO(const uint32_t index_count,IndexType it) override
         {
             if(index_count<=0)return(nullptr);
             if(!vdm)return(nullptr);
@@ -277,7 +277,7 @@ namespace
     };//class PrimitiveDataVDM:public PrimitiveData
 }//namespace
 
-PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc)
+PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const uint32_t vc)
 {
     if(!dev)return(nullptr);
     if(!_vil)return(nullptr);
@@ -286,7 +286,7 @@ PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDevice
     return(new PrimitiveDataPrivateBuffer(dev,_vil,vc));
 }
 
-PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VkDeviceSize vc)
+PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const uint32_t vc)
 {
     if(!vdm)return(nullptr);
     if(vc<=0)return(nullptr);

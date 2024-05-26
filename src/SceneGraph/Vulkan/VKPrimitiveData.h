@@ -21,19 +21,19 @@ protected:
 
     const VIL *     vil;
 
-    VkDeviceSize    vertex_count;
+    uint32_t        vertex_count;
     
     VABAccess       *vab_access;
     IBAccess        ib_access;
 
 public:
 
-    PrimitiveData(const VIL *_vil,const VkDeviceSize vc);
+    PrimitiveData(const VIL *_vil,const uint32_t vc);
     virtual ~PrimitiveData();
 
 public:
     
-    const   VkDeviceSize    GetVertexCount  ()const{return vertex_count;}
+    const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   int             GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
             VABAccess *     GetVABAccess    (const int index);            
@@ -48,10 +48,10 @@ public:
 
 public:
 
-    virtual IBAccess * InitIBO(const VkDeviceSize index_count,IndexType it)=0;
+    virtual IBAccess * InitIBO(const uint32_t index_count,IndexType it)=0;
     virtual VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)=0;
 };//class PrimitiveData
 
-PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const VkDeviceSize vc);
-PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const VkDeviceSize vc);
+PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const uint32_t vc);
+PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const uint32_t vc);
 VK_NAMESPACE_END
