@@ -143,20 +143,20 @@ bool RenderCmdBuffer::BindVAB(Renderable *ri)
     if(!ri)
         return(false);
 
-    const VertexInputData *vid=ri->GetVertexInputData();
+    const PrimitiveRenderBuffer *prb=ri->GetRenderBuffer();
 
-    if(vid->vab_count<=0)
+    if(prb->vab_count<=0)
         return(false);
 
-    const DrawData *dd=ri->GetDrawData();
+    const PrimitiveRenderData *prd=ri->GetRenderData();
 
-    if(dd->vertex_count<=0)
+    if(prd->vertex_count<=0)
         return(false);
 
-    vkCmdBindVertexBuffers(cmd_buf,0,vid->vab_count,vid->vab_list,dd->vab_offset);
+    vkCmdBindVertexBuffers(cmd_buf,0,prb->vab_count,prb->vab_list,prd->vab_offset);
 
-    if(vid->ibo&&dd->index_count)
-        BindIBO(vid->ibo,dd->index_start);
+    if(prb->ibo&&prd->index_count)
+        BindIBO(prb->ibo,prd->index_start);
 
     return(true);
 }
@@ -185,15 +185,15 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const VertexInputData *vid,const DrawData *dd)
+void RenderCmdBuffer::Draw(const PrimitiveRenderBuffer *prb,const PrimitiveRenderData *prd)
 {
-    if(!vid||!dd)
+    if(!prb||!prd)
         return;
 
-    if (vid->ibo)
-        DrawIndexed(dd->index_count);
+    if (prb->ibo)
+        DrawIndexed(prd->index_count);
     else
-        Draw(dd->vertex_count);
+        Draw(prd->vertex_count);
 }
 
 //void RenderCmdBuffer::DrawIndexed(const IBAccess *iba,const uint32_t instance_count)

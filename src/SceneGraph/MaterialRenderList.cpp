@@ -91,10 +91,10 @@ void MaterialRenderList::End()
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)
 {
-    pipeline    =ri->GetPipeline();
-    mi          =ri->GetMaterialInstance();
-    vid         =ri->GetVertexInputData();
-    dd          =ri->GetDrawData();
+    pipeline=ri->GetPipeline();
+    mi      =ri->GetMaterialInstance();
+    prb     =ri->GetRenderBuffer();
+    prd     =ri->GetRenderData();
 }
 
 void MaterialRenderList::Stat()
@@ -114,16 +114,16 @@ void MaterialRenderList::Stat()
     ri->Set(rn->ri);
 
     last_pipeline   =ri->pipeline;
-    last_vid        =ri->vid;
-    last_dd         =ri->dd;
+    last_render_buf =ri->prb;
+    last_render_data=ri->prd;
 
     ++rn;
 
     for(uint i=1;i<count;i++)
     {
         if(last_pipeline==rn->ri->GetPipeline())
-            if(last_vid->Comp(rn->ri->GetVertexInputData()))
-                if(last_dd->Comp(rn->ri->GetDrawData()))
+            if(last_render_buf->Comp(rn->ri->GetRenderBuffer()))
+                if(last_render_data->Comp(rn->ri->GetRenderData()))
                 {
                     ++ri->count;
                     ++rn;
@@ -138,29 +138,29 @@ void MaterialRenderList::Stat()
         ri->Set(rn->ri);
 
         last_pipeline   =ri->pipeline;
-        last_vid        =ri->vid;
-        last_dd         =ri->dd;
+        last_render_buf =ri->prb;
+        last_render_data=ri->prd;
 
         ++rn;
     }
 }
 
-bool MaterialRenderList::BindVAB(const VertexInputData *vid,const DrawData *dd,const uint ri_index)
+bool MaterialRenderList::BindVAB(const PrimitiveRenderBuffer *prb,const PrimitiveRenderData *prd,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
     //const VIL *vil=last_vil;
 
-    //if(vil->GetCount(VertexInputGroup::Basic)!=vid->vab_count)
+    //if(vil->GetCount(VertexInputGroup::Basic)!=prb->vab_count)
     //    return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
 
     vbo_list->Restart();
 
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
-        vbo_list->Add(vid->vab_list,
-                      nullptr,//dd->vab_offset,         //暂时不用dd->vab_offset，全部写0，测试一下是否可以使用Draw时的firstVertex或vertexOffset
-                      vid->vab_count);
+        vbo_list->Add(prb->vab_list,
+                      nullptr,//prd->vab_offset,         //暂时不用dd->vab_offset，全部写0，测试一下是否可以使用Draw时的firstVertex或vertexOffset
+                      prb->vab_count);
     }
 
     if(assign_buffer) //L2W/MI分发组
@@ -213,35 +213,33 @@ void MaterialRenderList::Render(RenderItem *ri)
         cmd_buf->BindPipeline(ri->pipeline);
         last_pipeline=ri->pipeline;
 
-        last_vid=nullptr;
+        last_render_buf=nullptr;
 
         //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定mi/primitive
     }
 
-    if(!ri->vid->Comp(last_vid))
+    if(!ri->prb->Comp(last_render_buf))
     {
-        last_vid=ri->vid;
-        last_dd=nullptr;
+        last_render_buf=ri->prb;
+        last_render_data=nullptr;
 
-        BindVAB(ri->vid,ri->dd,ri->first);
-        cmd_buf->BindIBO(ri->vid->ibo,0);
+        BindVAB(ri->prb,ri->prd,ri->first);
+        cmd_buf->BindIBO(ri->prb->ibo,0);
     }
 
-    if(last_vid->ibo)
+    if(last_render_buf->ibo)
     {
-        cmd_buf->DrawIndexed(ri->dd->index_count,
+        cmd_buf->DrawIndexed(ri->prd->index_count,
                              ri->count,
-                             ri->dd->index_start,
-                             ri->dd->vab_offset[0],     //因为vkCmdDrawIndexed的vertexOffset是针对所有VAB的，所以所有的VAB数据都必须是对齐的，
+                             ri->prd->index_start,
+                             ri->prd->vab_offset[0],     //因为vkCmdDrawIndexed的vertexOffset是针对所有VAB的，所以所有的VAB数据都必须是对齐的，
                                                         //最终这里使用vab_offset[0]是可以的，因为它也等于其它所有的vab_offset。未来考虑统一成一个。
                              ri->first);                //这里vkCmdDrawIndexed的firstInstance参数指的是instance Rate更新的VAB的起始实例数，不是指instance批量渲染。
                                                         //所以这里使用ri->first是对的。
-
-        
     }
     else
     {
-        cmd_buf->Draw(ri->dd->vertex_count,ri->count);
+        cmd_buf->Draw(ri->prd->vertex_count,ri->count);
     }
 }
 
@@ -259,7 +257,7 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
     RenderItem *ri=ri_array.GetData();
 
     last_pipeline   =nullptr;
-    last_vid        =nullptr;
+    last_render_buf =nullptr;
 
     if(assign_buffer)
         assign_buffer->Bind(material);

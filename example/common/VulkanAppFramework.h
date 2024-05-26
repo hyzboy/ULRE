@@ -216,7 +216,7 @@ public:
     {   
         if(!ri)return(false);
 
-        const VertexInputData *vid=ri->GetVertexInputData();
+        const PrimitiveRenderBuffer *prb=ri->GetRenderBuffer();
 
         cb->Begin();
             cb->BindFramebuffer(rp,fb);
@@ -225,7 +225,7 @@ public:
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetMaterial());
                 cb->BindVAB(ri);
-                cb->Draw(vid,ri->GetDrawData());
+                cb->Draw(prb,ri->GetRenderData());
             cb->EndRenderPass();
         cb->End();
 
