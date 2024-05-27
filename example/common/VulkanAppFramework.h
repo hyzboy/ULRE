@@ -216,7 +216,7 @@ public:
     {   
         if(!ri)return(false);
 
-        const PrimitiveRenderBuffer *prb=ri->GetRenderBuffer();
+        const PrimitiveDataBuffer *prb=ri->GetRenderBuffer();
 
         cb->Begin();
             cb->BindFramebuffer(rp,fb);

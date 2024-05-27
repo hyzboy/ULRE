@@ -13,7 +13,7 @@ Material::Material(const AnsiString &n)
 {
     name=n;
 
-    primitive_render_buffer=nullptr;
+    vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;
     desc_manager=nullptr;
     pipeline_layout_data=nullptr;
@@ -28,7 +28,7 @@ Material::~Material()
 {
     SAFE_CLEAR(mi_data_manager);
 
-    ReleaseVertexInput(primitive_render_buffer);
+    ReleaseVertexInput(vertex_input);
     delete shader_maps;             //不用SAFE_CLEAR是因为这个一定会有
     SAFE_CLEAR(desc_manager);
     SAFE_CLEAR(pipeline_layout_data);
@@ -49,22 +49,22 @@ const bool Material::hasSet(const DescriptorSetType &dst)const
 
 const VIL *Material::GetDefaultVIL()const
 {
-    return primitive_render_buffer->GetDefaultVIL();
+    return vertex_input->GetDefaultVIL();
 }
 
 VIL *Material::CreateVIL(const VILConfig *format_map)
 {
-    return primitive_render_buffer->CreateVIL(format_map);
+    return vertex_input->CreateVIL(format_map);
 }
 
 bool Material::Release(VIL *vil)
 {
-    return primitive_render_buffer->Release(vil);
+    return vertex_input->Release(vil);
 }
 
 const uint Material::GetVILCount()
 {
-    return primitive_render_buffer->GetInstanceCount();
+    return vertex_input->GetInstanceCount();
 }
 
 bool Material::BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic)

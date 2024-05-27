@@ -39,7 +39,7 @@ void PrimitiveCreater::Clear()
 
     index_number    =0;
     index_type      =IndexType::ERR;
-    iba             =nullptr;
+    ibo             =nullptr;
 }
 
 bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,const uint32_t index_count,IndexType it)
@@ -84,9 +84,9 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,
 
     if(index_number>0)
     {
-        iba=prim_data->InitIBO(index_number,index_type);
+        ibo=prim_data->InitIBO(index_number,index_type);
 
-        if(!iba)
+        if(!ibo)
         {
             delete prim_data;
             return(false);
@@ -99,8 +99,8 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,
 
             if(du)
             {
-                du->SetBuffer(      iba->buffer->GetBuffer(),   prim_name+":IndexBuffer:Buffer");
-                du->SetDeviceMemory(iba->buffer->GetVkMemory(), prim_name+":IndexBuffer:Memory");
+                du->SetBuffer(      ibo->GetBuffer(),   prim_name+":IndexBuffer:Buffer");
+                du->SetDeviceMemory(ibo->GetVkMemory(), prim_name+":IndexBuffer:Memory");
             }
         }
     #endif//_DEBUG
@@ -111,44 +111,83 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,
     return(true);
 }
 
-VABAccess *PrimitiveCreater::AcquireVAB(const AnsiString &name,const VkFormat &acquire_format,const void *data)
+const int PrimitiveCreater::GetVABIndex(const AnsiString &name,const VkFormat &acquire_format)
 {
-    if(!prim_data)return(nullptr);
-    if(name.IsEmpty())return(nullptr);
+    if(!prim_data)return(-1);
 
-    VABAccess *vab_access=prim_data->InitVAB(name,acquire_format,data);
+    const int vab_index=prim_data->GetVABIndex(name);
 
-    if(!vab_access)
-        return(nullptr);
+    VAB *vab=prim_data->GetVAB(vab_index);
 
-    #ifdef _DEBUG
-    if(!vdm&&vab_access->vab)
-    {  
+    if(!vab)
+        return(-1);
+
+    vab=prim_data->InitVAB(vab_index,acquire_format,nullptr);
+
+    if(!vab)
+        return(-1);
+
+#ifdef _DEBUG
+    if (!vdm)
+    {
         DebugUtils *du=device->GetDebugUtils();
 
-        if(du)
+        if (du)
         {
-            du->SetBuffer(      vab_access->vab->GetBuffer(),   prim_name+":VAB:Buffer:"+name);
-            du->SetDeviceMemory(vab_access->vab->GetVkMemory(), prim_name+":VAB:Memory:"+name);
+            du->SetBuffer(vab->GetBuffer(), prim_name+":VAB:Buffer:"+name);
+            du->SetDeviceMemory(vab->GetVkMemory(), prim_name+":VAB:Memory:"+name);
         }
     }
-    #endif//_DEBUG
+#endif//_DEBUG
 
-    return vab_access;
+    return(vab_index);
+}
+
+void *PrimitiveCreater::MapVAB(const int vab_index)
+{
+    VAB *vab=prim_data->GetVAB(vab_index);
+
+    if(!vab)
+        return(nullptr);
+
+    return vab->Map(prim_data->GetVertexOffset(),vertices_number);
+}
+
+void PrimitiveCreater::UnmapVAB(const int vab_index)
+{
+    VAB *vab=prim_data->GetVAB(vab_index);
+
+    if(!vab)return;
+
+    vab->Unmap();
+}
+
+bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat &format, const void *data)
+{
+    if(!prim_data)return(false);
+
+    const int vab_index=GetVABIndex(name,format);
+
+    VAB *vab=prim_data->GetVAB(vab_index);
+
+    if(!vab)
+        return(false);
+
+    return vab->Write(data,prim_data->GetVertexOffset(),vertices_number);
 }
 
 void *PrimitiveCreater::MapIBO()
 {
     if(!prim_data)return(nullptr);
-    if(!iba)return(nullptr);
+    if(!ibo)return(nullptr);
 
-    return iba->buffer->Map(iba->start,iba->count);
+    return ibo->Map(prim_data->GetFirstIndex(),index_number);
 }
 
 void PrimitiveCreater::UnmapIBO()
 {
-    if(iba)
-        iba->buffer->Unmap();
+    if(ibo)
+        ibo->Unmap();
 }
 
 bool PrimitiveCreater::WriteIBO(const void *data,const uint32_t count)
@@ -156,12 +195,12 @@ bool PrimitiveCreater::WriteIBO(const void *data,const uint32_t count)
     if(!data)return(false);
     if(!prim_data)return(false);
 
-    IBAccess *iba=prim_data->GetIBAccess();
+    IndexBuffer *ibo=prim_data->GetIBO();
 
     if(count>0&&count>index_number)
         return(false);
 
-   return iba->buffer->Write(data,iba->start,count);
+   return ibo->Write(data,prim_data->GetFirstIndex(),count);
 }
 
 Primitive *PrimitiveCreater::Create()

@@ -145,7 +145,7 @@ void MaterialRenderList::Stat()
     }
 }
 
-bool MaterialRenderList::BindVAB(const PrimitiveRenderBuffer *prb,const PrimitiveRenderData *prd,const uint ri_index)
+bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *prb,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
@@ -159,7 +159,7 @@ bool MaterialRenderList::BindVAB(const PrimitiveRenderBuffer *prb,const Primitiv
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
         vbo_list->Add(prb->vab_list,
-                      nullptr,//prd->vab_offset,         //暂时不用dd->vab_offset，全部写0，测试一下是否可以使用Draw时的firstVertex或vertexOffset
+                      prb->vab_offset,
                       prb->vab_count);
     }
 
@@ -223,16 +223,18 @@ void MaterialRenderList::Render(RenderItem *ri)
         last_render_buf=ri->prb;
         last_render_data=nullptr;
 
-        BindVAB(ri->prb,ri->prd,ri->first);
-        cmd_buf->BindIBO(ri->prb->ibo,0);
+        BindVAB(ri->prb,ri->first);
+
+        if(ri->prb->ib_access->buffer)
+        cmd_buf->BindIBO(ri->prb->ib_access);
     }
 
-    if(last_render_buf->ibo)
+    if(last_render_buf->ib_access->buffer)
     {
         cmd_buf->DrawIndexed(ri->prd->index_count,
                              ri->count,
-                             ri->prd->index_start,
-                             ri->prd->vab_offset[0],     //因为vkCmdDrawIndexed的vertexOffset是针对所有VAB的，所以所有的VAB数据都必须是对齐的，
+                             ri->prd->first_index,
+                             ri->prd->vertex_offset,    //因为vkCmdDrawIndexed的vertexOffset是针对所有VAB的，所以所有的VAB数据都必须是对齐的，
                                                         //最终这里使用vab_offset[0]是可以的，因为它也等于其它所有的vab_offset。未来考虑统一成一个。
                              ri->first);                //这里vkCmdDrawIndexed的firstInstance参数指的是instance Rate更新的VAB的起始实例数，不是指instance批量渲染。
                                                         //所以这里使用ri->first是对的。

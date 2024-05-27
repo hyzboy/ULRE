@@ -27,7 +27,7 @@ protected:
 
     uint32_t        index_number;     ///<索引数量
     IndexType       index_type;       ///<索引类型
-    IBAccess *      iba;              ///<索引缓冲区
+    IndexBuffer *   ibo;              ///<索引缓冲区
 
 public:
 
@@ -52,11 +52,12 @@ public: //顶点缓冲区
 
     const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
 
-            VABAccess *     AcquireVAB  (const AnsiString &name,const VkFormat &format,const void *data=nullptr);           ///<请求一个顶点属性数据区
-            bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data)                    ///<直接写入顶点属性数据
-            {
-                return AcquireVAB(name,format,data);
-            }
+    const   int             GetVABIndex (const AnsiString &name,const VkFormat &format);                                    ///<取得顶点属性索引 
+
+            void *          MapVAB      (const int vab_index);                                                              ///<映射一个顶点属性数据区
+            void            UnmapVAB    (const int vab_index);                                                              ///<取消映射
+
+            bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data);                   ///<直接写入顶点属性数据
 
 public: //索引缓冲区
 
@@ -81,28 +82,27 @@ public: //创建可渲染对象
 */
 template<typename T> class VABRawMap
 {
-    VABAccess *vaba;
+    PrimitiveCreater *pc;
+    int vab_index;
     T *map_ptr;
 
 public:
 
-    VABRawMap(PrimitiveCreater *pc,const VkFormat &format,const AnsiString &name)
+    VABRawMap(PrimitiveCreater *c,const VkFormat &format,const AnsiString &name)
     {
-        vaba=pc->AcquireVAB(name,format);
-
-        if(vaba)
-            map_ptr=(T *)(vaba->vab->Map(vaba->start,vaba->count));
-        else
-            map_ptr=nullptr;
+        pc=c;
+        vab_index=pc->GetVABIndex(name,format);
+        
+        map_ptr=(T *)(pc->MapVAB(vab_index));
     }
 
     ~VABRawMap()
     {
-        if(vaba)
-            vaba->vab->Unmap();
+        if(map_ptr)
+            pc->UnmapVAB(vab_index);
     }
 
-    const bool IsValid()const{ return vaba; }
+    const bool IsValid()const{ return map_ptr; }
 
     operator T *(){ return map_ptr; }
 };//template<typename T> class VABRawMap
@@ -121,19 +121,21 @@ typedef VABRawMap<double> VABRawMapDouble;
 */
 template<typename T> class VABMap
 {
-    VABAccess *vaba;
+    PrimitiveCreater *pc;
+    int vab_index;
     T *vb;
 
 public:
 
     VABMap(PrimitiveCreater *pc,const AnsiString &name)
     {
-        vaba=pc->AcquireVAB(name,T::GetVulkanFormat(),nullptr);
+        pc=c;
+        vab_index=pc->GetVABIndex(name,T::GetVulkanFormat(),nullptr);
 
-        if(vaba)
+        void *map_ptr=(T *)(pc->MapVAB(vab_index));
+
+        if(map_ptr)
         {
-            void *map_ptr=vaba->vab->Map(vaba->start,vaba->count);
-
             vb=T::Create(pc->GetVertexCount(),map_ptr);
 
             vb->Begin();
@@ -146,8 +148,8 @@ public:
 
     ~VABMap()
     {
-        if(vaba)
-            vaba->vab->Unmap();
+        if(vab)
+            pc->UnmapVAB(vab_index);
     }
 
     void Restart()

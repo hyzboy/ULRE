@@ -13,14 +13,14 @@ PrimitiveData::PrimitiveData(const VIL *_vil,const uint32_t vc)
 
     vertex_count=vc;
 
-    vab_access=hgl_zero_new<VABAccess>(_vil->GetCount());
+    vab_list=hgl_zero_new<VAB *>(_vil->GetCount());
 
-    hgl_zero(ib_access);
+    ibo=nullptr;
 }
 
 PrimitiveData::~PrimitiveData()
 {
-    SAFE_CLEAR_ARRAY(vab_access);       //注意：这里并不释放VAB，在派生类中释放
+    delete[] vab_list;       //注意：这里并不释放VAB，在派生类中释放
 }
 
 const int PrimitiveData::GetVABCount()const
@@ -35,57 +35,12 @@ const int PrimitiveData::GetVABIndex(const AnsiString &name) const
     return vil->GetIndex(name);
 }
 
-VABAccess *PrimitiveData::GetVABAccess(const int index)
+VAB *PrimitiveData::GetVAB(const int index)
 {
     if(index<0||index>=vil->GetCount())return(nullptr);
 
-    return vab_access+index;
+    return vab_list[index];
 }
-
-VABAccess *PrimitiveData::GetVABAccess(const AnsiString &name)
-{
-    if(name.IsEmpty())return(nullptr);
-
-    const int index=vil->GetIndex(name);
-
-    if(index<0)return(nullptr);
-
-    return vab_access+index;
-}
-
-//VABAccess *SetVAB(PrimitiveData *pd,const int index,VAB *vab,VkDeviceSize start,VkDeviceSize count)
-//{
-//    if(!pd)return(nullptr);
-//    if(!pd->vil)return(nullptr);
-//    if(index<0||index>=pd->vil->GetCount())return(nullptr);
-//
-//    VABAccess *vaba=pd->vab_access+index;
-//
-//    vaba->vab=vab;
-//    vaba->start=start;
-//    vaba->count=count;
-//
-//    //#ifdef _DEBUG
-//    //    DebugUtils *du=device->GetDebugUtils();
-//
-//    //    if(du)
-//    //    {
-//    //        du->SetBuffer(vab->GetBuffer(),prim_name+":VAB:Buffer:"+name);
-//    //        du->SetDeviceMemory(vab->GetVkMemory(),prim_name+":VAB:Memory:"+name);
-//    //    }
-//    //#endif//_DEBUG
-//
-//    return vaba;
-//}
-
-//void SetIndexBuffer(PrimitiveData *pd,IndexBuffer *ib,const VkDeviceSize ic)
-//{
-//    if(!pd)return;
-//    
-//    pd->ib_access.buffer=ib;
-//    pd->ib_access.start=0;
-//    pd->ib_access.count=ic;
-//}
 
 namespace
 {
@@ -98,7 +53,10 @@ namespace
 
     public:
         
-        VertexDataManager *GetVDM(){return nullptr;}
+        int32_t  GetVertexOffset ()const override{return 0;}
+        uint32_t GetFirstIndex   ()const override{return 0;}
+
+    public:
 
         PrimitiveDataPrivateBuffer(GPUDevice *dev,const VIL *_vil,const uint32_t vc):PrimitiveData(_vil,vc)
         {
@@ -107,83 +65,65 @@ namespace
 
         ~PrimitiveDataPrivateBuffer() override
         {
-            VABAccess *vab=vab_access;
+            VAB **vab=vab_list;
 
             for(uint i=0;i<vil->GetCount();i++)
             {
-                if(vab->vab)
-                {
-                    delete vab->vab;
-                    vab->vab=nullptr;
-                }
+                if(*vab)
+                    delete *vab;
 
                 ++vab;
             }
 
-            if(ib_access.buffer)
-            {
-                delete ib_access.buffer;
-                ib_access.buffer=nullptr;
-            }
+            if(ibo)
+                delete ibo;
         }
 
-        IBAccess *InitIBO(const uint32_t index_count,IndexType it) override
+        IndexBuffer *InitIBO(const uint32_t ic,IndexType it) override
         {
             if(!device)return(nullptr);
 
-            if(ib_access.buffer)
-            {
-                delete ib_access.buffer;
-                ib_access.buffer=nullptr;
-            }
+            if(ibo)delete ibo;
 
-            ib_access.buffer=device->CreateIBO(it,index_count);
+            ibo=device->CreateIBO(it,ic);
 
-            if(!ib_access.buffer)
+            if(!ibo)
                 return(nullptr);
 
-            ib_access.start=0;
-            ib_access.count=index_count;
+            index_count=ic;
 
-            return(&ib_access);
+            return(ibo);
         }
         
-        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)
+        VAB *InitVAB(const int vab_index,const VkFormat &format,const void *data)
         {
             if(!device)return(nullptr);
             if(!vil)return(nullptr);
-            if(name.IsEmpty())return(nullptr);
-            
-            const int index=vil->GetIndex(name);
 
-            if(index<0||index>=vil->GetCount())
+            if(vab_index<0||vab_index>=vil->GetCount())
                 return(nullptr);
 
-            const VertexInputFormat *vif=vil->GetConfig(index);
+            const VertexInputFormat *vif=vil->GetConfig(vab_index);
 
             if(!vif)return(nullptr);
 
             if(vif->format!=format)
                 return(nullptr);
 
-            VABAccess *vaba=vab_access+index;
-
-            if(!vaba->vab)
+            if(!vab_list[vab_index])
             {
-                vaba->vab=device->CreateVAB(format,vertex_count,data);
+                vab_list[vab_index]=device->CreateVAB(format,vertex_count,data);
 
-                if(!vaba->vab)
+                if(!vab_list[vab_index])
                     return(nullptr);
-
-                vaba->start=0;
-                vaba->count=vertex_count;
             }
-            else
+            
+            if(vab_list[vab_index]&&data)
             {
-                vaba->vab->Write(data,vertex_count);
+                vab_list[vab_index]->Write(data,vertex_count);
             }
 
-            return vaba;
+            return vab_list[vab_index];
         }
     };//class PrimitiveDataPrivateBuffer:public PrimitiveData
 
@@ -199,7 +139,8 @@ namespace
 
     public:
 
-        VertexDataManager *GetVDM(){return vdm;}
+        int32_t  GetVertexOffset()const override { return vab_node->GetStart(); }
+        uint32_t GetFirstIndex  ()const override { return ib_node->GetStart(); }
 
         PrimitiveDataVDM(VertexDataManager *_vdm,const uint32_t vc):PrimitiveData(_vdm->GetVIL(),vc)
         {
@@ -218,7 +159,7 @@ namespace
                 vdm->ReleaseVAB(vab_node);
         }
         
-        IBAccess *InitIBO(const uint32_t index_count,IndexType it) override
+        IndexBuffer *InitIBO(const uint32_t index_count,IndexType it) override
         {
             if(index_count<=0)return(nullptr);
             if(!vdm)return(nullptr);
@@ -230,49 +171,39 @@ namespace
                 if(!ib_node)
                     return(nullptr);
 
-                ib_access.buffer=vdm->GetIBO();
-                ib_access.start =ib_node->GetStart();
-                ib_access.count =ib_node->GetCount();
+                ibo=vdm->GetIBO();
             }
 
-            return &ib_access;
+            return ibo;
         }
         
-        VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)
+        VAB *InitVAB(const int vab_index,const VkFormat &format,const void *data)
         {
             if(!vdm)return(nullptr);
             if(!vil)return(nullptr);
-            if(name.IsEmpty())return(nullptr);
-            
-            const int index=vil->GetIndex(name);
 
-            if(index<0||index>=vil->GetCount())
+            if (vab_index<0||vab_index>=vil->GetCount())
                 return(nullptr);
 
-            const VertexInputFormat *vif=vil->GetConfig(index);
+            const VertexInputFormat *vif=vil->GetConfig(vab_index);
 
             if(!vif)return(nullptr);
 
             if(vif->format!=format)
                 return(nullptr);
 
-            VABAccess *vaba=vab_access+index;
-
-            if(!vaba->vab)
+            if (!vab_list[vab_index])
             {
-                vaba->vab=vdm->GetVAB(index);
+                vab_list[vab_index]=vdm->GetVAB(vab_index);
 
-                if(!vaba->vab)
+                if(!vab_list[vab_index])
                     return(nullptr);
-
-                vaba->start=vab_node->GetStart();
-                vaba->count=vab_node->GetCount();
             }
             
-            if(vaba->vab&&data)
-                vaba->vab->Write(data,vaba->start,vaba->count);
+            if(vab_list[vab_index]&&data)
+                vab_list[vab_index]->Write(data,vab_node->GetStart(),vertex_count);
 
-            return vaba;
+            return vab_list[vab_index];
         }
     };//class PrimitiveDataVDM:public PrimitiveData
 }//namespace
