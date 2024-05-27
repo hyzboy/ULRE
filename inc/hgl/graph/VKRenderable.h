@@ -9,32 +9,50 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VertexAttrib.h>
 VK_NAMESPACE_BEGIN
-struct PrimitiveRenderBuffer
+/**
+* 原始图元数据缓冲区<Br>
+* 提供在渲染之前的数据绑定信息
+*/
+struct PrimitiveDataBuffer
 {
     uint32_t        vab_count;
     VkBuffer *      vab_list;
+
+    // 理论上讲，每个VAB绑定时都是可以指定byte offsets的。但是随后Draw时，又可以指定vertexOffset。
+    // 在我们支持的两种draw模式中，一种是每个模型一批VAB，所有VAB的offset都是0。
+    // 另一种是使用VDM，为了批量渲染，所有的VAB又必须对齐，所以每个VAB单独指定offset也不可行。
+    // 所以干脆不支持VAB的offset，只支持vertexOffset。
+
+//    uint32_t *      vab_offset;       //注意：这里的offset是相对于vertex的，代表第几个顶点，不是字节偏移
+
+    // IndexBuffer 同理也不再支持buffer的offset
+
     IndexBuffer *   ibo;
 
 public:
 
-    PrimitiveRenderBuffer(const uint32_t,const uint32_t,const IBAccess *iba);
-    ~PrimitiveRenderBuffer();
+    PrimitiveDataBuffer(const uint32_t,const uint32_t, IndexBuffer *);
+    ~PrimitiveDataBuffer();
 
-    const bool Comp(const PrimitiveRenderBuffer *prb)const;
-};//struct PrimitiveRenderBuffer
+    const bool Comp(const PrimitiveDataBuffer *prb)const;
+};//struct PrimitiveDataBuffer
 
+/**
+* 原始图元渲染数据<Br>
+* 提供在渲染时的数据
+*/
 struct PrimitiveRenderData
 {
     uint            vab_count;
-    VkDeviceSize *  vab_offset;
     uint32_t        vertex_count;
-
-    uint32_t        index_start;
     uint32_t        index_count;
+
+    int32_t         vertex_offset;  //注意：这里的offset是相对于vertex的，代表第几个顶点，不是字节偏移
+    uint32_t        first_index;
 
 public:
 
-    PrimitiveRenderData(const uint32_t bc,const uint32_t vc,const IBAccess *iba);
+    PrimitiveRenderData(const uint32_t bc,const uint32_t vc);
     ~PrimitiveRenderData();
 
     const bool Comp(const PrimitiveRenderData *)const;
@@ -49,14 +67,14 @@ class Renderable                                                                
     MaterialInstance *  mat_inst;
     Primitive *         primitive;
 
-    PrimitiveRenderBuffer * primitive_render_buffer;
-    PrimitiveRenderData *   primitive_render_data;
+    PrimitiveDataBuffer * primitive_data_buffer;
+    PrimitiveRenderData * primitive_render_data;
 
 private:
 
     friend Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    Renderable(Primitive *,MaterialInstance *,Pipeline *,PrimitiveRenderBuffer *,PrimitiveRenderData *);
+    Renderable(Primitive *,MaterialInstance *,Pipeline *,PrimitiveDataBuffer *,PrimitiveRenderData *);
 
 public:
 
@@ -64,7 +82,7 @@ public:
     {
         //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
-        SAFE_CLEAR(primitive_render_buffer);
+        SAFE_CLEAR(primitive_data_buffer);
         SAFE_CLEAR(primitive_render_data);
     }
 
@@ -77,7 +95,7 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   PrimitiveRenderBuffer * GetRenderBuffer ()const{return primitive_render_buffer;}
+    const   PrimitiveDataBuffer * GetRenderBuffer ()const{return primitive_data_buffer;}
     const   PrimitiveRenderData *   GetRenderData   ()const{return primitive_render_data;}
 };//class Renderable
 

@@ -165,12 +165,16 @@ public:
 
         if(!vab_list->IsFull())return(false);
 
-        vkCmdBindVertexBuffers(cmd_buf,0,vab_list->vab_count,vab_list->vab_list,vab_list->vab_offset);
+        vkCmdBindVertexBuffers(cmd_buf,
+                               0,                       //first binding
+                               vab_list->vab_count,     //binding count
+                               vab_list->vab_list,      //buffers
+                               vab_list->vab_offset);   //buffer offsets
 
         return(true);
     }
 
-    void BindIBO(IndexBuffer *ibo,VkDeviceSize offset);     ///<绑定IBO，注意offset意为索引偏移量，不是字节
+    void BindIBO(IBAccess *);
 
     bool BindVAB(Renderable *);
 
@@ -209,7 +213,7 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const PrimitiveRenderBuffer *prb,const PrimitiveRenderData *prd);
+                                void Draw               (const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd);
 //                                void DrawIndexed        (const IBAccess *iba,const uint32_t instance_count);
 
 public: //dynamic state

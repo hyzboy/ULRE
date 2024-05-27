@@ -19,12 +19,13 @@ class PrimitiveData
 {
 protected:
 
-    const VIL * vil;
+    const VIL *     vil;
 
-    uint32_t    vertex_count;
+    uint32_t        vertex_count;
+    uint32_t        index_count;
     
-    VABAccess * vab_access;
-    IBAccess    ib_access;
+    VAB **          vab_list;
+    IndexBuffer *   ibo;
 
 public:
 
@@ -36,20 +37,18 @@ public:
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   int             GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
-            VABAccess *     GetVABAccess    (const int index);            
-            VABAccess *     GetVABAccess    (const AnsiString &name);
+            VAB *           GetVAB          (const int index);
 
-            IBAccess *      GetIBAccess     (){return &ib_access;}
-            IndexBuffer *   GetIBO          (){return ib_access.buffer;}
+            IndexBuffer *   GetIBO          (){return ibo;}
+            uint32_t        GetIndexCount   ()const{return index_count;}
 
-public:
-
-    virtual VertexDataManager *GetVDM()=0;
+    virtual int32_t         GetVertexOffset ()const=0;                      ///<取得顶点偏移(注意是顶点不是字节)
+    virtual uint32_t        GetFirstIndex   ()const=0;                      ///<取得第一个索引
 
 public:
 
-    virtual IBAccess * InitIBO(const uint32_t index_count,IndexType it)=0;
-    virtual VABAccess *InitVAB(const AnsiString &name,const VkFormat &format,const void *data)=0;
+    virtual IndexBuffer * InitIBO(const uint32_t index_count,IndexType it)=0;
+    virtual VAB * InitVAB(const int vab_index,const VkFormat &format,const void *data)=0;
 };//class PrimitiveData
 
 PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const uint32_t vc);

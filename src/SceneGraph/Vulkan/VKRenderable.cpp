@@ -7,24 +7,20 @@
 #include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
-PrimitiveRenderBuffer::PrimitiveRenderBuffer(const uint32_t c,const uint32_t vc,const IBAccess *iba)
+PrimitiveDataBuffer::PrimitiveDataBuffer(const uint32_t c,const uint32_t vc, IndexBuffer *ib)
 {
     vab_count=c;
 
     vab_list=hgl_zero_new<VkBuffer>(vab_count);
-
-    if(iba&&iba->buffer)
-        ibo=iba->buffer;
-    else
-        ibo=nullptr;
+    ibo=ib;
 }
 
-PrimitiveRenderBuffer::~PrimitiveRenderBuffer()
+PrimitiveDataBuffer::~PrimitiveDataBuffer()
 {
     delete[] vab_list;
 }
 
-const bool PrimitiveRenderBuffer::Comp(const PrimitiveRenderBuffer *prb)const
+const bool PrimitiveDataBuffer::Comp(const PrimitiveDataBuffer *prb)const
 {
     if(!prb)return(false);
 
@@ -35,58 +31,41 @@ const bool PrimitiveRenderBuffer::Comp(const PrimitiveRenderBuffer *prb)const
         if(vab_list[i]!=prb->vab_list[i])return(false);
     }
 
-    if(ibo!=prb->ibo)return(false);
+    if(ibo!=prb->ibo)
+        return(false);
 
     return(true);
 }
 
-Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,PrimitiveRenderBuffer *prb,PrimitiveRenderData *prd)
+Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,PrimitiveDataBuffer *prb,PrimitiveRenderData *prd)
 {
     primitive=r;
     pipeline=p;
     mat_inst=mi;
 
-    primitive_render_buffer=prb;
+    primitive_data_buffer=prb;
     primitive_render_data=prd;
 }
 
-PrimitiveRenderData::PrimitiveRenderData(const uint32_t bc,const uint32_t vc,const IBAccess *iba)
+PrimitiveRenderData::PrimitiveRenderData(const uint32_t bc,const uint32_t vc)
 {
     vab_count=bc;
 
-    vab_offset=new VkDeviceSize[vab_count];
-
     vertex_count=vc;
+    vertex_offset=0;
 
-    if(iba&&iba->buffer)
-    {
-        index_start=iba->start;
-        index_count=iba->count;
-    }
+    first_index=0;
 }
 
 PrimitiveRenderData::~PrimitiveRenderData()
 {
-    delete[] vab_offset;
 }
 
 const bool PrimitiveRenderData::Comp(const PrimitiveRenderData *prd)const
 {
     if(!prd)return(false);
     
-    if(vab_count!=prd->vab_count)return(false);
-
-    for(uint i=0;i<vab_count;i++)
-    {
-        if(vab_offset[i]!=prd->vab_offset[i])return(false);
-    }
-
-    if(vertex_count!=prd->vertex_count)return(false);
-
-    if(index_start!=prd->index_start)return(false);
-    if(index_count!=prd->index_count)return(false);
-
-    return(true);
+    return !memcmp(this,prd,sizeof(PrimitiveRenderData));
 }
  
 Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
@@ -104,10 +83,8 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    const IBAccess *iba=prim->GetIBAccess();
-
-    PrimitiveRenderBuffer * prb=new PrimitiveRenderBuffer(  input_count,prim->GetVertexCount(),iba);
-    PrimitiveRenderData *   prd=new PrimitiveRenderData(    input_count,prim->GetVertexCount(),iba);
+    PrimitiveDataBuffer *prb=new PrimitiveDataBuffer(input_count,prim->GetVertexCount(),prim->GetIBO());
+    PrimitiveRenderData *prd=new PrimitiveRenderData(input_count,prim->GetVertexCount());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
 
@@ -146,7 +123,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
-        prd->vab_offset[i]=vab_access->start;
+        prb->vab_offset[i]=vab_access->start;
         prb->vab_list[i]=vab_access->vab->GetBuffer();
         ++vif;
     }

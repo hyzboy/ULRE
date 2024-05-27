@@ -54,33 +54,13 @@ class DeviceMemory;
 class DeviceBuffer;
 struct DeviceBufferData;
 
-struct PrimitiveRenderBuffer;
+struct PrimitiveDataBuffer;
 struct PrimitiveRenderData;
 
 class VertexAttribBuffer;
 using VAB=VertexAttribBuffer;
 
-struct VABAccess
-{
-    VAB *vab;
-    uint32_t start;
-    uint32_t count;
-
-public:
-
-    CompOperatorMemcmp(const VABAccess &);
-};//class VABAccess
-
 class IndexBuffer;
-
-struct IndexBufferAccess
-{
-    IndexBuffer *buffer;
-    uint32_t start;
-    uint32_t count;
-};
-
-using IBAccess=IndexBufferAccess;
 
 class GPUCmdBuffer;
 class RenderCmdBuffer;

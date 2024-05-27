@@ -28,7 +28,7 @@ private:
 
                 Pipeline *              pipeline;
                 MaterialInstance *      mi;
-        const   PrimitiveRenderBuffer * prb;
+        const   PrimitiveDataBuffer * prb;
         const   PrimitiveRenderData *   prd;
 
     public:
@@ -46,10 +46,10 @@ protected:
             VABList *               vbo_list;
 
             Pipeline *              last_pipeline;
-    const   PrimitiveRenderBuffer * last_render_buf;
+    const   PrimitiveDataBuffer * last_render_buf;
     const   PrimitiveRenderData *   last_render_data;
 
-    bool BindVAB(const PrimitiveRenderBuffer *,const PrimitiveRenderData *,const uint);
+    bool BindVAB(const PrimitiveDataBuffer *,const uint);
 
     void Render(RenderItem *);
 

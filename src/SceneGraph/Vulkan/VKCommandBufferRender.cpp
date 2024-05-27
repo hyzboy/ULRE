@@ -130,11 +130,17 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     return(true);
 }
 
-void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,VkDeviceSize offset)
+void RenderCmdBuffer::BindIBO(IBAccess *iba)
 {
+    if(!iba)return;
+    
+    IndexBuffer *ibo=iba->buffer;
+
+    if(!ibo)return;
+
     vkCmdBindIndexBuffer(cmd_buf,
                          ibo->GetBuffer(),
-                         offset*ibo->GetStride(),
+                         iba->start*ibo->GetStride(),
                          VkIndexType(ibo->GetType()));
 }
 
@@ -143,7 +149,7 @@ bool RenderCmdBuffer::BindVAB(Renderable *ri)
     if(!ri)
         return(false);
 
-    const PrimitiveRenderBuffer *prb=ri->GetRenderBuffer();
+    const PrimitiveDataBuffer *prb=ri->GetRenderBuffer();
 
     if(prb->vab_count<=0)
         return(false);
@@ -153,10 +159,10 @@ bool RenderCmdBuffer::BindVAB(Renderable *ri)
     if(prd->vertex_count<=0)
         return(false);
 
-    vkCmdBindVertexBuffers(cmd_buf,0,prb->vab_count,prb->vab_list,prd->vab_offset);
+    vkCmdBindVertexBuffers(cmd_buf,0,prb->vab_count,prb->vab_list,prb->vab_offset);
 
-    if(prb->ibo&&prd->index_count)
-        BindIBO(prb->ibo,prd->index_start);
+    if(prb->ib_access->buffer)
+        BindIBO(prb->ib_access);
 
     return(true);
 }
@@ -185,12 +191,12 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const PrimitiveRenderBuffer *prb,const PrimitiveRenderData *prd)
+void RenderCmdBuffer::Draw(const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd)
 {
     if(!prb||!prd)
         return;
 
-    if (prb->ibo)
+    if (prb->ib_access->buffer)
         DrawIndexed(prd->index_count);
     else
         Draw(prd->vertex_count);

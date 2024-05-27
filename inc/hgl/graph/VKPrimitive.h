@@ -7,18 +7,8 @@
 
 VK_NAMESPACE_BEGIN
 /**
- * 单一图元数据访问接口<br>
- * 
- * 这个只是单纯的提供原始VAB/IB数据，派生为两类
- * 
- *  一类是传统的，使用独统的独立VAB的
- *  一类是使用VDM的
- * 
- * 
- * 
- * WIP: *** 1.将数据全部转移到PrimitiveData，完成旧的渲染测试
- *          2.改成抽象类，将独立VAB的做成一个实现
- *          3.实现VDM支持
+ * 原始图元数据访问接口<br>
+ * Primitive的存为是为了屏蔽PrimitiveData的初始化之类的访问接口，以便于更好的管理和使用
  */
 class Primitive
 {
@@ -43,9 +33,9 @@ public:
 
     const   VkDeviceSize    GetVertexCount  ()const;
     const   int             GetVABCount     ()const;
+
             VABAccess *     GetVABAccess    (const AnsiString &);
 
-            IBAccess *      GetIBAccess     ();
             IndexBuffer *   GetIBO          ();
 
     const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
