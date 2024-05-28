@@ -24,11 +24,11 @@ private:
     struct RenderItem
     {
                 uint32_t                first;
-                uint32_t                count;
+                uint32_t                instance_count;
 
                 Pipeline *              pipeline;
                 MaterialInstance *      mi;
-        const   PrimitiveDataBuffer * prb;
+        const   PrimitiveDataBuffer *   pdb;
         const   PrimitiveRenderData *   prd;
 
     public:
@@ -43,10 +43,10 @@ private:
 
 protected:
 
-            VABList *               vbo_list;
+            VABList *               vab_list;
 
             Pipeline *              last_pipeline;
-    const   PrimitiveDataBuffer * last_render_buf;
+    const   PrimitiveDataBuffer *   last_data_buffer;
     const   PrimitiveRenderData *   last_render_data;
 
     bool BindVAB(const PrimitiveDataBuffer *,const uint);

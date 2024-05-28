@@ -15,6 +15,8 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
 
     prim_data       =nullptr;
 
+    map_ptr_list    =hgl_zero_new<void_pointer>(v->GetVertexAttribCount());
+
     Clear();
 }
 
@@ -29,6 +31,7 @@ PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
 PrimitiveCreater::~PrimitiveCreater()
 {
     SAFE_CLEAR(prim_data);
+    SAFE_CLEAR_ARRAY(map_ptr_list)
 }
 
 void PrimitiveCreater::Clear()
@@ -120,9 +123,7 @@ const int PrimitiveCreater::GetVABIndex(const AnsiString &name,const VkFormat &a
     VAB *vab=prim_data->GetVAB(vab_index);
 
     if(!vab)
-        return(-1);
-
-    vab=prim_data->InitVAB(vab_index,acquire_format,nullptr);
+        vab=prim_data->InitVAB(vab_index,acquire_format,nullptr);
 
     if(!vab)
         return(-1);
@@ -145,16 +146,23 @@ const int PrimitiveCreater::GetVABIndex(const AnsiString &name,const VkFormat &a
 
 void *PrimitiveCreater::MapVAB(const int vab_index)
 {
+    if(!prim_data)
+        return(nullptr);
+
     VAB *vab=prim_data->GetVAB(vab_index);
 
     if(!vab)
         return(nullptr);
 
-    return vab->Map(prim_data->GetVertexOffset(),vertices_number);
+    map_ptr_list[vab_index]=vab->Map(prim_data->GetVertexOffset(),vertices_number);
+
+    return map_ptr_list[vab_index];
 }
 
 void PrimitiveCreater::UnmapVAB(const int vab_index)
 {
+    if(!prim_data)return;
+
     VAB *vab=prim_data->GetVAB(vab_index);
 
     if(!vab)return;
@@ -207,6 +215,13 @@ Primitive *PrimitiveCreater::Create()
 {
     if(!prim_data)
         return(nullptr);
+
+    for(int i=0;i<vil->GetVertexAttribCount();i++)
+        if(map_ptr_list[i])
+        {
+            prim_data->GetVAB(i)->Unmap();
+            map_ptr_list[i]=nullptr;
+        }
 
     Primitive *primitive=new Primitive(prim_name,prim_data);
 

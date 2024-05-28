@@ -174,9 +174,9 @@ public:
         return(true);
     }
 
-    void BindIBO(IBAccess *);
+    void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
 
-    bool BindVAB(Renderable *);
+    bool BindRenderBuffer(const PrimitiveDataBuffer *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}
@@ -213,8 +213,7 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd);
-//                                void DrawIndexed        (const IBAccess *iba,const uint32_t instance_count);
+                                void Draw               (const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd,const uint32_t instance_count=1,const uint32_t first_instance=0);
 
 public: //dynamic state
 };//class RenderCmdBuffer:public GPUCmdBuffer

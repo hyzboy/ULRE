@@ -51,14 +51,24 @@ const int Primitive::GetVABCount()const
     return prim_data->GetVABCount();
 }
 
-VABAccess *Primitive::GetVABAccess(const AnsiString &name)
+const int Primitive::GetVABIndex(const AnsiString &name)const
 {
-    return prim_data->GetVABAccess(name);
+    return prim_data->GetVABIndex(name);
 }
 
-IBAccess *Primitive::GetIBAccess()
+VAB *Primitive::GetVAB(const int vab_index)
 {
-    return prim_data->GetIBAccess();
+    return prim_data->GetVAB(vab_index);
+}
+
+const int32_t Primitive::GetVertexOffset()const
+{
+    return prim_data->GetVertexOffset();
+}
+
+const uint32_t Primitive::GetIndexCount()const
+{
+    return prim_data->GetIndexCount();
 }
 
 IndexBuffer *Primitive::GetIBO()
@@ -66,4 +76,8 @@ IndexBuffer *Primitive::GetIBO()
     return prim_data->GetIBO();
 }
 
+const uint32_t Primitive::GetFirstIndex()const
+{
+    return prim_data->GetFirstIndex();
+}
 VK_NAMESPACE_END

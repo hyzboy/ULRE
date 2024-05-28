@@ -13,7 +13,7 @@ PrimitiveData::PrimitiveData(const VIL *_vil,const uint32_t vc)
 
     vertex_count=vc;
 
-    vab_list=hgl_zero_new<VAB *>(_vil->GetCount());
+    vab_list=hgl_zero_new<VAB *>(_vil->GetVertexAttribCount());
 
     ibo=nullptr;
 }
@@ -25,7 +25,7 @@ PrimitiveData::~PrimitiveData()
 
 const int PrimitiveData::GetVABCount()const
 {
-    return vil->GetCount();
+    return vil->GetVertexAttribCount();
 }
 
 const int PrimitiveData::GetVABIndex(const AnsiString &name) const
@@ -37,7 +37,7 @@ const int PrimitiveData::GetVABIndex(const AnsiString &name) const
 
 VAB *PrimitiveData::GetVAB(const int index)
 {
-    if(index<0||index>=vil->GetCount())return(nullptr);
+    if(index<0||index>=vil->GetVertexAttribCount())return(nullptr);
 
     return vab_list[index];
 }
@@ -67,7 +67,7 @@ namespace
         {
             VAB **vab=vab_list;
 
-            for(uint i=0;i<vil->GetCount();i++)
+            for(uint i=0;i<vil->GetVertexAttribCount();i++)
             {
                 if(*vab)
                     delete *vab;
@@ -100,7 +100,7 @@ namespace
             if(!device)return(nullptr);
             if(!vil)return(nullptr);
 
-            if(vab_index<0||vab_index>=vil->GetCount())
+            if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
                 return(nullptr);
 
             const VertexInputFormat *vif=vil->GetConfig(vab_index);
@@ -159,20 +159,22 @@ namespace
                 vdm->ReleaseVAB(vab_node);
         }
         
-        IndexBuffer *InitIBO(const uint32_t index_count,IndexType it) override
+        IndexBuffer *InitIBO(const uint32_t ic,IndexType it) override
         {
-            if(index_count<=0)return(nullptr);
+            if(ic<=0)return(nullptr);
             if(!vdm)return(nullptr);
 
             if(!ib_node)
             {
-                ib_node=vdm->AcquireIB(index_count);
+                ib_node=vdm->AcquireIB(ic);
 
                 if(!ib_node)
                     return(nullptr);
 
                 ibo=vdm->GetIBO();
             }
+
+            index_count=ic;
 
             return ibo;
         }
@@ -182,7 +184,7 @@ namespace
             if(!vdm)return(nullptr);
             if(!vil)return(nullptr);
 
-            if (vab_index<0||vab_index>=vil->GetCount())
+            if (vab_index<0||vab_index>=vil->GetVertexAttribCount())
                 return(nullptr);
 
             const VertexInputFormat *vif=vil->GetConfig(vab_index);

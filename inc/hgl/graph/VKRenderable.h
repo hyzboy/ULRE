@@ -31,10 +31,10 @@ struct PrimitiveDataBuffer
 
 public:
 
-    PrimitiveDataBuffer(const uint32_t,const uint32_t, IndexBuffer *);
+    PrimitiveDataBuffer(const uint32_t,IndexBuffer *);
     ~PrimitiveDataBuffer();
 
-    const bool Comp(const PrimitiveDataBuffer *prb)const;
+    const bool Comp(const PrimitiveDataBuffer *pdb)const;
 };//struct PrimitiveDataBuffer
 
 /**
@@ -43,19 +43,27 @@ public:
 */
 struct PrimitiveRenderData
 {
-    uint            vab_count;
-    uint32_t        vertex_count;
-    uint32_t        index_count;
+    //因为要VAB是流式访问，所以我们这个结构会被用做排序依据
+    //也因此，把vertex_offset放在最前面
 
     int32_t         vertex_offset;  //注意：这里的offset是相对于vertex的，代表第几个顶点，不是字节偏移
     uint32_t        first_index;
 
+    uint32_t        vertex_count;
+    uint32_t        index_count;
+
 public:
 
-    PrimitiveRenderData(const uint32_t bc,const uint32_t vc);
-    ~PrimitiveRenderData();
+    PrimitiveRenderData(const uint32_t vc,const uint32_t ic,const int32_t vo=0,const uint32_t fi=0)
+    {
+        vertex_count    =vc;
+        index_count     =ic;
+        vertex_offset   =vo;
+        first_index     =fi;
+    }
 
-    const bool Comp(const PrimitiveRenderData *)const;
+    CompOperatorMemcmp(const PrimitiveRenderData &);
+    CompOperatorMemcmpPointer(PrimitiveRenderData);
 };
 
 /**
@@ -95,8 +103,8 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   PrimitiveDataBuffer * GetRenderBuffer ()const{return primitive_data_buffer;}
-    const   PrimitiveRenderData *   GetRenderData   ()const{return primitive_render_data;}
+    const   PrimitiveDataBuffer *GetRenderBuffer    ()const{return primitive_data_buffer;}
+    const   PrimitiveRenderData *GetRenderData      ()const{return primitive_render_data;}
 };//class Renderable
 
 Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);

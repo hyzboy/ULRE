@@ -33,10 +33,14 @@ public:
 
     const   VkDeviceSize    GetVertexCount  ()const;
     const   int             GetVABCount     ()const;
+    const   int             GetVABIndex     (const AnsiString &name)const;
+            VAB *           GetVAB          (const int);            
+            VAB *           GetVAB          (const AnsiString &name){return GetVAB(GetVABIndex(name));}
+    const   int32_t         GetVertexOffset ()const;                        ///<取得顶点偏移(注意是顶点不是字节)
 
-            VABAccess *     GetVABAccess    (const AnsiString &);
-
+    const   uint32_t        GetIndexCount   ()const;
             IndexBuffer *   GetIBO          ();
+    const   uint32_t        GetFirstIndex   ()const;                        ///<取得第一个索引
 
     const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive
