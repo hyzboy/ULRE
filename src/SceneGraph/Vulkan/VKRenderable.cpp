@@ -7,12 +7,14 @@
 #include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
-PrimitiveDataBuffer::PrimitiveDataBuffer(const uint32_t c,IndexBuffer *ib)
+PrimitiveDataBuffer::PrimitiveDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
 {
     vab_count=c;
 
     vab_list=hgl_zero_new<VkBuffer>(vab_count);
     ibo=ib;
+
+    vdm=_vdm;
 }
 
 PrimitiveDataBuffer::~PrimitiveDataBuffer()
@@ -62,7 +64,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    PrimitiveDataBuffer *pdb=new PrimitiveDataBuffer(input_count,prim->GetIBO());
+    PrimitiveDataBuffer *pdb=new PrimitiveDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
     PrimitiveRenderData *prd=new PrimitiveRenderData(prim->GetVertexCount(),prim->GetIndexCount(),prim->GetVertexOffset(),prim->GetFirstIndex());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);

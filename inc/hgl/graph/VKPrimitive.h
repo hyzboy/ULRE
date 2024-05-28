@@ -42,6 +42,8 @@ public:
             IndexBuffer *   GetIBO          ();
     const   uint32_t        GetFirstIndex   ()const;                        ///<取得第一个索引
 
+    VertexDataManager *     GetVDM          ();                             ///<取得顶点数据管理器
+
     const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
 };//class Primitive
 VK_NAMESPACE_END
