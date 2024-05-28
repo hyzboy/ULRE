@@ -6,6 +6,7 @@
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/util/sort/Sort.h>
 #include"RenderAssignBuffer.h"
+#include<hgl/graph/VertexDataManager.h>
 
 /**
 * 
@@ -20,7 +21,7 @@
 template<> 
 int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &obj_one,const hgl::graph::RenderNode &obj_two) const
 {
-    int off;
+    hgl::int64 off;
 
     hgl::graph::Renderable *ri_one=obj_one.ri;
     hgl::graph::Renderable *ri_two=obj_two.ri;
@@ -34,13 +35,29 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
             return off;
     }
 
-    //比较模型
+    auto *prim_one=ri_one->GetPrimitive();
+    auto *prim_two=ri_two->GetPrimitive();
+
+    //比如VDM
     {
-        off=ri_one->GetPrimitive()
-           -ri_two->GetPrimitive();
+        off=prim_one->GetVDM()
+           -prim_two->GetVDM();
 
         if(off)
             return off;
+    }
+
+    //比较模型
+    {
+        off=prim_one
+           -prim_two;
+
+        if(off)
+        {
+            off=prim_one->GetVertexOffset()-prim_two->GetVertexOffset();        //保存vertex offset小的在前面
+
+            return off;
+        }
     }
 
     return 0;
@@ -114,7 +131,8 @@ void MaterialRenderList::Stat()
     ri->Set(rn->ri);
 
     last_pipeline   =ri->pipeline;
-    last_data_buffer =ri->pdb;
+    last_data_buffer=ri->pdb;
+    last_vdm        =ri->pdb->vdm;
     last_render_data=ri->prd;
 
     ++rn;
@@ -246,7 +264,9 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
     RenderItem *ri=ri_array.GetData();
 
     last_pipeline   =nullptr;
-    last_data_buffer =nullptr;
+    last_data_buffer=nullptr;
+    last_vdm        =nullptr;
+    last_render_data=nullptr;
 
     if(assign_buffer)
         assign_buffer->Bind(material);

@@ -28,6 +28,7 @@ private:
 
                 Pipeline *              pipeline;
                 MaterialInstance *      mi;
+
         const   PrimitiveDataBuffer *   pdb;
         const   PrimitiveRenderData *   prd;
 
@@ -47,6 +48,7 @@ protected:
 
             Pipeline *              last_pipeline;
     const   PrimitiveDataBuffer *   last_data_buffer;
+    const   VertexDataManager *     last_vdm;
     const   PrimitiveRenderData *   last_render_data;
 
     bool BindVAB(const PrimitiveDataBuffer *,const uint);
