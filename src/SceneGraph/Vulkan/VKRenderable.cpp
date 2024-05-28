@@ -26,6 +26,9 @@ const bool PrimitiveDataBuffer::Comp(const PrimitiveDataBuffer *pdb)const
 {
     if(!pdb)return(false);
 
+    if(vdm&&pdb->vdm)
+        return (vdm==pdb->vdm);
+
     if(vab_count!=pdb->vab_count)return(false);
 
     for(uint32_t i=0;i<vab_count;i++)
