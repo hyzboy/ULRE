@@ -38,6 +38,7 @@ public:
     const   int             GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
             VAB *           GetVAB          (const int index);
+            VAB *           GetVAB          (const AnsiString &name){return GetVAB(GetVABIndex(name));}
 
             IndexBuffer *   GetIBO          (){return ibo;}
             uint32_t        GetIndexCount   ()const{return index_count;}

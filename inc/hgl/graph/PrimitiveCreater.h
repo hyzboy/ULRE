@@ -22,8 +22,10 @@ protected:
 
     AnsiString      prim_name;
     PrimitiveData * prim_data;
-    
+
     uint32_t        vertices_number;  ///<顶点数量
+
+    void_pointer   *map_ptr_list;     ///<映射指针列表
 
     uint32_t        index_number;     ///<索引数量
     IndexType       index_type;       ///<索引类型
@@ -127,10 +129,10 @@ template<typename T> class VABMap
 
 public:
 
-    VABMap(PrimitiveCreater *pc,const AnsiString &name)
+    VABMap(PrimitiveCreater *c,const AnsiString &name)
     {
         pc=c;
-        vab_index=pc->GetVABIndex(name,T::GetVulkanFormat(),nullptr);
+        vab_index=pc->GetVABIndex(name,T::GetVulkanFormat());
 
         void *map_ptr=(T *)(pc->MapVAB(vab_index));
 
@@ -148,7 +150,7 @@ public:
 
     ~VABMap()
     {
-        if(vab)
+        if(pc&&vab_index>=0)
             pc->UnmapVAB(vab_index);
     }
 

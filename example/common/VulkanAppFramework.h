@@ -216,16 +216,14 @@ public:
     {   
         if(!ri)return(false);
 
-        const PrimitiveDataBuffer *prb=ri->GetRenderBuffer();
-
         cb->Begin();
             cb->BindFramebuffer(rp,fb);
             cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetMaterial());
-                cb->BindVAB(ri);
-                cb->Draw(prb,ri->GetRenderData());
+                cb->BindRenderBuffer(ri->GetRenderBuffer());
+                cb->Draw(ri->GetRenderBuffer(),ri->GetRenderData());
             cb->EndRenderPass();
         cb->End();
 

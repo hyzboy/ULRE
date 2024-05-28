@@ -130,39 +130,32 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
     return(true);
 }
 
-void RenderCmdBuffer::BindIBO(IBAccess *iba)
+void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
 {
-    if(!iba)return;
-    
-    IndexBuffer *ibo=iba->buffer;
-
     if(!ibo)return;
-
+    
     vkCmdBindIndexBuffer(cmd_buf,
                          ibo->GetBuffer(),
-                         iba->start*ibo->GetStride(),
+                         byte_offset,
                          VkIndexType(ibo->GetType()));
 }
 
-bool RenderCmdBuffer::BindVAB(Renderable *ri)
+bool RenderCmdBuffer::BindRenderBuffer(const PrimitiveDataBuffer *pdb)
 {
-    if(!ri)
+    if(!pdb)
         return(false);
 
-    const PrimitiveDataBuffer *prb=ri->GetRenderBuffer();
-
-    if(prb->vab_count<=0)
+    if(pdb->vab_count<=0)
         return(false);
 
-    const PrimitiveRenderData *prd=ri->GetRenderData();
+    vkCmdBindVertexBuffers(cmd_buf,
+                           0,               //first binding
+                           pdb->vab_count,
+                           pdb->vab_list,
+                           nullptr);        //vab byte offsets
 
-    if(prd->vertex_count<=0)
-        return(false);
-
-    vkCmdBindVertexBuffers(cmd_buf,0,prb->vab_count,prb->vab_list,prb->vab_offset);
-
-    if(prb->ib_access->buffer)
-        BindIBO(prb->ib_access);
+    if(pdb->ibo)
+        BindIBO(pdb->ibo);
 
     return(true);
 }
@@ -191,15 +184,24 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd)
+void RenderCmdBuffer::Draw(const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd,const uint32_t instance_count,const uint32_t first_instance)
 {
     if(!prb||!prd)
         return;
 
-    if (prb->ib_access->buffer)
-        DrawIndexed(prd->index_count);
+    if (prb->ibo)
+        vkCmdDrawIndexed(   cmd_buf,
+                            prd->index_count,
+                            instance_count,
+                            prd->first_index,
+                            prd->vertex_offset, //这里的vertexOffset是针对所有VAB的
+                            first_instance);    //这里的first_instance针对的是instance Rate更新的VAB的起始实例数，不是指instance批量渲染
     else
-        Draw(prd->vertex_count);
+        vkCmdDraw(          cmd_buf,
+                            prd->vertex_count,
+                            instance_count,
+                            prd->vertex_offset,
+                            first_instance);
 }
 
 //void RenderCmdBuffer::DrawIndexed(const IBAccess *iba,const uint32_t instance_count)

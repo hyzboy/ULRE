@@ -13,7 +13,7 @@ namespace hgl
             device=dev;
 
             vil=_vil;
-            vi_count=_vil->GetCount();
+            vi_count=_vil->GetVertexAttribCount();
             vif_list=_vil->GetVIFList();     //来自于Material，不会被释放，所以指针有效
 
             vab_max_size=0;

@@ -55,12 +55,12 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
 
     assign_buffer=new RenderAssignBuffer(device,material);
 
-    vbo_list=new VABList(material->GetVertexInput()->GetCount());
+    vab_list=new VABList(material->GetVertexInput()->GetCount());
 }
 
 MaterialRenderList::~MaterialRenderList()
 {
-    SAFE_CLEAR(vbo_list);
+    SAFE_CLEAR(vab_list);
     SAFE_CLEAR(assign_buffer);
 }
 
@@ -93,7 +93,7 @@ void MaterialRenderList::RenderItem::Set(Renderable *ri)
 {
     pipeline=ri->GetPipeline();
     mi      =ri->GetMaterialInstance();
-    prb     =ri->GetRenderBuffer();
+    pdb     =ri->GetRenderBuffer();
     prd     =ri->GetRenderData();
 }
 
@@ -110,11 +110,11 @@ void MaterialRenderList::Stat()
     ri_count=1;
 
     ri->first=0;
-    ri->count=1;
+    ri->instance_count=1;
     ri->Set(rn->ri);
 
     last_pipeline   =ri->pipeline;
-    last_render_buf =ri->prb;
+    last_data_buffer =ri->pdb;
     last_render_data=ri->prd;
 
     ++rn;
@@ -122,10 +122,10 @@ void MaterialRenderList::Stat()
     for(uint i=1;i<count;i++)
     {
         if(last_pipeline==rn->ri->GetPipeline())
-            if(last_render_buf->Comp(rn->ri->GetRenderBuffer()))
-                if(last_render_data->Comp(rn->ri->GetRenderData()))
+            if(last_data_buffer->Comp(rn->ri->GetRenderBuffer()))
+                if(last_render_data->_Comp(rn->ri->GetRenderData())==0)
                 {
-                    ++ri->count;
+                    ++ri->instance_count;
                     ++rn;
                     continue;
                 }
@@ -134,18 +134,18 @@ void MaterialRenderList::Stat()
         ++ri;
 
         ri->first=i;
-        ri->count=1;
+        ri->instance_count=1;
         ri->Set(rn->ri);
 
         last_pipeline   =ri->pipeline;
-        last_render_buf =ri->prb;
+        last_data_buffer =ri->pdb;
         last_render_data=ri->prd;
 
         ++rn;
     }
 }
 
-bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *prb,const uint ri_index)
+bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *pdb,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
@@ -154,19 +154,19 @@ bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *prb,const uint ri_in
     //if(vil->GetCount(VertexInputGroup::Basic)!=prb->vab_count)
     //    return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
 
-    vbo_list->Restart();
+    vab_list->Restart();
 
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
-        vbo_list->Add(prb->vab_list,
-                      prb->vab_offset,
-                      prb->vab_count);
+        vab_list->Add(pdb->vab_list,
+                      nullptr,//prb->vab_offset,
+                      pdb->vab_count);
     }
 
     if(assign_buffer) //L2W/MI分发组
-        vbo_list->Add(assign_buffer->GetVAB(),0);//ASSIGN_VAB_STRIDE_BYTES*ri_index);
+        vab_list->Add(assign_buffer->GetVAB(),0);//ASSIGN_VAB_STRIDE_BYTES*ri_index);
 
-    //if(!vbo_list.IsFull()) //Joint组，暂未支持
+    //if(!vab_list.IsFull()) //Joint组，暂未支持
     //{
     //    const uint joint_id_binding_count=vil->GetCount(VertexInputGroup::JointID);
 
@@ -201,7 +201,7 @@ bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *prb,const uint ri_in
     //    return(false);
     //}
 
-    cmd_buf->BindVAB(vbo_list);
+    cmd_buf->BindVAB(vab_list);
 
     return(true);
 }
@@ -213,36 +213,23 @@ void MaterialRenderList::Render(RenderItem *ri)
         cmd_buf->BindPipeline(ri->pipeline);
         last_pipeline=ri->pipeline;
 
-        last_render_buf=nullptr;
+        last_data_buffer=nullptr;
 
         //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定mi/primitive
     }
 
-    if(!ri->prb->Comp(last_render_buf))
+    if(!ri->pdb->Comp(last_data_buffer))
     {
-        last_render_buf=ri->prb;
+        last_data_buffer=ri->pdb;
         last_render_data=nullptr;
 
-        BindVAB(ri->prb,ri->first);
+        BindVAB(ri->pdb,ri->first);
 
-        if(ri->prb->ib_access->buffer)
-        cmd_buf->BindIBO(ri->prb->ib_access);
+        if(ri->pdb->ibo)
+        cmd_buf->BindIBO(ri->pdb->ibo);
     }
 
-    if(last_render_buf->ib_access->buffer)
-    {
-        cmd_buf->DrawIndexed(ri->prd->index_count,
-                             ri->count,
-                             ri->prd->first_index,
-                             ri->prd->vertex_offset,    //因为vkCmdDrawIndexed的vertexOffset是针对所有VAB的，所以所有的VAB数据都必须是对齐的，
-                                                        //最终这里使用vab_offset[0]是可以的，因为它也等于其它所有的vab_offset。未来考虑统一成一个。
-                             ri->first);                //这里vkCmdDrawIndexed的firstInstance参数指的是instance Rate更新的VAB的起始实例数，不是指instance批量渲染。
-                                                        //所以这里使用ri->first是对的。
-    }
-    else
-    {
-        cmd_buf->Draw(ri->prd->vertex_count,ri->count);
-    }
+    cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first);
 }
 
 void MaterialRenderList::Render(RenderCmdBuffer *rcb)
@@ -259,7 +246,7 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
     RenderItem *ri=ri_array.GetData();
 
     last_pipeline   =nullptr;
-    last_render_buf =nullptr;
+    last_data_buffer =nullptr;
 
     if(assign_buffer)
         assign_buffer->Bind(material);
