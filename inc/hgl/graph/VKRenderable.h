@@ -105,7 +105,7 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   PrimitiveDataBuffer *GetRenderBuffer    ()const{return primitive_data_buffer;}
+    const   PrimitiveDataBuffer *GetDataBuffer      ()const{return primitive_data_buffer;}
     const   PrimitiveRenderData *GetRenderData      ()const{return primitive_render_data;}
 };//class Renderable
 

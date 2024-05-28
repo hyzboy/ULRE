@@ -110,7 +110,7 @@ void MaterialRenderList::RenderItem::Set(Renderable *ri)
 {
     pipeline=ri->GetPipeline();
     mi      =ri->GetMaterialInstance();
-    pdb     =ri->GetRenderBuffer();
+    pdb     =ri->GetDataBuffer();
     prd     =ri->GetRenderData();
 }
 
@@ -140,13 +140,27 @@ void MaterialRenderList::Stat()
     for(uint i=1;i<count;i++)
     {
         if(last_pipeline==rn->ri->GetPipeline())
-            if(last_data_buffer->Comp(rn->ri->GetRenderBuffer()))
+        {
+            if(last_data_buffer->vdm&&last_data_buffer->vdm==rn->ri->GetDataBuffer()->vdm)
+            {
                 if(last_render_data->_Comp(rn->ri->GetRenderData())==0)
                 {
                     ++ri->instance_count;
                     ++rn;
                     continue;
                 }
+            }
+            else
+            {
+                if(last_data_buffer->Comp(rn->ri->GetDataBuffer()))
+                    if(last_render_data->_Comp(rn->ri->GetRenderData())==0)
+                    {
+                        ++ri->instance_count;
+                        ++rn;
+                        continue;
+                    }
+            }
+        }
 
         ++ri_count;
         ++ri;
@@ -156,7 +170,8 @@ void MaterialRenderList::Stat()
         ri->Set(rn->ri);
 
         last_pipeline   =ri->pipeline;
-        last_data_buffer =ri->pdb;
+        last_data_buffer=ri->pdb;
+        last_vdm        =ri->pdb->vdm;
         last_render_data=ri->prd;
 
         ++rn;
@@ -261,8 +276,6 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
 
     cmd_buf=rcb;
 
-    RenderItem *ri=ri_array.GetData();
-
     last_pipeline   =nullptr;
     last_data_buffer=nullptr;
     last_vdm        =nullptr;
@@ -273,6 +286,7 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
 
     cmd_buf->BindDescriptorSets(material);
 
+    RenderItem *ri=ri_array.GetData();
     for(uint i=0;i<ri_count;i++)
     {
         Render(ri);
