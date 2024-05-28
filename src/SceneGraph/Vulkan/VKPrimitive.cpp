@@ -80,4 +80,9 @@ const uint32_t Primitive::GetFirstIndex()const
 {
     return prim_data->GetFirstIndex();
 }
+
+VertexDataManager *Primitive::GetVDM()
+{
+    return prim_data->GetVDM();
+}
 VK_NAMESPACE_END

@@ -29,9 +29,11 @@ struct PrimitiveDataBuffer
 
     IndexBuffer *   ibo;
 
+    VertexDataManager *vdm;             //只是用来区分和比较的，不实际使用
+
 public:
 
-    PrimitiveDataBuffer(const uint32_t,IndexBuffer *);
+    PrimitiveDataBuffer(const uint32_t,IndexBuffer *,VertexDataManager *_v=nullptr);
     ~PrimitiveDataBuffer();
 
     const bool Comp(const PrimitiveDataBuffer *pdb)const;

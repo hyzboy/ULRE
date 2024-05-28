@@ -56,6 +56,8 @@ namespace
         int32_t  GetVertexOffset ()const override{return 0;}
         uint32_t GetFirstIndex   ()const override{return 0;}
 
+        VertexDataManager * GetVDM()const override{return nullptr;}                           ///<取得顶点数据管理器
+
     public:
 
         PrimitiveDataPrivateBuffer(GPUDevice *dev,const VIL *_vil,const uint32_t vc):PrimitiveData(_vil,vc)
@@ -141,6 +143,9 @@ namespace
 
         int32_t  GetVertexOffset()const override { return vab_node->GetStart(); }
         uint32_t GetFirstIndex  ()const override { return ib_node->GetStart(); }
+        VertexDataManager * GetVDM()const override{return vdm;}                           ///<取得顶点数据管理器
+
+    public:
 
         PrimitiveDataVDM(VertexDataManager *_vdm,const uint32_t vc):PrimitiveData(_vdm->GetVIL(),vc)
         {
