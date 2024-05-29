@@ -135,6 +135,9 @@ void MaterialRenderList::Stat()
     last_vdm        =ri->pdb->vdm;
     last_render_data=ri->prd;
 
+    if(last_vdm)
+        vdm_set.Add(last_vdm);
+
     ++rn;
 
     for(uint i=1;i<count;i++)
@@ -174,8 +177,12 @@ void MaterialRenderList::Stat()
         last_vdm        =ri->pdb->vdm;
         last_render_data=ri->prd;
 
+        if(last_vdm)
+            vdm_set.Add(last_vdm);
+
         ++rn;
     }
+
 }
 
 bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *pdb,const uint ri_index)

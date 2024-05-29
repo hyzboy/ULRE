@@ -104,6 +104,8 @@ class Primitive;
 class Renderable;
 
 class VertexDataManager;
+using VDM=VertexDataManager;
+
 class RenderResource;
 
 enum class SharingMode

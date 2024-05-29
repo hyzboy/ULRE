@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_RENDERABLE_INCLUDE
-#define HGL_GRAPH_RENDERABLE_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VKPipeline.h>
@@ -69,7 +68,7 @@ public:
 };
 
 /**
-* 可渲染对象<br>
+* 原始可渲染对象(即仅一个模型一个材质)
 */
 class Renderable                                                                ///可渲染对象实例
 {
@@ -111,4 +110,3 @@ public:
 
 Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_RENDERABLE_INCLUDE
