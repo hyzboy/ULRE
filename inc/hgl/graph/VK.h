@@ -106,6 +106,10 @@ class Renderable;
 class VertexDataManager;
 using VDM=VertexDataManager;
 
+class IndirectDrawBuffer;
+class IndirectDrawIndexedBuffer;
+class IndirectDispatchBuffer;
+
 class RenderResource;
 
 enum class SharingMode

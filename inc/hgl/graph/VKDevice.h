@@ -22,6 +22,9 @@ class TileData;
 class TileFont;
 class FontSource;
 class GPUArrayBuffer;
+class IndirectDrawBuffer;
+class IndirectDrawIndexedBuffer;
+class IndirectDispatchBuffer;
 
 struct CopyBufferToImageInfo;
 
@@ -148,6 +151,14 @@ public: //Buffer相关
 
     GPUArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
     GPUArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
+
+public: //间接绘制
+
+    bool CreateIndirectCommandBuffer(DeviceBufferData *,const uint32_t cmd_count,const uint32_t cmd_size,SharingMode sm=SharingMode::Exclusive);
+
+    IndirectDrawBuffer *        CreateIndirectDrawBuffer(       const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);
+    IndirectDrawIndexedBuffer * CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);
+    IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);
 
 public: //Image
 

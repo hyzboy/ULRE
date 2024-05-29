@@ -23,6 +23,7 @@ private:
     friend class GPUDevice;
     friend class VertexAttribBuffer;
     friend class IndexBuffer;
+    template<typename T> friend class IndirectCommandBuffer;
 
     DeviceBuffer(VkDevice d,const DeviceBufferData &b)
     {
