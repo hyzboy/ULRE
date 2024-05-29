@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKVABList.h>
+#include<hgl/type/SortedSets.h>
 
 VK_NAMESPACE_BEGIN
 class RenderAssignBuffer;
@@ -37,6 +38,8 @@ private:
         void Set(Renderable *);
     };
 
+    SortedSets<const VDM *> vdm_set;
+
     DataArray<RenderItem> ri_array;
     uint ri_count;
 
@@ -48,7 +51,7 @@ protected:
 
             Pipeline *              last_pipeline;
     const   PrimitiveDataBuffer *   last_data_buffer;
-    const   VertexDataManager *     last_vdm;
+    const   VDM *                   last_vdm;
     const   PrimitiveRenderData *   last_render_data;
 
     bool BindVAB(const PrimitiveDataBuffer *,const uint);

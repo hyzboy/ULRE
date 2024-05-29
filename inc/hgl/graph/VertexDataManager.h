@@ -57,4 +57,6 @@ public:
     IndexBuffer *GetIBO(){return ibo;}
     VAB *GetVAB(const uint index){return vab[index];}
 };//class VertexDataManager
+
+using VDM=VertexDataManager;
 VK_NAMESPACE_END
