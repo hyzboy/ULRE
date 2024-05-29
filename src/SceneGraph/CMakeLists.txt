@@ -237,6 +237,7 @@ SOURCE_GROUP("Vulkan\\Render Context" FILES ${VK_RENDER_CONTEXT_SOURCE})
 
 SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
                             ${SG_INCLUDE_PATH}/VKIndirectCommandBuffer.h
+                            Vulkan/VKIndirectCommandBuffer.cpp
                             Vulkan/VKCommandBuffer.cpp
                             Vulkan/VKCommandBufferRender.cpp)
 

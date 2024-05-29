@@ -4,34 +4,85 @@
 
 VK_NAMESPACE_BEGIN
 
+template<typename T>
 class IndirectCommandBuffer:public DeviceBuffer
 {
 protected:
 
     uint32_t max_count;
-    uint32_t stride;
+
+public:
+
+    const uint32_t      GetMaxCount     ()const{ return max_count; }                ///<取得最大指令数
+    const uint32_t      GetCommandLength()const{ return sizeof(T); }                ///<取得单个指令的长度字节数
+    const VkDeviceSize  GetTotalBytes   ()const{ return sizeof(T)*max_count; }      ///<取得缓冲区总计字节数
 
 private:
 
     friend class GPUDevice;
 
-    IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc,const uint32_t s):DeviceBuffer(d,vb)
+    IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc):DeviceBuffer(d,vb)
     {
         max_count=mc;
-        stride=s;
     }
 
-    ~IndirectCommandBuffer()=default;
+public:
 
-    const uint32_t GetMaxCount ()const { return max_count; }
+    virtual ~IndirectCommandBuffer()=default;
+   
+    T *     MapCmd  ()                                                      {return (T *)Map();}
+    void *  Map     (VkDeviceSize start,VkDeviceSize size)          override{return DeviceBuffer::Map(start*sizeof(T),size*sizeof(T));}
+    T *     MapCmd  (VkDeviceSize start,VkDeviceSize size)                  {return (T *)Map(start,size);}
 
-    const VkDeviceSize GetTotalBytes()const { return stride*max_count; }
-    
-    void *  Map     (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Map(start*stride,size*stride);}
-    void    Flush   (VkDeviceSize start,VkDeviceSize size)          override {return DeviceBuffer::Flush(start*stride,size*stride);}
-    void    Flush   (VkDeviceSize size)                             override {return DeviceBuffer::Flush(size*stride);}
+    void    Flush   (VkDeviceSize start,VkDeviceSize size)          override{return DeviceBuffer::Flush(start*sizeof(T),size*sizeof(T));}
+    void    Flush   (VkDeviceSize size)                             override{return DeviceBuffer::Flush(size*sizeof(T));}
 
-    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override {return DeviceBuffer::Write(ptr,start*stride,size*stride);}
-    bool    Write   (const void *ptr,uint32_t size)                 override {return DeviceBuffer::Write(ptr,0,size*stride);}
+    bool    Write   (const void *ptr,uint32_t start,uint32_t size)  override{return DeviceBuffer::Write(ptr,start*sizeof(T),size*sizeof(T));}
+    bool    Write   (const void *ptr,uint32_t size)                 override{return DeviceBuffer::Write(ptr,0,size*sizeof(T));}
+
+    bool    WriteCmd(const T *ptr,uint32_t start,uint32_t size)             {return DeviceBuffer::Write(ptr,start*sizeof(T),size*sizeof(T));}
+    bool    WriteCmd(const T *ptr,uint32_t size)                            {return DeviceBuffer::Write(ptr,0,size*sizeof(T));}
 };//class IndirectCommandBuffer:public DeviceBuffer
+
+class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
+{
+    friend class GPUDevice;
+
+public:
+    
+    using IndirectCommandBuffer<VkDrawIndirectCommand>::IndirectCommandBuffer;
+        
+    void Draw(VkCommandBuffer cmd_buf,uint32_t offset,uint32_t draw_count,uint32_t stride) const
+    {
+        vkCmdDrawIndirect(cmd_buf,buf.buffer,offset,draw_count,stride);
+    }
+};//class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
+
+class IndirectDrawIndexedBuffer:public IndirectCommandBuffer<VkDrawIndexedIndirectCommand>
+{
+    friend class GPUDevice;
+
+public:
+
+    using IndirectCommandBuffer<VkDrawIndexedIndirectCommand>::IndirectCommandBuffer;
+    
+    void DrawIndexed(VkCommandBuffer cmd_buf,uint32_t offset,uint32_t draw_count,uint32_t stride) const
+    {
+        vkCmdDrawIndexedIndirect(cmd_buf,buf.buffer,offset,draw_count,stride);
+    }
+};//class IndirectDrawIndexedBuffer:public IndirectCommandBuffer<VkDrawIndexedIndirectCommand>
+
+class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectCommand>
+{
+    friend class GPUDevice;
+
+public:
+
+    using IndirectCommandBuffer<VkDispatchIndirectCommand>::IndirectCommandBuffer;
+            
+    void Dispatch(VkCommandBuffer cmd_buf,uint32_t offset) const
+    {
+        vkCmdDispatchIndirect(cmd_buf,buf.buffer,offset);
+    }
+};//class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectCommand>
 VK_NAMESPACE_END
