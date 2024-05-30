@@ -146,6 +146,22 @@ void MaterialRenderList::ReallocICB()
     icb_draw_indexed=device->CreateIndirectDrawIndexedBuffer(icb_new_count);
 }
 
+void MaterialRenderList::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
+{    
+    dicp->vertexCount   =ri->prd->vertex_count;
+    dicp->instanceCount =ri->instance_count;
+    dicp->firstVertex   =ri->prd->vertex_offset;
+    dicp->firstInstance =ri->first_instance;
+}
+void MaterialRenderList::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderItem *ri)
+{
+    diicp->indexCount   =ri->prd->index_count;
+    diicp->instanceCount=ri->instance_count;
+    diicp->firstIndex   =ri->prd->first_index;
+    diicp->vertexOffset =ri->prd->vertex_offset;
+    diicp->firstInstance=ri->first_instance;
+}
+
 void MaterialRenderList::Stat()
 {
     const uint count=rn_list.GetCount();
@@ -188,20 +204,9 @@ void MaterialRenderList::Stat()
         if(ri->pdb->vdm)
         {
             if(ri->pdb->ibo)
-            {
-                diicp->indexCount   =ri->prd->index_count;
-                diicp->instanceCount=ri->instance_count;
-                diicp->firstIndex   =ri->prd->first_index;
-                diicp->vertexOffset =ri->prd->vertex_offset;
-                diicp->firstInstance=ri->first_instance;
-            }
+                WriteICB(diicp,ri);
             else
-            {
-                dicp->vertexCount   =ri->prd->vertex_count;
-                dicp->instanceCount =ri->instance_count;
-                dicp->firstVertex   =ri->prd->vertex_offset;
-                dicp->firstInstance =ri->first_instance;
-            }
+                WriteICB(dicp,ri);
 
             ++dicp;
             ++diicp;
@@ -220,6 +225,14 @@ void MaterialRenderList::Stat()
         last_render_data=ri->prd;
 
         ++rn;
+    }
+
+    if(ri->pdb->vdm)
+    {
+        if(ri->pdb->ibo)
+            WriteICB(diicp,ri);
+        else
+            WriteICB(dicp,ri);
     }
 
     icb_draw->Unmap();
@@ -287,6 +300,17 @@ bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *pdb,const uint ri_in
     return(true);
 }
 
+void MaterialRenderList::ProcIndirectRender()
+{    
+    if(last_data_buffer->ibo)
+        icb_draw_indexed->DrawIndexed(*cmd_buf,first_indirect_draw_index,indirect_draw_count);
+    else
+        icb_draw->Draw(*cmd_buf,first_indirect_draw_index,indirect_draw_count);
+
+    first_indirect_draw_index=-1;
+    indirect_draw_count=0;
+}
+
 void MaterialRenderList::Render(RenderItem *ri)
 {
     if(last_pipeline!=ri->pipeline)
@@ -299,8 +323,11 @@ void MaterialRenderList::Render(RenderItem *ri)
         //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定mi/primitive
     }
 
-    if(!ri->pdb->Comp(last_data_buffer))
+    if(!ri->pdb->Comp(last_data_buffer))        //换buf了
     {
+        if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
+            ProcIndirectRender();
+
         last_data_buffer=ri->pdb;
         last_render_data=nullptr;
 
@@ -310,7 +337,17 @@ void MaterialRenderList::Render(RenderItem *ri)
         cmd_buf->BindIBO(ri->pdb->ibo);
     }
 
-    cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first_instance);
+    //if(device-> support indirect)
+    {
+        if(indirect_draw_count==0)
+            first_indirect_draw_index=ri->first_instance;
+
+        ++indirect_draw_count;
+    }
+    //else
+    //{
+    //    cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first_instance);
+    //}
 }
 
 void MaterialRenderList::Render(RenderCmdBuffer *rcb)
@@ -340,5 +377,8 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
         Render(ri);
         ++ri;
     }
+    
+    if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
+        ProcIndirectRender();
 }
 VK_NAMESPACE_END

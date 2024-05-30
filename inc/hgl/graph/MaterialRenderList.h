@@ -25,7 +25,7 @@ private:
 
     struct RenderItem
     {
-                uint32_t                first_instance;     ///<绘制实例(和instance渲染无关,对应InstanceRate更新的VAB)
+                uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count;
 
                 Pipeline *              pipeline;
@@ -43,6 +43,8 @@ private:
     IndirectDrawIndexedBuffer *icb_draw_indexed;
 
     void ReallocICB();
+    void WriteICB(VkDrawIndirectCommand *,RenderItem *ri);
+    void WriteICB(VkDrawIndexedIndirectCommand *,RenderItem *ri);
 
     DataArray<RenderItem> ri_array;
     uint ri_count;
@@ -58,8 +60,12 @@ protected:
     const   VDM *                   last_vdm;
     const   PrimitiveRenderData *   last_render_data;
 
+            int                     first_indirect_draw_index=-1;
+            uint                    indirect_draw_count=0;
+
     bool BindVAB(const PrimitiveDataBuffer *,const uint);
 
+    void ProcIndirectRender();
     void Render(RenderItem *);
 
 public:
