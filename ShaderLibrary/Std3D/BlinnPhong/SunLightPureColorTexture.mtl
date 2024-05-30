@@ -1,0 +1,100 @@
+﻿#Material
+Name        BlinnPhong+HalfLambert shading model only color
+Reference   https://zhuanlan.zhihu.com/p/442023993
+Base        Std3D/BlinnPhong
+
+//某些Require并不真的存在.ubo文件，写成一行一个是为了方便未来改成带路径的
+Require     LocalToWorld
+Require     Camera
+
+define      HAVE_SPECULAR   off     //默认不定义HAVE_SPECULAR
+
+UBO
+{
+    File    BlinnPhongSun.ubo   //文件名,如果/开头表示从ShaderLibrary根目录开始，没有则表示同一目录
+    Struct  BlinnPhongSun       //结构名称
+    Name    sun                 //在代码中的变量名
+    Stage   Fragment            //会引用的shader
+    Set     Global              //Descriptor Set
+}
+
+#MaterialInstance
+Length 32
+Stage  Fragment
+Code
+{
+    vec4 Color;
+    uint tex_id;
+}
+
+#VertexInput
+vec3 Normal
+vec2 TexCoord
+
+#Vertex
+Output
+{
+    vec4 Position;
+    vec3 Normal;
+    vec2 TexCoord
+}
+
+Code
+{
+
+    void main()
+    {
+        Output.Normal   =GetNormal();
+        Output.Position =GetPosition3D();
+        Output.TexCoord =TexCoord;
+        
+        HandoverMI();
+
+        gl_Position     =Output.Position;
+    }
+}
+
+#Fragment
+
+sampler2DArray TextureBaseColor
+
+Output
+{
+    vec4 FragColor;
+}
+
+Code
+{
+    #define HAVE_SPECULAR
+
+    void main()
+    {
+        MaterialInstance mi=GetMI();
+
+        vec4 texture_color=texture(TextureBaseColor,vec3(Input.TexCoord,mi.tex_id));
+        
+        //点乘法线和光照
+        float intensity=0.5*max(dot(Input.Normal,sun.direction.xyz),0.0)+0.5;
+
+        //直接光颜色
+        vec3 direct_color           =intensity*sun.color.rgb*mi.Color.rgb*texture_color.rgb;
+
+    #ifndef HAVE_SPECULAR
+        FragColor=vec4(direct_color,1.0);
+     #else
+
+        vec3 spec_color=vec3(0.0);
+
+        if(intensity>0.0)
+        {
+            vec3 half_vector=normalize(sun.direction.xyz+normalize(Input.Position.xyz+camera.pos));
+
+            float specular=max(dot(half_vector,Input.Normal),0.0);
+
+            spec_color=specular*pow(specular,8)*sun.color.rgb;
+        }
+        
+        FragColor=vec4(direct_color+spec_color,1.0);
+     #endif//HAVE_SPECULAR
+    }
+}

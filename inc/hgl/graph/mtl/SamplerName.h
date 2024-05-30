@@ -8,7 +8,7 @@ namespace hgl
         {
             namespace SamplerName 
             {
-                constexpr const char Color[] = "TextureColor";
+                constexpr const char BaseColor[] = "TextureBaseColor";
             }//namespace SamplerName
         }//namespace mtl
     }//namespace graph
