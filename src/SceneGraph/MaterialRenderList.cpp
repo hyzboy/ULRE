@@ -16,6 +16,12 @@
 *       for(pipeline)
 *           for(material_instance)
 *               for(vab)
+* 
+* 
+*  关于Indirect Command Buffer
+
+    建立一个大的IndirectCommandBuffer，用于存放所有的渲染指令，包括那些不能使用Indirect渲染的。
+    这样就可以保证所有的渲染操作就算要切VBO，也不需要切换INDIRECT缓冲区，定位指令也很方便。
 */
 
 template<> 
@@ -73,10 +79,16 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
     assign_buffer=new RenderAssignBuffer(device,material);
 
     vab_list=new VABList(material->GetVertexInput()->GetCount());
+
+    icb_draw=nullptr;
+    icb_draw_indexed=nullptr;
 }
 
 MaterialRenderList::~MaterialRenderList()
 {
+    SAFE_CLEAR(icb_draw_indexed)
+    SAFE_CLEAR(icb_draw)
+
     SAFE_CLEAR(vab_list);
     SAFE_CLEAR(assign_buffer);
 }
@@ -114,10 +126,35 @@ void MaterialRenderList::RenderItem::Set(Renderable *ri)
     prd     =ri->GetRenderData();
 }
 
+void MaterialRenderList::ReallocICB()
+{
+    const uint32_t icb_new_count=power_to_2(rn_list.GetCount());
+
+    if(icb_draw)
+    {
+        if(icb_new_count<=icb_draw->GetMaxCount())
+            return;
+
+        delete icb_draw;
+        icb_draw=nullptr;
+
+        delete icb_draw_indexed;
+        icb_draw_indexed=nullptr;
+    }
+
+    icb_draw=device->CreateIndirectDrawBuffer(icb_new_count);
+    icb_draw_indexed=device->CreateIndirectDrawIndexedBuffer(icb_new_count);
+}
+
 void MaterialRenderList::Stat()
 {
     const uint count=rn_list.GetCount();
     RenderNode *rn=rn_list.GetData();
+
+    ReallocICB();
+
+    VkDrawIndirectCommand *dicp=icb_draw->MapCmd();
+    VkDrawIndexedIndirectCommand *diicp=icb_draw_indexed->MapCmd();
 
     ri_array.Clear();
     ri_array.Alloc(count);
@@ -126,7 +163,7 @@ void MaterialRenderList::Stat()
 
     ri_count=1;
 
-    ri->first=0;
+    ri->first_instance=0;
     ri->instance_count=1;
     ri->Set(rn->ri);
 
@@ -135,40 +172,45 @@ void MaterialRenderList::Stat()
     last_vdm        =ri->pdb->vdm;
     last_render_data=ri->prd;
 
-    if(last_vdm)
-        vdm_set.Add(last_vdm);
-
     ++rn;
 
     for(uint i=1;i<count;i++)
     {
         if(last_pipeline==rn->ri->GetPipeline())
-        {
-            if(last_data_buffer->vdm&&last_data_buffer->vdm==rn->ri->GetDataBuffer()->vdm)
-            {
+            if(last_data_buffer->Comp(rn->ri->GetDataBuffer()))
                 if(last_render_data->_Comp(rn->ri->GetRenderData())==0)
                 {
                     ++ri->instance_count;
                     ++rn;
                     continue;
                 }
+
+        if(ri->pdb->vdm)
+        {
+            if(ri->pdb->ibo)
+            {
+                diicp->indexCount   =ri->prd->index_count;
+                diicp->instanceCount=ri->instance_count;
+                diicp->firstIndex   =ri->prd->first_index;
+                diicp->vertexOffset =ri->prd->vertex_offset;
+                diicp->firstInstance=ri->first_instance;
             }
             else
             {
-                if(last_data_buffer->Comp(rn->ri->GetDataBuffer()))
-                    if(last_render_data->_Comp(rn->ri->GetRenderData())==0)
-                    {
-                        ++ri->instance_count;
-                        ++rn;
-                        continue;
-                    }
+                dicp->vertexCount   =ri->prd->vertex_count;
+                dicp->instanceCount =ri->instance_count;
+                dicp->firstVertex   =ri->prd->vertex_offset;
+                dicp->firstInstance =ri->first_instance;
             }
+
+            ++dicp;
+            ++diicp;
         }
 
         ++ri_count;
         ++ri;
 
-        ri->first=i;
+        ri->first_instance=i;
         ri->instance_count=1;
         ri->Set(rn->ri);
 
@@ -177,12 +219,11 @@ void MaterialRenderList::Stat()
         last_vdm        =ri->pdb->vdm;
         last_render_data=ri->prd;
 
-        if(last_vdm)
-            vdm_set.Add(last_vdm);
-
         ++rn;
     }
 
+    icb_draw->Unmap();
+    icb_draw_indexed->Unmap();
 }
 
 bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *pdb,const uint ri_index)
@@ -263,13 +304,13 @@ void MaterialRenderList::Render(RenderItem *ri)
         last_data_buffer=ri->pdb;
         last_render_data=nullptr;
 
-        BindVAB(ri->pdb,ri->first);
+        BindVAB(ri->pdb,ri->first_instance);
 
         if(ri->pdb->ibo)
         cmd_buf->BindIBO(ri->pdb->ibo);
     }
 
-    cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first);
+    cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first_instance);
 }
 
 void MaterialRenderList::Render(RenderCmdBuffer *rcb)

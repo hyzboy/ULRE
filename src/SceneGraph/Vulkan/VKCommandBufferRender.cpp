@@ -184,12 +184,12 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd,const uint32_t instance_count,const uint32_t first_instance)
+void RenderCmdBuffer::Draw(const PrimitiveDataBuffer *pdb,const PrimitiveRenderData *prd,const uint32_t instance_count,const uint32_t first_instance)
 {
-    if(!prb||!prd)
+    if(!pdb||!prd)
         return;
 
-    if (prb->ibo)
+    if (pdb->ibo)
         vkCmdDrawIndexed(   cmd_buf,
                             prd->index_count,
                             instance_count,
