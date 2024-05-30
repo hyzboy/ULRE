@@ -30,9 +30,9 @@ public:
 
     virtual ~IndirectCommandBuffer()=default;
    
-    T *     MapCmd  ()                                                      {return (T *)Map();}
     void *  Map     (VkDeviceSize start,VkDeviceSize size)          override{return DeviceBuffer::Map(start*sizeof(T),size*sizeof(T));}
     T *     MapCmd  (VkDeviceSize start,VkDeviceSize size)                  {return (T *)Map(start,size);}
+    T *     MapCmd  ()                                                      {return (T *)Map(0,max_count);}
 
     void    Flush   (VkDeviceSize start,VkDeviceSize size)          override{return DeviceBuffer::Flush(start*sizeof(T),size*sizeof(T));}
     void    Flush   (VkDeviceSize size)                             override{return DeviceBuffer::Flush(size*sizeof(T));}

@@ -2,6 +2,7 @@
 #include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKVABList.h>
 #include<hgl/type/SortedSets.h>
+#include<hgl/graph/VKIndirectCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
 class RenderAssignBuffer;
@@ -24,7 +25,7 @@ private:
 
     struct RenderItem
     {
-                uint32_t                first;
+                uint32_t                first_instance;     ///<绘制实例(和instance渲染无关,对应InstanceRate更新的VAB)
                 uint32_t                instance_count;
 
                 Pipeline *              pipeline;
@@ -38,7 +39,10 @@ private:
         void Set(Renderable *);
     };
 
-    SortedSets<const VDM *> vdm_set;
+    IndirectDrawBuffer *icb_draw;
+    IndirectDrawIndexedBuffer *icb_draw_indexed;
+
+    void ReallocICB();
 
     DataArray<RenderItem> ri_array;
     uint ri_count;
