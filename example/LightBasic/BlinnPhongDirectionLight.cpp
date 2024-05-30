@@ -28,11 +28,25 @@ static mtl::blinnphong::SunLight sun_light=
 
 constexpr const COLOR AxisColor[4]=
 {
-    COLOR::Red,     //X轴颜色
-    COLOR::Green,   //Y轴颜色
-    COLOR::Blue,    //Z轴颜色
+    //COLOR::Red,     //X轴颜色
+    //COLOR::Green,   //Y轴颜色
+    //COLOR::Blue,    //Z轴颜色
+    COLOR::White,    //全局颜色
+    COLOR::White,    //全局颜色
+    COLOR::White,    //全局颜色
     COLOR::White    //全局颜色
+
 };
+
+constexpr const os_char *tex_filename[]=
+{
+    OS_TEXT("eucalyptus-cross-versailles.Tex2D"),
+    OS_TEXT("tints-ashton-green-stretcher.Tex2D"),
+    OS_TEXT("worn-clay-cobble-in-desert-stretcher.Tex2D"),
+    OS_TEXT("plain-grey-sheer.Tex2D"),
+};
+
+constexpr const size_t TexCount=sizeof(tex_filename)/sizeof(os_char *);
 
 class TestApp:public SceneAppFramework
 {
@@ -46,6 +60,10 @@ private:    //plane grid
 private:
 
     DeviceBuffer *      ubo_sun             =nullptr;
+
+    
+    Texture2DArray *    texture             =nullptr;
+    Sampler *           sampler             =nullptr;
 
 private:    //sphere
 
@@ -61,6 +79,29 @@ private:    //sphere
     Primitive *         prim_cylinder       =nullptr;
 
 private:
+    
+    bool InitTexture()
+    {
+        texture=db->CreateTexture2DArray(   "SeamlessBackground",
+                                            256,256,            ///<纹理尺寸
+                                            TexCount,           ///<纹理层数
+                                            PF_BC1_RGBUN,       ///<纹理格式
+                                            false);             ///<是否自动产生mipmaps
+        
+        if(!texture)return(false);
+
+        OSString filename;
+
+        for(uint i=0;i<TexCount;i++)
+        {
+            filename=filesystem::MergeFilename(OS_TEXT("res/image/seamless"),tex_filename[i]);
+
+            if(!db->LoadTexture2DToArray(texture,i,filename))
+                return(false);
+        }
+
+        return(true);
+    }
 
     bool InitVertexLumMP()
     {
@@ -97,16 +138,32 @@ private:
         cfg.local_to_world=true;
         cfg.material_instance=true;
 
-        mtl_blinnphong=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColor",&cfg);
+        mtl_blinnphong=db->LoadMaterial("Std3D/BlinnPhong/SunLightPureColorTexture",&cfg);
         if(!mtl_blinnphong)return(false);
 
         mtl_blinnphong->BindUBO(DescriptorSetType::Global,"sun",ubo_sun);
         mtl_blinnphong->Update();
+        
+        sampler=db->CreateSampler();
 
-        Color4f mi_data;
+        if(!mtl_blinnphong->BindImageSampler(   DescriptorSetType::PerMaterial,     ///<描述符合集
+                                                mtl::SamplerName::BaseColor,        ///<采样器名称
+                                                texture,                            ///<纹理
+                                                sampler))                           ///<采样器
+            return(false);
+
+        struct MIData
+        {
+            Color4f color;
+            uint32 tex_id[4];
+        }mi_data;
+
+        constexpr const uint MIDataStride=sizeof(MIData);
+
         for(uint i=0;i<4;i++)
         {
-            mi_data=GetColor4f(AxisColor[i],4);
+            mi_data.color=GetColor4f(AxisColor[i],4);
+            mi_data.tex_id[0]=i;
 
             mi_blinnphong[i]=db->CreateMaterialInstance(mtl_blinnphong,     //材质
                                                         nullptr,            //顶点输入配置,这里使用nullptr，即代表会使用默认配置，那么结果将等同于上面的mtl_blinnphong->GetDefaultVIL()
@@ -177,9 +234,9 @@ private:
         {
             struct CylinderCreateInfo cci;
 
-            cci.halfExtend  =4;         //圆柱一半高度
+            cci.halfExtend  =1.25;         //圆柱一半高度
             cci.numberSlices=16;        //圆柱底部分割数
-            cci.radius      =0.25f;     //圆柱半径
+            cci.radius      =1.25f;     //圆柱半径
 
             prim_cylinder=CreateCylinder(pc_blinnphong,&cci);
         }
@@ -235,8 +292,11 @@ public:
         if(!SceneAppFramework::Init(w,h))
             return(false);
 
-        if(!InitVertexLumMP())
+        if(!InitTexture())
             return(false);
+
+        //if(!InitVertexLumMP())
+        //    return(false);
         
         if(!CreateBlinnPhongUBO())
             return(false);
