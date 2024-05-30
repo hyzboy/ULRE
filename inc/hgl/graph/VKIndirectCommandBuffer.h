@@ -52,9 +52,13 @@ public:
     
     using IndirectCommandBuffer<VkDrawIndirectCommand>::IndirectCommandBuffer;
         
-    void Draw(VkCommandBuffer cmd_buf,uint32_t offset,uint32_t draw_count,uint32_t stride) const
+    void Draw(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
     {
-        vkCmdDrawIndirect(cmd_buf,buf.buffer,offset,draw_count,stride);
+        vkCmdDrawIndirect(cmd_buf,
+                          buf.buffer,
+                          cmd_offset*sizeof(VkDrawIndirectCommand),
+                          draw_count,
+                          sizeof(VkDrawIndirectCommand));
     }
 };//class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
 
@@ -66,9 +70,13 @@ public:
 
     using IndirectCommandBuffer<VkDrawIndexedIndirectCommand>::IndirectCommandBuffer;
     
-    void DrawIndexed(VkCommandBuffer cmd_buf,uint32_t offset,uint32_t draw_count,uint32_t stride) const
+    void DrawIndexed(VkCommandBuffer cmd_buf,uint32_t cmd_offset,uint32_t draw_count) const
     {
-        vkCmdDrawIndexedIndirect(cmd_buf,buf.buffer,offset,draw_count,stride);
+        vkCmdDrawIndexedIndirect(cmd_buf,
+                                 buf.buffer,
+                                 cmd_offset*sizeof(VkDrawIndexedIndirectCommand),
+                                 draw_count,
+                                 sizeof(VkDrawIndexedIndirectCommand));
     }
 };//class IndirectDrawIndexedBuffer:public IndirectCommandBuffer<VkDrawIndexedIndirectCommand>
 
