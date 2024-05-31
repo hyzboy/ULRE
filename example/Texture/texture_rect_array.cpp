@@ -4,7 +4,7 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKInlinePipeline.h>
-#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/Filename.h>
@@ -56,6 +56,7 @@ private:
 
     Pipeline *          pipeline            =nullptr;
     DeviceBuffer *      tex_id_ubo          =nullptr;
+    Primitive *         prim_rectangle      =nullptr;
 
     struct
     {
@@ -108,7 +109,7 @@ private:
         sampler=db->CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
-                                        mtl::SamplerName::Color,            ///<采样器名称
+                                        mtl::SamplerName::BaseColor,            ///<采样器名称
                                         texture,                            ///<纹理
                                         sampler))                           ///<采样器
             return(false);
@@ -128,18 +129,22 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        RenderablePrimitiveCreater rpc(db,"Rectangle",1);
+        PrimitiveCreater rpc(device,material->GetDefaultVIL());
+        
+        rpc.Init("Rectangle",1);
 
         position_data[2]=1.0f/float(TexCount);
 
-        if(!rpc.SetVAB(VAN::Position,VF_V4F,position_data))return(false);
-        if(!rpc.SetVAB(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
+        if(!rpc.WriteVAB(VAN::Position,VF_V4F,position_data))return(false);
+        if(!rpc.WriteVAB(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
+
+        prim_rectangle=rpc.Create();
 
         Vector3f offset(1.0f/float(TexCount),0,0);
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].r=rpc.Create(render_obj[i].mi,pipeline);
+            render_obj[i].r=db->CreateRenderable(prim_rectangle,render_obj[i].mi,pipeline);
 
             if(!render_obj[i].r)
                 return(false);
@@ -160,6 +165,7 @@ public:
 
     ~TestApp()
     {
+        SAFE_CLEAR(prim_rectangle);
         SAFE_CLEAR(render_list);
     }
 

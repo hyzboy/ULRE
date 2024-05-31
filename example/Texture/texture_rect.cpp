@@ -4,7 +4,7 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKInlinePipeline.h>
-#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 
@@ -69,7 +69,7 @@ private:
         sampler=db->CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
-                                        mtl::SamplerName::Color,            ///<采样器名称
+                                        mtl::SamplerName::BaseColor,            ///<采样器名称
                                         texture,                            ///<纹理
                                         sampler))                           ///<采样器
             return(false);
@@ -81,12 +81,14 @@ private:
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,"Rectangle",1);
+        PrimitiveCreater rpc(device,material_instance->GetVIL());
+        
+        rpc.Init("Rectangle",1);
 
-        if(!rpc.SetVAB(VAN::Position,VF_V4F,position_data))return(false);
-        if(!rpc.SetVAB(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
+        if(!rpc.WriteVAB(VAN::Position,VF_V4F,position_data))return(false);
+        if(!rpc.WriteVAB(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
 
-        render_obj=rpc.Create(material_instance,pipeline);
+        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
         return(render_obj);
     }
 

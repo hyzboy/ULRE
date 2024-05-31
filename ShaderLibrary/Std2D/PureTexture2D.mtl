@@ -23,7 +23,7 @@ Code
 
 #Fragment
 
-sampler2D TextureColor
+sampler2D TextureBaseColor
 
 Output
 {
@@ -34,6 +34,6 @@ Code
 {
     void main()
     {
-        FragColor=texture(TextureColor,Input.TexCoord);
+        FragColor=texture(TextureBaseColor,Input.TexCoord);
     }
 }
