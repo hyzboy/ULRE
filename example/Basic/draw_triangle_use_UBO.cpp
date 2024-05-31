@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
 using namespace hgl;
@@ -79,17 +79,19 @@ private:
    
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
+        PrimitiveCreater rpc(device,material_instance->GetVIL());
+
+        rpc.Init("Triangle",VERTEX_COUNT);
 
 #ifdef USE_ZERO2ONE_COORD               //使用0 to 1坐标系
-        if(!rpc.SetVAB(VAN::Position,   VF_V2F,     position_data_float ))return(false);
+        if(!rpc.WriteVAB(VAN::Position,   VF_V2F,     position_data_float ))return(false);
 #else                                   //使用ortho坐标系
-        if(!rpc.SetVAB(VAN::Position,   VF_V2U16,   position_data_u16   ))return(false);
+        if(!rpc.WriteVAB(VAN::Position,   VF_V2U16,   position_data_u16   ))return(false);
 #endif//USE_ZERO2ONE_COORD
 
-        if(!rpc.SetVAB(VAN::Color,      VF_V4UN8,   color_data          ))return(false);
+        if(!rpc.WriteVAB(VAN::Color,      VF_V4UN8,   color_data          ))return(false);
         
-        render_obj=rpc.Create(material_instance,pipeline);
+        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
         return(true);
     }
 

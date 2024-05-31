@@ -337,17 +337,17 @@ void MaterialRenderList::Render(RenderItem *ri)
         cmd_buf->BindIBO(ri->pdb->ibo);
     }
 
-    //if(device-> support indirect)
+    if(ri->pdb->vdm)
     {
         if(indirect_draw_count==0)
             first_indirect_draw_index=ri->first_instance;
 
         ++indirect_draw_count;
     }
-    //else
-    //{
-    //    cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first_instance);
-    //}
+    else
+    {
+        cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first_instance);
+    }
 }
 
 void MaterialRenderList::Render(RenderCmdBuffer *rcb)
