@@ -140,7 +140,7 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
                          VkIndexType(ibo->GetType()));
 }
 
-bool RenderCmdBuffer::BindRenderBuffer(const PrimitiveDataBuffer *pdb)
+bool RenderCmdBuffer::BindDataBuffer(const PrimitiveDataBuffer *pdb)
 {
     if(!pdb)
         return(false);
@@ -152,7 +152,7 @@ bool RenderCmdBuffer::BindRenderBuffer(const PrimitiveDataBuffer *pdb)
                            0,               //first binding
                            pdb->vab_count,
                            pdb->vab_list,
-                           nullptr);        //vab byte offsets
+                           pdb->vab_offset);        //vab byte offsets
 
     if(pdb->ibo)
         BindIBO(pdb->ibo);

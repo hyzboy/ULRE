@@ -12,6 +12,7 @@ PrimitiveDataBuffer::PrimitiveDataBuffer(const uint32_t c,IndexBuffer *ib,Vertex
     vab_count=c;
 
     vab_list=hgl_zero_new<VkBuffer>(vab_count);
+    vab_offset=hgl_zero_new<VkDeviceSize>(vab_count);
     ibo=ib;
 
     vdm=_vdm;
@@ -19,6 +20,7 @@ PrimitiveDataBuffer::PrimitiveDataBuffer(const uint32_t c,IndexBuffer *ib,Vertex
 
 PrimitiveDataBuffer::~PrimitiveDataBuffer()
 {
+    delete[] vab_offset;
     delete[] vab_list;
 }
 
@@ -34,6 +36,7 @@ const bool PrimitiveDataBuffer::Comp(const PrimitiveDataBuffer *pdb)const
     for(uint32_t i=0;i<vab_count;i++)
     {
         if(vab_list[i]!=pdb->vab_list[i])return(false);
+        if(vab_offset[i]!=pdb->vab_offset[i])return(false);
     }
 
     if(ibo!=pdb->ibo)
@@ -108,6 +111,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         }
 
         pdb->vab_list[i]=vab->GetBuffer();
+        pdb->vab_offset[i]=0;
         ++vif;
     }
 

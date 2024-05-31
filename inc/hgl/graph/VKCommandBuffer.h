@@ -176,7 +176,7 @@ public:
 
     void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
 
-    bool BindRenderBuffer(const PrimitiveDataBuffer *);
+    bool BindDataBuffer(const PrimitiveDataBuffer *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}

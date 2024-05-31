@@ -222,7 +222,7 @@ public:
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
                 cb->BindDescriptorSets(ri->GetMaterial());
-                cb->BindRenderBuffer(ri->GetDataBuffer());
+                cb->BindDataBuffer(ri->GetDataBuffer());
                 cb->Draw(ri->GetDataBuffer(),ri->GetRenderData());
             cb->EndRenderPass();
         cb->End();

@@ -32,9 +32,9 @@ constexpr const COLOR AxisColor[4]=
     //COLOR::Green,   //Y轴颜色
     //COLOR::Blue,    //Z轴颜色
     COLOR::White,    //全局颜色
-    COLOR::White,    //全局颜色
-    COLOR::White,    //全局颜色
-    COLOR::White    //全局颜色
+    COLOR::GhostWhite,
+    COLOR::BlanchedAlmond,
+    COLOR::AntiqueWhite
 
 };
 
