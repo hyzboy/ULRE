@@ -6,7 +6,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
 using namespace hgl;
@@ -108,16 +108,18 @@ private:
 
     bool InitVBO()
     {
-        RenderablePrimitiveCreater rpc(db,"Triangle",VERTEX_COUNT);
+        PrimitiveCreater rpc(device,material_instance->GetVIL());
+        
+        rpc.Init("Triangle",VERTEX_COUNT);
 
 #ifdef USE_HALF_FLOAT_POSITION
         Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
 #endif//USE_HALF_FLOAT_POSITION
 
-        if(!rpc.SetVAB(VAN::Position,   PositionFormat, position_data))return(false);
-        if(!rpc.SetVAB(VAN::Color,      ColorFormat,    color_data   ))return(false);
+        if(!rpc.WriteVAB(VAN::Position,   PositionFormat, position_data))return(false);
+        if(!rpc.WriteVAB(VAN::Color,      ColorFormat,    color_data   ))return(false);
         
-        render_obj=rpc.Create(material_instance,pipeline);
+        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
         return(render_obj);
     }
 

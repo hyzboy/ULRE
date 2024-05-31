@@ -22,7 +22,7 @@ struct PrimitiveDataBuffer
     // 另一种是使用VDM，为了批量渲染，所有的VAB又必须对齐，所以每个VAB单独指定offset也不可行。
     // 所以干脆不支持VAB的offset，只支持vertexOffset。
 
-//    uint32_t *      vab_offset;       //注意：这里的offset是相对于vertex的，代表第几个顶点，不是字节偏移
+    VkDeviceSize *  vab_offset;       //注意：这里的offset是相对于vertex的，代表第几个顶点，不是字节偏移
 
     // IndexBuffer 同理也不再支持buffer的offset
 
