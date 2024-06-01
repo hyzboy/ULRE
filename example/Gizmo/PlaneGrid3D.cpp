@@ -61,7 +61,9 @@ private:
         pgci.lum=0.75;
         pgci.sub_lum=1.0;
 
-        prim_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
+        PrimitiveCreater pc(device,material->GetDefaultVIL());
+
+        prim_plane_grid=CreatePlaneGrid(&pc,&pgci);
 
         return prim_plane_grid;
     }
@@ -97,6 +99,11 @@ private:
     }
 
 public:
+
+    ~TestApp()
+    {
+        SAFE_CLEAR(prim_plane_grid);
+    }
 
     bool Init(uint width,uint height) override
     {
