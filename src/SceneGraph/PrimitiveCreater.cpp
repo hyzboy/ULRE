@@ -168,6 +168,7 @@ void PrimitiveCreater::UnmapVAB(const int vab_index)
     if(!vab)return;
 
     vab->Unmap();
+    map_ptr_list[vab_index]=nullptr;
 }
 
 bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat &format, const void *data)
