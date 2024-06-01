@@ -1,11 +1,10 @@
 ﻿#pragma once
 
-#include<hgl/graph/VertexAttribDataAccess.h>
+#include<hgl/graph/VKBufferMap.h>
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
-
 /**
  * 可绘制原始图形创建器
  */

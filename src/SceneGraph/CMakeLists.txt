@@ -121,9 +121,11 @@ SET(VK_MEMORY_SOURCE    ${SG_INCLUDE_PATH}/VKMemory.h
                         ${SG_INCLUDE_PATH}/VKBuffer.h
                         ${SG_INCLUDE_PATH}/VKIndexBuffer.h
                         ${SG_INCLUDE_PATH}/VKArrayBuffer.h
+                        ${SG_INCLUDE_PATH}/VKBufferMap.h
                         Vulkan/VKMemory.cpp
                         Vulkan/VKMemoryAllocator.cpp
                         Vulkan/VKBuffer.cpp
+                        Vulkan/VKBufferMap.cpp
                         Vulkan/VKArrayBuffer.cpp
                         )
 
