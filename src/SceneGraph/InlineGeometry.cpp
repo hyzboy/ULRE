@@ -169,7 +169,10 @@ namespace hgl
                 if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
 
-                VABMap3f vertex(pc,VAN::Position);
+                VABMap2f vertex(pc,VAN::Position);
+
+                if(!vertex.IsValid())
+                    return(nullptr);
 
                 const float right=float(pgci->grid_size.Width())/2.0f;
                 const float left =-right;
@@ -179,14 +182,14 @@ namespace hgl
 
                 for(uint row=0;row<=pgci->grid_size.Height();row++)
                 {
-                    vertex->WriteLine(  Vector3f(left ,top+row,0),
-                                        Vector3f(right,top+row,0));
+                    vertex->WriteLine(  Vector2f(left ,top+row),
+                                        Vector2f(right,top+row));
                 }
 
                 for(uint col=0;col<=pgci->grid_size.Width();col++)
                 {
-                    vertex->WriteLine(Vector3f(left+col,top,   0),
-                                      Vector3f(left+col,bottom,0));
+                    vertex->WriteLine(Vector2f(left+col,top   ),
+                                      Vector2f(left+col,bottom));
                 }
 
                 VABMap1f lum(pc,VAN::Luminance);

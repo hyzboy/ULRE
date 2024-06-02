@@ -155,7 +155,7 @@ public:
         }
     }
 
-    const bool IsValid()const{ return map_ptr?map_ptr:false; }
+    const bool IsValid()const{ return map_ptr; }
 
     void Restart()
     {

@@ -28,8 +28,9 @@ private:
         mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
 
         cfg.local_to_world=true;
+        cfg.position_format=VAT_VEC2;
 
-        material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
+        material=db->LoadMaterial("Std3D/VertexLum2D",&cfg);
         if(!material)return(false);
 
         Color4f GridColor;
