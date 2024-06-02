@@ -253,7 +253,7 @@ bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *pdb,const uint ri_in
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
         vab_list->Add(pdb->vab_list,
-                      nullptr,//prb->vab_offset,
+                      pdb->vab_offset,
                       pdb->vab_count);
     }
 
