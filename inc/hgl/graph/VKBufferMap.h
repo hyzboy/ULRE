@@ -22,6 +22,7 @@ public:
 
     void Set(DeviceBuffer *buf_ptr,VkDeviceSize off,VkDeviceSize s);
 
+    const VkDeviceSize GetSize()const{ return size; }
     const bool IsValid()const{ return buffer; }
     void Clear();
 

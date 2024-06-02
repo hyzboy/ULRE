@@ -138,7 +138,10 @@ public:
         buf_map=pc->MapVAB(name,T::GetVulkanFormat());
 
         if(buf_map)
-            map_ptr=(T *)(buf_map->Map());
+        {
+            map_ptr=T::Create(buf_map->GetSize(),buf_map->Map());
+            map_ptr->Begin();
+        }
         else
             map_ptr=nullptr;
     }
@@ -146,12 +149,20 @@ public:
     ~VABMap()
     {
         if(map_ptr)
+        {
             buf_map->Unmap();
+            delete map_ptr;
+        }
     }
 
-    const bool IsValid()const{ return buf_map?buf_map->IsValid():false; }
+    const bool IsValid()const{ return map_ptr?map_ptr:false; }
 
-    operator T *(){ return map_ptr; }
+    void Restart()
+    {
+        if(map_ptr)
+            map_ptr->Begin();
+    }
+
     T *operator->(){ return map_ptr; }
 };//template<typename T> class VABMap
 

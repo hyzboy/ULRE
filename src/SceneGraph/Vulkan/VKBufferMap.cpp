@@ -1,6 +1,5 @@
 ﻿#include<hgl/graph/VKBufferMap.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
-#include<iostream>
 
 VK_NAMESPACE_BEGIN
 
@@ -27,8 +26,6 @@ void VKBufferMap::Clear()
 VKBufferMap::VKBufferMap()
 {
     Set(nullptr,0,0);
-    
-    std::cout<<"VKBufferMap Create"<<std::endl;
 }
 
 VKBufferMap::VKBufferMap(DeviceBuffer *buf,VkDeviceSize off,VkDeviceSize s)
@@ -40,8 +37,6 @@ VKBufferMap::~VKBufferMap()
 {
     if(buffer&&map_ptr)
         buffer->Unmap();
-
-    std::cout<<"VKBufferMap Destory"<<std::endl;
 }
 
 void *VKBufferMap::Map()
@@ -54,7 +49,6 @@ void *VKBufferMap::Map()
 
     map_ptr=buffer->Map(offset,size);
     return map_ptr;
-
 }
 
 void VKBufferMap::Unmap()
