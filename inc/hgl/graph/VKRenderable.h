@@ -20,11 +20,8 @@ struct PrimitiveDataBuffer
     // 理论上讲，每个VAB绑定时都是可以指定byte offsets的。但是随后Draw时，又可以指定vertexOffset。
     // 在我们支持的两种draw模式中，一种是每个模型一批VAB，所有VAB的offset都是0。
     // 另一种是使用VDM，为了批量渲染，所有的VAB又必须对齐，所以每个VAB单独指定offset也不可行。
-    // 所以干脆不支持VAB的offset，只支持vertexOffset。
 
-    VkDeviceSize *  vab_offset;       //注意：这里的offset是相对于vertex的，代表第几个顶点，不是字节偏移
-
-    // IndexBuffer 同理也不再支持buffer的offset
+    VkDeviceSize *  vab_offset;         //注意：这里的offset是字节偏移，不是顶点偏移
 
     IndexBuffer *   ibo;
 
