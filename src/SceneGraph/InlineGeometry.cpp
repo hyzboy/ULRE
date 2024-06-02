@@ -470,10 +470,10 @@ namespace hgl
                 if(!pc->Init("Sphere",numberVertices,numberIndices))
                     return(nullptr);
 
-                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -559,10 +559,10 @@ namespace hgl
                 if(!pc->Init("Dome",numberVertices,numberIndices))
                     return(nullptr);
                 
-                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -707,10 +707,10 @@ namespace hgl
                 if(!pc->Init("Torus",numberVertices,numberIndices))
                     return(nullptr);                
                 
-                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -849,10 +849,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
                 
-                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -1079,10 +1079,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || cci->numberStacks < 1 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
                 
-                VABRawMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABRawMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABRawMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABRawMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
+                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
+                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
+                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
 
                 float *vp=vertex;
                 float *np=normal;
