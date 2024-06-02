@@ -16,10 +16,14 @@ protected:
 
 public:
 
-    VKBufferMap(DeviceBuffer *buf_ptr,VkDeviceSize off,VkDeviceSize s);
-    virtual ~VKBufferMap();
+    VKBufferMap();
+    VKBufferMap(DeviceBuffer *buf,VkDeviceSize off,VkDeviceSize s);
+    ~VKBufferMap();
+
+    void Set(DeviceBuffer *buf_ptr,VkDeviceSize off,VkDeviceSize s);
 
     const bool IsValid()const{ return buffer; }
+    void Clear();
 
     void *Map();
     void Unmap();

@@ -1,4 +1,4 @@
-// Gizmo 3D Move
+ï»¿// Gizmo 3D Move
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -31,7 +31,7 @@ private:
     Material *          mtl_vtx_color       =nullptr;
     MaterialInstance *  mi_line             =nullptr;
     Pipeline *          pipeline_vtx_color  =nullptr;
-    Primitive *         ro_line             =nullptr;
+    Primitive *         prim_line             =nullptr;
 
 private:
 
@@ -103,12 +103,12 @@ private:
     }
 
     /**
-     * Ğ´ÈëÒ»¸ö×ø±êÖáµÄÏßÌõÊı¾İ.
+     * å†™å…¥ä¸€ä¸ªåæ ‡è½´çš„çº¿æ¡æ•°æ®.
      * 
-     * \param pos       ÒªĞ´ÈëÊı¾İµÄÖ¸Õë
-     * \param max_line  Ö÷ÏßÌõ·½Ïò
-     * \param oa1       ÆäËüÖá1·½Ïò
-     * \param oa2       ÆäËüÖá2·½Ïò
+     * \param pos       è¦å†™å…¥æ•°æ®çš„æŒ‡é’ˆ
+     * \param max_line  ä¸»çº¿æ¡æ–¹å‘
+     * \param oa1       å…¶å®ƒè½´1æ–¹å‘
+     * \param oa2       å…¶å®ƒè½´2æ–¹å‘
      */
     void WriteAxisPosition(Vector3f *pos,const Vector3f &max_line,const Vector3f &oa1,const Vector3f &oa2)
     {
@@ -116,15 +116,15 @@ private:
         constexpr const float AXIS_MIN_STEP  =1;
         constexpr const float AXIS_ARROW_SIZE=0.25;
 
-        const Vector3f end_pos  =max_line*AXIS_LENGTH;                          ///<×îÖÕµãÎ»ÖÃ
-        const Vector3f cross_pos=max_line*AXIS_MIN_STEP;                        ///<×ø±êÖáÎ²²¿½»²æÏßÎ»ÖÃ
-        const Vector3f arrow_pos=max_line*(AXIS_LENGTH-AXIS_MIN_STEP);          ///<¼ıÍ·Ä©¶ËÔÚÖ÷ÏßÉÏµÄÎ»ÖÃ
+        const Vector3f end_pos  =max_line*AXIS_LENGTH;                          ///<æœ€ç»ˆç‚¹ä½ç½®
+        const Vector3f cross_pos=max_line*AXIS_MIN_STEP;                        ///<åæ ‡è½´å°¾éƒ¨äº¤å‰çº¿ä½ç½®
+        const Vector3f arrow_pos=max_line*(AXIS_LENGTH-AXIS_MIN_STEP);          ///<ç®­å¤´æœ«ç«¯åœ¨ä¸»çº¿ä¸Šçš„ä½ç½®
 
-        //Ö÷Ïß
+        //ä¸»çº¿
         pos[0]=Vector3f(0,            0, 0);
         pos[1]=end_pos;
 
-        //ËÄ¸ù¼ıÍ·Ïß
+        //å››æ ¹ç®­å¤´çº¿
         pos[2]=end_pos;
         pos[3]=arrow_pos-oa1*AXIS_ARROW_SIZE;
 
@@ -137,7 +137,7 @@ private:
         pos[8]=end_pos;
         pos[9]=arrow_pos+oa2*AXIS_ARROW_SIZE;
 
-        //²à±ßÁ¬½ÓÆäËüÖáÏß
+        //ä¾§è¾¹è¿æ¥å…¶å®ƒè½´çº¿
         pos[10]=cross_pos;
         pos[11]=cross_pos+oa1*AXIS_MIN_STEP;
         pos[12]=cross_pos;
@@ -165,8 +165,8 @@ private:
             constexpr const uint AXIS_MAX_LINES     =7;
             constexpr const uint AXIS_MAX_VERTICES  =AXIS_MAX_LINES*2*3;
 
-            ro_line=db->CreatePrimitive("Line",AXIS_MAX_VERTICES);
-            if(!ro_line)return(false);
+            prim_line=db->CreatePrimitive("Line",AXIS_MAX_VERTICES);
+            if(!prim_line)return(false);
 
             Vector3f position_data[3][AXIS_MAX_LINES*2];
 
@@ -180,8 +180,8 @@ private:
             for(Color4f &c:color_data[1])c=Color4f(0,1,0,1);
             for(Color4f &c:color_data[2])c=Color4f(0,0,1,1);
             
-            if(!ro_line->Set(VAN::Position, db->CreateVAB(VF_V3F,AXIS_MAX_VERTICES,position_data)))return(false);
-            if(!ro_line->Set(VAN::Color,    db->CreateVAB(VF_V4F,AXIS_MAX_VERTICES,color_data   )))return(false);
+            if(!prim_line->Set(VAN::Position, db->CreateVAB(VF_V3F,AXIS_MAX_VERTICES,position_data)))return(false);
+            if(!prim_line->Set(VAN::Color,    db->CreateVAB(VF_V4F,AXIS_MAX_VERTICES,color_data   )))return(false);
         }
 
         return(true);
@@ -190,7 +190,7 @@ private:
     bool InitScene()
     {
         Add(prim_plane_grid,mi_plane_grid,pipeline_vtx_lum);
-        Add(ro_line,mi_line,pipeline_vtx_color);
+        Add(prim_line,mi_line,pipeline_vtx_color);
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));

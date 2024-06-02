@@ -9,6 +9,7 @@
 #include<hgl/graph/Ray.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/VertexDataManager.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -38,9 +39,12 @@ private:
 
     Pipeline *          pipeline            =nullptr;
 
+    VertexDataManager * vdm                 =nullptr;
+    PrimitiveCreater *  prim_creater        =nullptr;
+
     Primitive *         prim_plane_grid     =nullptr;
 
-    Primitive *         ro_line             =nullptr;
+    Primitive *         prim_line           =nullptr;
 
     VAB *               vab_pos             =nullptr;
 
@@ -71,6 +75,24 @@ private:
         return(true);
     }
     
+    bool InitVDMAndPC()
+    {
+        vdm=new VertexDataManager(device,material->GetDefaultVIL());
+        if(!vdm->Init(  1024*1024,          //VAB最大容量
+                        1024*1024,          //索引最大容量
+                        IndexType::U16))    //索引类型
+        {
+            delete vdm;
+            vdm=nullptr;
+
+            return(false);
+        }
+
+        prim_creater=new PrimitiveCreater(vdm);
+
+        return(true);
+    }
+
     Renderable *Add(Primitive *r,MaterialInstance *mi)
     {
         Renderable *ri=db->CreateRenderable(r,mi,pipeline);
@@ -99,15 +121,19 @@ private:
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
 
-            prim_plane_grid=CreatePlaneGrid(db,material->GetDefaultVIL(),&pgci);
+            prim_plane_grid=CreatePlaneGrid(prim_creater,&pgci);
         }
 
         {
-            ro_line=db->CreatePrimitive("Line",2);
-            if(!ro_line)return(false);
+            if(!prim_creater->Init("Line",2))
+                return(false);
             
-            if(!ro_line->Set(VAN::Position,  vab_pos=   db->CreateVAB(VF_V3F,2,position_data    )))return(false);
-            if(!ro_line->Set(VAN::Luminance,            db->CreateVAB(VF_V1F,2,lumiance_data    )))return(false);
+            if(!prim_creater->WriteVAB(VAN::Position, VF_V3F,position_data))return(false);
+            if(!prim_creater->WriteVAB(VAN::Luminance,VF_V1F,lumiance_data))return(false);
+
+            prim_line=prim_creater->Create();
+
+            prim_line->Getv
         }
 
         return(true);
@@ -116,7 +142,7 @@ private:
     bool InitScene()
     {
         Add(prim_plane_grid,mi_plane_grid);
-        Add(ro_line,mi_line);
+        Add(prim_line,mi_line);
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
@@ -130,12 +156,21 @@ private:
 
 public:
 
+    ~TestApp()
+    {
+        SAFE_CLEAR(prim_creater)
+        SAFE_CLEAR(vdm)
+    }
+
     bool Init(uint w,uint h)
     {        
         if(!SceneAppFramework::Init(w,h))
             return(false);
 
         if(!InitMaterialAndPipeline())
+            return(false);
+
+        if(!InitVDMAndPC())
             return(false);
 
         if(!CreateRenderObject())
