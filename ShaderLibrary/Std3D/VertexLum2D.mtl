@@ -1,0 +1,47 @@
+#Material
+Name VertexLum2D
+Base Std3D
+
+#MaterialInstance
+Length 16
+Stage  Vertex
+Code
+{
+    vec4 Color;
+}
+
+#VertexInput
+float Luminance
+
+#Vertex
+Output
+{
+    vec4 Color
+}
+
+Code
+{
+    void main()
+    {
+        MaterialInstance mi=GetMI();
+
+        Output.Color=Luminance*mi.Color;
+
+        gl_Position=GetPosition3D();
+    }
+}
+
+#Fragment
+
+Output
+{
+    vec4 FragColor;
+}
+
+Code
+{
+    void main()
+    {
+        FragColor=Input.Color;
+    }
+}
