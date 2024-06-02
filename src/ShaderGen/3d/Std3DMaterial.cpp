@@ -33,10 +33,20 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     {
         mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-        vsc->AddFunction(cfg->camera?func::GetPosition3DL2WCamera:func::GetPosition3DL2W);
+        if(cfg->position_format.vec_size==3)
+            vsc->AddFunction(cfg->camera?func::GetPosition3DL2WCamera:func::GetPosition3DL2W);
+        else
+        if(cfg->position_format.vec_size==2)
+            vsc->AddFunction(cfg->camera?func::GetPosition3DL2WCameraBy2D:func::GetPosition3DL2WBy2D);
     }
     else
-        vsc->AddFunction(cfg->camera?func::GetPosition3DCamera:func::GetPosition3D);
+    {
+        if(cfg->position_format.vec_size==3)
+            vsc->AddFunction(cfg->camera?func::GetPosition3DCamera:func::GetPosition3D);
+        else
+        if(cfg->position_format.vec_size==2)
+            vsc->AddFunction(cfg->camera?func::GetPosition3DCameraBy2D:func::GetPosition3DBy2D);
+    }
 
     if(cfg->camera
      &&cfg->local_to_world)
