@@ -97,7 +97,7 @@ namespace
             return(ibo);
         }
         
-        VAB *InitVAB(const int vab_index,const VkFormat &format,const void *data)
+        VAB *InitVAB(const int vab_index,const void *data)
         {
             if(!device)return(nullptr);
             if(!vil)return(nullptr);
@@ -109,12 +109,9 @@ namespace
 
             if(!vif)return(nullptr);
 
-            if(vif->format!=format)
-                return(nullptr);
-
             if(!vab_list[vab_index])
             {
-                vab_list[vab_index]=device->CreateVAB(format,vertex_count,data);
+                vab_list[vab_index]=device->CreateVAB(vif->format,vertex_count,data);
 
                 if(!vab_list[vab_index])
                     return(nullptr);
@@ -184,7 +181,7 @@ namespace
             return ibo;
         }
         
-        VAB *InitVAB(const int vab_index,const VkFormat &format,const void *data)
+        VAB *InitVAB(const int vab_index,const void *data)
         {
             if(!vdm)return(nullptr);
             if(!vil)return(nullptr);
@@ -195,9 +192,6 @@ namespace
             const VertexInputFormat *vif=vil->GetConfig(vab_index);
 
             if(!vif)return(nullptr);
-
-            if(vif->format!=format)
-                return(nullptr);
 
             if (!vab_list[vab_index])
             {

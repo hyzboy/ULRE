@@ -20,7 +20,7 @@ namespace hgl
                 if(!pc->Init("Rectangle",4,0))
                     return(nullptr);
 
-                VABMap2f vertex(pc,VAN::Position);
+                VABMap2f vertex(pc->MapVAB(VAN::Position));
 
                 if(!vertex.IsValid())
                     return(nullptr);
@@ -48,7 +48,7 @@ namespace hgl
                     if(!pc->Init("RoundRectangle",4,0))
                         return(nullptr);
                     
-                    VABMap2f vertex(pc,VAN::Position);
+                    VABMap2f vertex(pc->MapVAB(VAN::Position));
 
                     vertex->WriteRectFan(rci->scope);
                 }
@@ -62,7 +62,7 @@ namespace hgl
                     if(!pc->Init("RoundRectangle",rci->round_per*4,8))
                         return(nullptr);
                 
-                    VABMap2f vertex(pc,VAN::Position);
+                    VABMap2f vertex(pc->MapVAB(VAN::Position));
 
                     Vector2f *coord=new Vector2f[rci->round_per];
 
@@ -133,8 +133,8 @@ namespace hgl
 
                 if(!pc->Init("Circle",vertex_count,0))return(nullptr);
 
-                VABMap2f vertex(pc,VAN::Position);
-                VABMap4f color(pc,VAN::Color);
+                VABMap2f vertex(pc->MapVAB(VAN::Position));
+                VABMap4f color(pc->MapVAB(VAN::Color));
 
                 if(!vertex.IsValid())
                     return(nullptr);
@@ -169,7 +169,7 @@ namespace hgl
                 if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
 
-                VABMap2f vertex(pc,VAN::Position);
+                VABMap2f vertex(pc->MapVAB(VAN::Position));
 
                 if(!vertex.IsValid())
                     return(nullptr);
@@ -192,7 +192,7 @@ namespace hgl
                                       Vector2f(left+col,bottom));
                 }
 
-                VABMap1f lum(pc,VAN::Luminance);
+                VABMap1f lum(pc->MapVAB(VAN::Luminance));
 
                 if(lum.IsValid())
                 {
@@ -232,21 +232,21 @@ namespace hgl
                    return(nullptr);
 
                 {
-                    VABMap3f normal(pc,VAN::Normal);
+                    VABMap3f normal(pc->MapVAB(VAN::Normal));
 
                     if(normal.IsValid())
                         normal->RepeatWrite(xy_normal,4);
                 }
 
                 {
-                    VABMap3f tangent(pc,VAN::Tangent);
+                    VABMap3f tangent(pc->MapVAB(VAN::Tangent));
 
                     if(tangent.IsValid())
                         tangent->RepeatWrite(xy_tangent,4);
                 }
 
                 {
-                    VABMap2f tex_coord(pc,VAN::TexCoord);
+                    VABMap2f tex_coord(pc->MapVAB(VAN::TexCoord));
 
                     if(tex_coord.IsValid())
                         tex_coord->Write(xy_tex_coord,4);
@@ -332,7 +332,7 @@ namespace hgl
                 {                
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    VABMap4f color(pc,VAN::Color);
+                    VABMap4f color(pc->MapVAB(VAN::Color));
 
                     if(color.IsValid())
                     {
@@ -360,7 +360,7 @@ namespace hgl
             template<typename T> 
             void CreateSphereIndices(PrimitiveCreater *pc,uint numberParallels,const uint numberSlices)
             {
-                IBMap<T> ib_map(pc);
+                IBTypeMap<T> ib_map(pc->MapIBO());
                 T *tp=ib_map;
 
                 for (uint i = 0; i < numberParallels; i++)
@@ -473,10 +473,10 @@ namespace hgl
                 if(!pc->Init("Sphere",numberVertices,numberIndices))
                     return(nullptr);
 
-                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc->MapVAB(VAN::Position),VF_V3F);
+                VABMapFloat normal   (pc->MapVAB(VAN::Normal),VF_V3F);
+                VABMapFloat tangent  (pc->MapVAB(VAN::Tangent),VF_V3F);
+                VABMapFloat tex_coord(pc->MapVAB(VAN::TexCoord),VF_V2F);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -562,10 +562,10 @@ namespace hgl
                 if(!pc->Init("Dome",numberVertices,numberIndices))
                     return(nullptr);
                 
-                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc->MapVAB(VAN::Position),VF_V3F);
+                VABMapFloat normal   (pc->MapVAB(VAN::Normal),VF_V3F);
+                VABMapFloat tangent  (pc->MapVAB(VAN::Tangent),VF_V3F);
+                VABMapFloat tex_coord(pc->MapVAB(VAN::TexCoord),VF_V2F);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -637,7 +637,7 @@ namespace hgl
                 template<typename T>
                 void CreateTorusIndices(PrimitiveCreater *pc,uint numberSlices,uint numberStacks)
                 {
-                    IBMap<T> ib_map(pc);
+                    IBTypeMap<T> ib_map(pc->MapIBO());
                     T *tp=ib_map;
 
                     // loop counters
@@ -710,10 +710,10 @@ namespace hgl
                 if(!pc->Init("Torus",numberVertices,numberIndices))
                     return(nullptr);                
                 
-                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc->MapVAB(VAN::Position),VF_V3F);
+                VABMapFloat normal   (pc->MapVAB(VAN::Normal),VF_V3F);
+                VABMapFloat tangent  (pc->MapVAB(VAN::Tangent),VF_V3F);
+                VABMapFloat tex_coord(pc->MapVAB(VAN::TexCoord),VF_V2F);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -788,7 +788,7 @@ namespace hgl
                 template<typename T>
                 void CreateCylinderIndices(PrimitiveCreater *pc,const uint numberSlices)
                 {
-                    IBMap<T> ib_map(pc);
+                    IBTypeMap<T> ib_map(pc->MapIBO());
                     T *tp=ib_map;
                     uint i;
 
@@ -852,10 +852,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
                 
-                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc->MapVAB(VAN::Position),VF_V3F);
+                VABMapFloat normal   (pc->MapVAB(VAN::Normal),VF_V3F);
+                VABMapFloat tangent  (pc->MapVAB(VAN::Tangent),VF_V3F);
+                VABMapFloat tex_coord(pc->MapVAB(VAN::TexCoord),VF_V2F);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -1025,7 +1025,7 @@ namespace hgl
                 template<typename T>
                 void CreateConeIndices(PrimitiveCreater *pc,const uint numberSlices,const uint numberStacks)
                 {
-                    IBMap<T> ib_map(pc);
+                    IBTypeMap<T> ib_map(pc->MapIBO());
                     T *tp=ib_map;
 
                     // Bottom
@@ -1082,10 +1082,10 @@ namespace hgl
                 if (cci->numberSlices < 3 || cci->numberStacks < 1 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
                     return nullptr;
                 
-                VABMapFloat vertex   (pc,VF_V3F,VAN::Position);
-                VABMapFloat normal   (pc,VF_V3F,VAN::Normal);
-                VABMapFloat tangent  (pc,VF_V3F,VAN::Tangent);
-                VABMapFloat tex_coord(pc,VF_V2F,VAN::TexCoord);
+                VABMapFloat vertex   (pc->MapVAB(VAN::Position),VF_V3F);
+                VABMapFloat normal   (pc->MapVAB(VAN::Normal),VF_V3F);
+                VABMapFloat tangent  (pc->MapVAB(VAN::Tangent),VF_V3F);
+                VABMapFloat tex_coord(pc->MapVAB(VAN::TexCoord),VF_V2F);
 
                 float *vp=vertex;
                 float *np=normal;
@@ -1204,8 +1204,8 @@ namespace hgl
                 if(!pc->Init("Axis",6,0))
                     return(nullptr);
 
-                VABMap3f vertex(pc,VAN::Position);
-                VABMap4f color(pc,VAN::Color);
+                VABMap3f vertex(pc->MapVAB(VAN::Position));
+                VABMap4f color(pc->MapVAB(VAN::Color));
 
                 if(!vertex.IsValid()||!color.IsValid())
                     return(nullptr);
@@ -1256,7 +1256,7 @@ namespace hgl
                 {
                     RANGE_CHECK_RETURN_NULLPTR(cci->color_type);
 
-                    VABMap4f color(pc,VAN::Color);
+                    VABMap4f color(pc->MapVAB(VAN::Color));
 
                     if(color.IsValid())
                     {

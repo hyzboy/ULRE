@@ -15,7 +15,7 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
 
     prim_data       =nullptr;
 
-    vab_map_list    =new VKBufferMap[v->GetVertexAttribCount()];
+    vab_map_list    =new VABMap[v->GetVertexAttribCount()];
 
     Clear();
 }
@@ -116,7 +116,7 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,
     return(true);
 }
 
-const int PrimitiveCreater::GetVABIndex(const AnsiString &name,const VkFormat &acquire_format)
+const int PrimitiveCreater::GetVABIndex(const AnsiString &name)
 {
     if(!prim_data)return(-1);
 
@@ -129,7 +129,7 @@ const int PrimitiveCreater::GetVABIndex(const AnsiString &name,const VkFormat &a
 
     if(!vab)
     {
-        vab=prim_data->InitVAB(vab_index,acquire_format,nullptr);
+        vab=prim_data->InitVAB(vab_index,nullptr);
 
         if(vab)
         vab_map_list[vab_index].Set(vab,
@@ -156,9 +156,9 @@ const int PrimitiveCreater::GetVABIndex(const AnsiString &name,const VkFormat &a
     return(vab_index);
 }
 
-VKBufferMap *PrimitiveCreater::MapVAB(const AnsiString &name,const VkFormat &format)
+VABMap *PrimitiveCreater::MapVAB(const AnsiString &name)
 {
-    const int vab_index=GetVABIndex(name,format);
+    const int vab_index=GetVABIndex(name);
 
     if(vab_index<0)return nullptr;
 
@@ -169,7 +169,7 @@ bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat &format, c
 {
     if(!prim_data)return(false);
 
-    const int vab_index=GetVABIndex(name,format);
+    const int vab_index=GetVABIndex(name);
 
     VAB *vab=prim_data->GetVAB(vab_index);
 
@@ -179,7 +179,7 @@ bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat &format, c
     return vab->Write(data,prim_data->GetVertexOffset(),vertices_number);
 }
 
-VKBufferMap *PrimitiveCreater::MapIBO()
+IBMap *PrimitiveCreater::MapIBO()
 {
     if(!ibo)
         return(nullptr);
@@ -205,7 +205,7 @@ Primitive *PrimitiveCreater::Create()
     if(!prim_data)
         return(nullptr);
 
-    for(int i=0;i<vil->GetVertexAttribCount();i++)
+    for(uint32_t i=0;i<vil->GetVertexAttribCount();i++)
         vab_map_list[i].Clear();
 
     ibo_map.Clear();
