@@ -51,7 +51,7 @@ public:
 public:
 
     virtual IndexBuffer * InitIBO(const uint32_t index_count,IndexType it)=0;
-    virtual VAB * InitVAB(const int vab_index,const VkFormat &format,const void *data)=0;
+    virtual VAB * InitVAB(const int vab_index,const void *data)=0;
 };//class PrimitiveData
 
 PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const uint32_t vc);
