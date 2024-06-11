@@ -68,15 +68,24 @@ template<typename T> class VABRawMap
 
 public:
 
-    VABRawMap(VABMap *map,const VkFormat check_format=VK_FORMAT_UNDEFINED)
+    VABRawMap(VABMap *map,const VkFormat check_format=VK_FORMAT_UNDEFINED,bool now_map=true)
     {
         vab_map=map;
         map_ptr=nullptr;
 
         if(vab_map)
+        {
             if(check_format==VK_FORMAT_UNDEFINED
              ||check_format==vab_map->GetFormat())
-                map_ptr=(T *)(vab_map->Map());
+            {
+                if(now_map)
+                    map_ptr=(T *)(vab_map->Map());
+            }
+            else
+            {
+                vab_map=nullptr;
+            }
+        }
     }
 
     ~VABRawMap()
@@ -86,6 +95,26 @@ public:
     }
 
     const bool IsValid()const{ return vab_map?vab_map->IsValid():false; }
+
+    T *Map()
+    {
+        if(!vab_map)
+            return(nullptr);
+
+        if(!map_ptr)
+            map_ptr=(T *)(vab_map->Map());
+
+        return map_ptr;
+    }
+
+    void Unmap()
+    {
+        if(vab_map)
+        {
+            if(map_ptr)
+                vab_map->Unmap();
+        }
+    }
 
     operator T *(){ return map_ptr; }
     T *operator->(){ return map_ptr; }
@@ -111,14 +140,21 @@ template<typename T> class VABFormatMap
 
 public:
 
-    VABFormatMap(VABMap *map)
+    VABFormatMap(VABMap *map,bool now_map=true)
     {   
         vab_map=map;
 
         if(vab_map&&vab_map->GetFormat()==T::GetVulkanFormat())
         {
-            map_ptr=T::Create(vab_map->GetCount(),vab_map->Map());
-            map_ptr->Begin();
+            if(now_map)
+            {
+                map_ptr=T::Create(vab_map->GetCount(),vab_map->Map());
+                map_ptr->Begin();
+            }
+            else
+            {
+                map_ptr=T::Create(vab_map->GetCount(),nullptr);
+            }
         }
         else
             map_ptr=nullptr;
@@ -133,15 +169,48 @@ public:
         }
     }
 
-    const bool IsValid()const{ return map_ptr; }
+    const bool IsValid()const{ return map_ptr?map_ptr->IsValid():false; }
+    
+    T *Map()
+    {
+        if(!vab_map)
+            return(nullptr);
+
+        if(!map_ptr)
+        {
+            map_ptr=T::Create(vab_map->GetCount(),vab_map->Map());
+        }
+        else
+        {
+            if(!map_ptr->IsValid())
+                map_ptr->SetData(vab_map->Map());
+        }
+        
+        map_ptr->Begin();
+        return map_ptr;
+    }
+
+    void Unmap()
+    {
+        if(vab_map)
+        {
+            if(map_ptr&&map_ptr->IsValid())
+            {
+                vab_map->Unmap();
+                map_ptr->SetData(nullptr);
+            }
+        }
+    }
 
     void Restart()
     {
-        if(map_ptr)
-            vab_map->Begin();
+        return Map();
     }
 
-    T *operator->(){ return map_ptr; }
+    T *operator->()
+    {
+        return map_ptr;
+    }
 };//template<typename T> class VABFormatMap
 
 typedef VABFormatMap<VB1i8>   VABMap1i8 ,VABMap1b;
