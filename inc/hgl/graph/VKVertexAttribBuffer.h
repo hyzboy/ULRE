@@ -52,7 +52,7 @@ public:
 
     const VkFormat GetFormat()const { return buffer->GetFormat(); }
 
-    void Set(VAB *vab,const VkDeviceSize off,const uint32_t count)
+    void SetVAB(VAB *vab,const VkDeviceSize off,const uint32_t count)
     {
         VKBufferMap<VAB>::Set(vab,off,vab->GetStride(),count);
     }

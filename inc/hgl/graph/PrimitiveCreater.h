@@ -25,17 +25,13 @@ protected:
 
     uint32_t        vertices_number;  ///<顶点数量
 
-    VABMap *        vab_map_list;
-
     uint32_t        index_number;     ///<索引数量
     IndexType       index_type;       ///<索引类型
     IndexBuffer *   ibo;              ///<索引缓冲区
 
-    IBMap           ibo_map;
-
 protected:
     
-    const   int             GetVABIndex (const AnsiString &name);                                    ///<取得顶点属性索引
+    const int InitVAB(const AnsiString &name,const VkFormat format,const void *data);                                       ///<取得顶点属性索引
 
 public:
 
@@ -60,9 +56,9 @@ public: //顶点缓冲区
 
     const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
 
-            VABMap *        MapVAB      (const AnsiString &name);
+            VABMap *        MapVAB      (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);
 
-            bool            WriteVAB    (const AnsiString &name,const VkFormat &format,const void *data);                   ///<直接写入顶点属性数据
+            bool            WriteVAB    (const AnsiString &name,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
 
 public: //索引缓冲区
 
