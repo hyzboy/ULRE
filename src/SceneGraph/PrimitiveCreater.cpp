@@ -154,7 +154,7 @@ const int PrimitiveCreater::InitVAB(const AnsiString &name,const VkFormat format
     return(vab_index);
 }
 
-VABMap *PrimitiveCreater::MapVAB(const AnsiString &name,const VkFormat format)
+VABMap *PrimitiveCreater::GetVABMap(const AnsiString &name,const VkFormat format)
 {
     const int vab_index=InitVAB(name,format,nullptr);
 
@@ -171,12 +171,12 @@ bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat format,con
     return InitVAB(name,format,data)>0;
 }
 
-IBMap *PrimitiveCreater::MapIBO()
+IBMap *PrimitiveCreater::GetIBMap()
 {
     if(!prim_data)
         return(nullptr);
 
-    return prim_data->MapIBO();
+    return prim_data->GetIBMap();
 }
 
 bool PrimitiveCreater::WriteIBO(const void *data,const uint32_t count)

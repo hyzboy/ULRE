@@ -44,6 +44,17 @@ namespace hgl
 
             virtual ~VertexAttribDataAccess()=default;
 
+            void SetData(T *_data)
+            {
+                data    =_data;
+                data_end=_data+count*C;
+            }
+
+            const bool IsValid()const
+            {
+                return data;
+            }
+
             void Write(const T *ptr)
             {
                 if(!ptr)return;

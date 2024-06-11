@@ -66,6 +66,11 @@ const int32_t Primitive::GetVertexOffset()const
     return prim_data->GetVertexOffset();
 }
 
+VABMap *Primitive::GetVABMap(const int vab_index)
+{
+    return prim_data->GetVABMap(vab_index);
+}
+
 const uint32_t Primitive::GetIndexCount()const
 {
     return prim_data->GetIndexCount();
@@ -79,6 +84,11 @@ IndexBuffer *Primitive::GetIBO()
 const uint32_t Primitive::GetFirstIndex()const
 {
     return prim_data->GetFirstIndex();
+}
+
+IBMap *Primitive::GetIBMap()
+{
+    return prim_data->GetIBMap();
 }
 
 VertexDataManager *Primitive::GetVDM()

@@ -56,7 +56,7 @@ public: //顶点缓冲区
 
     const   uint32_t        GetVertexCount()const{ return vertices_number; }                                                ///<取得顶点数量
 
-            VABMap *        MapVAB      (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);
+            VABMap *        GetVABMap   (const AnsiString &name,const VkFormat format=VK_FORMAT_UNDEFINED);
 
             bool            WriteVAB    (const AnsiString &name,const VkFormat format,const void *data);                    ///<直接写入顶点属性数据
 
@@ -65,7 +65,7 @@ public: //索引缓冲区
     const   IndexType       GetIndexType()const{return index_type;}                                                         ///<取得索引类型
     const   uint32_t        GetIndexCount()const{return index_number;}                                                      ///<取得索引数量
 
-            IBMap *         MapIBO();
+            IBMap *         GetIBMap();
 
             bool            WriteIBO(const void *data,const uint32_t count);
 
