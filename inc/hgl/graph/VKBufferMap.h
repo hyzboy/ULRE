@@ -74,5 +74,21 @@ public:
             map_ptr=nullptr;
         }
     }
+
+    bool Write(const void *data,const uint32_t c)
+    {
+        if(!data||c==0||c>count)return(false);
+
+        if(!map_ptr)
+        {
+            if(!buffer)
+                return(false);
+
+            return buffer->Write(data,offset,c);
+        }
+
+        memcpy(map_ptr,data,stride*c);
+        return(true);
+    }
 };//class VKBufferMap
 VK_NAMESPACE_END
