@@ -39,14 +39,13 @@ private:
 
     Pipeline *          pipeline            =nullptr;
 
-    VertexDataManager * vdm                 =nullptr;
     PrimitiveCreater *  prim_creater        =nullptr;
 
     Primitive *         prim_plane_grid     =nullptr;
 
     Primitive *         prim_line           =nullptr;
 
-    VAB *               vab_pos             =nullptr;
+    VABMap *            prim_line_vab_map   =nullptr;
 
     Ray                 ray;
 
@@ -75,20 +74,9 @@ private:
         return(true);
     }
     
-    bool InitVDMAndPC()
+    bool InitPC()
     {
-        vdm=new VertexDataManager(device,material->GetDefaultVIL());
-        if(!vdm->Init(  1024*1024,          //VAB最大容量
-                        1024*1024,          //索引最大容量
-                        IndexType::U16))    //索引类型
-        {
-            delete vdm;
-            vdm=nullptr;
-
-            return(false);
-        }
-
-        prim_creater=new PrimitiveCreater(vdm);
+        prim_creater=new PrimitiveCreater(device,material->GetDefaultVIL());
 
         return(true);
     }
@@ -133,7 +121,7 @@ private:
 
             prim_line=prim_creater->Create();
 
-            prim_line->Getv
+            prim_line_vab_map=prim_line->GetVABMap(VAN::Position);
         }
 
         return(true);
@@ -159,7 +147,6 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(prim_creater)
-        SAFE_CLEAR(vdm)
     }
 
     bool Init(uint w,uint h)
@@ -170,7 +157,7 @@ public:
         if(!InitMaterialAndPipeline())
             return(false);
 
-        if(!InitVDMAndPC())
+        if(!InitPC())
             return(false);
 
         if(!CreateRenderObject())
@@ -191,7 +178,7 @@ public:
 
         const Vector3f pos=ray.ClosestPoint(Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
-        vab_pos->Write(&pos,3*sizeof(float));                   //更新VAB上这个点的位置
+        prim_line_vab_map->Write(&pos,3*sizeof(float));         //更新VAB上这个点的位置
 
         SceneAppFramework::BuildCommandBuffer(index);
     }
