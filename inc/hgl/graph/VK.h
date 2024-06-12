@@ -62,6 +62,9 @@ using VAB=VertexAttribBuffer;
 
 class IndexBuffer;
 
+class VABMap;
+class IBMap;
+
 class GPUCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;

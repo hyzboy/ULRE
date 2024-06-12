@@ -14,12 +14,14 @@ PrimitiveData::PrimitiveData(const VIL *_vil,const uint32_t vc)
     vertex_count=vc;
 
     vab_list=hgl_zero_new<VAB *>(_vil->GetVertexAttribCount());
+    vab_map_list=new VABMap[_vil->GetVertexAttribCount()];
 
     ibo=nullptr;
 }
 
 PrimitiveData::~PrimitiveData()
 {
+    delete[] vab_map_list;
     delete[] vab_list;       //注意：这里并不释放VAB，在派生类中释放
 }
 
@@ -40,6 +42,73 @@ VAB *PrimitiveData::GetVAB(const int index)
     if(index<0||index>=vil->GetVertexAttribCount())return(nullptr);
 
     return vab_list[index];
+}
+
+VAB *PrimitiveData::InitVAB(const int vab_index,const void *data)
+{
+    if(!vil)return(nullptr);
+
+    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
+        return(nullptr);
+
+    const VertexInputFormat *vif=vil->GetConfig(vab_index);
+
+    if(!vif)return(nullptr);
+
+    if(!vab_list[vab_index])
+    {
+        vab_list[vab_index]=CreateVAB(vab_index,vif->format,data);
+
+        if(!vab_list[vab_index])
+            return(nullptr);        
+    }
+    else
+    {
+        vab_map_list[vab_index].Write(data,vertex_count);
+    }
+
+    return vab_list[vab_index];
+}
+
+VABMap *PrimitiveData::GetVABMap(const int vab_index)
+{
+    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())return nullptr;
+    
+    VABMap *vab_map=vab_map_list+vab_index;
+
+    if(!vab_map->IsValid())
+    {
+        if(!vab_list[vab_index])
+            return(nullptr);
+
+        vab_map->SetVAB(vab_list[vab_index],GetVertexOffset(),vertex_count);
+    }
+
+    return vab_map;
+}
+      
+IndexBuffer *PrimitiveData::InitIBO(const uint32_t ic,IndexType it)
+{
+    if(ibo)delete ibo;
+
+    ibo=CreateIBO(ic,it);
+
+    if(!ibo)
+        return(nullptr);
+
+    index_count=ic;
+
+    ibo_map.SetIBO(ibo,GetFirstIndex(),index_count);
+
+    return(ibo);
+}
+
+void PrimitiveData::UnmapAll()
+{
+    for(int i=0;i<vil->GetVertexAttribCount();i++)
+        vab_map_list[i].Unmap();
+
+    ibo_map.Unmap();
 }
 
 namespace
@@ -81,51 +150,18 @@ namespace
                 delete ibo;
         }
 
-        IndexBuffer *InitIBO(const uint32_t ic,IndexType it) override
-        {
+        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
+        {    
             if(!device)return(nullptr);
 
-            if(ibo)delete ibo;
-
-            ibo=device->CreateIBO(it,ic);
-
-            if(!ibo)
-                return(nullptr);
-
-            index_count=ic;
-
-            return(ibo);
+            return device->CreateIBO(it,ic);
         }
         
-        VAB *InitVAB(const int vab_index,const VkFormat &format,const void *data)
+        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
         {
             if(!device)return(nullptr);
-            if(!vil)return(nullptr);
 
-            if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
-                return(nullptr);
-
-            const VertexInputFormat *vif=vil->GetConfig(vab_index);
-
-            if(!vif)return(nullptr);
-
-            if(vif->format!=format)
-                return(nullptr);
-
-            if(!vab_list[vab_index])
-            {
-                vab_list[vab_index]=device->CreateVAB(format,vertex_count,data);
-
-                if(!vab_list[vab_index])
-                    return(nullptr);
-            }
-            
-            if(vab_list[vab_index]&&data)
-            {
-                vab_list[vab_index]->Write(data,vertex_count);
-            }
-
-            return vab_list[vab_index];
+            return device->CreateVAB(format,vertex_count,data);
         }
     };//class PrimitiveDataPrivateBuffer:public PrimitiveData
 
@@ -164,10 +200,10 @@ namespace
                 vdm->ReleaseVAB(vab_node);
         }
         
-        IndexBuffer *InitIBO(const uint32_t ic,IndexType it) override
+        IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
         {
-            if(ic<=0)return(nullptr);
-            if(!vdm)return(nullptr);
+            if(!vdm)
+                return(nullptr);
 
             if(!ib_node)
             {
@@ -175,42 +211,21 @@ namespace
 
                 if(!ib_node)
                     return(nullptr);
-
-                ibo=vdm->GetIBO();
             }
 
-            index_count=ic;
-
-            return ibo;
+            return vdm->GetIBO();
         }
-        
-        VAB *InitVAB(const int vab_index,const VkFormat &format,const void *data)
+
+        VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
         {
-            if(!vdm)return(nullptr);
-            if(!vil)return(nullptr);
+            VAB *vab=vdm->GetVAB(vab_index);
 
-            if (vab_index<0||vab_index>=vil->GetVertexAttribCount())
-                return(nullptr);
+            if(!vab)return(nullptr);
 
-            const VertexInputFormat *vif=vil->GetConfig(vab_index);
+            if(data)
+                vab->Write(data,vab_node->GetStart(),vertex_count);
 
-            if(!vif)return(nullptr);
-
-            if(vif->format!=format)
-                return(nullptr);
-
-            if (!vab_list[vab_index])
-            {
-                vab_list[vab_index]=vdm->GetVAB(vab_index);
-
-                if(!vab_list[vab_index])
-                    return(nullptr);
-            }
-            
-            if(vab_list[vab_index]&&data)
-                vab_list[vab_index]->Write(data,vab_node->GetStart(),vertex_count);
-
-            return vab_list[vab_index];
+            return vab;
         }
     };//class PrimitiveDataVDM:public PrimitiveData
 }//namespace

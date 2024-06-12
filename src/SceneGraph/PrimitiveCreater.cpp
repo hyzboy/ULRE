@@ -15,8 +15,6 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
 
     prim_data       =nullptr;
 
-    vab_map_list    =new VKBufferMap[v->GetVertexAttribCount()];
-
     Clear();
 }
 
@@ -30,7 +28,6 @@ PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
 
 PrimitiveCreater::~PrimitiveCreater()
 {
-    delete[] vab_map_list;
     SAFE_CLEAR(prim_data);
 }
 
@@ -94,8 +91,6 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,
             delete prim_data;
             return(false);
         }
-
-        ibo_map.Set(ibo,prim_data->GetFirstIndex(),index_number);
         
     #ifdef _DEBUG
         if(!vdm)
@@ -116,75 +111,72 @@ bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,
     return(true);
 }
 
-const int PrimitiveCreater::GetVABIndex(const AnsiString &name,const VkFormat &acquire_format)
+const int PrimitiveCreater::InitVAB(const AnsiString &name,const VkFormat format,const void *data)
 {
     if(!prim_data)return(-1);
 
     const int vab_index=prim_data->GetVABIndex(name);
 
-    if(vab_index<0)
+    if(vab_index<0||vab_index>=vil->GetVertexAttribCount())
         return(-1);
+
+    if(format!=VK_FORMAT_UNDEFINED)
+    {
+        const VIF *vif=vil->GetConfig(vab_index);
+
+        if(vif->format!=format)
+            return(-2);
+    }
 
     VAB *vab=prim_data->GetVAB(vab_index);
 
     if(!vab)
     {
-        vab=prim_data->InitVAB(vab_index,acquire_format,nullptr);
+        vab=prim_data->InitVAB(vab_index,data);
 
-        if(vab)
-        vab_map_list[vab_index].Set(vab,
-                                    prim_data->GetVertexOffset(),
-                                    vertices_number);
-    }
+        if(!vab)
+            return(-1);
 
-    if(!vab)
-        return(-1);
-
-#ifdef _DEBUG
-    if (!vdm)
-    {
-        DebugUtils *du=device->GetDebugUtils();
-
-        if (du)
+    #ifdef _DEBUG
+        if (!vdm)
         {
-            du->SetBuffer(vab->GetBuffer(), prim_name+":VAB:Buffer:"+name);
-            du->SetDeviceMemory(vab->GetVkMemory(), prim_name+":VAB:Memory:"+name);
+            DebugUtils *du=device->GetDebugUtils();
+
+            if (du)
+            {
+                du->SetBuffer(vab->GetBuffer(), prim_name+":VAB:Buffer:"+name);
+                du->SetDeviceMemory(vab->GetVkMemory(), prim_name+":VAB:Memory:"+name);
+            }
         }
+    #endif//_DEBUG
     }
-#endif//_DEBUG
 
     return(vab_index);
 }
 
-VKBufferMap *PrimitiveCreater::MapVAB(const AnsiString &name,const VkFormat &format)
+VABMap *PrimitiveCreater::GetVABMap(const AnsiString &name,const VkFormat format)
 {
-    const int vab_index=GetVABIndex(name,format);
+    const int vab_index=InitVAB(name,format,nullptr);
 
     if(vab_index<0)return nullptr;
 
-    return vab_map_list+vab_index;
+    return prim_data->GetVABMap(vab_index);
 }
 
-bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat &format, const void *data)
+bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat format,const void *data)
 {
     if(!prim_data)return(false);
+    if(!data)return(false);
 
-    const int vab_index=GetVABIndex(name,format);
-
-    VAB *vab=prim_data->GetVAB(vab_index);
-
-    if(!vab)
-        return(false);
-
-    return vab->Write(data,prim_data->GetVertexOffset(),vertices_number);
+    return InitVAB(name,format,data)>=0;
 }
 
-VKBufferMap *PrimitiveCreater::MapIBO()
+IBMap *PrimitiveCreater::GetIBMap()
 {
-    if(!ibo)
+    if(!prim_data)
         return(nullptr);
 
-    return &ibo_map;
+    return prim_data->GetIBMap();
 }
 
 bool PrimitiveCreater::WriteIBO(const void *data,const uint32_t count)
@@ -205,10 +197,7 @@ Primitive *PrimitiveCreater::Create()
     if(!prim_data)
         return(nullptr);
 
-    for(int i=0;i<vil->GetVertexAttribCount();i++)
-        vab_map_list[i].Clear();
-
-    ibo_map.Clear();
+    prim_data->UnmapAll();
 
     Primitive *primitive=new Primitive(prim_name,prim_data);
 
