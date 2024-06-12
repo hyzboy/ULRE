@@ -39,6 +39,9 @@ constexpr const ShaderBufferSource SBS_CameraInfo=
     vec3 view_line;             //pos-target
     vec3 world_up;
 
+    vec3 camera_up;
+    vec3 camera_right;
+
     float znear,zfar;)"
 };
 
