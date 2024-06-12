@@ -30,7 +30,7 @@ private:
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
 
-        material=db->LoadMaterial("Std3D/VertexLum2D",&cfg);
+        material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
         if(!material)return(false);
 
         Color4f GridColor;

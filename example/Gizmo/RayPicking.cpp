@@ -54,10 +54,11 @@ private:
 
         cfg.local_to_world=true;
 
-        {
+        {            
+            cfg.mtl_name="VertexLuminance2D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum2D",&cfg);
+            mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
        
             mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,nullptr,&white_color);
