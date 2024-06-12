@@ -46,7 +46,7 @@ public:
     virtual int32_t         GetVertexOffset ()const=0;                      ///<取得顶点偏移(注意是顶点不是字节)
     virtual uint32_t        GetFirstIndex   ()const=0;                      ///<取得第一个索引
 
-    virtual VertexDataManager * GetVDM()const=0;                           ///<取得顶点数据管理器
+    virtual VertexDataManager * GetVDM()const=0;                            ///<取得顶点数据管理器
 
 public:
 

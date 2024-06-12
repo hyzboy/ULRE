@@ -60,7 +60,7 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
 
         if(off)
         {
-            off=prim_one->GetVertexOffset()-prim_two->GetVertexOffset();        //保存vertex offset小的在前面
+            off=prim_one->GetVertexOffset()-prim_two->GetVertexOffset();        //保证vertex offset小的在前面
 
             return off;
         }
