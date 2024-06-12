@@ -168,7 +168,7 @@ bool PrimitiveCreater::WriteVAB(const AnsiString &name,const VkFormat format,con
     if(!prim_data)return(false);
     if(!data)return(false);
 
-    return InitVAB(name,format,data)>0;
+    return InitVAB(name,format,data)>=0;
 }
 
 IBMap *PrimitiveCreater::GetIBMap()
