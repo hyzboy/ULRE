@@ -1,4 +1,7 @@
-﻿#include<hgl/graph/VK.h>
+﻿#pragma once
+
+#include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/graph/VKVertexAttribBuffer.h>
 
 VK_NAMESPACE_BEGIN
 /*
@@ -25,7 +28,16 @@ protected:
     uint32_t        index_count;
     
     VAB **          vab_list;
-    IndexBuffer *   ibo;
+    VABMap *        vab_map_list;
+
+    virtual VAB * CreateVAB(const int vab_index,const VkFormat format,const void *data)=0;
+
+protected:
+
+    IndexBuffer *   ibo;    
+    IBMap           ibo_map;
+
+    virtual IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it)=0;
 
 public:
 
@@ -37,10 +49,14 @@ public:
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
     const   int             GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
-            VAB *           GetVAB          (const int index);
-            VAB *           GetVAB          (const AnsiString &name){return GetVAB(GetVABIndex(name));}
 
+            VAB *           GetVAB          (const int index);
+            VAB *           InitVAB         (const int vab_index,const void *data);
+            VABMap *        GetVABMap       (const int vab_index);
+
+            IndexBuffer *   InitIBO(const uint32_t index_count,IndexType it);
             IndexBuffer *   GetIBO          (){return ibo;}
+            IBMap *         GetIBMap        (){return &ibo_map;}
             uint32_t        GetIndexCount   ()const{return index_count;}
 
     virtual int32_t         GetVertexOffset ()const=0;                      ///<取得顶点偏移(注意是顶点不是字节)
@@ -48,10 +64,8 @@ public:
 
     virtual VertexDataManager * GetVDM()const=0;                            ///<取得顶点数据管理器
 
-public:
+            void            UnmapAll();
 
-    virtual IndexBuffer * InitIBO(const uint32_t index_count,IndexType it)=0;
-    virtual VAB * InitVAB(const int vab_index,const VkFormat &format,const void *data)=0;
 };//class PrimitiveData
 
 PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const uint32_t vc);
