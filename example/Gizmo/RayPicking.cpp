@@ -33,18 +33,15 @@ class TestApp:public SceneAppFramework
 
 private:
 
-    Material *          material            =nullptr;
+    Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
-    MaterialInstance *  mi_line             =nullptr;
-
-    Pipeline *          pipeline            =nullptr;
-
-    PrimitiveCreater *  prim_creater        =nullptr;
-
+    Pipeline *          pipeline_plane_grid =nullptr;
     Primitive *         prim_plane_grid     =nullptr;
 
+    Material *          mtl_line            =nullptr;
+    MaterialInstance *  mi_line             =nullptr;
+    Pipeline *          pipeline_line       =nullptr;
     Primitive *         prim_line           =nullptr;
-
     VABMap *            prim_line_vab_map   =nullptr;
 
     Ray                 ray;
@@ -53,37 +50,45 @@ private:
 
     bool InitMaterialAndPipeline()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance2D",Prim::Lines);
 
         cfg.local_to_world=true;
 
-        material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
-        if(!material)return(false);
+        {
+            cfg.position_format=VAT_VEC2;
 
-        mi_plane_grid=db->CreateMaterialInstance(material,nullptr,&white_color);
-        if(!mi_plane_grid)return(false);
+            mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum2D",&cfg);
+            if(!mtl_plane_grid)return(false);
+       
+            mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,nullptr,&white_color);
+            if(!mi_plane_grid)return(false);
 
-        mi_line=db->CreateMaterialInstance(material,nullptr,&yellow_color);
-        if(!mi_line)return(false);
+            pipeline_plane_grid=CreatePipeline(mtl_plane_grid,InlinePipeline::Solid3D,Prim::Lines);        
+            if(!pipeline_plane_grid)return(false);
+        }
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Lines);
+        {
+            cfg.mtl_name="VertexLuminance3D";
+            cfg.position_format=VAT_VEC3;
 
-        if(!pipeline)
-            return(false);
+            mtl_line=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            if(!mtl_line)return(false);
+
+            mi_line=db->CreateMaterialInstance(mtl_line,nullptr,&yellow_color);
+            if(!mi_line)return(false);
+
+            pipeline_line=CreatePipeline(mtl_line,InlinePipeline::Solid3D,Prim::Lines);
+
+            if(!pipeline_line)
+                return(false);
+        }
 
         return(true);
     }
     
-    bool InitPC()
+    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
-        prim_creater=new PrimitiveCreater(device,material->GetDefaultVIL());
-
-        return(true);
-    }
-
-    Renderable *Add(Primitive *r,MaterialInstance *mi)
-    {
-        Renderable *ri=db->CreateRenderable(r,mi,pipeline);
+        Renderable *ri=db->CreateRenderable(r,mi,p);
 
         if(!ri)
         {
@@ -99,8 +104,10 @@ private:
     bool CreateRenderObject()
     {
         using namespace inline_geometry;
-
+        
         {
+            PrimitiveCreater pc(device,mtl_plane_grid->GetDefaultVIL());
+
             struct PlaneGridCreateInfo pgci;
 
             pgci.grid_size.Set(32,32);
@@ -109,17 +116,19 @@ private:
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
 
-            prim_plane_grid=CreatePlaneGrid(prim_creater,&pgci);
+            prim_plane_grid=CreatePlaneGrid(&pc,&pgci);
         }
 
         {
-            if(!prim_creater->Init("Line",2))
+            PrimitiveCreater pc(device,mtl_line->GetDefaultVIL());
+
+            if(!pc.Init("Line",2))
                 return(false);
             
-            if(!prim_creater->WriteVAB(VAN::Position, VF_V3F,position_data))return(false);
-            if(!prim_creater->WriteVAB(VAN::Luminance,VF_V1F,lumiance_data))return(false);
+            if(!pc.WriteVAB(VAN::Position, VF_V3F,position_data))return(false);
+            if(!pc.WriteVAB(VAN::Luminance,VF_V1F,lumiance_data))return(false);
 
-            prim_line=prim_creater->Create();
+            prim_line=pc.Create();
 
             prim_line_vab_map=prim_line->GetVABMap(VAN::Position);
         }
@@ -129,8 +138,8 @@ private:
 
     bool InitScene()
     {
-        Add(prim_plane_grid,mi_plane_grid);
-        Add(prim_line,mi_line);
+        Add(prim_plane_grid,mi_plane_grid,pipeline_plane_grid);
+        Add(prim_line,mi_line,pipeline_line);
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
@@ -146,7 +155,8 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(prim_creater)
+        SAFE_CLEAR(prim_plane_grid);
+        SAFE_CLEAR(prim_line);
     }
 
     bool Init(uint w,uint h)
@@ -155,9 +165,6 @@ public:
             return(false);
 
         if(!InitMaterialAndPipeline())
-            return(false);
-
-        if(!InitPC())
             return(false);
 
         if(!CreateRenderObject())
@@ -178,7 +185,8 @@ public:
 
         const Vector3f pos=ray.ClosestPoint(Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
-        prim_line_vab_map->Write(&pos,3*sizeof(float));         //更新VAB上这个点的位置
+        prim_line_vab_map->Write(&pos,          //更新VAB上这个点的位置
+                                 1);            //这里的1代表的数据数量,不是字节数           
 
         SceneAppFramework::BuildCommandBuffer(index);
     }
