@@ -68,7 +68,7 @@ private:
         }
 
         {
-            cfg.mtl_name="VertexLuminance3D";
+            cfg.mtl_name="VertexLuminance3D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.position_format=VAT_VEC3;
 
             mtl_line=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
