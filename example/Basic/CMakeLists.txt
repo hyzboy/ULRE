@@ -14,3 +14,5 @@ CreateProject(01_draw_triangle_in_NDC           draw_triangle_in_NDC.cpp)
 CreateProject(02_draw_triangle_use_UBO          draw_triangle_use_UBO.cpp)
 CreateProject(03_auto_instance                  auto_instance.cpp)
 CreateProject(04_auto_merge_material_instance   auto_merge_material_instance.cpp)
+
+CreateProject(05_Billboard2DWay                 Billboard2DWay.cpp)
