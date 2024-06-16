@@ -53,6 +53,7 @@ public:
 
 MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);
 MaterialCreateInfo *CreateVertexLuminance3D(const Material3DCreateConfig *);
+MaterialCreateInfo *CreateBillboard2DWay(mtl::Material3DCreateConfig *);
 
 /**
  * 从文件加载材质

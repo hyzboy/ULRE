@@ -44,7 +44,7 @@ void main()
 {
     MaterialInstance mi=GetMI();
 
-    FragColor=texture(TextureColor,vec3(Input.TexCoord,mi.id.x));
+    FragColor=texture(TextureBaseColor,vec3(Input.TexCoord,mi.id.x));
 })";
 
     class MaterialRectTexture2D:public Std2DMaterial

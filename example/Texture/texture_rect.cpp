@@ -69,7 +69,7 @@ private:
         sampler=db->CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
-                                        mtl::SamplerName::BaseColor,            ///<采样器名称
+                                        mtl::SamplerName::BaseColor,        ///<采样器名称
                                         texture,                            ///<纹理
                                         sampler))                           ///<采样器
             return(false);
