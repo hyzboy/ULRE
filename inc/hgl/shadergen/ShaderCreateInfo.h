@@ -1,4 +1,4 @@
-#ifndef HGL_SHADER_CREATE_INFO_INCLUDE
+﻿#ifndef HGL_SHADER_CREATE_INFO_INCLUDE
 #define HGL_SHADER_CREATE_INFO_INCLUDE
 
 #include<hgl/graph/VertexAttrib.h>

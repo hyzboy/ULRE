@@ -1,4 +1,4 @@
-set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
+﻿set(SHADERGEN_INCLUDE_PATH  ${ROOT_INCLUDE_PATH}/hgl/shadergen)
 
 SET(SHADER_CREATER_HEADER_FILES ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfo.h
                                 ${SHADERGEN_INCLUDE_PATH}/ShaderCreateInfoMap.h
@@ -69,6 +69,7 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/Std3DMaterialLoader.cpp
                             3d/M_VertexColor3D.cpp
                             3d/M_VertexLum3D.cpp
+                            3d/M_Billboard2DWay.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h

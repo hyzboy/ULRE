@@ -44,7 +44,7 @@ private:
 
             ce=COLOR((int)ce+1);
         }
-        
+
         pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Lines);
 
         return pipeline;

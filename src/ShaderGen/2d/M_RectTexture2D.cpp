@@ -37,7 +37,7 @@ void main()
     constexpr const char fs_main[]=R"(
 void main()
 {
-    FragColor=texture(TextureColor,Input.TexCoord);
+    FragColor=texture(TextureBaseColor,Input.TexCoord);
 })";
 
     class MaterialRectTexture2D:public Std2DMaterial

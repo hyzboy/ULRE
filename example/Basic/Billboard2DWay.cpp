@@ -14,10 +14,9 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-static float position_data[2][3]=
+static float position_data[3]=
 {
-    {100,100,100},
-    {0,0,0}
+    0,0,0
 };
 
 static float lumiance_data[2]={1,1};
@@ -38,12 +37,12 @@ private:
     Pipeline *          pipeline_plane_grid =nullptr;
     Primitive *         prim_plane_grid     =nullptr;
 
-    Material *          mtl_billboard       =nullptr;
     MaterialInstance *  mi_billboard        =nullptr;
     Pipeline *          pipeline_billboard  =nullptr;
-    Primitive *         prim_billboard      =nullptr;
-
-    Ray                 ray;
+    Renderable *        ro_billboard        =nullptr;
+    
+    Texture2D *         texture             =nullptr;
+    Sampler *           sampler             =nullptr;
 
 private:
 
@@ -71,22 +70,36 @@ private:
 
     bool InitBillboardMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2DWay",Prim::TriangleStrip);
-
-        cfg.local_to_world=true;
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2DWay",Prim::Billboard2DWay);
 
         {
-            mtl_billboard=db->LoadMaterial("Std3D/Billboard/2DWay",&cfg);
-            if(!mtl_billboard)return(false);
+            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateBillboard2DWay(&cfg);
        
-            mi_billboard=db->CreateMaterialInstance(mtl_billboard,nullptr,&yellow_color);
+            mi_billboard=db->CreateMaterialInstance(mci);
             if(!mi_billboard)return(false);
 
-            pipeline_billboard=CreatePipeline(mtl_billboard,InlinePipeline::Solid3D,Prim::Billboard2DWay);
+            pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D,Prim::Billboard2DWay);
             if(!pipeline_billboard)return(false);
         }
 
         return(true);
+    }
+
+    bool InitTexture()
+    {
+        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        if(!texture)return(false);
+
+        sampler=db->CreateSampler();
+
+        if(!mi_billboard->GetMaterial()->BindImageSampler(  DescriptorSetType::PerMaterial,     ///<描述符合集
+                                                            mtl::SamplerName::BaseColor,        ///<采样器名称
+                                                            texture,                            ///<纹理
+                                                            sampler))                           ///<采样器
+            return(false);
+
+        return(true);
+    }
     
     Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
@@ -121,12 +134,27 @@ private:
             prim_plane_grid=CreatePlaneGrid(&pc,&pgci);
         }
 
+        {
+            PrimitiveCreater pc(device,mi_billboard->GetVIL());
+
+            pc.Init("Billboard",1);
+
+            if(!pc.WriteVAB(VAN::Position,VF_V3F,position_data))
+                return(false);
+
+            ro_billboard=db->CreateRenderable(&pc,mi_billboard,pipeline_billboard);
+            if(!ro_billboard)
+                return(false);
+        }
+
         return(true);
     }
 
     bool InitScene()
     {
         Add(prim_plane_grid,mi_plane_grid,pipeline_plane_grid);
+
+        render_root.CreateSubNode(ro_billboard);
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
@@ -153,6 +181,12 @@ public:
         if(!InitPlaneGridMP())
             return(false);
 
+        if(!InitBillboardMP())
+            return(false);
+
+        if(!InitTexture())
+            return(false);
+
         if(!CreateRenderObject())
             return(false);
 
@@ -160,16 +194,6 @@ public:
             return(false);
 
         return(true);
-    }
-
-    void BuildCommandBuffer(uint32 index) override
-    {
-        const CameraInfo &ci=GetCameraInfo();
-        const ViewportInfo &vi=GetViewportInfo();
-
-        ray.Set(GetMouseCoord(),&ci,&vi);                       //设置射线查询的屏幕坐标点
-
-        SceneAppFramework::BuildCommandBuffer(index);
     }
 };//class TestApp:public CameraAppFramework
 
