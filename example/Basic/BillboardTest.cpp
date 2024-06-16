@@ -1,4 +1,4 @@
-﻿// Billboard : The 2D way
+﻿// Billboard
 
 #include"VulkanAppFramework.h"
 #include<hgl/filesystem/FileSystem.h>
@@ -70,15 +70,17 @@ private:
 
     bool InitBillboardMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2DWay",Prim::Billboard2DWay);
+        mtl::BillboardMaterialCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2D",Prim::Billboard);
 
         {
-            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateBillboard2DWay(&cfg);
+            cfg.fixed_size=false;
+
+            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateBillboard2D(&cfg);
        
             mi_billboard=db->CreateMaterialInstance(mci);
             if(!mi_billboard)return(false);
 
-            pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D,Prim::Billboard2DWay);
+            pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D,Prim::Billboard);
             if(!pipeline_billboard)return(false);
         }
 

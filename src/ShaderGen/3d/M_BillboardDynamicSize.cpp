@@ -45,12 +45,12 @@ void main()
     FragColor=texture(TextureBaseColor,Input.TexCoord);
 })";
 
-    class MaterialBillboard2DWay:public Std3DMaterial
+    class MaterialBillboard2DDynamicSize:public Std3DMaterial
     {
     public:
 
         using Std3DMaterial::Std3DMaterial;
-        ~MaterialBillboard2DWay()=default;
+        ~MaterialBillboard2DDynamicSize()=default;
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
@@ -82,10 +82,10 @@ void main()
             fsc->SetMain(fs_main);
             return(true);
         }
-    };//class MaterialBillboard2DWay:public Std3DMaterial
+    };//class MaterialBillboard2DDynamicSize:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DWay(mtl::Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateBillboard2DDynamic(mtl::BillboardMaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -94,8 +94,8 @@ MaterialCreateInfo *CreateBillboard2DWay(mtl::Material3DCreateConfig *cfg)
 
     cfg->local_to_world=true;
 
-    MaterialBillboard2DWay mtl_billbard_2dway(cfg);
+    MaterialBillboard2DDynamicSize mtl_billbard_2d(cfg);
 
-    return mtl_billbard_2dway.Create();
+    return mtl_billbard_2d.Create();
 }
 STD_MTL_NAMESPACE_END
