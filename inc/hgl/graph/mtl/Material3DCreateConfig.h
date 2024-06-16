@@ -53,7 +53,19 @@ public:
 
 MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);
 MaterialCreateInfo *CreateVertexLuminance3D(const Material3DCreateConfig *);
-MaterialCreateInfo *CreateBillboard2DWay(mtl::Material3DCreateConfig *);
+
+struct BillboardMaterialCreateConfig:public Material3DCreateConfig
+{
+    bool        fixed_size;             ///<固定大小(指像素尺寸)
+
+    Vector2u    pixel_size;             ///<像素尺寸
+
+public:
+
+    using Material3DCreateConfig::Material3DCreateConfig;
+};
+
+MaterialCreateInfo *CreateBillboard2D(mtl::BillboardMaterialCreateConfig *);
 
 /**
  * 从文件加载材质
