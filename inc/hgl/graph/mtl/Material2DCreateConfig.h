@@ -12,7 +12,7 @@ struct Material2DCreateConfig:public MaterialCreateConfig
 
     bool                local_to_world;         ///<包含LocalToWorld矩阵
 
-    VAT                 position_format;        ///<position格式
+    VAType              position_format;        ///<position格式
 
 public:
 

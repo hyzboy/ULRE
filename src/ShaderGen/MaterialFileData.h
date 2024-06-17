@@ -16,7 +16,7 @@ namespace material_file
 
     struct ShaderIOAttrib
     {
-        VAT vat;
+        VAType vat;
         
         char name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
     };

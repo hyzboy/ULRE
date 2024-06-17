@@ -32,7 +32,7 @@ void main()
                             1
                          );
 
-        Output.TexCoord=vec2(BillboardVertex[i].x+0.5,BillboardVertex[i].y*-1+0.5);
+        Output.TexCoord=vec2(BillboardVertex[i].x+0.5,BillboardVertex[i].y*-1.0+0.5);
 
         EmitVertex();
     }
