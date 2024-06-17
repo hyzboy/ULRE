@@ -100,7 +100,7 @@ bool ShaderCreateInfo::ProcDefine()
     return(true);
 }
 
-int ShaderCreateInfo::AddOutput(const VAT &type,const AnsiString &name,Interpolation inter)
+int ShaderCreateInfo::AddOutput(const VAType &type,const AnsiString &name,Interpolation inter)
 {
     ShaderAttribute *ss=new ShaderAttribute;
 
@@ -115,7 +115,7 @@ int ShaderCreateInfo::AddOutput(const VAT &type,const AnsiString &name,Interpola
 
 int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter)
 {
-    VAT vat;
+    VAType vat;
 
     if(name.IsEmpty())
         return -1;

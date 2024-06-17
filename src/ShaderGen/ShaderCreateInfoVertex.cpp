@@ -12,7 +12,7 @@ ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorInfo *m):Shader
 {
 }
 
-int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
+int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
     ShaderAttribute *ss=new ShaderAttribute;
 
@@ -29,7 +29,7 @@ int ShaderCreateInfoVertex::AddInput(const VAT &type,const AnsiString &name,cons
 
 int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
-    VAT vat;
+    VAType vat;
 
     if(!ParseVertexAttribType(&vat,type))
         return(-2);

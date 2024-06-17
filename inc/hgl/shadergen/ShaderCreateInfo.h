@@ -76,7 +76,7 @@ public:
 
     bool AddDefine(const AnsiString &m,const AnsiString &v);
 
-    int AddOutput(const graph::VAT &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
+    int AddOutput(const graph::VAType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
 
     void AddFunction(const char *str){function_list.Add(str);}
