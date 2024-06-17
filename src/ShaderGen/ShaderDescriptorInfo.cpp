@@ -1,4 +1,4 @@
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
+﻿#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
 ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
@@ -12,7 +12,7 @@ ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
 
 namespace
 {
-    bool Find(const ShaderAttributeArray &sad,const char *name)
+    bool Find(const VertexInputAttributeArray &sad,const char *name)
     {
         if(sad.count<=0)
             return(false);
@@ -25,7 +25,7 @@ namespace
     }
 }//namespace
 
-bool ShaderDescriptorInfo::AddInput(ShaderAttribute *ss)
+bool ShaderDescriptorInfo::AddInput(VertexInputAttribute *ss)
 {
     if(!ss)return(false);
 
@@ -46,7 +46,7 @@ bool ShaderDescriptorInfo::hasInput(const char *name)const
 
 }
 
-bool ShaderDescriptorInfo::AddOutput(ShaderAttribute *ss)
+bool ShaderDescriptorInfo::AddOutput(VertexInputAttribute *ss)
 {
     if(!ss)return(false);
 

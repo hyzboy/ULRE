@@ -78,7 +78,7 @@ class Semaphore;
 struct PipelineLayoutData;
 class DescriptorSet;
 
-struct ShaderAttribute;
+struct VertexInputAttribute;
 
 class ShaderResource;
 class ShaderModule;

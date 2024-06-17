@@ -1,4 +1,4 @@
-#include<hgl/shadergen/ShaderCreateInfoFragment.h>
+﻿#include<hgl/shadergen/ShaderCreateInfoFragment.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
@@ -7,9 +7,9 @@ using namespace hgl::graph;
 
 bool ShaderCreateInfoFragment::ProcOutput()
 {
-    const auto &output_list=sdm->GetShaderStageIO().output;
+    const auto &output_list=sdi->GetShaderStageIO().output;
 
-    const ShaderAttribute *o=output_list.items;
+    const VertexInputAttribute *o=output_list.items;
 
         final_shader+="\n";
 

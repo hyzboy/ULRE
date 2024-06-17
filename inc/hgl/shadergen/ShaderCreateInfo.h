@@ -4,6 +4,7 @@
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKInterpolation.h>
+#include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/type/StringList.h>
 
 namespace hgl{namespace graph
@@ -65,9 +66,9 @@ protected:
 
 public:
 
-    ShaderDescriptorInfo *sdm;
+    ShaderDescriptorInfo *sdi;
 
-    VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
+    const VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
 
 public:
 
@@ -78,6 +79,7 @@ public:
 
     int AddOutput(const graph::VAType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
+    //int AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
 
     void AddFunction(const char *str){function_list.Add(str);}
 
