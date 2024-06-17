@@ -91,6 +91,11 @@ namespace hgl
                 svt_code=svt.svt_code;
             }
 
+            ShaderVariableType(const VAType &vat,const uint count)
+            {
+                From(vat,count);
+            }
+
             ShaderVariableType(const VABaseType &vabt,const uint32 count)
             {
                 svt_code=0;
