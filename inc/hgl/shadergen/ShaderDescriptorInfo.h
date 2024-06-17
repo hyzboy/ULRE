@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
@@ -56,8 +56,8 @@ public:
 
 public:
 
-    bool AddInput(ShaderAttribute *);
-    bool AddOutput(ShaderAttribute *);
+    bool AddInput(VertexInputAttribute *);
+    bool AddOutput(VertexInputAttribute *);
 
     bool hasInput(const char *)const;     ///<是否有指定输入
 

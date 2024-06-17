@@ -14,7 +14,7 @@ ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorInfo *m):Shader
 
 int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
-    ShaderAttribute *ss=new ShaderAttribute;
+    VertexInputAttribute *ss=new VertexInputAttribute;
 
     hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
 
@@ -24,7 +24,7 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,c
     ss->input_rate      =input_rate;
     ss->group           =group;
 
-    return sdm->AddInput(ss);
+    return sdi->AddInput(ss);
 }
 
 int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
@@ -39,7 +39,7 @@ int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &na
 
 int ShaderCreateInfoVertex::hasInput(const char *name)
 {
-    return sdm->hasInput(name);
+    return sdi->hasInput(name);
 }
 
 void ShaderCreateInfoVertex::AddJoint()
@@ -60,7 +60,7 @@ void ShaderCreateInfoVertex::AddAssign()
 
 bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
 {    
-    const auto &input=sdm->GetShaderStageIO().input;
+    const auto &input=sdi->GetShaderStageIO().input;
 
     if(input.count<=0)
     {
@@ -71,7 +71,7 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
 
     final_shader+="\n";
 
-    const ShaderAttribute *ss=input.items;
+    const VertexInputAttribute *ss=input.items;
 
     for(uint i=0;i<input.count;i++)
     {

@@ -13,7 +13,7 @@ ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorIn
 {
     shader_stage=ss;
     mdi=m;
-    sdm=new ShaderDescriptorInfo(ss);
+    sdi=new ShaderDescriptorInfo(ss);
 
     spv_data=nullptr;
 
@@ -26,7 +26,7 @@ ShaderCreateInfo::~ShaderCreateInfo()
     if(spv_data)
         FreeSPVData(spv_data);
 
-    delete sdm;
+    delete sdi;
 }
 
 bool ShaderCreateInfo::AddDefine(const AnsiString &m,const AnsiString &v)
@@ -102,7 +102,7 @@ bool ShaderCreateInfo::ProcDefine()
 
 int ShaderCreateInfo::AddOutput(const VAType &type,const AnsiString &name,Interpolation inter)
 {
-    ShaderAttribute *ss=new ShaderAttribute;
+    VertexInputAttribute *ss=new VertexInputAttribute;
 
     hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
 
@@ -110,7 +110,7 @@ int ShaderCreateInfo::AddOutput(const VAType &type,const AnsiString &name,Interp
     ss->vec_size        =       type.vec_size;
     ss->interpolation   =       inter;
 
-    return sdm->AddOutput(ss);
+    return sdi->AddOutput(ss);
 }
 
 int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter)
@@ -126,9 +126,23 @@ int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name,In
     return AddOutput(vat,name,inter);
 }
 
+//int ShaderCreateInfo::AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth)
+//{
+//    VertexInputAttribute *ss=new VertexInputAttribute;
+//
+//    hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
+//
+//    ss->basetype        =(uint8)type.base_type;
+//    ss->vec_size        =       type.vec_size;
+//    ss->interpolation   =       inter;
+//
+//    return sdi->AddOutput(ss);
+//
+//}
+
 bool ShaderCreateInfo::ProcSubpassInput()
 {
-    auto sil=sdm->GetSubpassInputList();
+    auto sil=sdi->GetSubpassInputList();
 
     if(sil.IsEmpty())
         return(true);
@@ -167,8 +181,8 @@ namespace
 
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
 {
-    sdm->AddUBO(DescriptorSetType::PerMaterial,ubo);
-    sdm->AddStruct(mtl::MaterialInstanceStruct);
+    sdi->AddUBO(DescriptorSetType::PerMaterial,ubo);
+    sdi->AddStruct(mtl::MaterialInstanceStruct);
 
     AddFunction(shader_stage==VK_SHADER_STAGE_VERTEX_BIT?MF_GetMI_VS:MF_GetMI_Other);
 
@@ -212,14 +226,14 @@ bool ShaderCreateInfo::ProcOutput()
 {
     output_struct.Clear();
 
-    const ShaderAttributeArray &ssd=sdm->GetShaderStageIO().output;
+    const VertexInputAttributeArray &ssd=sdi->GetShaderStageIO().output;
 
     if(ssd.count<=0)return(true);
 
     output_struct=GetShaderStageName(shader_stage);
     output_struct+="_Output\n{\n";
 
-    const ShaderAttribute *ss=ssd.items;
+    const VertexInputAttribute *ss=ssd.items;
 
     for(uint i=0;i<ssd.count;i++)
     {
@@ -251,7 +265,7 @@ bool ShaderCreateInfo::ProcOutput()
 
 bool ShaderCreateInfo::ProcStruct()
 {
-    const AnsiStringList &struct_list=sdm->GetStructList();
+    const AnsiStringList &struct_list=sdi->GetStructList();
 
     AnsiString codes;
 
@@ -283,7 +297,7 @@ bool ShaderCreateInfo::ProcMI()
 
 bool ShaderCreateInfo::ProcUBO()
 {
-    auto ubo_list=sdm->GetUBOList();
+    auto ubo_list=sdi->GetUBOList();
 
     const int count=ubo_list.GetCount();
 
@@ -327,7 +341,7 @@ bool ShaderCreateInfo::ProcSSBO()
 
 bool ShaderCreateInfo::ProcConstantID()
 {
-    auto const_list=sdm->GetConstList();
+    auto const_list=sdi->GetConstList();
 
     const int count=const_list.GetCount();
 
@@ -357,7 +371,7 @@ bool ShaderCreateInfo::ProcConstantID()
 
 bool ShaderCreateInfo::ProcSampler()
 {
-    auto sampler_list=sdm->GetSamplerList();
+    auto sampler_list=sdi->GetSamplerList();
 
     const int count=sampler_list.GetCount();
 

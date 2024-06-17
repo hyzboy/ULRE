@@ -2,7 +2,6 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKShaderModuleMap.h>
-#include<hgl/graph/VKShaderResource.h>
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 #include<hgl/graph/VKVertexInput.h>
 #include<hgl/filesystem/FileSystem.h>
@@ -124,7 +123,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
         if(vert)
-            mtl->vertex_input=GetVertexInput(vert->sdm->GetShaderStageIO().input);
+            mtl->vertex_input=GetVertexInput(vert->sdi->GetShaderStageIO().input);
     }
 
     {
