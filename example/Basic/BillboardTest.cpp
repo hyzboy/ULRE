@@ -28,8 +28,6 @@ class TestApp:public SceneAppFramework
 {
     Color4f color;
 
-    DeviceBuffer *ubo_color=nullptr;
-
 private:
 
     Material *          mtl_plane_grid      =nullptr;
@@ -73,7 +71,7 @@ private:
         mtl::BillboardMaterialCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2D",Prim::Billboard);
 
         {
-            cfg.fixed_size=false;
+            cfg.fixed_size=true;
 
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateBillboard2D(&cfg);
        
@@ -99,6 +97,10 @@ private:
                                                             texture,                            ///<纹理
                                                             sampler))                           ///<采样器
             return(false);
+
+        Vector2u texture_size(texture->GetWidth(),texture->GetHeight());
+
+        mi_billboard->WriteMIData(texture_size);
 
         return(true);
     }

@@ -4,9 +4,16 @@
 STD_MTL_NAMESPACE_BEGIN
 namespace
 {
+    constexpr const char mi_codes[]="uvec2 BillboardSize;";         //材质实例代码
+    constexpr const uint32_t mi_bytes=sizeof(Vector2u);             //材质实例数据大小
+
     constexpr const char vs_main[]=R"(
 void main()
 {
+    MaterialInstance mi=GetMI();
+
+    Output.BillboardSize=mi.BillboardSize/viewport.canvas_resolution;
+
     gl_Position=GetPosition3D();
     gl_Position/=gl_Position.w;
 })";
@@ -25,7 +32,7 @@ void main()
     for(int i=0;i<4;i++)
     {
         gl_Position=gl_in[0].gl_Position;
-        gl_Position.xy+=BillboardVertex[i];
+        gl_Position.xy+=BillboardVertex[i]*Input[0].BillboardSize;
 
         Output.TexCoord=BillboardVertex[i]+vec2(0.5);
 
@@ -52,6 +59,8 @@ void main()
             if(!Std3DMaterial::CustomVertexShader(vsc))
                 return(false);
 
+            vsc->AddOutput(VAT_VEC2,"BillboardSize");
+
             vsc->SetMain(vs_main);
             return(true);
         }
@@ -73,6 +82,15 @@ void main()
             fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
             fsc->SetMain(fs_main);
+            return(true);
+        }
+
+        bool EndCustomShader() override
+        {
+            mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
+                                        mi_bytes,                       //材质实例数据大小
+                                        VK_SHADER_STAGE_VERTEX_BIT);    //只在Vertex Shader中使用材质实例最终数据
+
             return(true);
         }
     };//class MaterialBillboard2DFixedSize:public Std3DMaterial
