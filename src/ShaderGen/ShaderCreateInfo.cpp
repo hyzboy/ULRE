@@ -9,11 +9,10 @@
 
 namespace hgl{namespace graph{
 
-ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m)
+ShaderCreateInfo::ShaderCreateInfo()
 {
-    shader_stage=ss;
-    mdi=m;
-    sdi=new ShaderDescriptorInfo(ss);
+    hgl_zero(shader_stage);
+    mdi=nullptr;
 
     spv_data=nullptr;
 
@@ -21,12 +20,16 @@ ShaderCreateInfo::ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorIn
     define_value_max_length=0;
 }
 
+void ShaderCreateInfo::Init(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m)
+{
+    shader_stage=sdi->GetShaderStage();
+    mdi=m;
+}
+
 ShaderCreateInfo::~ShaderCreateInfo()
 {
     if(spv_data)
         FreeSPVData(spv_data);
-
-    delete sdi;
 }
 
 bool ShaderCreateInfo::AddDefine(const AnsiString &m,const AnsiString &v)
@@ -100,30 +103,19 @@ bool ShaderCreateInfo::ProcDefine()
     return(true);
 }
 
-int ShaderCreateInfo::AddOutput(const VAType &type,const AnsiString &name,Interpolation inter)
+void ShaderCreateInfo::AddStruct(const AnsiString &name)
 {
-    VertexInputAttribute *ss=new VertexInputAttribute;
-
-    hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
-
-    ss->basetype        =(uint8)type.basetype;
-    ss->vec_size        =       type.vec_size;
-    ss->interpolation   =       inter;
-
-    return sdi->AddOutput(ss);
+    return GetSDI()->AddStruct(name);
 }
 
-int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter)
+bool ShaderCreateInfo::AddUBO(DescriptorSetType type,const UBODescriptor *sd)
 {
-    VAType vat;
+    return GetSDI()->AddUBO(type,sd);
+}
 
-    if(name.IsEmpty())
-        return -1;
-
-    if(!ParseVertexAttribType(&vat,type))
-        return -2;
-
-    return AddOutput(vat,name,inter);
+bool ShaderCreateInfo::AddSampler(DescriptorSetType type,const SamplerDescriptor *sd)
+{
+    return GetSDI()->AddSampler(type,sd);
 }
 
 //int ShaderCreateInfo::AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth)
@@ -140,62 +132,14 @@ int ShaderCreateInfo::AddOutput(const AnsiString &type,const AnsiString &name,In
 //
 //}
 
-bool ShaderCreateInfo::ProcSubpassInput()
-{
-    auto sil=sdi->GetSubpassInputList();
-
-    if(sil.IsEmpty())
-        return(true);
-
-    final_shader+="\n";
-
-    auto si=sil.GetData();
-    int si_count=sil.GetCount();
-
-    for(int i=0;i<si_count;i++)
-    {
-        final_shader+="layout(input_attachment_index=";
-        final_shader+=AnsiString::numberOf((*si)->input_attachment_index);
-        final_shader+=", binding=";
-        final_shader+=AnsiString::numberOf((*si)->binding);
-        final_shader+=") uniform subpassInput ";
-        final_shader+=(*si)->name;
-        final_shader+=";\n";
-
-        ++si;
-    }
-
-    return(true);
-}
-
-namespace
-{
-    constexpr const char MI_ID_OUTPUT[]="MaterialInstanceID";
-    constexpr const char MF_GetMI_VS    []="\nMaterialInstance GetMI(){return mtl.mi[Assign.y];}\n";
-    constexpr const char MF_GetMI_Other []="\nMaterialInstance GetMI(){return mtl.mi[Input.MaterialInstanceID];}\n";
-
-    constexpr const char MF_HandoverMI_VS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=Assign.y;}\n";
-    constexpr const char MF_HandoverMI_GS[]=    "\nvoid HandoverMI(){Output.MaterialInstanceID=Input[0].MaterialInstanceID;}\n";
-    constexpr const char MF_HandoverMI_OTHER[]= "\nvoid HandoverMI(){Output.MaterialInstanceID=Input.MaterialInstanceID;}\n";
-}//namespace
-
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
 {
-    sdi->AddUBO(DescriptorSetType::PerMaterial,ubo);
-    sdi->AddStruct(mtl::MaterialInstanceStruct);
+    AddUBO(DescriptorSetType::PerMaterial,ubo);
+    AddStruct(mtl::MaterialInstanceStruct);
 
-    AddFunction(shader_stage==VK_SHADER_STAGE_VERTEX_BIT?MF_GetMI_VS:MF_GetMI_Other);
+    AddFunction(shader_stage==VK_SHADER_STAGE_VERTEX_BIT?mtl::func::MF_GetMI_VS:mtl::func::MF_GetMI_Other);
 
     mi_codes=mi;
-}
-
-void ShaderCreateInfo::AddMaterialInstanceOutput()
-{
-    AddOutput(VAT_UINT,MI_ID_OUTPUT,Interpolation::Flat);
-
-    if(shader_stage==VK_SHADER_STAGE_VERTEX_BIT)    AddFunction(MF_HandoverMI_VS);else
-    if(shader_stage==VK_SHADER_STAGE_GEOMETRY_BIT)  AddFunction(MF_HandoverMI_GS);else
-                                                    AddFunction(MF_HandoverMI_OTHER);
 }
 
 bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
@@ -222,37 +166,42 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
     return(true);
 }
 
-bool ShaderCreateInfo::ProcOutput()
+void ToStringList(AnsiString &output_struct,const SVArray &sv_array)
 {
-    output_struct.Clear();
+    const ShaderVariable *sv=sv_array.items;
 
-    const VertexInputAttributeArray &ssd=sdi->GetShaderStageIO().output;
-
-    if(ssd.count<=0)return(true);
-
-    output_struct=GetShaderStageName(shader_stage);
-    output_struct+="_Output\n{\n";
-
-    const VertexInputAttribute *ss=ssd.items;
-
-    for(uint i=0;i<ssd.count;i++)
+    for(uint i=0;i<sv_array.count;i++)
     {
         output_struct+="    ";
 
-        if(ss->interpolation!=Interpolation::Smooth)
+        if(sv->interpolation!=Interpolation::Smooth)
         {
-            output_struct+=InterpolationName[size_t(ss->interpolation)];
+            output_struct+=InterpolationName[size_t(sv->interpolation)];
 
             output_struct+=" ";
         }
 
-        output_struct+=GetShaderAttributeTypename(ss);
+        output_struct+=sv->type.GetTypename();
         output_struct+=" ";
-        output_struct+=ss->name;
+        output_struct+=sv->name;
         output_struct+=";\n";
 
-        ++ss;
+        ++sv;
     }
+}
+
+bool ShaderCreateInfo::ProcOutput()
+{
+    output_struct.Clear();
+
+    const SVArray &sv_array=GetSDI()->GetOutput();
+
+    if(sv_array.count<=0)return(true);
+
+    output_struct=GetShaderStageName(shader_stage);
+    output_struct+="_Output\n{\n";
+
+    ToStringList(output_struct,sv_array);
 
     output_struct+="}";
 
@@ -430,8 +379,6 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
     if(!ProcLayout())
         return(false);
 
-    if(!ProcSubpassInput())
-        return(false);
     if(!ProcInput(last_sc))
         return(false);
 //    if(!ProcStruct())
