@@ -26,6 +26,7 @@ public:
 
     bool SetGeom(const Prim &ip,const Prim &op,const uint32_t mv);
     
+    int AddOutput(SVList &);
     int AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
     void AddMaterialInstanceOutput() override;
 

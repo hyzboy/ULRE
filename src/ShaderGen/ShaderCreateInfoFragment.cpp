@@ -2,7 +2,24 @@
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
-    
+
+int ShaderCreateInfoFragment::AddOutput(VIAList &via_list)
+{
+    int count=0;
+
+    for(VIA &via:via_list)
+    {
+        //都输出了，没这些值
+        //via.input_rate=VK_VERTEX_INPUT_RATE_VERTEX;
+        //via.group=VertexInputGroup::Basic;
+
+        if(fsdi.AddOutput(via))
+            ++count;
+    }
+
+    return count;
+}
+
 int ShaderCreateInfoFragment::AddOutput(const VAType &type,const AnsiString &name,Interpolation inter)
 {
     VertexInputAttribute via;

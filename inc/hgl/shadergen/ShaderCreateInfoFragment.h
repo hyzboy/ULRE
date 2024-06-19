@@ -25,6 +25,7 @@ public:
     ShaderCreateInfoFragment(MaterialDescriptorInfo *m):ShaderCreateInfo(){ShaderCreateInfo::Init(&fsdi,m);}
     ~ShaderCreateInfoFragment()=default;
     
+    int AddOutput(VIAList &);
     int AddOutput(const graph::VAType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
     int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
 };

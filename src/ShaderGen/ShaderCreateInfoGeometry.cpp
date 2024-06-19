@@ -26,6 +26,21 @@ namespace hgl
             AddFunction(mtl::func::MF_HandoverMI_GS);
         }
 
+        int ShaderCreateInfoGeometry::AddOutput(SVList &sv_list)
+        {
+            int count=0;
+
+            for(ShaderVariable &sv:sv_list)
+            {
+                sv.interpolation=Interpolation::Smooth;
+
+                if(gsdi.AddOutput(sv))
+                    ++count;
+            }
+
+            return count;
+        }
+
         int ShaderCreateInfoGeometry::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
         {
             ShaderVariable sv;

@@ -57,7 +57,7 @@ void main()
             if(!Std3DMaterial::CustomVertexShader(vsc))
                 return(false);
 
-            vsc->AddOutput(VAT_UINT,"l2w_id",Interpolation::Flat);
+            vsc->AddOutput(SVT_UINT,"l2w_id",Interpolation::Flat);
 
             vsc->SetMain(vs_main);
             return(true);
@@ -67,7 +67,7 @@ void main()
         {
             gsc->SetGeom(Prim::Points,Prim::TriangleStrip,4);
 
-            gsc->AddOutput(VAT_VEC2,"TexCoord");
+            gsc->AddOutput(SVT_VEC2,"TexCoord");
 
             gsc->SetMain(gs_main);
             return(true);

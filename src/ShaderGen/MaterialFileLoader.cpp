@@ -346,11 +346,36 @@ namespace
         }
     };//struct MaterialInstanceBlockParse
 
-    bool ParseVertexInputAttrib(VIA *via,const char *str)
+    bool ParseInterpolation(Interpolation *inter,const char *name)
+    {
+        if(!inter)return(false);
+        if(!name||!*name)return(false);
+
+        for(int i=(int)Interpolation::Smooth;i<(int)Interpolation::Flat;i++)
+            if(!strcmp(name,InterpolationName[i],sizeof(InterpolationName[i])))
+            {
+                *inter=Interpolation(i);
+                return(true);
+            }
+
+        return(false);
+    }
+
+    bool ParseOutputItem(VIA *via,const char *str)
     {
         const char *sp;
 
         while(*str==' '||*str=='\t')++str;
+
+        if(ParseInterpolation(&(via->interpolation),str))
+        {
+            while(*str!=' '&&*str!='\t')++str;
+            while(*str==' '||*str=='\t')++str;
+        }
+        else
+        {
+            via->interpolation=Interpolation::Smooth;
+        }
 
         VAType vat;
 
@@ -372,11 +397,21 @@ namespace
         return(true);
     }
 
-    bool ParseUniformAttrib(ShaderVariable *sv,const char *str)
+    bool ParseOutputItem(ShaderVariable *sv,const char *str)
     {
         const char *sp;
 
         while(*str==' '||*str=='\t')++str;
+
+        if(ParseInterpolation(&(sv->interpolation),str))
+        {
+            while(*str!=' '&&*str!='\t')++str;
+            while(*str==' '||*str=='\t')++str;
+        }
+        else
+        {
+            sv->interpolation=Interpolation::Smooth;
+        }
 
         if(!sv->type.ParseTypeString(str))
             return(false);
@@ -411,16 +446,17 @@ namespace
 
             VIA via;
 
-            if(ParseVertexInputAttrib(&via,text))
+            if(ParseOutputItem(&via,text))
                 via_list->Add(via);
 
             return(true);
         }
     };//struct VertexInputBlockParse
 
+    template<typename SD,typename OIT>
     struct ShaderBlockParse:public TextParse
     {
-        ShaderData *            shader_data=nullptr;
+        SD *                    shader_data=nullptr;
 
         bool                    output=false; 
 
@@ -429,7 +465,7 @@ namespace
 
     public:
 
-        ShaderBlockParse(ShaderData *sd)
+        ShaderBlockParse(SD *sd)
         {
             shader_data=sd;
         }
@@ -460,10 +496,10 @@ namespace
                     return(true);
                 }
 
-                ShaderVariable sv;
+                OIT output_item;
 
-                if(ParseUniformAttrib(&sv,text))
-                    shader_data->AddOutput(sv);
+                if(ParseOutputItem(&output_item,text))
+                    shader_data->AddOutput(output_item);
             }
 
             if(hgl::stricmp(text,"Code",4)==0)
@@ -507,7 +543,10 @@ namespace
         }
     };//struct ShaderBlockParse
 
-    struct GeometryShaderBlockParse:public ShaderBlockParse
+    using VertexShaderBlockParse=ShaderBlockParse<VertexShaderData,ShaderVariable>;
+    using FragmentShaderBlockParse=ShaderBlockParse<FragmentShaderData,VIA>;
+
+    struct GeometryShaderBlockParse:public ShaderBlockParse<GeometryShaderData,ShaderVariable>
     {
         GeometryShaderData *gsd=nullptr;
 
@@ -576,7 +615,6 @@ namespace
 
             return(true);
         }
-        
     };//struct GeometryShaderBlockParse
 
     struct MaterialTextParse:public TextParse
@@ -620,7 +658,7 @@ namespace
                     parse=new MaterialInstanceBlockParse(&(mfd->mi));
                 else
                 if(state==MaterialFileBlock::VertexInput)
-                    parse=new VertexInputBlockParse(&(mfd->vi));
+                    parse=new VertexInputBlockParse(&(mfd->via));
                 else
                 if(state>=MaterialFileBlock::Vertex
                  &&state<=MaterialFileBlock::Fragment)
@@ -629,23 +667,23 @@ namespace
 
                     if(state==MaterialFileBlock::Vertex)
                     {
-                        sd=new ShaderData(VK_SHADER_STAGE_VERTEX_BIT);
+                        sd=new VertexShaderData();
 
-                        parse=new ShaderBlockParse(sd);
+                        parse=new VertexShaderBlockParse((VertexShaderData *)sd);
                     }
                     else
                     if(state==MaterialFileBlock::Geometry)
                     {
-                        sd=new GeometryShaderData(VK_SHADER_STAGE_GEOMETRY_BIT);
+                        sd=new GeometryShaderData();
 
                         parse=new GeometryShaderBlockParse((GeometryShaderData *)sd);
                     }
                     else
                     if(state==MaterialFileBlock::Fragment)
                     {
-                        sd=new ShaderData(VK_SHADER_STAGE_FRAGMENT_BIT);
+                        sd=new FragmentShaderData();
 
-                        parse=new ShaderBlockParse(sd);
+                        parse=new FragmentShaderBlockParse((FragmentShaderData *)sd);
                     }
 
                     if(!sd)

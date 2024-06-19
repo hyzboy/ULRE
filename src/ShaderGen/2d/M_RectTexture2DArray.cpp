@@ -61,7 +61,7 @@ void main()
 
             vsc->AddInput(VAT_VEC4,VAN::TexCoord);
 
-            vsc->AddOutput(VAT_VEC4,"TexCoord");
+            vsc->AddOutput(SVT_VEC4,"TexCoord");
 
             vsc->SetMain(vs_main);
             return(true);
@@ -71,7 +71,7 @@ void main()
         {
             gsc->SetGeom(Prim::Points,Prim::TriangleStrip,4);
 
-            gsc->AddOutput(VAT_VEC2,"TexCoord");
+            gsc->AddOutput(SVT_VEC2,"TexCoord");
 
             gsc->SetMain(gs_main);
             return(true);
