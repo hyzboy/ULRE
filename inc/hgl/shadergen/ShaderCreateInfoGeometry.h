@@ -13,6 +13,9 @@ class ShaderCreateInfoGeometry:public ShaderCreateInfo
     uint32_t max_vertices;
 
 public:
+    
+    bool IsEmptyOutput()const override{return gsdi.IsEmptyOutput();}
+    void GetOutputStrcutString(AnsiString &str) override;
 
     ShaderDescriptorInfo *GetSDI()override{return &gsdi;}
 

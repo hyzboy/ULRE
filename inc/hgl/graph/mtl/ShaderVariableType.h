@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/type/String.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/graph/VKSamplerType.h>
@@ -242,6 +243,8 @@ namespace hgl
 
             const char *GetTypename()const;
 
+            bool ParseTypeString(const char *str);
+
             const uint64 ToCode()const{return svt_code;}
             const bool FromCode(const uint64 code)
             {
@@ -385,6 +388,10 @@ namespace hgl
 
         public:
 
+            const bool IsEmpty()const{return !items||count<=0;}
+
+        public:
+
             ShaderVariableArray()
             {
                 count=0;
@@ -509,6 +516,33 @@ namespace hgl
 
                 hgl_cpy(items,src->items,src->count);
                 return(true);
+            }
+            
+            void ToString(AnsiString &output_string)
+            {
+                if(IsEmpty())
+                    return;
+
+                const ShaderVariable *sv=items;
+
+                for(uint i=0;i<count;i++)
+                {
+                    output_string+="    ";
+
+                    if(sv->interpolation!=Interpolation::Smooth)
+                    {
+                        output_string+=InterpolationName[size_t(sv->interpolation)];
+
+                        output_string+=" ";
+                    }
+
+                    output_string+=sv->type.GetTypename();
+                    output_string+=" ";
+                    output_string+=sv->name;
+                    output_string+=";\n";
+
+                    ++sv;
+                }
             }
         };//struct ShaderVariableArray
 

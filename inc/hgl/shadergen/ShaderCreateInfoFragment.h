@@ -11,10 +11,13 @@ class ShaderCreateInfoFragment:public ShaderCreateInfo
 
 protected:
 
+    bool IsEmptyOutput()const override{return false;/*这个返回啥无所谓，因为Fragment Shader走自己的ProcOutput*/ }
     bool ProcOutput() override;
+    
+    void AddMaterialInstanceOutput() override{};
 
 public:
-
+    
     ShaderDescriptorInfo *GetSDI()override{return &fsdi;}
 
 public:

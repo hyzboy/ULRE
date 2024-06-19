@@ -52,6 +52,9 @@ protected:
     virtual bool ProcLayout(){return(true);}
 
     virtual bool ProcInput(ShaderCreateInfo *);
+
+    virtual bool IsEmptyOutput()const=0;
+    virtual void GetOutputStrcutString(AnsiString &){}
     virtual bool ProcOutput();
 
     virtual bool ProcStruct();

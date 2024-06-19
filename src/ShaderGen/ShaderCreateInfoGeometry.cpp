@@ -37,6 +37,11 @@ namespace hgl
 
             return gsdi.AddOutput(sv);
         }
+        
+        void ShaderCreateInfoGeometry::GetOutputStrcutString(AnsiString &str)
+        {
+            gsdi.GetOutput().ToString(str);
+        }
 
         bool ShaderCreateInfoGeometry::ProcLayout()
         {

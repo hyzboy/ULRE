@@ -13,6 +13,9 @@ namespace hgl
 
             bool ProcSubpassInput();
             bool ProcInput(ShaderCreateInfo *) override;
+            
+            bool IsEmptyOutput()const override{return vsdi.IsEmptyOutput();}
+            void GetOutputStrcutString(AnsiString &str) override;
 
         public:
 

@@ -80,6 +80,9 @@ public:
 
     IArray &GetInput(){return input;}
     OArray &GetOutput(){return output;}
+
+    const bool IsEmptyInput()const{return input.IsEmpty();}
+    const bool IsEmptyOutput()const{return output.IsEmpty();}
 };//class CustomShaderDescriptorInfo
 
 class VertexShaderDescriptorInfo:public CustomShaderDescriptorInfo<VK_SHADER_STAGE_VERTEX_BIT,VIAArray,VIA,SVArray,ShaderVariable  >

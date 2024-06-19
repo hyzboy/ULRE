@@ -6,6 +6,7 @@
 #include<hgl/graph/VKSamplerType.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/graph/mtl/ShaderVariableType.h>
 
 namespace material_file
 {
@@ -13,13 +14,6 @@ namespace material_file
     using namespace hgl::graph;
 
     constexpr size_t SHADER_RESOURCE_NAME_MAX_LENGTH=VERTEX_ATTRIB_NAME_MAX_LENGTH;
-
-    struct ShaderIOAttrib
-    {
-        VAType vat;
-        
-        char name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
-    };
 
     struct MaterialInstanceData
     {
@@ -61,8 +55,6 @@ namespace material_file
         const char *            code;
         uint                    code_length;
 
-        List<ShaderIOAttrib>    output;
-
         List<SamplerData>       sampler;
 
     public:
@@ -76,6 +68,19 @@ namespace material_file
         }
 
         const VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
+
+        virtual void AddOutput(const ShaderVariable &sv);
+    };
+
+    struct VertexShaderData:public ShaderData
+    {
+        List<ShaderVariable>    output;
+
+        VertexShaderData():ShaderData(VK_SHADER_STAGE_VERTEX_BIT){}
+        
+    public:
+
+        void AddOutput(const ShaderVariable &sv)override{output.Add(sv);}
     };
 
     struct GeometryShaderData:public ShaderData
@@ -84,9 +89,26 @@ namespace material_file
         Prim output_prim;
         uint max_vertices=0;
 
+        List<ShaderVariable>    output;
+
     public:
 
-        using ShaderData::ShaderData;        
+        GeometryShaderData():ShaderData(VK_SHADER_STAGE_GEOMETRY_BIT){}
+        
+    public:
+
+        void AddOutput(const ShaderVariable &sv)override{output.Add(sv);}
+    };
+
+    struct FragmentShaderData:public ShaderData
+    {
+        List<VIA>    output;
+
+        FragmentShaderData():ShaderData(VK_SHADER_STAGE_FRAGMENT_BIT){}
+        
+    public:
+
+        void AddOutput(const ShaderVariable &sv)override{}
     };
 
     using ShaderDataMap=ObjectMap<VkShaderStageFlagBits,ShaderData>;
@@ -109,7 +131,7 @@ namespace material_file
 
         MaterialInstanceData    mi{};
 
-        List<ShaderIOAttrib>    vi;                         ///<Vertex Input
+        List<VIA>               via;                        ///<Vertex Input
 
         UBODataList             ubo_list;
 
