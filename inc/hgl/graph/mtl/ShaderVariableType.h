@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VertexAttrib.h>
+#include<hgl/graph/VKInterpolation.h>
 #include<hgl/graph/VKSamplerType.h>
 #include<hgl/graph/VKImageType.h>
 #include<hgl/CompOperator.h>
@@ -13,13 +14,12 @@ namespace hgl
         {
             Scalar=0,
             Vector,
-            Materix,
+            Matrix,
             Sampler,
             Image,
             AtomicCounter,
-            ImplicitConversion,
 
-            ENUM_CLASS_RANGE(Scalar,Materix)
+            ENUM_CLASS_RANGE(Scalar,AtomicCounter)
         };//enum class ShaderVariableBaseType
 
         using SVBaseType=ShaderVariableBaseType;
@@ -123,7 +123,7 @@ namespace hgl
             {
                 svt_code=0;
 
-                base_type=SVBaseType::Materix;
+                base_type=SVBaseType::Matrix;
 
                 matrix.type=vabt;
                 matrix.n=col;
@@ -170,7 +170,7 @@ namespace hgl
                     return(true);
                 }
 
-                if(base_type==SVBaseType::Materix)
+                if(base_type==SVBaseType::Matrix)
                 {
                     if(matrix.m==0)
                     {
@@ -216,7 +216,7 @@ namespace hgl
                     return int(vector.type)-int(svt.vector.type);
                 }
 
-                if(base_type==SVBaseType::Materix)
+                if(base_type==SVBaseType::Matrix)
                 {
                     off=int(matrix.type)-int(svt.matrix.type);
 
@@ -239,6 +239,8 @@ namespace hgl
             }
 
             CompOperator(const ShaderVariableType &,Comp)
+
+            const char *GetTypename()const;
 
             const uint64 ToCode()const{return svt_code;}
             const bool FromCode(const uint64 code)
@@ -366,5 +368,150 @@ namespace hgl
 
         const SVType SVT_Image2DMS(ShaderImageType::Image2DMS,1);
         const SVType SVT_Image2DMSArray(ShaderImageType::Image2DMSArray,1);
+
+        struct ShaderVariable
+        {
+            char            name[VERTEX_ATTRIB_NAME_MAX_LENGTH];
+            uint            location;
+            SVType          type;
+            Interpolation   interpolation;  //插值方式
+        };
+
+        struct ShaderVariableArray
+        {
+            uint count;
+
+            ShaderVariable *items;
+
+        public:
+
+            ShaderVariableArray()
+            {
+                count=0;
+                items=nullptr;
+            }
+
+            ~ShaderVariableArray()
+            {
+                Clear();
+            }
+
+            int Comp(const ShaderVariableArray *sva)const
+            {
+                if(!sva)
+                    return 1;
+
+                int off=count-sva->count;
+                if(off)return off;
+
+                for(uint i=0;i<count;i++)
+                {
+                    off=items[i].location-sva->items[i].location;
+                    if(off)
+                        return off;
+
+                    if(items[i].type.ToCode()>sva->items[i].type.ToCode())
+                        return 1;
+
+                    //ToCode返回的是uint64，可能差值超大，所以不能直接用-的结果
+
+                    if(items[i].type.ToCode()<sva->items[i].type.ToCode())
+                        return -1;
+
+                    off=int(items[i].interpolation)-int(sva->items[i].interpolation);
+                    if(off)
+                        return off;
+
+                    off=hgl::strcmp(items[i].name,sva->items[i].name);
+                    if(off)
+                        return off;
+                }
+
+                return 0;
+            }
+
+            int Comp(const ShaderVariableArray &sva)const{return Comp(&sva);}
+
+            CompOperator(const ShaderVariableArray *,Comp)
+            CompOperator(const ShaderVariableArray &,Comp)
+                
+            bool Init(const uint c=0)
+            {
+                if(items)
+                    return(false);
+
+                if(c>0)
+                {
+                    count=c;
+                    items=array_alloc<ShaderVariable>(count);
+                }
+                else
+                {
+                    count=0;
+                    items=nullptr;
+                }
+
+                return(true);
+            }
+
+            bool IsMember(const char *name)const
+            {                
+                if(count<=0)
+                    return(false);
+
+                for(uint i=0;i<count;i++)
+                    if(hgl::strcmp(items[i].name,name)==0)
+                        return(true);
+
+                return(false);
+            }
+
+            bool Add(ShaderVariable &sv)
+            {
+                if(IsMember(sv.name))
+                    return(false);
+
+                sv.location=count;
+
+                if(!items)
+                {
+                    items=array_alloc<ShaderVariable>(1);
+                    count=1;
+                }
+                else
+                {
+                    ++count;
+                    items=array_realloc(items,count);
+                }
+                
+                hgl_cpy(items[count-1],sv);
+                return(true);
+            }
+
+            void Clear()
+            {
+                if(items)
+                {
+                    array_free(items);
+                    items=nullptr;
+                }
+
+                count=0;
+            }
+
+            bool Clone(const ShaderVariableArray *src)
+            {
+                if(!src)
+                    return(false);
+
+                if(!Init(src->count))
+                    return(false);
+
+                hgl_cpy(items,src->items,src->count);
+                return(true);
+            }
+        };//struct ShaderVariableArray
+
+        using SVArray=ShaderVariableArray;
     }//namespace graph
 }//namespace hgl

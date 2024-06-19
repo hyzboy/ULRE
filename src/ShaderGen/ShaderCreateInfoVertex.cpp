@@ -1,5 +1,4 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoVertex.h>
-#include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKShaderStage.h>
 #include<hgl/graph/VKRenderAssign.h>
@@ -8,23 +7,34 @@
 #include"ShaderLibrary.h"
 
 VK_NAMESPACE_BEGIN
-ShaderCreateInfoVertex::ShaderCreateInfoVertex(MaterialDescriptorInfo *m):ShaderCreateInfo(VK_SHADER_STAGE_VERTEX_BIT,m)
+
+void ShaderCreateInfoVertex::AddMaterialInstanceOutput()
 {
+    AddOutput(SVT_UINT,mtl::func::MI_ID_OUTPUT,Interpolation::Flat);
+    AddFunction(mtl::func::MF_HandoverMI_VS);
+    }
+    else
+    if(shader_stage==VK_SHADER_STAGE_GEOMETRY_BIT)  
+    {
+        AddFunction(MF_HandoverMI_GS);
+    }
+    //else
+    //AddFunction(MF_HandoverMI_OTHER);
 }
 
 int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
-    VertexInputAttribute *ss=new VertexInputAttribute;
+    VertexInputAttribute via;
 
-    hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
+    hgl::strcpy(via.name,sizeof(via.name),name.c_str());
 
-    ss->basetype=(uint8) type.basetype;
-    ss->vec_size=        type.vec_size;
+    via.basetype=(uint8) type.basetype;
+    via.vec_size=        type.vec_size;
 
-    ss->input_rate      =input_rate;
-    ss->group           =group;
+    via.input_rate      =input_rate;
+    via.group           =group;
 
-    return sdi->AddInput(ss);
+    return vsdi.AddInput(via);
 }
 
 int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
@@ -39,7 +49,19 @@ int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &na
 
 int ShaderCreateInfoVertex::hasInput(const char *name)
 {
-    return sdi->hasInput(name);
+    return vsdi.hasInput(name);
+}
+
+int ShaderCreateInfoVertex::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
+{
+    ShaderVariable sv;
+    
+    hgl::strcpy(sv.name,sizeof(sv.name),name.c_str());
+
+    sv.type=type;
+    sv.interpolation=inter;
+
+    return vsdi.AddOutput(sv);
 }
 
 void ShaderCreateInfoVertex::AddJoint()
@@ -58,9 +80,40 @@ void ShaderCreateInfoVertex::AddAssign()
     AddFunction(STD_MTL_FUNC_NAMESPACE::MF_GetLocalToWorld_ByAssign);
 }
 
+bool ShaderCreateInfoVertex::ProcSubpassInput()
+{
+    auto sil=vsdi.GetSubpassInputList();
+
+    if(sil.IsEmpty())
+        return(true);
+
+    final_shader+="\n";
+
+    auto si=sil.GetData();
+    int si_count=sil.GetCount();
+
+    for(int i=0;i<si_count;i++)
+    {
+        final_shader+="layout(input_attachment_index=";
+        final_shader+=AnsiString::numberOf((*si)->input_attachment_index);
+        final_shader+=", binding=";
+        final_shader+=AnsiString::numberOf((*si)->binding);
+        final_shader+=") uniform subpassInput ";
+        final_shader+=(*si)->name;
+        final_shader+=";\n";
+
+        ++si;
+    }
+
+    return(true);
+}
+
 bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
-{    
-    const auto &input=sdi->GetShaderStageIO().input;
+{
+    if(!ProcSubpassInput())
+        return(false);
+
+    const auto &input=vsdi.GetInput();
 
     if(input.count<=0)
     {

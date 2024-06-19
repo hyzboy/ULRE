@@ -4,6 +4,7 @@
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKInterpolation.h>
+#include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/type/StringList.h>
 
@@ -15,6 +16,7 @@ class MaterialDescriptorInfo;
 class ShaderDescriptorInfo;
 
 struct UBODescriptor;
+struct SamplerDescriptor;
 
 class ShaderCreateInfo
 {
@@ -28,8 +30,8 @@ protected:
 
     AnsiStringList define_macro_list;
     AnsiStringList define_value_list;
-    uint32_t define_macro_max_length;
-    uint32_t define_value_max_length;
+    int define_macro_max_length;
+    int define_value_max_length;
 
     AnsiString output_struct;
 
@@ -49,7 +51,6 @@ protected:
     virtual bool ProcDefine();
     virtual bool ProcLayout(){return(true);}
 
-    virtual bool ProcSubpassInput();
     virtual bool ProcInput(ShaderCreateInfo *);
     virtual bool ProcOutput();
 
@@ -66,25 +67,28 @@ protected:
 
 public:
 
-    ShaderDescriptorInfo *sdi;
-
+    virtual ShaderDescriptorInfo *GetSDI()=0;
     const VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
+
+protected:
+    
+    void Init(ShaderDescriptorInfo *sdi,MaterialDescriptorInfo *m);
 
 public:
 
-    ShaderCreateInfo(VkShaderStageFlagBits ss,MaterialDescriptorInfo *m);
+    ShaderCreateInfo();
     virtual ~ShaderCreateInfo();
 
     bool AddDefine(const AnsiString &m,const AnsiString &v);
 
-    int AddOutput(const graph::VAType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
-    int AddOutput(const AnsiString &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
-    //int AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);
+    void AddStruct(const AnsiString &);
+    bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
+    bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);
 
     void AddFunction(const char *str){function_list.Add(str);}
 
     void SetMaterialInstance(UBODescriptor *,const AnsiString &);
-    void AddMaterialInstanceOutput();
+    virtual void AddMaterialInstanceOutput()=0;
 
     void SetMain(const AnsiString &str){main_function=str;}
     void SetMain(const char *str,const int len)

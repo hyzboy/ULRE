@@ -40,6 +40,7 @@ SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UniformBuffer.h
                             ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
+                            ShaderVariableType.cpp
                             common/MFCommon.h
                             common/MFGetPosition.h
                             common/MFGetNormal.h

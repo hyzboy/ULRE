@@ -4,58 +4,8 @@ namespace hgl{namespace graph{
 ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
 {
     stage_flag=flag_bit;
-
-    Init(stage_io);
-    
+   
     hgl_zero(push_constant);
-}
-
-namespace
-{
-    bool Find(const VertexInputAttributeArray &sad,const char *name)
-    {
-        if(sad.count<=0)
-            return(false);
-
-        for(uint i=0;i<sad.count;i++)
-            if(hgl::strcmp(sad.items[i].name,name)==0)
-                return(true);
-
-        return(false);
-    }
-}//namespace
-
-bool ShaderDescriptorInfo::AddInput(VertexInputAttribute *ss)
-{
-    if(!ss)return(false);
-
-    if(Find(stage_io.input,ss->name))return(false);
-
-    ss->location=stage_io.input.count;
-
-    Append(&stage_io.input,ss);
-    return(true);
-}
-
-
-bool ShaderDescriptorInfo::hasInput(const char *name)const
-{
-    if(!name||!*name)return(false);
-
-    return Find(stage_io.input,name);
-
-}
-
-bool ShaderDescriptorInfo::AddOutput(VertexInputAttribute *ss)
-{
-    if(!ss)return(false);
-
-    if(Find(stage_io.output,ss->name))return(false);
-    
-    ss->location=stage_io.output.count;
-
-    Append(&stage_io.output,ss);
-    return(true);
 }
 
 void ShaderDescriptorInfo::AddStruct(const AnsiString &name)
@@ -95,7 +45,7 @@ bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
     return(true);
 }
 
-bool ShaderDescriptorInfo::AddSubpassInput(const UTF8String name,uint8_t index)
+bool VertexShaderDescriptorInfo::AddSubpassInput(const UTF8String name,uint8_t index)
 {
     for(auto *si:subpass_input)
     {

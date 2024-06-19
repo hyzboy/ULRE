@@ -1,4 +1,5 @@
 ﻿#include<hgl/shadergen/ShaderCreateInfoGeometry.h>
+#include"common/MFCommon.h"
 
 namespace hgl
 {
@@ -17,6 +18,24 @@ namespace hgl
 
             max_vertices=mv;
             return(true);
+        }
+
+        void ShaderCreateInfoGeometry::AddMaterialInstanceOutput()
+        {
+            AddOutput(SVT_UINT,mtl::func::MI_ID_OUTPUT,Interpolation::Flat);
+            AddFunction(mtl::func::MF_HandoverMI_GS);
+        }
+
+        int ShaderCreateInfoGeometry::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)
+        {
+            ShaderVariable sv;
+    
+            hgl::strcpy(sv.name,sizeof(sv.name),name.c_str());
+
+            sv.type=type;
+            sv.interpolation=inter;
+
+            return gsdi.AddOutput(sv);
         }
 
         bool ShaderCreateInfoGeometry::ProcLayout()

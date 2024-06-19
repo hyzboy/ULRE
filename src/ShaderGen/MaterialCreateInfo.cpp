@@ -58,7 +58,7 @@ bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const Descr
 
         ubo->stage_flag|=flag_bit;
 
-        return sc->sdi->AddUBO(set_type,ubo);
+        return sc->AddUBO(set_type,ubo);
     }
     else
     {
@@ -67,7 +67,7 @@ bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const Descr
         ubo->type=struct_name;
         hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
-        return sc->sdi->AddUBO(set_type,mdi.AddUBO(flag_bit,set_type,ubo));
+        return sc->AddUBO(set_type,mdi.AddUBO(flag_bit,set_type,ubo));
     }
 }
 
@@ -116,7 +116,7 @@ bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const D
 
         sampler->stage_flag|=flag_bit;
 
-        return sc->sdi->AddSampler(set_type,sampler);
+        return sc->AddSampler(set_type,sampler);
     }
     else
     {
@@ -125,7 +125,7 @@ bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const D
         sampler->type=st_name;
         hgl::strcpy(sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
-        return sc->sdi->AddSampler(set_type,mdi.AddSampler(flag_bit,set_type,sampler));
+        return sc->AddSampler(set_type,mdi.AddSampler(flag_bit,set_type,sampler));
     }
 }
 
