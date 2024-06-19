@@ -38,7 +38,7 @@ void main()
 
             vsc->AddInput(VAT_VEC4,VAN::Color);
 
-            vsc->AddOutput(VAT_VEC4,"Color");
+            vsc->AddOutput(SVT_VEC4,"Color");
 
             vsc->SetMain(vs_main);
             return(true);

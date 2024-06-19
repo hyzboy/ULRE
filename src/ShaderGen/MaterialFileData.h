@@ -68,19 +68,17 @@ namespace material_file
         }
 
         const VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
-
-        virtual void AddOutput(const ShaderVariable &sv);
     };
 
     struct VertexShaderData:public ShaderData
     {
-        List<ShaderVariable>    output;
+        SVList output;
 
         VertexShaderData():ShaderData(VK_SHADER_STAGE_VERTEX_BIT){}
         
     public:
 
-        void AddOutput(const ShaderVariable &sv)override{output.Add(sv);}
+        void AddOutput(const ShaderVariable &sv){output.Add(sv);}
     };
 
     struct GeometryShaderData:public ShaderData
@@ -89,7 +87,7 @@ namespace material_file
         Prim output_prim;
         uint max_vertices=0;
 
-        List<ShaderVariable>    output;
+        SVList output;
 
     public:
 
@@ -97,18 +95,16 @@ namespace material_file
         
     public:
 
-        void AddOutput(const ShaderVariable &sv)override{output.Add(sv);}
+        void AddOutput(const ShaderVariable &sv){output.Add(sv);}
     };
 
     struct FragmentShaderData:public ShaderData
     {
-        List<VIA>    output;
+        VIAList output;
 
         FragmentShaderData():ShaderData(VK_SHADER_STAGE_FRAGMENT_BIT){}
-        
-    public:
 
-        void AddOutput(const ShaderVariable &sv)override{}
+        void AddOutput(const VIA &via){output.Add(via);}
     };
 
     using ShaderDataMap=ObjectMap<VkShaderStageFlagBits,ShaderData>;
@@ -131,7 +127,7 @@ namespace material_file
 
         MaterialInstanceData    mi{};
 
-        List<VIA>               via;                        ///<Vertex Input
+        VIAList                 via;                        ///<Vertex Input
 
         UBODataList             ubo_list;
 

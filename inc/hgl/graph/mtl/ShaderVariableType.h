@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/type/String.h>
+#include<hgl/type/List.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/graph/VKSamplerType.h>
@@ -380,6 +381,8 @@ namespace hgl
             Interpolation   interpolation;  //插值方式
         };
 
+        using SVList=List<ShaderVariable>;
+
         struct ShaderVariableArray
         {
             uint count;
@@ -531,9 +534,11 @@ namespace hgl
 
                     if(sv->interpolation!=Interpolation::Smooth)
                     {
-                        output_string+=InterpolationName[size_t(sv->interpolation)];
-
-                        output_string+=" ";
+                        if(RangeCheck(sv->interpolation))
+                        {
+                            output_string+=InterpolationName[size_t(sv->interpolation)];
+                            output_string+=" ";
+                        }
                     }
 
                     output_string+=sv->type.GetTypename();

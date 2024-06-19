@@ -123,7 +123,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
         if(vert)
-            mtl->vertex_input=GetVertexInput(vert->sdi->GetShaderStageIO().input);
+            mtl->vertex_input=GetVertexInput(vert->GetInput());
     }
 
     {

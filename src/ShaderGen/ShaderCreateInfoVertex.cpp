@@ -14,9 +14,25 @@ void ShaderCreateInfoVertex::AddMaterialInstanceOutput()
     AddFunction(mtl::func::MF_HandoverMI_VS);
 }
 
+int ShaderCreateInfoVertex::AddInput(VIAList &via_list)
+{
+    int count=0;
+
+    for(VIA &via:via_list)
+    {
+        via.input_rate=VK_VERTEX_INPUT_RATE_VERTEX;
+        via.group=VertexInputGroup::Basic;
+
+        if(vsdi.AddInput(via))
+            ++count;
+    }
+
+    return count;
+}
+
 int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
 {
-    VertexInputAttribute via;
+    VIA via;
 
     hgl::strcpy(via.name,sizeof(via.name),name.c_str());
 
@@ -25,6 +41,8 @@ int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,c
 
     via.input_rate      =input_rate;
     via.group           =group;
+
+    via.interpolation   =Interpolation::Smooth;
 
     return vsdi.AddInput(via);
 }
@@ -42,6 +60,21 @@ int ShaderCreateInfoVertex::AddInput(const AnsiString &type,const AnsiString &na
 int ShaderCreateInfoVertex::hasInput(const char *name)
 {
     return vsdi.hasInput(name);
+}
+
+int ShaderCreateInfoVertex::AddOutput(SVList &sv_list)
+{
+    int count=0;
+
+    for(ShaderVariable &sv:sv_list)
+    {
+        sv.interpolation=Interpolation::Smooth;
+
+        if(vsdi.AddOutput(sv))
+            ++count;
+    }
+
+    return count;
 }
 
 int ShaderCreateInfoVertex::AddOutput(const SVType &type,const AnsiString &name,Interpolation inter)

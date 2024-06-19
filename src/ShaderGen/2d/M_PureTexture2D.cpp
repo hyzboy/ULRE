@@ -37,7 +37,7 @@ void main()
 
             vsc->AddInput(VAT_VEC2,VAN::TexCoord);
 
-            vsc->AddOutput(VAT_VEC2,"TexCoord");
+            vsc->AddOutput(SVT_VEC2,"TexCoord");
 
             vsc->SetMain(vs_main);
             return(true);

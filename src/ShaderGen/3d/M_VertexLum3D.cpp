@@ -43,7 +43,7 @@ void main()
 
             vsc->AddInput(VAT_FLOAT,VAN::Luminance);
 
-            vsc->AddOutput(VAT_VEC4,"Color");
+            vsc->AddOutput(SVT_VEC4,"Color");
 
             vsc->SetMain(vs_main);
             return(true);

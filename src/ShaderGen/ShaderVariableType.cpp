@@ -265,5 +265,7 @@ bool ShaderVariableType::ParseTypeString(const char *str)
         base_type=SVBaseType::AtomicCounter;
         return(true);
     }
+
+    return(false);
 }
 VK_NAMESPACE_END
