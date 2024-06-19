@@ -22,12 +22,11 @@ void main()
         vec2( 0.5, 0.5)
     );
 
-    mat4 LocalToWorldMatrix=l2w.mats[Input[0].l2w_id];
+    mat4 MVPMatrix=camera.vp*l2w.mats[Input[0].l2w_id];
 
     for(int i=0;i<4;i++)
     {
-        gl_Position=camera.vp
-                    *LocalToWorldMatrix
+        gl_Position=MVPMatrix
                     *vec4(  gl_in[0].gl_Position.xyz+
                             BillboardVertex[i].x*camera.billboard_right+
                             BillboardVertex[i].y*camera.billboard_up,
