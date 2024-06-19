@@ -99,4 +99,171 @@ const char *ShaderVariableType::GetTypename()const
     return nullptr;
 }
 
+bool ShaderVariableType::ParseTypeString(const char *str)
+{
+    if(!str||!*str)
+        return(false);
+
+    if(str[0]=='b')
+    {
+        if(str[1]=='o'&&str[2]=='o'&&str[3]=='l')
+        {
+            base_type=SVBaseType::Scalar;
+            scalar.type=VABaseType::Bool;
+            return(true);
+        }
+
+        if(str[1]=='v'&&str[2]=='e'&&str[3]=='c')
+        {
+            base_type=SVBaseType::Vector;
+            vector.type=VABaseType::Bool;
+            vector.vec_size=str[4]-'0';
+            return(vector.vec_size>=2&&vector.vec_size<=4);
+        }
+
+        return(false);
+    }
+    
+    if(str[1]=='i')
+    {
+        if(str[2]=='n'&&str[3]=='t')
+        {
+            base_type=SVBaseType::Scalar;
+            scalar.type=VABaseType::Int;
+            return(true);
+        }
+
+        if(str[2]=='v'&&str[3]=='e'&&str[4]=='c')
+        {
+            base_type=SVBaseType::Vector;
+            vector.type=VABaseType::Int;
+            vector.vec_size=str[5]-'0';
+            return(vector.vec_size>=2&&vector.vec_size<=4);
+        }
+
+        if(str[1]=='m'&&str[2]=='a'&&str[3]=='g'&&str[4]=='e')
+        {
+            int name_len=5;
+            while(iscodechar(str[name_len]))
+                ++name_len;
+
+            base_type=SVBaseType::Image;
+            image.type=ParseShaderImageType(str,name_len);
+            return(image.type!=ShaderImageType::Error);
+        }
+
+        return(false);
+    }
+
+    if(str[1]=='u')
+    {
+        if(str[2]=='i'&&str[3]=='n'&&str[4]=='t')
+        {
+            base_type=SVBaseType::Scalar;
+            scalar.type=VABaseType::UInt;
+            return(true);
+        }
+
+        if(str[2]=='v'&&str[3]=='e'&&str[4]=='c')
+        {
+            base_type=SVBaseType::Vector;
+            vector.type=VABaseType::UInt;
+            vector.vec_size=str[5]-'0';
+            return(vector.vec_size>=2&&vector.vec_size<=4);
+        }
+
+        return(false);
+    }
+
+    if(str[1]=='f')
+    {
+        if(str[2]=='l'&&str[3]=='o'&&str[4]=='a'&&str[5]=='t')
+        {
+            base_type=SVBaseType::Scalar;
+            scalar.type=VABaseType::Float;
+            return(true);
+        }
+
+        return(false);
+    }
+
+    if(str[0]=='v')
+    {
+        if(str[1]=='e'&&str[2]=='c')
+        {
+            base_type=SVBaseType::Vector;
+            vector.type=VABaseType::Float;
+            vector.vec_size=str[3]-'0';
+            return(vector.vec_size>=2&&vector.vec_size<=4);
+        }
+
+        return(false);
+    }
+
+    if(str[1]=='d')
+    {
+        if(str[2]=='o'&&str[3]=='u'&&str[4]=='b'&&str[5]=='l'&&str[6]=='e')
+        {
+            base_type=SVBaseType::Scalar;
+            scalar.type=VABaseType::Double;
+            return(true);
+        }
+
+        if(str[2]=='m'&&str[3]=='a'&&str[4]=='t')
+        {
+            base_type=SVBaseType::Matrix;
+            matrix.type=VABaseType::Double;
+            matrix.n=str[5]-'0';
+
+            if(str[6]=='x')
+            {
+                matrix.m=str[7]-'0';
+                return(matrix.m>=2&&matrix.m<=4);
+            }
+
+            matrix.m=0;
+            return(matrix.n>=2&&matrix.n<=4);
+        }
+
+        return(false);
+    }
+
+    if(str[0]=='m')
+    {
+        if(str[1]=='a'&&str[2]=='t')
+        {
+            base_type=SVBaseType::Matrix;
+            matrix.type=VABaseType::Float;
+            matrix.n=str[3]-'0';
+
+            if(str[4]=='x')
+            {
+                matrix.m=str[5]-'0';
+                return(matrix.m>=2&&matrix.m<=4);
+            }
+
+            matrix.m=0;
+            return(matrix.n>=2&&matrix.n<=4);
+        }
+
+        return(false);
+    }
+
+    if(hgl::strcmp(str,"sampler",7)==0)
+    {
+        int name_len=7;
+        while(iscodechar(str[name_len]))
+            ++name_len;
+
+        base_type=SVBaseType::Sampler;
+        sampler.type=ParseSamplerType(str,name_len);
+        return(sampler.type!=SamplerType::Error);
+    }
+
+    if(hgl::strcmp(str,"atomic_uint",11)==0)
+    {
+        base_type=SVBaseType::AtomicCounter;
+        return(true);
+    }
+}
 VK_NAMESPACE_END

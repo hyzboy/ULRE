@@ -346,13 +346,39 @@ namespace
         }
     };//struct MaterialInstanceBlockParse
 
-    bool ParseUniformAttrib(ShaderIOAttrib *ua,const char *str)
+    bool ParseVertexInputAttrib(VIA *via,const char *str)
     {
         const char *sp;
 
         while(*str==' '||*str=='\t')++str;
 
-        if(!ParseVertexAttribType(&(ua->vat),str))
+        VAType vat;
+
+        if(!ParseVertexAttribType(&(vat),str))
+            return(false);
+
+        via->basetype=uint8(vat.basetype);
+        via->vec_size=vat.vec_size;
+
+        while(*str!=' '&&*str!='\t')++str;
+        while(*str==' '||*str=='\t')++str;
+
+        sp=str;
+
+        while(hgl::iscodechar(*str))++str;
+
+        hgl::strcpy(via->name,SHADER_RESOURCE_NAME_MAX_LENGTH,sp,str-sp);
+
+        return(true);
+    }
+
+    bool ParseUniformAttrib(ShaderVariable *sv,const char *str)
+    {
+        const char *sp;
+
+        while(*str==' '||*str=='\t')++str;
+
+        if(!sv->type.ParseTypeString(str))
             return(false);
 
         while(*str!=' '&&*str!='\t')++str;
@@ -362,20 +388,20 @@ namespace
 
         while(hgl::iscodechar(*str))++str;
 
-        hgl::strcpy(ua->name,SHADER_RESOURCE_NAME_MAX_LENGTH,sp,str-sp);
+        hgl::strcpy(sv->name,SHADER_RESOURCE_NAME_MAX_LENGTH,sp,str-sp);
 
         return(true);
     }
 
     struct VertexInputBlockParse:public TextParse
     {
-        List<ShaderIOAttrib> *vi_list=nullptr;
+        List<VIA> *via_list=nullptr;
 
     public:
 
-        VertexInputBlockParse(List<ShaderIOAttrib> *ual)
+        VertexInputBlockParse(List<VIA> *ual)
         {
-            vi_list=ual;
+            via_list=ual;
         }
 
         bool OnLine(char *text,const int len) override
@@ -383,10 +409,10 @@ namespace
             if(!text||!*text||len<=0)
                 return(false);
 
-            ShaderIOAttrib ua;
+            VIA via;
 
-            if(ParseUniformAttrib(&ua,text))
-                vi_list->Add(ua);
+            if(ParseVertexInputAttrib(&via,text))
+                via_list->Add(via);
 
             return(true);
         }
@@ -434,10 +460,10 @@ namespace
                     return(true);
                 }
 
-                ShaderIOAttrib ua;
+                ShaderVariable sv;
 
-                if(ParseUniformAttrib(&ua,text))
-                    shader_data->output.Add(ua);
+                if(ParseUniformAttrib(&sv,text))
+                    shader_data->AddOutput(sv);
             }
 
             if(hgl::stricmp(text,"Code",4)==0)

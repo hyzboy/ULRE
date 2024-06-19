@@ -118,20 +118,6 @@ bool ShaderCreateInfo::AddSampler(DescriptorSetType type,const SamplerDescriptor
     return GetSDI()->AddSampler(type,sd);
 }
 
-//int ShaderCreateInfo::AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth)
-//{
-//    VertexInputAttribute *ss=new VertexInputAttribute;
-//
-//    hgl::strcpy(ss->name,sizeof(ss->name),name.c_str());
-//
-//    ss->basetype        =(uint8)type.base_type;
-//    ss->vec_size        =       type.vec_size;
-//    ss->interpolation   =       inter;
-//
-//    return sdi->AddOutput(ss);
-//
-//}
-
 void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &mi)
 {
     AddUBO(DescriptorSetType::PerMaterial,ubo);
@@ -166,42 +152,17 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
     return(true);
 }
 
-void ToStringList(AnsiString &output_struct,const SVArray &sv_array)
-{
-    const ShaderVariable *sv=sv_array.items;
-
-    for(uint i=0;i<sv_array.count;i++)
-    {
-        output_struct+="    ";
-
-        if(sv->interpolation!=Interpolation::Smooth)
-        {
-            output_struct+=InterpolationName[size_t(sv->interpolation)];
-
-            output_struct+=" ";
-        }
-
-        output_struct+=sv->type.GetTypename();
-        output_struct+=" ";
-        output_struct+=sv->name;
-        output_struct+=";\n";
-
-        ++sv;
-    }
-}
-
 bool ShaderCreateInfo::ProcOutput()
 {
     output_struct.Clear();
 
-    const SVArray &sv_array=GetSDI()->GetOutput();
-
-    if(sv_array.count<=0)return(true);
+    if(IsEmptyOutput())
+        return(true);
 
     output_struct=GetShaderStageName(shader_stage);
     output_struct+="_Output\n{\n";
 
-    ToStringList(output_struct,sv_array);
+    GetOutputStrcutString(output_struct);
 
     output_struct+="}";
 
@@ -214,7 +175,7 @@ bool ShaderCreateInfo::ProcOutput()
 
 bool ShaderCreateInfo::ProcStruct()
 {
-    const AnsiStringList &struct_list=sdi->GetStructList();
+    const AnsiStringList &struct_list=GetSDI()->GetStructList();
 
     AnsiString codes;
 
@@ -246,7 +207,7 @@ bool ShaderCreateInfo::ProcMI()
 
 bool ShaderCreateInfo::ProcUBO()
 {
-    auto ubo_list=sdi->GetUBOList();
+    auto ubo_list=GetSDI()->GetUBOList();
 
     const int count=ubo_list.GetCount();
 
@@ -290,7 +251,7 @@ bool ShaderCreateInfo::ProcSSBO()
 
 bool ShaderCreateInfo::ProcConstantID()
 {
-    auto const_list=sdi->GetConstList();
+    auto const_list=GetSDI()->GetConstList();
 
     const int count=const_list.GetCount();
 
@@ -320,7 +281,7 @@ bool ShaderCreateInfo::ProcConstantID()
 
 bool ShaderCreateInfo::ProcSampler()
 {
-    auto sampler_list=sdi->GetSamplerList();
+    auto sampler_list=GetSDI()->GetSamplerList();
 
     const int count=sampler_list.GetCount();
 

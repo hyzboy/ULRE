@@ -12,14 +12,6 @@ void ShaderCreateInfoVertex::AddMaterialInstanceOutput()
 {
     AddOutput(SVT_UINT,mtl::func::MI_ID_OUTPUT,Interpolation::Flat);
     AddFunction(mtl::func::MF_HandoverMI_VS);
-    }
-    else
-    if(shader_stage==VK_SHADER_STAGE_GEOMETRY_BIT)  
-    {
-        AddFunction(MF_HandoverMI_GS);
-    }
-    //else
-    //AddFunction(MF_HandoverMI_OTHER);
 }
 
 int ShaderCreateInfoVertex::AddInput(const VAType &type,const AnsiString &name,const VkVertexInputRate input_rate,const VertexInputGroup &group)
@@ -139,5 +131,10 @@ bool ShaderCreateInfoVertex::ProcInput(ShaderCreateInfo *)
     }
 
     return(true);
+}
+
+void ShaderCreateInfoVertex::GetOutputStrcutString(AnsiString &str)
+{
+    vsdi.GetOutput().ToString(str);
 }
 VK_NAMESPACE_END
