@@ -75,7 +75,7 @@ namespace material_file
         SVList output;
 
         VertexShaderData():ShaderData(VK_SHADER_STAGE_VERTEX_BIT){}
-        
+
     public:
 
         void AddOutput(const ShaderVariable &sv){output.Add(sv);}
@@ -92,7 +92,7 @@ namespace material_file
     public:
 
         GeometryShaderData():ShaderData(VK_SHADER_STAGE_GEOMETRY_BIT){}
-        
+
     public:
 
         void AddOutput(const ShaderVariable &sv){output.Add(sv);}
