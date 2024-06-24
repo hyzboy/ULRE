@@ -39,8 +39,8 @@ void main()
     }
     EndPrimitive();
 })";
-    
-        constexpr const char fs_main[]=R"(
+
+    constexpr const char fs_main[]=R"(
 void main()
 {
     FragColor=texture(TextureBaseColor,Input.TexCoord);
@@ -90,7 +90,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(mtl::BillboardMaterialCreateConfig 
 {
     if(!cfg)
         return(nullptr);
-    
+
     cfg->shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
 
     cfg->local_to_world=true;

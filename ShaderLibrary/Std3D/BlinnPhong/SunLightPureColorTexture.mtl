@@ -81,7 +81,7 @@ Code
 
     #ifndef HAVE_SPECULAR
         FragColor=vec4(direct_color,1.0);
-     #else
+    #else
 
         vec3 spec_color=vec3(0.0);
 

@@ -40,8 +40,8 @@ void main()
     }
     EndPrimitive();
 })";
-    
-        constexpr const char fs_main[]=R"(
+
+    constexpr const char fs_main[]=R"(
 void main()
 {
     FragColor=texture(TextureBaseColor,Input.TexCoord);
@@ -87,9 +87,9 @@ void main()
 
         bool EndCustomShader() override
         {
-            mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
-                                        mi_bytes,                       //材质实例数据大小
-                                        VK_SHADER_STAGE_VERTEX_BIT);    //只在Vertex Shader中使用材质实例最终数据
+            mci->SetMaterialInstance(mi_codes,                       //材质实例glsl代码
+                                     mi_bytes,                       //材质实例数据大小
+                                     VK_SHADER_STAGE_VERTEX_BIT);    //只在Vertex Shader中使用材质实例最终数据
 
             return(true);
         }
@@ -100,7 +100,7 @@ MaterialCreateInfo *CreateBillboard2DFixedSize(mtl::BillboardMaterialCreateConfi
 {
     if(!cfg)
         return(nullptr);
-    
+
     cfg->shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
 
     cfg->local_to_world=true;
