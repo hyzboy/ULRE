@@ -5,6 +5,57 @@
 #include<hgl/graph/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
+enum class LightingModel:uint8
+{
+    Unlit,
+
+    Gizmo,          ///<Gizmo专用(Blinnphong的特定版本，写死太阳光方向和各种颜色)
+
+    Blinnphong,     ///<Blinnphong光照模型
+
+    FakePBR,        ///<假PBR(使用Blinnphong+HalfLambert模拟)
+    MicroPBR,       ///<微型PBR(只有BaseColor/Normal/Metallic/Roughness四个基础数据的PBR)
+
+    WebPBR,         ///<Khronos为WebGL提供的PBR
+    FilamentPBR,    ///<Filament引擎所使用的PBR
+    AMDPBR,         ///<AMD Caulrdon框架所使用的PBR
+
+    BlenderPBR,     ///<Blender所使用的PBR
+
+    ENUM_CLASS_RANGE(Unlit,BlenderPBR)
+};
+
+constexpr const char *LightingModelName[]=
+{
+    "Unlit",
+
+    "Gizmo",
+
+    "Blinnphong",
+
+    "FakePBR",
+    "MicroPBR",
+
+    "WebPBR",
+    "FilamentPBR",
+    "AMDPBR",
+
+    "BlenderPBR"
+};
+
+/**
+* 天光来源
+*/
+enum class SkyLightSource:uint8
+{
+    PureColor,          ///<纯色
+    OneLineCode,        ///<一行代码
+    Cubemap,            ///<立方体贴图
+    IBL,                ///<IBL立方体贴图
+
+    ENUM_CLASS_RANGE(PureColor,IBL)
+};
+
 struct Material3DCreateConfig:public MaterialCreateConfig
 {
     bool                camera;                 ///<包含摄像机矩阵信息
