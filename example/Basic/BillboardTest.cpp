@@ -129,8 +129,8 @@ private:
 
             struct PlaneGridCreateInfo pgci;
 
-            pgci.grid_size.Set(32,32);
-            pgci.sub_count.Set(8,8);
+            pgci.grid_size.Set(500,500);
+            pgci.sub_count.Set(5,5);
 
             pgci.lum=0.5;
             pgci.sub_lum=0.75;
@@ -203,5 +203,5 @@ public:
 
 int main(int,char **)
 {
-    return RunApp<TestApp>(1280,720);
+    return RunApp<TestApp>(1920,1080);
 }

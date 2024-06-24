@@ -25,7 +25,7 @@ namespace
         const int shader_count=shader_maps->GetCount();
         shader_stage_list.SetCount(shader_count);
     
-        VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();        
+        VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();
 
         auto **itp=shader_maps->GetDataList();
         for(int i=0;i<shader_count;i++)
