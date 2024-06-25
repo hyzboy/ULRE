@@ -4,22 +4,16 @@
 
 VK_NAMESPACE_BEGIN
 
-class Gizmo
+class PrimitiveCreater;
+
+class GizmoResource
 {
 protected:
 
-    Material *          material;
-    MaterialInstance *  mtl_inst;
-    Pipeline *          pipeline;
-    VertexDataManager * vdm;
 
-    Primitive *         prim_cylinder;      ///<圆柱
-    Primitive *         prim_cone;          ///<圆锥
-    Primitive *         prim_sphere;        ///<球体
-    Primitive *         prim_cube;          ///<立方体
-    Primitive *         prim_plane;         ///<平面
+public:
 
-    
-};//class Gizmo
+
+};//class GizmoResource
 
 VK_NAMESPACE_END

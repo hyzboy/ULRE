@@ -87,7 +87,7 @@ private:
                                             TexCount,           ///<纹理层数
                                             PF_BC1_RGBUN,       ///<纹理格式
                                             false);             ///<是否自动产生mipmaps
-        
+
         if(!texture)return(false);
 
         OSString filename;
