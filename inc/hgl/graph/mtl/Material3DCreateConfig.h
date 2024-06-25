@@ -9,7 +9,7 @@ enum class LightingModel:uint8
 {
     Unlit,
 
-    Gizmo,          ///<Gizmo专用(Blinnphong的特定版本，写死太阳光方向和各种颜色)
+    Gizmo,          ///<Gizmo专用(Blinnphong的特定版本，内置假的太阳光方向、高光系数等，使其不需要外部UBO传入)
 
     Blinnphong,     ///<Blinnphong光照模型
 
@@ -49,7 +49,7 @@ constexpr const char *LightingModelName[]=
 enum class SkyLightSource:uint8
 {
     PureColor,          ///<纯色
-    OneLineCode,        ///<一行代码
+    Simplest,           ///<极简(一行代码)
     Cubemap,            ///<立方体贴图
     IBL,                ///<IBL立方体贴图
 
@@ -104,6 +104,8 @@ public:
 
 MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);
 MaterialCreateInfo *CreateVertexLuminance3D(const Material3DCreateConfig *);
+
+MaterialCreateInfo *CreateMaterialGizmo3D(const Material3DCreateConfig *cfg);
 
 struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
