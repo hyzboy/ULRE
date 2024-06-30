@@ -71,14 +71,16 @@ namespace hgl
 
                 Size2u sub_count;       ///<细分格子数量
 
-                float lum;              ///<一般线条颜色
-                float sub_lum;          ///<细分及边界线条颜色
+                uint8 lum;              ///<一般线条亮度
+                uint8 sub_lum;          ///<细分及边界线条亮度
             };//struct PlaneGridCreateInfo
 
             /**
              * 创建一个平面网格(线条)
              */
-            Primitive *CreatePlaneGrid(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci);
+            Primitive *CreatePlaneGrid2D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci);            //创建一个平面网格(线条)
+
+            Primitive *CreatePlaneGrid3D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci);
 
             /**
              * 创建一个平面(三角形)

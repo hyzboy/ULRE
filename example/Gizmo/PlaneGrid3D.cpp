@@ -7,6 +7,7 @@
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/graph/VKVertexInputConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -33,6 +34,10 @@ private:
         material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
         if(!material)return(false);
 
+        VILConfig vil_config;
+
+        vil_config.Add(VAN::Luminance,VF_V1UN8);
+
         Color4f GridColor;
         COLOR ce=COLOR::BlenderAxisRed;
 
@@ -40,12 +45,12 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i]=db->CreateMaterialInstance(material,nullptr,&GridColor);
+            material_instance[i]=db->CreateMaterialInstance(material,&vil_config,&GridColor);
 
             ce=COLOR((int)ce+1);
         }
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Lines);
+        pipeline=CreatePipeline(material_instance[0],InlinePipeline::Solid3D,Prim::Lines);
 
         return pipeline;
     }
@@ -59,12 +64,12 @@ private:
         pgci.grid_size.Set(32,32);
         pgci.sub_count.Set(8,8);
 
-        pgci.lum=0.75;
-        pgci.sub_lum=1.0;
+        pgci.lum=180;
+        pgci.sub_lum=255;
 
-        PrimitiveCreater pc(device,material->GetDefaultVIL());
+        PrimitiveCreater pc(device,material_instance[0]->GetVIL());
 
-        prim_plane_grid=CreatePlaneGrid(&pc,&pgci);
+        prim_plane_grid=CreatePlaneGrid2D(&pc,&pgci);
 
         return prim_plane_grid;
     }

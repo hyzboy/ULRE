@@ -163,8 +163,8 @@ namespace hgl
 
                 return pc->Create();
             }
-
-            Primitive *CreatePlaneGrid(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci)
+            
+            Primitive *CreatePlaneGrid2D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci)
             {
                 if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
                     return(nullptr);
@@ -192,7 +192,59 @@ namespace hgl
                                       Vector2f(left+col,bottom));
                 }
 
-                VABMap1f lum(pc->GetVABMap(VAN::Luminance));
+                VABMap1uf8 lum(pc->GetVABMap(VAN::Luminance));
+
+                if(lum.IsValid())
+                {
+                    for(uint row=0;row<=pgci->grid_size.Height();row++)
+                    {
+                        if((row%pgci->sub_count.Height())==0)
+                            lum->RepeatWrite(pgci->sub_lum,2);
+                        else
+                            lum->RepeatWrite(pgci->lum,2);
+                    }
+
+                    for(uint col=0;col<=pgci->grid_size.Width();col++)
+                    {
+                        if((col%pgci->sub_count.Width())==0)
+                            lum->RepeatWrite(pgci->sub_lum,2);
+                        else
+                            lum->RepeatWrite(pgci->lum,2);
+                    }
+                }
+
+                return pc->Create();
+            }
+
+            Primitive *CreatePlaneGrid3D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci)
+            {
+                if(!pc->Init("PlaneGrid",((pgci->grid_size.Width()+1)+(pgci->grid_size.Height()+1))*2,0))
+                    return(nullptr);
+
+                VABMap3f vertex(pc->GetVABMap(VAN::Position));
+
+                if(!vertex.IsValid())
+                    return(nullptr);
+
+                const float right=float(pgci->grid_size.Width())/2.0f;
+                const float left =-right;
+
+                const float bottom=float(pgci->grid_size.Height())/2.0f;
+                const float top   =-bottom;
+
+                for(uint row=0;row<=pgci->grid_size.Height();row++)
+                {
+                    vertex->WriteLine(  Vector3f(left ,top+row,0),
+                                        Vector3f(right,top+row,0));
+                }
+
+                for(uint col=0;col<=pgci->grid_size.Width();col++)
+                {
+                    vertex->WriteLine(Vector3f(left+col,top   ,0),
+                                      Vector3f(left+col,bottom,0));
+                }
+
+                VABMap1uf8 lum(pc->GetVABMap(VAN::Luminance));
 
                 if(lum.IsValid())
                 {
