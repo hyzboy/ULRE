@@ -216,11 +216,18 @@ public:
 typedef VABFormatMap<VB1i8>   VABMap1i8 ,VABMap1b;
 typedef VABFormatMap<VB1i16>  VABMap1i16,VABMap1s;
 typedef VABFormatMap<VB1i32>  VABMap1i32,VABMap1i;
+
 typedef VABFormatMap<VB1u8>   VABMap1u8 ,VABMap1ub;
 typedef VABFormatMap<VB1u16>  VABMap1u16,VABMap1us;
 typedef VABFormatMap<VB1u32>  VABMap1u32,VABMap1ui;
+
 typedef VABFormatMap<VB1f>    VABMap1f;
 typedef VABFormatMap<VB1d>    VABMap1d;
+
+typedef VABFormatMap<VB1sf8>  VABMap1sf8;
+typedef VABFormatMap<VB1uf8>  VABMap1uf8;
+typedef VABFormatMap<VB1sf16> VABMap1sf16;
+typedef VABFormatMap<VB1uf16> VABMap1uf16;
 
 typedef VABFormatMap<VB2i8>   VABMap2i8 ,VABMap2b;
 typedef VABFormatMap<VB2i16>  VABMap2i16,VABMap2s;
@@ -230,6 +237,11 @@ typedef VABFormatMap<VB2u16>  VABMap2u16,VABMap2us;
 typedef VABFormatMap<VB2u32>  VABMap2u32,VABMap2ui;
 typedef VABFormatMap<VB2f>    VABMap2f;
 typedef VABFormatMap<VB2d>    VABMap2d;
+
+typedef VABFormatMap<VB2sf8>  VABMap2sf8;
+typedef VABFormatMap<VB2uf8>  VABMap2uf8;
+typedef VABFormatMap<VB2sf16> VABMap2sf16;
+typedef VABFormatMap<VB2uf16> VABMap2uf16;
 
 typedef VABFormatMap<VB3i32>  VABMap3i32,VABMap3i;
 typedef VABFormatMap<VB3u32>  VABMap3u32,VABMap3ui;
@@ -244,5 +256,10 @@ typedef VABFormatMap<VB4u16>  VABMap4u16,VABMap4us;
 typedef VABFormatMap<VB4u32>  VABMap4u32,VABMap4ui;
 typedef VABFormatMap<VB4f>    VABMap4f;
 typedef VABFormatMap<VB4d>    VABMap4d;
+
+typedef VABFormatMap<VB4sf8>  VABMap4sf8;
+typedef VABFormatMap<VB4uf8>  VABMap4uf8;
+typedef VABFormatMap<VB4sf16> VABMap4sf16;
+typedef VABFormatMap<VB4uf16> VABMap4uf16;
 
 VK_NAMESPACE_END
