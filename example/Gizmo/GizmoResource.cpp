@@ -7,6 +7,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/color/Color.h>
+#include<hgl/graph/InlineGeometry.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -130,10 +131,25 @@ bool InitGizmoResource(RenderResource *rr)
 
         if(!prim_creater)
             return(false);
-
-
     }
 
+    {
+        using namespace inline_geometry;
+
+        {
+            struct PlaneGridCreateInfo pgci;
+
+            pgci.grid_size.Set(32,32);
+            pgci.sub_count.Set(8,8);
+
+            pgci.lum=0.75;
+            pgci.sub_lum=1.0;
+
+            PrimitiveCreater pc(device,material->GetDefaultVIL());
+
+            prim[size_t(GizmoShape::Plane)]=CreatePlaneGrid(prim_creater,&pgci);
+        }
+    }
     return(true);
 }
 
