@@ -13,6 +13,8 @@ class Pipeline
     AnsiString name;
 
     VkPipeline pipeline;
+
+    const VIL *vil;
     PipelineData *data;
 
     bool alpha_test;
@@ -22,12 +24,13 @@ private:
 
     friend class RenderPass;
 
-    Pipeline(const AnsiString &n,VkDevice dev,VkPipeline p,PipelineData *pd)
+    Pipeline(const AnsiString &n,VkDevice dev,VkPipeline p,const VIL *v,PipelineData *pd)
     {
         name=n;
 
         device=dev;
         pipeline=p;
+        vil=v;
         data=pd;
 
         alpha_test=false;
@@ -42,6 +45,7 @@ public:
 
     operator VkPipeline(){return pipeline;}
 
+    const VIL *GetVIL()const{return vil;}
     const PipelineData *GetData()const{return data;}
 
     const bool IsAlphaTest()const{return data->alpha_test>0;}

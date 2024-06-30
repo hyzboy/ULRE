@@ -53,9 +53,8 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
         return(nullptr);
     }
 
-    return(new Pipeline(name,device,graphicsPipeline,pd));
+    return(new Pipeline(name,device,graphicsPipeline,vil,pd));
 }
-
 
 Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
 {

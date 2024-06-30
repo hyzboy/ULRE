@@ -60,6 +60,10 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     if(!prim||!mi||!p)return(nullptr);
 
     const VIL *vil=mi->GetVIL();
+
+    if(vil->Comp(p->GetVIL()))
+        return(nullptr);
+
     const uint32_t input_count=vil->GetVertexAttribCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
     const UTF8String &mtl_name=mi->GetMaterial()->GetName();
 
