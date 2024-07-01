@@ -35,7 +35,6 @@ constexpr const COLOR AxisColor[4]=
     COLOR::GhostWhite,
     COLOR::BlanchedAlmond,
     COLOR::AntiqueWhite
-
 };
 
 constexpr const os_char *tex_filename[]=
