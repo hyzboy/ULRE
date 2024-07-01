@@ -4,16 +4,7 @@
 
 VK_NAMESPACE_BEGIN
 
-class PrimitiveCreater;
-
-class GizmoResource
-{
-protected:
-
-
-public:
-
-
-};//class GizmoResource
+bool InitGizmoResource(GPUDevice *);
+void FreeGizmoResource();
 
 VK_NAMESPACE_END

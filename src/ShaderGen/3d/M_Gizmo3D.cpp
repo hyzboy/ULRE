@@ -39,7 +39,7 @@ void main()
     //直接光颜色
     vec3 direct_color=intensity*SUN_COLOR*mi.Color.rgb;
 
-    vec3 SpecularColor=vec3(0);
+    vec3 spec_color=vec3(0);
 
     if(intensity>0.0)
     {
@@ -62,11 +62,13 @@ void main()
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
-            if(!Std3DMaterial::CustomVertexShader(vsc))
-                return(false);
+            vsc->AddInput(VAT_VEC3,VAN::Normal);
 
             vsc->AddOutput(SVT_VEC4,"Position");
             vsc->AddOutput(SVT_VEC3,"Normal");
+
+            if(!Std3DMaterial::CustomVertexShader(vsc))     //会根据是否有GetNormal函数来决定是否添加Normal计算代码，所以需要放在AddInput后面
+                return(false);
 
             vsc->SetMain(vs_main);
             return(true);
@@ -77,6 +79,15 @@ void main()
             fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
             fsc->SetMain(fs_main);
+            return(true);
+        }
+
+        bool EndCustomShader() override
+        {
+            mci->SetMaterialInstance(mi_codes,                       //材质实例glsl代码
+                                     mi_bytes,                       //材质实例数据大小
+                                     VK_SHADER_STAGE_FRAGMENT_BIT);  //只在Vertex Shader中使用材质实例最终数据
+
             return(true);
         }
     };//class MaterialGizmo3D:public Std3DMaterial

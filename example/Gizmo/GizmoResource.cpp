@@ -40,16 +40,17 @@ namespace
         ENUM_CLASS_RANGE(Plane,Cylinder)
     };
 
-    static Material *          material =nullptr;
-    static MaterialInstance *  mtl_inst[size_t(GizmoColor::RANGE_SIZE)]{};
-    static Pipeline *          pipeline =nullptr;
-    static VertexDataManager * vdm      =nullptr;
+    static RenderResource *    gizmo_rr             =nullptr;
+    static Material *          gizmo_material       =nullptr;
+    static MaterialInstance *  gizmo_mtl_inst[size_t(GizmoColor::RANGE_SIZE)]{};
+    static Pipeline *          gizmo_pipeline       =nullptr;
+    static VertexDataManager * gizmo_vdm            =nullptr;
 
-    static PrimitiveCreater *  prim_creater=nullptr;
+    static PrimitiveCreater *  gizmo_prim_creater   =nullptr;
 
-    static Primitive *         prim[size_t(GizmoShape::RANGE_SIZE)]{};
+    static Primitive *         gizmo_prim[size_t(GizmoShape::RANGE_SIZE)]{};
 
-    bool InitGizmoMI(RenderResource *rr)
+    bool InitGizmoMI()
     {
         constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
         {
@@ -63,7 +64,7 @@ namespace
             COLOR::BlenderYellow,
         };
 
-        if(!rr||!material)
+        if(!gizmo_rr||!gizmo_material)
             return(false);
 
         Color4f color;
@@ -72,8 +73,8 @@ namespace
         {
             color=GetColor4f(gizmo_color[i],1.0);
 
-            mtl_inst[i]=rr->CreateMaterialInstance(material,nullptr,&color);
-            if(!mtl_inst[i])
+            gizmo_mtl_inst[i]=gizmo_rr->CreateMaterialInstance(gizmo_material,nullptr,&color);
+            if(!gizmo_mtl_inst[i])
                 return(false);
         }
 
@@ -81,12 +82,13 @@ namespace
     }
 }//namespace
 
-bool InitGizmoResource(RenderResource *rr)
+bool InitGizmoResource(GPUDevice *device)
 {
-    if(!rr)
+    gizmo_rr=new RenderResource(device);
+
+    if(!gizmo_rr)
         return(false);
 
-    GPUDevice *device=rr->GetDevice();
     RenderPass *render_pass=device->GetRenderPass();
 
     {
@@ -100,36 +102,36 @@ bool InitGizmoResource(RenderResource *rr)
         if(!mci)
             return(false);
 
-        material=rr->CreateMaterial(mci);
-        if(!material)
+        gizmo_material=gizmo_rr->CreateMaterial(mci);
+        if(!gizmo_material)
             return(false);
     }
 
-    if(!InitGizmoMI(rr))
+    if(!InitGizmoMI())
         return(false);
 
     {
-        pipeline=render_pass->CreatePipeline(material,InlinePipeline::Solid3D,Prim::Triangles);
-        if(!pipeline)
+        gizmo_pipeline=render_pass->CreatePipeline(gizmo_material,InlinePipeline::Solid3D,Prim::Triangles);
+        if(!gizmo_pipeline)
             return(false);
     }
 
     {
-        vdm=new VertexDataManager(device,material->GetDefaultVIL());
+        gizmo_vdm=new VertexDataManager(device,gizmo_material->GetDefaultVIL());
 
-        if(!vdm)
+        if(!gizmo_vdm)
             return(false);
 
-        if(!vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
-                        HGL_SIZE_1MB,       //最大索引数量
-                        IndexType::U16))    //索引类型
+        if(!gizmo_vdm->Init(HGL_SIZE_1MB,       //最大顶点数量
+                            HGL_SIZE_1MB,       //最大索引数量
+                            IndexType::U16))    //索引类型
             return(false);
     }
 
     {
-        prim_creater=new PrimitiveCreater(vdm);
+        gizmo_prim_creater=new PrimitiveCreater(gizmo_vdm);
 
-        if(!prim_creater)
+        if(!gizmo_prim_creater)
             return(false);
     }
 
@@ -137,7 +139,7 @@ bool InitGizmoResource(RenderResource *rr)
         using namespace inline_geometry;
 
         {
-            prim[size_t(GizmoShape::Plane)]=CreatePlane(prim_creater);
+            gizmo_prim[size_t(GizmoShape::Plane)]=CreatePlane(gizmo_prim_creater);
         }
 
         {
@@ -147,11 +149,11 @@ bool InitGizmoResource(RenderResource *rr)
             cci.tangent=false;
             cci.tex_coord=false;
 
-            prim[size_t(GizmoShape::Cube)]=CreateCube(prim_creater,&cci);
+            gizmo_prim[size_t(GizmoShape::Cube)]=CreateCube(gizmo_prim_creater,&cci);
         }
 
         {
-            prim[size_t(GizmoShape::Sphere)]=CreateSphere(prim_creater,8);
+            gizmo_prim[size_t(GizmoShape::Sphere)]=CreateSphere(gizmo_prim_creater,8);
         }
 
         {
@@ -162,7 +164,7 @@ bool InitGizmoResource(RenderResource *rr)
             cci.numberSlices=8;        //圆锥底部分割数
             cci.numberStacks=1;         //圆锥高度分割数
 
-            prim[size_t(GizmoShape::Cone)]=CreateCone(prim_creater,&cci);
+            gizmo_prim[size_t(GizmoShape::Cone)]=CreateCone(gizmo_prim_creater,&cci);
         }
 
         {
@@ -172,17 +174,28 @@ bool InitGizmoResource(RenderResource *rr)
             cci.numberSlices=8;         //圆柱底部分割数
             cci.radius      =1;         //圆柱半径
 
-            prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(prim_creater,&cci);
+            gizmo_prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(gizmo_prim_creater,&cci);
         }
 
         ENUM_CLASS_FOR(GizmoShape,int,i)
         {
-            if(!prim[i])
+            if(!gizmo_prim[i])
                 return(false);
         }
     }
 
     return(true);
+}
+
+void FreeGizmoResource()
+{
+    SAFE_CLEAR_OBJECT_ARRAY(gizmo_prim)
+    SAFE_CLEAR(gizmo_prim_creater);
+    SAFE_CLEAR(gizmo_vdm);
+//    SAFE_CLEAR(gizmo_pipeline);
+//    SAFE_CLEAR_OBJECT_ARRAY(gizmo_mtl_inst)
+    //SAFE_CLEAR(gizmo_material);
+    SAFE_CLEAR(gizmo_rr);
 }
 
 VK_NAMESPACE_END
