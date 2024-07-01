@@ -40,13 +40,14 @@ namespace
         ENUM_CLASS_RANGE(Plane,Cylinder)
     };
 
-    static RenderResource *    gizmo_rr             =nullptr;
-    static Material *          gizmo_material       =nullptr;
-    static MaterialInstance *  gizmo_mtl_inst[size_t(GizmoColor::RANGE_SIZE)]{};
-    static Pipeline *          gizmo_pipeline       =nullptr;
-    static VertexDataManager * gizmo_vdm            =nullptr;
+    static RenderResource *    gizmo_rr                 =nullptr;
 
-    static PrimitiveCreater *  gizmo_prim_creater   =nullptr;
+    static Material *          gizmo_mtl_triangles      =nullptr;
+    static MaterialInstance *  gizmo_mi_triangles[size_t(GizmoColor::RANGE_SIZE)]{};
+    static Pipeline *          gizmo_pipeline_triangles =nullptr;
+    static VertexDataManager * gizmo_vdm_triangles      =nullptr;
+
+    static PrimitiveCreater *  gizmo_prim_creater       =nullptr;
 
     static Primitive *         gizmo_prim[size_t(GizmoShape::RANGE_SIZE)]{};
 
@@ -64,7 +65,7 @@ namespace
             COLOR::BlenderYellow,
         };
 
-        if(!gizmo_rr||!gizmo_material)
+        if(!gizmo_rr||!gizmo_mtl_triangles)
             return(false);
 
         Color4f color;
@@ -73,8 +74,8 @@ namespace
         {
             color=GetColor4f(gizmo_color[i],1.0);
 
-            gizmo_mtl_inst[i]=gizmo_rr->CreateMaterialInstance(gizmo_material,nullptr,&color);
-            if(!gizmo_mtl_inst[i])
+            gizmo_mi_triangles[i]=gizmo_rr->CreateMaterialInstance(gizmo_mtl_triangles,nullptr,&color);
+            if(!gizmo_mi_triangles[i])
                 return(false);
         }
 
@@ -102,8 +103,8 @@ bool InitGizmoResource(GPUDevice *device)
         if(!mci)
             return(false);
 
-        gizmo_material=gizmo_rr->CreateMaterial(mci);
-        if(!gizmo_material)
+        gizmo_mtl_triangles=gizmo_rr->CreateMaterial(mci);
+        if(!gizmo_mtl_triangles)
             return(false);
     }
 
@@ -111,25 +112,25 @@ bool InitGizmoResource(GPUDevice *device)
         return(false);
 
     {
-        gizmo_pipeline=render_pass->CreatePipeline(gizmo_material,InlinePipeline::Solid3D,Prim::Triangles);
-        if(!gizmo_pipeline)
+        gizmo_pipeline_triangles=render_pass->CreatePipeline(gizmo_mtl_triangles,InlinePipeline::Solid3D,Prim::Triangles);
+        if(!gizmo_pipeline_triangles)
             return(false);
     }
 
     {
-        gizmo_vdm=new VertexDataManager(device,gizmo_material->GetDefaultVIL());
+        gizmo_vdm_triangles=new VertexDataManager(device,gizmo_mtl_triangles->GetDefaultVIL());
 
-        if(!gizmo_vdm)
+        if(!gizmo_vdm_triangles)
             return(false);
 
-        if(!gizmo_vdm->Init(HGL_SIZE_1MB,       //最大顶点数量
+        if(!gizmo_vdm_triangles->Init(HGL_SIZE_1MB,       //最大顶点数量
                             HGL_SIZE_1MB,       //最大索引数量
                             IndexType::U16))    //索引类型
             return(false);
     }
 
     {
-        gizmo_prim_creater=new PrimitiveCreater(gizmo_vdm);
+        gizmo_prim_creater=new PrimitiveCreater(gizmo_vdm_triangles);
 
         if(!gizmo_prim_creater)
             return(false);
@@ -191,10 +192,10 @@ void FreeGizmoResource()
 {
     SAFE_CLEAR_OBJECT_ARRAY(gizmo_prim)
     SAFE_CLEAR(gizmo_prim_creater);
-    SAFE_CLEAR(gizmo_vdm);
-//    SAFE_CLEAR(gizmo_pipeline);
-//    SAFE_CLEAR_OBJECT_ARRAY(gizmo_mtl_inst)
-    //SAFE_CLEAR(gizmo_material);
+    SAFE_CLEAR(gizmo_vdm_triangles);
+//    SAFE_CLEAR(gizmo_pipeline_triangles);
+//    SAFE_CLEAR_OBJECT_ARRAY(gizmo_mi_triangles)
+    //SAFE_CLEAR(gizmo_mtl_triangles);
     SAFE_CLEAR(gizmo_rr);
 }
 

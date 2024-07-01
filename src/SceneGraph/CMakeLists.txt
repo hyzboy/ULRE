@@ -93,6 +93,7 @@ IF(WIN32)
 ENDIF(WIN32)
 
 SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h
+                        ${SG_INCLUDE_PATH}/MIPManager.h
                         Vulkan/VKRenderResource.cpp
                         Vulkan/VKRenderResourceMaterial.cpp)
 
