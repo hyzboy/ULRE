@@ -1,4 +1,4 @@
-#include<hgl/graph/VKQueue.h>
+﻿#include<hgl/graph/VKQueue.h>
 #include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
@@ -21,7 +21,7 @@ DeviceQueue::DeviceQueue(VkDevice dev,VkQueue q,Fence **fl,const uint32_t fc)
 
 DeviceQueue::~DeviceQueue()
 {
-    SAFE_CLEAR_OBJECT_ARRAY(fence_list,fence_count)
+    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(fence_list,fence_count)
 }
 
 bool DeviceQueue::WaitQueue()

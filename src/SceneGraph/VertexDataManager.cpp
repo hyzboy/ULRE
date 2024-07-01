@@ -26,7 +26,7 @@ namespace hgl
 
         VertexDataManager::~VertexDataManager()
         {
-            SAFE_CLEAR_OBJECT_ARRAY(vab,vi_count);
+            SAFE_CLEAR_OBJECT_ARRAY_OBJECT(vab,vi_count);
             SAFE_CLEAR(ibo);
         }
 
