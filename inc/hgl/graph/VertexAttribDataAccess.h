@@ -1159,9 +1159,10 @@ namespace hgl
         typedef VertexAttribDataAccess1<double,PF_R64F   >   VB1d;
 
         typedef VertexAttribDataAccess1<int8  ,PF_R8SN   >   VB1sf8;            //输入-128 to 127,但使用为-1 to +1
-        typedef VertexAttribDataAccess1<int16 ,PF_R16SN  >   VB1sf16;           //输入-32768 to 32768,但使用为-1 to +1
+        typedef VertexAttribDataAccess1<int16 ,PF_R16SN  >   VB1sf16;           //输入-32768 to 32767,但使用为-1 to +1
         typedef VertexAttribDataAccess1<uint8 ,PF_R8UN   >   VB1uf8;            //输入0-255,但使用为0-1
         typedef VertexAttribDataAccess1<uint16,PF_R16UN  >   VB1uf16;           //输入0-65535,但使用为0-1
+        typedef VertexAttribDataAccess1<uint16,PF_R16F   >   VB1hf;             //half float
         
         typedef VertexAttribDataAccess2<int8  ,PF_RG8I   >   VB2i8   ,VB2b;
         typedef VertexAttribDataAccess2<int16 ,PF_RG16I  >   VB2i16  ,VB2s;
@@ -1175,9 +1176,10 @@ namespace hgl
         typedef VertexAttribDataAccess2<double,PF_RG64F  >   VB2d;
 
         typedef VertexAttribDataAccess1<int8  ,PF_RG8SN  >   VB2sf8;            //输入-128 to 127,但使用为-1 to +1
-        typedef VertexAttribDataAccess1<int16 ,PF_RG16SN >   VB2sf16;           //输入-32768 to 32768,但使用为-1 to +1
-        typedef VertexAttribDataAccess2<uint8 ,PF_R8UN   >   VB2uf8;            //输入0-255,但使用为0-1
-        typedef VertexAttribDataAccess2<uint16,PF_R16UN  >   VB2uf16;           //输入0-65535,但使用为0-1
+        typedef VertexAttribDataAccess1<int16 ,PF_RG16SN >   VB2sf16;           //输入-32768 to 32767,但使用为-1 to +1
+        typedef VertexAttribDataAccess2<uint8 ,PF_RG8UN  >   VB2uf8;            //输入0-255,但使用为0-1
+        typedef VertexAttribDataAccess2<uint16,PF_RG16UN >   VB2uf16;           //输入0-65535,但使用为0-1
+        typedef VertexAttribDataAccess2<uint16,PF_RG16F  >   VB2hf;             //half float
 
 //        typedef VertexAttribDataAccess3<int8  ,PF_RGB8I  >   VB3i8   ,VB3b;
 //        typedef VertexAttribDataAccess3<int16 ,PF_RGB16I >   VB3i16  ,VB3s;
@@ -1202,9 +1204,10 @@ namespace hgl
         typedef VertexAttribDataAccess4<double,PF_RGBA64F>   VB4d;
 
         typedef VertexAttribDataAccess4<int8  ,PF_RGBA8SN >  VB4sf8;            //输入-128 to 127,但使用为-1 to +1
-        typedef VertexAttribDataAccess4<int16 ,PF_RGBA16SN>  VB4sf16;           //输入-32768 to 32768,但使用为-1 to +1
+        typedef VertexAttribDataAccess4<int16 ,PF_RGBA16SN>  VB4sf16;           //输入-32768 to 32767,但使用为-1 to +1
         typedef VertexAttribDataAccess4<uint8 ,PF_RGBA8UN >  VB4uf8;            //输入0-255,但使用为0-1
         typedef VertexAttribDataAccess4<uint16,PF_RGBA16UN>  VB4uf16;           //输入0-65535,但使用为0-1
+        typedef VertexAttribDataAccess4<uint16,PF_RGBA16F >  VB4hf;             //half float
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
