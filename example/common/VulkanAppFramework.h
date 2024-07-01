@@ -83,7 +83,7 @@ public:
         win->Unjoin(this);
 
         SAFE_CLEAR(db);
-        SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
+        SAFE_CLEAR_OBJECT_ARRAY_OBJECT(cmd_buf,swap_chain_count);
 
         SAFE_CLEAR(device);
         SAFE_CLEAR(win);
@@ -197,7 +197,7 @@ public:
     void InitCommandBuffer()
     {
         if(cmd_buf)
-            SAFE_CLEAR_OBJECT_ARRAY(cmd_buf,swap_chain_count);
+            SAFE_CLEAR_OBJECT_ARRAY_OBJECT(cmd_buf,swap_chain_count);
 
         sc_render_target=device->GetSwapchainRT();
 

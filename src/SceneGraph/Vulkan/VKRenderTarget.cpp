@@ -53,7 +53,7 @@ RenderTarget::~RenderTarget()
 {
     SAFE_CLEAR(queue);
     SAFE_CLEAR(depth_texture);
-    SAFE_CLEAR_OBJECT_ARRAY(color_textures,color_count);
+    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(color_textures,color_count);
     
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);
