@@ -430,11 +430,11 @@ namespace
 
     struct VertexInputBlockParse:public TextParse
     {
-        List<VIA> *via_list=nullptr;
+        VIAList *via_list=nullptr;
 
     public:
 
-        VertexInputBlockParse(List<VIA> *ual)
+        VertexInputBlockParse(VIAList *ual)
         {
             via_list=ual;
         }
@@ -485,7 +485,7 @@ namespace
                     shader_data->code_length=code_parse.end-code_parse.start;
                 }
 
-                return(true);  
+                return(true);
             }
 
             if(output)
