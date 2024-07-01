@@ -137,19 +137,51 @@ bool InitGizmoResource(RenderResource *rr)
         using namespace inline_geometry;
 
         {
-            struct PlaneGridCreateInfo pgci;
+            prim[size_t(GizmoShape::Plane)]=CreatePlane(prim_creater);
+        }
 
-            pgci.grid_size.Set(32,32);
-            pgci.sub_count.Set(8,8);
+        {
+            CubeCreateInfo cci;
 
-            pgci.lum=0.75;
-            pgci.sub_lum=1.0;
+            cci.normal=true;
+            cci.tangent=false;
+            cci.tex_coord=false;
 
-            PrimitiveCreater pc(device,material->GetDefaultVIL());
+            prim[size_t(GizmoShape::Cube)]=CreateCube(prim_creater,&cci);
+        }
 
-            prim[size_t(GizmoShape::Plane)]=CreatePlaneGrid(prim_creater,&pgci);
+        {
+            prim[size_t(GizmoShape::Sphere)]=CreateSphere(prim_creater,8);
+        }
+
+        {
+            ConeCreateInfo cci;
+
+            cci.radius      =1;         //圆锥半径
+            cci.halfExtend  =1;         //圆锤一半高度
+            cci.numberSlices=8;        //圆锥底部分割数
+            cci.numberStacks=1;         //圆锥高度分割数
+
+            prim[size_t(GizmoShape::Cone)]=CreateCone(prim_creater,&cci);
+        }
+
+        {
+            struct CylinderCreateInfo cci;
+
+            cci.halfExtend  =1;         //圆柱一半高度
+            cci.numberSlices=8;         //圆柱底部分割数
+            cci.radius      =1;         //圆柱半径
+
+            prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(prim_creater,&cci);
+        }
+
+        ENUM_CLASS_FOR(GizmoShape,int,i)
+        {
+            if(!prim[i])
+                return(false);
         }
     }
+
     return(true);
 }
 
