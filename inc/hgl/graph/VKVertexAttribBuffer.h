@@ -128,6 +128,7 @@ typedef VABRawMap<uint16>  VABMapU16,  VABMapUShort;
 typedef VABRawMap<uint32>  VABMapU32,  VABMapUInt;
 typedef VABRawMap<float>   VABMapFloat;
 typedef VABRawMap<double>  VABMapDouble;
+typedef VABRawMap<half_float>   VABMapHalfFloat;
 
 /**
 * 顶点属性缓冲区数据访问映射
@@ -228,6 +229,7 @@ typedef VABFormatMap<VB1sf8>  VABMap1sf8;
 typedef VABFormatMap<VB1uf8>  VABMap1uf8;
 typedef VABFormatMap<VB1sf16> VABMap1sf16;
 typedef VABFormatMap<VB1uf16> VABMap1uf16;
+typedef VABFormatMap<VB1hf>   VABMap1hf;
 
 typedef VABFormatMap<VB2i8>   VABMap2i8 ,VABMap2b;
 typedef VABFormatMap<VB2i16>  VABMap2i16,VABMap2s;
@@ -242,6 +244,7 @@ typedef VABFormatMap<VB2sf8>  VABMap2sf8;
 typedef VABFormatMap<VB2uf8>  VABMap2uf8;
 typedef VABFormatMap<VB2sf16> VABMap2sf16;
 typedef VABFormatMap<VB2uf16> VABMap2uf16;
+typedef VABFormatMap<VB2hf>   VABMap2hf;
 
 typedef VABFormatMap<VB3i32>  VABMap3i32,VABMap3i;
 typedef VABFormatMap<VB3u32>  VABMap3u32,VABMap3ui;
@@ -261,5 +264,6 @@ typedef VABFormatMap<VB4sf8>  VABMap4sf8;
 typedef VABFormatMap<VB4uf8>  VABMap4uf8;
 typedef VABFormatMap<VB4sf16> VABMap4sf16;
 typedef VABFormatMap<VB4uf16> VABMap4uf16;
+typedef VABFormatMap<VB4hf>   VABMap4hf;
 
 VK_NAMESPACE_END
