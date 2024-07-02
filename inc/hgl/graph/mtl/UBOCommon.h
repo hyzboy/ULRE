@@ -33,6 +33,8 @@ constexpr const ShaderBufferSource SBS_CameraInfo=
     mat4 vp;
     mat4 inverse_vp;
 
+    vec4 frustum_planes[6];
+
     mat4 sky;
 
     vec3 pos;                   //eye
