@@ -1,4 +1,5 @@
-﻿#include<hgl/graph/VKMaterialInstance.h>
+﻿#include"Gizmo.h"
+#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VertexDataManager.h>
@@ -13,34 +14,13 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    enum class GizmoColor:uint
-    {
-        Black=0,
-        White,
-
-        Red,
-        Green,
-        Blue,
-
-        Yellow,
-
-        ENUM_CLASS_RANGE(Black,Yellow)
-    };
-
     static Color4f GizmoColorRGB[size_t(GizmoColor::RANGE_SIZE)];
 
-    enum class GizmoShape:uint
-    {
-        Plane=0,    //平面
-        Cube,       //立方体
-        Sphere,     //球
-        Cone,       //圆锥
-        Cylinder,   //圆柱
-
-        ENUM_CLASS_RANGE(Plane,Cylinder)
-    };
-
     static RenderResource *    gizmo_rr                 =nullptr;
+
+    static Material *           gizmo_mtl_line          =nullptr;
+    static MaterialInstance *   gizmo_mi_line           =nullptr;
+    static Pipeline *           gizmo_pipeline_line     =nullptr;
 
     static Material *          gizmo_mtl_triangles      =nullptr;
     static MaterialInstance *  gizmo_mi_triangles[size_t(GizmoColor::RANGE_SIZE)]{};
