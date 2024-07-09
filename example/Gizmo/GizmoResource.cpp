@@ -14,38 +14,40 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
+    constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
+    {
+        COLOR::MozillaCharcoal,
+        COLOR::BlanchedAlmond,
+
+        COLOR::BlenderAxisRed,
+        COLOR::BlenderAxisGreen,
+        COLOR::BlenderAxisBlue,
+
+        COLOR::BlenderYellow,
+    };
+
     static Color4f GizmoColorRGB[size_t(GizmoColor::RANGE_SIZE)];
 
-    static RenderResource *    gizmo_rr                 =nullptr;
+    static RenderResource *     gizmo_rr                =nullptr;
 
-    static Material *           gizmo_mtl_line          =nullptr;
-    static MaterialInstance *   gizmo_mi_line           =nullptr;
-    static Pipeline *           gizmo_pipeline_line     =nullptr;
-
-    static Material *          gizmo_mtl_triangles      =nullptr;
-    static MaterialInstance *  gizmo_mi_triangles[size_t(GizmoColor::RANGE_SIZE)]{};
-    static Pipeline *          gizmo_pipeline_triangles =nullptr;
-    static VertexDataManager * gizmo_vdm_triangles      =nullptr;
-
-    static PrimitiveCreater *  gizmo_prim_creater       =nullptr;
-
-    static Primitive *         gizmo_prim[size_t(GizmoShape::RANGE_SIZE)]{};
-
-    bool InitGizmoMI()
+    struct GizmoResource
     {
-        constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
-        {
-            COLOR::MozillaCharcoal,
-            COLOR::BlanchedAlmond,
+        Material *           mtl;
+        MaterialInstance *   mi[size_t(GizmoColor::RANGE_SIZE)];
+        Pipeline *           pipeline;
+        VertexDataManager *  vdm;
 
-            COLOR::BlenderAxisRed,
-            COLOR::BlenderAxisGreen,
-            COLOR::BlenderAxisBlue,
+        PrimitiveCreater *   prim_creater;
+    };
 
-            COLOR::BlenderYellow,
-        };
+    GizmoResource gr_line{};
+    GizmoResource gr_triangle{};
 
-        if(!gizmo_rr||!gizmo_mtl_triangles)
+    static Primitive *          gizmo_prim[size_t(GizmoShape::RANGE_SIZE)]{};
+
+    bool InitMI(GizmoResource *gr)
+    {
+        if(!gr||!gr->mtl)
             return(false);
 
         Color4f color;
@@ -54,9 +56,163 @@ namespace
         {
             color=GetColor4f(gizmo_color[i],1.0);
 
-            gizmo_mi_triangles[i]=gizmo_rr->CreateMaterialInstance(gizmo_mtl_triangles,nullptr,&color);
-            if(!gizmo_mi_triangles[i])
+            gr->mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,nullptr,&color);
+            if(!gr->mi[i])
                 return(false);
+        }
+
+        return(true);
+    }
+
+    bool InitGizmoResource2D(GPUDevice *device)
+    {
+        if(!gizmo_rr)
+            return(false);
+
+        RenderPass *render_pass=device->GetRenderPass();
+        
+        {
+            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
+
+            cfg.mtl_name="VertexLuminance3D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
+            cfg.position_format=VAT_VEC3;
+
+            mtl::MaterialCreateInfo *mci=CreateVertexLuminance3D(&cfg);
+
+            if(!mci)
+                return(false);
+
+            gr_line.mtl=gizmo_rr->CreateMaterial(mci);
+            if(!gr_line.mtl)
+                return(false);
+        }
+
+        {
+            gr_line.pipeline=render_pass->CreatePipeline(gr_line.mtl,InlinePipeline::Solid3D,Prim::Lines);
+
+            if(!gr_line.pipeline)
+                return(false);
+        }
+
+        if(!InitMI(&gr_line))
+            return(false);
+        
+        {
+            gr_line.vdm=new VertexDataManager(device,gr_line.mtl->GetDefaultVIL());
+
+            if(!gr_line.vdm)
+                return(false);
+
+            if(!gr_line.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
+                                    HGL_SIZE_1MB,       //最大索引数量
+                                    IndexType::U16))    //索引类型
+                return(false);
+        }
+
+        {
+        }
+
+        return(true);
+    }
+
+    bool InitGizmoResource3D(GPUDevice *device)
+    {
+        if(!gizmo_rr)
+            return(false);
+
+        RenderPass *render_pass=device->GetRenderPass();
+
+        {
+            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Gizmo3D",Prim::Triangles);
+
+            cfg.local_to_world=true;
+            cfg.material_instance=true;
+
+            mtl::MaterialCreateInfo *mci=CreateMaterialGizmo3D(&cfg);
+
+            if(!mci)
+                return(false);
+
+            gr_triangle.mtl=gizmo_rr->CreateMaterial(mci);
+            if(!gr_triangle.mtl)
+                return(false);
+        }
+
+        {
+            gr_triangle.pipeline=render_pass->CreatePipeline(gr_triangle.mtl,InlinePipeline::Solid3D,Prim::Triangles);
+            if(!gr_triangle.pipeline)
+                return(false);
+        }
+
+        if(!InitMI(&gr_triangle))
+            return(false);
+
+        {
+            gr_triangle.vdm=new VertexDataManager(device,gr_triangle.mtl->GetDefaultVIL());
+
+            if(!gr_triangle.vdm)
+                return(false);
+
+            if(!gr_triangle.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
+                                        HGL_SIZE_1MB,       //最大索引数量
+                                        IndexType::U16))    //索引类型
+                return(false);
+        }
+
+        {
+            gr_triangle.prim_creater=new PrimitiveCreater(gr_triangle.vdm);
+
+            if(!gr_triangle.prim_creater)
+                return(false);
+        }
+
+        {
+            using namespace inline_geometry;
+
+            {
+                gizmo_prim[size_t(GizmoShape::Plane)]=CreatePlane(gr_triangle.prim_creater);
+            }
+
+            {
+                CubeCreateInfo cci;
+
+                cci.normal=true;
+                cci.tangent=false;
+                cci.tex_coord=false;
+
+                gizmo_prim[size_t(GizmoShape::Cube)]=CreateCube(gr_triangle.prim_creater,&cci);
+            }
+
+            {
+                gizmo_prim[size_t(GizmoShape::Sphere)]=CreateSphere(gr_triangle.prim_creater,8);
+            }
+
+            {
+                ConeCreateInfo cci;
+
+                cci.radius      =1;         //圆锥半径
+                cci.halfExtend  =1;         //圆锤一半高度
+                cci.numberSlices=8;         //圆锥底部分割数
+                cci.numberStacks=1;         //圆锥高度分割数
+
+                gizmo_prim[size_t(GizmoShape::Cone)]=CreateCone(gr_triangle.prim_creater,&cci);
+            }
+
+            {
+                struct CylinderCreateInfo cci;
+
+                cci.halfExtend  =1;         //圆柱一半高度
+                cci.numberSlices=8;         //圆柱底部分割数
+                cci.radius      =1;         //圆柱半径
+
+                gizmo_prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(gr_triangle.prim_creater,&cci);
+            }
+
+            ENUM_CLASS_FOR(GizmoShape,int,i)
+            {
+                if(!gizmo_prim[i])
+                    return(false);
+            }
         }
 
         return(true);
@@ -65,105 +221,16 @@ namespace
 
 bool InitGizmoResource(GPUDevice *device)
 {
+    if(gizmo_rr)
+        return(false);
+
     gizmo_rr=new RenderResource(device);
 
-    if(!gizmo_rr)
+    if(!InitGizmoResource3D(device))
         return(false);
 
-    RenderPass *render_pass=device->GetRenderPass();
-
-    {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Gizmo3D",Prim::Triangles);
-
-        cfg.local_to_world=true;
-        cfg.material_instance=true;
-
-        mtl::MaterialCreateInfo *mci=CreateMaterialGizmo3D(&cfg);
-
-        if(!mci)
-            return(false);
-
-        gizmo_mtl_triangles=gizmo_rr->CreateMaterial(mci);
-        if(!gizmo_mtl_triangles)
-            return(false);
-    }
-
-    if(!InitGizmoMI())
+    if(!InitGizmoResource2D(device))
         return(false);
-
-    {
-        gizmo_pipeline_triangles=render_pass->CreatePipeline(gizmo_mtl_triangles,InlinePipeline::Solid3D,Prim::Triangles);
-        if(!gizmo_pipeline_triangles)
-            return(false);
-    }
-
-    {
-        gizmo_vdm_triangles=new VertexDataManager(device,gizmo_mtl_triangles->GetDefaultVIL());
-
-        if(!gizmo_vdm_triangles)
-            return(false);
-
-        if(!gizmo_vdm_triangles->Init(HGL_SIZE_1MB,       //最大顶点数量
-                            HGL_SIZE_1MB,       //最大索引数量
-                            IndexType::U16))    //索引类型
-            return(false);
-    }
-
-    {
-        gizmo_prim_creater=new PrimitiveCreater(gizmo_vdm_triangles);
-
-        if(!gizmo_prim_creater)
-            return(false);
-    }
-
-    {
-        using namespace inline_geometry;
-
-        {
-            gizmo_prim[size_t(GizmoShape::Plane)]=CreatePlane(gizmo_prim_creater);
-        }
-
-        {
-            CubeCreateInfo cci;
-
-            cci.normal=true;
-            cci.tangent=false;
-            cci.tex_coord=false;
-
-            gizmo_prim[size_t(GizmoShape::Cube)]=CreateCube(gizmo_prim_creater,&cci);
-        }
-
-        {
-            gizmo_prim[size_t(GizmoShape::Sphere)]=CreateSphere(gizmo_prim_creater,8);
-        }
-
-        {
-            ConeCreateInfo cci;
-
-            cci.radius      =1;         //圆锥半径
-            cci.halfExtend  =1;         //圆锤一半高度
-            cci.numberSlices=8;        //圆锥底部分割数
-            cci.numberStacks=1;         //圆锥高度分割数
-
-            gizmo_prim[size_t(GizmoShape::Cone)]=CreateCone(gizmo_prim_creater,&cci);
-        }
-
-        {
-            struct CylinderCreateInfo cci;
-
-            cci.halfExtend  =1;         //圆柱一半高度
-            cci.numberSlices=8;         //圆柱底部分割数
-            cci.radius      =1;         //圆柱半径
-
-            gizmo_prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(gizmo_prim_creater,&cci);
-        }
-
-        ENUM_CLASS_FOR(GizmoShape,int,i)
-        {
-            if(!gizmo_prim[i])
-                return(false);
-        }
-    }
 
     return(true);
 }
@@ -171,8 +238,8 @@ bool InitGizmoResource(GPUDevice *device)
 void FreeGizmoResource()
 {
     SAFE_CLEAR_OBJECT_ARRAY(gizmo_prim)
-    SAFE_CLEAR(gizmo_prim_creater);
-    SAFE_CLEAR(gizmo_vdm_triangles);
+    SAFE_CLEAR(gr_triangle.prim_creater);
+    SAFE_CLEAR(gr_triangle.vdm);
 //    SAFE_CLEAR(gizmo_pipeline_triangles);
 //    SAFE_CLEAR_OBJECT_ARRAY(gizmo_mi_triangles)
     //SAFE_CLEAR(gizmo_mtl_triangles);
