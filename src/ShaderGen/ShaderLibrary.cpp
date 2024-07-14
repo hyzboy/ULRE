@@ -12,7 +12,7 @@ namespace
     ObjectMap<AnsiString,UTF8String> shader_library;
 }
 
-// 因为是Debug阶段，所以现在直接从文件系统加载
+// 鍥犱负鏄疍ebug闃舵锛屾墍浠ョ幇鍦ㄧ洿鎺ヤ粠鏂囦欢绯荤粺鍔犺浇
 
 const AnsiString *LoadShader(const AnsiString &shader_name)
 {
