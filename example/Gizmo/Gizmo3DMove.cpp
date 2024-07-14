@@ -21,3 +21,18 @@
         中心球半径为1
 */
 
+#include"GizmoResource.h"
+
+VK_NAMESPACE_BEGIN
+
+struct StaticMesh
+{
+
+};
+
+namespace
+{
+
+}//namespace
+
+VK_NAMESPACE_END
