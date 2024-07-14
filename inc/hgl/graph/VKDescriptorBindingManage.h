@@ -45,7 +45,7 @@ namespace hgl
             {
                 if(name.IsEmpty())return(nullptr);
 
-                return GetListObject(ubo_map,name);
+                return GetObjectFromList(ubo_map,name);
             }
 
             void RemoveUBO(DeviceBuffer *buf)
@@ -67,7 +67,7 @@ namespace hgl
             {
                 if(name.IsEmpty())return(nullptr);
 
-                return GetListObject(ssbo_map,name);
+                return GetObjectFromList(ssbo_map,name);
             }
 
             void RemoveSSBO(DeviceBuffer *buf)
@@ -89,7 +89,7 @@ namespace hgl
             {
                 if(name.IsEmpty())return(nullptr);
 
-                return GetListObject(texture_map,name);
+                return GetObjectFromList(texture_map,name);
             }
 
             void RemoveTexture(Texture *tex)
