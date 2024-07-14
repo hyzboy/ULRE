@@ -86,11 +86,11 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
     {
         desc->flags         = 0;
         desc->samples       = VK_SAMPLE_COUNT_1_BIT;
-        desc->loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR´ú±íLOADÊ±Çå¿ÕÄÚÈİ
-        desc->storeOp       = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROE´ú±íSOTREÊ±´¢´æÄÚÈİ
-        desc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CARE±íÊ¾²»ÔÚÒâ
+        desc->loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEARä»£è¡¨LOADæ—¶æ¸…ç©ºå†…å®¹
+        desc->storeOp       = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROEä»£è¡¨SOTREæ—¶å‚¨å­˜å†…å®¹
+        desc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CAREè¡¨ç¤ºä¸åœ¨æ„
         desc->stencilStoreOp= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        desc->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;        //´ú±í²»¹ØĞÄ³õÊ¼²¼¾Ö
+        desc->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;        //ä»£è¡¨ä¸å…³å¿ƒåˆå§‹å¸ƒå±€
 
         ++desc;
     }
@@ -138,11 +138,11 @@ bool CreateColorAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     {    
         desc->flags             = 0;
         desc->samples           = VK_SAMPLE_COUNT_1_BIT;
-        desc->loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR´ú±íLOADÊ±Çå¿ÕÄÚÈİ
-        desc->storeOp           = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROE´ú±íSOTREÊ±´¢´æÄÚÈİ
-        desc->stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CARE±íÊ¾²»ÔÚÒâ
+        desc->loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEARä»£è¡¨LOADæ—¶æ¸…ç©ºå†…å®¹
+        desc->storeOp           = VK_ATTACHMENT_STORE_OP_STORE;     //STORE_OP_STROEä»£è¡¨SOTREæ—¶å‚¨å­˜å†…å®¹
+        desc->stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  //DONT CAREè¡¨ç¤ºä¸åœ¨æ„
         desc->stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        desc->initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;        //´ú±í²»¹ØĞÄ³õÊ¼²¼¾Ö
+        desc->initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;        //ä»£è¡¨ä¸å…³å¿ƒåˆå§‹å¸ƒå±€
         desc->finalLayout       = color_final_layout;
         ++desc;
 
@@ -173,11 +173,11 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
 
         desc->flags             = 0;
         desc->samples           = VK_SAMPLE_COUNT_1_BIT;
-        desc->loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEAR´ú±íLOADÊ±Çå¿ÕÄÚÈİ
-        desc->storeOp           = VK_ATTACHMENT_STORE_OP_DONT_CARE; //DONT CARE±íÊ¾²»ÔÚÒâ
+        desc->loadOp            = VK_ATTACHMENT_LOAD_OP_CLEAR;      //LOAD_OP_CLEARä»£è¡¨LOADæ—¶æ¸…ç©ºå†…å®¹
+        desc->storeOp           = VK_ATTACHMENT_STORE_OP_DONT_CARE; //DONT CAREè¡¨ç¤ºä¸åœ¨æ„
         desc->stencilLoadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  
         desc->stencilStoreOp    = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        desc->initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;        //´ú±í²»¹ØĞÄ³õÊ¼²¼¾Ö
+        desc->initialLayout     = VK_IMAGE_LAYOUT_UNDEFINED;        //ä»£è¡¨ä¸å…³å¿ƒåˆå§‹å¸ƒå±€
         desc->finalLayout       = depth_final_layout;
     }
 
