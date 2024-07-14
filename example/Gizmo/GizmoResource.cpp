@@ -1,5 +1,4 @@
-﻿#include"Gizmo.h"
-#include<hgl/graph/VKMaterialInstance.h>
+﻿#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/VertexDataManager.h>
@@ -9,42 +8,12 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/InlineGeometry.h>
+#include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
 
 namespace
 {
-    constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
-    {
-        COLOR::MozillaCharcoal,
-        COLOR::BlanchedAlmond,
-
-        COLOR::BlenderAxisRed,
-        COLOR::BlenderAxisGreen,
-        COLOR::BlenderAxisBlue,
-
-        COLOR::BlenderYellow,
-    };
-
-    static Color4f GizmoColorRGB[size_t(GizmoColor::RANGE_SIZE)];
-
-    static RenderResource *     gizmo_rr                =nullptr;
-
-    struct GizmoResource
-    {
-        Material *           mtl;
-        MaterialInstance *   mi[size_t(GizmoColor::RANGE_SIZE)];
-        Pipeline *           pipeline;
-        VertexDataManager *  vdm;
-
-        PrimitiveCreater *   prim_creater;
-    };
-
-    GizmoResource gr_line{};
-    GizmoResource gr_triangle{};
-
-    static Primitive *          gizmo_prim[size_t(GizmoShape::RANGE_SIZE)]{};
-
     bool InitMI(GizmoResource *gr)
     {
         if(!gr||!gr->mtl)
@@ -82,28 +51,28 @@ namespace
             if(!mci)
                 return(false);
 
-            gr_line.mtl=gizmo_rr->CreateMaterial(mci);
-            if(!gr_line.mtl)
+            gizmo_line.mtl=gizmo_rr->CreateMaterial(mci);
+            if(!gizmo_line.mtl)
                 return(false);
         }
 
         {
-            gr_line.pipeline=render_pass->CreatePipeline(gr_line.mtl,InlinePipeline::Solid3D,Prim::Lines);
+            gizmo_line.pipeline=render_pass->CreatePipeline(gizmo_line.mtl,InlinePipeline::Solid3D,Prim::Lines);
 
-            if(!gr_line.pipeline)
+            if(!gizmo_line.pipeline)
                 return(false);
         }
 
-        if(!InitMI(&gr_line))
+        if(!InitMI(&gizmo_line))
             return(false);
         
         {
-            gr_line.vdm=new VertexDataManager(device,gr_line.mtl->GetDefaultVIL());
+            gizmo_line.vdm=new VertexDataManager(device,gizmo_line.mtl->GetDefaultVIL());
 
-            if(!gr_line.vdm)
+            if(!gizmo_line.vdm)
                 return(false);
 
-            if(!gr_line.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
+            if(!gizmo_line.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
                                     HGL_SIZE_1MB,       //最大索引数量
                                     IndexType::U16))    //索引类型
                 return(false);
@@ -133,36 +102,36 @@ namespace
             if(!mci)
                 return(false);
 
-            gr_triangle.mtl=gizmo_rr->CreateMaterial(mci);
-            if(!gr_triangle.mtl)
+            gizmo_triangle.mtl=gizmo_rr->CreateMaterial(mci);
+            if(!gizmo_triangle.mtl)
                 return(false);
         }
 
         {
-            gr_triangle.pipeline=render_pass->CreatePipeline(gr_triangle.mtl,InlinePipeline::Solid3D,Prim::Triangles);
-            if(!gr_triangle.pipeline)
+            gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::Solid3D,Prim::Triangles);
+            if(!gizmo_triangle.pipeline)
                 return(false);
         }
 
-        if(!InitMI(&gr_triangle))
+        if(!InitMI(&gizmo_triangle))
             return(false);
 
         {
-            gr_triangle.vdm=new VertexDataManager(device,gr_triangle.mtl->GetDefaultVIL());
+            gizmo_triangle.vdm=new VertexDataManager(device,gizmo_triangle.mtl->GetDefaultVIL());
 
-            if(!gr_triangle.vdm)
+            if(!gizmo_triangle.vdm)
                 return(false);
 
-            if(!gr_triangle.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
+            if(!gizmo_triangle.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
                                         HGL_SIZE_1MB,       //最大索引数量
                                         IndexType::U16))    //索引类型
                 return(false);
         }
 
         {
-            gr_triangle.prim_creater=new PrimitiveCreater(gr_triangle.vdm);
+            gizmo_triangle.prim_creater=new PrimitiveCreater(gizmo_triangle.vdm);
 
-            if(!gr_triangle.prim_creater)
+            if(!gizmo_triangle.prim_creater)
                 return(false);
         }
 
@@ -170,7 +139,7 @@ namespace
             using namespace inline_geometry;
 
             {
-                gizmo_prim[size_t(GizmoShape::Plane)]=CreatePlane(gr_triangle.prim_creater);
+                gizmo_prim[size_t(GizmoShape::Plane)]=CreatePlane(gizmo_triangle.prim_creater);
             }
 
             {
@@ -180,11 +149,11 @@ namespace
                 cci.tangent=false;
                 cci.tex_coord=false;
 
-                gizmo_prim[size_t(GizmoShape::Cube)]=CreateCube(gr_triangle.prim_creater,&cci);
+                gizmo_prim[size_t(GizmoShape::Cube)]=CreateCube(gizmo_triangle.prim_creater,&cci);
             }
 
             {
-                gizmo_prim[size_t(GizmoShape::Sphere)]=CreateSphere(gr_triangle.prim_creater,8);
+                gizmo_prim[size_t(GizmoShape::Sphere)]=CreateSphere(gizmo_triangle.prim_creater,8);
             }
 
             {
@@ -195,7 +164,7 @@ namespace
                 cci.numberSlices=8;         //圆锥底部分割数
                 cci.numberStacks=1;         //圆锥高度分割数
 
-                gizmo_prim[size_t(GizmoShape::Cone)]=CreateCone(gr_triangle.prim_creater,&cci);
+                gizmo_prim[size_t(GizmoShape::Cone)]=CreateCone(gizmo_triangle.prim_creater,&cci);
             }
 
             {
@@ -205,7 +174,7 @@ namespace
                 cci.numberSlices=8;         //圆柱底部分割数
                 cci.radius      =1;         //圆柱半径
 
-                gizmo_prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(gr_triangle.prim_creater,&cci);
+                gizmo_prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(gizmo_triangle.prim_creater,&cci);
             }
 
             ENUM_CLASS_FOR(GizmoShape,int,i)
@@ -238,8 +207,8 @@ bool InitGizmoResource(GPUDevice *device)
 void FreeGizmoResource()
 {
     SAFE_CLEAR_OBJECT_ARRAY(gizmo_prim)
-    SAFE_CLEAR(gr_triangle.prim_creater);
-    SAFE_CLEAR(gr_triangle.vdm);
+    SAFE_CLEAR(gizmo_triangle.prim_creater);
+    SAFE_CLEAR(gizmo_triangle.vdm);
 //    SAFE_CLEAR(gizmo_pipeline_triangles);
 //    SAFE_CLEAR_OBJECT_ARRAY(gizmo_mi_triangles)
     //SAFE_CLEAR(gizmo_mtl_triangles);
