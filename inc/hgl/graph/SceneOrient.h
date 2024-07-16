@@ -18,7 +18,10 @@ namespace hgl
 
             //ObjectList<Transform> TransformList;
 
-            Matrix4f LocalMatrix;                                                                                       ///<当前矩阵
+            Vector3f Position;                                                                                          ///<坐标
+            Vector3f Direction;                                                                                         ///<方向
+
+            Matrix4f LocalMatrix;                                                                                       ///<当前矩阵(指相对上一级的变换矩阵)
             Matrix4f LocalToWorldMatrix;                                                                                ///<当前到世界矩阵
 
             Matrix4f InverseLocalMatrix;                                                                                ///<反向当前矩阵
@@ -29,6 +32,16 @@ namespace hgl
             SceneOrient();
             SceneOrient(const Matrix4f &mat);
             virtual ~SceneOrient()=default;
+
+                    void        SetPosition                 (const Vector3f &pos){Position=pos;}
+                    void        SetDirection                (const Vector3f &dir){Direction=dir;}
+
+            const   Vector3f &  GetLocalPosition            ()const{return Position;}
+            const   Vector3f &  GetLocalDirection           ()const{return Direction;}
+            const   Vector3f &  GetWorldPosition            ()const{return TransformPosition(LocalToWorldMatrix,Position);}
+            const   Vector3f &  GetWorldDirection           ()const{return TransformDirection(LocalToWorldMatrix,Direction);}
+
+        public: 
 
                     Matrix4f &  SetLocalMatrix              (const Matrix4f &);                                         ///<设定当前节点矩阵
                     Matrix4f &  SetLocalToWorldMatrix       (const Matrix4f &);                                         ///<设定当前节点到世界矩阵
