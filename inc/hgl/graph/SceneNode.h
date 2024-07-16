@@ -22,10 +22,6 @@ namespace hgl
             AABB LocalBoundingBox;                                                                                      ///<本地坐标绑定盒
             //AABB WorldBoundingBox;                                                                                      ///<世界坐标绑定盒
 
-            Vector4f Center;                                                                                            ///<中心点
-            Vector4f LocalCenter;                                                                                       ///<本地坐标中心点
-            Vector4f WorldCenter;                                                                                       ///<世界坐标中心点
-
             Renderable *render_obj=nullptr;                                                                             ///<可渲染实例
 
         public:
@@ -98,10 +94,6 @@ namespace hgl
             virtual const   AABB &      GetBoundingBox      ()const{return BoundingBox;}                                ///<取得绑定盒
             virtual const   AABB &      GetLocalBoundingBox ()const{return LocalBoundingBox;}                           ///<取得本地坐标绑定盒
 //            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
-
-            virtual const   Vector4f &  GetCenter           ()const{return Center;}                                     ///<取得中心点
-            virtual const   Vector4f &  GetLocalCenter      ()const{return LocalCenter;}                                ///<取得本地坐标中心点
-            virtual const   Vector4f &  GetWorldCenter      ()const{return WorldCenter;}                                ///<取得世界坐标中心点
         };//class SceneNode
     }//namespace graph
 }//namespace hgl
