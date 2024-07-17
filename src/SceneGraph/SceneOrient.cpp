@@ -8,6 +8,8 @@ namespace hgl
             Position=Vector3f(0.0f);
             Direction=Vector3f(0.0f);
 
+            IdentityLocalMatrix=true;
+
             LocalMatrix                 =Identity4f;
             LocalToWorldMatrix          =Identity4f;
             InverseLocalMatrix          =Identity4f;
@@ -25,6 +27,8 @@ namespace hgl
         Matrix4f &SceneOrient::SetLocalMatrix(const Matrix4f &m)
         {
             LocalMatrix=m;
+
+            IdentityLocalMatrix=IsIdentity(m);
 
             InverseLocalMatrix=inverse(LocalMatrix);
 
@@ -46,7 +50,10 @@ namespace hgl
          */
         void SceneOrient::RefreshLocalToWorldMatrix(const Matrix4f *m)
         {
-            SetLocalToWorldMatrix(TransformMatrix(*m,LocalMatrix));
+            if(IdentityLocalMatrix)
+                SetLocalToWorldMatrix(*m);
+            else
+                SetLocalToWorldMatrix(TransformMatrix(*m,LocalMatrix));
         }
     }//namespace graph
 }//namespace hgl
