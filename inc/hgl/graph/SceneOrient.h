@@ -21,6 +21,8 @@ namespace hgl
             Vector3f Position;                                                                                          ///<坐标
             Vector3f Direction;                                                                                         ///<方向
 
+            bool IdentityLocalMatrix;                                                                                   ///<是否为空矩阵
+
             Matrix4f LocalMatrix;                                                                                       ///<当前矩阵(指相对上一级的变换矩阵)
             Matrix4f LocalToWorldMatrix;                                                                                ///<当前到世界矩阵
 
@@ -42,6 +44,8 @@ namespace hgl
             const   Vector3f &  GetWorldDirection           ()const{return TransformDirection(LocalToWorldMatrix,Direction);}
 
         public: 
+
+            const   bool        IsIdentityLocalMatrix       ()const{return IdentityLocalMatrix;}                        ///<是否为空矩阵(相对上一级没变化)
 
                     Matrix4f &  SetLocalMatrix              (const Matrix4f &);                                         ///<设定当前节点矩阵
                     Matrix4f &  SetLocalToWorldMatrix       (const Matrix4f &);                                         ///<设定当前节点到世界矩阵
