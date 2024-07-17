@@ -6,6 +6,7 @@
 
 VK_NAMESPACE_BEGIN
 class RenderAssignBuffer;
+class SceneNode;
 
 /**
 * 同一材质的对象渲染列表
@@ -73,7 +74,7 @@ public:
     MaterialRenderList(GPUDevice *d,bool l2w,Material *m);
     ~MaterialRenderList();
 
-    void Add(Renderable *ri,const Matrix4f &mat);
+    void Add(SceneNode *);
 
     void Clear()
     {

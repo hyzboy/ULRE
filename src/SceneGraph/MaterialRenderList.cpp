@@ -7,6 +7,7 @@
 #include<hgl/util/sort/Sort.h>
 #include"RenderAssignBuffer.h"
 #include<hgl/graph/VertexDataManager.h>
+#include<hgl/graph/SceneNode.h>
 
 /**
 * 
@@ -93,12 +94,12 @@ MaterialRenderList::~MaterialRenderList()
     SAFE_CLEAR(assign_buffer);
 }
 
-void MaterialRenderList::Add(Renderable *ri,const Matrix4f &mat)
+void MaterialRenderList::Add(SceneNode *sn)
 {
     RenderNode rn;
 
-    rn.local_to_world=mat;
-    rn.ri=ri;
+    rn.local_to_world   =sn->GetLocalToWorldMatrix();
+    rn.ri               =sn->GetRenderable();
 
     rn_list.Add(rn);
 }
