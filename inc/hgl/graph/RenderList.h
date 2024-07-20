@@ -30,7 +30,7 @@ namespace hgl
         public:
 
             RenderList(GPUDevice *);
-            virtual ~RenderList();
+            virtual ~RenderList()=default;
             
             virtual bool Expend(SceneNode *);                   ///<展开场景树到渲染列表
 
