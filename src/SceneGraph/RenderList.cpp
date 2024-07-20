@@ -18,10 +18,6 @@ namespace hgl
             renderable_count=0;
         }
 
-        RenderList::~RenderList()
-        {
-        }
-
         bool RenderList::ExpendNode(SceneNode *sn)
         {
             if(!sn)return(false);
@@ -40,7 +36,7 @@ namespace hgl
                     mrl_map.Add(mtl,mrl);
                 }
                 
-                mrl->Add(ri,sn->GetLocalToWorldMatrix());
+                mrl->Add(sn);
 
                 ++renderable_count;
             }
