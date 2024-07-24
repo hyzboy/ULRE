@@ -10,6 +10,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VertexDataManager.h>
+#include<hgl/graph/VKVertexInputConfig.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -55,11 +56,15 @@ private:
 
             mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
+
+            VILConfig vil_config;
+
+            vil_config.Add(VAN::Luminance,VF_V1UN8);
        
-            mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,nullptr,&white_color);
+            mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
-            pipeline_plane_grid=CreatePipeline(mtl_plane_grid,InlinePipeline::Solid3D,Prim::Lines);
+            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,Prim::Lines);
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -125,17 +130,17 @@ private:
         using namespace inline_geometry;
         
         {
-            PrimitiveCreater pc(device,mtl_plane_grid->GetDefaultVIL());
+            PrimitiveCreater pc(device,mi_plane_grid->GetVIL());
 
             struct PlaneGridCreateInfo pgci;
 
             pgci.grid_size.Set(500,500);
             pgci.sub_count.Set(5,5);
 
-            pgci.lum=0.5;
-            pgci.sub_lum=0.75;
+            pgci.lum=128;
+            pgci.sub_lum=192;
 
-            prim_plane_grid=CreatePlaneGrid(&pc,&pgci);
+            prim_plane_grid=CreatePlaneGrid2D(&pc,&pgci);
         }
 
         {
