@@ -62,7 +62,7 @@ RTSwapchain *GPUDevice::CreateSwapchainRenderTarget()
     Swapchain *sc=CreateSwapchain(attr->surface_caps.currentExtent);
 
     if(!sc)
-        return(false);
+        return(nullptr);
 
     DeviceQueue *q=CreateQueue(sc->color_count,false);
     Semaphore *render_complete_semaphore=CreateGPUSemaphore();

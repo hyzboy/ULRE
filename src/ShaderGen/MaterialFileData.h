@@ -67,6 +67,8 @@ namespace material_file
             code_length=0;
         }
 
+        virtual ~ShaderData()=default;
+
         const VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
     };
 

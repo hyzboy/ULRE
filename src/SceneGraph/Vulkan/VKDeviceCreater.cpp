@@ -51,7 +51,7 @@ namespace
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-        constexpr char *require_ext_list[]=
+        constexpr const char *require_ext_list[]=
         {
         #ifdef _DEBUG
             VK_EXT_DEBUG_MARKER_EXTENSION_NAME,

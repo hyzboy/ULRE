@@ -48,9 +48,9 @@ MaterialParameters *GPUDevice::CreateMP(const MaterialDescriptorManager *desc_ma
     if(!ds)return(nullptr);
 
 #ifdef _DEBUG
-    const UTF8String addr_string=HexToString<char,uint64_t>((uint64_t)(ds->GetDescriptorSet()));
+    const UTF8String addr_string=HexToString<u8char,uint64_t>((uint64_t)(ds->GetDescriptorSet()));
 
-    LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+("] OK! Material Name: \"")+desc_manager->GetMaterialName()+U8_TEXT("\" Type: ")+GetDescriptorSetTypeName(desc_set_type));
+    LOG_INFO(U8_TEXT("Create [DescriptSets:")+addr_string+U8_TEXT("] OK! Material Name: \"")+(const UTF8String &)(desc_manager->GetMaterialName())+U8_TEXT("\" Type: ")+(u8char *)(GetDescriptorSetTypeName(desc_set_type)));
 #endif//_DEBUG
 
     return(new MaterialParameters(desc_manager,desc_set_type,ds));

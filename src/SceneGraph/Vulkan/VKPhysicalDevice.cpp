@@ -7,7 +7,7 @@ namespace
 {
     void debug_queue_family_properties_out(const char *front,const List<VkQueueFamilyProperties> &qfp_list)
     {
-        constexpr char *queue_bit_name[]=
+        constexpr const char *queue_bit_name[]=
         {
             "Graphics",
             "Compute",

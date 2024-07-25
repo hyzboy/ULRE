@@ -21,7 +21,7 @@ bool LoadTexture2DLayerFromFile(GPUDevice *device,Texture2DArray *ta,const uint3
     VkTextureLoader<Texture2D,Texture2DLoader> loader(device,auto_mipmaps);
 
     if(!loader.Load(filename))
-        return(nullptr);
+        return(false);
 
     DeviceBuffer *buf=loader.GetBuffer();
 

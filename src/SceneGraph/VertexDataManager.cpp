@@ -77,7 +77,7 @@ namespace hgl
 
             DataChain::UserNode *un=ibo_data_chain.Acquire(hgl_align<int>(count,4));
 
-            if(!un)return(false);
+            if(!un)return(nullptr);
 
             ibo_cur_size+=un->GetCount();
 

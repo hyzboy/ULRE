@@ -37,7 +37,7 @@ namespace
 
     struct MaterialFileBlockInfo
     {
-        char *name;
+        const char *name;
         int len;
         MaterialFileBlock state;
     };

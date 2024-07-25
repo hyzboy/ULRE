@@ -10,7 +10,7 @@ namespace hgl
 {
     namespace graph
     {
-        // 等同于EShTargetLanguageVersion
+        // 锟斤拷同锟斤拷EShTargetLanguageVersion
         constexpr const uint32_t SPV_VERSION_1_0 = (1 << 16);                     // SPIR-V 1.0
         constexpr const uint32_t SPV_VERSION_1_1 = (1 << 16) | (1 << 8);          // SPIR-V 1.1
         constexpr const uint32_t SPV_VERSION_1_2 = (1 << 16) | (2 << 8);          // SPIR-V 1.2
@@ -172,7 +172,7 @@ namespace hgl
 
             if(!result)
             {
-                LOG_ERROR(U8_TEXT("Compile shader failed, error info: ")+UTF8String(spv->log));
+                LOG_ERROR("Compile shader failed, error info: "+AnsiString(spv->log));
 
                 FreeSPVData(spv);
                 return(nullptr);
