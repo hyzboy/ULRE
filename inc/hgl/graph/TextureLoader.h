@@ -85,9 +85,15 @@ namespace hgl
 
         protected:
 
-            virtual void *OnBegin(uint32)=0;
+            virtual void *OnBegin(uint32,const VkFormat &)=0;
             virtual bool  OnEnd()=0;
             virtual void  OnError(){}
+
+        public:
+
+            const TextureFileHeader &   GetFileHeader   ()const{return file_header;}
+            const VkFormat &            GetTextureFormat()const{return format;}
+            const uint32                GetZeroMipmapBytes()const{return mipmap_zero_total_bytes;}
 
         public:
 

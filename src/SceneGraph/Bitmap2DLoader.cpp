@@ -9,7 +9,7 @@ namespace hgl
             SAFE_CLEAR(bmp);
         }
 
-        void *Bitmap2DLoader::OnBegin(uint32 total_bytes)
+        void *Bitmap2DLoader::OnBegin(uint32 total_bytes,const VkFormat &)
         {
             SAFE_CLEAR(bmp);
 

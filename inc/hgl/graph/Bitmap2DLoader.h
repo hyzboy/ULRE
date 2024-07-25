@@ -7,7 +7,7 @@ namespace hgl
     namespace graph
     {
         /**
-        * 2DÎ»Í¼¼ÓÔØ
+        * 2Dä½å›¾åŠ è½½ç±»
         */
         class Bitmap2DLoader:public Texture2DLoader
         {
@@ -20,7 +20,7 @@ namespace hgl
             Bitmap2DLoader():Texture2DLoader(){}
             ~Bitmap2DLoader();
 
-            void *OnBegin(uint32 total_bytes) override;
+            void *OnBegin(uint32 total_bytes,const VkFormat &) override;
             bool OnEnd() override {return(false);}
 
             BitmapData *GetBitmap();
