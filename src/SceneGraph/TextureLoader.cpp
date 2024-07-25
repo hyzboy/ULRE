@@ -194,7 +194,7 @@ namespace hgl
             {
                 if(file_header.pixel_format.compress_format<0
                  ||file_header.pixel_format.compress_format>=CompressFormatCount)
-                    return(nullptr);
+                    return(false);
 
                 format=CompressFormatList[file_header.pixel_format.compress_format];
             }
@@ -213,7 +213,7 @@ namespace hgl
             if(file_left_bytes<total_bytes)
                 return(false);
 
-            void *ptr=OnBegin(total_bytes);
+            void *ptr=OnBegin(total_bytes,format);
 
             if(!ptr)
                 return(false);

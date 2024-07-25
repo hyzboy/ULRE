@@ -32,11 +32,11 @@ public:
         SAFE_CLEAR(buf);
     }
 
-    void *OnBegin(uint32 total_bytes) override
+    void *OnBegin(uint32 total_bytes,const VkFormat &tex_format) override
     {
         SAFE_CLEAR(buf);
 
-        if(!CheckVulkanFormat(format))
+        if(!CheckVulkanFormat(tex_format))
             return(nullptr);
 
         buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
@@ -61,9 +61,9 @@ public:
 
     DeviceBuffer *GetBuffer(){return buf;}
 
-    T *CreateTexture()
+    T *CreateTexture(const TextureFileHeader &tex_file_header,const VkFormat &tex_format,const uint32 top_mipmap_bytes)
     {
-        TextureCreateInfo *tci=new TextureCreateInfo(format);
+        TextureCreateInfo *tci=new TextureCreateInfo(tex_format);
 
         VkExtent3D extent;
 
@@ -71,11 +71,11 @@ public:
 
         tci->SetData(buf,extent);
 
-        tci->origin_mipmaps=file_header.mipmaps;
+        tci->origin_mipmaps=tex_file_header.mipmaps;
 
-        if(auto_mipmaps&&file_header.mipmaps<=1)
+        if(auto_mipmaps&&tex_file_header.mipmaps<=1)
         {
-            if(device->CheckFormatSupport(format,VK_FORMAT_FEATURE_BLIT_DST_BIT))
+            if(device->CheckFormatSupport(tex_format,VK_FORMAT_FEATURE_BLIT_DST_BIT))
             {
                 tci->usage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
                 tci->SetAutoMipmaps();
@@ -83,10 +83,10 @@ public:
         }
         else
         {
-            tci->target_mipmaps=file_header.mipmaps;
+            tci->target_mipmaps=tex_file_header.mipmaps;
         }
 
-        tci->mipmap_zero_total_bytes=mipmap_zero_total_bytes;
+        tci->mipmap_zero_total_bytes=top_mipmap_bytes;
 
         SAFE_CLEAR(tex);
         tex=OnCreateTexture(tci);
