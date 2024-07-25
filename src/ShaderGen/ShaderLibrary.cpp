@@ -9,7 +9,7 @@ STD_MTL_NAMESPACE_BEGIN
 
 namespace
 {
-    ObjectMap<AnsiString,UTF8String> shader_library;
+    ObjectMap<AnsiString,AnsiString> shader_library;
 }
 
 // 因为是Debug阶段，所以现在直接从文件系统加载
@@ -19,7 +19,7 @@ const AnsiString *LoadShader(const AnsiString &shader_name)
     if(shader_name.IsEmpty())
         return(nullptr);
 
-    UTF8String *shader;
+    AnsiString *shader;
 
     if(shader_library.Get(shader_name,shader))
         return shader;
@@ -33,9 +33,9 @@ const AnsiString *LoadShader(const AnsiString &shader_name)
     if(!filesystem::FileExist(os_fn))
         return(nullptr);
 
-    shader=new UTF8String;
+    shader=new AnsiString;
 
-    if(LoadStringFromTextFile(*shader,os_fn)<=0)
+    if(LoadStringFromTextFile((UTF8String &)*shader,os_fn)<=0)
     {
         delete shader;
         shader=nullptr;

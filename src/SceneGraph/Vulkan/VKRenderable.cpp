@@ -65,7 +65,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的
-    const UTF8String &mtl_name=mi->GetMaterial()->GetName();
+    const AnsiString &mtl_name=mi->GetMaterial()->GetName();
 
     if(prim->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
@@ -96,20 +96,20 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
         if(vab->GetFormat()!=vif->format)
         {
-            LOG_ERROR(  "[FATAL ERROR] VAB \""+UTF8String(vif->name)+
-                        UTF8String("\" format can't match Renderable, Material(")+mtl_name+
-                        UTF8String(") Format(")+GetVulkanFormatName(vif->format)+
-                        UTF8String("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
+            LOG_ERROR(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
+                        AnsiString("\" format can't match Renderable, Material(")+mtl_name+
+                        AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
+                        AnsiString("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
             return(nullptr);
         }
 
         if(vab->GetStride()!=vif->stride)
         {
-            LOG_ERROR(  "[FATAL ERROR] VAB \""+UTF8String(vif->name)+
-                        UTF8String("\" stride can't match Renderable, Material(")+mtl_name+
-                        UTF8String(") stride(")+UTF8String::numberOf(vif->stride)+
-                        UTF8String("), VAB stride(")+UTF8String::numberOf(vab->GetStride())+
+            LOG_ERROR(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
+                        AnsiString("\" stride can't match Renderable, Material(")+mtl_name+
+                        AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
+                        AnsiString("), VAB stride(")+AnsiString::numberOf(vab->GetStride())+
                         ")");
             return(nullptr);
         }

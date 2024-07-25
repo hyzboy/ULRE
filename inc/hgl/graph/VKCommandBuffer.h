@@ -28,11 +28,11 @@ public:
     bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
 
 #ifdef _DEBUG
-    void SetDebugName(const UTF8String &);
-    void BeginRegion(const UTF8String &,const Color4f &);
+    void SetDebugName(const AnsiString &);
+    void BeginRegion(const AnsiString &,const Color4f &);
     void EndRegion();
 #else
-    void BeginRegion(const UTF8String &,const Color4f &){}
+    void BeginRegion(const AnsiString &,const Color4f &){}
     void EndRegion(){}
 #endif//_DEBUG
 };//class GPUCmdBuffer

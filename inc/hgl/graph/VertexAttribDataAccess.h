@@ -171,7 +171,7 @@ namespace hgl
 
             AABB GetAABB()const
             {
-                vec min_point,max_point;
+                glm::vec4 min_point,max_point;
 
                 GetBoundingBox(min_point,max_point);
 
@@ -264,7 +264,7 @@ namespace hgl
 
             AABB GetAABB()const
             {
-                vec min_point,max_point;
+                glm::vec4 min_point,max_point;
 
                 GetBoundingBox(min_point,max_point);
 
@@ -462,10 +462,10 @@ namespace hgl
             template<typename V>
             bool WriteRect(const T left,const T top,const T width,const T height)
             {
-                const vec2<V> lt(left      ,top);
-                const vec2<V> rt(left+width,top);
-                const vec2<V> rb(left+width,top+height);
-                const vec2<V> lb(left      ,top+height);
+                const glm::vec<2,V,glm::defaultp> lt(left      ,top);
+                const glm::vec<2,V,glm::defaultp> rt(left+width,top);
+                const glm::vec<2,V,glm::defaultp> rb(left+width,top+height);
+                const glm::vec<2,V,glm::defaultp> lb(left      ,top+height);
 
                 return WriteQuad(lt,rt,rb,lb);
             }
@@ -580,7 +580,7 @@ namespace hgl
 
             AABB GetAABB()const
             {
-                vec min_point,max_point;
+                glm::vec4 min_point,max_point;
 
                 GetBoundingBox(min_point,max_point);
 
@@ -850,7 +850,7 @@ namespace hgl
 
             AABB GetAABB()const
             {
-                vec min_point,max_point;
+                glm::vec4 min_point,max_point;
 
                 GetBoundingBox(min_point,max_point);
 

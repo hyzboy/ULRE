@@ -45,7 +45,7 @@ bool ShaderDescriptorInfo::AddConstValue(ConstValueDescriptor *sd)
     return(true);
 }
 
-bool VertexShaderDescriptorInfo::AddSubpassInput(const UTF8String name,uint8_t index)
+bool VertexShaderDescriptorInfo::AddSubpassInput(const AnsiString &name,uint8_t index)
 {
     for(auto *si:subpass_input)
     {
@@ -62,7 +62,7 @@ bool VertexShaderDescriptorInfo::AddSubpassInput(const UTF8String name,uint8_t i
     return(true);
 }
 
-void ShaderDescriptorInfo::SetPushConstant(const UTF8String name,uint8_t offset,uint8_t size)
+void ShaderDescriptorInfo::SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size)
 {
     push_constant.name  =name;
     push_constant.offset=offset;

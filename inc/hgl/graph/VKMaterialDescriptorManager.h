@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 class MaterialDescriptorManager
 {
-    UTF8String mtl_name;
+    AnsiString mtl_name;
 
     BindingMapArray binding_map[DESCRIPTOR_SET_TYPE_COUNT];
 
@@ -19,11 +19,11 @@ private:
 
 public:
 
-    MaterialDescriptorManager(const UTF8String &,ShaderDescriptor *,const uint);
-    MaterialDescriptorManager(const UTF8String &,const ShaderDescriptorSetArray &);
+    MaterialDescriptorManager(const AnsiString &,ShaderDescriptor *,const uint);
+    MaterialDescriptorManager(const AnsiString &,const ShaderDescriptorSetArray &);
     ~MaterialDescriptorManager();
 
-    const UTF8String &GetMaterialName()const{return mtl_name;}
+    const AnsiString &GetMaterialName()const{return mtl_name;}
 
     const uint GetBindCount(const DescriptorSetType &set_type)const
     {

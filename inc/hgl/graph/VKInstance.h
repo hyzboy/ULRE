@@ -90,11 +90,11 @@ VK_NAMESPACE_BEGIN
         }
 
         template<typename T>
-        T *GetDeviceProc(const char *name)
+        T *GetDeviceProc(VkDevice *dev,const char *name)
         {
             if(!GetDeviceProcAddr)return(nullptr);
 
-            return reinterpret_cast<T>(GetDeviceProcAddr(name));
+            return reinterpret_cast<T>(GetDeviceProcAddr(dev,name));
         }
 
         void DestroySurface(VkSurfaceKHR);

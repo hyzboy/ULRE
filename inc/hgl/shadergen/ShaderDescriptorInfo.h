@@ -58,7 +58,7 @@ public:
 
     bool AddConstValue(ConstValueDescriptor *sd);
     
-    void SetPushConstant(const AnsiString name,uint8_t offset,uint8_t size);
+    void SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size);
 };//class ShaderDescriptorInfo
 
 template<VkShaderStageFlagBits SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderDescriptorInfo
@@ -98,7 +98,7 @@ public:
     using CustomShaderDescriptorInfo<VK_SHADER_STAGE_VERTEX_BIT,VIAArray,VIA,SVArray,ShaderVariable>::CustomShaderDescriptorInfo;
     ~VertexShaderDescriptorInfo()override=default;
 
-    bool AddSubpassInput(const AnsiString name,uint8_t index);
+    bool AddSubpassInput(const AnsiString &name,uint8_t index);
 };//class VertexShaderDescriptorInfo
 
 using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;

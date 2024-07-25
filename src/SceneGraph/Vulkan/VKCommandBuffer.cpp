@@ -26,13 +26,13 @@ bool GPUCmdBuffer::Begin()
 }
 
 #ifdef _DEBUG
-void GPUCmdBuffer::SetDebugName(const UTF8String &object_name)
+void GPUCmdBuffer::SetDebugName(const AnsiString &object_name)
 {
     if(dev_attr->debug_utils)
         dev_attr->debug_utils->SetCommandBuffer(cmd_buf,object_name);
 }
 
-void GPUCmdBuffer::BeginRegion(const UTF8String &region_name,const Color4f &color)
+void GPUCmdBuffer::BeginRegion(const AnsiString &region_name,const Color4f &color)
 {
     if(dev_attr->debug_utils)
         dev_attr->debug_utils->CmdBegin(cmd_buf,region_name,color);
