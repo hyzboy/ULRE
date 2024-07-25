@@ -1,4 +1,4 @@
-﻿#include<hgl/type/StringList.h>
+﻿#include<hgl/io/LoadString.h>
 #include<hgl/graph/font/TextRender.h>
 #include"VulkanAppFramework.h"
 
@@ -8,7 +8,7 @@ using namespace hgl::graph;
 constexpr uint32_t SCREEN_WIDTH =1280;
 constexpr uint32_t SCREEN_HEIGHT=SCREEN_WIDTH/16*9;
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public CameraAppFramework
 {
 private:
 
@@ -61,16 +61,21 @@ public:
         if(!InitTextRenderable())
             return(false);
 
-        BuildCommandBuffer(render_obj);
+        VulkanApplicationFramework::BuildCommandBuffer(render_obj);
 
         return(true);
     }
 
-    void Resize(int w,int h)override
+    void Resize(uint w,uint h)override
     {
         VulkanApplicationFramework::Resize(w,h);
         
-        BuildCommandBuffer(render_obj);
+        VulkanApplicationFramework::BuildCommandBuffer(render_obj);
+    }
+
+    void BuildCommandBuffer(uint32_t index)
+    {
+        VulkanApplicationFramework::BuildCommandBuffer(index,render_obj);
     }
 };//class TestApp:public VulkanApplicationFramework
 
