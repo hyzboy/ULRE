@@ -31,11 +31,11 @@ namespace
             if(!Std2DMaterial::BeginCustomShader())
                 return(false);
 
-            if(mfd->mi.mi_bytes>0)
+            if(mfd->mi_data.data_bytes>0)
             {
-                mci->SetMaterialInstance(  mfd->mi.code,
-                                           mfd->mi.mi_bytes,
-                                           mfd->mi.shader_stage_flag_bits);
+                mci->SetMaterialInstance(  mfd->mi_data.code,
+                                           mfd->mi_data.data_bytes,
+                                           mfd->mi_data.shader_stage_flag_bits);
             }
 
             for(const auto ubo:mfd->ubo_list)
@@ -56,7 +56,7 @@ namespace
         template<VkShaderStageFlagBits ss,typename SD,typename SCI>
         SD *CommonProc(SCI *sc)
         {
-            SD *sd=(SD *)(mfd->shader[ss]);
+            SD *sd=(SD *)(mfd->shader_data_map[ss]);
 
             if(!sd)
                 return(nullptr);
@@ -73,7 +73,7 @@ namespace
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
         {
-            vsc->AddInput(mfd->via);
+            vsc->AddInput(mfd->via_list);
 
             if(!Std2DMaterial::CustomVertexShader(vsc))
                 return(false);
@@ -112,7 +112,7 @@ MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,Material2DCreate
     if(!mfd)
         return nullptr;
 
-    if(mfd->mi.mi_bytes>0)
+    if(mfd->mi_data.data_bytes>0)
         cfg->material_instance=true;
 
     cfg->shader_stage_flag_bit=mfd->shader_stage_flag_bit;
