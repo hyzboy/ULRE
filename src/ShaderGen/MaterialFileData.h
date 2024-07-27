@@ -20,7 +20,7 @@ namespace material_file
         const char *code;
         uint        code_length;
 
-        uint        mi_bytes;
+        uint        data_bytes;
 
         uint32_t    shader_stage_flag_bits;
     };
@@ -127,13 +127,13 @@ namespace material_file
         AnsiStringList          require_list;               ///<需求的内部模块(如LocalToWorld,Sun,Shadow等系统内置元素)
 //        AnsiStringList          import_list;                ///<引用的外部模块
 
-        MaterialInstanceData    mi{};
+        MaterialInstanceData    mi_data{};
 
-        VIAList                 via;                        ///<Vertex Input
+        VIAList                 via_list;                   ///<Vertex Input
 
         UBODataList             ubo_list;
 
-        ShaderDataMap           shader;
+        ShaderDataMap           shader_data_map;
 
         uint32_t                shader_stage_flag_bit;
 

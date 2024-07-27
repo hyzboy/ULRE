@@ -306,7 +306,7 @@ namespace
             {
                 mid->code                   =code_parse.start;
                 mid->code_length            =code_parse.end-code_parse.start;
-                mid->mi_bytes               =mi_bytes;
+                mid->data_bytes             =mi_bytes;
                 mid->shader_stage_flag_bits =shader_stage_flag_bits;
             }
         }
@@ -655,10 +655,10 @@ namespace
                     parse=new MaterialBlockParse(&(mfd->require_list),&(mfd->ubo_list));
                 else
                 if(state==MaterialFileBlock::MaterialInstance)
-                    parse=new MaterialInstanceBlockParse(&(mfd->mi));
+                    parse=new MaterialInstanceBlockParse(&(mfd->mi_data));
                 else
                 if(state==MaterialFileBlock::VertexInput)
-                    parse=new VertexInputBlockParse(&(mfd->via));
+                    parse=new VertexInputBlockParse(&(mfd->via_list));
                 else
                 if(state>=MaterialFileBlock::Vertex
                  &&state<=MaterialFileBlock::Fragment)
@@ -689,7 +689,7 @@ namespace
                     if(!sd)
                         return(false);
 
-                    mfd->shader.Add(sd->GetShaderStage(),sd);
+                    mfd->shader_data_map.Add(sd->GetShaderStage(),sd);
 
                     mfd->shader_stage_flag_bit|=sd->GetShaderStage();
                 }
