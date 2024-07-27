@@ -9,32 +9,6 @@ using namespace hgl::graph;
 
 VK_NAMESPACE_USING;
 
-constexpr char *texture_compress_name[]=
-{
-    "NONE",
-    "S3TC",
-    "PVRTC",
-    "ETC1",
-    "ETC2",
-    "EAC",
-    "ATC",
-    "ASTC",
-    "YUV"
-};
-
-constexpr char *data_type_name[]
-{
-    "NONE",
-    "UNORM",
-    "SNORM",
-    "USCALED",
-    "SSCALED",
-    "UINT",
-    "SINT",
-    "UFLOAT",
-    "SFLOAT",
-    "SRGB"
-};//
 
 VulkanInstance *InitVulkanInstance()
 {
@@ -92,14 +66,14 @@ int main(int,char **)
         std::cout<<"Format [ID:"<<std::setw(10)<<vf->format<<"]["<<std::setw(16)<<vf->name<<"]";
 
         if(vf->depth!=VulkanBaseType::NONE)
-            std::cout<<"[  Depth:"<<std::setw(8)<<data_type_name[size_t(vf->depth)]<<"]";
+            std::cout<<"[  Depth:"<<std::setw(8)<<VulkanBaseTypeName[size_t(vf->depth)]<<"]";
         
         if(vf->stencil!=VulkanBaseType::NONE)
-            std::cout<<"[Stencil:"<<std::setw(8)<<data_type_name[size_t(vf->stencil)]<<"]";
+            std::cout<<"[Stencil:"<<std::setw(8)<<VulkanBaseTypeName[size_t(vf->stencil)]<<"]";
 
         if((vf->depth==VulkanBaseType::NONE)
          &&(vf->stencil==VulkanBaseType::NONE))
-            std::cout<<"[  Color:"<<std::setw(8)<<data_type_name[size_t(vf->color)]<<"]";
+            std::cout<<"[  Color:"<<std::setw(8)<<VulkanBaseTypeName[size_t(vf->color)]<<"]";
 
         {
             const VkFormatProperties fp=physical_device->GetFormatProperties(vf->format);
@@ -114,7 +88,7 @@ int main(int,char **)
         }
 
         if(vf->compress_type!=TextureCompressType::NONE)
-            std::cout<<" use "<<texture_compress_name[size_t(vf->compress_type)]<<" compress.";
+            std::cout<<" use "<<TextureCompressTypeName[size_t(vf->compress_type)]<<" compress.";
         else
             std::cout<<std::setw(4)<<vf->bytes<<" bytes/pixel.";
             
