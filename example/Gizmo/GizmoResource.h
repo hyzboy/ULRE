@@ -1,7 +1,13 @@
 #pragma once
 #include"Gizmo.h"
+#include<hgl/color/Color.h>
 
 VK_NAMESPACE_BEGIN
+
+class SceneNode;
+class PrimitiveCreater;
+class StaticMesh;
+
 constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
 {
     COLOR::MozillaCharcoal,
@@ -14,20 +20,8 @@ constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
     COLOR::BlenderYellow,
 };
 
-static RenderResource *  gizmo_rr=nullptr;
+Renderable *GetGizmoRenderable(const GizmoShape &gs,const GizmoColor &);
 
-struct GizmoResource
-{
-    Material *           mtl;
-    MaterialInstance *   mi[size_t(GizmoColor::RANGE_SIZE)];
-    Pipeline *           pipeline;
-    VertexDataManager *  vdm;
+StaticMesh *CreateGizmoStaticMesh(SceneNode *);
 
-    PrimitiveCreater *   prim_creater;
-};
-
-static GizmoResource    gizmo_line{};
-static GizmoResource    gizmo_triangle{};
-
-static Primitive *      gizmo_prim[size_t(GizmoShape::RANGE_SIZE)]{};
 VK_NAMESPACE_END
