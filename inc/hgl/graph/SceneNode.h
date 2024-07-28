@@ -43,6 +43,14 @@ namespace hgl
                 render_obj=nullptr;
             }
 
+            const bool IsEmpty()const
+            {
+                if(render_obj)return(false);
+                if(SubNode.GetCount())return(false);
+
+                return(true);
+            }
+
             Renderable *GetRenderable(){return render_obj;}
             void        SetRenderable(Renderable *);
 

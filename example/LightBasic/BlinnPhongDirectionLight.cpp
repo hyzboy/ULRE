@@ -233,7 +233,7 @@ private:
         {
             struct CylinderCreateInfo cci;
 
-            cci.halfExtend  =1.25;         //圆柱一半高度
+            cci.halfExtend  =1.25;      //圆柱一半高度
             cci.numberSlices=16;        //圆柱底部分割数
             cci.radius      =1.25f;     //圆柱半径
 
@@ -256,7 +256,7 @@ private:
 
         if(!ri)
         {
-            LOG_ERROR(U8_TEXT("Create Renderable failed! Primitive: ")+r->GetName());
+            LOG_ERROR("Create Renderable failed! Primitive: "+r->GetName());
             return(nullptr);
         }
 

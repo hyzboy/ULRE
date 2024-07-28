@@ -18,6 +18,7 @@ namespace material_file
     struct MaterialInstanceData
     {
         const char *code;
+
         uint        code_length;
 
         uint        data_bytes;

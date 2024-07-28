@@ -14,6 +14,43 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
+    static RenderResource *  gizmo_rr=nullptr;
+
+    struct GizmoResource
+    {
+        Material *           mtl;
+        MaterialInstance *   mi[size_t(GizmoColor::RANGE_SIZE)];
+        Pipeline *           pipeline;
+        VertexDataManager *  vdm;
+
+        PrimitiveCreater *   prim_creater;
+    };
+
+    static GizmoResource    gizmo_line{};
+    static GizmoResource    gizmo_triangle{};
+
+    struct GizmoRenderable
+    {
+        Primitive *prim;
+
+        Renderable *renderable[size_t(GizmoColor::RANGE_SIZE)];
+    };
+    
+    GizmoRenderable         gizmo_rederable[size_t(GizmoShape::RANGE_SIZE)]{};
+
+    void InitGizmoRenderable(const GizmoShape &gs,Primitive *prim,Pipeline *p)
+    {
+        if(!prim)
+            return;
+
+        GizmoRenderable *gr=gizmo_rederable+size_t(gs);
+
+        gr->prim=prim;
+
+        for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
+            gr->renderable[i]=CreateRenderable(prim,gizmo_triangle.mi[i],p);
+    }
+
     bool InitMI(GizmoResource *gr)
     {
         if(!gr||!gr->mtl)
@@ -122,9 +159,9 @@ namespace
             if(!gizmo_triangle.vdm)
                 return(false);
 
-            if(!gizmo_triangle.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
-                                        HGL_SIZE_1MB,       //最大索引数量
-                                        IndexType::U16))    //索引类型
+            if(!gizmo_triangle.vdm->Init(   HGL_SIZE_1MB,       //最大顶点数量
+                                            HGL_SIZE_1MB,       //最大索引数量
+                                            IndexType::U16))    //索引类型
                 return(false);
         }
 
@@ -139,7 +176,7 @@ namespace
             using namespace inline_geometry;
 
             {
-                gizmo_prim[size_t(GizmoShape::Plane)]=CreatePlane(gizmo_triangle.prim_creater);
+                InitGizmoRenderable(GizmoShape::Plane,CreatePlane(gizmo_triangle.prim_creater),gizmo_triangle.pipeline);
             }
 
             {
@@ -149,11 +186,11 @@ namespace
                 cci.tangent=false;
                 cci.tex_coord=false;
 
-                gizmo_prim[size_t(GizmoShape::Cube)]=CreateCube(gizmo_triangle.prim_creater,&cci);
+                InitGizmoRenderable(GizmoShape::Cube,CreateCube(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
 
             {
-                gizmo_prim[size_t(GizmoShape::Sphere)]=CreateSphere(gizmo_triangle.prim_creater,8);
+                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,8),gizmo_triangle.pipeline);
             }
 
             {
@@ -164,7 +201,7 @@ namespace
                 cci.numberSlices=8;         //圆锥底部分割数
                 cci.numberStacks=1;         //圆锥高度分割数
 
-                gizmo_prim[size_t(GizmoShape::Cone)]=CreateCone(gizmo_triangle.prim_creater,&cci);
+                InitGizmoRenderable(GizmoShape::Cone,CreateCone(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
 
             {
@@ -174,12 +211,12 @@ namespace
                 cci.numberSlices=8;         //圆柱底部分割数
                 cci.radius      =1;         //圆柱半径
 
-                gizmo_prim[size_t(GizmoShape::Cylinder)]=CreateCylinder(gizmo_triangle.prim_creater,&cci);
+                InitGizmoRenderable(GizmoShape::Cylinder,CreateCylinder(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
 
             ENUM_CLASS_FOR(GizmoShape,int,i)
             {
-                if(!gizmo_prim[i])
+                if(!gizmo_rederable[i].prim)
                     return(false);
             }
         }
@@ -206,13 +243,40 @@ bool InitGizmoResource(GPUDevice *device)
 
 void FreeGizmoResource()
 {
-    SAFE_CLEAR_OBJECT_ARRAY(gizmo_prim)
+    for(GizmoRenderable &gr:gizmo_rederable)
+    {
+        SAFE_CLEAR(gr.prim)
+        SAFE_CLEAR_OBJECT_ARRAY(gr.renderable)
+    }
+
     SAFE_CLEAR(gizmo_triangle.prim_creater);
     SAFE_CLEAR(gizmo_triangle.vdm);
 //    SAFE_CLEAR(gizmo_pipeline_triangles);
 //    SAFE_CLEAR_OBJECT_ARRAY(gizmo_mi_triangles)
     //SAFE_CLEAR(gizmo_mtl_triangles);
     SAFE_CLEAR(gizmo_rr);
+}
+
+Renderable *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color)
+{
+    if(!gizmo_rr)
+        return(nullptr);
+
+    RANGE_CHECK_RETURN_NULLPTR(shape)
+    RANGE_CHECK_RETURN_NULLPTR(color)
+
+    return gizmo_rederable[size_t(shape)].renderable[size_t(color)];
+}
+
+StaticMesh *CreateGizmoStaticMesh(SceneNode *root_node)
+{
+    if(!root_node)
+        return(nullptr);
+
+    if(root_node->IsEmpty())
+        return(nullptr);
+
+    return CreateRRObject<StaticMesh>(gizmo_rr,root_node);
 }
 
 VK_NAMESPACE_END

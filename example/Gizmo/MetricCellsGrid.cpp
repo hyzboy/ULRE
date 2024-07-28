@@ -6,7 +6,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/Camera.h>
-#include<hgl/graph/VKRenderablePrimitiveCreater.h>
+#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 
 using namespace hgl;
@@ -83,7 +83,12 @@ private:
 
     bool CreateRenderObject()
     {
-        ro_plane=inline_geometry::CreatePlane(db,material->GetDefaultVIL());
+        PrimitiveCreater pc(device,material->GetDefaultVIL());
+
+        ro_plane=inline_geometry::CreatePlane(&pc);
+
+        if(ro_plane)
+            db->Add(ro_plane);
 
         return ro_plane;
     }
