@@ -66,7 +66,7 @@ namespace
             root_node->CreateSubNode(scale(9,1,1),cylinder[0]);
 
             {
-                TransformMatrix4f tm;
+                Transform tm;
 
                 tm.SetTranslation(Vector3f(0,0,4.5f));
                 root_node->CreateSubNode(tm.GetMatrix(),cylinder[2]);       //Z 向上
