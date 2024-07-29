@@ -74,30 +74,37 @@ bool InitGizmoMoveStaticMesh()
     {
         SceneNode *root_node=new SceneNode(sphere);
 
-        root_node->CreateSubNode(scale(9,1,1),cylinder[0]);
-
         {
             Transform tm;
 
+            constexpr const Vector3f one_scale(1);
+            constexpr const Vector3f cylinder_scale(0.35f,0.35f,4.5f);
+
             tm.SetTranslation(Vector3f(0,0,4.5f));
+            tm.SetScale(cylinder_scale);
             root_node->CreateSubNode(tm.GetMatrix(),cylinder[2]);       //Z 向上圆柱
 
+            tm.SetScale(one_scale);
             tm.SetTranslation(Vector3f(0,0,9.5f));
             root_node->CreateSubNode(tm.GetMatrix(),cone[2]);           //Z 向上圆锥
 
+            tm.SetScale(cylinder_scale);
             tm.SetRotation(AxisVector::Y,90);
             tm.SetTranslation(Vector3f(4.5f,0,0));
 
             root_node->CreateSubNode(tm.GetMatrix(),cylinder[0]);       //X 向右圆柱
 
+            tm.SetScale(one_scale);
             tm.SetTranslation(Vector3f(9.5f,0,0));
             root_node->CreateSubNode(tm.GetMatrix(),cone[0]);           //X 向右圆锥
 
-            tm.SetRotation(AxisVector::X,90);
+            tm.SetScale(cylinder_scale);
+            tm.SetRotation(AxisVector::X,-90);
             tm.SetTranslation(Vector3f(0,4.5f,0));
                 
             root_node->CreateSubNode(tm.GetMatrix(),cylinder[1]);       //Y 向前圆柱
 
+            tm.SetScale(one_scale);
             tm.SetTranslation(Vector3f(0,9.5f,0));
             root_node->CreateSubNode(tm.GetMatrix(),cone[1]);           //Y 向前圆锥
         }
