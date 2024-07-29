@@ -10,4 +10,6 @@
 endmacro()
 
 CreateProject(00.line line.cpp)
-CreateProject(01.roundbox roundbox.cpp)
+CreateProject(01.LerpLine LerpLine.cpp)
+
+CreateProject(02.roundbox roundbox.cpp)
