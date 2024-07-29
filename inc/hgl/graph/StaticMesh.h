@@ -9,19 +9,14 @@ class StaticMesh
 {
 protected:
     
-    RenderResource *rr;
-
     SceneNode *root_node;
-
-private:
-
-    StaticMesh(RenderResource *,SceneNode *);
 
 public:
 
+    StaticMesh(SceneNode *);
     virtual ~StaticMesh();
 
-    static StaticMesh *CreateNewObject(RenderResource *,SceneNode *);
+//    static StaticMesh *CreateNewObject(RenderResource *,SceneNode *);
 
 public:
 

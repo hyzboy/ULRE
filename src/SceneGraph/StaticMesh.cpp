@@ -3,27 +3,24 @@
 
 VK_NAMESPACE_BEGIN
 
-StaticMesh *StaticMesh::CreateNewObject(RenderResource *rr,SceneNode *node)
+//StaticMesh *StaticMesh::CreateNewObject(RenderResource *rr,SceneNode *node)
+//{
+//    if(!node)
+//        return(nullptr);
+//
+//    if(node->IsEmpty())
+//        return(nullptr);
+//
+//    return(new StaticMesh(rr,node));
+//}
+
+StaticMesh::StaticMesh(SceneNode *sn)
 {
-    if(!node)
-        return(nullptr);
-
-    if(node->IsEmpty())
-        return(nullptr);
-
-    return(new StaticMesh(rr,node));
-}
-
-StaticMesh::StaticMesh(RenderResource *r,SceneNode *sn)
-{
-    rr=r;
     root_node=sn;
 }
 
 StaticMesh::~StaticMesh()
 {
-    rr->Release(this);
-
     SAFE_CLEAR(root_node);
 }
 

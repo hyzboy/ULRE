@@ -29,8 +29,9 @@ enum class GizmoShape:uint
     ENUM_CLASS_RANGE(Plane,Cylinder)
 };
 
-bool InitGizmoResource(GPUDevice *);
+bool InitGizmoResource(RenderResource *);
 void FreeGizmoResource();
+
 
 StaticMesh *GetGizmoMoveStaticMesh();
 

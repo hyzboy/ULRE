@@ -12,7 +12,7 @@ private:
 
     bool InitGizmo()
     {
-        if(!InitGizmoResource(device))
+        if(!InitGizmoResource(db))
             return(false);
 
         sm=GetGizmoMoveStaticMesh();
@@ -34,8 +34,11 @@ public:
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 
-        render_root.RefreshMatrix();
-        render_list->Expend(sm->GetScene());
+        SceneNode *sn=sm->GetScene();
+
+        sn->RefreshMatrix();
+
+        render_list->Expend(sn);
 
         return(true);
     }

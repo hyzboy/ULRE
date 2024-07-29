@@ -84,6 +84,7 @@ namespace
             mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
 
             cfg.mtl_name="VertexLuminance3D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
+            cfg.local_to_world=true;
             cfg.position_format=VAT_VEC3;
 
             mtl::MaterialCreateInfo *mci=CreateVertexLuminance3D(&cfg);
@@ -94,6 +95,8 @@ namespace
             gizmo_line.mtl=gizmo_rr->CreateMaterial(mci);
             if(!gizmo_line.mtl)
                 return(false);
+
+            gizmo_line.mtl->Update();
         }
 
         {
@@ -145,6 +148,8 @@ namespace
             gizmo_triangle.mtl=gizmo_rr->CreateMaterial(mci);
             if(!gizmo_triangle.mtl)
                 return(false);
+
+            gizmo_triangle.mtl->Update();
         }
 
         {
@@ -228,12 +233,17 @@ namespace
     }
 }//namespace
 
-bool InitGizmoResource(GPUDevice *device)
+bool InitGizmoResource(RenderResource *rr)
 {
+    if(!rr)
+        return(false);
+
     if(gizmo_rr)
         return(false);
 
-    gizmo_rr=new RenderResource(device);
+    gizmo_rr=rr;
+
+    GPUDevice *device=gizmo_rr->GetDevice();
 
     if(!InitGizmoResource3D(device))
         return(false);
@@ -258,10 +268,9 @@ void FreeGizmoResource()
 
     SAFE_CLEAR(gizmo_triangle.prim_creater);
     SAFE_CLEAR(gizmo_triangle.vdm);
-//    SAFE_CLEAR(gizmo_pipeline_triangles);
-//    SAFE_CLEAR_OBJECT_ARRAY(gizmo_mi_triangles)
-    //SAFE_CLEAR(gizmo_mtl_triangles);
-    SAFE_CLEAR(gizmo_rr);
+
+    SAFE_CLEAR(gizmo_line.prim_creater);
+    SAFE_CLEAR(gizmo_line.vdm);
 }
 
 Renderable *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color)
@@ -283,7 +292,7 @@ StaticMesh *CreateGizmoStaticMesh(SceneNode *root_node)
     if(root_node->IsEmpty())
         return(nullptr);
 
-    return CreateRRObject<StaticMesh>(gizmo_rr,root_node);
+    return(new StaticMesh(root_node));
 }
 
 VK_NAMESPACE_END
