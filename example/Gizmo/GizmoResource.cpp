@@ -198,7 +198,7 @@ namespace
             }
 
             {
-                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,8),gizmo_triangle.pipeline);
+                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,32),gizmo_triangle.pipeline);
             }
 
             {
@@ -206,8 +206,8 @@ namespace
 
                 cci.radius      =1;         //圆锥半径
                 cci.halfExtend  =1;         //圆锤一半高度
-                cci.numberSlices=8;         //圆锥底部分割数
-                cci.numberStacks=1;         //圆锥高度分割数
+                cci.numberSlices=32;        //圆锥底部分割数
+                cci.numberStacks=8;         //圆锥高度分割数
 
                 InitGizmoRenderable(GizmoShape::Cone,CreateCone(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
@@ -216,7 +216,7 @@ namespace
                 struct CylinderCreateInfo cci;
 
                 cci.halfExtend  =1;         //圆柱一半高度
-                cci.numberSlices=8;         //圆柱底部分割数
+                cci.numberSlices=32;        //圆柱底部分割数
                 cci.radius      =1;         //圆柱半径
 
                 InitGizmoRenderable(GizmoShape::Cylinder,CreateCylinder(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
