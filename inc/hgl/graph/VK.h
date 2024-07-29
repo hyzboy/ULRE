@@ -115,6 +115,8 @@ class IndirectDispatchBuffer;
 
 class RenderResource;
 
+class StaticMesh;
+
 enum class SharingMode
 {
     Exclusive = 0,

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/type/SortedSets.h>
@@ -22,5 +22,9 @@ public:
     virtual ~StaticMesh();
 
     static StaticMesh *CreateNewObject(RenderResource *,SceneNode *);
+
+public:
+
+    SceneNode *GetScene(){return root_node;}
 };//class StaticMesh
 VK_NAMESPACE_END
