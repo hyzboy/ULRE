@@ -12,6 +12,9 @@
 
 VK_NAMESPACE_BEGIN
 
+bool InitGizmoMoveStaticMesh();
+void ClearGizmoMoveStaticMesh();
+
 namespace
 {
     static RenderResource *  gizmo_rr=nullptr;
@@ -109,9 +112,9 @@ namespace
             if(!gizmo_line.vdm)
                 return(false);
 
-            if(!gizmo_line.vdm->Init(  HGL_SIZE_1MB,       //最大顶点数量
-                                    HGL_SIZE_1MB,       //最大索引数量
-                                    IndexType::U16))    //索引类型
+            if(!gizmo_line.vdm->Init(   HGL_SIZE_1MB,       //最大顶点数量
+                                        HGL_SIZE_1MB,       //最大索引数量
+                                        IndexType::U16))    //索引类型
                 return(false);
         }
 
@@ -238,11 +241,15 @@ bool InitGizmoResource(GPUDevice *device)
     if(!InitGizmoResource2D(device))
         return(false);
 
+    InitGizmoMoveStaticMesh();
+
     return(true);
 }
 
 void FreeGizmoResource()
 {
+    ClearGizmoMoveStaticMesh();
+
     for(GizmoRenderable &gr:gizmo_rederable)
     {
         SAFE_CLEAR(gr.prim)

@@ -32,4 +32,6 @@ enum class GizmoShape:uint
 bool InitGizmoResource(GPUDevice *);
 void FreeGizmoResource();
 
+StaticMesh *GetGizmoMoveStaticMesh();
+
 VK_NAMESPACE_END
