@@ -54,6 +54,15 @@ public:
 
 MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
+
+
+struct MaterialLerpLineConfig
+{
+
+};
+
+MaterialCreateInfo *CreateLerpLine2D(const Material2DCreateConfig *);
+
 MaterialCreateInfo *CreatePureTexture2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreateRectTexture2D(Material2DCreateConfig *);
 MaterialCreateInfo *CreateRectTexture2DArray(Material2DCreateConfig *);
