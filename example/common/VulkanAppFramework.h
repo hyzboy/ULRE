@@ -76,6 +76,14 @@ protected:
 
 public:
 
+    virtual void BindRenderResource(RenderResource *rr)
+    {
+        if(!rr)
+            return;
+
+        rr->static_descriptor.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
+    }
+
     virtual ~VulkanApplicationFramework()
     {
         CloseShaderCompiler();
@@ -152,9 +160,9 @@ public:
             vp_info.Set(w,h);
 
             ubo_vp_info=db->CreateUBO("Viewport",sizeof(ViewportInfo),&vp_info);
-
-            db->static_descriptor.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
         }
+
+        BindRenderResource(db);
 
         return(true);
     }
@@ -481,6 +489,15 @@ protected:
 
 public:
 
+    virtual void BindRenderResource(RenderResource *rr) override
+    {
+        if(!rr)return;
+        
+        VulkanApplicationFramework::BindRenderResource(rr);
+
+        rr->global_descriptor.AddUBO(mtl::SBS_CameraInfo.name,ubo_camera_info);
+    }
+
     virtual ~CameraAppFramework()
     {
         SAFE_CLEAR(ckc);
@@ -494,6 +511,8 @@ public:
             return(false);
 
         InitCamera(w,h);
+        
+        BindRenderResource(db);
         return(true);
     }
 
@@ -516,8 +535,6 @@ public:
         RefreshCameraInfo(&camera_control->GetCameraInfo(),&vp_info,camera);
         
         ubo_camera_info=db->CreateUBO("CameraInfo",sizeof(CameraInfo),&camera_control->GetCameraInfo());
-
-        db->global_descriptor.AddUBO(mtl::SBS_CameraInfo.name,ubo_camera_info);
     }
 
     void Resize(uint w,uint h)override

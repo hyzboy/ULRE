@@ -188,7 +188,9 @@ void DescriptorSet::Update()
 {
     if(!is_dirty)return;
 
-    vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
+    if(wds_list.GetCount()>0)
+        vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
+
     is_dirty=false;
 }
 VK_NAMESPACE_END
