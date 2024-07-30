@@ -6,6 +6,8 @@ using namespace hgl::graph;
 
 class TestApp:public SceneAppFramework
 {
+    SceneNode root;
+
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
 
@@ -36,11 +38,11 @@ public:
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 
-        SceneNode *sn=sm_rotate->GetScene();
+        root.CreateSubNode(sm_move->GetScene());
+        root.CreateSubNode(sm_rotate->GetScene());
 
-        sn->RefreshMatrix();
-
-        render_list->Expend(sn);
+        root.RefreshMatrix();
+        render_list->Expend(&root);
 
         return(true);
     }
@@ -53,5 +55,5 @@ public:
 
 int main(int,char **)
 {
-    return RunApp<TestApp>(1280,720);
+    return RunApp<TestApp>(1024,1024);
 }

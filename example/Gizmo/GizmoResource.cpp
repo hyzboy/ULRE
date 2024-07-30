@@ -204,7 +204,7 @@ namespace
             }
 
             {
-                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,8),gizmo_triangle.pipeline);
+                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,16),gizmo_triangle.pipeline);
             }
 
             {
@@ -234,7 +234,7 @@ namespace
                 tci.innerRadius=0.975;
                 tci.outerRadius=1.0;
                 tci.numberSlices=64;
-                tci.numberStacks=32;
+                tci.numberStacks=8;
 
                 InitGizmoRenderable(GizmoShape::Torus,CreateTorus(gizmo_triangle.prim_creater,&tci),gizmo_triangle.pipeline);
             }
