@@ -15,6 +15,12 @@ VK_NAMESPACE_BEGIN
 bool InitGizmoMoveStaticMesh();
 void ClearGizmoMoveStaticMesh();
 
+bool InitGizmoScaleStaticMesh();
+void ClearGizmoScaleStaticMesh();
+
+bool InitGizmoRotateStaticMesh();
+void ClearGizmoRotateStaticMesh();
+
 namespace
 {
     static RenderResource *  gizmo_rr=nullptr;
@@ -198,7 +204,7 @@ namespace
             }
 
             {
-                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,32),gizmo_triangle.pipeline);
+                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,8),gizmo_triangle.pipeline);
             }
 
             {
@@ -206,8 +212,8 @@ namespace
 
                 cci.radius      =1;         //圆锥半径
                 cci.halfExtend  =1;         //圆锤一半高度
-                cci.numberSlices=32;        //圆锥底部分割数
-                cci.numberStacks=8;         //圆锥高度分割数
+                cci.numberSlices=16;        //圆锥底部分割数
+                cci.numberStacks=3;         //圆锥高度分割数
 
                 InitGizmoRenderable(GizmoShape::Cone,CreateCone(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
@@ -216,10 +222,21 @@ namespace
                 struct CylinderCreateInfo cci;
 
                 cci.halfExtend  =1;         //圆柱一半高度
-                cci.numberSlices=32;        //圆柱底部分割数
+                cci.numberSlices=16;        //圆柱底部分割数
                 cci.radius      =1;         //圆柱半径
 
                 InitGizmoRenderable(GizmoShape::Cylinder,CreateCylinder(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+            }
+
+            {
+                struct TorusCreateInfo tci;
+
+                tci.innerRadius=0.975;
+                tci.outerRadius=1.0;
+                tci.numberSlices=64;
+                tci.numberStacks=32;
+
+                InitGizmoRenderable(GizmoShape::Torus,CreateTorus(gizmo_triangle.prim_creater,&tci),gizmo_triangle.pipeline);
             }
 
             ENUM_CLASS_FOR(GizmoShape,int,i)
@@ -252,12 +269,16 @@ bool InitGizmoResource(RenderResource *rr)
         return(false);
 
     InitGizmoMoveStaticMesh();
+    InitGizmoScaleStaticMesh();
+    InitGizmoRotateStaticMesh();
 
     return(true);
 }
 
 void FreeGizmoResource()
 {
+    ClearGizmoRotateStaticMesh();
+    ClearGizmoScaleStaticMesh();
     ClearGizmoMoveStaticMesh();
 
     for(GizmoRenderable &gr:gizmo_rederable)

@@ -14,6 +14,12 @@ CreateProject(01_PlaneGrid3D PlaneGrid3D.cpp)
 CreateProject(02_RayPicking RayPicking.cpp)
 CreateProject(03_MetricCellsGrid MetricCellsGrid.cpp)
 
-CreateProject(04_Gizmo3DTest GizmoTest.cpp Gizmo3DMove.cpp Gizmo.h GizmoResource.h GizmoResource.cpp)
+CreateProject(04_Gizmo3DTest GizmoTest.cpp 
+                                Gizmo.h
+                                GizmoResource.h
+                                GizmoResource.cpp
+                                Gizmo3DMove.cpp
+                                Gizmo3DScale.cpp
+                                Gizmo3DRotate.cpp)
 
 #CreateProject(03_BlenderAxis BlenderAxis.cpp)

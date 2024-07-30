@@ -29,20 +29,20 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    static StaticMesh *sm_gizmo_move=nullptr;
+    static StaticMesh *sm_gizmo_scale=nullptr;
 }//namespace
 
-StaticMesh *GetGizmoMoveStaticMesh()
+StaticMesh *GetGizmoScaleStaticMesh()
 {
-    return sm_gizmo_move;
+    return sm_gizmo_scale;
 }
 
-void ClearGizmoMoveStaticMesh()
+void ClearGizmoScaleStaticMesh()
 {
-    SAFE_CLEAR(sm_gizmo_move);
+    SAFE_CLEAR(sm_gizmo_scale);
 }
 
-bool InitGizmoMoveStaticMesh()
+bool InitGizmoScaleStaticMesh()
 {
     Renderable *sphere=GetGizmoRenderable(GizmoShape::Sphere,GizmoColor::White);
     Renderable *cylinder[3]
@@ -52,11 +52,11 @@ bool InitGizmoMoveStaticMesh()
         GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Blue),
     };
 
-    Renderable *cone[3]
+    Renderable *cube[3]
     {
-        GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Blue),
+        GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Red),
+        GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Green),
+        GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Blue),
     };
 
     Renderable *plane[3]=
@@ -74,7 +74,7 @@ bool InitGizmoMoveStaticMesh()
         if(!cylinder[i])
             return(false);
 
-        if(!cone[i])
+        if(!cube[i])
             return(false);
 
         if(!plane[i])
@@ -87,7 +87,7 @@ bool InitGizmoMoveStaticMesh()
         {
             Transform tm;
 
-            constexpr const Vector3f one_scale(1);
+            constexpr const Vector3f one_scale(2);
             constexpr const Vector3f plane_scale(2);
             constexpr const Vector3f cylinder_scale(0.35f,0.35f,4.0f);
 
@@ -98,7 +98,7 @@ bool InitGizmoMoveStaticMesh()
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,0,9.5f);
-                root_node->CreateSubNode(tm,cone[2]);           //Z 向上圆锥
+                root_node->CreateSubNode(tm,cube[2]);           //Z 向上圆锥
 
                 tm.SetScale(plane_scale);
                 tm.SetTranslation(5,5,0);
@@ -113,7 +113,7 @@ bool InitGizmoMoveStaticMesh()
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(9.5f,0,0);
-                root_node->CreateSubNode(tm,cone[0]);           //X 向右圆锥
+                root_node->CreateSubNode(tm,cube[0]);           //X 向右圆锥
 
                 tm.SetScale(plane_scale);
                 tm.SetTranslation(0,5,5);
@@ -129,7 +129,7 @@ bool InitGizmoMoveStaticMesh()
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,9.5f,0);
-                root_node->CreateSubNode(tm,cone[1]);           //Y 向前圆锥
+                root_node->CreateSubNode(tm,cube[1]);           //Y 向前圆锥
 
                 tm.SetScale(plane_scale);
                 tm.SetTranslation(5,0,5);
@@ -137,10 +137,10 @@ bool InitGizmoMoveStaticMesh()
             }
         }
 
-        sm_gizmo_move=CreateGizmoStaticMesh(root_node);
+        sm_gizmo_scale=CreateGizmoStaticMesh(root_node);
     }
 
-    if(!sm_gizmo_move)
+    if(!sm_gizmo_scale)
         return(false);
 
     return(true);
