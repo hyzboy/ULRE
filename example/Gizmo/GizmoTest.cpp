@@ -6,7 +6,8 @@ using namespace hgl::graph;
 
 class TestApp:public SceneAppFramework
 {
-    StaticMesh *sm=nullptr;
+    StaticMesh *sm_move=nullptr;
+    StaticMesh *sm_rotate=nullptr;
 
 private:
 
@@ -15,7 +16,8 @@ private:
         if(!InitGizmoResource(db))
             return(false);
 
-        sm=GetGizmoMoveStaticMesh();
+        sm_move     =GetGizmoMoveStaticMesh();
+        sm_rotate   =GetGizmoRotateStaticMesh();
 
         return(true);
     }
@@ -34,7 +36,7 @@ public:
         camera_control->SetTarget(Vector3f(0,0,0));
         camera_control->Refresh();
 
-        SceneNode *sn=sm->GetScene();
+        SceneNode *sn=sm_rotate->GetScene();
 
         sn->RefreshMatrix();
 

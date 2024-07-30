@@ -47,7 +47,7 @@ void main()
 
         float specular=max(dot(half_vector,Input.Normal),0.0);
 
-        spec_color=specular*pow(specular,64)*SUN_COLOR;
+        spec_color=specular*pow(specular,16)*SUN_COLOR;
     }
         
     FragColor=vec4(direct_color+spec_color,1.0);

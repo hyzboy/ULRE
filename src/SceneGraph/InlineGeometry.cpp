@@ -802,9 +802,9 @@ namespace hgl
                             // generate normal and stores it in the right position
                             // NOTE: cos (2PIx) = cos (x) and sin (2PIx) = sin (x) so, we can use this formula
                             //       normal = {cos(2PIs)cos(2PIt) , sin(2PIs)cos(2PIt) ,sin(2PIt)}
-                            *np = +cos2PIs * cos2PIt;   ++np;
-                            *np = +sin2PIt;             ++np;
-                            *np = +sin2PIs * cos2PIt;   ++np;
+                            *np =  cos2PIs * cos2PIt;   ++np;
+                            *np =  sin2PIt;             ++np;
+                            *np =  sin2PIs * cos2PIt;   ++np;
                         }
 
                         if(tcp)
