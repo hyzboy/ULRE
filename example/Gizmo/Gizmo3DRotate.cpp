@@ -44,13 +44,12 @@ bool InitGizmoRotateStaticMesh()
 
             tm.SetScale(10.0f);
 
-            tm.SetRotation(AXIS::Z,90);
             root_node->CreateSubNode(tm,torus[0]);
 
-            tm.ClearRotation();
+            tm.SetRotation(AXIS::Z,90);
             root_node->CreateSubNode(tm,torus[1]);
 
-            tm.SetRotation(AXIS::X,90);
+            tm.SetRotation(AXIS::Y,90);
             root_node->CreateSubNode(tm,torus[2]);
         }
 

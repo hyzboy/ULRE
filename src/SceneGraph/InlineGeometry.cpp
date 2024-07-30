@@ -793,8 +793,8 @@ namespace hgl
                         sin2PIt = sin(2.0f * HGL_PI * t);
 
                         // generate vertex and stores it in the right position
-                        *vp = (centerRadius + torusRadius * cos2PIt) * cos2PIs; ++vp;
                         *vp = torusRadius * sin2PIt; ++vp;
+                        *vp =-(centerRadius + torusRadius * cos2PIt) * cos2PIs; ++vp;
                         *vp = (centerRadius + torusRadius * cos2PIt) * sin2PIs; ++vp;
 
                         if(np)
@@ -802,8 +802,8 @@ namespace hgl
                             // generate normal and stores it in the right position
                             // NOTE: cos (2PIx) = cos (x) and sin (2PIx) = sin (x) so, we can use this formula
                             //       normal = {cos(2PIs)cos(2PIt) , sin(2PIs)cos(2PIt) ,sin(2PIt)}
-                            *np =  cos2PIs * cos2PIt;   ++np;
                             *np =  sin2PIt;             ++np;
+                            *np = -cos2PIs * cos2PIt;   ++np;
                             *np =  sin2PIs * cos2PIt;   ++np;
                         }
 
