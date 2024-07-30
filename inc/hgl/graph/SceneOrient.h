@@ -32,6 +32,7 @@ namespace hgl
         public:
 
             SceneOrient();
+            SceneOrient(const SceneOrient &);
             SceneOrient(const Matrix4f &mat);
             virtual ~SceneOrient()=default;
 

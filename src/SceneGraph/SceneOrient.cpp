@@ -15,6 +15,11 @@ namespace hgl
             InverseLocalMatrix          =Identity4f;
             InverseLocalToWorldMatrix   =Identity4f;
         }
+        
+        SceneOrient::SceneOrient(const SceneOrient &so)
+        {
+            hgl_cpy(*this,so);
+        }
 
         SceneOrient::SceneOrient(const Matrix4f &mat)
         {

@@ -31,6 +31,7 @@ namespace hgl
         public:
 
             SceneNode()=default;
+            SceneNode(SceneNode *);
             SceneNode(                      Renderable *ri  )                   {render_obj=ri;}
             SceneNode(const Matrix4f &mat                   ):SceneOrient(mat)  {}
             SceneNode(const Matrix4f &mat,  Renderable *ri  ):SceneOrient(mat)  {render_obj=ri;}
@@ -87,6 +88,29 @@ namespace hgl
                     return(nullptr);
 
                 SceneNode *sn=new SceneNode(mat,ri);
+
+                SubNode.Add(sn);
+                return sn;
+            }
+
+            SceneNode *CreateSubNode(SceneNode *node)
+            {
+                if(!node)
+                    return(nullptr);
+
+                SceneNode *sn=new SceneNode(node);
+
+                SubNode.Add(sn);
+                return node;
+            }
+
+            SceneNode *CreateSubNode(const Matrix4f &mat,SceneNode *node)
+            {
+                if(!node)
+                    return(nullptr);
+
+                SceneNode *sn=new SceneNode(mat);
+                sn->CreateSubNode(node);
 
                 SubNode.Add(sn);
                 return sn;

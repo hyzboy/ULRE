@@ -4,6 +4,24 @@ namespace hgl
 {
     namespace graph
     {
+        SceneNode::SceneNode(SceneNode *node):SceneOrient(*node)
+        {
+            if(!node)
+                return;
+
+            BoundingBox=node->BoundingBox;
+            LocalBoundingBox=node->LocalBoundingBox;
+
+            render_obj=node->render_obj;
+
+            for(SceneNode *sn:node->SubNode)
+            {
+                SceneNode *new_sn=new SceneNode(sn);
+
+                SubNode.Add(new_sn);
+            }
+        }
+
         void SceneNode::SetRenderable(Renderable *ri)
         {
             render_obj=ri;
