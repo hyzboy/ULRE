@@ -274,10 +274,11 @@ namespace hgl
                         float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
                 const   Vector3f    xy_normal(0.0f,0.0f,1.0f);
                 const   Vector3f    xy_tangent(1.0f,0.0f,0.0f);
+                const   uint16      indices[]={0,1,2,0,2,3};
 
                 if(!pc)return(nullptr);
 
-                if(!pc->Init("Plane",4,8))
+                if(!pc->Init("Plane",4,6,IndexType::U16))
                     return(nullptr);
 
                 if(!pc->WriteVAB(VAN::Position,VF_V3F,xy_vertices))
@@ -303,6 +304,8 @@ namespace hgl
                     if(tex_coord.IsValid())
                         tex_coord->Write(xy_tex_coord,4);
                 }
+
+                pc->WriteIBO(indices);
 
                 return pc->Create();
             }
