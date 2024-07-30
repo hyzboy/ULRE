@@ -59,6 +59,13 @@ bool InitGizmoMoveStaticMesh()
         GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Blue),
     };
 
+    Renderable *plane[3]=
+    {
+        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Red),
+        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Green),
+        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Blue)
+    };
+
     if(!sphere)
         return(false);
 
@@ -78,35 +85,53 @@ bool InitGizmoMoveStaticMesh()
             Transform tm;
 
             constexpr const Vector3f one_scale(1);
+            constexpr const Vector3f plane_scale(2);
             constexpr const Vector3f cylinder_scale(0.35f,0.35f,4.5f);
 
-            tm.SetTranslation(Vector3f(0,0,4.5f));
-            tm.SetScale(cylinder_scale);
-            root_node->CreateSubNode(tm.GetMatrix(),cylinder[2]);       //Z 向上圆柱
+            {
+                tm.SetScale(cylinder_scale);
+                tm.SetTranslation(0,0,4.5f);
+                root_node->CreateSubNode(tm,cylinder[2]);       //Z 向上圆柱
 
-            tm.SetScale(one_scale);
-            tm.SetTranslation(Vector3f(0,0,9.5f));
-            root_node->CreateSubNode(tm.GetMatrix(),cone[2]);           //Z 向上圆锥
+                tm.SetScale(one_scale);
+                tm.SetTranslation(0,0,9.5f);
+                root_node->CreateSubNode(tm,cone[2]);           //Z 向上圆锥
 
-            tm.SetScale(cylinder_scale);
-            tm.SetRotation(AxisVector::Y,90);
-            tm.SetTranslation(Vector3f(4.5f,0,0));
+                tm.SetScale(plane_scale);
+                tm.SetTranslation(5,5,0);
+                root_node->CreateSubNode(tm,plane[2]);
+            }
 
-            root_node->CreateSubNode(tm.GetMatrix(),cylinder[0]);       //X 向右圆柱
+            {
+                tm.SetScale(cylinder_scale);
+                tm.SetRotation(AxisVector::Y,90);
+                tm.SetTranslation(4.5f,0,0);
+                root_node->CreateSubNode(tm,cylinder[0]);       //X 向右圆柱
 
-            tm.SetScale(one_scale);
-            tm.SetTranslation(Vector3f(9.5f,0,0));
-            root_node->CreateSubNode(tm.GetMatrix(),cone[0]);           //X 向右圆锥
+                tm.SetScale(one_scale);
+                tm.SetTranslation(9.5f,0,0);
+                root_node->CreateSubNode(tm,cone[0]);           //X 向右圆锥
 
-            tm.SetScale(cylinder_scale);
-            tm.SetRotation(AxisVector::X,-90);
-            tm.SetTranslation(Vector3f(0,4.5f,0));
+                tm.SetScale(plane_scale);
+                tm.SetTranslation(0,5,5);
+                root_node->CreateSubNode(tm,plane[0]);
+            }
+
+            {
+                tm.SetScale(cylinder_scale);
+                tm.SetRotation(AxisVector::X,-90);
+                tm.SetTranslation(0,4.5f,0);
                 
-            root_node->CreateSubNode(tm.GetMatrix(),cylinder[1]);       //Y 向前圆柱
+                root_node->CreateSubNode(tm,cylinder[1]);       //Y 向前圆柱
 
-            tm.SetScale(one_scale);
-            tm.SetTranslation(Vector3f(0,9.5f,0));
-            root_node->CreateSubNode(tm.GetMatrix(),cone[1]);           //Y 向前圆锥
+                tm.SetScale(one_scale);
+                tm.SetTranslation(0,9.5f,0);
+                root_node->CreateSubNode(tm,cone[1]);           //Y 向前圆锥
+
+                tm.SetScale(plane_scale);
+                tm.SetTranslation(5,0,5);
+                root_node->CreateSubNode(tm,plane[1]);
+            }
         }
 
         sm_gizmo_move=CreateGizmoStaticMesh(root_node);
