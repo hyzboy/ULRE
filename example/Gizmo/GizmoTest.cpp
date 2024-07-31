@@ -1,8 +1,21 @@
 ﻿#include"VulkanAppFramework.h"
 #include"Gizmo.h"
+#include<hgl/graph/Ray.h>
 
 using namespace hgl;
 using namespace hgl::graph;
+
+/**
+* 求一个世界坐标在屏幕上的位置
+*/
+Vector2f WorldToScreen(const Vector3f &world_pos,const CameraInfo &ci,const ViewportInfo &vi)
+{
+    Vector4f pos=ci.vp*Vector4f(world_pos,1);
+
+    pos/=pos.w;
+
+    return Vector2f((pos.x+1)*vi.GetViewportWidth()/2,(1-pos.y)*vi.GetViewportHeight()/2);
+}
 
 class TestApp:public SceneAppFramework
 {
@@ -10,6 +23,8 @@ class TestApp:public SceneAppFramework
 
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
+
+    Renderable *face_torus=nullptr;
 
 private:
 
@@ -20,6 +35,8 @@ private:
 
         sm_move     =GetGizmoMoveStaticMesh();
         sm_rotate   =GetGizmoRotateStaticMesh();
+
+        face_torus  =GetGizmoRenderable(GizmoShape::Torus,GizmoColor::White);
 
         return(true);
     }
@@ -36,13 +53,6 @@ public:
         
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
-        camera_control->Refresh();
-
-        root.CreateSubNode(sm_move->GetScene());
-        root.CreateSubNode(sm_rotate->GetScene());
-
-        root.RefreshMatrix();
-        render_list->Expend(&root);
 
         return(true);
     }
@@ -50,6 +60,41 @@ public:
     ~TestApp()
     {
         FreeGizmoResource();
+    }
+    
+    void BuildCommandBuffer(uint32 index) override
+    {
+        camera_control->Refresh();
+        
+        const CameraInfo &ci=camera_control->GetCameraInfo();
+        const ViewportInfo &vi=GetViewportInfo();
+
+        const float screen_height=vi.GetViewportHeight();
+
+        root.Clear();
+
+        const Vector3f GizmoPosition(0,0,0);
+
+        const Vector4f pos=ci.Project(GizmoPosition);
+
+        root.SetLocalMatrix(scale(pos.w*16.0f/screen_height));
+
+        root.CreateSubNode(sm_move->GetScene());
+        root.CreateSubNode(sm_rotate->GetScene());
+
+        {
+            Transform tm;
+
+            tm.SetRotation(CalculateFacingRotationQuat(GizmoPosition,ci.view,AxisVector::X));
+            tm.SetScale(15);
+
+            root.CreateSubNode(tm,face_torus);
+        }
+
+        root.RefreshMatrix();
+        render_list->Expend(&root);
+
+        SceneAppFramework::BuildCommandBuffer(index);
     }
 };//class TestApp:public SceneAppFramework
 
