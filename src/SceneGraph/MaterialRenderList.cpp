@@ -8,6 +8,7 @@
 #include"RenderAssignBuffer.h"
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/SceneNode.h>
+#include<hgl/graph/CameraInfo.h>
 
 /**
 * 
@@ -30,8 +31,8 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
 {
     hgl::int64 off;
 
-    hgl::graph::Renderable *ri_one=obj_one.ri;
-    hgl::graph::Renderable *ri_two=obj_two.ri;
+    hgl::graph::Renderable *ri_one=obj_one.scene_node->GetRenderable();
+    hgl::graph::Renderable *ri_two=obj_two.scene_node->GetRenderable();
 
     //比较管线
     {
@@ -45,29 +46,39 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
     auto *prim_one=ri_one->GetPrimitive();
     auto *prim_two=ri_two->GetPrimitive();
 
-    //比如VDM
+    //比较VDM
+
+    if(prim_one->GetVDM())      //有VDM
     {
         off=prim_one->GetVDM()
            -prim_two->GetVDM();
 
         if(off)
             return off;
-    }
 
-    //比较模型
-    {
-        off=prim_one
-           -prim_two;
-
-        if(off)
+        //比较模型
         {
-            off=prim_one->GetVertexOffset()-prim_two->GetVertexOffset();        //保证vertex offset小的在前面
+            off=prim_one
+               -prim_two;
 
-            return off;
+            if(off)
+            {
+                off=prim_one->GetVertexOffset()-prim_two->GetVertexOffset();        //保证vertex offset小的在前面
+
+                return off;
+            }
         }
     }
 
-    return 0;
+    //比较距离。。。。。。。。。。。。。。。。。。。。。还不知道这个是正了还是反了，等测出来确认后修改下面的返回值和这里的注释
+
+    float foff=obj_one.to_camera_distance
+              -obj_two.to_camera_distance;
+
+    if(foff>0)
+        return 1;
+    else
+        return -1;
 }
 
 VK_NAMESPACE_BEGIN
@@ -76,6 +87,8 @@ MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
     device=d;
     cmd_buf=nullptr;
     material=m;
+
+    camera_info=nullptr;
 
     assign_buffer=new RenderAssignBuffer(device,material);
 
@@ -98,8 +111,14 @@ void MaterialRenderList::Add(SceneNode *sn)
 {
     RenderNode rn;
 
-    rn.local_to_world   =sn->GetLocalToWorldMatrix();
-    rn.ri               =sn->GetRenderable();
+    rn.scene_node       =sn;
+
+    rn.world_position   =sn->GetWorldPosition();
+
+    if(camera_info)
+        rn.to_camera_distance=length(camera_info->pos,rn.world_position);
+    else
+        rn.to_camera_distance=0;
 
     rn_list.Add(rn);
 }
@@ -177,12 +196,13 @@ void MaterialRenderList::Stat()
     ri_array.Alloc(count);
 
     RenderItem *ri=ri_array.GetData();
+    Renderable *ro=rn->scene_node->GetRenderable();
 
     ri_count=1;
 
     ri->first_instance=0;
     ri->instance_count=1;
-    ri->Set(rn->ri);
+    ri->Set(ro);
 
     last_pipeline   =ri->pipeline;
     last_data_buffer=ri->pdb;
@@ -193,9 +213,11 @@ void MaterialRenderList::Stat()
 
     for(uint i=1;i<count;i++)
     {
-        if(last_pipeline==rn->ri->GetPipeline())
-            if(last_data_buffer->Comp(rn->ri->GetDataBuffer()))
-                if(last_render_data->_Comp(rn->ri->GetRenderData())==0)
+        ro=rn->scene_node->GetRenderable();
+
+        if(last_pipeline==ro->GetPipeline())
+            if(last_data_buffer->Comp(ro->GetDataBuffer()))
+                if(last_render_data->_Comp(ro->GetRenderData())==0)
                 {
                     ++ri->instance_count;
                     ++rn;
@@ -218,7 +240,7 @@ void MaterialRenderList::Stat()
 
         ri->first_instance=i;
         ri->instance_count=1;
-        ri->Set(rn->ri);
+        ri->Set(ro);
 
         last_pipeline   =ri->pipeline;
         last_data_buffer=ri->pdb;

@@ -16,6 +16,8 @@ namespace hgl
         {
             device          =dev;
             renderable_count=0;
+
+            camera_info=nullptr;
         }
 
         bool RenderList::ExpendNode(SceneNode *sn)
@@ -51,7 +53,7 @@ namespace hgl
         {
             if(!device|!sn)return(false);
 
-            mrl_map.Begin();
+            mrl_map.Begin(camera_info);
             ExpendNode(sn);
             mrl_map.End();
 
