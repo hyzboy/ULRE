@@ -20,6 +20,8 @@ namespace hgl
 
             GPUDevice *         device;
 
+            CameraInfo *        camera_info;                    ///<相机信息
+
             uint                renderable_count;               ///<可渲染对象数量
             MaterialRenderMap   mrl_map;                        ///<按材质分类的渲染列表
 
@@ -32,11 +34,12 @@ namespace hgl
             RenderList(GPUDevice *);
             virtual ~RenderList()=default;
             
-            virtual bool Expend(SceneNode *);                   ///<展开场景树到渲染列表
+            virtual void SetCamera(CameraInfo *ci){camera_info=ci;}                 ///<设置相机信息
+            virtual bool Expend(SceneNode *);                                       ///<展开场景树到渲染列表
 
-            virtual bool Render(RenderCmdBuffer *);             ///<渲染所有对象
+            virtual bool Render(RenderCmdBuffer *);                                 ///<渲染所有对象
 
-            virtual void Clear();                               ///<彻底清理
+            virtual void Clear();                                                   ///<彻底清理
         };//class RenderList
     }//namespace graph
 }//namespace hgl

@@ -9,12 +9,14 @@ namespace hgl
     {
         class Renderable;
         class MaterialInstance;
+        class SceneNode;
 
         struct RenderNode
         {
-            Matrix4f local_to_world;
+            SceneNode *scene_node;
 
-            Renderable *ri;
+            Vector3f world_position;
+            float to_camera_distance;
         };
 
         using RenderNodeList=List<RenderNode>;

@@ -2,6 +2,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/VKRenderAssign.h>
@@ -72,7 +73,7 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
 
     for(uint i=0;i<rn_list.GetCount();i++)
     {
-        *l2wp=rn->local_to_world;
+        *l2wp=rn->scene_node->GetLocalToWorldMatrix();
         ++l2wp;
         ++rn;
     }
@@ -115,7 +116,7 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     mi_set.PreAlloc(rn_list.GetCount());
 
     for(RenderNode &rn:rn_list)
-        mi_set.Add(rn.ri->GetMaterialInstance());
+        mi_set.Add(rn.scene_node->GetRenderable()->GetMaterialInstance());
 
     if(mi_set.GetCount()>material->GetMIMaxCount())
     {
@@ -181,7 +182,7 @@ void RenderAssignBuffer::WriteNode(const RenderNodeList &rn_list)
         for(uint i=0;i<rn_list.GetCount();i++)
         {
             adp->l2w=i;
-            adp->mi=mi_set.Find(rn->ri->GetMaterialInstance());
+            adp->mi=mi_set.Find(rn->scene_node->GetRenderable()->GetMaterialInstance());
             ++adp;
 
             ++rn;

@@ -92,6 +92,7 @@ public:
         }
 
         root.RefreshMatrix();
+        render_list->SetCamera(&(camera_control->GetCameraInfo()));
         render_list->Expend(&root);
 
         SceneAppFramework::BuildCommandBuffer(index);

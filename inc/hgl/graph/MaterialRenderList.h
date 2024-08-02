@@ -7,6 +7,7 @@
 VK_NAMESPACE_BEGIN
 class RenderAssignBuffer;
 class SceneNode;
+struct CameraInfo;
 
 /**
 * 同一材质的对象渲染列表
@@ -17,6 +18,8 @@ class MaterialRenderList
     RenderCmdBuffer *cmd_buf;
 
     Material *material;
+
+    CameraInfo *camera_info;
 
     RenderNodeList rn_list;
 
@@ -75,6 +78,11 @@ public:
     ~MaterialRenderList();
 
     void Add(SceneNode *);
+
+    void SetCameraInfo(CameraInfo *ci)
+    {
+        camera_info=ci;
+    }
 
     void Clear()
     {
