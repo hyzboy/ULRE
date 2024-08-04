@@ -73,8 +73,32 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
 
     for(uint i=0;i<rn_list.GetCount();i++)
     {
-        *l2wp=rn->scene_node->GetLocalToWorldMatrix();
+        *l2wp=rn->scene_node->GetWorldTransform().GetMatrix();
         ++l2wp;
+        ++rn;
+    }
+
+    l2w_buffer->Unmap();
+}
+
+void RenderAssignBuffer::UpdateTransform(const RenderNodePointerList &rnp_list,const int first,const int last)
+{
+    if(!l2w_buffer)
+        return;
+
+    if(rnp_list.IsEmpty())
+        return;
+
+    const uint count=rnp_list.GetCount();
+
+    RenderNode **rn=rnp_list.GetData();
+    Matrix4f *l2wp=(Matrix4f *)(l2w_buffer->DeviceBuffer::Map(  sizeof(Matrix4f)*first,
+                                                                sizeof(Matrix4f)*(last-first+1)));
+
+    for(uint i=0;i<count;i++)
+    {
+        l2wp[(*rn)->l2w_index-first]=(*rn)->scene_node->GetWorldTransform().GetMatrix();
+
         ++rn;
     }
 
@@ -181,6 +205,8 @@ void RenderAssignBuffer::WriteNode(const RenderNodeList &rn_list)
 
         for(uint i=0;i<rn_list.GetCount();i++)
         {
+            rn->l2w_index=i;
+
             adp->l2w=i;
             adp->mi=mi_set.Find(rn->scene_node->GetRenderable()->GetMaterialInstance());
             ++adp;

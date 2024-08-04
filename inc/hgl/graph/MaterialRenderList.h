@@ -23,6 +23,8 @@ class MaterialRenderList
 
     RenderNodeList rn_list;
 
+    RenderNodePointerList rn_update_l2w_list;
+
 private:
 
     RenderAssignBuffer *assign_buffer;
@@ -92,5 +94,7 @@ public:
     void End();
 
     void Render(RenderCmdBuffer *);
+
+    void UpdateTransform();          //刷新所有对象的LocalToWorld矩阵
 };//class MaterialRenderList
 VK_NAMESPACE_END

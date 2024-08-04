@@ -92,5 +92,6 @@ public:
 
     void WriteNode(const RenderNodeList &);
 
+    void UpdateTransform(const RenderNodePointerList &,const int first,const int last);
 };//struct RenderAssignBuffer
 VK_NAMESPACE_END

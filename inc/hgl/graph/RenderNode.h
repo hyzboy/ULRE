@@ -15,11 +15,15 @@ namespace hgl
         {
             SceneNode *scene_node;
 
+            uint32 l2w_transform_version;
+            uint32 l2w_index;
+
             Vector3f world_position;
             float to_camera_distance;
         };
 
         using RenderNodeList=List<RenderNode>;
+        using RenderNodePointerList=List<RenderNode *>;
 
         using MaterialInstanceSets=SortedSets<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph

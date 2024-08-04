@@ -7,13 +7,6 @@ namespace hgl
         {
             Position=Vector3f(0.0f);
             Direction=Vector3f(0.0f);
-
-            IdentityLocalMatrix=true;
-
-            LocalMatrix                 =Identity4f;
-            LocalToWorldMatrix          =Identity4f;
-            InverseLocalMatrix          =Identity4f;
-            InverseLocalToWorldMatrix   =Identity4f;
         }
         
         SceneOrient::SceneOrient(const SceneOrient &so)
@@ -21,44 +14,48 @@ namespace hgl
             hgl_cpy(*this,so);
         }
 
-        SceneOrient::SceneOrient(const Matrix4f &mat)
+        SceneOrient::SceneOrient(const Transform &t)
         {
-            SetLocalMatrix(mat);
-
-            LocalToWorldMatrix          =Identity4f;
-            InverseLocalToWorldMatrix   =Identity4f;
+            SetLocalTransform(t);
         }
 
-        Matrix4f &SceneOrient::SetLocalMatrix(const Matrix4f &m)
+        void SceneOrient::SetLocalTransform(const Transform &t)
         {
-            LocalMatrix=m;
+            if(LocalTransform==t)
+                return;
 
-            IdentityLocalMatrix=IsIdentity(m);
-
-            InverseLocalMatrix=inverse(LocalMatrix);
-
-            return LocalMatrix;
+            LocalTransform=t;
         }
 
-        Matrix4f &SceneOrient::SetLocalToWorldMatrix(const Matrix4f &m)
+        void SceneOrient::SetWorldTransform(const Transform &t)
         {
-            LocalToWorldMatrix=m;
+            if(WorldTransform==t)
+                return;
 
-            InverseLocalToWorldMatrix=inverse(LocalToWorldMatrix);
-
-            return LocalToWorldMatrix;
+            WorldTransform=t;
         }
 
         /**
-         * 刷新世界矩阵
-         * @param m 上一级local to world矩阵
+         * 刷新世界变换
+         * @param m 上一级local to world变换
          */
-        void SceneOrient::RefreshLocalToWorldMatrix(const Matrix4f *m)
+        bool SceneOrient::RefreshTransform(const Transform &t)
         {
-            if(IdentityLocalMatrix)
-                SetLocalToWorldMatrix(*m);
+            if(!t.IsLastVersion())      //都不是最新版本
+                return(false);
+
+            //理论上讲，Transform在正常转const的情况下，就已经做了UpdateMatrix()的操作，这个需要测试一下
+
+            if(LocalTransform.IsIdentity())
+            {
+                SetWorldTransform(t);
+            }
             else
-                SetLocalToWorldMatrix(TransformMatrix(*m,LocalMatrix));
+            {
+                SetWorldTransform(t.TransformTransform(LocalTransform));
+            }
+
+            return(true);
         }
     }//namespace graph
 }//namespace hgl
