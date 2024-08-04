@@ -113,6 +113,9 @@ void MaterialRenderList::Add(SceneNode *sn)
 
     rn.scene_node       =sn;
 
+    rn.l2w_transform_version=sn->GetWorldTransform().GetVersion();
+    rn.l2w_index=0;
+
     rn.world_position   =sn->GetWorldPosition();
 
     if(camera_info)
@@ -136,6 +139,51 @@ void MaterialRenderList::End()
 
     if(assign_buffer)
         assign_buffer->WriteNode(rn_list);
+}
+
+void MaterialRenderList::UpdateTransform()
+{
+    if(!assign_buffer)
+        return;
+
+    rn_update_l2w_list.Clear();
+
+    const int node_count=rn_list.GetCount();
+
+    if(node_count<=0)return;
+
+    int first=-1,last=-1;
+    int update_count=0;
+    RenderNode *rn=rn_list.GetData();
+
+    for(int i=0;i<node_count;i++)
+    {
+        Transform &tf=rn->scene_node->GetWorldTransform();
+
+        if(rn->l2w_transform_version!=tf.GetVersion())       //版本不对，需要更新
+        {
+            if(first==-1)
+            {
+                first=rn->l2w_index;
+            }
+            
+            last=rn->l2w_index;
+
+            rn->l2w_transform_version=tf.GetVersion();
+
+            rn_update_l2w_list.Add(rn);
+
+            ++update_count;
+        }
+
+        ++rn;
+    }
+
+    if(update_count>0)
+    {
+        assign_buffer->UpdateTransform(rn_update_l2w_list,first,last);
+        rn_update_l2w_list.Clear();
+    }
 }
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)

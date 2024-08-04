@@ -39,6 +39,8 @@ namespace hgl
 
             virtual bool Render(RenderCmdBuffer *);                                 ///<渲染所有对象
 
+            virtual void UpdateTransform();                                         ///<更新所有对象的变换数据
+
             virtual void Clear();                                                   ///<彻底清理
         };//class RenderList
     }//namespace graph

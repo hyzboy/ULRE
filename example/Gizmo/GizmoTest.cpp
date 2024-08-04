@@ -5,6 +5,8 @@
 using namespace hgl;
 using namespace hgl::graph;
 
+const Vector3f GizmoPosition(0,0,0);
+
 /**
 * 求一个世界坐标在屏幕上的位置
 */
@@ -20,6 +22,7 @@ Vector2f WorldToScreen(const Vector3f &world_pos,const CameraInfo &ci,const View
 class TestApp:public SceneAppFramework
 {
     SceneNode root;
+    SceneNode *rotate_white_torus=nullptr;
 
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
@@ -41,6 +44,23 @@ private:
         return(true);
     }
 
+    void InitGizmoSceneTree()
+    {
+        camera_control->Refresh();
+        const CameraInfo &ci=camera_control->GetCameraInfo();
+
+        root.Clear();
+
+        root.CreateSubNode(sm_move->GetScene());
+        root.CreateSubNode(sm_rotate->GetScene());
+
+        rotate_white_torus=root.CreateSubNode(face_torus);
+
+        root.RefreshTransform();
+        render_list->SetCamera(&(camera_control->GetCameraInfo()));
+        render_list->Expend(&root);
+    }
+
 public:
     
     bool Init(uint w,uint h)
@@ -50,6 +70,8 @@ public:
 
         if(!InitGizmo())
             return(false);
+
+         InitGizmoSceneTree();
         
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
@@ -71,16 +93,7 @@ public:
 
         const float screen_height=vi.GetViewportHeight();
 
-        root.Clear();
-
-        const Vector3f GizmoPosition(0,0,0);
-
         const Vector4f pos=ci.Project(GizmoPosition);
-
-        root.SetLocalMatrix(scale(pos.w*16.0f/screen_height));
-
-        root.CreateSubNode(sm_move->GetScene());
-        root.CreateSubNode(sm_rotate->GetScene());
 
         {
             Transform tm;
@@ -88,12 +101,19 @@ public:
             tm.SetRotation(CalculateFacingRotationQuat(GizmoPosition,ci.view,AxisVector::X));
             tm.SetScale(15);
 
-            root.CreateSubNode(tm,face_torus);
+            rotate_white_torus->SetLocalTransform(tm);
         }
 
-        root.RefreshMatrix();
-        render_list->SetCamera(&(camera_control->GetCameraInfo()));
-        render_list->Expend(&root);
+        {
+            Transform tm;
+
+            tm.SetScale(pos.w*16.0f/screen_height);
+
+            root.SetLocalTransform(tm);
+        }
+
+        root.RefreshTransform();
+        render_list->UpdateTransform();
 
         SceneAppFramework::BuildCommandBuffer(index);
     }

@@ -77,5 +77,13 @@ namespace hgl
         {
             mrl_map.Clear();
         }
+        
+        void RenderList::UpdateTransform()
+        {
+            if(renderable_count<=0)
+                return;
+
+            mrl_map.UpdateTransform();
+        }
     }//namespace graph
 }//namespace hgl

@@ -31,5 +31,11 @@ public:
         for(auto *it:data_list)
             it->value->Render(rcb);
     }
+
+    void UpdateTransform()
+    {
+        for(auto *it:data_list)
+            it->value->UpdateTransform();
+    }
 };//class MaterialRenderMap
 VK_NAMESPACE_END
