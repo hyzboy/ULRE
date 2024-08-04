@@ -87,9 +87,9 @@ bool InitGizmoMoveStaticMesh()
         {
             Transform tm;
 
-            constexpr const Vector3f one_scale(1);
-            constexpr const Vector3f plane_scale(2);
-            constexpr const Vector3f cylinder_scale(0.35f,0.35f,4.0f);
+            const Vector3f one_scale(1);
+            const Vector3f plane_scale(2);
+            const Vector3f cylinder_scale(0.35f,0.35f,4.0f);
 
             {
                 tm.SetScale(cylinder_scale);
