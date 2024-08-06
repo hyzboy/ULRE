@@ -23,7 +23,7 @@ namespace hgl
 
         protected:
 
-                    void        SetWorldTransform           (const Transform &);                                            ///<设定当前节点到世界矩阵
+                    void        SetWorldTransform   (const Transform &);                                                    ///<设定当前节点到世界矩阵
 
         public:
 
@@ -32,27 +32,27 @@ namespace hgl
             SceneOrient(const Transform &);
             virtual ~SceneOrient()=default;
 
-                    void        SetPosition                 (const Vector3f &pos){Position=pos;}
-                    void        SetDirection                (const Vector3f &dir){Direction=dir;}
+                    void        SetPosition         (const Vector3f &pos){Position=pos;}
+                    void        SetDirection        (const Vector3f &dir){Direction=dir;}
 
-            const   Vector3f &  GetLocalPosition            ()const {return Position;}
-            const   Vector3f &  GetLocalDirection           ()const {return Direction;}
-            const   Vector3f    GetWorldPosition            ()      {return WorldTransform.TransformPosition(Position);}
-            const   Vector3f    GetWorldDirection           ()      {return WorldTransform.TransformDirection(Direction);}
+            const   Vector3f &  GetLocalPosition    ()const {return Position;}
+            const   Vector3f &  GetLocalDirection   ()const {return Direction;}
+            const   Vector3f    GetWorldPosition    ()      {return WorldTransform.TransformPosition(Position);}
+            const   Vector3f    GetWorldDirection   ()      {return WorldTransform.TransformDirection(Direction);}
 
         public: 
 
-                    void        SetLocalTransform           (const Transform &);                                            ///<设定当前节点矩阵
+                    void        SetLocalTransform   (const Transform &);                                                    ///<设定当前节点矩阵
 
-             const  Transform & GetLocalTransform           ()const {return LocalTransform;}                                ///<取得当前节点矩阵
-             const  Transform & GetWorldTransform           ()const {return WorldTransform;}                                ///<取得当前节点到世界矩阵
+             const  Transform & GetLocalTransform   ()const {return LocalTransform;}                                        ///<取得当前节点矩阵
+             const  Transform & GetWorldTransform   ()const {return WorldTransform;}                                        ///<取得当前节点到世界矩阵
     
-                    Transform & GetLocalTransform           ()      {LocalTransform.UpdateMatrix();return LocalTransform;}  ///<取得当前节点矩阵
-                    Transform & GetWorldTransform           ()      {WorldTransform.UpdateMatrix();return WorldTransform;}  ///<取得当前节点到世界矩阵
+                    Transform & GetLocalTransform   ()      {LocalTransform.UpdateMatrix();return LocalTransform;}          ///<取得当前节点矩阵
+                    Transform & GetWorldTransform   ()      {WorldTransform.UpdateMatrix();return WorldTransform;}          ///<取得当前节点到世界矩阵
 
         public:
 
-            virtual bool        RefreshTransform            (const Transform &);                                            ///<刷新到世界空间变换
+            virtual bool        RefreshTransform    (const Transform &);                                                    ///<刷新到世界空间变换
         };//class SceneOrient
     }//namespace graph
 }//namespace hgl
