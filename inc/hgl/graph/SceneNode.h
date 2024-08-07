@@ -55,6 +55,15 @@ namespace hgl
             Renderable *GetRenderable(){return render_obj;}
             void        SetRenderable(Renderable *);
 
+            SceneNode *AddSubNode(SceneNode *sn)
+            {
+                if(!sn)
+                    return(nullptr);
+
+                SubNode.Add(sn);
+                return sn;
+            }
+
             SceneNode *CreateSubNode()
             {
                 SceneNode *sn=new SceneNode();

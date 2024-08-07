@@ -55,7 +55,7 @@ private:
 
         cfg.local_to_world=true;
 
-        {            
+        {
             cfg.mtl_name="VertexLuminance2D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.position_format=VAT_VEC2;
 
@@ -69,7 +69,7 @@ private:
             mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
-            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,Prim::Lines);        
+            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,Prim::Lines);
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -184,10 +184,10 @@ public:
 
     void BuildCommandBuffer(uint32 index) override
     {
-        const CameraInfo &ci=GetCameraInfo();
-        const ViewportInfo &vi=GetViewportInfo();
+        const CameraInfo *ci=GetCameraInfo();
+        const ViewportInfo *vi=GetViewportInfo();
 
-        ray.Set(GetMouseCoord(),&ci,&vi);                       //设置射线查询的屏幕坐标点
+        ray.Set(GetMouseCoord(),ci,vi);                       //设置射线查询的屏幕坐标点
 
         const Vector3f pos=ray.ClosestPoint(Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
