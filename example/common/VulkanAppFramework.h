@@ -173,9 +173,9 @@ public:
         ubo_vp_info->Write(&vp_info);
     }
 
-    ViewportInfo &GetViewportInfo()
+    ViewportInfo *GetViewportInfo()
     {
-        return vp_info;
+        return &vp_info;
     }
 
     DeviceBuffer *GetViewportInfoBuffer()
@@ -532,9 +532,9 @@ public:
         win->Join(ckc);
         win->Join(cmc);
 
-        RefreshCameraInfo(&camera_control->GetCameraInfo(),&vp_info,camera);
+        RefreshCameraInfo(camera_control->GetCameraInfo(),&vp_info,camera);
         
-        ubo_camera_info=db->CreateUBO("CameraInfo",sizeof(CameraInfo),&camera_control->GetCameraInfo());
+        ubo_camera_info=db->CreateUBO("CameraInfo",sizeof(CameraInfo),camera_control->GetCameraInfo());
     }
 
     void Resize(uint w,uint h)override
@@ -543,10 +543,10 @@ public:
 
         camera_control->Refresh();
 
-        ubo_camera_info->Write(&camera_control->GetCameraInfo());
+        ubo_camera_info->Write(camera_control->GetCameraInfo());
     }
 
-    CameraInfo &GetCameraInfo()
+    CameraInfo *GetCameraInfo()
     {
         return camera_control->GetCameraInfo();
     }
@@ -562,7 +562,7 @@ public:
     {
         camera_control->Refresh();                                  //更新相机矩阵
 
-        ubo_camera_info->Write(&camera_control->GetCameraInfo());    //写入缓冲区
+        ubo_camera_info->Write(camera_control->GetCameraInfo());    //写入缓冲区
 
         const uint32_t index=AcquireNextImage();
 

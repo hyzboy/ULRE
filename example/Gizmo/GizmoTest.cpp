@@ -8,21 +8,56 @@ using namespace hgl::graph;
 const Vector3f GizmoPosition(0,0,0);
 
 /**
-* 求一个世界坐标在屏幕上的位置
+* 一种永远转向正面的场景节点
 */
-Vector2f WorldToScreen(const Vector3f &world_pos,const CameraInfo &ci,const ViewportInfo &vi)
+class BillboardSceneNode:public SceneNode
 {
-    Vector4f pos=ci.vp*Vector4f(world_pos,1);
+    CameraInfo *camera_info=nullptr;
+    bool face_to_camera=false;
 
-    pos/=pos.w;
+    ViewportInfo *viewport_info=nullptr;
+    float fixed_scale=1.0;
 
-    return Vector2f((pos.x+1)*vi.GetViewportWidth()/2,(1-pos.y)*vi.GetViewportHeight()/2);
-}
+public:
+
+    using SceneNode::SceneNode;
+    virtual ~BillboardSceneNode()=default;
+
+    virtual void SetCameraInfo  (CameraInfo *   ci  ){camera_info   =ci;}
+    virtual void SetViewportInfo(ViewportInfo * vi  ){viewport_info =vi;}
+
+    virtual void SetFaceToCamera(bool           ftc ){face_to_camera=ftc;}
+    virtual void SetFixedScale  (const float    size){fixed_scale   =size;}
+
+    virtual bool RefreshTransform(const Transform &tf=IdentityTransform) override
+    {
+        if(!camera_info)
+        {
+            return SceneNode::RefreshTransform(tf);
+        }
+
+        if(face_to_camera)
+        {
+            LocalTransform.SetRotation(CalculateFacingRotationQuat(GetWorldPosition(),camera_info->view,AxisVector::X));
+        }
+
+        if(viewport_info)
+        {
+            const float screen_height=viewport_info->GetViewportHeight();
+
+            const Vector4f pos=camera_info->Project(GetWorldPosition());
+
+            LocalTransform.SetScale(pos.w*fixed_scale/screen_height);
+        }
+
+        return SceneNode::RefreshTransform(tf);
+    }
+};//class BillboardSceneNode:public SceneNode
 
 class TestApp:public SceneAppFramework
 {
     SceneNode root;
-    SceneNode *rotate_white_torus=nullptr;
+    BillboardSceneNode *rotate_white_torus=nullptr;
 
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
@@ -47,22 +82,33 @@ private:
     void InitGizmoSceneTree()
     {
         camera_control->Refresh();
-        const CameraInfo &ci=camera_control->GetCameraInfo();
+        CameraInfo *ci=camera_control->GetCameraInfo();
 
         root.Clear();
 
         root.CreateSubNode(sm_move->GetScene());
         root.CreateSubNode(sm_rotate->GetScene());
 
-        rotate_white_torus=root.CreateSubNode(face_torus);
+        {
+            Transform tm;
+
+            tm.SetScale(7.5);
+
+            rotate_white_torus=new BillboardSceneNode(tm,face_torus);
+
+            rotate_white_torus->SetCameraInfo(ci);
+            rotate_white_torus->SetFaceToCamera(true);
+
+            root.AddSubNode(rotate_white_torus);
+        }
 
         root.RefreshTransform();
-        render_list->SetCamera(&(camera_control->GetCameraInfo()));
+        render_list->SetCamera(ci);
         render_list->Expend(&root);
     }
 
 public:
-    
+
     bool Init(uint w,uint h)
     {        
         if(!SceneAppFramework::Init(w,h))
@@ -71,7 +117,7 @@ public:
         if(!InitGizmo())
             return(false);
 
-         InitGizmoSceneTree();
+        InitGizmoSceneTree();
         
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));
@@ -88,29 +134,20 @@ public:
     {
         camera_control->Refresh();
         
-        const CameraInfo &ci=camera_control->GetCameraInfo();
-        const ViewportInfo &vi=GetViewportInfo();
+        const CameraInfo *ci=camera_control->GetCameraInfo();
+        const ViewportInfo *vi=GetViewportInfo();
 
-        const float screen_height=vi.GetViewportHeight();
+        const float screen_height=vi->GetViewportHeight();
 
-        const Vector4f pos=ci.Project(GizmoPosition);
+        const Vector4f pos=ci->Project(GizmoPosition);
 
-        {
-            Transform tm;
+        //{
+        //    Transform tm;
 
-            tm.SetRotation(CalculateFacingRotationQuat(GizmoPosition,ci.view,AxisVector::X));
-            tm.SetScale(15);
+        //    tm.SetScale(pos.w*16.0f/screen_height);
 
-            rotate_white_torus->SetLocalTransform(tm);
-        }
-
-        {
-            Transform tm;
-
-            tm.SetScale(pos.w*16.0f/screen_height);
-
-            root.SetLocalTransform(tm);
-        }
+        //    root.SetLocalTransform(tm);
+        //}
 
         root.RefreshTransform();
         render_list->UpdateTransform();
