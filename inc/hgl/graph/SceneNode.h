@@ -3,7 +3,6 @@
 
 #include<hgl/type/ObjectList.h>
 #include<hgl/graph/SceneOrient.h>
-#include<hgl/graph/VK.h>
 #include<hgl/graph/AABB.h>
 namespace hgl
 {
