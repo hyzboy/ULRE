@@ -5,8 +5,9 @@ namespace hgl
     {
         SceneOrient::SceneOrient()
         {
-            Position=Vector3f(0.0f);
-            Direction=Vector3f(0.0f);
+            LocalMatrix=Identity4f;
+
+            SetWorldMatrix(Identity4f);
         }
         
         SceneOrient::SceneOrient(const SceneOrient &so)
@@ -14,45 +15,49 @@ namespace hgl
             hgl_cpy(*this,so);
         }
 
-        SceneOrient::SceneOrient(const Transform &t)
+        SceneOrient::SceneOrient(const Matrix4f &mat)
         {
-            SetLocalTransform(t);
+            SetLocalMatrix(mat);
         }
 
-        void SceneOrient::SetLocalTransform(const Transform &t)
+        void SceneOrient::SetLocalMatrix(const Matrix4f &mat)
         {
-            if(LocalTransform==t)
+            if(IsNearlyEqual(LocalMatrix,mat))
                 return;
 
-            LocalTransform=t;
+            LocalMatrix=mat;
         }
 
-        void SceneOrient::SetWorldTransform(const Transform &t)
+        void SceneOrient::SetWorldMatrix(const Matrix4f &wm)
         {
-            if(WorldTransform==t)
-                return;
-
-            WorldTransform=t;
+            LocalToWorldMatrix                  =wm;
+            InverseLocalToWorldMatrix           =inverse(LocalToWorldMatrix);
+            InverseTransposeLocalToWorldMatrix  =transpose(InverseLocalToWorldMatrix);
         }
 
         /**
-         * 刷新世界变换
-         * @param m 上一级local to world变换
+         * 刷新世界变换矩阵
+         * @param parent_matrix 上一级LocalToWorld变换矩阵
          */
-        bool SceneOrient::RefreshTransform(const Transform &t)
+        bool SceneOrient::RefreshMatrix(const Matrix4f &parent_matrix)
         {
-            if(!t.IsLastVersion())      //都不是最新版本
-                return(false);
+            if(hgl_cmp(ParentMatrix,parent_matrix)==0)      //如果上一级到这一级没变，自然是可以用memcmp比较的
+                return(true);
 
-            //理论上讲，Transform在正常转const的情况下，就已经做了UpdateMatrix()的操作，这个需要测试一下
+            ParentMatrix=parent_matrix;
 
-            if(LocalTransform.IsIdentity())
+            if(IsIdentityMatrix(LocalMatrix))
             {
-                SetWorldTransform(t);
+                SetWorldMatrix(parent_matrix);
+            }
+            else
+            if(IsIdentityMatrix(parent_matrix))
+            {
+                SetWorldMatrix(LocalMatrix);
             }
             else
             {
-                SetWorldTransform(t.TransformTransform(LocalTransform));
+                SetWorldMatrix(MatrixMult(parent_matrix,LocalMatrix));
             }
 
             return(true);
