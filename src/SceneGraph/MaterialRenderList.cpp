@@ -113,7 +113,7 @@ void MaterialRenderList::Add(SceneNode *sn)
 
     rn.scene_node       =sn;
 
-    rn.l2w_transform_version=sn->GetWorldTransform().GetVersion();
+    rn.l2w_version=sn->GetLocalToWorldMatrixVersion();
     rn.l2w_index=0;
 
     rn.world_position   =sn->GetWorldPosition();
@@ -141,7 +141,7 @@ void MaterialRenderList::End()
         assign_buffer->WriteNode(rn_list);
 }
 
-void MaterialRenderList::UpdateTransform()
+void MaterialRenderList::UpdateLocalToWorld()
 {
     if(!assign_buffer)
         return;
@@ -154,13 +154,14 @@ void MaterialRenderList::UpdateTransform()
 
     int first=-1,last=-1;
     int update_count=0;
+    uint32 l2w_version=0;
     RenderNode *rn=rn_list.GetData();
 
     for(int i=0;i<node_count;i++)
     {
-        Transform &tf=rn->scene_node->GetWorldTransform();
+        l2w_version=rn->scene_node->GetLocalToWorldMatrixVersion();
 
-        if(rn->l2w_transform_version!=tf.GetVersion())       //版本不对，需要更新
+        if(rn->l2w_version!=l2w_version)       //版本不对，需要更新
         {
             if(first==-1)
             {
@@ -169,7 +170,7 @@ void MaterialRenderList::UpdateTransform()
             
             last=rn->l2w_index;
 
-            rn->l2w_transform_version=tf.GetVersion();
+            rn->l2w_version=l2w_version;
 
             rn_update_l2w_list.Add(rn);
 
@@ -181,7 +182,7 @@ void MaterialRenderList::UpdateTransform()
 
     if(update_count>0)
     {
-        assign_buffer->UpdateTransform(rn_update_l2w_list,first,last);
+        assign_buffer->UpdateLocalToWorld(rn_update_l2w_list,first,last);
         rn_update_l2w_list.Clear();
     }
 }

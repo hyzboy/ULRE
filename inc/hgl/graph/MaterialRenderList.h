@@ -95,6 +95,6 @@ public:
 
     void Render(RenderCmdBuffer *);
 
-    void UpdateTransform();          //刷新所有对象的LocalToWorld矩阵
+    void UpdateLocalToWorld();          //刷新所有对象的LocalToWorld矩阵
 };//class MaterialRenderList
 VK_NAMESPACE_END

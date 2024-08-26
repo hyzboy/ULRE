@@ -32,8 +32,8 @@ namespace hgl
             SceneNode()=default;
             SceneNode(SceneNode *);
             SceneNode(                      Renderable *ri  )                   {render_obj=ri;}
-            SceneNode(const Transform &tf                   ):SceneOrient(tf)   {}
-            SceneNode(const Transform &tf,  Renderable *ri  ):SceneOrient(tf)   {render_obj=ri;}
+            SceneNode(const Matrix4f &mat                   ):SceneOrient(mat)  {}
+            SceneNode(const Matrix4f &mat,  Renderable *ri  ):SceneOrient(mat)  {render_obj=ri;}
 
             virtual ~SceneNode()=default;
 
@@ -128,7 +128,7 @@ namespace hgl
 
             virtual         void        SetBoundingBox      (const AABB &bb){BoundingBox=bb;}                           ///<设置绑定盒
 
-            virtual         bool        RefreshTransform    (const Transform &tf=IdentityTransform) override;           ///<刷新世界变换
+            virtual         void        RefreshMatrix       () override;           ///<刷新世界变换
             virtual         void        RefreshBoundingBox  ();                                                         ///<刷新绑定盒
 
             virtual const   AABB &      GetBoundingBox      ()const{return BoundingBox;}                                ///<取得绑定盒

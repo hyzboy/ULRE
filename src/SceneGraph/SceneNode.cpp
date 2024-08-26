@@ -40,18 +40,14 @@ namespace hgl
         }
 
         /**
-        * 刷新变换
-        * @param parent_transform 上级节点变换
+        * 刷新矩阵变换
         */
-        bool SceneNode::RefreshTransform(const Transform &parent_transform)
+        void SceneNode::RefreshMatrix()
         {
-            if(!parent_transform.IsLastVersion())
-                return(false);
+            if (scene_matrix.IsNewestVersion())
+                return;
 
-            if(!parent_transform.IsIdentity())
-                SceneOrient::RefreshTransform(parent_transform);
-            else
-                SetWorldTransform(LocalTransform);
+            const Matrix2f &l2w=scene_matrix.GetLocalToWorldMatrix();
 
             const int count=SubNode.GetCount();
 
@@ -59,13 +55,11 @@ namespace hgl
 
             for(int i=0;i<count;i++)
             {
-                if(!(*sub)->RefreshTransform(WorldTransform))
-                    return(false);
+                (*sub)->SetParentMatrix(l2w);
+                (*sub)->RefreshMatrix();
 
                 sub++;
             }
-
-            return(true);
         }
 
         /**
