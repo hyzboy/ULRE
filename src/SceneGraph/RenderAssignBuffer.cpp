@@ -73,7 +73,7 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
 
     for(uint i=0;i<rn_list.GetCount();i++)
     {
-        *l2wp=rn->scene_node->GetWorldTransform().GetMatrix();
+        *l2wp=rn->scene_node->GetLocalToWorldMatrix();
         ++l2wp;
         ++rn;
     }
@@ -81,7 +81,7 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
     l2w_buffer->Unmap();
 }
 
-void RenderAssignBuffer::UpdateTransform(const RenderNodePointerList &rnp_list,const int first,const int last)
+void RenderAssignBuffer::UpdateLocalToWorld(const RenderNodePointerList &rnp_list,const int first,const int last)
 {
     if(!l2w_buffer)
         return;
@@ -97,7 +97,7 @@ void RenderAssignBuffer::UpdateTransform(const RenderNodePointerList &rnp_list,c
 
     for(uint i=0;i<count;i++)
     {
-        l2wp[(*rn)->l2w_index-first]=(*rn)->scene_node->GetWorldTransform().GetMatrix();
+        l2wp[(*rn)->l2w_index-first]=(*rn)->scene_node->GetLocalToWorldMatrix();
 
         ++rn;
     }

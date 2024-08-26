@@ -32,10 +32,10 @@ public:
             it->value->Render(rcb);
     }
 
-    void UpdateTransform()
+    void UpdateLocalToWorld()
     {
         for(auto *it:data_list)
-            it->value->UpdateTransform();
+            it->value->UpdateLocalToWorld();
     }
 };//class MaterialRenderMap
 VK_NAMESPACE_END

@@ -150,7 +150,7 @@ public:
         //}
 
         root.RefreshTransform();
-        render_list->UpdateTransform();
+        render_list->UpdateLocalToWorld();
 
         SceneAppFramework::BuildCommandBuffer(index);
     }

@@ -78,12 +78,12 @@ namespace hgl
             mrl_map.Clear();
         }
         
-        void RenderList::UpdateTransform()
+        void RenderList::UpdateLocalToWorld()
         {
             if(renderable_count<=0)
                 return;
 
-            mrl_map.UpdateTransform();
+            mrl_map.UpdateLocalToWorld();
         }
     }//namespace graph
 }//namespace hgl

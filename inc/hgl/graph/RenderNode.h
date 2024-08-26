@@ -15,7 +15,7 @@ namespace hgl
         {
             SceneNode *scene_node;
 
-            uint32 l2w_transform_version;
+            uint32 l2w_version;
             uint32 l2w_index;
 
             Vector3f world_position;
