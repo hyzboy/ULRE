@@ -82,7 +82,9 @@ bool InitGizmoMoveStaticMesh()
     }
 
     {
-        SceneNode *root_node=new SceneNode(scale(0.5f),sphere);
+        SceneNode *root_node=new SceneNode();
+        
+        root_node->CreateSubNode(sphere);
 
         {
             Transform tm;
