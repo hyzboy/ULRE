@@ -85,5 +85,22 @@ namespace hgl
 
             mrl_map.UpdateLocalToWorld();
         }
+
+        void RenderList::UpdateMaterialInstance(SceneNode *sn)
+        {
+            if(!sn)return;
+
+            Renderable *ri=sn->GetRenderable();
+
+            if(!ri)return;
+
+            Material *mtl=ri->GetMaterial();
+            MaterialRenderList *mrl;
+
+            if(!mrl_map.Get(mtl,mrl))        //找到对应的
+                return;
+
+            mrl->UpdateMaterialInstance(sn);
+        }
     }//namespace graph
 }//namespace hgl

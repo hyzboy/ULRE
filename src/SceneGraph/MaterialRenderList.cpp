@@ -111,10 +111,12 @@ void MaterialRenderList::Add(SceneNode *sn)
 {
     RenderNode rn;
 
+    rn.index            =rn_list.GetCount();
+
     rn.scene_node       =sn;
 
-    rn.l2w_version=sn->GetLocalToWorldMatrixVersion();
-    rn.l2w_index=0;
+    rn.l2w_version      =sn->GetLocalToWorldMatrixVersion();
+    rn.l2w_index        =0;
 
     rn.world_position   =sn->GetWorldPosition();
 
@@ -184,6 +186,30 @@ void MaterialRenderList::UpdateLocalToWorld()
     {
         assign_buffer->UpdateLocalToWorld(rn_update_l2w_list,first,last);
         rn_update_l2w_list.Clear();
+    }
+}
+
+void MaterialRenderList::UpdateMaterialInstance(SceneNode *sn)
+{
+    if(!sn)return;
+
+    if(!assign_buffer)
+        return;
+    
+    const int node_count=rn_list.GetCount();
+
+    if(node_count<=0)return;
+    RenderNode *rn=rn_list.GetData();
+
+    for(int i=0;i<node_count;i++)
+    {
+        if(rn->scene_node==sn)
+        {
+            assign_buffer->UpdateMaterialInstance(rn);
+            return;
+        }
+
+        ++rn;
     }
 }
 

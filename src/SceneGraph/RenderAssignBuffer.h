@@ -93,5 +93,6 @@ public:
     void WriteNode(const RenderNodeList &);
 
     void UpdateLocalToWorld(const RenderNodePointerList &,const int first,const int last);
+    void UpdateMaterialInstance(const RenderNode *);
 };//struct RenderAssignBuffer
 VK_NAMESPACE_END

@@ -103,6 +103,20 @@ public:
 
     const   PrimitiveDataBuffer *GetDataBuffer      ()const{return primitive_data_buffer;}
     const   PrimitiveRenderData *GetRenderData      ()const{return primitive_render_data;}
+
+public:
+
+            bool                ChangeMaterialInstance(MaterialInstance *mi)
+            {
+                if(!mi)
+                    return(false);
+
+                if(mi->GetMaterial()!=mat_inst->GetMaterial())      //不能换母材质
+                    return(false);
+
+                mat_inst=mi;
+                return(true);
+            }
 };//class Renderable
 
 Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);

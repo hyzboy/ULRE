@@ -13,13 +13,15 @@ namespace hgl
 
         struct RenderNode
         {
-            SceneNode *scene_node;
+            uint        index;                              ///<在MaterialRenderList中的索引
 
-            uint32 l2w_version;
-            uint32 l2w_index;
+            SceneNode * scene_node;
 
-            Vector3f world_position;
-            float to_camera_distance;
+            uint32      l2w_version;
+            uint32      l2w_index;
+
+            Vector3f    world_position;
+            float       to_camera_distance;
         };
 
         using RenderNodeList=List<RenderNode>;
