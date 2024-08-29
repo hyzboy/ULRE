@@ -105,6 +105,18 @@ void RenderAssignBuffer::UpdateLocalToWorld(const RenderNodePointerList &rnp_lis
     l2w_buffer->Unmap();
 }
 
+void RenderAssignBuffer::UpdateMaterialInstance(const RenderNode *rn)
+{
+    if(!rn)
+        return;
+
+    AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map(sizeof(AssignData)*rn->index,sizeof(AssignData)));
+
+    adp->mi=mi_set.Find(rn->scene_node->GetRenderable()->GetMaterialInstance());
+
+    assign_vab->Unmap();
+}
+
 void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
 {
     mi_set.Clear();
