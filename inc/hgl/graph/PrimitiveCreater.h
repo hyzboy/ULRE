@@ -25,6 +25,7 @@ protected:
 
     uint32_t        vertices_number;  ///<顶点数量
 
+    bool            has_index;        ///<是否有索引
     uint32_t        index_number;     ///<索引数量
     IndexType       index_type;       ///<索引类型
     IndexBuffer *   ibo;              ///<索引缓冲区
@@ -62,6 +63,7 @@ public: //顶点缓冲区
 
 public: //索引缓冲区
 
+    const   bool            hasIndex()const{return vdm?has_index:index_number>0;}                                           ///<是否有索引缓冲区
     const   IndexType       GetIndexType()const{return index_type;}                                                         ///<取得索引类型
     const   uint32_t        GetIndexCount()const{return index_number;}                                                      ///<取得索引数量
 
