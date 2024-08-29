@@ -82,7 +82,7 @@ bool InitGizmoMoveStaticMesh()
     }
 
     {
-        SceneNode *root_node=new SceneNode(scale(1,1,2));       //.////// XY有效，Z无效。。。在查为什么
+        SceneNode *root_node=new SceneNode();
         
         root_node->CreateSubNode(sphere);
 
