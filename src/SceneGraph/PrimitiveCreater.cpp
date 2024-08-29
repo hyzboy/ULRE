@@ -13,6 +13,7 @@ PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
     vdm             =nullptr;
     vil             =v;
 
+    has_index       =false;
     prim_data       =nullptr;
 
     Clear();
@@ -22,6 +23,8 @@ PrimitiveCreater::PrimitiveCreater(VertexDataManager *_vdm)
     :PrimitiveCreater(_vdm->GetDevice(),_vdm->GetVIL())
 {
     vdm=_vdm;
+
+    has_index=vdm->GetIBO();
 
     index_type=vdm->GetIndexType();
 }
