@@ -59,11 +59,11 @@ bool InitGizmoMoveStaticMesh()
         GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Blue),
     };
 
-    Renderable *plane[3]=
+    Renderable *circle[3]=
     {
-        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Blue)
+        GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Red),
+        GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Green),
+        GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Blue)
     };
 
     if(!sphere)
@@ -77,7 +77,7 @@ bool InitGizmoMoveStaticMesh()
         if(!cone[i])
             return(false);
 
-        if(!plane[i])
+        if(!circle[i])
             return(false);
     }
 
@@ -90,7 +90,7 @@ bool InitGizmoMoveStaticMesh()
             Transform tm;
 
             const Vector3f one_scale(1);
-            const Vector3f plane_scale(2);
+            const Vector3f circle_scale(2);
             const Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
 
             {
@@ -102,9 +102,9 @@ bool InitGizmoMoveStaticMesh()
                 tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
                 root_node->CreateSubNode(tm,cone[2]);           //Z 向上圆锥
 
-                tm.SetScale(plane_scale);
+                tm.SetScale(circle_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
-                root_node->CreateSubNode(tm,plane[2]);
+                root_node->CreateSubNode(tm,circle[2]);
             }
 
             {
@@ -117,9 +117,9 @@ bool InitGizmoMoveStaticMesh()
                 tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
                 root_node->CreateSubNode(tm,cone[0]);           //X 向右圆锥
 
-                tm.SetScale(plane_scale);
+                tm.SetScale(circle_scale);
                 tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
-                root_node->CreateSubNode(tm,plane[0]);
+                root_node->CreateSubNode(tm,circle[0]);
             }
 
             {
@@ -133,9 +133,9 @@ bool InitGizmoMoveStaticMesh()
                 tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
                 root_node->CreateSubNode(tm,cone[1]);           //Y 向前圆锥
 
-                tm.SetScale(plane_scale);
+                tm.SetScale(circle_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
-                root_node->CreateSubNode(tm,plane[1]);
+                root_node->CreateSubNode(tm,circle[1]);
             }
         }
 

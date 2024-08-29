@@ -21,6 +21,7 @@ enum class GizmoColor:uint
 enum class GizmoShape:uint
 {
     Square=0,   //方块
+    Circle,     //圆
     Cube,       //立方体
     Sphere,     //球
     Cone,       //圆锥

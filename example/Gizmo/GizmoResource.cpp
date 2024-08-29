@@ -194,6 +194,17 @@ namespace
             }
 
             {
+                CircleCreateInfo cci;
+
+                cci.center=Vector2f(0,0);
+                cci.radius=Vector2f(0.5,0.5);
+                cci.field_count=16;
+                cci.has_center=false;
+                
+                InitGizmoRenderable(GizmoShape::Circle,CreateCircle3DByIndexTriangles(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+            }
+
+            {
                 CubeCreateInfo cci;
 
                 cci.normal=true;
