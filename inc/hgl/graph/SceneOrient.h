@@ -80,7 +80,8 @@ namespace hgl
 
             void SetLocalMatrix(const Matrix4f &mat)
             {
-                if (IsNearlyEqual(local_matrix,mat))
+                //if (IsNearlyEqual(local_matrix,mat))
+                if(!hgl_cmp(local_matrix,mat))
                     return;
 
                 local_matrix=mat;
@@ -89,7 +90,8 @@ namespace hgl
 
             void SetParentMatrix(const Matrix4f &pm)
             {
-                if (IsNearlyEqual(parent_matrix,pm))
+                //if (IsNearlyEqual(parent_matrix,pm))
+                if(!hgl_cmp(parent_matrix,pm))
                     return;
 
                 parent_matrix=pm;
@@ -101,7 +103,7 @@ namespace hgl
         * 方向定位数据基类<br>
         * 用于描述一个物体在3D空间中的位置、旋转、缩放等信息。<br>
         * 构成说明:<br>
-        * <ul>        * 
+        * <ul>
         *   <li>LocalMatrix 一般用于描述当前节点相对上一级的变换矩阵</li>
         *   <li>LocalToWorldMatrix 最终用于描述当前节点相对于世界的变换矩阵，在渲染时使用</li>
         * 

@@ -149,8 +149,8 @@ public:
         //    root.SetLocalTransform(tm);
         //}
 
-        //root.RefreshMatrix();
-        //render_list->UpdateLocalToWorld();
+        root.RefreshMatrix();
+        render_list->UpdateLocalToWorld();
 
         SceneAppFramework::BuildCommandBuffer(index);
     }
