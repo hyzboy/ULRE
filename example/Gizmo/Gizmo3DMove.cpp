@@ -61,9 +61,9 @@ bool InitGizmoMoveStaticMesh()
 
     Renderable *plane[3]=
     {
-        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Blue)
+        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Red),
+        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Green),
+        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Blue)
     };
 
     if(!sphere)

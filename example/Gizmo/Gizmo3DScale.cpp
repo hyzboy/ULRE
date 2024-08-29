@@ -59,11 +59,11 @@ bool InitGizmoScaleStaticMesh()
         GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Blue),
     };
 
-    Renderable *plane[3]=
+    Renderable *square[3]=
     {
-        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Plane,GizmoColor::Blue)
+        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Red),
+        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Green),
+        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Blue)
     };
 
     if(!center_cube)
@@ -77,7 +77,7 @@ bool InitGizmoScaleStaticMesh()
         if(!cube[i])
             return(false);
 
-        if(!plane[i])
+        if(!square[i])
             return(false);
     }
 
@@ -104,7 +104,7 @@ bool InitGizmoScaleStaticMesh()
 
                 tm.SetScale(plane_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
-                root_node->CreateSubNode(tm,plane[2]);
+                root_node->CreateSubNode(tm,square[2]);
             }
 
             {
@@ -119,7 +119,7 @@ bool InitGizmoScaleStaticMesh()
 
                 tm.SetScale(plane_scale);
                 tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
-                root_node->CreateSubNode(tm,plane[0]);
+                root_node->CreateSubNode(tm,square[0]);
             }
 
             {
@@ -135,7 +135,7 @@ bool InitGizmoScaleStaticMesh()
 
                 tm.SetScale(plane_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
-                root_node->CreateSubNode(tm,plane[1]);
+                root_node->CreateSubNode(tm,square[1]);
             }
         }
 

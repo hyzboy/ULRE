@@ -85,7 +85,7 @@ private:
     {
         PrimitiveCreater pc(device,material->GetDefaultVIL());
 
-        ro_plane=inline_geometry::CreatePlane(&pc);
+        ro_plane=inline_geometry::CreatePlaneSqaure(&pc);
 
         if(ro_plane)
             db->Add(ro_plane);

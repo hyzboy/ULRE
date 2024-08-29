@@ -268,7 +268,7 @@ namespace hgl
                 return pc->Create();
             }
 
-            Primitive *CreatePlane(PrimitiveCreater *pc)
+            Primitive *CreatePlaneSqaure(PrimitiveCreater *pc)
             {
                 const   float       xy_vertices [] = { -0.5f,-0.5f,0.0f,  +0.5f,-0.5f,0.0f,    +0.5f,+0.5f,0.0f,    -0.5f,+0.5f,0.0f   };
                         float       xy_tex_coord[] = {  0.0f, 0.0f,        1.0f, 0.0f,          1.0f, 1.0f,          0.0f, 1.0f        };
