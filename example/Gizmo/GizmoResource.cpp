@@ -210,8 +210,8 @@ namespace
             {
                 ConeCreateInfo cci;
 
-                cci.radius      =1;         //圆锥半径
-                cci.halfExtend  =1;         //圆锤一半高度
+                cci.radius      =GIZMO_CONE_RADIUS;         //圆锥半径
+                cci.halfExtend  =1;                 //圆锤一半高度
                 cci.numberSlices=16;        //圆锥底部分割数
                 cci.numberStacks=3;         //圆锥高度分割数
 

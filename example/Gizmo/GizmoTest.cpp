@@ -61,6 +61,7 @@ class TestApp:public SceneAppFramework
 
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
+    StaticMesh *sm_scale=nullptr;
 
     Renderable *face_torus=nullptr;
 
@@ -73,6 +74,7 @@ private:
 
         sm_move     =GetGizmoMoveStaticMesh();
         sm_rotate   =GetGizmoRotateStaticMesh();
+        sm_scale    =GetGizmoScaleStaticMesh();
 
         face_torus  =GetGizmoRenderable(GizmoShape::Torus,GizmoColor::White);
 
@@ -88,6 +90,7 @@ private:
 
         root.CreateSubNode(sm_move->GetScene());
         root.CreateSubNode(sm_rotate->GetScene());
+        //root.CreateSubNode(sm_scale->GetScene());
 
         //{
         //    Transform tm;
