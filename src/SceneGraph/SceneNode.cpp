@@ -44,6 +44,8 @@ namespace hgl
         */
         void SceneNode::RefreshMatrix()
         {
+            SceneOrient::RefreshMatrix();
+
 //            if (scene_matrix.IsNewestVersion())       //自己不变，不代表下面不变
                 //return;
 
