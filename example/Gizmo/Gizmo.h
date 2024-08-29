@@ -20,14 +20,14 @@ enum class GizmoColor:uint
 
 enum class GizmoShape:uint
 {
-    Plane=0,    //平面
+    Square=0,   //方块
     Cube,       //立方体
     Sphere,     //球
     Cone,       //圆锥
     Cylinder,   //圆柱
     Torus,      //圆环
 
-    ENUM_CLASS_RANGE(Plane,Torus)
+    ENUM_CLASS_RANGE(Square,Torus)
 };
 
 bool InitGizmoResource(RenderResource *);

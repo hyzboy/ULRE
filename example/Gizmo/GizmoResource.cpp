@@ -190,7 +190,7 @@ namespace
             using namespace inline_geometry;
 
             {
-                InitGizmoRenderable(GizmoShape::Plane,CreatePlane(gizmo_triangle.prim_creater),gizmo_triangle.pipeline);
+                InitGizmoRenderable(GizmoShape::Square,CreatePlaneSqaure(gizmo_triangle.prim_creater),gizmo_triangle.pipeline);
             }
 
             {

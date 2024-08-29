@@ -83,9 +83,9 @@ namespace hgl
             Primitive *CreatePlaneGrid3D(PrimitiveCreater *pc,const PlaneGridCreateInfo *pgci);
 
             /**
-             * 创建一个平面(三角形)
+             * 创建一个平面正方形(三角形)
              */
-            Primitive *CreatePlane(PrimitiveCreater *pc);
+            Primitive *CreatePlaneSqaure(PrimitiveCreater *pc);
 
             struct CubeCreateInfo
             {
