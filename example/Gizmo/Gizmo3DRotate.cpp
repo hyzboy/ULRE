@@ -42,7 +42,7 @@ bool InitGizmoRotateStaticMesh()
         {
             Transform tm;
 
-            tm.SetScale(5.0f);
+            tm.SetScale(10.0f);
 
             root_node->CreateSubNode(tm,torus[0]);
 

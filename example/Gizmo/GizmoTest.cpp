@@ -6,58 +6,58 @@ using namespace hgl;
 using namespace hgl::graph;
 
 const Vector3f GizmoPosition(0,0,0);
-
-/**
-* 一种永远转向正面的场景节点
-*/
-class BillboardSceneNode:public SceneNode
-{
-    CameraInfo *camera_info=nullptr;
-    bool face_to_camera=false;
-
-    ViewportInfo *viewport_info=nullptr;
-    float fixed_scale=1.0;
-
-public:
-
-    using SceneNode::SceneNode;
-    virtual ~BillboardSceneNode()=default;
-
-    virtual void SetCameraInfo  (CameraInfo *   ci  ){camera_info   =ci;}
-    virtual void SetViewportInfo(ViewportInfo * vi  ){viewport_info =vi;}
-
-    virtual void SetFaceToCamera(bool           ftc ){face_to_camera=ftc;}
-    virtual void SetFixedScale  (const float    size){fixed_scale   =size;}
-
-    virtual bool RefreshTransform(const Transform &tf=IdentityTransform) override
-    {
-        if(!camera_info)
-        {
-            return SceneNode::RefreshTransform(tf);
-        }
-
-        if(face_to_camera)
-        {
-            LocalTransform.SetRotation(CalculateFacingRotationQuat(GetWorldPosition(),camera_info->view,AxisVector::X));
-        }
-
-        if(viewport_info)
-        {
-            const float screen_height=viewport_info->GetViewportHeight();
-
-            const Vector4f pos=camera_info->Project(GetWorldPosition());
-
-            LocalTransform.SetScale(pos.w*fixed_scale/screen_height);
-        }
-
-        return SceneNode::RefreshTransform(tf);
-    }
-};//class BillboardSceneNode:public SceneNode
+//
+///**
+//* 一种永远转向正面的场景节点
+//*/
+//class BillboardSceneNode:public SceneNode
+//{
+//    CameraInfo *camera_info=nullptr;
+//    bool face_to_camera=false;
+//
+//    ViewportInfo *viewport_info=nullptr;
+//    float fixed_scale=1.0;
+//
+//public:
+//
+//    using SceneNode::SceneNode;
+//    virtual ~BillboardSceneNode()=default;
+//
+//    virtual void SetCameraInfo  (CameraInfo *   ci  ){camera_info   =ci;}
+//    virtual void SetViewportInfo(ViewportInfo * vi  ){viewport_info =vi;}
+//
+//    virtual void SetFaceToCamera(bool           ftc ){face_to_camera=ftc;}
+//    virtual void SetFixedScale  (const float    size){fixed_scale   =size;}
+//
+//    virtual bool RefreshTransform(const Transform &tf=IdentityTransform) override
+//    {
+//        if(!camera_info)
+//        {
+//            return SceneNode::RefreshTransform(tf);
+//        }
+//
+//        if(face_to_camera)
+//        {
+//            LocalTransform.SetRotation(CalculateFacingRotationQuat(GetWorldPosition(),camera_info->view,AxisVector::X));
+//        }
+//
+//        if(viewport_info)
+//        {
+//            const float screen_height=viewport_info->GetViewportHeight();
+//
+//            const Vector4f pos=camera_info->Project(GetWorldPosition());
+//
+//            LocalTransform.SetScale(pos.w*fixed_scale/screen_height);
+//        }
+//
+//        return SceneNode::RefreshTransform(tf);
+//    }
+//};//class BillboardSceneNode:public SceneNode
 
 class TestApp:public SceneAppFramework
 {
     SceneNode root;
-    BillboardSceneNode *rotate_white_torus=nullptr;
+    //BillboardSceneNode *rotate_white_torus=nullptr;
 
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
@@ -89,20 +89,20 @@ private:
         root.CreateSubNode(sm_move->GetScene());
         root.CreateSubNode(sm_rotate->GetScene());
 
-        {
-            Transform tm;
+        //{
+        //    Transform tm;
 
-            tm.SetScale(7.5);
+        //    tm.SetScale(7.5);
 
-            rotate_white_torus=new BillboardSceneNode(tm,face_torus);
+        //    rotate_white_torus=new BillboardSceneNode(tm,face_torus);
 
-            rotate_white_torus->SetCameraInfo(ci);
-            rotate_white_torus->SetFaceToCamera(true);
+        //    rotate_white_torus->SetCameraInfo(ci);
+        //    rotate_white_torus->SetFaceToCamera(true);
 
-            root.AddSubNode(rotate_white_torus);
-        }
+        //    root.AddSubNode(rotate_white_torus);
+        //}
 
-        root.RefreshTransform();
+        root.RefreshMatrix();
         render_list->SetCamera(ci);
         render_list->Expend(&root);
     }
@@ -149,7 +149,7 @@ public:
         //    root.SetLocalTransform(tm);
         //}
 
-        root.RefreshTransform();
+        root.RefreshMatrix();
         render_list->UpdateLocalToWorld();
 
         SceneAppFramework::BuildCommandBuffer(index);
