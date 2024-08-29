@@ -48,9 +48,9 @@ namespace hgl
             {
                 Vector2f center;            ///<圆心坐标
                 Vector2f radius;            ///<半径
-                uint field_count=8;         ///<分段次数
+                uint field_count=8;         ///<分段数量
 
-                bool has_color  =false;
+                bool has_center;            ///<是否有圆心点
 
                 Vector4f center_color;      ///<圆心颜色
                 Vector4f border_color;      ///<边缘颜色
@@ -59,7 +59,17 @@ namespace hgl
             /**
              * 创建一个2D圆形(扇形/线圈)
              */
-            Primitive *CreateCircle(PrimitiveCreater *pc,const CircleCreateInfo *cci);
+            Primitive *CreateCircle2D(PrimitiveCreater *pc,const CircleCreateInfo *cci);
+            
+            /**
+             * 创建一个3D圆形(扇形/圆形，XY，Z永远为0)
+             */
+            Primitive *CreateCircle3D(PrimitiveCreater *pc,const CircleCreateInfo *cci);
+
+            /**
+             * 创建一个使用三角形绘制的3D圆形(扇形/圆形，XY，Z永远为0)
+             */
+            Primitive *CreateCircle3DByIndexTriangles(PrimitiveCreater *pc,const CircleCreateInfo *cci);
 
             /**
              * 平面网格创建信息<br>
