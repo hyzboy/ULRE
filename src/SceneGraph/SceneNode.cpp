@@ -47,7 +47,7 @@ namespace hgl
 //            if (scene_matrix.IsNewestVersion())       //自己不变，不代表下面不变
                 //return;
 
-            const Matrix2f &l2w=scene_matrix.GetLocalToWorldMatrix();
+            const Matrix4f &l2w=scene_matrix.GetLocalToWorldMatrix();
 
             const int count=SubNode.GetCount();
 
