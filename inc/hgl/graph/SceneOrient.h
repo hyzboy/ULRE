@@ -33,6 +33,14 @@ namespace hgl
 
         public:
 
+            void Clear()
+            {
+                parent_matrix=Identity4f;
+                local_matrix=Identity4f;
+                transform_matrix=Identity4f;
+                UpdateVersion();
+            }
+
             const Matrix4f &GetLocalMatrix()const{return local_matrix;}                                                 ///<取得本地矩阵
 
             const Matrix4f &GetLocalToWorldMatrix(){return GetNewestVersionData();}                                     ///<取得本地到世界矩阵
@@ -49,9 +57,7 @@ namespace hgl
 
             SceneMatrix():VersionData(Identity4f)
             {
-                parent_matrix=Identity4f;
-                local_matrix=Identity4f;
-                transform_matrix=Identity4f;
+                Clear();
             }
 
             SceneMatrix(SceneMatrix &so):VersionData(so.GetLocalToWorldMatrix())
@@ -63,11 +69,13 @@ namespace hgl
 
                 inverse_local_to_world_matrix=so.inverse_local_to_world_matrix;
                 inverse_transpose_local_to_world_matrix=so.inverse_transpose_local_to_world_matrix;
+                UpdateVersion();
             }
 
             SceneMatrix(const Matrix4f &mat):VersionData(Identity4f)
             {
                 SetLocalMatrix(mat);
+                UpdateVersion();
             }
 
             void SetLocalMatrix(const Matrix4f &mat)
@@ -116,6 +124,12 @@ namespace hgl
             SceneOrient(const SceneOrient &);
             SceneOrient(const Matrix4f &);
             virtual ~SceneOrient()=default;
+
+            virtual void Clear()
+            {
+                scene_matrix.Clear();
+                WorldPosition=ZeroVector3f;
+            }
 
             void SetLocalMatrix  (const Matrix4f &mat){scene_matrix.SetLocalMatrix(mat);}               ///<设置本地矩阵
             void SetParentMatrix (const Matrix4f &mat){scene_matrix.SetParentMatrix(mat);}              ///<设置上级到世界空间变换矩阵

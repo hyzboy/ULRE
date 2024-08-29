@@ -7,13 +7,17 @@ namespace hgl
         {
             scene_matrix=so.scene_matrix;
             WorldPosition=so.WorldPosition;
+
+            scene_matrix.UpdateNewestData();
         }
 
         SceneOrient::SceneOrient(const Matrix4f &mat):SceneOrient()
         {
             scene_matrix.SetLocalMatrix(mat);
+            
+            scene_matrix.UpdateNewestData();
 
-            WorldPosition=TransformPosition(mat,ZeroVector3f);
+            WorldPosition=TransformPosition(GetLocalToWorldMatrix(),ZeroVector3f);
         }
 
         void SceneOrient::RefreshMatrix()
@@ -24,9 +28,7 @@ namespace hgl
                 return;
             }
 
-            const Matrix4f &l2w=scene_matrix.GetNewestVersionData();
-
-            WorldPosition=TransformPosition(l2w,ZeroVector3f);
+            WorldPosition=TransformPosition(GetLocalToWorldMatrix(),ZeroVector3f);
         }
     }//namespace graph
 }//namespace hgl

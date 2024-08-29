@@ -37,8 +37,13 @@ namespace hgl
 
             virtual ~SceneNode()=default;
 
-            void Clear()
+            void Clear() override
             {
+                SceneOrient::Clear();
+
+                BoundingBox.SetZero();
+                LocalBoundingBox.SetZero();
+
                 SubNode.Clear();
                 render_obj=nullptr;
             }
