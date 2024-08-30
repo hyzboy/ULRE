@@ -7,6 +7,20 @@ namespace hgl
 {
     namespace graph
     {
+        /**
+        * 场景节点矩阵类<br>
+        * 
+        * 用于描述一个物体在3D空间中的位置、旋转、缩放等信息。<br>
+        * 构成说明:<br>
+        * <ul>
+        *   <li>LocalMatrix 一般用于描述当前节点相对上一级的变换矩阵</li>
+        *   <li>LocalToWorldMatrix 最终用于描述当前节点相对于世界的变换矩阵，在渲染时使用</li>
+        * 
+        *   <li>transform_manager 用于管理当前节点所有的变换情况，如果本节点不存在额外变换，数量为0。</li>
+        * </ul>
+        * 
+        * LocalToWorldMatrix=ParnetMatrix * LocalMatrix * TraansformMatrix<br>
+        */
         class SceneMatrix :public VersionData<Matrix4f>
         {
         protected:
@@ -16,6 +30,9 @@ namespace hgl
             TransformManager transform_manager;
             Matrix4f transform_matrix;
 
+            Vector3f OriginWorldPosition;       //原始世界坐标
+            Vector3f FinalWorldPosition;        //最终世界坐标
+
         protected:
 
             Matrix4f inverse_local_to_world_matrix;                                                                     ///<世界到本地矩阵
@@ -23,9 +40,22 @@ namespace hgl
 
             void MakeNewestData(Matrix4f &local_to_world_matrix) override                                               ///<生成最新的数据(需要派生类重载)
             {
-                transform_manager.GetMatrix(transform_matrix);
+                local_to_world_matrix=parent_matrix*local_matrix;
 
-                local_to_world_matrix=parent_matrix*local_matrix*transform_matrix;
+                OriginWorldPosition=TransformPosition(local_to_world_matrix,ZeroVector3f);
+
+                if(transform_manager.IsEmpty())
+                {
+                    FinalWorldPosition=OriginWorldPosition;
+                }
+                else
+                {
+                    transform_manager.GetMatrix(transform_matrix,OriginWorldPosition);
+
+                    local_to_world_matrix*=transform_matrix;
+
+                    FinalWorldPosition=TransformPosition(local_to_world_matrix,ZeroVector3f);
+                }
             
                 inverse_local_to_world_matrix          =inverse(local_to_world_matrix);
                 inverse_transpose_local_to_world_matrix=transpose(inverse_local_to_world_matrix);
@@ -51,7 +81,9 @@ namespace hgl
                 return inverse_transpose_local_to_world_matrix;
             }
 
-            TransformManager &GetTransform() { return transform_manager; }                     ///<取得变换管理器
+            TransformManager &GetTransform(){return transform_manager;}                                                 ///<取得变换管理器
+
+            const Vector3f &GetWorldPosition()const{return FinalWorldPosition;}                                         ///<取得世界坐标
 
         public:
 
@@ -101,24 +133,12 @@ namespace hgl
 
         /**
         * 方向定位数据基类<br>
-        * 用于描述一个物体在3D空间中的位置、旋转、缩放等信息。<br>
-        * 构成说明:<br>
-        * <ul>
-        *   <li>LocalMatrix 一般用于描述当前节点相对上一级的变换矩阵</li>
-        *   <li>LocalToWorldMatrix 最终用于描述当前节点相对于世界的变换矩阵，在渲染时使用</li>
-        * 
-        *   <li>transform_manager 用于管理当前节点所有的变换情况，如果本节点不存在额外变换，数量为0。</li>
-        * </ul>
-        * 
-        * LocalToWorldMatrix=ParnetMatrix * LocalMatrix * TraansformMatrix<br>
         */
         class SceneOrient                                                                                                   ///场景定位类
         {
         protected:
 
             SceneMatrix scene_matrix;
-
-            Vector3f WorldPosition;
 
         public:
 
@@ -130,7 +150,6 @@ namespace hgl
             virtual void Clear()
             {
                 scene_matrix.Clear();
-                WorldPosition=ZeroVector3f;
             }
 
             void SetLocalMatrix  (const Matrix4f &mat){scene_matrix.SetLocalMatrix(mat);}               ///<设置本地矩阵
@@ -138,9 +157,9 @@ namespace hgl
 
         public:
 
-            const uint32        GetLocalToWorldMatrixVersion()const             { return scene_matrix.GetNewestVersion(); }     ///<取得版本号
+            const uint32        GetLocalToWorldMatrixVersion()const             {return scene_matrix.GetNewestVersion();}       ///<取得版本号
 
-            const Vector3f &    GetWorldPosition() const                        { return WorldPosition; }                       ///<取得世界坐标
+            const Vector3f &    GetWorldPosition() const                        {return scene_matrix.GetWorldPosition();}       ///<取得世界坐标
             const Matrix4f &    GetLocalMatrix                          ()const {return scene_matrix.GetLocalMatrix();}         ///<取得本地矩阵
 
             TransformManager &  GetTransform                            ()      {return scene_matrix.GetTransform();}           ///<取得变换管理器
