@@ -43,6 +43,7 @@ source_group("Light" FILES ${LIGHT_FILES})
 SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneInfo.h
                         ${SG_INCLUDE_PATH}/SceneNode.h
                         ${SG_INCLUDE_PATH}/RenderNode.h
+                        ${SG_INCLUDE_PATH}/SceneMatrix.h
                         ${SG_INCLUDE_PATH}/SceneOrient.h
                         ${SG_INCLUDE_PATH}/RenderList.h
                         ${SG_INCLUDE_PATH}/MaterialRenderList.h
@@ -54,7 +55,9 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
                         RenderAssignBuffer.h
                         RenderAssignBuffer.cpp
                         SceneNode.cpp
-                        SceneOrient.cpp)
+                        SceneOrient.cpp
+                        SceneMatrix.cpp
+)
 
 SOURCE_GROUP("Scene Graph" FILES ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOURCE})
 
