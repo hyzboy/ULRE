@@ -28,8 +28,9 @@ namespace hgl
                 scene_matrix.Clear();
             }
 
-            void SetLocalMatrix  (const Matrix4f &mat){scene_matrix.SetLocalMatrix(mat);}               ///<设置本地矩阵
-            void SetParentMatrix (const Matrix4f &mat){scene_matrix.SetParentMatrix(mat);}              ///<设置上级到世界空间变换矩阵
+            void SetLocalNormal(const Vector3f &nor) {scene_matrix.SetLocalNormal(nor);}                                        ///<设置本地法线
+            void SetLocalMatrix (const Matrix4f &mat){scene_matrix.SetLocalMatrix(mat);}                                        ///<设置本地矩阵
+            void SetParentMatrix(const Matrix4f &mat){scene_matrix.SetParentMatrix(mat);}                                       ///<设置上级到世界空间变换矩阵
 
         public:
 

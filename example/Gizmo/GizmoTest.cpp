@@ -6,11 +6,65 @@ using namespace hgl;
 using namespace hgl::graph;
 
 const Vector3f GizmoPosition(0,0,0);
-//
+
+/**
+* 永远转向摄像机的变换节点
+*/
+class TransformFaceToCamera:public TransformBase
+{
+    CameraInfo *camera_info=nullptr;
+
+    Matrix4f last_view_matrix;
+
+protected:
+
+    void MakeNewestData(Matrix4f &mat) override
+    {
+        if(camera_info)
+            mat=ToMatrix(CalculateFacingRotationQuat(WorldPosition,camera_info->view,WorldNormal));
+        else
+            mat=Identity4f;
+    }
+
+public:
+
+    using TransformBase::TransformBase;
+
+    constexpr const size_t GetTypeHash()const override { return hgl::GetTypeHash<TransformFaceToCamera>(); }
+
+    TransformFaceToCamera(CameraInfo *ci):TransformBase()
+    {
+        camera_info=ci;
+
+        last_view_matrix=Identity4f;
+    }
+
+    TransformBase *CreateSelfCopy()const override
+    {
+        return(new TransformFaceToCamera(camera_info));
+    }
+
+    void SetCameraInfo(CameraInfo *ci) { camera_info=ci; }
+
+    bool Update() override
+    {
+        if(!camera_info)
+            return(false);
+
+        if(IsNearlyEqual(last_view_matrix,camera_info->view))
+            return(false);
+
+        last_view_matrix=camera_info->view;
+
+        UpdateVersion();
+        return(true);
+    }
+};//class TransformFaceToCamera:public TransformBase
+
 ///**
-//* 一种永远转向正面的场景节点
+//* 一种永远转向正面的变换节点
 //*/
-//class BillboardSceneNode:public SceneNode
+//class TransformBillboard:public TransformBase
 //{
 //    CameraInfo *camera_info=nullptr;
 //    bool face_to_camera=false;
@@ -19,9 +73,6 @@ const Vector3f GizmoPosition(0,0,0);
 //    float fixed_scale=1.0;
 //
 //public:
-//
-//    using SceneNode::SceneNode;
-//    virtual ~BillboardSceneNode()=default;
 //
 //    virtual void SetCameraInfo  (CameraInfo *   ci  ){camera_info   =ci;}
 //    virtual void SetViewportInfo(ViewportInfo * vi  ){viewport_info =vi;}
@@ -57,7 +108,7 @@ const Vector3f GizmoPosition(0,0,0);
 class TestApp:public SceneAppFramework
 {
     SceneNode root;
-    //BillboardSceneNode *rotate_white_torus=nullptr;
+    SceneNode *rotate_white_torus=nullptr;
 
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
@@ -92,18 +143,20 @@ private:
         root.CreateSubNode(sm_rotate->GetScene());
         //root.CreateSubNode(sm_scale->GetScene());
 
-        //{
-        //    Transform tm;
+        {
+            rotate_white_torus=new SceneNode(scale(13),face_torus);
 
-        //    tm.SetScale(7.5);
+            rotate_white_torus->SetLocalNormal(AxisVector::X);
 
-        //    rotate_white_torus=new BillboardSceneNode(tm,face_torus);
+            TransformFaceToCamera *rotate_white_torus_tfc=new TransformFaceToCamera(ci);
 
-        //    rotate_white_torus->SetCameraInfo(ci);
-        //    rotate_white_torus->SetFaceToCamera(true);
+            rotate_white_torus->GetTransform().AddTransform(rotate_white_torus_tfc);
 
-        //    root.AddSubNode(rotate_white_torus);
-        //}
+            //rotate_white_torus->SetCameraInfo(ci);
+            //rotate_white_torus->SetFaceToCamera(true);
+
+            root.AddSubNode(rotate_white_torus);
+        }
 
         root.RefreshMatrix();
         render_list->SetCamera(ci);

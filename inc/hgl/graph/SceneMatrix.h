@@ -26,11 +26,20 @@ namespace hgl
 
             Matrix4f parent_matrix;
             Matrix4f local_matrix;
+            bool local_is_identity;
+
+            Vector3f local_normal;
+
             TransformManager transform_manager;
             Matrix4f transform_matrix;
 
-            Vector3f OriginWorldPosition;       //原始世界坐标
-            Vector3f FinalWorldPosition;        //最终世界坐标
+        protected:
+
+            Vector3f OriginWorldPosition;       //变换前世界坐标
+            Vector3f FinalWorldPosition;        //变换后世界坐标
+
+            Vector3f OriginWorldNormal;         //变换前世界法线
+            Vector3f FinalWorldNormal;          //变换后世界法线
 
         protected:
 
@@ -44,6 +53,7 @@ namespace hgl
             void Clear();
 
             const Matrix4f &GetLocalMatrix()const{return local_matrix;}                                                 ///<取得本地矩阵
+            const Vector3f &GetLocalNormal()const{return local_normal;}                                                 ///<取得本地法线
 
             const Matrix4f &GetLocalToWorldMatrix(){return GetNewestVersionData();}                                     ///<取得本地到世界矩阵
             const Matrix4f &GetInverseLocalToWorldMatrix(){UpdateNewestData();return inverse_local_to_world_matrix;}    ///<取得世界到本地矩阵
@@ -56,6 +66,7 @@ namespace hgl
             TransformManager &GetTransform(){return transform_manager;}                                                 ///<取得变换管理器
 
             const Vector3f &GetWorldPosition()const{return FinalWorldPosition;}                                         ///<取得世界坐标
+            const Vector3f &GetWorldNormal()const { return FinalWorldNormal; }                                          ///<取得世界法线
 
         public:
 
@@ -67,6 +78,16 @@ namespace hgl
                 UpdateVersion();
             }
 
+            void SetLocalNormal(const Vector3f &normal)
+            {
+                //if(IsNearlyEqual(local_normal,normal))
+                if(!hgl_cmp(local_normal,normal))
+                    return;
+
+                local_normal=normal;
+                UpdateVersion();
+            }
+
             void SetLocalMatrix(const Matrix4f &mat)
             {
                 //if (IsNearlyEqual(local_matrix,mat))
@@ -74,6 +95,8 @@ namespace hgl
                     return;
 
                 local_matrix=mat;
+                local_is_identity=IsIdentityMatrix(mat);
+
                 UpdateVersion();
             }
 
@@ -86,6 +109,8 @@ namespace hgl
                 parent_matrix=pm;
                 UpdateVersion();
             }
+
+            virtual void Update();
         };//class SceneMatrix
     }//namespace graph
 }//namespace hgl

@@ -19,11 +19,7 @@ namespace hgl
 
         void SceneOrient::RefreshMatrix()
         {
-            if (scene_matrix.IsNewestVersion())
-            {
-                //是最新版本，证明没有更新，那不用刷新了
-                return;
-            }
+            scene_matrix.Update();
         }
     }//namespace graph
 }//namespace hgl
