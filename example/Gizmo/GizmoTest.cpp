@@ -1,6 +1,5 @@
 ﻿#include"VulkanAppFramework.h"
 #include"Gizmo.h"
-#include<hgl/graph/TransformFaceToCamera.h>
 #include<hgl/graph/Ray.h>
 
 using namespace hgl;
@@ -56,13 +55,10 @@ const Vector3f GizmoPosition(0,0,0);
 class TestApp:public SceneAppFramework
 {
     SceneNode root;
-    SceneNode *rotate_white_torus=nullptr;
 
     StaticMesh *sm_move=nullptr;
     StaticMesh *sm_rotate=nullptr;
     StaticMesh *sm_scale=nullptr;
-
-    Renderable *face_torus=nullptr;
 
 private:
 
@@ -74,8 +70,6 @@ private:
         sm_move     =GetGizmoMoveStaticMesh();
         sm_rotate   =GetGizmoRotateStaticMesh();
         sm_scale    =GetGizmoScaleStaticMesh();
-
-        face_torus  =GetGizmoRenderable(GizmoShape::Torus,GizmoColor::White);
 
         return(true);
     }
@@ -90,18 +84,6 @@ private:
         root.CreateSubNode(sm_move->GetScene());
         root.CreateSubNode(sm_rotate->GetScene());
         //root.CreateSubNode(sm_scale->GetScene());
-
-        {
-            rotate_white_torus=new SceneNode(scale(13),face_torus);
-
-            rotate_white_torus->SetLocalNormal(AxisVector::X);
-
-            TransformFaceToCamera *rotate_white_torus_tfc=new TransformFaceToCamera(ci);
-
-            rotate_white_torus->GetTransform().AddTransform(rotate_white_torus_tfc);
-
-            root.AddSubNode(rotate_white_torus);
-        }
 
         root.RefreshMatrix();
         render_list->SetCamera(ci);

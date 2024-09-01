@@ -1,6 +1,7 @@
 ﻿#include"GizmoResource.h"
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/TransformFaceToCamera.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -51,6 +52,18 @@ bool InitGizmoRotateStaticMesh()
 
             tm.SetRotation(AXIS::Y,90);
             root_node->CreateSubNode(tm,torus[2]);
+        }
+
+        {
+            SceneNode *white_torus=new SceneNode(scale(13),torus[3]);
+
+            white_torus->SetLocalNormal(AxisVector::X);
+
+            TransformFaceToCamera *rotate_white_torus_tfc=new TransformFaceToCamera();
+
+            white_torus->GetTransform().AddTransform(rotate_white_torus_tfc);
+
+            root_node->AddSubNode(white_torus);
         }
 
         sm_gizmo_rotate=CreateGizmoStaticMesh(root_node);
