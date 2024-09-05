@@ -2,12 +2,16 @@
 #define HGL_GRAPH_SCENE_NODE_INCLUDE
 
 #include<hgl/type/ObjectList.h>
+#include<hgl/type/IDName.h>
 #include<hgl/graph/SceneOrient.h>
 #include<hgl/graph/AABB.h>
 namespace hgl
 {
     namespace graph
     {
+        using SceneNodeID   =uint64;
+        using SceneNodeName =AnsiIDName;
+
         /**
         * 场景节点数据类<br>
         * 从场景坐标变换(SceneOrient)类继承，
@@ -15,6 +19,9 @@ namespace hgl
         */
         class SceneNode:public SceneOrient                                                                              ///场景节点类
         {
+            SceneNodeID NodeID;                                                                                         ///<节点ID
+            SceneNodeName NodeName;                                                                                     ///<节点名称
+
         protected:
 
             AABB BoundingBox;                                                                                           ///<绑定盒
@@ -29,11 +36,20 @@ namespace hgl
 
         public:
 
+            const SceneNodeID &     GetNodeID   ()const { return NodeID; }                                              ///<取得节点ID
+            const SceneNodeName &   GetNodeName ()const { return NodeName; }                                            ///<取得节点名称
+
+        private:
+
             SceneNode()=default;
             SceneNode(SceneNode *);
             SceneNode(                      Renderable *ri  )                   {render_obj=ri;}
             SceneNode(const Matrix4f &mat                   ):SceneOrient(mat)  {}
             SceneNode(const Matrix4f &mat,  Renderable *ri  ):SceneOrient(mat)  {render_obj=ri;}
+
+            friend SceneNode *CreateSceneNode(const SceneNodeName &);
+
+        public:
 
             virtual ~SceneNode()=default;
 
@@ -140,6 +156,8 @@ namespace hgl
             virtual const   AABB &      GetLocalBoundingBox ()const{return LocalBoundingBox;}                           ///<取得本地坐标绑定盒
 //            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
         };//class SceneNode
+
+        SceneNode *CreateSceneNode(const SceneNodeName &);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_SCENE_NODE_INCLUDE
