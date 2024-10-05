@@ -1,9 +1,6 @@
 ﻿// 该范例主要演示使用2D坐系统直接绘制一个渐变色的三角形,使用UBO传递Viewport信息
 
 #include"VulkanAppFramework.h"
-#include<hgl/math/Math.h>
-#include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -132,5 +129,5 @@ public:
 
 int main(int,char **)
 {
-    RunApp<TestApp>(1280,720);
+    return RunApp<TestApp>(1280,720);
 }

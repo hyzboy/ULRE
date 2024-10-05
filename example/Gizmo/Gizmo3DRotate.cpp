@@ -63,7 +63,7 @@ bool InitGizmoRotateStaticMesh()
 
             white_torus->GetTransform().AddTransform(rotate_white_torus_tfc);
 
-            root_node->AddSubNode(white_torus);
+            root_node->Add(white_torus);
         }
 
         sm_gizmo_rotate=CreateGizmoStaticMesh(root_node);
