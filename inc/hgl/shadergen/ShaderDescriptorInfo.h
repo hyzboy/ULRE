@@ -74,7 +74,7 @@ public:
     bool AddInput(I &item){return input.Add(item);}
     bool AddOutput(O &item){return output.Add(item);}
 
-    bool hasInput(const char *name)const{return input.IsMember(name);}     ///<是否有指定输入
+    bool hasInput(const char *name)const{return input.Contains(name);}     ///<是否有指定输入
 
 public:
 

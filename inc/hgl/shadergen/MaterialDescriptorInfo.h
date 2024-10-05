@@ -41,7 +41,7 @@ public:
 
     bool hasStruct(const AnsiString &name) const
     {
-        return(struct_map.KeyExist(name));
+        return(struct_map.ContainsKey(name));
     }
 
     const UBODescriptor *AddUBO(uint32_t shader_stage_flag_bits,DescriptorSetType set_type,UBODescriptor *sd);
