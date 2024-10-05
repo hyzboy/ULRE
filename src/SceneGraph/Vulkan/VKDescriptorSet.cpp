@@ -81,7 +81,7 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,bool dynam
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
@@ -97,7 +97,7 @@ bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,const VkDe
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
@@ -117,7 +117,7 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,bool dyna
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     const VkDescriptorType desc_type=dynamic?VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
@@ -133,7 +133,7 @@ bool DescriptorSet::BindSSBO(const int binding,const DeviceBuffer *buf,const VkD
     if(binding<0||!buf)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorBufferInfo *buf_info=new DescriptorBufferInfo(buf,offset,range);
 
@@ -153,7 +153,7 @@ bool DescriptorSet::BindImageSampler(const int binding,Texture *tex,Sampler *sam
     if(binding<0||!tex||!sampler)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorImageInfo *image_info=new DescriptorImageInfo(tex,sampler);
 
@@ -171,7 +171,7 @@ bool DescriptorSet::BindInputAttachment(const int binding,ImageView *iv)
     if(binding<0||!iv)
         return(false);
 
-    if(binded_sets.IsMember(binding))return(false);
+    if(binded_sets.Contains(binding))return(false);
 
     DescriptorImageInfo *image_info=new DescriptorImageInfo(iv->GetImageView());
     

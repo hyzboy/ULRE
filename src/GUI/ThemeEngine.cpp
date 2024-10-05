@@ -41,7 +41,7 @@ namespace hgl
         {
             if(!f)return(false);
 
-            if(form_list.KeyExist(f))
+            if(form_list.ContainsKey(f))
                 return(false);
 
             Vector2f size=f->GetSize();

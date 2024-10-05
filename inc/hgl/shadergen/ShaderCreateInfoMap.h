@@ -15,7 +15,7 @@ public:
 
         VkShaderStageFlagBits flag=sc->GetShaderStage();
 
-        if(KeyExist(flag))
+        if(ContainsKey(flag))
             return(false);
 
         ObjectMap<VkShaderStageFlagBits,ShaderCreateInfo>::Add(flag,sc);

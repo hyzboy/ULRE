@@ -464,7 +464,7 @@ namespace hgl
                 return(true);
             }
 
-            bool IsMember(const char *name)const
+            bool Contains(const char *name)const
             {                
                 if(count<=0)
                     return(false);
@@ -478,7 +478,7 @@ namespace hgl
 
             bool Add(ShaderVariable &sv)
             {
-                if(IsMember(sv.name))
+                if(Contains(sv.name))
                     return(false);
 
                 sv.location=count;

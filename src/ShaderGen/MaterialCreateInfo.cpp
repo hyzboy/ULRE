@@ -38,7 +38,7 @@ bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiStrin
 
 bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
 {
-    if(!shader_map.KeyExist(flag_bit))
+    if(!shader_map.ContainsKey(flag_bit))
         return(false);
 
     if(!mdi.hasStruct(struct_name))
@@ -95,7 +95,7 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
 
 bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
 {
-    if(!shader_map.KeyExist(flag_bit))
+    if(!shader_map.ContainsKey(flag_bit))
         return(false);
 
     RANGE_CHECK_RETURN_FALSE(st);

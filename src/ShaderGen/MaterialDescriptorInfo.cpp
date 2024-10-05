@@ -21,7 +21,7 @@ MaterialDescriptorInfo::MaterialDescriptorInfo()
 const DescriptorSetType MaterialDescriptorInfo::GetSetType(const AnsiString &name)const
 {
     for(auto &sds:desc_set_array)
-        if(sds.descriptor_map.KeyExist(name))
+        if(sds.descriptor_map.ContainsKey(name))
             return(sds.set_type);
 
     return DescriptorSetType::Global;
