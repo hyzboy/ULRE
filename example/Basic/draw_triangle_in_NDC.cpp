@@ -1,10 +1,7 @@
 ﻿// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
 
 #include"VulkanAppFramework.h"
-#include<hgl/math/Math.h>
 #include<hgl/math/HalfFloat.h>
-#include<hgl/filesystem/FileSystem.h>
-#include<hgl/graph/SceneInfo.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -125,9 +122,9 @@ private:
 
 public:
 
-    bool Init()
+    bool Init(uint w,uint h)
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!VulkanApplicationFramework::Init(w,h))
             return(false);
 
         InitVIL();
@@ -157,12 +154,5 @@ public:
 
 int main(int,char **)
 {
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunApp<TestApp>(SCREEN_WIDTH,SCREEN_HEIGHT);
 }

@@ -10,7 +10,7 @@ namespace hgl
     namespace graph
     {
         using SceneNodeID   =uint64;
-        using SceneNodeName =AnsiIDName;
+        using SceneNodeName =UTF16IDName;
 
         /**
         * 场景节点数据类<br>
@@ -30,7 +30,7 @@ namespace hgl
 
             Renderable *render_obj=nullptr;                                                                             ///<可渲染实例
 
-        public:
+        protected:
 
             ObjectList<SceneNode> SubNode;                                                                              ///<子节点
 
@@ -39,15 +39,17 @@ namespace hgl
             const SceneNodeID &     GetNodeID   ()const { return NodeID; }                                              ///<取得节点ID
             const SceneNodeName &   GetNodeName ()const { return NodeName; }                                            ///<取得节点名称
 
-        private:
+            const ObjectList<SceneNode> &GetSubNode()const { return SubNode; }                                             ///<取得子节点列表
+
+        public:
 
             SceneNode()=default;
-            SceneNode(SceneNode *);
+            SceneNode(const SceneNode &)=delete;
+            SceneNode(const SceneNode *)=delete;
+            SceneNode(const SceneOrient &so                 ):SceneOrient(so)   {}
             SceneNode(                      Renderable *ri  )                   {render_obj=ri;}
             SceneNode(const Matrix4f &mat                   ):SceneOrient(mat)  {}
             SceneNode(const Matrix4f &mat,  Renderable *ri  ):SceneOrient(mat)  {render_obj=ri;}
-
-            friend SceneNode *CreateSceneNode(const SceneNodeName &);
 
         public:
 
@@ -75,71 +77,10 @@ namespace hgl
             Renderable *GetRenderable(){return render_obj;}
             void        SetRenderable(Renderable *);
 
-            SceneNode *AddSubNode(SceneNode *sn)
+            SceneNode *Add(SceneNode *sn)
             {
                 if(!sn)
                     return(nullptr);
-
-                SubNode.Add(sn);
-                return sn;
-            }
-
-            SceneNode *CreateSubNode()
-            {
-                SceneNode *sn=new SceneNode();
-
-                SubNode.Add(sn);
-                return sn;
-            }
-
-            SceneNode *CreateSubNode(Renderable *ri)
-            {
-                if(!ri)
-                    return(nullptr);
-
-                SceneNode *sn=new SceneNode(ri);
-
-                SubNode.Add(sn);
-                return sn;
-            }
-
-            SceneNode *CreateSubNode(const Matrix4f &mat)
-            {
-                SceneNode *sn=new SceneNode(mat);
-
-                SubNode.Add(sn);
-                return sn;
-            }
-
-            SceneNode *CreateSubNode(const Matrix4f &mat,Renderable *ri)
-            {
-                if(!ri)
-                    return(nullptr);
-
-                SceneNode *sn=new SceneNode(mat,ri);
-
-                SubNode.Add(sn);
-                return sn;
-            }
-
-            SceneNode *CreateSubNode(SceneNode *node)
-            {
-                if(!node)
-                    return(nullptr);
-
-                SceneNode *sn=new SceneNode(node);
-
-                SubNode.Add(sn);
-                return node;
-            }
-
-            SceneNode *CreateSubNode(const Matrix4f &mat,SceneNode *node)
-            {
-                if(!node)
-                    return(nullptr);
-
-                SceneNode *sn=new SceneNode(mat);
-                sn->CreateSubNode(node);
 
                 SubNode.Add(sn);
                 return sn;
@@ -149,7 +90,7 @@ namespace hgl
 
             virtual         void        SetBoundingBox      (const AABB &bb){BoundingBox=bb;}                           ///<设置绑定盒
 
-            virtual         void        RefreshMatrix       () override;           ///<刷新世界变换
+            virtual         void        RefreshMatrix       () override;                                                ///<刷新世界变换
             virtual         void        RefreshBoundingBox  ();                                                         ///<刷新绑定盒
 
             virtual const   AABB &      GetBoundingBox      ()const{return BoundingBox;}                                ///<取得绑定盒
@@ -157,7 +98,7 @@ namespace hgl
 //            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
         };//class SceneNode
 
-        SceneNode *CreateSceneNode(const SceneNodeName &);
+        SceneNode *Duplication(const SceneNode *);                                                                      ///<复制一个场景节点
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_SCENE_NODE_INCLUDE

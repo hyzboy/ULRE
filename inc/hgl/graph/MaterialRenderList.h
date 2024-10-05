@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VKVABList.h>
-#include<hgl/type/SortedSets.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN

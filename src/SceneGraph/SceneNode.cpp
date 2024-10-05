@@ -4,22 +4,21 @@ namespace hgl
 {
     namespace graph
     {
-        SceneNode::SceneNode(SceneNode *node):SceneOrient(*node)
+        SceneNode *Duplication(SceneNode *src_node)
         {
-            if(!node)
-                return;
+            if(!src_node)
+                return nullptr;
 
-            BoundingBox=node->BoundingBox;
-            LocalBoundingBox=node->LocalBoundingBox;
+            SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
 
-            render_obj=node->render_obj;
+            node->SetRenderable(src_node->GetRenderable());
 
-            for(SceneNode *sn:node->SubNode)
+            for(SceneNode *sn:src_node->GetSubNode())
             {
-                SceneNode *new_sn=new SceneNode(sn);
-
-                SubNode.Add(new_sn);
+                node->Add(Duplication(sn));
             }
+
+            return node;
         }
 
         void SceneNode::SetRenderable(Renderable *ri)
@@ -89,62 +88,5 @@ namespace hgl
 
             LocalBoundingBox=local;
         }
-
-        ///**
-        //* 从当前节点展开输出到一个渲染列表
-        //* @param rl 渲染列表
-        //* @param func 过滤函数
-        //* @param func_data 过滤函数用辅助数据
-        //* @return 成功与否
-        //*/
-        //bool SceneNode::ExpendToList(RenderList *rl,FilterSceneNodeFunc func,void *func_data)
-        //{
-        //    if(!rl)return(false);
-
-        //    if(func)
-        //        if(!func(this,func_data))
-        //            return(false);
-
-        //    {
-        //        int count=renderable_instances.GetCount();
-
-        //        if(count>0)
-        //            rl->Add(this);
-        //    }
-
-        //    {
-        //        int count=SubNode.GetCount();
-        //        SceneNode **sub=SubNode.GetData();
-
-        //        for(int i=0;i<count;i++)
-        //        {
-        //            (*sub)->ExpendToList(rl,func,func_data);                //展开子节点
-
-        //            ++sub;
-        //        }
-        //    }
-
-        //    return(true);
-        //}
-
-        ///**
-        //* 从当前节点展开输出到一个渲染列表
-        //* @param rl 渲染列表
-        //* @param cam 摄像机
-        //* @param comp_func 渲染列表远近比较函数
-        //*/
-        //bool SceneNode::ExpendToList(RenderList *rl,Camera *cam,RenderListCompFunc comp_func)
-        //{
-        //    if(!rl||!cam)return(false);
-
-        //    if(!ExpendToList(rl))
-        //        return(false);
-
-        //    if(comp_func)
-        //    {
-        //    }
-
-        //    return(true);
-        //}
     }//namespace graph
 }//namespace hgl

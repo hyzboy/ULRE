@@ -1,12 +1,10 @@
-﻿#include<hgl/graph/RenderList.h>
+﻿#include<hgl/graph/MaterialRenderList.h>
+#include<hgl/graph/RenderList.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/VKBuffer.h>
-#include<hgl/graph/VKPrimitive.h>
+#include<hgl/graph/VK.h>
 #include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VertexAttribDataAccess.h>
-#include<hgl/graph/VKMaterialParameters.h>
+#include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKRenderable.h>
-#include<hgl/util/sort/Sort.h>
 
 namespace hgl
 {
@@ -43,7 +41,7 @@ namespace hgl
                 ++renderable_count;
             }
 
-            for(SceneNode *sub:sn->SubNode)
+            for(SceneNode *sub:sn->GetSubNode())
                 ExpendNode(sub);
 
             return(true);

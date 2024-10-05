@@ -2,7 +2,6 @@
 
 #include"VulkanAppFramework.h"
 #include<hgl/math/Math.h>
-#include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -94,7 +93,7 @@ private:
             rad=deg2rad<double>((360/TRIANGLE_NUMBER)*i);       //这里一定要加<float>或<float>，否则结果用int保存会出现问题
             mat=rotate(rad,Vector3f(0,0,1));
 
-            render_root.CreateSubNode(mat,render_obj);
+            render_root.Add(new SceneNode(mat,render_obj));
         }
 
         render_root.RefreshMatrix();
@@ -110,10 +109,10 @@ public:
     {
         SAFE_CLEAR(render_list);
     }
-
-    bool Init()
+    
+    bool Init(uint w,uint h)
     {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
+        if(!VulkanApplicationFramework::Init(w,h))
             return(false);
 
         render_list=new RenderList(device);
@@ -139,12 +138,5 @@ public:
 
 int main(int,char **)
 {
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunApp<TestApp>(SCREEN_WIDTH,SCREEN_HEIGHT);
 }
