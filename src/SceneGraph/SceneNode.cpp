@@ -13,7 +13,7 @@ namespace hgl
 
             node->SetRenderable(src_node->GetRenderable());
 
-            for(SceneNode *sn:src_node->GetSubNode())
+            for(SceneNode *sn:src_node->GetChildNode())
             {
                 node->Add(Duplication(sn));
             }
@@ -50,9 +50,9 @@ namespace hgl
 
             const Matrix4f &l2w=scene_matrix.GetLocalToWorldMatrix();
 
-            const int count=SubNode.GetCount();
+            const int count=ChildNode.GetCount();
 
-            SceneNode **sub=SubNode.GetData();
+            SceneNode **sub=ChildNode.GetData();
 
             for(int i=0;i<count;i++)
             {
@@ -68,8 +68,8 @@ namespace hgl
         */
         void SceneNode::RefreshBoundingBox()
         {
-            int count=SubNode.GetCount();
-            SceneNode **sub=SubNode.GetData();
+            int count=ChildNode.GetCount();
+            SceneNode **sub=ChildNode.GetData();
 
             AABB local,world;
 

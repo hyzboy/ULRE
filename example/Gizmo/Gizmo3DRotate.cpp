@@ -60,6 +60,8 @@ bool InitGizmoRotateStaticMesh()
             white_torus->SetLocalNormal(AxisVector::X);
 
             TransformFaceToCamera *rotate_white_torus_tfc=new TransformFaceToCamera();
+            
+            //暂时因为无法传入Camera所以无法正确计算朝向，正在设计Actor/World结构
 
             white_torus->GetTransform().AddTransform(rotate_white_torus_tfc);
 

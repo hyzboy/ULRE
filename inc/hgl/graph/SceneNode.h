@@ -32,14 +32,14 @@ namespace hgl
 
         protected:
 
-            ObjectList<SceneNode> SubNode;                                                                              ///<子节点
+            ObjectList<SceneNode> ChildNode;                                                                              ///<子节点
 
         public:
 
             const SceneNodeID &     GetNodeID   ()const { return NodeID; }                                              ///<取得节点ID
             const SceneNodeName &   GetNodeName ()const { return NodeName; }                                            ///<取得节点名称
 
-            const ObjectList<SceneNode> &GetSubNode()const { return SubNode; }                                             ///<取得子节点列表
+            const ObjectList<SceneNode> &GetChildNode()const { return ChildNode; }                                             ///<取得子节点列表
 
         public:
 
@@ -62,14 +62,14 @@ namespace hgl
                 BoundingBox.SetZero();
                 LocalBoundingBox.SetZero();
 
-                SubNode.Clear();
+                ChildNode.Clear();
                 render_obj=nullptr;
             }
 
             const bool IsEmpty()const
             {
                 if(render_obj)return(false);
-                if(SubNode.GetCount())return(false);
+                if(ChildNode.GetCount())return(false);
 
                 return(true);
             }
@@ -82,7 +82,7 @@ namespace hgl
                 if(!sn)
                     return(nullptr);
 
-                SubNode.Add(sn);
+                ChildNode.Add(sn);
                 return sn;
             }
 

@@ -41,7 +41,7 @@ namespace hgl
                 ++renderable_count;
             }
 
-            for(SceneNode *sub:sn->GetSubNode())
+            for(SceneNode *sub:sn->GetChildNode())
                 ExpendNode(sub);
 
             return(true);
