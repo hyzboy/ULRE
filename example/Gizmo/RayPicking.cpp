@@ -102,7 +102,7 @@ private:
             return(nullptr);
         }
 
-        render_root.CreateSubNode(ri);
+        render_root.Add(new SceneNode(ri));
 
         return ri;
     }

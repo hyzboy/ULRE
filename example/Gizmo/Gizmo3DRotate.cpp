@@ -45,13 +45,13 @@ bool InitGizmoRotateStaticMesh()
 
             tm.SetScale(GIZMO_ARROW_LENGTH);
 
-            root_node->CreateSubNode(tm,torus[0]);
+            root_node->Add(new SceneNode(tm,torus[0]));
 
             tm.SetRotation(AXIS::Z,90);
-            root_node->CreateSubNode(tm,torus[1]);
+            root_node->Add(new SceneNode(tm,torus[1]));
 
             tm.SetRotation(AXIS::Y,90);
-            root_node->CreateSubNode(tm,torus[2]);
+            root_node->Add(new SceneNode(tm,torus[2]));
         }
 
         {

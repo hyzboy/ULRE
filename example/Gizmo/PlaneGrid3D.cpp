@@ -81,7 +81,7 @@ private:
         if(!ri)
             return(nullptr);
 
-        render_root.CreateSubNode(mat,ri);
+        render_root.Add(new SceneNode(mat,ri));
 
         return ri;
     }

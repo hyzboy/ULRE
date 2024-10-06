@@ -98,7 +98,7 @@ namespace hgl
 //            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
         };//class SceneNode
 
-        SceneNode *Duplication(const SceneNode *);                                                                      ///<复制一个场景节点
+        SceneNode *Duplication(SceneNode *);                                                                            ///<复制一个场景节点
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_SCENE_NODE_INCLUDE

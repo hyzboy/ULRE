@@ -81,8 +81,8 @@ private:
 
         root.Clear();
 
-        root.CreateSubNode(sm_move->GetScene());
-        root.CreateSubNode(sm_rotate->GetScene());
+        //root.Add(Duplication(sm_move->GetScene()));
+        root.Add(Duplication(sm_rotate->GetScene()));
         //root.CreateSubNode(sm_scale->GetScene());
 
         root.RefreshMatrix();
