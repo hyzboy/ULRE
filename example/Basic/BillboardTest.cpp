@@ -120,7 +120,7 @@ private:
             return(nullptr);
         }
 
-        render_root.CreateSubNode(ri);
+        render_root.Add(new SceneNode(ri));
 
         return ri;
     }
@@ -163,7 +163,7 @@ private:
     {
         Add(prim_plane_grid,mi_plane_grid,pipeline_plane_grid);
 
-        render_root.CreateSubNode(ro_billboard);
+        render_root.Add(new SceneNode(ro_billboard));
 
         camera->pos=Vector3f(32,32,32);
         camera_control->SetTarget(Vector3f(0,0,0));

@@ -96,6 +96,8 @@ private:
             return(false);
 
         db->Add(prim);
+
+        Matrix4f mat;
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
@@ -104,7 +106,9 @@ private:
             if(!render_obj[i].r)
                 return(false);
 
-            render_root.CreateSubNode(rotate(deg2rad<double>(double(360/DRAW_OBJECT_COUNT*i)),Vector3f(0,0,1)),render_obj[i].r);
+            mat=rotate(deg2rad<double>(double(360/DRAW_OBJECT_COUNT*i)),AxisVector::Z);
+
+            render_root.Add(new SceneNode(mat,render_obj[i].r));
         }
 
         render_root.RefreshMatrix();

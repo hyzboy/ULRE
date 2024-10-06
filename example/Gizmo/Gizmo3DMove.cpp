@@ -84,7 +84,7 @@ bool InitGizmoMoveStaticMesh()
     {
         SceneNode *root_node=new SceneNode();
         
-        root_node->CreateSubNode(sphere);
+        root_node->Add(new SceneNode(sphere));
 
         {
             Transform tm;
@@ -96,30 +96,30 @@ bool InitGizmoMoveStaticMesh()
             {
                 tm.SetScale(cylinder_scale);
                 tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
-                root_node->CreateSubNode(tm,cylinder[2]);       //Z 向上圆柱
+                root_node->Add(new SceneNode(tm,cylinder[2]));       //Z 向上圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
-                root_node->CreateSubNode(tm,cone[2]);           //Z 向上圆锥
+                root_node->Add(new SceneNode(tm,cone[2]));           //Z 向上圆锥
 
                 tm.SetScale(circle_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
-                root_node->CreateSubNode(tm,circle[2]);
+                root_node->Add(new SceneNode(tm,circle[2]));
             }
 
             {
                 tm.SetScale(cylinder_scale);
                 tm.SetRotation(AxisVector::Y,90);
                 tm.SetTranslation(GIZMO_CYLINDER_OFFSET,0,0);
-                root_node->CreateSubNode(tm,cylinder[0]);       //X 向右圆柱
+                root_node->Add(new SceneNode(tm,cylinder[0]));       //X 向右圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
-                root_node->CreateSubNode(tm,cone[0]);           //X 向右圆锥
+                root_node->Add(new SceneNode(tm,cone[0]));           //X 向右圆锥
 
                 tm.SetScale(circle_scale);
                 tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
-                root_node->CreateSubNode(tm,circle[0]);
+                root_node->Add(new SceneNode(tm,circle[0]));
             }
 
             {
@@ -127,15 +127,15 @@ bool InitGizmoMoveStaticMesh()
                 tm.SetRotation(AxisVector::X,-90);
                 tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);
                 
-                root_node->CreateSubNode(tm,cylinder[1]);       //Y 向前圆柱
+                root_node->Add(new SceneNode(tm,cylinder[1]));       //Y 向前圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
-                root_node->CreateSubNode(tm,cone[1]);           //Y 向前圆锥
+                root_node->Add(new SceneNode(tm,cone[1]));           //Y 向前圆锥
 
                 tm.SetScale(circle_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
-                root_node->CreateSubNode(tm,circle[1]);
+                root_node->Add(new SceneNode(tm,circle[1]));
             }
         }
 
