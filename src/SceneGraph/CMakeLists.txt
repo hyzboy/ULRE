@@ -41,7 +41,9 @@ SET(LIGHT_FILES ${SG_INCLUDE_PATH}/Light.h)
 source_group("Light" FILES ${LIGHT_FILES})
 
 SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneManager.h
+                        ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
                         ${SG_INCLUDE_PATH}/SceneNode.h
+                        ${SG_INCLUDE_PATH}/ShadowPolicy.h
                         ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/SceneMatrix.h
                         ${SG_INCLUDE_PATH}/SceneOrient.h
