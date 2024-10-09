@@ -1,25 +1,37 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKRenderable.h>
-#include<hgl/type/SortedSets.h>
-#include<hgl/graph/SceneNode.h>
+#include<hgl/graph/VKNamespace.h>
+#include<hgl/graph/ShadowPolicy.h>
 
 VK_NAMESPACE_BEGIN
+
+class SceneNode;
+
 class StaticMesh
 {
 protected:
-    
+
     SceneNode *root_node;
+
+    StaticMesh *shadow_proxy_static_mesh;                                       ///<阴影代理静态网格
+    StaticMesh *physic_proxy_static_mesh;                                       ///<物理代理静态网格
+
+protected:
+
+    bool two_side;                                                              ///<双面渲染
+
+    ObjectDynamicShadowPolicy dynamic_shadow_policy;                            ///<动态阴影策略(推荐项,最终可被取代)
 
 public:
 
     StaticMesh(SceneNode *);
     virtual ~StaticMesh();
 
-//    static StaticMesh *CreateNewObject(RenderResource *,SceneNode *);
-
 public:
 
     SceneNode *GetScene(){return root_node;}
+
+    SceneNode *GetShadowNode() { return shadow_proxy_static_mesh?shadow_proxy_static_mesh->GetScene():root_node; }      ///<取得阴影渲染节点
+    SceneNode *GetPhysicNode() { return physic_proxy_static_mesh?physic_proxy_static_mesh->GetScene():root_node; }      ///<取得物理渲染节点
 };//class StaticMesh
 VK_NAMESPACE_END
