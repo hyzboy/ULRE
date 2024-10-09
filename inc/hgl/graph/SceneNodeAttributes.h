@@ -1,5 +1,6 @@
 #pragma once
 #include<hgl/type/DataType.h>
+#include<hgl/graph/ShadowPolicy.h>
 
 namespace hgl
 {
@@ -34,8 +35,14 @@ namespace hgl
         {
             uint visible:1;                 ///<是否可见
 
+            uint render_color:1;            ///<渲染颜色
+            uint render_normal:1;           ///<渲染法线
+            uint render_depth:1;            ///<渲染深度
+
+            uint render_at_reflect:1;       ///<在反射时渲染
+
             uint cast_shadow:1;             ///<投射阴影
-            uint cast_static_shadow:1;      ///<投射静态阴影(预计算阴景)
+            uint cast_static_shadow:1;      ///<投射静态阴影(预计算阴影)
             uint cast_dynamic_shadow:1;     ///<投射动态阴影
 
             uint receive_static_shadow:1;   ///<接收静态阴影
@@ -43,6 +50,10 @@ namespace hgl
 
             uint receive_static_light:1;    ///<接收静态光照
             uint receive_dynamic_light:1;   ///<接收动态光照
+
+            ObjectDynamicShadowPolicy dynamic_shadow_policy:8;    ///<动态阴影策略
+
+//            uint8 light_channels;           ///<接收的光通道
         };
 
         constexpr const size_t SceneNodeVisualAttributesBytes=sizeof(SceneNodeVisualAttributes);
