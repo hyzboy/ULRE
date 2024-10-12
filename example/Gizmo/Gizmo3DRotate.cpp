@@ -1,6 +1,5 @@
 ﻿#include"GizmoResource.h"
 #include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/TransformFaceToCamera.h>
 
 VK_NAMESPACE_BEGIN
@@ -31,9 +30,9 @@ bool InitGizmoRotateStaticMesh()
         GetGizmoRenderable(GizmoShape::Torus,GizmoColor::White),
     };
 
-    for(int i=0;i<4;i++)
+    for(auto *r:torus)
     {
-        if(!torus[i])
+        if(!r)
             return(false);
     }
 
