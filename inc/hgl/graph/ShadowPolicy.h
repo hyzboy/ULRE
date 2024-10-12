@@ -30,13 +30,14 @@ namespace hgl
 
             Global,                         ///<使用全局动态阴影
 
+            PerObject,                      ///<独立对象阴影(就是每个物件独立走普通shadowmap得到一张深度图，缓存到硬盘)
+
             Plane,                          ///<压片阴影(极少三角面的片状物体专用)
-            RTDF,                           ///<距离场动态阴影(静态物体专用)
-            Capsule,                        ///<胶囊体动态阴影(骨骼动画专用)
+            Capsule,                        ///<胶囊体阴影(一般用于骨骼动画模型阴影，每根骨骼一个胶囊)
+            Cube,                           ///<立方体阴影(一般用于一些建筑物，比如楼房直接使用一个Cube做Raymarch)
+            MeshSDF,                        ///<模型3D距离场阴影
 
-            ShadowVolume,                   ///<体积阴影(超规则类物体专用，如房子)
-
-            ENUM_CLASS_RANGE(None,ShadowVolume)
+            ENUM_CLASS_RANGE(None,MeshSDF)
         };
     }//namespace graph
 }//namespace hgl
