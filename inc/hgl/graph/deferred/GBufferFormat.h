@@ -4,10 +4,6 @@
 
 VK_NAMESPACE_BEGIN
 
-/**
-/
-
-
 //Material models from Google Filament
 //@see https://google.github.io/filament/Materials.html
 
@@ -19,45 +15,133 @@ enum class MaterialModels:uint8
     Cloth,
 };
 
-struct GBufferFormat
+enum class ColorMode
 {
-    VkFormat    ShadingModel;       ///<着色模式
+    Unknow=0,
 
-    VkFormat    BaseColor;          ///<颜色缓冲区格式
-    VkFormat    Depth;              ///<深度缓冲区格式
-    VkFormat    Stencil;            ///<模板缓冲区格式
+    RGB,
+    Luminance,
+    YCbCr,
 
-    VkFormat    Normal;             ///<法线缓冲区格式
+    ENUM_CLASS_RANGE(Unknow,YCbCr)
+};
 
-    VkFormat    Metallic;           ///<金属度
-    VkFormat    Roughness;          ///<粗糙度(glossiness)
-    VkFormat    Reflectance;        ///<反射率(Specular for non-metals)
-
-    VkFormat    ClearCoat;
-    VkFormat    ClearCoatRoughness;
-    VkFormat    Anisotropy;
-
-    VkFormat    Emissive;           ///<自发光
-    VkFormat    AmbientOcclusion;   ///<环境光遮蔽
-
-    VkFormat    MotionVector;       ///<运动向量
-};//struct GBufferFormat
-
-void InitGBufferFormat(GBufferFormat &bf)
+enum class GBufferComponent:uint8
 {
-    bf.BaseColor        =PF_A2BGR10UN;
+    ShadingModel=0,
 
-    bf.Depth            =PF_D24UN_S8U;
-    bf.Stencil          =PF_D24UN_S8U;
+    RGB,
+    Y,
+    CbCr,
 
-    bf.Normal           =PF_RG8UN;
+    Normal,
 
-    bf.MetallicRoughness=PF_RG8UN;
+    Depth,
+    Stencil,
 
-    bf.Emissive         =PF_A2BGR10UN;
-    bf.AmbientOcclusion =PF_R8UN;
+    Metallic,
+    Roughness,
+    Specular,
+    Glosses,
+    Emissive,
+    AmbientOcclusion,
+    Anisotropy,
+    Reflectance,
+    ClearCoat,
+    ClearCoatRoughness,
 
-    bf.MotionVector     =PF_RG16SN;
-}
+    Opacity,
+
+    MotionVector,
+
+    WorldPosition,
+
+    ENUM_CLASS_RANGE(ShadingModel,WorldPosition)
+};
+
+struct GBufferComponentConfig
+{
+    char name[32];                  ///<成分名称
+
+    VkFormat format;
+
+    uint count;                     ///<成分数量
+    uint size[4];                   ///<成分长度
+    GBufferComponent components[4]; ///<具体成份(分别对应xyzw四位)
+
+public:
+
+    const uint GetComponentSize(const GBufferComponent &c)const noexcept;
+};//struct GBufferComponent
+
+constexpr const size_t GBUFFER_MAX_COMPONENTS=16;
+
+/**
+* GBuffer格式配置
+*/
+class GBufferFormat
+{
+    uint                    count;                                                                  ///<成分数量
+    GBufferComponentConfig  components_list[GBUFFER_MAX_COMPONENTS];                                ///<成分配置
+
+    int                     components_index[size_t(GBufferComponent::RANGE_SIZE)];                 ///<成分索引
+
+private:
+
+    friend class GPUDevice;
+
+public:
+
+    const uint              GetCount()const noexcept{return count;}                                     ///<取得成分数量
+
+    const GBufferComponentConfig *GetConfig(const int index)const noexcept                              ///<通过索引取得成分配置
+    {
+        return (index<0||index>=count)?nullptr:components_list+index;
+    }
+
+    const VkFormat          GetFormatFromComponent(const GBufferComponent &)const noexcept;             ///<通过成分取得格式
+
+    const ColorMode         GetColorMode()const noexcept;                                               ///<取得颜色模式
+    const bool              IsRGB       ()const noexcept{return GetColorMode()==ColorMode::RGB;}        ///<是否为RGB模式
+    const bool              IsLuminance ()const noexcept{return GetColorMode()==ColorMode::Luminance;}  ///<是否为Luminance模式
+    const bool              IsYCbCr     ()const noexcept{return GetColorMode()==ColorMode::YCbCr;}      ///<是否为YCbCr模式
+
+    const uint              GetNormalSize()const noexcept;                                              ///<取得法线数据大小
+
+public:
+
+    GBufferFormat()
+    {
+        count=0;
+        hgl_zero(components_list);
+        hgl_set(components_index,-1,size_t(GBufferComponent::RANGE_SIZE));
+    }
+
+    ~GBufferFormat()=default;
+};//class GBufferFormat
+
+struct InitGBufferColorFormatConfig
+{
+
+};
+
+bool InitGBufferFormat(GPUDevice *,GBufferFormat *);
+
+//void InitGBufferFormat(GBufferFormat &bf)
+//{
+//    bf.BaseColor        =PF_A2BGR10UN;
+//
+//    bf.Depth            =PF_D24UN_S8U;
+//    bf.Stencil          =PF_D24UN_S8U;
+//
+//    bf.Normal           =PF_RG8UN;
+//
+//    bf.MetallicRoughness=PF_RG8UN;
+//
+//    bf.Emissive         =PF_A2BGR10UN;
+//    bf.AmbientOcclusion =PF_R8UN;
+//
+//    bf.MotionVector     =PF_RG16SN;
+//}
 
 VK_NAMESPACE_END
