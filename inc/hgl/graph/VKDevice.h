@@ -191,6 +191,9 @@ public: //Texture
 
     bool CheckTextureFormatSupport(const VkFormat fmt,ImageTiling tiling=ImageTiling::Optimal)const{return CheckFormatSupport(fmt,VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT,tiling);}
 
+    bool CheckColorAttachmentFormatSupport(const VkFormat fmt)const{return CheckFormatSupport(fmt,VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT,ImageTiling::Optimal);}
+    bool CheckDepthStencilAttachFormatSupport(const VkFormat fmt)const{return CheckFormatSupport(fmt,VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,ImageTiling::Optimal);}
+
     Texture2D *CreateTexture2D(TextureData *);
     Texture2D *CreateTexture2D(TextureCreateInfo *ci);
 
