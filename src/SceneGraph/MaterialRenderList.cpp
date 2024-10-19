@@ -248,6 +248,7 @@ void MaterialRenderList::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
     dicp->firstVertex   =ri->prd->vertex_offset;
     dicp->firstInstance =ri->first_instance;
 }
+
 void MaterialRenderList::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderItem *ri)
 {
     diicp->indexCount   =ri->prd->index_count;
@@ -432,7 +433,7 @@ void MaterialRenderList::Render(RenderItem *ri)
         BindVAB(ri->pdb,ri->first_instance);
 
         if(ri->pdb->ibo)
-        cmd_buf->BindIBO(ri->pdb->ibo);
+            cmd_buf->BindIBO(ri->pdb->ibo);
     }
 
     if(ri->pdb->vdm)

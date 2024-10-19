@@ -64,12 +64,21 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
 
 SOURCE_GROUP("Scene Graph" FILES ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOURCE})
 
-SET(STATIC_MESH_HEADER_FILES    ${SG_INCLUDE_PATH}/StaticMesh.h
-                                ${SG_INCLUDE_PATH}/StaticMeshLODPolicy.h)
+SET(SGC_HEADER_PATH ${SG_INCLUDE_PATH}/component)
+SET(SGC_SOURCE_PATH component)
 
-SET(STATIC_MESH_SOURCE_FILES   StaticMesh.cpp)
+SET(SG_COMPONENT_HEADER ${SGC_HEADER_PATH}/SceneComponent.h)
 
-SOURCE_GROUP("Scene Graph\\Static Mesh" FILES ${STATIC_MESH_HEADER_FILES} ${STATIC_MESH_SOURCE_FILES})
+SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER})
+
+SET(STATIC_MESH_HEADER_FILES    ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
+                                ${SG_INCLUDE_PATH}/mesh/StaticMeshLODPolicy.h
+                                ${SG_INCLUDE_PATH}/mesh/StaticMeshNode.h
+                                )
+
+SET(STATIC_MESH_SOURCE_FILES   mesh/StaticMesh.cpp)
+
+SOURCE_GROUP("Scene Graph\\Mesh\\Static Mesh" FILES ${STATIC_MESH_HEADER_FILES} ${STATIC_MESH_SOURCE_FILES})
 
 SET(FONT_MANAGE_SOURCE  ${SG_INCLUDE_PATH}/font/Font.h
                         ${SG_INCLUDE_PATH}/font/FontManage.h
@@ -259,6 +268,21 @@ SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
 
 SOURCE_GROUP("Vulkan\\Renderable" FILES ${VK_RENDERABLE_SOURCE})
 
+SET(RENDER_MODULE_HEADER    ${SG_INCLUDE_PATH}/RenderModule.h)
+SET(RENDER_MODULE_SOURCE    RenderModule/RenderModule.cpp)
+
+SET(RENDER_FRAMEWORK_FILES  ${SG_INCLUDE_PATH}/RenderFramework.h
+                            RenderFramework.cpp)
+
+SOURCE_GROUP("RenderModule" FILES   ${RENDER_MODULE_HEADER}
+                                    ${RENDER_MODULE_SOURCE}
+                                    ${RENDER_FRAMEWORK_FILES})
+
+SET(DEFERRED_RENDER_HEADER  ${SG_INCLUDE_PATH}/deferred/GBufferFormat.h)
+SET(DEFERRED_RENDER_SOURCE  deferred/GBufferFormat.cpp)
+
+SOURCE_GROUP("RenderModule\\Deferred Rendering" FILES ${DEFERRED_RENDER_HEADER} ${DEFERRED_RENDER_SOURCE})
+
 IF(WIN32)
     OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
 
@@ -319,6 +343,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${TILE_SOURCE}
                                         ${SG_VDM_SOURCE}
 
+                                        ${SG_COMPONENT_HEADER}
+
                                         ${STATIC_MESH_HEADER_FILES}
                                         ${STATIC_MESH_SOURCE_FILES}
 
@@ -330,4 +356,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
 #                                        ${TEXT_RENDERABLE_SOURCE}
 
                                         ${VULKAN_RENDER_SOURCE}
-                                        ${VULKAN_SURFACE_SOURCE})
+                                        ${VULKAN_SURFACE_SOURCE}
+
+                                        ${RENDER_MODULE_HEADER} ${RENDER_MODULE_SOURCE} ${RENDER_FRAMEWORK_FILES}
+                                        ${DEFERRED_RENDER_HEADER} ${DEFERRED_RENDER_SOURCE}
+)

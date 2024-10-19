@@ -1,4 +1,4 @@
-#include<hgl/graph/StaticMesh.h>
+#include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/VKRenderResource.h>
 
 VK_NAMESPACE_BEGIN

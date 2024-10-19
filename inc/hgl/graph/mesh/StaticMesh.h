@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VKNamespace.h>
-#include<hgl/graph/StaticMeshLODPolicy.h>
+#include<hgl/graph/mesh/StaticMeshLODPolicy.h>
 #include<hgl/graph/ShadowPolicy.h>
 
 VK_NAMESPACE_BEGIN
