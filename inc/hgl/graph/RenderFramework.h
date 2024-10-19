@@ -47,7 +47,6 @@ enum class RenderingMode
     ENUM_CLASS_RANGE(Forward,Deferred)
 };//enum class RenderingMode
 
-
 enum class RenderPhase
 {
     PreRender,      ///<渲染前

@@ -13,7 +13,7 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/font/TextPrimitive.h>
-#include<hgl/graph/StaticMesh.h>
+#include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/type/ObjectManage.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
