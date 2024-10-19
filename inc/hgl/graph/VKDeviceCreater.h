@@ -159,7 +159,7 @@ constexpr const VkFormat SwapchainPreferFormatsDepth[]=
     PF_D32F_S8U
 };
 
-constexpr const VkColorSpaceKHR SwapchainPreferColorSpacesNonlinear[]=
+constexpr const VkColorSpaceKHR SwapchainPreferredNonlinearColorSpaces[]=
 {
     VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
     VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT,
@@ -170,7 +170,7 @@ constexpr const VkColorSpaceKHR SwapchainPreferColorSpacesNonlinear[]=
     VK_COLOR_SPACE_DISPLAY_NATIVE_AMD,
 };
 
-constexpr const VkColorSpaceKHR SwapchainPreferColorSpacesLinear[]=
+constexpr const VkColorSpaceKHR SwapchainPreferredLinearColorSpaces[]=
 {
     VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
     VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT,
@@ -225,8 +225,8 @@ constexpr const PreferFormats PreferHDR32{SwapchainPreferFormatsHDR32,   sizeof(
 constexpr const PreferFormats PreferHDR  {SwapchainPreferFormatsHDR,     sizeof(SwapchainPreferFormatsHDR    )/sizeof(VkFormat)};
 constexpr const PreferFormats PreferDepth{SwapchainPreferFormatsDepth,   sizeof(SwapchainPreferFormatsDepth  )/sizeof(VkFormat)};
 
-constexpr const PreferColorSpaces PreferNonlinear   {SwapchainPreferColorSpacesNonlinear,   sizeof(SwapchainPreferColorSpacesNonlinear  )/sizeof(VkColorSpaceKHR)};
-constexpr const PreferColorSpaces PreferLinear      {SwapchainPreferColorSpacesLinear,      sizeof(SwapchainPreferColorSpacesLinear     )/sizeof(VkColorSpaceKHR)};
+constexpr const PreferColorSpaces PreferNonlinear   {SwapchainPreferredNonlinearColorSpaces,   sizeof(SwapchainPreferredNonlinearColorSpaces  )/sizeof(VkColorSpaceKHR)};
+constexpr const PreferColorSpaces PreferLinear      {SwapchainPreferredLinearColorSpaces,      sizeof(SwapchainPreferredLinearColorSpaces     )/sizeof(VkColorSpaceKHR)};
 
 /**
 * Vulkan设备创建器<br>
