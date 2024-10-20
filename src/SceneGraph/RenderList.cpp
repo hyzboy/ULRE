@@ -26,14 +26,15 @@ namespace hgl
 
             if(ri)
             {
-                Material *mtl=ri->GetMaterial();
+                RenderPipelineIndex rpi(ri->GetMaterial(),ri->GetPipeline());
+                
                 MaterialRenderList *mrl;
 
-                if(!mrl_map.Get(mtl,mrl))
+                if(!mrl_map.Get(rpi,mrl))
                 {
-                    mrl=new MaterialRenderList(device,true,mtl);
+                    mrl=new MaterialRenderList(device,true,rpi);
 
-                    mrl_map.Add(mtl,mrl);
+                    mrl_map.Add(rpi,mrl);
                 }
                 
                 mrl->Add(sn);
@@ -92,10 +93,10 @@ namespace hgl
 
             if(!ri)return;
 
-            Material *mtl=ri->GetMaterial();
+            RenderPipelineIndex rli(ri->GetMaterial(),ri->GetPipeline());
             MaterialRenderList *mrl;
 
-            if(!mrl_map.Get(mtl,mrl))        //找到对应的
+            if(!mrl_map.Get(rli,mrl))        //找到对应的
                 return;
 
             mrl->UpdateMaterialInstance(sn);

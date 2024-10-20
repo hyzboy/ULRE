@@ -283,7 +283,7 @@ public:
 
 inline GPUDevice *CreateRenderDevice(   VulkanInstance *vi,
                                         Window *win,
-                                        const VulkanHardwareRequirement *req=nullptr,
+                                        const VulkanHardwareRequirement *req        =nullptr,
                                         const PreferFormats *       spf_color       =&PreferSDR,
                                         const PreferColorSpaces *   spf_color_space =&PreferNonlinear,
                                         const PreferFormats *       spf_depth       =&PreferDepth)
