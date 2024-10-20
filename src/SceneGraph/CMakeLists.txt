@@ -266,9 +266,13 @@ SOURCE_GROUP("Vulkan\\Renderable" FILES ${VK_RENDERABLE_SOURCE})
 SET(SGC_HEADER_PATH ${SG_INCLUDE_PATH}/component)
 SET(SGC_SOURCE_PATH component)
 
-SET(SG_COMPONENT_HEADER ${SG_INCLUDE_PATH}/Component.h)
+SET(SG_COMPONENT_HEADER ${SG_INCLUDE_PATH}/Component.h
+                        ${SGC_HEADER_PATH}/StaticMeshComponent.h)
 
-SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER})
+SET(SG_COMPONENT_SOURCE ${SGC_SOURCE_PATH}/Component.cpp
+                        ${SGC_SOURCE_PATH}/StaticMeshComponent.cpp)
+
+SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER} ${SG_COMPONENT_SOURCE})
 
 #-RenderModue,RenderFramework-------------------------------------------
 
@@ -334,8 +338,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_RENDERABLE_SOURCE}
                             ${VK_RENDER_DEVICE_SOURCE})
 
-add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
-                                        ${SCENE_GRAPH_SOURCE}
+add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOURCE}
                                         ${SG_PRIMITIVE_SOURCE}
                                         ${GEOMETRY_FILES}
                                         ${LIGHT_FILES}
@@ -344,10 +347,9 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${TILE_SOURCE}
                                         ${SG_VDM_SOURCE}
 
-                                        ${SG_COMPONENT_HEADER}
+                                        ${STATIC_MESH_HEADER_FILES} ${STATIC_MESH_SOURCE_FILES}
 
-                                        ${STATIC_MESH_HEADER_FILES}
-                                        ${STATIC_MESH_SOURCE_FILES}
+                                        ${SG_COMPONENT_HEADER} ${SG_COMPONENT_SOURCE}
 
 #                                        ${FONT_MANAGE_SOURCE}
 #                                        ${FONT_SOURCE}
