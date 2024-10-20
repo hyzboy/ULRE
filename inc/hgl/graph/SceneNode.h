@@ -19,6 +19,8 @@ namespace hgl
         */
         class SceneNode:public SceneOrient                                                                              ///场景节点类
         {
+            SceneNode *Owner;                                                                                           ///<上级节点
+
             SceneNodeID NodeID;                                                                                         ///<节点ID
             SceneNodeName NodeName;                                                                                     ///<节点名称
 
@@ -59,6 +61,8 @@ namespace hgl
             {
                 SceneOrient::Clear();
 
+                Owner=nullptr;
+
                 BoundingBox.SetZero();
                 LocalBoundingBox.SetZero();
 
@@ -74,8 +78,13 @@ namespace hgl
                 return(true);
             }
 
-            Renderable *GetRenderable(){return render_obj;}
-            void        SetRenderable(Renderable *);
+                    void        SetOwner(SceneNode *sn) {Owner=sn;}
+                    SceneNode * GetOwner()      noexcept{return Owner;}
+            const   SceneNode * GetOwner()const noexcept{return Owner;}
+
+                    void        SetRenderable(Renderable *);
+                    Renderable *GetRenderable()      noexcept{return render_obj;}
+            const   Renderable *GetRenderable()const noexcept{return render_obj;}
 
             SceneNode *Add(SceneNode *sn)
             {
@@ -83,6 +92,7 @@ namespace hgl
                     return(nullptr);
 
                 ChildNode.Add(sn);
+                sn->SetOwner(this);
                 return sn;
             }
 

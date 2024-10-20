@@ -64,13 +64,6 @@ SET(SCENE_GRAPH_SOURCE  RenderList.cpp
 
 SOURCE_GROUP("Scene Graph" FILES ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOURCE})
 
-SET(SGC_HEADER_PATH ${SG_INCLUDE_PATH}/component)
-SET(SGC_SOURCE_PATH component)
-
-SET(SG_COMPONENT_HEADER ${SGC_HEADER_PATH}/SceneComponent.h)
-
-SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER})
-
 SET(STATIC_MESH_HEADER_FILES    ${SG_INCLUDE_PATH}/mesh/StaticMesh.h
                                 ${SG_INCLUDE_PATH}/mesh/StaticMeshLODPolicy.h
                                 ${SG_INCLUDE_PATH}/mesh/StaticMeshNode.h
@@ -268,6 +261,17 @@ SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
 
 SOURCE_GROUP("Vulkan\\Renderable" FILES ${VK_RENDERABLE_SOURCE})
 
+#-Component-------------------------------------------------------------
+
+SET(SGC_HEADER_PATH ${SG_INCLUDE_PATH}/component)
+SET(SGC_SOURCE_PATH component)
+
+SET(SG_COMPONENT_HEADER ${SG_INCLUDE_PATH}/Component.h)
+
+SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER})
+
+#-RenderModue,RenderFramework-------------------------------------------
+
 SET(RENDER_MODULE_HEADER    ${SG_INCLUDE_PATH}/RenderModule.h)
 SET(RENDER_MODULE_SOURCE    RenderModule/RenderModule.cpp)
 
@@ -300,10 +304,7 @@ IF(UNIX)
     ELSE()
         IF(APPLE)
 
-
-
         ELSE()
-
             SET(VULKAN_SURFACE_SOURCE   Vulkan/Platform/XCBVulkan.cpp)
         ENDIF()
 

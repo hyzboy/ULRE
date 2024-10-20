@@ -44,7 +44,7 @@ public:
 };//struct RenderPipelineIndex
 
 /**
-* 同一材质的对象渲染列表
+* 同一材质与管线的渲染列表
 */
 class MaterialRenderList
 {
@@ -113,15 +113,9 @@ public:
 
     void Add(SceneNode *);
 
-    void SetCameraInfo(CameraInfo *ci)
-    {
-        camera_info=ci;
-    }
+    void SetCameraInfo(CameraInfo *ci){camera_info=ci;}
 
-    void Clear()
-    {
-        rn_list.Clear();
-    }
+    void Clear(){rn_list.Clear();}
 
     void End();
 
