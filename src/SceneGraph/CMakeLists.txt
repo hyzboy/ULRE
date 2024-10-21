@@ -274,22 +274,27 @@ SET(SG_COMPONENT_SOURCE ${SGC_SOURCE_PATH}/Component.cpp
 
 SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER} ${SG_COMPONENT_SOURCE})
 
-#-RenderModue,RenderFramework-------------------------------------------
+#-GraphModule,RenderFramework-------------------------------------------
 
-SET(RENDER_MODULE_HEADER    ${SG_INCLUDE_PATH}/RenderModule.h)
-SET(RENDER_MODULE_SOURCE    RenderModule/RenderModule.cpp)
+SET(SGM_HEADER_PATH ${SG_INCLUDE_PATH}/module)
+
+SET(GRAPH_MODULE_HEADER ${SGM_HEADER_PATH}/GraphModule.h
+                        ${SGM_HEADER_PATH}/RenderModule.h)
+
+SET(GRAPH_MODULE_SOURCE module/GraphModule.cpp
+                        module/RenderModule.cpp)
 
 SET(RENDER_FRAMEWORK_FILES  ${SG_INCLUDE_PATH}/RenderFramework.h
                             RenderFramework.cpp)
 
-SOURCE_GROUP("RenderModule" FILES   ${RENDER_MODULE_HEADER}
-                                    ${RENDER_MODULE_SOURCE}
-                                    ${RENDER_FRAMEWORK_FILES})
+SOURCE_GROUP("Render Framework" FILES   ${GRAPH_MODULE_HEADER}
+                                        ${GRAPH_MODULE_SOURCE}
+                                        ${RENDER_FRAMEWORK_FILES})
 
 SET(DEFERRED_RENDER_HEADER  ${SG_INCLUDE_PATH}/deferred/GBufferFormat.h)
 SET(DEFERRED_RENDER_SOURCE  deferred/GBufferFormat.cpp)
 
-SOURCE_GROUP("RenderModule\\Deferred Rendering" FILES ${DEFERRED_RENDER_HEADER} ${DEFERRED_RENDER_SOURCE})
+SOURCE_GROUP("Graph Module\\Deferred Rendering" FILES ${DEFERRED_RENDER_HEADER} ${DEFERRED_RENDER_SOURCE})
 
 IF(WIN32)
     OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
@@ -361,6 +366,6 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOUR
                                         ${VULKAN_RENDER_SOURCE}
                                         ${VULKAN_SURFACE_SOURCE}
 
-                                        ${RENDER_MODULE_HEADER} ${RENDER_MODULE_SOURCE} ${RENDER_FRAMEWORK_FILES}
+                                        ${GRAPH_MODULE_HEADER} ${GRAPH_MODULE_SOURCE} ${RENDER_FRAMEWORK_FILES}
                                         ${DEFERRED_RENDER_HEADER} ${DEFERRED_RENDER_SOURCE}
 )

@@ -1,16 +1,16 @@
-#include<hgl/graph/RenderModule.h>
+#include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/Map.h>
 
 VK_NAMESPACE_BEGIN
 
 namespace
 {
-    using RenderModuleMap=Map<OSString,RenderModuleCreateFunc>;
+    using GraphModuleMap=Map<AnsiString,GraphModuleCreateFunc>;
 
-    RenderModuleMap render_module_map;
+    GraphModuleMap render_module_map;
 }//namespace
 
-bool RegistryRenderModule(const OSString &name,RenderModuleCreateFunc func)
+bool RegistryGraphModule(const AnsiString &name,GraphModuleCreateFunc func)
 {
     if(name.IsEmpty()||!func)
         return(false);
@@ -23,12 +23,12 @@ bool RegistryRenderModule(const OSString &name,RenderModuleCreateFunc func)
     return(true);
 }
 
-RenderModule *GetRenderModule(const OSString &name)
+GraphModule *GetGraphModule(const AnsiString &name)
 {
     if(name.IsEmpty())
         return(nullptr);
 
-    RenderModuleCreateFunc func;
+    GraphModuleCreateFunc func;
 
     if(!render_module_map.Get(name,func))
         return(nullptr);

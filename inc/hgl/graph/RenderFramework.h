@@ -38,13 +38,87 @@ enum class LightingCullingMode
     ENUM_CLASS_RANGE(None,Cluster)
 };//enum class LightingCullingMode
 
+enum class BlendMode
+{
+    Opaque,
+    Mask,
+    Transparent,
+    Additive,
+    Subtractive
+};
+
+enum class RenderOrder
+{
+    First,          ///<最先渲染
+
+    NearToFar,      ///<从近到远
+    Irrorder,       ///<无序渲染
+    FarToNear,      ///<从远到近
+
+    Last,           ///<最后渲染
+
+    ENUM_CLASS_RANGE(First,Last)
+};//enum class RenderOrder
+
+class RenderModule;
+
+/**
+ * 渲染模块工作配置
+ */
+class RenderModuleWorkConfig
+{
+    /**
+     * 渲染模块名称
+     * 在render_module为nullptr时，用于创建或加载RenderModule。
+     * 它和RenderModule返回的名称有可能一样，但也有可能不一样。
+     */
+    AnsiString render_module_name;
+    RenderModule *render_module=nullptr;
+
+    BlendMode blend_mode;
+    RenderOrder render_order;
+
+public:
+
+    const AnsiString &GetModuleName()const{return render_module_name;}                              ///<取得渲染模块名称
+
+    RenderModule *GetModule(){return render_module;}                                                ///<取得渲染模块
+
+public:
+
+    RenderModuleWorkConfig();
+    virtual ~RenderModuleWorkConfig()=default;
+};//class RenderModuleWorkConfig
+
+/**
+* 渲染模式配置
+*/
+class RenderingModeConfig
+{
+};//class RenderingModeConfig
+
 enum class RenderingMode
 {
+    /**
+    * 一次性直接渲染出来
+    * 这个其实不支持，主要用于一些超简单没啥需求的渲染场景
+    */
     Forward,        ///<前向渲染
 
-    Deferred,       ///<延迟渲染
+    /**
+    * 增加了Early-Z pass以及光线剔除的直接渲染
+    */
+    ForwardPlus,    ///<增强型前向渲染
 
-    ENUM_CLASS_RANGE(Forward,Deferred)
+    /**
+    * 传统的延迟渲染
+    * 第一个pass生成GBuffer(BaseColor/Normal等)，第二个pass渲染渲染透明，第三个
+    */
+    GBufferDeferred,        ///<延迟渲染
+
+    VisbilityDeferred,      ///<可见性延迟渲染
+
+    ENUM_CLASS_RANGE(Forward,Visbility)
 };//enum class RenderingMode
 
 enum class RenderPhase
