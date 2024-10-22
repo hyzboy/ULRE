@@ -30,6 +30,7 @@ struct CopyBufferToImageInfo;
 
 class GPUDevice
 {
+    GraphModuleManager *graph_module_manager;
     GPUDeviceAttribute *attr;
 
     DeviceQueue *texture_queue;

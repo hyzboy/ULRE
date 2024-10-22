@@ -9,14 +9,21 @@
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKDeviceRenderPassManage.h>
+#include<hgl/graph/module/GraphModule.h>
 
 VK_NAMESPACE_BEGIN
+
+GraphModuleManager *InitGraphModuleManager(GPUDevice *dev);
+bool ClearGraphModuleManager(GPUDevice *dev);
+
 GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
 
     texture_queue=nullptr;
     texture_cmd_buf=nullptr;
+
+    graph_module_manager=InitGraphModuleManager(this);
 
     InitRenderPassManage();
 
@@ -37,10 +44,15 @@ GPUDevice::~GPUDevice()
     SAFE_CLEAR(texture_cmd_buf);
 
     delete attr;
+    
+    //按设计，上面那些rt/queue/cmdbuf都需要走graph_module_manager释放和申请
+    ClearGraphModuleManager(this);
 }
 
 bool GPUDevice::Resize(const VkExtent2D &extent)
 {
+    graph_module_manager->OnResize(extent);
+
     SAFE_CLEAR(sc_rt);
 
     attr->RefreshSurfaceCaps();
