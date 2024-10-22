@@ -60,12 +60,12 @@ enum class RenderOrder
     ENUM_CLASS_RANGE(First,Last)
 };//enum class RenderOrder
 
-class RenderModule;
+class GraphModule;
 
 /**
  * 渲染模块工作配置
  */
-class RenderModuleWorkConfig
+class GraphModuleWorkConfig
 {
     /**
      * 渲染模块名称
@@ -73,7 +73,7 @@ class RenderModuleWorkConfig
      * 它和RenderModule返回的名称有可能一样，但也有可能不一样。
      */
     AnsiString render_module_name;
-    RenderModule *render_module=nullptr;
+    GraphModule *render_module=nullptr;
 
     BlendMode blend_mode;
     RenderOrder render_order;
@@ -82,72 +82,20 @@ public:
 
     const AnsiString &GetModuleName()const{return render_module_name;}                              ///<取得渲染模块名称
 
-    RenderModule *GetModule(){return render_module;}                                                ///<取得渲染模块
+    GraphModule *GetModule(){return render_module;}                                                ///<取得渲染模块
 
 public:
 
-    RenderModuleWorkConfig();
-    virtual ~RenderModuleWorkConfig()=default;
-};//class RenderModuleWorkConfig
-
-/**
-* 渲染模式配置
-*/
-class RenderingModeConfig
-{
-};//class RenderingModeConfig
-
-enum class RenderingMode
-{
-    /**
-    * 一次性直接渲染出来
-    * 这个其实不支持，主要用于一些超简单没啥需求的渲染场景
-    */
-    Forward,        ///<前向渲染
-
-    /**
-    * 增加了Early-Z pass以及光线剔除的直接渲染
-    */
-    ForwardPlus,    ///<增强型前向渲染
-
-    /**
-    * 传统的延迟渲染
-    * 第一个pass生成GBuffer(BaseColor/Normal等)，第二个pass渲染渲染透明，第三个
-    */
-    GBufferDeferred,        ///<延迟渲染
-
-    VisbilityDeferred,      ///<可见性延迟渲染
-
-    ENUM_CLASS_RANGE(Forward,Visbility)
-};//enum class RenderingMode
-
-enum class RenderPhase
-{
-    PreRender,      ///<渲染前
-
-    Physics,        ///<物理
-    Anim,           ///<动画前
-
-    Depth,          ///<渲染深度(一般用于Early-Z pass)
-
-    GBuffer,        ///<生成GBuffer
-
-    Transparent,    ///<渲染透明物件
-
-    PostProcess,    ///<后处理
-
-    Submit,         ///<提交指令队列
-    Present,        ///<呈现
-
-    ENUM_CLASS_RANGE(PreRender,Present)
-};//enum class RenderPhase
+    GraphModuleWorkConfig();
+    virtual ~GraphModuleWorkConfig()=default;
+};//class GraphModuleWorkConfig
 
 /**
 * 渲染框架
 */
 class RenderFramework
 {
-    ObjectList<RenderModule> module_list;
+    ObjectList<GraphModule> module_list;
 
 protected:
 
@@ -165,6 +113,9 @@ protected:
 
 private:
 
+    double              last_time           =0;
+    double              cur_time            =0;
+
     uint64              frame_count         =0;
 
 public:
@@ -178,6 +129,8 @@ public:
 
     RenderFramework(){}
     virtual ~RenderFramework()=default;
+
+    virtual void StartTime();
 
     /**
     * @pragma delta_time 本帧时间间隔

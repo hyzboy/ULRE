@@ -11,6 +11,11 @@ VK_NAMESPACE_BEGIN
 class RenderModule:public GraphModule
 {
     VkExtent2D current_extent;
+    RenderTarget *render_target;
+
+public:
+
+    const bool IsRender()const noexcept{return true;}
 
 public:
 
@@ -18,15 +23,8 @@ public:
 
     RenderModule(const AnsiString &name):GraphModule(name){}
     virtual ~RenderModule()=default;
+    
+    virtual void OnRenderTarget(RenderTarget *rt)override{render_target=rt;}
 
-    virtual bool Init()override{return true;}
-
-    virtual void Execute(const double,RenderCmdBuffer *)override{}
-
-    virtual void OnResize(const VkExtent2D &ext){current_extent=ext;}
-    virtual void OnFocusLost(){}
-
-    virtual void OnPreFrame(){}
-    virtual void OnPostFrame(){}
+    virtual void OnResize(const VkExtent2D &ext)override{current_extent=ext;}
 };//class RenderModule
-

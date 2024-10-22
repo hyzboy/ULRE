@@ -1,10 +1,21 @@
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/RenderModule.h>
+#include<hgl/graph/module/GraphModule.h>
+#include<hgl/Time.h>
 
 VK_NAMESPACE_BEGIN
 
+void RenderFramework::StartTime()
+{
+    last_time=cur_time=GetDoubleTime();
+    frame_count++;
+}
+
 void RenderFramework::MainLoop()
 {
+    cur_time=GetDoubleTime();
+
+    const double delta_time=cur_time-last_time;
+
     for(auto rm:module_list)
     {
         if(rm->IsEnable())
@@ -16,7 +27,7 @@ void RenderFramework::MainLoop()
     for(auto rm:module_list)
     {
         if(rm->IsEnable())
-            rm->Execute(0,nullptr);
+            rm->OnExecute(delta_time,nullptr);
     }
 
     for(auto rm:module_list)
@@ -26,6 +37,8 @@ void RenderFramework::MainLoop()
     }
 
     EndFrame();
+    last_time=cur_time;
+    ++frame_count;
 }
 
 VK_NAMESPACE_END
