@@ -67,26 +67,24 @@ GraphModuleManager *GetGraphModuleManager(GPUDevice *dev)
     return(nullptr);
 }
 
-bool GraphModuleManager::Registry(const AnsiString &name,GraphModule *gm)
-{
-    if(!gm)
-        return(false);
-    if(name.IsEmpty())
-        return(false);
+GraphModule *CreateGraphModule(const AnsiString &name,GraphModuleManager *gmm);
 
-    if(graph_module_map.ContainsKey(name))
-        return(false);
-
-    graph_module_map.Add(name,gm);
-    return(true);
-}
-
-GraphModule *GraphModuleManager::GetModule(const AnsiString &name)
+GraphModule *GraphModuleManager::GetModule(const AnsiString &name,bool create)
 {
     GraphModule *gm;
 
     if(graph_module_map.Get(name,gm))
         return gm;
+
+    if(create)
+    {
+        gm=CreateGraphModule(name,this);
+
+        if(gm)
+            graph_module_map.Add(name,gm);
+
+        return gm;
+    }
 
     return nullptr;
 }

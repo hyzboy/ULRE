@@ -10,6 +10,7 @@
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKDeviceRenderPassManage.h>
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/module/SwapchainModule.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -24,6 +25,8 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
     texture_cmd_buf=nullptr;
 
     graph_module_manager=InitGraphModuleManager(this);
+
+    swapchain_module=graph_module_manager->GetModule<SwapchainModule>(true);
 
     InitRenderPassManage();
 

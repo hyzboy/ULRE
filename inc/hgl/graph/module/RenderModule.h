@@ -11,20 +11,19 @@ VK_NAMESPACE_BEGIN
 class RenderModule:public GraphModule
 {
     VkExtent2D current_extent;
-    RenderTarget *render_target;
 
 public:
-
+    
     const bool IsRender()const noexcept{return true;}
 
 public:
 
     NO_COPY_NO_MOVE(RenderModule)
 
-    RenderModule(const AnsiString &name):GraphModule(name){}
+    using GraphModule::GraphModule;
     virtual ~RenderModule()=default;
-    
-    virtual void OnRenderTarget(RenderTarget *rt)override{render_target=rt;}
 
     virtual void OnResize(const VkExtent2D &ext)override{current_extent=ext;}
 };//class RenderModule
+
+VK_NAMESPACE_END

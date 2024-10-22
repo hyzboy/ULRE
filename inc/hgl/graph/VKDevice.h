@@ -18,6 +18,9 @@
 #include<hgl/graph/VKDescriptorSetType.h>
 
 VK_NAMESPACE_BEGIN
+
+class SwapchainModule;
+
 class TileData;
 class TileFont;
 class FontSource;
@@ -30,7 +33,14 @@ struct CopyBufferToImageInfo;
 
 class GPUDevice
 {
+private:    //module
+
     GraphModuleManager *graph_module_manager;
+
+    SwapchainModule *swapchain_module;
+
+private:
+
     GPUDeviceAttribute *attr;
 
     DeviceQueue *texture_queue;

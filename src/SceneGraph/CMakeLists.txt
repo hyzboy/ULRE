@@ -279,10 +279,14 @@ SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER} ${SG_COMPONEN
 SET(SGM_HEADER_PATH ${SG_INCLUDE_PATH}/module)
 
 SET(GRAPH_MODULE_HEADER ${SGM_HEADER_PATH}/GraphModule.h
-                        ${SGM_HEADER_PATH}/RenderModule.h)
+                        ${SGM_HEADER_PATH}/GraphModuleFactory.h
+                        ${SGM_HEADER_PATH}/RenderModule.h
+                        ${SGM_HEADER_PATH}/SwapchainModule.h)
 
 SET(GRAPH_MODULE_SOURCE module/GraphModule.cpp
-                        module/RenderModule.cpp)
+                        module/GraphModuleFactory.cpp
+                        module/RenderModule.cpp
+                        module/SwapchainModule.cpp)
 
 SET(RENDER_FRAMEWORK_FILES  ${SG_INCLUDE_PATH}/RenderFramework.h
                             RenderFramework.cpp)

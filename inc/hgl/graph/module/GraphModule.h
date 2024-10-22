@@ -23,11 +23,12 @@ protected:
 
 public:
 
-    virtual const bool IsRender()=0;                                            ///<是否为渲染模块
+    virtual const bool IsRender(){return false;}                                ///<是否为渲染模块
 
     GraphModuleManager *GetManager(){return module_manager;}                    ///<取得模块管理器
 
-    const AnsiString &GetModuleName()const{return module_name;}                 ///<取得模块名称
+    static const char *GetModuleName(){return nullptr;}                         ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
+    virtual const char *GetName()const{return module_name.c_str();}             ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
     const bool IsEnable ()const noexcept{return module_enable;}                 ///<当前模块是否启用
     const bool IsReady  ()const noexcept{return module_ready;}                  ///<当前模块是否准备好
@@ -36,7 +37,11 @@ public:
 
     NO_COPY_NO_MOVE(GraphModule)
 
-    GraphModule(const AnsiString &name){module_name=name;}
+    GraphModule(GraphModuleManager *gmm,const AnsiString &name)
+    {
+        module_manager=gmm;
+        module_name=name;
+    }
     virtual ~GraphModule()=default;
 
     virtual bool Init(){return true;}                                           ///<初始化当前模块
@@ -57,13 +62,23 @@ class GraphModuleManager
 
     Map<AnsiString,GraphModule *> graph_module_map;
 
+protected:
+    
+    GraphModule *GetModule(const AnsiString &name,bool create);
+
 public:
 
     GraphModuleManager(GPUDevice *dev){device=dev;}
     ~GraphModuleManager();
 
-    bool Registry(const AnsiString &name,GraphModule *gm);
-    GraphModule *GetModule(const AnsiString &name);
+    /**
+    * 获取指定类型的模块
+    * @param create 如果不存在，是否创建新的
+    */
+    template<typename T> T *GetModule(bool create=false)
+    {
+        return (T *)GetModule(T::GetModuleName(),create);
+    }
 
 public: //事件
 
