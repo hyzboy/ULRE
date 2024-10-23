@@ -8,13 +8,7 @@ class SwapchainModule:public GraphModule
 {
 public:
 
-    static const char *GetModuleName(){return "Swapchain";} 
-
-public:
-
-    NO_COPY_NO_MOVE(SwapchainModule);
-
-    SwapchainModule(GraphModuleManager *gmm):GraphModule(gmm,"Swapchain"){}
+    GRAPH_MODULE_CONSTRUCT(Swapchain)
     virtual ~SwapchainModule()=default;
 
 };//class SwapchainModule:public RenderModule

@@ -1,17 +1,56 @@
 #pragma once
 
 #include<hgl/graph/VK.h>
+#include<hgl/type/IDName.h>
 
 VK_NAMESPACE_BEGIN
 
 class RenderCmdBuffer;
-class GraphModuleManager;
+class GraphModule;
+
+class GraphModuleManager
+{
+    GPUDevice *device;
+
+    Map<AnsiIDName,GraphModule *> graph_module_map;
+
+public:
+
+    GraphModuleManager(GPUDevice *dev){device=dev;}
+    ~GraphModuleManager();
+
+    GPUDevice *GetDevice(){return device;}                                                          ///<取得GPU设备
+
+    /**
+     * 获取指定名称的模块
+     * @param create 如果不存在，是否创建新的
+     */
+    GraphModule *GetModule(const AnsiIDName &name,bool create);                                     ///<获取指定名称的模块
+
+    /**
+     * 获取指定类型的模块
+     * @param create 如果不存在，是否创建新的
+     */
+    template<typename T>
+    T *GetModule(bool create=false){return (T *)GetModule(T::GetModuleName(),create);}              ///<获取指定类型的模块
+
+    const bool IsLoaded(const AnsiIDName &name){return graph_module_map.ContainsKey(name);}         ///<是否已经加载了指定类型的模块
+
+    template<typename T>
+    const bool IsLoaded(){return graph_module_map.ContainsKey(T::GetModuleName());}                 ///<是否已经加载了指定类型的模块
+
+public: //事件
+
+    void OnResize(const VkExtent2D &);
+};//class GraphModuleManager
+
+GraphModuleManager *GetGraphModuleManager(GPUDevice *);
 
 class GraphModule
 {
     GraphModuleManager *module_manager;
 
-    AnsiString module_name;
+    AnsiIDName module_name;
 
     bool module_enable;
     bool module_ready;
@@ -26,9 +65,10 @@ public:
     virtual const bool IsRender(){return false;}                                ///<是否为渲染模块
 
     GraphModuleManager *GetManager(){return module_manager;}                    ///<取得模块管理器
+    GPUDevice *GetDevice(){return module_manager->GetDevice();}                 ///<取得GPU设备
 
-    static const char *GetModuleName(){return nullptr;}                         ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
-    virtual const char *GetName()const{return module_name.c_str();}             ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
+    static const AnsiIDName *GetModuleName(){return nullptr;}                   ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
+    virtual const AnsiIDName *GetName()const{return &module_name;}              ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
     const bool IsEnable ()const noexcept{return module_enable;}                 ///<当前模块是否启用
     const bool IsReady  ()const noexcept{return module_ready;}                  ///<当前模块是否准备好
@@ -37,7 +77,7 @@ public:
 
     NO_COPY_NO_MOVE(GraphModule)
 
-    GraphModule(GraphModuleManager *gmm,const AnsiString &name)
+    GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
     {
         module_manager=gmm;
         module_name=name;
@@ -56,35 +96,14 @@ public: //回调事件
     virtual void OnPostFrame(){}                                                ///<帧绘制后回调
 };//class GraphModule
 
-class GraphModuleManager
-{
-    GPUDevice *device;
-
-    Map<AnsiString,GraphModule *> graph_module_map;
-
-protected:
-    
-    GraphModule *GetModule(const AnsiString &name,bool create);
-
-public:
-
-    GraphModuleManager(GPUDevice *dev){device=dev;}
-    ~GraphModuleManager();
-
-    /**
-    * 获取指定类型的模块
-    * @param create 如果不存在，是否创建新的
-    */
-    template<typename T> T *GetModule(bool create=false)
-    {
-        return (T *)GetModule(T::GetModuleName(),create);
-    }
-
-public: //事件
-
-    void OnResize(const VkExtent2D &);
-};//class GraphModuleManager
-
-GraphModuleManager *GetGraphModuleManager(GPUDevice *);
+#define GRAPH_MODULE_CONSTRUCT(name)    public:\
+    NO_COPY_NO_MOVE(name##Module)   \
+    static const AnsiIDName &GetModuleName()    \
+    {   \
+        static const AnsiIDName id_name(#name);    \
+        return id_name;    \
+    }   \
+    \
+    name##Module(GraphModuleManager *gmm):GraphModule(gmm,GetModuleName()){}
 
 VK_NAMESPACE_END

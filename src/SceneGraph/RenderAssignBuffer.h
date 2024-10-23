@@ -47,7 +47,7 @@ private:
 
 private:    //LocalToWorld矩阵数据
 
-    uint32 l2w_buffer_max_count;        ///<LocalToWorld矩阵最大数量
+    int l2w_buffer_max_count;           ///<LocalToWorld矩阵最大数量
     DeviceBuffer *l2w_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
 
     void StatL2W(const RenderNodeList &);
@@ -63,7 +63,7 @@ private:    //材质实例数据
     
 private:    //分发数据
 
-    uint32 node_count;                  ///<节点数量
+    int node_count;                     ///<节点数量
 
     VAB *assign_vab;                    ///<分发数据VAB(RG16UI格式，R存L2W ID，G存材质实例ID)
     VkBuffer assign_buffer;             ///<分发数据Buffer

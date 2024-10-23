@@ -67,9 +67,9 @@ GraphModuleManager *GetGraphModuleManager(GPUDevice *dev)
     return(nullptr);
 }
 
-GraphModule *CreateGraphModule(const AnsiString &name,GraphModuleManager *gmm);
+GraphModule *CreateGraphModule(const AnsiIDName &name,GraphModuleManager *gmm);
 
-GraphModule *GraphModuleManager::GetModule(const AnsiString &name,bool create)
+GraphModule *GraphModuleManager::GetModule(const AnsiIDName &name,bool create)
 {
     GraphModule *gm;
 
