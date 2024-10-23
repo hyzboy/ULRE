@@ -84,6 +84,11 @@ public:
         rr->static_descriptor.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
     }
 
+    VulkanApplicationFramework()
+    {
+        RegistryCommonGraphModule();
+    }
+
     virtual ~VulkanApplicationFramework()
     {
         CloseShaderCompiler();

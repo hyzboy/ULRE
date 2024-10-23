@@ -286,6 +286,7 @@ SET(GRAPH_MODULE_HEADER ${SGM_HEADER_PATH}/GraphModule.h
 SET(GRAPH_MODULE_SOURCE module/GraphModule.cpp
                         module/GraphModuleFactory.cpp
                         module/RenderModule.cpp
+                        module/RegistryCommonModule.cpp
                         module/SwapchainModule.cpp)
 
 SET(RENDER_FRAMEWORK_FILES  ${SG_INCLUDE_PATH}/RenderFramework.h

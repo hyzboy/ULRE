@@ -21,20 +21,10 @@ bool RegistryGraphModuleFactory(const char *module_name,GraphModuleFactory *);
 
 template<typename T> class RegistryGraphModule:public GraphModuleFactory
 {
-    bool registry_success;
-
 public:
-
-    RegistryGraphModule()
-    {
-        registry_success=RegistryGraphModuleFactory(T::GetModuleName(),this);
-    }
 
     GraphModule *Create(GraphModuleManager *gmm) override
     {
-        if(!registry_success)
-            return(nullptr);
-
         if(!gmm)
             return(nullptr);
 
@@ -42,6 +32,6 @@ public:
     }
 };//template<typename T> class RegistryGraphModule:public GraphModuleFactory
 
-#define REGISTRY_GRAPH_MODULE(Class)    namespace{static RegistryGraphModule<Class> registry_##Class;}
+#define REGISTRY_GRAPH_MODULE(Class)    {RegistryGraphModuleFactory(#Class,new RegistryGraphModule<Class##Module>);}
 
 VK_NAMESPACE_END
