@@ -6,6 +6,10 @@
 #include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/io/DataOutputStream.h>
 VK_NAMESPACE_BEGIN
+/**
+* 管线<br>
+* 管线管理了一批次渲染的所有基础条件，包括顶点输入、着色器、混合、深度测试等等
+*/
 class Pipeline
 {
     VkDevice device;

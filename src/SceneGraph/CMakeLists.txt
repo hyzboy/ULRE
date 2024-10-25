@@ -284,6 +284,7 @@ SET(GRAPH_MODULE_HEADER ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/SwapchainModule.h)
 
 SET(GRAPH_MODULE_SOURCE module/GraphModule.cpp
+                        module/GraphModuleManager.cpp
                         module/GraphModuleFactory.cpp
                         module/RenderModule.cpp
                         module/RegistryCommonModule.cpp

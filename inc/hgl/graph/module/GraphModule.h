@@ -65,7 +65,8 @@ public:
     virtual const bool IsRender(){return false;}                                ///<是否为渲染模块
 
     GraphModuleManager *GetManager(){return module_manager;}                    ///<取得模块管理器
-    GPUDevice *GetDevice(){return module_manager->GetDevice();}                 ///<取得GPU设备
+    GPUDevice *         GetDevice(){return module_manager->GetDevice();}        ///<取得GPU设备
+    GPUDeviceAttribute *GetDeviceAttribute();
 
     static const AnsiIDName *GetModuleName(){return nullptr;}                   ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
     virtual const AnsiIDName *GetName()const{return &module_name;}              ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)

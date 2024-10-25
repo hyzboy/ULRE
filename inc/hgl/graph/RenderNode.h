@@ -13,7 +13,7 @@ namespace hgl
 
         struct RenderNode
         {
-            uint        index;                              ///<在MaterialRenderList中的索引
+            uint        index;                                          ///<在MaterialRenderList中的索引
 
             SceneNode * scene_node;
 
