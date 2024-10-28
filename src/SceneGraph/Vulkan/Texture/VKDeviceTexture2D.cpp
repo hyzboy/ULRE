@@ -13,7 +13,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
     if(!tex_data)
         return(nullptr);
 
-    return(new Texture2D(GetVulkanDevice(),tex_data));
+    return(new Texture2D(GetVkDevice(),tex_data));
 }
 
 Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
@@ -44,7 +44,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
     }
 
     if(!tci->image_view)
-        tci->image_view=CreateImageView2D(GetVulkanDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
+        tci->image_view=CreateImageView2D(GetVkDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
     TextureData *tex_data=new TextureData(tci);
 

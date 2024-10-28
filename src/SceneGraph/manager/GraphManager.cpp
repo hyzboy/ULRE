@@ -2,7 +2,7 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-VkDevice GraphManager::GetVulkanDevice()
+VkDevice GraphManager::GetVkDevice()
 {
     return device->GetDevice();
 }
