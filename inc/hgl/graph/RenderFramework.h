@@ -90,6 +90,10 @@ public:
     virtual ~GraphModuleWorkConfig()=default;
 };//class GraphModuleWorkConfig
 
+class Window;
+class SwapchainModule;
+class TextureModule;
+
 /**
 * 渲染框架
 */
@@ -99,17 +103,19 @@ class RenderFramework
 
 protected:
 
-    ViewportInfo        viewport_info;
+    Window *            win                 =nullptr;
+    VulkanInstance *    inst                =nullptr;
 
-    int                 swap_chain_count    =0;
+    GPUDevice *         device              =nullptr;
+
+protected:
+    
+    TextureModule *     texture_module      =nullptr;
+    SwapchainModule *   swapchain_module    =nullptr;
 
 protected:
 
-    GPUDevice *         device              =nullptr;
-    RenderPass *        device_render_pass  =nullptr;
-    RTSwapchain *       default_rt          =nullptr;
-
-    RenderCmdBuffer **  render_cmd_buffers  =nullptr;
+    ViewportInfo        viewport_info;
 
 private:
 
