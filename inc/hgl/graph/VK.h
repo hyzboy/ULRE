@@ -24,9 +24,13 @@ constexpr size_t VK_DESCRIPTOR_TYPE_END_RANGE=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMEN
 constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_DESCRIPTOR_TYPE_BEGIN_RANGE+1;
 #endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
 
+class TextureManager;
+
 class GraphModule;
 class RenderModule;
 class GraphModuleManager;
+
+class SwapchainModule;
 
 void RegistryCommonGraphModule();
 

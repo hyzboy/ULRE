@@ -37,6 +37,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
 SOURCE_GROUP("Geometry" FILES ${GEOMETRY_FILES})
 
 SET(LIGHT_FILES ${SG_INCLUDE_PATH}/Light.h
+                ${SG_INCLUDE_PATH}/LightCullMode.h
                 ${SG_INCLUDE_PATH}/ShadowPolicy.h)
 
 source_group("Light" FILES ${LIGHT_FILES})

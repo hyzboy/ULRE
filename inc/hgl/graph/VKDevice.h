@@ -31,12 +31,6 @@ struct CopyBufferToImageInfo;
 
 class GPUDevice
 {
-private:    //module
-
-    GraphModuleManager *graph_module_manager;
-
-    SwapchainModule *swapchain_module;
-
 private:
 
     GPUDeviceAttribute *attr;
