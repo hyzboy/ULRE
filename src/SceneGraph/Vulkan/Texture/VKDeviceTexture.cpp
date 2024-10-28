@@ -1,12 +1,22 @@
-﻿#include<hgl/graph/VKDevice.h>
+﻿#include<hgl/graph/manager/TextureManager.h>
+#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
 #include"CopyBufferToImage.h"
 
 VK_NAMESPACE_BEGIN
-bool GPUDevice::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling) const
+
+DeviceBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size,const void *data)
 {
-    const VkFormatProperties fp=attr->physical_device->GetFormatProperties(format);
+    if(size<=0)
+        return(nullptr);
+
+    return GetDevice()->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+}
+
+bool TextureManager::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling) const
+{
+    const VkFormatProperties fp=GetPhysicalDevice()->GetFormatProperties(format);
     
     if(tiling==ImageTiling::Optimal)
         return(fp.optimalTilingFeatures&bits);
@@ -14,7 +24,7 @@ bool GPUDevice::CheckFormatSupport(const VkFormat format,const uint32_t bits,Ima
         return(fp.linearTilingFeatures&bits);
 }
 
-void GPUDevice::Clear(TextureCreateInfo *tci)
+void TextureManager::Clear(TextureCreateInfo *tci)
 {
     if(!tci)return;
 
@@ -25,7 +35,7 @@ void GPUDevice::Clear(TextureCreateInfo *tci)
     delete tci;
 }
 
-bool GPUDevice::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipelineStageFlags destinationStage)
+bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipelineStageFlags destinationStage)
 {
     if(!info)
         return(false);
@@ -75,7 +85,7 @@ bool GPUDevice::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipelineSt
     return(true);
 }
 
-bool GPUDevice::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *buffer_image_copy,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf)
         return(false);
@@ -97,7 +107,7 @@ bool GPUDevice::CopyBufferToImage(Texture *tex,DeviceBuffer *buf,const VkBufferI
     return CopyBufferToImage(&info,destinationStage);
 }
 
-bool GPUDevice::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
+bool TextureManager::SubmitTexture(const VkCommandBuffer *cmd_bufs,const uint32_t count)
 {
     if(!cmd_bufs||count<=0)
         return(false);

@@ -276,12 +276,12 @@ SOURCE_GROUP("Scene Graph\\Component" FILES ${SG_COMPONENT_HEADER} ${SG_COMPONEN
 
 #-GraphModule,RenderFramework-------------------------------------------
 
-SET(SGM_HEADER_PATH ${SG_INCLUDE_PATH}/module)
+SET(SG_MODULE_HEADER_PATH ${SG_INCLUDE_PATH}/module)
 
-SET(GRAPH_MODULE_HEADER ${SGM_HEADER_PATH}/GraphModule.h
-                        ${SGM_HEADER_PATH}/GraphModuleFactory.h
-                        ${SGM_HEADER_PATH}/RenderModule.h
-                        ${SGM_HEADER_PATH}/SwapchainModule.h)
+SET(GRAPH_MODULE_HEADER ${SG_MODULE_HEADER_PATH}/GraphModule.h
+                        ${SG_MODULE_HEADER_PATH}/GraphModuleFactory.h
+                        ${SG_MODULE_HEADER_PATH}/RenderModule.h
+                        ${SG_MODULE_HEADER_PATH}/SwapchainModule.h)
 
 SET(GRAPH_MODULE_SOURCE module/GraphModule.cpp
                         module/GraphModuleManager.cpp
@@ -290,12 +290,22 @@ SET(GRAPH_MODULE_SOURCE module/GraphModule.cpp
                         module/RegistryCommonModule.cpp
                         module/SwapchainModule.cpp)
 
+SOURCE_GROUP("Render Framework\\Module" FILES   ${GRAPH_MODULE_HEADER}
+                                                ${GRAPH_MODULE_SOURCE})
+
+SET(SG_MANAGER_HEADER_PATH ${SG_INCLUDE_PATH}/manager)
+
+SET(GRAPH_MANAGER_HEADER    ${SG_MANAGER_HEADER_PATH}/GraphManager.h
+                            ${SG_MANAGER_HEADER_PATH}/TextureManager.h)
+SET(GRAPH_MANAGER_SOURCE    manager/GraphManager.cpp
+                            manager/TextureManager.cpp)
+
+SOURCE_GROUP("Render Framework\\Manager" FILES ${GRAPH_MANAGER_HEADER} ${GRAPH_MANAGER_SOURCE})
+
 SET(RENDER_FRAMEWORK_FILES  ${SG_INCLUDE_PATH}/RenderFramework.h
                             RenderFramework.cpp)
 
-SOURCE_GROUP("Render Framework" FILES   ${GRAPH_MODULE_HEADER}
-                                        ${GRAPH_MODULE_SOURCE}
-                                        ${RENDER_FRAMEWORK_FILES})
+SOURCE_GROUP("Render Framework" FILES   ${RENDER_FRAMEWORK_FILES})
 
 SET(DEFERRED_RENDER_HEADER  ${SG_INCLUDE_PATH}/deferred/GBufferFormat.h)
 SET(DEFERRED_RENDER_SOURCE  deferred/GBufferFormat.cpp)
@@ -372,6 +382,9 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOUR
                                         ${VULKAN_RENDER_SOURCE}
                                         ${VULKAN_SURFACE_SOURCE}
 
-                                        ${GRAPH_MODULE_HEADER} ${GRAPH_MODULE_SOURCE} ${RENDER_FRAMEWORK_FILES}
+                                        ${GRAPH_MODULE_HEADER} ${GRAPH_MODULE_SOURCE}
+                                        ${GRAPH_MANAGER_HEADER} ${GRAPH_MANAGER_SOURCE}
+                                        ${RENDER_FRAMEWORK_FILES}
+
                                         ${DEFERRED_RENDER_HEADER} ${DEFERRED_RENDER_SOURCE}
 )

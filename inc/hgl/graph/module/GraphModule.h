@@ -19,7 +19,7 @@ public:
     GraphModuleManager(GPUDevice *dev){device=dev;}
     ~GraphModuleManager();
 
-    GPUDevice *GetDevice(){return device;}                                                          ///<取得GPU设备
+    GPUDevice *GetDevice()noexcept{return device;}                                                  ///<取得GPU设备
 
     /**
      * 获取指定名称的模块

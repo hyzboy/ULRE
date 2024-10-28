@@ -44,6 +44,12 @@ struct Swapchain;
 class RenderTarget;
 class RTSwapchain;
 
+struct CopyBufferToImageInfo;
+struct TextureData;
+struct TextureCreateInfo;
+
+struct Image2DRegion;
+
 class Texture;
 class Texture1D;
 class Texture1DArray;

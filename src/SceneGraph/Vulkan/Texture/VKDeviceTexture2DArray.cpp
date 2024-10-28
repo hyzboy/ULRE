@@ -1,4 +1,5 @@
-﻿#include<hgl/graph/VKDevice.h>
+﻿#include<hgl/graph/manager/TextureManager.h>
+#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
@@ -7,15 +8,15 @@
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
-Texture2DArray *GPUDevice::CreateTexture2DArray(TextureData *tex_data)
+Texture2DArray *TextureManager::CreateTexture2DArray(TextureData *tex_data)
 {
     if(!tex_data)
         return(nullptr);
 
-    return(new Texture2DArray(attr->device,tex_data));
+    return(new Texture2DArray(GetVkDevice(),tex_data));
 }
 
-Texture2DArray *GPUDevice::CreateTexture2DArray(TextureCreateInfo *tci)
+Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
@@ -39,11 +40,11 @@ Texture2DArray *GPUDevice::CreateTexture2DArray(TextureCreateInfo *tci)
             return(nullptr);
         }
 
-        tci->memory=CreateMemory(tci->image);
+        tci->memory=GetDevice()->CreateMemory(tci->image);
     }
 
     if(!tci->image_view)
-        tci->image_view=CreateImageView2DArray(attr->device,tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
+        tci->image_view=CreateImageView2DArray(GetVkDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
     TextureData *tex_data=new TextureData(tci);
 
@@ -91,7 +92,7 @@ Texture2DArray *GPUDevice::CreateTexture2DArray(TextureCreateInfo *tci)
     return tex;
 }
 
-Texture2DArray *GPUDevice::CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const bool mipmaps)
+Texture2DArray *TextureManager::CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const bool mipmaps)
 {
     if(w*h*l<=0)
         return(nullptr);
@@ -204,7 +205,7 @@ Texture2DArray *GPUDevice::CreateTexture2DArray(const uint32_t w,const uint32_t 
 //    return result;
 //}
 
-bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf
         ||base_layer<0
@@ -224,7 +225,7 @@ bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,DeviceBuffer *buf,const
     return result;
 }
 
-bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,void *data,const uint32_t size,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2DArray(Texture2DArray *tex,const void *data,const VkDeviceSize size,const RectScope2ui &scope,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!data
         ||size<=0
@@ -236,7 +237,7 @@ bool GPUDevice::ChangeTexture2DArray(Texture2DArray *tex,void *data,const uint32
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
 
-    DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+    DeviceBuffer *buf=CreateTransferSourceBuffer(size,data);
 
     bool result=ChangeTexture2DArray(tex,buf,scope,base_layer,layer_count,destinationStage);
 

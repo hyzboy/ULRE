@@ -11,8 +11,6 @@ public:
 
     VkDevice                device          =VK_NULL_HANDLE;
     
-    VkExtent2D              extent;
-
     VkSwapchainKHR          swap_chain      =VK_NULL_HANDLE;
 
     uint32_t                color_count     =0;

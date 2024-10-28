@@ -1,3 +1,4 @@
+#include<hgl/graph/manager/TextureManager.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -6,15 +7,15 @@
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
-TextureCube *GPUDevice::CreateTextureCube(TextureData *tex_data)
+TextureCube *TextureManager::CreateTextureCube(TextureData *tex_data)
 {
     if(!tex_data)
         return(nullptr);
 
-    return(new TextureCube(attr->device,tex_data));
+    return(new TextureCube(GetVkDevice(),tex_data));
 }
 
-TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
+TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
@@ -34,11 +35,11 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
             return(nullptr);
         }
 
-        tci->memory=CreateMemory(tci->image);
+        tci->memory=GetDevice()->CreateMemory(tci->image);
     }
 
     if(!tci->image_view)
-        tci->image_view=CreateImageViewCube(attr->device,tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
+        tci->image_view=CreateImageViewCube(GetVkDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
     TextureData *tex_data=new TextureData(tci);
 
@@ -51,24 +52,24 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
     }
 
     if((!tci->buffer)&&tci->pixels&&tci->total_bytes>0)
-        tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->total_bytes,tci->pixels);
+        tci->buffer=CreateTransferSourceBuffer(tci->total_bytes,tci->pixels);
 
     if(tci->buffer)
     {
         texture_cmd_buf->Begin();
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
-            if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
+            if(tci->target_mipmaps<=1)      //鏈韩涓嶅惈mipmaps锛屼絾涔熶笉瑕乵ipmaps
             {
                 CommitTextureCube(tex,tci->buffer,tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
             }
-            else //本身有mipmaps数据
+            else //鏈韩鏈塵ipmaps鏁版嵁
             {
                 CommitTextureCubeMipmaps(tex,tci->buffer,tci->extent,tci->mipmap_zero_total_bytes);
             }
         }
         else
-            if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
+            if(tci->origin_mipmaps<=1)          //鏈韩涓嶅惈mipmaps鏁版嵁,鍙堟兂瑕乵ipmaps
             {
                 CommitTextureCube(tex,tci->buffer,tci->mipmap_zero_total_bytes,VK_PIPELINE_STAGE_TRANSFER_BIT);
                 GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,6);
@@ -84,7 +85,7 @@ TextureCube *GPUDevice::CreateTextureCube(TextureCreateInfo *tci)
     return tex;
 }
 
-bool GPUDevice::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||!mipmaps_zero_bytes)return(false);
     
@@ -93,7 +94,7 @@ bool GPUDevice::CommitTextureCube(TextureCube *tex,DeviceBuffer *buf,const uint3
     return CopyBufferToImageCube(tex,buf,&buffer_image_copy,destinationStage);
 }
 
-bool GPUDevice::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
       ||extent.width*extent.height<=0)
