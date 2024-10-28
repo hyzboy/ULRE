@@ -85,6 +85,9 @@ namespace
 
         if(require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
             ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+
+        if(require.blendOperationAdvanced>=VulkanHardwareRequirement::SupportLevel::Want)
+            ext_list->Add(VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME);
     }
 
     void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
@@ -323,6 +326,9 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
     {
         device_attr->uint32_index_type=true;
     }
+
+    if(require.blendOperationAdvanced>=VulkanHardwareRequirement::SupportLevel::Want)
+        device_attr->blendOpAdvance=true;
 
     device_attr->surface_format=surface_format;
 

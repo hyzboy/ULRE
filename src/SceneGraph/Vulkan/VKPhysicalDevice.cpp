@@ -70,6 +70,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         if(func)
         {
             VkPhysicalDeviceFeatures2 features2;
+            VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT boaf;
 
             features2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
             features2.pNext=&features11;
@@ -81,11 +82,16 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             features12.pNext=&features13;
 
             features13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features13.pNext=nullptr;
+            features13.pNext=&boaf;
+
+            boaf.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT;
+            boaf.pNext=nullptr;
 
             func(physical_device,&features2);
 
             hgl_cpy(features,features2.features);
+
+            blendOpAdvanced=boaf.advancedBlendCoherentOperations;
         }
         else
         {
@@ -114,7 +120,10 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             properties12.pNext=&properties13;
 
             properties13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-            properties13.pNext=nullptr;
+            properties13.pNext=&blendOpAdvProperties;
+
+            blendOpAdvProperties.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT;
+            blendOpAdvProperties.pNext=nullptr;
 
             func(physical_device,&properties2);
 

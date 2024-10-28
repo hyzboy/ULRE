@@ -19,6 +19,7 @@ class GPUPhysicalDevice
     VkPhysicalDeviceVulkan11Properties  properties11;
     VkPhysicalDeviceVulkan12Properties  properties12;
     VkPhysicalDeviceVulkan13Properties  properties13;
+    VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT blendOpAdvProperties;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
@@ -29,8 +30,10 @@ private:
 
     bool support_u8_index=false;
     bool dynamic_state=false;
-    
-public:    
+
+    bool blendOpAdvanced=false;
+
+public:
 
     const VkPhysicalDeviceFeatures &        GetFeatures10       ()const{return features;}
     const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
@@ -148,6 +151,13 @@ public:
 
     const VkBool32  SupportU32Index             ()const{return features.fullDrawIndexUint32;}
     const VkBool32  SupportU8Index              ()const{return support_u8_index;}
+
+    const VkBool32  SupportBlendOpAdvanced      ()const{return blendOpAdvanced;}
+
+    const VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT *GetBlendOpAdvancedProperties()const
+    {
+        return blendOpAdvanced?&blendOpAdvProperties:nullptr;
+    }
 
     // support != open, so please don't direct use GetFeatures().
     // open any features in CreateDevice()&SetDeviceFeatures() functions.

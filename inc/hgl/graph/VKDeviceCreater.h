@@ -98,6 +98,8 @@ struct VulkanHardwareRequirement
 
     uint32_t descriptor_pool;                  ///<描述符池大小(默认1024)
 
+    SupportLevel blendOperationAdvanced;       ///<要求支持高级混合
+
 public:
 
     VulkanHardwareRequirement()
@@ -110,6 +112,8 @@ public:
 
         fullDrawIndexUint8=SupportLevel::Want;
         fullDrawIndexUint32=SupportLevel::Want;
+
+        blendOperationAdvanced=SupportLevel::Want;
     }
 };
 

@@ -39,6 +39,8 @@ struct GPUDeviceAttribute
     VkSurfaceTransformFlagBitsKHR       preTransform;
     VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
+    bool                                blendOpAdvance  =false;
+
     bool                                uint8_index_type=false;
     bool                                uint32_index_type=false;
 
