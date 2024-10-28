@@ -24,10 +24,6 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
     texture_queue=nullptr;
     texture_cmd_buf=nullptr;
 
-    graph_module_manager=InitGraphModuleManager(this);
-
-    swapchain_module=graph_module_manager->GetModule<SwapchainModule>(true);
-
     InitRenderPassManage();
 
     sc_rt=nullptr;

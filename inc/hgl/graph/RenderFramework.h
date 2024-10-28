@@ -56,6 +56,11 @@ class TextureManager;
 
 class SwapchainModule;
 
+struct RenderFrameworkInitConfig
+{
+
+};//struct RenderFrameworkInitConfig
+
 /**
 * 渲染框架
 */
@@ -98,8 +103,10 @@ public:
 
     NO_COPY_NO_MOVE(RenderFramework)
 
-    RenderFramework(){}
-    virtual ~RenderFramework()=default;
+    RenderFramework();
+    virtual ~RenderFramework();
+
+    virtual bool Init();
 
     virtual void StartTime();
 

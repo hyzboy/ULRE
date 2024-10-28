@@ -4,6 +4,19 @@
 
 VK_NAMESPACE_BEGIN
 
+RenderFramework::RenderFramework()
+{
+
+
+    graph_module_manager=InitGraphModuleManager(device);
+
+    swapchain_module=graph_module_manager->GetModule<SwapchainModule>(device);
+}
+
+RenderFramework::~RenderFramework()
+{
+}
+
 void RenderFramework::StartTime()
 {
     last_time=cur_time=GetDoubleTime();
