@@ -191,7 +191,7 @@ Texture2DArray *RenderResource::CreateTexture2DArray(const AnsiString &name,cons
     return ta;
 }
 
-bool LoadTexture2DLayerFromFile(GPUDevice *device,Texture2DArray *t2d,const uint32_t layer,const OSString &filename,bool auto_mipmaps);
+bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *t2d,const uint32_t layer,const OSString &filename,bool auto_mipmaps);
 
 bool RenderResource::LoadTexture2DToArray(Texture2DArray *ta,const uint32_t layer,const OSString &filename)
 {
