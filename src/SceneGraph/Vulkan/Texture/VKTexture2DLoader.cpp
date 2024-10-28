@@ -12,12 +12,15 @@ template<> void VkTextureLoader<Texture2D,Texture2DLoader>::OnExtent(VkExtent3D 
 
 template<> Texture2D *VkTextureLoader<Texture2D,Texture2DLoader>::OnCreateTexture(TextureCreateInfo *tci)
 {
-    return device->CreateTexture2D(tci);
+    return tex_manager->CreateTexture2D(tci);
 }
 
-Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps)
+Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps)
 {
-    VkTextureLoader<Texture2D,Texture2DLoader> loader(device,auto_mipmaps);
+    if(!tm||filename.IsEmpty())
+        return(nullptr);
+
+    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps);
 
     if(!loader.Load(filename))
         return(nullptr);

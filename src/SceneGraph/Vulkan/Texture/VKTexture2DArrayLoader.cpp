@@ -1,6 +1,8 @@
 ﻿#include"VKTextureLoader.h"
 #include<hgl/io/FileInputStream.h>
 #include<hgl/log/LogInfo.h>
+#include<hgl/graph/VKTexture.h>
+#include<hgl/graph/manager/TextureManager.h>
 
 VK_NAMESPACE_BEGIN
 //template<> void VkTextureLoader<Texture2DArray,Texture2DArrayLoader>::OnExtent(VkExtent3D &extent)
@@ -15,10 +17,13 @@ VK_NAMESPACE_BEGIN
 //    return device->CreateTexture2DArray(tci);
 //}
 
-bool LoadTexture2DLayerFromFile(GPUDevice *device,Texture2DArray *ta,const uint32_t layer,const OSString &filename,bool auto_mipmaps)
+bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *ta,const uint32_t layer,const OSString &filename,bool auto_mipmaps)
 {
+    if(!tm||filename.IsEmpty())
+        return(false);
+
     //注：依然是Texture2D，则非Texture2DArray。因为这里LOAD的是2D纹理，并不是2DArray纹理
-    VkTextureLoader<Texture2D,Texture2DLoader> loader(device,auto_mipmaps);
+    VkTextureLoader<Texture2D,Texture2DLoader> loader(tm,auto_mipmaps);
 
     if(!loader.Load(filename))
         return(false);
@@ -33,6 +38,6 @@ bool LoadTexture2DLayerFromFile(GPUDevice *device,Texture2DArray *ta,const uint3
     scope.Width=ta->GetWidth();
     scope.Height=ta->GetHeight();
 
-    return device->ChangeTexture2DArray(ta,buf,scope,layer,1);
+    return tm->ChangeTexture2DArray(ta,buf,scope,layer,1);
 }
 VK_NAMESPACE_END

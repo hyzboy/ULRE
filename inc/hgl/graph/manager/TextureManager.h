@@ -15,14 +15,14 @@ class TextureManager:public GraphManager
     DeviceQueue *texture_queue;
     TextureCmdBuffer *texture_cmd_buf;
 
-protected:
-
-    DeviceBuffer *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);
-
 public:
 
     TextureManager();
     virtual ~TextureManager();
+
+public:     //Buffer
+
+    DeviceBuffer *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);
 
 public:     //Image
 
