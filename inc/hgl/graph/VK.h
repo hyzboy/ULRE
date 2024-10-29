@@ -4,6 +4,7 @@
 #include<hgl/math/Math.h>
 #include<hgl/type/String.h>
 #include<hgl/type/Map.h>
+#include<hgl/type/IDName.h>
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/VKPrimitiveType.h>
@@ -23,6 +24,10 @@ constexpr size_t VK_DESCRIPTOR_TYPE_END_RANGE=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMEN
 #ifndef VK_DESCRIPTOR_TYPE_RANGE_SIZE
 constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_DESCRIPTOR_TYPE_BEGIN_RANGE+1;
 #endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
+
+DefineIDName(TEXTURE_NAME,char)
+DefineIDName(SHADER_NAME,char)
+DefineIDName(RENDER_BUFFER_NAME,char)
 
 class TextureManager;
 

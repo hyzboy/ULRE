@@ -20,7 +20,7 @@ enum class LightingCullingMode
 
     /**
     * 基于Tile的剔除模式的改进型
-    * 同Tile方法，得出Tile后，再通过Compute Shader遍历Tile内所有象素，得出当前Tile的最远z值和最近z值。
+    * 同Tile方法，得出Tile后，再通过遍历Tile内所有象素，得出当前Tile的最远z值和最近z值。
     * 根据XY与zNear/zFar得出一个Volume，计算所有光源与Volume相交性。
     */
     TileVolume,     ///<瓦片体积剔除

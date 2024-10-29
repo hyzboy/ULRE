@@ -327,8 +327,11 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->uint32_index_type=true;
     }
 
-    if(require.blendOperationAdvanced>=VulkanHardwareRequirement::SupportLevel::Want)
+    if(physical_device->SupportBlendOpAdvanced()
+     &&require.blendOperationAdvanced>=VulkanHardwareRequirement::SupportLevel::Want)
+    {
         device_attr->blendOpAdvance=true;
+    }
 
     device_attr->surface_format=surface_format;
 

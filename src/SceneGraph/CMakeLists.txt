@@ -304,6 +304,8 @@ SET(GRAPH_MANAGER_SOURCE    manager/GraphManager.cpp
 SOURCE_GROUP("Render Framework\\Manager" FILES ${GRAPH_MANAGER_HEADER} ${GRAPH_MANAGER_SOURCE})
 
 SET(RENDER_FRAMEWORK_FILES  ${SG_INCLUDE_PATH}/RenderFramework.h
+                            ${SG_INCLUDE_PATH}/RenderBufferName.h
+                            ${SG_INCLUDE_PATH}/RenderWorkflow.h
                             RenderFramework.cpp)
 
 SOURCE_GROUP("Render Framework" FILES   ${RENDER_FRAMEWORK_FILES})
