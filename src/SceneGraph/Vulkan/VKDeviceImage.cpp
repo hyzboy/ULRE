@@ -1,8 +1,8 @@
-#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/manager/TextureManager.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
-VkImage GPUDevice::CreateImage(VkImageCreateInfo *ici)
+VkImage TextureManager::CreateImage(VkImageCreateInfo *ici)
 {
     if(!ici)return(VK_NULL_HANDLE);
     if(!CheckVulkanFormat(ici->format))return(VK_NULL_HANDLE);
@@ -10,16 +10,16 @@ VkImage GPUDevice::CreateImage(VkImageCreateInfo *ici)
 
     VkImage image;
 
-    if(vkCreateImage(attr->device,ici, nullptr, &image)!=VK_SUCCESS)
+    if(vkCreateImage(GetVkDevice(),ici, nullptr, &image)!=VK_SUCCESS)
         return(nullptr);
 
     return image;
 }
 
-void GPUDevice::DestroyImage(VkImage img)
+void TextureManager::DestroyImage(VkImage img)
 {
     if(img==VK_NULL_HANDLE)return;
 
-    vkDestroyImage(attr->device,img,nullptr);
+    vkDestroyImage(GetVkDevice(),img,nullptr);
 }
 VK_NAMESPACE_END
