@@ -2,7 +2,7 @@
 
 #include<hgl/graph/BlendMode.h>
 #include<hgl/graph/RenderBufferName.h>
-#include<hgl/type/SortedSets.h>
+#include<hgl/type/SortedSet.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -24,7 +24,7 @@ struct RenderWorkConfig
     BlendMode blend_mode;
     RenderOrder render_order;
 
-    SortedSets<RENDER_BUFFER_NAME> output_buffer;
+    SortedSet<RENDER_BUFFER_NAME> output_buffer;
 };//struct RenderWorkConfig;
 
 VK_NAMESPACE_END
