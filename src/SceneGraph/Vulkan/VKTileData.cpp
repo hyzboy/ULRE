@@ -1,6 +1,8 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/TileData.h>
+#include<hgl/graph/manager/TextureManager.h>
+#include<hgl/graph/RenderFramework.h>
 
 namespace
 {
@@ -61,7 +63,7 @@ namespace
 }//namespace
 
 VK_NAMESPACE_BEGIN
-TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
+TileData *RenderFramework::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
 {
     if(!CheckVulkanFormat(format))
         return(nullptr);
@@ -69,7 +71,7 @@ TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const
     if(width<=0||height<=0||count<=0)
         return(nullptr);
 
-    const uint32_t max_2d_texture=attr->physical_device->GetMaxImage2D();
+    const uint32_t max_2d_texture=device->GetPhysicalDevice()->GetMaxImage2D();
 
     uint tex_width,tex_height;
 
@@ -84,16 +86,16 @@ TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const
 
     if(RangeCheck(vf->color))
     {
-        tex=CreateTexture2D(new ColorTextureCreateInfo(format,extent));
+        tex=texture_manager->CreateTexture2D(new ColorTextureCreateInfo(format,extent));
     }
     else
     if(RangeCheck(vf->depth))
     {
-        tex=CreateTexture2D(new DepthTextureCreateInfo(format,extent));
+        tex=texture_manager->CreateTexture2D(new DepthTextureCreateInfo(format,extent));
     }
     else
         return(nullptr);
 
-    return(new TileData(this,tex,width,height));
+    return(new TileData(texture_manager,tex,width,height));
 }
 VK_NAMESPACE_END

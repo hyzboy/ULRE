@@ -1,10 +1,13 @@
 ﻿#include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKImageView.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/graph/manager/TextureManager.h>
 VK_NAMESPACE_BEGIN
 Texture::~Texture()
 {
     if(!data)return;
+
+    manager->Release(this);
 
     if(data->image_view)
         delete data->image_view;

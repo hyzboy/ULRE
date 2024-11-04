@@ -1,16 +1,22 @@
 #pragma once
 
 #include<hgl/graph/manager/GraphManager.h>
-#include<hgl/type/SortedSets.h>
+#include<hgl/type/SortedSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/RectScope.h>
+#include<hgl/type/object/ObjectBaseInfo.h>
 #include<hgl/graph/ImageRegion.h>
 
 VK_NAMESPACE_BEGIN
 
+using TextureID             =int;
+
 class TextureManager:public GraphManager
 {
-    SortedSets<Texture *> texture_list;
+    SortedSet<VkImage> image_set;
+    SortedSet<Texture *> texture_set;                                           ///<纹理合集
+
+private:
 
     DeviceQueue *texture_queue;
     TextureCmdBuffer *texture_cmd_buf;
@@ -20,11 +26,13 @@ public:
     TextureManager();
     virtual ~TextureManager();
 
-public:     //Buffer
+private:     //Buffer
 
     DeviceBuffer *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);
 
-public:     //Image
+    friend class TileData;
+
+private:     //Image
 
     VkImage CreateImage         (VkImageCreateInfo *);
     void    DestroyImage        (VkImage);
@@ -80,6 +88,9 @@ public: //Create/Chagne
     bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,                       const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     bool ChangeTexture2DArray(Texture2DArray *,const void *data,const VkDeviceSize size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
+public:
+
+    void Release(Texture *);
 };//class TextureManager
 
 VK_NAMESPACE_END

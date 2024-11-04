@@ -34,7 +34,6 @@ using DescriptorSetID       =int;
 using PrimitiveID           =int;
 using RenderableID          =int;
 using SamplerID             =int;
-using TextureID             =int;
 using StaticMeshID          =int;
 
 class VertexAttribData;
@@ -59,7 +58,6 @@ class RenderResource
     IDObjectManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
     IDObjectManage<BufferID,               DeviceBuffer>       rm_buffers;                 ///<顶点缓冲区合集
     IDObjectManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
-    IDObjectManage<TextureID,              Texture>            rm_textures;                ///<纹理合集
     IDObjectManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
     IDObjectManage<StaticMeshID,           StaticMesh>         rm_static_mesh;             ///<静态网格合集
@@ -105,7 +103,7 @@ public: //添加数据到管理器（如果指针为nullptr会返回-1）
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
     BufferID                Add(DeviceBuffer *      buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
-    TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
+//    TextureID               Add(Texture *           t   ){return rm_textures.Add(t);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
     StaticMeshID            Add(StaticMesh *        sm  ){return rm_static_mesh.Add(sm);}
 
@@ -175,7 +173,7 @@ public: //Get
     Primitive *         GetPrimitive            (const PrimitiveID          &id){return rm_primitives.Get(id);}
     DeviceBuffer *      GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
-    Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
+//    Texture *           GetTexture              (const TextureID            &id){return rm_textures.Get(id);}
     Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
 
     StaticMesh *        GetStaticMesh           (const StaticMeshID         &id){return rm_static_mesh.Get(id);}
@@ -188,7 +186,7 @@ public: //Release
     void Release(Primitive *         p   ){rm_primitives.Release(p);}
     void Release(DeviceBuffer *      buf ){rm_buffers.Release(buf);}
     void Release(Sampler *           s   ){rm_samplers.Release(s);}
-    void Release(Texture *           t   ){rm_textures.Release(t);}
+//    void Release(Texture *           t   ){rm_textures.Release(t);}
     void Release(Renderable *        r   ){rm_renderables.Release(r);}
 
     void Release(StaticMesh *        sm  ){rm_static_mesh.Release(sm);}

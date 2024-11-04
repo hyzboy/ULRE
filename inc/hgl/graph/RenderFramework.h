@@ -7,36 +7,41 @@
 VK_NAMESPACE_BEGIN
 
 class GraphModule;
+class TileData;
+class TileFont;
+class FontSource;
 
-/**
- * 渲染模块工作配置
- */
-class GraphModuleWorkConfig
-{
-    /**
-     * 渲染模块名称
-     * 在render_module为nullptr时，用于创建或加载RenderModule。
-     * 它和RenderModule返回的名称有可能一样，但也有可能不一样。
-     */
-    AnsiString render_module_name;
-    GraphModule *render_module=nullptr;
-
-    BlendMode blend_mode;
-    RenderOrder render_order;
-
-public:
-
-    const AnsiString &GetModuleName()const{return render_module_name;}                              ///<取得渲染模块名称
-
-    GraphModule *GetModule(){return render_module;}                                                ///<取得渲染模块
-
-public:
-
-    GraphModuleWorkConfig();
-    virtual ~GraphModuleWorkConfig()=default;
-};//class GraphModuleWorkConfig
+//
+///**
+// * 渲染模块工作配置
+// */
+//class GraphModuleWorkConfig
+//{
+//    /**
+//     * 渲染模块名称
+//     * 在render_module为nullptr时，用于创建或加载RenderModule。
+//     * 它和RenderModule返回的名称有可能一样，但也有可能不一样。
+//     */
+//    AnsiString render_module_name;
+//    GraphModule *render_module=nullptr;
+//
+//    BlendMode blend_mode;
+//    RenderOrder render_order;
+//
+//public:
+//
+//    const AnsiString &GetModuleName()const{return render_module_name;}                              ///<取得渲染模块名称
+//
+//    GraphModule *GetModule(){return render_module;}                                                ///<取得渲染模块
+//
+//public:
+//
+//    GraphModuleWorkConfig();
+//    virtual ~GraphModuleWorkConfig()=default;
+//};//class GraphModuleWorkConfig
 
 class Window;
+class VulkanInstance;
 
 class TextureManager;
 
@@ -105,6 +110,12 @@ public:
     virtual void EndFrame(){};                                                                      ///<当前帧结束
 
     virtual void MainLoop();                                                                        ///<主循环
+
+public: //TileData
+
+    TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
+    
+    TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class RenderFramework
 
 VK_NAMESPACE_END

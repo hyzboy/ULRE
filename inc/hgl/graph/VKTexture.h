@@ -15,10 +15,14 @@ class Texture
 {
 protected:
 
+    TextureManager *manager;
+
     VkDevice device;
     TextureData *data;
 
 public:
+
+    TextureManager *            GetManager          ()      {return manager;}
 
     TextureData *               GetData             ()      {return data;}
 
@@ -40,9 +44,9 @@ public:
 
 public:
 
-    Texture(VkDevice dev,TextureData *td)
+    Texture(TextureManager *tm,TextureData *td)
     {
-        device=dev;
+        manager=tm;
         data=td;
     }
 
@@ -95,7 +99,7 @@ class TextureCube:public Texture
 {
 public:
 
-    TextureCube(VkDevice dev,TextureData *td):Texture(dev,td){}
+    using Texture::Texture;
     ~TextureCube()=default;
 
     static VkImageViewType GetImageViewType(){return VK_IMAGE_VIEW_TYPE_CUBE;}

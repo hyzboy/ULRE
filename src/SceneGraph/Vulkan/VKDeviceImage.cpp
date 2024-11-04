@@ -13,12 +13,19 @@ VkImage TextureManager::CreateImage(VkImageCreateInfo *ici)
     if(vkCreateImage(GetVkDevice(),ici, nullptr, &image)!=VK_SUCCESS)
         return(nullptr);
 
+    image_set.Add(image);
+
     return image;
 }
 
 void TextureManager::DestroyImage(VkImage img)
 {
     if(img==VK_NULL_HANDLE)return;
+
+    if(!image_set.Contains(img))
+        return;
+
+    image_set.Delete(img);
 
     vkDestroyImage(GetVkDevice(),img,nullptr);
 }

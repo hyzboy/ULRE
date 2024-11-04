@@ -9,7 +9,7 @@ const RENDER_BUFFER_NAME RenderBuffer_Swapchain     ="Swapchain";
 const RENDER_BUFFER_NAME RenderBuffer_Depth         ="Depth";
 const RENDER_BUFFER_NAME RenderBuffer_Stencil       ="Stencil";
 
-const RENDER_BUFFER_NAME VBuffer_MeshID             ="VB_MeshID";               ///< 所绘制的Mesh编号, R32UI格式
+const RENDER_BUFFER_NAME VBuffer_MeshID             ="VB_MeshID";               ///< 所绘制的Mesh编号, RGBA8UI格式
 const RENDER_BUFFER_NAME VBuffer_TriangleID         ="VB_TriangleID";           ///< 三角形编号, R8UI格式
 const RENDER_BUFFER_NAME VBuffer_MaterialID         ="VB_MaterialID";           ///< 材质ID与材质实例ID, RG8UI格式
 

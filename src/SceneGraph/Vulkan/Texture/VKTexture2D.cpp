@@ -13,7 +13,11 @@ Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
     if(!tex_data)
         return(nullptr);
 
-    return(new Texture2D(GetVkDevice(),tex_data));
+    Texture2D *tex=new Texture2D(GetVkDevice(),tex_data);
+
+    texture_set.Add(tex);
+
+    return tex;
 }
 
 Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
