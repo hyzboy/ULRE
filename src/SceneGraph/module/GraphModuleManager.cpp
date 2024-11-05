@@ -97,6 +97,15 @@ GraphModuleManager::~GraphModuleManager()
     }
 }
 
+void GraphModuleManager::ReleaseModule(GraphModule *gm)
+{
+    if(!gm)
+        return;
+
+    graph_module_map.DeleteByValue(gm);
+    delete gm;
+}
+
 void GraphModuleManager::OnResize(const VkExtent2D &extent)
 {
     if(graph_module_map.IsEmpty())

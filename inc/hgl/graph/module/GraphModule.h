@@ -34,6 +34,8 @@ public:
     template<typename T>
     T *GetModule(bool create=false){return (T *)GetModule(T::GetModuleName(),create);}              ///<获取指定类型的模块
 
+    void ReleaseModule(GraphModule *);                                                              ///<释放指定模块
+
     const bool IsLoaded(const AnsiIDName &name){return graph_module_map.ContainsKey(name);}         ///<是否已经加载了指定类型的模块
 
     template<typename T>
