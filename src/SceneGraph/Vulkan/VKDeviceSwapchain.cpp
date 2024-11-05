@@ -1,6 +1,8 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/VKSwapchain.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -82,17 +84,17 @@ namespace
     }
 }//namespace
 
-bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
+bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 {
-    if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->color_count),nullptr)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),nullptr)!=VK_SUCCESS)
         return(false);
 
     AutoDeleteArray<VkImage> sc_images(swapchain->color_count);
 
-    if(vkGetSwapchainImagesKHR(attr->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
         return(false);
 
-    swapchain->sc_depth =CreateTexture2D(new SwapchainDepthTextureCreateInfo(attr->physical_device->GetDepthFormat(),swapchain->extent));
+    swapchain->sc_depth =CreateTexture2D(new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),swapchain->extent));
 
     if(!swapchain->sc_depth)
         return(false);
@@ -134,14 +136,14 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
     return(true);
 }
 
-Swapchain *GPUDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
+Swapchain *SwapchainModule::CreateSwapchain(const VkExtent2D &acquire_extent)
 {
     Swapchain *swapchain=new Swapchain;
 
-    swapchain->device          =attr->device;
+    swapchain->device          =GetVkDevice();
     swapchain->extent          =acquire_extent;
 
-    swapchain->swap_chain      =CreateSwapChain(attr,acquire_extent);
+    swapchain->swap_chain      =CreateSwapChain(GetDeviceAttribute(),acquire_extent);
 
     if(swapchain->swap_chain)
     if(CreateSwapchainFBO(swapchain))

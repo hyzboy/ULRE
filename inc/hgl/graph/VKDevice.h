@@ -51,10 +51,6 @@ private:
 
     VkCommandBuffer CreateCommandBuffer(const AnsiString &);
 
-    bool CreateSwapchainFBO(Swapchain *);
-
-    Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
-
 private:
 
     friend class VulkanDeviceCreater;

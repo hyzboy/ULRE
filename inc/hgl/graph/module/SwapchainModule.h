@@ -10,6 +10,12 @@ class SwapchainModule:public GraphModule
 
     RTSwapchain *swapchain_rt=nullptr;
 
+private:
+
+    bool CreateSwapchainFBO(Swapchain *);
+
+    Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
+
 public:
 
     GRAPH_MODULE_CONSTRUCT(Swapchain)
