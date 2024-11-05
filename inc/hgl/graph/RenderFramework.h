@@ -95,9 +95,13 @@ public:
 
 public: //module
 
+    template<typename T> T *GetModule(){return graph_module_manager->GetModule<T>(false);}          ///<获取指定类型的模块
+
     SwapchainModule *GetSwapchain(){return swapchain_module;}                                       ///<取得Swapchain模块
 
-    template<typename T> T *GetModule(){return graph_module_manager->GetModule<T>(false);}          ///<获取指定类型的模块
+public: //manager
+
+    TextureManager *GetTextureManager(){return texture_manager;}                                    ///<取得纹理管理器
 
 public:
 
