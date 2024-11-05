@@ -14,23 +14,16 @@
 
 VK_NAMESPACE_BEGIN
 
-GraphModuleManager *InitGraphModuleManager(GPUDevice *dev);
 bool ClearGraphModuleManager(GPUDevice *dev);
 
 GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
 
-    texture_queue=nullptr;
-    texture_cmd_buf=nullptr;
-
     InitRenderPassManage();
 
     sc_rt=nullptr;
     Resize(attr->surface_caps.currentExtent);
-
-    texture_cmd_buf=CreateTextureCommandBuffer(attr->physical_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
-    texture_queue=CreateQueue();
 }
 
 GPUDevice::~GPUDevice()
@@ -38,9 +31,6 @@ GPUDevice::~GPUDevice()
     ClearRenderPassManage();
 
     SAFE_CLEAR(sc_rt);
-
-    SAFE_CLEAR(texture_queue);
-    SAFE_CLEAR(texture_cmd_buf);
 
     delete attr;
     

@@ -1,20 +1,24 @@
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/Time.h>
 
 VK_NAMESPACE_BEGIN
 
+GraphModuleManager *InitGraphModuleManager(GPUDevice *dev);
+bool ClearGraphModuleManager(GPUDevice *dev);
+
 RenderFramework::RenderFramework()
 {
-
-
     graph_module_manager=InitGraphModuleManager(device);
 
-    swapchain_module=graph_module_manager->GetModule<SwapchainModule>(device);
+    swapchain_module=graph_module_manager->GetModule<SwapchainModule>(true);
 }
 
 RenderFramework::~RenderFramework()
 {
+//    if(swapchain_module)graph_module_manager->ReleaseModule(swapchain_module);
+
+    ClearGraphModuleManager(device);
 }
 
 void RenderFramework::StartTime()

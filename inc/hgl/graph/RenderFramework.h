@@ -3,10 +3,11 @@
 #include<hgl/graph/BlendMode.h>
 #include<hgl/type/List.h>
 #include<hgl/graph/ViewportInfo.h>
+#include<hgl/graph/module/GraphModule.h>
 
 VK_NAMESPACE_BEGIN
 
-class GraphModule;
+class GPUDevice;
 class TileData;
 class TileFont;
 class FontSource;
@@ -70,9 +71,11 @@ protected:
 
     ObjectList<GraphModule> module_list;
 
-    TextureManager *    texture_manager     =nullptr;
-
     SwapchainModule *   swapchain_module    =nullptr;
+
+protected:
+
+    TextureManager *    texture_manager     =nullptr;
 
 protected:
 
@@ -90,6 +93,12 @@ public:
     const uint64    GetFrameCount       ()const noexcept{return frame_count;}                       ///<取得当前帧数
     void            RestartFrameCount   ()noexcept{frame_count=0;}                                  ///<重新开始统计帧数
 
+public: //module
+
+    SwapchainModule *GetSwapchain(){return swapchain_module;}                                       ///<取得Swapchain模块
+
+    template<typename T> T *GetModule(){return graph_module_manager->GetModule<T>(false);}          ///<获取指定类型的模块
+
 public:
 
     NO_COPY_NO_MOVE(RenderFramework)
@@ -97,7 +106,7 @@ public:
     RenderFramework();
     virtual ~RenderFramework();
 
-    virtual bool Init();
+    virtual bool Init();                                                                            ///<初始化
 
     virtual void StartTime();
 

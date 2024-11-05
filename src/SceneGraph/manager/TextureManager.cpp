@@ -2,6 +2,18 @@
 
 VK_NAMESPACE_BEGIN
 
+TextureManager::TextureManager()
+{
+    texture_cmd_buf=CreateTextureCommandBuffer(attr->physical_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
+    texture_queue=CreateQueue();
+}
+
+TextureManager::~TextureManager()
+{
+    SAFE_CLEAR(texture_queue);
+    SAFE_CLEAR(texture_cmd_buf);
+}
+
 void TextureManager::Release(Texture *tex)
 {
     if(!tex)
@@ -10,7 +22,7 @@ void TextureManager::Release(Texture *tex)
     texture_set.Delete(tex);
 }
 
-Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
+Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps);
 
 Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipmaps)
 {
@@ -19,7 +31,7 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
     if(texture_by_name.Get(filename,(Texture *&)tex))
         return tex;
     
-    tex=CreateTexture2DFromFile(device,filename,auto_mipmaps);
+    tex=CreateTexture2DFromFile(this,filename,auto_mipmaps);
 
     if(tex)
     {
@@ -43,7 +55,7 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
 
 Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps)
 {
-    Texture2DArray *ta=device->CreateTexture2DArray(width,height,layer,fmt,auto_mipmaps);
+    Texture2DArray *ta=CreateTexture2DArray(width,height,layer,fmt,auto_mipmaps);
 
     if(ta)
         Add(ta);
@@ -70,13 +82,13 @@ bool TextureManager::LoadTexture2DToArray(Texture2DArray *ta,const uint32_t laye
 {
     if(!ta)return(false);
 
-    if(!LoadTexture2DLayerFromFile(device,ta,layer,filename,false))
+    if(!LoadTexture2DLayerFromFile(this,ta,layer,filename,false))
         return(false);
 
     return(true);
 }
 
-TextureCube *CreateTextureCubeFromFile(GPUDevice *device,const OSString &filename,bool auto_mipmaps);
+TextureCube *CreateTextureCubeFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps);
 
 TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_mipmaps)
 {
@@ -85,7 +97,7 @@ TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_
     if(texture_by_name.Get(filename,(Texture *&)tex))
         return tex;
 
-    tex=CreateTextureCubeFromFile(device,filename,auto_mipmaps);
+    tex=CreateTextureCubeFromFile(this,filename,auto_mipmaps);
 
     if(tex)
     {

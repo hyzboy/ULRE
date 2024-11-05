@@ -50,7 +50,6 @@ class RenderResource
     
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     Map<AnsiString,Material *> material_by_name;
-    //Map<OSString,Texture *> texture_by_name;
     
     IDObjectManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDObjectManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集

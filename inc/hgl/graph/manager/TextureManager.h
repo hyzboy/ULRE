@@ -16,6 +16,8 @@ class TextureManager:public GraphManager
     SortedSet<VkImage> image_set;
     SortedSet<Texture *> texture_set;                                           ///<纹理合集
 
+    Map<OSString,Texture *> texture_by_name;
+
 private:
 
     DeviceQueue *texture_queue;

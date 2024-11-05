@@ -12,7 +12,7 @@ TextureCube *TextureManager::CreateTextureCube(TextureData *tex_data)
     if(!tex_data)
         return(nullptr);
 
-    return(new TextureCube(GetVkDevice(),tex_data));
+    return(new TextureCube(this,tex_data));
 }
 
 TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)
