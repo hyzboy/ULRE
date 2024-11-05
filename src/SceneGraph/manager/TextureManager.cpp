@@ -1,11 +1,15 @@
 #include<hgl/graph/manager/TextureManager.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
 
-TextureManager::TextureManager()
+TextureManager::TextureManager(GPUDevice *dev):GraphManager(dev)
 {
-    texture_cmd_buf=CreateTextureCommandBuffer(attr->physical_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
-    texture_queue=CreateQueue();
+    texture_cmd_buf=dev->CreateTextureCommandBuffer(GetPhysicalDevice()->GetDeviceName()+AnsiString(":TexCmdBuffer"));
+    texture_queue=dev->CreateQueue();
+
+    texture_serial=0;
 }
 
 TextureManager::~TextureManager()
@@ -14,12 +18,47 @@ TextureManager::~TextureManager()
     SAFE_CLEAR(texture_cmd_buf);
 }
 
+const TextureID TextureManager::Add(Texture *tex)
+{
+    if(!tex)
+        return(-1);
+
+    if(tex->GetManager()!=this)
+        return(-2);
+
+    if(texture_set.Contains(tex))
+        return tex->GetID();
+
+    texture_set.Add(tex);
+    texture_by_id.Add(tex->GetID(),tex);
+
+    return tex->GetID();
+}
+
+const TextureID TextureManager::Add(Texture *tex,const OSString &tn)
+{
+    TextureID id=Add(tex);
+
+    if(id<0)
+        return id;
+
+    if(!tn.IsEmpty())
+        texture_by_name.Add(tn,tex);
+
+    return id;
+}
+
 void TextureManager::Release(Texture *tex)
 {
     if(!tex)
         return;
 
+    if(!texture_set.Contains(tex))
+        return;
+
     texture_set.Delete(tex);
+    texture_by_id.DeleteByKey(tex->GetID());
+    texture_by_name.DeleteByValue(tex);
 }
 
 Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps);
@@ -35,19 +74,18 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
 
     if(tex)
     {
-        texture_by_name.Add(filename,tex);
-        Add(tex);
+        Add(tex,filename);
 
-    #ifdef _DEBUG
-        DebugUtils *du=device->GetDebugUtils();
+    //#ifdef _DEBUG
+    //    DebugUtils *du=device->GetDebugUtils();
 
-        if(du)
-        {
-            const UTF8String name=U8_TEXT("Tex2D:")+ToUTF8String(filename);
-        
-            du->SetImage(tex->GetImage(),(char *)(name.c_str()));
-        }
-    #endif//_DEBUG
+    //    if(du)
+    //    {
+    //        const UTF8String name=U8_TEXT("Tex2D:")+ToUTF8String(filename);
+    //    
+    //        du->SetImage(tex->GetImage(),(char *)(name.c_str()));
+    //    }
+    //#endif//_DEBUG
     }
 
     return tex;
@@ -62,16 +100,16 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,cons
     else
         return nullptr;
 
-    #ifdef _DEBUG
-        DebugUtils *du=device->GetDebugUtils();
-        
-        if(du)
-        {
-            du->SetImage(ta->GetImage(),"Tex2DArrayImage:"+name);
-            du->SetImageView(ta->GetVulkanImageView(),"Tex2DArrayImageView:"+name);
-            du->SetDeviceMemory(ta->GetDeviceMemory(),"Tex2DArrayMemory:"+name);
-        }
-    #endif//_DEBUG
+    //#ifdef _DEBUG
+    //    DebugUtils *du=device->GetDebugUtils();
+    //    
+    //    if(du)
+    //    {
+    //        du->SetImage(ta->GetImage(),"Tex2DArrayImage:"+name);
+    //        du->SetImageView(ta->GetVulkanImageView(),"Tex2DArrayImageView:"+name);
+    //        du->SetDeviceMemory(ta->GetDeviceMemory(),"Tex2DArrayMemory:"+name);
+    //    }
+    //#endif//_DEBUG
 
     return ta;
 }
@@ -101,8 +139,7 @@ TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_
 
     if(tex)
     {
-        texture_by_name.Add(filename,tex);
-        Add(tex);
+        Add(tex,filename);
     }
 
     return tex;

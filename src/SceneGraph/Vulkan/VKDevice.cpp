@@ -40,8 +40,6 @@ GPUDevice::~GPUDevice()
 
 bool GPUDevice::Resize(const VkExtent2D &extent)
 {
-    graph_module_manager->OnResize(extent);
-
     SAFE_CLEAR(sc_rt);
 
     attr->RefreshSurfaceCaps();

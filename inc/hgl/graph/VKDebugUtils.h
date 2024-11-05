@@ -36,6 +36,7 @@ private:
     }
 
 public:
+
     ~DebugUtils()=default;
 
     void SetName(VkObjectType,uint64_t,const char *);

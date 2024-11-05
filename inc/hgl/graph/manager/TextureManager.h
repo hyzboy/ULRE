@@ -6,26 +6,38 @@
 #include<hgl/type/RectScope.h>
 #include<hgl/type/object/ObjectBaseInfo.h>
 #include<hgl/graph/ImageRegion.h>
+#include<hgl/graph/VKTexture.h>
 
 VK_NAMESPACE_BEGIN
 
-using TextureID             =int;
-
 class TextureManager:public GraphManager
 {
+    DeviceQueue *texture_queue;
+    TextureCmdBuffer *texture_cmd_buf;
+
+private:
+
+    TextureID texture_serial;
+
+    const TextureID AcquireID(){return texture_serial++;}                       ///<取得一个新的纹理ID
+
+private:
+
     SortedSet<VkImage> image_set;
     SortedSet<Texture *> texture_set;                                           ///<纹理合集
+
+    Map<TextureID,Texture *> texture_by_id;
 
     Map<OSString,Texture *> texture_by_name;
 
 private:
 
-    DeviceQueue *texture_queue;
-    TextureCmdBuffer *texture_cmd_buf;
+    const TextureID Add(Texture *);
+    const TextureID Add(Texture *,const OSString &);
 
 public:
 
-    TextureManager();
+    TextureManager(GPUDevice *);
     virtual ~TextureManager();
 
 public:     //Buffer

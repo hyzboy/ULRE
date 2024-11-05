@@ -17,10 +17,8 @@ public:
 
 public:
 
-    GraphManager(GPUDevice *dev)
-    {
-        device=dev;
-    }
+    GraphManager(GPUDevice *dev){device=dev;}
+    virtual ~GraphManager()=default;
 };//class GraphManager
 
 VK_NAMESPACE_END

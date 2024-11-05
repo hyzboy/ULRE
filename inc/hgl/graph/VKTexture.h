@@ -11,11 +11,14 @@ VK_NAMESPACE_BEGIN
 
 BitmapData *LoadBitmapFromFile(const OSString &filename);
 
+using TextureID=int;
+
 class Texture
 {
 protected:
 
     TextureManager *manager;
+    TextureID texture_id;
 
     VkDevice device;
     TextureData *data;
@@ -23,6 +26,7 @@ protected:
 public:
 
     TextureManager *            GetManager          ()      {return manager;}
+    const TextureID             GetID               ()const noexcept {return texture_id;}
 
     TextureData *               GetData             ()      {return data;}
 
@@ -44,9 +48,10 @@ public:
 
 public:
 
-    Texture(TextureManager *tm,TextureData *td)
+    Texture(TextureManager *tm,const TextureID &id,TextureData *td)
     {
         manager=tm;
+        texture_id=id;
         data=td;
     }
 
