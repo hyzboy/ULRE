@@ -20,7 +20,6 @@ protected:
     TextureManager *manager;
     TextureID texture_id;
 
-    VkDevice device;
     TextureData *data;
 
 public:
