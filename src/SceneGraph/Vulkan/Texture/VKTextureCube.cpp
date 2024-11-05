@@ -12,7 +12,11 @@ TextureCube *TextureManager::CreateTextureCube(TextureData *tex_data)
     if(!tex_data)
         return(nullptr);
 
-    return(new TextureCube(this,AcquireID(),tex_data));
+    TextureCube *tex=new TextureCube(this,AcquireID(),tex_data);
+
+    Add(tex);
+
+    return tex;
 }
 
 TextureCube *TextureManager::CreateTextureCube(TextureCreateInfo *tci)

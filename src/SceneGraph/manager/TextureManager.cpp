@@ -43,7 +43,7 @@ const TextureID TextureManager::Add(Texture *tex,const OSString &tn)
         return id;
 
     if(!tn.IsEmpty())
-        texture_by_name.Add(tn,tex);
+        texture_by_filename.Add(tn,tex);
 
     return id;
 }
@@ -58,7 +58,7 @@ void TextureManager::Release(Texture *tex)
 
     texture_set.Delete(tex);
     texture_by_id.DeleteByKey(tex->GetID());
-    texture_by_name.DeleteByValue(tex);
+    texture_by_filename.DeleteByValue(tex);
 }
 
 Texture2D *CreateTexture2DFromFile(TextureManager *tm,const OSString &filename,bool auto_mipmaps);
@@ -67,7 +67,7 @@ Texture2D *TextureManager::LoadTexture2D(const OSString &filename,bool auto_mipm
 {
     Texture2D *tex;
     
-    if(texture_by_name.Get(filename,(Texture *&)tex))
+    if(texture_by_filename.Get(filename,(Texture *&)tex))
         return tex;
     
     tex=CreateTexture2DFromFile(this,filename,auto_mipmaps);
@@ -132,7 +132,7 @@ TextureCube *TextureManager::LoadTextureCube(const OSString &filename,bool auto_
 {
     TextureCube *tex;
 
-    if(texture_by_name.Get(filename,(Texture *&)tex))
+    if(texture_by_filename.Get(filename,(Texture *&)tex))
         return tex;
 
     tex=CreateTextureCubeFromFile(this,filename,auto_mipmaps);

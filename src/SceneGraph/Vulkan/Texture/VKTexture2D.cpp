@@ -15,7 +15,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
 
     Texture2D *tex=new Texture2D(this,AcquireID(),tex_data);
 
-    texture_set.Add(tex);
+    Add(tex);
 
     return tex;
 }

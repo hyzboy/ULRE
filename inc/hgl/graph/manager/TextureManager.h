@@ -28,7 +28,7 @@ private:
 
     Map<TextureID,Texture *> texture_by_id;
 
-    Map<OSString,Texture *> texture_by_name;
+    Map<OSString,Texture *> texture_by_filename;
 
 private:
 
@@ -103,6 +103,13 @@ public: //Create/Chagne
 public:
 
     void Release(Texture *);
+    void Destory(Texture *tex)
+    {
+        if(!tex)return;
+
+        Release(tex);
+        delete tex;
+    }
 
 public: // Load
 

@@ -13,7 +13,11 @@ Texture2DArray *TextureManager::CreateTexture2DArray(TextureData *tex_data)
     if(!tex_data)
         return(nullptr);
 
-    return(new Texture2DArray(this,AcquireID(),tex_data));
+    Texture2DArray *tex=new Texture2DArray(this,AcquireID(),tex_data);
+
+    Add(tex);
+
+    return tex;
 }
 
 Texture2DArray *TextureManager::CreateTexture2DArray(TextureCreateInfo *tci)
