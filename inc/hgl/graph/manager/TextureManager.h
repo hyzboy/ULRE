@@ -26,11 +26,9 @@ public:
     TextureManager();
     virtual ~TextureManager();
 
-private:     //Buffer
+public:     //Buffer
 
     DeviceBuffer *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);
-
-    friend class TileData;
 
 private:     //Image
 
@@ -91,6 +89,15 @@ public: //Create/Chagne
 public:
 
     void Release(Texture *);
+
+public: // Load
+
+    Texture2D *         LoadTexture2D(const OSString &,bool auto_mipmaps=false);
+    TextureCube *       LoadTextureCube(const OSString &,bool auto_mipmaps=false);
+
+    Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
+    bool                LoadTexture2DToArray(Texture2DArray *,const uint32_t layer,const OSString &);
+
 };//class TextureManager
 
 VK_NAMESPACE_END
