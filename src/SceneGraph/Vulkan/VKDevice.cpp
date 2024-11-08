@@ -20,18 +20,11 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
 
-    InitRenderPassManage();
-
-    sc_rt=nullptr;
     Resize(attr->surface_caps.currentExtent);
 }
 
 GPUDevice::~GPUDevice()
 {
-    ClearRenderPassManage();
-
-    SAFE_CLEAR(sc_rt);
-
     delete attr;
     
     //按设计，上面那些rt/queue/cmdbuf都需要走graph_module_manager释放和申请

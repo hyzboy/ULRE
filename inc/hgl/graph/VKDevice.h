@@ -37,14 +37,6 @@ private:
 
 private:
 
-    RenderPassManager *render_pass_manage;
-    RenderPass *device_render_pass;
-
-    void InitRenderPassManage();
-    void ClearRenderPassManage();
-
-private:
-
     VkCommandBuffer CreateCommandBuffer(const AnsiString &);
 
 private:
@@ -70,8 +62,6 @@ public:
     const       VkFormat            GetSurfaceFormat    ()const {return attr->surface_format.format;}
     const       VkColorSpaceKHR     GetColorSpace       ()const {return attr->surface_format.colorSpace;}
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
-
-                RenderPass *        GetRenderPass       ()      {return device_render_pass;}
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
 

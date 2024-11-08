@@ -11,6 +11,7 @@ RenderFramework::RenderFramework()
 {
     graph_module_manager=InitGraphModuleManager(device);
 
+    render_pass_manager=graph_module_manager->GetModule<RenderPassManager>(true);
     swapchain_module=graph_module_manager->GetModule<SwapchainModule>(true);
 }
 

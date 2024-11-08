@@ -32,6 +32,8 @@ private:
                                         const List<VkSubpassDependency> &dependency,
                                         const RenderbufferInfo *);
 
+public:
+
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 };//class RenderPassManager
 VK_NAMESPACE_END

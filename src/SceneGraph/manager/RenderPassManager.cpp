@@ -294,6 +294,18 @@ RenderPass *RenderPassManager::CreateRenderPass(   const List<VkAttachmentDescri
 
 RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
 {
+    {
+        const auto *phy_dev=GetPhysicalDevice();
+        
+        for(const VkFormat &fmt:rbi->GetColorFormatList())
+            if(!phy_dev->IsColorAttachmentOptimal(fmt))
+                return(nullptr);
+            
+        if(rbi->HasDepthOrStencil())
+        if(!phy_dev->IsDepthAttachmentOptimal(rbi->GetDepthFormat()))
+                return(nullptr);
+    }
+
     RenderPassHASHCode hash;
     RenderPass *rp=nullptr;
 

@@ -44,6 +44,7 @@ class FontSource;
 class Window;
 class VulkanInstance;
 
+class RenderPassManager;
 class TextureManager;
 
 class SwapchainModule;
@@ -75,6 +76,7 @@ protected:
 
 protected:
 
+    RenderPassManager * render_pass_manager =nullptr;
     TextureManager *    texture_manager     =nullptr;
 
 protected:
@@ -101,6 +103,7 @@ public: //module
 
 public: //manager
 
+    RenderPassManager *GetRenderPassManager(){return render_pass_manager;}                          ///<取得渲染通道管理器
     TextureManager *GetTextureManager(){return texture_manager;}                                    ///<取得纹理管理器
 
 public:
