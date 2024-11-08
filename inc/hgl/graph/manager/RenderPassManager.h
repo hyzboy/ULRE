@@ -5,7 +5,7 @@
 #include<hgl/util/hash/Hash.h>
 
 VK_NAMESPACE_BEGIN
-using RenderPassHASHCode=util::HashCodeSHA1LE;
+using RenderPassHASHCode=util::HashCodeXXH3_128;
 
 class RenderPassManager:public GraphModule
 {
@@ -19,7 +19,6 @@ private:
 
     friend class GPUDevice;
 
-    //RenderPassManager(VkDevice,VkPipelineCache);
     GRAPH_MODULE_CONSTRUCT(RenderPassManager)
     ~RenderPassManager();
 
