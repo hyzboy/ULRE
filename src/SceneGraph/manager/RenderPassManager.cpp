@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDeviceRenderPassManage.h>
+#include<hgl/graph/manager/RenderPassManager.h>
 #include<hgl/graph/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN

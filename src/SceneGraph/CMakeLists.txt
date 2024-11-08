@@ -166,9 +166,7 @@ SET(VK_DEVICE_SOURCE    Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceSampler.cpp
                         Vulkan/VKDeviceMaterial.cpp
                         Vulkan/VKDeviceFramebuffer.cpp
-                        Vulkan/VKDeviceSwapchain.cpp
                         Vulkan/VKDeviceRenderPass.cpp
-                        Vulkan/VKDeviceRenderPassManage.cpp
                         Vulkan/VKDeviceRenderTarget.cpp)
 
 SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
@@ -298,8 +296,11 @@ SOURCE_GROUP("Render Framework\\Module" FILES   ${GRAPH_MODULE_HEADER}
 
 SET(SG_MANAGER_HEADER_PATH ${SG_INCLUDE_PATH}/manager)
 
-SET(GRAPH_MANAGER_HEADER    ${SG_MANAGER_HEADER_PATH}/TextureManager.h)
-SET(GRAPH_MANAGER_SOURCE    manager/TextureManager.cpp)
+SET(GRAPH_MANAGER_HEADER    ${SG_MANAGER_HEADER_PATH}/TextureManager.h
+                            ${SG_MANAGER_HEADER_PATH}/RenderPassManager.h)
+
+SET(GRAPH_MANAGER_SOURCE    manager/TextureManager.cpp
+                            manager/RenderPassManager.cpp)
 
 SOURCE_GROUP("Render Framework\\Manager" FILES ${GRAPH_MANAGER_HEADER} ${GRAPH_MANAGER_SOURCE})
 
