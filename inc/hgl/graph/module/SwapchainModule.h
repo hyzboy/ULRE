@@ -10,18 +10,25 @@ class SwapchainModule:public GraphModule
 
     RTSwapchain *swapchain_rt=nullptr;
 
-private:
+protected:
+
+    bool CreateSwapchain();
+
+    bool CreateSwapchainRenderTarget();
 
     bool CreateSwapchainFBO(Swapchain *);
 
-    Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
 
 public:
 
-    GRAPH_MODULE_CONSTRUCT(Swapchain)
+    GRAPH_MODULE_CONSTRUCT(SwapchainModule)
     virtual ~SwapchainModule()=default;
 
     bool Init() override;
-};//class SwapchainModule:public RenderModule
+
+            RTSwapchain *   GetRenderTarget ()      {return swapchain_rt;}
+
+    const   VkExtent2D &    GetSwapchainSize()const {return swapchain_rt->GetExtent();}
+};//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END

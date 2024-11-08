@@ -40,10 +40,6 @@ private:
     DeviceRenderPassManage *render_pass_manage;
     RenderPass *device_render_pass;
 
-    RTSwapchain *sc_rt;
-
-    RTSwapchain *CreateSwapchainRenderTarget();
-
     void InitRenderPassManage();
     void ClearRenderPassManage();
 
@@ -76,10 +72,6 @@ public:
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
                 RenderPass *        GetRenderPass       ()      {return device_render_pass;}
-
-                RTSwapchain *       GetSwapchainRT      ()      {return sc_rt;}
-
-    const       VkExtent2D &        GetSwapchainSize    ()const {return sc_rt->GetExtent();}
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
 
@@ -182,18 +174,6 @@ public:
     Semaphore *  CreateGPUSemaphore();
 
     DeviceQueue *CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
-
-public: //FrameBuffer相关
-
-    Framebuffer *CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
-//    Framebuffer *CreateFBO(RenderPass *,List<ImageView *> &color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *);
-
-public:
-    
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
 };//class GPUDevice
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DEVICE_INCLUDE
