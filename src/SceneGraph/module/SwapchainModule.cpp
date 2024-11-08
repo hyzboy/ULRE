@@ -1,7 +1,10 @@
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleFactory.h>
+#include<hgl/graph/manager/RenderPassManager.h>
+#include<hgl/graph/manager/TextureManager.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKDeviceAttribute.h>
+#include<hgl/graph/VKRenderTarget.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -68,7 +71,7 @@ namespace
         if(result!=VK_SUCCESS)
         {
             //LOG_ERROR(OS_TEXT("vkCreateSwapchainKHR failed, result = ")+OSString(result));
-            os_err<<"vkCreateSwapchainKHR failed, result="<<result<<std::endl;
+//            os_err<<"vkCreateSwapchainKHR failed, result="<<result<<std::endl;
 
             return(VK_NULL_HANDLE);
         }
@@ -82,7 +85,7 @@ namespace
     }
 }//namespace
 
-bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
+bool SwapchainModule::CreateSwapchainFBO()
 {
     if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),nullptr)!=VK_SUCCESS)
         return(false);
@@ -92,48 +95,47 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
     if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
         return(false);
 
+    const auto *dev_attr=GetDeviceAttribute();
     TextureManager *tex_manager=GetModule<TextureManager>();
 
     if(!tex_manager)
         return(false);
 
-    swapchain->sc_depth =tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),swapchain->extent));
+    swapchain->sc_depth =tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),dev_attr->surface_caps.currentExtent));
 
     if(!swapchain->sc_depth)
         return(false);
 
     //#ifdef _DEBUG
-    //    if(attr->debug_utils)
+    //    if(dev_attr->debug_utils)
     //    {
-    //        attr->debug_utils->SetImage(swapchain->sc_depth->GetImage(),"SwapchainDepthImage");
-    //        attr->debug_utils->SetImageView(swapchain->sc_depth->GetVulkanImageView(),"SwapchainDepthImageView");
-    //        attr->debug_utils->SetDeviceMemory(swapchain->sc_depth->GetDeviceMemory(),"SwapchainDepthMemory");
+    //        dev_attr->debug_utils->SetImage(swapchain->sc_depth->GetImage(),"SwapchainDepthImage");
+    //        dev_attr->debug_utils->SetImageView(swapchain->sc_depth->GetVulkanImageView(),"SwapchainDepthImageView");
+    //        dev_attr->debug_utils->SetDeviceMemory(swapchain->sc_depth->GetDeviceMemory(),"SwapchainDepthMemory");
     //    }
     //#endif//_DEBUG
 
     swapchain->sc_color =hgl_zero_new<Texture2D *>(swapchain->color_count);
     swapchain->sc_fbo   =hgl_zero_new<Framebuffer *>(swapchain->color_count);
 
-    const auto *attr=GetDeviceAttribute();
-
     for(uint32_t i=0;i<swapchain->color_count;i++)
     {
-        swapchain->sc_color[i]=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(attr->surface_format.format,swapchain->extent,sc_images[i]));
+        swapchain->sc_color[i]=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(dev_attr->surface_format.format,dev_attr->surface_caps.currentExtent,sc_images[i]));
 
         if(!swapchain->sc_color[i])
             return(false);
 
-        swapchain->sc_fbo[i]=tex_manager->CreateFBO( device_render_pass,
+        swapchain->sc_fbo[i]=tex_manager->CreateFBO( swapchain_rp,
                                             swapchain->sc_color[i]->GetImageView(),
                                             swapchain->sc_depth->GetImageView());
 
     //#ifdef _DEBUG
-    //    if(attr->debug_utils)
+    //    if(dev_attr->debug_utils)
     //    {
-    //        attr->debug_utils->SetImage(swapchain->sc_color[i]->GetImage(),"SwapchainColorImage_"+AnsiString::numberOf(i));
-    //        attr->debug_utils->SetImageView(swapchain->sc_color[i]->GetVulkanImageView(),"SwapchainColorImageView_"+AnsiString::numberOf(i));
+    //        dev_attr->debug_utils->SetImage(swapchain->sc_color[i]->GetImage(),"SwapchainColorImage_"+AnsiString::numberOf(i));
+    //        dev_attr->debug_utils->SetImageView(swapchain->sc_color[i]->GetVulkanImageView(),"SwapchainColorImageView_"+AnsiString::numberOf(i));
 
-    //        attr->debug_utils->SetFramebuffer(swapchain->sc_fbo[i]->GetFramebuffer(),"SwapchainFBO_"+AnsiString::numberOf(i));
+    //        dev_attr->debug_utils->SetFramebuffer(swapchain->sc_fbo[i]->GetFramebuffer(),"SwapchainFBO_"+AnsiString::numberOf(i));
     //    }
     //#endif//_DEBUG
     }
@@ -159,7 +161,7 @@ bool SwapchainModule::CreateSwapchain()
 
     if(swapchain->swap_chain)
     {
-        if(CreateSwapchainFBO(swapchain))
+        if(CreateSwapchainFBO())
             return swapchain;
     }
 
@@ -168,24 +170,54 @@ bool SwapchainModule::CreateSwapchain()
     return(false);
 }
 
-bool SwapchainModule::CreateSwapchainRenderTarget()
+SwapchainModule::~SwapchainModule()
 {
+    if(swapchain_rt)
+        delete swapchain_rt;
+
+    if(swapchain)
+        delete swapchain;
+}
+
+bool SwapchainModule::Init()
+{
+    RenderPassManager *rpm=GetModule<RenderPassManager>();
+
+    if(!rpm)
+        return(false);
+
+    {
+        auto *dev_attr=GetDeviceAttribute();
+
+        SwapchainRenderbufferInfo rbi(dev_attr->surface_format.format,dev_attr->physical_device->GetDepthFormat());
+
+        swapchain_rp=rpm->AcquireRenderPass(&rbi);
+
+        #ifdef _DEBUG
+            if(dev_attr->debug_utils)
+                dev_attr->debug_utils->SetRenderPass(swapchain_rp->GetVkRenderPass(),"SwapchainRenderPass");
+        #endif//_DEBUG
+    }
+
+    
     if(!CreateSwapchain())
         return(false);
 
-    GPUDevice *device=GetDevice();
+    {
+        GPUDevice *device=GetDevice();
 
-    DeviceQueue *q=device->CreateQueue(swapchain->color_count,false);
-    Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
-    Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
+        DeviceQueue *q=device->CreateQueue(swapchain->color_count,false);
+        Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
+        Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
 
-    swapchain_rt=new RTSwapchain(   device->GetDevice(),
-                                    swapchain,
-                                    q,
-                                    render_complete_semaphore,
-                                    present_complete_semaphore,
-                                    device_render_pass
-                                    );
+        swapchain_rt=new RTSwapchain(   device->GetDevice(),
+                                        swapchain,
+                                        q,
+                                        render_complete_semaphore,
+                                        present_complete_semaphore,
+                                        swapchain_rp
+                                        );
+    }
 
     return true;
 }

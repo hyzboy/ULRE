@@ -10,21 +10,21 @@ class SwapchainModule:public GraphModule
 
     RTSwapchain *swapchain_rt=nullptr;
 
+    RenderPass *swapchain_rp=nullptr;
+
 protected:
 
+    bool CreateSwapchainFBO();
     bool CreateSwapchain();
-
-    bool CreateSwapchainRenderTarget();
-
-    bool CreateSwapchainFBO(Swapchain *);
-
 
 public:
 
     GRAPH_MODULE_CONSTRUCT(SwapchainModule)
-    virtual ~SwapchainModule()=default;
+    virtual ~SwapchainModule();
 
     bool Init() override;
+
+            RenderPass *    GetRenderPass   ()      {return swapchain_rp;}
 
             RTSwapchain *   GetRenderTarget ()      {return swapchain_rt;}
 
