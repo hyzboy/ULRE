@@ -184,7 +184,7 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     return(true);
 }
 
-bool DeviceRenderPassManage::Init()
+bool RenderPassManager::Init()
 {
     pipeline_cache=GetDeviceAttribute()->pipeline_cache;
 
@@ -193,7 +193,7 @@ bool DeviceRenderPassManage::Init()
     return(true);
 }
 
-DeviceRenderPassManage::~DeviceRenderPassManage()
+RenderPassManager::~RenderPassManager()
 {
     SAFE_CLEAR(hash);
     
@@ -266,7 +266,7 @@ namespace
     }
 }
 
-RenderPass *DeviceRenderPassManage::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
+RenderPass *RenderPassManager::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
                                                         const List<VkSubpassDescription> &subpass,
                                                         const List<VkSubpassDependency> &dependency,
                                                         const RenderbufferInfo *rbi)
@@ -292,7 +292,7 @@ RenderPass *DeviceRenderPassManage::CreateRenderPass(   const List<VkAttachmentD
     return(new RenderPass(GetVkDevice(),pipeline_cache,render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
-RenderPass *DeviceRenderPassManage::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
+RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
 {
     RenderPassHASHCode hash;
     RenderPass *rp=nullptr;

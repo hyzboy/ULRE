@@ -90,7 +90,7 @@ class RenderCmdBuffer;
 class TextureCmdBuffer;
 
 class RenderPass;
-class DeviceRenderPassManage;
+class RenderPassManager;
 
 class Fence;
 class Semaphore;

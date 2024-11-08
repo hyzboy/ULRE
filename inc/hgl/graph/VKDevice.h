@@ -37,7 +37,7 @@ private:
 
 private:
 
-    DeviceRenderPassManage *render_pass_manage;
+    RenderPassManager *render_pass_manage;
     RenderPass *device_render_pass;
 
     void InitRenderPassManage();

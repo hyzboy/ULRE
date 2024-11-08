@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 using RenderPassHASHCode=util::HashCodeSHA1LE;
 
-class DeviceRenderPassManage:public GraphModule
+class RenderPassManager:public GraphModule
 {
     VkPipelineCache pipeline_cache;
 
@@ -19,9 +19,9 @@ private:
 
     friend class GPUDevice;
 
-    //DeviceRenderPassManage(VkDevice,VkPipelineCache);
-    GRAPH_MODULE_CONSTRUCT(DeviceRenderPassManage)
-    ~DeviceRenderPassManage();
+    //RenderPassManager(VkDevice,VkPipelineCache);
+    GRAPH_MODULE_CONSTRUCT(RenderPassManager)
+    ~RenderPassManager();
 
     bool Init() override;
 
@@ -33,5 +33,5 @@ private:
                                         const RenderbufferInfo *);
 
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
-};//class DeviceRenderPassManage
+};//class RenderPassManager
 VK_NAMESPACE_END

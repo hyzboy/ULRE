@@ -6,7 +6,7 @@
 VK_NAMESPACE_BEGIN
 void GPUDevice::InitRenderPassManage()
 {
-    render_pass_manage=new DeviceRenderPassManage(attr->device,attr->pipeline_cache);
+    render_pass_manage=new RenderPassManager(attr->device,attr->pipeline_cache);
     
     SwapchainRenderbufferInfo rbi(attr->surface_format.format,attr->physical_device->GetDepthFormat());
 

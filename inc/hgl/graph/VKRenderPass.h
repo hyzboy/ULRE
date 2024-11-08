@@ -29,7 +29,7 @@ protected:
 
 private:
 
-    friend class DeviceRenderPassManage;
+    friend class RenderPassManager;
 
     RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df);
 
