@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/manager/GraphManager.h>
+#include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/RectScope.h>
@@ -10,14 +10,14 @@
 
 VK_NAMESPACE_BEGIN
 
-class TextureManager:public GraphManager
+class TextureManager:public GraphModule
 {
-    DeviceQueue *texture_queue;
-    TextureCmdBuffer *texture_cmd_buf;
+    DeviceQueue *texture_queue=nullptr;
+    TextureCmdBuffer *texture_cmd_buf=nullptr;
 
 private:
 
-    TextureID texture_serial;
+    TextureID texture_serial=0;
 
     const TextureID AcquireID(){return texture_serial++;}                       ///<取得一个新的纹理ID
 
@@ -37,8 +37,10 @@ private:
 
 public:
 
-    TextureManager(GPUDevice *);
+    GRAPH_MODULE_CONSTRUCT(TextureManager)
     virtual ~TextureManager();
+
+    bool Init() override;
 
 public:     //Buffer
 
@@ -119,6 +121,17 @@ public: // Load
     Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
     bool                LoadTexture2DToArray(Texture2DArray *,const uint32_t layer,const OSString &);
 
+public: //FrameBuffer相关
+
+    Framebuffer *CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
+//    Framebuffer *CreateFBO(RenderPass *,List<ImageView *> &color,ImageView *depth);
+    Framebuffer *CreateFBO(RenderPass *,ImageView *color,ImageView *depth);
+    Framebuffer *CreateFBO(RenderPass *,ImageView *);
+
+public:
+    
+    RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
+    RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
 };//class TextureManager
 
 VK_NAMESPACE_END

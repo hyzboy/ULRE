@@ -298,10 +298,8 @@ SOURCE_GROUP("Render Framework\\Module" FILES   ${GRAPH_MODULE_HEADER}
 
 SET(SG_MANAGER_HEADER_PATH ${SG_INCLUDE_PATH}/manager)
 
-SET(GRAPH_MANAGER_HEADER    ${SG_MANAGER_HEADER_PATH}/GraphManager.h
-                            ${SG_MANAGER_HEADER_PATH}/TextureManager.h)
-SET(GRAPH_MANAGER_SOURCE    manager/GraphManager.cpp
-                            manager/TextureManager.cpp)
+SET(GRAPH_MANAGER_HEADER    ${SG_MANAGER_HEADER_PATH}/TextureManager.h)
+SET(GRAPH_MANAGER_SOURCE    manager/TextureManager.cpp)
 
 SOURCE_GROUP("Render Framework\\Manager" FILES ${GRAPH_MANAGER_HEADER} ${GRAPH_MANAGER_SOURCE})
 

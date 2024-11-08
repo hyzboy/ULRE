@@ -4,12 +4,26 @@
 
 VK_NAMESPACE_BEGIN
 
-TextureManager::TextureManager(GPUDevice *dev):GraphManager(dev)
+bool TextureManager::Init()
 {
+    GPUDevice *dev=GetDevice();
+
+    if(!dev)
+        return(false);
+
     texture_cmd_buf=dev->CreateTextureCommandBuffer(GetPhysicalDevice()->GetDeviceName()+AnsiString(":TexCmdBuffer"));
+
+    if(!texture_cmd_buf)
+        return(false);
+
     texture_queue=dev->CreateQueue();
 
+    if(!texture_queue)
+        return(false);
+
     texture_serial=0;
+
+    return(true);
 }
 
 TextureManager::~TextureManager()

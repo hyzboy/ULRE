@@ -28,7 +28,15 @@ public:
         if(!gmm)
             return(nullptr);
 
-        return(new T(gmm));
+        GraphModule *gm=new T(gmm);
+
+        if(!gm->Init())
+        {
+            delete gm;
+            return(nullptr);
+        }
+
+        return(true);
     }
 };//template<typename T> class RegistryGraphModule:public GraphModuleFactory
 

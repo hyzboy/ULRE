@@ -68,7 +68,7 @@ protected:
 
 public:
 
-    virtual const bool IsRender(){return false;}                                ///<是否为渲染模块
+    virtual const bool IsRender(){return false;}                                                    ///<是否为渲染模块
 
             GraphModuleManager *GetManager          (){return module_manager;}                      ///<取得模块管理器
             GPUDevice *         GetDevice           (){return module_manager->GetDevice();}         ///<取得GPU设备
@@ -76,11 +76,11 @@ public:
     const   GPUPhysicalDevice * GetPhysicalDevice   (){return module_manager->GetPhysicalDevice();} ///<取得物理设备
     const   GPUDeviceAttribute *GetDeviceAttribute  (){return module_manager->GetDeviceAttribute();}///<取得设备属性
 
-    static const AnsiIDName *GetModuleName(){return nullptr;}                   ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
-    virtual const AnsiIDName *GetName()const{return &module_name;}              ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
+    static const AnsiIDName *GetModuleName(){return nullptr;}                                       ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
+    virtual const AnsiIDName *GetName()const{return &module_name;}                                  ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
-    const bool IsEnable ()const noexcept{return module_enable;}                 ///<当前模块是否启用
-    const bool IsReady  ()const noexcept{return module_ready;}                  ///<当前模块是否准备好
+    const bool IsEnable ()const noexcept{return module_enable;}                                     ///<当前模块是否启用
+    const bool IsReady  ()const noexcept{return module_ready;}                                      ///<当前模块是否准备好
 
 public:
 
@@ -93,26 +93,34 @@ public:
     }
     virtual ~GraphModule()=default;
 
-    virtual bool Init(){return true;}                                           ///<初始化当前模块
+    virtual bool Init(){return true;}                                                               ///<初始化当前模块
+
+public:
+
+    GraphModule *   GetModule(const AnsiIDName &name,bool create=false){return module_manager->GetModule(name,create);} ///<获取指定名称的模块
+
+    template<typename T>
+    T *             GetModule(bool create=false){return module_manager->GetModule<T>(create);}                          ///<获取指定类型的模块
+        
 
 public: //回调事件
 
-    virtual void OnRenderTarget(RenderTarget *){}                               ///<设置渲染目标
-    virtual void OnResize(const VkExtent2D &){}                                 ///<窗口大小改变
+    virtual void OnRenderTarget(RenderTarget *){}                                                   ///<设置渲染目标
+    virtual void OnResize(const VkExtent2D &){}                                                     ///<窗口大小改变
 
-    virtual void OnPreFrame(){}                                                 ///<帧绘制前回调
+    virtual void OnPreFrame(){}                                                                     ///<帧绘制前回调
     virtual void OnExecute(const double,RenderCmdBuffer *){}
-    virtual void OnPostFrame(){}                                                ///<帧绘制后回调
+    virtual void OnPostFrame(){}                                                                    ///<帧绘制后回调
 };//class GraphModule
 
 #define GRAPH_MODULE_CONSTRUCT(name)    public:\
-    NO_COPY_NO_MOVE(name##Module)   \
+    NO_COPY_NO_MOVE(name)   \
     static const AnsiIDName &GetModuleName()    \
     {   \
         static const AnsiIDName id_name(#name);    \
         return id_name;    \
     }   \
     \
-    name##Module(GraphModuleManager *gmm):GraphModule(gmm,GetModuleName()){}
+    name(GraphModuleManager *gmm):GraphModule(gmm,GetModuleName()){}
 
 VK_NAMESPACE_END

@@ -1,7 +1,8 @@
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/manager/TextureManager.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
+RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
     if(!rp)return(nullptr);
@@ -46,7 +47,7 @@ RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,cons
     return nullptr;
 }
 
-RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,const uint32_t fence_count)
+RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
 
@@ -57,25 +58,4 @@ RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,const uint32_t fenc
     return CreateRT(fbi,rp,fence_count);
 }
 
-RTSwapchain *GPUDevice::CreateSwapchainRenderTarget()
-{
-    Swapchain *sc=CreateSwapchain(attr->surface_caps.currentExtent);
-
-    if(!sc)
-        return(nullptr);
-
-    DeviceQueue *q=CreateQueue(sc->color_count,false);
-    Semaphore *render_complete_semaphore=CreateGPUSemaphore();
-    Semaphore *present_complete_semaphore=CreateGPUSemaphore();
-
-    RTSwapchain *srt=new RTSwapchain(   attr->device,
-                                        sc,
-                                        q,
-                                        render_complete_semaphore,
-                                        present_complete_semaphore,
-                                        device_render_pass
-                                        );
-
-    return srt;
-}
 VK_NAMESPACE_END
