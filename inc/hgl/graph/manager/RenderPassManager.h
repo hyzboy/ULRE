@@ -6,6 +6,7 @@
 
 VK_NAMESPACE_BEGIN
 using RenderPassHASHCode=util::HashCodeXXH3_128;
+#define CreateRenderPassHash util::CreateXXH3_128Hash
 
 class RenderPassManager:public GraphModule
 {

@@ -188,7 +188,7 @@ bool RenderPassManager::Init()
 {
     pipeline_cache=GetDeviceAttribute()->pipeline_cache;
 
-    hash=util::CreateSHA1LEHash();
+    hash=CreateRenderPassHash();
 
     return(true);
 }
@@ -252,7 +252,7 @@ namespace
 
     void HashRenderPass(RenderPassHASHCode *code,const RenderbufferInfo *rbi,const uint8 subpass_count)
     {       
-        util::Hash *hash=util::CreateSHA1LEHash();
+        util::Hash *hash=CreateRenderPassHash();
 
         hash->Init();
 
