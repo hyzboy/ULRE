@@ -10,8 +10,14 @@ struct Swapchain
 public:
 
     VkDevice                device          =VK_NULL_HANDLE;
-    
+
+    VkExtent2D                      extent;
+    VkSurfaceTransformFlagBitsKHR   transform;
+
     VkSwapchainKHR          swap_chain      =VK_NULL_HANDLE;
+
+    VkSurfaceFormatKHR      surface_format;
+    VkFormat                depth_format;
 
     uint32_t                color_count     =0;
 

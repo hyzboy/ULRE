@@ -1,5 +1,7 @@
 ﻿#include<hgl/graph/font/TileFont.h>
-#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/module/SwapchainModule.h>
+
 
 VK_NAMESPACE_BEGIN
 /**
@@ -15,7 +17,7 @@ TileFont *RenderFramework::CreateTileFont(FontSource *fs,int limit_count)
 
     if(limit_count<=0)
     {
-        const VkExtent2D &ext=GetSwapchainSize();
+        const VkExtent2D &ext=swapchain_module->GetSwapchainSize();
 
         limit_count=(ext.width/height)*(ext.height/height);   //按全屏幕放满不一样的字符为上限
     }

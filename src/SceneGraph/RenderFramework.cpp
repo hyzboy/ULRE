@@ -1,4 +1,5 @@
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/manager/RenderPassManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/Time.h>
 

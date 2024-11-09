@@ -8,7 +8,6 @@
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKDescriptorSet.h>
-#include<hgl/graph/VKDeviceRenderPassManage.h>
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/SwapchainModule.h>
 
@@ -19,27 +18,11 @@ bool ClearGraphModuleManager(GPUDevice *dev);
 GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
-
-    Resize(attr->surface_caps.currentExtent);
 }
 
 GPUDevice::~GPUDevice()
 {
     delete attr;
-    
-    //按设计，上面那些rt/queue/cmdbuf都需要走graph_module_manager释放和申请
-    ClearGraphModuleManager(this);
-}
-
-bool GPUDevice::Resize(const VkExtent2D &extent)
-{
-    SAFE_CLEAR(sc_rt);
-
-    attr->RefreshSurfaceCaps();
-
-    sc_rt=CreateSwapchainRenderTarget();
-
-    return(sc_rt);
 }
 
 VkCommandBuffer GPUDevice::CreateCommandBuffer(const AnsiString &name)

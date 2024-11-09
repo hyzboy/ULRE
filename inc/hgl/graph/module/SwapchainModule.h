@@ -16,6 +16,11 @@ protected:
 
     bool CreateSwapchainFBO();
     bool CreateSwapchain();
+    bool CreateSwapchainRenderTarget();
+
+public:
+
+    virtual void OnResize(const VkExtent2D &)override;                                              ///<窗口大小改变
 
 public:
 

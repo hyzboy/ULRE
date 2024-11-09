@@ -3,6 +3,10 @@
 #include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
+const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat format) const
+{
+    return GetPhysicalDevice()->GetFormatProperties(format);
+}
 
 bool TextureManager::Init()
 {

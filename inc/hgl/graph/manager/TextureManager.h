@@ -42,6 +42,8 @@ public:
 
     bool Init() override;
 
+    const VkFormatProperties GetFormatProperties(const VkFormat)const;
+
 public:     //Buffer
 
     DeviceBuffer *CreateTransferSourceBuffer(const VkDeviceSize,const void *data_ptr=nullptr);

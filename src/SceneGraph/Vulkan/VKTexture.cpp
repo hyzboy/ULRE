@@ -17,7 +17,7 @@ Texture::~Texture()
         delete data->memory;
 
         if(data->image)
-            vkDestroyImage(device,data->image,nullptr);
+            vkDestroyImage(manager->GetVkDevice(),data->image,nullptr);
     }
 }
 VK_NAMESPACE_END

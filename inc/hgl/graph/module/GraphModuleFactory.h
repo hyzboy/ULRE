@@ -36,10 +36,10 @@ public:
             return(nullptr);
         }
 
-        return(true);
+        return(gm);
     }
 };//template<typename T> class RegistryGraphModule:public GraphModuleFactory
 
-#define REGISTRY_GRAPH_MODULE(Class)    {RegistryGraphModuleFactory(#Class,new RegistryGraphModule<Class##Module>);}
+#define REGISTRY_GRAPH_MODULE(Class)    {RegistryGraphModuleFactory(#Class,new RegistryGraphModule<Class>);}
 
 VK_NAMESPACE_END

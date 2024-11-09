@@ -1,5 +1,6 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/manager/TextureManager.h>
+#include<hgl/graph/manager/RenderPassManager.h>
 
 VK_NAMESPACE_BEGIN
 RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
@@ -34,8 +35,10 @@ RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,RenderPass *rp
 
     if(fb)
     {
-        DeviceQueue *q=CreateQueue(fence_count,false);
-        Semaphore *render_complete_semaphore=CreateGPUSemaphore();
+        auto *dev=GetDevice();
+
+        DeviceQueue *q=dev->CreateQueue(fence_count,false);
+        Semaphore *render_complete_semaphore=dev->CreateGPUSemaphore();
 
         RenderTarget *rt=new RenderTarget(q,render_complete_semaphore,rp,fb,color_texture_list,color_count,depth_texture);
 
@@ -51,7 +54,9 @@ RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,const uint32_t
 {
     if(!fbi)return(nullptr);
 
-    RenderPass *rp=AcquireRenderPass(fbi);
+    RenderPassManager *rpm=GetModule<RenderPassManager>();
+
+    RenderPass *rp=rpm->AcquireRenderPass(fbi);
 
     if(!rp)return(nullptr);
 

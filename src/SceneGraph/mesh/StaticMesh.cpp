@@ -1,5 +1,6 @@
 #include<hgl/graph/mesh/StaticMesh.h>
 #include<hgl/graph/VKRenderResource.h>
+#include<hgl/graph/SceneNode.h>
 
 VK_NAMESPACE_BEGIN
 

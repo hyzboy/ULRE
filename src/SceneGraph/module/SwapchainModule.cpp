@@ -95,13 +95,12 @@ bool SwapchainModule::CreateSwapchainFBO()
     if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
         return(false);
 
-    const auto *dev_attr=GetDeviceAttribute();
     TextureManager *tex_manager=GetModule<TextureManager>();
 
     if(!tex_manager)
         return(false);
 
-    swapchain->sc_depth =tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),dev_attr->surface_caps.currentExtent));
+    swapchain->sc_depth =tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),swapchain->extent));
 
     if(!swapchain->sc_depth)
         return(false);
@@ -120,7 +119,7 @@ bool SwapchainModule::CreateSwapchainFBO()
 
     for(uint32_t i=0;i<swapchain->color_count;i++)
     {
-        swapchain->sc_color[i]=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(dev_attr->surface_format.format,dev_attr->surface_caps.currentExtent,sc_images[i]));
+        swapchain->sc_color[i]=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]));
 
         if(!swapchain->sc_color[i])
             return(false);
@@ -155,7 +154,11 @@ bool SwapchainModule::CreateSwapchain()
 
     swapchain=new Swapchain;
 
-    swapchain->device=dev_attr->device;
+    swapchain->device           =dev_attr->device;
+    swapchain->extent           =dev_attr->surface_caps.currentExtent;
+    swapchain->transform        =dev_attr->surface_caps.currentTransform;
+    swapchain->surface_format   =dev_attr->surface_format;
+    swapchain->depth_format     =dev_attr->physical_device->GetDepthFormat();
 
     swapchain->swap_chain=CreateVulkanSwapChain(dev_attr);
 
@@ -170,6 +173,25 @@ bool SwapchainModule::CreateSwapchain()
     return(false);
 }
 
+bool SwapchainModule::CreateSwapchainRenderTarget()
+{
+    GPUDevice *device=GetDevice();
+
+    DeviceQueue *q=device->CreateQueue(swapchain->color_count,false);
+    Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
+    Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
+
+    swapchain_rt=new RTSwapchain(   device->GetDevice(),
+                                    swapchain,
+                                    q,
+                                    render_complete_semaphore,
+                                    present_complete_semaphore,
+                                    swapchain_rp
+                                    );
+
+    return true;
+}
+
 SwapchainModule::~SwapchainModule()
 {
     if(swapchain_rt)
@@ -181,45 +203,36 @@ SwapchainModule::~SwapchainModule()
 
 bool SwapchainModule::Init()
 {
+    if(!CreateSwapchain())
+        return(false);
+
     RenderPassManager *rpm=GetModule<RenderPassManager>();
 
     if(!rpm)
         return(false);
 
-    {
-        auto *dev_attr=GetDeviceAttribute();
+    SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
 
-        SwapchainRenderbufferInfo rbi(dev_attr->surface_format.format,dev_attr->physical_device->GetDepthFormat());
+    swapchain_rp=rpm->AcquireRenderPass(&rbi);
 
-        swapchain_rp=rpm->AcquireRenderPass(&rbi);
+    //#ifdef _DEBUG
+    //    if(dev_attr->debug_utils)
+    //        dev_attr->debug_utils->SetRenderPass(swapchain_rp->GetVkRenderPass(),"SwapchainRenderPass");
+    //#endif//_DEBUG
 
-        #ifdef _DEBUG
-            if(dev_attr->debug_utils)
-                dev_attr->debug_utils->SetRenderPass(swapchain_rp->GetVkRenderPass(),"SwapchainRenderPass");
-        #endif//_DEBUG
-    }
-
-    
-    if(!CreateSwapchain())
+    if(!CreateSwapchainRenderTarget())
         return(false);
 
-    {
-        GPUDevice *device=GetDevice();
-
-        DeviceQueue *q=device->CreateQueue(swapchain->color_count,false);
-        Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
-        Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
-
-        swapchain_rt=new RTSwapchain(   device->GetDevice(),
-                                        swapchain,
-                                        q,
-                                        render_complete_semaphore,
-                                        present_complete_semaphore,
-                                        swapchain_rp
-                                        );
-    }
-
     return true;
+}
+
+void SwapchainModule::OnResize(const VkExtent2D &extent)
+{
+    SAFE_CLEAR(swapchain_rt)
+
+    GetDeviceAttribute()->RefreshSurfaceCaps();
+
+    CreateSwapchainRenderTarget();
 }
 
 VK_NAMESPACE_END

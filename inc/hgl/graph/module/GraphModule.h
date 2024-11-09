@@ -21,9 +21,9 @@ public:
     ~GraphModuleManager();
 
             GPUDevice *         GetDevice           ()noexcept{return device;}                      ///<取得GPU设备
-            VkDevice            GetVkDevice         (){return device->GetDevice();}
-    const   GPUPhysicalDevice * GetPhysicalDevice   (){return device->GetPhysicalDevice();}         ///<取得物理设备
-    const   GPUDeviceAttribute *GetDeviceAttribute  (){return device->GetDeviceAttribute();}        ///<取得设备属性
+            VkDevice            GetVkDevice         ()const{return device->GetDevice();}
+    const   GPUPhysicalDevice * GetPhysicalDevice   ()const{return device->GetPhysicalDevice();}    ///<取得物理设备
+            GPUDeviceAttribute *GetDeviceAttribute  (){return device->GetDeviceAttribute();}        ///<取得设备属性
 
     /**
      * 获取指定名称的模块
@@ -72,9 +72,9 @@ public:
 
             GraphModuleManager *GetManager          (){return module_manager;}                      ///<取得模块管理器
             GPUDevice *         GetDevice           (){return module_manager->GetDevice();}         ///<取得GPU设备
-            VkDevice            GetVkDevice         (){return module_manager->GetVkDevice();}       ///<取得VkDevice
-    const   GPUPhysicalDevice * GetPhysicalDevice   (){return module_manager->GetPhysicalDevice();} ///<取得物理设备
-    const   GPUDeviceAttribute *GetDeviceAttribute  (){return module_manager->GetDeviceAttribute();}///<取得设备属性
+            VkDevice            GetVkDevice         ()const{return module_manager->GetVkDevice();}       ///<取得VkDevice
+    const   GPUPhysicalDevice * GetPhysicalDevice   ()const{return module_manager->GetPhysicalDevice();} ///<取得物理设备
+            GPUDeviceAttribute *GetDeviceAttribute  (){return module_manager->GetDeviceAttribute();}///<取得设备属性
 
     static const AnsiIDName *GetModuleName(){return nullptr;}                                       ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
     virtual const AnsiIDName *GetName()const{return &module_name;}                                  ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)

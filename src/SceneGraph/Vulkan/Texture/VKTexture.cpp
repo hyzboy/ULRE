@@ -16,7 +16,7 @@ DeviceBuffer *TextureManager::CreateTransferSourceBuffer(const VkDeviceSize size
 
 bool TextureManager::CheckFormatSupport(const VkFormat format,const uint32_t bits,ImageTiling tiling) const
 {
-    const VkFormatProperties fp=GetPhysicalDevice()->GetFormatProperties(format);
+    const VkFormatProperties fp=GetFormatProperties(format);
     
     if(tiling==ImageTiling::Optimal)
         return(fp.optimalTilingFeatures&bits);

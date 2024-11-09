@@ -67,16 +67,6 @@ public:
 
                 DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}
 
-public:
-
-                bool                Resize              (const VkExtent2D &);
-                bool                Resize              (const uint32_t &w,const uint32_t &h)
-                {
-                    VkExtent2D extent={w,h};
-
-                    return Resize(extent);
-                }
-
 public: //内存相关
 
     DeviceMemory *CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
