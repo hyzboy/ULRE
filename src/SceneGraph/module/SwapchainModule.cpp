@@ -87,12 +87,12 @@ namespace
 
 bool SwapchainModule::CreateSwapchainFBO()
 {
-    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),nullptr)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr)!=VK_SUCCESS)
         return(false);
 
-    AutoDeleteArray<VkImage> sc_images(swapchain->color_count);
+    AutoDeleteArray<VkImage> sc_images(swapchain->image_count);
 
-    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),sc_images)!=VK_SUCCESS)
         return(false);
 
     TextureManager *tex_manager=GetModule<TextureManager>();
@@ -114,10 +114,10 @@ bool SwapchainModule::CreateSwapchainFBO()
     //    }
     //#endif//_DEBUG
 
-    swapchain->sc_color =hgl_zero_new<Texture2D *>(swapchain->color_count);
-    swapchain->sc_fbo   =hgl_zero_new<Framebuffer *>(swapchain->color_count);
+    swapchain->sc_color =hgl_zero_new<Texture2D *>(swapchain->image_count);
+    swapchain->sc_fbo   =hgl_zero_new<Framebuffer *>(swapchain->image_count);
 
-    for(uint32_t i=0;i<swapchain->color_count;i++)
+    for(uint32_t i=0;i<swapchain->image_count;i++)
     {
         swapchain->sc_color[i]=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]));
 
@@ -177,7 +177,7 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 {
     GPUDevice *device=GetDevice();
 
-    DeviceQueue *q=device->CreateQueue(swapchain->color_count,false);
+    DeviceQueue *q=device->CreateQueue(swapchain->image_count,false);
     Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
     Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
 
@@ -233,6 +233,16 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     GetDeviceAttribute()->RefreshSurfaceCaps();
 
     CreateSwapchainRenderTarget();
+}
+
+void SwapchainModule::Swap()
+{
+    int index=swapchain_rt->AcquireNextImage();
+
+    if(index<0||index>=swapchain->image_count)
+        return;
+
+    
 }
 
 VK_NAMESPACE_END

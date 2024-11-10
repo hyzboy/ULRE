@@ -12,7 +12,7 @@ RenderTarget::RenderTarget(DeviceQueue *q,Semaphore *s)
     render_pass=nullptr;
     fbo=nullptr;
 
-    color_count=0;
+    image_count=0;
     color_textures=nullptr;
     depth_texture=nullptr;
     render_complete_semaphore=s;
@@ -26,11 +26,11 @@ RenderTarget::RenderTarget(DeviceQueue *q,Semaphore *s,RenderPass *_rp,Framebuff
     
     depth_texture=dt;
 
-    color_count=cc;
-    if(color_count>0)
+    image_count=cc;
+    if(image_count>0)
     {
-        color_textures=new Texture2D *[color_count];
-        hgl_cpy(color_textures,ctl,color_count);
+        color_textures=new Texture2D *[image_count];
+        hgl_cpy(color_textures,ctl,image_count);
 
         extent.width=color_textures[0]->GetWidth();
         extent.height=color_textures[0]->GetHeight();
@@ -53,7 +53,7 @@ RenderTarget::~RenderTarget()
 {
     SAFE_CLEAR(queue);
     SAFE_CLEAR(depth_texture);
-    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(color_textures,color_count);
+    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(color_textures,image_count);
     
     SAFE_CLEAR(render_complete_semaphore);
     SAFE_CLEAR(fbo);

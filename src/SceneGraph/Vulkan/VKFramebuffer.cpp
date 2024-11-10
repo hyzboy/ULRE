@@ -14,10 +14,10 @@ Framebuffer::Framebuffer(VkDevice dev,VkFramebuffer fb,const VkExtent2D &ext,VkR
     render_pass=rp;
 
     extent=ext;
-    color_count=cc;
+    image_count=cc;
     has_depth=depth;
 
-    attachment_count=color_count;
+    attachment_count=image_count;
 
     if(has_depth)
         ++attachment_count;

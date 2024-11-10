@@ -101,7 +101,6 @@ public:
 
     template<typename T>
     T *             GetModule(bool create=false){return module_manager->GetModule<T>(create);}                          ///<获取指定类型的模块
-        
 
 public: //回调事件
 

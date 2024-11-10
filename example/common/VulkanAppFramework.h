@@ -38,18 +38,12 @@ using namespace hgl;
 using namespace hgl::io;
 using namespace hgl::graph;
 
-namespace hgl{namespace graph
-{
-    bool InitShaderCompiler();
-    void CloseShaderCompiler();
-}}//namespace hgl::graph
-
 class VulkanApplicationFramework:WindowEvent
 {
 protected:
 
-            Window *    win             =nullptr;
-    VulkanInstance *    inst            =nullptr;
+            Window *        win                         =nullptr;
+    VulkanInstance *        inst                        =nullptr;
 
 protected:
 
@@ -91,8 +85,6 @@ public:
 
     virtual ~VulkanApplicationFramework()
     {
-        CloseShaderCompiler();
-
         win->Unjoin(this);
 
         SAFE_CLEAR(db);
@@ -106,9 +98,6 @@ public:
     virtual bool Init(uint w,uint h)
     {
         logger::InitLogger(OS_TEXT("VulkanTest"));
-
-        if(!InitShaderCompiler())
-            return(false);
 
         SetClearColor(COLOR::MozillaCharcoal);
 

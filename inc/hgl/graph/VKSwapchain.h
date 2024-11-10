@@ -19,7 +19,7 @@ public:
     VkSurfaceFormatKHR      surface_format;
     VkFormat                depth_format;
 
-    uint32_t                color_count     =0;
+    uint32_t                image_count     =0;
 
     Texture2D **            sc_color        =nullptr;
     Texture2D *             sc_depth        =nullptr;

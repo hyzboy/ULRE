@@ -21,23 +21,23 @@ VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExt
     return fb;
 }
 
-Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
+Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView **color_list,const uint image_count,ImageView *depth)
 {
-    uint att_count=color_count;
+    uint att_count=image_count;
 
     if(depth)++att_count;
     
     AutoDeleteArray<VkImageView> attachments(att_count);
     VkImageView *ap=attachments;
 
-    if(color_count)
+    if(image_count)
     {
         const List<VkFormat> &cf_list=rp->GetColorFormat();
 
         const VkFormat *cf=cf_list.GetData();
         ImageView **iv=color_list;
 
-        for(uint i=0;i<color_count;i++)
+        for(uint i=0;i<image_count;i++)
         {
             if(*cf!=(*iv)->GetFormat())
                 return(nullptr);
@@ -60,7 +60,7 @@ Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView **color_list,con
             return(nullptr);
         }
 
-        attachments[color_count]=depth->GetImageView();
+        attachments[image_count]=depth->GetImageView();
 
         extent.width=depth->GetExtent().width;
         extent.height=depth->GetExtent().height;
@@ -76,7 +76,7 @@ Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView **color_list,con
     if(!fbo)
         return(nullptr);
 
-    return(new Framebuffer(GetVkDevice(),fbo,extent,rp->GetVkRenderPass(),color_count,depth));
+    return(new Framebuffer(GetVkDevice(),fbo,extent,rp->GetVkRenderPass(),image_count,depth));
 }
 //
 //Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,List<ImageView *> &color,ImageView *depth)

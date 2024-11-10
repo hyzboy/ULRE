@@ -21,6 +21,8 @@ protected:
 public:
 
     virtual void OnResize(const VkExtent2D &)override;                                              ///<窗口大小改变
+    
+    virtual void OnExecute(const double,RenderCmdBuffer *);
 
 public:
 
@@ -28,12 +30,16 @@ public:
     virtual ~SwapchainModule();
 
     bool Init() override;
+    void Swap();
+
+public:
 
             RenderPass *    GetRenderPass   ()      {return swapchain_rp;}
 
             RTSwapchain *   GetRenderTarget ()      {return swapchain_rt;}
 
     const   VkExtent2D &    GetSwapchainSize()const {return swapchain_rt->GetExtent();}
+
 };//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END

@@ -82,7 +82,7 @@ public:
                     Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->sc_fbo[index];}
 
             const   uint32_t        GetColorCount   ()const override            {return 1;}
-            const   uint32_t        GetImageCount   ()const                     {return swapchain->color_count;}
+            const   uint32_t        GetImageCount   ()const                     {return swapchain->image_count;}
 
     virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_color[index];}
     virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_depth;}

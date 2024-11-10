@@ -4,6 +4,7 @@
 #include<hgl/type/List.h>
 #include<hgl/graph/ViewportInfo.h>
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/io/event/WindowEvent.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -11,35 +12,6 @@ class GPUDevice;
 class TileData;
 class TileFont;
 class FontSource;
-
-//
-///**
-// * 渲染模块工作配置
-// */
-//class GraphModuleWorkConfig
-//{
-//    /**
-//     * 渲染模块名称
-//     * 在render_module为nullptr时，用于创建或加载RenderModule。
-//     * 它和RenderModule返回的名称有可能一样，但也有可能不一样。
-//     */
-//    AnsiString render_module_name;
-//    GraphModule *render_module=nullptr;
-//
-//    BlendMode blend_mode;
-//    RenderOrder render_order;
-//
-//public:
-//
-//    const AnsiString &GetModuleName()const{return render_module_name;}                              ///<取得渲染模块名称
-//
-//    GraphModule *GetModule(){return render_module;}                                                ///<取得渲染模块
-//
-//public:
-//
-//    GraphModuleWorkConfig();
-//    virtual ~GraphModuleWorkConfig()=default;
-//};//class GraphModuleWorkConfig
 
 class Window;
 class VulkanInstance;
@@ -49,15 +21,10 @@ class TextureManager;
 
 class SwapchainModule;
 
-struct RenderFrameworkInitConfig
-{
-
-};//struct RenderFrameworkInitConfig
-
 /**
 * 渲染框架
 */
-class RenderFramework
+class RenderFramework:public io::WindowEvent
 {
 protected:
 
@@ -71,6 +38,8 @@ protected:
     GraphModuleManager *graph_module_manager=nullptr;
 
     ObjectList<GraphModule> module_list;
+
+protected:
 
     SwapchainModule *   swapchain_module    =nullptr;
 
@@ -103,8 +72,14 @@ public: //module
 
 public: //manager
 
-    RenderPassManager *GetRenderPassManager(){return render_pass_manager;}                          ///<取得渲染通道管理器
-    TextureManager *GetTextureManager(){return texture_manager;}                                    ///<取得纹理管理器
+    RenderPassManager * GetRenderPassManager(){return render_pass_manager;}                         ///<取得渲染通道管理器
+    TextureManager *    GetTextureManager   (){return texture_manager;}                             ///<取得纹理管理器
+
+public: //event
+
+    virtual void OnResize(uint,uint)override;
+    virtual void OnActive(bool)override;
+    virtual void OnClose ()override;
 
 public:
 

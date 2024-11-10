@@ -74,9 +74,9 @@ inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list, uint
     
 bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const RenderbufferInfo *rbi)
 {
-    const uint color_count=rbi->GetColorCount();
+    const uint image_count=rbi->GetColorCount();
 
-    const uint count=(rbi->HasDepthOrStencil())?color_count+1:color_count;
+    const uint count=(rbi->HasDepthOrStencil())?image_count+1:image_count;
 
     desc_list.SetCount(count);
 
@@ -97,7 +97,7 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
 
     desc=desc_list.GetData();
     const VkFormat *cf=rbi->GetColorFormat();
-    for(uint i=0;i<color_count;i++)
+    for(uint i=0;i<image_count;i++)
     {
         desc->finalLayout      = rbi->GetColorLayout();
         desc->format           = *cf;

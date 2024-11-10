@@ -4,9 +4,9 @@
 VK_NAMESPACE_BEGIN
 Swapchain::~Swapchain()
 {
-    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(sc_fbo,color_count);
+    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(sc_fbo,image_count);
     SAFE_CLEAR(sc_depth);
-    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(sc_color,color_count)
+    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(sc_color,image_count)
 
     if(swap_chain)
     {
@@ -14,6 +14,6 @@ Swapchain::~Swapchain()
         swap_chain=VK_NULL_HANDLE;
     }
 
-    color_count=0;
+    image_count=0;
 }
 VK_NAMESPACE_END
