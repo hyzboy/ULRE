@@ -30,7 +30,9 @@ public:
     virtual ~SwapchainModule();
 
     bool Init() override;
-    void Swap();
+
+    bool BeginFrame();
+    void EndFrame();
 
 public:
 

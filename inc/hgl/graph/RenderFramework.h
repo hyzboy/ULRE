@@ -97,8 +97,8 @@ public:
     */
     virtual void Update(const double delta_time){}
 
-    virtual void BeginFrame(){};                                                                    ///<开始当前帧
-    virtual void EndFrame(){};                                                                      ///<当前帧结束
+    virtual void BeginFrame();                                                                      ///<开始当前帧
+    virtual void EndFrame();                                                                        ///<当前帧结束
 
     virtual void MainLoop();                                                                        ///<主循环
 

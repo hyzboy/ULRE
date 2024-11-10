@@ -31,13 +31,27 @@ RenderFramework::~RenderFramework()
 void RenderFramework::StartTime()
 {
     last_time=cur_time=GetDoubleTime();
-    frame_count++;
+}
+
+void RenderFramework::BeginFrame()
+{
+    cur_time=GetDoubleTime();
+
+    swapchain_module->BeginFrame();
+}
+
+void RenderFramework::EndFrame()
+{
+    swapchain_module->EndFrame();
+
+    device->WaitIdle();
+
+    last_time=cur_time;
+    ++frame_count;
 }
 
 void RenderFramework::MainLoop()
 {
-    cur_time=GetDoubleTime();
-
     const double delta_time=cur_time-last_time;
 
     for(auto rm:module_list)
@@ -61,10 +75,6 @@ void RenderFramework::MainLoop()
     }
 
     EndFrame();
-
-    swapchain_module->Swap();
-    last_time=cur_time;
-    ++frame_count;
 }
 
 bool RenderFramework::Init()

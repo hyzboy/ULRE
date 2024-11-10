@@ -235,14 +235,23 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     CreateSwapchainRenderTarget();
 }
 
-void SwapchainModule::Swap()
+bool SwapchainModule::BeginFrame()
 {
     int index=swapchain_rt->AcquireNextImage();
 
     if(index<0||index>=swapchain->image_count)
-        return;
+        return(false);
 
-    
+    return(true);
+}
+
+void SwapchainModule::EndFrame()
+{
+    int index=swapchain_rt->GetCurrentFrameIndices();
+
+
+
+    swapchain_rt->Submit();
 }
 
 VK_NAMESPACE_END
