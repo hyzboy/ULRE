@@ -12,11 +12,16 @@ class SwapchainModule:public GraphModule
 
     RenderPass *swapchain_rp=nullptr;
 
+    RenderCmdBuffer **cmd_buf=nullptr;
+
 protected:
 
     bool CreateSwapchainFBO();
     bool CreateSwapchain();
     bool CreateSwapchainRenderTarget();
+
+    void InitRenderCmdBuffer();
+    void ClearRenderCmdBuffer();
 
 public:
 

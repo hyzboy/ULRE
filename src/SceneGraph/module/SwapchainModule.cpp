@@ -192,8 +192,33 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
     return true;
 }
 
+void SwapchainModule::ClearRenderCmdBuffer()
+{
+    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(cmd_buf,swapchain->image_count);
+}
+
+void SwapchainModule::InitRenderCmdBuffer()
+{
+    ClearRenderCmdBuffer();
+
+    cmd_buf=hgl_zero_new<RenderCmdBuffer *>(swapchain->image_count);
+    
+    GPUDevice *device=GetDevice();
+
+    AnsiString cmd_buf_name;
+
+    for(int32_t i=0;i<swapchain->image_count;i++)
+    {
+        cmd_buf_name=device->GetPhysicalDevice()->GetDeviceName()+AnsiString(":RenderCmdBuffer_")+AnsiString::numberOf(i);
+
+        cmd_buf[i]=device->CreateRenderCommandBuffer(cmd_buf_name);
+    }
+}
+
 SwapchainModule::~SwapchainModule()
 {
+    ClearRenderCmdBuffer();
+
     if(swapchain_rt)
         delete swapchain_rt;
 
@@ -223,16 +248,22 @@ bool SwapchainModule::Init()
     if(!CreateSwapchainRenderTarget())
         return(false);
 
+    InitRenderCmdBuffer();
+
     return true;
 }
 
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
+    ClearRenderCmdBuffer();
+
     SAFE_CLEAR(swapchain_rt)
 
     GetDeviceAttribute()->RefreshSurfaceCaps();
 
     CreateSwapchainRenderTarget();
+
+    InitRenderCmdBuffer();
 }
 
 bool SwapchainModule::BeginFrame()
