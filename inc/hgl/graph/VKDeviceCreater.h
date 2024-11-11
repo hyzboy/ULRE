@@ -114,6 +114,8 @@ public:
         fullDrawIndexUint32=SupportLevel::Want;
 
         blendOperationAdvanced=SupportLevel::Want;
+
+        wideLines=SupportLevel::Want;
     }
 };
 

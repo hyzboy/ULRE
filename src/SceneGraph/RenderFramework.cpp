@@ -1,7 +1,9 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/manager/RenderPassManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/VKDeviceCreater.h>
 #include<hgl/Time.h>
+#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -11,12 +13,25 @@ void CloseShaderCompiler();
 GraphModuleManager *InitGraphModuleManager(GPUDevice *dev);
 bool ClearGraphModuleManager(GPUDevice *dev);
 
+namespace
+{
+    hgl::graph::VulkanInstance *CreateVulkanInstance(const AnsiString &app_name)
+    {
+        CreateInstanceLayerInfo cili;
+
+        hgl_zero(cili);
+
+        cili.lunarg.standard_validation = true;
+        cili.khronos.validation = true;
+
+        InitVulkanInstanceProperties();
+
+        return CreateInstance("VulkanTest",nullptr,&cili);
+    }
+}//namespace
+
 RenderFramework::RenderFramework()
 {
-    graph_module_manager=InitGraphModuleManager(device);
-
-    render_pass_manager=graph_module_manager->GetModule<RenderPassManager>(true);
-    swapchain_module=graph_module_manager->GetModule<SwapchainModule>(true);
 }
 
 RenderFramework::~RenderFramework()
@@ -77,10 +92,47 @@ void RenderFramework::MainLoop()
     EndFrame();
 }
 
-bool RenderFramework::Init()
+bool RenderFramework::Init(uint w,uint h,const OSString &app_name)
 {
+    logger::InitLogger(app_name);
+
     if(!InitShaderCompiler())
         return(false);
+
+    InitNativeWindowSystem();
+
+    win=CreateRenderWindow(app_name);
+    if(!win)
+        return(false);
+
+    if(!win->Create(w,h))
+    {
+        delete win;
+        win=nullptr;
+        return(false);
+    }
+
+    inst=CreateVulkanInstance(ToAnsiString(app_name));
+    if(!inst)
+        return(false);
+
+    {
+        VulkanHardwareRequirement vh_req;
+
+        device=CreateRenderDevice(inst,win,&vh_req);
+
+        if(!device)
+            return(false);
+
+        graph_module_manager=InitGraphModuleManager(device);
+
+        render_pass_manager=graph_module_manager->GetModule<RenderPassManager>(true);
+        swapchain_module=graph_module_manager->GetModule<SwapchainModule>(true);
+    }
+
+    win->Join(this);
+
+    
 
     return(true);
 }

@@ -13,7 +13,6 @@ class TileData;
 class TileFont;
 class FontSource;
 
-class Window;
 class VulkanInstance;
 
 class RenderPassManager;
@@ -88,7 +87,7 @@ public:
     RenderFramework();
     virtual ~RenderFramework();
 
-    virtual bool Init();                                                                            ///<初始化
+    virtual bool Init(uint w,uint h,const OSString &app_name);                                      ///<初始化
 
     virtual void StartTime();
 

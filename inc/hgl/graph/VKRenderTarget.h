@@ -9,12 +9,6 @@
 #include<hgl/graph/VKPipeline.h>
 VK_NAMESPACE_BEGIN
 
-工作：
-
-    1.RT支持多FBO,同交换链一样
-    2.RT内包含CommandBuffer
-
-
 /**
  * 渲染目标
  */

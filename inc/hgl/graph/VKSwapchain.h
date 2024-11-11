@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
-#define HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKTexture.h>
@@ -31,4 +30,3 @@ public:
     virtual ~Swapchain();
 };//struct Swapchain
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_SWAP_CHAIN_INCLUDE
