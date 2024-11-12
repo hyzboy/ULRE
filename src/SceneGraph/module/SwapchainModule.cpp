@@ -28,7 +28,7 @@ namespace
         swapchain_ci.pNext                  =nullptr;
         swapchain_ci.flags                  =0;
         swapchain_ci.surface                =dev_attr->surface;
-        swapchain_ci.minImageCount          =3;//rsa->surface_caps.minImageCount;
+        swapchain_ci.minImageCount          =dev_attr->surface_caps.minImageCount;
         swapchain_ci.imageFormat            =dev_attr->surface_format.format;
         swapchain_ci.imageColorSpace        =dev_attr->surface_format.colorSpace;
         swapchain_ci.imageExtent            =dev_attr->surface_caps.currentExtent;
