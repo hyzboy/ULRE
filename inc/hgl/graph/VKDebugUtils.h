@@ -77,10 +77,10 @@ public:
     DU_FUNC(DisplayKHR,                 DISPLAY_KHR)
     DU_FUNC(DisplayModeKHR,             DISPLAY_MODE_KHR)
     DU_FUNC(DebugReportCallbackEXT,     DEBUG_REPORT_CALLBACK_EXT)
-#ifdef VK_ENABLE_BETA_EXTENSIONS
+
     DU_FUNC(VideoSessionKHR,            VIDEO_SESSION_KHR)
-    DU_FUNC(VideoSessionParametersKHR,  VIDEO_SESSION_PARAMETERS_KH)
-#endif//VK_ENABLE_BETA_EXTENSIONS
+    DU_FUNC(VideoSessionParametersKHR,  VIDEO_SESSION_PARAMETERS_KHR)
+
     DU_FUNC(CuModuleNVX,                    CU_MODULE_NVX)
     DU_FUNC(CuFunctionNVX,                  CU_FUNCTION_NVX)
     DU_FUNC(DebugUtilsMessengerEXT,         DEBUG_UTILS_MESSENGER_EXT)

@@ -133,13 +133,17 @@ void GPUDeviceAttribute::GetQueueFamily()
                     video_decode_family = i;
             }
 
-#ifdef VK_ENABLE_BETA_EXTENSIONS
             if(fp->queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR)
             {
                 if (video_encode_family == ERROR_FAMILY_INDEX)
                     video_encode_family = i;
             }
-#endif//VK_ENABLE_BETA_EXTENSIONS
+
+            if(fp->queueFlags & VK_QUEUE_TRANSFER_BIT)
+            {
+                if(transfer_family == ERROR_FAMILY_INDEX)
+                    transfer_family = i;
+            }
 
             if(fp->queueFlags & VK_QUEUE_COMPUTE_BIT)
             {

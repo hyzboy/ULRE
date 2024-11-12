@@ -146,8 +146,6 @@ bool RenderFramework::Init(uint w,uint h,const OSString &app_name)
 
     win->Join(this);
 
-
-
     return(true);
 }
 
