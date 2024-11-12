@@ -101,6 +101,8 @@ public:
 
     virtual void MainLoop();                                                                        ///<主循环
 
+    virtual void Run();
+
 public: //TileData
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集

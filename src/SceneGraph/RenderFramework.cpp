@@ -1,5 +1,6 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/manager/RenderPassManager.h>
+#include<hgl/graph/manager/TextureManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/VKDeviceCreater.h>
 #include<hgl/Time.h>
@@ -59,8 +60,6 @@ void RenderFramework::EndFrame()
 {
     swapchain_module->EndFrame();
 
-    device->WaitIdle();
-
     last_time=cur_time;
     ++frame_count;
 }
@@ -83,13 +82,27 @@ void RenderFramework::MainLoop()
             rm->OnExecute(delta_time,nullptr);
     }
 
+    EndFrame();
+
     for(auto rm:module_list)
     {
         if(rm->IsEnable())
             rm->OnPostFrame();
     }
+}
 
-    EndFrame();
+void RenderFramework::Run()
+{
+    if(!win)return;
+    if(!swapchain_module)return;
+
+    while(win->Update())
+    {
+        if(win->IsVisible())
+            MainLoop();
+
+        device->WaitIdle();
+    }
 }
 
 bool RenderFramework::Init(uint w,uint h,const OSString &app_name)
@@ -126,13 +139,14 @@ bool RenderFramework::Init(uint w,uint h,const OSString &app_name)
 
         graph_module_manager=InitGraphModuleManager(device);
 
-        render_pass_manager=graph_module_manager->GetModule<RenderPassManager>(true);
-        swapchain_module=graph_module_manager->GetModule<SwapchainModule>(true);
+        render_pass_manager =graph_module_manager->GetModule<RenderPassManager>(true);
+        texture_manager     =graph_module_manager->GetModule<TextureManager>(true);
+        swapchain_module    =graph_module_manager->GetModule<SwapchainModule>(true);
     }
 
     win->Join(this);
 
-    
+
 
     return(true);
 }

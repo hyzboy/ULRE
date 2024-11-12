@@ -71,23 +71,16 @@ namespace
 //            VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME,
 
             VK_KHR_SPIRV_1_4_EXTENSION_NAME,
+
+            VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME,
+            VK_IMG_FORMAT_PVRTC_EXTENSION_NAME,
+            VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME,
+            VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME
         };
 
         for(const char *ext_name:require_ext_list)
             if(physical_device->CheckExtensionSupport(ext_name))
                 ext_list->Add(ext_name);
-
-        if(require.lineRasterization>=VulkanHardwareRequirement::SupportLevel::Want)
-            ext_list->Add(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
-
-        if(require.texture_compression.PVRTC>=VulkanHardwareRequirement::SupportLevel::Want)                   //前面检测过了，所以这里不用再次检测是否支持
-            ext_list->Add(VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
-
-        if(require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
-            ext_list->Add(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
-
-        if(require.blendOperationAdvanced>=VulkanHardwareRequirement::SupportLevel::Want)
-            ext_list->Add(VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME);
     }
 
     void SetDeviceFeatures(VkPhysicalDeviceFeatures *features,const VkPhysicalDeviceFeatures &pdf,const VulkanHardwareRequirement &require)
@@ -222,7 +215,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     VkDeviceCreateInfo create_info;
 
     create_info.sType                   =VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    create_info.pNext                   =nullptr;
+    //create_info.pNext                   =nullptr;
     create_info.flags                   =0;
     create_info.queueCreateInfoCount    =1;
     create_info.pQueueCreateInfos       =&queue_info;
@@ -232,17 +225,37 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
     create_info.ppEnabledLayerNames     =nullptr;
     create_info.pEnabledFeatures        =&features;
 
+    void **pNext=const_cast<void **>(&create_info.pNext);
+
     VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_type_uint8_features;
 
     if(physical_device->SupportU8Index()
      &&require.fullDrawIndexUint8>=VulkanHardwareRequirement::SupportLevel::Want)
     {
-        create_info.pNext=&index_type_uint8_features;
+        *pNext=&index_type_uint8_features;
 
         index_type_uint8_features.sType         =VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
-        index_type_uint8_features.pNext         =nullptr;
+        //index_type_uint8_features.pNext         =nullptr;
         index_type_uint8_features.indexTypeUint8=VK_TRUE;
+
+        pNext=const_cast<void **>(&index_type_uint8_features.pNext);
     }
+
+    VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT blend_op_advanced_features;
+
+    if(physical_device->SupportBlendOpAdvanced()
+     &&require.blendOperationAdvanced>=VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        *pNext=&blend_op_advanced_features;
+
+        blend_op_advanced_features.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT;
+        //blend_op_advanced_features.pNext=nullptr;
+        blend_op_advanced_features.advancedBlendCoherentOperations=VK_TRUE;
+
+        pNext=const_cast<void **>(&blend_op_advanced_features.pNext);
+    }
+
+    *pNext=nullptr;
 
     VkDevice device;
 

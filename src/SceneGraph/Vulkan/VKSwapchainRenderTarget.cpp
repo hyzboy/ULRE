@@ -30,12 +30,12 @@ RTSwapchain::~RTSwapchain()
     delete swapchain;
 }
     
-int RTSwapchain::AcquireNextImage()
+uint32_t RTSwapchain::AcquireNextImage()
 {
     if(vkAcquireNextImageKHR(device,swapchain->swap_chain,UINT64_MAX,*(this->present_complete_semaphore),VK_NULL_HANDLE,&current_frame)==VK_SUCCESS)
         return current_frame;
 
-    return -1;
+    return UINT32_MAX;
 }
 
 bool RTSwapchain::PresentBackbuffer(VkSemaphore *wait_semaphores,const uint32_t count)
@@ -48,12 +48,12 @@ bool RTSwapchain::PresentBackbuffer(VkSemaphore *wait_semaphores,const uint32_t 
     
     if (!((result == VK_SUCCESS) || (result == VK_SUBOPTIMAL_KHR))) 
     {
-		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-			// Swap chain is no longer compatible with the surface and needs to be recreated
-			
-			return false;
-		} 
-	}
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            // Swap chain is no longer compatible with the surface and needs to be recreated
+            
+            return false;
+        } 
+    }
 
     return(true);
 }

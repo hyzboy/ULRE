@@ -99,7 +99,7 @@ public:
      * 请求下一帧画面的索引
      * @param present_complete_semaphore 推送完成信号
      */
-    int AcquireNextImage();
+    uint32_t AcquireNextImage();
 
     /**
      * 推送后台画面到前台

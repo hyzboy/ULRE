@@ -72,6 +72,9 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             VkPhysicalDeviceFeatures2 features2;
             VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT boaf;
 
+            hgl_zero(features2);
+            hgl_zero(boaf);
+
             features2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
             features2.pNext=&features11;
 
@@ -103,12 +106,15 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         hgl_zero(properties11);
         hgl_zero(properties12);
         hgl_zero(properties13);
+        hgl_zero(blendOpAdvProperties);
 
         auto func=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceProperties2KHR");
 
         if(func)
         {
             VkPhysicalDeviceProperties2 properties2;
+
+            hgl_zero(properties2);
 
             properties2.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
             properties2.pNext=&properties11;

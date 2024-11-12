@@ -3,6 +3,9 @@
 
 VK_NAMESPACE_BEGIN
 
+void InitGraphModuleFactory();
+void ClearGraphModuleFactory();
+
 namespace
 {
     using GraphModuleManagerMap=Map<GPUDevice *,GraphModuleManager *>;
@@ -22,6 +25,9 @@ GraphModuleManager *InitGraphModuleManager(GPUDevice *dev)
     }
     else
     {
+        InitGraphModuleFactory();
+        RegistryCommonGraphModule();
+
         graph_module_manager_map=new GraphModuleManagerMap;
     }
 
@@ -48,6 +54,13 @@ bool ClearGraphModuleManager(GPUDevice *dev)
     graph_module_manager_map->DeleteByKey(dev);
 
     delete gmm;
+
+    if(graph_module_manager_map->IsEmpty())
+    {
+        ClearGraphModuleFactory();
+        SAFE_CLEAR(graph_module_manager_map);
+    }
+
     return(true);
 }
 

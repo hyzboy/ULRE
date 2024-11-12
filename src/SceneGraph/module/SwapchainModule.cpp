@@ -5,6 +5,7 @@
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -144,9 +145,6 @@ bool SwapchainModule::CreateSwapchainFBO()
 
 bool SwapchainModule::CreateSwapchain()
 {
-    if(swapchain)
-        return(false);
-
     auto *dev_attr=GetDeviceAttribute();
 
     if(!dev_attr)
@@ -207,7 +205,7 @@ void SwapchainModule::InitRenderCmdBuffer()
 
     AnsiString cmd_buf_name;
 
-    for(int32_t i=0;i<swapchain->image_count;i++)
+    for(uint32_t i=0;i<swapchain->image_count;i++)
     {
         cmd_buf_name=device->GetPhysicalDevice()->GetDeviceName()+AnsiString(":RenderCmdBuffer_")+AnsiString::numberOf(i);
 
@@ -268,9 +266,9 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 
 bool SwapchainModule::BeginFrame()
 {
-    int index=swapchain_rt->AcquireNextImage();
+    uint32_t index=swapchain_rt->AcquireNextImage();
 
-    if(index<0||index>=swapchain->image_count)
+    if(index>=swapchain->image_count)
         return(false);
 
     return(true);
@@ -280,9 +278,12 @@ void SwapchainModule::EndFrame()
 {
     int index=swapchain_rt->GetCurrentFrameIndices();
 
+    VkCommandBuffer cb=*(cmd_buf[index]);
 
-
-    swapchain_rt->Submit();
+    swapchain_rt->Submit(cb);
+    swapchain_rt->PresentBackbuffer();
+    swapchain_rt->WaitQueue();
+    swapchain_rt->WaitFence();
 }
 
 VK_NAMESPACE_END
