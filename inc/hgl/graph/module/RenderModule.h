@@ -24,6 +24,8 @@ public:
     virtual ~RenderModule()=default;
 
     virtual void OnResize(const VkExtent2D &ext)override{current_extent=ext;}
+
+    virtual void OnExecute(const double,RenderCmdBuffer *){}
 };//class RenderModule
 
 VK_NAMESPACE_END

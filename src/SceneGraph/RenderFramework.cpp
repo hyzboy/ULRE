@@ -3,6 +3,7 @@
 #include<hgl/graph/manager/TextureManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/VKDeviceCreater.h>
+#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/Time.h>
 #include<hgl/log/LogInfo.h>
 
@@ -76,10 +77,20 @@ void RenderFramework::MainLoop()
 
     BeginFrame();
 
-    for(auto rm:module_list)
+    RenderCmdBuffer *rcb=swapchain_module->GetRenderCmdBuffer();
+
+    if(rcb)
     {
-        if(rm->IsEnable())
-            rm->OnExecute(delta_time,nullptr);
+        rcb->Begin();
+        rcb->BindFramebuffer(swapchain_module->GetRenderPass(),swapchain_module->GetRenderTarget()->GetFramebuffer());
+
+        for(auto rm:module_list)
+        {
+            if(rm->IsEnable())
+                rm->OnExecute(delta_time,rcb);
+        }
+
+        rcb->End();
     }
 
     EndFrame();

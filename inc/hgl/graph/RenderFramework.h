@@ -67,6 +67,15 @@ public: //module
 
     template<typename T> T *GetModule(){return graph_module_manager->GetModule<T>(false);}          ///<获取指定类型的模块
 
+    template<typename T> T *AddModule()
+    {
+        T *tm=new T(graph_module_manager);
+
+        module_list.Add(tm);
+
+        return tm;
+    }
+
     SwapchainModule *GetSwapchain(){return swapchain_module;}                                       ///<取得Swapchain模块
 
 public: //manager

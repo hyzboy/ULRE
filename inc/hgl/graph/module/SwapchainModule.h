@@ -47,6 +47,8 @@ public:
 
     const   VkExtent2D &    GetSwapchainSize()const {return swapchain_rt->GetExtent();}
 
+            RenderCmdBuffer *GetRenderCmdBuffer();
+
 };//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END

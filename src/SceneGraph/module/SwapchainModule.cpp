@@ -286,4 +286,14 @@ void SwapchainModule::EndFrame()
     swapchain_rt->WaitFence();
 }
 
+RenderCmdBuffer *SwapchainModule::GetRenderCmdBuffer()
+{
+    int index=swapchain_rt->GetCurrentFrameIndices();
+    
+    if(index>=swapchain->image_count)
+        return(nullptr);
+
+    return cmd_buf[index];
+}
+
 VK_NAMESPACE_END

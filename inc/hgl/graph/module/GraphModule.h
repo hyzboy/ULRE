@@ -122,4 +122,14 @@ public: //回调事件
     \
     name(GraphModuleManager *gmm):GraphModule(gmm,GetModuleName()){}
 
+#define RENDER_MODULE_CONSTRUCT(name)    public:\
+    NO_COPY_NO_MOVE(name)   \
+    static const AnsiIDName &GetModuleName()    \
+    {   \
+        static const AnsiIDName id_name(#name);    \
+        return id_name;    \
+    }   \
+    \
+    name(GraphModuleManager *gmm):RenderModule(gmm,GetModuleName()){}
+
 VK_NAMESPACE_END
