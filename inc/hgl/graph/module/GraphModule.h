@@ -13,7 +13,9 @@ class GraphModuleManager
 {
     GPUDevice *device;
 
-    Map<AnsiIDName,GraphModule *> graph_module_map;
+    List<GraphModule *> module_list;                    ///<模块列表
+
+    Map<AnsiIDName,GraphModule *> graph_module_map;     ///<模块映射表
 
 public:
 
@@ -86,12 +88,8 @@ public:
 
     NO_COPY_NO_MOVE(GraphModule)
 
-    GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
-    {
-        module_manager=gmm;
-        module_name=name;
-    }
-    virtual ~GraphModule()=default;
+    GraphModule(GraphModuleManager *gmm,const AnsiIDName &name);
+    virtual ~GraphModule();
 
     virtual bool Init(){return true;}                                                               ///<初始化当前模块
 

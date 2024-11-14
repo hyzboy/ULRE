@@ -27,7 +27,6 @@ RTSwapchain::RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rc
 RTSwapchain::~RTSwapchain()
 {
     delete present_complete_semaphore;
-    delete swapchain;
 }
     
 uint32_t RTSwapchain::AcquireNextImage()
