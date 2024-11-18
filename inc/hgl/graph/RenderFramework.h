@@ -38,6 +38,9 @@ protected:
 
     ObjectList<GraphModule> module_list;
 
+    List<GraphModule *> per_frame_module_list;
+    List<RenderModule *> render_module_list;
+
 protected:
 
     SwapchainModule *   swapchain_module    =nullptr;
@@ -72,6 +75,12 @@ public: //module
         T *tm=new T(graph_module_manager);
 
         module_list.Add(tm);
+
+        if(tm->IsPerFrame())
+            per_frame_module_list.Add(tm);
+
+        if(tm->IsRender())
+            render_module_list.Add(tm);
 
         return tm;
     }

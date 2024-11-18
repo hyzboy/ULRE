@@ -52,7 +52,13 @@ void RenderFramework::StartTime()
 
 void RenderFramework::BeginFrame()
 {
-    cur_time=GetDoubleTime();
+    cur_time=GetDoubleTime();    
+
+    for(GraphModule *rm:per_frame_module_list)
+    {
+        if(rm->IsEnable())
+            rm->OnPreFrame();
+    }
 
     swapchain_module->BeginFrame();
 }
@@ -60,6 +66,12 @@ void RenderFramework::BeginFrame()
 void RenderFramework::EndFrame()
 {
     swapchain_module->EndFrame();
+    
+    for(GraphModule *rm:per_frame_module_list)
+    {
+        if(rm->IsEnable())
+            rm->OnPostFrame();
+    }
 
     last_time=cur_time;
     ++frame_count;
@@ -68,12 +80,6 @@ void RenderFramework::EndFrame()
 void RenderFramework::MainLoop()
 {
     const double delta_time=cur_time-last_time;
-
-    for(auto rm:module_list)
-    {
-        if(rm->IsEnable())
-            rm->OnPreFrame();
-    }
 
     BeginFrame();
 
@@ -84,22 +90,16 @@ void RenderFramework::MainLoop()
         rcb->Begin();
         rcb->BindFramebuffer(swapchain_module->GetRenderPass(),swapchain_module->GetRenderTarget()->GetFramebuffer());
 
-        for(auto rm:module_list)
+        for(RenderModule *rm:render_module_list)
         {
             if(rm->IsEnable())
-                rm->OnExecute(delta_time,rcb);
+                rm->OnFrameRender(delta_time,rcb);
         }
 
         rcb->End();
     }
 
     EndFrame();
-
-    for(auto rm:module_list)
-    {
-        if(rm->IsEnable())
-            rm->OnPostFrame();
-    }
 }
 
 void RenderFramework::Run()

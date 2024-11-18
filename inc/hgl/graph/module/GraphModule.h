@@ -22,10 +22,10 @@ public:
     GraphModuleManager(GPUDevice *dev){device=dev;}
     ~GraphModuleManager();
 
-            GPUDevice *         GetDevice           ()noexcept{return device;}                      ///<取得GPU设备
-            VkDevice            GetVkDevice         ()const{return device->GetDevice();}
-    const   GPUPhysicalDevice * GetPhysicalDevice   ()const{return device->GetPhysicalDevice();}    ///<取得物理设备
-            GPUDeviceAttribute *GetDeviceAttribute  (){return device->GetDeviceAttribute();}        ///<取得设备属性
+            GPUDevice *         GetDevice           ()noexcept  {return device;}                                        ///<取得GPU设备
+            VkDevice            GetVkDevice         ()const     {return device->GetDevice();}
+    const   GPUPhysicalDevice * GetPhysicalDevice   ()const     {return device->GetPhysicalDevice();}                   ///<取得物理设备
+            GPUDeviceAttribute *GetDeviceAttribute  ()          {return device->GetDeviceAttribute();}                  ///<取得设备属性
 
     /**
      * 获取指定名称的模块
@@ -70,6 +70,7 @@ protected:
 
 public:
 
+    virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
     virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
 
             GraphModuleManager *GetManager          ()      {return module_manager;}                                    ///<取得模块管理器
@@ -106,7 +107,6 @@ public: //回调事件
     virtual void OnResize(const VkExtent2D &){}                                                     ///<窗口大小改变
 
     virtual void OnPreFrame(){}                                                                     ///<帧绘制前回调
-    virtual void OnExecute(const double,RenderCmdBuffer *){}
     virtual void OnPostFrame(){}                                                                    ///<帧绘制后回调
 };//class GraphModule
 

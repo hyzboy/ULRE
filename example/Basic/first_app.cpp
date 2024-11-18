@@ -17,7 +17,7 @@ public:
         LOG_INFO(OS_TEXT("Resize: ")+OSString::numberOf(size.width)+OS_TEXT("x")+OSString::numberOf(size.height));
     }
 
-    void OnExecute(const double,RenderCmdBuffer *cmd)
+    void OnFrameRender(const double,RenderCmdBuffer *cmd) override
     {
         LOG_INFO(OS_TEXT("Execute"));
 

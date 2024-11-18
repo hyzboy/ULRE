@@ -101,10 +101,14 @@ bool SwapchainModule::CreateSwapchainFBO()
     if(!tex_manager)
         return(false);
 
-    swapchain->sc_depth =tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),swapchain->extent));
+    {
+        auto sc_depth_tci=new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),swapchain->extent);
 
-    if(!swapchain->sc_depth)
-        return(false);
+        swapchain->sc_depth =tex_manager->CreateTexture2D(sc_depth_tci);
+
+        if(!swapchain->sc_depth)
+            return(false);
+    }
 
     //#ifdef _DEBUG
     //    if(dev_attr->debug_utils)
@@ -120,14 +124,16 @@ bool SwapchainModule::CreateSwapchainFBO()
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
-        swapchain->sc_color[i]=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]));
+        auto sc_color_tci=new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]);
+
+        swapchain->sc_color[i]=tex_manager->CreateTexture2D(sc_color_tci);
 
         if(!swapchain->sc_color[i])
             return(false);
 
-        swapchain->sc_fbo[i]=tex_manager->CreateFBO( swapchain_rp,
-                                            swapchain->sc_color[i]->GetImageView(),
-                                            swapchain->sc_depth->GetImageView());
+        swapchain->sc_fbo[i]=tex_manager->CreateFBO(swapchain_rp,
+                                                    swapchain->sc_color[i]->GetImageView(),
+                                                    swapchain->sc_depth->GetImageView());
 
     //#ifdef _DEBUG
     //    if(dev_attr->debug_utils)

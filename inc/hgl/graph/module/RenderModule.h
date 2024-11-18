@@ -14,7 +14,8 @@ class RenderModule:public GraphModule
 
 public:
     
-    const bool IsRender()const noexcept{return true;}
+    const bool IsPerFrame   ()const noexcept{return true;}                                          ///<每帧运行
+    const bool IsRender     ()const noexcept{return true;}                                          ///<渲染模块
 
 public:
 
@@ -25,7 +26,7 @@ public:
 
     virtual void OnResize(const VkExtent2D &ext)override{current_extent=ext;}
 
-    virtual void OnExecute(const double,RenderCmdBuffer *){}
+    virtual void OnFrameRender(const double,RenderCmdBuffer *)=0;                                   ///<帧绘制回调
 };//class RenderModule
 
 VK_NAMESPACE_END
