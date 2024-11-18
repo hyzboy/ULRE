@@ -33,7 +33,7 @@ namespace hgl
             Color4f             color;
             DeviceBuffer *         ubo_color;
 
-            SortedSets<TextPrimitive *> tr_sets;
+            SortedSet<TextPrimitive *> tr_sets;
 
         private:
 

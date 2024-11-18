@@ -24,7 +24,7 @@ namespace hgl
 
             TileResPool to_res;
 
-            SortedSets<u32char> not_bitmap_chars;
+            SortedSet<u32char> not_bitmap_chars;
 
         public:
 
@@ -37,7 +37,7 @@ namespace hgl
             TileFont(TileData *td,FontSource *fs);
             virtual ~TileFont();
 
-            bool Registry(TileUVFloatMap &,SortedSets<u32char> &chars_sets);                        ///<注册要使用的字符
+            bool Registry(TileUVFloatMap &,SortedSet<u32char> &chars_sets);                        ///<注册要使用的字符
             void Unregistry(const List<u32char> &);                                                 ///<注销要使用的字符
         };//class TileFont
     }//namespace graph

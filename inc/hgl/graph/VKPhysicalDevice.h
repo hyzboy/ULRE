@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/String.h>
-#include<hgl/type/SortedSets.h>
+#include<hgl/type/SortedSet.h>
 
 VK_NAMESPACE_BEGIN
 class GPUPhysicalDevice
