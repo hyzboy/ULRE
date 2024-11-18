@@ -2,7 +2,7 @@
 #define HGL_GRAPH_RENDER_NODE_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/type/SortedSets.h>
+#include<hgl/type/SortedSet.h>
 namespace hgl
 {
     namespace graph
@@ -27,7 +27,7 @@ namespace hgl
         using RenderNodeList=List<RenderNode>;
         using RenderNodePointerList=List<RenderNode *>;
 
-        using MaterialInstanceSets=SortedSets<MaterialInstance *>;       ///<材质实例集合
+        using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_RENDER_NODE_INCLUDE

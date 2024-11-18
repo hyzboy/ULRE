@@ -100,8 +100,8 @@ namespace hgl
 
             int draw_chars_count;                       ///<要绘制字符列表
 
-            SortedSets<u32char> chars_sets;             ///<不重复字符统计缓冲区
-            SortedSets<u32char> clear_chars_sets;       ///<待清除的字符合集
+            SortedSet<u32char> chars_sets;             ///<不重复字符统计缓冲区
+            SortedSet<u32char> clear_chars_sets;       ///<待清除的字符合集
             TileUVFloatMap chars_uv;                    ///<所有要绘制字符的uv
 
             struct CharDrawAttr

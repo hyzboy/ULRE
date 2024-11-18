@@ -24,10 +24,10 @@ namespace hgl
             friend class TextLayout;
             friend class TextRender;
 
-            SortedSets<u32char> chars_sets;
+            SortedSet<u32char> chars_sets;
 
-            const SortedSets<u32char> &GetCharsSets()const{return chars_sets;}
-            void SetCharsSets(const SortedSets<u32char> &sl){chars_sets=sl;}
+            const SortedSet<u32char> &GetCharsSets()const{return chars_sets;}
+            void SetCharsSets(const SortedSet<u32char> &sl){chars_sets=sl;}
             void ClearCharsSets(){chars_sets.Clear();}
 
         private:
