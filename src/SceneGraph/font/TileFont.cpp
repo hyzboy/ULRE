@@ -30,7 +30,7 @@ namespace hgl
          * @param rs 每个字符在纹理中的UV坐标
          * @param chars_sets 要注册的字符合集
          */
-        bool TileFont::Registry(TileUVFloatMap &uv_map,SortedSets<u32char> &chars_sets)
+        bool TileFont::Registry(TileUVFloatMap &uv_map,SortedSet<u32char> &chars_sets)
         {
             ResPoolStats stats;
 
