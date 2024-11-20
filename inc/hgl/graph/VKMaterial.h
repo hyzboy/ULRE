@@ -95,6 +95,6 @@ public:
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 
-using MaterialSets=SortedSets<Material *>;
+using MaterialSets=SortedSet<Material *>;
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
