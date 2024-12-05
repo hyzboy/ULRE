@@ -6,7 +6,7 @@
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/graph/VKSamplerType.h>
 #include<hgl/graph/VKImageType.h>
-#include<hgl/CompOperator.h>
+#include<hgl/Comparator.h>
 
 namespace hgl
 {
