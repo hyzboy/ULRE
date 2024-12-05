@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKDevice.h>
@@ -60,6 +60,8 @@ class GraphModule
 
     AnsiIDName module_name;
 
+    SortedSet<AnsiIDName> dependent_module;                                                         ///<依赖的模块
+
     bool module_enable;
     bool module_ready;
 
@@ -92,6 +94,13 @@ public:
     virtual ~GraphModule();
 
     virtual bool Init(){return true;}                                                               ///<初始化当前模块
+
+    int Comp(const GraphModule *gm)const
+    {
+        return(dependent_module.Contains(gm->module_name)?1:-1);    //如果我依赖于他，那么我比他大
+    }
+
+    CompOperator(const GraphModule *,Comp)
 
 public:
 

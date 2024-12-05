@@ -28,7 +28,7 @@ namespace hgl
         
     #pragma pack(push,1)
 
-        struct ShaderVariableType
+        struct ShaderVariableType:public Comparator<ShaderVariableType>
         {
             union
             {
@@ -158,9 +158,7 @@ namespace hgl
 
             const bool Check()const;
 
-            int Comp(const ShaderVariableType &svt)const;
-
-            CompOperator(const ShaderVariableType &,Comp)
+            const int compare(const ShaderVariableType &svt)const override;
 
             const char *GetTypename()const;
 
@@ -281,7 +279,7 @@ namespace hgl
 
         using SVList=List<ShaderVariable>;
 
-        struct ShaderVariableArray
+        struct ShaderVariableArray:public Comparator<ShaderVariableArray>
         {
             uint count;
 
@@ -304,44 +302,36 @@ namespace hgl
                 Clear();
             }
 
-            int Comp(const ShaderVariableArray *sva)const
+            const int compare(const ShaderVariableArray &sva)const override
             {
-                if(!sva)
-                    return 1;
-
-                int off=count-sva->count;
+                int off=count-sva.count;
                 if(off)return off;
 
                 for(uint i=0;i<count;i++)
                 {
-                    off=items[i].location-sva->items[i].location;
+                    off=items[i].location-sva.items[i].location;
                     if(off)
                         return off;
 
-                    if(items[i].type.ToCode()>sva->items[i].type.ToCode())
+                    if(items[i].type.ToCode()>sva.items[i].type.ToCode())
                         return 1;
 
                     //ToCode返回的是uint64，可能差值超大，所以不能直接用-的结果
 
-                    if(items[i].type.ToCode()<sva->items[i].type.ToCode())
+                    if(items[i].type.ToCode()<sva.items[i].type.ToCode())
                         return -1;
 
-                    off=int(items[i].interpolation)-int(sva->items[i].interpolation);
+                    off=int(items[i].interpolation)-int(sva.items[i].interpolation);
                     if(off)
                         return off;
 
-                    off=hgl::strcmp(items[i].name,sva->items[i].name);
+                    off=hgl::strcmp(items[i].name,sva.items[i].name);
                     if(off)
                         return off;
                 }
 
                 return 0;
             }
-
-            int Comp(const ShaderVariableArray &sva)const{return Comp(&sva);}
-
-            CompOperator(const ShaderVariableArray *,Comp)
-            CompOperator(const ShaderVariableArray &,Comp)
                 
             bool Init(const uint c=0)
             {

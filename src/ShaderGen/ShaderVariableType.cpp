@@ -85,7 +85,7 @@ const bool ShaderVariableType::Check()const
     return(true);
 }
 
-int ShaderVariableType::Comp(const ShaderVariableType &svt)const
+const int ShaderVariableType::compare(const ShaderVariableType &svt)const
 {
     int off=(int)base_type-(int)svt.base_type;
 

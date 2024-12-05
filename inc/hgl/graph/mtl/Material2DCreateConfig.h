@@ -6,7 +6,7 @@
 #include<hgl/graph/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
-struct Material2DCreateConfig:public MaterialCreateConfig
+struct Material2DCreateConfig:public MaterialCreateConfig,public Comparator<Material2DCreateConfig>
 {
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
 
@@ -32,9 +32,9 @@ public:
             position_format=VAT_VEC2;
     }
 
-    int Comp(const Material2DCreateConfig &cfg)const
+    const int compare(const Material2DCreateConfig &cfg)const override
     {
-        int off=MaterialCreateConfig::Comp(cfg);
+        int off=MaterialCreateConfig::compare(cfg);
 
         if(off)return off;
 
@@ -48,8 +48,6 @@ public:
        
         return off;
     }
-
-    CompOperator(const Material2DCreateConfig &,Comp)
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
 MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
