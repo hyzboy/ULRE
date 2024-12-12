@@ -1,12 +1,15 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/Map.h>
 #include<hgl/util/hash/Hash.h>
 
 VK_NAMESPACE_BEGIN
-using RenderPassHASHCode=util::HashCodeXXH3_128;
-#define CreateRenderPassHash util::CreateXXH3_128Hash
+using RenderPassHASHCode=util::HashCode<128/8>;
+inline util::Hash *CreateRenderPassHash()
+{
+    return util::CreateHash(util::HASH::xxH3_128);
+}
 
 class RenderPassManager:public GraphModule
 {
