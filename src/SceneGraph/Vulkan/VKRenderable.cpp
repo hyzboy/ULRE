@@ -24,25 +24,29 @@ PrimitiveDataBuffer::~PrimitiveDataBuffer()
     delete[] vab_list;
 }
 
-const bool PrimitiveDataBuffer::Comp(const PrimitiveDataBuffer *pdb)const
+const int PrimitiveDataBuffer::compare(const PrimitiveDataBuffer &pdb)const
 {
-    if(!pdb)return(false);
+    ptrdiff_t off;
 
-    if(vdm&&pdb->vdm)
-        return (vdm==pdb->vdm);
+    off=&vdm-&pdb.vdm;
+    if(off)
+        return off;
 
-    if(vab_count!=pdb->vab_count)return(false);
+    off=vab_count-pdb.vab_count;
+    if(off)
+        return off;
 
-    for(uint32_t i=0;i<vab_count;i++)
-    {
-        if(vab_list[i]!=pdb->vab_list[i])return(false);
-        if(vab_offset[i]!=pdb->vab_offset[i])return(false);
-    }
+    off=hgl_cmp(vab_list,pdb.vab_list,vab_count);
+    if(off)
+        return off;
 
-    if(ibo!=pdb->ibo)
-        return(false);
+    off=hgl_cmp(vab_offset,pdb.vab_offset,vab_count);
+    if(off)
+        return off;
 
-    return(true);
+    off=ibo-pdb.ibo;
+
+    return off;
 }
 
 Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,PrimitiveDataBuffer *pdb,PrimitiveRenderData *prd)
@@ -61,7 +65,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     const VIL *vil=mi->GetVIL();
 
-    if(vil->Comp(p->GetVIL()))
+    if(*vil!=*p->GetVIL())
         return(nullptr);
 
     const uint32_t input_count=vil->GetVertexAttribCount(VertexInputGroup::Basic);       //不统计Bone/LocalToWorld组的

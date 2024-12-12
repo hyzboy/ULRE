@@ -8,14 +8,14 @@ class RenderAssignBuffer;
 class SceneNode;
 struct CameraInfo;
 
-struct RenderPipelineIndex
+struct RenderPipelineIndex:public Comparator<RenderPipelineIndex>
 {
     Material *material;
     Pipeline *pipeline;
 
 public:
 
-    const int Comp(const RenderPipelineIndex &rli)const
+    const int compare(const RenderPipelineIndex &rli)const override
     {
         if(material<rli.material)return(-1);
         if(material>rli.material)return(1);
@@ -25,8 +25,6 @@ public:
 
         return(0);
     }
-
-    CompOperator(const RenderPipelineIndex &,Comp)
 
 public:
 

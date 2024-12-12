@@ -12,7 +12,7 @@ namespace hgl
         /**
         * 字体信息
         */
-        struct Font
+        struct Font:public ComparatorData<Font>
         {
             os_char name[MAX_FONT_NAME_LENGTH];	///<字体名称
 
@@ -28,8 +28,6 @@ namespace hgl
 
             Font();
             Font(const os_char *,int,int,bool b=false,bool i=false,bool=true);
-
-            CompOperatorMemcmp(const Font &);	///<比较操作符重载
         };//struct Font
     }//namespace graph
 }//namespace hgl

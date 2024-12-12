@@ -12,7 +12,7 @@ VK_NAMESPACE_BEGIN
 * 原始图元数据缓冲区<Br>
 * 提供在渲染之前的数据绑定信息
 */
-struct PrimitiveDataBuffer
+struct PrimitiveDataBuffer:public Comparator<PrimitiveDataBuffer>
 {
     uint32_t        vab_count;
     VkBuffer *      vab_list;
@@ -32,14 +32,14 @@ public:
     PrimitiveDataBuffer(const uint32_t,IndexBuffer *,VertexDataManager *_v=nullptr);
     ~PrimitiveDataBuffer();
 
-    const bool Comp(const PrimitiveDataBuffer *pdb)const;
+    const int compare(const PrimitiveDataBuffer &pdb)const override;
 };//struct PrimitiveDataBuffer
 
 /**
 * 原始图元渲染数据<Br>
 * 提供在渲染时的数据
 */
-struct PrimitiveRenderData
+struct PrimitiveRenderData:public ComparatorData<PrimitiveRenderData>
 {
     //因为要VAB是流式访问，所以我们这个结构会被用做排序依据
     //也因此，把vertex_offset放在最前面
@@ -59,9 +59,6 @@ public:
         vertex_offset   =vo;
         first_index     =fi;
     }
-
-    CompOperatorMemcmp(const PrimitiveRenderData &);
-    CompOperatorMemcmpPointer(PrimitiveRenderData);
 };
 
 /**

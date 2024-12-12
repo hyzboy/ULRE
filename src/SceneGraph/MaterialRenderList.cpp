@@ -26,13 +26,13 @@
     这样就可以保证所有的渲染操作就算要切VBO，也不需要切换INDIRECT缓冲区，定位指令也很方便。
 */
 
-template<> 
-int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &obj_one,const hgl::graph::RenderNode &obj_two) const
+VK_NAMESPACE_BEGIN
+const int RenderNode::compare(const RenderNode &other)const
 {
     hgl::int64 off;
 
-    hgl::graph::Renderable *ri_one=obj_one.scene_node->GetRenderable();
-    hgl::graph::Renderable *ri_two=obj_two.scene_node->GetRenderable();
+    hgl::graph::Renderable *ri_one=other.scene_node->GetRenderable();
+    hgl::graph::Renderable *ri_two=scene_node->GetRenderable();
 
     auto *prim_one=ri_one->GetPrimitive();
     auto *prim_two=ri_two->GetPrimitive();
@@ -63,8 +63,8 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
 
     //比较距离。。。。。。。。。。。。。。。。。。。。。还不知道这个是正了还是反了，等测出来确认后修改下面的返回值和这里的注释
 
-    float foff=obj_one.to_camera_distance
-              -obj_two.to_camera_distance;
+    float foff=other.to_camera_distance
+              -to_camera_distance;
 
     if(foff>0)
         return 1;
@@ -72,7 +72,6 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
         return -1;
 }
 
-VK_NAMESPACE_BEGIN
 MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,const RenderPipelineIndex &rpi)
 {
     device=d;
@@ -280,8 +279,8 @@ void MaterialRenderList::Stat()
     {
         ro=rn->scene_node->GetRenderable();
 
-        if(last_data_buffer->Comp(ro->GetDataBuffer()))
-            if(last_render_data->_Comp(ro->GetRenderData())==0)
+        if(*last_data_buffer!=*ro->GetDataBuffer())
+            if(*last_render_data==*ro->GetRenderData())
             {
                 ++ri->instance_count;
                 ++rn;
@@ -399,7 +398,7 @@ void MaterialRenderList::ProcIndirectRender()
 
 void MaterialRenderList::Render(RenderItem *ri)
 {
-    if(!ri->pdb->Comp(last_data_buffer))        //换buf了
+    if(*(ri->pdb)!=*last_data_buffer)        //换buf了
     {
         if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
             ProcIndirectRender();
