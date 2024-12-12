@@ -148,7 +148,7 @@ bool RenderFramework::Init(uint w,uint h,const OSString &app_name)
         if(!device)
             return(false);
 
-        graph_module_manager=InitGraphModuleManager(device);
+        graph_module_manager=InitGraphModuleManager(device,this);
 
         render_pass_manager =graph_module_manager->GetModule<RenderPassManager>(true);
         texture_manager     =graph_module_manager->GetModule<TextureManager>(true);

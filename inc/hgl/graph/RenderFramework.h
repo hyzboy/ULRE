@@ -85,7 +85,9 @@ public: //module
         return tm;
     }
 
-    SwapchainModule *GetSwapchain(){return swapchain_module;}                                       ///<取得Swapchain模块
+    GPUDevice *         GetDevice   (){return device;}
+    VkDevice            GetVkDevice (){return device->GetDevice();}
+    SwapchainModule *   GetSwapchain(){return swapchain_module;}                                    ///<取得Swapchain模块
 
 public: //manager
 

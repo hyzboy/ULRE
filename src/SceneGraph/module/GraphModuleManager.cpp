@@ -105,6 +105,11 @@ GraphModule *GraphModuleManager::GetModule(const AnsiIDName &name,bool create)
     return nullptr;
 }
 
+GraphModuleManager::GraphModuleManager(RenderFramework *rf)
+{
+    framework=rf;
+}
+
 GraphModuleManager::~GraphModuleManager()
 {
     //按顺序加入module_list的，要倒着释放
