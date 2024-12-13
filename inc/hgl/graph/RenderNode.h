@@ -11,7 +11,7 @@ namespace hgl
         class MaterialInstance;
         class SceneNode;
 
-        struct RenderNode
+        struct RenderNode:public Comparator<RenderNode>
         {
             uint        index;                                          ///<在MaterialRenderList中的索引
 
@@ -22,6 +22,11 @@ namespace hgl
 
             Vector3f    world_position;
             float       to_camera_distance;
+
+        public:
+
+            //该函数位于MaterialRenderList.cpp
+            const int compare(const RenderNode &)const override;
         };
 
         using RenderNodeList=List<RenderNode>;

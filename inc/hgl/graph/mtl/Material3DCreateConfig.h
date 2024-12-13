@@ -6,7 +6,7 @@
 
 STD_MTL_NAMESPACE_BEGIN
 
-struct Material3DCreateConfig:public MaterialCreateConfig
+struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Material3DCreateConfig>
 {
     bool                camera;                 ///<包含摄像机矩阵信息
 
@@ -32,9 +32,9 @@ public:
 //        reverse_depth=false;
     }
 
-    int Comp(const Material3DCreateConfig &cfg)const
+    const int compare(const Material3DCreateConfig &cfg)const override
     {
-        int off=MaterialCreateConfig::Comp(cfg);
+        int off=MaterialCreateConfig::compare(cfg);
 
         if(off)return off;
 
@@ -48,8 +48,6 @@ public:
 
         return off;
     }
-
-    CompOperator(const Material3DCreateConfig &,Comp)
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
 MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKDevice.h>
@@ -59,12 +59,15 @@ public: //事件
 
 GraphModuleManager *GetGraphModuleManager(GPUDevice *);
 
-class GraphModule
+class GraphModule:public Comparator<GraphModule>
 {
     GraphModuleManager *module_manager;
 
     AnsiIDName module_name;
 
+    SortedSet<AnsiIDName> dependent_module;                                                         ///<依赖的模块
+
+    bool module_init;
     bool module_enable;
     bool module_ready;
 
@@ -89,6 +92,9 @@ public:
     static  const AnsiIDName *  GetModuleName   (){return nullptr;}                                                     ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
     virtual const AnsiIDName *  GetName         ()const{return &module_name;}                                           ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
+    virtual const bool IsRender (){return false;}                                                                       ///<是否为渲染模块
+
+    const bool IsInit   ()const{return module_init;}                                                                    ///<是否已经初始化
             const bool          IsEnable        ()const noexcept{return module_enable;}                                 ///<当前模块是否启用
             const bool          IsReady         ()const noexcept{return module_ready;}                                  ///<当前模块是否准备好
 
@@ -99,7 +105,12 @@ public:
     GraphModule(GraphModuleManager *gmm,const AnsiIDName &name);
     virtual ~GraphModule();
 
-    virtual bool Init(){return true;}                                                               ///<初始化当前模块
+    virtual bool Init(){module_init=true;return true;}                                                                  ///<初始化当前模块
+
+    const int compare(const GraphModule &gm)const override
+    {
+        return(dependent_module.Contains(gm.module_name)?1:-1);    //如果我依赖于他，那么我比他大
+    }
 
 public:
 
