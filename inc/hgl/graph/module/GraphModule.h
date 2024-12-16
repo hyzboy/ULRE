@@ -57,7 +57,7 @@ public: //事件
     void OnResize(const VkExtent2D &);
 };//class GraphModuleManager
 
-GraphModuleManager *GetGraphModuleManager(GPUDevice *);
+GraphModuleManager *GetGraphModuleManager(RenderFramework *);
 
 class GraphModule:public Comparator<GraphModule>
 {
@@ -65,21 +65,18 @@ class GraphModule:public Comparator<GraphModule>
 
     AnsiIDName module_name;
 
-    SortedSet<AnsiIDName> dependent_module;                                                         ///<依赖的模块
+    SortedSet<AnsiIDName> dependent_module;                                                                             ///<依赖的模块
 
-    bool module_init;
-    bool module_enable;
+    bool module_inited;
+    bool module_enabled;
     bool module_ready;
 
 protected:
 
-    virtual void SetModuleEnable(bool e){module_enable=e;}
+    virtual void SetModuleEnabled(bool e){module_enabled=e;}
     virtual void SetModuleReady(bool r){module_ready=r;}
 
 public:
-
-    virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
-    virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
 
             GraphModuleManager *GetManager          ()      {return module_manager;}                                    ///<取得模块管理器
             GPUDevice *         GetDevice           ()      {return module_manager->GetDevice();}                       ///<取得GPU设备
@@ -89,14 +86,15 @@ public:
 
             RenderFramework *   GetFramework        ()      {return module_manager->GetFramework();}                    ///<取得渲染框架
 
-    static  const AnsiIDName *  GetModuleName   (){return nullptr;}                                                     ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
-    virtual const AnsiIDName *  GetName         ()const{return &module_name;}                                           ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
+    static  const AnsiIDName *  GetModuleName       ()      {return nullptr;}                                           ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
+    virtual const AnsiIDName *  GetName             ()const {return &module_name;}                                      ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
-    virtual const bool IsRender (){return false;}                                                                       ///<是否为渲染模块
+    virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
+    virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
 
-    const bool IsInit   ()const{return module_init;}                                                                    ///<是否已经初始化
-            const bool          IsEnable        ()const noexcept{return module_enable;}                                 ///<当前模块是否启用
-            const bool          IsReady         ()const noexcept{return module_ready;}                                  ///<当前模块是否准备好
+            const bool          IsInited            ()const         {return module_inited;}                             ///<是否已经初始化
+            const bool          IsEnabled           ()const noexcept{return module_enabled;}                            ///<当前模块是否启用
+            const bool          IsReady             ()const noexcept{return module_ready;}                              ///<当前模块是否准备好
 
 public:
 
@@ -105,7 +103,7 @@ public:
     GraphModule(GraphModuleManager *gmm,const AnsiIDName &name);
     virtual ~GraphModule();
 
-    virtual bool Init(){module_init=true;return true;}                                                                  ///<初始化当前模块
+    virtual bool Init(){module_inited=true;return true;}                                                                 ///<初始化当前模块
 
     const int compare(const GraphModule &gm)const override
     {

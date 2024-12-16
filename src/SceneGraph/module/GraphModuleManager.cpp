@@ -8,19 +8,19 @@ void ClearGraphModuleFactory();
 
 namespace
 {
-    using GraphModuleManagerMap=Map<GPUDevice *,GraphModuleManager *>;
+    using GraphModuleManagerMap=Map<RenderFramework *,GraphModuleManager *>;
 
     static GraphModuleManagerMap *graph_module_manager_map=nullptr;
 }
 
-GraphModuleManager *InitGraphModuleManager(GPUDevice *dev)
+GraphModuleManager *InitGraphModuleManager(RenderFramework *rf)
 {
-    if(!dev)
+    if(!rf)
         return(nullptr);
 
     if(graph_module_manager_map)
     {
-        if(graph_module_manager_map->ContainsKey(dev))
+        if(graph_module_manager_map->ContainsKey(rf))
             return(nullptr);
     }
     else
@@ -31,16 +31,16 @@ GraphModuleManager *InitGraphModuleManager(GPUDevice *dev)
         graph_module_manager_map=new GraphModuleManagerMap;
     }
 
-    GraphModuleManager *gmm=new GraphModuleManager(dev);
+    GraphModuleManager *gmm=new GraphModuleManager(rf);
 
-    graph_module_manager_map->Add(dev,gmm);
+    graph_module_manager_map->Add(rf,gmm);
 
     return gmm;
 }
 
-bool ClearGraphModuleManager(GPUDevice *dev)
+bool ClearGraphModuleManager(RenderFramework *rf)
 {
-    if(!dev)
+    if(!rf)
         return(false);
 
     if(!graph_module_manager_map)
@@ -48,10 +48,10 @@ bool ClearGraphModuleManager(GPUDevice *dev)
 
     GraphModuleManager *gmm;
     
-    if(!graph_module_manager_map->Get(dev,gmm))
+    if(!graph_module_manager_map->Get(rf,gmm))
         return(false);
 
-    graph_module_manager_map->DeleteByKey(dev);
+    graph_module_manager_map->DeleteByKey(rf);
 
     delete gmm;
 
@@ -64,9 +64,9 @@ bool ClearGraphModuleManager(GPUDevice *dev)
     return(true);
 }
 
-GraphModuleManager *GetGraphModuleManager(GPUDevice *dev)
+GraphModuleManager *GetGraphModuleManager(RenderFramework *rf)
 {
-    if(!dev)
+    if(!rf)
         return(nullptr);
 
     if(!graph_module_manager_map)
@@ -74,7 +74,7 @@ GraphModuleManager *GetGraphModuleManager(GPUDevice *dev)
 
     GraphModuleManager *gmm;
 
-    if(graph_module_manager_map->Get(dev,gmm))
+    if(graph_module_manager_map->Get(rf,gmm))
         return gmm;
 
     return(nullptr);

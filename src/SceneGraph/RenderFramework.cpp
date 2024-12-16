@@ -12,8 +12,8 @@ VK_NAMESPACE_BEGIN
 bool InitShaderCompiler();
 void CloseShaderCompiler();
 
-GraphModuleManager *InitGraphModuleManager(GPUDevice *dev);
-bool ClearGraphModuleManager(GPUDevice *dev);
+GraphModuleManager *InitGraphModuleManager(RenderFramework *);
+bool ClearGraphModuleManager(RenderFramework *);
 
 namespace
 {
@@ -40,7 +40,7 @@ RenderFramework::~RenderFramework()
 {
 //    if(swapchain_module)graph_module_manager->ReleaseModule(swapchain_module);
 
-    ClearGraphModuleManager(device);
+    ClearGraphModuleManager(this);
 
     CloseShaderCompiler();
 }
@@ -56,7 +56,7 @@ void RenderFramework::BeginFrame()
 
     for(GraphModule *rm:per_frame_module_list)
     {
-        if(rm->IsEnable())
+        if(rm->IsEnabled())
             rm->OnPreFrame();
     }
 
@@ -69,7 +69,7 @@ void RenderFramework::EndFrame()
     
     for(GraphModule *rm:per_frame_module_list)
     {
-        if(rm->IsEnable())
+        if(rm->IsEnabled())
             rm->OnPostFrame();
     }
 
@@ -92,7 +92,7 @@ void RenderFramework::MainLoop()
 
         for(RenderModule *rm:render_module_list)
         {
-            if(rm->IsEnable())
+            if(rm->IsEnabled())
                 rm->OnFrameRender(delta_time,rcb);
         }
 
@@ -148,7 +148,7 @@ bool RenderFramework::Init(uint w,uint h,const OSString &app_name)
         if(!device)
             return(false);
 
-        graph_module_manager=InitGraphModuleManager(device,this);
+        graph_module_manager=InitGraphModuleManager(this);
 
         render_pass_manager =graph_module_manager->GetModule<RenderPassManager>(true);
         texture_manager     =graph_module_manager->GetModule<TextureManager>(true);
