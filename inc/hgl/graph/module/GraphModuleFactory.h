@@ -28,7 +28,27 @@ public:
         if(!gmm)
             return(nullptr);
 
-        GraphModule *gm=new T(gmm);
+        Map<AnsiIDName,GraphModule *> dgm_map;
+
+        //检查依赖模块
+        {
+            const auto &dependent_modules=T::GetDependentModules();
+
+            if(!dependent_modules.IsEmpty())
+            {
+                for(const AnsiIDName &name:dependent_modules)
+                {
+                    GraphModule *dgm=gmm->GetModule(name,true);
+
+                    if(!dgm)
+                        return(nullptr);
+
+                    dgm_map.Add(name,dgm);
+                }
+            }
+        }
+
+        GraphModule *gm=new T(gmm,dgm_map);
 
         if(!gm->Init())
         {

@@ -1,4 +1,4 @@
-#include<hgl/graph/manager/RenderPassManager.h>
+﻿#include<hgl/graph/manager/RenderPassManager.h>
 #include<hgl/graph/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN
@@ -184,8 +184,13 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     return(true);
 }
 
-bool RenderPassManager::Init()
+bool RenderPassManager::Init(GraphModulesMap *gmm)
 {
+    if(!GraphModule::Init(gmm))
+        return(false);
+
+    gmm->Get(rp_manager);
+
     pipeline_cache=GetDeviceAttribute()->pipeline_cache;
 
     hash=CreateRenderPassHash();

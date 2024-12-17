@@ -11,14 +11,40 @@ class GraphModule;
 
 class RenderFramework;
 
+struct GraphModulesMap
+{
+    List<GraphModule *> gm_list;
+
+    Map<AnsiIDName,GraphModule *> gm_map_by_name;
+    Map<size_t,GraphModule *> gm_map_by_hash;
+
+public:
+
+    bool Add(GraphModule *gm);
+
+    GraphModule *Get(const AnsiIDName &name)const
+    {
+        GraphModule *gm;
+
+        if(gm_map_by_name.Get(name,gm))
+            return gm;
+
+        return nullptr;
+    }
+
+    template<typename T>
+    const bool Get(T *&gm)const
+    {
+        return gm_map_by_hash.Get(GetTypeHash<T>(),gm);
+    }
+};
+
 class GraphModuleManager
 {
     GPUDevice *device;
     RenderFramework *framework;
 
-    List<GraphModule *> module_list;                    ///<模块列表
-
-    Map<AnsiIDName,GraphModule *> graph_module_map;     ///<模块映射表
+    GraphModulesMap graph_module_map;                   ///<模块映射表
 
 public:
 
@@ -65,11 +91,18 @@ class GraphModule:public Comparator<GraphModule>
 
     AnsiIDName module_name;
 
-    SortedSet<AnsiIDName> dependent_module;                                                                             ///<依赖的模块
-
     bool module_inited;
     bool module_enabled;
     bool module_ready;
+
+    GraphModulesMap dependent_modules;
+
+protected:
+
+    //GraphModule *GetModule(const AnsiIDName &name){return module_manager->GetModule(name,true);}                      ///<获取指定名称的模块
+
+    //template<typename T>
+    //T *GetModule(){return (T *)GetModule(T::GetModuleName());}                                                        ///<获取指定类型的模块
 
 protected:
 
@@ -103,19 +136,28 @@ public:
     GraphModule(GraphModuleManager *gmm,const AnsiIDName &name);
     virtual ~GraphModule();
 
-    virtual bool Init(){module_inited=true;return true;}                                                                 ///<初始化当前模块
+    virtual bool Init(GraphModulesMap *);                                                                               ///<初始化当前模块
+
+    static const AnsiIDNameSet &GetDependentModules()                                                                   ///<取得依赖的模块列表
+    {
+        static const AnsiIDNameSet empty;
+
+        return empty;
+    }
 
     const int compare(const GraphModule &gm)const override
     {
-        return(dependent_module.Contains(gm.module_name)?1:-1);    //如果我依赖于他，那么我比他大
+        auto &dependent_modules_name=GetDependentModules();
+
+        return(dependent_modules_name.Contains(gm.module_name)?1:-1);    //如果我依赖于他，那么我比他大
     }
 
 public:
 
-    GraphModule *   GetModule(const AnsiIDName &name,bool create=false){return module_manager->GetModule(name,create);} ///<获取指定名称的模块
+    GraphModule *   GetDependentModule(const AnsiIDName &name);                                                         ///<获取指定名称的模块
 
     template<typename T>
-    T *             GetModule(bool create=false){return module_manager->GetModule<T>(create);}                          ///<获取指定类型的模块
+    T *             GetDependentModule(){return GetDependentModule(T::GetName());}                                      ///<获取指定类型的模块
 
 public: //回调事件
 
@@ -128,6 +170,7 @@ public: //回调事件
 
 #define GRAPH_MODULE_CONSTRUCT(name)    public:\
     NO_COPY_NO_MOVE(name)   \
+    static const size_t GetTypeHash(){return typeid(name).hash_code();}    \
     static const AnsiIDName &GetModuleName()    \
     {   \
         static const AnsiIDName id_name(#name);    \
@@ -137,6 +180,7 @@ public: //回调事件
     name(GraphModuleManager *gmm):GraphModule(gmm,GetModuleName()){}
 
 #define RENDER_MODULE_CONSTRUCT(name)    public:\
+    static const size_t GetTypeHash(){return typeid(name).hash_code();}    \
     NO_COPY_NO_MOVE(name)   \
     static const AnsiIDName &GetModuleName()    \
     {   \

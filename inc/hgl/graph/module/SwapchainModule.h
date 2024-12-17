@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/RenderModule.h>
 
@@ -32,7 +32,7 @@ public:
     GRAPH_MODULE_CONSTRUCT(SwapchainModule)
     virtual ~SwapchainModule();
 
-    bool Init() override;
+    bool Init(GraphModulesMap *) override;
 
     bool BeginFrame();
     void EndFrame();

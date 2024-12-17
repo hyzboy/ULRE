@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/SortedSet.h>
@@ -12,6 +12,8 @@ VK_NAMESPACE_BEGIN
 
 class TextureManager:public GraphModule
 {
+    RenderPassManager *rp_manager=nullptr;
+
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
 
@@ -40,7 +42,7 @@ public:
     GRAPH_MODULE_CONSTRUCT(TextureManager)
     virtual ~TextureManager();
 
-    bool Init() override;
+    bool Init(GraphModulesMap *) override;
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;
 

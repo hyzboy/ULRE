@@ -1,4 +1,5 @@
-#include<hgl/graph/module/GraphModule.h>
+﻿#include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/RenderFramework.h>
 #include<hgl/type/Map.h>
 
 VK_NAMESPACE_BEGIN
@@ -108,6 +109,7 @@ GraphModule *GraphModuleManager::GetModule(const AnsiIDName &name,bool create)
 GraphModuleManager::GraphModuleManager(RenderFramework *rf)
 {
     framework=rf;
+    device=rf->GetDevice();
 }
 
 GraphModuleManager::~GraphModuleManager()
