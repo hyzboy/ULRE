@@ -13,7 +13,7 @@ class RenderFramework;
 
 struct GraphModulesMap
 {
-    List<GraphModule *> gm_list;
+    SortedSet<GraphModule *> gm_set;
 
     Map<AnsiIDName,GraphModule *> gm_map_by_name;
     Map<size_t,GraphModule *> gm_map_by_hash;
@@ -21,6 +21,11 @@ struct GraphModulesMap
 public:
 
     bool Add(GraphModule *gm);
+
+    const bool IsEmpty()const
+    {
+        return gm_set.IsEmpty();
+    }
 
     GraphModule *Get(const AnsiIDName &name)const
     {
@@ -37,6 +42,11 @@ public:
     {
         return gm_map_by_hash.Get(GetTypeHash<T>(),gm);
     }
+
+    const bool IsLoaded(const AnsiIDName &name)const{return gm_map_by_name.ContainsKey(name);}
+
+    template<typename T>
+    const bool IsLoaded()const{return gm_map_by_hash.ContainsKey(T::GetTypeHash());}
 };
 
 class GraphModuleManager
@@ -49,7 +59,7 @@ class GraphModuleManager
 public:
 
     GraphModuleManager(RenderFramework *);
-    ~GraphModuleManager();
+    virtual ~GraphModuleManager();
 
             GPUDevice *         GetDevice           ()noexcept  {return device;}                                        ///<取得GPU设备
             VkDevice            GetVkDevice         ()const     {return device->GetDevice();}
@@ -73,11 +83,6 @@ public:
 
     void ReleaseModule(GraphModule *);                                                              ///<释放指定模块
 
-    const bool IsLoaded(const AnsiIDName &name){return graph_module_map.ContainsKey(name);}         ///<是否已经加载了指定类型的模块
-
-    template<typename T>
-    const bool IsLoaded(){return graph_module_map.ContainsKey(T::GetModuleName());}                 ///<是否已经加载了指定类型的模块
-
 public: //事件
 
     void OnResize(const VkExtent2D &);
@@ -90,6 +95,7 @@ class GraphModule:public Comparator<GraphModule>
     GraphModuleManager *module_manager;
 
     AnsiIDName module_name;
+    AnsiIDName module_fullname;
 
     bool module_inited;
     bool module_enabled;
@@ -119,8 +125,8 @@ public:
 
             RenderFramework *   GetFramework        ()      {return module_manager->GetFramework();}                    ///<取得渲染框架
 
-    static  const AnsiIDName *  GetModuleName       ()      {return nullptr;}                                           ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
-    virtual const AnsiIDName *  GetName             ()const {return &module_name;}                                      ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
+            const AnsiIDName &  GetName             ()const {return module_name;}                                       ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
+            const AnsiIDName &  GetFullName         ()const {return module_fullname;}                                   ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
     virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
     virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
@@ -133,8 +139,10 @@ public:
 
     NO_COPY_NO_MOVE(GraphModule)
 
-    GraphModule(GraphModuleManager *gmm,const AnsiIDName &name);
+    GraphModule(GraphModuleManager *gmm,const AnsiIDName &name,const AnsiIDName &fullname);
     virtual ~GraphModule();
+
+    virtual const size_t GetTypeHash()const=0;
 
     virtual bool Init(GraphModulesMap *);                                                                               ///<初始化当前模块
 
@@ -154,10 +162,10 @@ public:
 
 public:
 
-    GraphModule *   GetDependentModule(const AnsiIDName &name);                                                         ///<获取指定名称的模块
+    GraphModule *   GetDependentModule(const AnsiIDName &name){return dependent_modules.Get(name);}                     ///<获取指定名称的模块
 
     template<typename T>
-    T *             GetDependentModule(){return GetDependentModule(T::GetName());}                                      ///<获取指定类型的模块
+    T *             GetDependentModule(){return dependent_modules.Get<T>();}                                            ///<获取指定类型的模块
 
 public: //回调事件
 
@@ -170,7 +178,8 @@ public: //回调事件
 
 #define GRAPH_MODULE_CONSTRUCT(name)    public:\
     NO_COPY_NO_MOVE(name)   \
-    static const size_t GetTypeHash(){return typeid(name).hash_code();}    \
+    static const size_t StaticHash(){return typeid(name).hash_code();}    \
+           const size_t GetTypeHash()const override{return name::StaticHash();}    \
     static const AnsiIDName &GetModuleName()    \
     {   \
         static const AnsiIDName id_name(#name);    \
@@ -180,7 +189,8 @@ public: //回调事件
     name(GraphModuleManager *gmm):GraphModule(gmm,GetModuleName()){}
 
 #define RENDER_MODULE_CONSTRUCT(name)    public:\
-    static const size_t GetTypeHash(){return typeid(name).hash_code();}    \
+    static const size_t StaticHash(){return typeid(name).hash_code();}    \
+           const size_t GetTypeHash()const override{return name::StaticHash();}    \
     NO_COPY_NO_MOVE(name)   \
     static const AnsiIDName &GetModuleName()    \
     {   \

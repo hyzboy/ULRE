@@ -85,9 +85,9 @@ GraphModule *CreateGraphModule(const AnsiIDName &name,GraphModuleManager *gmm);
 
 GraphModule *GraphModuleManager::GetModule(const AnsiIDName &name,bool create)
 {
-    GraphModule *gm;
+    GraphModule *gm=graph_module_map.Get(name);
 
-    if(graph_module_map.Get(name,gm))
+    if(gm)
         return gm;
 
     if(create)
@@ -95,15 +95,10 @@ GraphModule *GraphModuleManager::GetModule(const AnsiIDName &name,bool create)
         gm=CreateGraphModule(name,this);
 
         if(gm)
-        {
-            graph_module_map.Add(name,gm);
-            module_list.Add(gm);
-        }
-
-        return gm;
+            graph_module_map.Add(gm);
     }
 
-    return nullptr;
+    return gm;
 }
 
 GraphModuleManager::GraphModuleManager(RenderFramework *rf)

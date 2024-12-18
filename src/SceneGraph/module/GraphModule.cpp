@@ -6,19 +6,23 @@ VK_NAMESPACE_BEGIN
 
 bool GraphModulesMap::Add(GraphModule *gm)
 {
-    if(!gm)return(false);
-
-    if(gm_map.ContainsKey(gm->GetName()))
+    if(!gm)
         return(false);
 
-    gm_list.Add(gm);
-    gm_map.Add(gm->GetName(),gm);
+    if(gm_set.Contains(gm))
+        return(false);
+
+    
+    gm_set.Add(gm);
+    gm_map_by_name.Add(gm->GetName(),gm);
+
 }
 
-GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
+GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name,const AnsiIDName &fullname)
 {
     module_manager=gmm;
     module_name=name;
+    module_fullname=fullname;
 
     LOG_INFO("GraphModule::GraphModule: "+AnsiString(module_name.GetName()))
 }
@@ -26,16 +30,6 @@ GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
 GraphModule::~GraphModule()
 {
     LOG_INFO("GraphModule::~GraphModule: "+AnsiString(module_name.GetName()))
-}
-
-GraphModule *GraphModule::GetDependentModule(const AnsiIDName &name)
-{
-    GraphModule *dm;
-
-    if(dependent_modules.Get(name,dm))
-        return(dm);
-
-    return(nullptr);
 }
 
 bool GraphModule::Init(GraphModulesMap *gmm)
@@ -57,7 +51,7 @@ bool GraphModule::Init(GraphModulesMap *gmm)
                 {
                     if(dm->IsInited())
                     {
-                        dependent_modules.Add(dm_name,dm);
+                        dependent_modules.Add(dm);
                         continue;
                     }
                 }
