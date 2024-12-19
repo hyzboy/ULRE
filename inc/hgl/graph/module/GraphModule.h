@@ -95,7 +95,6 @@ class GraphModule:public Comparator<GraphModule>
     GraphModuleManager *module_manager;
 
     AnsiIDName module_name;
-    AnsiIDName module_fullname;
 
     bool module_inited;
     bool module_enabled;
@@ -126,7 +125,7 @@ public:
             RenderFramework *   GetFramework        ()      {return module_manager->GetFramework();}                    ///<取得渲染框架
 
             const AnsiIDName &  GetName             ()const {return module_name;}                                       ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
-            const AnsiIDName &  GetFullName         ()const {return module_fullname;}                                   ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
+    virtual const AnsiIDName &  GetFullName         ()const {return module_name;}                                       ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
     virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
     virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
@@ -139,7 +138,7 @@ public:
 
     NO_COPY_NO_MOVE(GraphModule)
 
-    GraphModule(GraphModuleManager *gmm,const AnsiIDName &name,const AnsiIDName &fullname);
+    GraphModule(GraphModuleManager *gmm,const AnsiIDName &name);
     virtual ~GraphModule();
 
     virtual const size_t GetTypeHash()const=0;

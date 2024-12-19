@@ -18,11 +18,10 @@ bool GraphModulesMap::Add(GraphModule *gm)
 
 }
 
-GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name,const AnsiIDName &fullname)
+GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
 {
     module_manager=gmm;
     module_name=name;
-    module_fullname=fullname;
 
     LOG_INFO("GraphModule::GraphModule: "+AnsiString(module_name.GetName()))
 }
