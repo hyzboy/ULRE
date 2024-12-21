@@ -50,6 +50,12 @@ public:
 
         GraphModule *gm=new T(gmm,dgm_map);
 
+        if(!gm->InitDependentModules(gmm))
+        {
+            delete gm;
+            return(nullptr);
+        }
+
         if(!gm->Init())
         {
             delete gm;

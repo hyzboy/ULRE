@@ -31,7 +31,7 @@ GraphModule::~GraphModule()
     LOG_INFO("GraphModule::~GraphModule: "+AnsiString(module_name.GetName()))
 }
 
-bool GraphModule::Init(GraphModulesMap *gmm)
+bool GraphModule::InitDependentModules(GraphModulesMap *)
 {
     auto dm_list=GetDependentModules();
     
@@ -40,27 +40,23 @@ bool GraphModule::Init(GraphModulesMap *gmm)
         if(!gmm)
             return(false);
 
-        if(!gmm->IsEmpty())
-        {
-            for(auto dm_name:dm_list)
-            {
-                GraphModule *dm;
-                
-                if(gmm->Get(dm_name,dm))
-                {
-                    if(dm->IsInited())
-                    {
-                        dependent_modules.Add(dm);
-                        continue;
-                    }
-                }
+        if(gmm->IsEmpty())
+            return(false);
 
-                return(false);
+        for(auto dm_name:dm_list)
+        {
+            GraphModule *dm=gmm->Get(dm_name);
+
+            if(dm&&dm->IsInited())
+            {
+                dependent_modules.Add(dm);
+                continue;
             }
+
+            return(false);
         }
     }
 
-    module_inited=true;
     return(true);
 }
 

@@ -96,6 +96,7 @@ class GraphModule:public Comparator<GraphModule>
 
     AnsiIDName module_name;
 
+    bool module_inited_dependent;
     bool module_inited;
     bool module_enabled;
     bool module_ready;
@@ -130,6 +131,7 @@ public:
     virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
     virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
 
+            const bool          IsInitedDependent   ()const         {return module_inited_dependent;}                   ///<是否已经初始化依赖的模块
             const bool          IsInited            ()const         {return module_inited;}                             ///<是否已经初始化
             const bool          IsEnabled           ()const noexcept{return module_enabled;}                            ///<当前模块是否启用
             const bool          IsReady             ()const noexcept{return module_ready;}                              ///<当前模块是否准备好
@@ -143,7 +145,9 @@ public:
 
     virtual const size_t GetTypeHash()const=0;
 
-    virtual bool Init(GraphModulesMap *);                                                                               ///<初始化当前模块
+    virtual bool InitDependentModules(GraphModulesMap *);                                                               ///<初始化依赖的模块
+
+    virtual bool Init()=0;                                                                                              ///<初始化当前模块
 
     static const AnsiIDNameSet &GetDependentModules()                                                                   ///<取得依赖的模块列表
     {

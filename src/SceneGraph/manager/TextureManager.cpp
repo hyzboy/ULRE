@@ -1,6 +1,7 @@
-#include<hgl/graph/manager/TextureManager.h>
+﻿#include<hgl/graph/manager/TextureManager.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/manager/RenderPassManager.h>
 
 VK_NAMESPACE_BEGIN
 const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat format) const
@@ -8,8 +9,23 @@ const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat form
     return GetPhysicalDevice()->GetFormatProperties(format);
 }
 
-bool TextureManager::Init()
+namespace
 {
+    const char *tex_manager_dep[]
+    {
+        "RenderPassManager"
+    };
+}
+
+const char **TextureManager::GetDependentModules()                                                                   ///<取得依赖的模块列表
+{
+    return tex_manager_dep;
+}
+
+bool TextureManager::Init(GraphModulesMap *gmm)
+{
+
+
     GPUDevice *dev=GetDevice();
 
     if(!dev)

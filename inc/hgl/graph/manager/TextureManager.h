@@ -42,7 +42,9 @@ public:
     GRAPH_MODULE_CONSTRUCT(TextureManager)
     virtual ~TextureManager();
 
-    bool Init(GraphModulesMap *) override;
+    static const char **GetDependentModules();
+
+    bool Init() override;
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;
 
