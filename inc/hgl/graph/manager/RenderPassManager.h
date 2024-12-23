@@ -26,7 +26,7 @@ private:
     GRAPH_MODULE_CONSTRUCT(RenderPassManager)
     ~RenderPassManager();
 
-    bool Init(GraphModulesMap *) override;
+    bool Init() override;
 
 private:
     

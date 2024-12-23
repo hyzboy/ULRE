@@ -31,11 +31,12 @@ GraphModule::~GraphModule()
     LOG_INFO("GraphModule::~GraphModule: "+AnsiString(module_name.GetName()))
 }
 
-bool GraphModule::InitDependentModules(GraphModulesMap *)
+bool GraphModule::InitDependentModules(GraphModulesMap *gmm)
 {
     auto dm_list=GetDependentModules();
     
-    if(!dm_list.IsEmpty())
+    if(!dm_list.
+       IsEmpty())
     {
         if(!gmm)
             return(false);

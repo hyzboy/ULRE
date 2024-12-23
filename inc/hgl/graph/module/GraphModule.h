@@ -3,6 +3,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/type/IDName.h>
+#include<hgl/type/StrChar.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -149,18 +150,21 @@ public:
 
     virtual bool Init()=0;                                                                                              ///<初始化当前模块
 
-    static const AnsiIDNameSet &GetDependentModules()                                                                   ///<取得依赖的模块列表
-    {
-        static const AnsiIDNameSet empty;
-
-        return empty;
-    }
+    static const char **GetDependentModules(){return nullptr;}                                                          ///<取得依赖的模块列表
 
     const int compare(const GraphModule &gm)const override
     {
-        auto &dependent_modules_name=GetDependentModules();
+        const char **dependent_modules_list=GetDependentModules();
 
-        return(dependent_modules_name.Contains(gm.module_name)?1:-1);    //如果我依赖于他，那么我比他大
+        if(!dependent_modules_list)
+            return -1;
+
+        const char *self_module_name=gm.GetName().ToString();
+
+        if(string_in_list(dependent_modules_list,self_module_name))
+            return 1;//如果我依赖于他，那么我比他大
+
+        return 0;
     }
 
 public:

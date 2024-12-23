@@ -32,7 +32,7 @@ public:
     GRAPH_MODULE_CONSTRUCT(SwapchainModule)
     virtual ~SwapchainModule();
 
-    bool Init(GraphModulesMap *) override;
+    bool Init() override;
 
     bool BeginFrame();
     void EndFrame();
