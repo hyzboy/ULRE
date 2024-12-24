@@ -38,9 +38,11 @@ public:
     }
 
     template<typename T>
-    const bool Get(T *&gm)const
+    T *Get()const
     {
-        return gm_map_by_hash.Get(GetTypeHash<T>(),gm);
+        GraphModule *gm;
+
+        return gm_map_by_hash.Get(GetTypeHash<T>(),gm)?(T *)gm:nullptr;
     }
 
     const bool IsLoaded(const AnsiIDName &name)const{return gm_map_by_name.ContainsKey(name);}
@@ -101,8 +103,6 @@ class GraphModule:public Comparator<GraphModule>
     bool module_enabled;
     bool module_ready;
 
-    GraphModulesMap dependent_modules;
-
 protected:
 
     //GraphModule *GetModule(const AnsiIDName &name){return module_manager->GetModule(name,true);}                      ///<获取指定名称的模块
@@ -145,7 +145,10 @@ public:
 
     virtual const size_t GetTypeHash()const=0;
 
-    virtual bool InitDependentModules(GraphModulesMap *);                                                               ///<初始化依赖的模块
+    /**
+    * 依赖的模块是在模板new之前就获取的，当前函数仅用于传递这些数据
+    */
+    virtual bool InitDependentModules(GraphModulesMap &){module_inited_dependent=true;return true;}                     ///<初始化依赖的模块
 
     virtual bool Init()=0;                                                                                              ///<初始化当前模块
 
@@ -162,13 +165,6 @@ public:
 
         return(dependent_modules_name.Contains(gm.module_name)?1:-1);    //如果我依赖于他，那么我比他大
     }
-
-public:
-
-    GraphModule *   GetDependentModule(const AnsiIDName &name){return dependent_modules.Get(name);}                     ///<获取指定名称的模块
-
-    template<typename T>
-    T *             GetDependentModule(){return dependent_modules.Get<T>();}                                            ///<获取指定类型的模块
 
 public: //回调事件
 

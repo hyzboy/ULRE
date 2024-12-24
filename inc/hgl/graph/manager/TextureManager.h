@@ -12,8 +12,6 @@ VK_NAMESPACE_BEGIN
 
 class TextureManager:public GraphModule
 {
-    RenderPassManager *rp_manager=nullptr;
-
     DeviceQueue *texture_queue=nullptr;
     TextureCmdBuffer *texture_cmd_buf=nullptr;
 
@@ -126,18 +124,5 @@ public: // Load
 
     Texture2DArray *    CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
     bool                LoadTexture2DToArray(Texture2DArray *,const uint32_t layer,const OSString &);
-
-public: //FrameBuffer相关
-
-    Framebuffer *CreateFBO(RenderPass *rp,ImageView **color_list,const uint image_count,ImageView *depth);
-//    Framebuffer *CreateFBO(RenderPass *,List<ImageView *> &color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *);
-
-public:
-    
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
 };//class TextureManager
-
 VK_NAMESPACE_END

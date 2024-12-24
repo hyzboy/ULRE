@@ -164,9 +164,7 @@ SET(VK_DEVICE_CREATER_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
 SET(VK_DEVICE_SOURCE    Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceBuffer.cpp
                         Vulkan/VKDeviceSampler.cpp
-                        Vulkan/VKDeviceMaterial.cpp
-                        Vulkan/VKDeviceFramebuffer.cpp
-                        Vulkan/VKDeviceRenderTarget.cpp)
+                        Vulkan/VKDeviceMaterial.cpp)
 
 SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
                             Vulkan/VKPhysicalDevice.cpp
@@ -297,11 +295,14 @@ SET(SG_MANAGER_HEADER_PATH ${SG_INCLUDE_PATH}/manager)
 
 SET(GRAPH_MANAGER_HEADER    ${SG_MANAGER_HEADER_PATH}/TextureManager.h
                             ${SG_MANAGER_HEADER_PATH}/RenderPassManager.h
+                            ${SG_MANAGER_HEADER_PATH}/RenderTargetManager.h
                             ${SG_MANAGER_HEADER_PATH}/MaterialManager.h
 )
 
 SET(GRAPH_MANAGER_SOURCE    manager/TextureManager.cpp
                             manager/RenderPassManager.cpp
+                            manager/RenderTargetManager.cpp
+                            manager/RenderTargetManagerFBO.cpp
                             manager/MaterialManager.cpp
 )
 

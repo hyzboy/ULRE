@@ -1,5 +1,4 @@
-#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/manager/TextureManager.h>
+﻿#include<hgl/graph/manager/RenderTargetManager.h>
 
 VK_NAMESPACE_BEGIN
 VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExtent2D &extent,VkImageView *attachments,const uint attachmentCount)
@@ -21,7 +20,7 @@ VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExt
     return fb;
 }
 
-Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView **color_list,const uint image_count,ImageView *depth)
+Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_list,const uint image_count,ImageView *depth)
 {
     uint att_count=image_count;
 
@@ -90,7 +89,7 @@ Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView **color_list,con
 //    return CreateFBO(rp,color.GetData(),color.GetCount(),depth);
 //}
 
-Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView *color,ImageView *depth)
+Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView *color,ImageView *depth)
 {
     if(!rp)return(nullptr);
     if(!color&&!depth)return(nullptr);
@@ -98,7 +97,7 @@ Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView *color,ImageView
     return CreateFBO(rp,&color,1,depth);
 }
 
-Framebuffer *TextureManager::CreateFBO(RenderPass *rp,ImageView *iv)
+Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView *iv)
 {
     if(!rp)return(nullptr);
     if(!iv)return(nullptr);

@@ -1,4 +1,4 @@
-#include<hgl/graph/module/SwapchainModule.h>
+﻿#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleFactory.h>
 #include<hgl/graph/manager/RenderPassManager.h>
 #include<hgl/graph/manager/TextureManager.h>
@@ -230,6 +230,18 @@ SwapchainModule::~SwapchainModule()
         delete swapchain;
 }
 
+bool SwapchainModule::InitDependentModules(GraphModulesMap &dep_gmm)
+{
+    RenderPassManager *rp_manager=dep_gmm.Get<RenderPassManager>();
+
+    if(!rp_manager)
+        return(false);
+
+    SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
+
+    swapchain_rp=rp_manager->AcquireRenderPass(&rbi);
+}
+
 bool SwapchainModule::Init()
 {
     if(!CreateSwapchain())
@@ -239,10 +251,6 @@ bool SwapchainModule::Init()
 
     if(!rpm)
         return(false);
-
-    SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
-
-    swapchain_rp=rpm->AcquireRenderPass(&rbi);
 
     //#ifdef _DEBUG
     //    if(dev_attr->debug_utils)

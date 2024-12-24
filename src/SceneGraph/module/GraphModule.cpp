@@ -31,33 +31,4 @@ GraphModule::~GraphModule()
     LOG_INFO("GraphModule::~GraphModule: "+AnsiString(module_name.GetName()))
 }
 
-bool GraphModule::InitDependentModules(GraphModulesMap *)
-{
-    auto dm_list=GetDependentModules();
-    
-    if(!dm_list.IsEmpty())
-    {
-        if(!gmm)
-            return(false);
-
-        if(gmm->IsEmpty())
-            return(false);
-
-        for(auto dm_name:dm_list)
-        {
-            GraphModule *dm=gmm->Get(dm_name);
-
-            if(dm&&dm->IsInited())
-            {
-                dependent_modules.Add(dm);
-                continue;
-            }
-
-            return(false);
-        }
-    }
-
-    return(true);
-}
-
 VK_NAMESPACE_END

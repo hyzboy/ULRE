@@ -48,9 +48,9 @@ public:
             }
         }
 
-        GraphModule *gm=new T(gmm,dgm_map);
+        GraphModule *gm=new T(gmm);
 
-        if(!gm->InitDependentModules(gmm))
+        if(!gm->InitDependentModules(dgm))
         {
             delete gm;
             return(nullptr);

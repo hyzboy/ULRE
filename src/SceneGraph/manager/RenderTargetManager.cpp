@@ -1,9 +1,8 @@
-﻿#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/manager/TextureManager.h>
-#include<hgl/graph/manager/RenderPassManager.h>
+﻿#include<hgl/graph/manager/RenderTargetManager.h>
 
 VK_NAMESPACE_BEGIN
-RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
+
+RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
     if(!rp)return(nullptr);
@@ -50,7 +49,7 @@ RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,RenderPass *rp
     return nullptr;
 }
 
-RenderTarget *TextureManager::CreateRT(const FramebufferInfo *fbi,const uint32_t fence_count)
+RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
 
