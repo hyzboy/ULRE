@@ -13,7 +13,8 @@ namespace
 {
     const char *tex_manager_dep[]
     {
-        "RenderPassManager"
+        "RenderPassManager",
+        nullptr     //一定要0结尾
     };
 }
 
@@ -22,10 +23,8 @@ const char **TextureManager::GetDependentModules()                              
     return tex_manager_dep;
 }
 
-bool TextureManager::Init(GraphModulesMap *gmm)
+bool TextureManager::Init()
 {
-
-
     GPUDevice *dev=GetDevice();
 
     if(!dev)

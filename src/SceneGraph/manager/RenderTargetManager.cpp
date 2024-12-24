@@ -52,10 +52,9 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
 RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,const uint32_t fence_count)
 {
     if(!fbi)return(nullptr);
+    if(!rp_manager)return(nullptr);     //这个判断理论上不可能成立
 
-    RenderPassManager *rpm=GetModule<RenderPassManager>();
-
-    RenderPass *rp=rpm->AcquireRenderPass(fbi);
+    RenderPass *rp=rp_manager->AcquireRenderPass(fbi);
 
     if(!rp)return(nullptr);
 
