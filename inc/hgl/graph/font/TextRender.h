@@ -54,9 +54,9 @@ namespace hgl
         public:
 
             TextPrimitive *CreatePrimitive();
-            TextPrimitive *CreatePrimitive(const UTF16String &str);
+            TextPrimitive *CreatePrimitive(const U16String &str);
 
-            bool Layout(TextPrimitive *tr,const UTF16String &str);
+            bool Layout(TextPrimitive *tr,const U16String &str);
 
             Renderable *CreateRenderable(TextPrimitive *text_primitive);
 

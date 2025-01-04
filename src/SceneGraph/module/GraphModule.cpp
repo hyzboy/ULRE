@@ -15,7 +15,6 @@ bool GraphModulesMap::Add(GraphModule *gm)
     
     gm_set.Add(gm);
     gm_map_by_name.Add(gm->GetName(),gm);
-
 }
 
 GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
