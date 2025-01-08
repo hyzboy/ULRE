@@ -1,11 +1,10 @@
 ﻿#pragma once
 
 #include<hgl/graph/VKNamespace.h>
+#include<hgl/type/IDName.h>
+#include<hgl/graph/module/GraphModule.h>
 
 VK_NAMESPACE_BEGIN
-
-class GraphModule;
-class GraphModuleManager;
 
 class GraphModuleFactory
 {
@@ -49,12 +48,6 @@ public:
         }
 
         GraphModule *gm=new T(gmm);
-
-        if(!gm->InitDependentModules(dgm))
-        {
-            delete gm;
-            return(nullptr);
-        }
 
         if(!gm->Init())
         {

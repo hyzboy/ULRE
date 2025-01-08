@@ -19,6 +19,8 @@ struct GraphModulesMap
     Map<AnsiIDName,GraphModule *> gm_map_by_name;
     Map<size_t,GraphModule *> gm_map_by_hash;
 
+    List<GraphModule *> gm_list;        //按创建顺序记录，用于倒序释放
+
 public:
 
     bool Add(GraphModule *gm);
@@ -50,6 +52,10 @@ public:
 
     template<typename T>
     const bool IsLoaded()const{return gm_map_by_hash.ContainsKey(T::GetTypeHash());}
+
+    bool Release(GraphModule *gm);
+
+    void Destory();
 };
 
 class GraphModuleManager
@@ -99,17 +105,16 @@ class GraphModule:public Comparator<GraphModule>
 
     AnsiIDName module_name;
 
-    bool module_inited_dependent;
     bool module_inited;
     bool module_enabled;
     bool module_ready;
 
 protected:
 
-    //GraphModule *GetModule(const AnsiIDName &name){return module_manager->GetModule(name,true);}                      ///<获取指定名称的模块
+    GraphModule *GetModule(const AnsiIDName &name){return module_manager->GetModule(name,false);}                       ///<获取指定名称的模块
 
-    //template<typename T>
-    //T *GetModule(){return (T *)GetModule(T::GetModuleName());}                                                        ///<获取指定类型的模块
+    template<typename T>
+    T *GetModule(){return module_manager->GetModule<T>();}                                                              ///<获取指定类型的模块
 
 protected:
 
@@ -132,7 +137,6 @@ public:
     virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
     virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
 
-            const bool          IsInitedDependent   ()const         {return module_inited_dependent;}                   ///<是否已经初始化依赖的模块
             const bool          IsInited            ()const         {return module_inited;}                             ///<是否已经初始化
             const bool          IsEnabled           ()const noexcept{return module_enabled;}                            ///<当前模块是否启用
             const bool          IsReady             ()const noexcept{return module_ready;}                              ///<当前模块是否准备好
@@ -145,11 +149,6 @@ public:
     virtual ~GraphModule();
 
     virtual const size_t GetTypeHash()const=0;
-
-    /**
-    * 依赖的模块是在模板new之前就获取的，当前函数仅用于传递这些数据
-    */
-    virtual bool InitDependentModules(GraphModulesMap &){module_inited_dependent=true;return true;}                     ///<初始化依赖的模块
 
     virtual bool Init()=0;                                                                                              ///<初始化当前模块
 

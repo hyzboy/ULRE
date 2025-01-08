@@ -230,7 +230,7 @@ SwapchainModule::~SwapchainModule()
         delete swapchain;
 }
 
-bool SwapchainModule::InitDependentModules(GraphModulesMap &dep_gmm)
+bool SwapchainModule::Init()
 {
     RenderPassManager *rp_manager=dep_gmm.Get<RenderPassManager>();
 
@@ -240,16 +240,8 @@ bool SwapchainModule::InitDependentModules(GraphModulesMap &dep_gmm)
     SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
 
     swapchain_rp=rp_manager->AcquireRenderPass(&rbi);
-}
 
-bool SwapchainModule::Init()
-{
     if(!CreateSwapchain())
-        return(false);
-
-    RenderPassManager *rpm=GetModule<RenderPassManager>();
-
-    if(!rpm)
         return(false);
 
     //#ifdef _DEBUG

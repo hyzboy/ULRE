@@ -109,19 +109,7 @@ GraphModuleManager::GraphModuleManager(RenderFramework *rf)
 
 GraphModuleManager::~GraphModuleManager()
 {
-    //按顺序加入module_list的，要倒着释放
-
-    GraphModule **gm=module_list.end();
-
-    while(gm>module_list.begin())
-    {
-        --gm;
-        delete *gm;
-    }
-
-    //其实下面释不释放都无所谓了
-    module_list.Clear();
-    graph_module_map.Clear();
+    graph_module_map.Destory();
 }
 
 void GraphModuleManager::ReleaseModule(GraphModule *gm)
@@ -129,8 +117,7 @@ void GraphModuleManager::ReleaseModule(GraphModule *gm)
     if(!gm)
         return;
 
-    graph_module_map.DeleteByValue(gm);
-    delete gm;
+    graph_module_map.Release(gm);
 }
 
 void GraphModuleManager::OnResize(const VkExtent2D &extent)
@@ -138,9 +125,9 @@ void GraphModuleManager::OnResize(const VkExtent2D &extent)
     if(graph_module_map.IsEmpty())
         return;
 
-    for(auto *gm:graph_module_map)
+    for(auto *gm:graph_module_map.gm_list)
     {
-        gm->value->OnResize(extent);
+        gm->OnResize(extent);
     }
 }
 
