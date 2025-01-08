@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/log/LogInfo.h>
 
@@ -54,9 +55,9 @@ bool GraphModulesMap::Release(GraphModule *gm)
     return(true);
 }
 
-GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
+GraphModule::GraphModule(RenderFramework *rf,const AnsiIDName &name)
 {
-    module_manager=gmm;
+    render_framework=rf;
     module_name=name;
 
     LOG_INFO("GraphModule::GraphModule: "+AnsiString(module_name.GetName()))
@@ -65,6 +66,11 @@ GraphModule::GraphModule(GraphModuleManager *gmm,const AnsiIDName &name)
 GraphModule::~GraphModule()
 {
     LOG_INFO("GraphModule::~GraphModule: "+AnsiString(module_name.GetName()))
+}
+
+GraphModule *GraphModule::GetModule(const AnsiIDName &name,bool create)
+{
+    render_framework->GetModule(name,create);
 }
 
 VK_NAMESPACE_END

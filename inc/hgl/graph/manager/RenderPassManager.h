@@ -26,8 +26,6 @@ private:
     GRAPH_MODULE_CONSTRUCT(RenderPassManager)
     ~RenderPassManager();
 
-    bool Init() override;
-
 private:
     
     RenderPass *    CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,

@@ -10,6 +10,10 @@
 
 VK_NAMESPACE_BEGIN
 
+struct TextureManagerData
+{
+};
+
 class TextureManager:public GraphModule
 {
     DeviceQueue *texture_queue=nullptr;
@@ -39,10 +43,6 @@ public:
 
     GRAPH_MODULE_CONSTRUCT(TextureManager)
     virtual ~TextureManager();
-
-    static const char **GetDependentModules();
-
-    bool Init() override;
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;
 

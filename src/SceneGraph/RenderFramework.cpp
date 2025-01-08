@@ -12,8 +12,16 @@ VK_NAMESPACE_BEGIN
 bool InitShaderCompiler();
 void CloseShaderCompiler();
 
-GraphModuleManager *InitGraphModuleManager(RenderFramework *);
-bool ClearGraphModuleManager(RenderFramework *);
+void InitGraphModuleFactory();
+void ClearGraphModuleFactory();
+
+namespace
+{
+    static int RENDER_FRAMEWORK_COUNT=0;
+
+}//namespace
+
+GraphModule *CreateGraphModule(const AnsiIDName &name,RenderFramework *rf);
 
 namespace
 {
@@ -32,17 +40,43 @@ namespace
     }
 }//namespace
 
-RenderFramework::RenderFramework()
+GraphModule *RenderFramework::GetModule(const AnsiIDName &name,bool create)
 {
+    GraphModule *gm=graph_module_map.Get(name);
+
+    if(!gm)
+    {
+        gm=CreateGraphModule(name,this);
+    }
 }
+
+RenderFramework *CreateRenderFramework()
+{
+    if(RENDER_FRAMEWORK_COUNT==0)
+    {
+        if(!InitShaderCompiler())
+            return(nullptr);
+
+        InitGraphModuleFactory();
+        RegistryCommonGraphModule();
+    }
+
+    ++RENDER_FRAMEWORK_COUNT;
+}
+
+RenderFramework::RenderFramework(){}
 
 RenderFramework::~RenderFramework()
 {
-//    if(swapchain_module)graph_module_manager->ReleaseModule(swapchain_module);
+    graph_module_map.Destory();
 
-    ClearGraphModuleManager(this);
+    --RENDER_FRAMEWORK_COUNT;
 
-    CloseShaderCompiler();
+    if(RENDER_FRAMEWORK_COUNT==0)
+    {
+        ClearGraphModuleFactory();
+        CloseShaderCompiler();
+    }
 }
 
 void RenderFramework::StartTime()

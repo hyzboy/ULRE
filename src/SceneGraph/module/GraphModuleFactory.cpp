@@ -43,9 +43,9 @@ bool RegistryGraphModuleFactory(const char *module_name,GraphModuleFactory *gmf)
     return(true);
 }
 
-GraphModule *CreateGraphModule(const AnsiIDName &name,GraphModuleManager *gmm)
+GraphModule *CreateGraphModule(const AnsiIDName &name,RenderFramework *rf)
 {
-    if(!gmm)
+    if(!rf)
         return(nullptr);
 
     if(!gmf_map)
@@ -56,7 +56,7 @@ GraphModule *CreateGraphModule(const AnsiIDName &name,GraphModuleManager *gmm)
     if(!gmf_map->Get(name,gmf))
         return(nullptr);
 
-    return gmf->Create(gmm);
+    return gmf->Create(rf);
 }
 
 VK_NAMESPACE_END

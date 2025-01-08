@@ -3,6 +3,7 @@
 #include<hgl/graph/VKNamespace.h>
 #include<hgl/type/IDName.h>
 #include<hgl/graph/module/GraphModule.h>
+#include<hgl/graph/RenderFramework.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -13,7 +14,7 @@ public:
     GraphModuleFactory()=default;
     virtual ~GraphModuleFactory()=default;
 
-    virtual GraphModule *Create(GraphModuleManager *)=0;
+    virtual GraphModule *Create(RenderFramework *)=0;
 };//class GraphModuleFactory
 
 bool RegistryGraphModuleFactory(const char *module_name,GraphModuleFactory *);
@@ -22,9 +23,9 @@ template<typename T> class RegistryGraphModule:public GraphModuleFactory
 {
 public:
 
-    GraphModule *Create(GraphModuleManager *gmm) override
+    GraphModule *Create(RenderFramework *rf) override
     {
-        if(!gmm)
+        if(!rf)
             return(nullptr);
 
         Map<AnsiIDName,GraphModule *> dgm_map;
@@ -37,7 +38,7 @@ public:
             {
                 for(const AnsiIDName &name:dependent_modules)
                 {
-                    GraphModule *dgm=gmm->GetModule(name,true);
+                    GraphModule *dgm=rf->GetModule(name,true);
 
                     if(!dgm)
                         return(nullptr);
@@ -47,13 +48,7 @@ public:
             }
         }
 
-        GraphModule *gm=new T(gmm);
-
-        if(!gm->Init())
-        {
-            delete gm;
-            return(nullptr);
-        }
+        T *gm=T::CreateModule(rf,dgm_map);
 
         return(gm);
     }

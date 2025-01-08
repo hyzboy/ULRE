@@ -1,10 +1,11 @@
 #pragma once
 
-#include<hgl/graph/BlendMode.h>
 #include<hgl/type/List.h>
+#include<hgl/platform/Window.h>
+#include<hgl/graph/BlendMode.h>
 #include<hgl/graph/ViewportInfo.h>
-#include<hgl/graph/module/GraphModule.h>
-#include<hgl/io/event/WindowEvent.h>
+#include<hgl/graph/module/GraphModuleMap.h>
+#include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -34,9 +35,7 @@ protected:
 
 protected:
 
-    GraphModuleManager *graph_module_manager=nullptr;
-
-    ObjectList<GraphModule> module_list;
+    GraphModulesMap graph_module_map;
 
     List<GraphModule *> per_frame_module_list;
     List<RenderModule *> render_module_list;
@@ -59,35 +58,39 @@ private:
     double              last_time           =0;
     double              cur_time            =0;
 
-    uint64              frame_count         =0;
+    int64               frame_count         =0;
 
 public:
 
-    const uint64    GetFrameCount       ()const noexcept{return frame_count;}                       ///<取得当前帧数
+    const int64     GetFrameCount       ()const noexcept{return frame_count;}                       ///<取得当前帧数
     void            RestartFrameCount   ()noexcept{frame_count=0;}                                  ///<重新开始统计帧数
 
 public: //module
 
-    template<typename T> T *GetModule(){return graph_module_manager->GetModule<T>(false);}          ///<获取指定类型的模块
+    template<typename T>
+    T *             GetModule(){return graph_module_map.Get<T>();}                                  ///<获取指定类型的模块
+    GraphModule *   GetModule(const AnsiIDName &name,bool create=false);                            ///<获取指定名称的模块
 
-    template<typename T> T *AddModule()
-    {
-        T *tm=new T(graph_module_manager);
+    //template<typename T> T *AddModule()
+    //{
+    //    T *tm=new T(graph_module_manager);
 
-        module_list.Add(tm);
+    //    module_list.Add(tm);
 
-        if(tm->IsPerFrame())
-            per_frame_module_list.Add(tm);
+    //    if(tm->IsPerFrame())
+    //        per_frame_module_list.Add(tm);
 
-        if(tm->IsRender())
-            render_module_list.Add(tm);
+    //    if(tm->IsRender())
+    //        render_module_list.Add(tm);
 
-        return tm;
-    }
+    //    return tm;
+    //}
 
-    GPUDevice *         GetDevice   (){return device;}
-    VkDevice            GetVkDevice (){return device->GetDevice();}
-    SwapchainModule *   GetSwapchain(){return swapchain_module;}                                    ///<取得Swapchain模块
+            GPUDevice *         GetDevice           ()      {return device;}
+            VkDevice            GetVkDevice         ()const {return device->GetDevice();}
+    const   GPUPhysicalDevice * GetPhysicalDevice   ()const {return device->GetPhysicalDevice();}   ///<取得物理设备
+            GPUDeviceAttribute *GetDeviceAttribute  ()      {return device->GetDeviceAttribute();}  ///<取得设备属性
+            SwapchainModule *   GetSwapchain        ()      {return swapchain_module;}              ///<取得Swapchain模块
 
 public: //manager
 
@@ -104,7 +107,14 @@ public:
 
     NO_COPY_NO_MOVE(RenderFramework)
 
+private:
+    
     RenderFramework();
+
+    friend RenderFramework *CreateRenderFramework();
+
+public:
+
     virtual ~RenderFramework();
 
     virtual bool Init(uint w,uint h,const OSString &app_name);                                      ///<初始化
@@ -129,5 +139,7 @@ public: //TileData
     
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class RenderFramework
+
+RenderFramework *CreateRenderFramework();
 
 VK_NAMESPACE_END

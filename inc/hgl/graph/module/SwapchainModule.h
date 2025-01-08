@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/module/RenderModule.h>
+#include<hgl/graph/VKRenderTarget.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -31,8 +32,6 @@ public:
 
     GRAPH_MODULE_CONSTRUCT(SwapchainModule)
     virtual ~SwapchainModule();
-
-    bool Init() override;
 
     bool BeginFrame();
     void EndFrame();

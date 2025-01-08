@@ -9,28 +9,21 @@ const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat form
     return GetPhysicalDevice()->GetFormatProperties(format);
 }
 
-namespace
+const GraphModuleHashList TextureManager::GetDependentModules()                                                                   ///<取得依赖的模块列表
 {
-    const char *tex_manager_dep[]
-    {
-        "RenderPassManager",
-        nullptr     //一定要0结尾
-    };
+    return {RenderPassManager::StaticHash()};
 }
 
-const char **TextureManager::GetDependentModules()                                                                   ///<取得依赖的模块列表
+GRAPH_MODULE_CREATE_FUNC(TextureManager)
 {
-    return tex_manager_dep;
-}
-
-bool TextureManager::Init()
-{
-    GPUDevice *dev=GetDevice();
+    GPUDevice *dev=rf->GetDevice();
 
     if(!dev)
         return(false);
 
-    texture_cmd_buf=dev->CreateTextureCommandBuffer(GetPhysicalDevice()->GetDeviceName()+AnsiString(":TexCmdBuffer"));
+    auto phy_device=rf->GetPhysicalDevice();
+
+    texture_cmd_buf=dev->CreateTextureCommandBuffer(phy_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
 
     if(!texture_cmd_buf)
         return(false);
