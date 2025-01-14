@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/List.h>
 #include<hgl/platform/Window.h>
@@ -69,7 +69,7 @@ public: //module
 
     template<typename T>
     T *             GetModule(){return graph_module_map.Get<T>();}                                  ///<获取指定类型的模块
-    GraphModule *   GetModule(const AnsiIDName &name,bool create=false);                            ///<获取指定名称的模块
+    GraphModule *   GetModule(const AIDName &name,bool create=false);                            ///<获取指定名称的模块
 
     //template<typename T> T *AddModule()
     //{

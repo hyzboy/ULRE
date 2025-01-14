@@ -1,4 +1,4 @@
-#include<hgl/graph/RenderFramework.h>
+﻿#include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/manager/RenderPassManager.h>
 #include<hgl/graph/manager/TextureManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
@@ -21,7 +21,7 @@ namespace
 
 }//namespace
 
-GraphModule *CreateGraphModule(const AnsiIDName &name,RenderFramework *rf);
+GraphModule *CreateGraphModule(const AIDName &name,RenderFramework *rf);
 
 namespace
 {
@@ -40,7 +40,7 @@ namespace
     }
 }//namespace
 
-GraphModule *RenderFramework::GetModule(const AnsiIDName &name,bool create)
+GraphModule *RenderFramework::GetModule(const AIDName &name,bool create)
 {
     GraphModule *gm=graph_module_map.Get(name);
 

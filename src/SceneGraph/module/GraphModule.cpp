@@ -55,7 +55,7 @@ bool GraphModulesMap::Release(GraphModule *gm)
     return(true);
 }
 
-GraphModule::GraphModule(RenderFramework *rf,const AnsiIDName &name)
+GraphModule::GraphModule(RenderFramework *rf,const AIDName &name)
 {
     render_framework=rf;
     module_name=name;
@@ -68,7 +68,7 @@ GraphModule::~GraphModule()
     LOG_INFO("GraphModule::~GraphModule: "+AnsiString(module_name.GetName()))
 }
 
-GraphModule *GraphModule::GetModule(const AnsiIDName &name,bool create)
+GraphModule *GraphModule::GetModule(const AIDName &name,bool create)
 {
     render_framework->GetModule(name,create);
 }

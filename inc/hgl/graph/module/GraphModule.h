@@ -15,7 +15,7 @@ class GraphModule
 {
     RenderFramework *render_framework;
 
-    AnsiIDName module_name;
+    AIDName module_name;
 
     bool module_inited;
     bool module_enabled;
@@ -25,7 +25,7 @@ protected:
 
     template<typename T>
     T *             GetModule(bool create=false){return render_framework->GetModule<T>(create);}                        ///<获取指定类型的模块
-    GraphModule *   GetModule(const AnsiIDName &name,bool create=false);                                                ///<获取指定名称的模块
+    GraphModule *   GetModule(const AIDName &name,bool create=false);                                                   ///<获取指定名称的模块
 
 protected:
 
@@ -41,8 +41,8 @@ public:
 
             RenderFramework *   GetFramework        ()      {return render_framework;}                                  ///<取得渲染框架
 
-            const AnsiIDName &  GetName             ()const {return module_name;}                                       ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
-    virtual const AnsiIDName &  GetFullName         ()const {return module_name;}                                       ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
+            const AIDName &  GetName             ()const {return module_name;}                                       ///<取得模块名称(标准通用的名称，比如Upscale，供通用模块使用)
+    virtual const AIDName &  GetFullName         ()const {return module_name;}                                       ///<取得名称(完整的私有名称，比如FSR3Upscale,DLSS3Upscale)
 
     virtual const bool          IsPerFrame          ()      {return false;}                                             ///<是否每帧运行
     virtual const bool          IsRender            ()      {return false;}                                             ///<是否为渲染模块
@@ -57,7 +57,7 @@ public:
 
 protected:
 
-    GraphModule(RenderFramework *rf,const AnsiIDName &name);
+    GraphModule(RenderFramework *rf,const AIDName &name);
 
 public:
 
@@ -76,7 +76,7 @@ public: //回调事件
     virtual void OnPostFrame(){}                                                                    ///<帧绘制后回调
 };//class GraphModule
 
-using GraphModuleMapByIDName=Map<AnsiIDName,GraphModule *>;
+using GraphModuleMapByIDName=Map<AIDName,GraphModule *>;
 
 //template<typename T,typename BASE> class GraphModuleInherit:public BASE
 //{
@@ -98,9 +98,9 @@ using GraphModuleMapByIDName=Map<AnsiIDName,GraphModule *>;
     NO_COPY_NO_MOVE(name)   \
     static const size_t StaticHash(){return typeid(name).hash_code();}    \
            const size_t GetTypeHash()const override{return name::StaticHash();}    \
-    static const AnsiIDName &GetModuleName()    \
+    static const AIDName &GetModuleName()    \
     {   \
-        static const AnsiIDName id_name(#name);    \
+        static const AIDName id_name(#name);    \
         return id_name;    \
     }   \
     \

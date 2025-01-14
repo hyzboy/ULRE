@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/IDName.h>
@@ -11,7 +11,7 @@ class GraphModulesMap
 {
     SortedSet<GraphModule *> gm_set;
 
-    Map<AnsiIDName,GraphModule *> gm_map_by_name;
+    Map<AIDName,GraphModule *> gm_map_by_name;
     Map<size_t,GraphModule *> gm_map_by_hash;
 
     List<GraphModule *> gm_list;        //按创建顺序记录，用于倒序释放
@@ -25,7 +25,7 @@ public:
         return gm_set.IsEmpty();
     }
 
-    GraphModule *Get(const AnsiIDName &name)
+    GraphModule *Get(const AIDName &name)
     {
         GraphModule *gm;
 
@@ -46,7 +46,7 @@ public:
     template<typename T>
     const bool IsLoaded()const{return gm_map_by_hash.ContainsKey(T::GetTypeHash());}
 
-    const bool IsLoaded(const AnsiIDName &name)const{return gm_map_by_name.ContainsKey(name);}
+    const bool IsLoaded(const AIDName &name)const{return gm_map_by_name.ContainsKey(name);}
 
     bool Release(GraphModule *gm);          ///<释放一个模块
 

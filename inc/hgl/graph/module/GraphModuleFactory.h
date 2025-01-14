@@ -28,7 +28,7 @@ public:
         if(!rf)
             return(nullptr);
 
-        Map<AnsiIDName,GraphModule *> dgm_map;
+        Map<AIDName,GraphModule *> dgm_map;
 
         //检查依赖模块
         {
@@ -36,7 +36,7 @@ public:
 
             if(!dependent_modules.IsEmpty())
             {
-                for(const AnsiIDName &name:dependent_modules)
+                for(const AIDName &name:dependent_modules)
                 {
                     GraphModule *dgm=rf->GetModule(name,true);
 

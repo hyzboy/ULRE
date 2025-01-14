@@ -10,7 +10,7 @@ namespace hgl
     namespace graph
     {
         using SceneNodeID   =uint64;
-        using SceneNodeName =UTF16IDName;
+        using SceneNodeName =U16IDName;
 
         /**
         * 场景节点数据类<br>

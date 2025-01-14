@@ -1,4 +1,4 @@
-#include<hgl/graph/module/GraphModuleFactory.h>
+﻿#include<hgl/graph/module/GraphModuleFactory.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
@@ -7,7 +7,7 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    using GraphModuleFactoryMap=ObjectMap<AnsiIDName,GraphModuleFactory>;
+    using GraphModuleFactoryMap=ObjectMap<AIDName,GraphModuleFactory>;
 
     static GraphModuleFactoryMap *gmf_map=nullptr;
 }
@@ -33,7 +33,7 @@ bool RegistryGraphModuleFactory(const char *module_name,GraphModuleFactory *gmf)
     if(!gmf_map)
         InitGraphModuleFactory();
 
-    AnsiIDName name(module_name);
+    AIDName name(module_name);
 
     if(gmf_map->ContainsKey(name))
         return(false);
@@ -43,7 +43,7 @@ bool RegistryGraphModuleFactory(const char *module_name,GraphModuleFactory *gmf)
     return(true);
 }
 
-GraphModule *CreateGraphModule(const AnsiIDName &name,RenderFramework *rf)
+GraphModule *CreateGraphModule(const AIDName &name,RenderFramework *rf)
 {
     if(!rf)
         return(nullptr);
