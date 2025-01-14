@@ -158,7 +158,7 @@ Texture2D *RenderResource::LoadTexture2D(const OSString &filename,bool auto_mipm
 
         if(du)
         {
-            const UTF8String name=U8_TEXT("Tex2D:")+ToUTF8String(filename);
+            const U8String name=U8_TEXT("Tex2D:")+ToU8String(filename);
         
             du->SetImage(tex->GetImage(),(char *)(name.c_str()));
         }

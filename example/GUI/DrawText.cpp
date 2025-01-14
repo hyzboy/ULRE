@@ -28,7 +28,7 @@ private:
 
     bool InitTextRenderable()
     {
-        UTF16String str;
+        U16String str;
         
         LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
 

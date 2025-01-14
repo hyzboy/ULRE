@@ -8,15 +8,48 @@ class RenderAssignBuffer;
 class SceneNode;
 struct CameraInfo;
 
+struct RenderPipelineIndex:public Comparator<RenderPipelineIndex>
+{
+    Material *material;
+    Pipeline *pipeline;
+
+public:
+
+    const int compare(const RenderPipelineIndex &rli)const override
+    {
+        if(material<rli.material)return(-1);
+        if(material>rli.material)return(1);
+
+        if(pipeline<rli.pipeline)return(-1);
+        if(pipeline>rli.pipeline)return(1);
+
+        return(0);
+    }
+
+public:
+
+    RenderPipelineIndex()
+    {
+        material=nullptr;
+        pipeline=nullptr;
+    }
+
+    RenderPipelineIndex(Material *m,Pipeline *p)
+    {
+        material=m;
+        pipeline=p;
+    }
+};//struct RenderPipelineIndex
+
 /**
-* 同一材质的对象渲染列表
+* 同一材质与管线的渲染列表
 */
 class MaterialRenderList
 {
     GPUDevice *device;
     RenderCmdBuffer *cmd_buf;
 
-    Material *material;
+    RenderPipelineIndex rp_index;
 
     CameraInfo *camera_info;
 
@@ -33,7 +66,6 @@ private:
                 uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count;
 
-                Pipeline *              pipeline;
                 MaterialInstance *      mi;
 
         const   PrimitiveDataBuffer *   pdb;
@@ -60,7 +92,6 @@ protected:
 
             VABList *               vab_list;
 
-            Pipeline *              last_pipeline;
     const   PrimitiveDataBuffer *   last_data_buffer;
     const   VDM *                   last_vdm;
     const   PrimitiveRenderData *   last_render_data;
@@ -75,20 +106,14 @@ protected:
 
 public:
 
-    MaterialRenderList(GPUDevice *d,bool l2w,Material *m);
+    MaterialRenderList(GPUDevice *d,bool l2w,const RenderPipelineIndex &rpi);
     ~MaterialRenderList();
 
     void Add(SceneNode *);
 
-    void SetCameraInfo(CameraInfo *ci)
-    {
-        camera_info=ci;
-    }
+    void SetCameraInfo(CameraInfo *ci){camera_info=ci;}
 
-    void Clear()
-    {
-        rn_list.Clear();
-    }
+    void Clear(){rn_list.Clear();}
 
     void End();
 

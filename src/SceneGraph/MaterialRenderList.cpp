@@ -26,22 +26,13 @@
     这样就可以保证所有的渲染操作就算要切VBO，也不需要切换INDIRECT缓冲区，定位指令也很方便。
 */
 
-template<> 
-int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &obj_one,const hgl::graph::RenderNode &obj_two) const
+VK_NAMESPACE_BEGIN
+const int RenderNode::compare(const RenderNode &other)const
 {
     hgl::int64 off;
 
-    hgl::graph::Renderable *ri_one=obj_one.scene_node->GetRenderable();
-    hgl::graph::Renderable *ri_two=obj_two.scene_node->GetRenderable();
-
-    //比较管线
-    {
-        off=ri_one->GetPipeline()
-           -ri_two->GetPipeline();
-
-        if(off)
-            return off;
-    }
+    hgl::graph::Renderable *ri_one=other.scene_node->GetRenderable();
+    hgl::graph::Renderable *ri_two=scene_node->GetRenderable();
 
     auto *prim_one=ri_one->GetPrimitive();
     auto *prim_two=ri_two->GetPrimitive();
@@ -72,8 +63,8 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
 
     //比较距离。。。。。。。。。。。。。。。。。。。。。还不知道这个是正了还是反了，等测出来确认后修改下面的返回值和这里的注释
 
-    float foff=obj_one.to_camera_distance
-              -obj_two.to_camera_distance;
+    float foff=other.to_camera_distance
+              -to_camera_distance;
 
     if(foff>0)
         return 1;
@@ -81,18 +72,17 @@ int Comparator<hgl::graph::RenderNode>::compare(const hgl::graph::RenderNode &ob
         return -1;
 }
 
-VK_NAMESPACE_BEGIN
-MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,Material *m)
+MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,const RenderPipelineIndex &rpi)
 {
     device=d;
     cmd_buf=nullptr;
-    material=m;
+    rp_index=rpi;
 
     camera_info=nullptr;
 
-    assign_buffer=new RenderAssignBuffer(device,material);
+    assign_buffer=new RenderAssignBuffer(device,rp_index.material);
 
-    vab_list=new VABList(material->GetVertexInput()->GetCount());
+    vab_list=new VABList(rp_index.material->GetVertexInput()->GetCount());
 
     icb_draw=nullptr;
     icb_draw_indexed=nullptr;
@@ -215,7 +205,6 @@ void MaterialRenderList::UpdateMaterialInstance(SceneNode *sn)
 
 void MaterialRenderList::RenderItem::Set(Renderable *ri)
 {
-    pipeline=ri->GetPipeline();
     mi      =ri->GetMaterialInstance();
     pdb     =ri->GetDataBuffer();
     prd     =ri->GetRenderData();
@@ -248,6 +237,7 @@ void MaterialRenderList::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
     dicp->firstVertex   =ri->prd->vertex_offset;
     dicp->firstInstance =ri->first_instance;
 }
+
 void MaterialRenderList::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderItem *ri)
 {
     diicp->indexCount   =ri->prd->index_count;
@@ -279,7 +269,6 @@ void MaterialRenderList::Stat()
     ri->instance_count=1;
     ri->Set(ro);
 
-    last_pipeline   =ri->pipeline;
     last_data_buffer=ri->pdb;
     last_vdm        =ri->pdb->vdm;
     last_render_data=ri->prd;
@@ -290,14 +279,13 @@ void MaterialRenderList::Stat()
     {
         ro=rn->scene_node->GetRenderable();
 
-        if(last_pipeline==ro->GetPipeline())
-            if(last_data_buffer->Comp(ro->GetDataBuffer()))
-                if(last_render_data->_Comp(ro->GetRenderData())==0)
-                {
-                    ++ri->instance_count;
-                    ++rn;
-                    continue;
-                }
+        if(*last_data_buffer!=*ro->GetDataBuffer())
+            if(*last_render_data==*ro->GetRenderData())
+            {
+                ++ri->instance_count;
+                ++rn;
+                continue;
+            }
 
         if(ri->pdb->vdm)
         {
@@ -317,7 +305,6 @@ void MaterialRenderList::Stat()
         ri->instance_count=1;
         ri->Set(ro);
 
-        last_pipeline   =ri->pipeline;
         last_data_buffer=ri->pdb;
         last_vdm        =ri->pdb->vdm;
         last_render_data=ri->prd;
@@ -411,17 +398,7 @@ void MaterialRenderList::ProcIndirectRender()
 
 void MaterialRenderList::Render(RenderItem *ri)
 {
-    if(last_pipeline!=ri->pipeline)
-    {
-        cmd_buf->BindPipeline(ri->pipeline);
-        last_pipeline=ri->pipeline;
-
-        last_data_buffer=nullptr;
-
-        //这里未来尝试换pipeline同时不换mi/primitive是否需要重新绑定mi/primitive
-    }
-
-    if(!ri->pdb->Comp(last_data_buffer))        //换buf了
+    if(*(ri->pdb)!=*last_data_buffer)        //换buf了
     {
         if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
             ProcIndirectRender();
@@ -432,7 +409,7 @@ void MaterialRenderList::Render(RenderItem *ri)
         BindVAB(ri->pdb,ri->first_instance);
 
         if(ri->pdb->ibo)
-        cmd_buf->BindIBO(ri->pdb->ibo);
+            cmd_buf->BindIBO(ri->pdb->ibo);
     }
 
     if(ri->pdb->vdm)
@@ -459,15 +436,16 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
 
     cmd_buf=rcb;
 
-    last_pipeline   =nullptr;
+    cmd_buf->BindPipeline(rp_index.pipeline);
+
     last_data_buffer=nullptr;
     last_vdm        =nullptr;
     last_render_data=nullptr;
 
     if(assign_buffer)
-        assign_buffer->Bind(material);
+        assign_buffer->Bind(rp_index.material);
 
-    cmd_buf->BindDescriptorSets(material);
+    cmd_buf->BindDescriptorSets(rp_index.material);
 
     RenderItem *ri=ri_array.GetData();
     for(uint i=0;i<ri_count;i++)

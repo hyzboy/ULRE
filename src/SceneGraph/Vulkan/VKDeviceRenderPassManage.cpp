@@ -188,8 +188,8 @@ DeviceRenderPassManage::DeviceRenderPassManage(VkDevice dev,VkPipelineCache pc)
 {
     device=dev;
     pipeline_cache=pc;
-
-    hash=util::CreateSHA1LEHash();
+    
+    hash=CreateRenderPassHash();
 }
 
 DeviceRenderPassManage::~DeviceRenderPassManage()
@@ -250,8 +250,8 @@ namespace
 //    }
 
     void HashRenderPass(RenderPassHASHCode *code,const RenderbufferInfo *rbi,const uint8 subpass_count)
-    {       
-        util::Hash *hash=util::CreateSHA1LEHash();
+    {
+        util::Hash *hash=CreateRenderPassHash();
 
         hash->Init();
 

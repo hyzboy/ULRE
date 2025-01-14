@@ -11,9 +11,9 @@ namespace hgl
         class MaterialInstance;
         class SceneNode;
 
-        struct RenderNode
+        struct RenderNode:public Comparator<RenderNode>
         {
-            uint        index;                              ///<在MaterialRenderList中的索引
+            uint        index;                                          ///<在MaterialRenderList中的索引
 
             SceneNode * scene_node;
 
@@ -22,6 +22,11 @@ namespace hgl
 
             Vector3f    world_position;
             float       to_camera_distance;
+
+        public:
+
+            //该函数位于MaterialRenderList.cpp
+            const int compare(const RenderNode &)const override;
         };
 
         using RenderNodeList=List<RenderNode>;
@@ -29,5 +34,10 @@ namespace hgl
 
         using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph
+
+    template<> inline const int ItemComparator<graph::RenderNode>::compare(const graph::RenderNode &a,const graph::RenderNode &b)
+    {
+        return a.compare(b);
+    }
 }//namespace hgl
 #endif//HGL_GRAPH_RENDER_NODE_INCLUDE

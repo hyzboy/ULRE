@@ -96,7 +96,7 @@ public:
     void SetMain(const AnsiString &str){main_function=str;}
     void SetMain(const char *str,const int len)
     {
-        main_function.SetString(str,len);
+        main_function.fromString(str,len);
     }
 
     const AnsiString &GetOutputStruct()const{return output_struct;}

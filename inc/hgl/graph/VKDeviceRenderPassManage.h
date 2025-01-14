@@ -1,12 +1,16 @@
-#ifndef HGL_VULKAN_DEVICE_RENDERPASS_MANAGE_INCLUDE
-#define HGL_VULKAN_DEVICE_RENDERPASS_MANAGE_INCLUDE
+#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
 #include<hgl/util/hash/Hash.h>
 
 VK_NAMESPACE_BEGIN
-using RenderPassHASHCode=util::HashCodeSHA1LE;
+
+using RenderPassHASHCode=util::HashCode<128/8>;
+inline util::Hash *CreateRenderPassHash()
+{
+    return util::CreateHash(util::HASH::xxH3_128);
+}
 
 class DeviceRenderPassManage
 {
@@ -34,4 +38,3 @@ private:
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 };//class DeviceRenderPassManage
 VK_NAMESPACE_END
-#endif//HGL_VULKAN_DEVICE_RENDERPASS_MANAGE_INCLUDE
