@@ -13,7 +13,7 @@ class MaterialCreateInfo;
 /**
  * 材质配置结构
  */
-struct MaterialCreateConfig
+struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 {
     const GPUDeviceAttribute *dev_attr;
 
@@ -42,7 +42,7 @@ public:
         prim=p;
     }
 
-    virtual int Comp(const MaterialCreateConfig &cfg)const
+    const int compare(const MaterialCreateConfig &cfg)const override
     {
         int off;
         
@@ -59,8 +59,6 @@ public:
 
         return off;
     }
-
-    CompOperator(const MaterialCreateConfig &,Comp)
 };//struct MaterialCreateConfig
 STD_MTL_NAMESPACE_END
 #endif//HGL_GRAPH_MTL_CONFIG_INCLUDE

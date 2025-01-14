@@ -1,4 +1,5 @@
 ﻿#include"GizmoResource.h"
+#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/TransformFaceToCamera.h>
 

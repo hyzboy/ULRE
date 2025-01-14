@@ -8,6 +8,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/SceneNode.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN

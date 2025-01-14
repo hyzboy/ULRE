@@ -35,7 +35,7 @@ const AnsiString *LoadShader(const AnsiString &shader_name)
 
     shader=new AnsiString;
 
-    if(LoadStringFromTextFile((UTF8String &)*shader,os_fn)<=0)
+    if(LoadStringFromTextFile((U8String &)*shader,os_fn)<=0)
     {
         delete shader;
         shader=nullptr;
