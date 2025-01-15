@@ -37,7 +37,6 @@ class GPUDevice
 
 private:
 
-    DeviceRenderPassManage *render_pass_manage;
     RenderPass *device_render_pass;
 
     RTSwapchain *sc_rt;
@@ -230,8 +229,6 @@ public: //Command Buffer 相关
     TextureCmdBuffer *CreateTextureCommandBuffer(const AnsiString &);
     
 public:
-
-    RenderPass * AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
 
     Fence *      CreateFence(bool);
     Semaphore *  CreateGPUSemaphore();

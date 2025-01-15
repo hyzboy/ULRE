@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/Map.h>
 #include<hgl/util/hash/Hash.h>
 
@@ -12,9 +12,8 @@ inline util::Hash *CreateRenderPassHash()
     return util::CreateHash(util::HASH::xxH3_128);
 }
 
-class DeviceRenderPassManage
+class RenderPassManager:public GraphModuleInherit<RenderPassManager>
 {
-    VkDevice device;
     VkPipelineCache pipeline_cache;
 
     util::Hash *hash;
@@ -23,10 +22,8 @@ class DeviceRenderPassManage
 
 private:
 
-    friend class GPUDevice;
-
-    DeviceRenderPassManage(VkDevice,VkPipelineCache);
-    ~DeviceRenderPassManage();
+    RenderPassManager(GPUDevice *);
+    ~RenderPassManager();
 
 private:
     
@@ -35,6 +32,9 @@ private:
                                         const List<VkSubpassDependency> &dependency,
                                         const RenderbufferInfo *);
 
+public:
+
     RenderPass *    AcquireRenderPass(   const RenderbufferInfo *,const uint subpass_count=2);
-};//class DeviceRenderPassManage
+};//class RenderPassManager
+
 VK_NAMESPACE_END
