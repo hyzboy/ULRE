@@ -41,6 +41,26 @@ SET(LIGHT_FILES ${SG_INCLUDE_PATH}/Light.h
 
 source_group("Light" FILES ${LIGHT_FILES})
 
+SET(SGM_HEADER_PATH ${SG_INCLUDE_PATH}/module)
+SET(SGM_SOURCE_PATH module)
+
+SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
+                        ${SGM_HEADER_PATH}/GraphModuleManager.h
+                        ${SGM_HEADER_PATH}/RenderPassManager.h
+                        
+                        ${SGM_HEADER_PATH}/RenderModule.h
+
+                        ${SGM_SOURCE_PATH}/GraphModuleManager.cpp
+                        ${SGM_SOURCE_PATH}/RenderPassManager.cpp
+)
+
+source_group("Framework\\Module" FILES ${GRAPH_MODULE_FILES})
+
+SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
+                            RenderFramework.cpp)
+
+source_group("Framework" FILES ${GRAPH_FRAMEWORK_FILES})
+
 SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneManager.h
                         ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
                         ${SG_INCLUDE_PATH}/SceneNode.h
@@ -164,7 +184,6 @@ SET(VK_DEVICE_SOURCE    Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceFramebuffer.cpp
                         Vulkan/VKDeviceSwapchain.cpp
                         Vulkan/VKDeviceRenderPass.cpp
-                        Vulkan/VKDeviceRenderPassManage.cpp
                         Vulkan/VKDeviceRenderTarget.cpp)
 
 SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
@@ -314,6 +333,9 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
                                         ${SG_PRIMITIVE_SOURCE}
                                         ${GEOMETRY_FILES}
                                         ${LIGHT_FILES}
+
+                                        ${GRAPH_MODULE_FILES}
+                                        ${GRAPH_FRAMEWORK_FILES}
 
                                         ${SG_TEXTURE_SOURCE}
                                         ${TILE_SOURCE}

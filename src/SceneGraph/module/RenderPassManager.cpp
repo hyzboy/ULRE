@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDeviceRenderPassManage.h>
+#include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN
@@ -74,9 +74,9 @@ inline void CreateInputAttachmentReference(VkAttachmentReference *ref_list, uint
     
 bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const RenderbufferInfo *rbi)
 {
-    const uint color_count=rbi->GetColorCount();
+    const uint image_count=rbi->GetColorCount();
 
-    const uint count=(rbi->HasDepthOrStencil())?color_count+1:color_count;
+    const uint count=(rbi->HasDepthOrStencil())?image_count+1:image_count;
 
     desc_list.SetCount(count);
 
@@ -97,7 +97,7 @@ bool CreateAttachmentDescription(List<VkAttachmentDescription> &desc_list,const 
 
     desc=desc_list.GetData();
     const VkFormat *cf=rbi->GetColorFormat();
-    for(uint i=0;i<color_count;i++)
+    for(uint i=0;i<image_count;i++)
     {
         desc->finalLayout      = rbi->GetColorLayout();
         desc->format           = *cf;
@@ -184,15 +184,14 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
     return(true);
 }
 
-DeviceRenderPassManage::DeviceRenderPassManage(VkDevice dev,VkPipelineCache pc)
+GRAPH_MODULE_CONSTRUCT(RenderPassManager)
 {
-    device=dev;
-    pipeline_cache=pc;
-    
+    pipeline_cache=GetDeviceAttribute()->pipeline_cache;
+
     hash=CreateRenderPassHash();
 }
 
-DeviceRenderPassManage::~DeviceRenderPassManage()
+RenderPassManager::~RenderPassManager()
 {
     SAFE_CLEAR(hash);
     
@@ -250,7 +249,7 @@ namespace
 //    }
 
     void HashRenderPass(RenderPassHASHCode *code,const RenderbufferInfo *rbi,const uint8 subpass_count)
-    {
+    {       
         util::Hash *hash=CreateRenderPassHash();
 
         hash->Init();
@@ -265,10 +264,10 @@ namespace
     }
 }
 
-RenderPass *DeviceRenderPassManage::CreateRenderPass(   const List<VkAttachmentDescription> &desc_list,
-                                                        const List<VkSubpassDescription> &subpass,
-                                                        const List<VkSubpassDependency> &dependency,
-                                                        const RenderbufferInfo *rbi)
+RenderPass *RenderPassManager::CreateRenderPass(const List<VkAttachmentDescription> &desc_list,
+                                                const List<VkSubpassDescription> &subpass,
+                                                const List<VkSubpassDependency> &dependency,
+                                                const RenderbufferInfo *rbi)
 {
     const VkFormat depth_format=rbi->GetDepthFormat();
 
@@ -285,14 +284,26 @@ RenderPass *DeviceRenderPassManage::CreateRenderPass(   const List<VkAttachmentD
     
     VkRenderPass render_pass;
 
-    if(vkCreateRenderPass(device,&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
+    if(vkCreateRenderPass(GetVkDevice(),&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(device,pipeline_cache,render_pass,rbi->GetColorFormatList(),depth_format));
+    return(new RenderPass(GetVkDevice(),pipeline_cache,render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
-RenderPass *DeviceRenderPassManage::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
+RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
 {
+    {
+        const auto *phy_dev=GetPhysicalDevice();
+        
+        for(const VkFormat &fmt:rbi->GetColorFormatList())
+            if(!phy_dev->IsColorAttachmentOptimal(fmt))
+                return(nullptr);
+            
+        if(rbi->HasDepthOrStencil())
+        if(!phy_dev->IsDepthAttachmentOptimal(rbi->GetDepthFormat()))
+                return(nullptr);
+    }
+
     RenderPassHASHCode hash;
     RenderPass *rp=nullptr;
 
