@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/platform/Window.h>
@@ -29,10 +29,13 @@ public:
     Window *            GetWindow       (){return win;}
     GPUDevice *         GetDevice       (){return device;}
 
+    RenderPass *        GetRenderPass   (){return device_render_pass;}
+
 public:
 
     GraphModuleManager *GetModuleManager(){return module_manager;}
     RenderPassManager * GetRenderPassManager(){return render_pass_manager;}
+
 
 public:
 
@@ -40,6 +43,12 @@ public:
     virtual ~RenderFramework();
 
     virtual bool Init(uint w,uint h);
+
+public: // event
+
+    void OnResize(uint w,uint h);
+    void OnActive(bool);
+    void OnClose();
 
 };//class RenderFramework
 

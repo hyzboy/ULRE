@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/type/Map.h>
@@ -24,6 +24,8 @@ private:
 
     RenderPassManager(GPUDevice *);
     ~RenderPassManager();
+
+    friend class GraphModuleManager;
 
 private:
     
