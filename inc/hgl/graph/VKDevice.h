@@ -37,14 +37,9 @@ class GPUDevice
 
 private:
 
-    RenderPass *device_render_pass;
-
     RTSwapchain *sc_rt;
 
     RTSwapchain *CreateSwapchainRenderTarget();
-
-    void InitRenderPassManage();
-    void ClearRenderPassManage();
 
 private:
 
@@ -77,8 +72,6 @@ public:
     const       VkFormat            GetSurfaceFormat    ()const {return attr->surface_format.format;}
     const       VkColorSpaceKHR     GetColorSpace       ()const {return attr->surface_format.colorSpace;}
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
-
-                RenderPass *        GetRenderPass       ()      {return device_render_pass;}
 
                 RTSwapchain *       GetSwapchainRT      ()      {return sc_rt;}
 

@@ -8,7 +8,6 @@
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKDescriptorSet.h>
-#include<hgl/graph/VKDeviceRenderPassManage.h>
 
 VK_NAMESPACE_BEGIN
 GPUDevice::GPUDevice(GPUDeviceAttribute *da)
@@ -17,8 +16,6 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 
     texture_queue=nullptr;
     texture_cmd_buf=nullptr;
-
-    InitRenderPassManage();
 
     sc_rt=nullptr;
     Resize(attr->surface_caps.currentExtent);
@@ -29,8 +26,6 @@ GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 
 GPUDevice::~GPUDevice()
 {
-    ClearRenderPassManage();
-
     SAFE_CLEAR(sc_rt);
 
     SAFE_CLEAR(texture_queue);
