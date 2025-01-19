@@ -5,6 +5,7 @@
 VK_NAMESPACE_BEGIN
 
 class RenderTargetManager;
+class RenderPassManager;
 
 GRAPH_MODULE_CLASS(SwapchainModule)
 {
@@ -47,6 +48,6 @@ public:
 
             RenderCmdBuffer *Use();
 
-};//class SwapchainModule:public RenderModule
+};//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END

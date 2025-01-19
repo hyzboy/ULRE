@@ -290,6 +290,7 @@ RenderCmdBuffer *SwapchainModule::Use()
 
     RenderCmdBuffer *rcb=cmd_buf[index];
 
+    rcb->Begin();
     rcb->BindFramebuffer(swapchain_rp,swapchain_rt->GetFramebuffer());
 
     return rcb;
