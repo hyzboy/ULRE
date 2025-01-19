@@ -17,9 +17,7 @@ public:
     using GraphModule::GraphModule;
     virtual ~RenderModule()=default;
 
-    virtual void OnResize(const VkExtent2D &)=0;                                                    ///<窗口大小改变
-
-    //virtual void OnFrameRender(const double,RenderCmdBuffer *)=0;                                   ///<帧绘制回调
+    virtual bool OnFrameRender(const double,RenderCmdBuffer *)=0;                                   ///<帧绘制回调
 };//class RenderModule
 
 #define RENDER_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name,RenderModule>

@@ -18,6 +18,10 @@ public:
 
 public:
 
+    virtual void OnResize(const VkExtent2D &){};                                                    ///<窗口大小改变
+
+public:
+
     GraphModule(GPUDevice *dev){device=dev;}
     virtual ~GraphModule()=default;
 
