@@ -32,22 +32,9 @@ class GPUDevice
 {
     GPUDeviceAttribute *attr;
 
-    DeviceQueue *texture_queue;
-    TextureCmdBuffer *texture_cmd_buf;
-
-private:
-
-    RTSwapchain *sc_rt;
-
-    RTSwapchain *CreateSwapchainRenderTarget();
-
 private:
 
     VkCommandBuffer CreateCommandBuffer(const AnsiString &);
-
-    bool CreateSwapchainFBO(Swapchain *);
-
-    Swapchain *CreateSwapchain(const VkExtent2D &acquire_extent);
 
 private:
 
@@ -72,10 +59,6 @@ public:
     const       VkFormat            GetSurfaceFormat    ()const {return attr->surface_format.format;}
     const       VkColorSpaceKHR     GetColorSpace       ()const {return attr->surface_format.colorSpace;}
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
-
-                RTSwapchain *       GetSwapchainRT      ()      {return sc_rt;}
-
-    const       VkExtent2D &        GetSwapchainSize    ()const {return sc_rt->GetExtent();}
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
 
