@@ -47,11 +47,18 @@ SET(SGM_SOURCE_PATH module)
 SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/GraphModuleManager.h
                         ${SGM_HEADER_PATH}/RenderPassManager.h
+                        ${SGM_HEADER_PATH}/TextureManager.h
+                        ${SGM_HEADER_PATH}/RenderTargetManager.h
                         
                         ${SGM_HEADER_PATH}/RenderModule.h
+                        ${SGM_HEADER_PATH}/SwapchainModule.h
 
                         ${SGM_SOURCE_PATH}/GraphModuleManager.cpp
                         ${SGM_SOURCE_PATH}/RenderPassManager.cpp
+                        ${SGM_SOURCE_PATH}/TextureManager.cpp
+                        ${SGM_SOURCE_PATH}/RenderTargetManager.cpp
+
+                        ${SGM_SOURCE_PATH}/SwapChainModule.cpp
 )
 
 source_group("Framework\\Module" FILES ${GRAPH_MODULE_FILES})
@@ -181,9 +188,7 @@ SET(VK_DEVICE_SOURCE    Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceImage.cpp
                         Vulkan/VKDeviceSampler.cpp
                         Vulkan/VKDeviceMaterial.cpp
-                        Vulkan/VKDeviceFramebuffer.cpp
-                        Vulkan/VKDeviceSwapchain.cpp
-                        Vulkan/VKDeviceRenderTarget.cpp)
+                        Vulkan/VKDeviceFramebuffer.cpp)
 
 SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
                             Vulkan/VKPhysicalDevice.cpp

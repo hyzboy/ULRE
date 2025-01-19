@@ -152,57 +152,6 @@ public: //间接绘制
     IndirectDrawIndexedBuffer * CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);
     IndirectDispatchBuffer *    CreateIndirectDispatchBuffer(   const uint32_t cmd_count,SharingMode sm=SharingMode::Exclusive);
 
-public: //Image
-
-    VkImage CreateImage         (VkImageCreateInfo *);
-    void    DestroyImage        (VkImage);
-
-private:    //texture
-
-    bool CopyBufferToImage      (const CopyBufferToImageInfo *info,VkPipelineStageFlags destinationStage);
-
-    bool CopyBufferToImage      (Texture *,DeviceBuffer *buf,const VkBufferImageCopy *,const int count,const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags);//=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-    bool CopyBufferToImage2D    (Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *bic_list,const int bic_count,  VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic_list,   bic_count,  0,1,dstStage);}
-    bool CopyBufferToImage2D    (Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *bic,                           VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic,        1,          0,1,dstStage);}
-
-    bool CopyBufferToImageCube  (Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *bic_list,const int bic_count,  VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic_list,   bic_count,  0,6,dstStage);}
-    bool CopyBufferToImageCube  (Texture *tex,DeviceBuffer *buf,const VkBufferImageCopy *bic,                           VkPipelineStageFlags dstStage){return CopyBufferToImage(tex,buf,bic,        1,          0,6,dstStage);}
-
-    bool CommitTexture2D        (Texture2D *,DeviceBuffer *buf,VkPipelineStageFlags stage);
-    bool CommitTexture2DMipmaps (Texture2D *,DeviceBuffer *buf,const VkExtent3D &,uint32_t);
-
-    bool CommitTextureCube          (TextureCube *,DeviceBuffer *buf,const uint32_t mipmaps_zero_bytes,VkPipelineStageFlags stage);
-    bool CommitTextureCubeMipmaps   (TextureCube *,DeviceBuffer *buf,const VkExtent3D &,uint32_t);
-
-    bool SubmitTexture          (const VkCommandBuffer *cmd_bufs,const uint32_t count=1);           ///<提交纹理处理到队列
-
-public: //Texture
-
-    bool CheckFormatSupport(const VkFormat,const uint32_t bits,ImageTiling tiling=ImageTiling::Optimal)const;
-
-    bool CheckTextureFormatSupport(const VkFormat fmt,ImageTiling tiling=ImageTiling::Optimal)const{return CheckFormatSupport(fmt,VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT,tiling);}
-
-    Texture2D *CreateTexture2D(TextureData *);
-    Texture2D *CreateTexture2D(TextureCreateInfo *ci);
-
-    Texture2DArray *CreateTexture2DArray(TextureData *);
-    Texture2DArray *CreateTexture2DArray(TextureCreateInfo *ci);
-    Texture2DArray *CreateTexture2DArray(const uint32_t w,const uint32_t h,const uint32 l,const VkFormat fmt,const bool mipmaps);
-
-    TextureCube *CreateTextureCube(TextureData *);
-    TextureCube *CreateTextureCube(TextureCreateInfo *ci);
-
-    void Clear(TextureCreateInfo *);
-
-    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,             const List<Image2DRegion> &,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2D(Texture2D *,DeviceBuffer *buf,             const RectScope2ui &,       VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2D(Texture2D *,void *data,const uint32_t size,const RectScope2ui &,       VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-//    bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,             const List<Image2DRegion> &,  const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2DArray(Texture2DArray *,DeviceBuffer *buf,             const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-    bool ChangeTexture2DArray(Texture2DArray *,void *data,const uint32_t size,const RectScope2ui &,         const uint32_t base_layer,const uint32_t layer_count,VkPipelineStageFlags=VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
 public: //
 
     Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr);
@@ -227,18 +176,6 @@ public:
     Semaphore *  CreateGPUSemaphore();
 
     DeviceQueue *CreateQueue(const uint32_t fence_count=1,const bool create_signaled=false);
-
-public: //FrameBuffer相关
-
-    Framebuffer *CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth);
-//    Framebuffer *CreateFBO(RenderPass *,List<ImageView *> &color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *color,ImageView *depth);
-    Framebuffer *CreateFBO(RenderPass *,ImageView *);
-
-public:
-    
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,RenderPass *,const uint32_t fence_count=1);
-    RenderTarget *CreateRT(   const FramebufferInfo *fbi,const uint32_t fence_count=1);
 
 public:
 

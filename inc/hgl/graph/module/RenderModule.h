@@ -10,8 +10,6 @@ VK_NAMESPACE_BEGIN
 */
 class RenderModule:public GraphModule
 {
-    VkExtent2D current_extent;
-
 public:
 
     NO_COPY_NO_MOVE(RenderModule)
@@ -19,9 +17,13 @@ public:
     using GraphModule::GraphModule;
     virtual ~RenderModule()=default;
 
-    virtual void OnResize(const VkExtent2D &ext){current_extent=ext;}                               ///<窗口大小改变
+    virtual void OnResize(const VkExtent2D &)=0;                                                    ///<窗口大小改变
 
-    virtual void OnFrameRender(const double,RenderCmdBuffer *)=0;                                   ///<帧绘制回调
+    //virtual void OnFrameRender(const double,RenderCmdBuffer *)=0;                                   ///<帧绘制回调
 };//class RenderModule
+
+#define RENDER_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name,RenderModule>
+
+#define RENDER_MODULE_CONSTRUCT(class_name) class_name::class_name(GPUDevice *dev):GraphModuleInherit<class_name,RenderModule>(dev,#class_name)
 
 VK_NAMESPACE_END

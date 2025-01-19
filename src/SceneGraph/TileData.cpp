@@ -2,14 +2,15 @@
 #include<hgl/log/LogInfo.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKBuffer.h>
+#include<hgl/graph/module/TextureManager.h>
 
 namespace hgl
 {
     namespace graph
     {
-        TileData::TileData(GPUDevice *dev,Texture2D *tt,const uint tw,const uint th)
+        TileData::TileData(TextureManager *tm,Texture2D *tt,const uint tw,const uint th)
         {
-            device=dev;
+            texture_manager=tm;
 
             tile_texture=tt;
 
@@ -52,7 +53,7 @@ namespace hgl
 
             tile_bytes=GetImageBytes(tile_texture->GetFormat(),tile_width*tile_height);
 
-            tile_buffer=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tile_bytes*tile_max_count,nullptr);
+            tile_buffer=texture_manager->CreateTransferSourceBuffer(tile_bytes*tile_max_count);
 
             commit_ptr=nullptr;
         }
@@ -79,7 +80,7 @@ namespace hgl
             tile_buffer->Unmap();
             commit_ptr=nullptr;
 
-            if(!device->ChangeTexture2D(tile_texture,tile_buffer,commit_list))
+            if(!texture_manager->ChangeTexture2D(tile_texture,tile_buffer,commit_list))
                 return -2;
 
             const int result=commit_list.GetCount();

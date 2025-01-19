@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/VKDevice.h>
+﻿#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/VKImageCreateInfo.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
@@ -7,15 +7,19 @@
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);
 
-Texture2D *GPUDevice::CreateTexture2D(TextureData *tex_data)
+Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
 {
     if(!tex_data)
         return(nullptr);
+    
+    Texture2D *tex=new Texture2D(this,AcquireID(),tex_data);
 
-    return(new Texture2D(attr->device,tex_data));
+    Add(tex);
+
+    return tex;
 }
 
-Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
+Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);
 
@@ -39,11 +43,11 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
             return(nullptr);
         }
 
-        tci->memory=CreateMemory(tci->image);
+        tci->memory=GetDevice()->CreateMemory(tci->image);
     }
 
     if(!tci->image_view)
-        tci->image_view=CreateImageView2D(attr->device,tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
+        tci->image_view=CreateImageView2D(GetVkDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
     TextureData *tex_data=new TextureData(tci);
 
@@ -56,7 +60,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
     }
 
     if((!tci->buffer)&&tci->pixels&&tci->total_bytes>0)
-        tci->buffer=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,tci->total_bytes,tci->pixels);
+        tci->buffer=CreateTransferSourceBuffer(tci->total_bytes,tci->pixels);
 
     if(tci->buffer)
     {
@@ -89,7 +93,7 @@ Texture2D *GPUDevice::CreateTexture2D(TextureCreateInfo *tci)
     return tex;
 }
 
-bool GPUDevice::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStageFlags destinationStage)
+bool TextureManager::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf)return(false);
 
@@ -98,7 +102,7 @@ bool GPUDevice::CommitTexture2D(Texture2D *tex,DeviceBuffer *buf,VkPipelineStage
     return CopyBufferToImage2D(tex,buf,&buffer_image_copy,destinationStage);
 }
 
-bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
+bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const VkExtent3D &extent,uint32_t total_bytes)
 {
     if(!tex||!buf
       ||extent.width*extent.height<=0)
@@ -144,7 +148,7 @@ bool GPUDevice::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,const Vk
     return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||ir_list.GetCount()<=0)
         return(false);
@@ -184,7 +188,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Imag
     return result;
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf
         ||scope.GetWidth()<=0
@@ -202,7 +206,7 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const RectScope
     return result;
 }
 
-bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,const uint32_t size,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,const void *data,const VkDeviceSize size,const RectScope2ui &scope,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!data
         ||size<=0
@@ -211,8 +215,8 @@ bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,const uint32_t size,co
         ||scope.GetRight()>tex->GetWidth()
         ||scope.GetBottom()>tex->GetHeight())
         return(false);
-
-    DeviceBuffer *buf=CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,size,data);
+    
+    DeviceBuffer *buf=CreateTransferSourceBuffer(size,data);
 
     bool result=ChangeTexture2D(tex,buf,scope,destinationStage);
 

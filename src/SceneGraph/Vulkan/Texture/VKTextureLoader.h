@@ -3,24 +3,25 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/TextureLoader.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/VKTextureCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
 template<typename T,typename TL> class VkTextureLoader:public TL
 {
 protected:
-
-    GPUDevice *device;
+    
+    TextureManager *tex_manager;
     DeviceBuffer *buf;
     T *tex;
 
     bool auto_mipmaps;
 
 public:
-
-    VkTextureLoader(GPUDevice *dev,const bool am)
+    
+    VkTextureLoader(TextureManager *tm,const bool am)
     {
-        device=dev;
+        tex_manager=tm;
         buf=nullptr;
         tex=nullptr;
         auto_mipmaps=am;
@@ -38,8 +39,8 @@ public:
 
         if(!CheckVulkanFormat(tex_format))
             return(nullptr);
-
-        buf=device->CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,total_bytes);
+        
+        buf=tex_manager->CreateTransferSourceBuffer(total_bytes);
 
         if(!buf)
             return(nullptr);
@@ -75,7 +76,7 @@ public:
 
         if(auto_mipmaps&&tex_file_header.mipmaps<=1)
         {
-            if(device->CheckFormatSupport(tex_format,VK_FORMAT_FEATURE_BLIT_DST_BIT))
+            if(tex_manager->CheckFormatSupport(tex_format,VK_FORMAT_FEATURE_BLIT_DST_BIT))
             {
                 tci->usage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
                 tci->SetAutoMipmaps();

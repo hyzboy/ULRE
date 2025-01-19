@@ -12,13 +12,15 @@ namespace hgl
 {
     namespace graph
     {
+        class TextureManager;
+
         /**
          * TileData是一种处理大量等同尺寸及格式贴图的管理机制，程序会自动根据显卡最大贴图处理能力来创建尽可能符合需求的贴图。(注：Tile的大小不必符合2次幂)
          * Tile的增加或删除，程序会自动排序，尽可能小的减少I/O消耗。
          */
         class TileData                                                                                                 ///Tile纹理管理
         {
-            GPUDevice *device;
+            TextureManager *texture_manager;
 
         protected:
 
@@ -51,8 +53,8 @@ namespace hgl
             Texture2D *	GetTexture	()const{return tile_texture;}									                    ///<取得贴图
 
         public:
-
-            TileData(GPUDevice *,Texture2D *,const uint tw,const uint th);
+            
+            TileData(TextureManager *,Texture2D *,const uint tw,const uint th);
             virtual ~TileData();
 
             void BeginCommit();

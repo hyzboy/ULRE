@@ -32,7 +32,7 @@ protected:
 
 protected:
 
-    friend class GPUDevice;
+    friend class RenderTargetManager;
 
     RenderTarget(DeviceQueue *,Semaphore *);
     RenderTarget(DeviceQueue *,Semaphore *,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture);

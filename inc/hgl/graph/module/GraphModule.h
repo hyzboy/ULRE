@@ -25,7 +25,7 @@ public:
     virtual const AnsiString &GetName()const=0;
 };//class GraphModule
 
-template<typename T> class GraphModuleInherit:public GraphModule
+template<typename T,typename BASE> class GraphModuleInherit:public BASE
 {
     AnsiString manager_name;
 
@@ -43,7 +43,7 @@ public:
 
 public:
 
-    GraphModuleInherit(GPUDevice *dev,const AnsiString &name):GraphModule(dev)
+    GraphModuleInherit(GPUDevice *dev,const AnsiString &name):BASE(dev)
     {
         manager_name=name;
     }
@@ -51,8 +51,8 @@ public:
     virtual ~GraphModuleInherit()=default;
 };//class GraphModuleInherit
 
-#define GRAPH_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name>
+#define GRAPH_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name,GraphModule>
 
-#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(GPUDevice *dev):GraphModuleInherit<class_name>(dev,#class_name)
+#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(GPUDevice *dev):GraphModuleInherit<class_name,GraphModule>(dev,#class_name)
 
 VK_NAMESPACE_END
