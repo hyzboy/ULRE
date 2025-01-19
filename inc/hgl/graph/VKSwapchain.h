@@ -9,18 +9,21 @@ struct Swapchain
 {
 public:
 
-    VkDevice                device          =VK_NULL_HANDLE;
+    VkDevice                        device          =VK_NULL_HANDLE;
     
-    VkExtent2D              extent;
+    VkExtent2D                      extent;
+    VkSurfaceTransformFlagBitsKHR   transform;
 
-    VkSwapchainKHR          swap_chain      =VK_NULL_HANDLE;
+    VkSwapchainKHR                  swap_chain      =VK_NULL_HANDLE;
+    VkSurfaceFormatKHR              surface_format;
+    VkFormat                        depth_format;
 
-    uint32_t                color_count     =0;
+    uint32_t                        color_count     =0;
 
-    Texture2D **            sc_color        =nullptr;
-    Texture2D *             sc_depth        =nullptr;
+    Texture2D **                    sc_color        =nullptr;
+    Texture2D *                     sc_depth        =nullptr;
 
-    Framebuffer **          sc_fbo          =nullptr;
+    Framebuffer **                  sc_fbo          =nullptr;
 
 public:
 

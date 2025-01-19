@@ -1,6 +1,6 @@
-﻿#include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKPhysicalDevice.h>
+﻿#include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/TileData.h>
+#include<hgl/graph/module/TextureManager.h>
 
 namespace
 {
@@ -61,7 +61,7 @@ namespace
 }//namespace
 
 VK_NAMESPACE_BEGIN
-TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
+TileData *TextureManager::CreateTileData(const VkFormat format,const uint width,const uint height,const uint count)
 {
     if(!CheckVulkanFormat(format))
         return(nullptr);
@@ -69,7 +69,7 @@ TileData *GPUDevice::CreateTileData(const VkFormat format,const uint width,const
     if(width<=0||height<=0||count<=0)
         return(nullptr);
 
-    const uint32_t max_2d_texture=attr->physical_device->GetMaxImage2D();
+    const uint32_t max_2d_texture=GetPhysicalDevice()->GetMaxImage2D();
 
     uint tex_width,tex_height;
 

@@ -1,4 +1,4 @@
-#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/module/RenderTargetManager.h>
 
 VK_NAMESPACE_BEGIN
 VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExtent2D &extent,VkImageView *attachments,const uint attachmentCount)
@@ -20,7 +20,7 @@ VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExt
     return fb;
 }
 
-Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
+Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_list,const uint color_count,ImageView *depth)
 {
     uint att_count=color_count;
 
@@ -70,15 +70,15 @@ Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView **color_list,const ui
         extent.height=color_list[0]->GetExtent().height;
     }
 
-    VkFramebuffer fbo=CreateVulkanFramebuffer(GetDevice(),rp,extent,attachments,att_count);
+    VkFramebuffer fbo=CreateVulkanFramebuffer(GetVkDevice(),rp,extent,attachments,att_count);
 
     if(!fbo)
         return(nullptr);
 
-    return(new Framebuffer(GetDevice(),fbo,extent,rp->GetVkRenderPass(),color_count,depth));
+    return(new Framebuffer(GetVkDevice(),fbo,extent,rp->GetVkRenderPass(),color_count,depth));
 }
 //
-//Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
+//Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
 //{    
 //    if(!rp)return(nullptr);
 //
@@ -89,7 +89,7 @@ Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView **color_list,const ui
 //    return CreateFBO(rp,color.GetData(),color.GetCount(),depth);
 //}
 
-Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView *color,ImageView *depth)
+Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView *color,ImageView *depth)
 {
     if(!rp)return(nullptr);
     if(!color&&!depth)return(nullptr);
@@ -97,7 +97,7 @@ Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView *color,ImageView *dep
     return CreateFBO(rp,&color,1,depth);
 }
 
-Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView *iv)
+Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView *iv)
 {
     if(!rp)return(nullptr);
     if(!iv)return(nullptr);

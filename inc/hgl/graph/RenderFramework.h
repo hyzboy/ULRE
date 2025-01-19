@@ -6,7 +6,12 @@
 
 VK_NAMESPACE_BEGIN
 
+class FontSource;
+class TileFont;
 class RenderPassManager;
+class TextureManager;
+class RenderTargetManager;
+class SwapchainModule;
 
 class RenderFramework:public io::WindowEvent
 {
@@ -19,10 +24,15 @@ class RenderFramework:public io::WindowEvent
 
 protected:
 
-    GraphModuleManager *module_manager      =nullptr;
+    GraphModuleManager *    module_manager      =nullptr;
 
-    RenderPassManager * render_pass_manager =nullptr;
-    RenderPass *        device_render_pass  =nullptr;
+    RenderPassManager *     render_pass_manager =nullptr;
+    RenderPass *            device_render_pass  =nullptr;
+
+    TextureManager *        texture_manager     =nullptr;
+    RenderTargetManager *   rt_manager          =nullptr;
+
+    SwapchainModule *       swapchain_module    =nullptr;
 
 public:
 
@@ -33,9 +43,13 @@ public:
 
 public:
 
-    GraphModuleManager *GetModuleManager(){return module_manager;}
-    RenderPassManager * GetRenderPassManager(){return render_pass_manager;}
+    GraphModuleManager *    GetModuleManager(){return module_manager;}
 
+    RenderPassManager *     GetRenderPassManager    (){return render_pass_manager;}
+    TextureManager *        GetTextureManager       (){return texture_manager;}
+    RenderTargetManager *   GetRenderTargetManager  (){return rt_manager;}
+
+    SwapchainModule *       GetSwapchainModule      (){return swapchain_module;}
 
 public:
 
@@ -43,6 +57,10 @@ public:
     virtual ~RenderFramework();
 
     virtual bool Init(uint w,uint h);
+
+public:
+
+    TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
 
 public: // event
 

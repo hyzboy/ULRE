@@ -7,12 +7,13 @@
 VK_NAMESPACE_BEGIN
 
 using RenderPassHASHCode=util::HashCode<128/8>;
+
 inline util::Hash *CreateRenderPassHash()
 {
     return util::CreateHash(util::HASH::xxH3_128);
 }
 
-class RenderPassManager:public GraphModuleInherit<RenderPassManager>
+GRAPH_MODULE_CLASS(RenderPassManager)
 {
     VkPipelineCache pipeline_cache;
 

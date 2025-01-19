@@ -2,6 +2,9 @@
 #include<hgl/graph/VKInstance.h>
 #include<hgl/graph/VKDeviceCreater.h>
 #include<hgl/graph/module/RenderPassManager.h>
+#include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/log/Logger.h>
 
 VK_NAMESPACE_BEGIN
@@ -31,8 +34,6 @@ namespace
 RenderFramework::RenderFramework(const OSString &an)
 {
     app_name=an;
-
-
 }
 
 RenderFramework::~RenderFramework()
@@ -94,6 +95,17 @@ bool RenderFramework::Init(uint w,uint h)
 
     if(!render_pass_manager)
         return(false);
+
+    texture_manager=module_manager->GetOrCreate<TextureManager>();
+
+    if(!texture_manager)
+        return(false);
+
+    rt_manager=new RenderTargetManager(device,texture_manager,render_pass_manager);
+    module_manager->Registry(rt_manager);
+
+    swapchain_module=new SwapchainModule(device,texture_manager,rt_manager,render_pass_manager);
+    module_manager->Registry(swapchain_module);
 
     {
         auto *attr=GetDevice()->GetDeviceAttribute();
