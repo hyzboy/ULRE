@@ -1,48 +1,16 @@
 ﻿#include<hgl/graph/VKDevice.h>
-#include<hgl/type/Pair.h>
 #include<hgl/graph/VKSemaphore.h>
-#include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKImageView.h>
-#include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>
-#include<hgl/graph/VKRenderPass.h>
-#include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/VKDescriptorSet.h>
 
 VK_NAMESPACE_BEGIN
 GPUDevice::GPUDevice(GPUDeviceAttribute *da)
 {
     attr=da;
-
-    texture_queue=nullptr;
-    texture_cmd_buf=nullptr;
-
-    sc_rt=nullptr;
-    Resize(attr->surface_caps.currentExtent);
-
-    texture_cmd_buf=CreateTextureCommandBuffer(attr->physical_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
-    texture_queue=CreateQueue();
 }
 
 GPUDevice::~GPUDevice()
 {
-    SAFE_CLEAR(sc_rt);
-
-    SAFE_CLEAR(texture_queue);
-    SAFE_CLEAR(texture_cmd_buf);
-
     delete attr;
-}
-
-bool GPUDevice::Resize(const VkExtent2D &extent)
-{
-    SAFE_CLEAR(sc_rt);
-
-    attr->RefreshSurfaceCaps();
-
-    sc_rt=CreateSwapchainRenderTarget();
-
-    return(sc_rt);
 }
 
 VkCommandBuffer GPUDevice::CreateCommandBuffer(const AnsiString &name)
