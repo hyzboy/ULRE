@@ -5,7 +5,10 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/module/RenderModule.h>
+#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/log/Logger.h>
+#include<hgl/Time.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -87,8 +90,6 @@ bool RenderFramework::Init(uint w,uint h)
 
     win->Join(this);
 
-    OnResize(w,h);
-
     module_manager=new GraphModuleManager(device);
 
     render_pass_manager=module_manager->GetOrCreate<RenderPassManager>();
@@ -108,7 +109,7 @@ bool RenderFramework::Init(uint w,uint h)
     module_manager->Registry(swapchain_module);
 
     {
-        auto *attr=GetDevice()->GetDeviceAttribute();
+        auto *attr=GetDeviceAttribute();
 
         SwapchainRenderbufferInfo rbi(attr->surface_format.format,attr->physical_device->GetDepthFormat());
 
@@ -123,12 +124,48 @@ bool RenderFramework::Init(uint w,uint h)
         #endif//_DEBUG
     }
 
+    OnResize(w,h);
+
+    return(true);
+}
+
+bool RenderFramework::Run(RenderModule *rm)
+{
+    if(!rm)
+        return(false);
+
+    if(!win)
+        return(false);
+
+    if(!swapchain_module)
+        return(false);
+    
+    while(win->Update())
+    {
+        if(win->IsVisible())
+        {
+            ++frame_count;
+            last_time=cur_time;
+
+            cur_time=GetDoubleTime();
+
+            if(!RunFrame(rm))
+                return(false);
+        }
+
+        device->WaitIdle();
+    }
+
     return(true);
 }
 
 void RenderFramework::OnResize(uint w,uint h)
 {
     io::WindowEvent::OnResize(w,h);
+
+    VkExtent2D ext(w,h);
+
+    swapchain_module->OnResize(ext);        //其实swapchain_module并不需要这个
 }
 
 void RenderFramework::OnActive(bool)
@@ -138,4 +175,37 @@ void RenderFramework::OnActive(bool)
 void RenderFramework::OnClose()
 {
 }
+
+void RenderFramework::BeginFrame()
+{
+}
+
+void RenderFramework::EndFrame()
+{
+}
+
+bool RenderFramework::RunFrame(RenderModule *rm)
+{
+    bool result=true;
+
+    BeginFrame();
+
+    swapchain_module->BeginFrame();
+    {
+        RenderCmdBuffer *rcb=swapchain_module->Use();
+
+        if(rcb)
+        {
+            result=rm->OnFrameRender(cur_time,rcb);
+
+            rcb->End();
+        }
+    }
+    swapchain_module->EndFrame();
+
+    EndFrame();
+
+    return result;
+}
+
 VK_NAMESPACE_END

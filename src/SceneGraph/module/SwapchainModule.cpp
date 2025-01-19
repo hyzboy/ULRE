@@ -223,7 +223,7 @@ SwapchainModule::~SwapchainModule()
     SAFE_CLEAR(swapchain);
 }
 
-SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm):GraphModuleInherit<SwapchainModule,RenderModule>(dev,"SwapchainModule")
+SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm):GraphModuleInherit<SwapchainModule,GraphModule>(dev,"SwapchainModule")
 {
     tex_manager=tm;
     rt_manager=rtm;
@@ -281,14 +281,18 @@ void SwapchainModule::EndFrame()
     swapchain_rt->WaitFence();
 }
 
-RenderCmdBuffer *SwapchainModule::GetRenderCmdBuffer()
+RenderCmdBuffer *SwapchainModule::Use()
 {
-    int index=swapchain_rt->GetCurrentFrameIndices();
+    uint32_t index=swapchain_rt->GetCurrentFrameIndices();
     
     if(index>=swapchain->color_count)
         return(nullptr);
 
-    return cmd_buf[index];
+    RenderCmdBuffer *rcb=cmd_buf[index];
+
+    rcb->BindFramebuffer(swapchain_rp,swapchain_rt->GetFramebuffer());
+
+    return rcb;
 }
 
 VK_NAMESPACE_END

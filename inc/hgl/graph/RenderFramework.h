@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/graph/VK.h>
+#include<hgl/graph/VKDevice.h>
 #include<hgl/platform/Window.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 
@@ -13,14 +13,22 @@ class TextureManager;
 class RenderTargetManager;
 class SwapchainModule;
 
+class RenderModule;
+
 class RenderFramework:public io::WindowEvent
 {
-    OSString            app_name;
+    OSString                app_name;
 
-    Window *            win                 =nullptr;
-    VulkanInstance *    inst                =nullptr;
+    Window *                win                 =nullptr;
+    VulkanInstance *        inst                =nullptr;
 
-    GPUDevice *         device              =nullptr;
+    GPUDevice *             device              =nullptr;
+
+private:
+
+    double                  last_time           =0;
+    double                  cur_time            =0;
+    int64                   frame_count         =0;
 
 protected:
 
@@ -36,10 +44,11 @@ protected:
 
 public:
 
-    Window *            GetWindow       (){return win;}
-    GPUDevice *         GetDevice       (){return device;}
+    Window *                GetWindow           (){return win;}
+    GPUDevice *             GetDevice           (){return device;}    
+    GPUDeviceAttribute *    GetDeviceAttribute  (){return device->GetDeviceAttribute();}
 
-    RenderPass *        GetRenderPass   (){return device_render_pass;}
+    RenderPass *            GetRenderPass       (){return device_render_pass;}
 
 public:
 
@@ -64,10 +73,20 @@ public:
 
 public: // event
 
-    void OnResize(uint w,uint h);
-    void OnActive(bool);
-    void OnClose();
+    virtual void OnResize(uint w,uint h);
+    virtual void OnActive(bool);
+    virtual void OnClose();
 
+protected:
+
+    virtual void BeginFrame();
+    virtual void EndFrame();
+
+    virtual bool RunFrame(RenderModule *);
+
+public:
+
+    virtual bool Run(RenderModule *);
 };//class RenderFramework
 
 VK_NAMESPACE_END
