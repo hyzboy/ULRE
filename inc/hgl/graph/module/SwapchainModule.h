@@ -1,12 +1,12 @@
 #pragma once
 
-#include<hgl/graph/module/RenderModule.h>
+#include<hgl/graph/module/GraphModule.h>
 
 VK_NAMESPACE_BEGIN
 
 class RenderTargetManager;
 
-RENDER_MODULE_CLASS(SwapchainModule)
+GRAPH_MODULE_CLASS(SwapchainModule)
 {
     Swapchain *swapchain=nullptr;
 
@@ -43,13 +43,9 @@ public:
 
 public:
 
-            RenderPass *    GetRenderPass   ()      {return swapchain_rp;}
-
-            RTSwapchain *   GetRenderTarget ()      {return swapchain_rt;}
-
     const   VkExtent2D &    GetSwapchainSize()const {return swapchain_rt->GetExtent();}
 
-            RenderCmdBuffer *GetRenderCmdBuffer();
+            RenderCmdBuffer *Use();
 
 };//class SwapchainModule:public RenderModule
 
