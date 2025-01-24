@@ -169,6 +169,35 @@ namespace
     #undef OUTPUT_PHYSICAL_DEVICE_FEATURE
     }
 
+    void DebugOut(const VkPhysicalDeviceVulkan14Features &features)
+    {
+        std::cout<<"Vulkan 1.4 features"<<std::endl;
+
+    #define OUTPUT_PHYSICAL_DEVICE_FEATURE(name)    std::cout<<std::setw(60)<<std::right<<#name<<": "<<(features.name?"true":"false")<<std::endl;
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(globalPriorityQuery)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSubgroupRotate)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderSubgroupRotateClustered)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderFloatControls2)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(shaderExpectAssume)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(rectangularLines)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(bresenhamLines)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(smoothLines)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(stippledRectangularLines)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(stippledBresenhamLines)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(stippledSmoothLines)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(vertexAttributeInstanceRateDivisor)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(vertexAttributeInstanceRateZeroDivisor)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(indexTypeUint8)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(dynamicRenderingLocalRead)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(maintenance5)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(maintenance6)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(pipelineProtectedAccess)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(pipelineRobustness)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(hostImageCopy)
+        OUTPUT_PHYSICAL_DEVICE_FEATURE(pushDescriptor)
+    #undef OUTPUT_PHYSICAL_DEVICE_FEATURE
+    }
+
     void DebugOutVersion(uint32_t version)
     {
         std::cout<<VK_VERSION_MAJOR(version)<<"."<<VK_VERSION_MINOR(version)<<"."<<VK_VERSION_PATCH(version)<<std::endl;
@@ -377,5 +406,6 @@ void OutputPhysicalDeviceCaps(const GPUPhysicalDevice *pd)
     DebugOut(pd->GetFeatures11());
     DebugOut(pd->GetFeatures12());
     DebugOut(pd->GetFeatures13());
+    DebugOut(pd->GetFeatures14());
 }
 VK_NAMESPACE_END
