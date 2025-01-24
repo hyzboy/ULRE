@@ -10,6 +10,7 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Basic")
 endmacro()
 
+CreateProject(00_RenderFrameworkTest            rf_test.cpp)
 CreateProject(01_draw_triangle_in_NDC           draw_triangle_in_NDC.cpp)
 CreateProject(02_draw_triangle_use_UBO          draw_triangle_use_UBO.cpp)
 CreateProject(03_auto_instance                  auto_instance.cpp)

@@ -1,6 +1,7 @@
 ﻿include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
 
-SET(VULKAN_APP_FRAMEWORK ${CMAKE_CURRENT_SOURCE_DIR}/common/VulkanAppFramework.h)
+SET(VULKAN_APP_FRAMEWORK    ${CMAKE_CURRENT_SOURCE_DIR}/common/VulkanAppFramework.h
+                            ${CMAKE_CURRENT_SOURCE_DIR}/common/WorkObject.h)
 
 add_subdirectory(Basic)
 add_subdirectory(Texture)
