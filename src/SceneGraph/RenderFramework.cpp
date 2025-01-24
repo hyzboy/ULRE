@@ -41,7 +41,6 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
-    SAFE_CLEAR(device_render_pass);
     SAFE_CLEAR(module_manager)
 
     --RENDER_FRAMEWORK_COUNT;
@@ -107,22 +106,6 @@ bool RenderFramework::Init(uint w,uint h)
 
     swapchain_module=new SwapchainModule(device,texture_manager,rt_manager,render_pass_manager);
     module_manager->Registry(swapchain_module);
-
-    {
-        auto *attr=GetDeviceAttribute();
-
-        SwapchainRenderbufferInfo rbi(attr->surface_format.format,attr->physical_device->GetDepthFormat());
-
-        device_render_pass=render_pass_manager->AcquireRenderPass(&rbi);
-
-        if(!device_render_pass)
-            return(false);
-
-        #ifdef _DEBUG
-            if(attr->debug_utils)
-                attr->debug_utils->SetRenderPass(device_render_pass->GetVkRenderPass(),"MainDeviceRenderPass");
-        #endif//_DEBUG
-    }
 
     OnResize(w,h);
 

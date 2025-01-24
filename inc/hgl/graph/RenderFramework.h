@@ -35,7 +35,6 @@ protected:
     GraphModuleManager *    module_manager      =nullptr;
 
     RenderPassManager *     render_pass_manager =nullptr;
-    RenderPass *            device_render_pass  =nullptr;
 
     TextureManager *        texture_manager     =nullptr;
     RenderTargetManager *   rt_manager          =nullptr;
@@ -47,8 +46,6 @@ public:
     Window *                GetWindow           (){return win;}
     GPUDevice *             GetDevice           (){return device;}    
     GPUDeviceAttribute *    GetDeviceAttribute  (){return device->GetDeviceAttribute();}
-
-    RenderPass *            GetRenderPass       (){return device_render_pass;}
 
 public:
 
