@@ -1,4 +1,5 @@
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKDeviceRenderPassManage.h>
 
 VK_NAMESPACE_BEGIN
 RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
@@ -73,7 +74,7 @@ RTSwapchain *GPUDevice::CreateSwapchainRenderTarget()
                                         q,
                                         render_complete_semaphore,
                                         present_complete_semaphore,
-                                        device_render_pass
+                                        sc->render_pass
                                         );
 
     return srt;

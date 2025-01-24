@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
+#include<hgl/graph/VKDeviceRenderPassManage.h>
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -106,7 +107,7 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
         if(!swapchain->sc_image[i].depth)
             return(false);
 
-        swapchain->sc_image[i].fbo=CreateFBO(   device_render_pass,
+        swapchain->sc_image[i].fbo=CreateFBO(   swapchain->render_pass,
                                                 swapchain->sc_image[i].color->GetImageView(),
                                                 swapchain->sc_image[i].depth->GetImageView());
 
@@ -135,6 +136,15 @@ Swapchain *GPUDevice::CreateSwapchain(const VkExtent2D &acquire_extent)
     swapchain->transform        =attr->surface_caps.currentTransform;
     swapchain->surface_format   =attr->surface_format;
     swapchain->depth_format     =attr->physical_device->GetDepthFormat();
+    
+    SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
+
+    swapchain->render_pass      =render_pass_manage->AcquireRenderPass(&rbi);
+
+    #ifdef _DEBUG
+        if(attr->debug_utils)
+            attr->debug_utils->SetRenderPass(swapchain->render_pass->GetVkRenderPass(),"MainDeviceRenderPass");
+    #endif//_DEBUG
 
     swapchain->swap_chain       =CreateSwapChain(attr,acquire_extent);
 

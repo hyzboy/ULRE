@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKFramebuffer.h>
+#include<hgl/graph/VKRenderPass.h>
 
 VK_NAMESPACE_BEGIN
 Swapchain::~Swapchain()

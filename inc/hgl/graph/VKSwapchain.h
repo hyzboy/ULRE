@@ -36,6 +36,8 @@ public:
     VkSurfaceFormatKHR              surface_format;
     VkFormat                        depth_format;
 
+    RenderPass *                    render_pass     =nullptr;
+
     uint32_t                        image_count     =0;
 
     SwapchainImage *                sc_image        =nullptr;
