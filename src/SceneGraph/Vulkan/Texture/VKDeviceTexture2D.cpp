@@ -19,6 +19,17 @@ Texture2D *TextureManager::CreateTexture2D(TextureData *tex_data)
     return tex;
 }
 
+void TextureManager::Clear(TextureCreateInfo *tci)
+{
+    if(!tci)return;
+
+    if(tci->image)DestroyImage(tci->image);
+    if(tci->image_view)delete tci->image_view;
+    if(tci->memory)delete tci->memory;
+
+    delete tci;
+}
+
 Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
 {
     if(!tci)return(nullptr);

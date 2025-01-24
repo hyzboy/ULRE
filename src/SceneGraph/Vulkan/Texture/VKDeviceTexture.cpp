@@ -23,17 +23,6 @@ bool TextureManager::CheckFormatSupport(const VkFormat format,const uint32_t bit
         return(fp.linearTilingFeatures&bits);
 }
 
-void TextureManager::Clear(TextureCreateInfo *tci)
-{
-    if(!tci)return;
-
-    if(tci->image)DestroyImage(tci->image);
-    if(tci->image_view)delete tci->image_view;
-    if(tci->memory)delete tci->memory;
-
-    delete tci;
-}
-
 bool TextureManager::CopyBufferToImage(const CopyBufferToImageInfo *info,VkPipelineStageFlags destinationStage)
 {
     if(!info)
