@@ -95,6 +95,9 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
 
     swapchain->sc_image=hgl_zero_new<SwapchainImage>(swapchain->image_count);
 
+    AnsiString num_string;
+
+
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
         swapchain->sc_image[i].color=CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]));
@@ -111,15 +114,19 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
                                                 swapchain->sc_image[i].color->GetImageView(),
                                                 swapchain->sc_image[i].depth->GetImageView());
 
+        AnsiString num_string=AnsiString::numberOf(i);
+
+        swapchain->sc_image[i].cmd_buf=CreateRenderCommandBuffer(AnsiString("Swapchain_RenderCmdBuffer_")+num_string);
+
     #ifdef _DEBUG
         if(attr->debug_utils)
         {
             AnsiString num=AnsiString::numberOf(i);
 
-            attr->debug_utils->SetTexture(swapchain->sc_image[i].color,"SwapchainColor_"+num);            
-            attr->debug_utils->SetTexture(swapchain->sc_image[i].depth,"SwapchainDepth_"+num);
+            attr->debug_utils->SetTexture(swapchain->sc_image[i].color,"SwapchainColor_"+num_string);
+            attr->debug_utils->SetTexture(swapchain->sc_image[i].depth,"SwapchainDepth_"+num_string);
 
-            attr->debug_utils->SetFramebuffer(swapchain->sc_image[i].fbo->GetFramebuffer(),"SwapchainFBO_"+num);
+            attr->debug_utils->SetFramebuffer(swapchain->sc_image[i].fbo->GetFramebuffer(),"SwapchainFBO_"+num_string);
         }
     #endif//_DEBUG
     }

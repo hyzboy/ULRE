@@ -80,7 +80,6 @@ public:
     ~RTSwapchain();
 
             const   uint32_t        GetColorCount   ()const override            {return 1;}                         ///Swapchain的FBO颜色成份只有一个
-
             const   uint32_t        GetImageCount   ()const                     {return swapchain->image_count;}
 
                     Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_image[current_frame].fbo;}
@@ -88,6 +87,11 @@ public:
 
     virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_image[current_frame].color;}
     virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_image[current_frame].depth;}
+
+    RenderCmdBuffer *GetRenderCmdBuffer(const int index)
+    {
+        return swapchain->sc_image[index].cmd_buf;
+    }
 
 public:
 

@@ -54,14 +54,9 @@ protected:
 protected:
 
     GPUDevice *             device                      =nullptr;
-    RenderPass *            device_render_pass          =nullptr;
     RTSwapchain *           sc_render_target            =nullptr;
 
 protected:
-
-            int32_t         swap_chain_count            =0;
-
-    RenderCmdBuffer **      cmd_buf                     =nullptr;
 
             Color4f         clear_color;
 
@@ -91,7 +86,6 @@ public:
         win->Unjoin(this);
 
         SAFE_CLEAR(db);
-        SAFE_CLEAR_OBJECT_ARRAY_OBJECT(cmd_buf,swap_chain_count);
 
         SAFE_CLEAR(device);
         SAFE_CLEAR(win);
@@ -146,13 +140,11 @@ public:
 
             if(!device)
                 return(false);
+
+            sc_render_target=device->GetSwapchainRT();
         }
 
-        device_render_pass=device->GetRenderPass();
-
         db=new RenderResource(device);
-
-        InitCommandBuffer();
 
         win->Join(this);
 
@@ -198,26 +190,9 @@ public:
         if(w>0&&h>0)
             device->Resize(w,h);
 
-        InitCommandBuffer();
-        Resize(w,h);
-    }
-
-    void InitCommandBuffer()
-    {
-        if(cmd_buf)
-            SAFE_CLEAR_OBJECT_ARRAY_OBJECT(cmd_buf,swap_chain_count);
-
         sc_render_target=device->GetSwapchainRT();
 
-        swap_chain_count=sc_render_target->GetImageCount();
-        {
-            const VkExtent2D extent=sc_render_target->GetExtent();
-
-            cmd_buf=hgl_zero_new<RenderCmdBuffer *>(swap_chain_count);
-
-            for(int32_t i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateRenderCommandBuffer(device->GetPhysicalDevice()->GetDeviceName()+AnsiString(":RenderCmdBuffer_")+AnsiString::numberOf(i));
-        }
+        Resize(w,h);
     }
 
     bool BuildCommandBuffer(RenderCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,Renderable *ri)
@@ -250,14 +225,16 @@ public:
     {   
         if(!ri)return(false);
 
-        return BuildCommandBuffer(cmd_buf[index],sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index),ri);
+        return BuildCommandBuffer(sc_render_target->GetRenderCmdBuffer(index),
+                                  sc_render_target->GetRenderPass(),
+                                  sc_render_target->GetFramebuffer(index),ri);
     }
 
     bool BuildCommandBuffer(Renderable *ri)
     {
         if(!ri)return(false);
 
-        for(int32_t i=0;i<swap_chain_count;i++)
+        for(int32_t i=0;i<sc_render_target->GetImageCount();i++)
             BuildCommandBuffer(i,ri);
 
         return(true);
@@ -274,7 +251,7 @@ public:
     {
         if(!rl)return;
 
-        RenderCmdBuffer *cb=cmd_buf[index];
+        RenderCmdBuffer *cb=sc_render_target->GetRenderCmdBuffer(index);
 
         cb->Begin();
         cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
@@ -287,7 +264,7 @@ public:
 
     void BuildCommandBuffer(RenderList *rl)
     {
-        for(int32_t i=0;i<swap_chain_count;i++)
+        for(int32_t i=0;i<sc_render_target->GetImageCount();i++)
             BuildCommandBuffer(i,rl);
     }
 
@@ -299,7 +276,7 @@ public:
     template<typename ...ARGS>
     Pipeline *CreatePipeline(ARGS...args)
     {
-        Pipeline *p=device_render_pass->CreatePipeline(args...);
+        Pipeline *p=sc_render_target->GetRenderPass()->CreatePipeline(args...);
 
         if(!p)
             return(nullptr);
@@ -323,7 +300,7 @@ public:
 
     virtual void SubmitDraw(int index)
     {
-        VkCommandBuffer cb=*cmd_buf[index];
+        VkCommandBuffer cb=*(sc_render_target->GetRenderCmdBuffer(index));
 
         sc_render_target->Submit(cb);
         sc_render_target->PresentBackbuffer();
@@ -335,7 +312,7 @@ public:
     {
         int index=AcquireNextImage();
 
-        if(index<0||index>=swap_chain_count)return;
+        if(index<0||index>=sc_render_target->GetImageCount())return;
 
         SubmitDraw(index);
     }

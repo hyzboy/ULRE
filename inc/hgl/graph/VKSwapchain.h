@@ -4,6 +4,7 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/type/List.h>
 #include<hgl/graph/VKFramebuffer.h>
+#include<hgl/graph/VKCommandBuffer.h>
 VK_NAMESPACE_BEGIN
 
 struct SwapchainImage
@@ -13,10 +14,13 @@ struct SwapchainImage
 
     Framebuffer *                  fbo              =nullptr;
 
+    RenderCmdBuffer *              cmd_buf          =nullptr;
+
 public:
 
     ~SwapchainImage()
     {
+        delete cmd_buf;
         delete fbo;
         delete depth;
         delete color;
