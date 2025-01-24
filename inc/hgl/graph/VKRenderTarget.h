@@ -26,9 +26,9 @@ protected:
 
 protected:
 
-    uint32_t color_count;
-    Texture2D **color_textures;
-    Texture2D *depth_texture;
+    uint32_t color_count;               ///<颜色成分数量
+    Texture2D **color_textures;         ///<颜色成分纹理列表
+    Texture2D *depth_texture;           ///<深度成分纹理
 
 protected:
 
@@ -45,9 +45,10 @@ public:
             const   VkExtent2D &    GetExtent           ()const {return extent;}
     virtual         RenderPass *    GetRenderPass       ()      {return render_pass;}
     virtual const   VkRenderPass    GetVkRenderPass     ()const {return render_pass->GetVkRenderPass();}
-    virtual const   uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
-    virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
 
+    virtual const   uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
+
+    virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
 
@@ -78,14 +79,15 @@ public:
     RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
     ~RTSwapchain();
 
-                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_fbo[current_frame];}
-                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->sc_fbo[index];}
+            const   uint32_t        GetColorCount   ()const override            {return 1;}                         ///Swapchain的FBO颜色成份只有一个
 
-            const   uint32_t        GetColorCount   ()const override            {return 1;}
-            const   uint32_t        GetImageCount   ()const                     {return swapchain->color_count;}
+            const   uint32_t        GetImageCount   ()const                     {return swapchain->image_count;}
 
-    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_color[index];}
-    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_depth;}
+                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_image[current_frame].fbo;}
+                    Framebuffer *   GetFramebuffer  (const int index)           {return swapchain->sc_image[index].fbo;}
+
+    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_image[current_frame].color;}
+    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_image[current_frame].depth;}
 
 public:
 
