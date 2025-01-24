@@ -64,6 +64,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         hgl_zero(features11);
         hgl_zero(features12);
         hgl_zero(features13);
+        hgl_zero(features14);
 
         auto func=(PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceFeatures2KHR");
 
@@ -81,7 +82,10 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             features12.pNext=&features13;
 
             features13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features13.pNext=nullptr;
+            features13.pNext=&features14;
+
+            features14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+            features14.pNext=nullptr;
 
             func(physical_device,&features2);
 
@@ -97,6 +101,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         hgl_zero(properties11);
         hgl_zero(properties12);
         hgl_zero(properties13);
+        hgl_zero(properties14);
 
         auto func=(PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(inst,"vkGetPhysicalDeviceProperties2KHR");
 
@@ -114,7 +119,10 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
             properties12.pNext=&properties13;
 
             properties13.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-            properties13.pNext=nullptr;
+            properties13.pNext=&properties14;
+
+            properties14.sType=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_PROPERTIES;
+            properties14.pNext=nullptr;
 
             func(physical_device,&properties2);
 
@@ -163,7 +171,11 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
         debug_queue_family_properties_out(debug_front.c_str(),queue_family_properties);
     }
 
-    support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+    if(features14.indexTypeUint8)
+        support_u8_index=true;
+    else
+        support_u8_index=CheckExtensionSupport(VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME);
+
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 }
 
