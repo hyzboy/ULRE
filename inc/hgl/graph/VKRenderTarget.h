@@ -77,15 +77,15 @@ public:
 
     RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
     ~RTSwapchain();
-
-                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_fbo[current_frame];}
-                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->sc_fbo[index];}
+    
+                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_image[current_frame].fbo;}
+                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->sc_image[index].fbo;}
 
             const   uint32_t        GetColorCount   ()const override            {return 1;}
-            const   uint32_t        GetImageCount   ()const                     {return swapchain->color_count;}
-
-    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_color[index];}
-    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_depth;}
+            const   uint32_t        GetImageCount   ()const                     {return swapchain->image_count;}
+            
+    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_image[current_frame].color;}
+    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_image[current_frame].depth;}
 
 public:
 

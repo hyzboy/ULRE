@@ -17,18 +17,11 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 
     RTSwapchain *swapchain_rt=nullptr;
 
-    RenderPass *swapchain_rp=nullptr;
-
-    RenderCmdBuffer **cmd_buf=nullptr;
-
 protected:
 
     bool CreateSwapchainFBO();
     bool CreateSwapchain();
     bool CreateSwapchainRenderTarget();
-
-    void InitRenderCmdBuffer();
-    void ClearRenderCmdBuffer();
 
 public:
 

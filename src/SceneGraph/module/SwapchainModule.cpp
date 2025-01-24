@@ -88,57 +88,49 @@ namespace
 
 bool SwapchainModule::CreateSwapchainFBO()
 {
-    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),nullptr)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr)!=VK_SUCCESS)
         return(false);
 
-    AutoDeleteArray<VkImage> sc_images(swapchain->color_count);
+    AutoDeleteArray<VkImage> sc_images(swapchain->image_count);
 
-    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->color_count),sc_images)!=VK_SUCCESS)
+    if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),sc_images)!=VK_SUCCESS)
         return(false);
+    
+    swapchain->sc_image=hgl_zero_new<SwapchainImage>(swapchain->image_count);
 
+    AnsiString num_string;
+    GPUDevice *device=GetDevice();
+    auto *dev_attr=GetDeviceAttribute();
+
+    for(uint32_t i=0;i<swapchain->image_count;i++)
     {
-        auto sc_depth_tci=new SwapchainDepthTextureCreateInfo(GetPhysicalDevice()->GetDepthFormat(),swapchain->extent);
+        swapchain->sc_image[i].color=tex_manager->CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]));
 
-        swapchain->sc_depth =tex_manager->CreateTexture2D(sc_depth_tci);
-
-        if(!swapchain->sc_depth)
-            return(false);
-    }
-
-    //#ifdef _DEBUG
-    //    if(dev_attr->debug_utils)
-    //    {
-    //        dev_attr->debug_utils->SetImage(swapchain->sc_depth->GetImage(),"SwapchainDepthImage");
-    //        dev_attr->debug_utils->SetImageView(swapchain->sc_depth->GetVulkanImageView(),"SwapchainDepthImageView");
-    //        dev_attr->debug_utils->SetDeviceMemory(swapchain->sc_depth->GetDeviceMemory(),"SwapchainDepthMemory");
-    //    }
-    //#endif//_DEBUG
-
-    swapchain->sc_color =hgl_zero_new<Texture2D *>(swapchain->color_count);
-    swapchain->sc_fbo   =hgl_zero_new<Framebuffer *>(swapchain->color_count);
-
-    for(uint32_t i=0;i<swapchain->color_count;i++)
-    {
-        auto sc_color_tci=new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]);
-
-        swapchain->sc_color[i]=tex_manager->CreateTexture2D(sc_color_tci);
-
-        if(!swapchain->sc_color[i])
+        if(!swapchain->sc_image[i].color)
             return(false);
 
-        swapchain->sc_fbo[i]=rt_manager->CreateFBO(swapchain_rp,
-                                                    swapchain->sc_color[i]->GetImageView(),
-                                                    swapchain->sc_depth->GetImageView());
+        swapchain->sc_image[i].depth =tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent));
 
-    //#ifdef _DEBUG
-    //    if(dev_attr->debug_utils)
-    //    {
-    //        dev_attr->debug_utils->SetImage(swapchain->sc_color[i]->GetImage(),"SwapchainColorImage_"+AnsiString::numberOf(i));
-    //        dev_attr->debug_utils->SetImageView(swapchain->sc_color[i]->GetVulkanImageView(),"SwapchainColorImageView_"+AnsiString::numberOf(i));
+        if(!swapchain->sc_image[i].depth)
+            return(false);
 
-    //        dev_attr->debug_utils->SetFramebuffer(swapchain->sc_fbo[i]->GetFramebuffer(),"SwapchainFBO_"+AnsiString::numberOf(i));
-    //    }
-    //#endif//_DEBUG
+        swapchain->sc_image[i].fbo=rt_manager->CreateFBO(   swapchain->render_pass,
+                                                            swapchain->sc_image[i].color->GetImageView(),
+                                                            swapchain->sc_image[i].depth->GetImageView());
+        
+        AnsiString num_string=AnsiString::numberOf(i);
+
+        swapchain->sc_image[i].cmd_buf=device->CreateRenderCommandBuffer(AnsiString("Swapchain_RenderCmdBuffer_")+num_string);
+
+    #ifdef _DEBUG
+        if(dev_attr->debug_utils)
+        {
+            dev_attr->debug_utils->SetTexture(swapchain->sc_image[i].color,"SwapchainColor_"+num_string);
+            dev_attr->debug_utils->SetTexture(swapchain->sc_image[i].depth,"SwapchainDepth_"+num_string);
+
+            dev_attr->debug_utils->SetFramebuffer(swapchain->sc_image[i].fbo->GetFramebuffer(),"SwapchainFBO_"+num_string);
+        }
+    #endif//_DEBUG
     }
 
     return(true);
@@ -158,6 +150,15 @@ bool SwapchainModule::CreateSwapchain()
     swapchain->transform        =dev_attr->surface_caps.currentTransform;
     swapchain->surface_format   =dev_attr->surface_format;
     swapchain->depth_format     =dev_attr->physical_device->GetDepthFormat();
+    
+    SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
+
+    swapchain->render_pass      =rp_manager->AcquireRenderPass(&rbi);
+
+    #ifdef _DEBUG
+        if(dev_attr->debug_utils)
+            dev_attr->debug_utils->SetRenderPass(swapchain->render_pass->GetVkRenderPass(),"MainDeviceRenderPass");
+    #endif//_DEBUG
 
     swapchain->swap_chain=CreateVulkanSwapChain(dev_attr);
 
@@ -176,7 +177,7 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 {
     GPUDevice *device=GetDevice();
 
-    DeviceQueue *q=device->CreateQueue(swapchain->color_count,false);
+    DeviceQueue *q=device->CreateQueue(swapchain->image_count,false);
     Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
     Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
 
@@ -185,40 +186,14 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
                                     q,
                                     render_complete_semaphore,
                                     present_complete_semaphore,
-                                    swapchain_rp
+                                    swapchain->render_pass
                                     );
 
     return true;
 }
 
-void SwapchainModule::ClearRenderCmdBuffer()
-{
-    SAFE_CLEAR_OBJECT_ARRAY_OBJECT(cmd_buf,swapchain->color_count);
-}
-
-void SwapchainModule::InitRenderCmdBuffer()
-{
-    ClearRenderCmdBuffer();
-
-    cmd_buf=hgl_zero_new<RenderCmdBuffer *>(swapchain->color_count);
-    
-    GPUDevice *device=GetDevice();
-
-    AnsiString cmd_buf_name;
-
-    for(uint32_t i=0;i<swapchain->color_count;i++)
-    {
-        cmd_buf_name=device->GetPhysicalDevice()->GetDeviceName()+AnsiString(":RenderCmdBuffer_")+AnsiString::numberOf(i);
-
-        cmd_buf[i]=device->CreateRenderCommandBuffer(cmd_buf_name);
-    }
-}
-
 SwapchainModule::~SwapchainModule()
 {
-    ClearRenderCmdBuffer();
-
-    SAFE_CLEAR(swapchain_rp);
     SAFE_CLEAR(swapchain_rt);
     SAFE_CLEAR(swapchain);
 }
@@ -227,10 +202,6 @@ SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetM
 {
     tex_manager=tm;
     rt_manager=rtm;
-
-    SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
-
-    swapchain_rp=rpm->AcquireRenderPass(&rbi);
 
     if(!CreateSwapchain())
         return;
@@ -242,28 +213,22 @@ SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetM
 
     if(!CreateSwapchainRenderTarget())
         return;
-
-    InitRenderCmdBuffer();
 }
 
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
-    ClearRenderCmdBuffer();
-
     SAFE_CLEAR(swapchain_rt)
 
     GetDeviceAttribute()->RefreshSurfaceCaps();
 
     CreateSwapchainRenderTarget();
-
-    InitRenderCmdBuffer();
 }
 
 bool SwapchainModule::BeginFrame()
 {
     uint32_t index=swapchain_rt->AcquireNextImage();
 
-    if(index>=swapchain->color_count)
+    if(index>=swapchain->image_count)
         return(false);
 
     return(true);
@@ -273,7 +238,7 @@ void SwapchainModule::EndFrame()
 {
     int index=swapchain_rt->GetCurrentFrameIndices();
 
-    VkCommandBuffer cb=*(cmd_buf[index]);
+    VkCommandBuffer cb=*(swapchain->sc_image[index].cmd_buf);
 
     swapchain_rt->Submit(cb);
     swapchain_rt->PresentBackbuffer();
@@ -285,13 +250,13 @@ RenderCmdBuffer *SwapchainModule::Use()
 {
     uint32_t index=swapchain_rt->GetCurrentFrameIndices();
     
-    if(index>=swapchain->color_count)
+    if(index>=swapchain->image_count)
         return(nullptr);
 
-    RenderCmdBuffer *rcb=cmd_buf[index];
+    RenderCmdBuffer *rcb=swapchain->sc_image[index].cmd_buf;
 
     rcb->Begin();
-    rcb->BindFramebuffer(swapchain_rp,swapchain_rt->GetFramebuffer());
+    rcb->BindFramebuffer(swapchain->render_pass,swapchain_rt->GetFramebuffer());
 
     return rcb;
 }
