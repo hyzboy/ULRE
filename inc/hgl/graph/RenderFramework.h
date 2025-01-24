@@ -52,7 +52,7 @@ public:
 
 public:
 
-    GraphModuleManager *    GetModuleManager(){return module_manager;}
+    GraphModuleManager *    GetModuleManager        (){return module_manager;}
 
     RenderPassManager *     GetRenderPassManager    (){return render_pass_manager;}
     TextureManager *        GetTextureManager       (){return texture_manager;}
