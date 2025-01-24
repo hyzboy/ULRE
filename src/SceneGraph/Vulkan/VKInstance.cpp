@@ -20,7 +20,7 @@ VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,Create
     app_info.applicationVersion = 1;
     app_info.pEngineName        = "CMGameEngine/ULRE";
     app_info.engineVersion      = 1;
-    app_info.apiVersion         = VK_API_VERSION_1_3;
+    app_info.apiVersion         = VK_API_VERSION_1_4;
 
     ext_list.Add(VK_KHR_SURFACE_EXTENSION_NAME);
     ext_list.Add(HGL_VK_SURFACE_EXTENSION_NAME);            //此宏在VKSurfaceExtensionName.h中定义

@@ -14,11 +14,13 @@ class GPUPhysicalDevice
     VkPhysicalDeviceVulkan11Features    features11;
     VkPhysicalDeviceVulkan12Features    features12;
     VkPhysicalDeviceVulkan13Features    features13;
+    VkPhysicalDeviceVulkan14Features    features14;
 
     VkPhysicalDeviceProperties          properties;
     VkPhysicalDeviceVulkan11Properties  properties11;
     VkPhysicalDeviceVulkan12Properties  properties12;
     VkPhysicalDeviceVulkan13Properties  properties13;
+    VkPhysicalDeviceVulkan14Properties  properties14;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
     List<VkLayerProperties>             layer_properties;
@@ -36,6 +38,7 @@ public:
     const VkPhysicalDeviceVulkan11Features &GetFeatures11       ()const{return features11;}
     const VkPhysicalDeviceVulkan12Features &GetFeatures12       ()const{return features12;}
     const VkPhysicalDeviceVulkan13Features &GetFeatures13       ()const{return features13;}
+    const VkPhysicalDeviceVulkan14Features &GetFeatures14       ()const{return features14;}
 
     const VkPhysicalDeviceProperties &      GetProperties       ()const{return properties;}
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties ()const{return memory_properties;}
@@ -66,7 +69,11 @@ public:
     const uint32_t          GetSSBORange    ()const{return properties.limits.maxStorageBufferRange;}
     const VkDeviceSize      GetSSBOAlign    ()const{return properties.limits.minStorageBufferOffsetAlignment;}
 
-    const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}    
+    const uint32_t          GetConstantSize ()const{return properties.limits.maxPushConstantsSize;}
+
+    const VkDeviceSize      GetMaxBufferSize()const{return properties13.maxBufferSize;}
+
+    const uint32_t          GetMaxPushDescriptors()const{return properties14.maxPushDescriptors;}
 
 public:
 
@@ -181,6 +188,9 @@ public:
 
     const VkBool32  SupportYcbcrConversion      ()const{return features11.samplerYcbcrConversion;}
     const VkBool32  SupportClampMirrorToEdge    ()const{return features12.samplerMirrorClampToEdge;}
+
+    const VkBool32  SupportSmoothLines          ()const{return features14.smoothLines;}
+    const VkBool32  SupportStippledSmoothLines  ()const{return features14.stippledSmoothLines;}
 
     const void      GetPointSize(float &granularity,float &min_size,float &max_size) const
     {
