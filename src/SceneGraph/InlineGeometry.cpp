@@ -267,7 +267,7 @@ namespace hgl
                 uint vertex_count;
                 uint index_count;
 
-                vertex_count=cci->field_count;
+                vertex_count=cci->field_count+1;
                 index_count=(vertex_count-2)*3;
 
                 if(!pc->Init("Circle",vertex_count,index_count))return(nullptr);
