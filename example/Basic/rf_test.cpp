@@ -87,20 +87,15 @@ private:
 public:
 
     TestApp(RenderFramework *rf):WorkObject(rf)
-    {}
-
-    bool Init()
     {
         if(!InitAutoMaterial())
-            return(false);
+            return;
 
         if(!InitPipeline())
-            return(false);
+            return;
 
         if(!InitVBO())
-            return(false);
-
-        return(true);
+            return;
     }
 
     void Tick(double)override
@@ -157,10 +152,5 @@ int main(int,char **)
 
     WorkManager wm(&rf);
 
-    TestApp *test=new TestApp(&rf);
-
-    if(!test->Init())
-        return(-2);
-
-    wm.Start(test);
+    wm.Start(new TestApp(&rf));
 }
