@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/Time.h>
 
 namespace hgl
@@ -27,7 +28,7 @@ namespace hgl
 
         virtual ~WorkObject()=default;
 
-        virtual void Start(RenderFramework *rf)
+        virtual void Join(RenderFramework *rf)
         {
             render_framework=rf;
         }
@@ -38,7 +39,7 @@ namespace hgl
 
     class WorkManager
     {
-        graph::RenderTarget *render_target;
+        graph::RenderFramework *render_framework;
 
         uint fps=60;
         double frame_time=1.0f/double(fps);
@@ -50,16 +51,9 @@ namespace hgl
 
     public:
 
-        WorkManager()=default;
-
-        bool Init(const OSString &app_name,uint w,uint h)
+        WorkManager(graph::RenderFramework *rf)
         {
-            render_framework=new graph::RenderFramework(app_name);
-
-            if(!render_framework->Init(w,h))
-                return(false);
-
-            return(true);
+            render_framework=rf;
         }
 
         void SetFPS(uint f)
@@ -114,6 +108,8 @@ namespace hgl
             last_update_time=last_render_time=0;
 
             cur_work_object=wo;
+
+            wo->Join(render_framework);
 
             Run();
         }
