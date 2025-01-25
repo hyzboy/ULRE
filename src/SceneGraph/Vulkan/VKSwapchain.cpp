@@ -1,8 +1,20 @@
 ﻿#include<hgl/graph/VKSwapchain.h>
+#include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/VKRenderPass.h>
+#include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
+SwapchainImage::~SwapchainImage()
+{
+    delete cmd_buf;
+    delete fbo;
+
+    if(depth)
+    delete depth;
+
+    delete color;
+}
+
 Swapchain::~Swapchain()
 {
     SAFE_CLEAR_ARRAY(sc_image);

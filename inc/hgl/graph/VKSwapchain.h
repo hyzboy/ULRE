@@ -1,8 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/VKCommandBuffer.h>
 VK_NAMESPACE_BEGIN
 
 struct SwapchainImage
@@ -16,13 +14,7 @@ struct SwapchainImage
 
 public:
 
-    ~SwapchainImage()
-    {
-        delete cmd_buf;
-        delete fbo;
-        delete depth;
-        delete color;
-    }
+    ~SwapchainImage();
 };//struct SwapchainImage
 
 struct Swapchain
