@@ -1,8 +1,6 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKTexture.h>
-#include<hgl/type/List.h>
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKCommandBuffer.h>
 VK_NAMESPACE_BEGIN
@@ -39,8 +37,6 @@ public:
     VkSwapchainKHR                  swap_chain      =VK_NULL_HANDLE;
     VkSurfaceFormatKHR              surface_format {};
     VkFormat                        depth_format    =VK_FORMAT_UNDEFINED;
-
-    RenderPass *                    render_pass     =nullptr;
 
     uint32_t                        image_count     =0;
 

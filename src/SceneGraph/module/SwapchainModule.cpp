@@ -114,7 +114,7 @@ bool SwapchainModule::CreateSwapchainFBO()
         if(!swapchain->sc_image[i].depth)
             return(false);
 
-        swapchain->sc_image[i].fbo=rt_manager->CreateFBO(   swapchain->render_pass,
+        swapchain->sc_image[i].fbo=rt_manager->CreateFBO(   sc_render_pass,
                                                             swapchain->sc_image[i].color->GetImageView(),
                                                             swapchain->sc_image[i].depth->GetImageView());
         
@@ -150,15 +150,6 @@ bool SwapchainModule::CreateSwapchain()
     swapchain->transform        =dev_attr->surface_caps.currentTransform;
     swapchain->surface_format   =dev_attr->surface_format;
     swapchain->depth_format     =dev_attr->physical_device->GetDepthFormat();
-    
-    SwapchainRenderbufferInfo rbi(swapchain->surface_format.format,swapchain->depth_format);
-
-    swapchain->render_pass      =rp_manager->AcquireRenderPass(&rbi);
-
-    #ifdef _DEBUG
-        if(dev_attr->debug_utils)
-            dev_attr->debug_utils->SetRenderPass(swapchain->render_pass->GetVkRenderPass(),"MainDeviceRenderPass");
-    #endif//_DEBUG
 
     swapchain->swap_chain=CreateVulkanSwapChain(dev_attr);
 
@@ -184,20 +175,20 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
     Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
     Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
 
-    swapchain_rt=new RTSwapchain(   device->GetDevice(),
-                                    swapchain,
-                                    q,
-                                    render_complete_semaphore,
-                                    present_complete_semaphore,
-                                    swapchain->render_pass
-                                    );
+    sc_render_target=new RTSwapchain(   device->GetDevice(),
+                                        swapchain,
+                                        q,
+                                        render_complete_semaphore,
+                                        present_complete_semaphore,
+                                        sc_render_pass
+                                        );
 
     return true;
 }
 
 SwapchainModule::~SwapchainModule()
 {
-    SAFE_CLEAR(swapchain_rt);
+    SAFE_CLEAR(sc_render_target);
 }
 
 SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm):GraphModuleInherit<SwapchainModule,GraphModule>(dev,"SwapchainModule")
@@ -205,12 +196,19 @@ SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetM
     tex_manager=tm;
     rt_manager=rtm;
     rp_manager=rpm;
+    
+    auto *dev_attr=GetDeviceAttribute();
 
+    SwapchainRenderbufferInfo rbi(dev_attr->surface_format.format,dev_attr->physical_device->GetDepthFormat());
 
-    //#ifdef _DEBUG
-    //    if(dev_attr->debug_utils)
-    //        dev_attr->debug_utils->SetRenderPass(swapchain_rp->GetVkRenderPass(),"SwapchainRenderPass");
-    //#endif//_DEBUG
+    sc_render_pass=rp_manager->AcquireRenderPass(&rbi);
+
+    #ifdef _DEBUG
+    {
+        if(dev_attr->debug_utils)
+            dev_attr->debug_utils->SetRenderPass(sc_render_pass->GetVkRenderPass(),"MainDeviceRenderPass");
+    }
+    #endif//_DEBUG
 
     if(!CreateSwapchainRenderTarget())
         return;
@@ -218,7 +216,7 @@ SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetM
 
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
-    SAFE_CLEAR(swapchain_rt)
+    SAFE_CLEAR(sc_render_target)
     swapchain=nullptr;
 
     GetDeviceAttribute()->RefreshSurfaceCaps();
@@ -228,7 +226,7 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 
 bool SwapchainModule::BeginFrame()
 {
-    uint32_t index=swapchain_rt->AcquireNextImage();
+    uint32_t index=sc_render_target->AcquireNextImage();
 
     if(index>=swapchain->image_count)
         return(false);
@@ -238,20 +236,20 @@ bool SwapchainModule::BeginFrame()
 
 void SwapchainModule::EndFrame()
 {
-    int index=swapchain_rt->GetCurrentFrameIndices();
+    int index=sc_render_target->GetCurrentFrameIndices();
 
     VkCommandBuffer cb=*(swapchain->sc_image[index].cmd_buf);
 
-    swapchain_rt->Submit(cb);
-    swapchain_rt->PresentBackbuffer();
-    swapchain_rt->WaitQueue();
-    swapchain_rt->WaitFence();
+    sc_render_target->Submit(cb);
+    sc_render_target->PresentBackbuffer();
+    sc_render_target->WaitQueue();
+    sc_render_target->WaitFence();
 }
 
 RenderCmdBuffer *SwapchainModule::RecordCmdBuffer(int frame_index)
 {
     if(frame_index<0)
-        frame_index=swapchain_rt->GetCurrentFrameIndices();
+        frame_index=sc_render_target->GetCurrentFrameIndices();
     
     if(frame_index>=swapchain->image_count)
         return(nullptr);
@@ -259,7 +257,7 @@ RenderCmdBuffer *SwapchainModule::RecordCmdBuffer(int frame_index)
     RenderCmdBuffer *rcb=swapchain->sc_image[frame_index].cmd_buf;
 
     rcb->Begin();
-    rcb->BindFramebuffer(swapchain->render_pass,swapchain_rt->GetFramebuffer());
+    rcb->BindFramebuffer(sc_render_pass,sc_render_target->GetFramebuffer());
 
     return rcb;
 }
