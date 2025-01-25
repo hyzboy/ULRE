@@ -37,12 +37,12 @@ protected:
 
     GraphModuleManager *    module_manager      =nullptr;
 
-    RenderPassManager *     render_pass_manager =nullptr;
+    RenderPassManager *     rp_manager          =nullptr;
 
-    TextureManager *        texture_manager     =nullptr;
+    TextureManager *        tex_manager         =nullptr;
     RenderTargetManager *   rt_manager          =nullptr;
 
-    SwapchainModule *       swapchain_module    =nullptr;
+    SwapchainModule *       sc_module           =nullptr;
 
 public:
 
@@ -56,11 +56,11 @@ public:
 
     GraphModuleManager *    GetModuleManager        (){return module_manager;}
 
-    RenderPassManager *     GetRenderPassManager    (){return render_pass_manager;}
-    TextureManager *        GetTextureManager       (){return texture_manager;}
+    RenderPassManager *     GetRenderPassManager    (){return rp_manager;}
+    TextureManager *        GetTextureManager       (){return tex_manager;}
     RenderTargetManager *   GetRenderTargetManager  (){return rt_manager;}
 
-    SwapchainModule *       GetSwapchainModule      (){return swapchain_module;}
+    SwapchainModule *       GetSwapchainModule      (){return sc_module;}
 
 public:
 

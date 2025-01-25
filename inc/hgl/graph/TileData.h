@@ -20,7 +20,7 @@ namespace hgl
          */
         class TileData                                                                                                 ///Tile纹理管理
         {
-            TextureManager *texture_manager;
+            TextureManager *tex_manager;
 
         protected:
 

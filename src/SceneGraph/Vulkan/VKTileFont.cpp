@@ -17,7 +17,7 @@ TileFont *RenderFramework::CreateTileFont(FontSource *fs,int limit_count)
 
     if(limit_count<=0)
     {
-        const VkExtent2D &ext=swapchain_module->GetSwapchainSize();
+        const VkExtent2D &ext=sc_module->GetSwapchainSize();
 
         limit_count=(ext.width/height)*(ext.height/height);   //按全屏幕放满不一样的字符为上限
     }
@@ -25,7 +25,7 @@ TileFont *RenderFramework::CreateTileFont(FontSource *fs,int limit_count)
     if(!fs)
         return(nullptr);
 
-    TileData *td=texture_manager->CreateTileData(UPF_R8,height,height,limit_count);
+    TileData *td=tex_manager->CreateTileData(UPF_R8,height,height,limit_count);
 
     if(!td)
         return nullptr;
