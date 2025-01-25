@@ -100,18 +100,8 @@ public:
         if(!InitVBO())
             return(false);
 
-//        if(!BuildCommandBuffer(render_obj))
-//            return(false);
-
         return(true);
     }
-
-    //void Resize(uint w,uint h)override
-    //{
-    //    VulkanApplicationFramework::Resize(w,h);
-
-    //    BuildCommandBuffer(render_obj);
-    //}
 
     void Tick(double)override
     {}
