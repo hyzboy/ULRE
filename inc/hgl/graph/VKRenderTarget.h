@@ -8,6 +8,31 @@
 #include<hgl/graph/VKQueue.h>
 #include<hgl/graph/VKPipeline.h>
 VK_NAMESPACE_BEGIN
+
+/**
+* RenderTarget 存在几种情况：
+* 
+* 1.正常单帧渲染目标，即只有一帧的数据，每次渲染都是当前帧
+* 
+* 2.多帧渲染目标，即有多帧数据，每次渲染都是指定帧，典型的是Swapchain
+* 
+* 但不管是单帧还是多帧，又有两种情况：
+* 
+* 1.单个颜色缓冲区
+* 
+* 2.多个颜色缓冲区，典型如PBR GBuffer
+* 
+* 所以RenderTarget的其实是一个多态类，根据不同的情况，有不同的实现
+*/
+
+class IRenderTarget
+{
+public:
+
+    IRenderTarget(DeviceQueue *,Semaphore *);
+
+};//class IRenderTarget
+
 /**
  * 渲染目标
  */
@@ -27,6 +52,7 @@ protected:
 protected:
 
     uint32_t color_count;
+
     Texture2D **color_textures;
     Texture2D *depth_texture;
 

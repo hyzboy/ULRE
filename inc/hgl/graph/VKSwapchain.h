@@ -13,9 +13,8 @@ struct SwapchainImage
     Texture2D *                    depth            =nullptr;
 
     Framebuffer *                  fbo              =nullptr;
-    
 
-    RenderCmdBuffer *               cmd_buf         =nullptr;
+    RenderCmdBuffer *              cmd_buf          =nullptr;
 
 public:
 
