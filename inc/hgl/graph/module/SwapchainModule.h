@@ -6,16 +6,19 @@ VK_NAMESPACE_BEGIN
 
 class RenderTargetManager;
 class RenderPassManager;
+class RenderPass;
 
 GRAPH_MODULE_CLASS(SwapchainModule)
 {
-    Swapchain *swapchain=nullptr;
+    Swapchain *             swapchain   =nullptr;
 
-    TextureManager *tex_manager=nullptr;
-    RenderTargetManager *rt_manager=nullptr;
-    RenderPassManager *rp_manager=nullptr;
+    TextureManager *        tex_manager =nullptr;
+    RenderTargetManager *   rt_manager  =nullptr;
+    RenderPassManager *     rp_manager  =nullptr;
 
-    RTSwapchain *swapchain_rt=nullptr;
+    RenderPass *            sc_render_pass  =nullptr;
+
+    RTSwapchain *           sc_render_target=nullptr;
 
 protected:
 
@@ -37,9 +40,9 @@ public:
 
 public:
 
-            RenderPass *    GetRenderPass   ()const{return swapchain_rt->GetRenderPass();}
+            RenderPass *    GetRenderPass   ()const{return sc_render_pass;}
 
-    const   VkExtent2D &    GetSwapchainSize()const{return swapchain_rt->GetExtent();}
+    const   VkExtent2D &    GetSwapchainSize()const{return sc_render_target->GetExtent();}
 
             RenderCmdBuffer *RecordCmdBuffer(int frame_index=-1);
 
