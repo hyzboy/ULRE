@@ -21,31 +21,10 @@ constexpr float position_data_float[VERTEX_COUNT*2]=
      0.5,  0.5
 };
 
-#define USE_HALF_FLOAT_POSITION
-
-#ifdef USE_HALF_FLOAT_POSITION
-constexpr VkFormat PositionFormat=VF_V2HF;
-
-half_float position_data_hf[VERTEX_COUNT*2];
-
-#define position_data   position_data_hf
-#else
 constexpr VkFormat PositionFormat=VF_V2F;
 
 #define position_data   position_data_float
-#endif//USE_HALF_FLOAT_POSITION
 
-#define USE_UNORM8_COLOR
-
-#ifdef USE_UNORM8_COLOR
-constexpr uint8 color_data[VERTEX_COUNT*4]=
-{   255,0,0,255,
-    0,255,0,255,
-    0,0,255,255
-};
-
-constexpr VkFormat ColorFormat=VF_V4UN8;
-#else
 constexpr float color_data[VERTEX_COUNT*4]=
 {   1,0,0,1,
     0,1,0,1,
@@ -53,15 +32,10 @@ constexpr float color_data[VERTEX_COUNT*4]=
 };
 
 constexpr VkFormat ColorFormat=VF_V4F;
-#endif//USE_UNORM8_COLOR
 
 class TestApp:public WorkObject
 {
 private:
-
-#if defined(USE_HALF_FLOAT_POSITION)||defined(USE_UNORM8_COLOR)
-    VILConfig vil_config;
-#endif
 
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
@@ -69,17 +43,6 @@ private:
     Pipeline *          pipeline            =nullptr;
 
 private:
-
-    void InitVIL()
-    {
-    #ifdef USE_HALF_FLOAT_POSITION
-        vil_config.Add(VAN::Position,PositionFormat);
-    #endif//USE_HALF_FLOAT_POSITION
-
-    #ifdef USE_UNORM8_COLOR
-        vil_config.Add(VAN::Color,ColorFormat);
-    #endif//USE_HALF_FLOAT_POSITION
-    }
 
     bool InitAutoMaterial()
     {
@@ -109,10 +72,6 @@ private:
         
         rpc.Init("Triangle",VERTEX_COUNT);
 
-#ifdef USE_HALF_FLOAT_POSITION
-        Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
-#endif//USE_HALF_FLOAT_POSITION
-
         if(!rpc.WriteVAB(VAN::Position,   PositionFormat, position_data))return(false);
         if(!rpc.WriteVAB(VAN::Color,      ColorFormat,    color_data   ))return(false);
         
@@ -126,8 +85,6 @@ public:
     {
         if(!VulkanApplicationFramework::Init(w,h))
             return(false);
-
-        InitVIL();
 
         if(!InitAutoMaterial())
             return(false);
@@ -150,6 +107,12 @@ public:
 
         BuildCommandBuffer(render_obj);
     }
+
+    void Tick(double)override
+    {}
+
+    void Render(double)
+    {}
 };//class TestApp:public VulkanApplicationFramework
 
 int main(int,char **)
@@ -159,7 +122,7 @@ int main(int,char **)
     if(rf.Init(SCREEN_WIDTH,SCREEN_HEIGHT))
         return(-1);
 
-    WorkManager wm;
+    WorkManager wm(&rf);
 
-    wm.Start(new TestApp());
+    wm.Start(new TestApp);
 }
