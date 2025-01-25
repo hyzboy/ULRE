@@ -26,6 +26,8 @@ protected:
     bool CreateSwapchain();
     bool CreateSwapchainRenderTarget();
 
+    RenderCmdBuffer *GetRenderCmdBuffer(int frame_index=-1);
+
 public:
 
     virtual void OnResize(const VkExtent2D &)override;                                              ///<窗口大小改变
@@ -40,11 +42,11 @@ public:
 
 public:
 
-            RenderPass *    GetRenderPass   ()const{return sc_render_pass;}
+            RenderPass *        GetRenderPass   ()const{return sc_render_pass;}
 
-    const   VkExtent2D &    GetSwapchainSize()const{return sc_render_target->GetExtent();}
+    const   VkExtent2D &        GetSwapchainSize()const{return sc_render_target->GetExtent();}
 
-            RenderCmdBuffer *RecordCmdBuffer(int frame_index=-1);
+            RenderCmdBuffer *   RecordCmdBuffer (int frame_index=-1);
 
 };//class SwapchainModule:public GraphModule
 
