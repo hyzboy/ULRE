@@ -27,12 +27,6 @@ class RenderFramework:public io::WindowEvent
 
     RenderResource *        render_resource     =nullptr;
 
-private:
-
-    double                  last_time           =0;
-    double                  cur_time            =0;
-    int64                   frame_count         =0;
-
 protected:
 
     GraphModuleManager *    module_manager      =nullptr;
@@ -79,16 +73,6 @@ public: // event
     virtual void OnActive(bool);
     virtual void OnClose();
 
-protected:
-
-    virtual void BeginFrame();
-    virtual void EndFrame();
-
-    virtual bool RunFrame(RenderModule *);
-
-public:
-
-    virtual bool Run(RenderModule *);
 };//class RenderFramework
 
 VK_NAMESPACE_END

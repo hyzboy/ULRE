@@ -116,36 +116,6 @@ bool RenderFramework::Init(uint w,uint h)
     return(true);
 }
 
-bool RenderFramework::Run(RenderModule *rm)
-{
-    if(!rm)
-        return(false);
-
-    if(!win)
-        return(false);
-
-    if(!sc_module)
-        return(false);
-    
-    while(win->Update())
-    {
-        if(win->IsVisible())
-        {
-            ++frame_count;
-            last_time=cur_time;
-
-            cur_time=GetDoubleTime();
-
-            if(!RunFrame(rm))
-                return(false);
-        }
-
-        device->WaitIdle();
-    }
-
-    return(true);
-}
-
 void RenderFramework::OnResize(uint w,uint h)
 {
     io::WindowEvent::OnResize(w,h);
@@ -161,38 +131,6 @@ void RenderFramework::OnActive(bool)
 
 void RenderFramework::OnClose()
 {
-}
-
-void RenderFramework::BeginFrame()
-{
-}
-
-void RenderFramework::EndFrame()
-{
-}
-
-bool RenderFramework::RunFrame(RenderModule *rm)
-{
-    bool result=true;
-
-    BeginFrame();
-
-    sc_module->BeginFrame();
-    {
-        RenderCmdBuffer *rcb=sc_module->RecordCmdBuffer();
-
-        if(rcb)
-        {
-            result=rm->OnFrameRender(cur_time,rcb);
-
-            rcb->End();
-        }
-    }
-    sc_module->EndFrame();
-
-    EndFrame();
-
-    return result;
 }
 
 VK_NAMESPACE_END
