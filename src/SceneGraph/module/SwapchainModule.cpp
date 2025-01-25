@@ -24,11 +24,21 @@ namespace
     {
         VkSwapchainCreateInfoKHR swapchain_ci;
 
+        uint32_t image_count;
+
+        if(dev_attr->surface_caps.maxImageCount<3)
+            image_count=dev_attr->surface_caps.maxImageCount;
+        else
+        if(dev_attr->surface_caps.maxImageCount>3)
+            image_count=3;
+        else
+            image_count=dev_attr->surface_caps.minImageCount;
+
         swapchain_ci.sType                  =VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapchain_ci.pNext                  =nullptr;
         swapchain_ci.flags                  =0;
         swapchain_ci.surface                =dev_attr->surface;
-        swapchain_ci.minImageCount          =dev_attr->surface_caps.minImageCount;
+        swapchain_ci.minImageCount          =image_count;
         swapchain_ci.imageFormat            =dev_attr->surface_format.format;
         swapchain_ci.imageColorSpace        =dev_attr->surface_format.colorSpace;
         swapchain_ci.imageExtent            =dev_attr->surface_caps.currentExtent;
