@@ -65,6 +65,7 @@ namespace hgl
 
         double last_update_time=0;
         double last_render_time=0;
+        double cur_time=0;
 
         WorkObject *cur_work_object=nullptr;
 
@@ -88,29 +89,23 @@ namespace hgl
 
         void Update(WorkObject *wo)
         {
-            double cur_time=GetDoubleTime();
-            double delta_time;
+            double delta_time=cur_time-last_update_time;
 
-            if(wo->IsTickable())
+            if(delta_time>=frame_time)
             {
-                delta_time=cur_time-last_update_time;
-
-                if(delta_time>=frame_time)
-                {
-                    last_update_time=cur_time;
-                    wo->Tick(delta_time);
-                }
+                last_update_time=cur_time;
+                wo->Tick(delta_time);
             }
+        }
 
-            if(wo->IsRenderable())
+        void Render(WorkObject *wo)
+        {
+            double delta_time=cur_time-last_render_time;
+
+            if(delta_time>=frame_time)
             {
-                delta_time=cur_time-last_render_time;
-
-                if(delta_time>=frame_time)
-                {
-                    last_render_time=cur_time;
-                    wo->Render(delta_time);
-                }
+                last_render_time=cur_time;
+                wo->Render(delta_time);
             }
         }
 
@@ -119,12 +114,24 @@ namespace hgl
             if(!cur_work_object)
                 return;
 
+            Window *win=render_framework->GetWindow();
+            graph::GPUDevice *dev=render_framework->GetDevice();
+
             while(!cur_work_object->IsDestroy())
             {
-                Update(cur_work_object);
+                cur_time=GetDoubleTime();
 
-                render_framework->GetWindow()->Update();
-                render_framework->GetDevice()->WaitIdle();
+                if(cur_work_object->IsTickable())
+                    Update(cur_work_object);
+
+                if(win->IsVisible()&&cur_work_object->IsRenderable())
+                {
+                    Render(cur_work_object);
+                    dev->WaitIdle();
+                }
+
+                if(!win->Update())
+                    break;
             }
         }
 

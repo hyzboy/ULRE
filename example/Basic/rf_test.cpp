@@ -157,10 +157,10 @@ int main(int,char **)
 
     WorkManager wm(&rf);
 
-    AutoDelete<TestApp> app=new TestApp(&rf);
+    TestApp *test=new TestApp(&rf);
 
-    if(!app->Init())
+    if(!test->Init())
         return(-2);
 
-    wm.Start(app);
+    wm.Start(test);
 }
