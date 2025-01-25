@@ -24,6 +24,8 @@ class RenderFramework:public io::WindowEvent
 
     GPUDevice *             device              =nullptr;
 
+    RenderResource *        render_resource     =nullptr;
+
 private:
 
     double                  last_time           =0;
@@ -46,6 +48,8 @@ public:
     Window *                GetWindow           (){return win;}
     GPUDevice *             GetDevice           (){return device;}    
     GPUDeviceAttribute *    GetDeviceAttribute  (){return device->GetDeviceAttribute();}
+
+    RenderResource *        GetRenderResource   (){return render_resource;}
 
 public:
 

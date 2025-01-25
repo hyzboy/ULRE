@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 
@@ -15,7 +15,7 @@ GRAPH_MODULE_CLASS(RenderTargetManager)
 public:
 
     RenderTargetManager(GPUDevice *,TextureManager *tm,RenderPassManager *rpm);
-    virtual ~RenderTargetManager();
+    virtual ~RenderTargetManager()=default;
 
 public: //FrameBuffer相关
 

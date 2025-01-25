@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/module/GraphModule.h>
 
@@ -37,9 +37,11 @@ public:
 
 public:
 
-    const   VkExtent2D &    GetSwapchainSize()const {return swapchain_rt->GetExtent();}
+            RenderPass *    GetRenderPass   ()const{return swapchain_rt->GetRenderPass();}
 
-            RenderCmdBuffer *Use();
+    const   VkExtent2D &    GetSwapchainSize()const{return swapchain_rt->GetExtent();}
+
+            RenderCmdBuffer *RecordCmdBuffer(int frame_index=-1);
 
 };//class SwapchainModule:public GraphModule
 

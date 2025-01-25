@@ -6,6 +6,7 @@
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/RenderModule.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/log/Logger.h>
 #include<hgl/Time.h>
@@ -41,6 +42,7 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
+    SAFE_CLEAR(render_resource)
     SAFE_CLEAR(module_manager)
 
     --RENDER_FRAMEWORK_COUNT;
@@ -109,6 +111,8 @@ bool RenderFramework::Init(uint w,uint h)
 
     OnResize(w,h);
 
+    render_resource=new RenderResource(device);
+
     return(true);
 }
 
@@ -175,7 +179,7 @@ bool RenderFramework::RunFrame(RenderModule *rm)
 
     swapchain_module->BeginFrame();
     {
-        RenderCmdBuffer *rcb=swapchain_module->Use();
+        RenderCmdBuffer *rcb=swapchain_module->RecordCmdBuffer();
 
         if(rcb)
         {

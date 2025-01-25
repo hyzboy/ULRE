@@ -1,4 +1,4 @@
-#include<hgl/graph/module/SwapchainModule.h>
+﻿#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
@@ -175,6 +175,9 @@ bool SwapchainModule::CreateSwapchain()
 
 bool SwapchainModule::CreateSwapchainRenderTarget()
 {
+    if(!CreateSwapchain())
+        return(false);
+
     GPUDevice *device=GetDevice();
 
     DeviceQueue *q=device->CreateQueue(swapchain->image_count,false);
@@ -195,16 +198,14 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 SwapchainModule::~SwapchainModule()
 {
     SAFE_CLEAR(swapchain_rt);
-    SAFE_CLEAR(swapchain);
 }
 
 SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm):GraphModuleInherit<SwapchainModule,GraphModule>(dev,"SwapchainModule")
 {
     tex_manager=tm;
     rt_manager=rtm;
+    rp_manager=rpm;
 
-    if(!CreateSwapchain())
-        return;
 
     //#ifdef _DEBUG
     //    if(dev_attr->debug_utils)
@@ -218,6 +219,7 @@ SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetM
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(swapchain_rt)
+    swapchain=nullptr;
 
     GetDeviceAttribute()->RefreshSurfaceCaps();
 
@@ -246,14 +248,15 @@ void SwapchainModule::EndFrame()
     swapchain_rt->WaitFence();
 }
 
-RenderCmdBuffer *SwapchainModule::Use()
+RenderCmdBuffer *SwapchainModule::RecordCmdBuffer(int frame_index)
 {
-    uint32_t index=swapchain_rt->GetCurrentFrameIndices();
+    if(frame_index<0)
+        frame_index=swapchain_rt->GetCurrentFrameIndices();
     
-    if(index>=swapchain->image_count)
+    if(frame_index>=swapchain->image_count)
         return(nullptr);
 
-    RenderCmdBuffer *rcb=swapchain->sc_image[index].cmd_buf;
+    RenderCmdBuffer *rcb=swapchain->sc_image[frame_index].cmd_buf;
 
     rcb->Begin();
     rcb->BindFramebuffer(swapchain->render_pass,swapchain_rt->GetFramebuffer());
