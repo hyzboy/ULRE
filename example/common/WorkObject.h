@@ -2,17 +2,17 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/VKRenderResource.h>
+#include<hgl/type/object/TickObject.h>
 #include<hgl/Time.h>
 
 namespace hgl
 {
-    class WorkObject
+    class WorkObject:public TickObject
     {
         graph::RenderFramework *render_framework=nullptr;
 
         bool destroy_flag=false;
 
-        bool tickable=true;
         bool renderable=true;
 
     protected:
@@ -28,11 +28,9 @@ namespace hgl
     public:
 
         const bool IsDestroy()const{return destroy_flag;}
-        const bool IsTickable()const{return tickable;}
         const bool IsRenderable()const{return renderable;}
 
         void MarkDestory(){destroy_flag=true;}
-        void SetTickable(bool t){tickable=t;}
         void SetRenderable(bool r){renderable=r;}
 
     public:
@@ -52,7 +50,6 @@ namespace hgl
             db=rf->GetRenderResource();
         }
 
-        virtual void Tick(double delta_time)=0;
         virtual void Render(double delta_time)=0;
     };//class WorkObject
 
@@ -87,7 +84,7 @@ namespace hgl
             frame_time=1.0f/double(fps);
         }
 
-        void Update(WorkObject *wo)
+        void Tick(WorkObject *wo)
         {
             double delta_time=cur_time-last_update_time;
 
@@ -122,7 +119,7 @@ namespace hgl
                 cur_time=GetDoubleTime();
 
                 if(cur_work_object->IsTickable())
-                    Update(cur_work_object);
+                    Tick(cur_work_object);
 
                 if(win->IsVisible()&&cur_work_object->IsRenderable())
                 {
