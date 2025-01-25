@@ -1,7 +1,8 @@
 ﻿#pragma once
 
-#include<hgl/graph/VKDevice.h>
 #include<hgl/platform/Window.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 
 VK_NAMESPACE_BEGIN
