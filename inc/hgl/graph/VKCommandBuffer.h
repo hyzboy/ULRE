@@ -48,6 +48,8 @@ class RenderCmdBuffer:public GPUCmdBuffer
     RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
+private:
+
     void SetFBO(Framebuffer *);
 
 public:

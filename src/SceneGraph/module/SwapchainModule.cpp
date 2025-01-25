@@ -216,7 +216,7 @@ SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetM
     #ifdef _DEBUG
     {
         if(dev_attr->debug_utils)
-            dev_attr->debug_utils->SetRenderPass(sc_render_pass->GetVkRenderPass(),"MainDeviceRenderPass");
+            dev_attr->debug_utils->SetRenderPass(sc_render_pass->GetVkRenderPass(),"SwapchainRenderPass");
     }
     #endif//_DEBUG
 
@@ -244,19 +244,7 @@ bool SwapchainModule::BeginFrame()
     return(true);
 }
 
-void SwapchainModule::EndFrame()
-{
-    int index=sc_render_target->GetCurrentFrameIndices();
-
-    VkCommandBuffer cb=*(swapchain->sc_image[index].cmd_buf);
-
-    sc_render_target->Submit(cb);
-    sc_render_target->PresentBackbuffer();
-    sc_render_target->WaitQueue();
-    sc_render_target->WaitFence();
-}
-
-RenderCmdBuffer *SwapchainModule::RecordCmdBuffer(int frame_index)
+RenderCmdBuffer *SwapchainModule::GetRenderCmdBuffer(int frame_index)
 {
     if(frame_index<0)
         frame_index=sc_render_target->GetCurrentFrameIndices();
@@ -264,7 +252,28 @@ RenderCmdBuffer *SwapchainModule::RecordCmdBuffer(int frame_index)
     if(frame_index>=swapchain->image_count)
         return(nullptr);
 
-    RenderCmdBuffer *rcb=swapchain->sc_image[frame_index].cmd_buf;
+    return swapchain->sc_image[frame_index].cmd_buf;
+}
+
+void SwapchainModule::EndFrame()
+{
+    RenderCmdBuffer *rcb=GetRenderCmdBuffer();
+
+    if(!rcb)
+        return;
+
+    sc_render_target->Submit(*rcb);
+    sc_render_target->PresentBackbuffer();
+    sc_render_target->WaitQueue();
+    sc_render_target->WaitFence();
+}
+
+RenderCmdBuffer *SwapchainModule::RecordCmdBuffer(int frame_index)
+{
+    RenderCmdBuffer *rcb=GetRenderCmdBuffer(frame_index);
+
+    if(!rcb)
+        return(nullptr);
 
     rcb->Begin();
     rcb->BindFramebuffer(sc_render_pass,sc_render_target->GetFramebuffer());
