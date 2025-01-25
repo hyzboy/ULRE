@@ -1,18 +1,29 @@
 ﻿#pragma once
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/Time.h>
 
 namespace hgl
 {
     class WorkObject
     {
-        RenderFramework *render_framework;
+        graph::RenderFramework *render_framework=nullptr;
 
         bool destroy_flag=false;
 
         bool tickable=true;
         bool renderable=true;
+
+    protected:
+
+        graph::RenderResource *db=nullptr;          //暂时的，未来会被更好的机制替代
+
+    public:
+
+        graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
+        graph::GPUDevice *          GetDevice           (){return render_framework->GetDevice();}
+        graph::GPUDeviceAttribute * GetDeviceAttribute  (){return render_framework->GetDeviceAttribute();}
 
     public:
 
@@ -26,11 +37,19 @@ namespace hgl
 
     public:
 
+        WorkObject(graph::RenderFramework *rf)
+        {
+            Join(rf);
+        }
         virtual ~WorkObject()=default;
 
-        virtual void Join(RenderFramework *rf)
+        virtual void Join(graph::RenderFramework *rf)
         {
+            if(!rf)return;
+            if(render_framework==rf)return;
+
             render_framework=rf;
+            db=rf->GetRenderResource();
         }
 
         virtual void Tick(double delta_time)=0;
@@ -54,6 +73,11 @@ namespace hgl
         WorkManager(graph::RenderFramework *rf)
         {
             render_framework=rf;
+        }
+
+        virtual ~WorkManager()
+        {
+            SAFE_CLEAR(cur_work_object);
         }
 
         void SetFPS(uint f)
@@ -98,6 +122,9 @@ namespace hgl
             while(!cur_work_object->IsDestroy())
             {
                 Update(cur_work_object);
+
+                render_framework->GetWindow()->Update();
+                render_framework->GetDevice()->WaitIdle();
             }
         }
 
