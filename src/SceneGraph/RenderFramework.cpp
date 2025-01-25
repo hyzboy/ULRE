@@ -93,21 +93,21 @@ bool RenderFramework::Init(uint w,uint h)
 
     module_manager=new GraphModuleManager(device);
 
-    render_pass_manager=module_manager->GetOrCreate<RenderPassManager>();
+    rp_manager=module_manager->GetOrCreate<RenderPassManager>();
 
-    if(!render_pass_manager)
+    if(!rp_manager)
         return(false);
 
-    texture_manager=module_manager->GetOrCreate<TextureManager>();
+    tex_manager=module_manager->GetOrCreate<TextureManager>();
 
-    if(!texture_manager)
+    if(!tex_manager)
         return(false);
 
-    rt_manager=new RenderTargetManager(device,texture_manager,render_pass_manager);
+    rt_manager=new RenderTargetManager(device,tex_manager,rp_manager);
     module_manager->Registry(rt_manager);
 
-    swapchain_module=new SwapchainModule(device,texture_manager,rt_manager,render_pass_manager);
-    module_manager->Registry(swapchain_module);
+    sc_module=new SwapchainModule(device,tex_manager,rt_manager,rp_manager);
+    module_manager->Registry(sc_module);
 
     OnResize(w,h);
 
@@ -124,7 +124,7 @@ bool RenderFramework::Run(RenderModule *rm)
     if(!win)
         return(false);
 
-    if(!swapchain_module)
+    if(!sc_module)
         return(false);
     
     while(win->Update())
@@ -152,7 +152,7 @@ void RenderFramework::OnResize(uint w,uint h)
 
     VkExtent2D ext(w,h);
 
-    swapchain_module->OnResize(ext);        //其实swapchain_module并不需要这个
+    sc_module->OnResize(ext);        //其实swapchain_module并不需要传递尺寸数据过去
 }
 
 void RenderFramework::OnActive(bool)
@@ -177,9 +177,9 @@ bool RenderFramework::RunFrame(RenderModule *rm)
 
     BeginFrame();
 
-    swapchain_module->BeginFrame();
+    sc_module->BeginFrame();
     {
-        RenderCmdBuffer *rcb=swapchain_module->RecordCmdBuffer();
+        RenderCmdBuffer *rcb=sc_module->RecordCmdBuffer();
 
         if(rcb)
         {
@@ -188,7 +188,7 @@ bool RenderFramework::RunFrame(RenderModule *rm)
             rcb->End();
         }
     }
-    swapchain_module->EndFrame();
+    sc_module->EndFrame();
 
     EndFrame();
 

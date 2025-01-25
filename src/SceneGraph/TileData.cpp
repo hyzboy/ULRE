@@ -10,7 +10,7 @@ namespace hgl
     {
         TileData::TileData(TextureManager *tm,Texture2D *tt,const uint tw,const uint th)
         {
-            texture_manager=tm;
+            tex_manager=tm;
 
             tile_texture=tt;
 
@@ -53,7 +53,7 @@ namespace hgl
 
             tile_bytes=GetImageBytes(tile_texture->GetFormat(),tile_width*tile_height);
 
-            tile_buffer=texture_manager->CreateTransferSourceBuffer(tile_bytes*tile_max_count);
+            tile_buffer=tex_manager->CreateTransferSourceBuffer(tile_bytes*tile_max_count);
 
             commit_ptr=nullptr;
         }
@@ -80,7 +80,7 @@ namespace hgl
             tile_buffer->Unmap();
             commit_ptr=nullptr;
 
-            if(!texture_manager->ChangeTexture2D(tile_texture,tile_buffer,commit_list))
+            if(!tex_manager->ChangeTexture2D(tile_texture,tile_buffer,commit_list))
                 return -2;
 
             const int result=commit_list.GetCount();
