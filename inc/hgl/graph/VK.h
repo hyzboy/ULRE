@@ -37,7 +37,7 @@ class ImageView;
 class Framebuffer;
 struct Swapchain;
 class RenderTarget;
-class RTSwapchain;
+class SwapchainRenderTarget;
 
 class Texture;
 class Texture1D;
