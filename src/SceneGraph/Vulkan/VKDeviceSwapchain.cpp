@@ -97,7 +97,6 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
 
     AnsiString num_string;
 
-
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
         swapchain->sc_image[i].color=CreateTexture2D(new SwapchainColorTextureCreateInfo(swapchain->surface_format.format,swapchain->extent,sc_images[i]));
@@ -105,7 +104,7 @@ bool GPUDevice::CreateSwapchainFBO(Swapchain *swapchain)
         if(!swapchain->sc_image[i].color)
             return(false);
 
-        swapchain->sc_image[i].depth =CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent));
+        swapchain->sc_image[i].depth=CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent));
 
         if(!swapchain->sc_image[i].depth)
             return(false);

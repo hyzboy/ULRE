@@ -1,5 +1,6 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKDeviceRenderPassManage.h>
+#include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
 RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,const uint32_t fence_count)
@@ -34,13 +35,21 @@ RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,RenderPass *rp,cons
 
     if(fb)
     {
-        DeviceQueue *q=CreateQueue(fence_count,false);
-        Semaphore *render_complete_semaphore=CreateGPUSemaphore();
+        RenderTargetData *rtd=new RenderTargetData{};
 
-        RenderTarget *rt=new RenderTarget(q,render_complete_semaphore,fb,color_texture_list,color_count,depth_texture);
+        rtd->fbo                        =fb;
+        rtd->queue                      =CreateQueue(fence_count,false);
+        rtd->render_complete_semaphore  =CreateGPUSemaphore();
+
+        rtd->cmd_buf                    =CreateRenderCommandBuffer("");
+
+        rtd->color_count                =color_count;
+        rtd->color_textures             =hgl_new_copy<Texture2D *>(color_texture_list,color_count);
+        rtd->depth_texture              =depth_texture;
 
         color_texture_list.DiscardObject();
-        return rt;
+
+        return(new RenderTarget(rtd));
     }
 
     SAFE_CLEAR(depth_texture);
@@ -58,23 +67,56 @@ RenderTarget *GPUDevice::CreateRT(const FramebufferInfo *fbi,const uint32_t fenc
     return CreateRT(fbi,rp,fence_count);
 }
 
-RTSwapchain *GPUDevice::CreateSwapchainRenderTarget()
+namespace
+{
+    struct SwapchainRenderTargetData:public RenderTargetData
+    {
+        void Clear() override
+        {
+            delete render_complete_semaphore;
+            delete queue;
+
+            delete[] color_textures;
+        }
+    };//
+}//namespace
+
+SwapchainRenderTarget *GPUDevice::CreateSwapchainRenderTarget()
 {
     Swapchain *sc=CreateSwapchain(attr->surface_caps.currentExtent);
 
     if(!sc)
         return(nullptr);
 
-    DeviceQueue *q=CreateQueue(sc->image_count,false);
-    Semaphore *render_complete_semaphore=CreateGPUSemaphore();
-    Semaphore *present_complete_semaphore=CreateGPUSemaphore();
+    RenderTarget **rt_list=new RenderTarget*[sc->image_count];
 
-    RTSwapchain *srt=new RTSwapchain(   attr->device,
-                                        sc,
-                                        q,
-                                        render_complete_semaphore,
-                                        present_complete_semaphore
-                                        );
+    SwapchainImage *sc_image=sc->sc_image;
+
+    for(uint32_t i=0;i<sc->image_count;i++)
+    {
+        RenderTargetData *rtd=new SwapchainRenderTargetData{};
+
+        rtd->fbo                        =sc_image->fbo;
+        rtd->queue                      =CreateQueue(sc->image_count,false);
+        rtd->render_complete_semaphore  =CreateGPUSemaphore();
+
+        rtd->cmd_buf                    =sc_image->cmd_buf;
+
+        rtd->color_count                =1;
+        rtd->color_textures             =new Texture2D*[1];
+        rtd->color_textures[0]          =sc_image->color;
+        rtd->depth_texture              =sc_image->depth;
+
+        rt_list[i]=new RenderTarget(rtd);
+
+        ++sc_image;
+    }
+
+    SwapchainRenderTarget *srt=new SwapchainRenderTarget(   attr->device,
+                                                            sc,
+                                                            CreateGPUSemaphore(),
+                                                            rt_list
+                                                            );
 
     return srt;
 }

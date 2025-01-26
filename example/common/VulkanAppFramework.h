@@ -54,7 +54,7 @@ protected:
 protected:
 
     GPUDevice *             device                      =nullptr;
-    RTSwapchain *           sc_render_target            =nullptr;
+    SwapchainRenderTarget *           sc_render_target            =nullptr;
 
 protected:
 
@@ -225,8 +225,10 @@ public:
     {   
         if(!ri)return(false);
 
-        return BuildCommandBuffer(sc_render_target->GetRenderCmdBuffer(index),
-                                  sc_render_target->GetFramebuffer(index),
+        IRenderTarget *rt=sc_render_target->GetCurrentFrameRenderTarget();
+
+        return BuildCommandBuffer(rt->GetRenderCmdBuffer(),
+                                  rt->GetFramebuffer(),
                                   ri);
     }
 
@@ -234,7 +236,7 @@ public:
     {
         if(!ri)return(false);
 
-        for(uint32_t i=0;i<sc_render_target->GetImageCount();i++)
+        for(uint32_t i=0;i<sc_render_target->GetFrameCount();i++)
             BuildCommandBuffer(i,ri);
 
         return(true);
@@ -264,7 +266,7 @@ public:
 
     void BuildCommandBuffer(RenderList *rl)
     {
-        for(uint32_t i=0;i<sc_render_target->GetImageCount();i++)
+        for(uint32_t i=0;i<sc_render_target->GetFrameCount();i++)
             BuildCommandBuffer(i,rl);
     }
 
@@ -298,11 +300,9 @@ public:
         return sc_render_target->AcquireNextImage();
     }
 
-    virtual void SubmitDraw(int index)
+    virtual void SubmitDraw()
     {
-        VkCommandBuffer cb=*(sc_render_target->GetRenderCmdBuffer(index));
-
-        sc_render_target->Submit(cb);
+        sc_render_target->Submit();
         sc_render_target->PresentBackbuffer();
         sc_render_target->WaitQueue();
         sc_render_target->WaitFence();
@@ -312,9 +312,9 @@ public:
     {
         int index=AcquireNextImage();
 
-        if(index<0||index>=sc_render_target->GetImageCount())return;
+        if(index<0||index>=sc_render_target->GetFrameCount())return;
 
-        SubmitDraw(index);
+        SubmitDraw();
     }
 
     bool Run()
@@ -545,7 +545,7 @@ public:
 
         BuildCommandBuffer(index);
 
-        SubmitDraw(index);
+        SubmitDraw();
 
         ckc->Update();
         cmc->Update();

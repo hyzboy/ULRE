@@ -39,9 +39,9 @@ private:
 
     DeviceRenderPassManage *render_pass_manage;
 
-    RTSwapchain *sc_rt;
+    SwapchainRenderTarget *sc_rt;
 
-    RTSwapchain *CreateSwapchainRenderTarget();
+    SwapchainRenderTarget *CreateSwapchainRenderTarget();
 
     void InitRenderPassManage();
     void ClearRenderPassManage();
@@ -80,7 +80,7 @@ public:
 
                 RenderPass *        GetRenderPass       ()      {return sc_rt->GetRenderPass();}
 
-                RTSwapchain *       GetSwapchainRT      ()      {return sc_rt;}
+                SwapchainRenderTarget *       GetSwapchainRT      ()      {return sc_rt;}
 
     const       VkExtent2D &        GetSwapchainSize    ()const {return sc_rt->GetExtent();}
 
