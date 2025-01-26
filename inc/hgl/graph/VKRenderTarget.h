@@ -93,7 +93,7 @@ class RTSwapchain:public RenderTarget
 
 public:
 
-    RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
+    RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs);
     ~RTSwapchain();
     
             uint32_t            GetColorCount           ()      override            {return 1;}

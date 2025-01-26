@@ -183,14 +183,14 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     DeviceQueue *q=device->CreateQueue(swapchain->image_count,false);
     Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
+
     Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
 
     sc_render_target=new RTSwapchain(   device->GetDevice(),
                                         swapchain,
                                         q,
                                         render_complete_semaphore,
-                                        present_complete_semaphore,
-                                        sc_render_pass
+                                        present_complete_semaphore
                                         );
 
     return true;
