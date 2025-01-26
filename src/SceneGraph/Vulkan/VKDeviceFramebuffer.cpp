@@ -75,7 +75,7 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_lis
     if(!fbo)
         return(nullptr);
 
-    return(new Framebuffer(GetVkDevice(),fbo,extent,rp->GetVkRenderPass(),color_count,depth));
+    return(new Framebuffer(GetVkDevice(),fbo,extent,rp,color_count,depth));
 }
 //
 //Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,List<ImageView *> &color,ImageView *depth)

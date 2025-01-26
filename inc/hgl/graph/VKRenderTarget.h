@@ -62,10 +62,10 @@ public:
     
                     DeviceQueue *   GetQueue            ()      {return queue;}
             const   VkExtent2D &    GetExtent           ()const {return extent;}
-    virtual const   VkRenderPass    GetVkRenderPass     ()const {return fbo->GetRenderPass();}
-    virtual         uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
-    virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
+    virtual         RenderPass *    GetRenderPass       ()      {return GetFramebuffer()->GetRenderPass();}
+    virtual         uint32_t        GetColorCount       ()      {return GetFramebuffer()->GetColorCount();}
 
+    virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
     virtual         Texture2D *     GetDepthTexture     (){return depth_texture;}
 
@@ -96,7 +96,7 @@ public:
     RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
     ~RTSwapchain();
     
-            uint32_t            GetColorCount           ()const override            {return 1;}
+            uint32_t            GetColorCount           ()      override            {return 1;}
             uint32_t            GetImageCount           ()const                     {return swapchain->image_count;}
             uint32_t            GetCurrentFrameIndices  ()const                     {return current_frame;}
 
