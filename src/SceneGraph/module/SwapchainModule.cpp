@@ -234,51 +234,33 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
     CreateSwapchainRenderTarget();
 }
 
-bool SwapchainModule::BeginFrame()
+RenderCmdBuffer *SwapchainModule::BeginRender()
 {
-    uint32_t index=sc_render_target->AcquireNextImage();
+    const int index=sc_render_target->AcquireNextImage();
 
-    if(index>=swapchain->image_count)
-        return(false);
-
-    return(true);
-}
-
-RenderCmdBuffer *SwapchainModule::GetRenderCmdBuffer(int frame_index)
-{
-    if(frame_index<0)
-        frame_index=sc_render_target->GetCurrentFrameIndices();
-    
-    if(frame_index>=swapchain->image_count)
+    if(index<0||index>=swapchain->image_count)
         return(nullptr);
 
-    return swapchain->sc_image[frame_index].cmd_buf;
+    current_sc_image=&(swapchain->sc_image[index]);
+
+    current_sc_image->cmd_buf->Begin();
+    current_sc_image->cmd_buf->BindFramebuffer(current_sc_image->fbo);
+
+    return current_sc_image->cmd_buf;
 }
 
-void SwapchainModule::EndFrame()
+void SwapchainModule::EndRender()
 {
-    RenderCmdBuffer *rcb=GetRenderCmdBuffer();
-
-    if(!rcb)
+    if(!current_sc_image)
         return;
 
-    sc_render_target->Submit(*rcb);
+    current_sc_image->cmd_buf->End();
+    sc_render_target->Submit(*(current_sc_image->cmd_buf));
     sc_render_target->PresentBackbuffer();
     sc_render_target->WaitQueue();
     sc_render_target->WaitFence();
-}
 
-RenderCmdBuffer *SwapchainModule::RecordCmdBuffer(int frame_index)
-{
-    RenderCmdBuffer *rcb=GetRenderCmdBuffer(frame_index);
-
-    if(!rcb)
-        return(nullptr);
-
-    rcb->Begin();
-    rcb->BindFramebuffer(sc_render_pass,sc_render_target->GetFramebuffer());
-
-    return rcb;
+    current_sc_image=nullptr;
 }
 
 VK_NAMESPACE_END
