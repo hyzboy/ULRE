@@ -44,13 +44,12 @@ class RenderCmdBuffer:public GPUCmdBuffer
     VkRect2D render_area;
     VkViewport viewport;
    
-    Framebuffer *fbo;
     RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
 private:
 
-    void SetFBO(Framebuffer *);
+    void SetClear();
 
 public:
 
@@ -80,7 +79,7 @@ public:
 
     //以上设定在Begin开始后即不可改变
 
-    bool BindFramebuffer(RenderPass *rp,Framebuffer *fb);
+    bool BindFramebuffer(Framebuffer *);
 
     bool BeginRenderPass();
     void NextSubpass(){vkCmdNextSubpass(cmd_buf,VK_SUBPASS_CONTENTS_INLINE);}

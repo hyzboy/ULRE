@@ -5,6 +5,7 @@
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/graph/VKRenderTarget.h>
 
 VK_NAMESPACE_BEGIN
 RenderCmdBuffer::RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
@@ -15,7 +16,6 @@ RenderCmdBuffer::RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer 
     hgl_zero(render_area);
     hgl_zero(viewport);
 
-    fbo=nullptr;
     pipeline_layout=VK_NULL_HANDLE;
 }
 
@@ -25,13 +25,8 @@ RenderCmdBuffer::~RenderCmdBuffer()
         hgl_free(clear_values);
 }
 
-void RenderCmdBuffer::SetFBO(Framebuffer *fb)
+void RenderCmdBuffer::SetClear()
 {
-    if(fbo==fb)return;
-
-    fbo=fb;
-    cv_count=fbo->GetAttachmentCount();
-
     if(cv_count>0)
     {
         clear_values=hgl_align_realloc<VkClearValue>(clear_values,cv_count);
@@ -44,11 +39,6 @@ void RenderCmdBuffer::SetFBO(Framebuffer *fb)
         hgl_free(clear_values);
         clear_values=nullptr;
     }
-
-    render_area.offset.x=0;
-    render_area.offset.y=0;
-    render_area.extent.width=0;
-    render_area.extent.height=0;
 }
 
 void RenderCmdBuffer::SetRenderArea(const VkExtent2D &ext2d)
@@ -58,18 +48,19 @@ void RenderCmdBuffer::SetRenderArea(const VkExtent2D &ext2d)
     render_area.extent=ext2d;
 }
 
-bool RenderCmdBuffer::BindFramebuffer(RenderPass *rp,Framebuffer *fb)
+bool RenderCmdBuffer::BindFramebuffer(Framebuffer *fbo)
 {
-    if(!rp||!fb)return(false);
+    if(!fbo)return(false);
 
-    SetFBO(fb);
+    cv_count=fbo->GetAttachmentCount();
+    SetClear();
 
     render_area.offset.x=0;
     render_area.offset.y=0;
-    render_area.extent=fb->GetExtent();
+    render_area.extent=fbo->GetExtent();
 
-    rp_begin.renderPass         = rp->GetVkRenderPass();
-    rp_begin.framebuffer        = *fb;
+    rp_begin.renderPass         = fbo->GetRenderPass();
+    rp_begin.framebuffer        = *fbo;
     rp_begin.renderArea         = render_area;
     rp_begin.clearValueCount    = cv_count;
     rp_begin.pClearValues       = clear_values;
