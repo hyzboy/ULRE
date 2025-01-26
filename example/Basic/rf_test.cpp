@@ -15,24 +15,18 @@ constexpr uint32_t SCREEN_HEIGHT=720;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
-constexpr float position_data_float[VERTEX_COUNT*2]=
+constexpr float position_data[VERTEX_COUNT*2]=
 {
      0.0, -0.5,
     -0.5,  0.5,
      0.5,  0.5
 };
 
-constexpr VkFormat PositionFormat=VF_V2F;
-
-#define position_data   position_data_float
-
 constexpr float color_data[VERTEX_COUNT*4]=
 {   1,0,0,1,
     0,1,0,1,
     0,0,1,1
 };
-
-constexpr VkFormat ColorFormat=VF_V4F;
 
 class TestApp:public WorkObject
 {
@@ -49,7 +43,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2d",Prim::Triangles);
+        mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2D",Prim::Triangles);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
@@ -77,8 +71,8 @@ private:
         
         rpc.Init("Triangle",VERTEX_COUNT);
 
-        if(!rpc.WriteVAB(VAN::Position,   PositionFormat, position_data))return(false);
-        if(!rpc.WriteVAB(VAN::Color,      ColorFormat,    color_data   ))return(false);
+        if(!rpc.WriteVAB(VAN::Position,   VF_V2F,   position_data))return(false);
+        if(!rpc.WriteVAB(VAN::Color,      VF_V4F,   color_data   ))return(false);
         
         render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
         return(render_obj);
