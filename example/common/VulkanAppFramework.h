@@ -195,12 +195,12 @@ public:
         Resize(w,h);
     }
 
-    bool BuildCommandBuffer(RenderCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,Renderable *ri)
+    bool BuildCommandBuffer(RenderCmdBuffer *cb,Framebuffer *fb,Renderable *ri)
     {   
         if(!ri)return(false);
 
         cb->Begin();
-            cb->BindFramebuffer(rp,fb);
+            cb->BindFramebuffer(fb);
             cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
@@ -213,12 +213,12 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(RenderCmdBuffer *cb,RenderTarget *rt,Renderable *ri)
+    bool BuildCommandBuffer(RenderCmdBuffer *cb,RenderTarget *rt,Renderable *ri)
     {
         if(!cb||!rt||!ri)
-            return;
+            return(false);
 
-        BuildCommandBuffer(cb,rt->GetRenderPass(),rt->GetFramebuffer(),ri);
+        return BuildCommandBuffer(cb,rt->GetFramebuffer(),ri);
     }
 
     bool BuildCommandBuffer(uint32_t index,Renderable *ri)
@@ -226,15 +226,15 @@ public:
         if(!ri)return(false);
 
         return BuildCommandBuffer(sc_render_target->GetRenderCmdBuffer(index),
-                                  sc_render_target->GetRenderPass(),
-                                  sc_render_target->GetFramebuffer(index),ri);
+                                  sc_render_target->GetFramebuffer(index),
+                                  ri);
     }
 
     bool BuildCommandBuffer(Renderable *ri)
     {
         if(!ri)return(false);
 
-        for(int32_t i=0;i<sc_render_target->GetImageCount();i++)
+        for(uint32_t i=0;i<sc_render_target->GetImageCount();i++)
             BuildCommandBuffer(i,ri);
 
         return(true);
@@ -254,7 +254,7 @@ public:
         RenderCmdBuffer *cb=sc_render_target->GetRenderCmdBuffer(index);
 
         cb->Begin();
-        cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
+        cb->BindFramebuffer(sc_render_target->GetFramebuffer(index));        
         cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 rl->Render(cb);
@@ -264,7 +264,7 @@ public:
 
     void BuildCommandBuffer(RenderList *rl)
     {
-        for(int32_t i=0;i<sc_render_target->GetImageCount();i++)
+        for(uint32_t i=0;i<sc_render_target->GetImageCount();i++)
             BuildCommandBuffer(i,rl);
     }
 

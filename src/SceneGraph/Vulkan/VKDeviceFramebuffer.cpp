@@ -75,7 +75,7 @@ Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,ImageView **color_list,const ui
     if(!fbo)
         return(nullptr);
 
-    return(new Framebuffer(GetDevice(),fbo,extent,rp->GetVkRenderPass(),color_count,depth));
+    return(new Framebuffer(GetDevice(),fbo,extent,rp,color_count,depth));
 }
 //
 //Framebuffer *GPUDevice::CreateFBO(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
