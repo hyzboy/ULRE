@@ -5,6 +5,7 @@
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
+#include<hgl/graph/VKRenderable.h>
 #include<hgl/color/Color4f.h>
 VK_NAMESPACE_BEGIN
 class GPUCmdBuffer
@@ -229,6 +230,19 @@ public: //draw
                                 void Draw               (const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd,const uint32_t instance_count=1,const uint32_t first_instance=0);
 
 public: //dynamic state
+
+public:
+
+    void Render(Renderable *ri)
+    {
+        if(!ri)return;
+        
+        BindPipeline(ri->GetPipeline());
+        BindDescriptorSets(ri->GetMaterial());
+        BindDataBuffer(ri->GetDataBuffer());
+
+        Draw(ri->GetDataBuffer(),ri->GetRenderData());
+    }
 };//class RenderCmdBuffer:public GPUCmdBuffer
 
 class TextureCmdBuffer:public GPUCmdBuffer

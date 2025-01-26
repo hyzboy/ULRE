@@ -95,18 +95,6 @@ public:
     void Tick(double)override
     {}
 
-    void Render(RenderCmdBuffer *cb,Renderable *ri)
-    {
-        if(!ri)return;
-    
-        cb->BeginRenderPass();
-            cb->BindPipeline(ri->GetPipeline());
-            cb->BindDescriptorSets(ri->GetMaterial());
-            cb->BindDataBuffer(ri->GetDataBuffer());
-            cb->Draw(ri->GetDataBuffer(),ri->GetRenderData());
-        cb->EndRenderPass();
-    }
-
     void Render(double)
     {
         //WorkObject是工作对象，不是渲染对象，所以不应该直接自动指定RenderTarget，更不能直接指定RenderCmdBuffer
@@ -119,7 +107,6 @@ public:
         RenderCmdBuffer *cb=sm->BeginRender();       //这里会有AcquireNextImage操作
         if(cb)
         {
-
             //这个使用完全不合理，录制CMD和推送swapchain是两回事，需要分开操作。
             //比如场景有的物件分静态和动态
 
@@ -127,7 +114,9 @@ public:
 
             cb->SetClearColor(0,clear_color);
              
-            Render(cb,render_obj);
+            cb->BeginRenderPass();
+                cb->Render(render_obj);
+            cb->EndRenderPass();
 
             sm->EndRender();             //这里会Submit和PresentBackbuffer
         }
