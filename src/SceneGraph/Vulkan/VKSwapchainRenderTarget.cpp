@@ -24,17 +24,22 @@ SwapchainRenderTarget::~SwapchainRenderTarget()
     delete swapchain;
 }
     
-int SwapchainRenderTarget::AcquireNextImage()
+RenderCmdBuffer *SwapchainRenderTarget::AcquireNextImage()
 {
     if(vkAcquireNextImageKHR(device,
                              swapchain->swap_chain,
                              UINT64_MAX,
                              *present_complete_semaphore,
                              VK_NULL_HANDLE,
-                             &current_frame)==VK_SUCCESS)
-        return current_frame;
+                             &current_frame)!=VK_SUCCESS)
+        return(nullptr);
 
-    return -1;
+    SwapchainImage *sc_image=&(swapchain->sc_image[current_frame]);
+
+    sc_image->cmd_buf->Begin();
+    sc_image->cmd_buf->BindFramebuffer(sc_image->fbo);
+
+    return sc_image->cmd_buf;
 }
 
 bool SwapchainRenderTarget::PresentBackbuffer()

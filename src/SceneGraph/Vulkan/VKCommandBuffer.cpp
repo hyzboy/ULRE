@@ -6,6 +6,8 @@ GPUCmdBuffer::GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb)
 {
     dev_attr=attr;
     cmd_buf=cb;
+
+    cmd_begin=false;
 }
 
 GPUCmdBuffer::~GPUCmdBuffer()
@@ -22,6 +24,7 @@ bool GPUCmdBuffer::Begin()
     if(vkBeginCommandBuffer(cmd_buf, &cmd_buf_info)!=VK_SUCCESS)
         return(false);
 
+    cmd_begin=true;
     return(true);
 }
 

@@ -1,5 +1,6 @@
 ﻿#include<hgl/graph/VKQueue.h>
 #include<hgl/graph/VKSemaphore.h>
+#include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
 namespace 
@@ -91,8 +92,13 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     return(result==VK_SUCCESS);
 }
 
-bool DeviceQueue::Submit(const VkCommandBuffer &cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
+bool DeviceQueue::Submit(GPUCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
 {
-    return Submit(&cmd_buf,1,wait_sem,complete_sem);
+    if(cmd_buf->IsBegin())
+        cmd_buf->End();
+
+    VkCommandBuffer vk_cmd=*cmd_buf;
+
+    return Submit(&vk_cmd,1,wait_sem,complete_sem);
 }
 VK_NAMESPACE_END
