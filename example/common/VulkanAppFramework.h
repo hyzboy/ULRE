@@ -220,12 +220,12 @@ public:
         }
     }
 
-    bool BuildCommandBuffer(RenderCmdBuffer *cb,RenderPass *rp,Framebuffer *fb,Renderable *ri)
+    bool BuildCommandBuffer(RenderCmdBuffer *cb,Framebuffer *fbo,Renderable *ri)
     {   
         if(!ri)return(false);
 
         cb->Begin();
-            cb->BindFramebuffer(rp,fb);
+            cb->BindFramebuffer(fbo);
             cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 cb->BindPipeline(ri->GetPipeline());
@@ -238,19 +238,12 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(RenderCmdBuffer *cb,RenderTarget *rt,Renderable *ri)
-    {
-        if(!cb||!rt||!ri)
-            return;
-
-        BuildCommandBuffer(cb,rt->GetRenderPass(),rt->GetFramebuffer(),ri);
-    }
-
     bool BuildCommandBuffer(uint32_t index,Renderable *ri)
     {   
         if(!ri)return(false);
 
-        return BuildCommandBuffer(cmd_buf[index],sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index),ri);
+        return BuildCommandBuffer(cmd_buf[index],
+                                  sc_render_target->GetFramebuffer(),ri);
     }
 
     bool BuildCommandBuffer(Renderable *ri)
@@ -277,7 +270,7 @@ public:
         RenderCmdBuffer *cb=cmd_buf[index];
 
         cb->Begin();
-        cb->BindFramebuffer(sc_render_target->GetRenderPass(),sc_render_target->GetFramebuffer(index));        
+        cb->BindFramebuffer(sc_render_target->GetFramebuffer(index));
         cb->SetClearColor(0,clear_color);
             cb->BeginRenderPass();
                 rl->Render(cb);

@@ -15,8 +15,6 @@ RTSwapchain::RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rc
     present_info.pResults           = nullptr;
     present_info.pSwapchains        = &(swapchain->swap_chain);
 
-    render_pass=rp;
-   
     extent=swapchain->extent;
 
     current_frame=0;

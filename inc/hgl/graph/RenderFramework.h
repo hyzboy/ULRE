@@ -3,6 +3,7 @@
 #include<hgl/platform/Window.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 
 VK_NAMESPACE_BEGIN
@@ -12,7 +13,6 @@ class TileFont;
 class RenderPassManager;
 class TextureManager;
 class RenderTargetManager;
-class SwapchainModule;
 
 class RenderModule;
 
@@ -55,6 +55,7 @@ public:
     RenderTargetManager *   GetRenderTargetManager  (){return rt_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
+    RTSwapchain *           GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}
 
 public:
 

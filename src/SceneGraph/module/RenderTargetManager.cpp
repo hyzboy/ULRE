@@ -47,7 +47,7 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
         DeviceQueue *q=dev->CreateQueue(fence_count,false);
         Semaphore *render_complete_semaphore=dev->CreateGPUSemaphore();
 
-        RenderTarget *rt=new RenderTarget(q,render_complete_semaphore,rp,fb,color_texture_list,image_count,depth_texture);
+        RenderTarget *rt=new RenderTarget(q,render_complete_semaphore,fb,color_texture_list,image_count,depth_texture);
 
         color_texture_list.DiscardObject();
         return rt;

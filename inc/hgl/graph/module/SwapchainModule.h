@@ -20,13 +20,13 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 
     RTSwapchain *           sc_render_target=nullptr;
 
+    SwapchainImage *        current_sc_image=nullptr;
+
 protected:
 
     bool CreateSwapchainFBO();
     bool CreateSwapchain();
     bool CreateSwapchainRenderTarget();
-
-    RenderCmdBuffer *GetRenderCmdBuffer(int frame_index=-1);
 
 public:
 
@@ -37,8 +37,9 @@ public:
     SwapchainModule(GPUDevice *,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
     virtual ~SwapchainModule();
 
-    bool BeginFrame();
-    void EndFrame();
+    RenderCmdBuffer *BeginRender();
+
+    void EndRender();
 
 public:
 
@@ -46,8 +47,7 @@ public:
 
     const   VkExtent2D &        GetSwapchainSize()const{return sc_render_target->GetExtent();}
 
-            RenderCmdBuffer *   RecordCmdBuffer (int frame_index=-1);
-
+            RTSwapchain *       GetRenderTarget ()const{return sc_render_target;}
 };//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END

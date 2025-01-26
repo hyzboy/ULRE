@@ -116,24 +116,21 @@ public:
         RenderFramework *rf=GetRenderFramework();
         SwapchainModule *sm=rf->GetSwapchainModule();
 
-        sm->BeginFrame();       //这里会有AcquireNextImage操作
+        RenderCmdBuffer *cb=sm->BeginRender();       //这里会有AcquireNextImage操作
+        if(cb)
+        {
 
             //这个使用完全不合理，录制CMD和推送swapchain是两回事，需要分开操作。
             //比如场景有的物件分静态和动态
 
             //可能静态物件就全部一次性录制好，而动态物件则是每帧录制
 
-            RenderCmdBuffer *cb=sm->RecordCmdBuffer();  //这里会获取当前帧的RenderCmdBuffer、开启cmd录制、绑定FBO
-
-            if(cb)
-            {
-                cb->SetClearColor(0,clear_color);
+            cb->SetClearColor(0,clear_color);
              
-                Render(cb,render_obj);
+            Render(cb,render_obj);
 
-                cb->End();      //结束cmd录制
-            }
-        sm->EndFrame();             //这里会Submit和PresentBackbuffer
+            sm->EndRender();             //这里会Submit和PresentBackbuffer
+        }
     }
 };//class TestApp:public VulkanApplicationFramework
 
