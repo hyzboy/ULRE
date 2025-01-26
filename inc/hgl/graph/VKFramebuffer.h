@@ -1,13 +1,13 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
 #define HGL_GRAPH_VULKAN_FRAMEBUFFER_INCLUDE
 
-#include<hgl/graph/VK.h>
+#include<hgl/graph/VKRenderPass.h>
 VK_NAMESPACE_BEGIN
 class Framebuffer
 {
     VkDevice device;
     VkFramebuffer frame_buffer;
-    VkRenderPass render_pass;
+    RenderPass *render_pass;
 
     VkExtent2D extent;
     uint32_t attachment_count;
@@ -18,7 +18,7 @@ private:
 
     friend class RenderTargetManager;
 
-    Framebuffer(VkDevice,VkFramebuffer,const VkExtent2D &,VkRenderPass,uint32_t color_count,bool depth);
+    Framebuffer(VkDevice,VkFramebuffer,const VkExtent2D &,RenderPass *,uint32_t color_count,bool depth);
 
 public:
 
@@ -27,7 +27,7 @@ public:
     operator VkFramebuffer(){return frame_buffer;}
 
     const   VkFramebuffer   GetFramebuffer      ()const{return frame_buffer;}
-    const   VkRenderPass    GetRenderPass       ()const{return render_pass;}
+            RenderPass *    GetRenderPass       ()const{return render_pass;}
 
     const   VkExtent2D &    GetExtent           ()const{return extent;}
 

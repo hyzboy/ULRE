@@ -59,7 +59,7 @@ bool RenderCmdBuffer::BindFramebuffer(Framebuffer *fbo)
     render_area.offset.y=0;
     render_area.extent=fbo->GetExtent();
 
-    rp_begin.renderPass         = fbo->GetRenderPass();
+    rp_begin.renderPass         = *fbo->GetRenderPass();
     rp_begin.framebuffer        = *fbo;
     rp_begin.renderArea         = render_area;
     rp_begin.clearValueCount    = cv_count;
