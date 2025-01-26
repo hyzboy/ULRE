@@ -174,6 +174,20 @@ bool SwapchainModule::CreateSwapchain()
     return(false);
 }
 
+namespace
+{
+    struct SwapchainRenderTargetData:public RenderTargetData
+    {
+        void Clear() override
+        {
+            delete render_complete_semaphore;
+            delete queue;
+
+            delete[] color_textures;
+        }
+    };//
+}//namespace
+
 bool SwapchainModule::CreateSwapchainRenderTarget()
 {
     if(!CreateSwapchain())
@@ -181,17 +195,35 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     GPUDevice *device=GetDevice();
 
-    DeviceQueue *q=device->CreateQueue(swapchain->image_count,false);
-    Semaphore *render_complete_semaphore=device->CreateGPUSemaphore();
+    RenderTarget **rt_list=new RenderTarget*[swapchain->image_count];
 
-    Semaphore *present_complete_semaphore=device->CreateGPUSemaphore();
+    SwapchainImage *sc_image=swapchain->sc_image;
 
-    sc_render_target=new RTSwapchain(   device->GetDevice(),
-                                        swapchain,
-                                        q,
-                                        render_complete_semaphore,
-                                        present_complete_semaphore
-                                        );
+    for(uint32_t i=0;i<swapchain->image_count;i++)
+    {
+        RenderTargetData *rtd=new SwapchainRenderTargetData{};
+
+        rtd->fbo                        =sc_image->fbo;
+        rtd->queue                      =device->CreateQueue(swapchain->image_count,false);
+        rtd->render_complete_semaphore  =device->CreateGPUSemaphore();
+
+        rtd->cmd_buf                    =sc_image->cmd_buf;
+
+        rtd->color_count                =1;
+        rtd->color_textures             =new Texture2D*[1];
+        rtd->color_textures[0]          =sc_image->color;
+        rtd->depth_texture              =sc_image->depth;
+
+        rt_list[i]=new RenderTarget(rtd);
+
+        ++sc_image;
+    }
+
+    sc_render_target=new SwapchainRenderTarget( device->GetDevice(),
+                                                swapchain,
+                                                device->CreateGPUSemaphore(),
+                                                rt_list
+                                                );
 
     return true;
 }
@@ -255,7 +287,7 @@ void SwapchainModule::EndRender()
         return;
 
     current_sc_image->cmd_buf->End();
-    sc_render_target->Submit(*(current_sc_image->cmd_buf));
+    sc_render_target->Submit();
     sc_render_target->PresentBackbuffer();
     sc_render_target->WaitQueue();
     sc_render_target->WaitFence();

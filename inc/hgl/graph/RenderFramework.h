@@ -55,7 +55,7 @@ public:
     RenderTargetManager *   GetRenderTargetManager  (){return rt_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
-    RTSwapchain *           GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}
+    SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}
 
 public:
 

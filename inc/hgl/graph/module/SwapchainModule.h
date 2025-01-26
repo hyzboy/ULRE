@@ -18,7 +18,7 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 
     RenderPass *            sc_render_pass  =nullptr;
 
-    RTSwapchain *           sc_render_target=nullptr;
+    SwapchainRenderTarget * sc_render_target=nullptr;
 
     SwapchainImage *        current_sc_image=nullptr;
 
@@ -43,11 +43,11 @@ public:
 
 public:
 
-            RenderPass *        GetRenderPass   ()const{return sc_render_pass;}
+            RenderPass *            GetRenderPass   ()const{return sc_render_pass;}
 
-    const   VkExtent2D &        GetSwapchainSize()const{return sc_render_target->GetExtent();}
+    const   VkExtent2D &            GetSwapchainSize()const{return sc_render_target->GetExtent();}
 
-            RTSwapchain *       GetRenderTarget ()const{return sc_render_target;}
+            SwapchainRenderTarget * GetRenderTarget ()const{return sc_render_target;}
 };//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END
