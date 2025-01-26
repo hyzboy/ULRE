@@ -36,7 +36,6 @@ protected:
 
     DeviceQueue *queue;
 
-    RenderPass *render_pass;
     Framebuffer *fbo;
     
     VkExtent2D extent;
@@ -55,7 +54,7 @@ protected:
     friend class RenderTargetManager;
 
     RenderTarget(DeviceQueue *,Semaphore *);
-    RenderTarget(DeviceQueue *,Semaphore *,RenderPass *_rp,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture);
+    RenderTarget(DeviceQueue *,Semaphore *,Framebuffer *_fb,Texture2D **color_texture_list,const uint32_t color_count,Texture2D *depth_texture);
 
 public:
 
@@ -63,9 +62,8 @@ public:
     
                     DeviceQueue *   GetQueue            ()      {return queue;}
             const   VkExtent2D &    GetExtent           ()const {return extent;}
-    virtual         RenderPass *    GetRenderPass       ()      {return render_pass;}
-    virtual const   VkRenderPass    GetVkRenderPass     ()const {return render_pass->GetVkRenderPass();}
-    virtual const   uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
+    virtual const   VkRenderPass    GetVkRenderPass     ()const {return fbo->GetRenderPass();}
+    virtual         uint32_t        GetColorCount       ()const {return fbo->GetColorCount();}
     virtual         Framebuffer *   GetFramebuffer      ()      {return fbo;}
 
     virtual         Texture2D *     GetColorTexture     (const int index=0){return color_textures[index];}
@@ -98,19 +96,21 @@ public:
     RTSwapchain(VkDevice dev,Swapchain *sc,DeviceQueue *q,Semaphore *rcs,Semaphore *pcs,RenderPass *rp);
     ~RTSwapchain();
     
-                    Framebuffer *   GetFramebuffer  ()override                  {return swapchain->sc_image[current_frame].fbo;}
-                    Framebuffer *   GetFramebuffer  (const uint32_t index)      {return swapchain->sc_image[index].fbo;}
+            uint32_t            GetColorCount           ()const override            {return 1;}
+            uint32_t            GetImageCount           ()const                     {return swapchain->image_count;}
+            uint32_t            GetCurrentFrameIndices  ()const                     {return current_frame;}
 
-            const   uint32_t        GetColorCount   ()const override            {return 1;}
-            const   uint32_t        GetImageCount   ()const                     {return swapchain->image_count;}
-            
-    virtual         Texture2D *     GetColorTexture (const int index=0) override{return swapchain->sc_image[current_frame].color;}
-    virtual         Texture2D *     GetDepthTexture ()                  override{return swapchain->sc_image[current_frame].depth;}
+            Framebuffer *       GetFramebuffer          ()override                  {return swapchain->sc_image[current_frame].fbo;}
+            Framebuffer *       GetFramebuffer          (int index)                 {return swapchain->sc_image[index].fbo;}
+           
+    virtual Texture2D *         GetColorTexture         (const int index=0) override{return swapchain->sc_image[current_frame].color;}
+    virtual Texture2D *         GetDepthTexture         ()                  override{return swapchain->sc_image[current_frame].depth;}
+
+            RenderCmdBuffer *   GetRenderCmdBuffer      (int index)                 {return swapchain->sc_image[index].cmd_buf;}
 
 public:
 
-            const   uint32_t        GetCurrentFrameIndices      ()const {return current_frame;}
-                    Semaphore *     GetPresentCompleteSemaphore ()      {return present_complete_semaphore;}
+            Semaphore *         GetPresentSemaphore     ()                          {return present_complete_semaphore;}
 
 public:
 
