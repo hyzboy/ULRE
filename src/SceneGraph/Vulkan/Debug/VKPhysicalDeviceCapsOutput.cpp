@@ -401,11 +401,14 @@ namespace
 
 void OutputPhysicalDeviceCaps(const GPUPhysicalDevice *pd)
 {
-    DebugOut(pd->GetProperties());
+    const VkPhysicalDeviceProperties &pdp=pd->GetProperties();
+
+    DebugOut(pdp);
     DebugOut(pd->GetFeatures10());
-    DebugOut(pd->GetFeatures11());
-    DebugOut(pd->GetFeatures12());
-    DebugOut(pd->GetFeatures13());
-    DebugOut(pd->GetFeatures14());
+
+    if(pdp.apiVersion>=VK_MAKE_VERSION(1,1,0))DebugOut(pd->GetFeatures11());
+    if(pdp.apiVersion>=VK_MAKE_VERSION(1,2,0))DebugOut(pd->GetFeatures12());
+    if(pdp.apiVersion>=VK_MAKE_VERSION(1,3,0))DebugOut(pd->GetFeatures13());
+    if(pdp.apiVersion>=VK_MAKE_VERSION(1,4,0))DebugOut(pd->GetFeatures14());
 }
 VK_NAMESPACE_END
