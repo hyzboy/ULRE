@@ -15,6 +15,8 @@ protected:
 
     VkCommandBuffer cmd_buf;
 
+    bool cmd_begin;
+
 public:
 
     GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
@@ -23,9 +25,19 @@ public:
     operator VkCommandBuffer(){return cmd_buf;}
     operator const VkCommandBuffer()const{return cmd_buf;}
     operator const VkCommandBuffer *()const{return &cmd_buf;}
+
+    const bool IsBegin()const{return cmd_begin;}
     
     bool Begin();
-    bool End(){return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);}
+    bool End()
+    {
+        if(!cmd_begin)
+            return(false);
+
+        cmd_begin=false;
+
+        return(vkEndCommandBuffer(cmd_buf)==VK_SUCCESS);
+    }
 
 #ifdef _DEBUG
     void SetDebugName(const AnsiString &);

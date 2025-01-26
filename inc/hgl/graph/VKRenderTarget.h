@@ -131,7 +131,7 @@ public: // Command Buffer
         if(!data)
             return(false);
 
-        return data->queue->Submit(*data->cmd_buf,wait_sem,data->render_complete_semaphore);
+        return data->queue->Submit(data->cmd_buf,wait_sem,data->render_complete_semaphore);
     }
 
     bool                WaitQueue           ()override{return data->queue->WaitQueue();}
@@ -238,7 +238,7 @@ public:
 
 public:
 
-    int     AcquireNextImage();             ///<获取下一帧的索引
+    RenderCmdBuffer *AcquireNextImage();             ///<获取下一帧的索引
 
     bool    PresentBackbuffer();            ///<推送后台画面到前台
 

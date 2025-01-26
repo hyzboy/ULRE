@@ -10,8 +10,6 @@ class RenderPass;
 
 GRAPH_MODULE_CLASS(SwapchainModule)
 {
-    Swapchain *             swapchain   =nullptr;
-
     TextureManager *        tex_manager =nullptr;
     RenderTargetManager *   rt_manager  =nullptr;
     RenderPassManager *     rp_manager  =nullptr;
@@ -20,12 +18,10 @@ GRAPH_MODULE_CLASS(SwapchainModule)
 
     SwapchainRenderTarget * sc_render_target=nullptr;
 
-    SwapchainImage *        current_sc_image=nullptr;
-
 protected:
 
-    bool CreateSwapchainFBO();
-    bool CreateSwapchain();
+    bool CreateSwapchainFBO(Swapchain *);
+    Swapchain *CreateSwapchain();
     bool CreateSwapchainRenderTarget();
 
 public:

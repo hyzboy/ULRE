@@ -96,7 +96,7 @@ namespace
     }
 }//namespace
 
-bool SwapchainModule::CreateSwapchainFBO()
+bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 {
     if(vkGetSwapchainImagesKHR(swapchain->device,swapchain->swap_chain,&(swapchain->image_count),nullptr)!=VK_SUCCESS)
         return(false);
@@ -119,7 +119,7 @@ bool SwapchainModule::CreateSwapchainFBO()
         if(!swapchain->sc_image[i].color)
             return(false);
 
-        swapchain->sc_image[i].depth =tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent));
+        swapchain->sc_image[i].depth=tex_manager->CreateTexture2D(new SwapchainDepthTextureCreateInfo(swapchain->depth_format,swapchain->extent));
 
         if(!swapchain->sc_image[i].depth)
             return(false);
@@ -146,14 +146,14 @@ bool SwapchainModule::CreateSwapchainFBO()
     return(true);
 }
 
-bool SwapchainModule::CreateSwapchain()
+Swapchain *SwapchainModule::CreateSwapchain()
 {
     auto *dev_attr=GetDeviceAttribute();
 
     if(!dev_attr)
-        return(false);
+        return(nullptr);
 
-    swapchain=new Swapchain;
+    Swapchain *swapchain=new Swapchain;
 
     swapchain->device           =dev_attr->device;
     swapchain->extent           =dev_attr->surface_caps.currentExtent;
@@ -165,13 +165,13 @@ bool SwapchainModule::CreateSwapchain()
 
     if(swapchain->swap_chain)
     {
-        if(CreateSwapchainFBO())
+        if(CreateSwapchainFBO(swapchain))
             return swapchain;
     }
 
     delete swapchain;
     swapchain=nullptr;
-    return(false);
+    return(nullptr);
 }
 
 namespace
@@ -190,7 +190,9 @@ namespace
 
 bool SwapchainModule::CreateSwapchainRenderTarget()
 {
-    if(!CreateSwapchain())
+    Swapchain *swapchain=CreateSwapchain();
+
+    if(!swapchain)
         return(false);
 
     GPUDevice *device=GetDevice();
@@ -259,7 +261,6 @@ SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetM
 void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(sc_render_target)
-    swapchain=nullptr;
 
     GetDeviceAttribute()->RefreshSurfaceCaps();
 
@@ -268,31 +269,15 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 
 RenderCmdBuffer *SwapchainModule::BeginRender()
 {
-    const int index=sc_render_target->AcquireNextImage();
-
-    if(index<0||index>=swapchain->image_count)
-        return(nullptr);
-
-    current_sc_image=&(swapchain->sc_image[index]);
-
-    current_sc_image->cmd_buf->Begin();
-    current_sc_image->cmd_buf->BindFramebuffer(current_sc_image->fbo);
-
-    return current_sc_image->cmd_buf;
+    return sc_render_target->AcquireNextImage();
 }
 
 void SwapchainModule::EndRender()
 {
-    if(!current_sc_image)
-        return;
-
-    current_sc_image->cmd_buf->End();
     sc_render_target->Submit();
     sc_render_target->PresentBackbuffer();
     sc_render_target->WaitQueue();
     sc_render_target->WaitFence();
-
-    current_sc_image=nullptr;
 }
 
 VK_NAMESPACE_END
