@@ -37,8 +37,10 @@ public:
 
     virtual ~RenderPass();
 
-            VkRenderPass    GetVkRenderPass(){return render_pass;}
-            VkPipelineCache GetPipelineCache(){return pipeline_cache;}
+    operator const VkRenderPass()const{return render_pass;}
+
+    const   VkRenderPass    GetVkRenderPass()const{return render_pass;}
+    const   VkPipelineCache GetPipelineCache()const{return pipeline_cache;}
 
     const uint              GetColorCount()const{return color_formats.GetCount();}
     const List<VkFormat> &  GetColorFormat()const{return color_formats;}
