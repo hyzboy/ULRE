@@ -1,6 +1,6 @@
 ﻿// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
 
-#include"WorkObject.h"
+#include"WorkManager.h"
 #include<hgl/math/HalfFloat.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/PrimitiveCreater.h>
