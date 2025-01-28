@@ -57,10 +57,8 @@ private:
 
     bool InitPipeline()
     {
-        RenderPass *sc_render_pass=GetRenderFramework()->GetSwapchainModule()->GetRenderPass();
-
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=sc_render_pass->CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         return pipeline;
     }
@@ -107,11 +105,6 @@ public:
         if(!cmd)
             return;
 
-        //这个使用完全不合理，录制CMD和推送swapchain是两回事，需要分开操作。
-        //比如场景有的物件分静态和动态
-
-        //可能静态物件就全部一次性录制好，而动态物件则是每帧录制
-
         cmd->SetClearColor(0,clear_color);
 
         cmd->BeginRenderPass();
@@ -134,13 +127,4 @@ int main(int,char **)
     SwapchainWorkManager wm(&rf);
 
     wm.Run(new TestApp(&rf));
-
-    // WorkObject被定义为工作对象，所有的渲染控制都需要被写在WorkObject的Render函数下。
-
-    // 但我们认为游戏开发者不应该关注如何控制渲染，而应该关注如何处理游戏逻辑.
-    // 所以我们在WorkObject的基础上再提供RenderWorkObject派生类，用于直接封装好的渲染场景树控制。
-    // 
-    // 开发者仅需要将要渲染的物件放置于场景树即可。
-
-    // 但开发者也可以直接使用WorkObject，自行管理这些事。
 }

@@ -16,6 +16,8 @@ namespace hgl
 
         render_framework=rf;
         cur_render_target=rt;
+        render_pass=rt->GetRenderPass();
+
         db=rf->GetRenderResource();
     }
 

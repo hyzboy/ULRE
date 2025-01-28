@@ -8,11 +8,14 @@ namespace hgl
 {
     /**
     * 工作对象</p>
+    * 
+    * WorkObject被定义为工作对象，所有的渲染控制都需要被写在WorkObject的Render函数下。
     */
     class WorkObject:public TickObject
     {
         graph::RenderFramework *render_framework=nullptr;
         graph::IRenderTarget *cur_render_target=nullptr;
+        graph::RenderPass *render_pass=nullptr;
 
         bool destroy_flag=false;
 
@@ -49,5 +52,22 @@ namespace hgl
         virtual void Render(double delta_time,graph::RenderCmdBuffer *cmd)=0;
 
         virtual void Render(double delta_time);
+
+    public:
+
+        template<typename ...ARGS>
+        graph::Pipeline *CreatePipeline(ARGS...args)
+        {
+            return render_pass->CreatePipeline(args...);
+        }
     };//class WorkObject
+
+    /**
+    * 但我们认为游戏开发者不应该关注如何控制渲染，而应该关注如何处理游戏逻辑.
+    * 所以我们在WorkObject的基础上再提供RenderWorkObject派生类，用于直接封装好的渲染场景树控制。
+    * 
+    * 开发者仅需要将要渲染的物件放置于场景树即可。
+
+    * 但开发者也可以直接使用WorkObject，自行管理这些事。
+    * */
 }//namespcae hgl
