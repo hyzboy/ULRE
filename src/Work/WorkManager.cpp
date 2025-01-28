@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include"WorkManager.h"
+#include<hgl/WorkManager.h>
 #include<hgl/graph/VKRenderTarget.h>
 
 namespace hgl

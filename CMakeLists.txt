@@ -23,6 +23,7 @@ SET(ULRE    CMCore
             CMAssetsManage
             CMSceneGraph
             CMUtil
+	    ULRE.Work
             ULRE.Util
             ULRE.ShaderGen
             ULRE.SceneGraph
