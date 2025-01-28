@@ -33,9 +33,9 @@ public:
     SwapchainModule(GPUDevice *,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
     virtual ~SwapchainModule();
 
-    RenderCmdBuffer *BeginRender();
+//    RenderCmdBuffer *BeginRender();
 
-    void EndRender();
+    //void EndRender();
 
 public:
 
@@ -44,6 +44,7 @@ public:
     const   VkExtent2D &            GetSwapchainSize()const{return sc_render_target->GetExtent();}
 
             SwapchainRenderTarget * GetRenderTarget ()const{return sc_render_target;}
+            IRenderTarget *         AcquireNextImage()const{return sc_render_target->AcquireNextImage();}
 };//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END
