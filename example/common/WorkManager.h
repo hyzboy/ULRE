@@ -3,6 +3,9 @@
 
 namespace hgl
 {
+    /**
+    * 工作管理器，管理一个序列的WorkObject<br>
+    */
     class WorkManager
     {
         graph::RenderFramework *render_framework;
@@ -35,10 +38,24 @@ namespace hgl
         }
 
         void Tick(WorkObject *wo);
-        void Render(WorkObject *wo);
 
-        void Run();
+        virtual void Render(WorkObject *wo);
 
-        void Start(WorkObject *wo);
+        void Run(WorkObject *wo);
     };//class WorkManager
+
+    class SwapchainWorkManager:public WorkManager
+    {
+        graph::SwapchainModule *swpachain_module;
+
+    public:
+
+        SwapchainWorkManager(graph::RenderFramework *rf):WorkManager(rf)
+        {
+            swpachain_module=rf->GetSwapchainModule();
+        }
+        ~SwapchainWorkManager()=default;
+
+        void Render(WorkObject *wo) override;
+    };
 }//namespcae hgl

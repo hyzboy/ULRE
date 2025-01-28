@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include"WorkManager.h"
+#include<hgl/graph/VKRenderTarget.h>
 
 namespace hgl
 {
@@ -18,17 +19,33 @@ namespace hgl
     {
         double delta_time=cur_time-last_render_time;
 
-        if(delta_time>=frame_time)
+        if(delta_time>=frame_time||wo->IsRenderDirty())
         {
             last_render_time=cur_time;
             wo->Render(delta_time);
         }
     }
 
-    void WorkManager::Run()
+    void SwapchainWorkManager::Render(WorkObject *wo)
     {
-        if(!cur_work_object)
-            return;
+        graph::IRenderTarget *rt=swpachain_module->AcquireNextImage();
+
+        wo->MarkRenderDirty();      //临时的，未来会被更好的机制替代
+        WorkManager::Render(wo);
+
+        rt->WaitQueue();
+        rt->WaitFence();
+    }
+
+    void WorkManager::Run(WorkObject *wo)
+    {
+        if(!wo)return;
+
+        last_update_time=last_render_time=0;
+
+        cur_work_object=wo;
+
+        wo->Join(render_framework,render_framework->GetSwapchainRenderTarget());
 
         Window *win=render_framework->GetWindow();
         graph::GPUDevice *dev=render_framework->GetDevice();
@@ -49,18 +66,5 @@ namespace hgl
             if(!win->Update())
                 break;
         }
-    }
-
-    void WorkManager::Start(WorkObject *wo)
-    {
-        if(!wo)return;
-
-        last_update_time=last_render_time=0;
-
-        cur_work_object=wo;
-
-        wo->Join(render_framework);
-
-        Run();
     }
 }//namespcae hgl

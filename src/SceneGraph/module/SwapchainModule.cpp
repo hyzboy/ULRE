@@ -6,6 +6,7 @@
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKSemaphore.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -266,18 +267,18 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 
     CreateSwapchainRenderTarget();
 }
-
-RenderCmdBuffer *SwapchainModule::BeginRender()
-{
-    return sc_render_target->AcquireNextImage();
-}
-
-void SwapchainModule::EndRender()
-{
-    sc_render_target->Submit();
-    sc_render_target->PresentBackbuffer();
-    sc_render_target->WaitQueue();
-    sc_render_target->WaitFence();
-}
+//
+//RenderCmdBuffer *SwapchainModule::BeginRender()
+//{
+//    return sc_render_target->AcquireNextImage();
+//}
+//
+//void SwapchainModule::EndRender()
+//{
+//    sc_render_target->Submit();
+//    sc_render_target->PresentBackbuffer();
+//    sc_render_target->WaitQueue();
+//    sc_render_target->WaitFence();
+//}
 
 VK_NAMESPACE_END

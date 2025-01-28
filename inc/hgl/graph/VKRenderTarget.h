@@ -7,6 +7,7 @@
 #include<hgl/graph/VKQueue.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>
+//#include<iostream>
 
 VK_NAMESPACE_BEGIN
 /**
@@ -54,6 +55,9 @@ public: // Command Buffer
 
     virtual bool                WaitQueue           ()=0;
     virtual bool                WaitFence           ()=0;
+
+    virtual RenderCmdBuffer *   BeginRender         ()=0;
+    virtual void                EndRender           ()=0;
 };//class IRenderTarget
 
 struct RenderTargetData
@@ -136,6 +140,26 @@ public: // Command Buffer
 
     bool                WaitQueue           ()override{return data->queue->WaitQueue();}
     bool                WaitFence           ()override{return data->queue->WaitFence();}
+
+public:
+
+    virtual RenderCmdBuffer *BeginRender()override
+    {
+        if(!data->cmd_buf)
+            return(nullptr);
+
+        data->cmd_buf->Begin();
+        data->cmd_buf->BindFramebuffer(data->fbo);
+        return data->cmd_buf;
+    }
+
+    virtual void EndRender() override
+    {
+        if(!data->cmd_buf)
+            return;
+
+        data->cmd_buf->End();
+    }
 };//class RenderTarget
 
 /**
@@ -212,6 +236,20 @@ public: // Command Buffer
 
     bool                WaitQueue           ()override{return rt_list[current_frame]->WaitQueue();}
     bool                WaitFence           ()override{return rt_list[current_frame]->WaitFence();}
+
+public:
+
+    virtual RenderCmdBuffer *BeginRender()override
+    {
+        //std::cout<<"Begin Render frame="<<current_frame<<std::endl;
+        return rt_list[current_frame]->BeginRender();
+    }
+
+    virtual void EndRender() override
+    {
+        //std::cout<<"End Render frame="<<current_frame<<std::endl;
+        rt_list[current_frame]->EndRender();
+    }
 };//class MFRenderTarget
 
 /**
@@ -238,13 +276,8 @@ public:
 
 public:
 
-    RenderCmdBuffer *AcquireNextImage();             ///<获取下一帧的索引
+    IRenderTarget *AcquireNextImage();             ///<获取下一帧的索引
 
-    bool    PresentBackbuffer();            ///<推送后台画面到前台
-
-    bool    Submit()override
-    {
-        return rt_list[current_frame]->Submit(present_complete_semaphore);
-    }
+    bool Submit()override;                         ///<提交当前帧的渲染，交推送到前台
 };//class SwapchainRenderTarget:public RenderTarget
 VK_NAMESPACE_END

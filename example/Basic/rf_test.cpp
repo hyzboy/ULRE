@@ -80,8 +80,15 @@ private:
 
 public:
 
-    TestApp(RenderFramework *rf):WorkObject(rf)
+    TestApp(RenderFramework *rf):WorkObject()
     {
+        Join(rf,rf->GetSwapchainRenderTarget());
+    }
+
+    void Join(RenderFramework *rf,IRenderTarget *rt)
+    {
+        WorkObject::Join(rf,rt);
+
         if(!InitAutoMaterial())
             return;
 
@@ -95,31 +102,21 @@ public:
     void Tick(double)override
     {}
 
-    void Render(double)
+    void Render(double delta_time,graph::RenderCmdBuffer *cmd)
     {
-        //WorkObject是工作对象，不是渲染对象，所以不应该直接自动指定RenderTarget，更不能直接指定RenderCmdBuffer
+        if(!cmd)
+            return;
 
-        //目前这里只是为了测试，所以这样写
+        //这个使用完全不合理，录制CMD和推送swapchain是两回事，需要分开操作。
+        //比如场景有的物件分静态和动态
 
-        RenderFramework *rf=GetRenderFramework();
-        SwapchainModule *sm=rf->GetSwapchainModule();
+        //可能静态物件就全部一次性录制好，而动态物件则是每帧录制
 
-        RenderCmdBuffer *cb=sm->BeginRender();       //这里会有AcquireNextImage操作
-        if(cb)
-        {
-            //这个使用完全不合理，录制CMD和推送swapchain是两回事，需要分开操作。
-            //比如场景有的物件分静态和动态
+        cmd->SetClearColor(0,clear_color);
 
-            //可能静态物件就全部一次性录制好，而动态物件则是每帧录制
-
-            cb->SetClearColor(0,clear_color);
-             
-            cb->BeginRenderPass();
-                cb->Render(render_obj);
-            cb->EndRenderPass();
-
-            sm->EndRender();             //这里会Submit和PresentBackbuffer
-        }
+        cmd->BeginRenderPass();
+            cmd->Render(render_obj);
+        cmd->EndRenderPass();
     }
 };//class TestApp:public VulkanApplicationFramework
 
@@ -130,7 +127,20 @@ int main(int,char **)
     if(!rf.Init(SCREEN_WIDTH,SCREEN_HEIGHT))
         return(-1);
 
-    WorkManager wm(&rf);
+    // RenderFramework存在于外部，提供的是整体的渲染控制。
 
-    wm.Start(new TestApp(&rf));
+    // WorkManager是提供一个工作业务管理，但开发者并不一定要使用它，所以我们不将它们整合在一起。
+
+    SwapchainWorkManager wm(&rf);
+
+    wm.Run(new TestApp(&rf));
+
+    // WorkObject被定义为工作对象，所有的渲染控制都需要被写在WorkObject的Render函数下。
+
+    // 但我们认为游戏开发者不应该关注如何控制渲染，而应该关注如何处理游戏逻辑.
+    // 所以我们在WorkObject的基础上再提供RenderWorkObject派生类，用于直接封装好的渲染场景树控制。
+    // 
+    // 开发者仅需要将要渲染的物件放置于场景树即可。
+
+    // 但开发者也可以直接使用WorkObject，自行管理这些事。
 }

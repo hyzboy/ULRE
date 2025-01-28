@@ -67,6 +67,10 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
         submit_info.pWaitSemaphores     =nullptr;
     }
 
+    // wait 信号的意思是等待这个Image有效
+    // signal 则是这个queue已执行完成，和fence功能类似。
+    // 所以Wait信号一般是上一次的signal信号
+
     if(complete_sem)
     {
         cs=*complete_sem;
