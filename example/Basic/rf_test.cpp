@@ -2,7 +2,6 @@
 #include<hgl/WorkManager.h>
 #include<hgl/math/HalfFloat.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/VKMaterialInstance.h>
@@ -27,6 +26,7 @@ constexpr float color_data[VERTEX_COUNT*4]=
     0,1,0,1,
     0,0,1,1
 };
+
 
 class TestApp:public WorkObject
 {
@@ -65,14 +65,11 @@ private:
 
     bool InitVBO()
     {
-        PrimitiveCreater rpc(GetDevice(),material_instance->GetVIL());
-        
-        rpc.Init("Triangle",VERTEX_COUNT);
-
-        if(!rpc.WriteVAB(VAN::Position,   VF_V2F,   position_data))return(false);
-        if(!rpc.WriteVAB(VAN::Color,      VF_V4F,   color_data   ))return(false);
-        
-        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
+        render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
+                                    {
+                                        {VAN::Position,VF_V2F,position_data},
+                                        {VAN::Color,   VF_V4F,color_data}
+                                    });
         return(render_obj);
     }
 
@@ -81,11 +78,6 @@ public:
     TestApp(RenderFramework *rf):WorkObject()
     {
         Join(rf,rf->GetSwapchainRenderTarget());
-    }
-
-    void Join(RenderFramework *rf,IRenderTarget *rt)
-    {
-        WorkObject::Join(rf,rt);
 
         if(!InitAutoMaterial())
             return;
@@ -97,8 +89,7 @@ public:
             return;
     }
 
-    void Tick(double)override
-    {}
+    void Tick(double)override{}
 
     void Render(double delta_time,graph::RenderCmdBuffer *cmd)
     {

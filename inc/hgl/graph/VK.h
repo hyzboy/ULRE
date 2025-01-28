@@ -25,6 +25,13 @@ constexpr size_t VK_DESCRIPTOR_TYPE_END_RANGE=VK_DESCRIPTOR_TYPE_INPUT_ATTACHMEN
 constexpr size_t VK_DESCRIPTOR_TYPE_RANGE_SIZE=VK_DESCRIPTOR_TYPE_END_RANGE-VK_DESCRIPTOR_TYPE_BEGIN_RANGE+1;
 #endif//VK_DESCRIPTOR_TYPE_RANGE_SIZE
 
+struct VertexAttribDataPtr
+{
+    const char *    name;
+    const VkFormat  format;
+    const void *    data;
+};
+
 using BindingMap        =Map<AnsiString,int>;
 using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 

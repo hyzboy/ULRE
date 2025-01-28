@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include<hgl/graph/RenderFramework.h>
 #include<hgl/type/object/TickObject.h>
+#include<hgl/graph/RenderFramework.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -60,6 +60,12 @@ namespace hgl
         {
             return render_pass->CreatePipeline(args...);
         }
+
+        graph::Renderable *CreateRenderable( const AnsiString &name,
+                                             uint32_t vertices_count,
+                                             graph::MaterialInstance *mi,
+                                             graph::Pipeline *pipeline,
+                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
     };//class WorkObject
 
     /**
