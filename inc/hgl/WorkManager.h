@@ -58,4 +58,18 @@ namespace hgl
 
         void Render(WorkObject *wo) override;
     };
+
+    template<typename WO> int RunFramework(const OSString &title,uint width=1280,uint height=720)
+    {
+        graph::RenderFramework rf(title);
+
+        if(!rf.Init(width,height))
+            return(-1);
+
+        SwapchainWorkManager wm(&rf);
+
+        wm.Run(new WO(&rf));
+
+        return 0;
+    }
 }//namespcae hgl
