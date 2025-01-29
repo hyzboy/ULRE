@@ -1,11 +1,11 @@
-#include<hgl/graph/VKDebugUtils.h>
+﻿#include<hgl/graph/VKDebugUtils.h>
 
 VK_NAMESPACE_BEGIN
 DebugUtils *CreateDebugUtils(VkDevice device)
 {
     DebugUtilsFunction duf;
 
-#define DUF_GETFUNC(n,N)    duf.n=(PFN_vk##N##EXT)vkGetDeviceProcAddr(device,"vk"#N"EXT");if(!duf.##n)return(nullptr);
+#define DUF_GETFUNC(n,N)    duf.n=(PFN_vk##N##EXT)vkGetDeviceProcAddr(device,"vk"#N"EXT");if(!duf.n)return(nullptr);
 
     DUF_GETFUNC(SetName,    SetDebugUtilsObjectName     );
     DUF_GETFUNC(SetTag,     SetDebugUtilsObjectTag      );

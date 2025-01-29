@@ -12,7 +12,12 @@
 
 namespace hgl
 {
-    void WorkObject::Join(graph::RenderFramework *rf,graph::IRenderTarget *rt)
+    WorkObject::WorkObject(graph::RenderFramework *rf,graph::IRenderTarget *rt)
+    {
+        OnRenderTargetSwitch(rf,rt);
+    }
+
+    void WorkObject::OnRenderTargetSwitch(graph::RenderFramework *rf,graph::IRenderTarget *rt)
     {
         if(!rf)return;
         if(render_framework==rf)return;

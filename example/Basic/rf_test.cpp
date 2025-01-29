@@ -73,10 +73,8 @@ private:
 
 public:
 
-    TestApp(RenderFramework *rf):WorkObject()
+    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
     {
-        Join(rf,rf->GetSwapchainRenderTarget());
-
         if(!InitAutoMaterial())
             return;
 
