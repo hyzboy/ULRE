@@ -48,7 +48,7 @@ private:
 
         AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
 
-        material_instance=db->CreateMaterialInstance(mci);
+        material_instance=CreateMaterialInstance(mci);
 
         return material_instance;
     }

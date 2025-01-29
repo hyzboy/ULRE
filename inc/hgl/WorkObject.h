@@ -1,11 +1,17 @@
 ﻿#pragma once
 #include<hgl/type/object/TickObject.h>
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/VKRenderResource.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
 namespace hgl
 {
+    namespace graph::mtl
+    {
+        class MaterialCreateInfo;
+    }
+
     /**
     * 工作对象</p>
     * 
@@ -59,6 +65,11 @@ namespace hgl
         graph::Pipeline *CreatePipeline(ARGS...args)
         {
             return render_pass->CreatePipeline(args...);
+        }
+
+        graph::MaterialInstance *CreateMaterialInstance(const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
+        {
+            return db->CreateMaterialInstance(mci,vil_cfg);
         }
 
         graph::Renderable *CreateRenderable( const AnsiString &name,
