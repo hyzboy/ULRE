@@ -1,6 +1,5 @@
 ﻿// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
 #include<hgl/WorkManager.h>
-#include<hgl/math/HalfFloat.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -26,7 +25,6 @@ constexpr float color_data[VERTEX_COUNT*4]=
     0,1,0,1,
     0,0,1,1
 };
-
 
 class TestApp:public WorkObject
 {
@@ -93,29 +91,15 @@ public:
 
     void Render(double delta_time,graph::RenderCmdBuffer *cmd)
     {
-        if(!cmd)
-            return;
-
         cmd->SetClearColor(0,clear_color);
 
         cmd->BeginRenderPass();
             cmd->Render(render_obj);
         cmd->EndRenderPass();
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WorkObject
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    RenderFramework rf(OS_TEXT("RenderFramework Test"));
-
-    if(!rf.Init(SCREEN_WIDTH,SCREEN_HEIGHT))
-        return(-1);
-
-    // RenderFramework存在于外部，提供的是整体的渲染控制。
-
-    // WorkManager是提供一个工作业务管理，但开发者并不一定要使用它，所以我们不将它们整合在一起。
-
-    SwapchainWorkManager wm(&rf);
-
-    wm.Run(new TestApp(&rf));
+    return RunFramework<TestApp>(OS_TEXT("RenderFramework Test"));
 }
