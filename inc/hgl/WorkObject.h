@@ -44,10 +44,10 @@ namespace hgl
 
     public:
 
-        WorkObject()=default;
+        WorkObject(graph::RenderFramework *,graph::IRenderTarget *);
         virtual ~WorkObject()=default;
 
-        virtual void Join(graph::RenderFramework *rf,graph::IRenderTarget *rt);
+        virtual void OnRenderTargetSwitch(graph::RenderFramework *rf,graph::IRenderTarget *rt);
 
         virtual void Render(double delta_time,graph::RenderCmdBuffer *cmd)=0;
 

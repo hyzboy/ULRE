@@ -45,7 +45,7 @@ namespace hgl
 
         cur_work_object=wo;
 
-        wo->Join(render_framework,render_framework->GetSwapchainRenderTarget());
+        wo->OnRenderTargetSwitch(render_framework,render_framework->GetSwapchainRenderTarget());
 
         Window *win=render_framework->GetWindow();
         graph::GPUDevice *dev=render_framework->GetDevice();
