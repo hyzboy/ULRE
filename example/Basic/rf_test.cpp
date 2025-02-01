@@ -1,5 +1,4 @@
-﻿// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -21,7 +20,8 @@ constexpr float position_data[VERTEX_COUNT*2]=
 };
 
 constexpr float color_data[VERTEX_COUNT*4]=
-{   1,0,0,1,
+{
+    1,0,0,1,
     0,1,0,1,
     0,0,1,1
 };

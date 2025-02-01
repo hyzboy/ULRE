@@ -1,6 +1,6 @@
 ﻿// 该范例主要演示使用NDC坐标系直接绘制一个渐变色的三角形
 
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 #include<hgl/math/HalfFloat.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/PrimitiveCreater.h>
@@ -39,7 +39,8 @@ constexpr VkFormat PositionFormat=VF_V2F;
 
 #ifdef USE_UNORM8_COLOR
 constexpr uint8 color_data[VERTEX_COUNT*4]=
-{   255,0,0,255,
+{
+    255,0,0,255,
     0,255,0,255,
     0,0,255,255
 };
@@ -47,7 +48,8 @@ constexpr uint8 color_data[VERTEX_COUNT*4]=
 constexpr VkFormat ColorFormat=VF_V4UN8;
 #else
 constexpr float color_data[VERTEX_COUNT*4]=
-{   1,0,0,1,
+{
+    1,0,0,1,
     0,1,0,1,
     0,0,1,1
 };
@@ -55,9 +57,11 @@ constexpr float color_data[VERTEX_COUNT*4]=
 constexpr VkFormat ColorFormat=VF_V4F;
 #endif//USE_UNORM8_COLOR
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public WorkObject
 {
 private:
+
+    Color4f             clear_color=Color4f(0.2f,0.2f,0.2f,1.0f);
 
 #if defined(USE_HALF_FLOAT_POSITION)||defined(USE_UNORM8_COLOR)
     VILConfig vil_config;
@@ -83,7 +87,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2d",Prim::Triangles);
+        mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2d",Prim::Triangles);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
@@ -105,54 +109,47 @@ private:
 
     bool InitVBO()
     {
-        PrimitiveCreater rpc(device,material_instance->GetVIL());
-        
-        rpc.Init("Triangle",VERTEX_COUNT);
-
 #ifdef USE_HALF_FLOAT_POSITION
         Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
 #endif//USE_HALF_FLOAT_POSITION
 
-        if(!rpc.WriteVAB(VAN::Position,   PositionFormat, position_data))return(false);
-        if(!rpc.WriteVAB(VAN::Color,      ColorFormat,    color_data   ))return(false);
-        
-        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
+        render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
+                                    {
+                                        {VAN::Position,PositionFormat,position_data},
+                                        {VAN::Color,   ColorFormat,   color_data}
+                                    });
         return(render_obj);
     }
 
 public:
-
-    bool Init(uint w,uint h)
+    
+    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
     {
-        if(!VulkanApplicationFramework::Init(w,h))
-            return(false);
-
         InitVIL();
 
         if(!InitAutoMaterial())
-            return(false);
+            return;
 
         if(!InitPipeline())
-            return(false);
+            return;
 
         if(!InitVBO())
-            return(false);
-
-        if(!BuildCommandBuffer(render_obj))
-            return(false);
-
-        return(true);
+            return;
     }
 
-    void Resize(uint w,uint h)override
+    void Tick(double)override{}
+
+    void Render(double delta_time,graph::RenderCmdBuffer *cmd)
     {
-        VulkanApplicationFramework::Resize(w,h);
+        cmd->SetClearColor(0,clear_color);
 
-        BuildCommandBuffer(render_obj);
+        cmd->BeginRenderPass();
+            cmd->Render(render_obj);
+        cmd->EndRenderPass();
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WorkObject
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    return RunApp<TestApp>(SCREEN_WIDTH,SCREEN_HEIGHT);
+    return RunFramework<TestApp>(OS_TEXT("RenderFramework Test"));
 }

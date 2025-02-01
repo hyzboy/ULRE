@@ -10,7 +10,7 @@
 #include<hgl/graph/mtl/ShaderBuffer.h>
 #include<hgl/graph/VKSamplerType.h>
 
-namespace hgl{namespace graph
+namespace hgl::graph
 {
     struct GPUDeviceAttribute;
     struct UBODescriptor;
@@ -92,5 +92,4 @@ namespace hgl{namespace graph
             bool CreateShader();
         };//class MaterialCreateInfo
     }//namespace mtl
-}//namespace graph
-}//namespace hgl
+}//namespace hgl::graph
