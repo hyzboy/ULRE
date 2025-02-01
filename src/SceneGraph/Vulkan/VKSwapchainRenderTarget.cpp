@@ -4,10 +4,8 @@
 //#include<iostream>
 
 VK_NAMESPACE_BEGIN
-SwapchainRenderTarget::SwapchainRenderTarget(VkDevice dev,Swapchain *sc,Semaphore *pcs,RenderTarget **rtl):MFRenderTarget(sc->image_count,rtl)
+SwapchainRenderTarget::SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,Semaphore *pcs,RenderTarget **rtl):MFRenderTarget(rf,sc->image_count,rtl)
 {
-    device=dev;
-
     swapchain=sc;
 
     present_info.waitSemaphoreCount = 0;
@@ -35,7 +33,7 @@ IRenderTarget *SwapchainRenderTarget::AcquireNextImage()
 
     //std::cout<<"AcquireNextImage present_complete_semaphore : "<<std::hex<<sem<<std::endl;
 
-    if(vkAcquireNextImageKHR(device,
+    if(vkAcquireNextImageKHR(GetVkDevice(),
                              swapchain->swap_chain,
                              UINT64_MAX,
                              sem,

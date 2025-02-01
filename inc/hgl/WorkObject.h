@@ -38,6 +38,8 @@ namespace hgl
         graph::GPUDevice *          GetDevice           (){return render_framework->GetDevice();}
         graph::GPUDeviceAttribute * GetDeviceAttribute  (){return render_framework->GetDeviceAttribute();}
 
+        const VkExtent2D &          GetExtent2D         (){return cur_render_target->GetExtent();}
+
     public:
 
         const bool IsDestroy()const{return destroy_flag;}

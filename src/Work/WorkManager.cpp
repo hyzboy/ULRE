@@ -33,6 +33,9 @@ namespace hgl
         wo->MarkRenderDirty();      //临时的，未来会被更好的机制替代
         WorkManager::Render(wo);
 
+        if(!rt)
+            return;
+
         rt->WaitQueue();
         rt->WaitFence();
     }
