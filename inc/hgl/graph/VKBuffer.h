@@ -1,8 +1,8 @@
-﻿#ifndef HGL_GRAPH_VULKAN_BUFFER_INCLUDE
-#define HGL_GRAPH_VULKAN_BUFFER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
+
 VK_NAMESPACE_BEGIN
 struct DeviceBufferData
 {
@@ -50,5 +50,66 @@ public:
     virtual bool    Write   (const void *ptr,uint32_t size)                 {return buf.memory->Write(ptr,0,size);}
             bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
 };//class DeviceBuffer
+
+template<typename T> struct DeviceBufferData
+{
+    T *data;                    ///<CPU端数据
+
+    // 数据如何被设置为不可以在CPU端访问，那么不会在CPU端保存备份。
+    // 这种情况的话，将不会允许CPU端随机读写，只能写入
+
+
+    VkDeviceSize size;
+    DeviceBuffer *dev_buffer;
+};
+
+template<typename T> class DeviceBufferRandomAccess
+{
+    DeviceBufferData<T> *dbd;
+
+public:
+
+    operator T *(){return dbd->data;}
+
+public:
+
+    DeviceBufferRandomAccess(DeviceBufferData<T> *obj)
+    {
+        dbd=obj;
+            
+    }
+    virtual ~DeviceBufferAccess()
+    {
+        if(!dbd)return;
+        delete dbd->dev_buffer;
+        delete dbd;
+    }
+    bool Write(const T *ptr)
+    {
+        return dbd->dev_buffer->Write(ptr);
+    }
+};
+
+template<typename T> class DeviceBufferObject
+{
+    DeviceBufferData<T> *dbd;
+
+public:
+
+    DeviceBufferObject(DeviceBufferData<T> *obj)
+    {
+        dbd=obj;
+    }
+
+    virtual ~DeviceBufferObject()
+    {
+        if(!dbd)return;
+
+        delete dbd->dev_buffer;
+        delete dbd;
+    }
+
+    
+
+};//template<typename T> class DeviceBufferObject
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_BUFFER_INCLUDE

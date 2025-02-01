@@ -1,6 +1,6 @@
 ﻿// 该范例主要演示使用2D坐系统直接绘制一个渐变色的三角形,使用UBO传递Viewport信息
 
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
@@ -28,9 +28,19 @@ constexpr uint8 color_data[VERTEX_COUNT*4]=
 
 //#define USE_ZERO2ONE_COORD      //使用左上角0,0右下角1,1的坐标系
 
-class TestApp:public VulkanApplicationFramework
+#ifdef USE_ZERO2ONE_COORD
+    constexpr VkFormat PositionFormat=VF_V2F;
+    #define position_data   position_data_float
+#else
+    constexpr VkFormat PositionFormat=VF_V2U16;
+    #define position_data   position_data_u16
+#endif//
+
+class TestApp:public WorkObject
 {
 private:
+
+    Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
 
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
@@ -41,7 +51,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2D",Prim::Triangles);
+        mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2D",Prim::Triangles);
 
         VILConfig vil_config;
 
@@ -55,6 +65,14 @@ private:
                                 //      +  这上下两种格式要配套，否则会出错
                                 //      v
         vil_config.Add(VAN::Position,VF_V2U16);     //这里指定VAB中使用RG16U当做顶点数据格式
+        
+        const auto ext=GetExtent2D();
+
+        for(uint i=0;i<VERTEX_COUNT;i++)
+        {
+            position_data_u16[i][0]=position_data_float[i][0]*ext.width;
+            position_data_u16[i][1]=position_data_float[i][1]*ext.height;
+        }
 #endif//USE_ZERO2ONE_COORD
 
         vil_config.Add(VAN::Color,VF_V4UN8);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
@@ -76,58 +94,38 @@ private:
    
     bool InitVBO()
     {
-        PrimitiveCreater rpc(device,material_instance->GetVIL());
-
-        rpc.Init("Triangle",VERTEX_COUNT);
-
-#ifdef USE_ZERO2ONE_COORD               //使用0 to 1坐标系
-        if(!rpc.WriteVAB(VAN::Position,   VF_V2F,     position_data_float ))return(false);
-#else                                   //使用ortho坐标系
-        if(!rpc.WriteVAB(VAN::Position,   VF_V2U16,   position_data_u16   ))return(false);
-#endif//USE_ZERO2ONE_COORD
-
-        if(!rpc.WriteVAB(VAN::Color,      VF_V4UN8,   color_data          ))return(false);
-        
-        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
-        return(true);
+        render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
+                                    {
+                                        {VAN::Position,PositionFormat,  position_data},
+                                        {VAN::Color,   VF_V4UN8,        color_data}
+                                    });
+        return(render_obj);
     }
 
 public:
-
-    bool Init(uint w,uint h)
+    
+    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
     {
-        if(!VulkanApplicationFramework::Init(w,h))
-            return(false);
-
-    #ifndef USE_ZERO2ONE_COORD
-        for(uint i=0;i<VERTEX_COUNT;i++)
-        {
-            position_data_u16[i][0]=position_data_float[i][0]*w;
-            position_data_u16[i][1]=position_data_float[i][1]*h;
-        }
-    #endif//
-
         if(!InitMaterial())
-            return(false);
+            return;
 
         if(!InitVBO())
-            return(false);
-
-        if(!BuildCommandBuffer(render_obj))
-            return(false);
-
-        return(true);
+            return;
     }
 
-    void Resize(uint w,uint h)override
+    void Tick(double)override{}
+
+    void Render(double delta_time,graph::RenderCmdBuffer *cmd)
     {
-        VulkanApplicationFramework::Resize(w,h);
+        cmd->SetClearColor(0,clear_color);
 
-        BuildCommandBuffer(render_obj);
+        cmd->BeginRenderPass();
+            cmd->Render(render_obj);
+        cmd->EndRenderPass();
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WorkObject
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    return RunApp<TestApp>(1280,720);
+    return RunFramework<TestApp>(OS_TEXT("Draw triangle use UBO"));
 }

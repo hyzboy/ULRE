@@ -151,5 +151,5 @@ public:
 
 int os_main(int,os_char **)
 {
-    return RunFramework<TestApp>(OS_TEXT("RenderFramework Test"));
+    return RunFramework<TestApp>(OS_TEXT("Draw triangle in NDC space"));
 }

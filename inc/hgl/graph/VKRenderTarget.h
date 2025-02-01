@@ -10,6 +10,9 @@
 //#include<iostream>
 
 VK_NAMESPACE_BEGIN
+
+class RenderFramework;
+
 /**
 * RenderTarget 存在几种情况：
 * 
@@ -20,11 +23,29 @@ VK_NAMESPACE_BEGIN
 * 所以RenderTarget的其实是一个多态类，根据不同的情况，有不同的实现
 */
 
+template<typename T> class DeviceBufferObject
+{
+    T data;
+    DeviceBuffer *dev_buffer;
+
+
+
+public:
+};
+
 class IRenderTarget
 {
+    RenderFramework *render_framework;
+
     VkExtent2D extent;
+    graph::ViewportInfo vp_info;
+    graph::DeviceBuffer *ubo_vp_info;
     
 public:
+
+    RenderFramework *   GetRenderFramework  ()const{return render_framework;}
+    GPUDevice *         GetDevice           ()const{return render_framework->GetDevice();}
+    VkDevice            GetVkDevice         ()const{return render_framework->GetDevice()->GetDevice();}
 
     const   VkExtent2D &GetExtent       ()const{return extent;}
 
@@ -33,8 +54,12 @@ public:
 
 public:
 
-    IRenderTarget(const VkExtent2D &ext){extent=ext;}
-    virtual ~IRenderTarget()=default;
+    void OnResize(const VkExtent2D &ext);
+
+public:
+
+    IRenderTarget(RenderFramework *,const VkExtent2D &);
+    virtual ~IRenderTarget();
     
     virtual Framebuffer *       GetFramebuffer  ()=0;
     virtual RenderPass *        GetRenderPass   ()=0;
@@ -97,14 +122,14 @@ protected:
     friend class SwapchainModule;
     friend class RenderTargetManager;
 
-    RenderTarget(RenderTargetData *rtd):IRenderTarget(rtd->fbo->GetExtent())
+    RenderTarget(RenderFramework *rf,RenderTargetData *rtd):IRenderTarget(rf,rtd->fbo->GetExtent())
     {
         data=rtd;
     }
 
 public:
 
-    virtual ~RenderTarget()
+    virtual ~RenderTarget() override
     {
         if(data)
         {
@@ -178,7 +203,7 @@ protected:
 
     friend class RenderTargetManager;
 
-    MFRenderTarget(const uint32_t fn,RenderTarget **rtl):IRenderTarget(rtl[0]->GetFramebuffer()->GetExtent())
+    MFRenderTarget(RenderFramework *rf,const uint32_t fn,RenderTarget **rtl):IRenderTarget(rf,rtl[0]->GetFramebuffer()->GetExtent())
     {
         frame_number=fn;
         current_frame=0;
@@ -188,7 +213,7 @@ protected:
 
 public:
 
-    virtual ~MFRenderTarget()
+    virtual ~MFRenderTarget() override
     {
         SAFE_CLEAR_OBJECT_ARRAY_OBJECT(rt_list,frame_number);
     }
@@ -257,7 +282,6 @@ public:
  */
 class SwapchainRenderTarget:public MFRenderTarget
 {
-    VkDevice device;
     Swapchain *swapchain;
     PresentInfo present_info;
 
@@ -265,14 +289,14 @@ class SwapchainRenderTarget:public MFRenderTarget
 
 private:
 
-    SwapchainRenderTarget(VkDevice dev,Swapchain *sc,Semaphore *pcs,RenderTarget **rtl);
+    SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,Semaphore *pcs,RenderTarget **rtl);
 
     friend class SwapchainModule;
     friend class RenderTargetManager;
 
 public:
 
-    ~SwapchainRenderTarget();
+    ~SwapchainRenderTarget() override;
 
 public:
 
