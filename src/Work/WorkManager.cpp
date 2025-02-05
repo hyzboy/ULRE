@@ -26,6 +26,16 @@ namespace hgl
         }
     }
 
+    void SwapchainWorkManager::OnResize(uint w,uint h)
+    {
+        if(!cur_work_object)return;
+
+        VkExtent2D ext={w,h};
+
+        cur_work_object->OnRenderTargetSwitch(render_framework,render_framework->GetSwapchainRenderTarget());
+        cur_work_object->OnResize(ext);
+    }
+
     void SwapchainWorkManager::Render(WorkObject *wo)
     {
         graph::IRenderTarget *rt=swpachain_module->AcquireNextImage();

@@ -56,6 +56,8 @@ namespace hgl
         virtual ~WorkObject()=default;
 
         virtual void OnRenderTargetSwitch(graph::RenderFramework *rf,graph::IRenderTarget *rt);
+        
+        virtual void OnResize(const VkExtent2D &){}
 
         virtual void Render(double delta_time,graph::RenderCmdBuffer *cmd)=0;
 
