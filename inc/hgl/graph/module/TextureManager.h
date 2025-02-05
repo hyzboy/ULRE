@@ -34,7 +34,7 @@ private:
 
 public:
 
-    TextureManager(GPUDevice *);
+    TextureManager(RenderFramework *rf);
     virtual ~TextureManager();
 
     const VkFormatProperties GetFormatProperties(const VkFormat)const;

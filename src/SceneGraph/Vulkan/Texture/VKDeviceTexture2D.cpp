@@ -3,6 +3,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKTexture.h>
+#include<hgl/graph/VKDevice.h>
 #include"CopyBufferToImage.h"
 VK_NAMESPACE_BEGIN
 void GenerateMipmaps(TextureCmdBuffer *texture_cmd_buf,VkImage image,VkImageAspectFlags aspect_mask,VkExtent3D extent,const uint32_t mipLevels,const uint32_t layer_count);

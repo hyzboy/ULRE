@@ -11,6 +11,7 @@ const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat form
 
 GRAPH_MODULE_CONSTRUCT(TextureManager)
 {
+    auto dev=GetDevice();
     auto phy_device=GetPhysicalDevice();
 
     texture_cmd_buf=dev->CreateTextureCommandBuffer(phy_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));

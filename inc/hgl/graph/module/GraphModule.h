@@ -1,20 +1,26 @@
 #pragma once
 
-#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VK.h>
 #include<hgl/type/TypeInfo.h>
 
 VK_NAMESPACE_BEGIN
 
+class TextureManager;
+class RenderTargetManager;
+class RenderPassManager;
+
 class GraphModule
 {
-    GPUDevice *device;
+    RenderFramework *render_framework;
 
 public:
     
-            GPUDevice *         GetDevice           ()      {return device;}                        ///<取得GPU设备
-            VkDevice            GetVkDevice         ()const {return device->GetDevice();}           ///<取得VkDevice
-    const   GPUPhysicalDevice * GetPhysicalDevice   ()const {return device->GetPhysicalDevice();}   ///<取得物理设备
-            GPUDeviceAttribute *GetDeviceAttribute  ()      {return device->GetDeviceAttribute();}  ///<取得设备属性
+            RenderFramework *   GetRenderFramework  ()const{return render_framework;}               ///<取得渲染框架
+            GPUDevice *         GetDevice           ();                                             ///<取得GPU设备
+            VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
+    const   GPUPhysicalDevice * GetPhysicalDevice   ()const;                                        ///<取得物理设备
+            GPUDeviceAttribute *GetDeviceAttribute  ()const;                                        ///<取得设备属性
+            VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache
 
 public:
 
@@ -22,7 +28,7 @@ public:
 
 public:
 
-    GraphModule(GPUDevice *dev){device=dev;}
+    GraphModule(RenderFramework *rf){render_framework=rf;}
     virtual ~GraphModule()=default;
 
     virtual const size_t GetTypeHash()const noexcept=0;
@@ -47,7 +53,7 @@ public:
 
 public:
 
-    GraphModuleInherit(GPUDevice *dev,const AnsiString &name):BASE(dev)
+    GraphModuleInherit(RenderFramework *rf,const AnsiString &name):BASE(rf)
     {
         manager_name=name;
     }
@@ -57,6 +63,6 @@ public:
 
 #define GRAPH_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name,GraphModule>
 
-#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(GPUDevice *dev):GraphModuleInherit<class_name,GraphModule>(dev,#class_name)
+#define GRAPH_MODULE_CONSTRUCT(class_name) class_name::class_name(RenderFramework *rf):GraphModuleInherit<class_name,GraphModule>(rf,#class_name)
 
 VK_NAMESPACE_END

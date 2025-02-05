@@ -14,7 +14,7 @@ GRAPH_MODULE_CLASS(RenderTargetManager)
 
 public:
 
-    RenderTargetManager(GPUDevice *,TextureManager *tm,RenderPassManager *rpm);
+    RenderTargetManager(RenderFramework *,TextureManager *tm,RenderPassManager *rpm);
     virtual ~RenderTargetManager()=default;
 
 public: //FrameBuffer相关

@@ -40,11 +40,13 @@ protected:
 
 public:
 
-    Window *                GetWindow           (){return win;}
-    GPUDevice *             GetDevice           (){return device;}    
-    GPUDeviceAttribute *    GetDeviceAttribute  (){return device->GetDeviceAttribute();}
+            Window *                GetWindow           ()const{return win;}
+            GPUDevice *             GetDevice           ()const{return device;}
+            VkDevice                GetVkDevice         ()const{return device->GetDevice();}
+    const   GPUPhysicalDevice *     GetPhysicalDevice   ()const{return device->GetPhysicalDevice();}
+            GPUDeviceAttribute *    GetDeviceAttribute  ()const{return device->GetDeviceAttribute();}
 
-    RenderResource *        GetRenderResource   (){return render_resource;}
+            RenderResource *        GetRenderResource   ()const{return render_resource;}
 
 public:
 

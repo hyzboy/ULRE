@@ -1,4 +1,7 @@
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/VKRenderPass.h>
+#include<hgl/graph/VKImageView.h>
+#include<hgl/graph/VKFramebuffer.h>
 
 VK_NAMESPACE_BEGIN
 VkFramebuffer CreateVulkanFramebuffer(VkDevice device,RenderPass *rp,const VkExtent2D &extent,VkImageView *attachments,const uint attachmentCount)

@@ -23,16 +23,6 @@ class RenderFramework;
 * 所以RenderTarget的其实是一个多态类，根据不同的情况，有不同的实现
 */
 
-template<typename T> class DeviceBufferObject
-{
-    T data;
-    DeviceBuffer *dev_buffer;
-
-
-
-public:
-};
-
 class IRenderTarget
 {
     RenderFramework *render_framework;
@@ -44,8 +34,8 @@ class IRenderTarget
 public:
 
     RenderFramework *   GetRenderFramework  ()const{return render_framework;}
-    GPUDevice *         GetDevice           ()const{return render_framework->GetDevice();}
-    VkDevice            GetVkDevice         ()const{return render_framework->GetDevice()->GetDevice();}
+    GPUDevice *         GetDevice           ()const;
+    VkDevice            GetVkDevice         ()const;
 
     const   VkExtent2D &GetExtent       ()const{return extent;}
 

@@ -36,6 +36,9 @@ struct VertexAttribDataPtr
 using BindingMap        =Map<AnsiString,int>;
 using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
+class GraphModule;
+class RenderFramework;
+
 class VulkanInstance;
 class GPUPhysicalDevice;
 class GPUDevice;
@@ -44,8 +47,12 @@ class DeviceQueue;
 class ImageView;
 class Framebuffer;
 struct Swapchain;
+class IRenderTarget;
 class RenderTarget;
+class MFRenderTarget;
 class SwapchainRenderTarget;
+
+struct CopyBufferToImageInfo;
 
 class Texture;
 class Texture1D;
@@ -57,6 +64,8 @@ class TextureCube;
 class TextureCubeArray;
 
 class Sampler;
+
+class TileData;
 
 class DeviceMemory;
 class DeviceBuffer;

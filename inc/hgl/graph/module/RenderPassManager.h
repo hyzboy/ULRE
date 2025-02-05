@@ -15,15 +15,13 @@ inline util::Hash *CreateRenderPassHash()
 
 GRAPH_MODULE_CLASS(RenderPassManager)
 {
-    VkPipelineCache pipeline_cache;
-
     util::Hash *hash;
 
     Map<RenderPassHASHCode,RenderPass *> RenderPassList;
 
 private:
 
-    RenderPassManager(GPUDevice *);
+    RenderPassManager(RenderFramework *);
     ~RenderPassManager();
 
     friend class GraphModuleManager;

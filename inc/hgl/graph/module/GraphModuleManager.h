@@ -5,11 +5,9 @@
 
 VK_NAMESPACE_BEGIN
 
-class GraphModule;
-
 class GraphModuleManager
 {
-    GPUDevice *device;
+    RenderFramework *render_framework;
 
 protected:
 
@@ -18,13 +16,14 @@ protected:
 
 public:
 
-    GraphModuleManager(GPUDevice *dev){device=dev;}
+    GraphModuleManager(RenderFramework *rf){render_framework=rf;}
 
     virtual ~GraphModuleManager();
     
 public:
 
-    GPUDevice *     GetDevice()                         {return device;}                                                ///<取得GPU设备
+    RenderFramework *   GetRenderFramework  ()const{return render_framework;}                                           ///<取得渲染框架
+    GPUDevice *         GetDevice           ()const;                                                                    ///<取得GPU设备
 
 public:
 
@@ -46,7 +45,7 @@ public:
         if(Contains<T>())
             return Get<T>();
 
-        T *result=new T(device);
+        T *result=new T(render_framework);
 
         Registry(result);
 

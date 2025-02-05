@@ -53,6 +53,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/RenderModule.h
                         ${SGM_HEADER_PATH}/SwapchainModule.h
 
+                        ${SGM_SOURCE_PATH}/GraphModule.cpp
                         ${SGM_SOURCE_PATH}/GraphModuleManager.cpp
                         ${SGM_SOURCE_PATH}/RenderPassManager.cpp
                         ${SGM_SOURCE_PATH}/TextureManager.cpp

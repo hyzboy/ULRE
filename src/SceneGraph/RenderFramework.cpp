@@ -91,7 +91,7 @@ bool RenderFramework::Init(uint w,uint h)
 
     win->Join(this);
 
-    module_manager=new GraphModuleManager(device);
+    module_manager=new GraphModuleManager(this);
 
     rp_manager=module_manager->GetOrCreate<RenderPassManager>();
 
@@ -103,10 +103,10 @@ bool RenderFramework::Init(uint w,uint h)
     if(!tex_manager)
         return(false);
 
-    rt_manager=new RenderTargetManager(device,tex_manager,rp_manager);
+    rt_manager=new RenderTargetManager(this,tex_manager,rp_manager);
     module_manager->Registry(rt_manager);
 
-    sc_module=new SwapchainModule(device,tex_manager,rt_manager,rp_manager);
+    sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Registry(sc_module);
 
     OnResize(w,h);

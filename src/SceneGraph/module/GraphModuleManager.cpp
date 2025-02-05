@@ -1,7 +1,13 @@
 #include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
+#include<hgl/graph/RenderFramework.h>
 
 VK_NAMESPACE_BEGIN
+
+GPUDevice *GraphModuleManager::GetDevice()const
+{
+    return render_framework->GetDevice();
+}
 
 bool GraphModuleManager::Registry(GraphModule *gm)
 {
