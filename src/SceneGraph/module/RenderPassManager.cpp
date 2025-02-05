@@ -1,5 +1,6 @@
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/VKRenderPass.h>
+#include<hgl/graph/VKPhysicalDevice.h>
 
 VK_NAMESPACE_BEGIN
 void CreateSubpassDependency(List<VkSubpassDependency> &subpass_dependency_list,const uint32_t count)
@@ -186,8 +187,6 @@ bool CreateDepthAttachment( List<VkAttachmentReference> &ref_list,List<VkAttachm
 
 GRAPH_MODULE_CONSTRUCT(RenderPassManager)
 {
-    pipeline_cache=GetDeviceAttribute()->pipeline_cache;
-
     hash=CreateRenderPassHash();
 }
 
@@ -287,7 +286,7 @@ RenderPass *RenderPassManager::CreateRenderPass(const List<VkAttachmentDescripti
     if(vkCreateRenderPass(GetVkDevice(),&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(GetVkDevice(),pipeline_cache,render_pass,rbi->GetColorFormatList(),depth_format));
+    return(new RenderPass(GetVkDevice(),GetPipelineCache(),render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
 RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)

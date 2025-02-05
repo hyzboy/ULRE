@@ -2,6 +2,7 @@
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKRenderTarget.h>
@@ -217,12 +218,12 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
         rtd->color_textures[0]          =sc_image->color;
         rtd->depth_texture              =sc_image->depth;
 
-        rt_list[i]=new RenderTarget(rtd);
+        rt_list[i]=new RenderTarget(GetRenderFramework(),rtd);
 
         ++sc_image;
     }
 
-    sc_render_target=new SwapchainRenderTarget( device->GetDevice(),
+    sc_render_target=new SwapchainRenderTarget( GetRenderFramework(),
                                                 swapchain,
                                                 device->CreateGPUSemaphore(),
                                                 rt_list
@@ -236,7 +237,7 @@ SwapchainModule::~SwapchainModule()
     SAFE_CLEAR(sc_render_target);
 }
 
-SwapchainModule::SwapchainModule(GPUDevice *dev,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm):GraphModuleInherit<SwapchainModule,GraphModule>(dev,"SwapchainModule")
+SwapchainModule::SwapchainModule(RenderFramework *rf,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm):GraphModuleInherit<SwapchainModule,GraphModule>(rf,"SwapchainModule")
 {
     tex_manager=tm;
     rt_manager=rtm;
@@ -263,7 +264,9 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(sc_render_target)
 
-    GetDeviceAttribute()->RefreshSurfaceCaps();
+    GPUDeviceAttribute *dev_attr=GetDeviceAttribute();
+
+    dev_attr->RefreshSurfaceCaps();
 
     CreateSwapchainRenderTarget();
 }
@@ -280,5 +283,9 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 //    sc_render_target->WaitQueue();
 //    sc_render_target->WaitFence();
 //}
+
+const   VkExtent2D &            SwapchainModule::GetSwapchainSize()const{return sc_render_target->GetExtent();}
+    
+        IRenderTarget *         SwapchainModule::AcquireNextImage()const{return sc_render_target->AcquireNextImage();}
 
 VK_NAMESPACE_END

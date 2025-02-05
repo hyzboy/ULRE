@@ -4,10 +4,6 @@
 
 VK_NAMESPACE_BEGIN
 
-class RenderTargetManager;
-class RenderPassManager;
-class RenderPass;
-
 GRAPH_MODULE_CLASS(SwapchainModule)
 {
     TextureManager *        tex_manager =nullptr;
@@ -30,7 +26,7 @@ public:
 
 public:
 
-    SwapchainModule(GPUDevice *,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
+    SwapchainModule(RenderFramework *,TextureManager *tm,RenderTargetManager *rtm,RenderPassManager *rpm);
     virtual ~SwapchainModule();
 
 //    RenderCmdBuffer *BeginRender();
@@ -41,10 +37,10 @@ public:
 
             RenderPass *            GetRenderPass   ()const{return sc_render_pass;}
 
-    const   VkExtent2D &            GetSwapchainSize()const{return sc_render_target->GetExtent();}
+    const   VkExtent2D &            GetSwapchainSize()const;
 
             SwapchainRenderTarget * GetRenderTarget ()const{return sc_render_target;}
-            IRenderTarget *         AcquireNextImage()const{return sc_render_target->AcquireNextImage();}
+            IRenderTarget *         AcquireNextImage()const;
 };//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END

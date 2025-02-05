@@ -1,10 +1,12 @@
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderPassManager.h>
 
 VK_NAMESPACE_BEGIN
 
-RenderTargetManager::RenderTargetManager(GPUDevice *dev,TextureManager *tm,RenderPassManager *rpm):GraphModuleInherit<RenderTargetManager,GraphModule>(dev,"RenderTargetManager")
+RenderTargetManager::RenderTargetManager(RenderFramework *rf,TextureManager *tm,RenderPassManager *rpm):GraphModuleInherit<RenderTargetManager,GraphModule>(rf,"RenderTargetManager")
 {
     tex_manager=tm;
     rp_manager=rpm;
@@ -58,7 +60,7 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
 
         color_texture_list.DiscardObject();
 
-        return(new RenderTarget(rtd));
+        return(new RenderTarget(GetRenderFramework(),rtd));
     }
 
     SAFE_CLEAR(depth_texture);
