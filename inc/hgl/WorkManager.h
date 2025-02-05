@@ -1,13 +1,16 @@
 ﻿#pragma once
-#include"WorkObject.h"
+
+#include<hgl/WorkObject.h>
 
 namespace hgl
 {
     /**
     * 工作管理器，管理一个序列的WorkObject<br>
     */
-    class WorkManager
+    class WorkManager:public io::WindowEvent
     {
+    protected:
+
         graph::RenderFramework *render_framework;
 
         uint fps=60;
@@ -41,6 +44,15 @@ namespace hgl
 
         virtual void Render(WorkObject *wo);
 
+        virtual void OnResize(uint w,uint h) override
+        {
+            if(!cur_work_object)return;
+
+            VkExtent2D ext={w,h};
+
+            cur_work_object->OnResize(ext);
+        }
+
         void Run(WorkObject *wo);
     };//class WorkManager
 
@@ -53,17 +65,24 @@ namespace hgl
         SwapchainWorkManager(graph::RenderFramework *rf):WorkManager(rf)
         {
             swpachain_module=rf->GetSwapchainModule();
+
+            rf->GetWindow()->Join(this);
         }
-        ~SwapchainWorkManager()=default;
+        ~SwapchainWorkManager()
+        {
+            render_framework->GetWindow()->Unjoin(this);
+        }
 
         void Render(WorkObject *wo) override;
+
+        void OnResize(uint w,uint h) override;
     };
 
     template<typename WO> int RunFramework(const OSString &title,uint width=1280,uint height=720)
     {
         graph::RenderFramework rf(title);
 
-        if(!rf.Init(width,height))
+        if(!rf.Init(width,height))  
             return(-1);
 
         SwapchainWorkManager wm(&rf);
