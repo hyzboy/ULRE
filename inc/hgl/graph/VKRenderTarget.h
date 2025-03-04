@@ -7,6 +7,7 @@
 #include<hgl/graph/VKQueue.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKDescriptorBindingManage.h>
 //#include<iostream>
 
 VK_NAMESPACE_BEGIN
@@ -30,12 +31,15 @@ class IRenderTarget
     VkExtent2D extent;
     graph::ViewportInfo vp_info;
     graph::DeviceBuffer *ubo_vp_info;
-    
+
+    DescriptorBinding desc_binding;
+
 public:
 
     RenderFramework *   GetRenderFramework  ()const{return render_framework;}
     GPUDevice *         GetDevice           ()const;
     VkDevice            GetVkDevice         ()const;
+    DescriptorBinding * GetDescriptorBinding(){return &desc_binding;}
 
     const   VkExtent2D &GetExtent       ()const{return extent;}
 
@@ -73,6 +77,14 @@ public: // Command Buffer
 
     virtual RenderCmdBuffer *   BeginRender         ()=0;
     virtual void                EndRender           ()=0;
+
+public:
+
+    virtual void                Bind                (Material *mtl)
+    {
+        if(mtl)
+            desc_binding.Bind(mtl);
+    }
 };//class IRenderTarget
 
 struct RenderTargetData
@@ -115,6 +127,8 @@ protected:
     RenderTarget(RenderFramework *rf,RenderTargetData *rtd):IRenderTarget(rf,rtd->fbo->GetExtent())
     {
         data=rtd;
+
+        data->cmd_buf->SetDescriptorBinding(GetDescriptorBinding());
     }
 
 public:
@@ -164,6 +178,7 @@ public:
             return(nullptr);
 
         data->cmd_buf->Begin();
+        data->cmd_buf->SetDescriptorBinding(GetDescriptorBinding());
         data->cmd_buf->BindFramebuffer(data->fbo);
         return data->cmd_buf;
     }

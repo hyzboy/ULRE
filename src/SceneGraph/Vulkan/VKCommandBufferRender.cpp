@@ -91,6 +91,9 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
 {
     if(!mtl)return(false);
 
+    if(desc_binding)
+        desc_binding->Bind(mtl);
+
     {
         uint32_t count=0;
 
