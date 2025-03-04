@@ -29,8 +29,8 @@ public:
 
     const bool IsBegin()const{return cmd_begin;}
     
-    bool Begin();
-    bool End()
+    virtual bool Begin();
+    virtual bool End()
     {
         if(!cmd_begin)
             return(false);
@@ -50,6 +50,8 @@ public:
 #endif//_DEBUG
 };//class GPUCmdBuffer
 
+class DescriptorBinding;
+
 class RenderCmdBuffer:public GPUCmdBuffer
 {
     uint32_t cv_count;
@@ -60,6 +62,8 @@ class RenderCmdBuffer:public GPUCmdBuffer
     RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
+    DescriptorBinding *desc_binding=nullptr;
+
 private:
 
     void SetClear();
@@ -68,6 +72,15 @@ public:
 
     RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
     ~RenderCmdBuffer();
+
+    void SetDescriptorBinding(DescriptorBinding *db) { desc_binding=db; }
+
+    bool End() override
+    {
+        desc_binding=nullptr;
+
+        return GPUCmdBuffer::End();
+    }
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
     void SetRenderArea(const VkExtent2D &);

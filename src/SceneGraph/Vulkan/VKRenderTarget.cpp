@@ -5,16 +5,20 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKBuffer.h>
 
+#include<hgl/graph/mtl/UBOCommon.h>     //未来UBO统合看能不能不引用
+
 VK_NAMESPACE_BEGIN
 
 GPUDevice *IRenderTarget::GetDevice  ()const{return render_framework->GetDevice();}
 VkDevice   IRenderTarget::GetVkDevice()const{return render_framework->GetDevice()->GetDevice();}
 
-IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext)
+IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext):desc_binding(DescriptorSetType::RenderTarget)
 {
     render_framework=rf;
 
     ubo_vp_info=GetDevice()->CreateUBO(sizeof(ViewportInfo),&vp_info);
+
+    desc_binding.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
 
     OnResize(ext);
 }
