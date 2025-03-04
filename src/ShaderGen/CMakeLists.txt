@@ -79,7 +79,7 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
-                    ${STD_MTL_HEADER_PATH}/ShaderBuffer.h
+                    ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
                     StandardMaterial.cpp
                     MaterialFileData.h
                     MaterialFileLoader.cpp)

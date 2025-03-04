@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include"MFCamera.h"
-#include<hgl/graph/mtl/ShaderBuffer.h>
+#include<hgl/graph/mtl/ShaderBufferSource.h>
 
 STD_MTL_NAMESPACE_BEGIN
 namespace func

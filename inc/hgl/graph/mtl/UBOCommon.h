@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/graph/mtl/ShaderBuffer.h>
+#include<hgl/graph/mtl/ShaderBufferSource.h>
 
 STD_MTL_NAMESPACE_BEGIN
 constexpr const ShaderBufferSource SBS_ViewportInfo=
