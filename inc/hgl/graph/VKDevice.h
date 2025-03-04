@@ -61,8 +61,10 @@ public:
                 VkQueue             GetGraphicsQueue    ()      {return attr->graphics_queue;}
 
                 void                WaitIdle            ()const {vkDeviceWaitIdle(attr->device);}
-
+                
+#ifdef _DEBUG
                 DebugUtils *        GetDebugUtils       (){return attr->debug_utils;}
+#endif//_DEBUG
 
 public:
 
