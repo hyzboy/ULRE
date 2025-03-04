@@ -36,8 +36,7 @@ SOURCE_GROUP("GLSL Compiler" FILES ${GLSL_COMPILER_SOURCE})
 
 set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 
-SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UniformBuffer.h
-                            ${STD_MTL_HEADER_PATH}/UBOCommon.h
+SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
                             ShaderVariableType.cpp
