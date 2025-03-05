@@ -126,6 +126,17 @@ public: //Buffer相关
 
 #undef CREATE_BUFFER_OBJECT
 
+    template<typename T>
+    T *CreateUBO()
+    {
+        DeviceBuffer *buf=CreateUBO(T::GetSize());
+
+        if(!buf)
+            return(nullptr);
+
+        return(new T(buf));
+    }
+
     GPUArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
     GPUArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
 
