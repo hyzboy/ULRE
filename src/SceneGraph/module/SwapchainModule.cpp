@@ -284,8 +284,21 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 //    sc_render_target->WaitFence();
 //}
 
-const   VkExtent2D &            SwapchainModule::GetSwapchainSize()const{return sc_render_target->GetExtent();}
+        bool                    SwapchainModule::GetSwapchainSize(VkExtent2D *ext)const
+        {
+            if(!ext||!sc_render_target)
+                return(false);
+
+            *ext=sc_render_target->GetExtent();
+            return(true);
+        }
     
-        IRenderTarget *         SwapchainModule::AcquireNextImage()const{return sc_render_target->AcquireNextImage();}
+        IRenderTarget *         SwapchainModule::AcquireNextImage()const
+        {
+            if(!sc_render_target)
+                return(nullptr);
+
+            return sc_render_target->AcquireNextImage();
+        }
 
 VK_NAMESPACE_END

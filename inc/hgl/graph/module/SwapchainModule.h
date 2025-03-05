@@ -37,7 +37,7 @@ public:
 
             RenderPass *            GetRenderPass   ()const{return sc_render_pass;}
 
-    const   VkExtent2D &            GetSwapchainSize()const;
+            bool                    GetSwapchainSize(VkExtent2D *)const;
 
             SwapchainRenderTarget * GetRenderTarget ()const{return sc_render_target;}
             IRenderTarget *         AcquireNextImage()const;
