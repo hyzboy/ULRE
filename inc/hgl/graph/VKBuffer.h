@@ -51,4 +51,39 @@ public:
             bool    Write   (const void *ptr)                               {return buf.memory->Write(ptr);}
 };//class DeviceBuffer
 
+template<typename T> class DeviceBufferMap
+{
+    DeviceBuffer *dev_buf;
+    T data_map;
+
+public:
+
+    static const VkDeviceSize GetSize()
+    {
+        return sizeof(T);
+    }
+
+public:
+
+    DeviceBufferMap(DeviceBuffer *buf)
+    {
+        dev_buf=buf;
+    }
+
+    virtual ~DeviceBufferMap()
+    {
+        delete dev_buf;
+    }
+
+    operator DeviceBuffer *(){return dev_buf;}
+
+    T *data(){return &data_map;}
+
+    void Update()
+    {
+        if(dev_buf)
+            dev_buf->Write(&data_map,sizeof(T));
+    }
+};
+
 VK_NAMESPACE_END

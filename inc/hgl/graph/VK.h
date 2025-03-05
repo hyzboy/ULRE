@@ -70,6 +70,7 @@ class TileData;
 class DeviceMemory;
 class DeviceBuffer;
 struct DeviceBufferData;
+template<typename T> class DeviceBufferMap;
 
 struct PrimitiveDataBuffer;
 struct PrimitiveRenderData;

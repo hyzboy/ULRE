@@ -14,6 +14,8 @@ VK_NAMESPACE_BEGIN
 
 class RenderFramework;
 
+using UBOViewportInfo=DeviceBufferMap<graph::ViewportInfo>;
+
 /**
 * RenderTarget 存在几种情况：
 * 
@@ -29,8 +31,8 @@ class IRenderTarget
     RenderFramework *render_framework;
 
     VkExtent2D extent;
-    graph::ViewportInfo vp_info;
-    graph::DeviceBuffer *ubo_vp_info;
+
+    UBOViewportInfo *ubo_vp_info;
 
     DescriptorBinding desc_binding;
 
