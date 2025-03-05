@@ -32,7 +32,9 @@ namespace hgl
 
         VkExtent2D ext={w,h};
 
-        cur_work_object->OnRenderTargetSwitch(render_framework,render_framework->GetSwapchainRenderTarget());
+        graph::IRenderTarget *rt=render_framework->GetSwapchainRenderTarget();
+
+        cur_work_object->OnRenderTargetSwitch(render_framework,rt);
         cur_work_object->OnResize(ext);
     }
 

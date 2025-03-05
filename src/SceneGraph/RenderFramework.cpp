@@ -109,8 +109,6 @@ bool RenderFramework::Init(uint w,uint h)
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Registry(sc_module);
 
-    OnResize(w,h);
-
     render_resource=new RenderResource(device);
 
     return(true);
@@ -118,8 +116,6 @@ bool RenderFramework::Init(uint w,uint h)
 
 void RenderFramework::OnResize(uint w,uint h)
 {
-    io::WindowEvent::OnResize(w,h);
-
     VkExtent2D ext(w,h);
 
     sc_module->OnResize(ext);        //其实swapchain_module并不需要传递尺寸数据过去
