@@ -19,7 +19,22 @@ namespace hgl
 
     void WorkObject::OnRenderTargetSwitch(graph::RenderFramework *rf,graph::IRenderTarget *rt)
     {
-        if(!rf||!rt)return;
+        if(!rf)
+        {
+            render_framework=nullptr;
+            db=nullptr;
+        }
+
+        if(!rt)
+        {
+            cur_render_target=nullptr;
+            render_pass=nullptr;
+        }
+
+        if(!rf||!rt)
+        {
+            return;
+        }
 
         render_framework=rf;
         cur_render_target=rt;

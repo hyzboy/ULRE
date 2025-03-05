@@ -7,7 +7,7 @@ namespace hgl
     /**
     * 工作管理器，管理一个序列的WorkObject<br>
     */
-    class WorkManager:public io::WindowEvent
+    class WorkManager
     {
     protected:
 
@@ -44,19 +44,10 @@ namespace hgl
 
         virtual void Render(WorkObject *wo);
 
-        virtual void OnResize(uint w,uint h) override
-        {
-            if(!cur_work_object)return;
-
-            VkExtent2D ext={w,h};
-
-            cur_work_object->OnResize(ext);
-        }
-
         void Run(WorkObject *wo);
     };//class WorkManager
 
-    class SwapchainWorkManager:public WorkManager
+    class SwapchainWorkManager:public WorkManager,public io::WindowEvent
     {
         graph::SwapchainModule *swpachain_module;
 
@@ -66,11 +57,12 @@ namespace hgl
         {
             swpachain_module=rf->GetSwapchainModule();
 
-            rf->GetWindow()->Join(this);
+            render_framework->Join(this);
         }
+
         ~SwapchainWorkManager()
         {
-            render_framework->GetWindow()->Unjoin(this);
+            render_framework->Unjoin(this);
         }
 
         void Render(WorkObject *wo) override;
