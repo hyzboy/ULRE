@@ -118,24 +118,19 @@ public: //Buffer相关
 #define CREATE_BUFFER_OBJECT(LargeName,type)    DeviceBuffer *Create##LargeName(                   VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,data,      sm);} \
                                                 DeviceBuffer *Create##LargeName(                   VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,size ,size,nullptr,   sm);} \
                                                 DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,void *data,  SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,data,      sm);} \
-                                                DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,nullptr,   sm);}
+                                                DeviceBuffer *Create##LargeName(VkDeviceSize range,VkDeviceSize size,             SharingMode sm=SharingMode::Exclusive)  {return CreateBuffer(VK_BUFFER_USAGE_##type##_BUFFER_BIT,range,size,nullptr,   sm);} \
+\
+    template<typename T> T *Create##LargeName()  \
+    {   \
+        DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
+        return(buf?new T(buf):nullptr);  \
+    }
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)
     CREATE_BUFFER_OBJECT(SSBO,STORAGE)
     CREATE_BUFFER_OBJECT(INBO,INDIRECT)
 
 #undef CREATE_BUFFER_OBJECT
-
-    template<typename T>
-    T *CreateUBO()
-    {
-        DeviceBuffer *buf=CreateUBO(T::GetSize());
-
-        if(!buf)
-            return(nullptr);
-
-        return(new T(buf));
-    }
 
     GPUArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
     GPUArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
