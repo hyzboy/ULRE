@@ -17,7 +17,7 @@ static float position_data_float[VERTEX_COUNT][2]=
     {0.25,  0.75}
 };
 
-static uint16 position_data_u16[VERTEX_COUNT][2]={};
+static uint16 position_data[VERTEX_COUNT][2]={};
 
 constexpr uint8 color_data[VERTEX_COUNT*4]=
 {   
@@ -25,16 +25,6 @@ constexpr uint8 color_data[VERTEX_COUNT*4]=
     0,255,0,255,
     0,0,255,255
 };
-
-//#define USE_ZERO2ONE_COORD      //使用左上角0,0右下角1,1的坐标系
-
-#ifdef USE_ZERO2ONE_COORD
-    constexpr VkFormat PositionFormat=VF_V2F;
-    #define position_data   position_data_float
-#else
-    constexpr VkFormat PositionFormat=VF_V2U16;
-    #define position_data   position_data_u16
-#endif//
 
 class TestApp:public WorkObject
 {
@@ -55,9 +45,6 @@ private:
 
         VILConfig vil_config;
 
-#ifdef USE_ZERO2ONE_COORD
-        cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
-#else
         cfg.coordinate_system=CoordinateSystem2D::Ortho;
 
         cfg.position_format         =VAT_UVEC2;     //这里指定shader中使用uvec2当做顶点输入格式
@@ -70,10 +57,9 @@ private:
 
         for(uint i=0;i<VERTEX_COUNT;i++)
         {
-            position_data_u16[i][0]=position_data_float[i][0]*ext.width;
-            position_data_u16[i][1]=position_data_float[i][1]*ext.height;
+            position_data[i][0]=position_data_float[i][0]*ext.width;
+            position_data[i][1]=position_data_float[i][1]*ext.height;
         }
-#endif//USE_ZERO2ONE_COORD
 
         vil_config.Add(VAN::Color,VF_V4UN8);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
@@ -96,8 +82,8 @@ private:
     {
         render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
-                                        {VAN::Position,PositionFormat,  position_data},
-                                        {VAN::Color,   VF_V4UN8,        color_data}
+                                        {VAN::Position,VF_V2U16,position_data},
+                                        {VAN::Color,   VF_V4UN8,color_data}
                                     });
         return(render_obj);
     }
