@@ -73,7 +73,7 @@ void DescriptorSet::Clear()
     image_list.Clear();
     wds_list.Clear();
     binded_sets.Clear();
-    is_dirty=true;
+    is_dirty=false;
 }
 
 bool DescriptorSet::BindUBO(const int binding,const DeviceBuffer *buf,bool dynamic)
@@ -191,6 +191,6 @@ void DescriptorSet::Update()
     if(wds_list.GetCount()>0)
         vkUpdateDescriptorSets(device,wds_list.GetCount(),wds_list.GetData(),0,nullptr);
 
-    is_dirty=false;
+    Clear();
 }
 VK_NAMESPACE_END
