@@ -4,7 +4,7 @@
 //#include<iostream>
 
 VK_NAMESPACE_BEGIN
-SwapchainRenderTarget::SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,Semaphore *pcs,RenderTarget **rtl):MFRenderTarget(rf,sc->image_count,rtl)
+SwapchainRenderTarget::SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,Semaphore *pcs,RenderTarget **rtl):MultiFrameRenderTarget(rf,sc->image_count,rtl)
 {
     swapchain=sc;
 

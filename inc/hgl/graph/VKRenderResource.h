@@ -36,8 +36,6 @@ using RenderableID          =int;
 using SamplerID             =int;
 using StaticMeshID          =int;
 
-class VertexAttribData;
-
 using ShaderModuleMapByName=ObjectMap<AnsiString,ShaderModule>;
 constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT=20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 

@@ -5,7 +5,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKDeviceAttribute.h>
-#include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKSemaphore.h>
 

@@ -247,7 +247,6 @@ SET(VK_RENDER_CONTEXT_SOURCE    ${SG_INCLUDE_PATH}/VKRenderContext.h
 SET(VK_RENDER_PASS_SOURCE   ${SG_INCLUDE_PATH}/VKFramebuffer.h
                             ${SG_INCLUDE_PATH}/VKPipeline.h
                             ${SG_INCLUDE_PATH}/VKRenderPass.h
-                            ${SG_INCLUDE_PATH}/VKRenderTarget.h
                             ${SG_INCLUDE_PATH}/VKSwapchain.h
                             ${SG_INCLUDE_PATH}/VKSemaphore.h
                             ${SG_INCLUDE_PATH}/VKFence.h
@@ -259,12 +258,22 @@ SET(VK_RENDER_PASS_SOURCE   ${SG_INCLUDE_PATH}/VKFramebuffer.h
                             Vulkan/VKPipelineCache.cpp
                             #Vulkan/VKSubpass.cpp
                             Vulkan/VKRenderPass.cpp
-                            Vulkan/VKRenderTarget.cpp
-                            Vulkan/VKSwapchainRenderTarget.cpp
                             Vulkan/VKSwapchain.cpp
                             )
 
 SOURCE_GROUP("Vulkan\\Render Pass" FILES ${VK_RENDER_PASS_SOURCE})
+
+SET(VK_RENDER_TARGET_SOURCE ${SG_INCLUDE_PATH}/VKRenderTarget.h
+                            ${SG_INCLUDE_PATH}/VKRenderTargetData.h
+                            ${SG_INCLUDE_PATH}/VKRenderTargetSingle.h
+                            ${SG_INCLUDE_PATH}/VKRenderTargetMultiFrame.h
+                            ${SG_INCLUDE_PATH}/VKRenderTargetSwapchain.h
+                            Vulkan/VKRenderTarget.cpp
+                            Vulkan/VKRenderTargetData.cpp
+                            Vulkan/VKSwapchainRenderTarget.cpp
+)
+
+SOURCE_GROUP("Vulkan\\Render Target" FILES ${VK_RENDER_TARGET_SOURCE})
 
 SOURCE_GROUP("Vulkan\\Render Context" FILES ${VK_RENDER_CONTEXT_SOURCE})
 
@@ -296,17 +305,29 @@ ENDIF(WIN32)
 IF(UNIX)
 
     IF(ANDROID)
-        SET(VULKAN_SURFACE_SOURCE   Vulkan/Platform/AndroidVulkan.cpp)
+        SET(VULKAN_SURFACE_SOURCE   Vulkan/platform/AndroidVulkan.cpp)
     ELSE()
-        IF(APPLE)
-
-
-
+        IF(APPLE)        
+            if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_OSX_SYSROOT MATCHES ".*iPhone.*")
+                message(STATUS "Targeting iOS")
+                set(VULKAN_SURFACE_SOURCE Vulkan/platform/iOSVulkan.cpp)
+            elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_OSX_SYSROOT MATCHES ".*MacOSX.*")
+                message(STATUS "Targeting macOS")
+                set(VULKAN_SURFACE_SOURCE Vulkan/platform/MacVulkan.cpp)
+            else()
+                message(FATAL_ERROR "Unknown Apple platform")
+            endif()
         ELSE()
-
-            SET(VULKAN_SURFACE_SOURCE   Vulkan/Platform/XCBVulkan.cpp)
+            find_package(PkgConfig REQUIRED)
+            pkg_check_modules(WAYLAND_CLIENT wayland-client)
+            if(WAYLAND_CLIENT_FOUND)
+                message(STATUS "Targeting Wayland")
+                set(VULKAN_SURFACE_SOURCE Vulkan/platform/WaylandVulkan.cpp)
+            else()
+                message(STATUS "Targeting XCB")
+                set(VULKAN_SURFACE_SOURCE Vulkan/platform/XCBVulkan.cpp)
+            endif()
         ENDIF()
-
     ENDIF()
 
 ENDIF(UNIX)
@@ -328,6 +349,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_TEXTURE_SOURCE}
                             ${VK_MATERIAL_SOURCE}
                             ${VK_RENDER_PASS_SOURCE}
+                            ${VK_RENDER_TARGET_SOURCE}
                             #${VK_RENDER_CONTEXT_SOURCE}
                             ${VK_CMD_BUFFER_SOURCE}
                             ${VK_RENDERABLE_SOURCE}
