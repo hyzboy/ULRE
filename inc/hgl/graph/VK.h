@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_INCLUDE
-#define HGL_GRAPH_VULKAN_INCLUDE
+﻿#pragma once
 
 #include<hgl/type/List.h>
 #include<hgl/math/Math.h>
@@ -49,7 +48,7 @@ class Framebuffer;
 struct Swapchain;
 class IRenderTarget;
 class RenderTarget;
-class MFRenderTarget;
+class MultiFrameRenderTarget;
 class SwapchainRenderTarget;
 
 struct CopyBufferToImageInfo;
@@ -192,5 +191,5 @@ inline void copy(VkExtent3D &e3d,const VkExtent2D &e2d,const uint32 depth=1)
     e3d.height  =e2d.height;
     e3d.depth   =depth;
 }
+
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_INCLUDE
