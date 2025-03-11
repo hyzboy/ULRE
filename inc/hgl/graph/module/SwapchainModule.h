@@ -40,7 +40,7 @@ public:
             bool                    GetSwapchainSize(VkExtent2D *)const;
 
             SwapchainRenderTarget * GetRenderTarget ()const{return sc_render_target;}
-            IRenderTarget *         AcquireNextImage()const;
+            bool                    AcquireNextImage()const;
 };//class SwapchainModule:public GraphModule
 
 VK_NAMESPACE_END

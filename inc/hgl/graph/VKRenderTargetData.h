@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/graph/VKFramebuffer.h>
+#include<hgl/graph/VK.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -25,6 +25,12 @@ public:
 
         return color_textures[index];
     }
+
+    bool Submit(Semaphore *wait_sem);
+
+    RenderCmdBuffer *BeginRender(DescriptorBinding *);
+
+    void EndRender();
 
     virtual void Clear();
 };//struct RenderTargetData

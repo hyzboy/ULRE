@@ -16,7 +16,7 @@ class SwapchainRenderTarget:public MultiFrameRenderTarget
 
 private:
 
-    SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,Semaphore *pcs,RenderTarget **rtl);
+    SwapchainRenderTarget(RenderFramework *rf,Swapchain *sc,Semaphore *pcs,RenderTargetData *rtdl);
 
     friend class SwapchainModule;
     friend class RenderTargetManager;
@@ -27,9 +27,9 @@ public:
 
 public:
 
-    IRenderTarget *AcquireNextImage();             ///<获取下一帧的索引
+    bool NextFrame  ()override;                             ///<获取下一帧的索引
 
-    bool Submit()override;                         ///<提交当前帧的渲染，交推送到前台
+    bool Submit     ()override;                             ///<提交当前帧的渲染，交推送到前台
 };//class SwapchainRenderTarget:public MultiFrameRenderTarget
 
 VK_NAMESPACE_END

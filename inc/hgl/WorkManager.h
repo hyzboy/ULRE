@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/WorkObject.h>
+#include<hgl/graph/VKRenderTargetSwapchain.h>
 
 namespace hgl
 {
@@ -49,13 +50,13 @@ namespace hgl
 
     class SwapchainWorkManager:public WorkManager,public io::WindowEvent
     {
-        graph::SwapchainModule *swpachain_module;
+        graph::SwapchainModule *swapchain_module;
 
     public:
 
         SwapchainWorkManager(graph::RenderFramework *rf):WorkManager(rf)
         {
-            swpachain_module=rf->GetSwapchainModule();
+            swapchain_module=rf->GetSwapchainModule();
 
             render_framework->Join(this);
         }
