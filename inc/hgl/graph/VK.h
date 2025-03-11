@@ -35,6 +35,8 @@ struct VertexAttribDataPtr
 using BindingMap        =Map<AnsiString,int>;
 using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 
+class DescriptorBinding;
+
 class GraphModule;
 class RenderFramework;
 

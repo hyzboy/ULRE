@@ -199,14 +199,13 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
 
     GPUDevice *device=GetDevice();
 
-    RenderTarget **rt_list=new RenderTarget*[swapchain->image_count];
+    SwapchainRenderTargetData *rtd_list=new SwapchainRenderTargetData[swapchain->image_count];
+    SwapchainRenderTargetData *rtd=rtd_list;
 
     SwapchainImage *sc_image=swapchain->sc_image;
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
-        RenderTargetData *rtd=new SwapchainRenderTargetData{};
-
         rtd->fbo                        =sc_image->fbo;
         rtd->queue                      =device->CreateQueue(swapchain->image_count,false);
         rtd->render_complete_semaphore  =device->CreateGPUSemaphore();
@@ -218,15 +217,14 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
         rtd->color_textures[0]          =sc_image->color;
         rtd->depth_texture              =sc_image->depth;
 
-        rt_list[i]=new RenderTarget(GetRenderFramework(),rtd);
-
+        ++rtd;
         ++sc_image;
     }
 
     sc_render_target=new SwapchainRenderTarget( GetRenderFramework(),
                                                 swapchain,
                                                 device->CreateGPUSemaphore(),
-                                                rt_list
+                                                rtd_list
                                                 );
 
     return true;
@@ -293,12 +291,12 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
             return(true);
         }
     
-        IRenderTarget *         SwapchainModule::AcquireNextImage()const
+        bool SwapchainModule::AcquireNextImage()const
         {
             if(!sc_render_target)
-                return(nullptr);
+                return(false);
 
-            return sc_render_target->AcquireNextImage();
+            return sc_render_target->NextFrame();
         }
 
 VK_NAMESPACE_END

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include<hgl/WorkManager.h>
-#include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/VKRenderTargetSwapchain.h>
 
 namespace hgl
 {
@@ -40,7 +40,10 @@ namespace hgl
 
     void SwapchainWorkManager::Render(WorkObject *wo)
     {
-        graph::IRenderTarget *rt=swpachain_module->AcquireNextImage();
+        if(!swapchain_module->AcquireNextImage())
+            return;
+
+        graph::SwapchainRenderTarget *rt=swapchain_module->GetRenderTarget();
 
         wo->MarkRenderDirty();      //临时的，未来会被更好的机制替代
         WorkManager::Render(wo);

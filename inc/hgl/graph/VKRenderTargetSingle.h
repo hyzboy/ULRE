@@ -57,7 +57,7 @@ public: // Command Buffer
         if(!data)
             return(false);
 
-        return data->queue->Submit(data->cmd_buf,wait_sem,data->render_complete_semaphore);
+        return data->Submit(wait_sem);
     }
 
     bool                WaitQueue           ()override{return data->queue->WaitQueue();}
@@ -67,21 +67,18 @@ public:
 
     virtual RenderCmdBuffer *BeginRender()override
     {
-        if(!data->cmd_buf)
+        if(!data)
             return(nullptr);
 
-        data->cmd_buf->Begin();
-        data->cmd_buf->SetDescriptorBinding(GetDescriptorBinding());
-        data->cmd_buf->BindFramebuffer(data->fbo);
-        return data->cmd_buf;
+        return data->BeginRender(GetDescriptorBinding());
     }
 
     virtual void EndRender() override
     {
-        if(!data->cmd_buf)
+        if(!data)
             return;
 
-        data->cmd_buf->End();
+        data->EndRender();
     }
 };//class RenderTarget
 
