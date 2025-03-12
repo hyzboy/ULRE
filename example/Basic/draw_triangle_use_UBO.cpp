@@ -52,14 +52,6 @@ private:
                                 //      +  这上下两种格式要配套，否则会出错
                                 //      v
         vil_config.Add(VAN::Position,VF_V2U16);     //这里指定VAB中使用RG16U当做顶点数据格式
-        
-        const auto ext=GetExtent2D();
-
-        for(uint i=0;i<VERTEX_COUNT;i++)
-        {
-            position_data[i][0]=position_data_float[i][0]*ext.width;
-            position_data[i][1]=position_data_float[i][1]*ext.height;
-        }
 
         vil_config.Add(VAN::Color,VF_V4UN8);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
@@ -80,6 +72,14 @@ private:
    
     bool InitVBO()
     {
+        const auto ext=GetExtent2D();
+
+        for(uint i=0;i<VERTEX_COUNT;i++)
+        {
+            position_data[i][0]=position_data_float[i][0]*ext.width;
+            position_data[i][1]=position_data_float[i][1]*ext.height;
+        }
+
         render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,VF_V2U16,position_data},
