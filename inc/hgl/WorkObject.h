@@ -78,11 +78,16 @@ namespace hgl
             return db->CreateMaterialInstance(mci,vil_cfg);
         }
 
-        graph::Renderable *CreateRenderable( const AnsiString &name,
-                                             uint32_t vertices_count,
-                                             graph::MaterialInstance *mi,
-                                             graph::Pipeline *pipeline,
-                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
+        graph::Primitive *CreatePrimitive(  const AnsiString &name,
+                                            const uint32_t vertices_count,
+                                            const graph::VIL *vil,
+                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
+
+        graph::Renderable *CreateRenderable(const AnsiString &name,
+                                            const uint32_t vertices_count,
+                                            graph::MaterialInstance *mi,
+                                            graph::Pipeline *pipeline,
+                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
     };//class WorkObject
 
     /**
