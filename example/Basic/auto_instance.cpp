@@ -9,9 +9,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH=1024;
-constexpr uint32_t SCREEN_HEIGHT=1024;
-
 constexpr uint32_t VERTEX_COUNT=3;
 
 constexpr uint32_t TRIANGLE_NUMBER=12;

@@ -1,17 +1,13 @@
 ﻿// 该范例主要演示使用一个材质下的不同材质实例传递颜色参数绘制三角形，并依赖RenderList中的自动合并功能，让同一材质下所有不同材质实例的对象一次渲染完成。
 
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/graph/RenderList.h>
 #include<hgl/color/Color.h>
 
 using namespace hgl;
 using namespace hgl::graph;
-
-constexpr uint32_t SCREEN_WIDTH=1024;
-constexpr uint32_t SCREEN_HEIGHT=1024;
 
 constexpr uint32_t VERTEX_COUNT=3;
 
@@ -26,12 +22,15 @@ constexpr uint DRAW_OBJECT_COUNT=12;
 
 #define USE_MATERIAL_FILE   true        //是否使用材质文件
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public WorkObject
 {
+    Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
+
 private:
 
+    AutoDelete<RenderList>  render_list     =nullptr;
+
     SceneNode           render_root;
-    RenderList *        render_list         =nullptr;
 
     Material *          material            =nullptr;
 
@@ -48,7 +47,7 @@ private:
     bool InitMaterial()
     {
         {
-            mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"PureColor2D",Prim::Triangles);
+            mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"PureColor2D",Prim::Triangles);
 
             cfg.coordinate_system=CoordinateSystem2D::NDC;
             cfg.local_to_world=true;
@@ -83,15 +82,9 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        PrimitiveCreater pc(device,material->GetDefaultVIL());
+        Primitive *prim=CreatePrimitive("Triangle",VERTEX_COUNT,material->GetDefaultVIL(),
+                                        {{VAN::Position,   VF_V2F, position_data}});
 
-        if(!pc.Init("Triangle",VERTEX_COUNT))
-            return(false);
-
-        if(!pc.WriteVAB(VAN::Position,   VF_V2F, position_data))
-            return(false);
-
-        Primitive *prim=pc.Create();
         if(!prim)
             return(false);
 
@@ -120,45 +113,28 @@ private:
 
 public:
 
-    ~TestApp()
+    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
     {
-        SAFE_CLEAR(render_list);
-    }
-
-    bool Init()
-    {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
-            return(false);
-
-        render_list=new RenderList(device);
+        render_list=rf->CreateRenderList();
 
         if(!InitMaterial())
-            return(false);
+            return;
 
         if(!InitVBOAndRenderList())
-            return(false);
-
-        BuildCommandBuffer(render_list);
-
-        return(true);
+            return;
     }
 
-    void Resize(uint w,uint h)override
+    void Render(double delta_time,graph::RenderCmdBuffer *cmd)override
     {
-        VulkanApplicationFramework::Resize(w,h);
+        cmd->SetClearColor(0,clear_color);
 
-        BuildCommandBuffer(render_list);
+        cmd->BeginRenderPass();
+        render_list->Render(cmd);
+        cmd->EndRenderPass();
     }
 };//class TestApp:public VulkanApplicationFramework
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunFramework<TestApp>(OS_TEXT("AutoInstance"),1024,1024);
 }
