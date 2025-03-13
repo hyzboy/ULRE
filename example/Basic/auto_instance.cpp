@@ -1,11 +1,10 @@
 ﻿// 该范例主要演示使用RenderList系统绘制多个三角形，并利用RenderList进行排序以及自动合并进行Instance渲染
 
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 #include<hgl/math/Math.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/graph/RenderList.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -31,8 +30,10 @@ constexpr uint8 color_data[VERTEX_COUNT][4]=
     {0,0,255,255}
 };
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public WorkObject
 {
+    Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
+
 private:
 
     SceneNode           render_root;
@@ -48,7 +49,7 @@ private:
     bool InitMaterial()
     {
         {
-            mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2D",Prim::Triangles);
+            mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2D",Prim::Triangles);
 
             cfg.coordinate_system=CoordinateSystem2D::NDC;
             cfg.local_to_world=true;
@@ -73,14 +74,11 @@ private:
 
     bool InitVBO()
     {
-        PrimitiveCreater rpc(device,material_instance->GetVIL());
-
-        rpc.Init("Triangle",VERTEX_COUNT);
-
-        if(!rpc.WriteVAB(VAN::Position,   VF_V2F,     position_data))return(false);
-        if(!rpc.WriteVAB(VAN::Color,      VF_V4UN8,   color_data   ))return(false);
-        
-        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
+        render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
+                                    {
+                                        {VAN::Position,   VF_V2F,     position_data},
+                                        {VAN::Color,      VF_V4UN8,   color_data   }
+                                    });
 
         if(!render_obj)
             return(false);
@@ -90,7 +88,7 @@ private:
         
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
         {
-            rad=deg2rad<double>((360/TRIANGLE_NUMBER)*i);       //这里一定要加<float>或<float>，否则结果用int保存会出现问题
+            rad=deg2rad<double>((360.0f/double(TRIANGLE_NUMBER))*i);       //这里一定要加<float>或<float>，否则结果用int保存会出现问题
             mat=rotate(rad,Vector3f(0,0,1));
 
             render_root.Add(new SceneNode(mat,render_obj));
@@ -110,33 +108,28 @@ public:
         SAFE_CLEAR(render_list);
     }
     
-    bool Init(uint w,uint h)
+    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
     {
-        if(!VulkanApplicationFramework::Init(w,h))
-            return(false);
-
-        render_list=new RenderList(device);
+        render_list=rf->CreateRenderList();
 
         if(!InitMaterial())
-            return(false);
+            return;
 
         if(!InitVBO())
-            return(false);
-
-        BuildCommandBuffer(render_list);
-
-        return(true);
+            return;
     }
 
-    void Resize(uint w,uint h)override
+    void Render(double delta_time,graph::RenderCmdBuffer *cmd)override
     {
-        VulkanApplicationFramework::Resize(w,h);
+        cmd->SetClearColor(0,clear_color);
 
-        BuildCommandBuffer(render_list);
+        cmd->BeginRenderPass();
+            render_list->Render(cmd);
+        cmd->EndRenderPass();
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WorkObject
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    return RunApp<TestApp>(SCREEN_WIDTH,SCREEN_HEIGHT);
+    return RunFramework<TestApp>(OS_TEXT("AutoInstance"),1024,1024);
 }
