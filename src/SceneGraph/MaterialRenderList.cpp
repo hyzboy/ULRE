@@ -279,7 +279,7 @@ void MaterialRenderList::Stat()
     {
         ro=rn->scene_node->GetRenderable();
 
-        if(*last_data_buffer!=*ro->GetDataBuffer())
+        if(*last_data_buffer==*ro->GetDataBuffer())
             if(*last_render_data==*ro->GetRenderData())
             {
                 ++ri->instance_count;
