@@ -36,8 +36,9 @@ class TestApp:public WorkObject
 
 private:
 
+    AutoDelete<RenderList>  render_list     =nullptr;
+
     SceneNode           render_root;
-    RenderList *        render_list         =nullptr;
 
     MaterialInstance *  material_instance   =nullptr;
     Renderable *        render_obj          =nullptr;
@@ -103,11 +104,6 @@ private:
 
 public:
 
-    ~TestApp()
-    {
-        SAFE_CLEAR(render_list);
-    }
-    
     TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
     {
         render_list=rf->CreateRenderList();
