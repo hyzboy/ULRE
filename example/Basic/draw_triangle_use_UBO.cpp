@@ -99,9 +99,7 @@ public:
             return;
     }
 
-    void Tick(double)override{}
-
-    void Render(double delta_time,graph::RenderCmdBuffer *cmd)
+    void Render(double delta_time,graph::RenderCmdBuffer *cmd)override
     {
         cmd->SetClearColor(0,clear_color);
 

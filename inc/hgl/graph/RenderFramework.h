@@ -5,6 +5,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
+#include<hgl/graph/RenderList.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -67,6 +68,11 @@ public:
     virtual bool Init(uint w,uint h);
 
 public:
+
+    RenderList *CreateRenderList()
+    {
+        return(new RenderList(device));
+    }
 
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
 
