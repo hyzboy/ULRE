@@ -28,9 +28,12 @@ const int PrimitiveDataBuffer::compare(const PrimitiveDataBuffer &pdb)const
 {
     ptrdiff_t off;
 
-    off=&vdm-&pdb.vdm;
-    if(off)
-        return off;
+    if(vdm&&pdb.vdm)
+    {
+        off=(ptrdiff_t)vdm-(ptrdiff_t)pdb.vdm;
+        if(off)
+            return off;
+    }
 
     off=vab_count-pdb.vab_count;
     if(off)

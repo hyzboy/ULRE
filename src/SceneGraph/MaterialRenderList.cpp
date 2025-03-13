@@ -398,7 +398,7 @@ void MaterialRenderList::ProcIndirectRender()
 
 void MaterialRenderList::Render(RenderItem *ri)
 {
-    if(*(ri->pdb)!=*last_data_buffer)        //换buf了
+    if(!last_data_buffer||*(ri->pdb)!=*last_data_buffer)        //换buf了
     {
         if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
             ProcIndirectRender();
