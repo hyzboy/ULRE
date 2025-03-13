@@ -59,6 +59,8 @@ namespace hgl
         
         virtual void OnResize(const VkExtent2D &){}
 
+        virtual void Tick(double){}
+
         virtual void Render(double delta_time,graph::RenderCmdBuffer *cmd)=0;
 
         virtual void Render(double delta_time);
