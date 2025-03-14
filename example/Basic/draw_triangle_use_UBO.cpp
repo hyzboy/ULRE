@@ -17,7 +17,7 @@ static float position_data_float[VERTEX_COUNT][2]=
     {0.25,  0.75}
 };
 
-static uint16 position_data[VERTEX_COUNT][2]={};
+static int16 position_data[VERTEX_COUNT][2]={};
 
 constexpr uint8 color_data[VERTEX_COUNT*4]=
 {   
@@ -25,6 +25,11 @@ constexpr uint8 color_data[VERTEX_COUNT*4]=
     0,255,0,255,
     0,0,255,255
 };
+
+constexpr VAType   POSITION_SHADER_FORMAT   =VAT_IVEC2;
+constexpr VkFormat POSITION_DATA_FORMAT     =VF_V2I16;
+
+constexpr VkFormat COLOR_DATA_FORMAT        =VF_V4UN8;
 
 class TestApp:public WorkObject
 {
@@ -45,15 +50,15 @@ private:
 
         VILConfig vil_config;
 
-        cfg.coordinate_system=CoordinateSystem2D::Ortho;
+        cfg.coordinate_system   =CoordinateSystem2D::Ortho;
 
-        cfg.position_format         =VAT_UVEC2;     //这里指定shader中使用uvec2当做顶点输入格式
+        cfg.position_format     =       POSITION_SHADER_FORMAT;     //这里指定shader中使用ivec2当做顶点输入格式
                                 //      ^
                                 //      +  这上下两种格式要配套，否则会出错
                                 //      v
-        vil_config.Add(VAN::Position,VF_V2U16);     //这里指定VAB中使用RG16U当做顶点数据格式
+        vil_config.Add(VAN::Position,   POSITION_DATA_FORMAT);     //这里指定VAB中使用RG16I当做顶点数据格式
 
-        vil_config.Add(VAN::Color,VF_V4UN8);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
+        vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
         cfg.local_to_world=false;
 
@@ -82,8 +87,8 @@ private:
 
         render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
-                                        {VAN::Position,VF_V2U16,position_data},
-                                        {VAN::Color,   VF_V4UN8,color_data}
+                                        {VAN::Position,POSITION_DATA_FORMAT,position_data},
+                                        {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
                                     });
         return(render_obj);
     }
