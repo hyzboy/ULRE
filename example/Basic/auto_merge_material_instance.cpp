@@ -19,6 +19,7 @@ constexpr float position_data[VERTEX_COUNT*2]=
 };
 
 constexpr uint DRAW_OBJECT_COUNT=12;
+constexpr double TRI_ROTATE_ANGLE=360.0f/DRAW_OBJECT_COUNT;
 
 #define USE_MATERIAL_FILE   true        //是否使用材质文件
 
@@ -99,7 +100,7 @@ private:
             if(!render_obj[i].r)
                 return(false);
 
-            mat=rotate(deg2rad<double>(double(360/DRAW_OBJECT_COUNT*i)),AxisVector::Z);
+            mat=rotate(deg2rad<double>(TRI_ROTATE_ANGLE*i),AxisVector::Z);
 
             render_root.Add(new SceneNode(mat,render_obj[i].r));
         }

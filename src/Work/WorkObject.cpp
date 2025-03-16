@@ -5,8 +5,6 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/PrimitiveCreater.h>
-#include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -92,7 +90,12 @@ namespace hgl
             }
         }
 
-        return pc->Create();
+        auto *prim=pc->Create();
+
+        if(prim)
+            db->Add(prim);
+
+        return prim;
     }
 
     graph::Renderable *WorkObject::CreateRenderable( const AnsiString &name,
@@ -101,22 +104,11 @@ namespace hgl
                                                      graph::Pipeline *pipeline,
                                                      const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
     {
-        auto *pc=new graph::PrimitiveCreater(GetDevice(),mi->GetVIL());
+        auto *prim=this->CreatePrimitive(name,vertices_count,mi->GetVIL(),vad_list);
 
-        pc->Init(name,vertices_count);
+        if(!prim)
+            return(nullptr);
 
-        for(const auto &vad:vad_list)
-        {
-            if(!pc->WriteVAB(vad.name,vad.format,vad.data))
-            {
-                delete pc;
-                return(nullptr);
-            }
-        }
-
-        auto *result=db->CreateRenderable(pc,mi,pipeline);
-
-        delete pc;
-        return result;
+        return db->CreateRenderable(prim,mi,pipeline);
     }
 }//namespcae hgl
