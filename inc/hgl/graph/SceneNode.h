@@ -1,10 +1,10 @@
-﻿#ifndef HGL_GRAPH_SCENE_NODE_INCLUDE
-#define HGL_GRAPH_SCENE_NODE_INCLUDE
+﻿#pragma once
 
 #include<hgl/type/ObjectList.h>
 #include<hgl/type/IDName.h>
 #include<hgl/graph/SceneOrient.h>
 #include<hgl/graph/AABB.h>
+
 namespace hgl
 {
     namespace graph
@@ -111,4 +111,3 @@ namespace hgl
         SceneNode *Duplication(SceneNode *);                                                                            ///<复制一个场景节点
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_SCENE_NODE_INCLUDE

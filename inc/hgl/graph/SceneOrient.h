@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_SCENE_ORIENT_INCLUDE
-#define HGL_GRAPH_SCENE_ORIENT_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/SceneMatrix.h>
@@ -51,4 +50,3 @@ namespace hgl
         };//class SceneOrient
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_SCENE_ORIENT_INCLUDE

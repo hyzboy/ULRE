@@ -31,7 +31,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     #${SG_INCLUDE_PATH}/Mesh.h
                     #${SG_INCLUDE_PATH}/Spline.h
                     InlineGeometry.cpp
-                    #Mesh.cpp                    
+                    #Mesh.cpp
 )
 
 SOURCE_GROUP("Geometry" FILES ${GEOMETRY_FILES})
@@ -69,28 +69,32 @@ SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
 
 source_group("Framework" FILES ${GRAPH_FRAMEWORK_FILES})
 
-SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneManager.h
-                        ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
-                        ${SG_INCLUDE_PATH}/SceneNode.h
-                        ${SG_INCLUDE_PATH}/ShadowPolicy.h
-                        ${SG_INCLUDE_PATH}/RenderNode.h
-                        ${SG_INCLUDE_PATH}/SceneMatrix.h
-                        ${SG_INCLUDE_PATH}/SceneOrient.h
+SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/SceneWorld.h
+                    ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
+                    ${SG_INCLUDE_PATH}/SceneNode.h                    
+                    ${SG_INCLUDE_PATH}/SceneMatrix.h
+                    ${SG_INCLUDE_PATH}/SceneOrient.h
+                    Scene/SceneNode.cpp
+                    Scene/SceneOrient.cpp
+                    Scene/SceneMatrix.cpp
+                    Scene/SceneWorld.cpp
+)
+
+SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/RenderList.h
                         ${SG_INCLUDE_PATH}/MaterialRenderList.h
                         ${SG_INCLUDE_PATH}/MaterialRenderMap.h
+#                        ${SG_INCLUDE_PATH}/ShadowPolicy.h
+                        render/RenderList.cpp
+                        render/MaterialRenderList.cpp
+                        render/RenderAssignBuffer.h
+                        render/RenderAssignBuffer.cpp
                         )
 
-SET(SCENE_GRAPH_SOURCE  RenderList.cpp
-                        MaterialRenderList.cpp
-                        RenderAssignBuffer.h
-                        RenderAssignBuffer.cpp
-                        SceneNode.cpp
-                        SceneOrient.cpp
-                        SceneMatrix.cpp
-)
+SOURCE_GROUP("Scene Graph\\Scene" FILES ${SG_SCENE_SOURCE})
+SOURCE_GROUP("Scene Graph\\Render" FILES ${SG_RENDER_SOURCE})
 
-SOURCE_GROUP("Scene Graph" FILES ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOURCE})
+SET(SCENE_GRAPH_FILES  ${SG_SCENE_SOURCE} ${SG_RENDER_SOURCE})
 
 SET(STATIC_MESH_HEADER_FILES    ${SG_INCLUDE_PATH}/StaticMesh.h
                                 ${SG_INCLUDE_PATH}/StaticMeshLODPolicy.h)
@@ -355,8 +359,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_RENDERABLE_SOURCE}
                             ${VK_RENDER_DEVICE_SOURCE})
 
-add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_HEADER}
-                                        ${SCENE_GRAPH_SOURCE}
+add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${SG_PRIMITIVE_SOURCE}
                                         ${GEOMETRY_FILES}
                                         ${LIGHT_FILES}
