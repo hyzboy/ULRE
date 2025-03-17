@@ -296,6 +296,14 @@ SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
 
 SOURCE_GROUP("Vulkan\\Renderable" FILES ${VK_RENDERABLE_SOURCE})
 
+set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
+
+SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
+                        ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h)
+
+SOURCE_GROUP("Component" FILES ${COMPONENT_FILES})
+
 IF(WIN32)
     OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
 
@@ -373,6 +381,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
 
                                         ${STATIC_MESH_HEADER_FILES}
                                         ${STATIC_MESH_SOURCE_FILES}
+
+                                        ${COMPONENT_FILES}
 
 #                                        ${FONT_MANAGE_SOURCE}
 #                                        ${FONT_SOURCE}

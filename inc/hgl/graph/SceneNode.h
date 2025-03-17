@@ -34,14 +34,14 @@ namespace hgl
 
         protected:
 
-            ObjectList<SceneNode> ChildNode;                                                                              ///<子节点
+            ObjectList<SceneNode> ChildNode;                                                                            ///<子节点
 
         public:
 
             const SceneNodeID &     GetNodeID   ()const { return NodeID; }                                              ///<取得节点ID
             const SceneNodeName &   GetNodeName ()const { return NodeName; }                                            ///<取得节点名称
 
-            const ObjectList<SceneNode> &GetChildNode()const { return ChildNode; }                                             ///<取得子节点列表
+            const ObjectList<SceneNode> &GetChildNode()const { return ChildNode; }                                      ///<取得子节点列表
 
         public:
 
