@@ -1,8 +1,8 @@
-﻿#ifndef HGL_GRAPH_RENDER_NODE_INCLUDE
-#define HGL_GRAPH_RENDER_NODE_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/SortedSet.h>
+
 namespace hgl
 {
     namespace graph
@@ -40,4 +40,3 @@ namespace hgl
         return a.compare(b);
     }
 }//namespace hgl
-#endif//HGL_GRAPH_RENDER_NODE_INCLUDE
