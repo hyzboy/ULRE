@@ -7,7 +7,7 @@ namespace hgl::graph
     /**
     * 可渲染组件
     */
-    class RenderComponent: public BaseComponent
+    class RenderComponent: public Component
     {
     public:
 
