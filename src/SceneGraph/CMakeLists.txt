@@ -300,7 +300,9 @@ set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
 
 SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h)
+                        ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
+                        component/ComponentManager.cpp
+)
 
 SOURCE_GROUP("Component" FILES ${COMPONENT_FILES})
 
