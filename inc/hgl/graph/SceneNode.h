@@ -4,6 +4,7 @@
 #include<hgl/type/IDName.h>
 #include<hgl/graph/SceneOrient.h>
 #include<hgl/graph/AABB.h>
+#include<hgl/component/Component.h>
 
 namespace hgl
 {
@@ -19,7 +20,7 @@ namespace hgl
         */
         class SceneNode:public SceneOrient                                                                              ///场景节点类
         {
-            SceneNode *Owner;                                                                                           ///<上级节点
+            SceneNode *ParentNode;                                                                                      ///<上级节点
 
             SceneNodeID NodeID;                                                                                         ///<节点ID
             SceneNodeName NodeName;                                                                                     ///<节点名称
@@ -35,6 +36,7 @@ namespace hgl
         protected:
 
             ObjectList<SceneNode> ChildNode;                                                                            ///<子节点
+            ObjectList<Component> ComponentList;                                                                        ///<组件列表
 
         public:
 
@@ -61,7 +63,7 @@ namespace hgl
             {
                 SceneOrient::Clear();
 
-                Owner=nullptr;
+                ParentNode=nullptr;
 
                 BoundingBox.SetZero();
                 LocalBoundingBox.SetZero();
@@ -78,9 +80,9 @@ namespace hgl
                 return(true);
             }
 
-                    void        SetOwner(SceneNode *sn) {Owner=sn;}
-                    SceneNode * GetOwner()      noexcept{return Owner;}
-            const   SceneNode * GetOwner()const noexcept{return Owner;}
+                    void        SetParent(SceneNode *sn) {ParentNode=sn;}
+                    SceneNode * GetParent()      noexcept{return ParentNode;}
+            const   SceneNode * GetParent()const noexcept{return ParentNode;}
 
                     void        SetRenderable(Renderable *);
                     Renderable *GetRenderable()      noexcept{return render_obj;}
@@ -92,7 +94,7 @@ namespace hgl
                     return(nullptr);
 
                 ChildNode.Add(sn);
-                sn->SetOwner(this);
+                sn->SetParent(this);
                 return sn;
             }
 
@@ -106,6 +108,10 @@ namespace hgl
             virtual const   AABB &      GetBoundingBox      ()const{return BoundingBox;}                                ///<取得绑定盒
             virtual const   AABB &      GetLocalBoundingBox ()const{return LocalBoundingBox;}                           ///<取得本地坐标绑定盒
 //            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
+
+        public: //组件相关方法
+
+
         };//class SceneNode
 
         SceneNode *Duplication(SceneNode *);                                                                            ///<复制一个场景节点
