@@ -29,33 +29,18 @@ namespace hgl::graph
             Data=cd;
             Manager=cm;
         }
+
         virtual ~Component()=default;
 
     public:
 
         virtual void Update(const double delta_time)=0;
 
+    public: //事件
+
         virtual void OnFocusLost(){}                                            ///<焦点丢失事件
         virtual void OnFocusGained(){}                                          ///<焦点获得事件
     };//class Component
-
-    //Component *CreateComponent(const ObjectBaseInfo &,ComponentData *);
-
-    //template<typename T,typename ...ARGS> inline T *NewComponentSCL(const SourceCodeLocation &scl,ARGS...args)
-    //{
-    //    static size_t new_count=0;
-    //    ObjectBaseInfo obi;
-
-    //    obi.hash_code   =GetTypeHash<T>();
-    //    obi.unique_id   =new_count;
-    //    obi.scl         =scl;
-
-    //    ++new_count;
-    //    T *obj=new T(obi);
-    //    return obj;
-    //}
-
-    //#define NewComponent(T,...) NewComponentSCL<T>(HGL_SOURCE_LOCATION __VA_OPT__(,) __VA_ARGS__)
 
     class ComponentManager
     {
@@ -71,6 +56,22 @@ namespace hgl::graph
 
         virtual Component * CreateComponent(SceneNode *,ComponentData *)=0;
 
-        virtual int         GetComponentCount()const=0;
+                int         GetComponentCount()const{return ComponentSet.GetCount();}
+
+        virtual void        UpdateComponents(const double delta_time)
+        {
+            Component **cc=ComponentSet.GetData();
+
+            for(int i=0;i<ComponentSet.GetCount();i++)
+                cc[i]->Update(delta_time);
+        }
+
+        virtual void        JoinComponent(Component *c){if(!c)return;ComponentSet.Add(c);}
+        virtual void        UnjonComponent(Component *c){if(!c)return;ComponentSet.Delete(c);}
+
+    public: //事件
+
+        virtual void OnFocusLost(){}                                             ///<焦点丢失事件
+        virtual void OnFocusGained(){}                                           ///<焦点获得事件
     };//class ComponentManager
 }//namespace hgl::graph
