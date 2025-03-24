@@ -88,5 +88,38 @@ namespace hgl
 
             LocalBoundingBox=local;
         }
+
+        int SceneNode::GetComponents(List<Component *> &comp_list,const ComponentManager *mgr)
+        {
+            if(!mgr)return(-1);
+            if(ComponentIsEmpty())return(0);
+
+            int result=0;
+
+            for(Component *c:ComponentList)
+            {
+                if(c->GetManager()==mgr)
+                {
+                    comp_list.Add(c);
+                    ++result;
+                }
+            }
+            
+            return result;
+        }
+
+        bool SceneNode::HasComponent(const ComponentManager *mgr)
+        {
+            if(!mgr)return(false);
+            if(ComponentIsEmpty())return(false);
+
+            for(Component *c:ComponentList)
+            {
+                if(c->GetManager()==mgr)
+                    return(true);
+            }
+
+            return(false);
+        }
     }//namespace graph
 }//namespace hgl
