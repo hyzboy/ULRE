@@ -2,18 +2,17 @@
 
 #include<hgl/component/Component.h>
 
-namespace hgl::graph
+COMPONENT_NAMESPACE_BEGIN
+
+/**
+* 可渲染组件
+*/
+class RenderComponent: public Component
 {
-    /**
-    * 可渲染组件
-    */
-    class RenderComponent: public Component
-    {
-    public:
+public:
 
-        RenderComponent()=default;
-        virtual ~RenderComponent()=default;
+    RenderComponent()=default;
+    virtual ~RenderComponent()=default;
+};//class RenderComponent
 
-        virtual void Render()=0;
-    };//class RenderComponent
-}//namespace hgl::graph
+COMPONENT_NAMESPACE_END

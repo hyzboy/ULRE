@@ -63,6 +63,7 @@ public:
 
 /**
 * 原始可渲染对象(即仅一个模型一个材质)
+* 未来考虑改名StaticMesh哦！
 */
 class Renderable                                                                ///可渲染对象实例
 {

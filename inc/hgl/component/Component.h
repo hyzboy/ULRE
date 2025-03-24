@@ -4,8 +4,12 @@
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/List.h>
 
-namespace hgl::graph
-{
+#define COMPONENT_NAMESPACE         hgl::graph
+#define COMPONENT_NAMESPACE_BEGIN   namespace COMPONENT_NAMESPACE {
+#define COMPONENT_NAMESPACE_END     }
+
+COMPONENT_NAMESPACE_BEGIN
+
     class ComponentManager;
     class SceneNode;
 
@@ -81,4 +85,5 @@ namespace hgl::graph
         virtual void            OnFocusLost(){}                                             ///<焦点丢失事件
         virtual void            OnFocusGained(){}                                           ///<焦点获得事件
     };//class ComponentManager
-}//namespace hgl::graph
+
+COMPONENT_NAMESPACE_END
