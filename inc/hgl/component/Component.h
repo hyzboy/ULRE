@@ -2,6 +2,7 @@
 
 #include<hgl/type/DataType.h>
 #include<hgl/type/SortedSet.h>
+#include<hgl/type/List.h>
 
 namespace hgl::graph
 {
@@ -34,6 +35,12 @@ namespace hgl::graph
 
     public:
 
+        SceneNode *         GetOwnerNode()const{return OwnerNode;}
+        ComponentManager *  GetManager  ()const{return Manager;}
+        ComponentData *     GetData     ()const{return Data;}
+
+    public:
+
         virtual void Update(const double delta_time)=0;
 
     public: //事件
@@ -42,9 +49,11 @@ namespace hgl::graph
         virtual void OnFocusGained(){}                                          ///<焦点获得事件
     };//class Component
 
+    using ComponentSet=SortedSet<Component *>;
+
     class ComponentManager
     {
-        SortedSet<Component *> ComponentSet;
+        ComponentSet component_set;
 
     public:
 
@@ -52,26 +61,24 @@ namespace hgl::graph
 
     public:
 
-        virtual size_t      ComponentHashCode()const=0;
+        virtual size_t          ComponentHashCode()const=0;
 
-        virtual Component * CreateComponent(SceneNode *,ComponentData *)=0;
+        virtual Component *     CreateComponent(SceneNode *,ComponentData *)=0;
 
-                int         GetComponentCount()const{return ComponentSet.GetCount();}
+                int             GetComponentCount()const{return component_set.GetCount();}
 
-        virtual void        UpdateComponents(const double delta_time)
-        {
-            Component **cc=ComponentSet.GetData();
+                ComponentSet &  GetComponents(){return component_set;}
 
-            for(int i=0;i<ComponentSet.GetCount();i++)
-                cc[i]->Update(delta_time);
-        }
+                int             GetComponents(List<Component *> &comp_list,SceneNode *);
 
-        virtual void        JoinComponent(Component *c){if(!c)return;ComponentSet.Add(c);}
-        virtual void        UnjonComponent(Component *c){if(!c)return;ComponentSet.Delete(c);}
+        virtual void            UpdateComponents(const double delta_time);
+
+        virtual void            JoinComponent(Component *c){if(!c)return;component_set.Add(c);}
+        virtual void            UnjonComponent(Component *c){if(!c)return;component_set.Delete(c);}
 
     public: //事件
 
-        virtual void OnFocusLost(){}                                             ///<焦点丢失事件
-        virtual void OnFocusGained(){}                                           ///<焦点获得事件
+        virtual void            OnFocusLost(){}                                             ///<焦点丢失事件
+        virtual void            OnFocusGained(){}                                           ///<焦点获得事件
     };//class ComponentManager
 }//namespace hgl::graph
