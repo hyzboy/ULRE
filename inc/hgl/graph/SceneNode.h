@@ -69,10 +69,11 @@ namespace hgl
                 LocalBoundingBox.SetZero();
 
                 ChildNode.Clear();
+                ComponentList.Clear();
                 render_obj=nullptr;
             }
 
-            const bool IsEmpty()const
+            const bool ChildNodeIsEmpty()const
             {
                 if(render_obj)return(false);
                 if(ChildNode.GetCount())return(false);
@@ -111,6 +112,14 @@ namespace hgl
 
         public: //组件相关方法
 
+                            bool        ComponentIsEmpty    ()const {return ComponentList.GetCount()==0;}               ///<是否没有组件
+            virtual         int         GetComponentCount   ()const {return ComponentList.GetCount();}                  ///<取得组件数量
+            virtual         void        AddComponent        (Component *comp) {ComponentList.Add(comp);}                ///<添加一个组件
+            virtual         void        RemoveComponent     (Component *comp) {ComponentList.DeleteByValue(comp);}      ///<删除一个组件
+                            bool        Contains            (Component *comp) {return ComponentList.Contains(comp);}    ///<是否包含指定组件
+
+                            bool        HasComponent        (const ComponentManager *);                                 ///<是否有指定组件管理器的组件
+            virtual         int         GetComponents       (List<Component *> &comp_list,const ComponentManager *);    ///<取得所有组件
 
         };//class SceneNode
 
