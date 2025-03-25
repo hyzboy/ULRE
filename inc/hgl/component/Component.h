@@ -4,6 +4,30 @@
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/List.h>
 
+/**
+*   Component/Data/Manager 体系设计简要说明
+*
+*   本体系参考AMD FidelityFX，但并不完全一致。
+*
+*   AMD FidelityFX中，Component存放于Entity下，而我方中与其类似的定义为SceneNode。
+*   不管是Entity还是SceneNode，它们都提供空间变换，以及子节点、Component的管理。
+*
+*   ComponentData是每个Component的数据，用于向Component或是其它模块提供数据。
+*   ComponentManager是Component的管理器，用于管理Component的创建、销毁、更新等。
+*
+*   Component是组件的基类，所有组件都从这里派生。
+*
+*
+*   RenderComponent是可渲染组件的基类，所有可渲染组件都从这里派生。它继承于Component。
+*
+*   PrimitiveComponent是图元组件的基类，所有图元组件都从这里派生。它继承于RenderComponent。
+*   它再度派生出的任何Component都必须是一个有3D空间的几何图元。
+*   引擎中的空间、物理、等都由PrimitiveComponent提供数据进行计算。
+*
+*   StaticMeshComponent是静态网格组件，它是一个具体的PrimitiveComponent实现。
+* 
+*/
+
 #define COMPONENT_NAMESPACE         hgl::graph
 #define COMPONENT_NAMESPACE_BEGIN   namespace COMPONENT_NAMESPACE {
 #define COMPONENT_NAMESPACE_END     }
