@@ -96,13 +96,6 @@ SOURCE_GROUP("Scene Graph\\Render" FILES ${SG_RENDER_SOURCE})
 
 SET(SCENE_GRAPH_FILES  ${SG_SCENE_SOURCE} ${SG_RENDER_SOURCE})
 
-SET(STATIC_MESH_HEADER_FILES    ${SG_INCLUDE_PATH}/StaticMesh.h
-                                ${SG_INCLUDE_PATH}/StaticMeshLODPolicy.h)
-
-SET(STATIC_MESH_SOURCE_FILES   StaticMesh.cpp)
-
-SOURCE_GROUP("Scene Graph\\Static Mesh" FILES ${STATIC_MESH_HEADER_FILES} ${STATIC_MESH_SOURCE_FILES})
-
 SET(FONT_MANAGE_SOURCE  ${SG_INCLUDE_PATH}/font/Font.h
                         ${SG_INCLUDE_PATH}/font/FontManage.h
                         font/Font.cpp)
@@ -380,9 +373,6 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${SG_TEXTURE_SOURCE}
                                         ${TILE_SOURCE}
                                         ${SG_VDM_SOURCE}
-
-                                        ${STATIC_MESH_HEADER_FILES}
-                                        ${STATIC_MESH_SOURCE_FILES}
 
                                         ${COMPONENT_FILES}
 

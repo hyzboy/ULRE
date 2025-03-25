@@ -13,7 +13,6 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/graph/font/TextPrimitive.h>
-#include<hgl/graph/StaticMesh.h>
 #include<hgl/type/ObjectManage.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
@@ -57,8 +56,6 @@ class RenderResource
     IDObjectManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
     IDObjectManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
 
-    IDObjectManage<StaticMeshID,           StaticMesh>         rm_static_mesh;             ///<静态网格合集
-
 private:
 
     void AddBuffer(const AnsiString &buf_name,DeviceBuffer *buf)
@@ -101,7 +98,6 @@ public: //添加数据到管理器（如果指针为nullptr会返回-1）
     BufferID                Add(DeviceBuffer *      buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
     RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
-    StaticMeshID            Add(StaticMesh *        sm  ){return rm_static_mesh.Add(sm);}
 
 public: // VAB/VAO
 
@@ -163,8 +159,6 @@ public: //Get
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
     Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
 
-    StaticMesh *        GetStaticMesh           (const StaticMeshID         &id){return rm_static_mesh.Get(id);}
-
 public: //Release
 
     void Release(Material *          mtl ){rm_material.Release(mtl);}
@@ -174,8 +168,6 @@ public: //Release
     void Release(DeviceBuffer *      buf ){rm_buffers.Release(buf);}
     void Release(Sampler *           s   ){rm_samplers.Release(s);}
     void Release(Renderable *        r   ){rm_renderables.Release(r);}
-
-    void Release(StaticMesh *        sm  ){rm_static_mesh.Release(sm);}
 };//class RenderResource
 
 /**
