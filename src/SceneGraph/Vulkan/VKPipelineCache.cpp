@@ -23,7 +23,7 @@ namespace
         sl.Add(OSString::numberOf(pdp.vendorID));
         sl.Add(OSString::numberOf(pdp.deviceID));
 
-        return ComboFilename(sl);
+        return Combine(sl);
     }
 
     void LoadPipelineCacheFile(VkPipelineCacheCreateInfo *pcci,const VkPhysicalDeviceProperties &pdp)
