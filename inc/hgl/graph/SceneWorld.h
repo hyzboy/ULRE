@@ -24,12 +24,17 @@ namespace hgl
 
         public:
 
-            
+            SceneWorld()
+            {
+                root_node=new SceneNode;
+            }
 
-        public:
+            virtual ~SceneWorld()
+            {
+                SAFE_CLEAR(root_node);
+            }
 
-
-
+            SceneNode *GetRootNode() { return root_node; }
         };//class SceneWorld
     }//namespace graph
 }//namespace hgl

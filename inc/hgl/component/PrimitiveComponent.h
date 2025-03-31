@@ -12,7 +12,8 @@ class PrimitiveComponent:public RenderComponent
 {
 public:
 
-    PrimitiveComponent()=default;
+    PrimitiveComponent(SceneNode *psn,ComponentData *cd,ComponentManager *cm)
+        :RenderComponent(psn,cd,cm){}
     virtual ~PrimitiveComponent()=default;
 };//class PrimitiveComponent
 

@@ -10,7 +10,7 @@ struct StaticMeshComponentData:public ComponentData
     Renderable *renderable;
 };//struct StaticMeshComponentData
 
-class StaticMeshComponent:public PrimitiveComponent;
+class StaticMeshComponent;
 
 class StaticMeshComponentManager:public ComponentManager
 {
@@ -18,12 +18,11 @@ public:
 
     StaticMeshComponentManager()=default;
 
+    size_t          ComponentHashCode()const override;
+
     StaticMeshComponent *CreateStaticMeshComponent(SceneNode *psn,StaticMeshComponentData *data);
 
-    virtual Component *CreateComponent(SceneNode *psn,ComponentData *data) override
-    {
-        return CreateStaticMeshComponent(psn,reinterpret_cast<StaticMeshComponentData *>(data));
-    }
+    virtual Component *CreateComponent(SceneNode *psn,ComponentData *data) override;
 };//class StaticMeshComponentManager
 
 class StaticMeshComponent:public PrimitiveComponent
@@ -40,7 +39,7 @@ public:
 
     virtual ~StaticMeshComponent()
     {
-        SAFE_CLEAR(sm_Data);
+        SAFE_CLEAR(sm_data);
     }
 
             StaticMeshComponentData &GetData()      {return *sm_data;}
