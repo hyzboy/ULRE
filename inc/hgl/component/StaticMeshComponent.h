@@ -16,9 +16,20 @@ class StaticMeshComponentManager:public ComponentManager
 {
 public:
 
-    StaticMeshComponentManager()=default;
+    static StaticMeshComponentManager *GetDefaultManager()
+    {
+        return GetComponentManager<StaticMeshComponentManager>(true);
+    }
 
-    size_t          ComponentHashCode()const override;
+    static constexpr const size_t StaticHashCode          (){return hgl::GetTypeHash<StaticMeshComponentManager>();}
+    static constexpr const size_t StaticComponentHashCode (){return hgl::GetTypeHash<StaticMeshComponent>();}
+
+    const size_t GetComponentHashCode   ()const override{return StaticMeshComponentManager::StaticComponentHashCode();}
+    const size_t GetHashCode            ()const override{return StaticMeshComponentManager::StaticHashCode();}
+
+public:
+
+    StaticMeshComponentManager()=default;
 
     StaticMeshComponent *CreateStaticMeshComponent(SceneNode *psn,StaticMeshComponentData *data);
 
@@ -37,9 +48,16 @@ public:
         sm_data=reinterpret_cast<StaticMeshComponentData *>(cd);
     }
 
-    virtual ~StaticMeshComponent()
+    virtual ~StaticMeshComponent()=default;
+
+    static constexpr const size_t StaticHashCode()
     {
-        SAFE_CLEAR(sm_data);
+        return hgl::GetTypeHash<StaticMeshComponent>();
+    }
+
+    const size_t    GetHashCode()const override
+    {
+        return StaticMeshComponent::StaticHashCode();
     }
 
             StaticMeshComponentData &GetData()      {return *sm_data;}

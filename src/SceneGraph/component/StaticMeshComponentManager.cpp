@@ -3,11 +3,6 @@
 
 COMPONENT_NAMESPACE_BEGIN
 
-size_t StaticMeshComponentManager::ComponentHashCode()const
-{
-    return GetTypeHash<StaticMeshComponentManager>();
-}
-
 StaticMeshComponent *StaticMeshComponentManager::CreateStaticMeshComponent(SceneNode *psn,StaticMeshComponentData *data)
 {
     if(!psn||!data)return(nullptr);
