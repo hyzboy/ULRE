@@ -65,7 +65,12 @@ public:
         Manager=cm;
     }
 
-    virtual ~Component()=default;
+    virtual ~Component()
+    {
+        SAFE_CLEAR(Data);
+    }
+
+    virtual const size_t    GetHashCode()const=0;
 
 public:
 
@@ -91,11 +96,12 @@ class ComponentManager
 
 public:
 
+    virtual const size_t    GetComponentHashCode()const=0;
+    virtual const size_t    GetHashCode()const=0;
+
     virtual ~ComponentManager()=default;
 
 public:
-
-    virtual size_t          ComponentHashCode()const=0;
 
     virtual Component *     CreateComponent(SceneNode *,ComponentData *)=0;
 
@@ -115,4 +121,21 @@ public: //事件
     virtual void            OnFocusLost(){}                                             ///<焦点丢失事件
     virtual void            OnFocusGained(){}                                           ///<焦点获得事件
 };//class ComponentManager
+
+bool RegistryComponentManager(ComponentManager *);
+ComponentManager *GetComponentManager(const size_t hash_code);
+
+template<typename T> inline T *GetComponentManager(bool create_default=true)
+{
+    T *cm=(T *)GetComponentManager(T::StaticHashCode());
+
+    if(!cm&&create_default)
+    {
+        cm=new T;
+
+        RegistryComponentManager(cm);
+    }
+
+    return cm;
+}
 COMPONENT_NAMESPACE_END
