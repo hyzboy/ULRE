@@ -17,6 +17,9 @@ class RenderTargetManager;
 
 class RenderModule;
 
+class CameraComponentManager{/*现阶段测试使用*/};
+class LightComponentManager{/*现阶段测试使用*/};
+
 class RenderFramework:public io::WindowEvent
 {
     OSString                app_name;
@@ -38,6 +41,11 @@ protected:
     RenderTargetManager *   rt_manager          =nullptr;
 
     SwapchainModule *       sc_module           =nullptr;
+
+protected:
+
+    CameraComponentManager *camera_component_manager=nullptr;
+    LightComponentManager  *light_component_manager =nullptr;
 
 public:
 
@@ -67,7 +75,13 @@ public:
 
     virtual bool Init(uint w,uint h);
 
-public:
+public: // event
+
+    virtual void OnResize(uint w,uint h);
+    virtual void OnActive(bool);
+    virtual void OnClose();
+
+public: // other
 
     RenderList *CreateRenderList()
     {
@@ -76,12 +90,22 @@ public:
 
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
 
-public: // event
+public: // ComponentManager
 
-    virtual void OnResize(uint w,uint h);
-    virtual void OnActive(bool);
-    virtual void OnClose();
+    template<typename T> T *GetComponentManager()
+    {
+        return COMPONENT_NAMESPACE::GetComponentManager<T>(true);
+    }
 
+    template<> CameraComponentManager *GetComponentManager<CameraComponentManager>()
+    {
+        return camera_component_manager;
+    }
+
+    template<> LightComponentManager *GetComponentManager<LightComponentManager>()
+    {
+        return light_component_manager;
+    }
 };//class RenderFramework
 
 VK_NAMESPACE_END
