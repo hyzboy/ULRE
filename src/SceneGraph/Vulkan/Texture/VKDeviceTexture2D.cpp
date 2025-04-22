@@ -160,7 +160,7 @@ bool TextureManager::CommitTexture2DMipmaps(Texture2D *tex,DeviceBuffer *buf,con
     return CopyBufferToImage2D(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const List<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+bool TextureManager::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ArrayList<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 {
     if(!tex||!buf||ir_list.GetCount()<=0)
         return(false);

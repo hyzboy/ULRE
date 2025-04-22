@@ -23,9 +23,9 @@ class GPUPhysicalDevice
     VkPhysicalDeviceVulkan14Properties  properties14;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
-    List<VkLayerProperties>             layer_properties;
-    List<VkExtensionProperties>         extension_properties;
-    List<VkQueueFamilyProperties>       queue_family_properties;
+    ArrayList<VkLayerProperties>             layer_properties;
+    ArrayList<VkExtensionProperties>         extension_properties;
+    ArrayList<VkQueueFamilyProperties>       queue_family_properties;
 
 private:
 

@@ -9,8 +9,8 @@
 
 namespace hgl{namespace graph
 {
-using UBODescriptorList=List<const UBODescriptor *>;
-using SamplerDescriptorList=List<const SamplerDescriptor *>;
+using UBODescriptorList=ArrayList<const UBODescriptor *>;
+using SamplerDescriptorList=ArrayList<const SamplerDescriptor *>;
 using ConstValueDescriptorList=ObjectList<ConstValueDescriptor>;
 using SubpassInputDescriptorList=ObjectList<SubpassInputDescriptor>;
 

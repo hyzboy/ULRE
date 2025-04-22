@@ -89,7 +89,7 @@ namespace hgl
             LocalBoundingBox=local;
         }
 
-        int SceneNode::GetComponents(List<Component *> &comp_list,const ComponentManager *mgr)
+        int SceneNode::GetComponents(ArrayList<Component *> &comp_list,const ComponentManager *mgr)
         {
             if(!mgr)return(-1);
             if(ComponentIsEmpty())return(0);

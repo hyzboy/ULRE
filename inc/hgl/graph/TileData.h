@@ -37,7 +37,7 @@ namespace hgl
 
             DeviceBuffer *tile_buffer;                                                                                     ///<Tile暂存缓冲区
 
-            List<Image2DRegion> commit_list;
+            ArrayList<Image2DRegion> commit_list;
             uint8 *commit_ptr;
 
             bool CommitTile(TileObject *,const void *,const uint,const int,const int);	                                ///<提交一个Tile数据

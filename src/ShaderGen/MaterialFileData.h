@@ -47,7 +47,7 @@ namespace material_file
         AccumMemoryManager::Block *block;
     };
 
-    using UBODataList=List<UBOData>;
+    using UBODataList=ArrayList<UBOData>;
 
     struct ShaderData
     {
@@ -56,7 +56,7 @@ namespace material_file
         const char *            code;
         uint                    code_length;
 
-        List<SamplerData>       sampler;
+        ArrayList<SamplerData>       sampler;
 
     public:
 

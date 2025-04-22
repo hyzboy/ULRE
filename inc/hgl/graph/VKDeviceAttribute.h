@@ -34,7 +34,7 @@ struct GPUDeviceAttribute
     VkQueue                             present_queue   =VK_NULL_HANDLE;
 
     VkSurfaceFormatKHR                  surface_format;
-    List<VkPresentModeKHR>              present_modes;
+    ArrayList<VkPresentModeKHR>              present_modes;
 
     VkSurfaceTransformFlagBitsKHR       preTransform;
     VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;

@@ -29,8 +29,8 @@ namespace hgl
             const int compare(const RenderNode &)const override;
         };
 
-        using RenderNodeList=List<RenderNode>;
-        using RenderNodePointerList=List<RenderNode *>;
+        using RenderNodeList=ArrayList<RenderNode>;
+        using RenderNodePointerList=ArrayList<RenderNode *>;
 
         using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph

@@ -3,6 +3,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/VKMaterialInstance.h>
+#include"AssetData.h"
 
 using namespace hgl;
 using namespace hgl::graph;

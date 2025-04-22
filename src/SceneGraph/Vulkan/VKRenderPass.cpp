@@ -5,7 +5,7 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
 VK_NAMESPACE_BEGIN
-RenderPass::RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df)
+RenderPass::RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const ArrayList<VkFormat> &cf,VkFormat df)
 {
     device=d;
     pipeline_cache=pc;
