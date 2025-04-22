@@ -38,7 +38,7 @@ namespace hgl
             virtual ~TileFont();
 
             bool Registry(TileUVFloatMap &,SortedSet<u32char> &chars_sets);                         ///<注册要使用的字符
-            void Unregistry(const List<u32char> &);                                                 ///<注销要使用的字符
+            void Unregistry(const ArrayList<u32char> &);                                                 ///<注销要使用的字符
         };//class TileFont
     }//namespace graph
 }//namespace hgl

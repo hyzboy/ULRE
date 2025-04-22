@@ -16,7 +16,7 @@ class RenderPass
     VkPipelineCache pipeline_cache;
     VkRenderPass render_pass;
 
-    List<VkFormat> color_formats;
+    ArrayList<VkFormat> color_formats;
     VkFormat depth_format;
 
     VkExtent2D granularity;
@@ -31,7 +31,7 @@ private:
 
     friend class RenderPassManager;
 
-    RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const List<VkFormat> &cf,VkFormat df);
+    RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const ArrayList<VkFormat> &cf,VkFormat df);
 
 public:
 
@@ -43,7 +43,7 @@ public:
     const   VkPipelineCache GetPipelineCache()const{return pipeline_cache;}
 
     const uint              GetColorCount()const{return color_formats.GetCount();}
-    const List<VkFormat> &  GetColorFormat()const{return color_formats;}
+    const ArrayList<VkFormat> &  GetColorFormat()const{return color_formats;}
     const VkFormat          GetColorFormat(int index)const
     {
         if(index<0||index>=color_formats.GetCount())return VK_FORMAT_UNDEFINED;

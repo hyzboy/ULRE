@@ -274,7 +274,7 @@ struct ShaderVariable
     Interpolation   interpolation;  //插值方式
 };
 
-using SVList=List<ShaderVariable>;
+using SVList=ArrayList<ShaderVariable>;
 
 struct ShaderVariableArray:public Comparator<ShaderVariableArray>
 {

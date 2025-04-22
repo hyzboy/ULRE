@@ -119,7 +119,7 @@ namespace hgl
                             bool        Contains            (Component *comp) {return ComponentList.Contains(comp);}    ///<是否包含指定组件
 
                             bool        HasComponent        (const ComponentManager *);                                 ///<是否有指定组件管理器的组件
-            virtual         int         GetComponents       (List<Component *> &comp_list,const ComponentManager *);    ///<取得所有组件
+            virtual         int         GetComponents       (ArrayList<Component *> &comp_list,const ComponentManager *);    ///<取得所有组件
 
         };//class SceneNode
 

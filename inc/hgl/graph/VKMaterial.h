@@ -11,8 +11,10 @@ namespace hgl
 {
     class ActiveMemoryBlockManager;
 }
+
 VK_NAMESPACE_BEGIN
-using ShaderStageCreateInfoList=List<VkPipelineShaderStageCreateInfo>;
+
+using ShaderStageCreateInfoList=ArrayList<VkPipelineShaderStageCreateInfo>;
 
 /**
  * 材质类<br>

@@ -37,7 +37,7 @@ protected:
 
     AnsiString mi_codes;
 
-    List<const char *> function_list;
+    ArrayList<const char *> function_list;
     AnsiString main_function;
 
     AnsiString final_shader;

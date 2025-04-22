@@ -109,12 +109,12 @@ public:
 
             ComponentSet &  GetComponents(){return component_set;}
 
-            int             GetComponents(List<Component *> &comp_list,SceneNode *);
+            int             GetComponents(ArrayList<Component *> &comp_list,SceneNode *);
 
     virtual void            UpdateComponents(const double delta_time);
 
-    virtual void            JoinComponent(Component *c){if(!c)return;component_set.Add(c);}
-    virtual void            UnjonComponent(Component *c){if(!c)return;component_set.Delete(c);}
+    virtual void            AttachComponent(Component *c){if(!c)return;component_set.Add(c);}
+    virtual void            DetachComponent(Component *c){if(!c)return;component_set.Delete(c);}
 
 public: //事件
 

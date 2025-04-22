@@ -31,7 +31,7 @@ namespace hgl::graph
         return component_manager_map.at(hash_code);
     }
 
-    int ComponentManager::GetComponents(List<Component *> &comp_list,SceneNode *node)
+    int ComponentManager::GetComponents(ArrayList<Component *> &comp_list,SceneNode *node)
     {
         if(!node)return(-1);
 

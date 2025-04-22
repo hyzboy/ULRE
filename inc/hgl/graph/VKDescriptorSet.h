@@ -18,7 +18,7 @@ class DescriptorSet
 
     ObjectList<VkDescriptorBufferInfo> vab_list;
     ObjectList<VkDescriptorImageInfo> image_list;
-    List<VkWriteDescriptorSet> wds_list;
+    ArrayList<VkWriteDescriptorSet> wds_list;
 
     SortedSet<uint32_t> binded_sets;
 

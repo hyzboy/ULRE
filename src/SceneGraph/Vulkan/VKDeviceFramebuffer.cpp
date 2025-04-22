@@ -34,7 +34,7 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_lis
 
     if(color_count)
     {
-        const List<VkFormat> &cf_list=rp->GetColorFormat();
+        const ArrayList<VkFormat> &cf_list=rp->GetColorFormat();
 
         const VkFormat *cf=cf_list.GetData();
         ImageView **iv=color_list;
@@ -81,7 +81,7 @@ Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ImageView **color_lis
     return(new Framebuffer(GetVkDevice(),fbo,extent,rp,color_count,depth));
 }
 //
-//Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,List<ImageView *> &color,ImageView *depth)
+//Framebuffer *RenderTargetManager::CreateFBO(RenderPass *rp,ArrayList<ImageView *> &color,ImageView *depth)
 //{    
 //    if(!rp)return(nullptr);
 //

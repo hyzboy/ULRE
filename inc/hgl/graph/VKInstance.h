@@ -101,8 +101,8 @@ VK_NAMESPACE_BEGIN
     };//class VulkanInstance
     
             void                            InitVulkanInstanceProperties();
-    const   List<VkLayerProperties> &       GetInstanceLayerProperties();
-    const   List<VkExtensionProperties> &   GetInstanceExtensionProperties();
+    const   ArrayList<VkLayerProperties> &       GetInstanceLayerProperties();
+    const   ArrayList<VkExtensionProperties> &   GetInstanceExtensionProperties();
     const   bool                            CheckInstanceLayerSupport(const AnsiString &);
     const   bool                            GetInstanceLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl);
     const   bool                            CheckInstanceExtensionSupport(const AnsiString &);
