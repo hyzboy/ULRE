@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/type/String.h>
-#include<hgl/type/List.h>
+#include<hgl/type/ArrayList.h>
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/VKInterpolation.h>
 #include<hgl/graph/VKSamplerType.h>

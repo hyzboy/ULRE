@@ -461,7 +461,7 @@ public:
 
     void Update()
     {
-        cur_time=GetDoubleTime();
+        cur_time=GetPreciseTime();
     }
 };
 
