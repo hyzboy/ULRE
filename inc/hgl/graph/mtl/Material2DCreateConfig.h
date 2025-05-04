@@ -53,7 +53,6 @@ public:
 MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
 MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
 
-
 struct MaterialLerpLineConfig
 {
 

@@ -1,5 +1,6 @@
 ﻿#include"Std2DMaterial.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 
 STD_MTL_NAMESPACE_BEGIN
 namespace
@@ -60,4 +61,26 @@ MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *cfg)
 
     return mvc2d.Create();
 }
+
+class MaterialFactoryVertexColor2D:public MaterialFactory
+{
+public:
+
+    MaterialFactoryVertexColor2D()
+    {
+    }
+
+    AnsiString GetName()const override
+    {
+        return "VertexColor2D";
+    }
+
+    MaterialCreateInfo *Create() override
+    {
+        return CreateVertexColor2D(nullptr);
+    }
+};//class MaterialFactoryVertexColor2D:public MaterialFactory
+
+DEFINE_MATERIAL_FACTORY(VertexColor2D)
+
 STD_MTL_NAMESPACE_END
