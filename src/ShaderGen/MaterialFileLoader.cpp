@@ -572,7 +572,7 @@ namespace
 
                 while(hgl::isalpha(*text)||*text=='_')++text;
 
-                const Prim ip=ParsePrimName(sp,text-sp);
+                const PrimitiveType ip=ParsePrimitiveType(sp,text-sp);
 
                 if(!CheckGeometryShaderIn(ip))
                     return(false);
@@ -591,7 +591,7 @@ namespace
 
                 while(hgl::isalpha(*text)||*text=='_')++text;
 
-                const Prim op=ParsePrimName(sp,text-sp);
+                const PrimitiveType op=ParsePrimitiveType(sp,text-sp);
 
                 if(!CheckGeometryShaderOut(op))
                     return(false);

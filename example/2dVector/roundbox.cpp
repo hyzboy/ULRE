@@ -66,7 +66,7 @@ private:
         if(!material_instance)
             return(false);
             
-        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/alpha2d"),Prim::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/alpha2d"),PrimitiveType::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);

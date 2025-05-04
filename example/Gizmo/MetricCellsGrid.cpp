@@ -49,7 +49,7 @@ private:
 
     bool InitMDP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"MetricCellsGrid",Prim::Fan);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"MetricCellsGrid",PrimitiveType::Fan);
 
         cfg.local_to_world=true;
 
@@ -76,7 +76,7 @@ private:
 
         material_instance=db->CreateMaterialInstance(material,nullptr,&mcg_data);
         
-        pipeline=CreatePipeline(material,InlinePipeline::Solid3D,Prim::Fan);
+        pipeline=CreatePipeline(material,InlinePipeline::Solid3D,PrimitiveType::Fan);
 
         return pipeline;
     }

@@ -18,7 +18,7 @@ struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material3DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p):MaterialCreateConfig(da,name,p)
+    Material3DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const PrimitiveType &p):MaterialCreateConfig(da,name,p)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=true;       //不输出深度

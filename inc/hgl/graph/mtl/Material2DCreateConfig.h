@@ -16,7 +16,7 @@ struct Material2DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p):MaterialCreateConfig(da,name,p)
+    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const PrimitiveType &p):MaterialCreateConfig(da,name,p)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
@@ -25,8 +25,8 @@ public:
         coordinate_system=CoordinateSystem2D::NDC;
         local_to_world=false;
 
-        if(prim==Prim::SolidRectangles
-         ||prim==Prim::WireRectangles)
+        if(prim==PrimitiveType::SolidRectangles
+         ||prim==PrimitiveType::WireRectangles)
             position_format=VAT_VEC4;
         else
             position_format=VAT_VEC2;

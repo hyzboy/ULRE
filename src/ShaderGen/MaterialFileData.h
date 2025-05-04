@@ -86,8 +86,8 @@ namespace material_file
 
     struct GeometryShaderData:public ShaderData
     {
-        Prim input_prim;
-        Prim output_prim;
+        PrimitiveType input_prim;
+        PrimitiveType output_prim;
         uint max_vertices=0;
 
         SVList output;

@@ -42,7 +42,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2D",Prim::Triangles);
+        mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2D",PrimitiveType::Triangles);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
@@ -57,7 +57,7 @@ private:
     bool InitPipeline()
     {
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,PrimitiveType::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         return pipeline;
     }

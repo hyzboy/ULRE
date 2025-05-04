@@ -91,7 +91,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2DArray",Prim::SolidRectangles);
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2DArray",PrimitiveType::SolidRectangles);
 
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
         cfg.local_to_world=true;
@@ -101,7 +101,7 @@ private:
         if(!material)
             return(false);
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,PrimitiveType::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);

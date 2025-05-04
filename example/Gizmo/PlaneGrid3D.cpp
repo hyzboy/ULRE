@@ -26,7 +26,7 @@ private:
 
     bool InitMDP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",PrimitiveType::Lines);
 
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
@@ -50,7 +50,7 @@ private:
             ce=COLOR((int)ce+1);
         }
 
-        pipeline=CreatePipeline(material_instance[0],InlinePipeline::Solid3D,Prim::Lines);
+        pipeline=CreatePipeline(material_instance[0],InlinePipeline::Solid3D,PrimitiveType::Lines);
 
         return pipeline;
     }

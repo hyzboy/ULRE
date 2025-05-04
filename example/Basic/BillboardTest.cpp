@@ -47,7 +47,7 @@ private:
 
     bool InitPlaneGridMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
@@ -64,7 +64,7 @@ private:
             mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
-            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,Prim::Lines);
+            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,PrimitiveType::Lines);
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -73,7 +73,7 @@ private:
 
     bool InitBillboardMP()
     {
-        mtl::BillboardMaterialCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2D",Prim::Billboard);
+        mtl::BillboardMaterialCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2D",PrimitiveType::Billboard);
 
         {
             cfg.fixed_size=true;
@@ -83,7 +83,7 @@ private:
             mi_billboard=db->CreateMaterialInstance(mci);
             if(!mi_billboard)return(false);
 
-            pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D,Prim::Billboard);
+            pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D,PrimitiveType::Billboard);
             if(!pipeline_billboard)return(false);
         }
 

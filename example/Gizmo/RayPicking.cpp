@@ -51,7 +51,7 @@ private:
 
     bool InitMaterialAndPipeline()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance2D",Prim::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance2D",PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
@@ -69,7 +69,7 @@ private:
             mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
-            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,Prim::Lines);
+            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,PrimitiveType::Lines);
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -83,7 +83,7 @@ private:
             mi_line=db->CreateMaterialInstance(mtl_line,nullptr,&yellow_color);
             if(!mi_line)return(false);
 
-            pipeline_line=CreatePipeline(mtl_line,InlinePipeline::Solid3D,Prim::Lines);
+            pipeline_line=CreatePipeline(mtl_line,InlinePipeline::Solid3D,PrimitiveType::Lines);
 
             if(!pipeline_line)
                 return(false);

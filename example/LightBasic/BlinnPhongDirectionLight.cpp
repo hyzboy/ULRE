@@ -104,7 +104,7 @@ private:
 
     bool InitVertexLumMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
@@ -114,7 +114,7 @@ private:
         mi_plane_grid=db->CreateMaterialInstance(mtl_vertex_lum,nullptr,&white_color);
         if(!mi_plane_grid)return(false);
 
-        p_line=CreatePipeline(mtl_vertex_lum,InlinePipeline::Solid3D,Prim::Lines);
+        p_line=CreatePipeline(mtl_vertex_lum,InlinePipeline::Solid3D,PrimitiveType::Lines);
 
         if(!p_line)
             return(false);
@@ -132,7 +132,7 @@ private:
 
     bool InitBlinnPhongSunLightMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"BlinnPhong3D",Prim::Triangles);
+        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"BlinnPhong3D",PrimitiveType::Triangles);
 
         cfg.local_to_world=true;
         cfg.material_instance=true;
@@ -170,7 +170,7 @@ private:
             if(!mi_blinnphong[i])return(false);
         }
 
-        p_blinnphong=CreatePipeline(mtl_blinnphong,InlinePipeline::Solid3D,Prim::Triangles);
+        p_blinnphong=CreatePipeline(mtl_blinnphong,InlinePipeline::Solid3D,PrimitiveType::Triangles);
 
         if(!p_blinnphong)
             return(false);
