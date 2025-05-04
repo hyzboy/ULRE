@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/type/List.h>
+#include<hgl/type/ArrayList.h>
 #include<hgl/math/Math.h>
 #include<hgl/type/String.h>
 #include<hgl/type/Map.h>

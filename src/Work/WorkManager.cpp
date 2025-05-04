@@ -70,7 +70,7 @@ namespace hgl
 
         while(!cur_work_object->IsDestroy())
         {
-            cur_time=GetDoubleTime();
+            cur_time=GetPreciseTime();
 
             if(cur_work_object->IsTickable())
                 Tick(cur_work_object);

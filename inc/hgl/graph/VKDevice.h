@@ -1,7 +1,7 @@
 ﻿#ifndef HGL_GRAPH_VULKAN_DEVICE_INCLUDE
 #define HGL_GRAPH_VULKAN_DEVICE_INCLUDE
 
-#include<hgl/type/List.h>
+#include<hgl/type/ArrayList.h>
 #include<hgl/type/String.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/RectScope.h>

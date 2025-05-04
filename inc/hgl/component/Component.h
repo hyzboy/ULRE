@@ -2,7 +2,7 @@
 
 #include<hgl/type/DataType.h>
 #include<hgl/type/SortedSet.h>
-#include<hgl/type/List.h>
+#include<hgl/type/ArrayList.h>
 
 /**
 *   Component/Data/Manager 体系设计简要说明
