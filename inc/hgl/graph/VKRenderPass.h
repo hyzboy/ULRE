@@ -56,15 +56,15 @@ public:
 
 public:
 
-    Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const Prim &,const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const Prim &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,const VIL *,const PipelineData *,   const PrimitiveType &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *,const VIL *,const InlinePipeline &, const PrimitiveType &,const bool prim_restart=false);
 
-    Pipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const Prim &,const bool prim_restart=false);
-    Pipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const Prim &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *mtl,         const PipelineData *,   const PrimitiveType &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(Material *mtl,         const InlinePipeline &, const PrimitiveType &,const bool prim_restart=false);
 
-    Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const Prim &,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const Prim &,const bool prim_restart=false);
-    Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const Prim &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const InlinePipeline &, const PrimitiveType &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const PipelineData *,   const PrimitiveType &,const bool prim_restart=false);
+    Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const PrimitiveType &,const bool prim_restart=false);
 };//class RenderPass
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE

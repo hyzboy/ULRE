@@ -88,7 +88,7 @@ namespace
         RenderPass *render_pass=device->GetRenderPass();
         
         {
-            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",Prim::Lines);
+            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",PrimitiveType::Lines);
 
             cfg.mtl_name="VertexLuminance3D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.local_to_world=true;
@@ -107,7 +107,7 @@ namespace
         }
 
         {
-            gizmo_line.pipeline=render_pass->CreatePipeline(gizmo_line.mtl,InlinePipeline::Solid3D,Prim::Lines);
+            gizmo_line.pipeline=render_pass->CreatePipeline(gizmo_line.mtl,InlinePipeline::Solid3D,PrimitiveType::Lines);
 
             if(!gizmo_line.pipeline)
                 return(false);
@@ -142,7 +142,7 @@ namespace
         RenderPass *render_pass=device->GetRenderPass();
 
         {
-            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Gizmo3D",Prim::Triangles);
+            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Gizmo3D",PrimitiveType::Triangles);
 
             cfg.local_to_world=true;
             cfg.material_instance=true;
@@ -160,7 +160,7 @@ namespace
         }
 
         {
-            gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::Solid3D,Prim::Triangles);
+            gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::Solid3D,PrimitiveType::Triangles);
             if(!gizmo_triangle.pipeline)
                 return(false);
         }

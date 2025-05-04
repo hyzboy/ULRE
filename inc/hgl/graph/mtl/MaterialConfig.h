@@ -25,11 +25,11 @@ struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 
     uint32 shader_stage_flag_bit;                           ///<需要的shader
 
-    Prim prim;                                              ///<图元类型
+    PrimitiveType prim;                                              ///<图元类型
 
 public:
 
-    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const Prim &p)
+    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const PrimitiveType &p)
     {
         dev_attr=da;
 

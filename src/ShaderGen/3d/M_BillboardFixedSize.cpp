@@ -67,7 +67,7 @@ void main()
 
         bool CustomGeometryShader(ShaderCreateInfoGeometry *gsc) override
         {
-            gsc->SetGeom(Prim::Points,Prim::TriangleStrip,4);
+            gsc->SetGeom(PrimitiveType::Points,PrimitiveType::TriangleStrip,4);
 
             gsc->AddOutput(SVT_VEC2,"TexCoord");
 

@@ -48,7 +48,7 @@ private:
     bool InitMaterial()
     {
         {
-            mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"PureColor2D",Prim::Triangles);
+            mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"PureColor2D",PrimitiveType::Triangles);
 
             cfg.coordinate_system=CoordinateSystem2D::NDC;
             cfg.local_to_world=true;
@@ -76,7 +76,7 @@ private:
             }
         }
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::Triangles);
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,PrimitiveType::Triangles);
         
         return pipeline;
     }

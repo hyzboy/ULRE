@@ -5,7 +5,7 @@ namespace hgl
 {
     namespace graph
     {
-        bool ShaderCreateInfoGeometry::SetGeom(const Prim &ip,const Prim &op,const uint32_t mv)
+        bool ShaderCreateInfoGeometry::SetGeom(const PrimitiveType &ip,const PrimitiveType &op,const uint32_t mv)
         {
             if(!CheckGeometryShaderIn(ip))return(false);
             if(!CheckGeometryShaderOut(op))return(false);

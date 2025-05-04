@@ -47,7 +47,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2D",Prim::SolidRectangles);
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"RectTexture2D",PrimitiveType::SolidRectangles);
 
         cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
         cfg.local_to_world=false;
@@ -58,7 +58,7 @@ private:
             return(false);
 
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,PrimitiveType::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);

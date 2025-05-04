@@ -53,8 +53,8 @@ private:
             return(false);
             
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        //pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/alpha2d"),Prim::LineStrip);     //等同上一行，为Framework重载，默认使用swapchain的render target
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Alpha2D,Prim::LineStrip);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        //pipeline=CreatePipeline(material_instance,OS_TEXT("res/pipeline/alpha2d"),PrimitiveType::LineStrip);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Alpha2D,PrimitiveType::LineStrip);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);

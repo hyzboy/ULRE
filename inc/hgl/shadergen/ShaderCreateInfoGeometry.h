@@ -24,7 +24,7 @@ public:
     ShaderCreateInfoGeometry(MaterialDescriptorInfo *m):ShaderCreateInfo(){ShaderCreateInfo::Init(&gsdi,m);}
     ~ShaderCreateInfoGeometry()override=default;
 
-    bool SetGeom(const Prim &ip,const Prim &op,const uint32_t mv);
+    bool SetGeom(const PrimitiveType &ip,const PrimitiveType &op,const uint32_t mv);
     
     int AddOutput(SVList &);
     int AddOutput(const ShaderVariableType &type,const AnsiString &name,Interpolation inter=Interpolation::Smooth);

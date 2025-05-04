@@ -56,7 +56,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
     return(new Pipeline(name,device,graphicsPipeline,vil,pd));
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const PrimitiveType &prim,const bool prim_restart)
 {
     PipelineData *pd=new PipelineData(cpd);
 
@@ -70,36 +70,36 @@ Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const Pipeline
     return(p);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const InlinePipeline &ip,const PrimitiveType &prim,const bool prim_restart)
 {
     if(!mtl)return(nullptr);
 
     return CreatePipeline(mtl,vil,GetPipelineData(ip),prim,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const PipelineData *pd,   const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const PipelineData *pd,   const PrimitiveType &prim,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),pd,prim,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(Material *mtl,const InlinePipeline &ip, const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(Material *mtl,const InlinePipeline &ip, const PrimitiveType &prim,const bool prim_restart)
 {
     return CreatePipeline(mtl,mtl->GetDefaultVIL(),ip,prim,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const InlinePipeline &ip,const PrimitiveType &prim,const bool prim_restart)
 {
     if(!mi)return(nullptr);
     
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),ip,prim,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const PipelineData *cpd,const PrimitiveType &prim,const bool prim_restart)
 {
     return CreatePipeline(mi->GetMaterial(),mi->GetVIL(),cpd,prim,prim_restart);
 }
 
-Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const Prim &prim,const bool prim_restart)
+Pipeline *RenderPass::CreatePipeline(MaterialInstance *mi,const OSString &pipeline_filename,const PrimitiveType &prim,const bool prim_restart)
 {
     const PipelineData *pd=GetPipelineData(pipeline_filename);
 

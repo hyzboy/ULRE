@@ -51,7 +51,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"PureTexture2D",Prim::Fan);
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"PureTexture2D",PrimitiveType::Fan);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
@@ -62,7 +62,7 @@ private:
             return(false);
 
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,Prim::Fan);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,PrimitiveType::Fan);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);

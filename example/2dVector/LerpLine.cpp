@@ -46,7 +46,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2D",Prim::Lines);
+        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2D",PrimitiveType::Lines);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
@@ -60,7 +60,7 @@ private:
 
     bool InitPipeline()
     {
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::Lines);
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,PrimitiveType::Lines);
 
         return pipeline;
     }
