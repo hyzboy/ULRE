@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_MTL_CONFIG_INCLUDE
-#define HGL_GRAPH_MTL_CONFIG_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/type/String.h>
@@ -15,17 +14,17 @@ class MaterialCreateInfo;
  */
 struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 {
-    const GPUDeviceAttribute *dev_attr;
+    const GPUDeviceAttribute *  dev_attr;                   ///<GPU设备属性(目前仅用于获取UBO/SSBO数值，未来可以考虑干掉)
 
-    AnsiString mtl_name;                                    ///<材质名称
+    AnsiString                  mtl_name;                   ///<材质名称
 
-    bool material_instance;                                 ///<是否包含材质实例
+    bool                        material_instance;          ///<是否包含材质实例
 
-    RenderTargetOutputConfig rt_output;                     ///<渲染目标输出配置
+    RenderTargetOutputConfig    rt_output;                  ///<渲染目标输出配置
 
-    uint32 shader_stage_flag_bit;                           ///<需要的shader
+    uint32                      shader_stage_flag_bit;      ///<需要的shader
 
-    PrimitiveType prim;                                              ///<图元类型
+    PrimitiveType               prim;                       ///<图元类型
 
 public:
 
@@ -61,4 +60,3 @@ public:
     }
 };//struct MaterialCreateConfig
 STD_MTL_NAMESPACE_END
-#endif//HGL_GRAPH_MTL_CONFIG_INCLUDE

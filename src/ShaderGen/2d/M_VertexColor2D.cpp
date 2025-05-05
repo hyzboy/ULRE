@@ -75,9 +75,9 @@ public:
         return "VertexColor2D";
     }
 
-    MaterialCreateInfo *Create() override
+    MaterialCreateInfo *Create(MaterialCreateConfig *cfg) override
     {
-        return CreateVertexColor2D(nullptr);
+        return CreateVertexColor2D((Material2DCreateConfig *)cfg);
     }
 };//class MaterialFactoryVertexColor2D:public MaterialFactory
 

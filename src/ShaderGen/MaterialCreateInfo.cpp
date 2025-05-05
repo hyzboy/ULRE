@@ -239,7 +239,7 @@ bool MaterialCreateInfo::CreateShader()
         if(!shader_map.GetValue(i,sc))
             return(false);
 
-        if(sc->GetShaderStage()<mi_shader_stage)
+        if(static_cast<uint32_t>(sc->GetShaderStage())<mi_shader_stage)
             sc->AddMaterialInstanceOutput();
 
         sc->CreateShader(last);
