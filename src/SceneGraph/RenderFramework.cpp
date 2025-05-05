@@ -16,6 +16,11 @@ VK_NAMESPACE_BEGIN
 bool InitShaderCompiler();
 void CloseShaderCompiler();
 
+namespace mtl
+{
+    void ClearMaterialFactory();
+}
+
 namespace 
 {
     static int RENDER_FRAMEWORK_COUNT=0;
@@ -49,6 +54,7 @@ RenderFramework::~RenderFramework()
 
     if(RENDER_FRAMEWORK_COUNT==0)
     {
+        STD_MTL_NAMESPACE::ClearMaterialFactory();
         CloseShaderCompiler();
     }
 }

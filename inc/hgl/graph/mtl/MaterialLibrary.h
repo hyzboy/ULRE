@@ -2,34 +2,17 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/type/IDName.h>
 #include<hgl/type/String.h>
 
 STD_MTL_NAMESPACE_BEGIN
-
-enum class MaterialDomain
-{
-    UI,                                 ///<用户界面,一般2D均使用这种
-    
-    Gizmo,                              ///<Gizmo材质(基本同Surface，但很多数值和处理逻辑会写死)
-
-    Surface,                            ///<常规的3D表面材质
-    DeferredDecal,                      ///<延迟贴花材质
-
-    PostProcess,                        ///<后期处理材质
-
-    ENUM_CLASS_RANGE(UI,PostProcess)
-};
 
 class MaterialFactory
 {
 public:
 
-    virtual AIDName GetName()const=0;
+    virtual AnsiString GetName()const=0;
 
     //virtual const bool GetMaterialName()const=0;
-
-    virtual const MaterialDomain GetDomain()const=0;
 
     //virtual const PrimitiveType supportPrimitive()const=0;
 
@@ -41,13 +24,12 @@ public:
 
     //virtual const CoordinateSystem2D get2DCoordinateSystem()const=0;
 
-    virtual MaterialCreateInfo *Create();
+    virtual MaterialCreateInfo *Create(MaterialCreateConfig *);
 
 };//class MaterialFactory
 
-bool RegistryMaterialFactory(MaterialFactory *);
-MaterialFactory *GetMaterialFactory(const AIDName &);
-void ClearMaterialFactory();
+bool                RegistryMaterialFactory(MaterialFactory *);
+MaterialFactory *   GetMaterialFactory(const AnsiString &);
 
 template<typename T> class RegistryMaterialFactoryClass
 {
@@ -61,10 +43,6 @@ public:
 
 #define DEFINE_MATERIAL_FACTORY(name) namespace{static RegistryMaterialFactoryClass<MaterialFactory##name> MaterialFactoryInstance_##name;}
 
-struct Material2DCreateConfig;
-struct Material3DCreateConfig;
-
-Material *CreateMaterial2D(const AnsiString &,Material2DCreateConfig *cfg=nullptr);
-Material *CreateMaterial3D(const AnsiString &,Material3DCreateConfig *cfg=nullptr);
+MaterialCreateInfo *CreateMaterialCreateInfo(const AnsiString &,MaterialCreateConfig *cfg=nullptr,const VILConfig *vil_cfg=nullptr);
 
 STD_MTL_NAMESPACE_END

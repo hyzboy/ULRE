@@ -6,9 +6,10 @@ STD_MTL_NAMESPACE_BEGIN
 
 namespace
 {
-    using MaterialFactoryMap=tsl::robin_map<AIDName,MaterialFactory *>;
+    using MaterialFactoryMap=tsl::robin_map<AnsiString,MaterialFactory *>;
+    using MaterialFactoryMapPtr=MaterialFactoryMap *;
 
-    MaterialFactoryMap *material_factory_map=nullptr;
+    MaterialFactoryMapPtr material_factory_map=nullptr;
 }//namespace
 
 bool RegistryMaterialFactory(MaterialFactory *mf)
@@ -16,7 +17,7 @@ bool RegistryMaterialFactory(MaterialFactory *mf)
     if(!mf)
         return(false);
 
-    const AIDName name=mf->GetName();
+    const AnsiString &name=mf->GetName();
 
     if(!material_factory_map)
     {
@@ -28,14 +29,10 @@ bool RegistryMaterialFactory(MaterialFactory *mf)
 
     material_factory_map->insert({name,mf});
 
-    const MaterialDomain &domain=mf->GetDomain();
-
-
-
     return(true);
 }
 
-MaterialFactory *GetMaterialFactory(const AIDName &name)
+MaterialFactory *GetMaterialFactory(const AnsiString &name)
 {
     if(!material_factory_map)
         return(nullptr);
@@ -59,9 +56,17 @@ void ClearMaterialFactory()
     material_factory_map=nullptr;
 }
 
-Material *CreateMaterial2D(const AnsiString &name,Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateMaterialCreateInfo(const AnsiString &name,MaterialCreateConfig *cfg,const VILConfig *vil_cfg)
 {
+    if(name.IsEmpty())
+        return(nullptr);
 
+    MaterialFactory *mf=GetMaterialFactory(name);
+
+    if(!mf)
+        return(nullptr);
+
+    return mf->Create(cfg);
 }
 
 STD_MTL_NAMESPACE_END
