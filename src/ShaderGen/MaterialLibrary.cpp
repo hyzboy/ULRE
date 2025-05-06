@@ -1,12 +1,12 @@
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/type/IDName.h>
-#include<tsl/robin_map.h>
+#include<hgl/type/Map.h>
 
 STD_MTL_NAMESPACE_BEGIN
 
 namespace
 {
-    using MaterialFactoryMap=tsl::robin_map<AnsiString,MaterialFactory *>;
+    using MaterialFactoryMap=ObjectMap<AnsiString,MaterialFactory>;
     using MaterialFactoryMapPtr=MaterialFactoryMap *;
 
     MaterialFactoryMapPtr material_factory_map=nullptr;
@@ -21,13 +21,13 @@ bool RegistryMaterialFactory(MaterialFactory *mf)
 
     if(!material_factory_map)
     {
-        material_factory_map=new MaterialFactoryMap;
+        material_factory_map=new MaterialFactoryMap();
     }
 
-    if(material_factory_map->contains(name))
+    if(material_factory_map->ContainsKey(name))
         return(false);
 
-    material_factory_map->insert({name,mf});
+    material_factory_map->Add(name,mf);
 
     return(true);
 }
@@ -37,23 +37,12 @@ MaterialFactory *GetMaterialFactory(const AnsiString &name)
     if(!material_factory_map)
         return(nullptr);
 
-    auto it=material_factory_map->find(name);
-
-    if(it==material_factory_map->end())
-        return(nullptr);
-
-    return(it->second);
+    return (*material_factory_map)[name];
 }
 
 void ClearMaterialFactory()
 {
-    if(!material_factory_map)
-        return;
-
-    SAFE_CLEAR_STD_MAP(*material_factory_map)
-
-    delete material_factory_map;
-    material_factory_map=nullptr;
+    SAFE_CLEAR(material_factory_map);
 }
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const AnsiString &name,MaterialCreateConfig *cfg,const VILConfig *vil_cfg)
