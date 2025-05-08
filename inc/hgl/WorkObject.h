@@ -2,6 +2,7 @@
 #include<hgl/type/object/TickObject.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKRenderResource.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -75,6 +76,13 @@ namespace hgl
 
         graph::MaterialInstance *CreateMaterialInstance(const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
         {
+            return db->CreateMaterialInstance(mci,vil_cfg);
+        }
+
+        graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
+        {            
+            AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo("VertexColor2D",mtl_cfg);    //这个是使用名称创建
+
             return db->CreateMaterialInstance(mci,vil_cfg);
         }
 
