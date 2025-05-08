@@ -6,7 +6,7 @@ STD_MTL_NAMESPACE_BEGIN
 
 namespace
 {
-    using MaterialFactoryMap=ObjectMap<AnsiString,MaterialFactory>;
+    using MaterialFactoryMap=ObjectMap<int,MaterialFactory>;
     using MaterialFactoryMapPtr=MaterialFactoryMap *;
 
     MaterialFactoryMapPtr material_factory_map=nullptr;
@@ -17,27 +17,28 @@ bool RegistryMaterialFactory(MaterialFactory *mf)
     if(!mf)
         return(false);
 
-    const AnsiString &name=mf->GetName();
+    const MaterialName &name=mf->GetName();
+    const int name_id=name.GetID();
 
     if(!material_factory_map)
     {
         material_factory_map=new MaterialFactoryMap();
     }
 
-    if(material_factory_map->ContainsKey(name))
+    if(material_factory_map->ContainsKey(name_id))
         return(false);
 
-    material_factory_map->Add(name,mf);
+    material_factory_map->Add(name_id,mf);
 
     return(true);
 }
 
-MaterialFactory *GetMaterialFactory(const AnsiString &name)
+MaterialFactory *GetMaterialFactory(const MaterialName &name)
 {
     if(!material_factory_map)
         return(nullptr);
 
-    return (*material_factory_map)[name];
+    return (*material_factory_map)[name.GetID()];
 }
 
 void ClearMaterialFactory()
@@ -45,9 +46,9 @@ void ClearMaterialFactory()
     SAFE_CLEAR(material_factory_map);
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const AnsiString &name,MaterialCreateConfig *cfg,const VILConfig *vil_cfg)
+MaterialCreateInfo *CreateMaterialCreateInfo(const MaterialName &name,MaterialCreateConfig *cfg)
 {
-    if(name.IsEmpty())
+    if(!cfg)
         return(nullptr);
 
     MaterialFactory *mf=GetMaterialFactory(name);

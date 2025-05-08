@@ -62,25 +62,25 @@ MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *cfg)
     return mvc2d.Create();
 }
 
-class MaterialFactoryVertexColor2D:public MaterialFactory
-{
-public:
+//class MaterialFactoryVertexColor2D:public MaterialFactory
+//{
+//public:
+//
+//    const MaterialName &GetName()const override
+//    {
+//        static MaterialName mtl_name("VertexColor2D");
+//
+//        return mtl_name;
+//    }
+//
+//    MaterialCreateInfo *Create(MaterialCreateConfig *cfg) override
+//    {
+//        return CreateVertexColor2D((Material2DCreateConfig *)cfg);
+//    }
+//};//class MaterialFactoryVertexColor2D:public MaterialFactory
+//
+//DEFINE_MATERIAL_FACTORY(VertexColor2D)
 
-    MaterialFactoryVertexColor2D()
-    {
-    }
-
-    AnsiString GetName()const override
-    {
-        return "VertexColor2D";
-    }
-
-    MaterialCreateInfo *Create(MaterialCreateConfig *cfg) override
-    {
-        return CreateVertexColor2D((Material2DCreateConfig *)cfg);
-    }
-};//class MaterialFactoryVertexColor2D:public MaterialFactory
-
-DEFINE_MATERIAL_FACTORY(VertexColor2D)
+DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,CreateVertexColor2D,Material2DCreateConfig)
 
 STD_MTL_NAMESPACE_END
