@@ -49,11 +49,18 @@ private:
         cfg.local_to_world=false;
 
         //AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);                       //这个是直接创建
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo("VertexColor2D",&cfg);    //这个是使用名称创建
+
+        //AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo("VertexColor2D",&cfg);    //这个是使用名称创建
         //这两种方式都可以，上一种方式肯定是会快些，主要用于一些程序中直接写死的地方。
         //而下面这种方式很明显是为了可以将使用的材质写入配置文件中。
 
-        material_instance=CreateMaterialInstance(mci);
+        //material_instance=CreateMaterialInstance(mci);
+
+
+        //下面这个方式更直接，在WorkObject中封装了CreateMaterialCreateInfo(name,...)这个方法一步到位
+        material_instance=CreateMaterialInstance("VertexColor2D",&cfg);    //这个是使用名称创建
+
+        //再下一步我们会更直接将上面的Material2DCreateConfig写在配置文件中，这样只需要一个配置文件名称就可以完全加载了。
 
         return material_instance;
     }
