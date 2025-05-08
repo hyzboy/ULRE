@@ -71,7 +71,7 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
     RenderNode *rn=rn_list.GetData();
     Matrix4f *l2wp=(Matrix4f *)(l2w_buffer->DeviceBuffer::Map());
 
-    for(uint i=0;i<rn_list.GetCount();i++)
+    for(int i=0;i<rn_list.GetCount();i++)
     {
         *l2wp=rn->scene_node->GetLocalToWorldMatrix();
         ++l2wp;

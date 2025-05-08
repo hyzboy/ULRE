@@ -3,6 +3,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include"AssetData.h"
 
 using namespace hgl;
@@ -47,7 +48,10 @@ private:
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;
 
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
+        //AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);                       //这个是直接创建
+        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateMaterialCreateInfo("VertexColor2D",&cfg);    //这个是使用名称创建
+        //这两种方式都可以，上一种方式肯定是会快些，主要用于一些程序中直接写死的地方。
+        //而下面这种方式很明显是为了可以将使用的材质写入配置文件中。
 
         material_instance=CreateMaterialInstance(mci);
 
