@@ -1,5 +1,6 @@
 ﻿macro(CreateProject name)
-    add_executable(${name} ${ARGN} ${VULKAN_APP_FRAMEWORK})
+
+    add_executable(${name} ${ARGN} ${VULKAN_APP_FRAMEWORK} MaterialLoader/MaterialLoader.cpp)
     target_link_libraries(${name} ${ULRE})
 
     IF(MSVC)
@@ -10,7 +11,7 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Basic")
 endmacro()
 
-CreateProject(00_RenderFrameworkTest            rf_test.cpp AssetData.h)
+CreateProject(00_RenderFrameworkTest            rf_test.cpp)
 CreateProject(01_draw_triangle_in_NDC           draw_triangle_in_NDC.cpp)
 CreateProject(02_draw_triangle_use_UBO          draw_triangle_use_UBO.cpp)
 CreateProject(03_auto_instance                  auto_instance.cpp)

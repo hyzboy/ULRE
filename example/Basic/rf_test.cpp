@@ -4,7 +4,6 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
-#include"AssetData.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -55,7 +54,6 @@ private:
         //而下面这种方式很明显是为了可以将使用的材质写入配置文件中。
 
         //material_instance=CreateMaterialInstance(mci);
-
 
         //下面这个方式更直接，在WorkObject中封装了CreateMaterialCreateInfo(name,...)这个方法一步到位
         material_instance=CreateMaterialInstance("VertexColor2D",&cfg);    //这个是使用名称创建
