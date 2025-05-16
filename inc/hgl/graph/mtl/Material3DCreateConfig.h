@@ -18,7 +18,7 @@ struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material3DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const PrimitiveType &p):MaterialCreateConfig(da,name,p)
+    Material3DCreateConfig(const AnsiString &name,const PrimitiveType &p):MaterialCreateConfig(name,p)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=true;       //不输出深度
@@ -50,10 +50,10 @@ public:
     }
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
-MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *);
-MaterialCreateInfo *CreateVertexLuminance3D(const Material3DCreateConfig *);
+MaterialCreateInfo *CreateVertexColor3D(const GPUDeviceAttribute *dev_attr,const Material3DCreateConfig *);
+MaterialCreateInfo *CreateVertexLuminance3D(const GPUDeviceAttribute *dev_attr,const Material3DCreateConfig *);
 
-MaterialCreateInfo *CreateMaterialGizmo3D(const Material3DCreateConfig *cfg);
+MaterialCreateInfo *CreateMaterialGizmo3D(const GPUDeviceAttribute *dev_attr,const Material3DCreateConfig *cfg);
 
 struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
@@ -66,7 +66,7 @@ public:
     using Material3DCreateConfig::Material3DCreateConfig;
 };
 
-MaterialCreateInfo *CreateBillboard2D(mtl::BillboardMaterialCreateConfig *);
+MaterialCreateInfo *CreateBillboard2D(const GPUDeviceAttribute *dev_attr,mtl::BillboardMaterialCreateConfig *);
 
 /**
  * 从文件加载材质
@@ -74,5 +74,5 @@ MaterialCreateInfo *CreateBillboard2D(mtl::BillboardMaterialCreateConfig *);
  * @param cfg 材质创建参数
  * @return 材质创建信息
  */
-MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,Material3DCreateConfig *cfg);
+MaterialCreateInfo *LoadMaterialFromFile(const GPUDeviceAttribute *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg);
 STD_MTL_NAMESPACE_END

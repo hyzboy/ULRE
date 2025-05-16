@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE
-#define HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/mtl/MaterialConfig.h>
 #include<hgl/graph/CoordinateSystem.h>
@@ -16,7 +15,7 @@ struct Material2DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material2DCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const PrimitiveType &p):MaterialCreateConfig(da,name,p)
+    Material2DCreateConfig(const AnsiString &name,const PrimitiveType &p):MaterialCreateConfig(name,p)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
@@ -50,19 +49,14 @@ public:
     }
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
-MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *);
-MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *);
+MaterialCreateInfo *CreateVertexColor2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *);
+MaterialCreateInfo *CreatePureColor2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *);
 
-struct MaterialLerpLineConfig
-{
+MaterialCreateInfo *CreateLerpLine2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *);
 
-};
-
-MaterialCreateInfo *CreateLerpLine2D(const Material2DCreateConfig *);
-
-MaterialCreateInfo *CreatePureTexture2D(const Material2DCreateConfig *);
-MaterialCreateInfo *CreateRectTexture2D(Material2DCreateConfig *);
-MaterialCreateInfo *CreateRectTexture2DArray(Material2DCreateConfig *);
+MaterialCreateInfo *CreatePureTexture2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *);
+MaterialCreateInfo *CreateRectTexture2D(const GPUDeviceAttribute *dev_attr,Material2DCreateConfig *);
+MaterialCreateInfo *CreateRectTexture2DArray(const GPUDeviceAttribute *dev_attr,Material2DCreateConfig *);
 
 // 为什么有了LoadMaterialFromFile，还需要保留以上Create系列函数？
 
@@ -71,10 +65,11 @@ MaterialCreateInfo *CreateRectTexture2DArray(Material2DCreateConfig *);
 
 /**
  * 从文件加载材质
+ * @param dev_attr 设备属性
  * @param mtl_name 材质名称
  * @param cfg 材质创建参数
  * @return 材质创建信息
  */
-MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
+MaterialCreateInfo *LoadMaterialFromFile(const GPUDeviceAttribute *dev_attr,const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
+
 STD_MTL_NAMESPACE_END
-#endif//HGL_GRAPH_MTL_2D_CREATE_CONFIG_INCLUDE

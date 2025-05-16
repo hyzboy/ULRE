@@ -89,7 +89,7 @@ namespace hgl::graph
 
             bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-            bool CreateShader();
+            bool CreateShader(const GPUDeviceAttribute *dev_attr);
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph

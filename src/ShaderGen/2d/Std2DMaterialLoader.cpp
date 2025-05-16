@@ -102,7 +102,7 @@ namespace
 
 material_file::MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename);
 
-MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,Material2DCreateConfig *cfg)
+MaterialCreateInfo *LoadMaterialFromFile(const GPUDeviceAttribute *dev_attr,const AnsiString &name,Material2DCreateConfig *cfg)
 {
     if(name.IsEmpty()||!cfg)
         return(nullptr);
@@ -119,6 +119,6 @@ MaterialCreateInfo *LoadMaterialFromFile(const AnsiString &name,Material2DCreate
 
     Std2DMaterialLoader mtl(mfd,cfg);
 
-    return mtl.Create();
+    return mtl.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END

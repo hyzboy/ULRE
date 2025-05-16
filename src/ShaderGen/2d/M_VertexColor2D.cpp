@@ -55,32 +55,33 @@ void main()
     };//class MaterialVertexColor2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexColor2D(const Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexColor2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *cfg)
 {
     MaterialVertexColor2D mvc2d(cfg);
 
-    return mvc2d.Create();
+    return mvc2d.Create(dev_attr);
 }
 
-//class MaterialFactoryVertexColor2D:public MaterialFactory
-//{
-//public:
-//
-//    const MaterialName &GetName()const override
-//    {
-//        static MaterialName mtl_name("VertexColor2D");
-//
-//        return mtl_name;
-//    }
-//
-//    MaterialCreateInfo *Create(MaterialCreateConfig *cfg) override
-//    {
-//        return CreateVertexColor2D((Material2DCreateConfig *)cfg);
-//    }
-//};//class MaterialFactoryVertexColor2D:public MaterialFactory
-//
-//DEFINE_MATERIAL_FACTORY(VertexColor2D)
+class MaterialFactoryVertexColor2D:public MaterialFactory
+{
+public:
 
-DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,CreateVertexColor2D,Material2DCreateConfig)
+    const MaterialName &GetName()const override
+    {
+        static MaterialName mtl_name("VertexColor2D");
+
+        return mtl_name;
+    }
+
+    MaterialCreateInfo *Create(const GPUDeviceAttribute *dev_attr,MaterialCreateConfig *cfg) override
+    {
+        return CreateVertexColor2D(dev_attr,(Material2DCreateConfig *)cfg);
+    }
+};//class MaterialFactoryVertexColor2D:public MaterialFactory
+
+static RegistryMaterialFactoryClass<MaterialFactoryVertexColor2D> MaterialFactoryInstance_VertexColor2D;
+
+
+//DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,CreateVertexColor2D,Material2DCreateConfig)
 
 STD_MTL_NAMESPACE_END

@@ -15,6 +15,8 @@ namespace material_file
 
     constexpr size_t SHADER_RESOURCE_NAME_MAX_LENGTH=VERTEX_ATTRIB_NAME_MAX_LENGTH;
 
+    using ShaderNameVariable=char[SHADER_RESOURCE_NAME_MAX_LENGTH];
+
     struct MaterialInstanceData
     {
         const char *code;
@@ -28,15 +30,15 @@ namespace material_file
 
     struct SamplerData
     {
-        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
+        ShaderNameVariable name;
 
         SamplerType type;
     };
 
     struct UBOData
     {
-        char struct_name[SHADER_RESOURCE_NAME_MAX_LENGTH];
-        char name[SHADER_RESOURCE_NAME_MAX_LENGTH];
+        ShaderNameVariable struct_name;
+        ShaderNameVariable name;
 
         char filename[HGL_MAX_PATH];
 
@@ -56,7 +58,7 @@ namespace material_file
         const char *            code;
         uint                    code_length;
 
-        ArrayList<SamplerData>       sampler;
+        ArrayList<SamplerData>  sampler;
 
     public:
 

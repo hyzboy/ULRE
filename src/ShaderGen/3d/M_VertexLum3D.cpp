@@ -68,10 +68,10 @@ void main()
     };//class MaterialVertexLuminance3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexLuminance3D(const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexLuminance3D(const GPUDeviceAttribute *dev_attr,const Material3DCreateConfig *cfg)
 {
     MaterialVertexLuminance3D mvc3d(cfg);
 
-    return mvc3d.Create();
+    return mvc3d.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END

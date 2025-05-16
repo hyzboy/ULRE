@@ -93,10 +93,10 @@ void main()
     };//class MaterialGizmo3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateMaterialGizmo3D(const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateMaterialGizmo3D(const GPUDeviceAttribute *dev_attr,const Material3DCreateConfig *cfg)
 {
     MaterialGizmo3D mg3d(cfg);
 
-    return mg3d.Create();
+    return mg3d.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END

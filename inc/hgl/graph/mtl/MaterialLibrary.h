@@ -27,7 +27,7 @@ public:
 
     //virtual const CoordinateSystem2D get2DCoordinateSystem()const=0;
 
-    virtual MaterialCreateInfo *Create(MaterialCreateConfig *)=0;
+    virtual MaterialCreateInfo *Create(const GPUDeviceAttribute *dev_attr,MaterialCreateConfig *)=0;
 
 };//class MaterialFactory
 
@@ -57,28 +57,28 @@ public:
             return mtl_name;    \
         }   \
     \
-        MaterialCreateInfo *Create(MaterialCreateConfig *cfg) override  \
+        MaterialCreateInfo *Create(const GPUDeviceAttribute *dev_attr,MaterialCreateConfig *cfg) override  \
         {   \
-            return create_func((cfg_type *)cfg);    \
+            return create_func(dev_attr,(cfg_type *)cfg);    \
         }   \
     };  \
     \
     DEFINE_MATERIAL_FACTORY(name)
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const MaterialName &,MaterialCreateConfig *cfg);
+MaterialCreateInfo *CreateMaterialCreateInfo(const GPUDeviceAttribute *dev_attr,const MaterialName &,MaterialCreateConfig *cfg);
 
-inline MaterialCreateInfo *CreateMaterialCreateInfo(const char *mtl_name,MaterialCreateConfig *cfg)
+inline MaterialCreateInfo *CreateMaterialCreateInfo(const GPUDeviceAttribute *dev_attr,const char *mtl_name,MaterialCreateConfig *cfg)
 {
     MaterialName mtl_id_name(mtl_name);
 
-    return CreateMaterialCreateInfo(mtl_id_name,cfg);
+    return CreateMaterialCreateInfo(dev_attr,mtl_id_name,cfg);
 }
 
-inline MaterialCreateInfo *CreateMaterialCreateInfo(const AnsiString &mtl_name,MaterialCreateConfig *cfg)
+inline MaterialCreateInfo *CreateMaterialCreateInfo(const GPUDeviceAttribute *dev_attr,const AnsiString &mtl_name,MaterialCreateConfig *cfg)
 {
     MaterialName mtl_id_name(mtl_name);
 
-    return CreateMaterialCreateInfo(mtl_id_name,cfg);
+    return CreateMaterialCreateInfo(dev_attr,mtl_id_name,cfg);
 }
 
 STD_MTL_NAMESPACE_END
