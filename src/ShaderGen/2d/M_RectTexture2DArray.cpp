@@ -98,7 +98,7 @@ void main()
     };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateRectTexture2DArray(mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateRectTexture2DArray(const GPUDeviceAttribute *dev_attr,mtl::Material2DCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -107,6 +107,6 @@ MaterialCreateInfo *CreateRectTexture2DArray(mtl::Material2DCreateConfig *cfg)
 
     MaterialRectTexture2D mvc2d(cfg);
 
-    return mvc2d.Create();
+    return mvc2d.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END

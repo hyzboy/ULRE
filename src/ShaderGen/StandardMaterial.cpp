@@ -8,7 +8,7 @@ StdMaterial::StdMaterial(const MaterialCreateConfig *mcc)
     mci=new MaterialCreateInfo(mcc);
 }
 
-MaterialCreateInfo *StdMaterial::Create()
+MaterialCreateInfo *StdMaterial::Create(const GPUDeviceAttribute *dev_attr)
 {
     if(!BeginCustomShader())
         return(nullptr);
@@ -28,7 +28,7 @@ MaterialCreateInfo *StdMaterial::Create()
     if(!EndCustomShader())
         return(nullptr);
 
-    if(!mci->CreateShader())
+    if(!mci->CreateShader(dev_attr))
         return(nullptr);
 
     return(mci);

@@ -86,7 +86,7 @@ void main()
     };//class MaterialBillboard2DDynamicSize:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DDynamic(mtl::BillboardMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBillboard2DDynamic(const GPUDeviceAttribute *dev_attr,mtl::BillboardMaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -97,6 +97,6 @@ MaterialCreateInfo *CreateBillboard2DDynamic(mtl::BillboardMaterialCreateConfig 
 
     MaterialBillboard2DDynamicSize mtl_billbard_2d(cfg);
 
-    return mtl_billbard_2d.Create();
+    return mtl_billbard_2d.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END

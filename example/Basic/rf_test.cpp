@@ -42,7 +42,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DCreateConfig cfg(GetDeviceAttribute(),"VertexColor2D",PrimitiveType::Triangles);
+        mtl::Material2DCreateConfig cfg("VertexColor2D",PrimitiveType::Triangles);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;

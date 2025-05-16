@@ -54,10 +54,10 @@ void main()
     };//class MaterialVertexColor3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexColor3D(const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexColor3D(const GPUDeviceAttribute *dev_attr,const Material3DCreateConfig *cfg)
 {
     MaterialVertexColor3D mvc3d(cfg);
 
-    return mvc3d.Create();
+    return mvc3d.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END

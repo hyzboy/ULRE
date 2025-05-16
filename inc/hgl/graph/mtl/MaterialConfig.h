@@ -14,8 +14,6 @@ class MaterialCreateInfo;
  */
 struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 {
-    const GPUDeviceAttribute *  dev_attr;                   ///<GPU设备属性(目前仅用于获取UBO/SSBO数值，未来可以考虑干掉)
-
     AnsiString                  mtl_name;                   ///<材质名称
 
     bool                        material_instance;          ///<是否包含材质实例
@@ -28,10 +26,8 @@ struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 
 public:
 
-    MaterialCreateConfig(const GPUDeviceAttribute *da,const AnsiString &name,const PrimitiveType &p)
+    MaterialCreateConfig(const AnsiString &name,const PrimitiveType &p)
     {
-        dev_attr=da;
-
         mtl_name=name;
 
         material_instance=false;

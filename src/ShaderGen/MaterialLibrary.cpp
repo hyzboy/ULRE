@@ -46,7 +46,7 @@ void ClearMaterialFactory()
     SAFE_CLEAR(material_factory_map);
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const MaterialName &name,MaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateMaterialCreateInfo(const GPUDeviceAttribute *dev_attr,const MaterialName &name,MaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);
@@ -56,7 +56,7 @@ MaterialCreateInfo *CreateMaterialCreateInfo(const MaterialName &name,MaterialCr
     if(!mf)
         return(nullptr);
 
-    return mf->Create(cfg);
+    return mf->Create(dev_attr,cfg);
 }
 
 STD_MTL_NAMESPACE_END

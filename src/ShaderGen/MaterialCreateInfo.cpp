@@ -17,8 +17,8 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
     if(hasGeometry  ())shader_map.Add(geom=new ShaderCreateInfoGeometry(&mdi));else geom=nullptr;
     if(hasFragment  ())shader_map.Add(frag=new ShaderCreateInfoFragment(&mdi));else frag=nullptr;
 
-    ubo_range=config->dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
-    ssbo_range=config->dev_attr->physical_device->GetSSBORange();
+    ubo_range=0;
+    ssbo_range=0;
 
     {
         mi_data_bytes=0;
@@ -225,10 +225,13 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     return(true);
 }
 
-bool MaterialCreateInfo::CreateShader()
+bool MaterialCreateInfo::CreateShader(const GPUDeviceAttribute *dev_attr)
 {
     if(shader_map.IsEmpty())
         return(false);
+
+    ubo_range=dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
+    ssbo_range=dev_attr->physical_device->GetSSBORange();
 
     mdi.Resort();
 

@@ -63,10 +63,10 @@ void main()
     };//class MaterialPureColor2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureColor2D(const Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureColor2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *cfg)
 {
     MaterialPureColor2D mpc2d(cfg);
 
-    return mpc2d.Create();
+    return mpc2d.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END

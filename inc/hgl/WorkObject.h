@@ -81,7 +81,9 @@ namespace hgl
 
         graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
         {            
-            AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo("VertexColor2D",mtl_cfg);    //这个是使用名称创建
+            AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(
+                GetDeviceAttribute(),
+                "VertexColor2D",mtl_cfg);    //这个是使用名称创建
 
             return db->CreateMaterialInstance(mci,vil_cfg);
         }

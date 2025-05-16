@@ -55,10 +55,10 @@ void main()
     };//class MaterialPureTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureTexture2D(const mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureTexture2D(const GPUDeviceAttribute *dev_attr,const mtl::Material2DCreateConfig *cfg)
 {
     MaterialPureTexture2D mvc2d(cfg);
 
-    return mvc2d.Create();
+    return mvc2d.Create(dev_attr);
 }
 STD_MTL_NAMESPACE_END
