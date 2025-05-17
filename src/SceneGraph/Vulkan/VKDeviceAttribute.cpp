@@ -7,7 +7,7 @@
 VK_NAMESPACE_BEGIN
 void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysicalDeviceProperties &pdp);
 
-GPUDeviceAttribute::GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s)
+VkDevAttr::VkDevAttr(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s)
 {
     instance=inst;
     physical_device=pd;
@@ -18,7 +18,7 @@ GPUDeviceAttribute::GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDev
     GetQueueFamily();
 }
 
-GPUDeviceAttribute::~GPUDeviceAttribute()
+VkDevAttr::~VkDevAttr()
 {
 #ifdef _DEBUG
     if(debug_utils)
@@ -44,12 +44,12 @@ GPUDeviceAttribute::~GPUDeviceAttribute()
         instance->DestroySurface(surface);
 }
 
-int GPUDeviceAttribute::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const
+int VkDevAttr::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const
 {
     return physical_device->GetMemoryType(typeBits,properties);
 }
 
-void GPUDeviceAttribute::RefreshSurfaceCaps()
+void VkDevAttr::RefreshSurfaceCaps()
 {
     VkPhysicalDevice pdevice = *physical_device;
 
@@ -80,7 +80,7 @@ void GPUDeviceAttribute::RefreshSurfaceCaps()
     }
 }
 
-void GPUDeviceAttribute::GetSurfacePresentMode()
+void VkDevAttr::GetSurfacePresentMode()
 {
     uint32_t mode_count;
 
@@ -95,7 +95,7 @@ void GPUDeviceAttribute::GetSurfacePresentMode()
         present_modes.Clear();
 }
 
-void GPUDeviceAttribute::GetQueueFamily()
+void VkDevAttr::GetQueueFamily()
 {
     VkPhysicalDevice pdevice = *physical_device;
 

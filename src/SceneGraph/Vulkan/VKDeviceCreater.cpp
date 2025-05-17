@@ -117,7 +117,7 @@ namespace
         #undef FEATURE_COPY
     }
 
-    void GetDeviceQueue(GPUDeviceAttribute *attr)
+    void GetDeviceQueue(VkDevAttr *attr)
     {
         vkGetDeviceQueue(attr->device,attr->graphics_family,0,&attr->graphics_queue);
 
@@ -295,9 +295,9 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
 
 GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
 {
-    GPUDeviceAttribute *device_attr=new GPUDeviceAttribute(instance,physical_device,surface);
+    VkDevAttr *device_attr=new VkDevAttr(instance,physical_device,surface);
 
-    AutoDelete<GPUDeviceAttribute> auto_delete(device_attr);
+    AutoDelete<VkDevAttr> auto_delete(device_attr);
 
     if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);

@@ -103,7 +103,7 @@ namespace
 
 material_file::MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename);
 
-MaterialCreateInfo *LoadMaterialFromFile(const GPUDeviceAttribute *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg)
+MaterialCreateInfo *LoadMaterialFromFile(const VkDevAttr *dev_attr,const AnsiString &name,Material3DCreateConfig *cfg)
 {
     if(name.IsEmpty()||!cfg)
         return (nullptr);

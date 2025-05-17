@@ -12,7 +12,7 @@ class GPUCmdBuffer
 {
 protected:
 
-    const GPUDeviceAttribute *dev_attr;
+    const VkDevAttr *dev_attr;
 
     VkCommandBuffer cmd_buf;
 
@@ -20,7 +20,7 @@ protected:
 
 public:
 
-    GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
+    GPUCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb);
     virtual ~GPUCmdBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
@@ -70,7 +70,7 @@ private:
 
 public:
 
-    RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb);
+    RenderCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb);
     ~RenderCmdBuffer();
 
     void SetDescriptorBinding(DescriptorBinding *db) { desc_binding=db; }
@@ -264,7 +264,7 @@ class TextureCmdBuffer:public GPUCmdBuffer
 
 public:
 
-    TextureCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
+    TextureCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
     {
         imageMemoryBarrier.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageMemoryBarrier.pNext=nullptr;
