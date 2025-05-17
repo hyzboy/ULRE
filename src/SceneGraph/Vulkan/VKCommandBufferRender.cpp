@@ -134,7 +134,7 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
                          VkIndexType(ibo->GetType()));
 }
 
-bool RenderCmdBuffer::BindDataBuffer(const PrimitiveDataBuffer *pdb)
+bool RenderCmdBuffer::BindDataBuffer(const MeshDataBuffer *pdb)
 {
     if(!pdb)
         return(false);
@@ -178,7 +178,7 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const PrimitiveDataBuffer *pdb,const PrimitiveRenderData *prd,const uint32_t instance_count,const uint32_t first_instance)
+void RenderCmdBuffer::Draw(const MeshDataBuffer *pdb,const MeshRenderData *prd,const uint32_t instance_count,const uint32_t first_instance)
 {
     if(!pdb||!prd)
         return;

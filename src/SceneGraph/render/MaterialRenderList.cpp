@@ -324,7 +324,7 @@ void MaterialRenderList::Stat()
     icb_draw_indexed->Unmap();
 }
 
-bool MaterialRenderList::BindVAB(const PrimitiveDataBuffer *pdb,const uint ri_index)
+bool MaterialRenderList::BindVAB(const MeshDataBuffer *pdb,const uint ri_index)
 {
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
