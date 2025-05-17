@@ -36,7 +36,7 @@ private:
     Camera cam;
 
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Mesh *        render_obj          =nullptr;
     DeviceBuffer *      ubo_camera_info     =nullptr;
     DeviceBuffer *      ubo_color_material  =nullptr;
     DeviceBuffer *      ubo_line_config     =nullptr;

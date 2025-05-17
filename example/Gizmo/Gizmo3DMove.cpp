@@ -45,22 +45,22 @@ void ClearGizmoMoveStaticMesh()
 
 bool InitGizmoMoveStaticMesh()
 {
-    Renderable *sphere=GetGizmoRenderable(GizmoShape::Sphere,GizmoColor::White);
-    Renderable *cylinder[3]
+    Mesh *sphere=GetGizmoRenderable(GizmoShape::Sphere,GizmoColor::White);
+    Mesh *cylinder[3]
     {
         GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Red),
         GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Green),
         GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Blue),
     };
 
-    Renderable *cone[3]
+    Mesh *cone[3]
     {
         GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Red),
         GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Green),
         GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Blue),
     };
 
-    Renderable *circle[3]=
+    Mesh *circle[3]=
     {
         GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Red),
         GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Green),

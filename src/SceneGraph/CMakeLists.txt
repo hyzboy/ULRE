@@ -287,7 +287,7 @@ SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
                             Vulkan/VKTileData.cpp
                             Vulkan/VKTileFont.cpp)
 
-SOURCE_GROUP("Vulkan\\Renderable" FILES ${VK_RENDERABLE_SOURCE})
+SOURCE_GROUP("Vulkan\\Mesh" FILES ${VK_RENDERABLE_SOURCE})
 
 set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
 

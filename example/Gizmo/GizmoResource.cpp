@@ -43,7 +43,7 @@ namespace
     {
         Primitive *prim;
 
-        Renderable *renderable[size_t(GizmoColor::RANGE_SIZE)];
+        Mesh *renderable[size_t(GizmoColor::RANGE_SIZE)];
     };
     
     GizmoRenderable         gizmo_rederable[size_t(GizmoShape::RANGE_SIZE)]{};
@@ -306,7 +306,7 @@ void FreeGizmoResource()
     SAFE_CLEAR(gizmo_line.vdm);
 }
 
-Renderable *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color)
+Mesh *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color)
 {
     if(!gizmo_rr)
         return(nullptr);

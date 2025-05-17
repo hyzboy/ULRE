@@ -34,7 +34,7 @@ enum class GizmoShape:uint
 bool InitGizmoResource(RenderResource *);
 void FreeGizmoResource();
 
-Renderable *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color);
+Mesh *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color);
 
 StaticMesh *GetGizmoMoveStaticMesh();
 StaticMesh *GetGizmoScaleStaticMesh();

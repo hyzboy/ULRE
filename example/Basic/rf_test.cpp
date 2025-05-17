@@ -34,7 +34,7 @@ private:
     Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
 
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Mesh *        render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 

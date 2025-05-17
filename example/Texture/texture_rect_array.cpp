@@ -61,7 +61,7 @@ private:
     struct
     {
         MaterialInstance *  mi;
-        Renderable *        r;
+        Mesh *        r;
     }render_obj[TexCount]{};
 
 private:

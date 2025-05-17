@@ -93,9 +93,9 @@ private:
         return ro_plane;
     }
 
-    Renderable *Add(MaterialInstance *mi,const Matrix4f &mat)
+    Mesh *Add(MaterialInstance *mi,const Matrix4f &mat)
     {
-        Renderable *ri=db->CreateRenderable(ro_plane,mi,pipeline);
+        Mesh *ri=db->CreateRenderable(ro_plane,mi,pipeline);
 
         if(!ri)
             return(nullptr);

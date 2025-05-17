@@ -92,13 +92,13 @@ private:
         return(true);
     }
     
-    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
+    Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
-        Renderable *ri=db->CreateRenderable(r,mi,p);
+        Mesh *ri=db->CreateRenderable(r,mi,p);
 
         if(!ri)
         {
-            LOG_ERROR(OS_TEXT("Create Renderable failed."));
+            LOG_ERROR(OS_TEXT("Create Mesh failed."));
             return(nullptr);
         }
 

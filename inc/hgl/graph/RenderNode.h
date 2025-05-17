@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        class Renderable;
+        class Mesh;
         class MaterialInstance;
         class SceneNode;
 

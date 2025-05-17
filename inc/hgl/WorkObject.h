@@ -91,7 +91,7 @@ namespace hgl
                                             const graph::VIL *vil,
                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
-        graph::Renderable *CreateRenderable(const AnsiString &name,
+        graph::Mesh *CreateRenderable(const AnsiString &name,
                                             const uint32_t vertices_count,
                                             graph::MaterialInstance *mi,
                                             graph::Pipeline *pipeline,

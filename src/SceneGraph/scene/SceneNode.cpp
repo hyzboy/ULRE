@@ -21,7 +21,7 @@ namespace hgl
             return node;
         }
 
-        void SceneNode::SetRenderable(Renderable *ri)
+        void SceneNode::SetRenderable(Mesh *ri)
         {
             render_obj=ri;
 

@@ -22,7 +22,7 @@ void ClearGizmoRotateStaticMesh()
 
 bool InitGizmoRotateStaticMesh()
 {
-    Renderable *torus[4]
+    Mesh *torus[4]
     {
         GetGizmoRenderable(GizmoShape::Torus,GizmoColor::Red),
         GetGizmoRenderable(GizmoShape::Torus,GizmoColor::Green),

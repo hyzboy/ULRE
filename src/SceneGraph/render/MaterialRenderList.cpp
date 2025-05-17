@@ -31,8 +31,8 @@ const int RenderNode::compare(const RenderNode &other)const
 {
     hgl::int64 off;
 
-    hgl::graph::Renderable *ri_one=other.scene_node->GetRenderable();
-    hgl::graph::Renderable *ri_two=scene_node->GetRenderable();
+    hgl::graph::Mesh *ri_one=other.scene_node->GetRenderable();
+    hgl::graph::Mesh *ri_two=scene_node->GetRenderable();
 
     auto *prim_one=ri_one->GetPrimitive();
     auto *prim_two=ri_two->GetPrimitive();
@@ -203,7 +203,7 @@ void MaterialRenderList::UpdateMaterialInstance(SceneNode *sn)
     }
 }
 
-void MaterialRenderList::RenderItem::Set(Renderable *ri)
+void MaterialRenderList::RenderItem::Set(Mesh *ri)
 {
     mi      =ri->GetMaterialInstance();
     pdb     =ri->GetDataBuffer();
@@ -261,7 +261,7 @@ void MaterialRenderList::Stat()
     ri_array.Alloc(count);
 
     RenderItem *ri=ri_array.GetData();
-    Renderable *ro=rn->scene_node->GetRenderable();
+    Mesh *ro=rn->scene_node->GetRenderable();
 
     ri_count=1;
 

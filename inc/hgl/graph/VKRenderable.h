@@ -62,10 +62,9 @@ public:
 };
 
 /**
-* 原始可渲染对象(即仅一个模型一个材质)
-* 未来考虑改名StaticMesh哦！
+* 网格体(网格中的最小渲染单位)
 */
-class Renderable                                                                ///可渲染对象实例
+class Mesh
 {
     Pipeline *          pipeline;
     MaterialInstance *  mat_inst;
@@ -76,13 +75,13 @@ class Renderable                                                                
 
 private:
 
-    friend Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
+    friend Mesh *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    Renderable(Primitive *,MaterialInstance *,Pipeline *,PrimitiveDataBuffer *,PrimitiveRenderData *);
+    Mesh(Primitive *,MaterialInstance *,Pipeline *,PrimitiveDataBuffer *,PrimitiveRenderData *);
 
 public:
 
-    virtual ~Renderable()
+    virtual ~Mesh()
     {
         //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
@@ -115,7 +114,7 @@ public:
                 mat_inst=mi;
                 return(true);
             }
-};//class Renderable
+};//class Mesh
 
-Renderable *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
+Mesh *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END
