@@ -23,9 +23,11 @@ namespace hgl::graph
 
     namespace mtl
     {
-        namespace func
+        enum class WithLocalToWorld:uint8
         {
-        }//namespace func
+            Without=0,
+            With
+        };
 
         class MaterialCreateInfo;
         struct MaterialCreateConfig;

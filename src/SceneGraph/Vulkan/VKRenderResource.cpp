@@ -70,9 +70,9 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL
     return mi;
 }
 
-MaterialInstance *RenderResource::CreateMaterialInstance(const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
+MaterialInstance *RenderResource::CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
 {
-    Material *mtl=this->CreateMaterial(mci);
+    Material *mtl=this->CreateMaterial(mtl_name,mci);
 
     if(!mtl)
         return(nullptr);

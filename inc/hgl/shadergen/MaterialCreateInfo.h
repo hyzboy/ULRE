@@ -45,8 +45,6 @@ namespace hgl::graph
 
         public:
 
-            const   AnsiString &GetName         ()const{return config->mtl_name;}
-
             const   uint32      GetShaderStage  ()const{return config->shader_stage_flag_bit;}
 
                     bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage_flag_bit&ss;}

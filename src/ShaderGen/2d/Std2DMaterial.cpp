@@ -14,7 +14,8 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 
     const bool is_rect=(cfg->prim==PrimitiveType::SolidRectangles||cfg->prim==PrimitiveType::WireRectangles);
     
-    if(cfg->local_to_world||cfg->material_instance)
+    if(cfg->local_to_world
+     ||cfg->material_instance)
     {
         mci->AddStruct(SBS_LocalToWorld);
 
