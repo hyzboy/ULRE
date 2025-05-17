@@ -7,7 +7,7 @@
 #include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
-PrimitiveDataBuffer::PrimitiveDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
+MeshDataBuffer::MeshDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)
 {
     vab_count=c;
 
@@ -18,13 +18,13 @@ PrimitiveDataBuffer::PrimitiveDataBuffer(const uint32_t c,IndexBuffer *ib,Vertex
     vdm=_vdm;
 }
 
-PrimitiveDataBuffer::~PrimitiveDataBuffer()
+MeshDataBuffer::~MeshDataBuffer()
 {
     delete[] vab_offset;
     delete[] vab_list;
 }
 
-const int PrimitiveDataBuffer::compare(const PrimitiveDataBuffer &pdb)const
+const int MeshDataBuffer::compare(const MeshDataBuffer &pdb)const
 {
     ptrdiff_t off;
 
@@ -52,14 +52,14 @@ const int PrimitiveDataBuffer::compare(const PrimitiveDataBuffer &pdb)const
     return off;
 }
 
-Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,PrimitiveDataBuffer *pdb,PrimitiveRenderData *prd)
+Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *pdb,MeshRenderData *prd)
 {
     primitive=r;
     pipeline=p;
     mat_inst=mi;
 
-    primitive_data_buffer=pdb;
-    primitive_render_data=prd;
+    data_buffer=pdb;
+    render_data=prd;
 }
  
 Mesh *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
@@ -81,8 +81,8 @@ Mesh *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    PrimitiveDataBuffer *pdb=new PrimitiveDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
-    PrimitiveRenderData *prd=new PrimitiveRenderData(prim->GetVertexCount(),prim->GetIndexCount(),prim->GetVertexOffset(),prim->GetFirstIndex());
+    MeshDataBuffer *pdb=new MeshDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
+    MeshRenderData *prd=new MeshRenderData(prim->GetVertexCount(),prim->GetIndexCount(),prim->GetVertexOffset(),prim->GetFirstIndex());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
 

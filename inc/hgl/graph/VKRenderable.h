@@ -12,7 +12,7 @@ VK_NAMESPACE_BEGIN
 * 原始图元数据缓冲区<Br>
 * 提供在渲染之前的数据绑定信息
 */
-struct PrimitiveDataBuffer:public Comparator<PrimitiveDataBuffer>
+struct MeshDataBuffer:public Comparator<MeshDataBuffer>
 {
     uint32_t        vab_count;
     VkBuffer *      vab_list;
@@ -29,17 +29,17 @@ struct PrimitiveDataBuffer:public Comparator<PrimitiveDataBuffer>
 
 public:
 
-    PrimitiveDataBuffer(const uint32_t,IndexBuffer *,VertexDataManager *_v=nullptr);
-    ~PrimitiveDataBuffer();
+    MeshDataBuffer(const uint32_t,IndexBuffer *,VertexDataManager *_v=nullptr);
+    ~MeshDataBuffer();
 
-    const int compare(const PrimitiveDataBuffer &pdb)const override;
-};//struct PrimitiveDataBuffer
+    const int compare(const MeshDataBuffer &pdb)const override;
+};//struct MeshDataBuffer
 
 /**
 * 原始图元渲染数据<Br>
 * 提供在渲染时的数据
 */
-struct PrimitiveRenderData:public ComparatorData<PrimitiveRenderData>
+struct MeshRenderData:public ComparatorData<MeshRenderData>
 {
     //因为要VAB是流式访问，所以我们这个结构会被用做排序依据
     //也因此，把vertex_offset放在最前面
@@ -52,7 +52,7 @@ struct PrimitiveRenderData:public ComparatorData<PrimitiveRenderData>
 
 public:
 
-    PrimitiveRenderData(const uint32_t vc,const uint32_t ic,const int32_t vo=0,const uint32_t fi=0)
+    MeshRenderData(const uint32_t vc,const uint32_t ic,const int32_t vo=0,const uint32_t fi=0)
     {
         vertex_count    =vc;
         index_count     =ic;
@@ -70,14 +70,14 @@ class Mesh
     MaterialInstance *  mat_inst;
     Primitive *         primitive;
 
-    PrimitiveDataBuffer * primitive_data_buffer;
-    PrimitiveRenderData * primitive_render_data;
+    MeshDataBuffer * data_buffer;
+    MeshRenderData * render_data;
 
 private:
 
     friend Mesh *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
 
-    Mesh(Primitive *,MaterialInstance *,Pipeline *,PrimitiveDataBuffer *,PrimitiveRenderData *);
+    Mesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *,MeshRenderData *);
 
 public:
 
@@ -85,8 +85,8 @@ public:
     {
         //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
-        SAFE_CLEAR(primitive_data_buffer);
-        SAFE_CLEAR(primitive_render_data);
+        SAFE_CLEAR(data_buffer);
+        SAFE_CLEAR(render_data);
     }
 
             void                UpdatePipeline      (Pipeline *p){pipeline=p;}
@@ -98,8 +98,8 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   PrimitiveDataBuffer *GetDataBuffer      ()const{return primitive_data_buffer;}
-    const   PrimitiveRenderData *GetRenderData      ()const{return primitive_render_data;}
+    const   MeshDataBuffer *    GetDataBuffer      ()const{return data_buffer;}
+    const   MeshRenderData *    GetRenderData      ()const{return render_data;}
 
 public:
 

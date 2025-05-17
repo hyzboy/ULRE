@@ -68,8 +68,8 @@ private:
 
                 MaterialInstance *      mi;
 
-        const   PrimitiveDataBuffer *   pdb;
-        const   PrimitiveRenderData *   prd;
+        const   MeshDataBuffer *   pdb;
+        const   MeshRenderData *   prd;
 
     public:
 
@@ -92,14 +92,14 @@ protected:
 
             VABList *               vab_list;
 
-    const   PrimitiveDataBuffer *   last_data_buffer;
+    const   MeshDataBuffer *   last_data_buffer;
     const   VDM *                   last_vdm;
-    const   PrimitiveRenderData *   last_render_data;
+    const   MeshRenderData *   last_render_data;
 
             int                     first_indirect_draw_index=-1;
             uint                    indirect_draw_count=0;
 
-    bool BindVAB(const PrimitiveDataBuffer *,const uint);
+    bool BindVAB(const MeshDataBuffer *,const uint);
 
     void ProcIndirectRender();
     void Render(RenderItem *);

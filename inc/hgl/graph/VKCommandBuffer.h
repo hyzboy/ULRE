@@ -202,7 +202,7 @@ public:
 
     void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
 
-    bool BindDataBuffer(const PrimitiveDataBuffer *);
+    bool BindDataBuffer(const MeshDataBuffer *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}
     void SetScissor         (uint32_t first,uint32_t count,const VkRect2D *sci)     {vkCmdSetScissor(cmd_buf,first,count,sci);}
@@ -239,7 +239,7 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const PrimitiveDataBuffer *prb,const PrimitiveRenderData *prd,const uint32_t instance_count=1,const uint32_t first_instance=0);
+                                void Draw               (const MeshDataBuffer *prb,const MeshRenderData *prd,const uint32_t instance_count=1,const uint32_t first_instance=0);
 
 public: //dynamic state
 
