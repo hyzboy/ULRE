@@ -74,12 +74,10 @@ const ShaderModule *RenderResource::CreateShaderModule(const AnsiString &sm_name
     return sm;
 }
 
-Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
+Material *RenderResource::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
 {
     if(!mci)
         return(nullptr);
-
-    const AnsiString &mtl_name=mci->GetName();
 
     {
         Material *mtl;
@@ -130,7 +128,7 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
         const auto &mdi=mci->GetMDI();
 
         if(mdi.GetCount()>0)
-            mtl->desc_manager=new MaterialDescriptorManager(mci->GetName(),mdi.Get());
+            mtl->desc_manager=new MaterialDescriptorManager(mtl_name,mdi.Get());
     }
 
     mtl->pipeline_layout_data=device->CreatePipelineLayoutData(mtl->desc_manager);
@@ -191,13 +189,15 @@ Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material2
 {
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDevAttr(),mtl_name,cfg);
 
-    return this->CreateMaterial(mci);
+    //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
+    return this->CreateMaterial(mtl_name,mci);
 }
 
 Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
 {
     AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDevAttr(),mtl_name,cfg);
 
-    return this->CreateMaterial(mci);
+    //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
+    return this->CreateMaterial(mtl_name,mci);
 }
 VK_NAMESPACE_END

@@ -14,8 +14,6 @@ class MaterialCreateInfo;
  */
 struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 {
-    AnsiString                  mtl_name;                   ///<材质名称
-
     bool                        material_instance;          ///<是否包含材质实例
 
     RenderTargetOutputConfig    rt_output;                  ///<渲染目标输出配置
@@ -26,10 +24,8 @@ struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 
 public:
 
-    MaterialCreateConfig(const AnsiString &name,const PrimitiveType &p)
+    MaterialCreateConfig(const PrimitiveType &p)
     {
-        mtl_name=name;
-
         material_instance=false;
 
         hgl_zero(rt_output);

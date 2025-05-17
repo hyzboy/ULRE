@@ -74,18 +74,16 @@ namespace hgl
             return render_pass->CreatePipeline(args...);
         }
 
-        graph::MaterialInstance *CreateMaterialInstance(const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
+        graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
         {
-            return db->CreateMaterialInstance(mci,vil_cfg);
+            return db->CreateMaterialInstance(mi_name,mci,vil_cfg);
         }
 
         graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
         {            
-            AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(
-                GetDevAttr(),
-                "VertexColor2D",mtl_cfg);    //这个是使用名称创建
+            AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mtl_cfg);
 
-            return db->CreateMaterialInstance(mci,vil_cfg);
+            return db->CreateMaterialInstance(mtl_name,mci,vil_cfg);
         }
 
         graph::Primitive *CreatePrimitive(  const AnsiString &name,

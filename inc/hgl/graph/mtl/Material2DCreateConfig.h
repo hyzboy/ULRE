@@ -16,14 +16,17 @@ struct Material2DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material2DCreateConfig(const AnsiString &name,const PrimitiveType &p):MaterialCreateConfig(name,p)
+    Material2DCreateConfig(const PrimitiveType &p,
+                           const CoordinateSystem2D &cs=CoordinateSystem2D::NDC,
+                           const WithLocalToWorld &l2w=WithLocalToWorld::Without)
+        :MaterialCreateConfig(p)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
         rt_output.stencil=false;    //不输出stencil
 
-        coordinate_system=CoordinateSystem2D::NDC;
-        local_to_world=false;
+        coordinate_system=cs;
+        local_to_world=(l2w==WithLocalToWorld::With);
 
         if(prim==PrimitiveType::SolidRectangles
          ||prim==PrimitiveType::WireRectangles)
