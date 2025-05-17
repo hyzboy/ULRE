@@ -38,7 +38,7 @@ private:
 
     MaterialInstance *  mi_billboard        =nullptr;
     Pipeline *          pipeline_billboard  =nullptr;
-    Renderable *        ro_billboard        =nullptr;
+    Mesh *        ro_billboard        =nullptr;
     
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
@@ -110,13 +110,13 @@ private:
         return(true);
     }
     
-    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
+    Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
-        Renderable *ri=db->CreateRenderable(r,mi,p);
+        Mesh *ri=db->CreateRenderable(r,mi,p);
 
         if(!ri)
         {
-            LOG_ERROR(OS_TEXT("Create Renderable failed."));
+            LOG_ERROR(OS_TEXT("Create Mesh failed."));
             return(nullptr);
         }
 

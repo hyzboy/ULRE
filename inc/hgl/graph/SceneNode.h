@@ -31,7 +31,7 @@ namespace hgl
             AABB LocalBoundingBox;                                                                                      ///<本地坐标绑定盒
             //AABB WorldBoundingBox;                                                                                      ///<世界坐标绑定盒
 
-            Renderable *render_obj=nullptr;                                                                             ///<可渲染实例
+            Mesh *render_obj=nullptr;                                                                             ///<可渲染实例
 
         protected:
 
@@ -51,9 +51,9 @@ namespace hgl
             SceneNode(const SceneNode &)=delete;
             SceneNode(const SceneNode *)=delete;
             SceneNode(const SceneOrient &so                 ):SceneOrient(so)   {}
-            SceneNode(                      Renderable *ri  )                   {render_obj=ri;}
+            SceneNode(                      Mesh *ri  )                   {render_obj=ri;}
             SceneNode(const Matrix4f &mat                   ):SceneOrient(mat)  {}
-            SceneNode(const Matrix4f &mat,  Renderable *ri  ):SceneOrient(mat)  {render_obj=ri;}
+            SceneNode(const Matrix4f &mat,  Mesh *ri  ):SceneOrient(mat)  {render_obj=ri;}
 
         public:
 
@@ -85,9 +85,9 @@ namespace hgl
                     SceneNode * GetParent()      noexcept{return ParentNode;}
             const   SceneNode * GetParent()const noexcept{return ParentNode;}
 
-                    void        SetRenderable(Renderable *);
-                    Renderable *GetRenderable()      noexcept{return render_obj;}
-            const   Renderable *GetRenderable()const noexcept{return render_obj;}
+                    void        SetRenderable(Mesh *);
+                    Mesh *GetRenderable()      noexcept{return render_obj;}
+            const   Mesh *GetRenderable()const noexcept{return render_obj;}
 
             SceneNode *Add(SceneNode *sn)
             {

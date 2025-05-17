@@ -245,7 +245,7 @@ public: //dynamic state
 
 public:
 
-    void Render(Renderable *ri)
+    void Render(Mesh *ri)
     {
         if(!ri)return;
         

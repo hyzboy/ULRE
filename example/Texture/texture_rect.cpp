@@ -40,7 +40,7 @@ private:
     Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Mesh *        render_obj          =nullptr;
     Pipeline *          pipeline            =nullptr;
 
 private:

@@ -22,7 +22,7 @@ namespace hgl
         {
             if(!sn)return(false);
 
-            Renderable *ri=sn->GetRenderable();
+            Mesh *ri=sn->GetRenderable();
 
             if(ri)
             {
@@ -89,7 +89,7 @@ namespace hgl
         {
             if(!sn)return;
 
-            Renderable *ri=sn->GetRenderable();
+            Mesh *ri=sn->GetRenderable();
 
             if(!ri)return;
 

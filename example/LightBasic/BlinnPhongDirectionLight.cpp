@@ -243,7 +243,7 @@ private:
         return(true);
     }    
     
-    Renderable *Add(Primitive *r,MaterialInstance *mi,Pipeline *p,const Matrix4f &mat=Identity4f)
+    Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p,const Matrix4f &mat=Identity4f)
     {
         if(!r)
             return(nullptr);
@@ -252,11 +252,11 @@ private:
         if(!p)
             return(nullptr);
 
-        Renderable *ri=db->CreateRenderable(r,mi,p);
+        Mesh *ri=db->CreateRenderable(r,mi,p);
 
         if(!ri)
         {
-            LOG_ERROR("Create Renderable failed! Primitive: "+r->GetName());
+            LOG_ERROR("Create Mesh failed! Primitive: "+r->GetName());
             return(nullptr);
         }
 

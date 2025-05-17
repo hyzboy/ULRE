@@ -38,7 +38,7 @@ class TestApp:public VulkanApplicationFramework
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Mesh *        render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 

@@ -220,7 +220,7 @@ public:
         }
     }
 
-    bool BuildCommandBuffer(RenderCmdBuffer *cb,Framebuffer *fbo,Renderable *ri)
+    bool BuildCommandBuffer(RenderCmdBuffer *cb,Framebuffer *fbo,Mesh *ri)
     {   
         if(!ri)return(false);
 
@@ -238,7 +238,7 @@ public:
         return(true);
     }
 
-    bool BuildCommandBuffer(uint32_t index,Renderable *ri)
+    bool BuildCommandBuffer(uint32_t index,Mesh *ri)
     {   
         if(!ri)return(false);
 
@@ -246,7 +246,7 @@ public:
                                   sc_render_target->GetFramebuffer(),ri);
     }
 
-    bool BuildCommandBuffer(Renderable *ri)
+    bool BuildCommandBuffer(Mesh *ri)
     {
         if(!ri)return(false);
 
@@ -256,7 +256,7 @@ public:
         return(true);
     }
 
-    bool BuildCurrentCommandBuffer(Renderable *ri)
+    bool BuildCurrentCommandBuffer(Mesh *ri)
     {
         if(!ri)return(false);
     

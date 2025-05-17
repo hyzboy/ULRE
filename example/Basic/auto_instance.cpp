@@ -38,7 +38,7 @@ private:
     SceneNode           render_root;
 
     MaterialInstance *  material_instance   =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Mesh *        render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 

@@ -44,7 +44,7 @@ namespace hgl
 
             bool WriteVertex    (const int16 *fp);
             bool WriteTexCoord  (const float *fp);
-        };//class TextPrimitive:public Renderable
+        };//class TextPrimitive:public Mesh
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_FONT_PRIMITIVE_INCLUDE

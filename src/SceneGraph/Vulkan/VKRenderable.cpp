@@ -52,7 +52,7 @@ const int PrimitiveDataBuffer::compare(const PrimitiveDataBuffer &pdb)const
     return off;
 }
 
-Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,PrimitiveDataBuffer *pdb,PrimitiveRenderData *prd)
+Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,PrimitiveDataBuffer *pdb,PrimitiveRenderData *prd)
 {
     primitive=r;
     pipeline=p;
@@ -62,7 +62,7 @@ Renderable::Renderable(Primitive *r,MaterialInstance *mi,Pipeline *p,PrimitiveDa
     primitive_render_data=prd;
 }
  
-Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
+Mesh *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 {
     if(!prim||!mi||!p)return(nullptr);
 
@@ -76,7 +76,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     if(prim->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        LOG_ERROR("[FATAL ERROR] input buffer count of Renderable lesser than Material, Material name: "+mtl_name);
+        LOG_ERROR("[FATAL ERROR] input buffer count of Mesh lesser than Material, Material name: "+mtl_name);
 
         return(nullptr);
     }
@@ -104,7 +104,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         if(vab->GetFormat()!=vif->format)
         {
             LOG_ERROR(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" format can't match Renderable, Material(")+mtl_name+
+                        AnsiString("\" format can't match Mesh, Material(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
@@ -114,7 +114,7 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         if(vab->GetStride()!=vif->stride)
         {
             LOG_ERROR(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
-                        AnsiString("\" stride can't match Renderable, Material(")+mtl_name+
+                        AnsiString("\" stride can't match Mesh, Material(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
                         AnsiString("), VAB stride(")+AnsiString::numberOf(vab->GetStride())+
                         ")");
@@ -126,6 +126,6 @@ Renderable *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         ++vif;
     }
 
-    return(new Renderable(prim,mi,p,pdb,prd));
+    return(new Mesh(prim,mi,p,pdb,prd));
 }
 VK_NAMESPACE_END

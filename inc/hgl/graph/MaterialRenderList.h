@@ -73,7 +73,7 @@ private:
 
     public:
 
-        void Set(Renderable *);
+        void Set(Mesh *);
     };
 
     IndirectDrawBuffer *icb_draw;

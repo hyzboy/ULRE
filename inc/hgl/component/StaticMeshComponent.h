@@ -7,7 +7,7 @@ COMPONENT_NAMESPACE_BEGIN
 
 struct StaticMeshComponentData:public ComponentData
 {
-    Renderable *renderable;
+    Mesh *renderable;
 };//struct StaticMeshComponentData
 
 class StaticMeshComponent;

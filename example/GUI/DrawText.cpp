@@ -15,7 +15,7 @@ private:
     TextRender *        text_render         =nullptr;
 
     TextPrimitive *     text_primitive      =nullptr;
-    Renderable *        render_obj          =nullptr;
+    Mesh *        render_obj          =nullptr;
 
 public:
 

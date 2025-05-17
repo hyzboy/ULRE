@@ -74,9 +74,9 @@ private:
         return prim_plane_grid;
     }
 
-    Renderable *Add(MaterialInstance *mi,const Matrix4f &mat)
+    Mesh *Add(MaterialInstance *mi,const Matrix4f &mat)
     {
-        Renderable *ri=db->CreateRenderable(prim_plane_grid,mi,pipeline);
+        Mesh *ri=db->CreateRenderable(prim_plane_grid,mi,pipeline);
 
         if(!ri)
             return(nullptr);

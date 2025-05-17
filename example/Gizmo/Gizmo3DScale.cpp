@@ -45,22 +45,22 @@ void ClearGizmoScaleStaticMesh()
 
 bool InitGizmoScaleStaticMesh()
 {
-    Renderable *center_cube=GetGizmoRenderable(GizmoShape::Cube,GizmoColor::White);
-    Renderable *cylinder[3]
+    Mesh *center_cube=GetGizmoRenderable(GizmoShape::Cube,GizmoColor::White);
+    Mesh *cylinder[3]
     {
         GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Red),
         GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Green),
         GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Blue),
     };
 
-    Renderable *cube[3]
+    Mesh *cube[3]
     {
         GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Red),
         GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Green),
         GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Blue),
     };
 
-    Renderable *square[3]=
+    Mesh *square[3]=
     {
         GetGizmoRenderable(GizmoShape::Square,GizmoColor::Red),
         GetGizmoRenderable(GizmoShape::Square,GizmoColor::Green),

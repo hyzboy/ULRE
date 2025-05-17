@@ -123,7 +123,7 @@ using VIL=VertexInputLayout;
 
 class PrimitiveData;
 class Primitive;
-class Renderable;
+class Mesh;
 
 class VertexDataManager;
 using VDM=VertexDataManager;

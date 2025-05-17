@@ -38,7 +38,7 @@ private:
     struct
     {
         MaterialInstance *  mi;
-        Renderable *        r;
+        Mesh *        r;
     }render_obj[DRAW_OBJECT_COUNT]{};
 
     Pipeline *          pipeline            =nullptr;

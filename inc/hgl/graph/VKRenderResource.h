@@ -54,7 +54,7 @@ class RenderResource
     IDObjectManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
     IDObjectManage<BufferID,               DeviceBuffer>       rm_buffers;                 ///<顶点缓冲区合集
     IDObjectManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
-    IDObjectManage<RenderableID,           Renderable>         rm_renderables;             ///<渲染实例集合集
+    IDObjectManage<RenderableID,           Mesh>         rm_renderables;             ///<渲染实例集合集
 
 private:
 
@@ -97,7 +97,7 @@ public: //添加数据到管理器（如果指针为nullptr会返回-1）
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
     BufferID                Add(DeviceBuffer *      buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
-    RenderableID            Add(Renderable *        r   ){return rm_renderables.Add(r);}
+    RenderableID            Add(Mesh *        r   ){return rm_renderables.Add(r);}
 
 public: // VAB/VAO
 
@@ -143,8 +143,8 @@ public: //Material
 
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
-    Renderable *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
-    Renderable *        CreateRenderable(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
+    Mesh *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
+    Mesh *        CreateRenderable(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
     Sampler *           CreateSampler(Texture *);
@@ -157,7 +157,7 @@ public: //Get
     Primitive *         GetPrimitive            (const PrimitiveID          &id){return rm_primitives.Get(id);}
     DeviceBuffer *      GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
-    Renderable *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
+    Mesh *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
 
 public: //Release
 
@@ -167,7 +167,7 @@ public: //Release
     void Release(Primitive *         p   ){rm_primitives.Release(p);}
     void Release(DeviceBuffer *      buf ){rm_buffers.Release(buf);}
     void Release(Sampler *           s   ){rm_samplers.Release(s);}
-    void Release(Renderable *        r   ){rm_renderables.Release(r);}
+    void Release(Mesh *        r   ){rm_renderables.Release(r);}
 };//class RenderResource
 
 /**
