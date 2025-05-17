@@ -183,8 +183,8 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
 namespace mtl
 {
-    MaterialCreateInfo *LoadMaterialFromFile(const GPUDeviceAttribute *dev_attr,const AnsiString &, Material2DCreateConfig *);
-    MaterialCreateInfo *LoadMaterialFromFile(const GPUDeviceAttribute *dev_attr,const AnsiString &, Material3DCreateConfig *);
+    MaterialCreateInfo *LoadMaterialFromFile(const VkDevAttr *dev_attr,const AnsiString &, Material2DCreateConfig *);
+    MaterialCreateInfo *LoadMaterialFromFile(const VkDevAttr *dev_attr,const AnsiString &, Material3DCreateConfig *);
 }
 
 Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)

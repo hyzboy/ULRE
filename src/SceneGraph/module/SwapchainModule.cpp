@@ -22,7 +22,7 @@ namespace
     //    return swapchain_extent;
     //}
 
-    VkSwapchainKHR CreateVulkanSwapChain(const GPUDeviceAttribute *dev_attr)
+    VkSwapchainKHR CreateVulkanSwapChain(const VkDevAttr *dev_attr)
     {
         VkSwapchainCreateInfoKHR swapchain_ci;
 
@@ -262,7 +262,7 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(sc_render_target)
 
-    GPUDeviceAttribute *dev_attr=GetDeviceAttribute();
+    VkDevAttr *dev_attr=GetDeviceAttribute();
 
     dev_attr->RefreshSurfaceCaps();
 

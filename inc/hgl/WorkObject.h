@@ -37,7 +37,7 @@ namespace hgl
 
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
         graph::GPUDevice *          GetDevice           (){return render_framework->GetDevice();}
-        graph::GPUDeviceAttribute * GetDeviceAttribute  (){return render_framework->GetDeviceAttribute();}
+        graph::VkDevAttr * GetDeviceAttribute  (){return render_framework->GetDeviceAttribute();}
 
         const VkExtent2D &          GetExtent2D         (){return cur_render_target->GetExtent();}
 

@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_DEVICE_INCLUDE
-#define HGL_GRAPH_VULKAN_DEVICE_INCLUDE
+﻿#pragma once
 
 #include<hgl/type/ArrayList.h>
 #include<hgl/type/String.h>
@@ -30,7 +29,7 @@ struct CopyBufferToImageInfo;
 
 class GPUDevice
 {
-    GPUDeviceAttribute *attr;
+    VkDevAttr *attr;
 
 private:
 
@@ -40,14 +39,14 @@ private:
 
     friend class VulkanDeviceCreater;
 
-    GPUDevice(GPUDeviceAttribute *da);
+    GPUDevice(VkDevAttr *da);
 
 public:
 
     virtual ~GPUDevice();
 
     operator    VkDevice                                ()      {return attr->device;}
-                GPUDeviceAttribute *GetDeviceAttribute  ()      {return attr;}
+                VkDevAttr *GetDeviceAttribute  ()      {return attr;}
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}
@@ -175,4 +174,3 @@ public:
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class GPUDevice
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_DEVICE_INCLUDE

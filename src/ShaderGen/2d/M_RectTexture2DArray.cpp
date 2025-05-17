@@ -98,7 +98,7 @@ void main()
     };//class MaterialRectTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateRectTexture2DArray(const GPUDeviceAttribute *dev_attr,mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateRectTexture2DArray(const VkDevAttr *dev_attr,mtl::Material2DCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);

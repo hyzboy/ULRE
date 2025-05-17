@@ -8,7 +8,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 
 VK_NAMESPACE_BEGIN
-RenderCmdBuffer::RenderCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
+RenderCmdBuffer::RenderCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
 {
     cv_count=0;
     clear_values=nullptr;

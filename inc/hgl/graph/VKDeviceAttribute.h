@@ -11,7 +11,7 @@ VK_NAMESPACE_BEGIN
 
 constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
-struct GPUDeviceAttribute
+struct VkDevAttr
 {
     VulkanInstance *                    instance        =nullptr;
     const GPUPhysicalDevice *           physical_device =nullptr;
@@ -34,7 +34,7 @@ struct GPUDeviceAttribute
     VkQueue                             present_queue   =VK_NULL_HANDLE;
 
     VkSurfaceFormatKHR                  surface_format;
-    ArrayList<VkPresentModeKHR>              present_modes;
+    ArrayList<VkPresentModeKHR>         present_modes;
 
     VkSurfaceTransformFlagBitsKHR       preTransform;
     VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -55,8 +55,8 @@ struct GPUDeviceAttribute
 
 public:
 
-    GPUDeviceAttribute(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s);
-    ~GPUDeviceAttribute();
+    VkDevAttr(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s);
+    ~VkDevAttr();
 
     int GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const;
 
@@ -75,5 +75,5 @@ public:
     {
         return instance->GetDeviceProc<T>(device,name);
     }
-};//class GPUDeviceAttribute
+};//class VkDevAttr
 VK_NAMESPACE_END

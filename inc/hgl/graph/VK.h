@@ -43,7 +43,7 @@ class RenderFramework;
 class VulkanInstance;
 class GPUPhysicalDevice;
 class GPUDevice;
-struct GPUDeviceAttribute;
+struct VkDevAttr;
 class DeviceQueue;
 class ImageView;
 class Framebuffer;

@@ -19,7 +19,7 @@ public:
             GPUDevice *         GetDevice           ();                                             ///<取得GPU设备
             VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
     const   GPUPhysicalDevice * GetPhysicalDevice   ()const;                                        ///<取得物理设备
-            GPUDeviceAttribute *GetDeviceAttribute  ()const;                                        ///<取得设备属性
+            VkDevAttr *GetDeviceAttribute  ()const;                                        ///<取得设备属性
             VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache
 
 public:

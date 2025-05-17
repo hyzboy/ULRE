@@ -96,7 +96,7 @@ void main()
     };//class MaterialBillboard2DFixedSize:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateBillboard2DFixedSize(const GPUDeviceAttribute *dev_attr,mtl::BillboardMaterialCreateConfig *cfg)
+MaterialCreateInfo *CreateBillboard2DFixedSize(const VkDevAttr *dev_attr,mtl::BillboardMaterialCreateConfig *cfg)
 {
     if(!cfg)
         return(nullptr);

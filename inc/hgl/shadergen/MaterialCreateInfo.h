@@ -12,7 +12,7 @@
 
 namespace hgl::graph
 {
-    struct GPUDeviceAttribute;
+    struct VkDevAttr;
     struct UBODescriptor;
 
     namespace mtl
@@ -89,7 +89,7 @@ namespace hgl::graph
 
             bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-            bool CreateShader(const GPUDeviceAttribute *dev_attr);
+            bool CreateShader(const VkDevAttr *dev_attr);
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph

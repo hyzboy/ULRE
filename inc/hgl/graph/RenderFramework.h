@@ -53,7 +53,7 @@ public:
             GPUDevice *             GetDevice           ()const{return device;}
             VkDevice                GetVkDevice         ()const{return device->GetDevice();}
     const   GPUPhysicalDevice *     GetPhysicalDevice   ()const{return device->GetPhysicalDevice();}
-            GPUDeviceAttribute *    GetDeviceAttribute  ()const{return device->GetDeviceAttribute();}
+            VkDevAttr *    GetDeviceAttribute  ()const{return device->GetDeviceAttribute();}
 
             RenderResource *        GetRenderResource   ()const{return render_resource;}
 

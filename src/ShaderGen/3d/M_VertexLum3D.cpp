@@ -68,7 +68,7 @@ void main()
     };//class MaterialVertexLuminance3D:public Std3DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexLuminance3D(const GPUDeviceAttribute *dev_attr,const Material3DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexLuminance3D(const VkDevAttr *dev_attr,const Material3DCreateConfig *cfg)
 {
     MaterialVertexLuminance3D mvc3d(cfg);
 

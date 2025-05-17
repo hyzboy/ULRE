@@ -2,7 +2,7 @@
 #include<hgl/graph/VKDeviceAttribute.h>
 
 VK_NAMESPACE_BEGIN
-GPUCmdBuffer::GPUCmdBuffer(const GPUDeviceAttribute *attr,VkCommandBuffer cb)
+GPUCmdBuffer::GPUCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb)
 {
     dev_attr=attr;
     cmd_buf=cb;

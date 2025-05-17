@@ -54,7 +54,7 @@ void main()
     };//class MaterialVertexColor2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreateVertexColor2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreateVertexColor2D(const VkDevAttr *dev_attr,const Material2DCreateConfig *cfg)
 {
     MaterialVertexColor2D mvc2d(cfg);
 

@@ -3,7 +3,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
-GPUDevice::GPUDevice(GPUDeviceAttribute *da)
+GPUDevice::GPUDevice(VkDevAttr *da)
 {
     attr=da;
 }
