@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/SceneNode.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 namespace hgl
 {
     namespace graph

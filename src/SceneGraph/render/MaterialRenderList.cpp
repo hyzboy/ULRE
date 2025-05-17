@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/MaterialRenderList.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKVertexInput.h>

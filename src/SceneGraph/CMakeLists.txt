@@ -23,7 +23,9 @@ SET(SG_PRIMITIVE_SOURCE ${SG_INCLUDE_PATH}/VKPrimitive.h
 SOURCE_GROUP("Primitive" FILES ${SG_PRIMITIVE_SOURCE})
 
 SET(TILE_SOURCE ${SG_INCLUDE_PATH}/TileData.h
-                TileData.cpp)
+                TileData.cpp
+                Vulkan/VKTileData.cpp
+                Vulkan/VKTileFont.cpp)
 
 SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 
@@ -282,12 +284,10 @@ SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
 
 SOURCE_GROUP("Vulkan\\Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
-SET(VK_RENDERABLE_SOURCE    ${SG_INCLUDE_PATH}/VKRenderable.h
-                            Vulkan/VKRenderable.cpp
-                            Vulkan/VKTileData.cpp
-                            Vulkan/VKTileFont.cpp)
+SET(VK_MESH_SOURCE    ${SG_INCLUDE_PATH}/Mesh.h
+                            Vulkan/Mesh.cpp)
 
-SOURCE_GROUP("Vulkan\\Mesh" FILES ${VK_RENDERABLE_SOURCE})
+SOURCE_GROUP("Vulkan\\Mesh" FILES ${VK_MESH_SOURCE})
 
 set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
 
@@ -361,7 +361,7 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
                             ${VK_RENDER_TARGET_SOURCE}
                             #${VK_RENDER_CONTEXT_SOURCE}
                             ${VK_CMD_BUFFER_SOURCE}
-                            ${VK_RENDERABLE_SOURCE}
+                            ${VK_MESH_SOURCE}
                             ${VK_RENDER_DEVICE_SOURCE})
 
 add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}

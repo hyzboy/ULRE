@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/component/PrimitiveComponent.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
