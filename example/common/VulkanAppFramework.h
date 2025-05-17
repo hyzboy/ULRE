@@ -53,7 +53,7 @@ protected:
 
 protected:
 
-    VulkanDevice *             device                      =nullptr;
+    VulkanDevice *          device                      =nullptr;
     RenderPass *            device_render_pass          =nullptr;
     SwapchainRenderTarget * sc_render_target            =nullptr;
 

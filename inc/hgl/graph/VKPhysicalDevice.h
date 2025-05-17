@@ -23,6 +23,7 @@ class VulkanPhyDevice
     VkPhysicalDeviceVulkan14Properties  properties14;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
+
     ArrayList<VkLayerProperties>        layer_properties;
     ArrayList<VkExtensionProperties>    extension_properties;
     ArrayList<VkQueueFamilyProperties>  queue_family_properties;
