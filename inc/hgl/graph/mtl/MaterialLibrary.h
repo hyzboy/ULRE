@@ -44,7 +44,7 @@ public:
     }
 };//class RegistryMaterialFactoryClass
 
-#define DEFINE_MATERIAL_FACTORY_CLASS(name,create_func,cfg_type) \
+#define DEFINE_MATERIAL_FACTORY_CLASS(name,cfg_type) \
 MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr,cfg_type *); \
 \
 namespace \
@@ -61,7 +61,7 @@ namespace \
     \
         MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr,MaterialCreateConfig *cfg) override  \
         {   \
-            return create_func(dev_attr,(cfg_type *)cfg);    \
+            return Create##name(dev_attr,(cfg_type *)cfg);    \
         }   \
     };  \
     \

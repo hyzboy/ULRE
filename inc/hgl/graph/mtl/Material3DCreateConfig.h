@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialConfig.h>
 #include<hgl/graph/CoordinateSystem.h>
 #include<hgl/graph/VertexAttrib.h>
@@ -50,10 +51,9 @@ public:
     }
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
-MaterialCreateInfo *CreateVertexColor3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *);
-MaterialCreateInfo *CreateVertexLuminance3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *);
-
-MaterialCreateInfo *CreateMaterialGizmo3D(const VulkanDevAttr *dev_attr,const Material3DCreateConfig *cfg);
+DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
+DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,const Material3DCreateConfig);
+DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          const Material3DCreateConfig);
 
 struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
@@ -66,7 +66,7 @@ public:
     using Material3DCreateConfig::Material3DCreateConfig;
 };
 
-MaterialCreateInfo *CreateBillboard2D(const VulkanDevAttr *dev_attr,mtl::BillboardMaterialCreateConfig *);
+DEFINE_MATERIAL_FACTORY_CLASS(Billboard2D,BillboardMaterialCreateConfig);
 
 /**
  * 从文件加载材质

@@ -50,15 +50,13 @@ public:
     }
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
-DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,CreateVertexColor2D,const Material2DCreateConfig)
+DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,        const Material2DCreateConfig)
+DEFINE_MATERIAL_FACTORY_CLASS(PureColor2D,          const Material2DCreateConfig)
+//DEFINE_MATERIAL_FACTORY_CLASS(LerpLine2D,           const Material2DCreateConfig);
 
-MaterialCreateInfo *CreatePureColor2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *);
-
-MaterialCreateInfo *CreateLerpLine2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *);
-
-MaterialCreateInfo *CreatePureTexture2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *);
-MaterialCreateInfo *CreateRectTexture2D(const VulkanDevAttr *dev_attr,Material2DCreateConfig *);
-MaterialCreateInfo *CreateRectTexture2DArray(const VulkanDevAttr *dev_attr,Material2DCreateConfig *);
+DEFINE_MATERIAL_FACTORY_CLASS(PureTexture2D,        const Material2DCreateConfig);
+DEFINE_MATERIAL_FACTORY_CLASS(RectTexture2D,        Material2DCreateConfig);
+DEFINE_MATERIAL_FACTORY_CLASS(RectTexture2DArray,   Material2DCreateConfig);
 
 // 为什么有了LoadMaterialFromFile，还需要保留以上Create系列函数？
 
