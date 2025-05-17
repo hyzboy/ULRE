@@ -112,7 +112,7 @@ private:
     
     Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
-        Mesh *ri=db->CreateRenderable(r,mi,p);
+        Mesh *ri=db->CreateMesh(r,mi,p);
 
         if(!ri)
         {
@@ -151,7 +151,7 @@ private:
             if(!pc.WriteVAB(VAN::Position,VF_V3F,position_data))
                 return(false);
 
-            ro_billboard=db->CreateRenderable(&pc,mi_billboard,pipeline_billboard);
+            ro_billboard=db->CreateMesh(&pc,mi_billboard,pipeline_billboard);
             if(!ro_billboard)
                 return(false);
         }

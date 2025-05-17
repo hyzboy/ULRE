@@ -113,7 +113,7 @@ private:
         Float32toFloat16(position_data_hf,position_data_float,VERTEX_COUNT*2);
 #endif//USE_HALF_FLOAT_POSITION
 
-        render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        render_obj=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,PositionFormat,position_data},
                                         {VAN::Color,   ColorFormat,   color_data}

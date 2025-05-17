@@ -331,7 +331,7 @@ bool MaterialRenderList::BindVAB(const MeshDataBuffer *pdb,const uint ri_index)
     //const VIL *vil=last_vil;
 
     //if(vil->GetCount(VertexInputGroup::Basic)!=prb->vab_count)
-    //    return(false);                                                  //这里基本不太可能，因为CreateRenderable时就会检查值是否一样
+    //    return(false);                                                  //这里基本不太可能，因为CreateMesh时就会检查值是否一样
 
     vab_list->Restart();
 

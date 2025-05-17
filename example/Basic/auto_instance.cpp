@@ -72,7 +72,7 @@ private:
 
     bool InitVBO()
     {
-        render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        render_obj=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,   VF_V2F,     position_data},
                                         {VAN::Color,      VF_V4UN8,   color_data   }

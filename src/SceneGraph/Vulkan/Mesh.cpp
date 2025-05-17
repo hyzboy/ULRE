@@ -62,7 +62,7 @@ Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *pdb,Mes
     render_data=prd;
 }
  
-Mesh *CreateRenderable(Primitive *prim,MaterialInstance *mi,Pipeline *p)
+Mesh *CreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 {
     if(!prim||!mi||!p)return(nullptr);
 

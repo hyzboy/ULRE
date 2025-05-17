@@ -76,7 +76,7 @@ private:
 
     Mesh *Add(MaterialInstance *mi,const Matrix4f &mat)
     {
-        Mesh *ri=db->CreateRenderable(prim_plane_grid,mi,pipeline);
+        Mesh *ri=db->CreateMesh(prim_plane_grid,mi,pipeline);
 
         if(!ri)
             return(nullptr);

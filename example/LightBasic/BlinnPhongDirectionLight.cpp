@@ -252,7 +252,7 @@ private:
         if(!p)
             return(nullptr);
 
-        Mesh *ri=db->CreateRenderable(r,mi,p);
+        Mesh *ri=db->CreateMesh(r,mi,p);
 
         if(!ri)
         {

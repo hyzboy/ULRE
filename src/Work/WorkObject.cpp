@@ -98,7 +98,7 @@ namespace hgl
         return prim;
     }
 
-    graph::Mesh *WorkObject::CreateRenderable( const AnsiString &name,
+    graph::Mesh *WorkObject::CreateMesh( const AnsiString &name,
                                                      const uint32_t vertices_count,
                                                      graph::MaterialInstance *mi,
                                                      graph::Pipeline *pipeline,
@@ -109,6 +109,6 @@ namespace hgl
         if(!prim)
             return(nullptr);
 
-        return db->CreateRenderable(prim,mi,pipeline);
+        return db->CreateMesh(prim,mi,pipeline);
     }
 }//namespcae hgl

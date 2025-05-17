@@ -140,7 +140,7 @@ private:
 
         if(!primitive->Set(VAN::Position,  db->CreateVAB(VF_V4I16,VERTEX_COUNT,position_data)))return(false);
         
-        render_obj=db->CreateRenderable(primitive,material_instance,pipeline);
+        render_obj=db->CreateMesh(primitive,material_instance,pipeline);
         return(true);
     }
 

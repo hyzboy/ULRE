@@ -94,7 +94,7 @@ private:
     
     Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
-        Mesh *ri=db->CreateRenderable(r,mi,p);
+        Mesh *ri=db->CreateMesh(r,mi,p);
 
         if(!ri)
         {

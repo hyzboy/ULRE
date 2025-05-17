@@ -92,7 +92,7 @@ private:
         if(!rpc.WriteVAB(VAN::Position,   VF_V2F, position_data))return(false);
         if(!rpc.WriteVAB(VAN::TexCoord,   VF_V2F, tex_coord_data))return(false);
 
-        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
+        render_obj=db->CreateMesh(&rpc,material_instance,pipeline);
         return(render_obj);
     }
 

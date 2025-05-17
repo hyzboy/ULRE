@@ -44,7 +44,7 @@ private:
         if(!text_primitive)
             return(false);
 
-        render_obj=text_render->CreateRenderable(text_primitive);
+        render_obj=text_render->CreateMesh(text_primitive);
         if(!render_obj)
             return(false);
 

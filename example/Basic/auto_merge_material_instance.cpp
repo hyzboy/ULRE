@@ -95,7 +95,7 @@ private:
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
-            render_obj[i].r=db->CreateRenderable(prim,render_obj[i].mi,pipeline);
+            render_obj[i].r=db->CreateMesh(prim,render_obj[i].mi,pipeline);
 
             if(!render_obj[i].r)
                 return(false);
