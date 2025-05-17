@@ -44,9 +44,11 @@ public:
     }
 };//class RegistryMaterialFactoryClass
 
-#define DEFINE_MATERIAL_FACTORY(name) namespace{static RegistryMaterialFactoryClass<MaterialFactory##name> MaterialFactoryInstance_##name;}
-
 #define DEFINE_MATERIAL_FACTORY_CLASS(name,create_func,cfg_type) \
+MaterialCreateInfo *Create##name(const GPUDeviceAttribute *dev_attr,cfg_type *); \
+\
+namespace \
+{   \
     class MaterialFactory##name:public MaterialFactory  \
     {   \
     public: \
@@ -63,7 +65,8 @@ public:
         }   \
     };  \
     \
-    DEFINE_MATERIAL_FACTORY(name)
+    static RegistryMaterialFactoryClass<MaterialFactory##name> MaterialFactoryInstance_##name;   \
+}
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const GPUDeviceAttribute *dev_attr,const MaterialName &,MaterialCreateConfig *cfg);
 
