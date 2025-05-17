@@ -58,7 +58,7 @@ namespace
         gr->prim=prim;
 
         for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
-            gr->renderable[i]=CreateRenderable(prim,gizmo_triangle.mi[i],p);
+            gr->renderable[i]=CreateMesh(prim,gizmo_triangle.mi[i],p);
     }
 
     bool InitMI(GizmoResource *gr)

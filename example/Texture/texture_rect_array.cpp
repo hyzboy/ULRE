@@ -144,7 +144,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].r=db->CreateRenderable(prim_rectangle,render_obj[i].mi,pipeline);
+            render_obj[i].r=db->CreateMesh(prim_rectangle,render_obj[i].mi,pipeline);
 
             if(!render_obj[i].r)
                 return(false);

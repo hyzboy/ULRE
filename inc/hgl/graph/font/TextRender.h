@@ -58,7 +58,7 @@ namespace hgl
 
             bool Layout(TextPrimitive *tr,const U16String &str);
 
-            Mesh *CreateRenderable(TextPrimitive *text_primitive);
+            Mesh *CreateMesh(TextPrimitive *text_primitive);
 
             void Release(TextPrimitive *);
         };//class TextRender

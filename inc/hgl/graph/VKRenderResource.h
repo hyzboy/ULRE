@@ -143,8 +143,8 @@ public: //Material
 
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
-    Mesh *        CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p);
-    Mesh *        CreateRenderable(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
+    Mesh *        CreateMesh(Primitive *r,MaterialInstance *mi,Pipeline *p);
+    Mesh *        CreateMesh(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
     Sampler *           CreateSampler(Texture *);

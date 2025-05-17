@@ -75,7 +75,7 @@ class Mesh
 
 private:
 
-    friend Mesh *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
+    friend Mesh *CreateMesh(Primitive *,MaterialInstance *,Pipeline *);
 
     Mesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *,MeshRenderData *);
 
@@ -116,5 +116,5 @@ public:
             }
 };//class Mesh
 
-Mesh *CreateRenderable(Primitive *,MaterialInstance *,Pipeline *);
+Mesh *CreateMesh(Primitive *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END

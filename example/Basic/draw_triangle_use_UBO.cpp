@@ -85,7 +85,7 @@ private:
             position_data[i][1]=position_data_float[i][1]*ext.height;
         }
 
-        render_obj=CreateRenderable("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        render_obj=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,POSITION_DATA_FORMAT,position_data},
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}

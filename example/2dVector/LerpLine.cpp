@@ -74,7 +74,7 @@ private:
         if(!rpc.WriteVAB(VAN::Position,   PositionFormat, position_data))return(false);
         if(!rpc.WriteVAB(VAN::Color,      ColorFormat,    color_data   ))return(false);
         
-        render_obj=db->CreateRenderable(&rpc,material_instance,pipeline);
+        render_obj=db->CreateMesh(&rpc,material_instance,pipeline);
         return(render_obj);
     }
 

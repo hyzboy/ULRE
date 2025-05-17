@@ -80,12 +80,12 @@ MaterialInstance *RenderResource::CreateMaterialInstance(const AnsiString &mtl_n
     return CreateMaterialInstance(mtl,vil_cfg);
 }
 
-Mesh *RenderResource::CreateRenderable(Primitive *r,MaterialInstance *mi,Pipeline *p)
+Mesh *RenderResource::CreateMesh(Primitive *r,MaterialInstance *mi,Pipeline *p)
 {
     if(!p||!mi||!r)
         return(nullptr);
 
-    Mesh *ri=VK_NAMESPACE::CreateRenderable(r,mi,p);
+    Mesh *ri=VK_NAMESPACE::CreateMesh(r,mi,p);
 
     if(ri)
         Add(ri);
@@ -93,7 +93,7 @@ Mesh *RenderResource::CreateRenderable(Primitive *r,MaterialInstance *mi,Pipelin
     return ri;
 }
 
-Mesh *RenderResource::CreateRenderable(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p)
+Mesh *RenderResource::CreateMesh(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p)
 {
     if(!p||!mi||!pc)
         return(nullptr);
@@ -103,7 +103,7 @@ Mesh *RenderResource::CreateRenderable(PrimitiveCreater *pc,MaterialInstance *mi
     if(!prim)
         return(nullptr);
 
-    Mesh *ri=VK_NAMESPACE::CreateRenderable(prim,mi,p);
+    Mesh *ri=VK_NAMESPACE::CreateMesh(prim,mi,p);
 
     if(ri)
     {

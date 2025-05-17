@@ -18,7 +18,7 @@ namespace hgl
         {
         protected:  
 
-            VulkanDevice *         device;
+            VulkanDevice *      device;
 
             CameraInfo *        camera_info;                    ///<相机信息
 

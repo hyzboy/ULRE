@@ -86,8 +86,8 @@ namespace hgl
             const   SceneNode * GetParent()const noexcept{return ParentNode;}
 
                     void        SetRenderable(Mesh *);
-                    Mesh *GetRenderable()      noexcept{return render_obj;}
-            const   Mesh *GetRenderable()const noexcept{return render_obj;}
+                    Mesh *      GetRenderable()      noexcept{return render_obj;}
+            const   Mesh *      GetRenderable()const noexcept{return render_obj;}
 
             SceneNode *Add(SceneNode *sn)
             {
