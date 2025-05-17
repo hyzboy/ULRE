@@ -4,7 +4,7 @@
 
 VK_NAMESPACE_BEGIN
 
-GPUDevice *GraphModuleManager::GetDevice()const
+VulkanDevice *GraphModuleManager::GetDevice()const
 {
     return render_framework->GetDevice();
 }

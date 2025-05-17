@@ -7,7 +7,7 @@
 #include"vulkan/VKPrimitiveData.h"
 
 VK_NAMESPACE_BEGIN
-PrimitiveCreater::PrimitiveCreater(GPUDevice *dev,const VIL *v)
+PrimitiveCreater::PrimitiveCreater(VulkanDevice *dev,const VIL *v)
 {
     device          =dev;
     vdm             =nullptr;

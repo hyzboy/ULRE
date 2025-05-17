@@ -11,7 +11,7 @@ namespace hgl
          */
         class TextPrimitive:public Primitive
         {
-            GPUDevice * device;
+            VulkanDevice * device;
             Material *  mtl;
 
             uint        max_count;                                      ///<缓冲区最大容量
@@ -36,7 +36,7 @@ namespace hgl
 
         public:
 
-            TextPrimitive(GPUDevice *,Material *,uint mc=1024);
+            TextPrimitive(VulkanDevice *,Material *,uint mc=1024);
 
         public:
 

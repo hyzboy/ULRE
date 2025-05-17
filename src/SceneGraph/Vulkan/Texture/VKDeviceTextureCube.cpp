@@ -148,7 +148,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf
     return CopyBufferToImageCube(tex,buf,buffer_image_copy,miplevel,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 }
 
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ArrayList<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,const ArrayList<Image2DRegion> &ir_list,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf||ir_list.GetCount()<=0)
 //        return(false);
@@ -188,7 +188,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf
 //    return result;
 //}
 //
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,DeviceBuffer *buf,uint32_t left,uint32_t top,uint32_t width,uint32_t height,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!buf
 //        ||left<0||left+width>tex->GetWidth()
@@ -205,7 +205,7 @@ bool TextureManager::CommitTextureCubeMipmaps(TextureCube *tex,DeviceBuffer *buf
 //    return result;
 //}
 //
-//bool GPUDevice::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags destinationStage)
+//bool VulkanDevice::ChangeTexture2D(Texture2D *tex,void *data,uint32_t left,uint32_t top,uint32_t width,uint32_t height,uint32_t size,VkPipelineStageFlags destinationStage)
 //{
 //    if(!tex||!data
 //        ||left<0||left+width>tex->GetWidth()

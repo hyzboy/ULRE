@@ -103,7 +103,7 @@ private:
 
     const VkFormat GetCandidateFormat(const VkFormat *fmt_list, const uint count)
     {
-        auto pd = device->GetPhysicalDevice();
+        auto pd = device->GetPhyDevice();
 
         for (uint i = 0; i < count; i++)
             if (pd->IsColorAttachmentOptimal(fmt_list[i]))
@@ -118,7 +118,7 @@ private:
 
     const VkFormat GetDepthCandidateFormat()
     {
-        auto pd = device->GetPhysicalDevice();
+        auto pd = device->GetPhyDevice();
 
         for (VkFormat fmt : depth_candidate_format)
             if (pd->IsDepthAttachmentOptimal(fmt))

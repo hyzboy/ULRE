@@ -3,7 +3,7 @@
 
 VK_NAMESPACE_BEGIN
 
-bool GPUDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,SharingMode sharing_mode)
+bool VulkanDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t cmd_count,const uint32_t cmd_size,SharingMode sharing_mode)
 {
     const uint32_t size=cmd_count*cmd_size;
 
@@ -12,7 +12,7 @@ bool GPUDevice::CreateIndirectCommandBuffer(DeviceBufferData *buf,const uint32_t
     return CreateBuffer(buf,VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,size,size,nullptr,sharing_mode);
 }
 
-IndirectDrawBuffer *GPUDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,SharingMode sm)
+IndirectDrawBuffer *VulkanDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count,SharingMode sm)
 {
     DeviceBufferData buf;
         
@@ -22,7 +22,7 @@ IndirectDrawBuffer *GPUDevice::CreateIndirectDrawBuffer(const uint32_t cmd_count
     return(new IndirectDrawBuffer(attr->device,buf,cmd_count));
 }
 
-IndirectDrawIndexedBuffer *GPUDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm)
+IndirectDrawIndexedBuffer *VulkanDevice::CreateIndirectDrawIndexedBuffer(const uint32_t cmd_count,SharingMode sm)
 {
     DeviceBufferData buf;
         
@@ -32,7 +32,7 @@ IndirectDrawIndexedBuffer *GPUDevice::CreateIndirectDrawIndexedBuffer(const uint
     return(new IndirectDrawIndexedBuffer(attr->device,buf,cmd_count));
 }
 
-IndirectDispatchBuffer *GPUDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,SharingMode sm)
+IndirectDispatchBuffer *VulkanDevice::CreateIndirectDispatchBuffer(const uint32_t cmd_count,SharingMode sm)
 {
     DeviceBufferData buf;
         

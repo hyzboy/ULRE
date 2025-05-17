@@ -55,7 +55,7 @@ namespace
     }
 }
 
-GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
+VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 {
     instance=inst;
     physical_device=pd;
@@ -179,7 +179,7 @@ GPUPhysicalDevice::GPUPhysicalDevice(VkInstance inst,VkPhysicalDevice pd)
     dynamic_state=CheckExtensionSupport(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);
 }
 
-const bool GPUPhysicalDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
+const bool VulkanPhyDevice::GetLayerVersion(const AnsiString &name,uint32_t &spec,uint32_t &impl)const
 {    
     for(const VkLayerProperties &lp:layer_properties)
     {
@@ -195,7 +195,7 @@ const bool GPUPhysicalDevice::GetLayerVersion(const AnsiString &name,uint32_t &s
     return(false);
 }
 
-const uint32_t GPUPhysicalDevice::GetExtensionVersion(const AnsiString &name)const
+const uint32_t VulkanPhyDevice::GetExtensionVersion(const AnsiString &name)const
 {
     for(const VkExtensionProperties &ep:extension_properties)
     {
@@ -206,7 +206,7 @@ const uint32_t GPUPhysicalDevice::GetExtensionVersion(const AnsiString &name)con
     return 0;
 }
 
-const bool GPUPhysicalDevice::CheckExtensionSupport(const AnsiString &name)const
+const bool VulkanPhyDevice::CheckExtensionSupport(const AnsiString &name)const
 {
     for(const VkExtensionProperties &ep:extension_properties)
     {
@@ -217,7 +217,7 @@ const bool GPUPhysicalDevice::CheckExtensionSupport(const AnsiString &name)const
     return(false);
 }
 
-const int GPUPhysicalDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties)const
+const int VulkanPhyDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties)const
 {
     // Search memtypes to find first index with those properties
     for(uint32_t i=0; i<memory_properties.memoryTypeCount; i++)
@@ -233,7 +233,7 @@ const int GPUPhysicalDevice::GetMemoryType(uint32_t typeBits,VkMemoryPropertyFla
     return -1;
 }
 
-VkFormat GPUPhysicalDevice::GetDepthFormat(bool lower_to_high)const
+VkFormat VulkanPhyDevice::GetDepthFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthFormats[] =
     {
@@ -261,7 +261,7 @@ VkFormat GPUPhysicalDevice::GetDepthFormat(bool lower_to_high)const
     return result;
 }
 
-VkFormat GPUPhysicalDevice::GetDepthStencilFormat(bool lower_to_high)const
+VkFormat VulkanPhyDevice::GetDepthStencilFormat(bool lower_to_high)const
 {
     constexpr VkFormat depthStencilFormats[] =
     {

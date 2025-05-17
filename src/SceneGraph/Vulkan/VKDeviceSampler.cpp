@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKSampler.h>
 VK_NAMESPACE_BEGIN
-Sampler *GPUDevice::CreateSampler(VkSamplerCreateInfo *sci)
+Sampler *VulkanDevice::CreateSampler(VkSamplerCreateInfo *sci)
 {
     static VkSamplerCreateInfo default_sampler_create_info=
     {
@@ -38,7 +38,7 @@ Sampler *GPUDevice::CreateSampler(VkSamplerCreateInfo *sci)
     return(new Sampler(attr->device,sampler));
 }
 
-Sampler *GPUDevice::CreateSampler(Texture *tex)
+Sampler *VulkanDevice::CreateSampler(Texture *tex)
 {
     VkSamplerCreateInfo sci=
     {

@@ -3,17 +3,17 @@
 #include<hgl/graph/VKCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
-GPUDevice::GPUDevice(VkDevAttr *da)
+VulkanDevice::VulkanDevice(VulkanDevAttr *da)
 {
     attr=da;
 }
 
-GPUDevice::~GPUDevice()
+VulkanDevice::~VulkanDevice()
 {
     delete attr;
 }
 
-VkCommandBuffer GPUDevice::CreateCommandBuffer(const AnsiString &name)
+VkCommandBuffer VulkanDevice::CreateCommandBuffer(const AnsiString &name)
 {
     if(!attr->cmd_pool)
         return(VK_NULL_HANDLE);
@@ -39,7 +39,7 @@ VkCommandBuffer GPUDevice::CreateCommandBuffer(const AnsiString &name)
     return cmd_buf;
 }
 
-RenderCmdBuffer *GPUDevice::CreateRenderCommandBuffer(const AnsiString &name)
+RenderCmdBuffer *VulkanDevice::CreateRenderCommandBuffer(const AnsiString &name)
 {
     VkCommandBuffer cb=CreateCommandBuffer(name);
 
@@ -48,7 +48,7 @@ RenderCmdBuffer *GPUDevice::CreateRenderCommandBuffer(const AnsiString &name)
     return(new RenderCmdBuffer(attr,cb));
 }
 
-TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer(const AnsiString &name)
+TextureCmdBuffer *VulkanDevice::CreateTextureCommandBuffer(const AnsiString &name)
 {
     VkCommandBuffer cb=CreateCommandBuffer(name);
 
@@ -61,7 +61,7 @@ TextureCmdBuffer *GPUDevice::CreateTextureCommandBuffer(const AnsiString &name)
  * 创建栅栏
  * @param create_signaled 是否创建初始信号
  */
-Fence *GPUDevice::CreateFence(bool create_signaled)
+Fence *VulkanDevice::CreateFence(bool create_signaled)
 {
     FenceCreateInfo fenceInfo(create_signaled?VK_FENCE_CREATE_SIGNALED_BIT:0);
 
@@ -73,7 +73,7 @@ Fence *GPUDevice::CreateFence(bool create_signaled)
     return(new Fence(attr->device,fence));
 }
 
-Semaphore *GPUDevice::CreateGPUSemaphore()
+Semaphore *VulkanDevice::CreateGPUSemaphore()
 {
     SemaphoreCreateInfo SemaphoreCreateInfo;
 
@@ -85,7 +85,7 @@ Semaphore *GPUDevice::CreateGPUSemaphore()
     return(new Semaphore(attr->device,sem));
 }
 
-DeviceQueue *GPUDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
+DeviceQueue *VulkanDevice::CreateQueue(const uint32_t fence_count,const bool create_signaled)
 {
     if(fence_count<=0)return(nullptr);
 

@@ -62,7 +62,7 @@ VK_NAMESPACE_BEGIN
 
         VKDebugOut *debug_out;
 
-        ObjectList<GPUPhysicalDevice> physical_devices;
+        ObjectList<VulkanPhyDevice> physical_devices;
 
     private:
     
@@ -80,8 +80,8 @@ VK_NAMESPACE_BEGIN
 
                 operator VkInstance (){return inst;}
 
-        const   ObjectList<GPUPhysicalDevice> &GetDeviceList       ()const {return physical_devices;}
-        const   GPUPhysicalDevice *            GetDevice           (VkPhysicalDeviceType)const;
+        const   ObjectList<VulkanPhyDevice> &GetDeviceList       ()const {return physical_devices;}
+        const   VulkanPhyDevice *            GetDevice           (VkPhysicalDeviceType)const;
         
         template<typename T>
         T *GetInstanceProc(const char *name)

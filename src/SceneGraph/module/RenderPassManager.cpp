@@ -292,7 +292,7 @@ RenderPass *RenderPassManager::CreateRenderPass(const ArrayList<VkAttachmentDesc
 RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)
 {
     {
-        const auto *phy_dev=GetPhysicalDevice();
+        const auto *phy_dev=GetPhyDevice();
         
         for(const VkFormat &fmt:rbi->GetColorFormatList())
             if(!phy_dev->IsColorAttachmentOptimal(fmt))

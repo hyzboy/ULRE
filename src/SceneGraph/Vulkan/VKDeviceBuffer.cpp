@@ -5,12 +5,12 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-const VkDeviceSize GPUDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
-const VkDeviceSize GPUDevice::GetSSBOAlign  (){return attr->physical_device->GetSSBOAlign();}
-const VkDeviceSize GPUDevice::GetUBORange   (){return attr->physical_device->GetUBORange();}
-const VkDeviceSize GPUDevice::GetSSBORange  (){return attr->physical_device->GetSSBORange();}
+const VkDeviceSize VulkanDevice::GetUBOAlign   (){return attr->physical_device->GetUBOAlign();}
+const VkDeviceSize VulkanDevice::GetSSBOAlign  (){return attr->physical_device->GetSSBOAlign();}
+const VkDeviceSize VulkanDevice::GetUBORange   (){return attr->physical_device->GetUBORange();}
+const VkDeviceSize VulkanDevice::GetSSBORange  (){return attr->physical_device->GetSSBORange();}
 
-bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     if(size<=0)return(false);
 
@@ -55,7 +55,7 @@ bool GPUDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usage,
     return(false);
 }
 
-VAB *GPUDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
+VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     if(count==0)return(nullptr);
 
@@ -63,7 +63,7 @@ VAB *GPUDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharin
 
     if(stride==0)
     {
-        std::cerr<<"format["<<format<<"] stride length is 0,please use \"GPUDevice::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
+        std::cerr<<"format["<<format<<"] stride length is 0,please use \"VulkanDevice::CreateBuffer(VkBufferUsageFlags,VkDeviceSize,VkSharingMode)\" function.";
         return(nullptr);
     }
 
@@ -77,7 +77,7 @@ VAB *GPUDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Sharin
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
-const IndexType GPUDevice::ChooseIndexType(const VkDeviceSize &vertex_count)const
+const IndexType VulkanDevice::ChooseIndexType(const VkDeviceSize &vertex_count)const
 {
     if(vertex_count<=0)return(IndexType::ERR);
 
@@ -88,7 +88,7 @@ const IndexType GPUDevice::ChooseIndexType(const VkDeviceSize &vertex_count)cons
     return IndexType::ERR;
 }
 
-const bool GPUDevice::CheckIndexType(const IndexType it,const VkDeviceSize &vertex_count)const
+const bool VulkanDevice::CheckIndexType(const IndexType it,const VkDeviceSize &vertex_count)const
 {
     if(vertex_count<=0)return(false);
 
@@ -101,7 +101,7 @@ const bool GPUDevice::CheckIndexType(const IndexType it,const VkDeviceSize &vert
     return(false);
 }
 
-IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
+IndexBuffer *VulkanDevice::CreateIBO(IndexType index_type,uint32_t count,const void *data,SharingMode sharing_mode)
 {
     if(count==0)return(nullptr);
 
@@ -122,7 +122,7 @@ IndexBuffer *GPUDevice::CreateIBO(IndexType index_type,uint32_t count,const void
     return(new IndexBuffer(attr->device,buf,index_type,count));
 }
 
-DeviceBuffer *GPUDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
+DeviceBuffer *VulkanDevice::CreateBuffer(VkBufferUsageFlags buf_usage,VkDeviceSize range,VkDeviceSize size,const void *data,SharingMode sharing_mode)
 {
     if(size<=0)return(nullptr);
 

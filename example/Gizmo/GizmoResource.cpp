@@ -80,7 +80,7 @@ namespace
         return(true);
     }
 
-    bool InitGizmoResource2D(GPUDevice *device)
+    bool InitGizmoResource2D(VulkanDevice *device)
     {
         if(!gizmo_rr)
             return(false);
@@ -88,7 +88,7 @@ namespace
         RenderPass *render_pass=device->GetRenderPass();
         
         {
-            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",PrimitiveType::Lines);
+            mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance3D",PrimitiveType::Lines);
 
             cfg.mtl_name="VertexLuminance3D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.local_to_world=true;
@@ -134,7 +134,7 @@ namespace
         return(true);
     }
 
-    bool InitGizmoResource3D(GPUDevice *device)
+    bool InitGizmoResource3D(VulkanDevice *device)
     {
         if(!gizmo_rr)
             return(false);
@@ -142,7 +142,7 @@ namespace
         RenderPass *render_pass=device->GetRenderPass();
 
         {
-            mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"Gizmo3D",PrimitiveType::Triangles);
+            mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"Gizmo3D",PrimitiveType::Triangles);
 
             cfg.local_to_world=true;
             cfg.material_instance=true;
@@ -272,7 +272,7 @@ bool InitGizmoResource(RenderResource *rr)
 
     gizmo_rr=rr;
 
-    GPUDevice *device=gizmo_rr->GetDevice();
+    VulkanDevice *device=gizmo_rr->GetDevice();
 
     if(!InitGizmoResource3D(device))
         return(false);

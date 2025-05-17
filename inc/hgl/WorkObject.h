@@ -36,8 +36,8 @@ namespace hgl
     public:
 
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
-        graph::GPUDevice *          GetDevice           (){return render_framework->GetDevice();}
-        graph::VkDevAttr * GetDeviceAttribute  (){return render_framework->GetDeviceAttribute();}
+        graph::VulkanDevice *       GetDevice           (){return render_framework->GetDevice();}
+        graph::VulkanDevAttr *      GetDevAttr          (){return render_framework->GetDevAttr();}
 
         const VkExtent2D &          GetExtent2D         (){return cur_render_target->GetExtent();}
 
@@ -82,7 +82,7 @@ namespace hgl
         graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
         {            
             AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(
-                GetDeviceAttribute(),
+                GetDevAttr(),
                 "VertexColor2D",mtl_cfg);    //这个是使用名称创建
 
             return db->CreateMaterialInstance(mci,vil_cfg);

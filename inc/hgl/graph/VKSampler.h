@@ -12,7 +12,7 @@ class Sampler
 
 protected:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     Sampler(VkDevice dev,VkSampler s)
     {

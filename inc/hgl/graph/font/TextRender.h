@@ -15,7 +15,7 @@ namespace hgl
 
         class TextRender
         {
-            GPUDevice *         device;
+            VulkanDevice *         device;
             RenderResource *    db;
 
             Material *          material;
@@ -37,8 +37,8 @@ namespace hgl
 
         private:
 
-            friend TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
-            TextRender(GPUDevice *dev,FontSource *);
+            friend TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
+            TextRender(VulkanDevice *dev,FontSource *);
 
             bool InitTileFont(int limit);
             bool InitTextLayoutEngine();
@@ -82,7 +82,7 @@ namespace hgl
          * 创建一个文本渲染器
          * @param limit 节数限制(-1表示自动)
          */
-        TextRender *CreateTextRender(GPUDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit);
+        TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit);
     }//namespace graph
 }//namespace hgl
 #endif//HGL_GRAPH_TEXT_RENDER_INCLUDE

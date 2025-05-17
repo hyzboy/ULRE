@@ -4,11 +4,11 @@
 
 VK_NAMESPACE_BEGIN
 
-        GPUDevice *         GraphModule::GetDevice          ()      {return render_framework->GetDevice();}
+        VulkanDevice *         GraphModule::GetDevice          ()      {return render_framework->GetDevice();}
         VkDevice            GraphModule::GetVkDevice        ()const {return render_framework->GetVkDevice();}
-const   GPUPhysicalDevice * GraphModule::GetPhysicalDevice  ()const {return render_framework->GetPhysicalDevice();}
-        VkDevAttr *GraphModule::GetDeviceAttribute ()const {return render_framework->GetDeviceAttribute();}
+const   VulkanPhyDevice * GraphModule::GetPhyDevice  ()const {return render_framework->GetPhyDevice();}
+        VulkanDevAttr *GraphModule::GetDevAttr ()const {return render_framework->GetDevAttr();}
 
-        VkPipelineCache     GraphModule::GetPipelineCache   ()const {return render_framework->GetDeviceAttribute()->pipeline_cache;}
+        VkPipelineCache     GraphModule::GetPipelineCache   ()const {return render_framework->GetDevAttr()->pipeline_cache;}
 
 VK_NAMESPACE_END

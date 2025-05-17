@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
-#define HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKDynamicBufferAccess.h>
@@ -15,7 +14,7 @@ namespace hgl
         * GPU数据阵列缓冲区<br>
         * 它用于储存多份相同格式的数据，常用于多物件渲染，instance等
         */
-        class GPUArrayBuffer
+        class VulkanArrayBuffer
         {
         protected:
 
@@ -33,13 +32,13 @@ namespace hgl
 
         private:
 
-            GPUArrayBuffer(VKMemoryAllocator *,const uint,const uint);
+            VulkanArrayBuffer(VKMemoryAllocator *,const uint,const uint);
 
-            friend class GPUDevice;
+            friend class VulkanDevice;
 
         public:
         
-            virtual ~GPUArrayBuffer();
+            virtual ~VulkanArrayBuffer();
 
             const uint32_t  GetAlignSize()const{return align_size;}     ///<数据对齐字节数
             const uint32_t  GetRangeSize()const{return range_size;}     ///<单次渲染访问最大字节数
@@ -71,7 +70,6 @@ namespace hgl
 
                 dba->Restart();
             }
-        };//class GPUArrayBuffer
+        };//class VulkanArrayBuffer
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_VULKAN_ARRAY_BUFFER_INCLUDE

@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
-#define HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVABList.h>
@@ -8,11 +7,11 @@
 #include<hgl/graph/VKRenderable.h>
 #include<hgl/color/Color4f.h>
 VK_NAMESPACE_BEGIN
-class GPUCmdBuffer
+class VulkanCmdBuffer
 {
 protected:
 
-    const VkDevAttr *dev_attr;
+    const VulkanDevAttr *dev_attr;
 
     VkCommandBuffer cmd_buf;
 
@@ -20,8 +19,8 @@ protected:
 
 public:
 
-    GPUCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb);
-    virtual ~GPUCmdBuffer();
+    VulkanCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb);
+    virtual ~VulkanCmdBuffer();
 
     operator VkCommandBuffer(){return cmd_buf;}
     operator const VkCommandBuffer()const{return cmd_buf;}
@@ -48,11 +47,11 @@ public:
     void BeginRegion(const AnsiString &,const Color4f &){}
     void EndRegion(){}
 #endif//_DEBUG
-};//class GPUCmdBuffer
+};//class VulkanCmdBuffer
 
 class DescriptorBinding;
 
-class RenderCmdBuffer:public GPUCmdBuffer
+class RenderCmdBuffer:public VulkanCmdBuffer
 {
     uint32_t cv_count;
     VkClearValue *clear_values;
@@ -70,7 +69,7 @@ private:
 
 public:
 
-    RenderCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb);
+    RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb);
     ~RenderCmdBuffer();
 
     void SetDescriptorBinding(DescriptorBinding *db) { desc_binding=db; }
@@ -79,7 +78,7 @@ public:
     {
         desc_binding=nullptr;
 
-        return GPUCmdBuffer::End();
+        return VulkanCmdBuffer::End();
     }
 
     void SetRenderArea(const VkRect2D &ra){render_area=ra;}
@@ -256,15 +255,15 @@ public:
 
         Draw(ri->GetDataBuffer(),ri->GetRenderData());
     }
-};//class RenderCmdBuffer:public GPUCmdBuffer
+};//class RenderCmdBuffer:public VulkanCmdBuffer
 
-class TextureCmdBuffer:public GPUCmdBuffer
+class TextureCmdBuffer:public VulkanCmdBuffer
 {
     VkImageMemoryBarrier imageMemoryBarrier;
 
 public:
 
-    TextureCmdBuffer(const VkDevAttr *attr,VkCommandBuffer cb):GPUCmdBuffer(attr,cb)
+    TextureCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb):VulkanCmdBuffer(attr,cb)
     {
         imageMemoryBarrier.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         imageMemoryBarrier.pNext=nullptr;
@@ -301,6 +300,5 @@ public:
                                 0, nullptr,
                                 1, &imageMemoryBarrier);
     }
-};//class TextureCmdBuffer:public GPUCmdBuffer
+};//class TextureCmdBuffer:public VulkanCmdBuffer
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_COMMAND_BUFFER_INCLUDE

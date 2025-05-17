@@ -49,7 +49,7 @@ private:
 
     bool InitMDP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"MetricCellsGrid",PrimitiveType::Fan);
+        mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"MetricCellsGrid",PrimitiveType::Fan);
 
         cfg.local_to_world=true;
 

@@ -41,7 +41,7 @@ class RenderAssignBuffer
 
 private:
 
-    GPUDevice *device;
+    VulkanDevice *device;
 
     Material *material;
 
@@ -80,7 +80,7 @@ public:
 
 public:
 
-    RenderAssignBuffer(GPUDevice *dev,Material *);
+    RenderAssignBuffer(VulkanDevice *dev,Material *);
     ~RenderAssignBuffer(){Clear();}
 
     //下一代，将MaterialInstanceSets使用提前化，这样不用每一次绘制都重新写入MI DATA，可以提升效率。

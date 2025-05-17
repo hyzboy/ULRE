@@ -183,20 +183,20 @@ Material *RenderResource::CreateMaterial(const mtl::MaterialCreateInfo *mci)
 
 namespace mtl
 {
-    MaterialCreateInfo *LoadMaterialFromFile(const VkDevAttr *dev_attr,const AnsiString &, Material2DCreateConfig *);
-    MaterialCreateInfo *LoadMaterialFromFile(const VkDevAttr *dev_attr,const AnsiString &, Material3DCreateConfig *);
+    MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &, Material2DCreateConfig *);
+    MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &, Material3DCreateConfig *);
 }
 
 Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)
 {
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDeviceAttribute(),mtl_name,cfg);
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDevAttr(),mtl_name,cfg);
 
     return this->CreateMaterial(mci);
 }
 
 Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
 {
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDeviceAttribute(),mtl_name,cfg);
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDevAttr(),mtl_name,cfg);
 
     return this->CreateMaterial(mci);
 }

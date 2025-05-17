@@ -11,10 +11,10 @@ VK_NAMESPACE_BEGIN
 
 constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
 
-struct VkDevAttr
+struct VulkanDevAttr
 {
     VulkanInstance *                    instance        =nullptr;
-    const GPUPhysicalDevice *           physical_device =nullptr;
+    const VulkanPhyDevice *           physical_device =nullptr;
     
     VkPhysicalDeviceDriverPropertiesKHR driver_properties;
 
@@ -55,8 +55,8 @@ struct VkDevAttr
 
 public:
 
-    VkDevAttr(VulkanInstance *inst,const GPUPhysicalDevice *pd,VkSurfaceKHR s);
-    ~VkDevAttr();
+    VulkanDevAttr(VulkanInstance *inst,const VulkanPhyDevice *pd,VkSurfaceKHR s);
+    ~VulkanDevAttr();
 
     int GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const;
 
@@ -75,5 +75,5 @@ public:
     {
         return instance->GetDeviceProc<T>(device,name);
     }
-};//class VkDevAttr
+};//class VulkanDevAttr
 VK_NAMESPACE_END

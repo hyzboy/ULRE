@@ -399,7 +399,7 @@ namespace
     }
 }//namespace
 
-void OutputPhysicalDeviceCaps(const GPUPhysicalDevice *pd)
+void OutputPhysicalDeviceCaps(const VulkanPhyDevice *pd)
 {
     const VkPhysicalDeviceProperties &pdp=pd->GetProperties();
 

@@ -41,9 +41,9 @@ class GraphModule;
 class RenderFramework;
 
 class VulkanInstance;
-class GPUPhysicalDevice;
-class GPUDevice;
-struct VkDevAttr;
+class VulkanPhyDevice;
+class VulkanDevice;
+struct VulkanDevAttr;
 class DeviceQueue;
 class ImageView;
 class Framebuffer;
@@ -84,7 +84,7 @@ class IndexBuffer;
 class VABMap;
 class IBMap;
 
-class GPUCmdBuffer;
+class VulkanCmdBuffer;
 class RenderCmdBuffer;
 class TextureCmdBuffer;
 

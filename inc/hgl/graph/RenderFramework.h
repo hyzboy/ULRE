@@ -27,7 +27,7 @@ class RenderFramework:public io::WindowEvent
     Window *                win                 =nullptr;
     VulkanInstance *        inst                =nullptr;
 
-    GPUDevice *             device              =nullptr;
+    VulkanDevice *             device              =nullptr;
 
     RenderResource *        render_resource     =nullptr;
 
@@ -50,10 +50,10 @@ protected:
 public:
 
             Window *                GetWindow           ()const{return win;}
-            GPUDevice *             GetDevice           ()const{return device;}
+            VulkanDevice *             GetDevice           ()const{return device;}
             VkDevice                GetVkDevice         ()const{return device->GetDevice();}
-    const   GPUPhysicalDevice *     GetPhysicalDevice   ()const{return device->GetPhysicalDevice();}
-            VkDevAttr *    GetDeviceAttribute  ()const{return device->GetDeviceAttribute();}
+    const   VulkanPhyDevice *     GetPhyDevice   ()const{return device->GetPhyDevice();}
+            VulkanDevAttr *    GetDevAttr  ()const{return device->GetDevAttr();}
 
             RenderResource *        GetRenderResource   ()const{return render_resource;}
 

@@ -37,7 +37,7 @@ private:
         index=0;
     }
 
-    friend class GPUArrayBuffer;
+    friend class VulkanArrayBuffer;
 
 public:
 

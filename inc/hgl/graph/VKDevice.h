@@ -20,16 +20,16 @@ VK_NAMESPACE_BEGIN
 class TileData;
 class TileFont;
 class FontSource;
-class GPUArrayBuffer;
+class VulkanArrayBuffer;
 class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 
 struct CopyBufferToImageInfo;
 
-class GPUDevice
+class VulkanDevice
 {
-    VkDevAttr *attr;
+    VulkanDevAttr *attr;
 
 private:
 
@@ -39,18 +39,18 @@ private:
 
     friend class VulkanDeviceCreater;
 
-    GPUDevice(VkDevAttr *da);
+    VulkanDevice(VulkanDevAttr *da);
 
 public:
 
-    virtual ~GPUDevice();
+    virtual ~VulkanDevice();
 
     operator    VkDevice                                ()      {return attr->device;}
-                VkDevAttr *GetDeviceAttribute  ()      {return attr;}
+                VulkanDevAttr *     GetDevAttr          ()      {return attr;}
 
                 VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}
-    const       GPUPhysicalDevice * GetPhysicalDevice   ()const {return attr->physical_device;}
+    const       VulkanPhyDevice *   GetPhyDevice        ()const {return attr->physical_device;}
 
                 VkDescriptorPool    GetDescriptorPool   ()      {return attr->desc_pool;}
                 VkPipelineCache     GetPipelineCache    ()      {return attr->pipeline_cache;}
@@ -131,8 +131,8 @@ public: //Buffer相关
 
 #undef CREATE_BUFFER_OBJECT
 
-    GPUArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
-    GPUArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
+    VulkanArrayBuffer *CreateArrayInUBO(const VkDeviceSize &uint_size);
+    VulkanArrayBuffer *CreateArrayInSSBO(const VkDeviceSize &uint_size);
 
 public: //间接绘制
 
@@ -172,5 +172,5 @@ public:
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
-};//class GPUDevice
+};//class VulkanDevice
 VK_NAMESPACE_END

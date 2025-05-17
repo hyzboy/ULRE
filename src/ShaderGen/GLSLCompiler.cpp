@@ -43,7 +43,7 @@ namespace hgl
 
         static CompileInfo compile_info;
 
-        void SetShaderCompilerVersion(const GPUPhysicalDevice *pd)
+        void SetShaderCompilerVersion(const VulkanPhyDevice *pd)
         {
             const auto &pdp=pd->GetProperties();
 

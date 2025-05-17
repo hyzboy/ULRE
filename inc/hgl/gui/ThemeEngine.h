@@ -10,7 +10,7 @@ namespace hgl
     {
         namespace vulkan
         {
-            class GPUDevice;
+            class VulkanDevice;
         }//namespace vulkan
 
         constexpr VkFormat DefaultRenderTargetFormat=UPF_ABGR8;                ///<缺省窗体绘图表面格式
@@ -19,7 +19,7 @@ namespace hgl
         {
         protected:
 
-            GPUDevice *device;
+            VulkanDevice *device;
 
             ObjectMap<Form *,ThemeForm> form_list;
 
@@ -33,7 +33,7 @@ namespace hgl
 
         public:
 
-            ThemeEngine(GPUDevice *dev){device=dev;}
+            ThemeEngine(VulkanDevice *dev){device=dev;}
             virtual ~ThemeEngine()=default;
 
             virtual bool Init()=0;

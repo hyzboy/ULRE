@@ -46,7 +46,7 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"VertexColor2D",PrimitiveType::Lines);
+        mtl::Material2DCreateConfig cfg(device->GetDevAttr(),"VertexColor2D",PrimitiveType::Lines);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;

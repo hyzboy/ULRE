@@ -6,7 +6,7 @@
 
 VK_NAMESPACE_BEGIN
 
-GPUDevice *IRenderTarget::GetDevice  ()const{return render_framework->GetDevice();}
+VulkanDevice *IRenderTarget::GetDevice  ()const{return render_framework->GetDevice();}
 VkDevice   IRenderTarget::GetVkDevice()const{return render_framework->GetDevice()->GetDevice();}
 
 IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext):desc_binding(DescriptorSetType::RenderTarget)

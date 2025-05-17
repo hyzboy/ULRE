@@ -9,7 +9,7 @@ class VkTextureLoader:public L
 {
 protected:
 
-    GPUDevice *device;
+    VulkanDevice *device;
     GPUBuffer *buf;
 
     T *tex;
@@ -18,7 +18,7 @@ protected:
 
 public:
 
-    VkTextureLoader(GPUDevice *dev,const bool am)
+    VkTextureLoader(VulkanDevice *dev,const bool am)
     {
         device      =dev;
         buf         =nullptr;

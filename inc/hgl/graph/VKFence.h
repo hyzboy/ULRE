@@ -10,7 +10,7 @@ class Fence
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     Fence(VkDevice d,VkFence f)
     {

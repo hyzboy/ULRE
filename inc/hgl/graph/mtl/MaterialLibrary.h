@@ -27,7 +27,7 @@ public:
 
     //virtual const CoordinateSystem2D get2DCoordinateSystem()const=0;
 
-    virtual MaterialCreateInfo *Create(const VkDevAttr *dev_attr,MaterialCreateConfig *)=0;
+    virtual MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr,MaterialCreateConfig *)=0;
 
 };//class MaterialFactory
 
@@ -45,7 +45,7 @@ public:
 };//class RegistryMaterialFactoryClass
 
 #define DEFINE_MATERIAL_FACTORY_CLASS(name,create_func,cfg_type) \
-MaterialCreateInfo *Create##name(const VkDevAttr *dev_attr,cfg_type *); \
+MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr,cfg_type *); \
 \
 namespace \
 {   \
@@ -59,7 +59,7 @@ namespace \
             return mtl_name;    \
         }   \
     \
-        MaterialCreateInfo *Create(const VkDevAttr *dev_attr,MaterialCreateConfig *cfg) override  \
+        MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr,MaterialCreateConfig *cfg) override  \
         {   \
             return create_func(dev_attr,(cfg_type *)cfg);    \
         }   \
@@ -68,16 +68,16 @@ namespace \
     static RegistryMaterialFactoryClass<MaterialFactory##name> MaterialFactoryInstance_##name;   \
 }
 
-MaterialCreateInfo *CreateMaterialCreateInfo(const VkDevAttr *dev_attr,const MaterialName &,MaterialCreateConfig *cfg);
+MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialName &,MaterialCreateConfig *cfg);
 
-inline MaterialCreateInfo *CreateMaterialCreateInfo(const VkDevAttr *dev_attr,const char *mtl_name,MaterialCreateConfig *cfg)
+inline MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const char *mtl_name,MaterialCreateConfig *cfg)
 {
     MaterialName mtl_id_name(mtl_name);
 
     return CreateMaterialCreateInfo(dev_attr,mtl_id_name,cfg);
 }
 
-inline MaterialCreateInfo *CreateMaterialCreateInfo(const VkDevAttr *dev_attr,const AnsiString &mtl_name,MaterialCreateConfig *cfg)
+inline MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const AnsiString &mtl_name,MaterialCreateConfig *cfg)
 {
     MaterialName mtl_id_name(mtl_name);
 

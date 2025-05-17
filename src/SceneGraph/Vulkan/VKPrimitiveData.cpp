@@ -114,11 +114,11 @@ void PrimitiveData::UnmapAll()
 namespace
 {
     /**
-    * 直接使用GPUDevice创建VAB/IBO,并在释构时释放
+    * 直接使用VulkanDevice创建VAB/IBO,并在释构时释放
     */
     class PrimitiveDataPrivateBuffer:public PrimitiveData
     {
-        GPUDevice *device;
+        VulkanDevice *device;
 
     public:
         
@@ -129,7 +129,7 @@ namespace
 
     public:
 
-        PrimitiveDataPrivateBuffer(GPUDevice *dev,const VIL *_vil,const uint32_t vc):PrimitiveData(_vil,vc)
+        PrimitiveDataPrivateBuffer(VulkanDevice *dev,const VIL *_vil,const uint32_t vc):PrimitiveData(_vil,vc)
         {
             device=dev;
         }
@@ -230,7 +230,7 @@ namespace
     };//class PrimitiveDataVDM:public PrimitiveData
 }//namespace
 
-PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const uint32_t vc)
+PrimitiveData *CreatePrimitiveData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc)
 {
     if(!dev)return(nullptr);
     if(!_vil)return(nullptr);

@@ -46,7 +46,7 @@ RenderTarget *RenderTargetManager::CreateRT(const FramebufferInfo *fbi,RenderPas
     {
         RenderTargetData *rtd=new RenderTargetData{};
 
-        GPUDevice *dev=GetDevice();
+        VulkanDevice *dev=GetDevice();
 
         rtd->fbo                        =fb;
         rtd->queue                      =dev->CreateQueue(fence_count,false);

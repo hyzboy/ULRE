@@ -7,7 +7,7 @@ namespace hgl
 {
     namespace graph
     {
-        TextPrimitive::TextPrimitive(GPUDevice *dev,Material *m,uint mc):Primitive(mc)
+        TextPrimitive::TextPrimitive(VulkanDevice *dev,Material *m,uint mc):Primitive(mc)
         {
             device=dev;
             mtl=m;

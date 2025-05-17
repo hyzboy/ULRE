@@ -55,7 +55,7 @@ void main()
     };//class MaterialPureTexture2D:public Std2DMaterial
 }//namespace
 
-MaterialCreateInfo *CreatePureTexture2D(const VkDevAttr *dev_attr,const mtl::Material2DCreateConfig *cfg)
+MaterialCreateInfo *CreatePureTexture2D(const VulkanDevAttr *dev_attr,const mtl::Material2DCreateConfig *cfg)
 {
     MaterialPureTexture2D mvc2d(cfg);
 

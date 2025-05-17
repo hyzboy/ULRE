@@ -1,7 +1,7 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
-DeviceMemory *GPUDevice::CreateMemory(VkImage image,const uint32_t flag)
+DeviceMemory *VulkanDevice::CreateMemory(VkImage image,const uint32_t flag)
 {
     VkMemoryRequirements memReqs;
 

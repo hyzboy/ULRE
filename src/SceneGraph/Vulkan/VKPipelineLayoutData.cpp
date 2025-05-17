@@ -4,7 +4,7 @@
 #include<hgl/graph/VKMaterialDescriptorManager.h>
 
 VK_NAMESPACE_BEGIN
-PipelineLayoutData *GPUDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager)
+PipelineLayoutData *VulkanDevice::CreatePipelineLayoutData(const MaterialDescriptorManager *desc_manager)
 {
     PipelineLayoutData *pld=hgl_zero_new<PipelineLayoutData>();
 
