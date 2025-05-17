@@ -9,7 +9,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 
 VK_NAMESPACE_BEGIN
-RenderAssignBuffer::RenderAssignBuffer(GPUDevice *dev,Material *mtl)
+RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)
 {
     hgl_zero(*this);
 

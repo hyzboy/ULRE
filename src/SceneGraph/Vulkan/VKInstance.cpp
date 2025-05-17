@@ -5,7 +5,7 @@
 #include<iostream>
 
 VK_NAMESPACE_BEGIN
-GPUDevice *CreateRenderDevice(VkInstance,const GPUPhysicalDevice *,Window *);
+VulkanDevice *CreateRenderDevice(VkInstance,const VulkanPhyDevice *,Window *);
 
 void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
 
@@ -80,7 +80,7 @@ VulkanInstance::VulkanInstance(VkInstance i,VKDebugOut *out)
         vkEnumeratePhysicalDevices(inst, &gpu_count,pd_list);
 
         for(uint32_t i=0;i<gpu_count;i++)
-            physical_devices.Add(new GPUPhysicalDevice(inst,pd_list[i]));
+            physical_devices.Add(new VulkanPhyDevice(inst,pd_list[i]));
 
         delete[] pd_list;
     }
@@ -96,9 +96,9 @@ VulkanInstance::~VulkanInstance()
     vkDestroyInstance(inst,nullptr);
 }
 
-const GPUPhysicalDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
+const VulkanPhyDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
 {
-    for(GPUPhysicalDevice *pd:physical_devices)
+    for(VulkanPhyDevice *pd:physical_devices)
         if(pd->GetDeviceType()==type)
             return(pd);
 

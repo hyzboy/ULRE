@@ -38,8 +38,8 @@ int main(int,char **)
 {
             Window *            win             =nullptr;
             VulkanInstance *    inst            =nullptr;
-            GPUDevice *         device          =nullptr;
-    const   GPUPhysicalDevice * physical_device =nullptr;
+            VulkanDevice *         device          =nullptr;
+    const   VulkanPhyDevice * physical_device =nullptr;
 
     inst=InitVulkanInstance();
 

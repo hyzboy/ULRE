@@ -5,7 +5,7 @@
 #include<hgl/type/SortedSet.h>
 
 VK_NAMESPACE_BEGIN
-class GPUPhysicalDevice
+class VulkanPhyDevice
 {
     VkInstance                          instance=nullptr;
     VkPhysicalDevice                    physical_device=nullptr;
@@ -23,9 +23,9 @@ class GPUPhysicalDevice
     VkPhysicalDeviceVulkan14Properties  properties14;
 
     VkPhysicalDeviceMemoryProperties    memory_properties;
-    ArrayList<VkLayerProperties>             layer_properties;
-    ArrayList<VkExtensionProperties>         extension_properties;
-    ArrayList<VkQueueFamilyProperties>       queue_family_properties;
+    ArrayList<VkLayerProperties>        layer_properties;
+    ArrayList<VkExtensionProperties>    extension_properties;
+    ArrayList<VkQueueFamilyProperties>  queue_family_properties;
 
 private:
 
@@ -46,8 +46,8 @@ public:
     
 public:
 
-    GPUPhysicalDevice(VkInstance,VkPhysicalDevice);
-    ~GPUPhysicalDevice()=default;
+    VulkanPhyDevice(VkInstance,VkPhysicalDevice);
+    ~VulkanPhyDevice()=default;
 
     operator        VkPhysicalDevice()      {return physical_device;}
     operator const  VkPhysicalDevice()const {return physical_device;}
@@ -207,5 +207,5 @@ public:
     }
 
     const bool      SupportDynamicState() const {return dynamic_state;}
-};//class GPUPhysicalDevice
+};//class VulkanPhyDevice
 VK_NAMESPACE_END

@@ -47,7 +47,7 @@ private:
 
     bool InitPlaneGridMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",PrimitiveType::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance3D",PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
@@ -73,7 +73,7 @@ private:
 
     bool InitBillboardMP()
     {
-        mtl::BillboardMaterialCreateConfig cfg(device->GetDeviceAttribute(),"Billboard2D",PrimitiveType::Billboard);
+        mtl::BillboardMaterialCreateConfig cfg(device->GetDevAttr(),"Billboard2D",PrimitiveType::Billboard);
 
         {
             cfg.fixed_size=true;

@@ -8,7 +8,7 @@ namespace hgl
 {
     namespace graph
     {
-        VertexDataManager::VertexDataManager(GPUDevice *dev,const VIL *_vil)
+        VertexDataManager::VertexDataManager(VulkanDevice *dev,const VIL *_vil)
         {
             device=dev;
 

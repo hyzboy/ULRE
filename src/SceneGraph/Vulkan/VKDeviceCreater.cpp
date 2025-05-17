@@ -14,7 +14,7 @@
 VK_NAMESPACE_BEGIN
 VkPipelineCache CreatePipelineCache(VkDevice device,const VkPhysicalDeviceProperties &);
 
-void SetShaderCompilerVersion(const GPUPhysicalDevice *);
+void SetShaderCompilerVersion(const VulkanPhyDevice *);
 
 #ifdef _DEBUG
 DebugUtils *CreateDebugUtils(VkDevice);
@@ -47,7 +47,7 @@ void LogSurfaceFormat(const VkSurfaceFormatKHR *surface_format_list,const uint32
 
 namespace
 {
-    void SetDeviceExtension(CharPointerList *ext_list,const GPUPhysicalDevice *physical_device,const VulkanHardwareRequirement &require)
+    void SetDeviceExtension(CharPointerList *ext_list,const VulkanPhyDevice *physical_device,const VulkanHardwareRequirement &require)
     {
         ext_list->Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
@@ -117,7 +117,7 @@ namespace
         #undef FEATURE_COPY
     }
 
-    void GetDeviceQueue(VkDevAttr *attr)
+    void GetDeviceQueue(VulkanDevAttr *attr)
     {
         vkGetDeviceQueue(attr->device,attr->graphics_family,0,&attr->graphics_queue);
 
@@ -201,7 +201,7 @@ constexpr size_t VK_DRIVER_ID_RANGE_SIZE=VK_DRIVER_ID_END_RANGE-VK_DRIVER_ID_BEG
 #endif//VK_DRIVER_ID_RANGE_SIZE
 
 #ifdef _DEBUG
-void OutputPhysicalDeviceCaps(const GPUPhysicalDevice *);
+void OutputPhysicalDeviceCaps(const VulkanPhyDevice *);
 #endif//_DEBUG
 
 VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
@@ -293,11 +293,11 @@ void VulkanDeviceCreater::ChooseSurfaceFormat()
     surface_format.colorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 }
 
-GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
+VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 {
-    VkDevAttr *device_attr=new VkDevAttr(instance,physical_device,surface);
+    VulkanDevAttr *device_attr=new VulkanDevAttr(instance,physical_device,surface);
 
-    AutoDelete<VkDevAttr> auto_delete(device_attr);
+    AutoDelete<VulkanDevAttr> auto_delete(device_attr);
 
     if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
@@ -359,7 +359,7 @@ GPUDevice *VulkanDeviceCreater::CreateRenderDevice()
         }
     #endif//_DEBUG
 
-    return(new GPUDevice(device_attr));
+    return(new VulkanDevice(device_attr));
 }
 
 VulkanDeviceCreater::VulkanDeviceCreater(   VulkanInstance *vi,
@@ -469,7 +469,7 @@ bool VulkanDeviceCreater::RequirementCheck()
     return(true);
 }
 
-GPUDevice *VulkanDeviceCreater::Create()
+VulkanDevice *VulkanDeviceCreater::Create()
 {
     if(!instance||!window)
         return(nullptr);
@@ -494,7 +494,7 @@ GPUDevice *VulkanDeviceCreater::Create()
     extent.width    =window->GetWidth();
     extent.height   =window->GetHeight();
 
-    GPUDevice *device=CreateRenderDevice();
+    VulkanDevice *device=CreateRenderDevice();
 
     if(!device)
     {

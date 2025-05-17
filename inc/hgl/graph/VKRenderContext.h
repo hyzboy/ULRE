@@ -11,13 +11,13 @@ class RenderContext
 {
 protected:
 
-    GPUDevice *device;
+    VulkanDevice *device;
 
     VkExtent2D extent;
 
 public:
 
-    RenderContext(GPUDevice *,const VkExtent2D &);
+    RenderContext(VulkanDevice *,const VkExtent2D &);
     virtual ~RenderContext();
 
     void Prepare(

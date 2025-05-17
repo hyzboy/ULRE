@@ -102,7 +102,7 @@ namespace
 
 material_file::MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename);
 
-MaterialCreateInfo *LoadMaterialFromFile(const VkDevAttr *dev_attr,const AnsiString &name,Material2DCreateConfig *cfg)
+MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &name,Material2DCreateConfig *cfg)
 {
     if(name.IsEmpty()||!cfg)
         return(nullptr);

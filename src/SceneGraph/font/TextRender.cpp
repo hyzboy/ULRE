@@ -10,7 +10,7 @@ namespace hgl
 {
     namespace graph
     {
-        TextRender::TextRender(GPUDevice *dev,FontSource *fs)
+        TextRender::TextRender(VulkanDevice *dev,FontSource *fs)
         {
             device=dev;
             db=new RenderResource(device);
@@ -209,7 +209,7 @@ namespace hgl
             return AcquireFontSource(fnt);
         }
 
-        TextRender *CreateTextRender(GPUDevice *dev,FontSource *fs,RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
+        TextRender *CreateTextRender(VulkanDevice *dev,FontSource *fs,RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
         {
             if(!dev||!rp||!ubo_camera_info)
                 return(nullptr);

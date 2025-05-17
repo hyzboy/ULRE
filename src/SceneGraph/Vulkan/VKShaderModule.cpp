@@ -14,7 +14,7 @@ public:
     }
 };//struct ShaderModuleCreateInfo
 
-ShaderModule *GPUDevice::CreateShaderModule(VkShaderStageFlagBits shader_stage_flag_bit,const uint32_t *spv_data,const size_t spv_size)
+ShaderModule *VulkanDevice::CreateShaderModule(VkShaderStageFlagBits shader_stage_flag_bit,const uint32_t *spv_data,const size_t spv_size)
 {
     if(!spv_data||spv_size<4)return(nullptr);
 

@@ -12,7 +12,7 @@ class IndexBuffer:public DeviceBuffer
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     IndexBuffer(VkDevice d,const DeviceBufferData &vb,IndexType it,uint32_t _count):DeviceBuffer(d,vb)
     {

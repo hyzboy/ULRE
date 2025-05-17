@@ -19,7 +19,7 @@ protected:
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     DeviceQueue(VkDevice dev,VkQueue q,Fence **,const uint32_t fc);
 
@@ -42,7 +42,7 @@ public:
     bool WaitFence(const bool wait_all=true,const uint64_t time_out=HGL_NANO_SEC_PER_SEC);
 
     bool Submit(const VkCommandBuffer *cmd_buf,const uint32_t count,Semaphore *wait_sem,Semaphore *complete_sem);
-    bool Submit(GPUCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem);
+    bool Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem);
 };//class DeviceQueue
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_SUBMIT_QUEUE_INCLUDE

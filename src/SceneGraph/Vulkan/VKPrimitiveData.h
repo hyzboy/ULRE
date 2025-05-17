@@ -68,6 +68,6 @@ public:
 
 };//class PrimitiveData
 
-PrimitiveData *CreatePrimitiveData(GPUDevice *dev,const VIL *_vil,const uint32_t vc);
+PrimitiveData *CreatePrimitiveData(VulkanDevice *dev,const VIL *_vil,const uint32_t vc);
 PrimitiveData *CreatePrimitiveData(VertexDataManager *vdm,const uint32_t vc);
 VK_NAMESPACE_END

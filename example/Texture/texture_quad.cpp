@@ -12,7 +12,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename);
+Texture2D *CreateTexture2DFromFile(VulkanDevice *device,const OSString &filename);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=256;
@@ -51,7 +51,7 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDeviceAttribute(),"PureTexture2D",PrimitiveType::Fan);
+        mtl::Material2DCreateConfig cfg(device->GetDevAttr(),"PureTexture2D",PrimitiveType::Fan);
 
         cfg.coordinate_system=CoordinateSystem2D::NDC;
         cfg.local_to_world=false;

@@ -96,7 +96,7 @@ bool DeviceQueue::Submit(const VkCommandBuffer *cmd_buf,const uint32_t cb_count,
     return(result==VK_SUCCESS);
 }
 
-bool DeviceQueue::Submit(GPUCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
+bool DeviceQueue::Submit(VulkanCmdBuffer *cmd_buf,Semaphore *wait_sem,Semaphore *complete_sem)
 {
     if(cmd_buf->IsBegin())
         cmd_buf->End();

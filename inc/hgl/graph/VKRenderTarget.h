@@ -29,7 +29,7 @@ class IRenderTarget
 public:
 
     RenderFramework *   GetRenderFramework  ()const{return render_framework;}
-    GPUDevice *         GetDevice           ()const;
+    VulkanDevice *         GetDevice           ()const;
     VkDevice            GetVkDevice         ()const;
     DescriptorBinding * GetDescriptorBinding(){return &desc_binding;}
 

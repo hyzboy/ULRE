@@ -225,7 +225,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     return(true);
 }
 
-bool MaterialCreateInfo::CreateShader(const VkDevAttr *dev_attr)
+bool MaterialCreateInfo::CreateShader(const VulkanDevAttr *dev_attr)
 {
     if(shader_map.IsEmpty())
         return(false);

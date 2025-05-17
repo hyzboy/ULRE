@@ -4,7 +4,7 @@
 #include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
-VKMemoryAllocator::VKMemoryAllocator(GPUDevice *d,const uint32_t flags,const VkDeviceSize r)
+VKMemoryAllocator::VKMemoryAllocator(VulkanDevice *d,const uint32_t flags,const VkDeviceSize r)
 {
     device=d;
     buffer_usage_flag_bits=flags;

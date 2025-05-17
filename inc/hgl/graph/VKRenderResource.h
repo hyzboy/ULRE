@@ -43,7 +43,7 @@ constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT=20;//GetBitOffset((uint32_t)VK
  */
 class RenderResource
 {
-    GPUDevice *device;
+    VulkanDevice *device;
     
     ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
     Map<AnsiString,Material *> material_by_name;
@@ -75,7 +75,7 @@ private:
 
 public:
 
-    GPUDevice *GetDevice(){return device;}
+    VulkanDevice *GetDevice(){return device;}
 
     //注：并非一定要走这里，这里只是提供一个注册和自动绑定的机制
     DescriptorBinding static_descriptor;                                                    ///<静态属性描述符绑定管理
@@ -83,7 +83,7 @@ public:
 
 public:
 
-    RenderResource(GPUDevice *dev):device(dev),
+    RenderResource(VulkanDevice *dev):device(dev),
         static_descriptor(DescriptorSetType::Static),
         global_descriptor(DescriptorSetType::Global)
     {}

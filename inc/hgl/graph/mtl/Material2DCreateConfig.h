@@ -52,13 +52,13 @@ public:
 
 DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,CreateVertexColor2D,const Material2DCreateConfig)
 
-MaterialCreateInfo *CreatePureColor2D(const VkDevAttr *dev_attr,const Material2DCreateConfig *);
+MaterialCreateInfo *CreatePureColor2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *);
 
-MaterialCreateInfo *CreateLerpLine2D(const VkDevAttr *dev_attr,const Material2DCreateConfig *);
+MaterialCreateInfo *CreateLerpLine2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *);
 
-MaterialCreateInfo *CreatePureTexture2D(const VkDevAttr *dev_attr,const Material2DCreateConfig *);
-MaterialCreateInfo *CreateRectTexture2D(const VkDevAttr *dev_attr,Material2DCreateConfig *);
-MaterialCreateInfo *CreateRectTexture2DArray(const VkDevAttr *dev_attr,Material2DCreateConfig *);
+MaterialCreateInfo *CreatePureTexture2D(const VulkanDevAttr *dev_attr,const Material2DCreateConfig *);
+MaterialCreateInfo *CreateRectTexture2D(const VulkanDevAttr *dev_attr,Material2DCreateConfig *);
+MaterialCreateInfo *CreateRectTexture2DArray(const VulkanDevAttr *dev_attr,Material2DCreateConfig *);
 
 // 为什么有了LoadMaterialFromFile，还需要保留以上Create系列函数？
 
@@ -72,6 +72,6 @@ MaterialCreateInfo *CreateRectTexture2DArray(const VkDevAttr *dev_attr,Material2
  * @param cfg 材质创建参数
  * @return 材质创建信息
  */
-MaterialCreateInfo *LoadMaterialFromFile(const VkDevAttr *dev_attr,const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
+MaterialCreateInfo *LoadMaterialFromFile(const VulkanDevAttr *dev_attr,const AnsiString &mtl_name,Material2DCreateConfig *cfg);        ///<从文件加载材质
 
 STD_MTL_NAMESPACE_END

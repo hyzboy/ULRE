@@ -18,7 +18,7 @@ namespace hgl
         {
         protected:  
 
-            GPUDevice *         device;
+            VulkanDevice *         device;
 
             CameraInfo *        camera_info;                    ///<相机信息
 
@@ -31,7 +31,7 @@ namespace hgl
 
         public:
 
-            RenderList(GPUDevice *);
+            RenderList(VulkanDevice *);
             virtual ~RenderList()=default;
             
             virtual void SetCamera(CameraInfo *ci){camera_info=ci;}                 ///<设置相机信息

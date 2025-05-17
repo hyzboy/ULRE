@@ -2,7 +2,7 @@
 #include<hgl/graph/VKMemory.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 VK_NAMESPACE_BEGIN
-DeviceMemory *GPUDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
+DeviceMemory *VulkanDevice::CreateMemory(const VkMemoryRequirements &req,uint32_t properties)
 {
     const int index=attr->physical_device->GetMemoryType(req.memoryTypeBits,properties);
 

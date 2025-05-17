@@ -26,7 +26,7 @@ private:
 
     bool InitMDP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance3D",PrimitiveType::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance3D",PrimitiveType::Lines);
 
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;

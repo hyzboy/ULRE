@@ -46,7 +46,7 @@ public:
 */
 class MaterialRenderList
 {
-    GPUDevice *device;
+    VulkanDevice *device;
     RenderCmdBuffer *cmd_buf;
 
     RenderPipelineIndex rp_index;
@@ -106,7 +106,7 @@ protected:
 
 public:
 
-    MaterialRenderList(GPUDevice *d,bool l2w,const RenderPipelineIndex &rpi);
+    MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipelineIndex &rpi);
     ~MaterialRenderList();
 
     void Add(SceneNode *);

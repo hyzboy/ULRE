@@ -53,7 +53,7 @@ protected:
 
 protected:
 
-    GPUDevice *             device                      =nullptr;
+    VulkanDevice *             device                      =nullptr;
     RenderPass *            device_render_pass          =nullptr;
     SwapchainRenderTarget * sc_render_target            =nullptr;
 
@@ -216,7 +216,7 @@ public:
             cmd_buf=hgl_zero_new<RenderCmdBuffer *>(swap_chain_count);
 
             for(int32_t i=0;i<swap_chain_count;i++)
-                cmd_buf[i]=device->CreateRenderCommandBuffer(device->GetPhysicalDevice()->GetDeviceName()+AnsiString(":RenderCmdBuffer_")+AnsiString::numberOf(i));
+                cmd_buf[i]=device->CreateRenderCommandBuffer(device->GetPhyDevice()->GetDeviceName()+AnsiString(":RenderCmdBuffer_")+AnsiString::numberOf(i));
         }
     }
 

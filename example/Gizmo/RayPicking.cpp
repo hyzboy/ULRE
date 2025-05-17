@@ -51,7 +51,7 @@ private:
 
     bool InitMaterialAndPipeline()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDeviceAttribute(),"VertexLuminance2D",PrimitiveType::Lines);
+        mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance2D",PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 

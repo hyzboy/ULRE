@@ -16,7 +16,7 @@ using namespace hgl;
 using namespace hgl::graph;
 
 VK_NAMESPACE_BEGIN
-Texture2D *CreateTexture2DFromFile(GPUDevice *device,const OSString &filename);
+Texture2D *CreateTexture2DFromFile(VulkanDevice *device,const OSString &filename);
 VK_NAMESPACE_END
 
 constexpr uint32_t SCREEN_WIDTH=1280;
@@ -139,7 +139,7 @@ private:
         
     #ifdef _DEBUG
         {
-            auto da=device->GetDeviceAttribute();
+            auto da=device->GetDevAttr();
 
             if(da->debug_maker)
             {
@@ -172,7 +172,7 @@ private:
 
     #ifdef _DEBUG
         {
-            auto da=device->GetDeviceAttribute();
+            auto da=device->GetDevAttr();
 
             VkQueue           q=*(gbuffer.rt->GetQueue());
             VkFramebuffer   fbo=  gbuffer.rt->GetFramebuffer()->GetFramebuffer();
@@ -229,7 +229,7 @@ private:
 
     #ifdef _DEBUG
         {
-            auto da=device->GetDeviceAttribute();
+            auto da=device->GetDevAttr();
 
             if(da->debug_maker)
             {

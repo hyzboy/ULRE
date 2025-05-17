@@ -22,6 +22,6 @@ public:
 
 #define RENDER_MODULE_CLASS(class_name) class class_name:public GraphModuleInherit<class_name,RenderModule>
 
-#define RENDER_MODULE_CONSTRUCT(class_name) class_name::class_name(GPUDevice *dev):GraphModuleInherit<class_name,RenderModule>(dev,#class_name)
+#define RENDER_MODULE_CONSTRUCT(class_name) class_name::class_name(VulkanDevice *dev):GraphModuleInherit<class_name,RenderModule>(dev,#class_name)
 
 VK_NAMESPACE_END

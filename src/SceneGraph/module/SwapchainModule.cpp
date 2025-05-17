@@ -22,7 +22,7 @@ namespace
     //    return swapchain_extent;
     //}
 
-    VkSwapchainKHR CreateVulkanSwapChain(const VkDevAttr *dev_attr)
+    VkSwapchainKHR CreateVulkanSwapChain(const VulkanDevAttr *dev_attr)
     {
         VkSwapchainCreateInfoKHR swapchain_ci;
 
@@ -111,8 +111,8 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
     swapchain->sc_image=hgl_zero_new<SwapchainImage>(swapchain->image_count);
 
     AnsiString num_string;
-    GPUDevice *device=GetDevice();
-    auto *dev_attr=GetDeviceAttribute();
+    VulkanDevice *device=GetDevice();
+    auto *dev_attr=GetDevAttr();
 
     for(uint32_t i=0;i<swapchain->image_count;i++)
     {
@@ -150,7 +150,7 @@ bool SwapchainModule::CreateSwapchainFBO(Swapchain *swapchain)
 
 Swapchain *SwapchainModule::CreateSwapchain()
 {
-    auto *dev_attr=GetDeviceAttribute();
+    auto *dev_attr=GetDevAttr();
 
     if(!dev_attr)
         return(nullptr);
@@ -197,7 +197,7 @@ bool SwapchainModule::CreateSwapchainRenderTarget()
     if(!swapchain)
         return(false);
 
-    GPUDevice *device=GetDevice();
+    VulkanDevice *device=GetDevice();
 
     SwapchainRenderTargetData *rtd_list=new SwapchainRenderTargetData[swapchain->image_count];
     SwapchainRenderTargetData *rtd=rtd_list;
@@ -241,7 +241,7 @@ SwapchainModule::SwapchainModule(RenderFramework *rf,TextureManager *tm,RenderTa
     rt_manager=rtm;
     rp_manager=rpm;
     
-    auto *dev_attr=GetDeviceAttribute();
+    auto *dev_attr=GetDevAttr();
 
     SwapchainRenderbufferInfo rbi(dev_attr->surface_format.format,dev_attr->physical_device->GetDepthFormat());
 
@@ -262,7 +262,7 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(sc_render_target)
 
-    VkDevAttr *dev_attr=GetDeviceAttribute();
+    VulkanDevAttr *dev_attr=GetDevAttr();
 
     dev_attr->RefreshSurfaceCaps();
 

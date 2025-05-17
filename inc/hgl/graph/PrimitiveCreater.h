@@ -13,7 +13,7 @@ class PrimitiveCreater
 {
 protected:
 
-    GPUDevice *         device;
+    VulkanDevice *         device;
     VertexDataManager * vdm;
 
     const VIL *         vil;
@@ -36,7 +36,7 @@ protected:
 
 public:
 
-    PrimitiveCreater(GPUDevice *,const VIL *);
+    PrimitiveCreater(VulkanDevice *,const VIL *);
     PrimitiveCreater(VertexDataManager *);
     virtual ~PrimitiveCreater();
 

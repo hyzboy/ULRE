@@ -19,7 +19,7 @@ namespace hgl::graph
     class ShaderCreateInfoVertex;
     class ShaderCreateInfoGeometry;
     class ShaderCreateInfoFragment;
-    struct VkDevAttr;
+    struct VulkanDevAttr;
 
     namespace mtl
     {
@@ -51,7 +51,7 @@ namespace hgl::graph
             StdMaterial(const MaterialCreateConfig *);
             virtual ~StdMaterial()=default;
     
-            virtual MaterialCreateInfo *Create(const VkDevAttr *dev_attr);
+            virtual MaterialCreateInfo *Create(const VulkanDevAttr *dev_attr);
         };//class StdMaterial
     }//namespace mtl
 }//namespace hgl::graph

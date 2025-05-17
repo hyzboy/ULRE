@@ -12,7 +12,7 @@ class VertexAttribBuffer:public DeviceBuffer
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     VertexAttribBuffer(VkDevice d,const DeviceBufferData &vb,VkFormat fmt,uint32_t _stride,uint32_t _count):DeviceBuffer(d,vb)
     {

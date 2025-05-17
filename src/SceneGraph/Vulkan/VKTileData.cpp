@@ -69,7 +69,7 @@ TileData *TextureManager::CreateTileData(const VkFormat format,const uint width,
     if(width<=0||height<=0||count<=0)
         return(nullptr);
 
-    const uint32_t max_2d_texture=GetPhysicalDevice()->GetMaxImage2D();
+    const uint32_t max_2d_texture=GetPhyDevice()->GetMaxImage2D();
 
     uint tex_width,tex_height;
 

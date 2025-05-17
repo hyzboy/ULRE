@@ -66,7 +66,7 @@ namespace hgl
         wo->OnRenderTargetSwitch(render_framework,render_framework->GetSwapchainRenderTarget());
 
         Window *win=render_framework->GetWindow();
-        graph::GPUDevice *dev=render_framework->GetDevice();
+        graph::VulkanDevice *dev=render_framework->GetDevice();
 
         while(!cur_work_object->IsDestroy())
         {

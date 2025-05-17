@@ -19,7 +19,7 @@ public:
 
 private:
 
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
     IndirectCommandBuffer(VkDevice d,const DeviceBufferData &vb,const uint32_t mc):DeviceBuffer(d,vb)
     {
@@ -46,7 +46,7 @@ public:
 
 class IndirectDrawBuffer:public IndirectCommandBuffer<VkDrawIndirectCommand>
 {
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
 public:
     
@@ -64,7 +64,7 @@ public:
 
 class IndirectDrawIndexedBuffer:public IndirectCommandBuffer<VkDrawIndexedIndirectCommand>
 {
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
 public:
 
@@ -82,7 +82,7 @@ public:
 
 class IndirectDispatchBuffer:public IndirectCommandBuffer<VkDispatchIndirectCommand>
 {
-    friend class GPUDevice;
+    friend class VulkanDevice;
 
 public:
 

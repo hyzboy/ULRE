@@ -72,7 +72,7 @@ const int RenderNode::compare(const RenderNode &other)const
         return -1;
 }
 
-MaterialRenderList::MaterialRenderList(GPUDevice *d,bool l2w,const RenderPipelineIndex &rpi)
+MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipelineIndex &rpi)
 {
     device=d;
     cmd_buf=nullptr;

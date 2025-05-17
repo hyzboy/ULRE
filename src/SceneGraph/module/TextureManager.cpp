@@ -6,13 +6,13 @@
 VK_NAMESPACE_BEGIN
 const VkFormatProperties TextureManager::GetFormatProperties(const VkFormat format) const
 {
-    return GetPhysicalDevice()->GetFormatProperties(format);
+    return GetPhyDevice()->GetFormatProperties(format);
 }
 
 GRAPH_MODULE_CONSTRUCT(TextureManager)
 {
     auto dev=GetDevice();
-    auto phy_device=GetPhysicalDevice();
+    auto phy_device=GetPhyDevice();
 
     texture_cmd_buf=dev->CreateTextureCommandBuffer(phy_device->GetDeviceName()+AnsiString(":TexCmdBuffer"));
 

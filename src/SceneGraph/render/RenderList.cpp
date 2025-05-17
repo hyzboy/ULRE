@@ -10,7 +10,7 @@ namespace hgl
 {
     namespace graph
     {
-        RenderList::RenderList(GPUDevice *dev)
+        RenderList::RenderList(VulkanDevice *dev)
         {
             device          =dev;
             renderable_count=0;

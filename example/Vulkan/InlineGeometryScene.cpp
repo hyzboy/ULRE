@@ -109,7 +109,7 @@ private:
                 VK_SAMPLER_ADDRESS_MODE_REPEAT,
                 0.0f,
                 VK_TRUE,
-                device->GetPhysicalDevice()->GetMaxSamplerAnisotropy(),
+                device->GetPhyDevice()->GetMaxSamplerAnisotropy(),
                 false,
                 VK_COMPARE_OP_NEVER,
                 0.0f,
