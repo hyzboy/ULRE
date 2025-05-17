@@ -1,6 +1,6 @@
 ﻿#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>

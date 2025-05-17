@@ -11,7 +11,7 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 #include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/ObjectManage.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>

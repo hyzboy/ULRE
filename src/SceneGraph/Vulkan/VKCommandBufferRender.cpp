@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKFramebuffer.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include<hgl/graph/VKPhysicalDevice.h>
 #include<hgl/graph/VKIndexBuffer.h>

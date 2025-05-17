@@ -4,7 +4,7 @@
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKRenderable.h>
+#include<hgl/graph/Mesh.h>
 
 namespace hgl
 {
