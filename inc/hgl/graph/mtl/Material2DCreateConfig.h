@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialConfig.h>
 #include<hgl/graph/CoordinateSystem.h>
 #include<hgl/graph/VertexAttrib.h>
@@ -49,7 +50,8 @@ public:
     }
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
-MaterialCreateInfo *CreateVertexColor2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *);
+DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,CreateVertexColor2D,const Material2DCreateConfig)
+
 MaterialCreateInfo *CreatePureColor2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *);
 
 MaterialCreateInfo *CreateLerpLine2D(const GPUDeviceAttribute *dev_attr,const Material2DCreateConfig *);

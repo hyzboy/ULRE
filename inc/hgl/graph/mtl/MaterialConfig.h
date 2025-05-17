@@ -32,6 +32,8 @@ public:
 
         material_instance=false;
 
+        hgl_zero(rt_output);
+
         shader_stage_flag_bit=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
 
         prim=p;
