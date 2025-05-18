@@ -38,7 +38,7 @@ private:
     struct
     {
         MaterialInstance *  mi;
-        Mesh *        r;
+        Mesh *        mesh;
     }render_obj[DRAW_OBJECT_COUNT]{};
 
     Pipeline *          pipeline            =nullptr;
@@ -48,10 +48,7 @@ private:
     bool InitMaterial()
     {
         {
-            mtl::Material2DCreateConfig cfg(GetDevAttr(),"PureColor2D",PrimitiveType::Triangles);
-
-            cfg.coordinate_system=CoordinateSystem2D::NDC;
-            cfg.local_to_world=true;
+            mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,CoordinateSystem2D::NDC,mtl::WithLocalToWorld::With);
 
         #ifndef USE_MATERIAL_FILE
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);                       //走程序内置材质创建函数
@@ -95,14 +92,14 @@ private:
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
-            render_obj[i].r=db->CreateMesh(prim,render_obj[i].mi,pipeline);
+            render_obj[i].mesh=db->CreateMesh(prim,render_obj[i].mi,pipeline);
 
-            if(!render_obj[i].r)
+            if(!render_obj[i].mesh)
                 return(false);
 
             mat=rotate(deg2rad<double>(TRI_ROTATE_ANGLE*i),AxisVector::Z);
 
-            render_root.Add(new SceneNode(mat,render_obj[i].r));
+            render_root.Add(new SceneNode(mat,render_obj[i].mesh));
         }
 
         render_root.RefreshMatrix();

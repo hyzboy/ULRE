@@ -10,6 +10,8 @@ StdMaterial::StdMaterial(const MaterialCreateConfig *mcc)
 
 MaterialCreateInfo *StdMaterial::Create(const VulkanDevAttr *dev_attr)
 {
+    mci->SetDevice(dev_attr);
+
     if(!BeginCustomShader())
         return(nullptr);
 
@@ -28,7 +30,7 @@ MaterialCreateInfo *StdMaterial::Create(const VulkanDevAttr *dev_attr)
     if(!EndCustomShader())
         return(nullptr);
 
-    if(!mci->CreateShader(dev_attr))
+    if(!mci->CreateShader())
         return(nullptr);
 
     return(mci);

@@ -1,6 +1,6 @@
 ﻿macro(CreateProject name)
 
-    add_executable(${name} ${ARGN} ${VULKAN_APP_FRAMEWORK} MaterialLoader/MaterialLoader.cpp)
+    add_executable(${name} ${ARGN} ${VULKAN_APP_FRAMEWORK})
     target_link_libraries(${name} ${ULRE})
 
     IF(MSVC)

@@ -74,6 +74,8 @@ namespace hgl::graph
             MaterialCreateInfo(const MaterialCreateConfig *);
             ~MaterialCreateInfo()=default;
 
+            void SetDevice(const VulkanDevAttr *dev_attr);
+
             bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
@@ -87,7 +89,7 @@ namespace hgl::graph
 
             bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
-            bool CreateShader(const VulkanDevAttr *dev_attr);
+            bool CreateShader();
         };//class MaterialCreateInfo
     }//namespace mtl
 }//namespace hgl::graph

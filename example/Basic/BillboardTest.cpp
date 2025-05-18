@@ -38,7 +38,7 @@ private:
 
     MaterialInstance *  mi_billboard        =nullptr;
     Pipeline *          pipeline_billboard  =nullptr;
-    Mesh *        ro_billboard        =nullptr;
+    Mesh *              ro_billboard        =nullptr;
     
     Texture2D *         texture             =nullptr;
     Sampler *           sampler             =nullptr;
@@ -47,7 +47,7 @@ private:
 
     bool InitPlaneGridMP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance3D",PrimitiveType::Lines);
+        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
@@ -73,14 +73,12 @@ private:
 
     bool InitBillboardMP()
     {
-        mtl::BillboardMaterialCreateConfig cfg(device->GetDevAttr(),"Billboard2D",PrimitiveType::Billboard);
+        mtl::BillboardMaterialCreateConfig cfg(PrimitiveType::Billboard);
 
         {
             cfg.fixed_size=true;
 
-            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateBillboard2D(&cfg);
-       
-            mi_billboard=db->CreateMaterialInstance(mci);
+            mi_billboard=CreateMaterialInstance(mtl::inline_material::Billboard2D,&cfg);
             if(!mi_billboard)return(false);
 
             pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D,PrimitiveType::Billboard);

@@ -45,6 +45,11 @@ public:
 };//class RegistryMaterialFactoryClass
 
 #define DEFINE_MATERIAL_FACTORY_CLASS(name,cfg_type) \
+namespace inline_material   \
+{   \
+    constexpr const char name[]=#name; \
+}   \
+\
 MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr,cfg_type *); \
 \
 namespace \

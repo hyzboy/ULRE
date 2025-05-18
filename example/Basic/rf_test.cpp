@@ -34,7 +34,7 @@ private:
     Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
 
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *        render_obj          =nullptr;
+    Mesh *              render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -46,7 +46,7 @@ private:
                                         CoordinateSystem2D::NDC,
                                         mtl::WithLocalToWorld::Without);
 
-        material_instance=CreateMaterialInstance("VertexColor2D",&cfg);    //这个是使用名称创建
+        material_instance=CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg);    //这个是使用名称创建
 
         return material_instance;
     }
