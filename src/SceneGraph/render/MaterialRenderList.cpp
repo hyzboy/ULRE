@@ -82,10 +82,19 @@ MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipe
 
     assign_buffer=new RenderAssignBuffer(device,rp_index.material);
 
-    vab_list=new VABList(rp_index.material->GetVertexInput()->GetCount());
-
     icb_draw=nullptr;
     icb_draw_indexed=nullptr;
+
+    ri_count=0;
+
+    vab_list=new VABList(rp_index.material->GetVertexInput()->GetCount());
+
+    last_data_buffer=nullptr;
+    last_vdm=nullptr;
+    last_render_data=nullptr;
+
+    first_indirect_draw_index=-1;
+    indirect_draw_count=0;
 }
 
 MaterialRenderList::~MaterialRenderList()
@@ -231,7 +240,7 @@ void MaterialRenderList::ReallocICB()
 }
 
 void MaterialRenderList::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
-{    
+{
     dicp->vertexCount   =ri->prd->vertex_count;
     dicp->instanceCount =ri->instance_count;
     dicp->firstVertex   =ri->prd->vertex_offset;

@@ -92,12 +92,12 @@ protected:
 
             VABList *               vab_list;
 
-    const   MeshDataBuffer *   last_data_buffer;
+    const   MeshDataBuffer *        last_data_buffer;
     const   VDM *                   last_vdm;
-    const   MeshRenderData *   last_render_data;
+    const   MeshRenderData *        last_render_data;
 
-            int                     first_indirect_draw_index=-1;
-            uint                    indirect_draw_count=0;
+            int                     first_indirect_draw_index;
+            uint                    indirect_draw_count;
 
     bool BindVAB(const MeshDataBuffer *,const uint);
 
