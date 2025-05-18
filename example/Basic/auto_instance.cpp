@@ -38,7 +38,7 @@ private:
     SceneNode           render_root;
 
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *        render_obj          =nullptr;
+    Mesh *              render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -47,18 +47,15 @@ private:
     bool InitMaterial()
     {
         {
-            mtl::Material2DCreateConfig cfg(GetDevAttr(),"VertexColor2D",PrimitiveType::Triangles);
-
-            cfg.coordinate_system=CoordinateSystem2D::NDC;
-            cfg.local_to_world=true;
-
-            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
+            mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
+                                            CoordinateSystem2D::NDC,
+                                            mtl::WithLocalToWorld::With);
 
             VILConfig vil_config;
 
             vil_config.Add(VAN::Color,VF_V4UN8);
 
-            material_instance=db->CreateMaterialInstance(mci,&vil_config);
+            material_instance=CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
         }
 
         if(!material_instance)

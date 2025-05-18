@@ -61,7 +61,7 @@ private:
     struct
     {
         MaterialInstance *  mi;
-        Mesh *        r;
+        Mesh *              mesh;
     }render_obj[TexCount]{};
 
 private:
@@ -144,14 +144,14 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].r=db->CreateMesh(prim_rectangle,render_obj[i].mi,pipeline);
+            render_obj[i].mesh=db->CreateMesh(prim_rectangle,render_obj[i].mi,pipeline);
 
-            if(!render_obj[i].r)
+            if(!render_obj[i].mesh)
                 return(false);
 
             offset.x=position_data[2]*float(i);
 
-            render_root.CreateSubNode(translate(offset),render_obj[i].r);
+            render_root.CreateSubNode(translate(offset),render_obj[i].mesh);
         }
 
         render_root.RefreshMatrix();

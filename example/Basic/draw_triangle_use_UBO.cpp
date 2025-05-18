@@ -38,7 +38,7 @@ private:
     Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
 
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *        render_obj          =nullptr;
+    Mesh *              render_obj          =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -46,11 +46,11 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(GetDevAttr(),"VertexColor2D",PrimitiveType::Triangles);
+        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
+                                        CoordinateSystem2D::Ortho,
+                                        mtl::WithLocalToWorld::Without);
 
         VILConfig vil_config;
-
-        cfg.coordinate_system   =CoordinateSystem2D::Ortho;
 
         cfg.position_format     =       POSITION_SHADER_FORMAT;     //这里指定shader中使用ivec2当做顶点输入格式
                                 //      ^
@@ -60,11 +60,7 @@ private:
 
         vil_config.Add(VAN::Color,      COLOR_DATA_FORMAT);        //这里指定VAB中使用RGBA8UNorm当做颜色数据格式
 
-        cfg.local_to_world=false;
-
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
-
-        material_instance=db->CreateMaterialInstance(mci,&vil_config);
+        material_instance=CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
 
         if(!material_instance)
             return(false);

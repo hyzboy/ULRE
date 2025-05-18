@@ -225,13 +225,16 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
     return(true);
 }
 
-bool MaterialCreateInfo::CreateShader(const VulkanDevAttr *dev_attr)
+void MaterialCreateInfo::SetDevice(const VulkanDevAttr *dev_attr)
+{
+    ubo_range=dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
+    ssbo_range=dev_attr->physical_device->GetSSBORange();
+}
+
+bool MaterialCreateInfo::CreateShader()
 {
     if(shader_map.IsEmpty())
         return(false);
-
-    ubo_range=dev_attr->physical_device->GetUBORange();              //Mali-T系/G71为16k，nVidia和Mali-G系列除G71外为64k，Intel/PowerVR为128M，AMD无限制。
-    ssbo_range=dev_attr->physical_device->GetSSBORange();
 
     mdi.Resort();
 

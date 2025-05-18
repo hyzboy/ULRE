@@ -87,14 +87,11 @@ private:
 
     bool InitAutoMaterial()
     {
-        mtl::Material2DCreateConfig cfg(GetDevAttr(),"VertexColor2d",PrimitiveType::Triangles);
+        mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
+                                        CoordinateSystem2D::NDC,
+                                        mtl::WithLocalToWorld::Without);
 
-        cfg.coordinate_system=CoordinateSystem2D::NDC;
-        cfg.local_to_world=false;
-
-        AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreateVertexColor2D(&cfg);
-
-        material_instance=db->CreateMaterialInstance(mci,&vil_config);
+        material_instance=CreateMaterialInstance(mtl::inline_material::VertexColor2D,&cfg,&vil_config);
 
         return material_instance;
     }
