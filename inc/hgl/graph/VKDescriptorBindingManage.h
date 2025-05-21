@@ -43,7 +43,7 @@ public:
     {
         if(name.IsEmpty())return(nullptr);
 
-        return GetObjectFromList(ubo_map,name);
+        return GetObjectFromMap(ubo_map,name);
     }
 
     void RemoveUBO(DeviceBuffer *buf)
@@ -65,7 +65,7 @@ public:
     {
         if(name.IsEmpty())return(nullptr);
 
-        return GetObjectFromList(ssbo_map,name);
+        return GetObjectFromMap(ssbo_map,name);
     }
 
     void RemoveSSBO(DeviceBuffer *buf)
@@ -87,7 +87,7 @@ public:
     {
         if(name.IsEmpty())return(nullptr);
 
-        return GetObjectFromList(texture_map,name);
+        return GetObjectFromMap(texture_map,name);
     }
 
     void RemoveTexture(Texture *tex)
