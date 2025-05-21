@@ -47,7 +47,7 @@ public:
 public:
     
     const   uint32_t        GetVertexCount  ()const{return vertex_count;}
-    const   int             GetVABCount     ()const;
+    const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
 
             VAB *           GetVAB          (const int index);

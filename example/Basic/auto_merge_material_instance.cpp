@@ -111,15 +111,22 @@ private:
 
 public:
 
-    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
+    using WorkObject::WorkObject;
+
+    bool Init() override
     {
-        render_list=rf->CreateRenderList();
+        render_list=GetRenderFramework()->CreateRenderList();
+
+        if(!render_list)
+            return(false);
 
         if(!InitMaterial())
-            return;
+            return(false);
 
         if(!InitVBOAndRenderList())
-            return;
+            return(false);
+
+        return(true);
     }
 
     void Render(double delta_time,graph::RenderCmdBuffer *cmd)override
@@ -130,7 +137,7 @@ public:
         render_list->Render(cmd);
         cmd->EndRenderPass();
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WorkObject
 
 int os_main(int,os_char **)
 {

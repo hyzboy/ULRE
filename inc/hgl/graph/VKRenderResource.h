@@ -127,9 +127,9 @@ public: //Material
 
     const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,const ShaderCreateInfo *);
     
-    Material *          CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *);
-    Material *          LoadMaterial(const AnsiString &,mtl::Material2DCreateConfig *);
-    Material *          LoadMaterial(const AnsiString &,mtl::Material3DCreateConfig *);
+    Material *          CreateMaterial  (const AnsiString &,const mtl::MaterialCreateInfo *);
+    Material *          LoadMaterial    (const AnsiString &,mtl::Material2DCreateConfig *);
+    Material *          LoadMaterial    (const AnsiString &,mtl::Material3DCreateConfig *);
 
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
 
@@ -143,31 +143,31 @@ public: //Material
 
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
 
-    Mesh *        CreateMesh(Primitive *r,MaterialInstance *mi,Pipeline *p);
-    Mesh *        CreateMesh(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
+    Mesh *              CreateMesh(Primitive *r,MaterialInstance *mi,Pipeline *p);
+    Mesh *              CreateMesh(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
 
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
     Sampler *           CreateSampler(Texture *);
 
 public: //Get
 
-    Material *          GetMaterial             (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialInstance *  GetMaterialInstance     (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
-    DescriptorSet *     GetDescSets             (const DescriptorSetID      &id){return rm_desc_sets.Get(id);}
-    Primitive *         GetPrimitive            (const PrimitiveID          &id){return rm_primitives.Get(id);}
-    DeviceBuffer *      GetBuffer               (const BufferID             &id){return rm_buffers.Get(id);}
-    Sampler *           GetSampler              (const SamplerID            &id){return rm_samplers.Get(id);}
-    Mesh *        GetRenderable           (const RenderableID         &id){return rm_renderables.Get(id);}
+    Material *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
+    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    DescriptorSet *     GetDescSets         (const DescriptorSetID      &id){return rm_desc_sets.Get(id);}
+    Primitive *         GetPrimitive        (const PrimitiveID          &id){return rm_primitives.Get(id);}
+    DeviceBuffer *      GetBuffer           (const BufferID             &id){return rm_buffers.Get(id);}
+    Sampler *           GetSampler          (const SamplerID            &id){return rm_samplers.Get(id);}
+    Mesh *              GetRenderable       (const RenderableID         &id){return rm_renderables.Get(id);}
 
 public: //Release
 
-    void Release(Material *          mtl ){rm_material.Release(mtl);}
-    void Release(MaterialInstance *  mi  ){rm_material_instance.Release(mi);}
-    void Release(DescriptorSet *     ds  ){rm_desc_sets.Release(ds);}
-    void Release(Primitive *         p   ){rm_primitives.Release(p);}
-    void Release(DeviceBuffer *      buf ){rm_buffers.Release(buf);}
-    void Release(Sampler *           s   ){rm_samplers.Release(s);}
-    void Release(Mesh *        r   ){rm_renderables.Release(r);}
+    void Release(Material *         mtl ){rm_material.Release(mtl);}
+    void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
+    void Release(DescriptorSet *    ds  ){rm_desc_sets.Release(ds);}
+    void Release(Primitive *        p   ){rm_primitives.Release(p);}
+    void Release(DeviceBuffer *     buf ){rm_buffers.Release(buf);}
+    void Release(Sampler *          s   ){rm_samplers.Release(s);}
+    void Release(Mesh *             r   ){rm_renderables.Release(r);}
 };//class RenderResource
 
 /**

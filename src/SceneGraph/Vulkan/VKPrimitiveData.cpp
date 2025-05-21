@@ -25,7 +25,7 @@ PrimitiveData::~PrimitiveData()
     delete[] vab_list;       //注意：这里并不释放VAB，在派生类中释放
 }
 
-const int PrimitiveData::GetVABCount()const
+const uint32_t PrimitiveData::GetVABCount()const
 {
     return vil->GetVertexAttribCount();
 }

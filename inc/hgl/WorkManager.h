@@ -80,7 +80,15 @@ namespace hgl
 
         SwapchainWorkManager wm(&rf);
 
-        wm.Run(new WO(&rf));
+        WO *wo=new WO(&rf);
+
+        if(!wo->Init())
+        {
+            delete wo;
+            return(-2);
+        }
+
+        wm.Run(wo);
 
         return 0;
     }
