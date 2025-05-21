@@ -27,7 +27,7 @@ public:
 
 public:
 
-    GraphModule *   Get(const size_t type_hash)   {return GetObjectFromList(module_map,type_hash);}                     ///<取得指定类型的模块
+    GraphModule *   Get(const size_t type_hash)   {return GetObjectFromMap(module_map,type_hash);}                     ///<取得指定类型的模块
     template<typename T>
     T *             Get()                         {return((T *)Get(typeid(T).hash_code()));}                            ///<取得指定类型的模块
 
