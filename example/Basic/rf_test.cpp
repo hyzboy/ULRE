@@ -71,16 +71,20 @@ private:
 
 public:
 
-    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
+    using WorkObject::WorkObject;
+
+    bool Init() override
     {
         if(!InitAutoMaterial())
-            return;
+            return(false);
 
         if(!InitPipeline())
-            return;
+            return(false);
 
         if(!InitVBO())
-            return;
+            return(false);
+
+        return(true);
     }
 
     void Tick(double)override{}

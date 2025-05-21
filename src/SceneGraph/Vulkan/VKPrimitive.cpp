@@ -46,7 +46,7 @@ const VkDeviceSize Primitive::GetVertexCount()const
     return prim_data->GetVertexCount();
 }
 
-const int Primitive::GetVABCount()const
+const uint32_t Primitive::GetVABCount()const
 {
     return prim_data->GetVABCount();
 }

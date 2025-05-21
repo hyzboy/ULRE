@@ -90,14 +90,18 @@ private:
     }
 
 public:
-    
-    TestApp(RenderFramework *rf):WorkObject(rf,rf->GetSwapchainRenderTarget())
+
+    using WorkObject::WorkObject;
+
+    bool Init() override
     {
         if(!InitMaterial())
-            return;
+            return(false);
 
         if(!InitVBO())
-            return;
+            return(false);
+
+        return(true);
     }
 
     void Render(double delta_time,graph::RenderCmdBuffer *cmd)override

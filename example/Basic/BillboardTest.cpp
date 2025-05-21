@@ -1,6 +1,6 @@
 ﻿// Billboard
 
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
@@ -11,6 +11,7 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/graph/module/TextureManager.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -25,11 +26,15 @@ static float lumiance_data[2]={1,1};
 static Color4f white_color(1,1,1,1);
 static Color4f yellow_color(1,1,0,1);
 
-class TestApp:public SceneAppFramework
+class TestApp:public WorkObject
 {
     Color4f color;
 
 private:
+
+    AutoDelete<RenderList>  render_list     =nullptr;
+
+    SceneNode           render_root;
 
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
@@ -90,7 +95,9 @@ private:
 
     bool InitTexture()
     {
-        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        TextureManager *tex_manager=GetTextureManager();
+
+        texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
         if(!texture)return(false);
 
         sampler=db->CreateSampler();
@@ -107,7 +114,7 @@ private:
 
         return(true);
     }
-    
+
     Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
         Mesh *ri=db->CreateMesh(r,mi,p);
@@ -126,9 +133,9 @@ private:
     bool CreateRenderObject()
     {
         using namespace inline_geometry;
-        
+
         {
-            PrimitiveCreater pc(device,mi_plane_grid->GetVIL());
+            PrimitiveCreater pc(GetDevice(),mi_plane_grid->GetVIL());
 
             struct PlaneGridCreateInfo pgci;
 
@@ -142,7 +149,7 @@ private:
         }
 
         {
-            PrimitiveCreater pc(device,mi_billboard->GetVIL());
+            PrimitiveCreater pc(GetDevice(),mi_billboard->GetVIL());
 
             pc.Init("Billboard",1);
 
@@ -150,6 +157,7 @@ private:
                 return(false);
 
             ro_billboard=db->CreateMesh(&pc,mi_billboard,pipeline_billboard);
+
             if(!ro_billboard)
                 return(false);
         }
@@ -175,16 +183,15 @@ private:
 
 public:
 
+    using WorkObject::WorkObject;
+
     ~TestApp()
     {
         SAFE_CLEAR(prim_plane_grid);
     }
 
-    bool Init(uint w,uint h)
+    bool Init()
     {        
-        if(!SceneAppFramework::Init(w,h))
-            return(false);
-
         if(!InitPlaneGridMP())
             return(false);
 
@@ -202,9 +209,9 @@ public:
 
         return(true);
     }
-};//class TestApp:public CameraAppFramework
+};//class TestApp:public WorkObject
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    return RunApp<TestApp>(1920,1080);
+    return RunFramework<TestApp>(OS_TEXT("AutoInstance"),1024,1024);
 }

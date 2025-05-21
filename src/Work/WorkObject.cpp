@@ -5,6 +5,7 @@
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -12,6 +13,9 @@ namespace hgl
 {
     WorkObject::WorkObject(graph::RenderFramework *rf,graph::IRenderTarget *rt)
     {
+        if(!rt)
+            rt=rf->GetSwapchainRenderTarget();
+
         OnRenderTargetSwitch(rf,rt);
     }
 

@@ -38,6 +38,7 @@ namespace hgl
         graph::RenderFramework *    GetRenderFramework  (){return render_framework;}
         graph::VulkanDevice *       GetDevice           (){return render_framework->GetDevice();}
         graph::VulkanDevAttr *      GetDevAttr          (){return render_framework->GetDevAttr();}
+        graph::TextureManager *     GetTextureManager   (){return render_framework->GetTextureManager();}
 
         const VkExtent2D &          GetExtent2D         (){return cur_render_target->GetExtent();}
 
@@ -53,8 +54,10 @@ namespace hgl
 
     public:
 
-        WorkObject(graph::RenderFramework *,graph::IRenderTarget *);
+        WorkObject(graph::RenderFramework *,graph::IRenderTarget *rt=nullptr);
         virtual ~WorkObject()=default;
+
+        virtual bool Init()=0;
 
         virtual void OnRenderTargetSwitch(graph::RenderFramework *rf,graph::IRenderTarget *rt);
         
