@@ -87,6 +87,10 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/MaterialRenderList.h
                         ${SG_INCLUDE_PATH}/MaterialRenderMap.h
 #                        ${SG_INCLUDE_PATH}/ShadowPolicy.h
+                        ${SG_INCLUDE_PATH}/RenderTask.h
+                        ${SG_INCLUDE_PATH}/Renderer.h
+                        render/Renderer.cpp
+                        render/RenderTask.cpp
                         render/RenderList.cpp
                         render/MaterialRenderList.cpp
                         render/RenderAssignBuffer.h
