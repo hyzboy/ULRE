@@ -37,6 +37,8 @@ namespace hgl
             virtual void SetCamera(CameraInfo *ci){camera_info=ci;}                 ///<设置相机信息
             virtual bool Expend(SceneNode *);                                       ///<展开场景树到渲染列表
 
+                    bool IsEmpty()const{return !renderable_count;}                  ///<是否是空的
+
             virtual bool Render(RenderCmdBuffer *);                                 ///<渲染所有对象
 
             virtual void UpdateLocalToWorld();                                      ///<更新所有对象的变换数据
