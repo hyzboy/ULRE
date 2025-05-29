@@ -3,6 +3,7 @@
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
+#include<hgl/graph/Renderer.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -26,12 +27,18 @@ namespace hgl
 
         bool destroy_flag=false;
 
-        bool renderable=true;
-        bool render_dirty=true;
-
     protected:
 
-        graph::RenderResource *db=nullptr;          //暂时的，未来会被更好的机制替代
+        graph::RenderResource *db=nullptr;                  //暂时的，未来会被更好的机制替代
+
+        /**
+        * 不管我们的游戏多么的复杂，一般在一个WorkObject中，都只需要一个SceneWorld以及一个Renderer即可。
+        * 如果我们整体切换World，那么建议直接切换到新的WorkObject上。
+        */
+
+        graph::SceneWorld * world   =nullptr;               //世界
+
+        graph::Renderer *   renderer=nullptr;               //渲染器
 
     public:
 
@@ -44,13 +51,8 @@ namespace hgl
 
     public:
 
-        const bool IsDestroy()const{return destroy_flag;}
-        const bool IsRenderable()const{return renderable;}
-        const bool IsRenderDirty()const{return render_dirty;}
-
-        void MarkDestory(){destroy_flag=true;}
-        void SetRenderable(bool r){renderable=r;}
-        void MarkRenderDirty(){render_dirty=true;}
+        const   bool IsDestroy  ()const{return destroy_flag;}
+                void MarkDestory(){destroy_flag=true;}
 
     public:
 
