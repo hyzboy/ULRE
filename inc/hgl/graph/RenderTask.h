@@ -6,7 +6,7 @@
 namespace hgl::graph
 {
     class SceneNode;
-    class SceneWorld;
+    class Scene;
     class Camera;
     class IRenderTarget;
     class RenderList;

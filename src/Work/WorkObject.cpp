@@ -43,6 +43,8 @@ namespace hgl
         render_pass=rt->GetRenderPass();
 
         db=rf->GetRenderResource();
+        scene=rf->GetDefaultScene();
+        renderer=rf->GetDefaultRenderer();
     }
 
     void WorkObject::Render(double delta_time)

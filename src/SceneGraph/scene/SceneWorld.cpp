@@ -5,14 +5,14 @@ namespace hgl::graph
 {
     namespace
     {
-        Map<U8String,SceneWorld *> scene_world_map;///<场景世界列表
+        Map<U8String,Scene *> scene_world_map;///<场景世界列表
     }//namespace
 
-    bool RegistrySceneWorld(SceneWorld *sw)
+    bool RegistryScene(Scene *sw)
     {
         if(!sw)return(false);
 
-        const U8String &world_name=sw->GetWorldName();
+        const U8String &world_name=sw->GetSceneName();
 
         if(scene_world_map.Find(world_name))
             return false;///<已经注册过了
@@ -21,7 +21,7 @@ namespace hgl::graph
         return true;
     }
 
-    SceneWorld *GetSceneWorld(const U8String &world_name)
+    Scene *GetScene(const U8String &world_name)
     {
         if(world_name.IsEmpty())
             return(nullptr);
@@ -29,7 +29,7 @@ namespace hgl::graph
         return GetObjectFromMap(scene_world_map,world_name);
     }
 
-    bool UnregistrySceneWorld(const U8String &world_name)
+    bool UnregistryScene(const U8String &world_name)
     {
         if(world_name.IsEmpty())
             return(false);
