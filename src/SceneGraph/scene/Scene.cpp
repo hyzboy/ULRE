@@ -12,28 +12,28 @@ namespace hgl::graph
     {
         if(!sw)return(false);
 
-        const U8String &world_name=sw->GetSceneName();
+        const U8String &scene_name=sw->GetSceneName();
 
-        if(scene_world_map.Find(world_name))
+        if(scene_world_map.Find(scene_name))
             return false;///<已经注册过了
 
-        scene_world_map.Add(world_name,sw);
+        scene_world_map.Add(scene_name,sw);
         return true;
     }
 
-    Scene *GetScene(const U8String &world_name)
+    Scene *GetScene(const U8String &scene_name)
     {
-        if(world_name.IsEmpty())
+        if(scene_name.IsEmpty())
             return(nullptr);
 
-        return GetObjectFromMap(scene_world_map,world_name);
+        return GetObjectFromMap(scene_world_map,scene_name);
     }
 
-    bool UnregistryScene(const U8String &world_name)
+    bool UnregistryScene(const U8String &scene_name)
     {
-        if(world_name.IsEmpty())
+        if(scene_name.IsEmpty())
             return(false);
 
-        return scene_world_map.DeleteByKey(world_name);
+        return scene_world_map.DeleteByKey(scene_name);
     }
 }//namespace hgl::graph

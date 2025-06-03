@@ -37,7 +37,7 @@ namespace hgl::graph
     };//class Scene
 
     bool RegistryScene(Scene *sw);                      ///<注册场景
-    bool UnregistryScene(const U8String &world_name);   ///<注销场景
+    bool UnregistryScene(const U8String &scene_name);   ///<注销场景
 
     inline bool UnregistryScene(Scene *sw)              ///<注销场景
     {
@@ -46,5 +46,5 @@ namespace hgl::graph
         return UnregistryScene(sw->GetSceneName());
     }
 
-    Scene *GetScene(const U8String &world_name);        ///<获取指定名称的场景
+    Scene *GetScene(const U8String &scene_name);        ///<获取指定名称的场景
 }//namespace hgl::graph
