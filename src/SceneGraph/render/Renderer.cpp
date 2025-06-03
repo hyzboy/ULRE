@@ -1,5 +1,5 @@
 #include<hgl/graph/Renderer.h>
-#include<hgl/graph/SceneWorld.h>
+#include<hgl/graph/Scene.h>
 #include<hgl/graph/VKCommandBuffer.h>
 
 namespace hgl::graph

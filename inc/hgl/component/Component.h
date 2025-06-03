@@ -11,14 +11,14 @@
 *
 *   AMD FidelityFX中，Component存放于Entity下，而我方中与其类似的定义为SceneNode。
 *   不管是Entity还是SceneNode，它们都提供空间变换，以及子节点、Component的管理。
-*   而AMD FidelityFX中的Scene，类似于我方的SceneWorld，用于储存一个场景世界的根节点及其它世界唯一数据。
+*   而AMD FidelityFX中的Scene，类似于我方的Scene，用于储存一个场景世界的根节点及其它世界唯一数据。
 *
 *   ComponentData是每个Component的数据，用于向Component或是其它模块提供数据。
 *   ComponentManager是Component的管理器，用于管理Component的创建、销毁、更新等。
 *
-*   需要注意的是：同AMD FidelityFX一样，大部分ComponentManager与SceneWorld基本无关。
+*   需要注意的是：同AMD FidelityFX一样，大部分ComponentManager与Scene基本无关。
 *   因为同样的数据可能出现在多个World之中。
-*   仅有那些与SceneWorld密切相关的Component它对应的Manager才会出现在SceneWorld中，比如CameraManager/LightManager。
+*   仅有那些与Scene密切相关的Component它对应的Manager才会出现在Scene中，比如CameraManager/LightManager。
 *   而如StaticMeshComponent之类的纯资源型就会是独立存在的。
 *
 *   Component是组件的基类，所有组件都从这里派生。

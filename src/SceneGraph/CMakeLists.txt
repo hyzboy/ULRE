@@ -71,7 +71,7 @@ SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
 
 source_group("Framework" FILES ${GRAPH_FRAMEWORK_FILES})
 
-SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/SceneWorld.h
+SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/Scene.h
                     ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
                     ${SG_INCLUDE_PATH}/SceneNode.h                    
                     ${SG_INCLUDE_PATH}/SceneMatrix.h
@@ -79,7 +79,7 @@ SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/SceneWorld.h
                     Scene/SceneNode.cpp
                     Scene/SceneOrient.cpp
                     Scene/SceneMatrix.cpp
-                    Scene/SceneWorld.cpp
+                    Scene/Scene.cpp
 )
 
 SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
