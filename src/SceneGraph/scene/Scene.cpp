@@ -1,11 +1,11 @@
-#include<hgl/graph/SceneWorld.h>
+#include<hgl/graph/Scene.h>
 #include<hgl/type/Map.h>
 
 namespace hgl::graph
 {
     namespace
     {
-        Map<U8String,Scene *> scene_world_map;///<场景世界列表
+        Map<U8String,Scene *> scene_world_map;///<场景列表
     }//namespace
 
     bool RegistryScene(Scene *sw)
