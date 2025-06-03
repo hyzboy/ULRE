@@ -7,43 +7,55 @@ namespace hgl::graph
     Renderer::Renderer(IRenderTarget *rt)
     {
         render_target=rt;
-        world=nullptr;
-        render_task=new RenderTask("TempRenderTask");
+        scene=nullptr;
+        camera=nullptr;
+        render_task=new RenderTask("DefaultRenderTask",rt);
+
+        clear_color.Set(0,0,0,1);
     }
 
     Renderer::~Renderer()
     {
         delete render_task;
-        delete world;
     }
 
-    void Renderer::SetCurWorld(Scene *sw)
+    void Renderer::SetRenderTarget(IRenderTarget *rt)
     {
-        if(world==sw)
+        if(render_target==rt)
             return;
 
-        //if(world)
+        render_target=rt;
+
+        render_task->Set(rt);
+    }
+
+    void Renderer::SetCurScene(Scene *sw)
+    {
+        if(scene==sw)
+            return;
+
+        //if(scene)
         //{
-        //    world->Unjoin(this);
+        //    scene->Unjoin(this);
         //}
 
-        world=sw;
+        scene=sw;
 
-        //if(world)
+        //if(scene)
         //{
-        //    world->Join(this);
+        //    scene->Join(this);
         //}
     }
 
     void Renderer::SetCurCamera(Camera *c)
     {
-        if(!world||!c)
+        if(!scene||!c)
             return;
 
         //if(camera)
         //{
-        //    if(world)
-        //        camera->Unjoin(world);
+        //    if(scene)
+        //        camera->Unjoin(scene);
 
         //    camera->Unjoin(this);
         //}
@@ -52,19 +64,19 @@ namespace hgl::graph
 
         //if(camera)
         //{
-        //    if(world)
-        //        camera->Unjoin(world);
+        //    if(scene)
+        //        camera->Unjoin(scene);
 
         //    camera->Join(this);
         //}
     }
 
-    bool Renderer::RenderFrame(RenderCmdBuffer *cmd)
+    bool Renderer::RenderFrame()
     {
-        if(!world)
+        if(!scene)
             return(false);
 
-        SceneNode *root=world->GetRootNode();
+        SceneNode *root=scene->GetRootNode();
 
         if(!root)
             return(false);
@@ -75,10 +87,29 @@ namespace hgl::graph
 
         bool result=false;
 
+        graph::RenderCmdBuffer *cmd=render_target->BeginRender();
+
+        cmd->SetClearColor(0,clear_color);
+
         cmd->BeginRenderPass();
             result=render_task->Render(cmd);
         cmd->EndRenderPass();
 
+        render_target->EndRender();
+
+        build_frame=result;
+
         return(result);
+    }
+
+    bool Renderer::Submit()
+    {
+        if(!render_target)
+            return(false);
+
+        if(!build_frame)
+            return(false);
+
+        return render_target->Submit();
     }
 }//namespace hgl::graph

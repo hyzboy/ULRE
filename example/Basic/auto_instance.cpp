@@ -29,13 +29,7 @@ constexpr uint8 color_data[VERTEX_COUNT][4]=
 
 class TestApp:public WorkObject
 {
-    Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
-
 private:
-
-    AutoDelete<RenderList>  render_list     =nullptr;
-
-    SceneNode           render_root;
 
     MaterialInstance *  material_instance   =nullptr;
     Mesh *              render_obj          =nullptr;
@@ -80,18 +74,16 @@ private:
 
         double rad;
         Matrix4f mat;
+
+        SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
         
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
         {
             rad=deg2rad<double>((360.0f/double(TRIANGLE_NUMBER))*i);       //这里一定要加<float>或<float>，否则结果用int保存会出现问题
             mat=rotate(rad,Vector3f(0,0,1));
 
-            render_root.Add(new SceneNode(mat,render_obj));
+            scene_root->Add(new SceneNode(mat,render_obj));
         }
-
-        render_root.RefreshMatrix();
-
-        render_list->Expend(&render_root);
 
         return(true);
     }
@@ -102,10 +94,7 @@ public:
 
     bool Init() override
     {
-        render_list=GetRenderFramework()->CreateRenderList();
-
-        if(!render_list)
-            return(false);
+        GetRenderer()->SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
 
         if(!InitMaterial())
             return(false);
@@ -114,15 +103,6 @@ public:
             return(false);
 
         return(true);
-    }
-
-    void Render(double delta_time,graph::RenderCmdBuffer *cmd)override
-    {
-        cmd->SetClearColor(0,clear_color);
-
-        cmd->BeginRenderPass();
-            render_list->Render(cmd);
-        cmd->EndRenderPass();
     }
 };//class TestApp:public WorkObject
 

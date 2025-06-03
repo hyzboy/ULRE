@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/graph/RenderTask.h>
+#include<hgl/graph/VKRenderTarget.h>
 #include<hgl/type/Map.h>
 
 namespace hgl::graph
@@ -15,7 +16,7 @@ namespace hgl::graph
     class Renderer
     {
         IRenderTarget *render_target;
-        Scene *world;
+        Scene *scene;
 
         Camera *camera;
 
@@ -24,23 +25,31 @@ namespace hgl::graph
 
         RenderTask *render_task;                                                ///<当前渲染任务
 
-    protected:
+        Color4f clear_color;                                                    ///<清屏颜色
 
-
+        bool build_frame=false;
 
     public:
 
-        Scene *GetScene   () const { return world; }                  ///<获取场景世界
-        Camera *    GetCurCamera    () const { return camera; }                 ///<获取当前相机
+                RenderPass *GetRenderPass   (){return render_target->GetRenderPass();}      ///<取得当前渲染器RenderPass
+
+        const   VkExtent2D &GetExtent       ()const{return render_target->GetExtent();}     ///<取得当前渲染器画面尺寸
+
+                Scene *     GetScene        ()const{return scene;}                          ///<获取场景世界
+                Camera *    GetCurCamera    ()const{return camera;}                         ///<获取当前相机
 
     public:
 
         Renderer(IRenderTarget *);
         virtual ~Renderer();
 
-        void SetCurWorld(Scene *);
+        void SetRenderTarget(IRenderTarget *);
+        void SetCurScene(Scene *);
         void SetCurCamera(Camera *);
 
-        bool RenderFrame(RenderCmdBuffer *);
+        void SetClearColor(const Color4f &c){clear_color=c;}
+
+        bool RenderFrame();                                                                ///<重新重成这一帧的CommandList
+        bool Submit();                                                                      ///<提交CommandList到GPU
     };//class Renderer
 }//namespace hgl::graph

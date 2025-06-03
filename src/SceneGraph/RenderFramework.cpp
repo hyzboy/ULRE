@@ -5,9 +5,12 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/RenderModule.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/Scene.h>
+#include<hgl/graph/Renderer.h>
 #include<hgl/log/Logger.h>
 #include<hgl/Time.h>
 
@@ -47,6 +50,8 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
+    SAFE_CLEAR(default_renderer)
+    SAFE_CLEAR(default_scene)
     SAFE_CLEAR(render_resource)
     SAFE_CLEAR(module_manager)
 
@@ -117,7 +122,19 @@ bool RenderFramework::Init(uint w,uint h)
 
     render_resource=new RenderResource(device);
 
+    default_scene=new Scene;
+
+    CreateDefaultRenderer();
+
     return(true);
+}
+
+void RenderFramework::CreateDefaultRenderer()
+{
+    SAFE_CLEAR(default_renderer)
+
+    default_renderer=new Renderer(GetSwapchainRenderTarget());
+    default_renderer->SetCurScene(default_scene);
 }
 
 void RenderFramework::OnResize(uint w,uint h)
@@ -125,6 +142,8 @@ void RenderFramework::OnResize(uint w,uint h)
     VkExtent2D ext(w,h);
 
     sc_module->OnResize(ext);        //其实swapchain_module并不需要传递尺寸数据过去
+
+    CreateDefaultRenderer();
 }
 
 void RenderFramework::OnActive(bool)

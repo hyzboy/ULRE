@@ -11,15 +11,15 @@
 
 namespace hgl
 {
-    WorkObject::WorkObject(graph::RenderFramework *rf,graph::IRenderTarget *rt)
+    WorkObject::WorkObject(graph::RenderFramework *rf,graph::Renderer *r)
     {
-        if(!rt)
-            rt=rf->GetSwapchainRenderTarget();
+        if(!r)
+            renderer=rf->GetDefaultRenderer();
 
-        OnRenderTargetSwitch(rf,rt);
+        OnRendererChange(rf,renderer);
     }
 
-    void WorkObject::OnRenderTargetSwitch(graph::RenderFramework *rf,graph::IRenderTarget *rt)
+    void WorkObject::OnRendererChange(graph::RenderFramework *rf,graph::Renderer *r)
     {
         if(!rf)
         {
@@ -27,20 +27,12 @@ namespace hgl
             db=nullptr;
         }
 
-        if(!rt)
-        {
-            cur_render_target=nullptr;
-            render_pass=nullptr;
-        }
-
-        if(!rf||!rt)
+        if(!rf||!r)
         {
             return;
         }
 
         render_framework=rf;
-        cur_render_target=rt;
-        render_pass=rt->GetRenderPass();
 
         db=rf->GetRenderResource();
         scene=rf->GetDefaultScene();
@@ -49,9 +41,9 @@ namespace hgl
 
     void WorkObject::Render(double delta_time)
     {
-        if(!cur_render_target)
+        if(!renderer)
         {
-            //std::cerr<<"WorkObject::Render,cur_render_target=nullptr"<<std::endl;
+            //std::cerr<<"WorkObject::Render,renderer=nullptr"<<std::endl;
             return;
         }
 
@@ -59,21 +51,12 @@ namespace hgl
 
         if(render_dirty)
         {
-            graph::RenderCmdBuffer *cmd=cur_render_target->BeginRender();
-
-            if(!cmd)
-            {
-                //std::cerr<<"WorkObject::Render,cur_render_target->BeginRender()=nullptr"<<std::endl;
-                return;
-            }
-
-            Render(delta_time,cmd);
-
-            cur_render_target->EndRender();
-            cur_render_target->Submit();
+            renderer->RenderFrame();
 
             render_dirty=false;
         }
+
+        renderer->Submit();
 
         //std::cout<<"WorkObject::Render End"<<std::endl;
     }
