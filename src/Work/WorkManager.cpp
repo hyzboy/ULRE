@@ -32,9 +32,7 @@ namespace hgl
 
         VkExtent2D ext={w,h};
 
-        graph::IRenderTarget *rt=render_framework->GetSwapchainRenderTarget();
-
-        cur_work_object->OnRenderTargetSwitch(render_framework,rt);
+        cur_work_object->OnRendererChange(render_framework,render_framework->GetDefaultRenderer());
         cur_work_object->OnResize(ext);
     }
 
@@ -63,7 +61,7 @@ namespace hgl
 
         cur_work_object=wo;
 
-        wo->OnRenderTargetSwitch(render_framework,render_framework->GetSwapchainRenderTarget());
+        wo->OnRendererChange(render_framework,render_framework->GetDefaultRenderer());
 
         Window *win=render_framework->GetWindow();
         graph::VulkanDevice *dev=render_framework->GetDevice();

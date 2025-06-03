@@ -55,6 +55,8 @@ protected:
     Scene *                 default_scene   =nullptr;
     Renderer *              default_renderer=nullptr;
 
+    void CreateDefaultRenderer();
+
 public:
 
             Window *            GetWindow           ()const{return win;}

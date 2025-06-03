@@ -4,6 +4,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/Renderer.h>
+#include<hgl/graph/Scene.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -22,8 +23,6 @@ namespace hgl
     class WorkObject:public TickObject
     {
         graph::RenderFramework *render_framework=nullptr;
-        graph::IRenderTarget *cur_render_target=nullptr;
-        graph::RenderPass *render_pass=nullptr;
 
         bool destroy_flag=false;
         bool render_dirty=true;
@@ -44,7 +43,12 @@ namespace hgl
         graph::VulkanDevAttr *      GetDevAttr          (){return render_framework->GetDevAttr();}
         graph::TextureManager *     GetTextureManager   (){return render_framework->GetTextureManager();}
 
-        const VkExtent2D &          GetExtent2D         (){return cur_render_target->GetExtent();}
+        const VkExtent2D &          GetExtent           (){return renderer->GetExtent();}
+
+        graph::Scene *              GetScene            (){return scene;}
+        graph::SceneNode *          GetSceneRoot        (){return scene->GetRootNode();}
+
+        graph::Renderer *           GetRenderer         (){return renderer;}
 
     public:
 
@@ -56,18 +60,16 @@ namespace hgl
 
     public:
 
-        WorkObject(graph::RenderFramework *,graph::IRenderTarget *rt=nullptr);
+        WorkObject(graph::RenderFramework *,graph::Renderer *r=nullptr);
         virtual ~WorkObject()=default;
 
         virtual bool Init()=0;
 
-        virtual void OnRenderTargetSwitch(graph::RenderFramework *rf,graph::IRenderTarget *rt);
+        virtual void OnRendererChange(graph::RenderFramework *rf,graph::Renderer *r);
         
         virtual void OnResize(const VkExtent2D &){}
 
         virtual void Tick(double){}
-
-        virtual void Render(double delta_time,graph::RenderCmdBuffer *cmd)=0;
 
         virtual void Render(double delta_time);
 
@@ -76,7 +78,7 @@ namespace hgl
         template<typename ...ARGS>
         graph::Pipeline *CreatePipeline(ARGS...args)
         {
-            return render_pass->CreatePipeline(args...);
+            return renderer->GetRenderPass()->CreatePipeline(args...);
         }
 
         graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
