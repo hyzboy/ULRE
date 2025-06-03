@@ -6,45 +6,45 @@
 namespace hgl::graph
 {
     /**
-    * 世界场景管理器<Br>
-    * 管理一个世界场景中的所有资源与场景节点
+    * 场景管理器<Br>
+    * 管理一个场景中的所有资源与场景节点
     */
-    class SceneWorld
+    class Scene
     {
-        U8String WorldName;                             ///<世界名称
+        U8String SceneName;                             ///<场景名称
 
         ObjectList<SceneNode> SceneNodePool;            ///<场景节点池
 
-        SceneNode *root_node;                           ///<世界根节点
+        SceneNode *root_node;                           ///<场景根节点
 
     public:
 
-        const   U8String &  GetWorldName()const{return WorldName;}              ///<获取世界名称
+        const   U8String &  GetSceneName()const{return SceneName;}              ///<获取场景名称
 
-                SceneNode * GetRootNode (){return root_node;}                   ///<获取世界根节点
+                SceneNode * GetRootNode (){return root_node;}                   ///<获取场景根节点
 
     public:
 
-        SceneWorld()
+        Scene()
         {
             root_node=new SceneNode;
         }
 
-        virtual ~SceneWorld()
+        virtual ~Scene()
         {
             SAFE_CLEAR(root_node);
         }
-    };//class SceneWorld
+    };//class Scene
 
-    bool RegistrySceneWorld(SceneWorld *sw);                ///<注册场景世界
-    bool UnregistrySceneWorld(const U8String &world_name);  ///<注销场景世界
+    bool RegistryScene(Scene *sw);                      ///<注册场景
+    bool UnregistryScene(const U8String &world_name);   ///<注销场景
 
-    inline bool UnregistrySceneWorld(SceneWorld *sw)        ///<注销场景世界
+    inline bool UnregistryScene(Scene *sw)              ///<注销场景
     {
         if(!sw)return(false);
 
-        return UnregistrySceneWorld(sw->GetWorldName());
+        return UnregistryScene(sw->GetSceneName());
     }
 
-    SceneWorld *GetSceneWorld(const U8String &world_name);  ///<获取指定名称的场景世界
+    Scene *GetScene(const U8String &world_name);        ///<获取指定名称的场景
 }//namespace hgl::graph

@@ -17,6 +17,9 @@ class RenderTargetManager;
 
 class RenderModule;
 
+class Scene;
+class Renderer;
+
 class CameraComponentManager{/*现阶段测试使用*/};
 class LightComponentManager{/*现阶段测试使用*/};
 
@@ -47,6 +50,11 @@ protected:
     CameraComponentManager *camera_component_manager=nullptr;
     LightComponentManager  *light_component_manager =nullptr;
 
+protected:
+
+    Scene *                 default_scene   =nullptr;
+    Renderer *              default_renderer=nullptr;
+
 public:
 
             Window *            GetWindow           ()const{return win;}
@@ -67,6 +75,11 @@ public:
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
     SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}
+
+public:
+
+    Scene *                 GetDefaultScene         (){return default_scene;}
+    Renderer *              GetDefaultRenderer      (){return default_renderer;}
 
 public:
 

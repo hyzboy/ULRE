@@ -17,7 +17,7 @@ namespace hgl::graph
         delete world;
     }
 
-    void Renderer::SetCurWorld(SceneWorld *sw)
+    void Renderer::SetCurWorld(Scene *sw)
     {
         if(world==sw)
             return;

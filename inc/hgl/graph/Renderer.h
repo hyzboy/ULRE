@@ -5,7 +5,7 @@
 
 namespace hgl::graph
 {
-    class SceneWorld;
+    class Scene;
 
     using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
 
@@ -15,7 +15,7 @@ namespace hgl::graph
     class Renderer
     {
         IRenderTarget *render_target;
-        SceneWorld *world;
+        Scene *world;
 
         Camera *camera;
 
@@ -30,7 +30,7 @@ namespace hgl::graph
 
     public:
 
-        SceneWorld *GetSceneWorld   () const { return world; }                  ///<获取场景世界
+        Scene *GetScene   () const { return world; }                  ///<获取场景世界
         Camera *    GetCurCamera    () const { return camera; }                 ///<获取当前相机
 
     public:
@@ -38,7 +38,7 @@ namespace hgl::graph
         Renderer(IRenderTarget *);
         virtual ~Renderer();
 
-        void SetCurWorld(SceneWorld *);
+        void SetCurWorld(Scene *);
         void SetCurCamera(Camera *);
 
         bool RenderFrame(RenderCmdBuffer *);

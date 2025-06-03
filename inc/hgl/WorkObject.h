@@ -26,18 +26,15 @@ namespace hgl
         graph::RenderPass *render_pass=nullptr;
 
         bool destroy_flag=false;
+        bool render_dirty=true;
 
     protected:
 
+        //以下数据均取自RenderFramework
+
         graph::RenderResource *db=nullptr;                  //暂时的，未来会被更好的机制替代
 
-        /**
-        * 不管我们的游戏多么的复杂，一般在一个WorkObject中，都只需要一个SceneWorld以及一个Renderer即可。
-        * 如果我们整体切换World，那么建议直接切换到新的WorkObject上。
-        */
-
-        graph::SceneWorld * world   =nullptr;               //世界
-
+        graph::Scene *      scene=nullptr;                  //场景
         graph::Renderer *   renderer=nullptr;               //渲染器
 
     public:
@@ -53,6 +50,9 @@ namespace hgl
 
         const   bool IsDestroy  ()const{return destroy_flag;}
                 void MarkDestory(){destroy_flag=true;}
+
+        const   bool IsRenderDirty  ()const{return render_dirty;}
+                void MarkRenderDirty(){render_dirty=true;}
 
     public:
 

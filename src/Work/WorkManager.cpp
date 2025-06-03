@@ -75,7 +75,7 @@ namespace hgl
             if(cur_work_object->IsTickable())
                 Tick(cur_work_object);
 
-            if(win->IsVisible()&&cur_work_object->IsRenderable())
+            if(win->IsVisible())//&&cur_work_object->IsRenderable())
             {
                 Render(cur_work_object);
                 dev->WaitIdle();
