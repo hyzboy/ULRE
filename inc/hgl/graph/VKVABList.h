@@ -38,16 +38,31 @@ public:
         return write_count>=vab_count;
     }
 
-    void Add(const VkBuffer buf,const VkDeviceSize offset)
+    bool Add(const VkBuffer buf,const VkDeviceSize offset)
     {
+        if(IsFull())
+        {
+            //如果在这里出现错误，一般是材质的VertexInput与实现要使用的不匹配。很多时候是由于引擎自动添加的VertexInput但材质里没有。
+            //比较典型的情况是创建材质时设置了不需要L2W,但实际又进行了传递
+            return(false); //列表已满
+        }
+
         vab_list[write_count]=buf;
         vab_offset[write_count]=offset;
 
         ++write_count;
+
+        return(true);
     }
 
-    void Add(const VkBuffer *buf,const VkDeviceSize *offset,const uint32_t count)
+    bool Add(const VkBuffer *buf,const VkDeviceSize *offset,const uint32_t count)
     {
+        if(!buf||!offset||!count)
+            return(false);
+
+        if(write_count+count>vab_count)
+            return(false); //列表已满
+
         hgl_cpy(vab_list  +write_count,buf,   count);
 
         if(offset)
@@ -56,6 +71,7 @@ public:
         hgl_set<VkDeviceSize>(vab_offset+write_count,VkDeviceSize(0),count);
 
         write_count+=count;
+        return(true);
     }
 };//class VABList
 VK_NAMESPACE_END

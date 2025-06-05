@@ -346,13 +346,21 @@ bool MaterialRenderList::BindVAB(const MeshDataBuffer *pdb,const uint ri_index)
 
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
-        vab_list->Add(pdb->vab_list,
-                      pdb->vab_offset,
-                      pdb->vab_count);
+        if(!vab_list->Add(pdb->vab_list,pdb->vab_offset,pdb->vab_count))
+        {
+            //这个情况很严重哦！
+            return(false);
+        }
     }
 
-    if(assign_buffer) //L2W/MI分发组
-        vab_list->Add(assign_buffer->GetVAB(),0);//ASSIGN_VAB_STRIDE_BYTES*ri_index);
+    if (assign_buffer) //L2W/MI分发组
+    {
+        if(!vab_list->Add(assign_buffer->GetVAB(),0))//ASSIGN_VAB_STRIDE_BYTES*ri_index);
+        {
+            //一般出现这个情况是因为材质中没有配置需要L2W
+            return(false);
+        }
+    }
 
     //if(!vab_list.IsFull()) //Joint组，暂未支持
     //{
@@ -405,7 +413,7 @@ void MaterialRenderList::ProcIndirectRender()
     indirect_draw_count=0;
 }
 
-void MaterialRenderList::Render(RenderItem *ri)
+bool MaterialRenderList::Render(RenderItem *ri)
 {
     if(!last_data_buffer||*(ri->pdb)!=*last_data_buffer)        //换buf了
     {
@@ -415,7 +423,11 @@ void MaterialRenderList::Render(RenderItem *ri)
         last_data_buffer=ri->pdb;
         last_render_data=nullptr;
 
-        BindVAB(ri->pdb,ri->first_instance);
+        if(!BindVAB(ri->pdb,ri->first_instance))
+        {
+            //这个问题很严重哦
+            return(false);
+        }
 
         if(ri->pdb->ibo)
             cmd_buf->BindIBO(ri->pdb->ibo);
@@ -432,6 +444,8 @@ void MaterialRenderList::Render(RenderItem *ri)
     {
         cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first_instance);
     }
+
+    return(true);
 }
 
 void MaterialRenderList::Render(RenderCmdBuffer *rcb)
