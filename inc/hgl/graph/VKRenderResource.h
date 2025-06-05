@@ -54,7 +54,7 @@ class RenderResource
     IDObjectManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
     IDObjectManage<BufferID,               DeviceBuffer>       rm_buffers;                 ///<顶点缓冲区合集
     IDObjectManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
-    IDObjectManage<RenderableID,           Mesh>         rm_renderables;             ///<渲染实例集合集
+    IDObjectManage<RenderableID,           Mesh>               rm_renderables;             ///<渲染实例集合集
 
 private:
 
@@ -77,16 +77,9 @@ public:
 
     VulkanDevice *GetDevice(){return device;}
 
-    //注：并非一定要走这里，这里只是提供一个注册和自动绑定的机制
-    DescriptorBinding static_descriptor;                                                    ///<静态属性描述符绑定管理
-    DescriptorBinding global_descriptor;                                                    ///<全局属性描述符绑定管理
-
 public:
 
-    RenderResource(VulkanDevice *dev):device(dev),
-        static_descriptor(DescriptorSetType::Static),
-        global_descriptor(DescriptorSetType::Global)
-    {}
+    RenderResource(VulkanDevice *dev):device(dev){}
     virtual ~RenderResource()=default;
 
 public: //添加数据到管理器（如果指针为nullptr会返回-1）
@@ -97,7 +90,7 @@ public: //添加数据到管理器（如果指针为nullptr会返回-1）
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
     BufferID                Add(DeviceBuffer *      buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
-    RenderableID            Add(Mesh *        r   ){return rm_renderables.Add(r);}
+    RenderableID            Add(Mesh *              r   ){return rm_renderables.Add(r);}
 
 public: // VAB/VAO
 
