@@ -172,9 +172,6 @@ Material *RenderResource::CreateMaterial(const AnsiString &mtl_name,const mtl::M
 
     Add(mtl);
 
-    static_descriptor.Bind(mtl);
-    global_descriptor.Bind(mtl);
-
     material_by_name.Add(mtl_name,mtl);
     return mtl.Finish();
 }
