@@ -41,8 +41,6 @@ namespace hgl::graph
         bool Set(IRenderTarget *rt);
         void Set(Camera *c){camera=c;}
 
-        void Restart();                             ///<复位数据，清空渲染列表
-
         bool RebuildRenderList(SceneNode *);
 
         bool IsEmpty()const;                        ///<是否是空的，不可渲染或是没啥可渲染的
