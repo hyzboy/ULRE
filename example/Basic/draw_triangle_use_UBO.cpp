@@ -35,8 +35,6 @@ class TestApp:public WorkObject
 {
 private:
 
-    Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
-
     MaterialInstance *  material_instance   =nullptr;
     Mesh *              render_obj          =nullptr;
 
@@ -48,7 +46,7 @@ private:
     {
         mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,
                                         CoordinateSystem2D::Ortho,
-                                        mtl::WithLocalToWorld::Without);
+                                        mtl::WithLocalToWorld::With);
 
         VILConfig vil_config;
 
@@ -73,7 +71,7 @@ private:
    
     bool InitVBO()
     {
-        const auto ext=GetExtent2D();
+        const auto ext=GetExtent();
 
         for(uint i=0;i<VERTEX_COUNT;i++)
         {
@@ -86,6 +84,11 @@ private:
                                         {VAN::Position,POSITION_DATA_FORMAT,position_data},
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
                                     });
+
+        SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
+
+        scene_root->Add(new SceneNode(render_obj));
+
         return(render_obj);
     }
 
@@ -102,15 +105,6 @@ public:
             return(false);
 
         return(true);
-    }
-
-    void Render(double delta_time,graph::RenderCmdBuffer *cmd)override
-    {
-        cmd->SetClearColor(0,clear_color);
-
-        cmd->BeginRenderPass();
-            cmd->Render(render_obj);
-        cmd->EndRenderPass();
     }
 };//class TestApp:public WorkObject
 
