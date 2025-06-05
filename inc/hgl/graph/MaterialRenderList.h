@@ -102,7 +102,7 @@ protected:
     bool BindVAB(const MeshDataBuffer *,const uint);
 
     void ProcIndirectRender();
-    void Render(RenderItem *);
+    bool Render(RenderItem *);
 
 public:
 

@@ -42,14 +42,6 @@ namespace hgl::graph
         return(true);
     }
 
-    void RenderTask::Restart()
-    {
-        if(!render_list)
-            return;
-
-        render_list->Clear();
-    }
-
     bool RenderTask::RebuildRenderList(SceneNode *root)
     {
         if(!root)
@@ -58,7 +50,8 @@ namespace hgl::graph
         if(!render_list)
             return(false);
 
-        render_list->Clear();
+        //记往不需要也千万不要手动render_list->Clear，因为那会完全释放掉所有数据
+        //render_list->Expend会自己复位所有数据，但并不释放内存
         render_list->Expend(root);
 
         return(true);
