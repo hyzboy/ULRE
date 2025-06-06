@@ -49,7 +49,7 @@ namespace hgl::graph
 
         void SetClearColor(const Color4f &c){clear_color=c;}
 
-        bool RenderFrame();                                                                ///<重新重成这一帧的CommandList
+        bool RenderFrame();                                                                 ///<重新重成这一帧的CommandList
         bool Submit();                                                                      ///<提交CommandList到GPU
     };//class Renderer
 }//namespace hgl::graph
