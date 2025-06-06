@@ -11,6 +11,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/Camera.h>
+#include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/log/Logger.h>
 #include<hgl/Time.h>
@@ -52,6 +53,7 @@ RenderFramework::RenderFramework(const OSString &an)
 RenderFramework::~RenderFramework()
 {
     SAFE_CLEAR(default_renderer)
+    SAFE_CLEAR(default_camera_control)
     SAFE_CLEAR(default_camera)
     SAFE_CLEAR(default_scene)
     SAFE_CLEAR(render_resource)
@@ -135,13 +137,21 @@ bool RenderFramework::Init(uint w,uint h)
 
 void RenderFramework::CreateDefaultRenderer()
 {
-
-
     SAFE_CLEAR(default_renderer)
 
-    default_renderer=new Renderer(GetSwapchainRenderTarget());
-    default_renderer->SetCurScene(default_scene);
-    default_renderer->SetCurCamera(default_camera);
+    IRenderTarget *rt=GetSwapchainRenderTarget();
+
+    default_renderer=new Renderer(rt);
+    default_renderer->SetScene(default_scene);
+
+    if(!default_camera_control)
+    {
+        auto ubo_camera_info=device->CreateUBO<UBOCameraInfo>();
+
+        default_camera_control=new FirstPersonCameraControl(rt->GetViewportInfo(),default_camera,ubo_camera_info);
+    }
+
+    default_renderer->SetCameraControl(default_camera_control);
 }
 
 void RenderFramework::OnResize(uint w,uint h)

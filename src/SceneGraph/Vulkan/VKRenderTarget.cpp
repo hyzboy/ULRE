@@ -15,7 +15,7 @@ IRenderTarget::IRenderTarget(RenderFramework *rf,const VkExtent2D &ext):desc_bin
 
     ubo_vp_info=GetDevice()->CreateUBO<UBOViewportInfo>();
 
-    desc_binding.AddUBO(mtl::SBS_ViewportInfo.name,*ubo_vp_info);
+    desc_binding.AddUBO(mtl::SBS_ViewportInfo.name,ubo_vp_info);
 
     OnResize(ext);
 }

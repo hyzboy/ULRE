@@ -6,6 +6,7 @@
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/RenderList.h>
+#include<hgl/graph/CameraControl.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -52,9 +53,10 @@ protected:
 
 protected:  //RenderContext,未来合并成一个RenderContext结构
 
-    Scene *                 default_scene   =nullptr;
-    Camera *                default_camera  =nullptr;
-    Renderer *              default_renderer=nullptr;
+    Scene *                 default_scene           =nullptr;
+    Camera *                default_camera          =nullptr;
+    CameraControl *         default_camera_control  =nullptr;
+    Renderer *              default_renderer        =nullptr;
 
     void CreateDefaultRenderer();
 
@@ -83,6 +85,7 @@ public:
 
     Scene *                 GetDefaultScene         (){return default_scene;}
     Camera *                GetDefaultCamera        (){return default_camera;}
+    CameraControl *         GetDefaultCameraControl (){return default_camera_control;}
     Renderer *              GetDefaultRenderer      (){return default_renderer;}
 
 public:

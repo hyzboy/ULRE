@@ -12,6 +12,7 @@
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
+#include<hgl/graph/FirstPersonCameraControl.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -31,10 +32,6 @@ class TestApp:public WorkObject
     Color4f color;
 
 private:
-
-    AutoDelete<RenderList>  render_list     =nullptr;
-
-    SceneNode           render_root;
 
     Material *          mtl_plane_grid      =nullptr;
     MaterialInstance *  mi_plane_grid       =nullptr;
@@ -115,7 +112,7 @@ private:
         return(true);
     }
 
-    Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
+    SceneNode *CreateSceneNode(Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
         Mesh *ri=db->CreateMesh(r,mi,p);
 
@@ -125,9 +122,7 @@ private:
             return(nullptr);
         }
 
-        render_root.Add(new SceneNode(ri));
-
-        return ri;
+        return(new SceneNode(ri));
     }
 
     bool CreateRenderObject()
@@ -167,16 +162,24 @@ private:
 
     bool InitScene()
     {
-        Add(prim_plane_grid,mi_plane_grid,pipeline_plane_grid);
+        SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
+        Camera *cur_camera=GetCamera();             //取得缺省相机
 
-        render_root.Add(new SceneNode(ro_billboard));
+        scene_root->Add(CreateSceneNode(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
 
-        camera->pos=Vector3f(32,32,32);
-        camera_control->SetTarget(Vector3f(0,0,0));
-        camera_control->Refresh();
+        scene_root->Add(new SceneNode(ro_billboard));
 
-        render_root.RefreshMatrix();
-        render_list->Expend(&render_root);
+        cur_camera->pos=Vector3f(32,32,32);
+
+        CameraControl *camera_control=GetCameraControl();
+
+        if(camera_control
+         &&camera_control->GetControlName()==FirstPersonCameraControl::StaticControlName())
+        {
+            FirstPersonCameraControl *fp_cam_ctl=(FirstPersonCameraControl *)camera_control;
+
+            fp_cam_ctl->SetTarget(Vector3f(0,0,0));
+        }
 
         return(true);
     }

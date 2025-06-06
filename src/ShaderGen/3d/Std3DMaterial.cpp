@@ -25,7 +25,7 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
         mci->AddStruct(SBS_CameraInfo);
 
         mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
-                    DescriptorSetType::Global,
+                    DescriptorSetType::Camera,
                     SBS_CameraInfo);
     }
 

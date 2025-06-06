@@ -43,6 +43,12 @@ public:
         return ubo_map.Add(name,buf);
     }
 
+    template<typename T>
+    bool AddUBO(const AnsiString &name,DeviceBufferMap<T> *dbm)
+    {
+        return AddUBO(name,dbm->GetDeviceBuffer());
+    }
+
     DeviceBuffer *GetUBO(const AnsiString &name)
     {
         if(name.IsEmpty())return(nullptr);
@@ -63,6 +69,12 @@ public:
         if(name.IsEmpty())return(false);
 
         return ssbo_map.Add(name,buf);
+    }
+
+    template<typename T>
+    bool AddSSBO(const AnsiString &name,DeviceBufferMap<T> *dbm)
+    {
+        return AddSSBO(name,dbm->GetDeviceBuffer());
     }
 
     DeviceBuffer *GetSSBO(const AnsiString &name)

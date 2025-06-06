@@ -10,8 +10,8 @@ namespace hgl::graph
     {
         render_target=rt;
         scene=nullptr;
-        camera=nullptr;
-        ubo_camera_info=rt->GetDevice()->CreateUBO<UBOCameraInfo>();
+        camera_control=nullptr;
+
         render_task=new RenderTask("DefaultRenderTask",rt);
 
         clear_color.Set(0,0,0,1);
@@ -19,7 +19,6 @@ namespace hgl::graph
 
     Renderer::~Renderer()
     {
-        delete ubo_camera_info;
         delete render_task;
     }
 
@@ -40,12 +39,11 @@ namespace hgl::graph
         render_target=rt;
 
         render_task->SetRenderTarget(rt);
-        render_task->SetCamera(camera);
 
         return(true);
     }
 
-    void Renderer::SetCurScene(Scene *sw)
+    void Renderer::SetScene(Scene *sw)
     {
         if(scene==sw)
             return;
@@ -63,9 +61,9 @@ namespace hgl::graph
         //}
     }
 
-    void Renderer::SetCurCamera(Camera *c)
+    void Renderer::SetCameraControl(CameraControl *cc)
     {
-        if(!scene||!c)
+        if(!scene||!cc)
             return;
 
         //if(camera)
@@ -76,7 +74,7 @@ namespace hgl::graph
         //    camera->Unjoin(this);
         //}
 
-        camera=c;
+        camera_control=cc;
 
         //if(camera)
         //{
@@ -86,7 +84,7 @@ namespace hgl::graph
         //    camera->Join(this);
         //}
 
-        render_task->SetCamera(camera);   //它要camera只是为了CPU端算远近
+        render_task->SetCameraInfo(camera_control->GetCameraInfo());
     }
 
     bool Renderer::RenderFrame()
@@ -101,16 +99,24 @@ namespace hgl::graph
 
         root->RefreshMatrix();
 
-        if(camera)
+        if(camera_control)
         {
-            RefreshCameraInfo(ubo_camera_info->data(),render_target->GetViewportInfo(),camera);
+            camera_control->SetViewport(render_target->GetViewportInfo());
+
+            camera_control->Refresh();
         }
 
+        // 这里内部会将Scene tree展开成RenderList,而RenderList排序是需要CameraInfo的
         render_task->RebuildRenderList(root);
 
         bool result=false;
 
         graph::RenderCmdBuffer *cmd=render_target->BeginRender();
+
+        if(camera_control)
+        {
+            cmd->SetDescriptorBinding(camera_control->GetDescriptorBinding());
+        }
 
         cmd->SetClearColor(0,clear_color);
 
