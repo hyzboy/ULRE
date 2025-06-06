@@ -1,6 +1,8 @@
 #include<hgl/graph/Renderer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/VKCommandBuffer.h>
+#include<hgl/graph/VKDevice.h>
+#include<hgl/graph/Camera.h>
 
 namespace hgl::graph
 {
@@ -9,6 +11,7 @@ namespace hgl::graph
         render_target=rt;
         scene=nullptr;
         camera=nullptr;
+        ubo_camera_info=rt->GetDevice()->CreateUBO<UBOCameraInfo>();
         render_task=new RenderTask("DefaultRenderTask",rt);
 
         clear_color.Set(0,0,0,1);
@@ -16,17 +19,30 @@ namespace hgl::graph
 
     Renderer::~Renderer()
     {
+        delete ubo_camera_info;
         delete render_task;
     }
 
-    void Renderer::SetRenderTarget(IRenderTarget *rt)
+    bool Renderer::SetRenderTarget(IRenderTarget *rt)
     {
         if(render_target==rt)
-            return;
+            return(true);
+
+        if(render_target)
+        {
+            if(render_target->GetDevice()!=rt->GetDevice())
+            {
+                //换Device是不允许的，当然这一般也不可能
+                return(false);
+            }
+        }
 
         render_target=rt;
 
-        render_task->Set(rt);
+        render_task->SetRenderTarget(rt);
+        render_task->SetCamera(camera);
+
+        return(true);
     }
 
     void Renderer::SetCurScene(Scene *sw)
@@ -69,6 +85,8 @@ namespace hgl::graph
 
         //    camera->Join(this);
         //}
+
+        render_task->SetCamera(camera);   //它要camera只是为了CPU端算远近
     }
 
     bool Renderer::RenderFrame()
@@ -82,6 +100,11 @@ namespace hgl::graph
             return(false);
 
         root->RefreshMatrix();
+
+        if(camera)
+        {
+            RefreshCameraInfo(ubo_camera_info->data(),render_target->GetViewportInfo(),camera);
+        }
 
         render_task->RebuildRenderList(root);
 

@@ -53,6 +53,7 @@ protected:
 protected:
 
     Scene *                 default_scene   =nullptr;
+    Camera *                default_camera  =nullptr;
     Renderer *              default_renderer=nullptr;
 
     void CreateDefaultRenderer();
@@ -81,6 +82,7 @@ public:
 public:
 
     Scene *                 GetDefaultScene         (){return default_scene;}
+    Camera *                GetDefaultCamera        (){return default_camera;}
     Renderer *              GetDefaultRenderer      (){return default_renderer;}
 
 public:

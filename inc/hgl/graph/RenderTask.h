@@ -5,12 +5,6 @@
 
 namespace hgl::graph
 {
-    class SceneNode;
-    class Scene;
-    class Camera;
-    class IRenderTarget;
-    class RenderList;
-
     HGL_DEFINE_IDNAME(RenderTaskName,char)
 
     /**
@@ -38,8 +32,8 @@ namespace hgl::graph
 
         virtual ~RenderTask();
 
-        bool Set(IRenderTarget *rt);
-        void Set(Camera *c){camera=c;}
+        bool SetRenderTarget(IRenderTarget *rt);
+        void SetCamera(Camera *c){camera=c;}
 
         bool RebuildRenderList(SceneNode *);
 
