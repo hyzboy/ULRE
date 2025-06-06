@@ -63,6 +63,12 @@ class RenderCmdBuffer:public VulkanCmdBuffer
     RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
+    /*
+    * 绝大部分desc绑定会全部使用这些自动绑定器绑定
+    * 该数据在渲染前分别会有各自的模块设置进来
+    * 比如DescriptSetType::RenderTarget即该由RenderTarget模块设置
+    * ::Scene的自然由Scene模块设置
+    */
     DescriptorBindingArray desc_binding{};
 
 private:
