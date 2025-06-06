@@ -50,8 +50,9 @@ public:
 };//class VulkanCmdBuffer
 
 class DescriptorBinding;
+
 using DescriptorBindingPtr=DescriptorBinding *;
-using DescriptorBindingArray=DescriptorBindingPtr[size_t(DescriptorSetType::RANGE_SIZE)];
+using DescriptorBindingPtrArray=DescriptorBindingPtr[size_t(DescriptorSetType::RANGE_SIZE)];
 
 class RenderCmdBuffer:public VulkanCmdBuffer
 {
@@ -66,10 +67,11 @@ class RenderCmdBuffer:public VulkanCmdBuffer
     /*
     * 绝大部分desc绑定会全部使用这些自动绑定器绑定
     * 该数据在渲染前分别会有各自的模块设置进来
-    * 比如DescriptSetType::RenderTarget即该由RenderTarget模块设置
-    * ::Scene的自然由Scene模块设置
+    * 比如
+    *    DescriptSetType::RenderTarget  即该由RenderTarget模块设置
+    *    DescriptSetType::Scene         的自然由Scene模块设置
     */
-    DescriptorBindingArray desc_binding{};
+    DescriptorBindingPtrArray desc_binding{};
 
 private:
 

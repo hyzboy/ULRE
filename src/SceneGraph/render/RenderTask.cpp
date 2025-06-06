@@ -50,8 +50,8 @@ namespace hgl::graph
         if(!render_list)
             return(false);
 
-        //记往不需要也千万不要手动render_list->Clear，因为那会完全释放掉所有数据
-        //render_list->Expend会自己复位所有数据，但并不释放内存
+        //记往不需要，也千万不要手动render_list->Clear，因为那会释放内存。再次使用时重新分配
+        //render_list->Expend会自己复位所有数据，且并不会释放内存
         render_list->Expend(root);
 
         return(true);
