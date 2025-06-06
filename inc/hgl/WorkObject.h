@@ -47,8 +47,8 @@ namespace hgl
 
         graph::Scene *              GetScene            (){return scene;}
         graph::SceneNode *          GetSceneRoot        (){return scene->GetRootNode();}
-
         graph::Renderer *           GetRenderer         (){return renderer;}
+        graph::Camera *             GetCamera           (){return renderer->GetCurCamera();}
 
     public:
 

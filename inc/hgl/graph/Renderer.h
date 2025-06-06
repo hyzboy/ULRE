@@ -10,6 +10,8 @@ namespace hgl::graph
 
     using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
 
+    using UBOCameraInfo=DeviceBufferMap<CameraInfo>;
+
     /**
     * 渲染器
     */
@@ -19,6 +21,8 @@ namespace hgl::graph
         Scene *scene;
 
         Camera *camera;
+
+        UBOCameraInfo *ubo_camera_info;
 
         //RenderTaskNameMap static_render_task_list;                              ///<静态渲染任务列表
         //RenderTaskNameMap dynamic_render_task_list;                             ///<动态渲染任务列表
@@ -43,7 +47,7 @@ namespace hgl::graph
         Renderer(IRenderTarget *);
         virtual ~Renderer();
 
-        void SetRenderTarget(IRenderTarget *);
+        bool SetRenderTarget(IRenderTarget *);
         void SetCurScene(Scene *);
         void SetCurCamera(Camera *);
 

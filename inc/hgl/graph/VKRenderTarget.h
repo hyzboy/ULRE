@@ -5,6 +5,7 @@
 #include<hgl/graph/VKFramebuffer.h>
 #include<hgl/graph/VKSwapchain.h>
 #include<hgl/graph/VKQueue.h>
+#include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKPipeline.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
@@ -72,10 +73,9 @@ public: // Command Buffer
 
 public:
 
-    virtual void                Bind                (Material *mtl)
+    virtual const ViewportInfo *GetViewportInfo     ()const
     {
-        if(mtl)
-            desc_binding.Bind(mtl);
+        return ubo_vp_info->data();
     }
 };//class IRenderTarget
 

@@ -10,6 +10,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/Scene.h>
+#include<hgl/graph/Camera.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/log/Logger.h>
 #include<hgl/Time.h>
@@ -51,6 +52,7 @@ RenderFramework::RenderFramework(const OSString &an)
 RenderFramework::~RenderFramework()
 {
     SAFE_CLEAR(default_renderer)
+    SAFE_CLEAR(default_camera)
     SAFE_CLEAR(default_scene)
     SAFE_CLEAR(render_resource)
     SAFE_CLEAR(module_manager)
@@ -124,6 +126,8 @@ bool RenderFramework::Init(uint w,uint h)
 
     default_scene=new Scene;
 
+    default_camera=new Camera();
+
     CreateDefaultRenderer();
 
     return(true);
@@ -135,6 +139,7 @@ void RenderFramework::CreateDefaultRenderer()
 
     default_renderer=new Renderer(GetSwapchainRenderTarget());
     default_renderer->SetCurScene(default_scene);
+    default_renderer->SetCurCamera(default_camera);
 }
 
 void RenderFramework::OnResize(uint w,uint h)

@@ -13,7 +13,7 @@ namespace hgl::graph
         render_target=nullptr;
         render_list=nullptr;
 
-        Set(rt);
+        SetRenderTarget(rt);
     }
 
     RenderTask::~RenderTask()
@@ -21,7 +21,7 @@ namespace hgl::graph
         SAFE_CLEAR(render_list)
     }
 
-    bool RenderTask::Set(IRenderTarget *rt)
+    bool RenderTask::SetRenderTarget(IRenderTarget *rt)
     {
         if(render_target)
         {

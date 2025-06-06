@@ -136,6 +136,15 @@ class RenderResource;
 
 class StaticMesh;
 
+class SceneNode;
+class Scene;
+class RenderList;
+
+struct CameraInfo;
+struct Camera;
+
+class Renderer;
+
 enum class SharingMode
 {
     Exclusive = 0,
