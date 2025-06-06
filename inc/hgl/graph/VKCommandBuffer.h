@@ -50,6 +50,8 @@ public:
 };//class VulkanCmdBuffer
 
 class DescriptorBinding;
+using DescriptorBindingPtr=DescriptorBinding *;
+using DescriptorBindingArray=DescriptorBindingPtr[size_t(DescriptorSetType::RANGE_SIZE)];
 
 class RenderCmdBuffer:public VulkanCmdBuffer
 {
@@ -61,7 +63,7 @@ class RenderCmdBuffer:public VulkanCmdBuffer
     RenderPassBeginInfo rp_begin;
     VkPipelineLayout pipeline_layout;
 
-    DescriptorBinding *desc_binding=nullptr;
+    DescriptorBindingArray desc_binding{};
 
 private:
 
@@ -72,11 +74,11 @@ public:
     RenderCmdBuffer(const VulkanDevAttr *attr,VkCommandBuffer cb);
     ~RenderCmdBuffer();
 
-    void SetDescriptorBinding(DescriptorBinding *db) { desc_binding=db; }
+    bool SetDescriptorBinding(DescriptorBinding *);
 
     bool End() override
     {
-        desc_binding=nullptr;
+        hgl_zero(desc_binding);
 
         return VulkanCmdBuffer::End();
     }
