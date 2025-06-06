@@ -36,9 +36,9 @@ void *Material::GetMIData(int id)
     return mi_data_manager->GetData(id);
 }
  
-void MaterialInstance::WriteMIData(const void *data,const int size)
+void MaterialInstance::WriteMIData(const void *data,const uint32 size)
 {
-    if(!data||size<=0||size>material->GetMIDataBytes())return;
+    if(!data||!size||size>material->GetMIDataBytes())return;
 
     void *tp=GetMIData();
 
