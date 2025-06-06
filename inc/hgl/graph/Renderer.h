@@ -2,15 +2,15 @@
 
 #include<hgl/graph/RenderTask.h>
 #include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/CameraControl.h>
 #include<hgl/type/Map.h>
 
 namespace hgl::graph
 {
     class Scene;
+    class CameraControl;
 
     using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
-
-    using UBOCameraInfo=DeviceBufferMap<CameraInfo>;
 
     /**
     * 渲染器
@@ -20,9 +20,7 @@ namespace hgl::graph
         IRenderTarget *render_target;
         Scene *scene;
 
-        Camera *camera;
-
-        UBOCameraInfo *ubo_camera_info;
+        CameraControl *camera_control;
 
         //RenderTaskNameMap static_render_task_list;                              ///<静态渲染任务列表
         //RenderTaskNameMap dynamic_render_task_list;                             ///<动态渲染任务列表
@@ -40,7 +38,7 @@ namespace hgl::graph
         const   VkExtent2D &GetExtent       ()const{return render_target->GetExtent();}     ///<取得当前渲染器画面尺寸
 
                 Scene *     GetScene        ()const{return scene;}                          ///<获取场景世界
-                Camera *    GetCurCamera    ()const{return camera;}                         ///<获取当前相机
+                Camera *    GetCamera       ()const{return camera_control->GetCamera();}                         ///<获取当前相机
 
     public:
 
@@ -48,8 +46,8 @@ namespace hgl::graph
         virtual ~Renderer();
 
         bool SetRenderTarget(IRenderTarget *);
-        void SetCurScene(Scene *);
-        void SetCurCamera(Camera *);
+        void SetScene(Scene *);
+        void SetCameraControl(CameraControl *);
 
         void SetClearColor(const Color4f &c){clear_color=c;}
 

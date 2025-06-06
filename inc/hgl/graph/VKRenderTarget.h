@@ -73,7 +73,7 @@ public: // Command Buffer
 
 public:
 
-    virtual const ViewportInfo *GetViewportInfo     ()const
+    virtual ViewportInfo *      GetViewportInfo     ()
     {
         return ubo_vp_info->data();
     }

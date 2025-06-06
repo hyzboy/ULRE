@@ -16,7 +16,7 @@ namespace hgl::graph
 
         IRenderTarget * render_target;
         RenderList *    render_list;
-        Camera *        camera;
+        CameraInfo *    camera_info;
 
     public:
 
@@ -24,16 +24,16 @@ namespace hgl::graph
 
                 IRenderTarget * GetRenderTarget ()const{return render_target;}
                 RenderList *    GetRenderList   ()const{return render_list;}
-                Camera *        GetCamera       ()const{return camera;}
+                CameraInfo *    GetCameraInfo   ()const{return camera_info;}
 
     public:
 
-        RenderTask(const RenderTaskName &tn,IRenderTarget *rt=nullptr,Camera *c=nullptr);
+        RenderTask(const RenderTaskName &tn,IRenderTarget *rt=nullptr,CameraInfo *ci=nullptr);
 
         virtual ~RenderTask();
 
-        bool SetRenderTarget(IRenderTarget *rt);
-        void SetCamera(Camera *c){camera=c;}
+        bool SetRenderTarget(IRenderTarget *);
+        void SetCameraInfo(CameraInfo *);
 
         bool RebuildRenderList(SceneNode *);
 

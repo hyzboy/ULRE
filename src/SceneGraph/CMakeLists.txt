@@ -67,13 +67,14 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
 source_group("Framework\\Module" FILES ${GRAPH_MODULE_FILES})
 
 SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
-                            RenderFramework.cpp)
+                            RenderFramework.cpp
+                            CameraControl.cpp)
 
 source_group("Framework" FILES ${GRAPH_FRAMEWORK_FILES})
 
 SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/Scene.h
                     ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
-                    ${SG_INCLUDE_PATH}/SceneNode.h                    
+                    ${SG_INCLUDE_PATH}/SceneNode.h
                     ${SG_INCLUDE_PATH}/SceneMatrix.h
                     ${SG_INCLUDE_PATH}/SceneOrient.h
                     Scene/SceneNode.cpp

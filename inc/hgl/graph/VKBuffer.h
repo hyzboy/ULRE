@@ -75,7 +75,7 @@ public:
         delete dev_buf;
     }
 
-    operator DeviceBuffer *(){return dev_buf;}
+    DeviceBuffer *GetDeviceBuffer(){return dev_buf;}
 
     T *data(){return &data_map;}
 
@@ -84,6 +84,6 @@ public:
         if(dev_buf)
             dev_buf->Write(&data_map,sizeof(T));
     }
-};
+};//template<typename T> class DeviceBufferMap
 
 VK_NAMESPACE_END

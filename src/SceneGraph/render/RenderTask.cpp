@@ -5,11 +5,11 @@
 
 namespace hgl::graph
 {
-    RenderTask::RenderTask(const RenderTaskName &tn,IRenderTarget *rt,Camera *c)
+    RenderTask::RenderTask(const RenderTaskName &tn,IRenderTarget *rt,CameraInfo *ci)
     {
         task_name=tn;
 
-        camera=c;
+        camera_info=ci;
         render_target=nullptr;
         render_list=nullptr;
 
@@ -37,9 +37,21 @@ namespace hgl::graph
         if(!render_list)
         {
             render_list=new RenderList(rt->GetDevice());
+
+            if(camera_info)
+                render_list->SetCameraInfo(camera_info);
         }
 
         return(true);
+    }
+
+    void RenderTask::SetCameraInfo(CameraInfo *ci)
+    {
+        if(camera_info==ci)return;
+
+        camera_info=ci;
+
+        render_list->SetCameraInfo(ci);
     }
 
     bool RenderTask::RebuildRenderList(SceneNode *root)
@@ -49,6 +61,9 @@ namespace hgl::graph
 
         if(!render_list)
             return(false);
+
+        if(!render_list->GetCameraInfo()&&camera_info)
+            render_list->SetCameraInfo(camera_info);
 
         //记往不需要，也千万不要手动render_list->Clear，因为那会释放内存。再次使用时重新分配
         //render_list->Expend会自己复位所有数据，且并不会释放内存

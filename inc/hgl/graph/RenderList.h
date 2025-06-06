@@ -31,10 +31,14 @@ namespace hgl
 
         public:
 
+            const CameraInfo *GetCameraInfo()const{return camera_info;}
+
+        public:
+
             RenderList(VulkanDevice *);
             virtual ~RenderList()=default;
             
-            virtual void SetCamera(CameraInfo *ci){camera_info=ci;}                 ///<设置相机信息
+            virtual void SetCameraInfo(CameraInfo *ci){camera_info=ci;}             ///<设置相机信息
             virtual bool Expend(SceneNode *);                                       ///<展开场景树到渲染列表
 
                     bool IsEmpty()const{return !renderable_count;}                  ///<是否是空的
