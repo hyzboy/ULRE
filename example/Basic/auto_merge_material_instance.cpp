@@ -25,20 +25,12 @@ constexpr double TRI_ROTATE_ANGLE=360.0f/DRAW_OBJECT_COUNT;
 
 class TestApp:public WorkObject
 {
-    Color4f             clear_color         =Color4f(0.2f,0.2f,0.2f,1.0f);
-
-private:
-
-    AutoDelete<RenderList>  render_list     =nullptr;
-
-    SceneNode           render_root;
-
     Material *          material            =nullptr;
 
     struct
     {
         MaterialInstance *  mi;
-        Mesh *        mesh;
+        Mesh *              mesh;
     }render_obj[DRAW_OBJECT_COUNT]{};
 
     Pipeline *          pipeline            =nullptr;
@@ -89,6 +81,8 @@ private:
         db->Add(prim);
 
         Matrix4f mat;
+
+        SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
@@ -99,12 +93,8 @@ private:
 
             mat=rotate(deg2rad<double>(TRI_ROTATE_ANGLE*i),AxisVector::Z);
 
-            render_root.Add(new SceneNode(mat,render_obj[i].mesh));
+            scene_root->Add(new SceneNode(mat,render_obj[i].mesh));
         }
-
-        render_root.RefreshMatrix();
-
-        render_list->Expend(&render_root);
 
         return(true);
     }
@@ -115,11 +105,6 @@ public:
 
     bool Init() override
     {
-        render_list=GetRenderFramework()->CreateRenderList();
-
-        if(!render_list)
-            return(false);
-
         if(!InitMaterial())
             return(false);
 
@@ -127,15 +112,6 @@ public:
             return(false);
 
         return(true);
-    }
-
-    void Render(double delta_time,graph::RenderCmdBuffer *cmd)override
-    {
-        cmd->SetClearColor(0,clear_color);
-
-        cmd->BeginRenderPass();
-        render_list->Render(cmd);
-        cmd->EndRenderPass();
     }
 };//class TestApp:public WorkObject
 
