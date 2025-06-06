@@ -26,6 +26,10 @@ class DescriptorBinding
 
 public:
 
+    const DescriptorSetType GetType()const{return set_type;}
+
+public:
+
     DescriptorBinding(const DescriptorSetType &dst)
     {
         set_type=dst;

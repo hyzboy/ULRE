@@ -25,6 +25,18 @@ RenderCmdBuffer::~RenderCmdBuffer()
         hgl_free(clear_values);
 }
 
+bool RenderCmdBuffer::SetDescriptorBinding(DescriptorBinding *db)
+{
+    if(!db)
+        return(false);
+
+    const int index=int(db->GetType())-int(DescriptorSetType::BEGIN_RANGE);
+
+    desc_binding[index]=db;
+
+    return(true);
+}
+
 void RenderCmdBuffer::SetClear()
 {
     if(cv_count>0)
@@ -91,8 +103,11 @@ bool RenderCmdBuffer::BindDescriptorSets(Material *mtl)
 {
     if(!mtl)return(false);
 
-    if(desc_binding)
-        desc_binding->Bind(mtl);
+    ENUM_CLASS_FOR(DescriptorSetType,int,i)
+    {
+        if(desc_binding[i])
+            desc_binding[i]->Bind(mtl);
+    }
 
     {
         uint32_t count=0;
