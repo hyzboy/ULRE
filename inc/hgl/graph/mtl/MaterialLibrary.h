@@ -7,7 +7,7 @@
 
 STD_MTL_NAMESPACE_BEGIN
 
-HGL_DEFINE_IDNAME(MaterialName,   char)
+HGL_DEFINE_ANSI_IDNAME(MaterialName)
 
 class MaterialFactory
 {

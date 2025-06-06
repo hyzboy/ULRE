@@ -9,7 +9,8 @@
 namespace hgl::graph
 {
     using SceneNodeID   =uint64;
-    using SceneNodeName =U16IDName;
+
+    HGL_DEFINE_U16_IDNAME(SceneNodeName)
 
     /**
     * 场景节点数据类<br>
