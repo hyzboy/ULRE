@@ -50,7 +50,7 @@ protected:
     CameraComponentManager *camera_component_manager=nullptr;
     LightComponentManager  *light_component_manager =nullptr;
 
-protected:
+protected:  //RenderContext,未来合并成一个RenderContext结构
 
     Scene *                 default_scene   =nullptr;
     Camera *                default_camera  =nullptr;

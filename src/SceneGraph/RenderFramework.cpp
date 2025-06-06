@@ -135,6 +135,8 @@ bool RenderFramework::Init(uint w,uint h)
 
 void RenderFramework::CreateDefaultRenderer()
 {
+
+
     SAFE_CLEAR(default_renderer)
 
     default_renderer=new Renderer(GetSwapchainRenderTarget());
