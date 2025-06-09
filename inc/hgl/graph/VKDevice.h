@@ -123,6 +123,18 @@ public: //Buffer相关
     {   \
         DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
         return(buf?new T(buf):nullptr);  \
+    } \
+\
+    template<typename T> T *Create##LargeName(const ShaderBufferDesc *desc)  \
+    {   \
+        DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
+        return(buf?new T(buf,desc):nullptr);  \
+    }   \
+\
+    template<typename T> T *Create##LargeName(const DescriptorSetType &set_type,const AnsiString &name)  \
+    {   \
+        DeviceBuffer *buf=Create##LargeName(T::GetSize());    \
+        return(buf?new T(buf,set_type,name):nullptr);  \
     }
 
     CREATE_BUFFER_OBJECT(UBO,UNIFORM)

@@ -2,7 +2,7 @@
 
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
-#include<hgl/graph/VK.h>
+#include<hgl/graph/VKBuffer.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -48,7 +48,22 @@ public:
         if(name.IsEmpty()||!dbm)
             return(false);
 
-        return AddUBO(name,dbm->GetDeviceBuffer());
+        return ubo_map.Add(name,dbm->GetDeviceBuffer());
+    }
+
+    template<typename T>
+    bool AddUBO(const UBOInstance<T> *ubo_instance)
+    {
+        if(!ubo_instance)
+            return(false);
+
+        if(ubo_instance->set_type()!=set_type)
+            return(false);
+
+        if(ubo_instance->name().IsEmpty())
+            return(false);
+
+        return ubo_map.Add(ubo_instance->name(),ubo_instance->ubo());
     }
 
     DeviceBuffer *GetUBO(const AnsiString &name)

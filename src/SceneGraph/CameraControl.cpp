@@ -13,7 +13,7 @@ namespace hgl::graph
         camera_info=ubo_camera_info->data();
 
         desc_binding_camera=new DescriptorBinding(DescriptorSetType::Camera);
-        desc_binding_camera->AddUBO(mtl::SBS_CameraInfo.name,ubo_camera_info);
+        desc_binding_camera->AddUBO(ubo_camera_info);
     }
 
     CameraControl::~CameraControl()
