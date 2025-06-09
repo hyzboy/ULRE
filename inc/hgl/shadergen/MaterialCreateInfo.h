@@ -81,11 +81,11 @@ namespace hgl::graph
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
 
             bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
-            bool AddStruct(const ShaderBufferSource &ss){return AddStruct(ss.struct_name,ss.codes);}
 
             bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
             bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
-            bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const ShaderBufferSource &ss){return AddUBO(flag_bits,set_type,ss.struct_name,ss.name);}
+
+            bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
             bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 

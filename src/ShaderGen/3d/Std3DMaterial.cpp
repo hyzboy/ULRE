@@ -13,20 +13,14 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     
     if(cfg->camera||cfg->local_to_world||cfg->material_instance)
     {
-        mci->AddStruct(SBS_LocalToWorld);
-
-        mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,DescriptorSetType::PerFrame,SBS_LocalToWorld);
+        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_LocalToWorld);
 
         vsc->AddAssign();
     }
 
     if(cfg->camera)
     {
-        mci->AddStruct(SBS_CameraInfo);
-
-        mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
-                    DescriptorSetType::Camera,
-                    SBS_CameraInfo);
+        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_CameraInfo);
     }
 
     if(cfg->local_to_world)
@@ -58,11 +52,7 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
         vsc->AddFunction(func::GetNormalVS);
     }
 
-    mci->AddStruct(SBS_ViewportInfo);
-
-    mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
-                DescriptorSetType::RenderTarget,
-                SBS_ViewportInfo);
+    mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_ViewportInfo);
 
     return(true);
 }
