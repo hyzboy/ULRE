@@ -2,6 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKMemory.h>
+#include<hgl/graph/mtl/ShaderBufferSource.h>
 
 VK_NAMESPACE_BEGIN
 struct DeviceBufferData
@@ -53,6 +54,8 @@ public:
 
 template<typename T> class DeviceBufferMap
 {
+protected:
+
     DeviceBuffer *dev_buf;
     T data_map;
 
@@ -85,5 +88,31 @@ public:
             dev_buf->Write(&data_map,sizeof(T));
     }
 };//template<typename T> class DeviceBufferMap
+
+template<typename T> class UBOInstance:public DeviceBufferMap<T>
+{
+    DescriptorSetType desc_set_type;
+    AnsiString ubo_name;
+
+public:
+
+    const DescriptorSetType &   set_type()const{return desc_set_type;}
+    const AnsiString &          name    ()const{return ubo_name;}
+    DeviceBuffer *              ubo     ()const{return this->dev_buf;}
+
+public:
+
+    UBOInstance(DeviceBuffer *buf,const DescriptorSetType dst,const AnsiString &n):DeviceBufferMap<T>(buf)
+    {
+        desc_set_type=dst;
+        ubo_name=n;
+    }
+
+    UBOInstance(DeviceBuffer *buf,const ShaderBufferDesc *desc):DeviceBufferMap<T>(buf)
+    {
+        desc_set_type=desc->set_type;
+        ubo_name=desc->name;
+    }
+};//template<typename T> class UBOInstance:public DeviceBufferMap<T>
 
 VK_NAMESPACE_END

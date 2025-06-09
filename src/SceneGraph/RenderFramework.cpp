@@ -13,6 +13,7 @@
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/graph/Renderer.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/log/Logger.h>
 #include<hgl/Time.h>
 
@@ -146,7 +147,7 @@ void RenderFramework::CreateDefaultRenderer()
 
     if(!default_camera_control)
     {
-        auto ubo_camera_info=device->CreateUBO<UBOCameraInfo>();
+        auto ubo_camera_info=device->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
 
         default_camera_control=new FirstPersonCameraControl(rt->GetViewportInfo(),default_camera,ubo_camera_info);
     }
