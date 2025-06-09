@@ -12,6 +12,7 @@ PrimitiveData::PrimitiveData(const VIL *_vil,const uint32_t vc)
     vil=_vil;
 
     vertex_count=vc;
+    index_count=0;
 
     vab_list=hgl_zero_new<VAB *>(_vil->GetVertexAttribCount());
     vab_map_list=new VABMap[_vil->GetVertexAttribCount()];
@@ -60,7 +61,7 @@ VAB *PrimitiveData::InitVAB(const int vab_index,const void *data)
         vab_list[vab_index]=CreateVAB(vab_index,vif->format,data);
 
         if(!vab_list[vab_index])
-            return(nullptr);        
+            return(nullptr);
     }
     else
     {
@@ -73,7 +74,7 @@ VAB *PrimitiveData::InitVAB(const int vab_index,const void *data)
 VABMap *PrimitiveData::GetVABMap(const int vab_index)
 {
     if(vab_index<0||vab_index>=vil->GetVertexAttribCount())return nullptr;
-    
+
     VABMap *vab_map=vab_map_list+vab_index;
 
     if(!vab_map->IsValid())
@@ -86,8 +87,8 @@ VABMap *PrimitiveData::GetVABMap(const int vab_index)
 
     return vab_map;
 }
-      
-IndexBuffer *PrimitiveData::InitIBO(const uint32_t ic,IndexType it)
+
+IndexBuffer *PrimitiveData::InitIBO(const int ic,IndexType it)
 {
     if(ibo)delete ibo;
 
@@ -105,7 +106,7 @@ IndexBuffer *PrimitiveData::InitIBO(const uint32_t ic,IndexType it)
 
 void PrimitiveData::UnmapAll()
 {
-    for(int i=0;i<vil->GetVertexAttribCount();i++)
+    for(uint32_t i=0;i<vil->GetVertexAttribCount();i++)
         vab_map_list[i].Unmap();
 
     ibo_map.Unmap();
@@ -151,12 +152,12 @@ namespace
         }
 
         IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
-        {    
+        {
             if(!device)return(nullptr);
 
             return device->CreateIBO(it,ic);
         }
-        
+
         VAB *CreateVAB(const int vab_index,const VkFormat format,const void *data) override
         {
             if(!device)return(nullptr);
@@ -177,9 +178,9 @@ namespace
 
     public:
 
-        int32_t  GetVertexOffset()const override { return vab_node->GetStart(); }
-        uint32_t GetFirstIndex  ()const override { return ib_node->GetStart(); }
-        VertexDataManager * GetVDM()const override{return vdm;}                           ///<取得顶点数据管理器
+        int32_t             GetVertexOffset ()const override{return vab_node->GetStart();}
+        uint32_t            GetFirstIndex   ()const override{return ib_node->GetStart();}
+        VertexDataManager * GetVDM          ()const override{return vdm;}                           ///<取得顶点数据管理器
 
     public:
 
@@ -199,7 +200,7 @@ namespace
             if(vab_node)
                 vdm->ReleaseVAB(vab_node);
         }
-        
+
         IndexBuffer *CreateIBO(const uint32_t ic,const IndexType &it) override
         {
             if(!vdm)
