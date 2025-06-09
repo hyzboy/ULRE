@@ -60,6 +60,10 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
 
     void CreateDefaultRenderer();
 
+protected:  //InputEvent
+
+    ObjectList<io::InputEvent> input_event;
+
 public:
 
             Window *            GetWindow           ()const{return win;}
@@ -100,6 +104,10 @@ public: // event
     virtual void OnResize(uint w,uint h);
     virtual void OnActive(bool);
     virtual void OnClose();
+
+public:
+
+    void Tick();
 
 public: // other
 

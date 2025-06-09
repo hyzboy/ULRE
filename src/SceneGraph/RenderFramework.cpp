@@ -138,6 +138,8 @@ bool RenderFramework::Init(uint w,uint h)
 
 void RenderFramework::CreateDefaultRenderer()
 {
+    input_event.Clear();
+
     SAFE_CLEAR(default_renderer)
 
     IRenderTarget *rt=GetSwapchainRenderTarget();
@@ -149,7 +151,15 @@ void RenderFramework::CreateDefaultRenderer()
     {
         auto ubo_camera_info=device->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
 
-        default_camera_control=new FirstPersonCameraControl(rt->GetViewportInfo(),default_camera,ubo_camera_info);
+        auto fpcc=new FirstPersonCameraControl(rt->GetViewportInfo(),default_camera,ubo_camera_info);
+
+        auto ckc=new CameraKeyboardControl(fpcc);
+        auto cmc=new CameraMouseControl(fpcc);
+
+        this->Join(ckc);
+        this->Join(cmc);
+
+        default_camera_control=fpcc;
     }
 
     default_renderer->SetCameraControl(default_camera_control);
@@ -170,6 +180,19 @@ void RenderFramework::OnActive(bool)
 
 void RenderFramework::OnClose()
 {
+}
+
+void RenderFramework::Tick()
+{
+    if(default_camera_control)
+    {
+        for(auto *ie:input_event)
+        {
+            ie->Update();
+        }
+
+        default_camera_control->Refresh();
+    }
 }
 
 VK_NAMESPACE_END
