@@ -93,6 +93,14 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
     return(result==shader_map.GetCount());
 }
 
+bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss)
+{
+    if(!AddStruct(ss.struct_name,ss.codes))
+        return(false);
+
+    return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
+}
+
 bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
 {
     if(!shader_map.ContainsKey(flag_bit))

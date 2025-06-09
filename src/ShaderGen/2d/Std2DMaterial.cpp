@@ -17,9 +17,7 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     if(cfg->local_to_world
      ||cfg->material_instance)
     {
-        mci->AddStruct(SBS_LocalToWorld);
-
-        mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,DescriptorSetType::PerFrame,SBS_LocalToWorld);
+        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_LocalToWorld);
 
         vsc->AddAssign();
     }
@@ -43,11 +41,7 @@ bool Std2DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 
     if(cfg->coordinate_system==CoordinateSystem2D::Ortho)
     {
-        mci->AddStruct(SBS_ViewportInfo);
-
-        mci->AddUBO(VK_SHADER_STAGE_ALL_GRAPHICS,
-                    DescriptorSetType::RenderTarget,
-                    SBS_ViewportInfo);
+        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_ViewportInfo);
     }
 
     return(true);
