@@ -22,6 +22,7 @@ public:
         buffer=nullptr;
         offset=0;
         stride=count=0;
+        map_ptr=nullptr;
     }
 
     virtual ~VKBufferMap()

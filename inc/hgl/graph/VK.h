@@ -96,6 +96,7 @@ class Semaphore;
 
 struct PipelineLayoutData;
 class DescriptorSet;
+enum class DescriptorSetType;
 
 struct VertexInputAttribute;
 
