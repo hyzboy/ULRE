@@ -168,11 +168,12 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
     mi_max_count=hgl_min<uint32_t>(ubo_range/data_bytes,HGL_U16_MAX);
 
     mdi.AddStruct(MaterialInstanceStruct,mi_codes);
+
     mdi.AddStruct(SBS_MaterialInstance);
 
     mi_ubo=CreateUBODescriptor(SBS_MaterialInstance,shader_stage_flag_bits);
 
-    mdi.AddUBO(shader_stage_flag_bits,DST_MaterialInstance,mi_ubo);
+    mdi.AddUBO(shader_stage_flag_bits,SBS_MaterialInstance.set_type,mi_ubo);
 
     const AnsiString MI_MAX_COUNT_STRING=AnsiString::numberOf(mi_max_count);
 
@@ -204,7 +205,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     l2w_ubo=CreateUBODescriptor(SBS_LocalToWorld,shader_stage_flag_bits);
 
-    mdi.AddUBO(shader_stage_flag_bits,DST_LocalToWorld,l2w_ubo);
+    mdi.AddUBO(shader_stage_flag_bits,SBS_LocalToWorld.set_type,l2w_ubo);
 
     const AnsiString L2W_MAX_COUNT_STRING=AnsiString::numberOf(l2w_max_count);
 

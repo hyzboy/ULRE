@@ -5,7 +5,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
-#include<hgl/graph/VKDescriptorSetType.h>
+#include<hgl/graph/mtl/ShaderBufferSource.h>
 
 namespace hgl
 {
@@ -82,6 +82,11 @@ public:
     bool BindUBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindSSBO(const DescriptorSetType &type,const AnsiString &name,DeviceBuffer *ubo,bool dynamic=false);
     bool BindImageSampler(const DescriptorSetType &type,const AnsiString &name,Texture *tex,Sampler *sampler);
+
+    bool BindUBO(const ShaderBufferDesc *sbd,DeviceBuffer *ubo,bool dynamic=false)
+    {
+        return BindUBO(sbd->set_type,sbd->name,ubo,dynamic);
+    }
 
     void Update();
 

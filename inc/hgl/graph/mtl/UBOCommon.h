@@ -6,8 +6,10 @@
 STD_MTL_NAMESPACE_BEGIN
 constexpr const ShaderBufferSource SBS_ViewportInfo=
 {
-    "ViewportInfo",
+    DescriptorSetType::RenderTarget,
+
     "viewport",
+    "ViewportInfo",
 
     R"(
     mat4 ortho_matrix;
@@ -20,8 +22,10 @@ constexpr const ShaderBufferSource SBS_ViewportInfo=
 
 constexpr const ShaderBufferSource SBS_CameraInfo=
 {
-    "CameraInfo",
+    DescriptorSetType::Camera,
+
     "camera",
+    "CameraInfo",
 
     R"(
     mat4 projection;
@@ -48,12 +52,13 @@ constexpr const ShaderBufferSource SBS_CameraInfo=
 };
 
 constexpr const char LocalToWorldStruct[]="LocalToWorld";
-constexpr const DescriptorSetType DST_LocalToWorld=DescriptorSetType::PerFrame;
 
 constexpr const ShaderBufferSource SBS_LocalToWorld=
 {
-    "LocalToWorldData",
+    DescriptorSetType::PerFrame,
+
     "l2w",
+    "LocalToWorldData",
 
     R"(
     mat4 mats[L2W_MAX_COUNT];
@@ -64,12 +69,13 @@ constexpr const ShaderBufferSource SBS_LocalToWorld=
 // SSBO则不需要，使用[]方式指定为动态大小数组
 
 constexpr const char MaterialInstanceStruct[]="MaterialInstance";
-constexpr const DescriptorSetType DST_MaterialInstance=DescriptorSetType::PerMaterial;
 
 constexpr const ShaderBufferSource SBS_MaterialInstance=
 {
-    "MaterialInstanceData",
+    DescriptorSetType::PerMaterial,
+
     "mtl",
+    "MaterialInstanceData",
 
     R"(
     MaterialInstance mi[MI_MAX_COUNT];)"
@@ -77,11 +83,13 @@ constexpr const ShaderBufferSource SBS_MaterialInstance=
 
 constexpr const ShaderBufferSource SBS_JointInfo=
 {
-    "JointInfo",
-    "joint",
+    DescriptorSetType::PerFrame,
 
-R"(
-    mat4 mats[];
-)"
+    "joint",
+    "JointInfo",
+
+    R"(
+        mat4 mats[];
+    )"
 };
 STD_MTL_NAMESPACE_END

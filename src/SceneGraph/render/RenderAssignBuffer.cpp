@@ -30,8 +30,8 @@ void RenderAssignBuffer::Bind(Material *mtl)const
 {
     if(!mtl)return;
 
-    mtl->BindUBO(mtl::DST_LocalToWorld,     mtl::SBS_LocalToWorld.name,     l2w_buffer);
-    mtl->BindUBO(mtl::DST_MaterialInstance, mtl::SBS_MaterialInstance.name, mi_buffer);
+    mtl->BindUBO(&mtl::SBS_LocalToWorld,     l2w_buffer);
+    mtl->BindUBO(&mtl::SBS_MaterialInstance, mi_buffer);
 }
 
 void RenderAssignBuffer::Clear()

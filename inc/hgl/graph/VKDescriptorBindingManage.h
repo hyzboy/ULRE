@@ -3,7 +3,6 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKDescriptorSetType.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -46,6 +45,9 @@ public:
     template<typename T>
     bool AddUBO(const AnsiString &name,DeviceBufferMap<T> *dbm)
     {
+        if(name.IsEmpty()||!dbm)
+            return(false);
+
         return AddUBO(name,dbm->GetDeviceBuffer());
     }
 
