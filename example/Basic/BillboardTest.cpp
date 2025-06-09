@@ -216,5 +216,5 @@ public:
 
 int os_main(int,os_char **)
 {
-    return RunFramework<TestApp>(OS_TEXT("AutoInstance"),1280,720);
+    return RunFramework<TestApp>(OS_TEXT("Billboard"),1280,720);
 }

@@ -11,6 +11,7 @@ namespace hgl
         if(delta_time>=frame_time)
         {
             last_update_time=cur_time;
+
             wo->Tick(delta_time);
         }
     }
@@ -69,6 +70,8 @@ namespace hgl
         while(!cur_work_object->IsDestroy())
         {
             cur_time=GetPreciseTime();
+
+            render_framework->Tick();
 
             if(cur_work_object->IsTickable())
                 Tick(cur_work_object);
