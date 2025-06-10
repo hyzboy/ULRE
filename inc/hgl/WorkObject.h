@@ -51,6 +51,8 @@ namespace hgl
         graph::Camera *             GetCamera           (){return renderer->GetCamera();}
         graph::CameraControl *      GetCameraControl    (){return render_framework->GetDefaultCameraControl();}
 
+        bool                        GetMouseCoord       (Vector2i *mc)const{return render_framework->GetMouseCoord(mc);}
+
     public:
 
         const   bool IsDestroy  ()const{return destroy_flag;}
@@ -92,6 +94,14 @@ namespace hgl
             AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mtl_cfg);
 
             return db->CreateMaterialInstance(mtl_name,mci,vil_cfg);
+        }
+
+        AutoDelete<graph::PrimitiveCreater> GetPrimitiveCreater(graph::Material *mtl)
+        {
+            if(!mtl)
+                return(nullptr);
+
+            return(new graph::PrimitiveCreater(GetDevice(),mtl->GetDefaultVIL()));
         }
 
         AutoDelete<graph::PrimitiveCreater> GetPrimitiveCreater(graph::MaterialInstance *mi)

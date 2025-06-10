@@ -138,7 +138,7 @@ bool RenderFramework::Init(uint w,uint h)
 
 void RenderFramework::CreateDefaultRenderer()
 {
-    input_event.Clear();
+    mouse_event=nullptr;
 
     SAFE_CLEAR(default_renderer)
 
@@ -160,6 +160,8 @@ void RenderFramework::CreateDefaultRenderer()
         this->Join(cmc);
 
         default_camera_control=fpcc;
+
+        mouse_event=cmc;
     }
 
     default_renderer->SetCameraControl(default_camera_control);
@@ -186,11 +188,6 @@ void RenderFramework::Tick()
 {
     if(default_camera_control)
     {
-        for(auto *ie:input_event)
-        {
-            ie->Update();
-        }
-
         default_camera_control->Refresh();
     }
 }
