@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/mtl/MaterialConfig.h>
+﻿#include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKShaderStage.h>

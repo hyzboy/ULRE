@@ -13,7 +13,7 @@ class PrimitiveCreater
 {
 protected:
 
-    VulkanDevice *         device;
+    VulkanDevice *      device;
     VertexDataManager * vdm;
 
     const VIL *         vil;
