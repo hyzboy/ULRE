@@ -124,15 +124,11 @@ private:
         }
 
         {
-            auto pc=GetPrimitiveCreater(mtl_line);
-
-            if(!pc->Init("Line",2))
-                return(false);
-            
-            if(!pc->WriteVAB(VAN::Position, VF_V3F,position_data))return(false);
-            if(!pc->WriteVAB(VAN::Luminance,VF_V1F,lumiance_data))return(false);
-
-            prim_line=pc->Create();
+            prim_line=CreatePrimitive("RayLine",2,mtl_line->GetDefaultVIL(),
+                                    {
+                                        {VAN::Position, VF_V3F,position_data},
+                                        {VAN::Luminance,VF_V1F,lumiance_data}
+                                    });
 
             prim_line_vab_map=prim_line->GetVABMap(VAN::Position);
         }
@@ -162,7 +158,6 @@ public:
     ~TestApp()
     {
         SAFE_CLEAR(prim_plane_grid);
-        SAFE_CLEAR(prim_line);
     }
 
     bool Init() override
