@@ -163,23 +163,15 @@ private:
     bool InitScene()
     {
         SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
-        Camera *cur_camera=GetCamera();             //取得缺省相机
 
         scene_root->Add(CreateSceneNode(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
 
         scene_root->Add(new SceneNode(ro_billboard));
 
-        cur_camera->pos=Vector3f(32,32,32);
-
         CameraControl *camera_control=GetCameraControl();
 
-        if(camera_control
-         &&camera_control->GetControlName()==FirstPersonCameraControl::StaticControlName())
-        {
-            FirstPersonCameraControl *fp_cam_ctl=(FirstPersonCameraControl *)camera_control;
-
-            fp_cam_ctl->SetTarget(Vector3f(0,0,0));
-        }
+        camera_control->SetPosition(Vector3f(32,32,32));
+        camera_control->SetTarget(Vector3f(0,0,0));
 
         return(true);
     }
@@ -193,8 +185,8 @@ public:
         SAFE_CLEAR(prim_plane_grid);
     }
 
-    bool Init()
-    {        
+    bool Init() override
+    {
         if(!InitPlaneGridMP())
             return(false);
 

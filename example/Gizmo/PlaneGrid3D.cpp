@@ -94,19 +94,10 @@ private:
         Add(scene_root,material_instance[1],rotate(HGL_RAD_90,0,1,0));
         Add(scene_root,material_instance[2],rotate(HGL_RAD_90,1,0,0));
 
-        Camera *cur_camera=GetCamera();             //取得缺省相机
-
-        cur_camera->pos=Vector3f(32,32,32);
-
         CameraControl *camera_control=GetCameraControl();
 
-        if(camera_control
-           &&camera_control->GetControlName()==FirstPersonCameraControl::StaticControlName())
-        {
-            FirstPersonCameraControl *fp_cam_ctl=(FirstPersonCameraControl *)camera_control;
-
-            fp_cam_ctl->SetTarget(Vector3f(0,0,0));
-        }
+        camera_control->SetPosition(Vector3f(32,32,32));
+        camera_control->SetTarget(Vector3f(0,0,0));
 
 //        camera_control->SetReserveDirection(true,true);        //反转x,y
 
