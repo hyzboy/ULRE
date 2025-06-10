@@ -11,4 +11,18 @@ namespace hgl::graph
 
         ENUM_CLASS_RANGE(NDC,Ortho)
     };
+
+    constexpr const char *CoordinateSystem2DName[]=
+    {
+        "NDC",
+        "0to1",
+        "Ortho"
+    };
+
+    inline const char *GetCoordinateSystem2DName(const enum class CoordinateSystem2D &cs)
+    {
+        RANGE_CHECK_RETURN_NULLPTR(cs)
+
+        return CoordinateSystem2DName[size_t(cs)];
+    }
 }//namespace hgl::graph
