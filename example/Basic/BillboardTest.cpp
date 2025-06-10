@@ -130,7 +130,7 @@ private:
         using namespace inline_geometry;
 
         {
-            PrimitiveCreater pc(GetDevice(),mi_plane_grid->GetVIL());
+            auto pc=GetPrimitiveCreater(mi_plane_grid);
 
             struct PlaneGridCreateInfo pgci;
 
@@ -140,18 +140,18 @@ private:
             pgci.lum=128;
             pgci.sub_lum=192;
 
-            prim_plane_grid=CreatePlaneGrid2D(&pc,&pgci);
+            prim_plane_grid=CreatePlaneGrid2D(pc,&pgci);
         }
 
         {
-            PrimitiveCreater pc(GetDevice(),mi_billboard->GetVIL());
+            auto pc=GetPrimitiveCreater(mi_billboard);
 
-            pc.Init("Billboard",1);
+            pc->Init("Billboard",1);
 
-            if(!pc.WriteVAB(VAN::Position,VF_V3F,position_data))
+            if(!pc->WriteVAB(VAN::Position,VF_V3F,position_data))
                 return(false);
 
-            ro_billboard=db->CreateMesh(&pc,mi_billboard,pipeline_billboard);
+            ro_billboard=db->CreateMesh(pc,mi_billboard,pipeline_billboard);
 
             if(!ro_billboard)
                 return(false);
