@@ -94,6 +94,14 @@ namespace hgl
             return db->CreateMaterialInstance(mtl_name,mci,vil_cfg);
         }
 
+        AutoDelete<graph::PrimitiveCreater> GetPrimitiveCreater(graph::MaterialInstance *mi)
+        {
+            if(!mi)
+                return(nullptr);
+
+            return(new graph::PrimitiveCreater(GetDevice(),mi->GetVIL()));
+        }
+
         graph::Primitive *CreatePrimitive(  const AnsiString &name,
                                             const uint32_t vertices_count,
                                             const graph::VIL *vil,

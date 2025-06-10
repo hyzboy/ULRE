@@ -69,9 +69,9 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        PrimitiveCreater pc(GetDevice(),material_instance[0]->GetVIL());
+        auto pc=GetPrimitiveCreater(material_instance[0]);
 
-        prim_plane_grid=CreatePlaneGrid2D(&pc,&pgci);
+        prim_plane_grid=CreatePlaneGrid2D(pc,&pgci);
 
         return prim_plane_grid;
     }
