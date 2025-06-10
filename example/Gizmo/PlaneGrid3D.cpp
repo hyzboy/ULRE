@@ -1,6 +1,6 @@
 ﻿// PlaneGrid3D
 
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
@@ -8,11 +8,13 @@
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/graph/FirstPersonCameraControl.h>
+#include<hgl/color/Color.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-class TestApp:public SceneAppFramework
+class TestApp:public WorkObject
 {
 private:
 
@@ -26,7 +28,7 @@ private:
 
     bool InitMDP()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance3D",PrimitiveType::Lines);
+        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
@@ -67,55 +69,61 @@ private:
         pgci.lum=180;
         pgci.sub_lum=255;
 
-        PrimitiveCreater pc(device,material_instance[0]->GetVIL());
+        PrimitiveCreater pc(GetDevice(),material_instance[0]->GetVIL());
 
         prim_plane_grid=CreatePlaneGrid2D(&pc,&pgci);
 
         return prim_plane_grid;
     }
 
-    Mesh *Add(MaterialInstance *mi,const Matrix4f &mat)
+    void Add(SceneNode *parent_node,MaterialInstance *mi,const Matrix4f &mat)
     {
         Mesh *ri=db->CreateMesh(prim_plane_grid,mi,pipeline);
 
         if(!ri)
-            return(nullptr);
+            return;
 
-        render_root.Add(new SceneNode(mat,ri));
-
-        return ri;
+        parent_node->Add(new SceneNode(mat,ri));
     }
 
     bool InitScene()
     {
-        Add(material_instance[0],Matrix4f(1.0f));
-        Add(material_instance[1],rotate(HGL_RAD_90,0,1,0));
-        Add(material_instance[2],rotate(HGL_RAD_90,1,0,0));
+        SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
 
-        camera->pos=Vector3f(32,32,32);
-        camera_control->SetTarget(Vector3f(0,0,0));
-        camera_control->Refresh();
+        Add(scene_root,material_instance[0],Matrix4f(1.0f));
+        Add(scene_root,material_instance[1],rotate(HGL_RAD_90,0,1,0));
+        Add(scene_root,material_instance[2],rotate(HGL_RAD_90,1,0,0));
+
+        Camera *cur_camera=GetCamera();             //取得缺省相机
+
+        cur_camera->pos=Vector3f(32,32,32);
+
+        CameraControl *camera_control=GetCameraControl();
+
+        if(camera_control
+           &&camera_control->GetControlName()==FirstPersonCameraControl::StaticControlName())
+        {
+            FirstPersonCameraControl *fp_cam_ctl=(FirstPersonCameraControl *)camera_control;
+
+            fp_cam_ctl->SetTarget(Vector3f(0,0,0));
+        }
 
 //        camera_control->SetReserveDirection(true,true);        //反转x,y
-
-        render_root.RefreshMatrix();
-        render_list->Expend(&render_root);
 
         return(true);
     }
 
 public:
 
+    using WorkObject::WorkObject;
+
     ~TestApp()
     {
         SAFE_CLEAR(prim_plane_grid);
     }
 
-    bool Init(uint width,uint height) override
+    bool Init() override
     {
-        if(!SceneAppFramework::Init(width,height))
-            return(false);
-
         if(!InitMDP())
             return(false);
 
@@ -129,7 +137,7 @@ public:
     }
 };//class TestApp:public CameraAppFramework
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    return RunApp<TestApp>(1280,720);
+    return RunFramework<TestApp>(OS_TEXT("PlaneGrid3D"),1280,720);
 }
