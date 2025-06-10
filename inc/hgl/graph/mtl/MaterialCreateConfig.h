@@ -52,5 +52,7 @@ public:
 
         return off;
     }
+
+    virtual const AnsiString ToHashString();
 };//struct MaterialCreateConfig
 STD_MTL_NAMESPACE_END

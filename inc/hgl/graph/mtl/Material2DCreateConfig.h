@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/mtl/MaterialLibrary.h>
-#include<hgl/graph/mtl/MaterialConfig.h>
+#include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/CoordinateSystem.h>
 #include<hgl/graph/VertexAttrib.h>
 
@@ -51,6 +51,8 @@ public:
        
         return off;
     }
+
+    const AnsiString ToHashString() override;
 };//struct Material2DCreateConfig:public MaterialCreateConfig
 
 DEFINE_MATERIAL_FACTORY_CLASS(VertexColor2D,        const Material2DCreateConfig)
