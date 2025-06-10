@@ -1,6 +1,6 @@
 ﻿// RayPicking
 
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/VKRenderResource.h>
@@ -26,7 +26,7 @@ static float lumiance_data[2]={1,1};
 static Color4f white_color(1,1,1,1);
 static Color4f yellow_color(1,1,0,1);
 
-class TestApp:public SceneAppFramework
+class TestApp:public WorkObject
 {
     Color4f color;
 
@@ -51,12 +51,11 @@ private:
 
     bool InitMaterialAndPipeline()
     {
-        mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance2D",PrimitiveType::Lines);
+        mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
         cfg.local_to_world=true;
 
         {
-            cfg.mtl_name="VertexLuminance2D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.position_format=VAT_VEC2;
 
             mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
@@ -74,7 +73,6 @@ private:
         }
 
         {
-            cfg.mtl_name="VertexLuminance3D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.position_format=VAT_VEC3;
 
             mtl_line=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
@@ -92,7 +90,7 @@ private:
         return(true);
     }
     
-    Mesh *Add(Primitive *r,MaterialInstance *mi,Pipeline *p)
+    Mesh *Add(SceneNode *parent_node,Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
         Mesh *ri=db->CreateMesh(r,mi,p);
 
@@ -102,7 +100,7 @@ private:
             return(nullptr);
         }
 
-        render_root.Add(new SceneNode(ri));
+        parent_node->Add(new SceneNode(ri));
 
         return ri;
     }
@@ -112,7 +110,7 @@ private:
         using namespace inline_geometry;
         
         {
-            PrimitiveCreater pc(device,mi_plane_grid->GetVIL());
+            auto pc=GetPrimitiveCreater(mi_plane_grid);
 
             struct PlaneGridCreateInfo pgci;
 
@@ -122,19 +120,19 @@ private:
             pgci.lum=128;
             pgci.sub_lum=196;
 
-            prim_plane_grid=CreatePlaneGrid2D(&pc,&pgci);
+            prim_plane_grid=CreatePlaneGrid2D(pc,&pgci);
         }
 
         {
-            PrimitiveCreater pc(device,mtl_line->GetDefaultVIL());
+            auto pc=GetPrimitiveCreater(mtl_line);
 
-            if(!pc.Init("Line",2))
+            if(!pc->Init("Line",2))
                 return(false);
             
-            if(!pc.WriteVAB(VAN::Position, VF_V3F,position_data))return(false);
-            if(!pc.WriteVAB(VAN::Luminance,VF_V1F,lumiance_data))return(false);
+            if(!pc->WriteVAB(VAN::Position, VF_V3F,position_data))return(false);
+            if(!pc->WriteVAB(VAN::Luminance,VF_V1F,lumiance_data))return(false);
 
-            prim_line=pc.Create();
+            prim_line=pc->Create();
 
             prim_line_vab_map=prim_line->GetVABMap(VAN::Position);
         }
@@ -144,20 +142,22 @@ private:
 
     bool InitScene()
     {
-        Add(prim_plane_grid,mi_plane_grid,pipeline_plane_grid);
-        Add(prim_line,mi_line,pipeline_line);
+        SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
 
-        camera->pos=Vector3f(32,32,32);
+        Add(scene_root,prim_plane_grid,mi_plane_grid,pipeline_plane_grid);
+        Add(scene_root,prim_line,mi_line,pipeline_line);
+
+        CameraControl *camera_control=GetCameraControl();
+
+        camera_control->SetPosition(Vector3f(32,32,32));
         camera_control->SetTarget(Vector3f(0,0,0));
-        camera_control->Refresh();
-
-        render_root.RefreshMatrix();
-        render_list->Expend(&render_root);
 
         return(true);
     }
 
 public:
+
+    using WorkObject::WorkObject;
 
     ~TestApp()
     {
@@ -165,11 +165,8 @@ public:
         SAFE_CLEAR(prim_line);
     }
 
-    bool Init(uint w,uint h)
-    {        
-        if(!SceneAppFramework::Init(w,h))
-            return(false);
-
+    bool Init() override
+    {
         if(!InitMaterialAndPipeline())
             return(false);
 
@@ -182,23 +179,28 @@ public:
         return(true);
     }
 
-    void BuildCommandBuffer(uint32 index) override
+    void Tick(double) override
     {
-        const CameraInfo *ci=GetCameraInfo();
-        const ViewportInfo *vi=GetViewportInfo();
+        Vector2i mouse_position;
 
-        ray.Set(GetMouseCoord(),ci,vi);                       //设置射线查询的屏幕坐标点
+        if(!GetMouseCoord(&mouse_position))
+            return;
+
+        CameraControl *camera_control=GetCameraControl();
+
+        const CameraInfo *ci=camera_control->GetCameraInfo();
+        const ViewportInfo *vi=camera_control->GetViewportInfo();
+
+        ray.Set(mouse_position,ci,vi);                       //设置射线查询的屏幕坐标点
 
         const Vector3f pos=ray.ClosestPoint(Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
         prim_line_vab_map->Write(&pos,          //更新VAB上这个点的位置
-                                 1);            //这里的1代表的数据数量,不是字节数           
-
-        SceneAppFramework::BuildCommandBuffer(index);
+                                 1);            //这里的1代表的数据数量,不是字节数
     }
 };//class TestApp:public CameraAppFramework
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    return RunApp<TestApp>(1280,720);
+    return RunFramework<TestApp>(OS_TEXT("RayPicking"),1280,720);
 }
