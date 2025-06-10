@@ -7,6 +7,7 @@
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/CameraControl.h>
+#include<hgl/io/event/MouseEvent.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -62,7 +63,7 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
 
 protected:  //InputEvent
 
-    ObjectList<io::InputEvent> input_event;
+    io::MouseEvent *mouse_event=nullptr;
 
 public:
 
@@ -91,6 +92,17 @@ public:
     Camera *                GetDefaultCamera        (){return default_camera;}
     CameraControl *         GetDefaultCameraControl (){return default_camera_control;}
     Renderer *              GetDefaultRenderer      (){return default_renderer;}
+
+public:
+
+    bool GetMouseCoord(Vector2i *mc)const
+    {
+        if(!mouse_event||!mc)
+            return(false);
+
+        *mc=mouse_event->GetMouseCoord();
+        return(true);
+    }
 
 public:
 
