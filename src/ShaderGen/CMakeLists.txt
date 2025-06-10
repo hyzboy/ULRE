@@ -76,9 +76,10 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_Gizmo3D.cpp
 )
 
-SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialConfig.h
+SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     ${STD_MTL_HEADER_PATH}/StdMaterial.h
                     ${STD_MTL_HEADER_PATH}/ShaderBufferSource.h
+                    MaterialCreateConfig.cpp
                     StandardMaterial.cpp
                     MaterialFileData.h
                     MaterialFileLoader.cpp)
