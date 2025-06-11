@@ -21,7 +21,7 @@ static float position_data[2][3]=
     {0,0,0}
 };
 
-static float lumiance_data[2]={1,1};
+static uint8 lumiance_data[2]={255,255};
 
 static Color4f white_color(1,1,1,1);
 static Color4f yellow_color(1,1,0,1);
@@ -55,15 +55,15 @@ private:
 
         cfg.local_to_world=true;
 
+        VILConfig vil_config;
+
+        vil_config.Add(VAN::Luminance,VF_V1UN8);
+
         {
             cfg.position_format=VAT_VEC2;
 
             mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
-       
-            VILConfig vil_config;
-
-            vil_config.Add(VAN::Luminance,VF_V1UN8);
 
             mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
@@ -78,10 +78,10 @@ private:
             mtl_line=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_line)return(false);
 
-            mi_line=db->CreateMaterialInstance(mtl_line,nullptr,&yellow_color);
+            mi_line=db->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
             if(!mi_line)return(false);
 
-            pipeline_line=CreatePipeline(mtl_line,InlinePipeline::Solid3D,PrimitiveType::Lines);
+            pipeline_line=CreatePipeline(mi_line,InlinePipeline::Solid3D,PrimitiveType::Lines);
 
             if(!pipeline_line)
                 return(false);
@@ -124,10 +124,10 @@ private:
         }
 
         {
-            prim_line=CreatePrimitive("RayLine",2,mtl_line->GetDefaultVIL(),
+            prim_line=CreatePrimitive("RayLine",2,mi_line->GetVIL(),
                                     {
                                         {VAN::Position, VF_V3F,position_data},
-                                        {VAN::Luminance,VF_V1F,lumiance_data}
+                                        {VAN::Luminance,VF_V1UN8,lumiance_data}
                                     });
 
             prim_line_vab_map=prim_line->GetVABMap(VAN::Position);
