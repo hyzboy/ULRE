@@ -24,6 +24,8 @@ class Material
 {
     AnsiString name;
 
+    PrimitiveType prim;                       ///<图元类型
+
     VertexInput *vertex_input;
 
     ShaderModuleMap *shader_maps;
@@ -45,13 +47,15 @@ private:
 
     friend class RenderResource;
 
-    Material(const AnsiString &);
+    Material(const AnsiString &,const PrimitiveType &);
 
 public:
 
     virtual ~Material();
 
     const   AnsiString &                        GetName                 ()const{return name;}
+
+    const   PrimitiveType &                     GetPrimitiveType        ()const{return prim;}
 
     const   VertexInput *                       GetVertexInput          ()const{return vertex_input;}
 
