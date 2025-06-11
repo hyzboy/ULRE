@@ -65,7 +65,7 @@ private:
             }
         }
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,PrimitiveType::Triangles);
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);
         
         return pipeline;
     }

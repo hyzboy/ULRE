@@ -45,6 +45,8 @@ namespace hgl::graph
 
         public:
 
+            const PrimitiveType GetPrimitiveType()const{return config->prim;}
+
             const   uint32      GetShaderStage  ()const{return config->shader_stage_flag_bit;}
 
                     bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage_flag_bit&ss;}

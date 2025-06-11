@@ -52,7 +52,7 @@ private:
             ce=COLOR((int)ce+1);
         }
 
-        pipeline=CreatePipeline(material_instance[0],InlinePipeline::Solid3D,PrimitiveType::Lines);
+        pipeline=CreatePipeline(material_instance[0],InlinePipeline::Solid3D);
 
         return pipeline;
     }

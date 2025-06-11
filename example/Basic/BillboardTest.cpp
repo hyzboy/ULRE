@@ -66,7 +66,7 @@ private:
             mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
-            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,PrimitiveType::Lines);
+            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D);
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -83,7 +83,7 @@ private:
             mi_billboard=CreateMaterialInstance(mtl::inline_material::Billboard2D,&cfg);
             if(!mi_billboard)return(false);
 
-            pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D,PrimitiveType::Billboard);
+            pipeline_billboard=CreatePipeline(mi_billboard,InlinePipeline::Solid3D);
             if(!pipeline_billboard)return(false);
         }
 

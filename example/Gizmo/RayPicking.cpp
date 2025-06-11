@@ -68,7 +68,7 @@ private:
             mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
-            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D,PrimitiveType::Lines);
+            pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D);
             if(!pipeline_plane_grid)return(false);
         }
 
@@ -81,7 +81,7 @@ private:
             mi_line=db->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
             if(!mi_line)return(false);
 
-            pipeline_line=CreatePipeline(mi_line,InlinePipeline::Solid3D,PrimitiveType::Lines);
+            pipeline_line=CreatePipeline(mi_line,InlinePipeline::Solid3D);
 
             if(!pipeline_line)
                 return(false);

@@ -9,9 +9,10 @@ VK_NAMESPACE_BEGIN
 
 void ReleaseVertexInput(VertexInput *vi);
 
-Material::Material(const AnsiString &n)
+Material::Material(const AnsiString &n,const PrimitiveType &pt)
 {
     name=n;
+    prim=pt;
 
     vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;
@@ -22,6 +23,7 @@ Material::Material(const AnsiString &n)
 
     mi_data_bytes=0;
     mi_data_manager=nullptr;
+    mi_max_count=0;
 }
 
 Material::~Material()

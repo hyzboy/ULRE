@@ -98,7 +98,7 @@ Material *RenderResource::CreateMaterial(const AnsiString &mtl_name,const mtl::M
     if(!mci->GetFS())
         return(nullptr);
 
-    AutoDelete<Material> mtl=new Material(mtl_name);
+    AutoDelete<Material> mtl=new Material(mtl_name,mci->GetPrimitiveType());
 
     {
         const ShaderModule *sm;

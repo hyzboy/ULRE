@@ -54,7 +54,7 @@ private:
     bool InitPipeline()
     {
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D,PrimitiveType::Triangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material_instance,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         return pipeline;
     }
@@ -86,6 +86,8 @@ public:
 
         return(true);
     }
+
+    由于新架构全部要走SceneNode，所以此范例已不可用
 
     void Tick(double)override{}
 
