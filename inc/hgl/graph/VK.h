@@ -135,7 +135,7 @@ class IndirectDispatchBuffer;
 
 class RenderResource;
 
-class StaticMesh;
+class StaticMeshComponent;
 
 class SceneNode;
 class Scene;

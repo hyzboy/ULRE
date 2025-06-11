@@ -36,7 +36,7 @@ class TestApp:public WorkObject
 private:
 
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *              render_obj          =nullptr;
+    Mesh *              mesh_triangle       =nullptr;
 
     Pipeline *          pipeline            =nullptr;
 
@@ -79,7 +79,7 @@ private:
             position_data[i][1]=position_data_float[i][1]*ext.height;
         }
 
-        render_obj=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
+        mesh_triangle=CreateMesh("Triangle",VERTEX_COUNT,material_instance,pipeline,
                                     {
                                         {VAN::Position,POSITION_DATA_FORMAT,position_data},
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
@@ -87,9 +87,11 @@ private:
 
         SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
 
-        scene_root->Add(new SceneNode(render_obj));
 
-        return(render_obj);
+
+        scene_root->Add(new SceneNode(mesh_triangle));
+
+        return(mesh_triangle);
     }
 
 public:

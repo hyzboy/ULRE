@@ -103,7 +103,7 @@ public:
 
 public:
 
-    virtual Component *     CreateComponent(SceneNode *,ComponentData *)=0;
+    virtual Component *     CreateComponent(ComponentData *)=0;
 
             int             GetComponentCount()const{return component_set.GetCount();}
 
