@@ -1,4 +1,5 @@
 #pragma once
+
 #include"Gizmo.h"
 #include<hgl/color/Color.h>
 
@@ -6,7 +7,7 @@ VK_NAMESPACE_BEGIN
 
 class SceneNode;
 class PrimitiveCreater;
-class StaticMesh;
+class StaticMeshComponent;
 
 constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
 {
@@ -37,6 +38,6 @@ constexpr const float GIZMO_TWO_AXIS_OFFSET     =5.0F;                          
 
 Mesh *GetGizmoRenderable(const GizmoShape &gs,const GizmoColor &);
 
-StaticMesh *CreateGizmoStaticMesh(SceneNode *);
+StaticMeshComponent *CreateGizmoStaticMeshComponent(SceneNode *);
 
 VK_NAMESPACE_END

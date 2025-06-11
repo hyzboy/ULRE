@@ -7,7 +7,19 @@ COMPONENT_NAMESPACE_BEGIN
 
 struct StaticMeshComponentData:public ComponentData
 {
-    Mesh *renderable;
+    Mesh *mesh;
+
+public:
+
+    StaticMeshComponentData()
+    {
+        mesh=nullptr;
+    }
+
+    StaticMeshComponentData(Mesh *m)
+    {
+        mesh=m;
+    }
 };//struct StaticMeshComponentData
 
 class StaticMeshComponent;
@@ -31,9 +43,24 @@ public:
 
     StaticMeshComponentManager()=default;
 
-    StaticMeshComponent *CreateStaticMeshComponent(SceneNode *psn,StaticMeshComponentData *data);
+    StaticMeshComponent *CreateStaticMeshComponent(StaticMeshComponentData *data)
+    {
+        if(!data)return(nullptr);
 
-    virtual Component *CreateComponent(SceneNode *psn,ComponentData *data) override;
+        return(new StaticMeshComponent(data));
+    }
+
+    StaticMeshComponent *CreateStaticMeshComponent(Mesh *m)
+    {
+        return CreateStaticMeshComponent(new StaticMeshComponentData(m));
+    }
+
+    virtual Component *CreateComponent(ComponentData *data) override
+    {
+        if(!data)return(nullptr);
+
+        return CreateStaticMeshComponent(reinterpret_cast<StaticMeshComponentData *>(data));
+    }
 };//class StaticMeshComponentManager
 
 class StaticMeshComponent:public PrimitiveComponent
@@ -42,10 +69,10 @@ class StaticMeshComponent:public PrimitiveComponent
 
 public:
 
-    StaticMeshComponent(SceneNode *psn,ComponentData *cd,ComponentManager *cm)
+    StaticMeshComponent(SceneNode *psn,StaticMeshComponentData *cd,StaticMeshComponentManager *cm)
         :PrimitiveComponent(psn,cd,cm)
     {
-        sm_data=reinterpret_cast<StaticMeshComponentData *>(cd);
+        sm_data=cd;
     }
 
     virtual ~StaticMeshComponent()=default;
