@@ -58,17 +58,8 @@ class Component
 public:
 
     Component()=delete;
-    Component(SceneNode *sn,ComponentData *cd,ComponentManager *cm)
-    {
-        OwnerNode=sn;
-        Data=cd;
-        Manager=cm;
-    }
-
-    virtual ~Component()
-    {
-        SAFE_CLEAR(Data);
-    }
+    Component(ComponentData *,ComponentManager *);
+    virtual ~Component();
 
     virtual const size_t    GetHashCode()const=0;
 
@@ -84,6 +75,9 @@ public:
 
 public: //事件
 
+    virtual void OnAttach(SceneNode *node){if(node)OwnerNode=node;}         ///<附加到节点事件
+    virtual void OnDetach(){OwnerNode=nullptr;}                             ///<从节点分离事件
+
     virtual void OnFocusLost(){}                                            ///<焦点丢失事件
     virtual void OnFocusGained(){}                                          ///<焦点获得事件
 };//class Component
@@ -93,6 +87,13 @@ using ComponentSet=SortedSet<Component *>;
 class ComponentManager
 {
     ComponentSet component_set;
+
+protected:
+
+    friend class Component; //Component可以直接访问ComponentManager的成员
+
+    virtual void            AttachComponent(Component *c){if(!c)return;component_set.Add(c);}
+    virtual void            DetachComponent(Component *c){if(!c)return;component_set.Delete(c);}
 
 public:
 
@@ -112,9 +113,6 @@ public:
             int             GetComponents(ArrayList<Component *> &comp_list,SceneNode *);
 
     virtual void            UpdateComponents(const double delta_time);
-
-    virtual void            AttachComponent(Component *c){if(!c)return;component_set.Add(c);}
-    virtual void            DetachComponent(Component *c){if(!c)return;component_set.Delete(c);}
 
 public: //事件
 

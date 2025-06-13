@@ -8,7 +8,7 @@
 
 namespace hgl::graph
 {
-    using SceneNodeID   =uint64;
+    using SceneNodeID   =int64;
 
     HGL_DEFINE_U16_IDNAME(SceneNodeName)
 
@@ -19,9 +19,9 @@ namespace hgl::graph
     */
     class SceneNode:public SceneOrient                                                                              ///场景节点类
     {
-        SceneNode *ParentNode;                                                                                      ///<上级节点
+        SceneNode *ParentNode=nullptr;                                                                              ///<上级节点
 
-        SceneNodeID NodeID;                                                                                         ///<节点ID
+        SceneNodeID NodeID=-1;                                                                                      ///<节点ID
         SceneNodeName NodeName;                                                                                     ///<节点名称
 
     protected:
@@ -35,7 +35,12 @@ namespace hgl::graph
     protected:
 
         ObjectList<SceneNode> ChildNode;                                                                            ///<子节点
-        ObjectList<Component> ComponentList;                                                                        ///<组件列表
+
+        /**
+        * 组件合集，一个SceneNode下可能会包含多个组件，同时一个组件也可能被多个SceneNode使用。
+        * 所以这里只保留一个指针，不拥有组件的生命周期，组件的生命周期由其对应的ComponentManager管理。
+        */
+        SortedSet<Component *> ComponentSet;                                                                        ///<组件合集
 
     public:
 
@@ -68,7 +73,7 @@ namespace hgl::graph
             LocalBoundingBox.SetZero();
 
             ChildNode.Clear();
-            ComponentList.Clear();
+            ComponentSet.Clear();
             render_obj=nullptr;
         }
 
@@ -111,11 +116,11 @@ namespace hgl::graph
 
     public: //组件相关方法
 
-                        bool        ComponentIsEmpty    ()const {return ComponentList.GetCount()==0;}               ///<是否没有组件
-        virtual         int         GetComponentCount   ()const {return ComponentList.GetCount();}                  ///<取得组件数量
-        virtual         void        AddComponent        (Component *comp) {ComponentList.Add(comp);}                ///<添加一个组件
-        virtual         void        RemoveComponent     (Component *comp) {ComponentList.DeleteByValue(comp);}      ///<删除一个组件
-                        bool        Contains            (Component *comp) {return ComponentList.Contains(comp);}    ///<是否包含指定组件
+                        bool        ComponentIsEmpty    ()const{return ComponentSet.GetCount()==0;}                 ///<是否没有组件
+        virtual         int         GetComponentCount   ()const{return ComponentSet.GetCount();}                    ///<取得组件数量
+        virtual         void        AttachComponent     (Component *comp){ComponentSet.Add(comp);}                  ///<添加一个组件
+        virtual         void        DetachComponent     (Component *comp){ComponentSet.Delete(comp);}               ///<删除一个组件
+                        bool        Contains            (Component *comp){return ComponentSet.Contains(comp);}      ///<是否包含指定组件
 
                         bool        HasComponent        (const ComponentManager *);                                 ///<是否有指定组件管理器的组件
         virtual         int         GetComponents       (ArrayList<Component *> &comp_list,const ComponentManager *);    ///<取得所有组件
