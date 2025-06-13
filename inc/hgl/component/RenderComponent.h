@@ -11,8 +11,7 @@ class RenderComponent: public Component
 {
 public:
 
-    RenderComponent(SceneNode *psn,ComponentData *cd,ComponentManager *cm)
-        :Component(psn,cd,cm){}
+    using Component::Component;
     virtual ~RenderComponent()=default;
 };//class RenderComponent
 

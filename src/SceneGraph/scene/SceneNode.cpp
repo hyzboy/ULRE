@@ -1,125 +1,123 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/graph/Mesh.h>
-namespace hgl
+
+namespace hgl::graph
 {
-    namespace graph
+    SceneNode *Duplication(SceneNode *src_node)
     {
-        SceneNode *Duplication(SceneNode *src_node)
+        if(!src_node)
+            return nullptr;
+
+        SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
+
+        node->SetRenderable(src_node->GetRenderable());
+
+        for(SceneNode *sn:src_node->GetChildNode())
         {
-            if(!src_node)
-                return nullptr;
-
-            SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
-
-            node->SetRenderable(src_node->GetRenderable());
-
-            for(SceneNode *sn:src_node->GetChildNode())
-            {
-                node->Add(Duplication(sn));
-            }
-
-            return node;
+            node->Add(Duplication(sn));
         }
 
-        void SceneNode::SetRenderable(Mesh *ri)
+        return node;
+    }
+
+    void SceneNode::SetRenderable(Mesh *ri)
+    {
+        render_obj=ri;
+
+        if(render_obj)
         {
-            render_obj=ri;
-
-            if(render_obj)
-            {
-                SetBoundingBox(render_obj->GetBoundingBox());
-            }
-            else
-            {
-                BoundingBox.SetZero();
-
-                //WorldBoundingBox=
-                    LocalBoundingBox=BoundingBox;
-            }
+            SetBoundingBox(render_obj->GetBoundingBox());
         }
-
-        /**
-        * 刷新矩阵变换
-        */
-        void SceneNode::RefreshMatrix()
+        else
         {
-            SceneOrient::RefreshMatrix();
+            BoundingBox.SetZero();
+
+            //WorldBoundingBox=
+                LocalBoundingBox=BoundingBox;
+        }
+    }
+
+    /**
+    * 刷新矩阵变换
+    */
+    void SceneNode::RefreshMatrix()
+    {
+        SceneOrient::RefreshMatrix();
 
 //            if (scene_matrix.IsNewestVersion())       //自己不变，不代表下面不变
-                //return;
+            //return;
 
-            const Matrix4f &l2w=scene_matrix.GetLocalToWorldMatrix();
+        const Matrix4f &l2w=scene_matrix.GetLocalToWorldMatrix();
 
-            const int count=ChildNode.GetCount();
+        const int count=ChildNode.GetCount();
 
-            SceneNode **sub=ChildNode.GetData();
+        SceneNode **sub=ChildNode.GetData();
 
-            for(int i=0;i<count;i++)
-            {
-                (*sub)->SetParentMatrix(l2w);
-                (*sub)->RefreshMatrix();
-
-                sub++;
-            }
-        }
-
-        /**
-        * 刷新绑定盒
-        */
-        void SceneNode::RefreshBoundingBox()
+        for(int i=0;i<count;i++)
         {
-            int count=ChildNode.GetCount();
-            SceneNode **sub=ChildNode.GetData();
+            (*sub)->SetParentMatrix(l2w);
+            (*sub)->RefreshMatrix();
 
-            AABB local,world;
+            sub++;
+        }
+    }
 
+    /**
+    * 刷新绑定盒
+    */
+    void SceneNode::RefreshBoundingBox()
+    {
+        int count=ChildNode.GetCount();
+        SceneNode **sub=ChildNode.GetData();
+
+        AABB local,world;
+
+        (*sub)->RefreshBoundingBox();
+        local=(*sub)->GetLocalBoundingBox();
+
+        ++sub;
+        for(int i=1;i<count;i++)
+        {
             (*sub)->RefreshBoundingBox();
-            local=(*sub)->GetLocalBoundingBox();
+
+            local.Enclose((*sub)->GetLocalBoundingBox());
 
             ++sub;
-            for(int i=1;i<count;i++)
-            {
-                (*sub)->RefreshBoundingBox();
-
-                local.Enclose((*sub)->GetLocalBoundingBox());
-
-                ++sub;
-            }
-
-            LocalBoundingBox=local;
         }
 
-        int SceneNode::GetComponents(ArrayList<Component *> &comp_list,const ComponentManager *mgr)
+        LocalBoundingBox=local;
+    }
+
+    int SceneNode::GetComponents(ArrayList<Component *> &comp_list,const ComponentManager *mgr)
+    {
+        if(!mgr)return(-1);
+        if(ComponentIsEmpty())return(0);
+
+        int result=0;
+
+        for(Component *c:ComponentSet)
         {
-            if(!mgr)return(-1);
-            if(ComponentIsEmpty())return(0);
-
-            int result=0;
-
-            for(Component *c:ComponentList)
+            if(c->GetManager()==mgr)
             {
-                if(c->GetManager()==mgr)
-                {
-                    comp_list.Add(c);
-                    ++result;
-                }
+                comp_list.Add(c);
+                ++result;
             }
-            
-            return result;
         }
 
-        bool SceneNode::HasComponent(const ComponentManager *mgr)
+        return result;
+    }
+
+    bool SceneNode::HasComponent(const ComponentManager *mgr)
+    {
+        if(!mgr)return(false);
+        if(ComponentIsEmpty())return(false);
+
+        for(Component *c:ComponentSet)
         {
-            if(!mgr)return(false);
-            if(ComponentIsEmpty())return(false);
-
-            for(Component *c:ComponentList)
-            {
-                if(c->GetManager()==mgr)
-                    return(true);
-            }
-
-            return(false);
+            if(c->GetManager()==mgr)
+                return(true);
         }
-    }//namespace graph
-}//namespace hgl
+
+        return(false);
+    }
+}//namespace hgl::graph
