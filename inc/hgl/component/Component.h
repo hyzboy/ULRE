@@ -43,7 +43,13 @@ COMPONENT_NAMESPACE_BEGIN
 class ComponentManager;
 class SceneNode;
 
-struct ComponentData{};
+struct ComponentData
+{
+public:
+
+    ComponentData()=default;
+    virtual ~ComponentData()=default;
+};
 
 /**
 * 基础组件<br>

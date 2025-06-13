@@ -49,7 +49,9 @@ public:
 
     StaticMeshComponent *CreateStaticMeshComponent(Mesh *m)
     {
-        return CreateStaticMeshComponent(new StaticMeshComponentData(m));
+        auto sm_cd=new StaticMeshComponentData(m);
+
+        return CreateStaticMeshComponent(sm_cd);
     }
 
     virtual Component *CreateComponent(ComponentData *data) override;
