@@ -5,6 +5,8 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
+#include<hgl/component/StaticMeshComponent.h>
+
 using namespace hgl;
 using namespace hgl::graph;
 
@@ -39,6 +41,8 @@ private:
     Mesh *              mesh_triangle       =nullptr;
 
     Pipeline *          pipeline            =nullptr;
+
+    StaticMeshComponent *sm_component=nullptr;
 
 private:
 
@@ -87,7 +91,11 @@ private:
 
         SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
 
+        auto manager=StaticMeshComponentManager::GetDefaultManager();
 
+        sm_component=manager->CreateStaticMeshComponent(mesh_triangle);
+
+        scene_root->AttachComponent(sm_component);
 
         scene_root->Add(new SceneNode(mesh_triangle));
 
@@ -97,6 +105,11 @@ private:
 public:
 
     using WorkObject::WorkObject;
+
+    ~TestApp()
+    {
+        SAFE_CLEAR(sm_component);
+    }
 
     bool Init() override
     {

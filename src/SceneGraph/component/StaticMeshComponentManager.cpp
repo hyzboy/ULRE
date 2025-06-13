@@ -6,7 +6,11 @@ COMPONENT_NAMESPACE_BEGIN
 
 StaticMeshComponentData::~StaticMeshComponentData()
 {
-    SAFE_CLEAR(mesh);
+    if(mesh)
+    {
+        //mesh->Release();      //外面有RenderResource管理，不需要在这里释放.但未来要考虑是增加Release函数通知这里释放了一次使用权
+        mesh=nullptr;
+    }
 }
 
 Component *StaticMeshComponentManager::CreateComponent(ComponentData *data)
