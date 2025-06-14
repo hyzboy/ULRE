@@ -21,7 +21,7 @@ protected:
 
 protected:
 
-    AABB BoundingBox;
+    AABB bounding_box;
     
 public:
 
@@ -48,6 +48,6 @@ public:
 
     VertexDataManager *     GetVDM          ();                             ///<取得顶点数据管理器
 
-    const   AABB &          GetBoundingBox  ()const{return BoundingBox;}
+    const   AABB &          GetBoundingBox  ()const{return bounding_box;}
 };//class Primitive
 VK_NAMESPACE_END

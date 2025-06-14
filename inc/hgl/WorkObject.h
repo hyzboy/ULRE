@@ -160,6 +160,30 @@ namespace hgl
 
             return c;
         }
+
+        template<typename C,typename ...ARGS>
+        inline C *CreateComponent(const graph::Matrix4f &mat,graph::SceneNode *parent_node,ARGS...args)
+        {
+            if(!parent_node)
+            {
+                //        LOG_ERROR(OS_TEXT("CreateComponent failed, parent node is null!"));
+                return(nullptr);
+            }
+
+            C *c=this->CreateComponent<C>(args...); //创建组件
+
+            if(!c)
+            {
+                //        LOG_ERROR(OS_TEXT("CreateComponent failed, create component failed!"));
+                return(nullptr);
+            }
+
+            parent_node->AttachComponent(c); //将组件附加到父节点
+
+            c->graph::SceneOrient::SetLocalMatrix(mat);
+
+            return c;
+        }
     };//class WorkObject
 
     /**

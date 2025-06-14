@@ -5,6 +5,7 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/component/StaticMeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -79,10 +80,10 @@ private:
         
         for(uint i=0;i<TRIANGLE_NUMBER;i++)
         {
-            rad=deg2rad<double>((360.0f/double(TRIANGLE_NUMBER))*i);       //这里一定要加<float>或<float>，否则结果用int保存会出现问题
+            rad=deg2rad<double>((360.0f/double(TRIANGLE_NUMBER))*i);       //这里一定要加<double>或<float>，否则结果用int保存会出现问题
             mat=rotate(rad,Vector3f(0,0,1));
 
-            scene_root->Add(new SceneNode(mat,render_obj));
+            CreateComponent<StaticMeshComponent>(mat,scene_root,render_obj);
         }
 
         return(true);
