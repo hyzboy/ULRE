@@ -126,4 +126,12 @@ namespace hgl::graph
 
         return(false);
     }
+
+    SceneNode::~SceneNode()
+    {
+        for(Component *c:component_set)
+        {
+            c->OnDetach(this);
+        }
+    }
 }//namespace hgl::graph

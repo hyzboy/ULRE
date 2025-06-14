@@ -1,8 +1,8 @@
-﻿#ifndef HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
-#define HGL_GRAPH_VULKAN_MATERIAL_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/type/Map.h>
+#include<hgl/type/SortedSet.h>
 #include<hgl/type/String.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
@@ -106,6 +106,5 @@ public:
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 
-using MaterialSets=SortedSet<Material *>;
+using MaterialSet=SortedSet<Material *>;
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_MATERIAL_INCLUDE

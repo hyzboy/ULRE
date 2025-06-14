@@ -1,9 +1,7 @@
-﻿#ifndef HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
-#define HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVertexInputLayout.h>
-#include<hgl/type/SortedSet.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -46,4 +44,3 @@ public:
     operator VkShaderModule                                 ()const{return stage_create_info->module;}
 };//class ShaderModule
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_SHADER_MODULE_INCLUDE

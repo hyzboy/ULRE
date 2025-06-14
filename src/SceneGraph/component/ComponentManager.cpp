@@ -1,5 +1,7 @@
 #include<hgl/component/Component.h>
 #include<tsl/robin_map.h>
+#include<hgl/type/String.h>
+#include<hgl/log/LogInfo.h>
 
 namespace hgl::graph
 {
@@ -59,20 +61,33 @@ namespace hgl::graph
         return component_manager_map->at(hash_code);
     }
 
-    int ComponentManager::GetComponents(ArrayList<Component *> &comp_list,SceneNode *node)
+    ComponentManager::~ComponentManager()
+    {
+        for(auto *c:component_set)
+        {
+            c->OnDetach(nullptr);
+
+            //Component::~Component()函数会再次调用ComponentManager->DetachComponent，其中会执行component_set的删除，整个流程就会出现问题。
+            //所以这里先OnDetachManager掉Component中的Manager属性，然后再执行删除
+            c->OnDetachManager(this);
+
+            LOG_INFO(AnsiString("~ComponentManager delete ")+AnsiString::numberOf(c->GetUniqueID()));
+            delete c;
+        }
+    }
+
+    int ComponentManager::GetComponents(ComponentList &comp_list,SceneNode *node)
     {
         if(!node)return(-1);
         if(comp_list.IsEmpty())return(-2);
         if(!component_manager_map)return(-3);
 
-        Component **cc=component_set.GetData();
-
         int result=0;
 
-        for(int i=0;i<component_set.GetCount();i++)
-            if(cc[i]->GetOwnerNode()==node)
+        for(auto cc:component_set)
+            if(cc->GetOwnerNode()==node)
             {
-                comp_list.Add(cc[i]);
+                comp_list.Add(cc);
                 ++result;
             }
 

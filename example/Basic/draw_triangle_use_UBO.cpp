@@ -42,8 +42,6 @@ private:
 
     Pipeline *          pipeline            =nullptr;
 
-    StaticMeshComponent *sm_component=nullptr;
-
 private:
 
     bool InitMaterial()
@@ -89,32 +87,15 @@ private:
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
                                     });
 
-        return(mesh_triangle);
-    }
-
-    bool InitScene()
-    {
         if(!mesh_triangle)
             return(false);
 
-        SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
-
-        sm_component=CreateComponent<StaticMeshComponent>(scene_root,mesh_triangle); //创建一个静态网格组件
-
-        if(!sm_component)
-            return(false);
-
-        return(true);
+        return CreateComponent<StaticMeshComponent>(GetSceneRoot(),mesh_triangle); //创建一个静态网格组件
     }
 
 public:
 
     using WorkObject::WorkObject;
-
-    ~TestApp()
-    {
-        SAFE_CLEAR(sm_component);
-    }
 
     bool Init() override
     {
@@ -122,9 +103,6 @@ public:
             return(false);
 
         if(!InitVBO())
-            return(false);
-
-        if(!InitScene())
             return(false);
 
         return(true);

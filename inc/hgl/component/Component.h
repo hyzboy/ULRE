@@ -58,9 +58,23 @@ public:
 */
 class Component
 {
+    static uint unique_id_count;
+
+    uint unique_id;
+
     SceneNode *         OwnerNode;
     ComponentManager *  Manager;
     ComponentData *     Data;
+
+protected:
+
+    friend class ComponentManager;
+
+    virtual void OnDetachManager(ComponentManager *cm)
+    {
+        if(cm==Manager)
+            Manager=nullptr;
+    }
 
 public:
 
@@ -71,6 +85,8 @@ public:
     virtual const size_t    GetHashCode()const=0;
 
 public:
+
+    uint                GetUniqueID ()const{return unique_id;}
 
     SceneNode *         GetOwnerNode()const{return OwnerNode;}
     ComponentManager *  GetManager  ()const{return Manager;}
@@ -83,7 +99,7 @@ public:
 public: //事件
 
     virtual void OnAttach(SceneNode *node){if(node)OwnerNode=node;}         ///<附加到节点事件
-    virtual void OnDetach(SceneNode *node){OwnerNode=nullptr;}              ///<从节点分离事件
+    virtual void OnDetach(SceneNode *){OwnerNode=nullptr;}                  ///<从节点分离事件
 
     virtual void OnFocusLost(){}                                            ///<焦点丢失事件
     virtual void OnFocusGained(){}                                          ///<焦点获得事件
@@ -108,17 +124,17 @@ public:
     virtual const size_t    GetComponentHashCode()const=0;
     virtual const size_t    GetHashCode()const=0;
 
-    virtual ~ComponentManager()=default;
+    virtual ~ComponentManager();
 
 public:
 
     virtual Component *     CreateComponent(ComponentData *)=0;
 
-            int             GetComponentCount()const{return component_set.GetCount();}
+            const size_t    GetComponentCount()const{return component_set.GetCount();}
 
             ComponentSet &  GetComponents(){return component_set;}
 
-            int             GetComponents(ArrayList<Component *> &comp_list,SceneNode *);
+            int             GetComponents(ComponentList &comp_list,SceneNode *);
 
     virtual void            UpdateComponents(const double delta_time);
 

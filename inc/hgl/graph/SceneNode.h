@@ -57,7 +57,7 @@ namespace hgl::graph
 
     public:
 
-        virtual ~SceneNode()=default;
+        virtual ~SceneNode();
 
         void Clear() override
         {
@@ -106,8 +106,8 @@ namespace hgl::graph
 
     public: //组件相关方法
 
-                        bool        ComponentIsEmpty    ()const{return component_set.GetCount()==0;}                ///<是否没有组件
-        virtual         int         GetComponentCount   ()const{return component_set.GetCount();}                   ///<取得组件数量
+                        bool        ComponentIsEmpty    ()const{return component_set.IsEmpty();}                    ///<是否没有组件
+        virtual const   int64       GetComponentCount   ()const{return component_set.GetCount();}                   ///<取得组件数量
         virtual         bool        AttachComponent     (Component *comp)                                           ///<添加一个组件
         {
             if(!comp)return(false);
