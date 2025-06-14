@@ -30,8 +30,6 @@ namespace hgl::graph
         AABB LocalBoundingBox;                                                                                      ///<本地坐标绑定盒
         //AABB WorldBoundingBox;                                                                                      ///<世界坐标绑定盒
 
-        Mesh *render_obj=nullptr;                                                                                   ///<可渲染实例
-
     protected:
 
         ObjectList<SceneNode> ChildNode;                                                                            ///<子节点
@@ -55,9 +53,7 @@ namespace hgl::graph
         SceneNode(const SceneNode &)=delete;
         SceneNode(const SceneNode *)=delete;
         SceneNode(const SceneOrient &so           ):SceneOrient(so)   {}
-        SceneNode(                      Mesh *ri  )                   {render_obj=ri;}
         SceneNode(const Matrix4f &mat             ):SceneOrient(mat)  {}
-        SceneNode(const Matrix4f &mat,  Mesh *ri  ):SceneOrient(mat)  {render_obj=ri;}
 
     public:
 
@@ -74,12 +70,10 @@ namespace hgl::graph
 
             ChildNode.Clear();
             ComponentSet.Clear();
-            render_obj=nullptr;
         }
 
         const bool ChildNodeIsEmpty()const
         {
-            if(render_obj)return(false);
             if(ChildNode.GetCount())return(false);
 
             return(true);
@@ -88,10 +82,6 @@ namespace hgl::graph
                 void        SetParent(SceneNode *sn) {ParentNode=sn;}
                 SceneNode * GetParent()      noexcept{return ParentNode;}
         const   SceneNode * GetParent()const noexcept{return ParentNode;}
-
-                void        SetRenderable(Mesh *);
-                Mesh *      GetRenderable()      noexcept{return render_obj;}
-        const   Mesh *      GetRenderable()const noexcept{return render_obj;}
 
         SceneNode *Add(SceneNode *sn)
         {
@@ -118,13 +108,32 @@ namespace hgl::graph
 
                         bool        ComponentIsEmpty    ()const{return ComponentSet.GetCount()==0;}                 ///<是否没有组件
         virtual         int         GetComponentCount   ()const{return ComponentSet.GetCount();}                    ///<取得组件数量
-        virtual         void        AttachComponent     (Component *comp){ComponentSet.Add(comp);}                  ///<添加一个组件
-        virtual         void        DetachComponent     (Component *comp){ComponentSet.Delete(comp);}               ///<删除一个组件
+        virtual         bool        AttachComponent     (Component *comp)                                           ///<添加一个组件
+        {
+            if(!comp)return(false);
+
+            if(ComponentSet.Add(comp)<0)
+                return(false);
+
+            comp->OnAttach(this);            //调用组件的OnAttach方法
+            return(true);
+        }
+
+        virtual         void        DetachComponent     (Component *comp)                                           ///<删除一个组件
+        {
+            if (!comp)return;
+
+            ComponentSet.Delete(comp);
+
+            comp->OnDetach(this);            //调用组件的OnDetach方法
+        }
+
                         bool        Contains            (Component *comp){return ComponentSet.Contains(comp);}      ///<是否包含指定组件
 
                         bool        HasComponent        (const ComponentManager *);                                 ///<是否有指定组件管理器的组件
         virtual         int         GetComponents       (ArrayList<Component *> &comp_list,const ComponentManager *);    ///<取得所有组件
 
+        const SortedSet<Component *> &    GetComponents       ()const{return ComponentSet;}
     };//class SceneNode
 
     SceneNode *Duplication(SceneNode *);                                                                            ///<复制一个场景节点

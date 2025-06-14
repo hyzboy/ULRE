@@ -89,13 +89,22 @@ private:
                                         {VAN::Color,   COLOR_DATA_FORMAT,   color_data}
                                     });
 
+        return(mesh_triangle);
+    }
+
+    bool InitScene()
+    {
+        if(!mesh_triangle)
+            return(false);
+
         SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
 
         sm_component=CreateComponent<StaticMeshComponent>(scene_root,mesh_triangle); //创建一个静态网格组件
 
-        scene_root->Add(new SceneNode(mesh_triangle));
+        if(!sm_component)
+            return(false);
 
-        return(mesh_triangle);
+        return(true);
     }
 
 public:
@@ -113,6 +122,9 @@ public:
             return(false);
 
         if(!InitVBO())
+            return(false);
+
+        if(!InitScene())
             return(false);
 
         return(true);

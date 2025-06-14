@@ -9,13 +9,13 @@ namespace hgl
     {
         class Mesh;
         class MaterialInstance;
-        class SceneNode;
+        class StaticMeshComponent;
 
         struct RenderNode:public Comparator<RenderNode>
         {
             uint        index;                                          ///<在MaterialRenderList中的索引
 
-            SceneNode * scene_node;
+            StaticMeshComponent *sm_component;                          ///<静态网格组件
 
             uint32      l2w_version;
             uint32      l2w_index;
@@ -27,6 +27,11 @@ namespace hgl
 
             //该函数位于MaterialRenderList.cpp
             const int compare(const RenderNode &)const override;
+
+        public:
+
+            Mesh *GetMesh()const;
+            MaterialInstance *GetMaterialInstance()const;
         };
 
         using RenderNodeList=ArrayList<RenderNode>;

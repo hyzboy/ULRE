@@ -1,17 +1,17 @@
 #pragma once
 
-#include<hgl/component/Component.h>
+#include<hgl/component/PrimitiveComponent.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
 /**
 * 可渲染组件
 */
-class RenderComponent: public Component
+class RenderComponent:public PrimitiveComponent
 {
 public:
 
-    using Component::Component;
+    using PrimitiveComponent::PrimitiveComponent;
     virtual ~RenderComponent()=default;
 };//class RenderComponent
 

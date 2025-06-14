@@ -91,6 +91,7 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/RenderTask.h
                         ${SG_INCLUDE_PATH}/Renderer.h
                         render/Renderer.cpp
+                        render/RenderNode.cpp
                         render/RenderTask.cpp
                         render/RenderList.cpp
                         render/MaterialRenderList.cpp
@@ -297,8 +298,9 @@ SOURCE_GROUP("Vulkan\\Mesh" FILES ${VK_MESH_SOURCE})
 set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
 
 SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
-                        ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/SceneComponent.h
                         ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
                         ${COMPONENT_INCLUDE_PATH}/StaticMeshComponent.h
                         component/Component.cpp
                         component/ComponentManager.cpp
