@@ -91,11 +91,7 @@ private:
 
         SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
 
-        auto manager=StaticMeshComponentManager::GetDefaultManager();
-
-        sm_component=manager->CreateStaticMeshComponent(mesh_triangle);
-
-        scene_root->AttachComponent(sm_component);
+        sm_component=CreateComponent<StaticMeshComponent>(scene_root,mesh_triangle); //创建一个静态网格组件
 
         scene_root->Add(new SceneNode(mesh_triangle));
 
