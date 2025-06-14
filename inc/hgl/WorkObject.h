@@ -122,6 +122,44 @@ namespace hgl
                                             graph::MaterialInstance *mi,
                                             graph::Pipeline *pipeline,
                                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
+
+    public: //Component 相关
+
+        template<typename C,typename ...ARGS>
+        inline C *CreateComponent(ARGS...args)
+        {
+            auto manager=C::GetDefaultManager();  //取得默认管理器
+
+            if(!manager)
+            {
+                //        LOG_ERROR(OS_TEXT("CreateComponent failed, no default manager!"));
+                return(nullptr);
+            }
+
+            return manager->CreateComponent(args...); //创建组件
+        }
+
+        template<typename C,typename ...ARGS>
+        inline C *CreateComponent(graph::SceneNode *parent_node,ARGS...args)
+        {
+            if(!parent_node)
+            {
+                //        LOG_ERROR(OS_TEXT("CreateComponent failed, parent node is null!"));
+                return(nullptr);
+            }
+
+            C *c=this->CreateComponent<C>(args...); //创建组件
+
+            if(!c)
+            {
+                //        LOG_ERROR(OS_TEXT("CreateComponent failed, create component failed!"));
+                return(nullptr);
+            }
+
+            parent_node->AttachComponent(c); //将组件附加到父节点
+
+            return c;
+        }
     };//class WorkObject
 
     /**

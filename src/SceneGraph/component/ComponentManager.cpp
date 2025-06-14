@@ -55,7 +55,7 @@ namespace hgl::graph
         if(!component_manager_map->contains(hash_code))
             return(nullptr);
 
-        //[]对于不存的会自行插入一个，所以不要把下面的.at改成[]
+        //tsl::robin_map的[]对于不存在的会自行插入一个，所以不要把下面的.at改成[]
         return component_manager_map->at(hash_code);
     }
 

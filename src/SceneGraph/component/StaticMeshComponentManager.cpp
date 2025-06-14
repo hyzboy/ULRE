@@ -17,10 +17,10 @@ Component *StaticMeshComponentManager::CreateComponent(ComponentData *data)
 {
     if(!data)return(nullptr);
 
-    return CreateStaticMeshComponent(reinterpret_cast<StaticMeshComponentData *>(data));
+    return CreateComponent(reinterpret_cast<StaticMeshComponentData *>(data));
 }
 
-StaticMeshComponent *StaticMeshComponentManager::CreateStaticMeshComponent(StaticMeshComponentData *data)
+StaticMeshComponent *StaticMeshComponentManager::CreateComponent(StaticMeshComponentData *data)
 {
     if(!data)return(nullptr);
 

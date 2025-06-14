@@ -45,13 +45,13 @@ public:
 
     StaticMeshComponentManager()=default;
 
-    StaticMeshComponent *CreateStaticMeshComponent(StaticMeshComponentData *data);
+    StaticMeshComponent *CreateComponent(StaticMeshComponentData *data);
 
-    StaticMeshComponent *CreateStaticMeshComponent(Mesh *m)
+    StaticMeshComponent *CreateComponent(Mesh *m)
     {
         auto sm_cd=new StaticMeshComponentData(m);
 
-        return CreateStaticMeshComponent(sm_cd);
+        return CreateComponent(sm_cd);
     }
 
     virtual Component *CreateComponent(ComponentData *data) override;
@@ -70,6 +70,11 @@ public:
     }
 
     virtual ~StaticMeshComponent()=default;
+
+    static StaticMeshComponentManager *GetDefaultManager()
+    {
+        return StaticMeshComponentManager::GetDefaultManager();
+    }
 
     static constexpr const size_t StaticHashCode()
     {
