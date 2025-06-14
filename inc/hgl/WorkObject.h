@@ -156,6 +156,9 @@ namespace hgl
                 return(nullptr);
             }
 
+            /**
+            * 如果此处出现转换错误，请检查是否包含了对应的Component头文件。
+            */
             parent_node->AttachComponent(c); //将组件附加到父节点
 
             return c;
@@ -178,6 +181,9 @@ namespace hgl
                 return(nullptr);
             }
 
+            /**
+            * 如果此处出现转换错误，请检查是否包含了对应的Component头文件。
+            */
             parent_node->AttachComponent(c); //将组件附加到父节点
 
             c->graph::SceneOrient::SetLocalMatrix(mat);

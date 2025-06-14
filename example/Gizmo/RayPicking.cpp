@@ -11,6 +11,7 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/component/StaticMeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -100,7 +101,7 @@ private:
             return(nullptr);
         }
 
-        parent_node->Add(new SceneNode(ri));
+        CreateComponent<StaticMeshComponent>(parent_node,ri);
 
         return ri;
     }

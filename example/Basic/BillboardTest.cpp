@@ -13,6 +13,7 @@
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/FirstPersonCameraControl.h>
+#include<hgl/component/StaticMeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -112,19 +113,6 @@ private:
         return(true);
     }
 
-    SceneNode *CreateSceneNode(Primitive *r,MaterialInstance *mi,Pipeline *p)
-    {
-        Mesh *ri=db->CreateMesh(r,mi,p);
-
-        if(!ri)
-        {
-            LOG_ERROR(OS_TEXT("Create Mesh failed."));
-            return(nullptr);
-        }
-
-        return(new SceneNode(ri));
-    }
-
     bool CreateRenderObject()
     {
         using namespace inline_geometry;
@@ -164,9 +152,8 @@ private:
     {
         SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
 
-        scene_root->Add(CreateSceneNode(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
-
-        scene_root->Add(new SceneNode(ro_billboard));
+        CreateComponent<StaticMeshComponent>(scene_root,db->CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
+        CreateComponent<StaticMeshComponent>(scene_root,ro_billboard);
 
         CameraControl *camera_control=GetCameraControl();
 
