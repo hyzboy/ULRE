@@ -45,26 +45,26 @@ void ClearGizmoScaleStaticMesh()
 
 bool InitGizmoScaleStaticMesh()
 {
-    Mesh *center_cube=GetGizmoRenderable(GizmoShape::Cube,GizmoColor::White);
+    Mesh *center_cube=GetGizmoMesh(GizmoShape::Cube,GizmoColor::White);
     Mesh *cylinder[3]
     {
-        GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Blue),
+        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Blue),
     };
 
     Mesh *cube[3]
     {
-        GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Cube,GizmoColor::Blue),
+        GetGizmoMesh(GizmoShape::Cube,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Cube,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Cube,GizmoColor::Blue),
     };
 
     Mesh *square[3]=
     {
-        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Square,GizmoColor::Blue)
+        GetGizmoMesh(GizmoShape::Square,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Square,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Square,GizmoColor::Blue)
     };
 
     if(!center_cube)
