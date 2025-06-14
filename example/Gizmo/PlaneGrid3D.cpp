@@ -10,6 +10,7 @@
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
+#include<hgl/component/StaticMeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -83,7 +84,7 @@ private:
         if(!ri)
             return;
 
-        parent_node->Add(new SceneNode(mat,ri));
+        CreateComponent<StaticMeshComponent>(mat,parent_node,ri);
     }
 
     bool InitScene()
