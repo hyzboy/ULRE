@@ -1,4 +1,5 @@
 ﻿#include<hgl/graph/SceneNode.h>
+#include<hgl/component/SceneComponent.h>
 #include<hgl/graph/Mesh.h>
 
 namespace hgl::graph
@@ -30,10 +31,10 @@ namespace hgl::graph
     //    }
     //    else
     //    {
-    //        BoundingBox.SetZero();
+    //        bounding_box.SetZero();
 
     //        //WorldBoundingBox=
-    //            LocalBoundingBox=BoundingBox;
+    //            local_bounding_box=bounding_box;
     //    }
     //}
 
@@ -49,16 +50,21 @@ namespace hgl::graph
 
         const Matrix4f &l2w=scene_matrix.GetLocalToWorldMatrix();
 
-        const int count=ChildNode.GetCount();
-
-        SceneNode **sub=ChildNode.GetData();
-
-        for(int i=0;i<count;i++)
+        for(SceneNode *sub:child_nodes)
         {
-            (*sub)->SetParentMatrix(l2w);
-            (*sub)->RefreshMatrix();
+            sub->SetParentMatrix(l2w);
+            sub->RefreshMatrix();
+        }
 
-            sub++;
+        for(Component *com:component_set)
+        {
+            SceneComponent *sc=reinterpret_cast<SceneComponent *>(com);
+
+            if(!sc)
+                continue;
+
+            sc->SetParentMatrix(l2w);
+            sc->RefreshMatrix();
         }
     }
 
@@ -67,8 +73,8 @@ namespace hgl::graph
     */
     void SceneNode::RefreshBoundingBox()
     {
-        int count=ChildNode.GetCount();
-        SceneNode **sub=ChildNode.GetData();
+        int count=child_nodes.GetCount();
+        SceneNode **sub=child_nodes.GetData();
 
         AABB local,world;
 
@@ -85,17 +91,17 @@ namespace hgl::graph
             ++sub;
         }
 
-        LocalBoundingBox=local;
+        local_bounding_box=local;
     }
 
-    int SceneNode::GetComponents(ArrayList<Component *> &comp_list,const ComponentManager *mgr)
+    int SceneNode::GetComponents(ComponentList &comp_list,const ComponentManager *mgr)
     {
         if(!mgr)return(-1);
         if(ComponentIsEmpty())return(0);
 
         int result=0;
 
-        for(Component *c:ComponentSet)
+        for(Component *c:component_set)
         {
             if(c->GetManager()==mgr)
             {
@@ -112,7 +118,7 @@ namespace hgl::graph
         if(!mgr)return(false);
         if(ComponentIsEmpty())return(false);
 
-        for(Component *c:ComponentSet)
+        for(Component *c:component_set)
         {
             if(c->GetManager()==mgr)
                 return(true);

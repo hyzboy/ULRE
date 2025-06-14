@@ -56,12 +56,10 @@ void MaterialRenderList::Add(StaticMeshComponent *smc)
 
     rn.sm_component     =smc;
 
-    SceneNode *sn=smc->GetOwnerNode();  //目前先这样处理，未来改成每个Component有自己的再一次的变换矩阵
-
-    rn.l2w_version      =sn->GetLocalToWorldMatrixVersion();
+    rn.l2w_version      =smc->GetLocalToWorldMatrixVersion();
     rn.l2w_index        =0;
 
-    rn.world_position   =sn->GetWorldPosition();
+    rn.world_position   =smc->GetWorldPosition();
 
     if(camera_info)
         rn.to_camera_distance=length(camera_info->pos,rn.world_position);
@@ -104,7 +102,7 @@ void MaterialRenderList::UpdateLocalToWorld()
 
     for(int i=0;i<node_count;i++)
     {
-        l2w_version=rn->sm_component->GetOwnerNode()->GetLocalToWorldMatrixVersion();
+        l2w_version=rn->sm_component->GetLocalToWorldMatrixVersion();
 
         if(rn->l2w_version!=l2w_version)       //版本不对，需要更新
         {

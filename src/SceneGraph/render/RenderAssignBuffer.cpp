@@ -74,7 +74,7 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
 
     for(int i=0;i<rn_list.GetCount();i++)
     {
-        *l2wp=rn->sm_component->GetOwnerNode()->GetLocalToWorldMatrix();
+        *l2wp=rn->sm_component->GetLocalToWorldMatrix();
         ++l2wp;
         ++rn;
     }
@@ -98,7 +98,7 @@ void RenderAssignBuffer::UpdateLocalToWorld(const RenderNodePointerList &rnp_lis
 
     for(uint i=0;i<count;i++)
     {
-        l2wp[(*rn)->l2w_index-first]=(*rn)->sm_component->GetOwnerNode()->GetLocalToWorldMatrix();
+        l2wp[(*rn)->l2w_index-first]=(*rn)->sm_component->GetLocalToWorldMatrix();
 
         ++rn;
     }

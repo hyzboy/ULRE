@@ -63,11 +63,7 @@ class StaticMeshComponent:public RenderComponent
 
 public:
 
-    StaticMeshComponent(StaticMeshComponentData *cd,StaticMeshComponentManager *cm)
-        :RenderComponent(cd,cm)
-    {
-        sm_data=cd;
-    }
+    StaticMeshComponent(StaticMeshComponentData *cd,StaticMeshComponentManager *cm):RenderComponent(cd,cm){sm_data=cd;}
 
     virtual ~StaticMeshComponent()=default;
 

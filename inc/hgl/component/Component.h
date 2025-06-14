@@ -23,14 +23,15 @@
 *
 *   Component是组件的基类，所有组件都从这里派生。
 *
-*
-*   RenderComponent是可渲染组件的基类，所有可渲染组件都从这里派生。它继承于Component。
-*
-*   PrimitiveComponent是图元组件的基类，所有图元组件都从这里派生。它继承于RenderComponent。
+*   SceneComponent是场景组件基类，只要是放在场景中的都从它派生，
+* 
+*   PrimitiveComponent是图元组件的基类，所有图元组件都从这里派生。
 *   它再度派生出的任何Component都必须是一个有3D空间的几何图元。
 *   引擎中的空间、物理、等都由PrimitiveComponent提供数据进行计算。
+
+*   RenderComponent是可渲染组件的基类，所有可渲染组件都从这里派生。
 *
-*   StaticMeshComponent是静态网格组件，它是一个具体的PrimitiveComponent实现。
+*   StaticMeshComponent是静态网格组件，它是一个具体的RenderComponent实现。
 * 
 */
 
@@ -89,6 +90,7 @@ public: //事件
 };//class Component
 
 using ComponentSet=SortedSet<Component *>;
+using ComponentList=ArrayList<Component *>;
 
 class ComponentManager
 {
