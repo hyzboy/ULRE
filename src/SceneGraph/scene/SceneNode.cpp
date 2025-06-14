@@ -3,39 +3,39 @@
 
 namespace hgl::graph
 {
-    SceneNode *Duplication(SceneNode *src_node)
-    {
-        if(!src_node)
-            return nullptr;
+    //SceneNode *Duplication(SceneNode *src_node)
+    //{
+    //    if(!src_node)
+    //        return nullptr;
 
-        SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
+    //    SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
 
-        node->SetRenderable(src_node->GetRenderable());
+    //    node->SetRenderable(src_node->GetRenderable());
 
-        for(SceneNode *sn:src_node->GetChildNode())
-        {
-            node->Add(Duplication(sn));
-        }
+    //    for(SceneNode *sn:src_node->GetChildNode())
+    //    {
+    //        node->Add(Duplication(sn));
+    //    }
 
-        return node;
-    }
+    //    return node;
+    //}
 
-    void SceneNode::SetRenderable(Mesh *ri)
-    {
-        render_obj=ri;
+    //void SceneNode::SetRenderable(Mesh *ri)
+    //{
+    //    render_obj=ri;
 
-        if(render_obj)
-        {
-            SetBoundingBox(render_obj->GetBoundingBox());
-        }
-        else
-        {
-            BoundingBox.SetZero();
+    //    if(render_obj)
+    //    {
+    //        SetBoundingBox(render_obj->GetBoundingBox());
+    //    }
+    //    else
+    //    {
+    //        BoundingBox.SetZero();
 
-            //WorldBoundingBox=
-                LocalBoundingBox=BoundingBox;
-        }
-    }
+    //        //WorldBoundingBox=
+    //            LocalBoundingBox=BoundingBox;
+    //    }
+    //}
 
     /**
     * 刷新矩阵变换

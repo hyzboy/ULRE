@@ -7,6 +7,7 @@
 #include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/component/StaticMeshComponent.h>
 
 VK_NAMESPACE_BEGIN
 RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)
@@ -73,7 +74,7 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
 
     for(int i=0;i<rn_list.GetCount();i++)
     {
-        *l2wp=rn->scene_node->GetLocalToWorldMatrix();
+        *l2wp=rn->sm_component->GetOwnerNode()->GetLocalToWorldMatrix();
         ++l2wp;
         ++rn;
     }
@@ -97,7 +98,7 @@ void RenderAssignBuffer::UpdateLocalToWorld(const RenderNodePointerList &rnp_lis
 
     for(uint i=0;i<count;i++)
     {
-        l2wp[(*rn)->l2w_index-first]=(*rn)->scene_node->GetLocalToWorldMatrix();
+        l2wp[(*rn)->l2w_index-first]=(*rn)->sm_component->GetOwnerNode()->GetLocalToWorldMatrix();
 
         ++rn;
     }
@@ -112,7 +113,7 @@ void RenderAssignBuffer::UpdateMaterialInstance(const RenderNode *rn)
 
     AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map(sizeof(AssignData)*rn->index,sizeof(AssignData)));
 
-    adp->mi=mi_set.Find(rn->scene_node->GetRenderable()->GetMaterialInstance());
+    adp->mi=mi_set.Find(rn->sm_component->GetMesh()->GetMaterialInstance());
 
     assign_vab->Unmap();
 }
@@ -152,7 +153,7 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     mi_set.PreAlloc(rn_list.GetCount());
 
     for(RenderNode &rn:rn_list)
-        mi_set.Add(rn.scene_node->GetRenderable()->GetMaterialInstance());
+        mi_set.Add(rn.sm_component->GetMesh()->GetMaterialInstance());
 
     if(mi_set.GetCount()>material->GetMIMaxCount())
     {
@@ -220,7 +221,7 @@ void RenderAssignBuffer::WriteNode(const RenderNodeList &rn_list)
             rn->l2w_index=i;
 
             adp->l2w=i;
-            adp->mi=mi_set.Find(rn->scene_node->GetRenderable()->GetMaterialInstance());
+            adp->mi=mi_set.Find(rn->sm_component->GetMesh()->GetMaterialInstance());
             ++adp;
 
             ++rn;

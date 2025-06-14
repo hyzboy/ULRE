@@ -5,6 +5,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/Mesh.h>
+#include<hgl/component/StaticMeshComponent.h>
 
 namespace hgl
 {
@@ -22,11 +23,16 @@ namespace hgl
         {
             if(!sn)return(false);
 
-            Mesh *ri=sn->GetRenderable();
-
-            if(ri)
+            for(auto component:sn->GetComponents())
             {
-                RenderPipelineIndex rpi(ri->GetMaterial(),ri->GetPipeline());
+                if(component->GetHashCode()!=StaticMeshComponent::StaticHashCode())     //暂时只支持StaticMeshComponent
+                    continue;
+
+                StaticMeshComponent *smc=reinterpret_cast<StaticMeshComponent *>(component);
+
+                Mesh *mesh=smc->GetMesh();
+
+                RenderPipelineIndex rpi(mesh->GetMaterial(),mesh->GetPipeline());
                 
                 MaterialRenderList *mrl;
 
@@ -36,8 +42,8 @@ namespace hgl
 
                     mrl_map.Add(rpi,mrl);
                 }
-                
-                mrl->Add(sn);
+
+                mrl->Add(smc);
 
                 ++renderable_count;
             }
@@ -85,11 +91,11 @@ namespace hgl
             mrl_map.UpdateLocalToWorld();
         }
 
-        void RenderList::UpdateMaterialInstance(SceneNode *sn)
+        void RenderList::UpdateMaterialInstance(StaticMeshComponent *smc)
         {
-            if(!sn)return;
+            if(!smc)return;
 
-            Mesh *ri=sn->GetRenderable();
+            Mesh *ri=smc->GetMesh();
 
             if(!ri)return;
 
@@ -99,7 +105,7 @@ namespace hgl
             if(!mrl_map.Get(rli,mrl))        //找到对应的
                 return;
 
-            mrl->UpdateMaterialInstance(sn);
+            mrl->UpdateMaterialInstance(smc);
         }
     }//namespace graph
 }//namespace hgl

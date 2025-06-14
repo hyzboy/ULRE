@@ -1,6 +1,6 @@
 #pragma once
 
-#include<hgl/component/PrimitiveComponent.h>
+#include<hgl/component/RenderComponent.h>
 #include<hgl/graph/Mesh.h>
 
 COMPONENT_NAMESPACE_BEGIN
@@ -57,14 +57,14 @@ public:
     virtual Component *CreateComponent(ComponentData *data) override;
 };//class StaticMeshComponentManager
 
-class StaticMeshComponent:public PrimitiveComponent
+class StaticMeshComponent:public RenderComponent
 {
     StaticMeshComponentData *sm_data;
 
 public:
 
     StaticMeshComponent(StaticMeshComponentData *cd,StaticMeshComponentManager *cm)
-        :PrimitiveComponent(cd,cm)
+        :RenderComponent(cd,cm)
     {
         sm_data=cd;
     }

@@ -82,7 +82,7 @@ public:
 public: //事件
 
     virtual void OnAttach(SceneNode *node){if(node)OwnerNode=node;}         ///<附加到节点事件
-    virtual void OnDetach(){OwnerNode=nullptr;}                             ///<从节点分离事件
+    virtual void OnDetach(SceneNode *node){OwnerNode=nullptr;}              ///<从节点分离事件
 
     virtual void OnFocusLost(){}                                            ///<焦点丢失事件
     virtual void OnFocusGained(){}                                          ///<焦点获得事件

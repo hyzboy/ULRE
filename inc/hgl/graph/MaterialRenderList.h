@@ -109,7 +109,7 @@ public:
     MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipelineIndex &rpi);
     ~MaterialRenderList();
 
-    void Add(SceneNode *);
+    void Add(StaticMeshComponent *);
 
     void SetCameraInfo(CameraInfo *ci){camera_info=ci;}
 
@@ -120,6 +120,6 @@ public:
     void Render(RenderCmdBuffer *);
 
     void UpdateLocalToWorld();          //刷新所有对象的LocalToWorld矩阵
-    void UpdateMaterialInstance(SceneNode *);
+    void UpdateMaterialInstance(StaticMeshComponent *);
 };//class MaterialRenderList
 VK_NAMESPACE_END

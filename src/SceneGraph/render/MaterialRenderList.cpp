@@ -6,72 +6,11 @@
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/util/sort/Sort.h>
 #include"RenderAssignBuffer.h"
-#include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/CameraInfo.h>
-
-/**
-* 
-* 理论上讲，我们需要按以下顺序排序
-*
-*   for(material)
-*       for(pipeline)
-*           for(material_instance)
-*               for(vab)
-* 
-* 
-*  关于Indirect Command Buffer
-
-    建立一个大的IndirectCommandBuffer，用于存放所有的渲染指令，包括那些不能使用Indirect渲染的。
-    这样就可以保证所有的渲染操作就算要切VBO，也不需要切换INDIRECT缓冲区，定位指令也很方便。
-*/
+#include<hgl/component/StaticMeshComponent.h>
 
 VK_NAMESPACE_BEGIN
-const int RenderNode::compare(const RenderNode &other)const
-{
-    hgl::int64 off;
-
-    hgl::graph::Mesh *ri_one=other.scene_node->GetRenderable();
-    hgl::graph::Mesh *ri_two=scene_node->GetRenderable();
-
-    auto *prim_one=ri_one->GetPrimitive();
-    auto *prim_two=ri_two->GetPrimitive();
-
-    //比较VDM
-
-    if(prim_one->GetVDM())      //有VDM
-    {
-        off=prim_one->GetVDM()
-           -prim_two->GetVDM();
-
-        if(off)
-            return off;
-
-        //比较模型
-        {
-            off=prim_one
-               -prim_two;
-
-            if(off)
-            {
-                off=prim_one->GetVertexOffset()-prim_two->GetVertexOffset();        //保证vertex offset小的在前面
-
-                return off;
-            }
-        }
-    }
-
-    //比较距离。。。。。。。。。。。。。。。。。。。。。还不知道这个是正了还是反了，等测出来确认后修改下面的返回值和这里的注释
-
-    float foff=other.to_camera_distance
-              -to_camera_distance;
-
-    if(foff>0)
-        return 1;
-    else
-        return -1;
-}
-
 MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipelineIndex &rpi)
 {
     device=d;
@@ -106,13 +45,18 @@ MaterialRenderList::~MaterialRenderList()
     SAFE_CLEAR(assign_buffer);
 }
 
-void MaterialRenderList::Add(SceneNode *sn)
+void MaterialRenderList::Add(StaticMeshComponent *smc)
 {
+    if(!smc)
+        return;
+
     RenderNode rn;
 
     rn.index            =rn_list.GetCount();
 
-    rn.scene_node       =sn;
+    rn.sm_component     =smc;
+
+    SceneNode *sn=smc->GetOwnerNode();  //目前先这样处理，未来改成每个Component有自己的再一次的变换矩阵
 
     rn.l2w_version      =sn->GetLocalToWorldMatrixVersion();
     rn.l2w_index        =0;
@@ -160,7 +104,7 @@ void MaterialRenderList::UpdateLocalToWorld()
 
     for(int i=0;i<node_count;i++)
     {
-        l2w_version=rn->scene_node->GetLocalToWorldMatrixVersion();
+        l2w_version=rn->sm_component->GetOwnerNode()->GetLocalToWorldMatrixVersion();
 
         if(rn->l2w_version!=l2w_version)       //版本不对，需要更新
         {
@@ -188,9 +132,9 @@ void MaterialRenderList::UpdateLocalToWorld()
     }
 }
 
-void MaterialRenderList::UpdateMaterialInstance(SceneNode *sn)
+void MaterialRenderList::UpdateMaterialInstance(StaticMeshComponent *smc)
 {
-    if(!sn)return;
+    if(!smc)return;
 
     if(!assign_buffer)
         return;
@@ -202,7 +146,7 @@ void MaterialRenderList::UpdateMaterialInstance(SceneNode *sn)
 
     for(int i=0;i<node_count;i++)
     {
-        if(rn->scene_node==sn)
+        if(rn->sm_component==smc)
         {
             assign_buffer->UpdateMaterialInstance(rn);
             return;
@@ -270,7 +214,7 @@ void MaterialRenderList::Stat()
     ri_array.Alloc(count);
 
     RenderItem *ri=ri_array.GetData();
-    Mesh *ro=rn->scene_node->GetRenderable();
+    Mesh *ro=rn->sm_component->GetMesh();
 
     ri_count=1;
 
@@ -286,7 +230,7 @@ void MaterialRenderList::Stat()
 
     for(uint i=1;i<count;i++)
     {
-        ro=rn->scene_node->GetRenderable();
+        ro=rn->sm_component->GetMesh();
 
         if(*last_data_buffer==*ro->GetDataBuffer())
             if(*last_render_data==*ro->GetRenderData())
