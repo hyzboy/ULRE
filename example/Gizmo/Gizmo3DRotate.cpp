@@ -24,11 +24,11 @@ bool InitGizmoRotateStaticMesh()
 {
     Mesh *torus[4]
     {
-        GetGizmoRenderable(GizmoShape::Torus,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Torus,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Torus,GizmoColor::Blue),
+        GetGizmoMesh(GizmoShape::Torus,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Torus,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Torus,GizmoColor::Blue),
 
-        GetGizmoRenderable(GizmoShape::Torus,GizmoColor::White),
+        GetGizmoMesh(GizmoShape::Torus,GizmoColor::White),
     };
 
     for(auto *r:torus)

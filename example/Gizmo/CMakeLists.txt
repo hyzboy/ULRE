@@ -19,7 +19,8 @@ CreateProject(04_Gizmo3DTest GizmoTest.cpp
                                 GizmoResource.h
                                 GizmoResource.cpp
                                 Gizmo3DMove.cpp
-                                Gizmo3DScale.cpp
-                                Gizmo3DRotate.cpp)
+                                #Gizmo3DScale.cpp
+                                #Gizmo3DRotate.cpp
+)
 
 #CreateProject(03_BlenderAxis BlenderAxis.cpp)

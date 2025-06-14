@@ -34,10 +34,10 @@ enum class GizmoShape:uint
 bool InitGizmoResource(RenderResource *);
 void FreeGizmoResource();
 
-Mesh *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color);
+Mesh *GetGizmoMesh(const GizmoShape &shape,const GizmoColor &color);
 
-StaticMesh *GetGizmoMoveStaticMesh();
-StaticMesh *GetGizmoScaleStaticMesh();
-StaticMesh *GetGizmoRotateStaticMesh();
+Mesh *GetGizmoMoveMesh();
+Mesh *GetGizmoScaleMesh();
+Mesh *GetGizmoRotateMesh();
 
 VK_NAMESPACE_END

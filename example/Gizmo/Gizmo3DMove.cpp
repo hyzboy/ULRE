@@ -30,41 +30,41 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    static StaticMesh *sm_gizmo_move=nullptr;
+    static Mesh *sm_gizmo_move=nullptr;
 }//namespace
 
-StaticMesh *GetGizmoMoveStaticMesh()
+Mesh *GetGizmoMoveMesh()
 {
     return sm_gizmo_move;
 }
 
-void ClearGizmoMoveStaticMesh()
+void ClearGizmoMoveMesh()
 {
     SAFE_CLEAR(sm_gizmo_move);
 }
 
-bool InitGizmoMoveStaticMesh()
+bool InitGizmoMoveMesh()
 {
-    Mesh *sphere=GetGizmoRenderable(GizmoShape::Sphere,GizmoColor::White);
+    Mesh *sphere=GetGizmoMesh(GizmoShape::Sphere,GizmoColor::White);
     Mesh *cylinder[3]
     {
-        GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Cylinder,GizmoColor::Blue),
+        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Blue),
     };
 
     Mesh *cone[3]
     {
-        GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Cone,GizmoColor::Blue),
+        GetGizmoMesh(GizmoShape::Cone,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Cone,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Cone,GizmoColor::Blue),
     };
 
     Mesh *circle[3]=
     {
-        GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Red),
-        GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Green),
-        GetGizmoRenderable(GizmoShape::Circle,GizmoColor::Blue)
+        GetGizmoMesh(GizmoShape::Circle,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Circle,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Circle,GizmoColor::Blue)
     };
 
     if(!sphere)
@@ -140,7 +140,7 @@ bool InitGizmoMoveStaticMesh()
             }
         }
 
-        sm_gizmo_move=CreateGizmoStaticMesh(root_node);
+        sm_gizmo_move=CreateGizmoMesh(root_node);
     }
 
     if(!sm_gizmo_move)

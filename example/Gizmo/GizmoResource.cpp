@@ -13,14 +13,14 @@
 
 VK_NAMESPACE_BEGIN
 
-bool InitGizmoMoveStaticMesh();
-void ClearGizmoMoveStaticMesh();
+bool InitGizmoMoveMesh();
+void ClearGizmoMoveMesh();
 
-bool InitGizmoScaleStaticMesh();
-void ClearGizmoScaleStaticMesh();
+bool InitGizmoScaleMesh();
+void ClearGizmoScaleMesh();
 
-bool InitGizmoRotateStaticMesh();
-void ClearGizmoRotateStaticMesh();
+bool InitGizmoRotateMesh();
+void ClearGizmoRotateMesh();
 
 namespace
 {
@@ -39,26 +39,26 @@ namespace
     static GizmoResource    gizmo_line{};
     static GizmoResource    gizmo_triangle{};
 
-    struct GizmoRenderable
+    struct GizmoMesh
     {
         Primitive *prim;
 
-        Mesh *renderable[size_t(GizmoColor::RANGE_SIZE)];
+        Mesh *mesh[size_t(GizmoColor::RANGE_SIZE)];
     };
     
-    GizmoRenderable         gizmo_rederable[size_t(GizmoShape::RANGE_SIZE)]{};
+    GizmoMesh         gizmo_mesh[size_t(GizmoShape::RANGE_SIZE)]{};
 
-    void InitGizmoRenderable(const GizmoShape &gs,Primitive *prim,Pipeline *p)
+    void InitGizmoMesh(const GizmoShape &gs,Primitive *prim,Pipeline *p)
     {
         if(!prim)
             return;
 
-        GizmoRenderable *gr=gizmo_rederable+size_t(gs);
+        GizmoMesh *gr=gizmo_mesh+size_t(gs);
 
         gr->prim=prim;
 
         for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
-            gr->renderable[i]=CreateMesh(prim,gizmo_triangle.mi[i],p);
+            gr->mesh[i]=CreateMesh(prim,gizmo_triangle.mi[i],p);
     }
 
     bool InitMI(GizmoResource *gr)
@@ -88,9 +88,8 @@ namespace
         RenderPass *render_pass=device->GetRenderPass();
         
         {
-            mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"VertexLuminance3D",PrimitiveType::Lines);
+            mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
 
-            cfg.mtl_name="VertexLuminance3D";       //注意必须用不同名字，未来改名材质文件名+cfg hash名
             cfg.local_to_world=true;
             cfg.position_format=VAT_VEC3;
 
@@ -99,7 +98,7 @@ namespace
             if(!mci)
                 return(false);
 
-            gizmo_line.mtl=gizmo_rr->CreateMaterial(mci);
+            gizmo_line.mtl=gizmo_rr->CreateMaterial("GizmoLine",mci);
             if(!gizmo_line.mtl)
                 return(false);
 
@@ -191,7 +190,7 @@ namespace
             using namespace inline_geometry;
 
             {
-                InitGizmoRenderable(GizmoShape::Square,CreatePlaneSqaure(gizmo_triangle.prim_creater),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Square,CreatePlaneSqaure(gizmo_triangle.prim_creater),gizmo_triangle.pipeline);
             }
 
             {
@@ -202,7 +201,7 @@ namespace
                 cci.field_count=16;
                 cci.has_center=false;
                 
-                InitGizmoRenderable(GizmoShape::Circle,CreateCircle3DByIndexTriangles(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Circle,CreateCircle3DByIndexTriangles(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
 
             {
@@ -212,11 +211,11 @@ namespace
                 cci.tangent=false;
                 cci.tex_coord=false;
 
-                InitGizmoRenderable(GizmoShape::Cube,CreateCube(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Cube,CreateCube(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
 
             {
-                InitGizmoRenderable(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,16),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,16),gizmo_triangle.pipeline);
             }
 
             {
@@ -227,7 +226,7 @@ namespace
                 cci.numberSlices=16;        //圆锥底部分割数
                 cci.numberStacks=3;         //圆锥高度分割数
 
-                InitGizmoRenderable(GizmoShape::Cone,CreateCone(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Cone,CreateCone(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
 
             {
@@ -237,7 +236,7 @@ namespace
                 cci.numberSlices=16;        //圆柱底部分割数
                 cci.radius      =1;         //圆柱半径
 
-                InitGizmoRenderable(GizmoShape::Cylinder,CreateCylinder(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Cylinder,CreateCylinder(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
             }
 
             {
@@ -248,12 +247,12 @@ namespace
                 tci.numberSlices=64;
                 tci.numberStacks=8;
 
-                InitGizmoRenderable(GizmoShape::Torus,CreateTorus(gizmo_triangle.prim_creater,&tci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Torus,CreateTorus(gizmo_triangle.prim_creater,&tci),gizmo_triangle.pipeline);
             }
 
             ENUM_CLASS_FOR(GizmoShape,int,i)
             {
-                if(!gizmo_rederable[i].prim)
+                if(!gizmo_mesh[i].prim)
                     return(false);
             }
         }
@@ -280,23 +279,23 @@ bool InitGizmoResource(RenderResource *rr)
     if(!InitGizmoResource2D(device))
         return(false);
 
-    InitGizmoMoveStaticMesh();
-    InitGizmoScaleStaticMesh();
-    InitGizmoRotateStaticMesh();
+    InitGizmoMoveMesh();
+    //InitGizmoScaleMesh();
+    //InitGizmoRotateMesh();
 
     return(true);
 }
 
 void FreeGizmoResource()
 {
-    ClearGizmoRotateStaticMesh();
-    ClearGizmoScaleStaticMesh();
-    ClearGizmoMoveStaticMesh();
+    //ClearGizmoRotateMesh();
+    //ClearGizmoScaleMesh();
+    ClearGizmoMoveMesh();
 
-    for(GizmoRenderable &gr:gizmo_rederable)
+    for(GizmoMesh &gr:gizmo_mesh)
     {
         SAFE_CLEAR(gr.prim)
-        SAFE_CLEAR_OBJECT_ARRAY(gr.renderable)
+        SAFE_CLEAR_OBJECT_ARRAY(gr.mesh)
     }
 
     SAFE_CLEAR(gizmo_triangle.prim_creater);
@@ -306,7 +305,7 @@ void FreeGizmoResource()
     SAFE_CLEAR(gizmo_line.vdm);
 }
 
-Mesh *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color)
+Mesh *GetGizmoMesh(const GizmoShape &shape,const GizmoColor &color)
 {
     if(!gizmo_rr)
         return(nullptr);
@@ -314,10 +313,10 @@ Mesh *GetGizmoRenderable(const GizmoShape &shape,const GizmoColor &color)
     RANGE_CHECK_RETURN_NULLPTR(shape)
     RANGE_CHECK_RETURN_NULLPTR(color)
 
-    return gizmo_rederable[size_t(shape)].renderable[size_t(color)];
+    return gizmo_mesh[size_t(shape)].mesh[size_t(color)];
 }
 
-StaticMesh *CreateGizmoStaticMesh(SceneNode *root_node)
+Mesh *CreateGizmoMesh(SceneNode *root_node)
 {
     if(!root_node)
         return(nullptr);
