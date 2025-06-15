@@ -34,4 +34,9 @@ namespace hgl::graph
 
         SAFE_CLEAR(Data);
     }
+
+    Component *Component::Duplication()
+    {
+        return GetManager()->CreateComponent(Data?Data->Duplication():nullptr);
+    }
 }//namespace hgl::graph

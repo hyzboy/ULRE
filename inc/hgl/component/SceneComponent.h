@@ -15,6 +15,17 @@ public:
 
     using Component::Component;
     virtual ~SceneComponent()=default;
+
+    virtual Component *Duplication() override
+    {
+        SceneComponent *sc=(SceneComponent *)Component::Duplication();
+
+        if(!sc)
+            return(sc);
+
+        sc->SetLocalMatrix(GetLocalMatrix());
+        return sc;
+    }
 };//class SceneComponent
 
 COMPONENT_NAMESPACE_END
