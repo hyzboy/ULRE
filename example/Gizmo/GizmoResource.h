@@ -7,7 +7,7 @@ VK_NAMESPACE_BEGIN
 
 class SceneNode;
 class PrimitiveCreater;
-class StaticMeshComponent;
+class MeshComponent;
 
 constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
 {
@@ -38,6 +38,6 @@ constexpr const float GIZMO_TWO_AXIS_OFFSET     =5.0F;                          
 
 Mesh *GetGizmoMesh(const GizmoShape &gs,const GizmoColor &);
 
-StaticMeshComponent *CreateGizmoStaticMeshComponent(SceneNode *);
+MeshComponent *CreateGizmoMeshComponent(SceneNode *);
 
 VK_NAMESPACE_END

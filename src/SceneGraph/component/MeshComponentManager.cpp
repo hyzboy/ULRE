@@ -1,10 +1,10 @@
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/Mesh.h>
 
 COMPONENT_NAMESPACE_BEGIN
 
-StaticMeshComponentData::~StaticMeshComponentData()
+MeshComponentData::~MeshComponentData()
 {
     if(mesh)
     {
@@ -13,18 +13,18 @@ StaticMeshComponentData::~StaticMeshComponentData()
     }
 }
 
-Component *StaticMeshComponentManager::CreateComponent(ComponentData *data)
+Component *MeshComponentManager::CreateComponent(ComponentData *data)
 {
     if(!data)return(nullptr);
 
-    return CreateComponent(reinterpret_cast<StaticMeshComponentData *>(data));
+    return CreateComponent(reinterpret_cast<MeshComponentData *>(data));
 }
 
-StaticMeshComponent *StaticMeshComponentManager::CreateComponent(StaticMeshComponentData *data)
+MeshComponent *MeshComponentManager::CreateComponent(MeshComponentData *data)
 {
     if(!data)return(nullptr);
 
-    return(new StaticMeshComponent(data,this));
+    return(new MeshComponent(data,this));
 }
 
 COMPONENT_NAMESPACE_END

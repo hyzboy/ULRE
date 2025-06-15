@@ -301,11 +301,11 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/SceneComponent.h
                         ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
                         ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
-                        ${COMPONENT_INCLUDE_PATH}/StaticMeshComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/MeshComponent.h
                         component/Component.cpp
                         component/ComponentManager.cpp
                         component/SceneComponent.cpp
-                        component/StaticMeshComponentManager.cpp
+                        component/MeshComponentManager.cpp
 )
 
 SOURCE_GROUP("Component" FILES ${COMPONENT_FILES})

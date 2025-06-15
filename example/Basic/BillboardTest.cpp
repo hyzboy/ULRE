@@ -13,7 +13,7 @@
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/FirstPersonCameraControl.h>
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -152,8 +152,8 @@ private:
     {
         SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
 
-        CreateComponent<StaticMeshComponent>(scene_root,db->CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
-        CreateComponent<StaticMeshComponent>(scene_root,ro_billboard);
+        CreateComponent<MeshComponent>(scene_root,db->CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
+        CreateComponent<MeshComponent>(scene_root,ro_billboard);
 
         CameraControl *camera_control=GetCameraControl();
 

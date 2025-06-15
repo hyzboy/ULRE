@@ -7,7 +7,7 @@
 #include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
 RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)

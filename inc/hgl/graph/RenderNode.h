@@ -9,13 +9,13 @@ namespace hgl
     {
         class Mesh;
         class MaterialInstance;
-        class StaticMeshComponent;
+        class MeshComponent;
 
         struct RenderNode:public Comparator<RenderNode>
         {
             uint        index;                                          ///<在MaterialRenderList中的索引
 
-            StaticMeshComponent *sm_component;                          ///<静态网格组件
+            MeshComponent *sm_component;                          ///<静态网格组件
 
             uint32      l2w_version;
             uint32      l2w_index;
