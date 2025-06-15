@@ -144,8 +144,6 @@ bool RenderFramework::Init(uint w,uint h)
 
 void RenderFramework::CreateDefaultRenderer()
 {
-    mouse_event=nullptr;
-
     SAFE_CLEAR(default_renderer)
 
     IRenderTarget *rt=GetSwapchainRenderTarget();
