@@ -128,67 +128,7 @@ namespace hgl
         template<typename C,typename ...ARGS>
         inline C *CreateComponent(ARGS...args)
         {
-            auto manager=C::GetDefaultManager();  //取得默认管理器
-
-            if(!manager)
-            {
-                //        LOG_ERROR(OS_TEXT("CreateComponent failed, no default manager!"));
-                return(nullptr);
-            }
-
-            return manager->CreateComponent(args...); //创建组件
-        }
-
-        template<typename C,typename ...ARGS>
-        inline C *CreateComponent(graph::SceneNode *parent_node,ARGS...args)
-        {
-            if(!parent_node)
-            {
-                //        LOG_ERROR(OS_TEXT("CreateComponent failed, parent node is null!"));
-                return(nullptr);
-            }
-
-            C *c=this->CreateComponent<C>(args...); //创建组件
-
-            if(!c)
-            {
-                //        LOG_ERROR(OS_TEXT("CreateComponent failed, create component failed!"));
-                return(nullptr);
-            }
-
-            /**
-            * 如果此处出现转换错误，请检查是否包含了对应的Component头文件。
-            */
-            parent_node->AttachComponent(c); //将组件附加到父节点
-
-            return c;
-        }
-
-        template<typename C,typename ...ARGS>
-        inline C *CreateComponent(const graph::Matrix4f &mat,graph::SceneNode *parent_node,ARGS...args)
-        {
-            if(!parent_node)
-            {
-                //        LOG_ERROR(OS_TEXT("CreateComponent failed, parent node is null!"));
-                return(nullptr);
-            }
-
-            C *c=this->CreateComponent<C>(args...); //创建组件
-
-            if(!c)
-            {
-                //        LOG_ERROR(OS_TEXT("CreateComponent failed, create component failed!"));
-                return(nullptr);
-            }
-
-            /**
-            * 如果此处出现转换错误，请检查是否包含了对应的Component头文件。
-            */
-            parent_node->AttachComponent(c); //将组件附加到父节点
-
-            c->graph::SceneOrient::SetLocalMatrix(mat);
-
-            return c;
+            return render_framework?render_framework->CreateComponent<C>(args...):nullptr; //创建组件
         }
     };//class WorkObject
 
