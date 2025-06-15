@@ -83,10 +83,20 @@ namespace hgl
         WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePipeline,graph::Pipeline *)
         WO_FUNC_FROM_RENDER_FRAMEWORK(CreateMaterialInstance,graph::MaterialInstance *)
         WO_FUNC_FROM_RENDER_FRAMEWORK(GetPrimitiveCreater,SharedPtr<graph::PrimitiveCreater>)
-        WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePrimitive,graph::Primitive *)
+        //WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePrimitive,graph::Primitive *)
         WO_FUNC_FROM_RENDER_FRAMEWORK(CreateMesh,graph::Mesh *)
 
     #undef WO_FUNC_FROM_RENDER_FRAMEWORK
+
+
+        graph::Primitive *CreatePrimitive(const AnsiString &name,
+                                            const uint32_t vertices_count,
+                                            const graph::VIL *vil,
+                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+        {
+            return render_framework?render_framework->CreatePrimitive(name,vertices_count,vil,vad_list):nullptr;
+        }
+
     public: //Component 相关
 
         template<typename C,typename ...ARGS>

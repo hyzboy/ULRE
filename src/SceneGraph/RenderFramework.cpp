@@ -196,10 +196,10 @@ void RenderFramework::Tick()
     }
 }
 
-graph::Primitive *RenderFramework::CreatePrimitive(const AnsiString &name,
-                                              const uint32_t vertices_count,
-                                              const graph::VIL *vil,
-                                              const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+graph::Primitive *RenderFramework::CreatePrimitive( const AnsiString &name,
+                                                      const uint32_t vertices_count,
+                                                      const graph::VIL *vil,
+                                                      const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
 {
     auto *pc=new graph::PrimitiveCreater(GetDevice(),vil);
 
