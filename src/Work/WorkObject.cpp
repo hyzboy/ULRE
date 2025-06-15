@@ -60,44 +60,4 @@ namespace hgl
 
         //std::cout<<"WorkObject::Render End"<<std::endl;
     }
-
-    graph::Primitive *WorkObject::CreatePrimitive(const AnsiString &name,
-                                                  const uint32_t vertices_count,
-                                                  const graph::VIL *vil,
-                                                  const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-    {
-        auto *pc=new graph::PrimitiveCreater(GetDevice(),vil);
-
-        pc->Init(name,vertices_count);
-
-        for(const auto &vad:vad_list)
-        {
-            if(!pc->WriteVAB(vad.name,vad.format,vad.data))
-            {
-                delete pc;
-                return(nullptr);
-            }
-        }
-
-        auto *prim=pc->Create();
-
-        if(prim)
-            db->Add(prim);
-
-        return prim;
-    }
-
-    graph::Mesh *WorkObject::CreateMesh( const AnsiString &name,
-                                                     const uint32_t vertices_count,
-                                                     graph::MaterialInstance *mi,
-                                                     graph::Pipeline *pipeline,
-                                                     const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-    {
-        auto *prim=this->CreatePrimitive(name,vertices_count,mi->GetVIL(),vad_list);
-
-        if(!prim)
-            return(nullptr);
-
-        return db->CreateMesh(prim,mi,pipeline);
-    }
 }//namespcae hgl

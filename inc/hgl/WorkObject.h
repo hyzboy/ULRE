@@ -115,13 +115,19 @@ namespace hgl
         graph::Primitive *CreatePrimitive(  const AnsiString &name,
                                             const uint32_t vertices_count,
                                             const graph::VIL *vil,
-                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
+                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+        {
+            return render_framework?render_framework->CreatePrimitive(name,vertices_count,vil,vad_list):nullptr; //创建Primitive
+        }
 
         graph::Mesh *CreateMesh(const AnsiString &name,
                                             const uint32_t vertices_count,
                                             graph::MaterialInstance *mi,
                                             graph::Pipeline *pipeline,
-                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
+                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+        {
+            return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr; //创建Mesh
+        }
 
     public: //Component 相关
 

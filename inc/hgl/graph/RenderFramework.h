@@ -130,6 +130,19 @@ public: // other
 
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
 
+public: // Primitive, Mesh
+
+    graph::Primitive *CreatePrimitive(const AnsiString &name,
+                                      const uint32_t vertices_count,
+                                      const graph::VIL *vil,
+                                      const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
+
+    graph::Mesh *CreateMesh(const AnsiString &name,
+                            const uint32_t vertices_count,
+                            graph::MaterialInstance *mi,
+                            graph::Pipeline *pipeline,
+                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
+
 public: // ComponentManager
 
     template<typename T> T *GetComponentManager()
