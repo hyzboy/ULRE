@@ -1,4 +1,4 @@
-﻿#include"VulkanAppFramework.h"
+﻿#include<hgl/WorkManager.h>
 #include"Gizmo.h"
 #include<hgl/graph/Ray.h>
 
@@ -52,94 +52,81 @@ const Vector3f GizmoPosition(0,0,0);
 //    }
 //};//class BillboardSceneNode:public SceneNode
 
-class TestApp:public SceneAppFramework
+class TestApp:public WorkObject
 {
-    SceneNode root;
-
-    StaticMesh *sm_move=nullptr;
-    StaticMesh *sm_rotate=nullptr;
-    StaticMesh *sm_scale=nullptr;
+    SceneNode *sm_move=nullptr;
+    //StaticMesh *sm_rotate=nullptr;
+    //StaticMesh *sm_scale=nullptr;
 
 private:
 
     bool InitGizmo()
     {
-        if(!InitGizmoResource(db))
+        if(!InitGizmoResource(GetRenderFramework()))
             return(false);
 
-        sm_move     =GetGizmoMoveStaticMesh();
-        sm_rotate   =GetGizmoRotateStaticMesh();
-        sm_scale    =GetGizmoScaleStaticMesh();
+        sm_move     =GetGizmoMoveNode();
+        //sm_rotate   =GetGizmoRotateStaticMesh();
+        //sm_scale    =GetGizmoScaleStaticMesh();
 
         return(true);
     }
 
     void InitGizmoSceneTree()
     {
-        camera_control->Refresh();
-        CameraInfo *ci=camera_control->GetCameraInfo();
+        SceneNode *root=GetSceneRoot();
 
-        root.Clear();
-
-        //root.Add(Duplication(sm_move->GetScene()));
-        root.Add(Duplication(sm_rotate->GetScene()));
+        root->Add(sm_move);
+        //root.Add(Duplication(sm_rotate->GetScene()));
         //root.CreateSubNode(sm_scale->GetScene());
-
-        root.RefreshMatrix();
-        render_list->SetCamera(ci);
-        render_list->Expend(&root);
     }
 
 public:
 
-    bool Init(uint w,uint h)
-    {        
-        if(!SceneAppFramework::Init(w,h))
-            return(false);
-
+    bool Init() override
+    {
         if(!InitGizmo())
             return(false);
 
         InitGizmoSceneTree();
-        
-        camera->pos=Vector3f(32,32,32);
+
+        CameraControl *camera_control=GetCameraControl();
+
+        camera_control->SetPosition(Vector3f(32,32,32));
         camera_control->SetTarget(Vector3f(0,0,0));
 
         return(true);
     }
+
+    using WorkObject::WorkObject;
 
     ~TestApp()
     {
         FreeGizmoResource();
     }
     
-    void BuildCommandBuffer(uint32 index) override
-    {
-        camera_control->Refresh();
-        
-        const CameraInfo *ci=camera_control->GetCameraInfo();
-        const ViewportInfo *vi=GetViewportInfo();
+    //void BuildCommandBuffer(uint32 index) override
+    //{
+    //    camera_control->Refresh();
+    //    
+    //    const CameraInfo *ci=camera_control->GetCameraInfo();
+    //    const ViewportInfo *vi=GetViewportInfo();
 
-        const float screen_height=vi->GetViewportHeight();
+    //    const float screen_height=vi->GetViewportHeight();
 
-        const Vector4f pos=ci->Project(GizmoPosition);
+    //    const Vector4f pos=ci->Project(GizmoPosition);
 
-        //{
-        //    Transform tm;
+    //    //{
+    //    //    Transform tm;
 
-        //    tm.SetScale(pos.w*16.0f/screen_height);
+    //    //    tm.SetScale(pos.w*16.0f/screen_height);
 
-        //    root.SetLocalTransform(tm);
-        //}
+    //    //    root.SetLocalTransform(tm);
+    //    //}
+    //}
+};//class TestApp:public WorkObject
 
-        root.RefreshMatrix();
-        render_list->UpdateLocalToWorld();
-
-        SceneAppFramework::BuildCommandBuffer(index);
-    }
-};//class TestApp:public SceneAppFramework
-
-int main(int,char **)
+int os_main(int,os_char **)
 {
-    return RunApp<TestApp>(1024,1024);
+    return RunFramework<TestApp>(OS_TEXT("Gizmo"),1280,720);
 }

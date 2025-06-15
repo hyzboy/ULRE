@@ -38,6 +38,4 @@ constexpr const float GIZMO_TWO_AXIS_OFFSET     =5.0F;                          
 
 Mesh *GetGizmoMesh(const GizmoShape &gs,const GizmoColor &);
 
-MeshComponent *CreateGizmoMeshComponent(SceneNode *);
-
 VK_NAMESPACE_END
