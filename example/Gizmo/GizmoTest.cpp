@@ -76,7 +76,7 @@ private:
     {
         SceneNode *root=GetSceneRoot();
 
-        root->Add(sm_move);
+        root->Add(Duplication(sm_move));
         //root.Add(Duplication(sm_rotate->GetScene()));
         //root.CreateSubNode(sm_scale->GetScene());
     }

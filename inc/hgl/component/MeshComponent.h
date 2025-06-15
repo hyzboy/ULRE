@@ -63,29 +63,31 @@ class MeshComponent:public RenderComponent
 
 public:
 
+    COMPONENT_CLASS_BODY(Mesh)
+
+public:
+
     MeshComponent(MeshComponentData *cd,MeshComponentManager *cm):RenderComponent(cd,cm){sm_data=cd;}
 
     virtual ~MeshComponent()=default;
-
-    static MeshComponentManager *GetDefaultManager()
-    {
-        return MeshComponentManager::GetDefaultManager();
-    }
-
-    static constexpr const size_t StaticHashCode()
-    {
-        return hgl::GetTypeHash<MeshComponent>();
-    }
-
-    const size_t    GetHashCode()const override
-    {
-        return MeshComponent::StaticHashCode();
-    }
 
             MeshComponentData &GetData()      {return *sm_data;}
     const   MeshComponentData &GetData()const {return *sm_data;}
 
     Mesh *GetMesh() const{return sm_data->mesh;}
+
+public:
+
+    virtual Component *Duplication() override
+    {
+        MeshComponentManager *manager=GetManager();
+
+        MeshComponent *mc=manager->CreateComponent(sm_data->mesh);
+
+        mc->SetLocalMatrix(GetLocalMatrix());
+
+        return mc;
+    }
 };//class MeshComponent
 
 COMPONENT_NAMESPACE_END

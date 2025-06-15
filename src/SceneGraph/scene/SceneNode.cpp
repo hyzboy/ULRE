@@ -4,22 +4,25 @@
 
 namespace hgl::graph
 {
-    //SceneNode *Duplication(SceneNode *src_node)
-    //{
-    //    if(!src_node)
-    //        return nullptr;
+    SceneNode *Duplication(SceneNode *src_node)
+    {
+        if(!src_node)
+            return nullptr;
 
-    //    SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
+        SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
 
-    //    node->SetRenderable(src_node->GetRenderable());
+        for(SceneNode *sn:src_node->GetChildNode())
+        {
+            node->Add(Duplication(sn));
+        }
 
-    //    for(SceneNode *sn:src_node->GetChildNode())
-    //    {
-    //        node->Add(Duplication(sn));
-    //    }
+        for(Component *c:src_node->GetComponents())
+        {
+            node->AttachComponent(c->Duplication());
+        }
 
-    //    return node;
-    //}
+        return node;
+    }
 
     //void SceneNode::SetRenderable(Mesh *ri)
     //{
