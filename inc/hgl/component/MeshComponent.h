@@ -22,6 +22,11 @@ public:
     }
 
     virtual ~MeshComponentData();
+
+    ComponentData *Duplication() override
+    {
+        return(new MeshComponentData(mesh));
+    }
 };//struct MeshComponentData
 
 class MeshComponent;
@@ -75,19 +80,6 @@ public:
     const   MeshComponentData &GetData()const {return *sm_data;}
 
     Mesh *GetMesh() const{return sm_data->mesh;}
-
-public:
-
-    virtual Component *Duplication() override
-    {
-        MeshComponentManager *manager=GetManager();
-
-        MeshComponent *mc=manager->CreateComponent(sm_data->mesh);
-
-        mc->SetLocalMatrix(GetLocalMatrix());
-
-        return mc;
-    }
 };//class MeshComponent
 
 COMPONENT_NAMESPACE_END

@@ -50,6 +50,8 @@ public:
 
     ComponentData()=default;
     virtual ~ComponentData()=default;
+
+    virtual ComponentData *Duplication()=0;
 };
 
 /**
@@ -94,7 +96,7 @@ public:
 
 public:
 
-    virtual Component *Duplication()=0;
+    virtual Component *Duplication();
 
     //virtual void Update(const double delta_time)=0;
 
