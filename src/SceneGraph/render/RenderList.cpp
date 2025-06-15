@@ -5,7 +5,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/Mesh.h>
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 
 namespace hgl
 {
@@ -25,10 +25,10 @@ namespace hgl
 
             for(auto component:sn->GetComponents())
             {
-                if(component->GetHashCode()!=StaticMeshComponent::StaticHashCode())     //暂时只支持StaticMeshComponent
+                if(component->GetHashCode()!=MeshComponent::StaticHashCode())     //暂时只支持MeshComponent
                     continue;
 
-                StaticMeshComponent *smc=reinterpret_cast<StaticMeshComponent *>(component);
+                MeshComponent *smc=reinterpret_cast<MeshComponent *>(component);
 
                 Mesh *mesh=smc->GetMesh();
 
@@ -91,7 +91,7 @@ namespace hgl
             mrl_map.UpdateLocalToWorld();
         }
 
-        void RenderList::UpdateMaterialInstance(StaticMeshComponent *smc)
+        void RenderList::UpdateMaterialInstance(MeshComponent *smc)
         {
             if(!smc)return;
 

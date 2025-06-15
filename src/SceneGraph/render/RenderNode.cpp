@@ -1,6 +1,6 @@
 #include<hgl/graph/RenderNode.h>
 #include<hgl/graph/VertexDataManager.h>
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
 /**

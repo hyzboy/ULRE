@@ -5,7 +5,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/color/Color.h>
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -94,7 +94,7 @@ private:
 
             mat=rotate(deg2rad<double>(TRI_ROTATE_ANGLE*i),AxisVector::Z);
 
-            CreateComponent<StaticMeshComponent>(mat,scene_root,render_obj[i].mesh);
+            CreateComponent<MeshComponent>(mat,scene_root,render_obj[i].mesh);
         }
 
         return(true);

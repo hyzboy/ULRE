@@ -5,7 +5,7 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -90,7 +90,7 @@ private:
         if(!mesh_triangle)
             return(false);
 
-        return CreateComponent<StaticMeshComponent>(GetSceneRoot(),mesh_triangle); //创建一个静态网格组件
+        return CreateComponent<MeshComponent>(GetSceneRoot(),mesh_triangle); //创建一个静态网格组件
     }
 
 public:

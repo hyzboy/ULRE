@@ -8,7 +8,7 @@
 #include"RenderAssignBuffer.h"
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/CameraInfo.h>
-#include<hgl/component/StaticMeshComponent.h>
+#include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
 MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipelineIndex &rpi)
@@ -45,7 +45,7 @@ MaterialRenderList::~MaterialRenderList()
     SAFE_CLEAR(assign_buffer);
 }
 
-void MaterialRenderList::Add(StaticMeshComponent *smc)
+void MaterialRenderList::Add(MeshComponent *smc)
 {
     if(!smc)
         return;
@@ -130,7 +130,7 @@ void MaterialRenderList::UpdateLocalToWorld()
     }
 }
 
-void MaterialRenderList::UpdateMaterialInstance(StaticMeshComponent *smc)
+void MaterialRenderList::UpdateMaterialInstance(MeshComponent *smc)
 {
     if(!smc)return;
 
