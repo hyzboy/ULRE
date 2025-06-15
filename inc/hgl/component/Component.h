@@ -94,6 +94,8 @@ public:
 
 public:
 
+    virtual Component *Duplication()=0;
+
     //virtual void Update(const double delta_time)=0;
 
 public: //事件
@@ -104,6 +106,11 @@ public: //事件
     virtual void OnFocusLost(){}                                            ///<焦点丢失事件
     virtual void OnFocusGained(){}                                          ///<焦点获得事件
 };//class Component
+
+#define COMPONENT_CLASS_BODY(name)  static  name##ComponentManager *GetDefaultManager   ()              {return name##ComponentManager::GetDefaultManager();} \
+                                            name##ComponentManager *GetManager          ()const         {return (name##ComponentManager *)Component::GetManager();}  \
+                                    static  constexpr const size_t  StaticHashCode      ()              {return hgl::GetTypeHash<name##Component>();} \
+                                            const size_t            GetHashCode         ()const override{return name##Component::StaticHashCode();}
 
 using ComponentSet=SortedSet<Component *>;
 using ComponentList=ArrayList<Component *>;
