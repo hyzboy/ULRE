@@ -78,57 +78,15 @@ namespace hgl
 
     public:
 
-        template<typename ...ARGS>
-        graph::Pipeline *CreatePipeline(ARGS...args)
-        {
-            return renderer->GetRenderPass()->CreatePipeline(args...);
-        }
+    #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}
 
-        graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
-        {
-            return db->CreateMaterialInstance(mi_name,mci,vil_cfg);
-        }
+        WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePipeline,graph::Pipeline *)
+        WO_FUNC_FROM_RENDER_FRAMEWORK(CreateMaterialInstance,graph::MaterialInstance *)
+        WO_FUNC_FROM_RENDER_FRAMEWORK(GetPrimitiveCreater,SharedPtr<graph::PrimitiveCreater>)
+        WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePrimitive,graph::Primitive *)
+        WO_FUNC_FROM_RENDER_FRAMEWORK(CreateMesh,graph::Mesh *)
 
-        graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
-        {            
-            AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mtl_cfg);
-
-            return db->CreateMaterialInstance(mtl_name,mci,vil_cfg);
-        }
-
-        AutoDelete<graph::PrimitiveCreater> GetPrimitiveCreater(graph::Material *mtl)
-        {
-            if(!mtl)
-                return(nullptr);
-
-            return(new graph::PrimitiveCreater(GetDevice(),mtl->GetDefaultVIL()));
-        }
-
-        AutoDelete<graph::PrimitiveCreater> GetPrimitiveCreater(graph::MaterialInstance *mi)
-        {
-            if(!mi)
-                return(nullptr);
-
-            return(new graph::PrimitiveCreater(GetDevice(),mi->GetVIL()));
-        }
-
-        graph::Primitive *CreatePrimitive(  const AnsiString &name,
-                                            const uint32_t vertices_count,
-                                            const graph::VIL *vil,
-                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-        {
-            return render_framework?render_framework->CreatePrimitive(name,vertices_count,vil,vad_list):nullptr; //创建Primitive
-        }
-
-        graph::Mesh *CreateMesh(const AnsiString &name,
-                                            const uint32_t vertices_count,
-                                            graph::MaterialInstance *mi,
-                                            graph::Pipeline *pipeline,
-                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
-        {
-            return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr; //创建Mesh
-        }
-
+    #undef WO_FUNC_FROM_RENDER_FRAMEWORK
     public: //Component 相关
 
         template<typename C,typename ...ARGS>

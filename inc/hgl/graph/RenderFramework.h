@@ -7,6 +7,9 @@
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/CameraControl.h>
+#include<hgl/graph/Renderer.h>
+#include<hgl/graph/VKRenderResource.h>
+#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/io/event/MouseEvent.h>
 
 VK_NAMESPACE_BEGIN
@@ -93,6 +96,8 @@ public:
     CameraControl *         GetDefaultCameraControl (){return default_camera_control;}
     Renderer *              GetDefaultRenderer      (){return default_renderer;}
 
+    RenderPass *            GetDefaultRenderPass    (){return default_renderer->GetRenderPass();}
+
 public:
 
     bool GetMouseCoord(Vector2i *mc)const
@@ -129,6 +134,42 @@ public: // other
     }
 
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
+
+public:
+
+    template<typename ...ARGS>
+    graph::Pipeline *CreatePipeline(ARGS...args)
+    {
+        return GetDefaultRenderPass()->CreatePipeline(args...);
+    }
+
+    graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
+    {
+        return render_resource->CreateMaterialInstance(mi_name,mci,vil_cfg);
+    }
+
+    graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
+    {            
+        AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mtl_cfg);
+
+        return render_resource->CreateMaterialInstance(mtl_name,mci,vil_cfg);
+    }
+
+    SharedPtr<graph::PrimitiveCreater> GetPrimitiveCreater(graph::Material *mtl)
+    {
+        if(!mtl)
+            return(nullptr);
+
+        return(new graph::PrimitiveCreater(GetDevice(),mtl->GetDefaultVIL()));
+    }
+
+    SharedPtr<graph::PrimitiveCreater> GetPrimitiveCreater(graph::MaterialInstance *mi)
+    {
+        if(!mi)
+            return(nullptr);
+
+        return(new graph::PrimitiveCreater(GetDevice(),mi->GetVIL()));
+    }
 
 public: // Primitive, Mesh
 
