@@ -25,25 +25,28 @@
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
 
 namespace
 {
-    static Mesh *sm_gizmo_move=nullptr;
+
+    static SceneNode *sn_gizmo_move=nullptr;
 }//namespace
 
-Mesh *GetGizmoMoveMesh()
+SceneNode *GetGizmoMoveNode()
 {
-    return sm_gizmo_move;
+    return sn_gizmo_move;
 }
 
-void ClearGizmoMoveMesh()
+void ClearGizmoMoveNode()
 {
-    SAFE_CLEAR(sm_gizmo_move);
+    SAFE_CLEAR(sn_gizmo_move);
 }
 
-bool InitGizmoMoveMesh()
+bool InitGizmoMoveNode(RenderFramework *render_framework)
 {
     Mesh *sphere=GetGizmoMesh(GizmoShape::Sphere,GizmoColor::White);
     Mesh *cylinder[3]
@@ -83,9 +86,9 @@ bool InitGizmoMoveMesh()
     }
 
     {
-        SceneNode *root_node=new SceneNode();
+        sn_gizmo_move=new SceneNode();
         
-        root_node->Add(new SceneNode(sphere));
+        sn_gizmo_move->AttachComponent(render_framework->CreateComponent<MeshComponent>(sphere));
 
         {
             Transform tm;
@@ -97,53 +100,50 @@ bool InitGizmoMoveMesh()
             {
                 tm.SetScale(cylinder_scale);
                 tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
-                root_node->Add(new SceneNode(tm,cylinder[2]));       //Z 向上圆柱
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[2]); //Z 向上圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
-                root_node->Add(new SceneNode(tm,cone[2]));           //Z 向上圆锥
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[2]);           //Z 向上圆锥
 
                 tm.SetScale(circle_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
-                root_node->Add(new SceneNode(tm,circle[2]));
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,circle[2]);
             }
 
             {
                 tm.SetScale(cylinder_scale);
                 tm.SetRotation(AxisVector::Y,90);
                 tm.SetTranslation(GIZMO_CYLINDER_OFFSET,0,0);
-                root_node->Add(new SceneNode(tm,cylinder[0]));       //X 向右圆柱
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[0]);       //X 向右圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
-                root_node->Add(new SceneNode(tm,cone[0]));           //X 向右圆锥
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[0]);           //X 向右圆锥
 
                 tm.SetScale(circle_scale);
                 tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
-                root_node->Add(new SceneNode(tm,circle[0]));
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,circle[0]);
             }
 
             {
                 tm.SetScale(cylinder_scale);
                 tm.SetRotation(AxisVector::X,-90);
-                tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);
-                
-                root_node->Add(new SceneNode(tm,cylinder[1]));       //Y 向前圆柱
+                tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);                
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[1]);       //Y 向前圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
-                root_node->Add(new SceneNode(tm,cone[1]));           //Y 向前圆锥
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[1]);           //Y 向前圆锥
 
                 tm.SetScale(circle_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
-                root_node->Add(new SceneNode(tm,circle[1]));
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,circle[1]);
             }
         }
-
-        sm_gizmo_move=CreateGizmoMesh(root_node);
     }
 
-    if(!sm_gizmo_move)
+    if(!sn_gizmo_move)
         return(false);
 
     return(true);

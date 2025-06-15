@@ -31,13 +31,13 @@ enum class GizmoShape:uint
     ENUM_CLASS_RANGE(Square,Torus)
 };
 
-bool InitGizmoResource(RenderResource *);
+bool InitGizmoResource(RenderFramework *);
 void FreeGizmoResource();
 
 Mesh *GetGizmoMesh(const GizmoShape &shape,const GizmoColor &color);
 
-Mesh *GetGizmoMoveMesh();
-Mesh *GetGizmoScaleMesh();
-Mesh *GetGizmoRotateMesh();
+SceneNode *GetGizmoMoveNode();
+//SceneNode *GetGizmoScaleMesh();
+//SceneNode *GetGizmoRotateMesh();
 
 VK_NAMESPACE_END

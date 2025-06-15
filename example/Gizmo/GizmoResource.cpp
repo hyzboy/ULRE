@@ -9,22 +9,24 @@
 #include<hgl/color/Color.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/SceneNode.h>
+#include<hgl/graph/RenderFramework.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
 
-bool InitGizmoMoveMesh();
-void ClearGizmoMoveMesh();
+bool InitGizmoMoveNode(RenderFramework *);
+void ClearGizmoMoveNode();
 
-bool InitGizmoScaleMesh();
-void ClearGizmoScaleMesh();
-
-bool InitGizmoRotateMesh();
-void ClearGizmoRotateMesh();
+//bool InitGizmoScaleMesh();
+//void ClearGizmoScaleMesh();
+//
+//bool InitGizmoRotateMesh();
+//void ClearGizmoRotateMesh();
 
 namespace
 {
-    static RenderResource *  gizmo_rr=nullptr;
+    static RenderFramework *render_framework=nullptr;
+    static RenderResource * gizmo_rr=nullptr;
 
     struct GizmoResource
     {
@@ -80,12 +82,14 @@ namespace
         return(true);
     }
 
-    bool InitGizmoResource2D(VulkanDevice *device)
+    bool InitGizmoResource2D()
     {
         if(!gizmo_rr)
             return(false);
 
-        RenderPass *render_pass=device->GetRenderPass();
+        VulkanDevice *device=render_framework->GetDevice();
+        VulkanDevAttr *dev_attr=device->GetDevAttr();
+        RenderPass *render_pass=render_framework->GetDefaultRenderPass();
         
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Lines);
@@ -93,7 +97,7 @@ namespace
             cfg.local_to_world=true;
             cfg.position_format=VAT_VEC3;
 
-            mtl::MaterialCreateInfo *mci=CreateVertexLuminance3D(&cfg);
+            mtl::MaterialCreateInfo *mci=CreateVertexLuminance3D(dev_attr,&cfg);
 
             if(!mci)
                 return(false);
@@ -106,7 +110,7 @@ namespace
         }
 
         {
-            gizmo_line.pipeline=render_pass->CreatePipeline(gizmo_line.mtl,InlinePipeline::Solid3D,PrimitiveType::Lines);
+            gizmo_line.pipeline=render_pass->CreatePipeline(gizmo_line.mtl,InlinePipeline::Solid3D);
 
             if(!gizmo_line.pipeline)
                 return(false);
@@ -133,25 +137,27 @@ namespace
         return(true);
     }
 
-    bool InitGizmoResource3D(VulkanDevice *device)
+    bool InitGizmoResource3D()
     {
         if(!gizmo_rr)
             return(false);
 
-        RenderPass *render_pass=device->GetRenderPass();
+        VulkanDevice *device=render_framework->GetDevice();
+        VulkanDevAttr *dev_attr=device->GetDevAttr();
+        RenderPass *render_pass=render_framework->GetDefaultRenderPass();
 
         {
-            mtl::Material3DCreateConfig cfg(device->GetDevAttr(),"Gizmo3D",PrimitiveType::Triangles);
+            mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
             cfg.local_to_world=true;
             cfg.material_instance=true;
 
-            mtl::MaterialCreateInfo *mci=CreateMaterialGizmo3D(&cfg);
+            mtl::MaterialCreateInfo *mci=CreateGizmo3D(dev_attr,&cfg);
 
             if(!mci)
                 return(false);
 
-            gizmo_triangle.mtl=gizmo_rr->CreateMaterial(mci);
+            gizmo_triangle.mtl=gizmo_rr->CreateMaterial("GizmoTriangle",mci);
             if(!gizmo_triangle.mtl)
                 return(false);
 
@@ -159,7 +165,7 @@ namespace
         }
 
         {
-            gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::Solid3D,PrimitiveType::Triangles);
+            gizmo_triangle.pipeline=render_pass->CreatePipeline(gizmo_triangle.mtl,InlinePipeline::Solid3D);
             if(!gizmo_triangle.pipeline)
                 return(false);
         }
@@ -261,25 +267,24 @@ namespace
     }
 }//namespace
 
-bool InitGizmoResource(RenderResource *rr)
+bool InitGizmoResource(RenderFramework *rf)
 {
-    if(!rr)
+    if(!rf)
         return(false);
 
-    if(gizmo_rr)
+    render_framework=rf;
+
+    gizmo_rr=render_framework->GetRenderResource();
+
+    VulkanDevice *device=render_framework->GetDevice();
+
+    if(!InitGizmoResource3D())
         return(false);
 
-    gizmo_rr=rr;
-
-    VulkanDevice *device=gizmo_rr->GetDevice();
-
-    if(!InitGizmoResource3D(device))
+    if(!InitGizmoResource2D())
         return(false);
 
-    if(!InitGizmoResource2D(device))
-        return(false);
-
-    InitGizmoMoveMesh();
+    InitGizmoMoveNode(rf);
     //InitGizmoScaleMesh();
     //InitGizmoRotateMesh();
 
@@ -290,7 +295,7 @@ void FreeGizmoResource()
 {
     //ClearGizmoRotateMesh();
     //ClearGizmoScaleMesh();
-    ClearGizmoMoveMesh();
+    ClearGizmoMoveNode();
 
     for(GizmoMesh &gr:gizmo_mesh)
     {
@@ -314,17 +319,6 @@ Mesh *GetGizmoMesh(const GizmoShape &shape,const GizmoColor &color)
     RANGE_CHECK_RETURN_NULLPTR(color)
 
     return gizmo_mesh[size_t(shape)].mesh[size_t(color)];
-}
-
-Mesh *CreateGizmoMesh(SceneNode *root_node)
-{
-    if(!root_node)
-        return(nullptr);
-
-    if(root_node->IsEmpty())
-        return(nullptr);
-
-    return(new StaticMesh(root_node));
 }
 
 VK_NAMESPACE_END
