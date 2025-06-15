@@ -196,4 +196,43 @@ void RenderFramework::Tick()
     }
 }
 
+graph::Primitive *RenderFramework::CreatePrimitive(const AnsiString &name,
+                                              const uint32_t vertices_count,
+                                              const graph::VIL *vil,
+                                              const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+{
+    auto *pc=new graph::PrimitiveCreater(GetDevice(),vil);
+
+    pc->Init(name,vertices_count);
+
+    for(const auto &vad:vad_list)
+    {
+        if(!pc->WriteVAB(vad.name,vad.format,vad.data))
+        {
+            delete pc;
+            return(nullptr);
+        }
+    }
+
+    auto *prim=pc->Create();
+
+    if(prim)
+        render_resource->Add(prim);
+
+    return prim;
+}
+
+graph::Mesh *RenderFramework::CreateMesh( const AnsiString &name,
+                                    const uint32_t vertices_count,
+                                    graph::MaterialInstance *mi,
+                                    graph::Pipeline *pipeline,
+                                    const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+{
+    auto *prim=this->CreatePrimitive(name,vertices_count,mi->GetVIL(),vad_list);
+
+    if(!prim)
+        return(nullptr);
+
+    return render_resource->CreateMesh(prim,mi,pipeline);
+}
 VK_NAMESPACE_END
