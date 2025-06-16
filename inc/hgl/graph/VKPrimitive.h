@@ -28,6 +28,12 @@ public:
     Primitive(const AnsiString &pn,PrimitiveData *pd);
     virtual ~Primitive();
 
+    void SetBoundingBox(const AABB &bb) { bounding_box=bb; } ///<设置包围盒
+    void SetBoundingBox(const Vector3f &box_min,const Vector3f &box_max)
+    {
+        bounding_box.SetMinMax(box_min,box_max);
+    }
+
 public:
 
     const   AnsiString &    GetName         ()const{ return prim_name; }
