@@ -10,6 +10,8 @@ namespace hgl::graph
 {
     using SceneNodeID   =int64;
 
+    using SceneNodeList =ObjectList<SceneNode>;
+
     HGL_DEFINE_U16_IDNAME(SceneNodeName)
 
     /**
@@ -32,7 +34,7 @@ namespace hgl::graph
 
     protected:
 
-        ObjectList<SceneNode> child_nodes;                                                                          ///<子节点
+        SceneNodeList child_nodes;                                                                                  ///<子节点
 
         /**
         * 组件合集，一个SceneNode下可能会包含多个组件，同时一个组件也可能被多个SceneNode使用。
@@ -45,7 +47,7 @@ namespace hgl::graph
         const SceneNodeID &     GetNodeID   ()const { return node_id; }                                             ///<取得节点ID
         const SceneNodeName &   GetNodeName ()const { return node_name; }                                           ///<取得节点名称
 
-        const ObjectList<SceneNode> &GetChildNode()const { return child_nodes; }                                    ///<取得子节点列表
+        const SceneNodeList &   GetChildNode()const { return child_nodes; }                                         ///<取得子节点列表
 
     public:
 
