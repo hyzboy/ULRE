@@ -30,7 +30,7 @@ public:
         Unmap();
     }
 
-    void Set(T *buf,const int32_t off,const uint32_t s,const uint32_t c)
+    void Bind(T *buf,const int32_t off,const uint32_t s,const uint32_t c)
     {
         buffer=buf;
         offset=off;

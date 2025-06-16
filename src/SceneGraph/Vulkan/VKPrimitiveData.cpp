@@ -82,7 +82,7 @@ VABMap *PrimitiveData::GetVABMap(const int vab_index)
         if(!vab_list[vab_index])
             return(nullptr);
 
-        vab_map->SetVAB(vab_list[vab_index],GetVertexOffset(),vertex_count);
+        vab_map->BindVAB(vab_list[vab_index],GetVertexOffset(),vertex_count);
     }
 
     return vab_map;

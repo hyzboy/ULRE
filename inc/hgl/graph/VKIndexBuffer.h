@@ -54,7 +54,7 @@ public:
 
     void SetIBO(IndexBuffer *ib,const int32_t index_offset,const uint32_t count)
     {
-        VKBufferMap<IndexBuffer>::Set(ib,index_offset,ib->GetStride(),count);
+        VKBufferMap<IndexBuffer>::Bind(ib,index_offset,ib->GetStride(),count);
     }
 };//class IBMap
 
