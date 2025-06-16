@@ -3,10 +3,16 @@
 #include<hgl/component/RenderComponent.h>
 #include<hgl/graph/Mesh.h>
 
+//#include<hgl/log/LogInfo.h>
+
 COMPONENT_NAMESPACE_BEGIN
 
 struct MeshComponentData:public ComponentData
 {
+    //static uint unique_id_count;
+
+    //uint unique_id;
+
     Mesh *mesh;
 
 public:
@@ -14,19 +20,20 @@ public:
     MeshComponentData()
     {
         mesh=nullptr;
+
+//        unique_id=++unique_id_count;
+//        LOG_INFO(AnsiString("MeshComponentData():")+AnsiString::numberOf(unique_id));
     }
 
     MeshComponentData(Mesh *m)
     {
         mesh=m;
+
+//        unique_id=++unique_id_count;
+//        LOG_INFO(AnsiString("MeshComponentData(Mesh *):")+AnsiString::numberOf(unique_id));
     }
 
     virtual ~MeshComponentData();
-
-    ComponentData *Duplication() override
-    {
-        return(new MeshComponentData(mesh));
-    }
 };//struct MeshComponentData
 
 class MeshComponent;
@@ -35,36 +42,20 @@ class MeshComponentManager:public ComponentManager
 {
 public:
 
-    static MeshComponentManager *GetDefaultManager()
-    {
-        return GetComponentManager<MeshComponentManager>(true);
-    }
-
-    static constexpr const size_t StaticHashCode          (){return hgl::GetTypeHash<MeshComponentManager>();}
-    static constexpr const size_t StaticComponentHashCode (){return hgl::GetTypeHash<MeshComponent>();}
-
-    const size_t GetComponentHashCode   ()const override{return MeshComponentManager::StaticComponentHashCode();}
-    const size_t GetHashCode            ()const override{return MeshComponentManager::StaticHashCode();}
+    COMPONENT_MANAGER_CLASS_BODY(Mesh)
 
 public:
 
     MeshComponentManager()=default;
 
-    MeshComponent *CreateComponent(MeshComponentData *data);
+    Component *CreateComponent(ComponentDataPtr cdp) override;
 
-    MeshComponent *CreateComponent(Mesh *m)
-    {
-        auto sm_cd=new MeshComponentData(m);
-
-        return CreateComponent(sm_cd);
-    }
-
-    virtual Component *CreateComponent(ComponentData *data) override;
+    MeshComponent *CreateComponent(Mesh *);
 };//class MeshComponentManager
 
 class MeshComponent:public RenderComponent
 {
-    MeshComponentData *sm_data;
+    WeakPtr<ComponentData> sm_data;
 
 public:
 
@@ -72,14 +63,28 @@ public:
 
 public:
 
-    MeshComponent(MeshComponentData *cd,MeshComponentManager *cm):RenderComponent(cd,cm){sm_data=cd;}
+    MeshComponent(ComponentDataPtr cdp,MeshComponentManager *cm):RenderComponent(cdp,cm)
+    {
+        sm_data=cdp;
+    }
 
     virtual ~MeshComponent()=default;
 
-            MeshComponentData &GetData()      {return *sm_data;}
-    const   MeshComponentData &GetData()const {return *sm_data;}
+            MeshComponentData *GetData()      {return dynamic_cast<      MeshComponentData *>(sm_data.get());}
+    const   MeshComponentData *GetData()const {return dynamic_cast<const MeshComponentData *>(sm_data.const_get());}
 
-    Mesh *GetMesh() const{return sm_data->mesh;}
+    Mesh *GetMesh()const
+    {
+        if(!sm_data.valid())
+            return(nullptr);
+
+        const MeshComponentData *mcd=dynamic_cast<const MeshComponentData *>(sm_data.const_get());
+
+        if(!mcd)
+            return(nullptr);
+
+        return mcd->mesh;
+    }
 };//class MeshComponent
 
 COMPONENT_NAMESPACE_END

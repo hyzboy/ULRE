@@ -61,7 +61,7 @@ namespace hgl::graph
 
         for(Component *com:component_set)
         {
-            SceneComponent *sc=reinterpret_cast<SceneComponent *>(com);
+            SceneComponent *sc=dynamic_cast<SceneComponent *>(com);
 
             if(!sc)
                 continue;

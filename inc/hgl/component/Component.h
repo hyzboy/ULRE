@@ -50,9 +50,9 @@ public:
 
     ComponentData()=default;
     virtual ~ComponentData()=default;
+};//struct ComponentData
 
-    virtual ComponentData *Duplication()=0;
-};
+using ComponentDataPtr=SharedPtr<ComponentData>;
 
 /**
 * 基础组件<br>
@@ -66,7 +66,7 @@ class Component
 
     SceneNode *         OwnerNode;
     ComponentManager *  Manager;
-    ComponentData *     Data;
+    ComponentDataPtr    Data;
 
 protected:
 
@@ -81,7 +81,7 @@ protected:
 public:
 
     Component()=delete;
-    Component(ComponentData *,ComponentManager *);
+    Component(ComponentDataPtr,ComponentManager *);
     virtual ~Component();
 
     virtual const size_t    GetHashCode()const=0;
@@ -92,7 +92,7 @@ public:
 
     SceneNode *         GetOwnerNode()const{return OwnerNode;}
     ComponentManager *  GetManager  ()const{return Manager;}
-    ComponentData *     GetData     ()const{return Data;}
+    ComponentDataPtr    GetData     ()const{return Data;}
 
 public:
 
@@ -137,7 +137,7 @@ public:
 
 public:
 
-    virtual Component *     CreateComponent(ComponentData *)=0;
+    virtual Component *     CreateComponent(ComponentDataPtr)=0;
 
             const size_t    GetComponentCount()const{return component_set.GetCount();}
 
@@ -152,6 +152,12 @@ public: //事件
     virtual void            OnFocusLost(){}                                             ///<焦点丢失事件
     virtual void            OnFocusGained(){}                                           ///<焦点获得事件
 };//class ComponentManager
+
+#define COMPONENT_MANAGER_CLASS_BODY(name)      static  name##ComponentManager *    GetDefaultManager       ()              {return GetComponentManager<name##ComponentManager>(true);}   \
+                                                static  constexpr   const size_t    StaticHashCode          ()              {return hgl::GetTypeHash<name##ComponentManager>();}    \
+                                                static  constexpr   const size_t    StaticComponentHashCode ()              {return hgl::GetTypeHash<name##Component>();}   \
+                                                                    const size_t    GetComponentHashCode    ()const override{return name##ComponentManager::StaticComponentHashCode();} \
+                                                                    const size_t    GetHashCode             ()const override{return name##ComponentManager::StaticHashCode();}  \
 
 bool RegistryComponentManager(ComponentManager *);
 ComponentManager *GetComponentManager(const size_t hash_code);
