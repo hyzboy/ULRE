@@ -4,8 +4,12 @@
 
 COMPONENT_NAMESPACE_BEGIN
 
+//uint MeshComponentData::unique_id_count=0;
+
 MeshComponentData::~MeshComponentData()
 {
+//    LOG_INFO(AnsiString("~MeshComponentData():")+AnsiString::numberOf(unique_id));
+
     if(mesh)
     {
         //mesh->Release();      //外面有RenderResource管理，不需要在这里释放.但未来要考虑是增加Release函数通知这里释放了一次使用权
@@ -13,18 +17,24 @@ MeshComponentData::~MeshComponentData()
     }
 }
 
-Component *MeshComponentManager::CreateComponent(ComponentData *data)
+Component *MeshComponentManager::CreateComponent(ComponentDataPtr cdp)
 {
-    if(!data)return(nullptr);
+    if(!cdp)return(nullptr);
 
-    return CreateComponent(reinterpret_cast<MeshComponentData *>(data));
+    if(!dynamic_cast<MeshComponentData *>(cdp.get()))
+    {
+        //LOG_ERROR(OS_TEXT("MeshComponentManager::CreateMeshComponent: invalid component data type."));
+        return(nullptr);
+    }
+
+    return(new MeshComponent(cdp,this));
 }
 
-MeshComponent *MeshComponentManager::CreateComponent(MeshComponentData *data)
+MeshComponent *MeshComponentManager::CreateComponent(Mesh *m)
 {
-    if(!data)return(nullptr);
+    ComponentDataPtr cdp=new MeshComponentData(m);
 
-    return(new MeshComponent(data,this));
+    return dynamic_cast<MeshComponent *>(CreateComponent(cdp));
 }
 
 COMPONENT_NAMESPACE_END

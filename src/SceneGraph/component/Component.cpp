@@ -6,12 +6,12 @@ namespace hgl::graph
 {
     uint Component::unique_id_count=0;
 
-    Component::Component(ComponentData *cd,ComponentManager *cm)
+    Component::Component(ComponentDataPtr cdp,ComponentManager *cm)
     {
         unique_id=++unique_id_count;
 
         OwnerNode=nullptr;
-        Data=cd;
+        Data=cdp;
         Manager=cm;
 
         Manager->AttachComponent(this);
@@ -31,12 +31,10 @@ namespace hgl::graph
 
         if(Manager)
             Manager->DetachComponent(this);
-
-        SAFE_CLEAR(Data);
     }
 
     Component *Component::Duplication()
     {
-        return GetManager()->CreateComponent(Data?Data->Duplication():nullptr);
+        return GetManager()->CreateComponent(Data);
     }
 }//namespace hgl::graph

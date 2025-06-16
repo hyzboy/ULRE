@@ -28,7 +28,10 @@ namespace hgl
                 if(component->GetHashCode()!=MeshComponent::StaticHashCode())     //暂时只支持MeshComponent
                     continue;
 
-                MeshComponent *smc=reinterpret_cast<MeshComponent *>(component);
+                MeshComponent *smc=dynamic_cast<MeshComponent *>(component);
+
+                if(!smc)
+                    continue;
 
                 Mesh *mesh=smc->GetMesh();
 
