@@ -23,6 +23,12 @@ namespace hgl::graph
 
     namespace mtl
     {
+        enum class WithCamera:uint8
+        {
+            Without=0,
+            With
+        };
+
         enum class WithLocalToWorld:uint8
         {
             Without=0,

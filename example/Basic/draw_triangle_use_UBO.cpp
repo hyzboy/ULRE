@@ -70,7 +70,7 @@ private:
 
         return pipeline;
     }
-   
+
     bool InitVBO()
     {
         const auto ext=GetExtent();
