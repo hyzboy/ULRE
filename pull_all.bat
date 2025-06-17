@@ -2,6 +2,7 @@
 SET REPO="hyzgame"
 SET BRANCH=master
 
+git pull
 call pull.bat CMAssetsManage %REPO% %BRANCH%
 call pull.bat CMCMakeModule %REPO% %BRANCH%
 call pull.bat CMCore %REPO% %BRANCH%

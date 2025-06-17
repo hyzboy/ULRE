@@ -10,9 +10,9 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/Gizmo")
 endmacro()
 
-CreateProject(01_PlaneGrid3D PlaneGrid3D.cpp)
-CreateProject(02_RayPicking RayPicking.cpp)
-CreateProject(03_MetricCellsGrid MetricCellsGrid.cpp)
+CreateProject(01_SimplestAxis SimplestAxis.cpp)
+CreateProject(02_PlaneGrid3D PlaneGrid3D.cpp)
+CreateProject(03_RayPicking RayPicking.cpp)
 
 CreateProject(04_Gizmo3DTest GizmoTest.cpp 
                                 Gizmo.h
@@ -22,5 +22,3 @@ CreateProject(04_Gizmo3DTest GizmoTest.cpp
                                 #Gizmo3DScale.cpp
                                 #Gizmo3DRotate.cpp
 )
-
-#CreateProject(03_BlenderAxis BlenderAxis.cpp)

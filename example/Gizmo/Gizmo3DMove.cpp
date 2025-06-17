@@ -63,11 +63,11 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
         GetGizmoMesh(GizmoShape::Cone,GizmoColor::Blue),
     };
 
-    Mesh *circle[3]=
+    Mesh *square[3]=
     {
-        GetGizmoMesh(GizmoShape::Circle,GizmoColor::Red),
-        GetGizmoMesh(GizmoShape::Circle,GizmoColor::Green),
-        GetGizmoMesh(GizmoShape::Circle,GizmoColor::Blue)
+        GetGizmoMesh(GizmoShape::Square,GizmoColor::Red),
+        GetGizmoMesh(GizmoShape::Square,GizmoColor::Green),
+        GetGizmoMesh(GizmoShape::Square,GizmoColor::Blue)
     };
 
     if(!sphere)
@@ -81,7 +81,7 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
         if(!cone[i])
             return(false);
 
-        if(!circle[i])
+        if(!square[i])
             return(false);
     }
 
@@ -94,21 +94,21 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
             Transform tm;
 
             const Vector3f one_scale(1);
-            const Vector3f circle_scale(2);
+            const Vector3f square_scale(2);
             const Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
 
             {
                 tm.SetScale(cylinder_scale);
                 tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[2]); //Z 向上圆柱
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[2]);         //Z 向上圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
                 render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[2]);           //Z 向上圆锥
 
-                tm.SetScale(circle_scale);
+                tm.SetScale(square_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,circle[2]);
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,square[2]);
             }
 
             {
@@ -121,9 +121,9 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
                 tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
                 render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[0]);           //X 向右圆锥
 
-                tm.SetScale(circle_scale);
+                tm.SetScale(square_scale);
                 tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,circle[0]);
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,square[0]);
             }
 
             {
@@ -136,9 +136,9 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
                 tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
                 render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[1]);           //Y 向前圆锥
 
-                tm.SetScale(circle_scale);
+                tm.SetScale(square_scale);
                 tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,circle[1]);
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,square[1]);
             }
         }
     }

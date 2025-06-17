@@ -19,14 +19,17 @@ struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material3DCreateConfig(const PrimitiveType &p):MaterialCreateConfig(p)
+    Material3DCreateConfig(const PrimitiveType &p,
+                           const WithCamera &wc=WithCamera::With,
+                           const WithLocalToWorld &l2w=WithLocalToWorld::With)
+        :MaterialCreateConfig(p)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=true;       //不输出深度
         rt_output.stencil=false;    //不输出stencil
 
-        camera=true;
-        local_to_world=false;
+        camera=(wc==WithCamera::With);
+        local_to_world=(l2w==WithLocalToWorld::With);
 
         position_format=VAT_VEC3;
 
