@@ -62,7 +62,8 @@ public:
 };
 
 /**
-* 网格体(网格中的最小渲染单位)
+* 网格体(网格渲染中的最小渲染单位，只能是一个材质实例)
+* 多材质的网格体使用StaticMesh，它内含多个Mesh
 */
 class Mesh
 {
@@ -98,8 +99,8 @@ public:
             Primitive *         GetPrimitive        (){return primitive;}
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
-    const   MeshDataBuffer *    GetDataBuffer      ()const{return data_buffer;}
-    const   MeshRenderData *    GetRenderData      ()const{return render_data;}
+    const   MeshDataBuffer *    GetDataBuffer       ()const{return data_buffer;}
+    const   MeshRenderData *    GetRenderData       ()const{return render_data;}
 
 public:
 

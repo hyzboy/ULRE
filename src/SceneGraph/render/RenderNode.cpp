@@ -10,7 +10,9 @@ VK_NAMESPACE_BEGIN
 *   for(material)
 *       for(pipeline)
 *           for(material_instance)
-*               for(vab)
+*               for(texture)
+*                   for(screen_tile)  
+*                       for(vab)
 * 
 * 
 *  关于Indirect Command Buffer
@@ -22,6 +24,8 @@ const int RenderNode::compare(const RenderNode &other)const
 {
     hgl::int64 off;
 
+    //RectScope2i screen_tile;
+
     hgl::graph::Mesh *ri_one=other.sm_component->GetMesh();
     hgl::graph::Mesh *ri_two=sm_component->GetMesh();
 
@@ -29,7 +33,6 @@ const int RenderNode::compare(const RenderNode &other)const
     auto *prim_two=ri_two->GetPrimitive();
 
     //比较VDM
-
     if(prim_one->GetVDM())      //有VDM
     {
         off=prim_one->GetVDM()
@@ -37,6 +40,14 @@ const int RenderNode::compare(const RenderNode &other)const
 
         if(off)
             return off;
+
+        //比较纹理
+        {
+        }
+
+        //比较屏幕空间所占tile
+        {
+        }
 
         //比较模型
         {
@@ -50,6 +61,14 @@ const int RenderNode::compare(const RenderNode &other)const
                 return off;
             }
         }
+    }
+
+    //比较纹理
+    {
+    }
+
+    //比较屏幕空间所占tile
+    {
     }
 
     //比较距离。。。。。。。。。。。。。。。。。。。。。还不知道这个是正了还是反了，等测出来确认后修改下面的返回值和这里的注释
