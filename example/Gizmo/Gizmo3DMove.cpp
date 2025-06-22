@@ -32,6 +32,24 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
+    /**
+    * 移动 Gizmo 节点
+    */
+    class GizmoMoveNode:public SceneNode
+    {
+        MeshComponent *sphere=nullptr;
+
+        struct GizmoMoveAxis
+        {
+            MeshComponent *cylinder =nullptr;   //圆柱
+            MeshComponent *cone     =nullptr;   //圆锥
+            MeshComponent *square   =nullptr;   //双轴调节正方形
+        };
+
+    public:
+
+
+    };//class GizmoMoveNode:public SceneNode
 
     static SceneNode *sn_gizmo_move=nullptr;
 }//namespace
@@ -100,7 +118,7 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
             {
                 tm.SetScale(cylinder_scale);
                 tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[2]);         //Z 向上圆柱
+                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[2]);       //Z 向上圆柱
 
                 tm.SetScale(one_scale);
                 tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
