@@ -25,7 +25,7 @@ namespace hgl
 
             for(auto component:sn->GetComponents())
             {
-                if(component->GetHashCode()!=MeshComponent::StaticHashCode())     //暂时只支持MeshComponent
+                if(component->GetTypeHash()!=MeshComponent::StaticTypeHash())     //暂时只支持MeshComponent
                     continue;
 
                 MeshComponent *smc=dynamic_cast<MeshComponent *>(component);

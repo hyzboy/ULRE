@@ -7,6 +7,9 @@
 
 COMPONENT_NAMESPACE_BEGIN
 
+class MeshComponent;
+class MeshComponentManager;
+
 struct MeshComponentData:public ComponentData
 {
     //static uint unique_id_count;
@@ -37,8 +40,6 @@ public:
 
     COMPONENT_DATA_CLASS_BODY(Mesh)
 };//struct MeshComponentData
-
-class MeshComponent;
 
 class MeshComponentManager:public ComponentManager
 {
