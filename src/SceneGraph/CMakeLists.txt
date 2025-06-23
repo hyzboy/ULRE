@@ -296,6 +296,7 @@ SET(VK_MESH_SOURCE    ${SG_INCLUDE_PATH}/Mesh.h
 SOURCE_GROUP("Vulkan\\Mesh" FILES ${VK_MESH_SOURCE})
 
 set(COMPONENT_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/component)
+SET(COLLISION_COMPONENT_INCLUDE_PATH    ${COMPONENT_INCLUDE_PATH}/collision)
 
 SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/SceneComponent.h
@@ -308,7 +309,24 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         component/MeshComponentManager.cpp
 )
 
+SET(COLLISION_COMPONENT_FILES   ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponent.h
+                                ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponentManager.h
+                                ${COLLISION_COMPONENT_INCLUDE_PATH}/PrimitiveCollisionComponent.h
+                                ${COLLISION_COMPONENT_INCLUDE_PATH}/SphereCollisionComponent.h
+                                ${COLLISION_COMPONENT_INCLUDE_PATH}/BoxCollisionComponent.h
+                                ${COLLISION_COMPONENT_INCLUDE_PATH}/CapsuleCollisionComponent.h
+                                ${COLLISION_COMPONENT_INCLUDE_PATH}/PlaneCollisionComponent.h
+#                                component/collision/CollisionComponent.cpp
+#                                component/collision/CollisionComponentManager.cpp
+#                                component/collision/PrimitiveCollisionComponent.cpp
+#                                component/collision/SphereCollisionComponent.cpp
+#                                component/collision/BoxCollisionComponent.cpp
+#                                component/collision/CapsuleCollisionComponent.cpp
+#                                component/collision/PlaneCollisionComponent.cpp
+)
+
 SOURCE_GROUP("Component" FILES ${COMPONENT_FILES})
+SOURCE_GROUP("Component\\Collision" FILES ${COLLISION_COMPONENT_FILES})
 
 IF(WIN32)
     OPTION(FORCE_DISCETE_GPU    "Force Discrete GPU" OFF)
@@ -386,6 +404,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${SG_VDM_SOURCE}
 
                                         ${COMPONENT_FILES}
+                                        ${COLLISION_COMPONENT_FILES}
 
 #                                        ${FONT_MANAGE_SOURCE}
 #                                        ${FONT_SOURCE}
