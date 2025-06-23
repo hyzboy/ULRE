@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
+#include<hgl/component/Component.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -34,7 +35,7 @@ enum class GizmoShape:uint
 bool InitGizmoResource(RenderFramework *);
 void FreeGizmoResource();
 
-Mesh *GetGizmoMesh(const GizmoShape &shape,const GizmoColor &color);
+ComponentDataPtr GetGizmoMeshComponentDataPtr(const GizmoShape &shape,const GizmoColor &color);
 
 SceneNode *GetGizmoMoveNode();
 //SceneNode *GetGizmoScaleMesh();
