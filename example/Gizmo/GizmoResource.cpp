@@ -10,6 +10,7 @@
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/component/MeshComponent.h>
 #include"GizmoResource.h"
 
 VK_NAMESPACE_BEGIN
@@ -45,22 +46,52 @@ namespace
     {
         Primitive *prim;
 
-        Mesh *mesh[size_t(GizmoColor::RANGE_SIZE)];
-    };
+        struct
+        {
+            Mesh *mesh;
+            MeshComponentData *mcd;
+            ComponentDataPtr cdp;
+
+        public:
+
+            void Create(Primitive *prim,MaterialInstance *mi,Pipeline *ppl)
+            {
+                mesh=CreateMesh(prim,mi,ppl);
+                mcd=new MeshComponentData(mesh);
+                cdp=mcd;
+            }
+        }mesh_data[size_t(GizmoColor::RANGE_SIZE)];
+
+    public:
+
+        void Create(Primitive *p)
+        {
+            prim=p;
+
+            for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
+                mesh_data[i].Create(prim,gizmo_triangle.mi[i],gizmo_triangle.pipeline);
+        }
+
+        void Clear()
+        {
+            SAFE_CLEAR(prim)
+
+            for(auto &md:mesh_data)
+            {
+                md.cdp.unref();
+                SAFE_CLEAR(md.mesh);
+            }
+        }
+    };//class GizmoMesh
     
     GizmoMesh         gizmo_mesh[size_t(GizmoShape::RANGE_SIZE)]{};
 
-    void InitGizmoMesh(const GizmoShape &gs,Primitive *prim,Pipeline *p)
+    void InitGizmoMesh(const GizmoShape &gs,Primitive *prim)
     {
         if(!prim)
             return;
 
-        GizmoMesh *gr=gizmo_mesh+size_t(gs);
-
-        gr->prim=prim;
-
-        for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
-            gr->mesh[i]=CreateMesh(prim,gizmo_triangle.mi[i],p);
+        gizmo_mesh[size_t(gs)].Create(prim);
     }
 
     bool InitMI(GizmoResource *gr)
@@ -196,7 +227,7 @@ namespace
             using namespace inline_geometry;
 
             {
-                InitGizmoMesh(GizmoShape::Square,CreatePlaneSqaure(gizmo_triangle.prim_creater),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Square,CreatePlaneSqaure(gizmo_triangle.prim_creater));
             }
 
             {
@@ -207,7 +238,7 @@ namespace
                 cci.field_count=16;
                 cci.has_center=false;
                 
-                InitGizmoMesh(GizmoShape::Circle,CreateCircle3DByIndexTriangles(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Circle,CreateCircle3DByIndexTriangles(gizmo_triangle.prim_creater,&cci));
             }
 
             {
@@ -217,11 +248,11 @@ namespace
                 cci.tangent=false;
                 cci.tex_coord=false;
 
-                InitGizmoMesh(GizmoShape::Cube,CreateCube(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Cube,CreateCube(gizmo_triangle.prim_creater,&cci));
             }
 
             {
-                InitGizmoMesh(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,16),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Sphere,CreateSphere(gizmo_triangle.prim_creater,16));
             }
 
             {
@@ -232,7 +263,7 @@ namespace
                 cci.numberSlices=16;        //圆锥底部分割数
                 cci.numberStacks=3;         //圆锥高度分割数
 
-                InitGizmoMesh(GizmoShape::Cone,CreateCone(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Cone,CreateCone(gizmo_triangle.prim_creater,&cci));
             }
 
             {
@@ -242,7 +273,7 @@ namespace
                 cci.numberSlices=16;        //圆柱底部分割数
                 cci.radius      =1;         //圆柱半径
 
-                InitGizmoMesh(GizmoShape::Cylinder,CreateCylinder(gizmo_triangle.prim_creater,&cci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Cylinder,CreateCylinder(gizmo_triangle.prim_creater,&cci));
             }
 
             {
@@ -253,7 +284,7 @@ namespace
                 tci.numberSlices=64;
                 tci.numberStacks=8;
 
-                InitGizmoMesh(GizmoShape::Torus,CreateTorus(gizmo_triangle.prim_creater,&tci),gizmo_triangle.pipeline);
+                InitGizmoMesh(GizmoShape::Torus,CreateTorus(gizmo_triangle.prim_creater,&tci));
             }
 
             ENUM_CLASS_FOR(GizmoShape,int,i)
@@ -298,10 +329,7 @@ void FreeGizmoResource()
     ClearGizmoMoveNode();
 
     for(GizmoMesh &gr:gizmo_mesh)
-    {
-        SAFE_CLEAR(gr.prim)
-        SAFE_CLEAR_OBJECT_ARRAY(gr.mesh)
-    }
+        gr.Clear();
 
     SAFE_CLEAR(gizmo_triangle.prim_creater);
     SAFE_CLEAR(gizmo_triangle.vdm);
@@ -310,7 +338,7 @@ void FreeGizmoResource()
     SAFE_CLEAR(gizmo_line.vdm);
 }
 
-Mesh *GetGizmoMesh(const GizmoShape &shape,const GizmoColor &color)
+ComponentDataPtr GetGizmoMeshComponentDataPtr(const GizmoShape &shape,const GizmoColor &color)
 {
     if(!gizmo_rr)
         return(nullptr);
@@ -318,7 +346,7 @@ Mesh *GetGizmoMesh(const GizmoShape &shape,const GizmoColor &color)
     RANGE_CHECK_RETURN_NULLPTR(shape)
     RANGE_CHECK_RETURN_NULLPTR(color)
 
-    return gizmo_mesh[size_t(shape)].mesh[size_t(color)];
+    return gizmo_mesh[size_t(shape)].mesh_data[size_t(color)].cdp;
 }
 
 VK_NAMESPACE_END

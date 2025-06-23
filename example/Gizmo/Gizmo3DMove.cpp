@@ -32,24 +32,41 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    /**
-    * 移动 Gizmo 节点
-    */
-    class GizmoMoveNode:public SceneNode
-    {
-        MeshComponent *sphere=nullptr;
+    ///**
+    //* 移动 Gizmo 节点
+    //*/
+    //class GizmoMoveNode:public SceneNode
+    //{
+    //    struct GizmoMoveAxis
+    //    {
+    //        MeshComponent *cylinder =nullptr;   //圆柱
+    //        MeshComponent *cone     =nullptr;   //圆锥
+    //        MeshComponent *square   =nullptr;   //双轴调节正方形
+    //    };
 
-        struct GizmoMoveAxis
-        {
-            MeshComponent *cylinder =nullptr;   //圆柱
-            MeshComponent *cone     =nullptr;   //圆锥
-            MeshComponent *square   =nullptr;   //双轴调节正方形
-        };
+    //    MeshComponent *sphere=nullptr;
+    //    GizmoMoveAxis axis[3];  //X,Y,Z 三个轴
 
-    public:
+    //public:
+
+    //    GizmoMoveNode(RenderFramework *rf)
+    //    {
+    //        //SetName("GizmoMoveNode");
+
+    //        Mesh *sphere=GetGizmoMesh(GizmoShape::Sphere,GizmoColor::White);
+
+    //        sn_gizmo_move->AttachComponent(rf->CreateComponent<MeshComponent>(sphere));
+
+    //        for(int i=0;i<3;i++)
+    //        {
+    //            axis[i].cylinder=nullptr;
+    //            axis[i].cone=nullptr;
+    //            axis[i].square=nullptr;
+    //        }
+    //    }
 
 
-    };//class GizmoMoveNode:public SceneNode
+    //};//class GizmoMoveNode:public SceneNode
 
     static SceneNode *sn_gizmo_move=nullptr;
 }//namespace
@@ -66,26 +83,27 @@ void ClearGizmoMoveNode()
 
 bool InitGizmoMoveNode(RenderFramework *render_framework)
 {
-    Mesh *sphere=GetGizmoMesh(GizmoShape::Sphere,GizmoColor::White);
-    Mesh *cylinder[3]
+    ComponentDataPtr sphere=GetGizmoMeshComponentDataPtr(GizmoShape::Sphere,GizmoColor::White);
+
+    ComponentDataPtr cylinder[3]
     {
-        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Red),
-        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Green),
-        GetGizmoMesh(GizmoShape::Cylinder,GizmoColor::Blue),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Red),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Green),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Blue),
     };
 
-    Mesh *cone[3]
+    ComponentDataPtr cone[3]
     {
-        GetGizmoMesh(GizmoShape::Cone,GizmoColor::Red),
-        GetGizmoMesh(GizmoShape::Cone,GizmoColor::Green),
-        GetGizmoMesh(GizmoShape::Cone,GizmoColor::Blue),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Red),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Green),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Blue),
     };
 
-    Mesh *square[3]=
+    ComponentDataPtr square[3]=
     {
-        GetGizmoMesh(GizmoShape::Square,GizmoColor::Red),
-        GetGizmoMesh(GizmoShape::Square,GizmoColor::Green),
-        GetGizmoMesh(GizmoShape::Square,GizmoColor::Blue)
+        GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Red),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Green),
+        GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Blue)
     };
 
     if(!sphere)
@@ -105,7 +123,7 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
 
     {
         sn_gizmo_move=new SceneNode();
-        
+
         sn_gizmo_move->AttachComponent(render_framework->CreateComponent<MeshComponent>(sphere));
 
         {
