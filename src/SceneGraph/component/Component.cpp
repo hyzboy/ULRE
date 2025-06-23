@@ -44,9 +44,7 @@ namespace hgl::graph
         if(Data==cdp)
             return(true); //数据没有变化
 
-        ComponentData *cd=cdp.get();
-
-        if(cd->GetHashCode()!=GetHashCode())        //类型不对
+        if(cdp->GetTypeHash()!=GetTypeHash())        //类型不对
         {
             LOG_ERROR(OS_TEXT("Component::ChangeData: component data type mismatch."));
             return(false);

@@ -39,7 +39,7 @@ namespace hgl::graph
         if(!component_manager_map)
             return(false);
 
-        const size_t hash_code=cm->GetHashCode();
+        const size_t hash_code=cm->GetTypeHash();
 
         if(component_manager_map->contains(hash_code))
             return(false);
