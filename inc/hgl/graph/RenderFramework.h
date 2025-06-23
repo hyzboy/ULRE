@@ -214,7 +214,7 @@ public: //Component 相关
             return(nullptr);
         }
 
-        return manager->CreateComponent(args...); //创建组件
+        return (C *)(manager->CreateComponent(args...)); //创建组件
     }
 
     template<typename C,typename ...ARGS>

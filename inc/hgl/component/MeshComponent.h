@@ -50,7 +50,7 @@ public:
 
     Component *CreateComponent(ComponentDataPtr cdp) override;
 
-    MeshComponent *CreateComponent(Mesh *);
+    Component *CreateComponent(Mesh *);
 };//class MeshComponentManager
 
 class MeshComponent:public RenderComponent
