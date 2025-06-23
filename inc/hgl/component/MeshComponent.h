@@ -34,6 +34,8 @@ public:
     }
 
     virtual ~MeshComponentData();
+
+    COMPONENT_DATA_CLASS_BODY(Mesh)
 };//struct MeshComponentData
 
 class MeshComponent;
