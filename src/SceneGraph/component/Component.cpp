@@ -33,6 +33,29 @@ namespace hgl::graph
             Manager->DetachComponent(this);
     }
 
+    bool Component::ChangeData(ComponentDataPtr cdp)
+    {
+        if(!cdp)
+        {
+            LOG_ERROR(OS_TEXT("Component::ChangeData: invalid component data pointer."));
+            return(false);
+        }
+
+        if(Data==cdp)
+            return(true); //数据没有变化
+
+        ComponentData *cd=cdp.get();
+
+        if(cd->GetHashCode()!=GetHashCode())        //类型不对
+        {
+            LOG_ERROR(OS_TEXT("Component::ChangeData: component data type mismatch."));
+            return(false);
+        }
+
+        Data=cdp;
+        return(true);
+    }
+
     Component *Component::Duplication()
     {
         return GetManager()->CreateComponent(Data);

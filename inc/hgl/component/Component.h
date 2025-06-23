@@ -50,7 +50,18 @@ public:
 
     ComponentData()=default;
     virtual ~ComponentData()=default;
+
+    virtual const size_t GetHashCode()const=0;              ///<取得ComponentData的类型哈希值
+    virtual const size_t GetComponentHashCode()const=0;     ///<取得Component的类型哈希值
+    virtual const size_t GetManagerHashCode()const=0;       ///<取得ComponentManager的类型哈希值
 };//struct ComponentData
+
+#define COMPONENT_DATA_CLASS_BODY(name)  static constexpr   const size_t StaticHashCode         (){return hgl::GetTypeHash<name##ComponentData>();} \
+                                         static constexpr   const size_t StaticComponentHashCode(){return hgl::GetTypeHash<name##Component>();} \
+                                         static constexpr   const size_t StaticManagerHashCode  (){return hgl::GetTypeHash<name##ComponentManager>();}   \
+                                                            const size_t GetHashCode            ()const override{return name##ComponentData::StaticHashCode();} \
+                                                            const size_t GetComponentHashCode   ()const override{return name##ComponentData::StaticComponentHashCode();} \
+                                                            const size_t GetManagerHashCode     ()const override{return name##ComponentData::StaticManagerHashCode();}
 
 using ComponentDataPtr=SharedPtr<ComponentData>;
 
@@ -84,7 +95,9 @@ public:
     Component(ComponentDataPtr,ComponentManager *);
     virtual ~Component();
 
-    virtual const size_t    GetHashCode()const=0;
+    virtual const size_t GetHashCode()const=0;              ///<取得Component的类型哈希值
+    virtual const size_t GetDataHashCode()const=0;          ///<取得ComponentData的类型哈希值
+    virtual const size_t GetManagerHashCode()const=0;       ///<取得ComponentManager的类型哈希值
 
 public:
 
@@ -93,6 +106,10 @@ public:
     SceneNode *         GetOwnerNode()const{return OwnerNode;}
     ComponentManager *  GetManager  ()const{return Manager;}
     ComponentDataPtr    GetData     ()const{return Data;}
+
+public:
+
+    virtual bool        ChangeData(ComponentDataPtr cdp);
 
 public:
 
@@ -112,7 +129,9 @@ public: //事件
 #define COMPONENT_CLASS_BODY(name)  static  name##ComponentManager *GetDefaultManager   ()              {return name##ComponentManager::GetDefaultManager();} \
                                             name##ComponentManager *GetManager          ()const         {return (name##ComponentManager *)Component::GetManager();}  \
                                     static  constexpr const size_t  StaticHashCode      ()              {return hgl::GetTypeHash<name##Component>();} \
-                                            const size_t            GetHashCode         ()const override{return name##Component::StaticHashCode();}
+                                            const size_t            GetHashCode         ()const override{return name##Component::StaticHashCode();} \
+                                            const size_t            GetDataHashCode     ()const override{return name::ComponentData::StaticHashCode();} \
+                                            const size_t            GetManagerHashCode  ()const override{return name##ComponentManager::StaticHashCode();}
 
 using ComponentSet=SortedSet<Component *>;
 using ComponentList=ArrayList<Component *>;
@@ -130,8 +149,9 @@ protected:
 
 public:
 
-    virtual const size_t    GetComponentHashCode()const=0;
-    virtual const size_t    GetHashCode()const=0;
+    virtual const size_t    GetComponentHashCode()const=0;          ///<取得Component的类型哈希值
+    virtual const size_t    GetDataHashCode()const=0;               ///<取得ComponentData的类型哈希值
+    virtual const size_t    GetHashCode()const=0;                   ///<取得ComponentManager的类型哈希值
 
     virtual ~ComponentManager();
 
@@ -155,9 +175,11 @@ public: //事件
 
 #define COMPONENT_MANAGER_CLASS_BODY(name)      static  name##ComponentManager *    GetDefaultManager       ()              {return GetComponentManager<name##ComponentManager>(true);}   \
                                                 static  constexpr   const size_t    StaticHashCode          ()              {return hgl::GetTypeHash<name##ComponentManager>();}    \
+                                                static  constexpr   const size_t    StaticDataHashCode      ()              {return hgl::GetTypeHash<name##ComponentData>();} \
                                                 static  constexpr   const size_t    StaticComponentHashCode ()              {return hgl::GetTypeHash<name##Component>();}   \
                                                                     const size_t    GetComponentHashCode    ()const override{return name##ComponentManager::StaticComponentHashCode();} \
-                                                                    const size_t    GetHashCode             ()const override{return name##ComponentManager::StaticHashCode();}  \
+                                                                    const size_t    GetDataHashCode         ()const override{return name##ComponentManager::StaticDataHashCode();} \
+                                                                    const size_t    GetHashCode             ()const override{return name##ComponentManager::StaticHashCode();}
 
 bool RegistryComponentManager(ComponentManager *);
 ComponentManager *GetComponentManager(const size_t hash_code);
