@@ -30,11 +30,11 @@ Component *MeshComponentManager::CreateComponent(ComponentDataPtr cdp)
     return(new MeshComponent(cdp,this));
 }
 
-MeshComponent *MeshComponentManager::CreateComponent(Mesh *m)
+Component *MeshComponentManager::CreateComponent(Mesh *m)
 {
     ComponentDataPtr cdp=new MeshComponentData(m);
 
-    return dynamic_cast<MeshComponent *>(CreateComponent(cdp));
+    return CreateComponent(cdp);
 }
 
 COMPONENT_NAMESPACE_END
