@@ -358,6 +358,9 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
     ProcOutput();
 
+    for(const char *str:user_data_list)
+        final_shader+=str;
+
     for(const char *str:function_list)
         final_shader+=str;
 
