@@ -32,43 +32,140 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
-    ///**
-    //* 移动 Gizmo 节点
-    //*/
-    //class GizmoMoveNode:public SceneNode
-    //{
-    //    struct GizmoMoveAxis
-    //    {
-    //        MeshComponent *cylinder =nullptr;   //圆柱
-    //        MeshComponent *cone     =nullptr;   //圆锥
-    //        MeshComponent *square   =nullptr;   //双轴调节正方形
-    //    };
+    /**
+    * 移动 Gizmo 节点
+    */
+    class GizmoMoveNode:public SceneNode
+    {
+        struct GizmoMoveAxis
+        {
+            MeshComponent *cylinder;    //圆柱
+            MeshComponent *cone;        //圆锥
+            MeshComponent *square;      //双轴调节正方形
+        };
 
-    //    MeshComponent *sphere=nullptr;
-    //    GizmoMoveAxis axis[3];  //X,Y,Z 三个轴
+        MeshComponent *sphere=nullptr;
+        GizmoMoveAxis axis[3]{};  //X,Y,Z 三个轴
 
-    //public:
+    public:
 
-    //    GizmoMoveNode(RenderFramework *rf)
-    //    {
-    //        //SetName("GizmoMoveNode");
+        using SceneNode::SceneNode;
 
-    //        Mesh *sphere=GetGizmoMesh(GizmoShape::Sphere,GizmoColor::White);
+        SceneNode *CreateNode()const override
+        {
+            return(new GizmoMoveNode);
+        }
 
-    //        sn_gizmo_move->AttachComponent(rf->CreateComponent<MeshComponent>(sphere));
+        bool Init(RenderFramework *render_framework)
+        {
+            ComponentDataPtr sphere=GetGizmoMeshComponentDataPtr(GizmoShape::Sphere,GizmoColor::White);
 
-    //        for(int i=0;i<3;i++)
-    //        {
-    //            axis[i].cylinder=nullptr;
-    //            axis[i].cone=nullptr;
-    //            axis[i].square=nullptr;
-    //        }
-    //    }
+            ComponentDataPtr cylinder[3]
+            {
+                GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Red),
+                GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Green),
+                GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Blue),
+            };
 
+            ComponentDataPtr cone[3]
+            {
+                GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Red),
+                GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Green),
+                GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Blue),
+            };
 
-    //};//class GizmoMoveNode:public SceneNode
+            ComponentDataPtr square[3]=
+            {
+                GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Red),
+                GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Green),
+                GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Blue)
+            };
 
-    static SceneNode *sn_gizmo_move=nullptr;
+            if(!sphere)
+                return(false);
+
+            for(int i=0;i<3;i++)
+            {
+                if(!cylinder[i])
+                    return(false);
+
+                if(!cone[i])
+                    return(false);
+
+                if(!square[i])
+                    return(false);
+            }
+
+            CreateComponentInfo cci(this);
+
+            render_framework->CreateComponent<MeshComponent>(&cci,sphere);
+
+            {
+                Transform tm;
+
+                const Vector3f one_scale(1);
+                const Vector3f square_scale(2);
+                const Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
+
+                {
+                    tm.SetScale(cylinder_scale);
+                    tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,cylinder[2]);       //Z 向上圆柱
+
+                    tm.SetScale(one_scale);
+                    tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,cone[2]);           //Z 向上圆锥
+
+                    tm.SetScale(square_scale);
+                    tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,square[2]);
+                }
+
+                {
+                    tm.SetScale(cylinder_scale);
+                    tm.SetRotation(AxisVector::Y,90);
+                    tm.SetTranslation(GIZMO_CYLINDER_OFFSET,0,0);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,cylinder[0]);       //X 向右圆柱
+
+                    tm.SetScale(one_scale);
+                    tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,cone[0]);           //X 向右圆锥
+
+                    tm.SetScale(square_scale);
+                    tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,square[0]);
+                }
+
+                {
+                    tm.SetScale(cylinder_scale);
+                    tm.SetRotation(AxisVector::X,-90);
+                    tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,cylinder[1]);       //Y 向前圆柱
+
+                    tm.SetScale(one_scale);
+                    tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,cone[1]);           //Y 向前圆锥
+
+                    tm.SetScale(square_scale);
+                    tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
+                    cci.mat=tm;
+                    render_framework->CreateComponent<MeshComponent>(&cci,square[1]);
+                }
+            }
+
+            return(true);
+        }
+    };//class GizmoMoveNode:public SceneNode
+
+    static GizmoMoveNode *sn_gizmo_move=nullptr;
 }//namespace
 
 SceneNode *GetGizmoMoveNode()
@@ -83,104 +180,17 @@ void ClearGizmoMoveNode()
 
 bool InitGizmoMoveNode(RenderFramework *render_framework)
 {
-    ComponentDataPtr sphere=GetGizmoMeshComponentDataPtr(GizmoShape::Sphere,GizmoColor::White);
-
-    ComponentDataPtr cylinder[3]
-    {
-        GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Red),
-        GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Green),
-        GetGizmoMeshComponentDataPtr(GizmoShape::Cylinder,GizmoColor::Blue),
-    };
-
-    ComponentDataPtr cone[3]
-    {
-        GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Red),
-        GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Green),
-        GetGizmoMeshComponentDataPtr(GizmoShape::Cone,GizmoColor::Blue),
-    };
-
-    ComponentDataPtr square[3]=
-    {
-        GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Red),
-        GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Green),
-        GetGizmoMeshComponentDataPtr(GizmoShape::Square,GizmoColor::Blue)
-    };
-
-    if(!sphere)
+    if(sn_gizmo_move)
         return(false);
 
-    for(int i=0;i<3;i++)
+    sn_gizmo_move=new GizmoMoveNode;
+
+    if(!sn_gizmo_move->Init(render_framework))
     {
-        if(!cylinder[i])
-            return(false);
-
-        if(!cone[i])
-            return(false);
-
-        if(!square[i])
-            return(false);
-    }
-
-    {
-        sn_gizmo_move=new SceneNode();
-
-        sn_gizmo_move->AttachComponent(render_framework->CreateComponent<MeshComponent>(sphere));
-
-        {
-            Transform tm;
-
-            const Vector3f one_scale(1);
-            const Vector3f square_scale(2);
-            const Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
-
-            {
-                tm.SetScale(cylinder_scale);
-                tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[2]);       //Z 向上圆柱
-
-                tm.SetScale(one_scale);
-                tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[2]);           //Z 向上圆锥
-
-                tm.SetScale(square_scale);
-                tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,square[2]);
-            }
-
-            {
-                tm.SetScale(cylinder_scale);
-                tm.SetRotation(AxisVector::Y,90);
-                tm.SetTranslation(GIZMO_CYLINDER_OFFSET,0,0);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[0]);       //X 向右圆柱
-
-                tm.SetScale(one_scale);
-                tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[0]);           //X 向右圆锥
-
-                tm.SetScale(square_scale);
-                tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,square[0]);
-            }
-
-            {
-                tm.SetScale(cylinder_scale);
-                tm.SetRotation(AxisVector::X,-90);
-                tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);                
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cylinder[1]);       //Y 向前圆柱
-
-                tm.SetScale(one_scale);
-                tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,cone[1]);           //Y 向前圆锥
-
-                tm.SetScale(square_scale);
-                tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
-                render_framework->CreateComponent<MeshComponent>(tm.GetMatrix(),sn_gizmo_move,square[1]);
-            }
-        }
-    }
-
-    if(!sn_gizmo_move)
+        delete sn_gizmo_move;
+        sn_gizmo_move=nullptr;
         return(false);
+    }
 
     return(true);
 }
