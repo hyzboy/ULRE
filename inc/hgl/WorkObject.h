@@ -106,9 +106,9 @@ namespace hgl
     public: //Component 相关
 
         template<typename C,typename ...ARGS>
-        inline C *CreateComponent(ARGS...args)
+        inline C *CreateComponent(const graph::CreateComponentInfo *cci,ARGS...args)
         {
-            return render_framework?render_framework->CreateComponent<C>(args...):nullptr; //创建组件
+            return render_framework?render_framework->CreateComponent<C>(cci,args...):nullptr; //创建组件
         }
     };//class WorkObject
 
