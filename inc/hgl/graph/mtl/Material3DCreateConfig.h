@@ -66,6 +66,8 @@ struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 
     Vector2u    pixel_size;             ///<像素尺寸
 
+    VkFrontFace front_face=VK_FRONT_FACE_CLOCKWISE; ///<正面朝向
+
 public:
 
     using Material3DCreateConfig::Material3DCreateConfig;
