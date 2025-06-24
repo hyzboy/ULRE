@@ -1,4 +1,5 @@
 ﻿#include"Std3DMaterial.h"
+#include"S_BillboardVertex.h"
 #include<hgl/shadergen/MaterialCreateInfo.h>
 
 STD_MTL_NAMESPACE_BEGIN
@@ -21,14 +22,6 @@ void main()
     constexpr const char gs_main[]=R"(
 void main()
 {
-    const vec2 BillboardVertex[4]=vec2[]
-    (
-        vec2(-0.5,-0.5),
-        vec2(-0.5, 0.5),
-        vec2( 0.5,-0.5),
-        vec2( 0.5, 0.5)
-    );
-
     for(int i=0;i<4;i++)
     {
         gl_Position=gl_in[0].gl_Position;
@@ -49,9 +42,14 @@ void main()
 
     class MaterialBillboard2DFixedSize:public Std3DMaterial
     {
+        mtl::BillboardMaterialCreateConfig *billboard_config;
+
     public:
 
-        using Std3DMaterial::Std3DMaterial;
+        MaterialBillboard2DFixedSize(mtl::BillboardMaterialCreateConfig *bcfg):Std3DMaterial(bcfg)
+        {
+            billboard_config=bcfg;
+        }
         ~MaterialBillboard2DFixedSize()=default;
 
         bool CustomVertexShader(ShaderCreateInfoVertex *vsc) override
@@ -71,6 +69,7 @@ void main()
 
             gsc->AddOutput(SVT_VEC2,"TexCoord");
 
+            gsc->AddUserData(billboard_config->front_face==VK_FRONT_FACE_CLOCKWISE?shader_billboard_vertex_cw:shader_billboard_vertex_ccw);
             gsc->SetMain(gs_main);
             return(true);
         }
