@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/type/DataType.h>
 #include<hgl/type/SortedSet.h>
@@ -32,7 +32,6 @@
 *   RenderComponent是可渲染组件的基类，所有可渲染组件都从这里派生。
 *
 *   MeshComponent是静态网格组件，它是一个具体的RenderComponent实现。
-* 
 */
 
 #define COMPONENT_NAMESPACE         hgl::graph
@@ -64,6 +63,14 @@ public:
                                                             const size_t GetManagerTypeHash     ()const override{return StaticManagerTypeHash();}
 
 using ComponentDataPtr=SharedPtr<ComponentData>;
+
+/**
+* 为什么要ComponentData与Component分离？
+*
+*   ComponentData是Component的一个数据载体，但它也仅仅代表数据。
+*   它不参与任何的逻辑、事件、更新、渲染操作，而且同一份数据可以被多个Component使用。
+*   同时，Component也可以在运行时更换ComponentData。
+*/
 
 /**
 * 基础组件<br>
