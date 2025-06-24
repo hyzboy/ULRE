@@ -101,7 +101,9 @@ private:
             return(nullptr);
         }
 
-        CreateComponent<MeshComponent>(parent_node,ri);
+        CreateComponentInfo cci(parent_node);
+
+        CreateComponent<MeshComponent>(&cci,ri);
 
         return ri;
     }

@@ -90,7 +90,9 @@ private:
         if(!mesh_triangle)
             return(false);
 
-        return CreateComponent<MeshComponent>(GetSceneRoot(),mesh_triangle); //创建一个静态网格组件
+        CreateComponentInfo cci(GetSceneRoot());
+
+        return CreateComponent<MeshComponent>(&cci,mesh_triangle); //创建一个静态网格组件
     }
 
 public:
