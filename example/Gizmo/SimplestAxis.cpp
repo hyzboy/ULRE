@@ -58,7 +58,9 @@ private:
     {
         Mesh *ri=db->CreateMesh(prim_axis,material_instance,pipeline);
 
-        CreateComponent<MeshComponent>(GetSceneRoot(),ri);
+        CreateComponentInfo cci(GetSceneRoot());
+
+        CreateComponent<MeshComponent>(&cci,ri);
 
         CameraControl *camera_control=GetCameraControl();
 

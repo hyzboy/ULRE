@@ -150,10 +150,10 @@ private:
 
     bool InitScene()
     {
-        SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
+        CreateComponentInfo cci(GetSceneRoot());
 
-        CreateComponent<MeshComponent>(scene_root,db->CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
-        CreateComponent<MeshComponent>(scene_root,ro_billboard);
+        CreateComponent<MeshComponent>(&cci,db->CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
+        CreateComponent<MeshComponent>(&cci,ro_billboard);
 
         CameraControl *camera_control=GetCameraControl();
 

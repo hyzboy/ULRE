@@ -81,9 +81,7 @@ private:
 
         db->Add(prim);
 
-        Matrix4f mat;
-
-        SceneNode *scene_root=GetSceneRoot();       ///<取得场景根节点
+        CreateComponentInfo cci(GetSceneRoot());
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
@@ -92,9 +90,9 @@ private:
             if(!render_obj[i].mesh)
                 return(false);
 
-            mat=rotate(deg2rad<double>(TRI_ROTATE_ANGLE*i),AxisVector::Z);
+            cci.mat=rotate(deg2rad<double>(TRI_ROTATE_ANGLE*i),AxisVector::Z);
 
-            CreateComponent<MeshComponent>(mat,scene_root,render_obj[i].mesh);
+            CreateComponent<MeshComponent>(&cci,render_obj[i].mesh);
         }
 
         return(true);

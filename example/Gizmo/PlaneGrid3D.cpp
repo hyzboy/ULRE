@@ -84,7 +84,9 @@ private:
         if(!ri)
             return;
 
-        CreateComponent<MeshComponent>(mat,parent_node,ri);
+        CreateComponentInfo cci(parent_node,mat);
+
+        CreateComponent<MeshComponent>(&cci,ri);
     }
 
     bool InitScene()
