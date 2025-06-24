@@ -28,6 +28,44 @@ class Renderer;
 class CameraComponentManager{/*现阶段测试使用*/};
 class LightComponentManager{/*现阶段测试使用*/};
 
+struct CreateComponentInfo
+{
+    graph::SceneNode *parent_node;  ///<父节点
+    graph::Matrix4f mat;                    ///<矩阵
+
+public:
+
+    CreateComponentInfo()
+    {
+        parent_node=nullptr;
+        mat=graph::Identity4f;
+    }
+
+    CreateComponentInfo(const CreateComponentInfo &cci)
+    {
+        parent_node=cci.parent_node;
+        mat=cci.mat;
+    }
+
+    CreateComponentInfo(graph::SceneNode *pn,const graph::Matrix4f &m)
+    {
+        parent_node=pn;
+        mat=m;
+    }
+
+    CreateComponentInfo(graph::SceneNode *pn)
+    {
+        parent_node=pn;
+        mat=graph::Identity4f;
+    }
+
+    CreateComponentInfo(const graph::Matrix4f &m)
+    {
+        parent_node=nullptr;
+        mat=m;
+    }
+};//struct CreateComponentInfo
+
 class RenderFramework:public io::WindowEvent
 {
     OSString                app_name;
@@ -204,7 +242,7 @@ public: // ComponentManager
 public: //Component 相关
 
     template<typename C,typename ...ARGS>
-    inline C *CreateComponent(ARGS...args)
+    inline C *CreateComponent(const CreateComponentInfo *cci,ARGS...args)
     {
         auto manager=C::GetDefaultManager();  //取得默认管理器
 
@@ -214,19 +252,7 @@ public: //Component 相关
             return(nullptr);
         }
 
-        return (C *)(manager->CreateComponent(args...)); //创建组件
-    }
-
-    template<typename C,typename ...ARGS>
-    inline C *CreateComponent(graph::SceneNode *parent_node,ARGS...args)
-    {
-        if(!parent_node)
-        {
-            //        LOG_ERROR(OS_TEXT("CreateComponent failed, parent node is null!"));
-            return(nullptr);
-        }
-
-        C *c=this->CreateComponent<C>(args...); //创建组件
+        C *c=(C *)(manager->CreateComponent(args...)); //创建组件
 
         if(!c)
         {
@@ -237,34 +263,13 @@ public: //Component 相关
         /**
         * 如果此处出现转换错误，请检查是否包含了对应的Component头文件。
         */
-        parent_node->AttachComponent(c); //将组件附加到父节点
-
-        return c;
-    }
-
-    template<typename C,typename ...ARGS>
-    inline C *CreateComponent(const graph::Matrix4f &mat,graph::SceneNode *parent_node,ARGS...args)
-    {
-        if(!parent_node)
+        if(cci)
         {
-            //        LOG_ERROR(OS_TEXT("CreateComponent failed, parent node is null!"));
-            return(nullptr);
+            if(cci->parent_node)
+                cci->parent_node->AttachComponent(c); //将组件附加到父节点
+
+            c->graph::SceneOrient::SetLocalMatrix(cci->mat);
         }
-
-        C *c=this->CreateComponent<C>(args...); //创建组件
-
-        if(!c)
-        {
-            //        LOG_ERROR(OS_TEXT("CreateComponent failed, create component failed!"));
-            return(nullptr);
-        }
-
-        /**
-        * 如果此处出现转换错误，请检查是否包含了对应的Component头文件。
-        */
-        parent_node->AttachComponent(c); //将组件附加到父节点
-
-        c->graph::SceneOrient::SetLocalMatrix(mat);
 
         return c;
     }
