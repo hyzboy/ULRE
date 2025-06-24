@@ -37,6 +37,7 @@ protected:
 
     AnsiString mi_codes;
 
+    ArrayList<const char *> user_data_list;
     ArrayList<const char *> function_list;
     AnsiString main_function;
 
@@ -88,6 +89,7 @@ public:
     bool AddUBO(DescriptorSetType type,const UBODescriptor *sd);
     bool AddSampler(DescriptorSetType type,const SamplerDescriptor *sd);
 
+    void AddUserData(const char *str){user_data_list.Add(str);}
     void AddFunction(const char *str){function_list.Add(str);}
 
     void SetMaterialInstance(UBODescriptor *,const AnsiString &);
