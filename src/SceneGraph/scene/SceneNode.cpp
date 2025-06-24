@@ -4,26 +4,6 @@
 
 namespace hgl::graph
 {
-    SceneNode *Duplication(SceneNode *src_node)
-    {
-        if(!src_node)
-            return nullptr;
-
-        SceneNode *node=new SceneNode(*(SceneOrient *)src_node);
-
-        for(SceneNode *sn:src_node->GetChildNode())
-        {
-            node->Add(Duplication(sn));
-        }
-
-        for(Component *c:src_node->GetComponents())
-        {
-            node->AttachComponent(c->Duplication());
-        }
-
-        return node;
-    }
-
     //void SceneNode::SetRenderable(Mesh *ri)
     //{
     //    render_obj=ri;

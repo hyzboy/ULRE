@@ -61,6 +61,35 @@ namespace hgl::graph
 
         virtual ~SceneNode();
 
+        virtual SceneNode * CreateNode()const{return(new SceneNode);}                                               ///<创建一个同类的节点对象
+
+        virtual void        DuplicationChildNodes(SceneNode *node) const                                            ///<复制子节点到指定节点
+        {
+            for(SceneNode *sn:GetChildNode())
+                node->Add(sn->Duplication());
+        }
+
+        virtual void        DuplicationComponents(SceneNode *node) const                                            ///<复制组件到指定节点
+        {
+            for(Component *c:GetComponents())
+                node->AttachComponent(c->Duplication());
+        }
+
+        virtual SceneNode * Duplication() const                                                                     ///<复制一个场景节点
+        {
+            if(!this)
+                return nullptr;
+
+            SceneNode *node=CreateNode();
+
+            node->SetSceneMatrix(GetSceneMatrix());  //复制本地矩阵
+
+            DuplicationChildNodes(node);    //复制子节点
+            DuplicationComponents(node);    //复制组件
+
+            return node;
+        }
+
         void Clear() override
         {
             SceneOrient::Clear();
@@ -137,6 +166,4 @@ namespace hgl::graph
 
                 const ComponentSet &GetComponents       ()const{return component_set;}
     };//class SceneNode
-
-    SceneNode *Duplication(SceneNode *);                                                                            ///<复制一个场景节点
 }//namespace hgl::graph
