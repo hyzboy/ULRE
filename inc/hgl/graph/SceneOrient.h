@@ -25,15 +25,19 @@ namespace hgl::graph
             scene_matrix.Clear();
         }
 
+        void SetSceneMatrix(const SceneMatrix &sm){scene_matrix=sm;}                                                        ///<设置场景矩阵
+
         void SetLocalNormal(const Vector3f &nor) {scene_matrix.SetLocalNormal(nor);}                                        ///<设置本地法线
         void SetLocalMatrix (const Matrix4f &mat){scene_matrix.SetLocalMatrix(mat);}                                        ///<设置本地矩阵
         void SetParentMatrix(const Matrix4f &mat){scene_matrix.SetParentMatrix(mat);}                                       ///<设置上级到世界空间变换矩阵
 
     public:
 
-        const uint32        GetLocalToWorldMatrixVersion()const             {return scene_matrix.GetNewestVersion();}       ///<取得版本号
+        const SceneMatrix & GetSceneMatrix                          ()const {return scene_matrix;}                          ///<取得场景矩阵
 
-        const Vector3f &    GetWorldPosition() const                        {return scene_matrix.GetWorldPosition();}       ///<取得世界坐标
+        const uint32        GetLocalToWorldMatrixVersion            ()const {return scene_matrix.GetNewestVersion();}       ///<取得版本号
+
+        const Vector3f &    GetWorldPosition                        ()const {return scene_matrix.GetWorldPosition();}       ///<取得世界坐标
         const Matrix4f &    GetLocalMatrix                          ()const {return scene_matrix.GetLocalMatrix();}         ///<取得本地矩阵
 
         TransformManager &  GetTransform                            ()      {return scene_matrix.GetTransform();}           ///<取得变换管理器
