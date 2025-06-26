@@ -51,15 +51,13 @@ namespace hgl::graph
 
     public:
 
-        SceneNode()=default;
         SceneNode(const SceneNode &)=delete;
         SceneNode(const SceneNode *)=delete;
-        SceneNode(const SceneOrient &so           ):SceneOrient(so)   {}
-        SceneNode(const Matrix4f &mat             ):SceneOrient(mat)  {}
+
+        using SceneOrient::SceneOrient;                                                                           ///<继承构造函数
+        virtual ~SceneNode();
 
     public:
-
-        virtual ~SceneNode();
 
         virtual SceneNode * CreateNode()const{return(new SceneNode);}                                               ///<创建一个同类的节点对象
 
