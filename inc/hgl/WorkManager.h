@@ -44,11 +44,9 @@ namespace hgl
             frame_time=1.0f/double(fps);
         }
 
-        void Tick(WorkObject *wo);
-
-        virtual void Render(WorkObject *wo);
-
-        void Run(WorkObject *wo);
+                void Tick   (WorkObject *wo);
+        virtual void Render (WorkObject *wo);
+                void Run    (WorkObject *wo);
     };//class WorkManager
 
     class SwapchainWorkManager:public WorkManager
