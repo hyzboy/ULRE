@@ -102,7 +102,7 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
 
     void CreateDefaultRenderer();
 
-protected:  //InputEvent
+protected:  //EventDispatch
 
     io::MouseEvent *mouse_event=nullptr;
 
