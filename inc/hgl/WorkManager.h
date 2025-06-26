@@ -29,12 +29,12 @@ namespace hgl
         {
             render_framework=rf;
 
-            rf->Join(this);
+            rf->RegistryEventDispatch(this);
         }
 
         virtual ~WorkManager()
         {
-            render_framework->Unjoin(this);
+            render_framework->UnregistryEventDispatch(this);
             SAFE_CLEAR(cur_work_object);
         }
 

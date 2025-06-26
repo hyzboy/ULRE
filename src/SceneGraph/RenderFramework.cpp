@@ -111,7 +111,7 @@ bool RenderFramework::Init(uint w,uint h)
     if(!device)
         return(false);
 
-    win->Join(this);
+    win->RegistryEventDispatch(this);
 
     module_manager=new GraphModuleManager(this);
 
@@ -160,8 +160,8 @@ void RenderFramework::CreateDefaultRenderer()
         auto ckc=new CameraKeyboardControl(fpcc);
         auto cmc=new CameraMouseControl(fpcc);
 
-        this->Join(ckc);
-        this->Join(cmc);
+        this->RegistryEventDispatch(ckc);
+        this->RegistryEventDispatch(cmc);
 
         default_camera_control=fpcc;
 
