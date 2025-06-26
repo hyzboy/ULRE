@@ -8,7 +8,7 @@ namespace hgl
     /**
     * 工作管理器，管理一个序列的WorkObject<br>
     */
-    class WorkManager
+    class WorkManager:public io::WindowEvent
     {
     protected:
 
@@ -28,10 +28,13 @@ namespace hgl
         WorkManager(graph::RenderFramework *rf)
         {
             render_framework=rf;
+
+            rf->Join(this);
         }
 
         virtual ~WorkManager()
         {
+            render_framework->Unjoin(this);
             SAFE_CLEAR(cur_work_object);
         }
 
@@ -48,7 +51,7 @@ namespace hgl
         void Run(WorkObject *wo);
     };//class WorkManager
 
-    class SwapchainWorkManager:public WorkManager,public io::WindowEvent
+    class SwapchainWorkManager:public WorkManager
     {
         graph::SwapchainModule *swapchain_module;
 
@@ -57,14 +60,9 @@ namespace hgl
         SwapchainWorkManager(graph::RenderFramework *rf):WorkManager(rf)
         {
             swapchain_module=rf->GetSwapchainModule();
-
-            render_framework->Join(this);
         }
 
-        ~SwapchainWorkManager()
-        {
-            render_framework->Unjoin(this);
-        }
+        ~SwapchainWorkManager()=default;
 
         void Render(WorkObject *wo) override;
 
