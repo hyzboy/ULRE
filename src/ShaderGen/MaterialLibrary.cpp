@@ -1,4 +1,4 @@
-#include<hgl/graph/mtl/MaterialLibrary.h>
+﻿#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/type/IDName.h>
 #include<hgl/type/Map.h>
 
@@ -12,7 +12,7 @@ namespace
     MaterialFactoryMapPtr material_factory_map=nullptr;
 }//namespace
 
-bool RegistryMaterialFactory(MaterialFactory *mf)
+bool RegisterMaterialFactory(MaterialFactory *mf)
 {
     if(!mf)
         return(false);

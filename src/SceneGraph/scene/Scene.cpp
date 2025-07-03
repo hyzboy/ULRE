@@ -1,4 +1,4 @@
-#include<hgl/graph/Scene.h>
+﻿#include<hgl/graph/Scene.h>
 #include<hgl/type/Map.h>
 
 namespace hgl::graph
@@ -8,7 +8,7 @@ namespace hgl::graph
         Map<U8String,Scene *> scene_world_map;///<场景列表
     }//namespace
 
-    bool RegistryScene(Scene *sw)
+    bool RegisterScene(Scene *sw)
     {
         if(!sw)return(false);
 
@@ -29,7 +29,7 @@ namespace hgl::graph
         return GetObjectFromMap(scene_world_map,scene_name);
     }
 
-    bool UnregistryScene(const U8String &scene_name)
+    bool UnregisterScene(const U8String &scene_name)
     {
         if(scene_name.IsEmpty())
             return(false);

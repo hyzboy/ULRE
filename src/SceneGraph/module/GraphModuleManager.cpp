@@ -1,4 +1,4 @@
-#include<hgl/graph/module/GraphModule.h>
+﻿#include<hgl/graph/module/GraphModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/RenderFramework.h>
 
@@ -9,7 +9,7 @@ VulkanDevice *GraphModuleManager::GetDevice()const
     return render_framework->GetDevice();
 }
 
-bool GraphModuleManager::Registry(GraphModule *gm)
+bool GraphModuleManager::Register(GraphModule *gm)
 {
     if(!gm)
         return(false);
@@ -25,7 +25,7 @@ bool GraphModuleManager::Registry(GraphModule *gm)
     return(true);
 }
 
-bool GraphModuleManager::Unregistry(GraphModule *gm)
+bool GraphModuleManager::Unregister(GraphModule *gm)
 {
     if(!gm)
         return(false);
