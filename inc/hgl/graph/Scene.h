@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/SceneNode.h>
 #include<hgl/type/Pool.h>
@@ -36,14 +36,14 @@ namespace hgl::graph
         }
     };//class Scene
 
-    bool RegistryScene(Scene *sw);                      ///<注册场景
-    bool UnregistryScene(const U8String &scene_name);   ///<注销场景
+    bool RegisterScene(Scene *sw);                      ///<注册场景
+    bool UnregisterScene(const U8String &scene_name);   ///<注销场景
 
-    inline bool UnregistryScene(Scene *sw)              ///<注销场景
+    inline bool UnregisterScene(Scene *sw)              ///<注销场景
     {
         if(!sw)return(false);
 
-        return UnregistryScene(sw->GetSceneName());
+        return UnregisterScene(sw->GetSceneName());
     }
 
     Scene *GetScene(const U8String &scene_name);        ///<获取指定名称的场景

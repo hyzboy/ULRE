@@ -111,7 +111,7 @@ bool RenderFramework::Init(uint w,uint h)
     if(!device)
         return(false);
 
-    win->RegistryEventDispatch(this);
+    win->RegisterEventDispatch(this);
 
     module_manager=new GraphModuleManager(this);
 
@@ -126,10 +126,10 @@ bool RenderFramework::Init(uint w,uint h)
         return(false);
 
     rt_manager=new RenderTargetManager(this,tex_manager,rp_manager);
-    module_manager->Registry(rt_manager);
+    module_manager->Register(rt_manager);
 
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
-    module_manager->Registry(sc_module);
+    module_manager->Register(sc_module);
 
     render_resource=new RenderResource(device);
 
@@ -160,8 +160,8 @@ void RenderFramework::CreateDefaultRenderer()
         auto ckc=new CameraKeyboardControl(fpcc);
         auto cmc=new CameraMouseControl(fpcc);
 
-        this->RegistryEventDispatch(ckc);
-        this->RegistryEventDispatch(cmc);
+        this->RegisterEventDispatch(ckc);
+        this->RegisterEventDispatch(cmc);
 
         default_camera_control=fpcc;
 

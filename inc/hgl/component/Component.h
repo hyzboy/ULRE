@@ -190,7 +190,7 @@ public: //事件
                                                                     const size_t    GetDataTypeHash         ()const override{return StaticDataTypeHash();} \
                                                                     const size_t    GetTypeHash             ()const override{return StaticTypeHash();}
 
-bool RegistryComponentManager(ComponentManager *);
+bool RegisterComponentManager(ComponentManager *);
 ComponentManager *GetComponentManager(const size_t hash_code);
 
 template<typename T> inline T *GetComponentManager(bool create_default=true)
@@ -201,7 +201,7 @@ template<typename T> inline T *GetComponentManager(bool create_default=true)
     {
         cm=new T;
 
-        RegistryComponentManager(cm);
+        RegisterComponentManager(cm);
     }
 
     return cm;

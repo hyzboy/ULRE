@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/mtl/StdMaterial.h>
@@ -31,18 +31,18 @@ public:
 
 };//class MaterialFactory
 
-bool                RegistryMaterialFactory(MaterialFactory *);
+bool                RegisterMaterialFactory(MaterialFactory *);
 MaterialFactory *   GetMaterialFactory(const MaterialName &);
 
-template<typename T> class RegistryMaterialFactoryClass
+template<typename T> class RegisterMaterialFactoryClass
 {
 public:
 
-    RegistryMaterialFactoryClass()
+    RegisterMaterialFactoryClass()
     {
-        STD_MTL_NAMESPACE::RegistryMaterialFactory(new T);
+        STD_MTL_NAMESPACE::RegisterMaterialFactory(new T);
     }
-};//class RegistryMaterialFactoryClass
+};//class RegisterMaterialFactoryClass
 
 #define DEFINE_MATERIAL_FACTORY_CLASS(name,cfg_type) \
 namespace inline_material   \
@@ -70,7 +70,7 @@ namespace \
         }   \
     };  \
     \
-    static RegistryMaterialFactoryClass<MaterialFactory##name> MaterialFactoryInstance_##name;   \
+    static RegisterMaterialFactoryClass<MaterialFactory##name> MaterialFactoryInstance_##name;   \
 }
 
 MaterialCreateInfo *CreateMaterialCreateInfo(const VulkanDevAttr *dev_attr,const MaterialName &,MaterialCreateConfig *cfg);

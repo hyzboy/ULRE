@@ -1,4 +1,4 @@
-#include<hgl/component/Component.h>
+﻿#include<hgl/component/Component.h>
 #include<tsl/robin_map.h>
 #include<hgl/type/String.h>
 #include<hgl/log/LogInfo.h>
@@ -32,7 +32,7 @@ namespace hgl::graph
         component_manager_map=nullptr;
     }
 
-    bool RegistryComponentManager(ComponentManager *cm)
+    bool RegisterComponentManager(ComponentManager *cm)
     {
         if(!cm)return(false);
 

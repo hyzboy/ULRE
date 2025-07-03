@@ -36,8 +36,8 @@ public:
     template<typename T>
     bool Contains()const{return Contains(typeid(T).hash_code());}                                                       ///<确认是否包含指定类型的模块
 
-    bool Registry(GraphModule *);                                                                                       ///<注册一个模块
-    bool Unregistry(GraphModule *);                                                                                     ///<注销一个模块
+    bool Register(GraphModule *);                                                                                       ///<注册一个模块
+    bool Unregister(GraphModule *);                                                                                     ///<注销一个模块
 
     template<typename T>
     T *GetOrCreate()                                                                                                    ///<注册一个模块
@@ -47,7 +47,7 @@ public:
 
         T *result=new T(render_framework);
 
-        Registry(result);
+        Register(result);
 
         return result;
     }
