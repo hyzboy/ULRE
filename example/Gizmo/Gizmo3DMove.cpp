@@ -56,6 +56,24 @@ namespace
             return(new GizmoMoveNode);
         }
 
+        SceneNode * Duplication() const override
+        {
+            GizmoMoveNode *new_gma=(GizmoMoveNode *)SceneNode::Duplication();
+
+            if(!new_gma)
+                return(nullptr);
+
+            new_gma->sphere=sphere;
+            for(int i=0;i<3;i++)
+            {
+                new_gma->axis[i].cylinder   =axis[i].cylinder;
+                new_gma->axis[i].cone       =axis[i].cone;
+                new_gma->axis[i].square     =axis[i].square;
+            }
+
+            return new_gma;
+        }
+
         bool Init(RenderFramework *render_framework)
         {
             ComponentDataPtr sphere=GetGizmoMeshComponentDataPtr(GizmoShape::Sphere,GizmoColor::White);
