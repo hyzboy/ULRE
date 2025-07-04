@@ -338,7 +338,7 @@ void FreeGizmoResource()
     SAFE_CLEAR(gizmo_line.vdm);
 }
 
-ComponentDataPtr GetGizmoMeshComponentDataPtr(const GizmoShape &shape,const GizmoColor &color)
+ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape,const GizmoColor &color)
 {
     if(!gizmo_rr)
         return(nullptr);
