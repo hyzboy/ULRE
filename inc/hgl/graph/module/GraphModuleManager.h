@@ -23,7 +23,7 @@ public:
 public:
 
     RenderFramework *   GetRenderFramework  ()const{return render_framework;}                                           ///<取得渲染框架
-    VulkanDevice *         GetDevice           ()const;                                                                    ///<取得GPU设备
+    VulkanDevice *      GetDevice           ()const;                                                                    ///<取得GPU设备
 
 public:
 
