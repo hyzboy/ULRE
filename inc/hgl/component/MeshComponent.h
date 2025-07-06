@@ -74,6 +74,17 @@ public:
 
     virtual ~MeshComponent()=default;
 
+    virtual Component *Duplication() override
+    {
+        MeshComponent *mc=(MeshComponent *)RenderComponent::Duplication();
+
+        if(!mc)
+            return(mc);
+
+        mc->override_material=override_material;
+        return mc;
+    }
+
             MeshComponentData *GetData()      {return dynamic_cast<      MeshComponentData *>(sm_data.get());}
     const   MeshComponentData *GetData()const {return dynamic_cast<const MeshComponentData *>(sm_data.const_get());}
 
