@@ -35,7 +35,7 @@ enum class GizmoShape:uint
 bool InitGizmoResource(RenderFramework *);
 void FreeGizmoResource();
 
-MaterialInstance *GetGizmoMI(const GizmoColor &);
+MaterialInstance *GetGizmoMI3D(const GizmoColor &);
 ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape);
 
 SceneNode *GetGizmoMoveNode();

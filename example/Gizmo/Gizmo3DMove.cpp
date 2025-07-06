@@ -84,7 +84,7 @@ namespace
             CreateComponentInfo cci(this);
 
             sphere=render_framework->CreateComponent<MeshComponent>(&cci,SpherePtr);        //中心球
-            sphere->SetOverrideMaterial(GetGizmoMI(GizmoColor::White));                     //白色
+            sphere->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::White));                     //白色
 
             {
                 Transform tm;
@@ -97,7 +97,7 @@ namespace
 
                 {
                     gma=axis+size_t(AXIS::Z);
-                    mi=GetGizmoMI(GizmoColor::Blue);
+                    mi=GetGizmoMI3D(GizmoColor::Blue);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
@@ -120,7 +120,7 @@ namespace
 
                 {
                     gma=axis+size_t(AXIS::X);
-                    mi=GetGizmoMI(GizmoColor::Red);
+                    mi=GetGizmoMI3D(GizmoColor::Red);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetRotation(AxisVector::Y,90);
@@ -144,7 +144,7 @@ namespace
 
                 {
                     gma=axis+size_t(AXIS::Y);
-                    mi=GetGizmoMI(GizmoColor::Green);
+                    mi=GetGizmoMI3D(GizmoColor::Green);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetRotation(AxisVector::X,-90);
