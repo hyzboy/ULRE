@@ -3,6 +3,7 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/VKDeviceAttribute.h>
 #include"common/MFCommon.h"
+#include"common/MFGetPosition.h"
 #include"ShaderLibrary.h"
 
 using namespace hgl;
@@ -217,22 +218,50 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     const AnsiString L2W_MAX_COUNT_STRING=AnsiString::numberOf(l2w_max_count);
 
-    auto *it=shader_map.GetDataList();
-
-    for(int i=0;i<shader_map.GetCount();i++)
+    for(auto it:shader_map)
     {
-        if((*it)->key&shader_stage_flag_bits)
+        if(it->key&shader_stage_flag_bits)
         {
-            (*it)->value->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
+            it->value->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
         }
-
-        ++it;
     }
 
     l2w_shader_stage=shader_stage_flag_bits;
 
     return(true);
 }
+//
+//bool MaterialCreateInfo::SetWorldPosition(const uint32_t shader_stage_flag_bits)
+//{
+//    if(shader_stage_flag_bits==0)return(false);
+//
+//    {
+//        vert->AddOutput(SVT_VEC4,"WorldPosition");
+//
+//        if(l2w_shader_stage)
+//        {
+//            vert->AddFunction(func::GetWorldPosition3DL2W_VS);
+//        }
+//        else
+//        {
+//            vert->AddFunction(func::GetWorldPosition3D_VS);
+//        }
+//    }
+//
+//    if(shader_stage_flag_bits&VK_SHADER_STAGE_GEOMETRY_BIT)
+//    {
+//        geom->AddOutput(SVT_VEC4,"WorldPosition");
+//
+//        geom->AddFunction(func::GetWorldPosition3D_Other);
+//    }
+//
+//    if(shader_stage_flag_bits&VK_SHADER_STAGE_FRAGMENT_BIT)
+//    {
+//        geom->AddFunction(func::GetWorldPosition3D_Other);
+//    }
+//
+//    return(true);
+//}
 
 void MaterialCreateInfo::SetDevice(const VulkanDevAttr *dev_attr)
 {

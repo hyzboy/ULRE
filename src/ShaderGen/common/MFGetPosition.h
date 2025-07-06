@@ -19,6 +19,10 @@ namespace func
         "vec4 GetPosition2D(){return GetLocalToWorld()*viewport.ortho_matrix*vec4(Position,0,1);}"  //Ortho
     };
 
+    constexpr const char *GetWorldPosition3D_VS     ="vec4 GetWorldPosition3D(){return vec4(Position,1);}";
+    constexpr const char *GetWorldPosition3DL2W_VS  ="vec4 GetWorldPosition3D(){return GetLocalToWorld()*vec4(Position,1);}";
+    constexpr const char *GetWorldPosition3D_Other  ="vec4 GetWorldPosition3D(){return WorldPosition;}";
+
     constexpr const char *GetPosition3D             ="vec4 GetPosition3D(){return vec4(Position,1);}";
     constexpr const char *GetPosition3DL2W          ="vec4 GetPosition3D(){return GetLocalToWorld()*vec4(Position,1);}";
     constexpr const char *GetPosition3DCamera       ="vec4 GetPosition3D(){return camera.vp*vec4(Position,1);}";

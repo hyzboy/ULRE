@@ -81,6 +81,7 @@ namespace hgl::graph
             bool SetMaterialInstance(const AnsiString &mi_glsl_codes,const uint32_t mi_struct_bytes,const uint32_t shader_stage_flag_bits);
 
             bool SetLocalToWorld(const uint32_t shader_stage_flag_bits);
+            //bool SetWorldPosition(const uint32_t shader_stage_flag_bits);
 
             bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
 
