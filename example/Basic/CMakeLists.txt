@@ -16,3 +16,5 @@ CreateProject(02_auto_instance                  auto_instance.cpp)
 CreateProject(03_auto_merge_material_instance   auto_merge_material_instance.cpp)
 
 CreateProject(04_Billboard                      BillboardTest.cpp)
+
+CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
