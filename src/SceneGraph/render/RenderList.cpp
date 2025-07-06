@@ -28,14 +28,12 @@ namespace hgl
                 if(component->GetTypeHash()!=MeshComponent::StaticTypeHash())     //暂时只支持MeshComponent
                     continue;
 
-                MeshComponent *smc=dynamic_cast<MeshComponent *>(component);
+                MeshComponent *smc=(MeshComponent *)component;
 
-                if(!smc)
+                if(!smc||!smc->CanRender())
                     continue;
 
-                Mesh *mesh=smc->GetMesh();
-
-                RenderPipelineIndex rpi(mesh->GetMaterial(),mesh->GetPipeline());
+                RenderPipelineIndex rpi(smc->GetMaterial(),smc->GetPipeline());
                 
                 MaterialRenderList *mrl;
 
@@ -98,11 +96,9 @@ namespace hgl
         {
             if(!smc)return;
 
-            Mesh *ri=smc->GetMesh();
+            if(!smc->CanRender())return;
 
-            if(!ri)return;
-
-            RenderPipelineIndex rli(ri->GetMaterial(),ri->GetPipeline());
+            RenderPipelineIndex rli(smc->GetMaterial(),smc->GetPipeline());
             MaterialRenderList *mrl;
 
             if(!mrl_map.Get(rli,mrl))        //找到对应的

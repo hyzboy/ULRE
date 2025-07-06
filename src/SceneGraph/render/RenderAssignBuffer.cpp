@@ -113,7 +113,7 @@ void RenderAssignBuffer::UpdateMaterialInstance(const RenderNode *rn)
 
     AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map(sizeof(AssignData)*rn->index,sizeof(AssignData)));
 
-    adp->mi=mi_set.Find(rn->sm_component->GetMesh()->GetMaterialInstance());
+    adp->mi=mi_set.Find(rn->sm_component->GetMaterialInstance());
 
     assign_vab->Unmap();
 }
@@ -153,7 +153,7 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     mi_set.PreAlloc(rn_list.GetCount());
 
     for(RenderNode &rn:rn_list)
-        mi_set.Add(rn.sm_component->GetMesh()->GetMaterialInstance());
+        mi_set.Add(rn.sm_component->GetMaterialInstance());
 
     if(mi_set.GetCount()>material->GetMIMaxCount())
     {
@@ -221,7 +221,7 @@ void RenderAssignBuffer::WriteNode(const RenderNodeList &rn_list)
             rn->l2w_index=i;
 
             adp->l2w=i;
-            adp->mi=mi_set.Find(rn->sm_component->GetMesh()->GetMaterialInstance());
+            adp->mi=mi_set.Find(rn->sm_component->GetMaterialInstance());
             ++adp;
 
             ++rn;

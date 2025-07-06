@@ -59,6 +59,7 @@ public:
 class MeshComponent:public RenderComponent
 {
     WeakPtr<ComponentData> sm_data;
+    MaterialInstance* override_material = nullptr; // 新增
 
 public:
 
@@ -87,6 +88,61 @@ public:
             return(nullptr);
 
         return mcd->mesh;
+    }
+
+public:
+
+    Pipeline *GetPipeline() const
+    {
+        Mesh *mesh=GetMesh();
+
+        if (!mesh)
+            return nullptr;
+
+        return mesh->GetPipeline();
+    }
+
+    void                SetOverrideMaterial     (MaterialInstance* mi){override_material=mi;}
+    MaterialInstance *  GetOverrideMaterial     ()const{return override_material;}
+    void                ClearOverrideMaterial   (){override_material=nullptr;}
+
+    MaterialInstance *  GetMaterialInstance     () const
+    {
+        if (override_material)
+            return override_material;
+
+        Mesh *mesh=GetMesh();
+
+        if (!mesh)
+            return nullptr;
+
+        return mesh->GetMaterialInstance();
+    }
+
+    Material *GetMaterial() const
+    {
+        if (override_material)
+            return override_material->GetMaterial();
+
+        Mesh *mesh=GetMesh();
+
+        if (!mesh)
+            return nullptr;
+
+        return mesh->GetMaterial();
+    }
+
+    const bool CanRender() const override
+    {
+        if (!sm_data.valid())
+            return false;
+
+        const MeshComponentData *mcd=GetData();
+
+        if (!mcd || !mcd->mesh)
+            return false;
+
+        return true;
     }
 };//class MeshComponent
 

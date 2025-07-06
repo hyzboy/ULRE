@@ -92,7 +92,7 @@ MaterialInstance *RenderNode::GetMaterialInstance()const
     if(!sm_component)return(nullptr);
     if(!sm_component->GetMesh())return(nullptr);
 
-    return sm_component->GetMesh()->GetMaterialInstance();
+    return sm_component->GetMaterialInstance();
 }
 VK_NAMESPACE_END
 
