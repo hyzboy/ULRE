@@ -14,6 +14,7 @@
 #include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/VertexDataManager.h>
 #include<hgl/log/Logger.h>
 #include<hgl/Time.h>
 
@@ -196,10 +197,29 @@ void RenderFramework::Tick()
     }
 }
 
+graph::VertexDataManager *RenderFramework::CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type)
+{
+    if(!vil||vertices_number<=0||indices_number<=0||!device->IsSupport(type))
+        return(nullptr);
+
+    auto *vdm=new VertexDataManager(device,vil);
+
+    if(!vdm)
+        return(nullptr);
+
+    if(!vdm->Init(vertices_number,indices_number,type))
+    {
+        delete vdm;
+        return nullptr;
+    }
+
+    return vdm;
+}
+
 graph::Primitive *RenderFramework::CreatePrimitive( const AnsiString &name,
-                                                      const uint32_t vertices_count,
-                                                      const graph::VIL *vil,
-                                                      const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+                                                    const uint32_t vertices_count,
+                                                    const graph::VIL *vil,
+                                                    const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
 {
     auto *pc=new graph::PrimitiveCreater(GetDevice(),vil);
 

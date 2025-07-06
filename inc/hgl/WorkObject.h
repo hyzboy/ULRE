@@ -78,6 +78,12 @@ namespace hgl
 
     public:
 
+        template<typename ...ARGS>
+        graph::VertexDataManager *CreateVDM(ARGS...args)
+        {
+            return render_framework?render_framework->CreateVDM(args...):nullptr;
+        }
+
         graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
         {
             return render_framework?render_framework->CreateMaterial(mi_name,mci):nullptr;

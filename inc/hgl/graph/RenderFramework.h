@@ -223,6 +223,9 @@ public:
         return(new graph::PrimitiveCreater(GetDevice(),mi->GetVIL()));
     }
 
+    graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type=IndexType::U16);
+    graph::VertexDataManager *CreateVDM(const graph::VIL *vil,const VkDeviceSize number,const IndexType type=IndexType::U16){return CreateVDM(vil,number,number,type);}
+
 public: // Primitive, Mesh
 
     graph::Primitive *CreatePrimitive(const AnsiString &name,
