@@ -68,6 +68,7 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/Std3DMaterial.h
                             3d/Std3DMaterial.cpp
                             3d/Std3DMaterialLoader.cpp
+                            3d/M_PureColor3D.cpp
                             3d/M_VertexColor3D.cpp
                             3d/M_VertexLum3D.cpp
                             3d/M_BillboardDynamicSize.cpp

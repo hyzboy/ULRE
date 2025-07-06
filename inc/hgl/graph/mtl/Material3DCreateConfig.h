@@ -25,7 +25,7 @@ public:
         :MaterialCreateConfig(p)
     {
         rt_output.color=1;          //输出一个颜色
-        rt_output.depth=true;       //不输出深度
+        rt_output.depth=true;       //输出深度
         rt_output.stencil=false;    //不输出stencil
 
         camera=(wc==WithCamera::With);
@@ -56,6 +56,7 @@ public:
     const AnsiString ToHashString() override;
 };//struct Material3DCreateConfig:public MaterialCreateConfig
 
+DEFINE_MATERIAL_FACTORY_CLASS(PureColor3D,      const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          const Material3DCreateConfig);
