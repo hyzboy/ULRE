@@ -77,6 +77,14 @@ VAB *VulkanDevice::CreateVAB(VkFormat format,uint32_t count,const void *data,Sha
     return(new VertexAttribBuffer(attr->device,buf,format,stride,count));
 }
 
+const bool VulkanDevice::IsSupport(const IndexType &type)const
+{
+    if(type==IndexType::U16)return(true);
+    if(type==IndexType::U8 &&attr->uint8_index_type)return(true);
+    if(type==IndexType::U32&&attr->uint32_index_type)return(true);
+    return(false);
+}
+
 const IndexType VulkanDevice::ChooseIndexType(const VkDeviceSize &vertex_count)const
 {
     if(vertex_count<=0)return(IndexType::ERR);
