@@ -78,6 +78,11 @@ namespace hgl
 
     public:
 
+        graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
+        {
+            return render_framework?render_framework->CreateMaterial(mi_name,mci):nullptr;
+        }
+
     #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}
 
         WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePipeline,graph::Pipeline *)

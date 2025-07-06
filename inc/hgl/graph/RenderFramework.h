@@ -181,6 +181,20 @@ public:
         return GetDefaultRenderPass()->CreatePipeline(args...);
     }
 
+    graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
+    {
+        return render_resource->CreateMaterial(mi_name,mci);
+    }
+
+    template<typename T>
+    graph::MaterialInstance *CreateMaterialInstance(graph::Material *mtl,const graph::VILConfig *vil_config=nullptr,const T *data=nullptr)
+    {
+        if(!mtl)
+            return(nullptr);
+
+        return render_resource->CreateMaterialInstance(mtl,vil_config,data);
+    }
+
     graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
     {
         return render_resource->CreateMaterialInstance(mi_name,mci,vil_cfg);
