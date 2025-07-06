@@ -18,7 +18,8 @@ using ShaderStageCreateInfoList=ArrayList<VkPipelineShaderStageCreateInfo>;
 
 /**
  * 材质类<br>
- * 用于管理shader，提供DescriptorSetLayoutCreater
+ * 用于管理shader，提供DescriptorSetLayoutCreater.
+ * 在材质需要用到UBO.SSBO数据情况下，Material不能被用于渲染，需要一个MaterialInstance来提供数据才能进行渲染。所以一般情况下，不使用Material进行渲染。<br>
  */
 class Material
 {

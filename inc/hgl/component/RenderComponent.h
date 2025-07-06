@@ -13,6 +13,8 @@ public:
 
     using PrimitiveComponent::PrimitiveComponent;
     virtual ~RenderComponent()=default;
+
+    virtual const bool CanRender()const=0;                  ///<当前数据是否可以渲染
 };//class RenderComponent
 
 COMPONENT_NAMESPACE_END
