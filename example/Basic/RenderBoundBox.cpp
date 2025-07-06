@@ -33,8 +33,6 @@ class TestApp:public WorkObject
 {
 private:
 
-    
-
     struct MaterialData
     {
         Material *          material          = nullptr;
@@ -55,6 +53,8 @@ private:
         Mesh *mesh;
         MeshComponentData *data;
         ComponentDataPtr cdp;
+
+        MeshComponent *component;
 
     public:
 
@@ -201,8 +201,8 @@ private:
         {
             struct TorusCreateInfo tci;
 
-            tci.innerRadius=0.975;
-            tci.outerRadius=1.0;
+            tci.innerRadius=0.9;
+            tci.outerRadius=1.1;
             tci.numberSlices=64;
             tci.numberStacks=8;
 
@@ -233,14 +233,14 @@ private:
         {
             cci.mat=scale(10,10,1);
 
-            CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
+            rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
         }
 
         {
-            //cci.mat=rotate(90,AxisVector::Y);
-            cci.mat=Identity4f;
-            auto *mc=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
-            mc->SetOverrideMaterial(solid.mi[1]);
+            cci.mat=AxisYRotate(deg2rad(90));
+
+            rm_torus->component=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
+            rm_torus->component->SetOverrideMaterial(solid.mi[1]);
         }
 
         return(true);
@@ -249,6 +249,8 @@ private:
     bool InitBoundingBoxScene()
     {
         CreateComponentInfo cci(GetSceneRoot());
+
+        cci.mat=rm_torus->component->GetLocalMatrix();
 
         CreateComponent<MeshComponent>(&cci,rm_box->cdp);
 
