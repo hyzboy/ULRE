@@ -28,15 +28,15 @@ namespace
 {
     static RenderFramework *render_framework=nullptr;
     static RenderResource * gizmo_rr=nullptr;
-    static MaterialInstance *gizmo_mi[size_t(GizmoColor::RANGE_SIZE)]{};
 
     struct GizmoResource
     {
-        Material *           mtl;
-        Pipeline *           pipeline;
-        VertexDataManager *  vdm;
+        Material *          mtl;
+        MaterialInstance *  mi[size_t(GizmoColor::RANGE_SIZE)];
+        Pipeline *          pipeline;
+        VertexDataManager * vdm;
 
-        PrimitiveCreater *   prim_creater;
+        PrimitiveCreater *  prim_creater;
     };
 
     static GizmoResource    gizmo_line{};
@@ -56,7 +56,7 @@ namespace
         {
             prim=p;
 
-            mesh=CreateMesh(prim,gizmo_mi[0],gizmo_triangle.pipeline);
+            mesh=CreateMesh(prim,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
             mcd=new MeshComponentData(mesh);
             cdp=mcd;
         }
@@ -90,9 +90,9 @@ namespace
         {
             color=GetColor4f(gizmo_color[i],1.0);
 
-            gizmo_mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,nullptr,&color);
+            gr->mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,nullptr,&color);
 
-            if(!gizmo_mi[i])
+            if(!gr->mi[i])
                 return(false);
         }
 
@@ -324,11 +324,11 @@ void FreeGizmoResource()
     SAFE_CLEAR(gizmo_line.vdm);
 }
 
-MaterialInstance *GetGizmoMI(const GizmoColor &color)
+MaterialInstance *GetGizmoMI3D(const GizmoColor &color)
 {
     RANGE_CHECK_RETURN_NULLPTR(color)
 
-    return gizmo_mi[size_t(color)];
+    return gizmo_triangle.mi[size_t(color)];
 }
 
 ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape)

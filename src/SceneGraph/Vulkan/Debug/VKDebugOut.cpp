@@ -87,7 +87,8 @@ namespace
                                             VkDebugUtilsMessageTypeFlagsEXT messageType,
                                             const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData)
     {
-        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)   std::cerr<<"[ERROR] ";           else
+        if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            std::cerr<<"[ERROR] ";           else
         if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) std::cerr<<"[WARNING] ";         else
         if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)    std::cerr<<"[INFO] ";            else
         if(messageSeverity&VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) std::cerr<<"[VERBOSE] ";         else
@@ -147,7 +148,8 @@ namespace
     {
         const char *obj_type_name=GetVkDebugReportObjectTypename(objType);
 
-        if(msgFlags&VK_DEBUG_REPORT_ERROR_BIT_EXT)              std::cerr<<"[ERROR:";               else
+        if(msgFlags&VK_DEBUG_REPORT_ERROR_BIT_EXT)
+            std::cerr<<"[ERROR:";               else
         if(msgFlags&VK_DEBUG_REPORT_WARNING_BIT_EXT)            std::cerr<<"[WARNING:";             else
         if(msgFlags&VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)std::cerr<<"[PERFORMANCE WARNING:"; else
         if(msgFlags&VK_DEBUG_REPORT_INFORMATION_BIT_EXT)        std::cerr<<"[INFO:";                else
