@@ -28,11 +28,11 @@ namespace
 {
     static RenderFramework *render_framework=nullptr;
     static RenderResource * gizmo_rr=nullptr;
+    static MaterialInstance *gizmo_mi[size_t(GizmoColor::RANGE_SIZE)]{};
 
     struct GizmoResource
     {
         Material *           mtl;
-        MaterialInstance *   mi[size_t(GizmoColor::RANGE_SIZE)];
         Pipeline *           pipeline;
         VertexDataManager *  vdm;
 
@@ -46,21 +46,9 @@ namespace
     {
         Primitive *prim;
 
-        struct
-        {
-            Mesh *mesh;
-            MeshComponentData *mcd;
-            ComponentDataPtr cdp;
-
-        public:
-
-            void Create(Primitive *prim,MaterialInstance *mi,Pipeline *ppl)
-            {
-                mesh=CreateMesh(prim,mi,ppl);
-                mcd=new MeshComponentData(mesh);
-                cdp=mcd;
-            }
-        }mesh_data[size_t(GizmoColor::RANGE_SIZE)];
+        Mesh *mesh;
+        MeshComponentData *mcd;
+        ComponentDataPtr cdp;
 
     public:
 
@@ -68,19 +56,16 @@ namespace
         {
             prim=p;
 
-            for(uint i=0;i<uint(GizmoColor::RANGE_SIZE);i++)
-                mesh_data[i].Create(prim,gizmo_triangle.mi[i],gizmo_triangle.pipeline);
+            mesh=CreateMesh(prim,gizmo_mi[0],gizmo_triangle.pipeline);
+            mcd=new MeshComponentData(mesh);
+            cdp=mcd;
         }
 
         void Clear()
         {
+            SAFE_CLEAR(mesh);
+            cdp.unref();
             SAFE_CLEAR(prim)
-
-            for(auto &md:mesh_data)
-            {
-                md.cdp.unref();
-                SAFE_CLEAR(md.mesh);
-            }
         }
     };//class GizmoMesh
     
@@ -105,8 +90,9 @@ namespace
         {
             color=GetColor4f(gizmo_color[i],1.0);
 
-            gr->mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,nullptr,&color);
-            if(!gr->mi[i])
+            gizmo_mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,nullptr,&color);
+
+            if(!gizmo_mi[i])
                 return(false);
         }
 
@@ -338,15 +324,21 @@ void FreeGizmoResource()
     SAFE_CLEAR(gizmo_line.vdm);
 }
 
-ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape,const GizmoColor &color)
+MaterialInstance *GetGizmoMI(const GizmoColor &color)
+{
+    RANGE_CHECK_RETURN_NULLPTR(color)
+
+    return gizmo_mi[size_t(color)];
+}
+
+ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape)
 {
     if(!gizmo_rr)
         return(nullptr);
 
     RANGE_CHECK_RETURN_NULLPTR(shape)
-    RANGE_CHECK_RETURN_NULLPTR(color)
 
-    return gizmo_mesh[size_t(shape)].mesh_data[size_t(color)].cdp;
+    return gizmo_mesh[size_t(shape)].cdp;
 }
 
 VK_NAMESPACE_END
