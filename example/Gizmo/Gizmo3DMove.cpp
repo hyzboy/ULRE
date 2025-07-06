@@ -71,40 +71,25 @@ namespace
 
         bool Init(RenderFramework *render_framework)
         {
-            ComponentDataPtr sphere_ptr=GetGizmoMeshCDP(GizmoShape::Sphere,GizmoColor::White);
+            ComponentDataPtr SpherePtr  =GetGizmoMeshCDP(GizmoShape::Sphere);
+            ComponentDataPtr CylinderPtr=GetGizmoMeshCDP(GizmoShape::Cylinder);
+            ComponentDataPtr ConePtr    =GetGizmoMeshCDP(GizmoShape::Cone);
+            ComponentDataPtr SquarePtr  =GetGizmoMeshCDP(GizmoShape::Square);
 
-        #define GET_GIZMO_MESH_CDP(shape) ComponentDataPtr shape##Ptr[3]{ \
-                GetGizmoMeshCDP(GizmoShape::shape,GizmoColor::Red), \
-                GetGizmoMeshCDP(GizmoShape::shape,GizmoColor::Green), \
-                GetGizmoMeshCDP(GizmoShape::shape,GizmoColor::Blue) \
-            };
-
-            GET_GIZMO_MESH_CDP(Cylinder)
-            GET_GIZMO_MESH_CDP(Cone)
-            GET_GIZMO_MESH_CDP(Square)
-
-            if(!sphere_ptr)
-                return(false);
-
-            for(int i=0;i<3;i++)
-            {
-                if(!CylinderPtr[i])
-                    return(false);
-
-                if(!ConePtr[i])
-                    return(false);
-
-                if(!SquarePtr[i])
-                    return(false);
-            }
+            if(!SpherePtr   )return(false);
+            if(!CylinderPtr )return(false);
+            if(!ConePtr     )return(false);
+            if(!SquarePtr   )return(false);
 
             CreateComponentInfo cci(this);
 
-            sphere=render_framework->CreateComponent<MeshComponent>(&cci,sphere_ptr);
+            sphere=render_framework->CreateComponent<MeshComponent>(&cci,SpherePtr);        //中心球
+            sphere->SetOverrideMaterial(GetGizmoMI(GizmoColor::White));                     //白色
 
             {
                 Transform tm;
                 GizmoMoveAxis *gma;
+                MaterialInstance *mi=nullptr;
 
                 const Vector3f one_scale(1);
                 const Vector3f square_scale(2);
@@ -112,61 +97,73 @@ namespace
 
                 {
                     gma=axis+size_t(AXIS::Z);
+                    mi=GetGizmoMI(GizmoColor::Blue);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
                     cci.mat=tm;
-                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr[2]);       //Z 向上圆柱
+                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //Z 向上圆柱
+                    gma->cylinder->SetOverrideMaterial(mi);
 
                     tm.SetScale(one_scale);
                     tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
                     cci.mat=tm;
-                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr[2]);           //Z 向上圆锥
+                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
+                    gma->cone->SetOverrideMaterial(mi);
 
                     tm.SetScale(square_scale);
                     tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
                     cci.mat=tm;
-                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr[2]);
+                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
+                    gma->square->SetOverrideMaterial(mi);
                 }
 
                 {
                     gma=axis+size_t(AXIS::X);
+                    mi=GetGizmoMI(GizmoColor::Red);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetRotation(AxisVector::Y,90);
                     tm.SetTranslation(GIZMO_CYLINDER_OFFSET,0,0);
                     cci.mat=tm;
-                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr[0]);       //X 向右圆柱
+                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //X 向右圆柱
+                    gma->cylinder->SetOverrideMaterial(mi);
 
                     tm.SetScale(one_scale);
                     tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
                     cci.mat=tm;
-                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr[0]);           //X 向右圆锥
+                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
+                    gma->cone->SetOverrideMaterial(mi);
 
                     tm.SetScale(square_scale);
                     tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
-                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr[0]);
+                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
+                    gma->square->SetOverrideMaterial(mi);
                 }
 
                 {
                     gma=axis+size_t(AXIS::Y);
+                    mi=GetGizmoMI(GizmoColor::Green);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetRotation(AxisVector::X,-90);
                     tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);
                     cci.mat=tm;
-                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr[1]);       //Y 向前圆柱
+                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //X 向右圆柱
+                    gma->cylinder->SetOverrideMaterial(mi);
 
                     tm.SetScale(one_scale);
                     tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
                     cci.mat=tm;
-                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr[1]);           //Y 向前圆锥
+                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
+                    gma->cone->SetOverrideMaterial(mi);
 
                     tm.SetScale(square_scale);
                     tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
-                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr[1]);
+                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
+                    gma->square->SetOverrideMaterial(mi);
                 }
             }
 

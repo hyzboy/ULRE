@@ -11,8 +11,8 @@ class MeshComponent;
 
 constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
 {
-    COLOR::MozillaCharcoal,
-    COLOR::BlanchedAlmond,
+    COLOR::MozillaCharcoal,         ///<黑色
+    COLOR::AntiqueWhite,            ///<白色
 
     COLOR::BlenderAxisRed,
     COLOR::BlenderAxisGreen,
