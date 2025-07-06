@@ -151,11 +151,11 @@ namespace hgl
 
             public:
 
-                BoundingBoxCreateInfo()
+                BoundingBoxCreateInfo(bool n=false,ColorType ct=ColorType::NoColor)
                 {
-                    normal=false;
+                    normal=n;
 
-                    color_type=ColorType::NoColor;
+                    color_type=ct;
                 }
             };//struct BoundingBoxCreateInfo
 
