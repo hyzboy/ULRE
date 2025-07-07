@@ -231,7 +231,7 @@ private:
         CreateComponentInfo cci(GetSceneRoot());
 
         {
-            cci.mat=scale(10,10,1);
+            cci.mat=ScaleMatrix(10,10,1);
 
             rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
         }
@@ -250,7 +250,7 @@ private:
     {
         CreateComponentInfo cci(GetSceneRoot());
 
-        cci.mat=rm_torus->component->GetLocalMatrix();
+        //cci.mat=rm_torus->component->GetLocalMatrix()*rm_torus->component->GetMesh()->GetBoundingBox();
 
         CreateComponent<MeshComponent>(&cci,rm_box->cdp);
 
