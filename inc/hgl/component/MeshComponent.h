@@ -101,6 +101,17 @@ public:
         return mcd->mesh;
     }
 
+    const bool GetBoundingBox(AABB &box) const override
+    {
+        Mesh *mesh=GetMesh();
+
+        if (!mesh)
+            return false;
+
+        box=mesh->GetBoundingBox();
+        return true;
+    }
+
 public:
 
     Pipeline *GetPipeline() const
