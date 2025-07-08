@@ -1017,8 +1017,8 @@ namespace hgl::graph::inline_geometry
             float maxExtent = centerRadius + torusRadius;
             float minExtent = centerRadius - torusRadius;
 
-            aabb.SetMinMax(Vector3f(-maxExtent, -maxExtent, -torusRadius),
-                            Vector3f( maxExtent,  maxExtent,  torusRadius));     //也许不对，待测试
+            aabb.SetMinMax(Vector3f(-torusRadius, -maxExtent, -maxExtent),
+                           Vector3f( torusRadius,  maxExtent,  maxExtent));
 
             p->SetBoundingBox(aabb);
         }
