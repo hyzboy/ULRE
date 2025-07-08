@@ -25,6 +25,7 @@ constexpr const COLOR TestColor[]=
     COLOR::BlenderAxisBlue,
 
     COLOR::BananaYellow,
+    COLOR::CherryBlossomPink
 };
 
 constexpr const size_t COLOR_COUNT=sizeof(TestColor)/sizeof(COLOR);
@@ -54,7 +55,7 @@ private:
         MeshComponentData *data;
         ComponentDataPtr cdp;
 
-        MeshComponent *component;
+        MeshComponent *component[7];
 
     public:
 
@@ -233,14 +234,16 @@ private:
         {
             cci.mat=ScaleMatrix(10,10,1);
 
-            rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
+            //rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
         }
 
         {
-            cci.mat=AxisYRotate(deg2rad(90));
-
-            rm_torus->component=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
-            rm_torus->component->SetOverrideMaterial(solid.mi[1]);
+            for(int i=0;i<6;i++)
+            {
+                cci.mat=AxisYRotate(deg2rad(i*30.0f));
+                rm_torus->component[i]=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
+                rm_torus->component[i]->SetOverrideMaterial(solid.mi[i]);
+            }
         }
 
         return(true);
@@ -250,22 +253,44 @@ private:
     {
         CreateComponentInfo cci(GetSceneRoot());
 
-        ParsePrimitiveType
-        OBB obb;
-        rm_torus->component->GetWorldOBB(obb);
+        AABB aabb;
+//        OBB obb;
 
-        cci.mat=TranslateMatrix(obb.GetCenter()) *
-                obb.GetRotationMatrix() *
-                ScaleMatrix(obb.GetHalfExtend()*2.0f);      //*2.0f并不是因为OBB尺寸不对，是因为CUBE的原始尺寸就是1
+        for(int i=0;i<6;i++)
+        {
+            PrimitiveComponent *component=rm_torus->component[i];
 
-        CreateComponent<MeshComponent>(&cci,rm_box->cdp);
+            component->GetLocalAABB(aabb);
 
+            //Matrix4f translate_matrix=obb.GetRotationMatrix();
+            //Matrix4f rotate_matrix=obb.GetRotationMatrix();
+            //Matrix4f scale_matrix=ScaleMatrix(obb.GetHalfExtend()*2.0f);
+
+            Matrix3f rotate_scale_matrix=component->GetLocalToWorldMatrix();
+
+            rotate_scale_matrix[0]=glm::normalize(rotate_scale_matrix[0]);
+            rotate_scale_matrix[1]=glm::normalize(rotate_scale_matrix[1]);
+            rotate_scale_matrix[2]=glm::normalize(rotate_scale_matrix[2]);
+
+            Matrix4f rotate_matrix=rotate_scale_matrix;
+
+            Matrix4f translate_matrix=TranslateMatrix(aabb.GetCenter());
+            Matrix4f scale_matrix=ScaleMatrix(aabb.GetLength());
+
+            cci.mat=translate_matrix*rotate_matrix*scale_matrix;
+
+            CreateComponent<MeshComponent>(&cci,rm_box->cdp);
+        }
+
+        return(true);
+    }
+
+    void SetCamera()
+    {
         CameraControl *camera_control=GetCameraControl();
 
         camera_control->SetPosition(Vector3f(8,8,8));
         camera_control->SetTarget(Vector3f(0,0,0));
-
-        return(true);
     }
 
 public:
@@ -307,6 +332,8 @@ public:
 
         if(!InitBoundingBoxScene())
             return(false);
+
+        SetCamera();
 
         return(true);
     }
