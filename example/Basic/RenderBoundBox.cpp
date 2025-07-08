@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/InlineGeometry.h>
@@ -250,7 +250,13 @@ private:
     {
         CreateComponentInfo cci(GetSceneRoot());
 
-        //cci.mat=rm_torus->component->GetLocalMatrix()*rm_torus->component->GetMesh()->GetBoundingBox();
+        ParsePrimitiveType
+        OBB obb;
+        rm_torus->component->GetWorldOBB(obb);
+
+        cci.mat=TranslateMatrix(obb.GetCenter()) *
+                obb.GetRotationMatrix() *
+                ScaleMatrix(obb.GetHalfExtend()*2.0f);      //*2.0f并不是因为OBB尺寸不对，是因为CUBE的原始尺寸就是1
 
         CreateComponent<MeshComponent>(&cci,rm_box->cdp);
 
