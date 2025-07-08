@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/component/RenderComponent.h>
 #include<hgl/graph/Mesh.h>
@@ -101,7 +101,7 @@ public:
         return mcd->mesh;
     }
 
-    const bool GetBoundingBox(AABB &box) const override
+    const bool GetLocalAABB(AABB &box) const override
     {
         Mesh *mesh=GetMesh();
 

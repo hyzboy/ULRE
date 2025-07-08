@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include<hgl/component/SceneComponent.h>
 #include<hgl/graph/AABB.h>
@@ -18,13 +18,13 @@ public:
 
     virtual ~PrimitiveComponent()=default;
 
-    virtual const bool GetBoundingBox(AABB &box) const =0;
+    virtual const bool GetLocalAABB(AABB &box) const=0;
 
-    const bool GetBoundingBox(OBB &box)
+    const bool GetWorldOBB(OBB &box)
     {
         AABB aabb;
 
-        if(!GetBoundingBox(aabb))
+        if(!GetLocalAABB(aabb))
             return false;
 
         box.Set(GetLocalToWorldMatrix(),aabb);
