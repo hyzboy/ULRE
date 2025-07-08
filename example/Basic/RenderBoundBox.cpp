@@ -240,7 +240,8 @@ private:
         {
             for(int i=0;i<6;i++)
             {
-                cci.mat=AxisYRotate(deg2rad(i*30.0f));
+                cci.mat=AxisYRotate(deg2rad(i*30.0f))*ScaleMatrix((i+1)*1.0f);
+
                 rm_torus->component[i]=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
                 rm_torus->component[i]->SetOverrideMaterial(solid.mi[i]);
             }
@@ -257,13 +258,12 @@ private:
 
         for(int i=0;i<6;i++)
         {
-            PrimitiveComponent *component=rm_torus->component[i];
+            MeshComponent *component=rm_torus->component[i];
 
-            component->GetWorldOBB(obb);
+            if(!component->GetWorldOBBMatrix(cci.mat))
+                continue;
 
-            cci.mat=obb.GetMatrix();
-
-            CreateComponent<MeshComponent>(&cci,rm_box->cdp);
+            auto *box_component=CreateComponent<MeshComponent>(&cci,rm_box->cdp);
         }
 
         return(true);
