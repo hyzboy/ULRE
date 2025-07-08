@@ -253,31 +253,15 @@ private:
     {
         CreateComponentInfo cci(GetSceneRoot());
 
-        AABB aabb;
-//        OBB obb;
+        OBB obb;
 
         for(int i=0;i<6;i++)
         {
             PrimitiveComponent *component=rm_torus->component[i];
 
-            component->GetLocalAABB(aabb);
+            component->GetWorldOBB(obb);
 
-            //Matrix4f translate_matrix=obb.GetRotationMatrix();
-            //Matrix4f rotate_matrix=obb.GetRotationMatrix();
-            //Matrix4f scale_matrix=ScaleMatrix(obb.GetHalfExtend()*2.0f);
-
-            Matrix3f rotate_scale_matrix=component->GetLocalToWorldMatrix();
-
-            rotate_scale_matrix[0]=glm::normalize(rotate_scale_matrix[0]);
-            rotate_scale_matrix[1]=glm::normalize(rotate_scale_matrix[1]);
-            rotate_scale_matrix[2]=glm::normalize(rotate_scale_matrix[2]);
-
-            Matrix4f rotate_matrix=rotate_scale_matrix;
-
-            Matrix4f translate_matrix=TranslateMatrix(aabb.GetCenter());
-            Matrix4f scale_matrix=ScaleMatrix(aabb.GetLength());
-
-            cci.mat=translate_matrix*rotate_matrix*scale_matrix;
+            cci.mat=obb.GetMatrix();
 
             CreateComponent<MeshComponent>(&cci,rm_box->cdp);
         }
