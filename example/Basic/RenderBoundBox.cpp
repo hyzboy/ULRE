@@ -173,7 +173,7 @@ private:
         rm_plane=CreateRenderMesh(CreatePlaneSqaure(prim_creater),&solid,0);
 
         //Sphere
-        rm_sphere=CreateRenderMesh(CreateSphere(prim_creater,16),&solid,1);
+        rm_sphere=CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1);
 
         //Cone
         {
@@ -181,8 +181,8 @@ private:
 
             cci.radius      =1;         //圆锥半径
             cci.halfExtend  =1;         //圆锤一半高度
-            cci.numberSlices=16;        //圆锥底部分割数
-            cci.numberStacks=8;         //圆锥高度分割数
+            cci.numberSlices=64;        //圆锥底部分割数
+            cci.numberStacks=4;         //圆锥高度分割数
 
             rm_cone=CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2);
         }
@@ -202,8 +202,8 @@ private:
         {
             struct TorusCreateInfo tci;
 
-            tci.innerRadius=0.9;
-            tci.outerRadius=1.1;
+            tci.innerRadius=1.9;
+            tci.outerRadius=2.1;
             tci.numberSlices=128;
             tci.numberStacks=16;
 
@@ -232,16 +232,36 @@ private:
         CreateComponentInfo cci(GetSceneRoot());
 
         {
-            cci.mat=ScaleMatrix(10,10,1);
+            cci.mat=AxisZRotate(45.0f)*ScaleMatrix(10,10,1);
 
             rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
         }
 
         {
-            cci.mat=AxisYRotate(deg2rad(90.0f));
+            cci.mat=TranslateMatrix(0,0,0.2)*AxisYRotate(deg2rad(90.0f));
 
             rm_torus->component=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
             rm_torus->component->SetOverrideMaterial(solid.mi[1]);
+        }
+
+        {
+            cci.mat=TranslateMatrix(0,0,1);
+            rm_cone->component=CreateComponent<MeshComponent>(&cci,rm_cone->cdp);
+            rm_cone->component->SetOverrideMaterial(solid.mi[2]);
+        }
+
+        {
+            cci.mat=TranslateMatrix(5,0,3);
+
+            rm_cylinder->component=CreateComponent<MeshComponent>(&cci,rm_cylinder->cdp);
+            rm_cylinder->component->SetOverrideMaterial(solid.mi[3]);
+        }
+
+        {
+            cci.mat=TranslateMatrix(0,0,4);
+
+            rm_sphere->component=CreateComponent<MeshComponent>(&cci,rm_sphere->cdp);
+            rm_sphere->component->SetOverrideMaterial(solid.mi[4]);
         }
 
         return(true);
