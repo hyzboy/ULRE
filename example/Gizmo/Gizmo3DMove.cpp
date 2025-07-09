@@ -56,7 +56,7 @@ namespace
             return(new GizmoMoveNode);
         }
 
-        SceneNode * Duplication() const override
+        SceneNode *Duplication()const override
         {
             GizmoMoveNode *new_gmn=(GizmoMoveNode *)SceneNode::Duplication();
 

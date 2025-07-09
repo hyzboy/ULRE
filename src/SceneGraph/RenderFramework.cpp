@@ -161,8 +161,10 @@ void RenderFramework::CreateDefaultRenderer()
         auto ckc=new CameraKeyboardControl(fpcc);
         auto cmc=new CameraMouseControl(fpcc);
 
-        this->RegisterEventDispatch(ckc);
-        this->RegisterEventDispatch(cmc);
+        this->RegisterEventDispatch(fpcc);
+
+        fpcc->RegisterEventDispatch(ckc);
+        fpcc->RegisterEventDispatch(cmc);
 
         default_camera_control=fpcc;
 
@@ -193,6 +195,8 @@ void RenderFramework::Tick()
 {
     if(default_camera_control)
     {
+        //没有Tick CameraKeyboardControl，所以键盘操作失效了
+
         default_camera_control->Refresh();
     }
 }
