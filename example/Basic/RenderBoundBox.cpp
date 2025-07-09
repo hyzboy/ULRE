@@ -55,7 +55,7 @@ private:
         MeshComponentData *data;
         ComponentDataPtr cdp;
 
-        MeshComponent *component[7];
+        MeshComponent *component;
 
     public:
 
@@ -204,8 +204,8 @@ private:
 
             tci.innerRadius=0.9;
             tci.outerRadius=1.1;
-            tci.numberSlices=64;
-            tci.numberStacks=8;
+            tci.numberSlices=128;
+            tci.numberStacks=16;
 
             rm_torus=CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4);
         }
@@ -234,17 +234,14 @@ private:
         {
             cci.mat=ScaleMatrix(10,10,1);
 
-            //rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
+            rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
         }
 
         {
-            for(int i=0;i<6;i++)
-            {
-                cci.mat=AxisYRotate(deg2rad(i*30.0f))*ScaleMatrix((i+1)*1.0f);
+            cci.mat=AxisYRotate(deg2rad(90.0f));
 
-                rm_torus->component[i]=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
-                rm_torus->component[i]->SetOverrideMaterial(solid.mi[i]);
-            }
+            rm_torus->component=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
+            rm_torus->component->SetOverrideMaterial(solid.mi[1]);
         }
 
         return(true);
@@ -252,18 +249,33 @@ private:
 
     bool InitBoundingBoxScene()
     {
-        CreateComponentInfo cci(GetSceneRoot());
+        SceneNode *root=GetSceneRoot();
 
-        OBB obb;
+        CreateComponentInfo cci(root);
 
-        for(int i=0;i<6;i++)
+        ArrayList<Matrix4f> box_matrices;
+
+        for(Component *c:root->GetComponents())
         {
-            MeshComponent *component=rm_torus->component[i];
-
-            if(!component->GetWorldOBBMatrix(cci.mat))
+            if(c->GetTypeHash()!=MeshComponent::StaticTypeHash())
                 continue;
 
-            auto *box_component=CreateComponent<MeshComponent>(&cci,rm_box->cdp);
+            MeshComponent *component=(MeshComponent *)c;
+
+            Matrix4f mat;
+
+            if(component->GetWorldOBBMatrix(mat))
+                box_matrices.Add(mat);
+        }
+
+        //不可以直接在上面的循环中创建新的Component，因为循环本身就要读取Component列表
+
+        for(const Matrix4f &mat:box_matrices)
+        {
+            cci.mat=mat;
+
+            if(!CreateComponent<MeshComponent>(&cci,rm_box->cdp))
+                return(false);
         }
 
         return(true);
