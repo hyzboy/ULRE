@@ -251,7 +251,7 @@ private:
         }
 
         {
-            cci.mat=TranslateMatrix(5,0,3);
+            cci.mat=TranslateMatrix(5,0,3)*AxisRotate(deg2rad(30),20,30,40);
 
             rm_cylinder->component=CreateComponent<MeshComponent>(&cci,rm_cylinder->cdp);
             rm_cylinder->component->SetOverrideMaterial(solid.mi[3]);
