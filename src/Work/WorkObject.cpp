@@ -23,6 +23,11 @@ namespace hgl
     {
         if(!rf)
         {
+            if(render_framework)
+            {
+                render_framework->RemoveChildDispatcher(this);
+            }
+
             render_framework=nullptr;
             db=nullptr;
         }
@@ -37,6 +42,8 @@ namespace hgl
         db=rf->GetRenderResource();
         scene=rf->GetDefaultScene();
         renderer=rf->GetDefaultRenderer();
+
+        render_framework->AddChildDispatcher(this);
     }
 
     void WorkObject::Render(double delta_time)

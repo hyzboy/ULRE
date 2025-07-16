@@ -65,7 +65,7 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
 
     void CreateDefaultRenderer();
 
-protected:  //EventDispatch
+protected:  //EventDispatcher
 
     io::MouseEvent *mouse_event=nullptr;
 
