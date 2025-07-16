@@ -88,7 +88,7 @@ public:
     {
         CloseShaderCompiler();
 
-        win->UnregisterEventDispatch(this);
+        win->RemoveChildDispatcher(this);
 
         SAFE_CLEAR(db);
         SAFE_CLEAR_OBJECT_ARRAY_OBJECT(cmd_buf,swap_chain_count);
@@ -154,7 +154,7 @@ public:
 
         InitCommandBuffer();
 
-        win->RegisterEventDispatch(this);
+        win->AddChildDispatcher(this);
 
         {
             vp_info.Set(w,h);
@@ -403,8 +403,8 @@ public:
         ckc=new CameraKeyboardControl(camera_control);
         cmc=new CameraMouseControl(camera_control);
 
-        win->RegisterEventDispatch(ckc);
-        win->RegisterEventDispatch(cmc);
+        win->AddChildDispatcher(ckc);
+        win->AddChildDispatcher(cmc);
 
         RefreshCameraInfo(camera_control->GetCameraInfo(),&vp_info,camera);
         

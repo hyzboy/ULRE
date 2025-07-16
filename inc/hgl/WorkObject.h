@@ -1,10 +1,12 @@
 ﻿#pragma once
+
 #include<hgl/type/object/TickObject.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/graph/Scene.h>
+#include<hgl/io/event/WindowEvent.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -20,7 +22,7 @@ namespace hgl
     * 
     * WorkObject被定义为工作对象，所有的渲染控制都需要被写在WorkObject的Render函数下。
     */
-    class WorkObject:public TickObject
+    class WorkObject:public TickObject,public io::WindowEvent
     {
         graph::RenderFramework *render_framework=nullptr;
 
