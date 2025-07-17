@@ -27,6 +27,7 @@
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/component/MeshComponent.h>
+#include<hgl/io/event/MouseEvent.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -35,7 +36,7 @@ namespace
     /**
     * 移动 Gizmo 节点
     */
-    class GizmoMoveNode:public SceneNode
+    class GizmoMoveNode:public SceneNode,io::MouseEvent
     {
         struct GizmoMoveAxis
         {
@@ -50,6 +51,11 @@ namespace
     public:
 
         using SceneNode::SceneNode;
+
+        io::EventDispatcher *GetEventDispatcher() override
+        {
+            return this; // GizmoMoveNode 处理鼠标事件
+        }
 
         SceneNode *CreateNode()const override
         {
@@ -69,7 +75,7 @@ namespace
             return new_gmn;
         }
 
-        bool Init(RenderFramework *render_framework)
+        bool CreateGizmoGeometry(RenderFramework *render_framework)
         {
             ComponentDataPtr SpherePtr  =GetGizmoMeshCDP(GizmoShape::Sphere);
             ComponentDataPtr CylinderPtr=GetGizmoMeshCDP(GizmoShape::Cylinder);
@@ -191,7 +197,7 @@ bool InitGizmoMoveNode(RenderFramework *render_framework)
 
     sn_gizmo_move=new GizmoMoveNode;
 
-    if(!sn_gizmo_move->Init(render_framework))
+    if(!sn_gizmo_move->CreateGizmoGeometry(render_framework))
     {
         delete sn_gizmo_move;
         sn_gizmo_move=nullptr;

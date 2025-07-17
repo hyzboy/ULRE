@@ -6,6 +6,11 @@
 #include<hgl/graph/AABB.h>
 #include<hgl/component/Component.h>
 
+namespace hgl::io
+{
+    class EventDispatcher; // 前向声明事件分发器
+}//
+
 namespace hgl::graph
 {
     using SceneNodeID   =int64;
@@ -54,7 +59,7 @@ namespace hgl::graph
         SceneNode(const SceneNode &)=delete;
         SceneNode(const SceneNode *)=delete;
 
-        using SceneOrient::SceneOrient;                                                                           ///<继承构造函数
+        using SceneOrient::SceneOrient;                                                                             ///<继承构造函数
         virtual ~SceneNode();
 
     public:
@@ -121,6 +126,10 @@ namespace hgl::graph
             sn->SetParent(this);
             return sn;
         }
+
+    public: //事件相关
+
+        virtual io::EventDispatcher *GetEventDispatcher(){return nullptr;}                                          ///<取得事件分发器(如果返回nullptr,则表示该节点不支持事件分发)
 
     public: //坐标相关方法
 
