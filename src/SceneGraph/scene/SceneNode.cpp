@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/SceneNode.h>
 #include<hgl/component/SceneComponent.h>
 #include<hgl/graph/Mesh.h>
+#include<hgl/graph/Scene.h>
 
 namespace hgl::graph
 {
@@ -116,5 +117,28 @@ namespace hgl::graph
         {
             c->OnDetach(this);
         }
+    }
+
+    void SceneNode::OnChangeScene(Scene *new_scene)
+    {
+        if(main_scene==new_scene)
+            return;
+
+        auto self_ep=GetEventDispatcher();
+
+        if(self_ep)
+        {
+            if(main_scene)
+            {
+                main_scene->GetEventDispatcher()->RemoveChildDispatcher(self_ep);  //从旧的场景中移除事件分发器
+            }
+
+            if(new_scene)
+            {
+                new_scene->GetEventDispatcher()->AddChildDispatcher(self_ep);       //添加到新的场景中
+            }
+        }
+
+        main_scene=new_scene;
     }
 }//namespace hgl::graph
