@@ -2,6 +2,7 @@
 
 #include<hgl/graph/SceneNode.h>
 #include<hgl/type/Pool.h>
+#include<hgl/io/event/EventDispatcher.h>
 
 namespace hgl::graph
 {
@@ -17,6 +18,10 @@ namespace hgl::graph
 
         SceneNode *root_node;                           ///<场景根节点
 
+    protected:  // event dispatcher
+
+        io::EventDispatcher event_dispatcher;           ///<事件分发器
+
     public:
 
         const   U8String &  GetSceneName()const{return SceneName;}              ///<获取场景名称
@@ -27,12 +32,17 @@ namespace hgl::graph
 
         Scene()
         {
-            root_node=new SceneNode;
+            root_node=new SceneNode(this);
         }
 
         virtual ~Scene()
         {
             SAFE_CLEAR(root_node);
+        }
+
+        io::EventDispatcher *GetEventDispatcher()  ///<获取事件分发器
+        {
+            return &event_dispatcher;
         }
     };//class Scene
 

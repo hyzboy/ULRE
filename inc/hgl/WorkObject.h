@@ -32,10 +32,10 @@ namespace hgl
 
         //以下数据均取自RenderFramework
 
-        graph::RenderResource *db=nullptr;                  //暂时的，未来会被更好的机制替代
+        graph::RenderResource * db      =nullptr;           //暂时的，未来会被更好的机制替代
 
-        graph::Scene *      scene=nullptr;                  //场景
-        graph::Renderer *   renderer=nullptr;               //渲染器
+        graph::Scene *          scene   =nullptr;           //场景
+        graph::Renderer *       renderer=nullptr;           //渲染器
 
     public:
 

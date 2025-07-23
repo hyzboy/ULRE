@@ -13,6 +13,10 @@ namespace hgl::io
 
 namespace hgl::graph
 {
+    class Scene;        //场景主类
+    //每个SceneNode都要记录Scene来区分自己属于那个场景
+    //这个场景可能是一个确实是一个场景，也有可能只是一个StaticMesh
+
     using SceneNodeID   =int64;
 
     using SceneNodeList =ObjectList<SceneNode>;
@@ -26,10 +30,16 @@ namespace hgl::graph
     */
     class SceneNode:public SceneOrient                                                                              ///场景节点类
     {
+        friend class Scene;
+
+        Scene *main_scene=nullptr;                                                                                  ///<主场景
+
         SceneNode *parent_node=nullptr;                                                                             ///<上级节点
 
         SceneNodeID node_id=-1;                                                                                     ///<节点ID
         SceneNodeName node_name;                                                                                    ///<节点名称
+
+        void OnChangeScene(Scene *);
 
     protected:
 
@@ -49,22 +59,30 @@ namespace hgl::graph
 
     public:
 
+        Scene *GetScene()const{ return main_scene; }                                                                ///<取得主场景
+
         const SceneNodeID &     GetNodeID   ()const { return node_id; }                                             ///<取得节点ID
         const SceneNodeName &   GetNodeName ()const { return node_name; }                                           ///<取得节点名称
 
         const SceneNodeList &   GetChildNode()const { return child_nodes; }                                         ///<取得子节点列表
 
-    public:
+    protected:
 
         SceneNode(const SceneNode &)=delete;
         SceneNode(const SceneNode *)=delete;
 
-        using SceneOrient::SceneOrient;                                                                             ///<继承构造函数
+        SceneNode():SceneOrient(){}
+        SceneNode(Scene *s):SceneOrient(),main_scene(s){}                                                           ///<从Scene构造
+        SceneNode(Scene *s,const SceneOrient &so):SceneOrient(so),main_scene(s){}                                   ///<从SceneOrient复制构造
+        SceneNode(Scene *s,const Matrix4f &mat):SceneOrient(mat),main_scene(s){}                                    ///<从Matrix4f复制构造
+
+    public:
+
         virtual ~SceneNode();
 
     public:
 
-        virtual SceneNode * CreateNode()const{return(new SceneNode);}                                               ///<创建一个同类的节点对象
+        virtual SceneNode * CreateNode()const{return(new SceneNode(GetScene()));}                                   ///<创建一个同类的节点对象
 
         virtual void        DuplicationChildNodes(SceneNode *node) const                                            ///<复制子节点到指定节点
         {
@@ -97,7 +115,7 @@ namespace hgl::graph
         {
             SceneOrient::Clear();
 
-            parent_node=nullptr;
+            SetParent(nullptr); //清除父节点
 
             bounding_box.SetZero();
             local_bounding_box.SetZero();
@@ -113,7 +131,16 @@ namespace hgl::graph
             return(true);
         }
 
-                void        SetParent(SceneNode *sn) {parent_node=sn;}
+        virtual void        SetParent(SceneNode *sn)
+        {
+            if(parent_node==sn)
+                return; //如果父节点没有变化，则不需要处理
+
+            parent_node=sn;
+
+            OnChangeScene(sn?sn->GetScene():nullptr);
+        }
+
                 SceneNode * GetParent()      noexcept{return parent_node;}
         const   SceneNode * GetParent()const noexcept{return parent_node;}
 
