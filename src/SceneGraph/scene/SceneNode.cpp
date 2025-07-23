@@ -113,6 +113,8 @@ namespace hgl::graph
 
     SceneNode::~SceneNode()
     {
+        SetParent(nullptr);
+
         for(Component *c:component_set)
         {
             c->OnDetach(this);

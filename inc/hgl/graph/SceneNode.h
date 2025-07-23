@@ -113,8 +113,6 @@ namespace hgl::graph
 
         void Clear() override
         {
-            SceneOrient::Clear();
-
             SetParent(nullptr); //清除父节点
 
             bounding_box.SetZero();
@@ -122,6 +120,8 @@ namespace hgl::graph
 
             child_nodes.Clear();
             component_set.Clear();
+
+            SceneOrient::Clear();
         }
 
         const bool ChildNodeIsEmpty()const
