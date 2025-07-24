@@ -39,6 +39,9 @@ SET(SCENE_GRAPH_HEADER  ${SG_INCLUDE_PATH}/SceneInfo.h
                         ${SG_INCLUDE_PATH}/SceneOrient.h
                         ${SG_INCLUDE_PATH}/RenderList.h
                         ${SG_INCLUDE_PATH}/RenderList2D.h
+                        ${SG_INCLUDE_PATH}/EventDispatcher.h
+                        ${SG_INCLUDE_PATH}/Scene.h
+                        ${SG_INCLUDE_PATH}/RenderFramework.h
                         )
 
 SET(SCENE_GRAPH_SOURCE  
@@ -46,7 +49,9 @@ SET(SCENE_GRAPH_SOURCE
 				        RenderList2D.cpp
 				        #RenderList3D.cpp
                         SceneNode.cpp
-                        SceneOrient.cpp)
+                        SceneOrient.cpp
+                        Scene.cpp
+                        RenderFramework.cpp)
 
 SOURCE_GROUP("Scene Graph" FILES ${SCENE_GRAPH_HEADER} ${SCENE_GRAPH_SOURCE})
 

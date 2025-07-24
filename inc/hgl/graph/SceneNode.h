@@ -5,6 +5,7 @@
 #include<hgl/graph/SceneOrient.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/AABB.h>
+#include<hgl/graph/EventDispatcher.h>
 namespace hgl
 {
     namespace graph
@@ -13,8 +14,9 @@ namespace hgl
         * 场景节点数据类<br>
         * 从场景坐标变换(SceneOrient)类继承，
         * 每个场景节点中可能包括一个可渲染数据实例，或是完全不包含(用于坐标变换的父节点，或是灯光/摄像机之类)。
+        * 同时支持事件处理功能
         */
-        class SceneNode:public SceneOrient                                                                              ///场景节点类
+        class SceneNode:public SceneOrient, public BaseEventDispatcher                                                    ///场景节点类
         {
         protected:
 
@@ -96,6 +98,23 @@ namespace hgl
             virtual const   Vector4f &  GetCenter           ()const{return Center;}                                     ///<取得中心点
             virtual const   Vector4f &  GetLocalCenter      ()const{return LocalCenter;}                                ///<取得本地坐标中心点
             virtual const   Vector4f &  GetWorldCenter      ()const{return WorldCenter;}                                ///<取得世界坐标中心点
+
+        public: //事件相关方法
+
+            /**
+             * 处理节点级别的事件
+             * @param event 输入事件
+             * @return 是否处理了该事件
+             */
+            virtual bool ProcessEvent(const device_input::InputEvent& event);
+
+        protected:
+
+            /**
+             * 节点特定的事件处理逻辑
+             * 子类可以覆盖此方法来实现自定义事件处理
+             */
+            bool HandleEvent(const device_input::InputEvent& event) override;
         };//class SceneNode
     }//namespace graph
 }//namespace hgl

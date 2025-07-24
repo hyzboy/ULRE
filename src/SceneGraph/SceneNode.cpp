@@ -127,5 +127,29 @@ namespace hgl
 
         //    return(true);
         //}
+
+        bool SceneNode::ProcessEvent(const device_input::InputEvent& event)
+        {
+            return DispatchEvent(event);
+        }
+
+        bool SceneNode::HandleEvent(const device_input::InputEvent& event)
+        {
+            // 默认不处理任何事件
+            // 子类可以覆盖此方法来处理特定事件
+            
+            // 将事件传递给子节点
+            const int count = SubNode.GetCount();
+            SceneNode** sub = SubNode.GetData();
+
+            for (int i = 0; i < count; i++)
+            {
+                if ((*sub)->ProcessEvent(event))
+                    return true;  // 如果子节点处理了事件，则停止传播
+                sub++;
+            }
+
+            return false;  // 没有处理事件
+        }
     }//namespace graph
 }//namespace hgl
