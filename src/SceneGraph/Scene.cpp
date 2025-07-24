@@ -89,12 +89,10 @@ namespace hgl
         {
             // 场景级别的事件处理
             // 目前不处理任何事件，只是转发给节点
-            DispatchEventToNodes(event);
-            
-            return false;  // 允许事件继续传播
+            return DispatchEventToNodes(event);
         }
 
-        void Scene::DispatchEventToNodes(const device_input::InputEvent& event)
+        bool Scene::DispatchEventToNodes(const device_input::InputEvent& event)
         {
             // 将事件分发给所有场景节点
             const int count = scene_nodes.GetCount();
@@ -105,16 +103,17 @@ namespace hgl
                 // 调用节点的事件处理方法
                 if (node_list[i]->ProcessEvent(event))
                 {
-                    // 如果某个节点处理了事件，可以选择停止传播
-                    // 这里选择继续传播给其他节点
+                    return true;  // 如果某个节点处理了事件，停止传播
                 }
             }
             
             // 同时也将事件传递给根节点
             if (root_node)
             {
-                root_node->ProcessEvent(event);
+                return root_node->ProcessEvent(event);
             }
+            
+            return false;  // 没有节点处理事件
         }
     }//namespace graph
 }//namespace hgl

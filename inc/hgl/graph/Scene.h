@@ -51,7 +51,7 @@ namespace hgl
             bool HandleEvent(const device_input::InputEvent& event) override;
             
             // 将事件分发给场景节点
-            void DispatchEventToNodes(const device_input::InputEvent& event);
+            bool DispatchEventToNodes(const device_input::InputEvent& event);
         };
     }//namespace graph
 }//namespace hgl
