@@ -15,3 +15,8 @@
 *.ninja
 *.check_cache
 /out
+
+# Test executables
+test/test_comprehensive
+*.o
+*.out
