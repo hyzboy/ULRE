@@ -44,7 +44,6 @@ namespace hgl::graph
 
     protected:
 
-        AABB bounding_box;                                                                                          ///<绑定盒
         AABB local_bounding_box;                                                                                    ///<本地坐标绑定盒
         OBB world_bounding_box;                                                                                     ///<世界坐标绑定盒
 
@@ -116,7 +115,6 @@ namespace hgl::graph
         {
             SetParent(nullptr); //清除父节点
 
-            bounding_box.Clear();
             local_bounding_box.Clear();
             world_bounding_box.Clear();
 
@@ -162,12 +160,9 @@ namespace hgl::graph
 
     public: //坐标相关方法
 
-        virtual         void        SetBoundingBox      (const AABB &bb){bounding_box=bb;}                          ///<设置绑定盒
-
         virtual         void        RefreshMatrix       () override;                                                ///<刷新世界变换
         virtual         void        RefreshBoundingBox  ();                                                         ///<刷新绑定盒
 
-        virtual const   AABB &      GetBoundingBox      ()const{return bounding_box;}                               ///<取得绑定盒
         virtual const   AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                         ///<取得本地坐标绑定盒
 //            virtual const   AABB &      GetWorldBoundingBox ()const{return WorldBoundingBox;}                           ///<取得世界坐标绑定盒
 
