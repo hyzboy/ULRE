@@ -40,9 +40,9 @@ namespace hgl::graph
             SAFE_CLEAR(root_node);
         }
 
-        io::EventDispatcher *GetEventDispatcher()  ///<获取事件分发器
+        io::EventDispatcher &GetEventDispatcher()  ///<获取事件分发器
         {
-            return &event_dispatcher;
+            return event_dispatcher;
         }
     };//class Scene
 
