@@ -132,12 +132,12 @@ namespace hgl::graph
         {
             if(main_scene)
             {
-                main_scene->GetEventDispatcher()->RemoveChildDispatcher(self_ep);  //从旧的场景中移除事件分发器
+                main_scene->GetEventDispatcher().RemoveChildDispatcher(self_ep);    //从旧的场景中移除事件分发器
             }
 
             if(new_scene)
             {
-                new_scene->GetEventDispatcher()->AddChildDispatcher(self_ep);       //添加到新的场景中
+                new_scene->GetEventDispatcher().AddChildDispatcher(self_ep);        //添加到新的场景中
             }
         }
 
