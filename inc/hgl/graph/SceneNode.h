@@ -4,6 +4,7 @@
 #include<hgl/type/IDName.h>
 #include<hgl/graph/SceneOrient.h>
 #include<hgl/graph/AABB.h>
+#include<hgl/graph/OBB.h>
 #include<hgl/component/Component.h>
 
 namespace hgl::io
@@ -45,7 +46,7 @@ namespace hgl::graph
 
         AABB bounding_box;                                                                                          ///<绑定盒
         AABB local_bounding_box;                                                                                    ///<本地坐标绑定盒
-        //AABB WorldBoundingBox;                                                                                      ///<世界坐标绑定盒
+        OBB world_bounding_box;                                                                                     ///<世界坐标绑定盒
 
     protected:
 
@@ -115,8 +116,9 @@ namespace hgl::graph
         {
             SetParent(nullptr); //清除父节点
 
-            bounding_box.SetZero();
-            local_bounding_box.SetZero();
+            bounding_box.Clear();
+            local_bounding_box.Clear();
+            world_bounding_box.Clear();
 
             child_nodes.Clear();
             component_set.Clear();
