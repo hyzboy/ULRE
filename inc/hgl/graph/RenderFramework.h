@@ -63,6 +63,8 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
     CameraControl *         default_camera_control  =nullptr;
     Renderer *              default_renderer        =nullptr;
 
+    void OnChangeDefaultScene(Scene *);
+
     void CreateDefaultRenderer();
 
 protected:  //EventDispatcher

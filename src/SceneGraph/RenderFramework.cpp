@@ -134,13 +134,31 @@ bool RenderFramework::Init(uint w,uint h)
 
     render_resource=new RenderResource(device);
 
-    default_scene=new Scene;
+    OnChangeDefaultScene(new Scene);
 
     default_camera=new Camera();
 
     CreateDefaultRenderer();
 
     return(true);
+}
+
+void RenderFramework::OnChangeDefaultScene(Scene *s)
+{
+    if(default_scene==s)
+        return;
+
+    if(default_scene)
+    {
+        this->RemoveChildDispatcher(&(default_scene->GetEventDispatcher()));
+    }
+
+    if(s)
+    {
+        this->AddChildDispatcher(&(s->GetEventDispatcher()));
+    }
+
+    default_scene=s;
 }
 
 void RenderFramework::CreateDefaultRenderer()
@@ -246,11 +264,11 @@ graph::Primitive *RenderFramework::CreatePrimitive( const AnsiString &name,
     return prim;
 }
 
-graph::Mesh *RenderFramework::CreateMesh( const AnsiString &name,
-                                    const uint32_t vertices_count,
-                                    graph::MaterialInstance *mi,
-                                    graph::Pipeline *pipeline,
-                                    const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
+graph::Mesh *RenderFramework::CreateMesh(   const AnsiString &name,
+                                            const uint32_t vertices_count,
+                                            graph::MaterialInstance *mi,
+                                            graph::Pipeline *pipeline,
+                                            const std::initializer_list<graph::VertexAttribDataPtr> &vad_list)
 {
     auto *prim=this->CreatePrimitive(name,vertices_count,mi->GetVIL(),vad_list);
 
