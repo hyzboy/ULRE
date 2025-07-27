@@ -134,7 +134,7 @@ bool RenderFramework::Init(uint w,uint h)
 
     render_resource=new RenderResource(device);
 
-    OnChangeDefaultScene(new Scene);
+    OnChangeDefaultScene(new Scene(this));
 
     default_camera=new Camera();
 

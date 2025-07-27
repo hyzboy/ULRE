@@ -18,6 +18,8 @@ namespace hgl::graph
     //每个SceneNode都要记录Scene来区分自己属于那个场景
     //这个场景可能是一个确实是一个场景，也有可能只是一个StaticMesh
 
+    class CameraControl;
+
     using SceneNodeID   =int64;
 
     using SceneNodeList =ObjectList<SceneNode>;
@@ -59,7 +61,9 @@ namespace hgl::graph
 
     public:
 
-        Scene *GetScene()const{ return main_scene; }                                                                ///<取得主场景
+        Scene *             GetScene()const{ return main_scene; }                                                   ///<取得主场景
+        RenderFramework *   GetRenderFramework()const;                                                              ///<取得渲染框架
+        CameraControl *     GetCameraControl()const;                                                                ///<取得默认摄像机控制器
 
         const SceneNodeID &     GetNodeID   ()const { return node_id; }                                             ///<取得节点ID
         const SceneNodeName &   GetNodeName ()const { return node_name; }                                           ///<取得节点名称

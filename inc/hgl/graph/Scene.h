@@ -6,12 +6,16 @@
 
 namespace hgl::graph
 {
+    class RenderFramework;
+
     /**
     * 场景管理器<Br>
     * 管理一个场景中的所有资源与场景节点
     */
     class Scene
     {
+        RenderFramework *render_framework=nullptr;      ///<渲染框架
+
         U8String SceneName;                             ///<场景名称
 
         ObjectList<SceneNode> SceneNodePool;            ///<场景节点池
@@ -28,10 +32,17 @@ namespace hgl::graph
 
                 SceneNode * GetRootNode (){return root_node;}                   ///<获取场景根节点
 
+        RenderFramework *   GetRenderFramework()const
+        {
+            return render_framework;
+        }
+
     public:
 
-        Scene()
+        Scene(RenderFramework *rf)
         {
+            render_framework=rf;
+
             root_node=new SceneNode(this);
         }
 
