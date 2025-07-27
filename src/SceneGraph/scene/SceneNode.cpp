@@ -2,9 +2,20 @@
 #include<hgl/component/SceneComponent.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/graph/Scene.h>
+#include<hgl/graph/RenderFramework.h>
 
 namespace hgl::graph
 {
+    RenderFramework *SceneNode::GetRenderFramework()const
+    {
+        return main_scene?main_scene->GetRenderFramework():nullptr;
+    }
+
+    CameraControl *SceneNode::GetCameraControl()const
+    {
+        return main_scene?main_scene->GetRenderFramework()->GetDefaultCameraControl():nullptr;
+    }
+
     //void SceneNode::SetRenderable(Mesh *ri)
     //{
     //    render_obj=ri;
