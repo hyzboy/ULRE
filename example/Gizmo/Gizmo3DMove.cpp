@@ -26,8 +26,12 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/Scene.h>
 #include<hgl/component/MeshComponent.h>
 #include<hgl/io/event/MouseEvent.h>
+#include<hgl/graph/Ray.h>
+
+#include<iostream>
 
 VK_NAMESPACE_BEGIN
 
@@ -174,6 +178,51 @@ namespace
             }
 
             return(true);
+        }
+
+        bool OnMove(const Vector2i &mouse_coord) override
+        {
+            CameraControl *cc=GetCameraControl();
+
+            if(!cc)
+                return(false);
+
+            Ray ray;
+
+            cc->SetMouseRay(&ray,mouse_coord);
+
+            Matrix4f l2w=GetLocalToWorldMatrix();
+            Vector3f start;
+            Vector3f end;
+            Vector3f cross_point;
+            float dist;
+
+            start=TransformPosition(l2w,Vector3f(0,0,0)); //将原点转换到世界坐标
+
+            {
+                end=TransformPosition(l2w,Vector3f(GIZMO_CYLINDER_HALF_LENGTH*20,0,0));
+
+                cross_point=ray.ClosestPoint(start);
+
+                dist=length(cross_point,start);
+
+                //dist=ray.ToLineSegmentDistance(start,end);
+
+                //dist=ray.ToPointDistance(start);
+
+                MaterialInstance *mi=GetGizmoMI3D(dist<GIZMO_CYLINDER_RADIUS*100?GizmoColor::Yellow:GizmoColor::Red);
+
+                axis[size_t(AXIS::X)].cylinder->SetOverrideMaterial(mi);
+                axis[size_t(AXIS::X)].cone->SetOverrideMaterial(mi);
+
+                std::cout<<"Mouse:    "<<mouse_coord.x<<","<<mouse_coord.y<<std::endl;
+                std::cout<<"CrossPoint: "<<cross_point.x<<","<<cross_point.y<<","<<cross_point.z<<std::endl;
+                std::cout<<"Ray(Ori): "<<ray.origin.x<<","<<ray.origin.y<<","<<ray.origin.z<<")"<<std::endl;
+                std::cout<<"Ray(Dir): "<<ray.direction.x<<","<<ray.direction.y<<","<<ray.direction.z<<")"<<std::endl;
+                std::cout<<"Distance: "<<dist<<std::endl;
+            }
+
+            return false;
         }
     };//class GizmoMoveNode:public SceneNode
 
