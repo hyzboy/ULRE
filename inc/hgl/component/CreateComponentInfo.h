@@ -10,38 +10,38 @@ namespace hgl
 
         struct CreateComponentInfo
         {
-            graph::SceneNode *parent_node;          ///<父节点
-            graph::Matrix4f mat;                    ///<矩阵
+            graph::SceneNode *owner_node;           ///<所属节点
+            graph::Matrix4f mat;                    ///<变换矩阵
 
         public:
 
             CreateComponentInfo()
             {
-                parent_node=nullptr;
+                owner_node=nullptr;
                 mat=graph::Identity4f;
             }
 
             CreateComponentInfo(const CreateComponentInfo &cci)
             {
-                parent_node=cci.parent_node;
+                owner_node=cci.owner_node;
                 mat=cci.mat;
             }
 
             CreateComponentInfo(graph::SceneNode *pn,const graph::Matrix4f &m)
             {
-                parent_node=pn;
+                owner_node=pn;
                 mat=m;
             }
 
             CreateComponentInfo(graph::SceneNode *pn)
             {
-                parent_node=pn;
+                owner_node=pn;
                 mat=graph::Identity4f;
             }
 
             CreateComponentInfo(const graph::Matrix4f &m)
             {
-                parent_node=nullptr;
+                owner_node=nullptr;
                 mat=m;
             }
         };//struct CreateComponentInfo

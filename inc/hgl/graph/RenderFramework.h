@@ -245,8 +245,8 @@ public: //Component 相关
         */
         if(cci)
         {
-            if(cci->parent_node)
-                cci->parent_node->AttachComponent(c); //将组件附加到父节点
+            if(cci->owner_node)
+                cci->owner_node->AttachComponent(c); //将组件附加到所属节点
 
             c->graph::SceneOrient::SetLocalMatrix(cci->mat);
         }
