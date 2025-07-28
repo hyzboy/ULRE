@@ -202,21 +202,26 @@ namespace
             {
                 end=TransformPosition(l2w,Vector3f(GIZMO_CYLINDER_HALF_LENGTH*20,0,0));
 
-                cross_point=ray.ClosestPoint(start);
+                dist=ray.ToLineSegmentDistance(start,end);
 
-                dist=length(cross_point,start);
+                MaterialInstance *mi;
 
-                //dist=ray.ToLineSegmentDistance(start,end);
+                if(dist<GIZMO_CYLINDER_RADIUS*10)
+                {
+                    mi=GetGizmoMI3D(GizmoColor::Yellow);
+                }
+                else
+                {
+                    mi=GetGizmoMI3D(GizmoColor::Red);
+                }
 
-                //dist=ray.ToPointDistance(start);
-
-                MaterialInstance *mi=GetGizmoMI3D(dist<GIZMO_CYLINDER_RADIUS*100?GizmoColor::Yellow:GizmoColor::Red);
+                //MaterialInstance *mi=GetGizmoMI3D(dist<GIZMO_CYLINDER_RADIUS*100?GizmoColor::Yellow:GizmoColor::Red);
 
                 axis[size_t(AXIS::X)].cylinder->SetOverrideMaterial(mi);
                 axis[size_t(AXIS::X)].cone->SetOverrideMaterial(mi);
 
                 std::cout<<"Mouse:    "<<mouse_coord.x<<","<<mouse_coord.y<<std::endl;
-                std::cout<<"CrossPoint: "<<cross_point.x<<","<<cross_point.y<<","<<cross_point.z<<std::endl;
+//                std::cout<<"CrossPoint: "<<cross_point.x<<","<<cross_point.y<<","<<cross_point.z<<std::endl;
                 std::cout<<"Ray(Ori): "<<ray.origin.x<<","<<ray.origin.y<<","<<ray.origin.z<<")"<<std::endl;
                 std::cout<<"Ray(Dir): "<<ray.direction.x<<","<<ray.direction.y<<","<<ray.direction.z<<")"<<std::endl;
                 std::cout<<"Distance: "<<dist<<std::endl;
