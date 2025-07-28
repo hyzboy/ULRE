@@ -44,11 +44,13 @@ namespace
     {
         struct GizmoMoveAxis
         {
+            MaterialInstance *mi;       //材质实例
             MeshComponent *cylinder;    //圆柱
             MeshComponent *cone;        //圆锥
             MeshComponent *square;      //双轴调节正方形
         };
 
+        MaterialInstance *pick_mi;
         MeshComponent *sphere=nullptr;
         GizmoMoveAxis axis[3]{};  //X,Y,Z 三个轴
 
@@ -69,8 +71,11 @@ namespace
         void        DuplicationComponents(SceneNode *node) const override
         {
             GizmoMoveNode *gmn=(GizmoMoveNode *)node;
+
             if(!gmn)
                 return;
+
+            gmn->pick_mi=pick_mi;
 
         #define DUPLICATION_COMPONENT(c)    gmn->c=(MeshComponent *)(c->Duplication()); \
                                             gmn->AttachComponent(gmn->c);
@@ -79,6 +84,7 @@ namespace
 
             for(size_t i=0;i<3;i++)
             {
+                gmn->axis[i].mi=axis[i].mi; // 复制材质实例
                 DUPLICATION_COMPONENT(axis[i].cylinder);
                 DUPLICATION_COMPONENT(axis[i].cone);
                 DUPLICATION_COMPONENT(axis[i].square);
@@ -101,13 +107,14 @@ namespace
 
             CreateComponentInfo cci(this);
 
+            pick_mi=GetGizmoMI3D(GizmoColor::Yellow); //获取拾取材质实例
+
             sphere=render_framework->CreateComponent<MeshComponent>(&cci,SpherePtr);        //中心球
             sphere->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::White));                     //白色
 
             {
                 Transform tm;
                 GizmoMoveAxis *gma;
-                MaterialInstance *mi=nullptr;
 
                 const Vector3f one_scale(1);
                 const Vector3f square_scale(2);
@@ -115,73 +122,73 @@ namespace
 
                 {
                     gma=axis+size_t(AXIS::Z);
-                    mi=GetGizmoMI3D(GizmoColor::Blue);
+                    gma->mi=GetGizmoMI3D(GizmoColor::Blue);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
                     cci.mat=tm;
                     gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //Z 向上圆柱
-                    gma->cylinder->SetOverrideMaterial(mi);
+                    gma->cylinder->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(one_scale);
                     tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
                     cci.mat=tm;
                     gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
-                    gma->cone->SetOverrideMaterial(mi);
+                    gma->cone->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(square_scale);
                     tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
                     cci.mat=tm;
                     gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
-                    gma->square->SetOverrideMaterial(mi);
+                    gma->square->SetOverrideMaterial(gma->mi);
                 }
 
                 {
                     gma=axis+size_t(AXIS::X);
-                    mi=GetGizmoMI3D(GizmoColor::Red);
+                    gma->mi=GetGizmoMI3D(GizmoColor::Red);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetRotation(AxisVector::Y,90);
                     tm.SetTranslation(GIZMO_CYLINDER_OFFSET,0,0);
                     cci.mat=tm;
                     gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //X 向右圆柱
-                    gma->cylinder->SetOverrideMaterial(mi);
+                    gma->cylinder->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(one_scale);
                     tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
                     cci.mat=tm;
                     gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
-                    gma->cone->SetOverrideMaterial(mi);
+                    gma->cone->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(square_scale);
                     tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
                     gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
-                    gma->square->SetOverrideMaterial(mi);
+                    gma->square->SetOverrideMaterial(gma->mi);
                 }
 
                 {
                     gma=axis+size_t(AXIS::Y);
-                    mi=GetGizmoMI3D(GizmoColor::Green);
+                    gma->mi=GetGizmoMI3D(GizmoColor::Green);
 
                     tm.SetScale(cylinder_scale);
                     tm.SetRotation(AxisVector::X,-90);
                     tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);
                     cci.mat=tm;
                     gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //X 向右圆柱
-                    gma->cylinder->SetOverrideMaterial(mi);
+                    gma->cylinder->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(one_scale);
                     tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
                     cci.mat=tm;
                     gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
-                    gma->cone->SetOverrideMaterial(mi);
+                    gma->cone->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(square_scale);
                     tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
                     gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
-                    gma->square->SetOverrideMaterial(mi);
+                    gma->square->SetOverrideMaterial(gma->mi);
                 }
             }
 
@@ -200,16 +207,20 @@ namespace
             cc->SetMouseRay(&ray,mouse_coord);
 
             Matrix4f l2w=GetLocalToWorldMatrix();
+            Vector3f center=TransformPosition(l2w,Vector3f(0,0,0));
             Vector3f start;
             Vector3f end;
             Vector3f p_ray,p_ls;
             float dist;
             float pixel_per_unit;
+            float center_ppu;
 
-            start=TransformPosition(l2w,Vector3f(0,0,0)); //将原点转换到世界坐标
+            center_ppu=cc->GetPixelPerUnit(center); //求原点坐标相对屏幕空间象素的缩放比
 
+            for(int i=0;i<3;i++)
             {
-                end=TransformPosition(l2w,Vector3f((GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH)*20,0,0));
+                start=TransformPosition(l2w,GetAxisVector(AXIS(i))*GIZMO_CENTER_SPHERE_RADIUS*center_ppu); //将轴的起点转换到世界坐标
+                end=TransformPosition(l2w,GetAxisVector(AXIS(i))*(GIZMO_CENTER_SPHERE_RADIUS+GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH)*center_ppu);
 
                 //求射线与线段的最近点
                 ray.ClosestPoint(p_ray,         //射线上的点
@@ -221,10 +232,10 @@ namespace
                 //求p_ls坐标相对屏幕空间象素的缩放比
                 pixel_per_unit=cc->GetPixelPerUnit(p_ls);
 
-                MaterialInstance *mi=GetGizmoMI3D(dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit?GizmoColor::Yellow:GizmoColor::Red);
+                MaterialInstance *mi=dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit?pick_mi:axis[i].mi;
 
-                axis[size_t(AXIS::X)].cylinder->SetOverrideMaterial(mi);
-                axis[size_t(AXIS::X)].cone->SetOverrideMaterial(mi);
+                axis[i].cylinder->SetOverrideMaterial(mi);
+                axis[i].cone->SetOverrideMaterial(mi);
 
                 //std::cout<<"Mouse:    "<<mouse_coord.x<<","<<mouse_coord.y<<std::endl;
                 //std::cout<<"Ray(Ori): "<<ray.origin.x<<","<<ray.origin.y<<","<<ray.origin.z<<")"<<std::endl;

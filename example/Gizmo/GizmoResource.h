@@ -18,7 +18,7 @@ constexpr const COLOR gizmo_color[size_t(GizmoColor::RANGE_SIZE)]=
     COLOR::BlenderAxisGreen,
     COLOR::BlenderAxisBlue,
 
-    COLOR::BlenderYellow,
+    COLOR::GoldenYellow,
 };
 
 constexpr const float GIZMO_ARROW_LENGTH        =10.0f;                                                                 ///<箭头整体长度
