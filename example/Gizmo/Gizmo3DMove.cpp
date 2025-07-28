@@ -202,36 +202,34 @@ namespace
             Matrix4f l2w=GetLocalToWorldMatrix();
             Vector3f start;
             Vector3f end;
+            Vector3f p_ray,p_ls;
             float dist;
+            float pixel_per_unit;
 
             start=TransformPosition(l2w,Vector3f(0,0,0)); //将原点转换到世界坐标
 
             {
                 end=TransformPosition(l2w,Vector3f((GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH)*20,0,0));
 
-                dist=ray.ToLineSegmentDistance(start,end);
+                //求射线与线段的最近点
+                ray.ClosestPoint(p_ray,         //射线上的点
+                                 p_ls,          //线段上的点
+                                 start,end);    //线段
 
-                MaterialInstance *mi;
+                dist=glm::distance(p_ray,p_ls); //计算射线与线段的距离
 
-                if(dist<GIZMO_CYLINDER_RADIUS*10)
-                {
-                    mi=GetGizmoMI3D(GizmoColor::Yellow);
-                }
-                else
-                {
-                    mi=GetGizmoMI3D(GizmoColor::Red);
-                }
+                //求p_ls坐标相对屏幕空间象素的缩放比
+                pixel_per_unit=cc->GetPixelPerUnit(p_ls);
 
-                //MaterialInstance *mi=GetGizmoMI3D(dist<GIZMO_CYLINDER_RADIUS*100?GizmoColor::Yellow:GizmoColor::Red);
+                MaterialInstance *mi=GetGizmoMI3D(dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit?GizmoColor::Yellow:GizmoColor::Red);
 
                 axis[size_t(AXIS::X)].cylinder->SetOverrideMaterial(mi);
                 axis[size_t(AXIS::X)].cone->SetOverrideMaterial(mi);
 
-                std::cout<<"Mouse:    "<<mouse_coord.x<<","<<mouse_coord.y<<std::endl;
-//                std::cout<<"CrossPoint: "<<cross_point.x<<","<<cross_point.y<<","<<cross_point.z<<std::endl;
-                std::cout<<"Ray(Ori): "<<ray.origin.x<<","<<ray.origin.y<<","<<ray.origin.z<<")"<<std::endl;
-                std::cout<<"Ray(Dir): "<<ray.direction.x<<","<<ray.direction.y<<","<<ray.direction.z<<")"<<std::endl;
-                std::cout<<"Distance: "<<dist<<std::endl;
+                //std::cout<<"Mouse:    "<<mouse_coord.x<<","<<mouse_coord.y<<std::endl;
+                //std::cout<<"Ray(Ori): "<<ray.origin.x<<","<<ray.origin.y<<","<<ray.origin.z<<")"<<std::endl;
+                //std::cout<<"Ray(Dir): "<<ray.direction.x<<","<<ray.direction.y<<","<<ray.direction.z<<")"<<std::endl;
+                //std::cout<<"Distance: "<<dist<<std::endl;
             }
 
             return false;
