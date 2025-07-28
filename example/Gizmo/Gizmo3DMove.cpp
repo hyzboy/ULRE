@@ -66,17 +66,25 @@ namespace
             return(new GizmoMoveNode);
         }
 
-        SceneNode *Duplication()const override
+        void        DuplicationComponents(SceneNode *node) const override
         {
-            GizmoMoveNode *new_gmn=(GizmoMoveNode *)SceneNode::Duplication();
+            GizmoMoveNode *gmn=(GizmoMoveNode *)node;
+            if(!gmn)
+                return;
 
-            if(!new_gmn)
-                return(nullptr);
+        #define DUPLICATION_COMPONENT(c)    gmn->c=(MeshComponent *)(c->Duplication()); \
+                                            gmn->AttachComponent(gmn->c);
 
-            new_gmn->sphere=sphere;
-            hgl_cpy(new_gmn->axis,axis);
+            DUPLICATION_COMPONENT(sphere);
 
-            return new_gmn;
+            for(size_t i=0;i<3;i++)
+            {
+                DUPLICATION_COMPONENT(axis[i].cylinder);
+                DUPLICATION_COMPONENT(axis[i].cone);
+                DUPLICATION_COMPONENT(axis[i].square);
+            }
+
+        #undef DUPLICATION_COMPONENT
         }
 
         bool CreateGizmoGeometry(RenderFramework *render_framework)
@@ -194,13 +202,12 @@ namespace
             Matrix4f l2w=GetLocalToWorldMatrix();
             Vector3f start;
             Vector3f end;
-            Vector3f cross_point;
             float dist;
 
             start=TransformPosition(l2w,Vector3f(0,0,0)); //将原点转换到世界坐标
 
             {
-                end=TransformPosition(l2w,Vector3f(GIZMO_CYLINDER_HALF_LENGTH*20,0,0));
+                end=TransformPosition(l2w,Vector3f((GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH)*20,0,0));
 
                 dist=ray.ToLineSegmentDistance(start,end);
 
