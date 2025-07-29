@@ -54,6 +54,10 @@ namespace
         MeshComponent *sphere=nullptr;
         GizmoMoveAxis axis[3]{};  //X,Y,Z 三个轴
 
+        int PickAXIS=-1;            //选中轴
+        float PickDist=0;           //选中轴时距离轴心的距离
+        float CurDist=0;            //当前距离
+
     public:
 
         using SceneNode::SceneNode;
@@ -68,7 +72,7 @@ namespace
             return(new GizmoMoveNode);
         }
 
-        void        DuplicationComponents(SceneNode *node) const override
+        void DuplicationComponents(SceneNode *node) const override
         {
             GizmoMoveNode *gmn=(GizmoMoveNode *)node;
 
@@ -195,6 +199,15 @@ namespace
             return(true);
         }
 
+        bool OnPressed(const Vector2i &,io::MouseButton mb) override
+        {
+            
+        }
+
+        bool OnReleased(const Vector2i &,io::MouseButton mb) override
+        {
+        }
+
         bool OnMove(const Vector2i &mouse_coord) override
         {
             CameraControl *cc=GetCameraControl();
@@ -211,9 +224,11 @@ namespace
             Vector3f start;
             Vector3f end;
             Vector3f p_ray,p_ls;
+            float axis_radius;
             float dist;
             float pixel_per_unit;
             float center_ppu;
+            MaterialInstance *mi;
 
             center_ppu=cc->GetPixelPerUnit(center); //求原点坐标相对屏幕空间象素的缩放比
 
@@ -229,10 +244,19 @@ namespace
 
                 dist=glm::distance(p_ray,p_ls); //计算射线与线段的距离
 
+                CurDist=glm::length(p_ls);      //计算线段上的点与原点的距离
+
                 //求p_ls坐标相对屏幕空间象素的缩放比
                 pixel_per_unit=cc->GetPixelPerUnit(p_ls);
 
-                MaterialInstance *mi=dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit?pick_mi:axis[i].mi;
+                if(dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit)
+                {
+                    mi=pick_mi;
+                }
+                else
+                {
+                    mi=axis[i].mi;
+                }
 
                 axis[i].cylinder->SetOverrideMaterial(mi);
                 axis[i].cone->SetOverrideMaterial(mi);
