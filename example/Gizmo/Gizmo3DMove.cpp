@@ -199,21 +199,22 @@ namespace
             return(true);
         }
 
-        bool OnPressed(const Vector2i &,io::MouseButton mb) override
+        io::EventProcResult OnPressed(const Vector2i &,io::MouseButton mb) override
         {
-            
+            return io::EventProcResult::Continue;            
         }
 
-        bool OnReleased(const Vector2i &,io::MouseButton mb) override
+        io::EventProcResult OnReleased(const Vector2i &,io::MouseButton mb) override
         {
+            return io::EventProcResult::Continue;
         }
 
-        bool OnMove(const Vector2i &mouse_coord) override
+        io::EventProcResult OnMove(const Vector2i &mouse_coord) override
         {
             CameraControl *cc=GetCameraControl();
 
             if(!cc)
-                return(false);
+                return io::EventProcResult::Continue;
 
             Ray ray;
 
@@ -221,6 +222,7 @@ namespace
 
             Matrix4f l2w=GetLocalToWorldMatrix();
             Vector3f center=TransformPosition(l2w,Vector3f(0,0,0));
+            Vector3f axis_vector;
             Vector3f start;
             Vector3f end;
             Vector3f p_ray,p_ls;
@@ -234,8 +236,10 @@ namespace
 
             for(int i=0;i<3;i++)
             {
-                start=TransformPosition(l2w,GetAxisVector(AXIS(i))*GIZMO_CENTER_SPHERE_RADIUS*center_ppu); //将轴的起点转换到世界坐标
-                end=TransformPosition(l2w,GetAxisVector(AXIS(i))*(GIZMO_CENTER_SPHERE_RADIUS+GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH)*center_ppu);
+                axis_vector=GetAxisVector(AXIS(i))*center_ppu; //取得轴向量
+
+                start   =TransformPosition(l2w,axis_vector* GIZMO_CENTER_SPHERE_RADIUS); //将轴的起点转换到世界坐标
+                end     =TransformPosition(l2w,axis_vector*(GIZMO_CENTER_SPHERE_RADIUS+GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH));
 
                 //求射线与线段的最近点
                 ray.ClosestPoint(p_ray,         //射线上的点
@@ -267,7 +271,7 @@ namespace
                 //std::cout<<"Distance: "<<dist<<std::endl;
             }
 
-            return false;
+            return io::EventProcResult::Continue;
         }
     };//class GizmoMoveNode:public SceneNode
 
