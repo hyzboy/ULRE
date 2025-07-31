@@ -54,9 +54,11 @@ namespace
         MeshComponent *sphere=nullptr;
         GizmoMoveAxis axis[3]{};  //X,Y,Z 三个轴
 
-        int PickAXIS=-1;            //选中轴
-        float PickDist=0;           //选中轴时距离轴心的距离
+        int CurAXIS=-1;             //当前鼠标选中轴
         float CurDist=0;            //当前距离
+
+        int PickAXIS=-1;            //拾取轴
+        float PickDist=0;           //拾取辆距离轴心的距离
 
     public:
 
@@ -199,9 +201,17 @@ namespace
             return(true);
         }
 
-        io::EventProcResult OnPressed(const Vector2i &,io::MouseButton mb) override
+        io::EventProcResult OnPressed(const Vector2i &mp,io::MouseButton mb) override
         {
-            return io::EventProcResult::Continue;            
+            GizmoMoveNode::OnMove(mp);
+
+            if(CurAXIS>0&&CurAXIS<3)
+            {
+                PickAXIS=CurAXIS;
+                PickDist=CurDist;
+            }
+
+            return io::EventProcResult::Continue;
         }
 
         io::EventProcResult OnReleased(const Vector2i &,io::MouseButton mb) override
@@ -234,6 +244,8 @@ namespace
 
             center_ppu=cc->GetPixelPerUnit(center); //求原点坐标相对屏幕空间象素的缩放比
 
+            CurAXIS=-1;
+
             for(int i=0;i<3;i++)
             {
                 axis_vector=GetAxisVector(AXIS(i))*center_ppu; //取得轴向量
@@ -248,14 +260,15 @@ namespace
 
                 dist=glm::distance(p_ray,p_ls); //计算射线与线段的距离
 
-                CurDist=glm::length(p_ls);      //计算线段上的点与原点的距离
-
                 //求p_ls坐标相对屏幕空间象素的缩放比
                 pixel_per_unit=cc->GetPixelPerUnit(p_ls);
 
                 if(dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit)
                 {
                     mi=pick_mi;
+
+                    CurAXIS=i;
+                    CurDist=glm::length(p_ls);      //计算线段上的点与原点的距离
                 }
                 else
                 {
