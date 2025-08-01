@@ -54,11 +54,15 @@ namespace
         MeshComponent *sphere=nullptr;
         GizmoMoveAxis axis[3]{};  //X,Y,Z 三个轴
 
-        int CurAXIS=-1;             //当前鼠标选中轴
-        float CurDist=0;            //当前距离
+    protected:
 
-        int PickAXIS=-1;            //拾取轴
-        float PickDist=0;           //拾取辆距离轴心的距离
+        int     CurAXIS=-1;             //当前鼠标选中轴
+        float   CurDist=0;              //当前距离
+
+        int     PickAXIS=-1;            //拾取轴
+        float   PickDist=0;             //拾取辆距离轴心的距离
+
+        TransformTranslate3f CurTranslate;
 
     public:
 
@@ -205,10 +209,12 @@ namespace
         {
             GizmoMoveNode::OnMove(mp);
 
-            if(CurAXIS>0&&CurAXIS<3)
+            if(CurAXIS>=0&&CurAXIS<3)
             {
                 PickAXIS=CurAXIS;
                 PickDist=CurDist;
+
+                CurTranslate.SetOffset(Vector3f(0,0,0)); //重置当前平移偏移
             }
 
             return io::EventProcResult::Continue;
@@ -269,6 +275,12 @@ namespace
 
                     CurAXIS=i;
                     CurDist=glm::length(p_ls);      //计算线段上的点与原点的距离
+
+                    if(CurAXIS==PickAXIS) //如果当前轴与拾取轴相同
+                    {
+                        //如果当前轴与拾取轴相同，则计算平移偏移
+                        CurTranslate.SetOffset(axis_vector*(CurDist-PickDist));
+                    }
                 }
                 else
                 {
