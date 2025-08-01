@@ -56,13 +56,15 @@ namespace
 
     protected:
 
+        Ray     MouseRay;
+
         int     CurAXIS=-1;             //当前鼠标选中轴
         float   CurDist=0;              //当前距离
 
         int     PickAXIS=-1;            //拾取轴
         float   PickDist=0;             //拾取辆距离轴心的距离
 
-        TransformTranslate3f CurTranslate;
+        TransformTranslate3f *CurTranslate=nullptr;
 
     public:
 
@@ -214,7 +216,9 @@ namespace
                 PickAXIS=CurAXIS;
                 PickDist=CurDist;
 
-                CurTranslate.SetOffset(Vector3f(0,0,0)); //重置当前平移偏移
+                CurTranslate=GetTransform().AddTranslate(Vector3f(0,0,0));
+
+                return io::EventProcResult::Break; // 处理完鼠标按下事件，停止进一步处理
             }
 
             return io::EventProcResult::Continue;
@@ -232,9 +236,7 @@ namespace
             if(!cc)
                 return io::EventProcResult::Continue;
 
-            Ray ray;
-
-            cc->SetMouseRay(&ray,mouse_coord);
+            cc->SetMouseRay(&MouseRay,mouse_coord);
 
             Matrix4f l2w=GetLocalToWorldMatrix();
             Vector3f center=TransformPosition(l2w,Vector3f(0,0,0));
@@ -260,9 +262,9 @@ namespace
                 end     =TransformPosition(l2w,axis_vector*(GIZMO_CENTER_SPHERE_RADIUS+GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH));
 
                 //求射线与线段的最近点
-                ray.ClosestPoint(p_ray,         //射线上的点
-                                 p_ls,          //线段上的点
-                                 start,end);    //线段
+                MouseRay.ClosestPoint(  p_ray,         //射线上的点
+                                        p_ls,          //线段上的点
+                                        start,end);    //线段
 
                 dist=glm::distance(p_ray,p_ls); //计算射线与线段的距离
 
@@ -279,7 +281,10 @@ namespace
                     if(CurAXIS==PickAXIS) //如果当前轴与拾取轴相同
                     {
                         //如果当前轴与拾取轴相同，则计算平移偏移
-                        CurTranslate.SetOffset(axis_vector*(CurDist-PickDist));
+                        if(CurTranslate)
+                        {
+                            CurTranslate->SetOffset(axis_vector*(CurDist-PickDist));
+                        }
                     }
                 }
                 else
@@ -291,8 +296,8 @@ namespace
                 axis[i].cone->SetOverrideMaterial(mi);
 
                 //std::cout<<"Mouse:    "<<mouse_coord.x<<","<<mouse_coord.y<<std::endl;
-                //std::cout<<"Ray(Ori): "<<ray.origin.x<<","<<ray.origin.y<<","<<ray.origin.z<<")"<<std::endl;
-                //std::cout<<"Ray(Dir): "<<ray.direction.x<<","<<ray.direction.y<<","<<ray.direction.z<<")"<<std::endl;
+                //std::cout<<"Ray(Ori): "<<MouseRay.origin.x<<","<<MouseRay.origin.y<<","<<MouseRay.origin.z<<")"<<std::endl;
+                //std::cout<<"Ray(Dir): "<<MouseRay.direction.x<<","<<MouseRay.direction.y<<","<<MouseRay.direction.z<<")"<<std::endl;
                 //std::cout<<"Distance: "<<dist<<std::endl;
             }
 
