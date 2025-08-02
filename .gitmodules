@@ -1,21 +1,21 @@
 [submodule "CMCMakeModule"]
 	path = CMCMakeModule
-	url = https://github.com/hyzboy/CMCMakeModule
+	url = http://git.hyzgame.com:3000/hyzboy/CMCMakeModule
 [submodule "CMCore"]
 	path = CMCore
-	url = https://github.com/hyzboy/CMCore
+	url = http://git.hyzgame.com:3000/hyzboy/CMCore
 [submodule "CMPlatform"]
 	path = CMPlatform
-	url = https://github.com/hyzboy/CMPlatform
+	url = http://git.hyzgame.com:3000/hyzboy/CMPlatform
 [submodule "CMAssetsManage"]
 	path = CMAssetsManage
-	url = https://github.com/hyzboy/CMAssetsManage.git
+	url = http://git.hyzgame.com:3000/hyzboy/CMAssetsManage.git
 [submodule "res"]
 	path = res
-	url = https://github.com/hyzboy/RuntimeData.git
+	url = http://git.hyzgame.com:3000/hyzboy/RuntimeData.git
 [submodule "CMSceneGraph"]
 	path = CMSceneGraph
-	url = https://github.com/hyzboy/CMSceneGraph.git
+	url = http://git.hyzgame.com:3000/hyzboy/CMSceneGraph.git
 [submodule "CMUtil"]
 	path = CMUtil
-	url = https://github.com/hyzboy/CMUtil.git
+	url = http://git.hyzgame.com:3000/hyzboy/CMUtil.git
