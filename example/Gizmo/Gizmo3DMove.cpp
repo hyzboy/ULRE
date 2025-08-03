@@ -63,6 +63,8 @@ namespace
 
         int     PickAXIS=-1;            //拾取轴
         float   PickDist=0;             //拾取辆距离轴心的距离
+        Matrix4f PickL2W;               //拾取时的变换矩阵
+        Vector3f PickCenter;            //拾取时的中心位置
 
         TransformTranslate3f *CurTranslate=nullptr;
 
@@ -213,10 +215,19 @@ namespace
 
             if(CurAXIS>=0&&CurAXIS<3)
             {
-                PickAXIS=CurAXIS;
-                PickDist=CurDist;
+                PickAXIS    =CurAXIS;
+                PickDist    =CurDist;
+                PickL2W     =GetLocalToWorldMatrix(); //记录拾取时的变换矩阵
+                PickCenter  =TransformPosition(PickL2W,Vector3f(0,0,0)); //记录拾取时的中心位置
 
-                CurTranslate=GetTransform().AddTranslate(Vector3f(0,0,0));
+                if(CurTranslate)
+                {
+                    CurTranslate->SetOffset(Vector3f(0,0,0));
+                }
+                else
+                {
+                    CurTranslate=GetTransform().AddTranslate(Vector3f(0,0,0));
+                }
 
                 return io::EventProcResult::Break; // 处理完鼠标按下事件，停止进一步处理
             }
@@ -226,11 +237,56 @@ namespace
 
         io::EventProcResult OnReleased(const Vector2i &,io::MouseButton mb) override
         {
+            if(CurTranslate)
+            {
+                GetTransform().RemoveTransform(CurTranslate);
+                CurTranslate=nullptr;
+            }
+
+            return io::EventProcResult::Continue;
+        }
+
+        io::EventProcResult OnMoveAtControl(const Vector2i &mouse_coord)
+        {
+            CameraControl *cc=GetCameraControl();
+
+            if(!cc)
+                return io::EventProcResult::Continue;
+
+            cc->SetMouseRay(&MouseRay,mouse_coord);
+
+            const CameraInfo *ci=cc->GetCameraInfo();
+
+            Vector3f axis_vector=GetAxisVector(AXIS(PickAXIS)); //取得轴向量
+
+            Vector3f end=axis_vector*std::abs(ci->zfar-ci->znear);
+
+            end=TransformPosition(PickL2W,end); //将轴的终点转换到世界坐标
+
+            Vector3f p_ray,p_ls;
+
+            MouseRay.ClosestPoint(
+                p_ray,          // 射线上的点
+                p_ls,           // 线段上的点
+                PickCenter,     // 线段起点
+                end);           // 线段终点
+
+            CurDist=glm::length(p_ls-PickCenter); //计算线段上的点与原点的距离
+            CurTranslate->SetOffset(axis_vector*(CurDist-PickDist)); //设置偏移量
+
+            std::cout<<"PickDist: "<<PickDist<<std::endl;
+            std::cout<<"CurDist : "<<CurDist<<std::endl;
+
             return io::EventProcResult::Continue;
         }
 
         io::EventProcResult OnMove(const Vector2i &mouse_coord) override
         {
+            if(CurTranslate)
+            {
+                return OnMoveAtControl(mouse_coord); //已经选中一个轴了
+            }
+
             CameraControl *cc=GetCameraControl();
 
             if(!cc)
@@ -244,7 +300,6 @@ namespace
             Vector3f start;
             Vector3f end;
             Vector3f p_ray,p_ls;
-            float axis_radius;
             float dist;
             float pixel_per_unit;
             float center_ppu;
@@ -256,10 +311,10 @@ namespace
 
             for(int i=0;i<3;i++)
             {
-                axis_vector=GetAxisVector(AXIS(i))*center_ppu; //取得轴向量
+                axis_vector=GetAxisVector(AXIS(i)); //取得轴向量
 
-                start   =TransformPosition(l2w,axis_vector* GIZMO_CENTER_SPHERE_RADIUS); //将轴的起点转换到世界坐标
-                end     =TransformPosition(l2w,axis_vector*(GIZMO_CENTER_SPHERE_RADIUS+GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH));
+                start   =TransformPosition(l2w,axis_vector*center_ppu* GIZMO_CENTER_SPHERE_RADIUS); //将轴的起点转换到世界坐标
+                end     =TransformPosition(l2w,axis_vector*center_ppu*(GIZMO_CENTER_SPHERE_RADIUS+GIZMO_CONE_LENGTH+GIZMO_CYLINDER_HALF_LENGTH));
 
                 //求射线与线段的最近点
                 MouseRay.ClosestPoint(  p_ray,         //射线上的点
@@ -276,16 +331,7 @@ namespace
                     mi=pick_mi;
 
                     CurAXIS=i;
-                    CurDist=glm::length(p_ls);      //计算线段上的点与原点的距离
-
-                    if(CurAXIS==PickAXIS) //如果当前轴与拾取轴相同
-                    {
-                        //如果当前轴与拾取轴相同，则计算平移偏移
-                        if(CurTranslate)
-                        {
-                            CurTranslate->SetOffset(axis_vector*(CurDist-PickDist));
-                        }
-                    }
+                    CurDist=glm::length(p_ls-start);      //计算线段上的点与原点的距离
                 }
                 else
                 {
@@ -300,6 +346,9 @@ namespace
                 //std::cout<<"Ray(Dir): "<<MouseRay.direction.x<<","<<MouseRay.direction.y<<","<<MouseRay.direction.z<<")"<<std::endl;
                 //std::cout<<"Distance: "<<dist<<std::endl;
             }
+
+            if(CurTranslate)
+                return io::EventProcResult::Break;
 
             return io::EventProcResult::Continue;
         }
