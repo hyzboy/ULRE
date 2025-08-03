@@ -177,16 +177,16 @@ void RenderFramework::CreateDefaultRenderer()
         auto fpcc=new FirstPersonCameraControl(rt->GetViewportInfo(),default_camera,ubo_camera_info);
 
         auto ckc=new CameraKeyboardControl(fpcc);
-        auto cmc=new CameraMouseControl(fpcc);
+        //auto cmc=new CameraMouseControl(fpcc);
 
         this->AddChildDispatcher(fpcc);
 
         fpcc->AddChildDispatcher(ckc);
-        fpcc->AddChildDispatcher(cmc);
+        //fpcc->AddChildDispatcher(cmc);
 
         default_camera_control=fpcc;
 
-        mouse_event=cmc;
+        //mouse_event=cmc;
     }
 
     default_renderer->SetCameraControl(default_camera_control);
