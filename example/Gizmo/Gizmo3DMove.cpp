@@ -61,11 +61,12 @@ namespace
         int     CurAXIS=-1;             //当前鼠标选中轴
         float   CurDist=0;              //当前距离
 
-        int     PickAXIS=-1;            //拾取轴
-        float   PickDist=0;             //拾取辆距离轴心的距离
-        float   PickCenterPPU=0;        //拾取时的中心点相对屏幕空间象素的缩放比
-        Matrix4f PickL2W;               //拾取时的变换矩阵
-        Vector3f PickCenter;            //拾取时的中心位置
+        int         PickAXIS=-1;        //拾取轴
+
+        float       PickDist=0;         //拾取辆距离轴心的距离
+        Matrix4f    PickL2W;            //拾取时的变换矩阵
+        Matrix4f    PickW2L;            //拾取时的变换矩阵逆
+        Vector3f    PickCenter;         //拾取时的中心位置
 
         TransformTranslate3f *CurTranslate=nullptr;
 
@@ -218,8 +219,6 @@ namespace
             {
                 PickAXIS    =CurAXIS;
                 PickDist    =CurDist;
-                PickL2W     =GetLocalToWorldMatrix(); //记录拾取时的变换矩阵
-                PickCenter  =TransformPosition(PickL2W,Vector3f(0,0,0)); //记录拾取时的中心位置
 
                 if(CurTranslate)
                 {
@@ -258,30 +257,29 @@ namespace
 
             const CameraInfo *ci=cc->GetCameraInfo();
 
+            const Matrix4f l2w=GetLocalToWorldMatrix();
+
             Vector3f axis_vector=GetAxisVector(AXIS(PickAXIS)); //取得轴向量
 
-            Vector3f end=axis_vector*std::abs(ci->zfar-ci->znear);
+            Vector3f start=axis_vector*std::abs(ci->zfar-ci->znear);
+            Vector3f end  =-start;
 
-            end=TransformPosition(PickL2W,end); //将轴的终点转换到世界坐标
+            start=TransformPosition(PickL2W,start); //将轴的终点转换到世界坐标
+            end  =TransformPosition(PickL2W,end);   //将轴的终点转换到世界坐标
 
             Vector3f p_ray,p_ls;
 
             MouseRay.ClosestPoint(
                 p_ray,          // 射线上的点
                 p_ls,           // 线段上的点
-                PickCenter,     // 线段起点
+                start,          // 线段起点
                 end);           // 线段终点
 
-            const float cur_ppu=cc->GetPixelPerUnit(p_ls);                          //求线段上的点相对屏幕空间象素的缩放比
+            const Vector3f p_ls_local=TransformPosition(PickW2L,p_ls); //将线段上的点转换到本地坐标系
 
-            CurDist=glm::length(p_ls-PickCenter);
+            CurDist=glm::length(p_ls)-PickDist;
 
-            const float offset=(CurDist/PickCenterPPU)-(PickDist/PickCenterPPU);    //计算线段上的点与原点的距离
-
-            CurTranslate->SetOffset(axis_vector*offset);                            //设置偏移量
-
-            std::cout<<"PickDist: "<<PickDist<<std::endl;
-            std::cout<<"CurDist : "<<CurDist<<std::endl;
+            CurTranslate->SetOffset(axis_vector*CurDist);                            //设置偏移量
 
             return io::EventProcResult::Continue;
         }
@@ -302,6 +300,7 @@ namespace
 
             const CameraInfo *ci=cc->GetCameraInfo();
             const Matrix4f l2w=GetLocalToWorldMatrix();
+            const Matrix4f w2l=GetInverseLocalToWorldMatrix();
             const Vector3f center=TransformPosition(l2w,Vector3f(0,0,0));
             const float center_ppu=cc->GetPixelPerUnit(center); //求原点坐标相对屏幕空间象素的缩放比
             Vector3f axis_vector;
@@ -309,8 +308,12 @@ namespace
             Vector3f end;
             Vector3f p_ray,p_ls;
             float dist;
+            float to_center_dist;
             float pixel_per_unit;
             MaterialInstance *mi;
+            const float MaxViewLength=std::fabs(ci->zfar-ci->znear);
+            const float axis_sphere_radius=glm::length(AxisVector::X*(GIZMO_CENTER_SPHERE_RADIUS/2.0f));
+            const float axis_length=glm::length(AxisVector::X*GIZMO_ARROW_LENGTH)-axis_sphere_radius;
 
             CurAXIS=-1;
 
@@ -318,27 +321,45 @@ namespace
             {
                 axis_vector=GetAxisVector(AXIS(i)); //取得轴向量
 
-                start   =TransformPosition(l2w,axis_vector*center_ppu* GIZMO_CENTER_SPHERE_RADIUS); //将轴的起点转换到世界坐标
-                end     =TransformPosition(l2w,axis_vector*std::abs(ci->zfar-ci->znear));
+                start   =TransformPosition(l2w,axis_vector*GIZMO_CENTER_SPHERE_RADIUS); //将轴的起点转换到世界坐标
+                end     =TransformPosition(l2w,axis_vector*MaxViewLength);
 
                 //求射线与线段的最近点
                 MouseRay.ClosestPoint(  p_ray,         //射线上的点
                                         p_ls,          //线段上的点
                                         start,end);    //线段
 
-                dist=glm::distance(p_ray,p_ls); //计算射线与线段的距离
-
                 //求p_ls坐标相对屏幕空间象素的缩放比
                 pixel_per_unit=cc->GetPixelPerUnit(p_ls);
+                to_center_dist=glm::distance(p_ls,center)/pixel_per_unit;        //到中心点的距离
 
-                if(dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit)
+                if(i==0)
+                {
+                    std::cout<<"line segment ppu: "<<pixel_per_unit<<std::endl;
+                    std::cout<<"to center dist: "<<to_center_dist<<std::endl;
+                }
+
+                dist=glm::distance(p_ray,p_ls);         //计算射线与线段的距离
+
+                if(i==0)
+                {
+                    std::cout<<"ray to line dist: "<<dist<<std::endl;
+                }
+
+                if(to_center_dist>axis_sphere_radius
+                 &&to_center_dist<axis_length
+                 &&dist<GIZMO_CYLINDER_RADIUS*pixel_per_unit)
                 {
                     mi=pick_mi;
 
                     CurAXIS=i;
-                    CurDist=glm::length(p_ls-center)/center_ppu;      //计算线段上的点与原点的距离
 
-                    PickCenterPPU=center_ppu;
+                    PickL2W=l2w;     //记录拾取时的变换矩阵
+                    PickW2L=w2l;
+
+                    p_ls=TransformPosition(w2l,p_ls);   //将线段上的点转换到本地坐标系
+
+                    CurDist=glm::length(p_ls);          //计算线段上的点与原点的距离
                 }
                 else
                 {
