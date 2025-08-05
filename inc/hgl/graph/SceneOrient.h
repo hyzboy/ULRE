@@ -41,6 +41,7 @@ namespace hgl::graph
         const Matrix4f &    GetLocalMatrix                          ()const {return scene_matrix.GetLocalMatrix();}         ///<取得本地矩阵
 
         TransformManager &  GetTransform                            ()      {return scene_matrix.GetTransform();}           ///<取得变换管理器
+        void                ClearTransforms                         ()      {       scene_matrix.GetTransform().Clear();}   ///<清空变换列表
 
         const Matrix4f &    GetLocalToWorldMatrix                   ()      {return scene_matrix.GetLocalToWorldMatrix();}  ///<取得本地到世界矩阵
         const Matrix4f &    GetInverseLocalToWorldMatrix            ()      {return scene_matrix.GetInverseLocalToWorldMatrix();}
