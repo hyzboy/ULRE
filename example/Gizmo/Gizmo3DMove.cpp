@@ -236,7 +236,12 @@ namespace
         {
             if(CurTranslate)
             {
-                GetTransform().RemoveTransform(CurTranslate);
+                const Matrix4f new_l2w=GetLocalToWorldMatrix();
+
+                ClearTransforms(); //清除所有变换
+
+                SetLocalMatrix(new_l2w); //设置新的变换矩阵
+
                 CurTranslate=nullptr;
             }
 
