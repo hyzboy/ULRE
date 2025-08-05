@@ -274,9 +274,9 @@ namespace
                 p_ls,           // 线段上的点
                 p1,p2);         // 线段
 
-            CurDist=glm::distance(p_ls,PickCenter);
+            CurDist=glm::dot(p_ls-PickCenter,axis_vector);              //计算偏移量
 
-            CurTranslate->SetOffset(axis_vector*(CurDist-PickDist));                            //设置偏移量
+            CurTranslate->SetOffset(axis_vector*(CurDist-PickDist));    //设置偏移量
 
             return io::EventProcResult::Continue;
         }
