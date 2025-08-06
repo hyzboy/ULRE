@@ -99,7 +99,7 @@ protected:
             int                     first_indirect_draw_index;
             uint                    indirect_draw_count;
 
-    bool BindVAB(const MeshDataBuffer *,const uint);
+    bool BindVAB(const RenderItem *);
 
     void ProcIndirectRender();
     bool Render(RenderItem *);
