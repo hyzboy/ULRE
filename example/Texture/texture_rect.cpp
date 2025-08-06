@@ -1,22 +1,13 @@
 ﻿// 画一个带纹理的矩形，2D模式专用
 
-#include"VulkanAppFramework.h"
-#include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKSampler.h>
-#include<hgl/graph/VKInlinePipeline.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 
+#include<hgl/component/MeshComponent.h>
+
 using namespace hgl;
 using namespace hgl::graph;
-
-VK_NAMESPACE_BEGIN
-Texture2D *CreateTexture2DFromFile(VulkanDevice *device,const OSString &filename);
-VK_NAMESPACE_END
-
-constexpr uint32_t SCREEN_WIDTH=256;
-constexpr uint32_t SCREEN_HEIGHT=256;
 
 constexpr float position_data[4]=
 {
@@ -32,7 +23,7 @@ constexpr float tex_coord_data[4]=
     1,1
 };
 
-class TestApp:public VulkanApplicationFramework
+class TestApp:public WorkObject
 {
 private:
 
@@ -40,17 +31,15 @@ private:
     Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *        render_obj          =nullptr;
     Pipeline *          pipeline            =nullptr;
 
 private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDevAttr(),"RectTexture2D",PrimitiveType::SolidRectangles);
-
-        cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
-        cfg.local_to_world=false;
+        mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
+                                        CoordinateSystem2D::ZeroToOne,
+                                        mtl::WithLocalToWorld::Without);
 
         material=db->LoadMaterial("Std2D/RectTexture2D",&cfg);
 
@@ -58,12 +47,13 @@ private:
             return(false);
 
 //        pipeline=db->CreatePipeline(material_instance,sc_render_target,OS_TEXT("res/pipeline/solid2d"));
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,PrimitiveType::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);
 
-        texture=db->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+        texture=LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
+
         if(!texture)return(false);
 
         sampler=db->CreateSampler();
@@ -81,56 +71,37 @@ private:
 
     bool InitVBO()
     {
-        PrimitiveCreater rpc(device,material_instance->GetVIL());
-        
-        rpc.Init("Rectangle",1);
+        Mesh *render_obj=CreateMesh("TextureRect",1,material_instance,pipeline,
+                                    {
+                                        {VAN::Position,VF_V4F,position_data},
+                                        {VAN::TexCoord,VF_V4F,tex_coord_data}
+                                    });
 
-        if(!rpc.WriteVAB(VAN::Position,VF_V4F,position_data))return(false);
-        if(!rpc.WriteVAB(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
+        if(!render_obj)
+            return(false);
 
-        render_obj=db->CreateMesh(&rpc,material_instance,pipeline);
-        return(render_obj);
+        CreateComponentInfo cci(GetSceneRoot());
+
+        return CreateComponent<MeshComponent>(&cci,render_obj); //创建一个静态网格组件
     }
 
 public:
 
-    bool Init()
-    {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
-            return(false);
-            
+    using WorkObject::WorkObject;
+
+    bool Init() override
+    {            
         if(!InitMaterial())
             return(false);
 
         if(!InitVBO())
             return(false);
-            
-        BuildCommandBuffer(render_obj);
 
         return(true);
     }
-
-    void Resize(uint w,uint h)override
-    {
-        VulkanApplicationFramework::Resize(w,h);
-        
-        BuildCommandBuffer(render_obj);
-    }
 };//class TestApp:public VulkanApplicationFramework
 
-int main(int,char **)
+int os_main(int,os_char **)
 {
-#ifdef _DEBUG
-    if(!CheckStrideBytesByFormat())
-        return 0xff;
-#endif//
-
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunFramework<TestApp>(OS_TEXT("Draw a rectangle with texture"),256,256);
 }

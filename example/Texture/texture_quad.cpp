@@ -8,13 +8,6 @@
 using namespace hgl;
 using namespace hgl::graph;
 
-VK_NAMESPACE_BEGIN
-Texture2D *CreateTexture2DFromFile(VulkanDevice *device,const OSString &filename);
-VK_NAMESPACE_END
-
-constexpr uint32_t SCREEN_WIDTH=256;
-constexpr uint32_t SCREEN_HEIGHT=256;
-
 constexpr uint32_t VERTEX_COUNT=4;
 
 constexpr float position_data[VERTEX_COUNT][2]=
@@ -115,5 +108,5 @@ public:
 
 int os_main(int,os_char **)
 {
-    return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"));
+    return RunFramework<TestApp>(OS_TEXT("Draw a quad with texture"),256,256);
 }
