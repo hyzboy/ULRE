@@ -19,7 +19,15 @@ MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipe
 
     camera_info=nullptr;
 
-    assign_buffer=new RenderAssignBuffer(device,rp_index.material);
+    if(rpi.material->hasLocalToWorld()
+     ||rpi.material->hasMI())
+    {
+        assign_buffer=new RenderAssignBuffer(device,rp_index.material);
+    }
+    else
+    {
+        assign_buffer=nullptr;
+    }
 
     icb_draw=nullptr;
     icb_draw_indexed=nullptr;
@@ -275,8 +283,11 @@ void MaterialRenderList::Stat()
     icb_draw_indexed->Unmap();
 }
 
-bool MaterialRenderList::BindVAB(const MeshDataBuffer *pdb,const uint ri_index)
+bool MaterialRenderList::BindVAB(const RenderItem *ri)
 {
+    const MeshDataBuffer *  pdb     =ri->pdb;
+    const uint              ri_index=ri->first_instance;
+
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
     //const VIL *vil=last_vil;
@@ -299,7 +310,7 @@ bool MaterialRenderList::BindVAB(const MeshDataBuffer *pdb,const uint ri_index)
     {
         if(!vab_list->Add(assign_buffer->GetVAB(),0))//ASSIGN_VAB_STRIDE_BYTES*ri_index);
         {
-            //一般出现这个情况是因为材质中没有配置需要L2W
+            //一般出现这个情况是因为材质中没有配置需要L2W/或是MIData
             return(false);
         }
     }
@@ -365,7 +376,7 @@ bool MaterialRenderList::Render(RenderItem *ri)
         last_data_buffer=ri->pdb;
         last_render_data=nullptr;
 
-        if(!BindVAB(ri->pdb,ri->first_instance))
+        if(!BindVAB(ri))
         {
             //这个问题很严重哦
             return(false);
