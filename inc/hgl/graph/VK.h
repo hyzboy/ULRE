@@ -125,7 +125,11 @@ enum class DescriptorType:uint32
     // 对应Image2D/3D/Cube类型，可读可写。
     // 如
     //  layout(set = 0, binding = 3, r32f) uniform image2D myImage;
-    Image               =VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+    //
+    // 
+    //  vec4 value = imageLoad(myStorageImage, ivec2(x, y));                  //读取像素    
+    //  imageStore(myStorageImage, ivec2(x, y), vec4(1.0, 0.0, 0.0, 1.0));    //写入像素
+    RWImage             =VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
 
     // 只读数组，对应glsl中的samplerBuffer
     // 如
