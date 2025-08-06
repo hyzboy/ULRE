@@ -98,6 +98,61 @@ struct PipelineLayoutData;
 class DescriptorSet;
 enum class DescriptorSetType;
 
+enum class DescriptorType:uint32
+{
+    //对应glsl中的绑定的texture1D/2D/Cube等
+    //如
+    //  layout(set = 0, binding = 0) uniform texture2D myImage;
+    Texture             =VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+
+    //对应glsl中的sampler类型
+    // 如
+    //  layout(set = 0, binding = 1) uniform sampler mySampler;
+    Sampler             =VK_DESCRIPTOR_TYPE_SAMPLER,
+
+    //以上两项要组合使用
+    // 如
+    //  vec4 color=texture(sampler2D(myImage,mySampler),texCoord);
+
+
+    //对应glsl中的sampler2D/3D/Cube等
+    // 如
+    //  layout(set = 0, binding = 2) uniform sampler2D mySampler2D;
+    //
+    //  vec4 color=texture(mySampler2D,texCoord);
+    TextureSampler      =VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+
+    // 对应Image2D/3D/Cube类型，可读可写。
+    // 如
+    //  layout(set = 0, binding = 3, r32f) uniform image2D myImage;
+    Image               =VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+
+    // 只读数组，对应glsl中的samplerBuffer
+    // 如
+    //  layout(set = 0, binding = 4) uniform samplerBuffer myTexelBuffer;
+    //
+    //  vec4 color=texelFetch(myTexelBuffer,texelIndex);
+    Array               =VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+
+    // 可读写数组，对应glsl中的imageBuffer
+    // 如
+    //  layout(set = 0, binding = 5) uniform imageBuffer myStorageBuffer;
+    //
+    //  float val = imageLoad(myStorageBuffer, index).x;  // 读取
+    //  imageStore(myStorageBuffer, index, vec4(val * 2.0));  // 写入
+    RWArray             =VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+
+    UBO                 =VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    SSBO                =VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+
+    DynamicUBO          =VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+    DynamicSSBO         =VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+
+    InputAttachment     =VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+
+    ENUM_CLASS_RANGE(Sampler,InputAttachment)
+};
+
 struct VertexInputAttribute;
 
 class ShaderResource;
