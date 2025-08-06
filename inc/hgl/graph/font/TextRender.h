@@ -1,88 +1,85 @@
-﻿#ifndef HGL_GRAPH_TEXT_RENDER_INCLUDE
-#define HGL_GRAPH_TEXT_RENDER_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
 #include<hgl/color/Color4f.h>
+#include<hgl/type/SortedSet.h>
 
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
+    class FontSource;
+    class TileFont;
+    class TextLayout;
+    class TextPrimitive;
+
+    class TextRender
     {
-        class FontSource;
-        class TileFont;
-        class TextLayout;
-        class TextPrimitive;
+        VulkanDevice *      device;
+        RenderResource *    db;
 
-        class TextRender
-        {
-            VulkanDevice *         device;
-            RenderResource *    db;
+        Material *          material;
+        MaterialInstance *  material_instance;
 
-            Material *          material;
-            MaterialInstance *  material_instance;
+        Sampler *           sampler;
 
-            Sampler *           sampler;
+        Pipeline *          pipeline;
 
-            Pipeline *          pipeline;
+        FontSource *        font_source;
 
-            FontSource *        font_source;
-
-            TileFont *          tile_font;
-            TextLayout *        tl_engine;
+        TileFont *          tile_font;
+        TextLayout *        tl_engine;
     
-            Color4f             color;
-            DeviceBuffer *         ubo_color;
+        Color4f             color;
+        DeviceBuffer *      ubo_color;
 
-            SortedSets<TextPrimitive *> tr_sets;
+        SortedSet<TextPrimitive *> tr_sets;
 
-        private:
+    private:
 
-            friend TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
-            TextRender(VulkanDevice *dev,FontSource *);
+        friend TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
 
-            bool InitTileFont(int limit);
-            bool InitTextLayoutEngine();
-            bool InitUBO();
-            bool InitMaterial(RenderPass *,DeviceBuffer *);
+        TextRender(VulkanDevice *dev,FontSource *);
 
-        public:
+        bool InitTileFont(int limit);
+        bool InitTextLayoutEngine();
+        bool InitUBO();
+        bool InitMaterial(RenderPass *,DeviceBuffer *);
 
-            ~TextRender();
+    public:
 
-            bool Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit);
+        ~TextRender();
 
-        public:
+        bool Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit);
 
-            TextPrimitive *CreatePrimitive();
-            TextPrimitive *CreatePrimitive(const U16String &str);
+    public:
 
-            bool Layout(TextPrimitive *tr,const U16String &str);
+        TextPrimitive *CreatePrimitive();
+        TextPrimitive *CreatePrimitive(const U16String &str);
 
-            Mesh *CreateMesh(TextPrimitive *text_primitive);
+        bool Layout(TextPrimitive *tr,const U16String &str);
 
-            void Release(TextPrimitive *);
-        };//class TextRender
+        Mesh *CreateMesh(TextPrimitive *text_primitive);
 
-        /**
-         * 创建一个CJK字体源
-         * @param cf CJK字体名称
-         * @param lf 其它字体名称
-         * @param size 字体象素高度
-         */
-        FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size);
+        void Release(TextPrimitive *);
+    };//class TextRender
 
-        /**
-         * 创建一个字体源
-         * @param name 字体名称
-         * @param size 字体象素高度
-         */
-        FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
+    /**
+        * 创建一个CJK字体源
+        * @param cf CJK字体名称
+        * @param lf 其它字体名称
+        * @param size 字体象素高度
+        */
+    FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size);
 
-        /**
-         * 创建一个文本渲染器
-         * @param limit 节数限制(-1表示自动)
-         */
-        TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit);
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_TEXT_RENDER_INCLUDE
+    /**
+        * 创建一个字体源
+        * @param name 字体名称
+        * @param size 字体象素高度
+        */
+    FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
+
+    /**
+        * 创建一个文本渲染器
+        * @param limit 节数限制(-1表示自动)
+        */
+    TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
+}//namespace hgl::graph

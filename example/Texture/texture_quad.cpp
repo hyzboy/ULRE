@@ -104,7 +104,7 @@ public:
 
         return(true);
     }
-};//class TestApp:public VulkanApplicationFramework
+};//class TestApp:public WorkObject
 
 int os_main(int,os_char **)
 {
