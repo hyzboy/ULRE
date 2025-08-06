@@ -11,9 +11,14 @@
 
 namespace hgl
 {
-    namespace graph::mtl
+    namespace graph
     {
-        class MaterialCreateInfo;
+        class Texture2D;
+
+        namespace mtl
+        {
+            class MaterialCreateInfo;
+        }
     }
 
     /**
@@ -114,6 +119,8 @@ namespace hgl
         {
             return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr;
         }
+
+        graph::Texture2D *LoadTexture2D(const OSString &file_name,bool auto_mipmap=true);
 
     public: //Component 相关
 

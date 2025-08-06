@@ -6,6 +6,7 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
+#include<hgl/graph/module/TextureManager.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -59,5 +60,21 @@ namespace hgl
         renderer->Submit();
 
         //std::cout<<"WorkObject::Render End"<<std::endl;
+    }
+
+    graph::Texture2D *WorkObject::LoadTexture2D(const OSString &filename,bool auto_mipmap)
+    {
+        if(filename.IsEmpty())
+            return(nullptr);
+
+        auto tm=GetTextureManager();
+
+        if(!tm)
+        {
+            //hgl::LogError(OS_TEXT("WorkObject::LoadTexture2D,GetTextureManager() is nullptr!"));
+            return(nullptr);
+        }
+
+        return tm->LoadTexture2D(filename,auto_mipmap);
     }
 }//namespcae hgl
