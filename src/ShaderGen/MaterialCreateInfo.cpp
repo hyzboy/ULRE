@@ -27,6 +27,8 @@ MaterialCreateInfo::MaterialCreateInfo(const MaterialCreateConfig *mc)
         mi_max_count=0;
         mi_ubo=nullptr;
     }
+
+    has_l2w_matrix=mc->local_to_world;
 }
 
 bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiString &codes)

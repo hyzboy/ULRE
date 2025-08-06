@@ -10,8 +10,6 @@ struct Material2DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 {
     CoordinateSystem2D  coordinate_system;      ///<使用的坐标系
 
-    bool                local_to_world;         ///<包含LocalToWorld矩阵
-
     VAType              position_format;        ///<position格式
 
 public:
@@ -19,14 +17,13 @@ public:
     Material2DCreateConfig(const PrimitiveType &p,
                            const CoordinateSystem2D &cs=CoordinateSystem2D::NDC,
                            const WithLocalToWorld &l2w=WithLocalToWorld::Without)
-        :MaterialCreateConfig(p)
+        :MaterialCreateConfig(p,l2w==WithLocalToWorld::With)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=false;      //不输出深度
         rt_output.stencil=false;    //不输出stencil
 
         coordinate_system=cs;
-        local_to_world=(l2w==WithLocalToWorld::With);
 
         if(prim==PrimitiveType::SolidRectangles
          ||prim==PrimitiveType::WireRectangles)
@@ -42,9 +39,6 @@ public:
         if(off)return off;
 
         off=(int)coordinate_system-(int)cfg.coordinate_system;
-        if(off)return off;
-
-        off=local_to_world-cfg.local_to_world;
         if(off)return off;
 
         off=position_format.Comp(cfg.position_format);

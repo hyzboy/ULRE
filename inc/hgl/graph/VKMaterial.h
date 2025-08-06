@@ -14,6 +14,11 @@ namespace hgl
 
 VK_NAMESPACE_BEGIN
 
+namespace mtl
+{
+    class MaterialCreateInfo;
+}
+
 using ShaderStageCreateInfoList=ArrayList<VkPipelineShaderStageCreateInfo>;
 
 /**
@@ -44,11 +49,13 @@ class Material
     
     ActiveMemoryBlockManager *mi_data_manager;
 
+    bool has_l2w_matrix;                ///<是否有LocalToWorld矩阵
+
 private:
 
     friend class RenderResource;
 
-    Material(const AnsiString &,const PrimitiveType &);
+    Material(const AnsiString &,const mtl::MaterialCreateInfo *);
 
 public:
 
@@ -97,7 +104,9 @@ public:
 
 public:
 
-    const bool      HasMI           ()const{return mi_data_bytes>0;}
+    const bool      hasLocalToWorld ()const{return has_l2w_matrix; }
+
+    const bool      hasMI           ()const{return mi_data_bytes>0;}
     const uint32_t  GetMIDataBytes  ()const{return mi_data_bytes;}
     const uint32_t  GetMIMaxCount   ()const{return mi_max_count;}
 

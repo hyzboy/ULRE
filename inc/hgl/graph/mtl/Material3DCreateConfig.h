@@ -11,8 +11,6 @@ struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 {
     bool                camera;                 ///<包含摄像机矩阵信息
 
-    bool                local_to_world;         ///<包含LocalToWorld矩阵
-
     VAType              position_format;        ///<position格式
 
 //    bool                reverse_depth;          ///<使用反向深度
@@ -22,14 +20,13 @@ public:
     Material3DCreateConfig(const PrimitiveType &p,
                            const WithCamera &wc=WithCamera::With,
                            const WithLocalToWorld &l2w=WithLocalToWorld::With)
-        :MaterialCreateConfig(p)
+        :MaterialCreateConfig(p,l2w==WithLocalToWorld::With)
     {
         rt_output.color=1;          //输出一个颜色
         rt_output.depth=true;       //输出深度
         rt_output.stencil=false;    //不输出stencil
 
         camera=(wc==WithCamera::With);
-        local_to_world=(l2w==WithLocalToWorld::With);
 
         position_format=VAT_VEC3;
 
@@ -43,9 +40,6 @@ public:
         if(off)return off;
 
         off=camera-cfg.camera;
-        if(off)return off;
-
-        off=local_to_world-cfg.local_to_world;
         if(off)return off;
 
         off=position_format.Comp(cfg.position_format);
