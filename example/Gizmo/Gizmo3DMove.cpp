@@ -35,6 +35,8 @@ VK_NAMESPACE_BEGIN
 
 namespace
 {
+//    #define GIZMO_MOVE_SQUARE 
+
     /**
     * 移动 Gizmo 节点
     */
@@ -45,7 +47,10 @@ namespace
             MaterialInstance *mi;       //材质实例
             MeshComponent *cylinder;    //圆柱
             MeshComponent *cone;        //圆锥
+
+        #ifdef GIZMO_MOVE_SQUARE
             MeshComponent *square;      //双轴调节正方形
+        #endif//GIZMO_MOVE_SQUARE
         };
 
         MaterialInstance *pick_mi;
@@ -98,9 +103,13 @@ namespace
             for(size_t i=0;i<3;i++)
             {
                 gmn->axis[i].mi=axis[i].mi; // 复制材质实例
+
                 DUPLICATION_COMPONENT(axis[i].cylinder);
                 DUPLICATION_COMPONENT(axis[i].cone);
+
+            #ifdef GIZMO_MOVE_SQUARE
                 DUPLICATION_COMPONENT(axis[i].square);
+            #endif//GIZMO_MOVE_SQUARE
             }
 
         #undef DUPLICATION_COMPONENT
@@ -109,14 +118,18 @@ namespace
         bool CreateGizmoGeometry(RenderFramework *render_framework)
         {
             ComponentDataPtr SpherePtr  =GetGizmoMeshCDP(GizmoShape::Sphere);
-            ComponentDataPtr CylinderPtr=GetGizmoMeshCDP(GizmoShape::Cylinder);
-            ComponentDataPtr ConePtr    =GetGizmoMeshCDP(GizmoShape::Cone);
-            ComponentDataPtr SquarePtr  =GetGizmoMeshCDP(GizmoShape::Square);
-
             if(!SpherePtr   )return(false);
+
+            ComponentDataPtr CylinderPtr=GetGizmoMeshCDP(GizmoShape::Cylinder);
             if(!CylinderPtr )return(false);
+
+            ComponentDataPtr ConePtr    =GetGizmoMeshCDP(GizmoShape::Cone);
             if(!ConePtr     )return(false);
+
+        #ifdef GIZMO_MOVE_SQUARE
+            ComponentDataPtr SquarePtr  =GetGizmoMeshCDP(GizmoShape::Square);
             if(!SquarePtr   )return(false);
+        #endif//GIZMO_MOVE_SQUARE
 
             CreateComponentInfo cci(this);
 
@@ -149,11 +162,13 @@ namespace
                     gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
                     gma->cone->SetOverrideMaterial(gma->mi);
 
+                #ifdef GIZMO_MOVE_SQUARE
                     tm.SetScale(square_scale);
                     tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
                     cci.mat=tm;
                     gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
                     gma->square->SetOverrideMaterial(gma->mi);
+                #endif//GIZMO_MOVE_SQUARE
                 }
 
                 {
@@ -173,11 +188,13 @@ namespace
                     gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
                     gma->cone->SetOverrideMaterial(gma->mi);
 
+                #ifdef GIZMO_MOVE_SQUARE
                     tm.SetScale(square_scale);
                     tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
                     gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
                     gma->square->SetOverrideMaterial(gma->mi);
+                #endif//GIZMO_MOVE_SQUARE
                 }
 
                 {
@@ -197,11 +214,13 @@ namespace
                     gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
                     gma->cone->SetOverrideMaterial(gma->mi);
 
+                #ifdef GIZMO_MOVE_SQUARE
                     tm.SetScale(square_scale);
                     tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
                     gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
                     gma->square->SetOverrideMaterial(gma->mi);
+                #endif//GIZMO_MOVE_SQUARE
                 }
             }
 
@@ -305,9 +324,8 @@ namespace
             float to_center_dist;
             MaterialInstance *mi;
 
-            const float MaxViewLength=std::fabs(ci->zfar-ci->znear);
-            const float axis_sphere_radius=glm::length(AxisVector::X*(GIZMO_CENTER_SPHERE_RADIUS/2.0f));
-            const float axis_length=glm::length(AxisVector::X*GIZMO_ARROW_LENGTH)-axis_sphere_radius;
+            const float axis_sphere_radius  =glm::length(AxisVector::X*(GIZMO_CENTER_SPHERE_RADIUS/2.0f));
+            const float axis_length         =glm::length(AxisVector::X*GIZMO_ARROW_LENGTH);
 
             CurAXIS=-1;
 
@@ -324,8 +342,8 @@ namespace
                                         axis_endpoint); //轴射线终点
 
                 //求p_ls坐标相对屏幕空间象素的缩放比
-                to_center_dist=glm::distance(p_ls,center);        //到中心点的距离
-                dist=glm::distance(p_ray,p_ls);         //计算射线与线段的距离
+                to_center_dist  =glm::distance(p_ls,center);    //到中心点的距离
+                dist            =glm::distance(p_ls,p_ray);     //计算射线与线段的距离
 
                 if(to_center_dist>axis_sphere_radius
                  &&to_center_dist<axis_length
