@@ -22,9 +22,11 @@ struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 
     PrimitiveType               prim;                       ///<图元类型
 
+    bool                        local_to_world;             ///<包含LocalToWorld矩阵
+
 public:
 
-    MaterialCreateConfig(const PrimitiveType &p)
+    MaterialCreateConfig(const PrimitiveType &p,const bool l2w)
     {
         material_instance=false;
 
@@ -33,6 +35,8 @@ public:
         shader_stage_flag_bit=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT;
 
         prim=p;
+
+        local_to_world=l2w;
     }
 
     const int compare(const MaterialCreateConfig &cfg)const override
@@ -47,6 +51,9 @@ public:
 
         off=(int)prim-(int)cfg.prim;
         if(off)return(off);
+
+        off=local_to_world-cfg.local_to_world;
+        if(off)return off;
 
         off=shader_stage_flag_bit-cfg.shader_stage_flag_bit;
 

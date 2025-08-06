@@ -4,15 +4,16 @@
 #include<hgl/graph/VKVertexInput.h>
 #include"VKPipelineLayoutData.h"
 #include<hgl/type/ActiveMemoryBlockManager.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
 
 void ReleaseVertexInput(VertexInput *vi);
 
-Material::Material(const AnsiString &n,const PrimitiveType &pt)
+Material::Material(const AnsiString &n,const mtl::MaterialCreateInfo *mci)
 {
     name=n;
-    prim=pt;
+    prim=mci->GetPrimitiveType();
 
     vertex_input=nullptr;
     shader_maps=new ShaderModuleMap;
@@ -24,6 +25,8 @@ Material::Material(const AnsiString &n,const PrimitiveType &pt)
     mi_data_bytes=0;
     mi_data_manager=nullptr;
     mi_max_count=0;
+
+    has_l2w_matrix=mci->hasLocalToWorld();
 }
 
 Material::~Material()

@@ -43,6 +43,8 @@ namespace hgl::graph
             ShaderCreateInfoGeometry *geom;
             ShaderCreateInfoFragment *frag;
 
+            bool has_l2w_matrix;
+
         public:
 
             const PrimitiveType GetPrimitiveType()const{return config->prim;}
@@ -70,6 +72,8 @@ namespace hgl::graph
 
             const uint32_t GetMIDataBytes   ()const{return mi_data_bytes;}
             const uint32_t GetMIMaxCount    ()const{return mi_max_count;}
+
+            const bool hasLocalToWorld      ()const{return has_l2w_matrix;}
 
         public:
 
