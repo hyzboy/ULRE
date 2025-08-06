@@ -14,6 +14,8 @@ namespace hgl
     namespace graph
     {
         class Texture2D;
+        class Texture2DArray;
+        class TextureCube;
 
         namespace mtl
         {
@@ -120,7 +122,12 @@ namespace hgl
             return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr;
         }
 
-        graph::Texture2D *LoadTexture2D(const OSString &file_name,bool auto_mipmap=true);
+    public: // Texture 相关
+
+        graph::Texture2D *      LoadTexture2D       (const OSString &file_name,bool auto_mipmap=true);
+        graph::TextureCube *    LoadTextureCube     (const OSString &,bool auto_mipmaps=false);
+        graph::Texture2DArray * CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps=false);
+        bool                    LoadTexture2DArray  (graph::Texture2DArray *,const uint32_t layer,const OSString &);
 
     public: //Component 相关
 

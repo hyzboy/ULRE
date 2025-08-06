@@ -131,7 +131,7 @@ Texture2DArray *TextureManager::CreateTexture2DArray(const AnsiString &name,cons
 
 bool LoadTexture2DLayerFromFile(TextureManager *tm,Texture2DArray *t2d,const uint32_t layer,const OSString &filename,bool auto_mipmaps);
 
-bool TextureManager::LoadTexture2DToArray(Texture2DArray *ta,const uint32_t layer,const OSString &filename)
+bool TextureManager::LoadTexture2DArray(Texture2DArray *ta,const uint32_t layer,const OSString &filename)
 {
     if(!ta)return(false);
 
