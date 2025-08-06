@@ -2,7 +2,6 @@
 
 #include<hgl/WorkManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 
 #include<hgl/component/MeshComponent.h>
