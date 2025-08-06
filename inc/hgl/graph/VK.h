@@ -103,6 +103,8 @@ enum class DescriptorType:uint32
     //对应glsl中的绑定的texture1D/2D/Cube等
     //如
     //  layout(set = 0, binding = 0) uniform texture2D myImage;
+    //
+    //  vec4 color = texelFetch(myImage, ivec2(x, y), lod);
     Texture             =VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 
     //对应glsl中的sampler类型

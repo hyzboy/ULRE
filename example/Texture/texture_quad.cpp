@@ -40,17 +40,17 @@ class TestApp:public WorkObject
 {
 private:
 
-    Texture2D *         texture             =nullptr;
-    Sampler *           sampler             =nullptr;
-    Material *          material            =nullptr;
     MaterialInstance *  material_instance   =nullptr;
-    Mesh *              render_obj          =nullptr;
     Pipeline *          pipeline            =nullptr;
 
 private:
 
     bool InitMaterial()
     {
+        Texture2D * texture =nullptr;
+        Sampler *   sampler =nullptr;
+        Material *  material=nullptr;
+
         mtl::Material2DCreateConfig cfg(PrimitiveType::Fan,
                                         CoordinateSystem2D::NDC,
                                         mtl::WithLocalToWorld::Without);
@@ -86,11 +86,11 @@ private:
 
     bool InitVBO()
     {
-        render_obj=CreateMesh(  "TextureQuad",VERTEX_COUNT,material_instance,pipeline,
-                                {
-                                    {VAN::Position,   VF_V2F, position_data},
-                                    {VAN::TexCoord,   VF_V2F, tex_coord_data}
-                                });
+        Mesh *render_obj=CreateMesh("TextureQuad",VERTEX_COUNT,material_instance,pipeline,
+                                    {
+                                        {VAN::Position,   VF_V2F, position_data},
+                                        {VAN::TexCoord,   VF_V2F, tex_coord_data}
+                                    });
 
 
         if(!render_obj)
