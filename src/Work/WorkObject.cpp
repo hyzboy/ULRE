@@ -77,4 +77,40 @@ namespace hgl
 
         return tm->LoadTexture2D(filename,auto_mipmap);
     }
+
+    graph::TextureCube *WorkObject::LoadTextureCube(const OSString &filename,bool auto_mipmaps)
+    {
+        if(filename.IsEmpty())
+            return(nullptr);
+
+        auto tm=GetTextureManager();
+
+        if(!tm)return(nullptr);
+
+        return tm->LoadTextureCube(filename,auto_mipmaps);
+    }
+
+    graph::Texture2DArray * WorkObject::CreateTexture2DArray(const AnsiString &name,const uint32_t width,const uint32_t height,const uint32_t layer,const VkFormat &fmt,bool auto_mipmaps)
+    {
+        if(name.IsEmpty())
+            return(nullptr);
+
+        auto tm=GetTextureManager();
+
+        if(!tm)return(nullptr);
+
+        return tm->CreateTexture2DArray(name,width,height,layer,fmt,auto_mipmaps);
+    }
+
+    bool WorkObject::LoadTexture2DArray(graph::Texture2DArray *tex_array,const uint32_t layer,const OSString &filename)
+    {
+        if(!tex_array||filename.IsEmpty())
+            return(false);
+
+        auto tm=GetTextureManager();
+
+        if(!tm)return(false);
+
+        return tm->LoadTexture2DArray(tex_array,layer,filename);
+    }
 }//namespcae hgl
