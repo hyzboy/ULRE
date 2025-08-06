@@ -1,9 +1,6 @@
 ﻿// 画一个带纹理的四边形
 #include<hgl/WorkManager.h>
-#include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKSampler.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
-#include<hgl/graph/module/TextureManager.h>
 #include<hgl/math/Math.h>
 
 #include<hgl/component/MeshComponent.h>
@@ -66,9 +63,8 @@ private:
         if(!pipeline)
             return(false);
 
-        TextureManager *tex_manager=GetTextureManager();
+        texture=LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
 
-        texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
         if(!texture)return(false);
 
         sampler=db->CreateSampler();
