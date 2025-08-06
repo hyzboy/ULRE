@@ -37,6 +37,10 @@ namespace
 {
 //    #define GIZMO_MOVE_SQUARE 
 
+    const Vector3f one_scale(1.0f);
+    const Vector3f square_scale(2.0f);
+    const Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
+
     /**
     * 移动 Gizmo 节点
     */
@@ -139,88 +143,62 @@ namespace
             sphere->SetOverrideMaterial(GetGizmoMI3D(GizmoColor::White));                     //白色
 
             {
+                struct
+                {
+                    //圆柱模型是向上的，所以要旋转
+                    Vector3f    RotationAxis;
+                    float       RotationAngle;
+
+                    GizmoColor  Color;
+                }
+                GizmoAxisDrawConfig[3]=
+                {
+                    {AxisVector::Y, 90,GizmoColor::Red},
+                    {AxisVector::X,-90,GizmoColor::Green},
+                    {Vector3f(0,0,0),0,GizmoColor::Blue}
+                };
+
                 Transform tm;
-                GizmoMoveAxis *gma;
+                GizmoMoveAxis *gma=axis;
+                Vector3f axis_vector;
 
-                const Vector3f one_scale(1);
-                const Vector3f square_scale(2);
-                const Vector3f cylinder_scale(GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_RADIUS,GIZMO_CYLINDER_HALF_LENGTH);
+            #ifdef GIZMO_MOVE_SQUARE
+                Vector3f inv_axis_vector;
+            #endif//GIZMO_MOVE_SQUARE
 
+                const auto *cfg=GizmoAxisDrawConfig;
+
+                for(int i=0;i<3;i++)
                 {
-                    gma=axis+size_t(AXIS::Z);
-                    gma->mi=GetGizmoMI3D(GizmoColor::Blue);
+                    gma->mi=GetGizmoMI3D(cfg->Color);
+
+                    axis_vector=GetAxisVector(AXIS(i)); //取得轴向量
 
                     tm.SetScale(cylinder_scale);
-                    tm.SetTranslation(0,0,GIZMO_CYLINDER_OFFSET);
-                    cci.mat=tm;
-                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //Z 向上圆柱
-                    gma->cylinder->SetOverrideMaterial(gma->mi);
-
-                    tm.SetScale(one_scale);
-                    tm.SetTranslation(0,0,GIZMO_CONE_OFFSET);
-                    cci.mat=tm;
-                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
-                    gma->cone->SetOverrideMaterial(gma->mi);
-
-                #ifdef GIZMO_MOVE_SQUARE
-                    tm.SetScale(square_scale);
-                    tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET,0);
-                    cci.mat=tm;
-                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
-                    gma->square->SetOverrideMaterial(gma->mi);
-                #endif//GIZMO_MOVE_SQUARE
-                }
-
-                {
-                    gma=axis+size_t(AXIS::X);
-                    gma->mi=GetGizmoMI3D(GizmoColor::Red);
-
-                    tm.SetScale(cylinder_scale);
-                    tm.SetRotation(AxisVector::Y,90);
-                    tm.SetTranslation(GIZMO_CYLINDER_OFFSET,0,0);
+                    tm.SetRotation(cfg->RotationAxis,cfg->RotationAngle);
+                    tm.SetTranslation(axis_vector*GIZMO_CYLINDER_OFFSET);
                     cci.mat=tm;
                     gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //X 向右圆柱
                     gma->cylinder->SetOverrideMaterial(gma->mi);
 
                     tm.SetScale(one_scale);
-                    tm.SetTranslation(GIZMO_CONE_OFFSET,0,0);
+                    tm.SetTranslation(axis_vector*GIZMO_CONE_OFFSET);
                     cci.mat=tm;
                     gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
                     gma->cone->SetOverrideMaterial(gma->mi);
 
                 #ifdef GIZMO_MOVE_SQUARE
+                    inv_axis_vector=Vector3f(1,1,1)-axis_vector;
+
                     tm.SetScale(square_scale);
-                    tm.SetTranslation(0,GIZMO_TWO_AXIS_OFFSET,GIZMO_TWO_AXIS_OFFSET);
+                    tm.SetTranslation(inv_axis_vector*GIZMO_TWO_AXIS_OFFSET);
                     cci.mat=tm;
                     gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
                     gma->square->SetOverrideMaterial(gma->mi);
                 #endif//GIZMO_MOVE_SQUARE
-                }
 
-                {
-                    gma=axis+size_t(AXIS::Y);
-                    gma->mi=GetGizmoMI3D(GizmoColor::Green);
-
-                    tm.SetScale(cylinder_scale);
-                    tm.SetRotation(AxisVector::X,-90);
-                    tm.SetTranslation(0,GIZMO_CYLINDER_OFFSET,0);
-                    cci.mat=tm;
-                    gma->cylinder=render_framework->CreateComponent<MeshComponent>(&cci,CylinderPtr);       //X 向右圆柱
-                    gma->cylinder->SetOverrideMaterial(gma->mi);
-
-                    tm.SetScale(one_scale);
-                    tm.SetTranslation(0,GIZMO_CONE_OFFSET,0);
-                    cci.mat=tm;
-                    gma->cone=render_framework->CreateComponent<MeshComponent>(&cci,ConePtr);           //Z 向上圆锥
-                    gma->cone->SetOverrideMaterial(gma->mi);
-
-                #ifdef GIZMO_MOVE_SQUARE
-                    tm.SetScale(square_scale);
-                    tm.SetTranslation(GIZMO_TWO_AXIS_OFFSET,0,GIZMO_TWO_AXIS_OFFSET);
-                    cci.mat=tm;
-                    gma->square=render_framework->CreateComponent<MeshComponent>(&cci,SquarePtr);
-                    gma->square->SetOverrideMaterial(gma->mi);
-                #endif//GIZMO_MOVE_SQUARE
+                    ++cfg;
+                    ++gma;
                 }
             }
 
