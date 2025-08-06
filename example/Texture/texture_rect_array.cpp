@@ -1,37 +1,14 @@
 ﻿// 画一个带纹理的矩形，2D模式专用
 
-#include"VulkanAppFramework.h"
-#include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKSampler.h>
-#include<hgl/graph/VKInlinePipeline.h>
-#include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/WorkManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/math/Math.h>
 #include<hgl/filesystem/Filename.h>
 
+#include<hgl/component/MeshComponent.h>
+
 using namespace hgl;
 using namespace hgl::graph;
-
-VK_NAMESPACE_BEGIN
-//Texture2D *CreateTexture2DFromFile(VulkanDevice *device,const OSString &filename);
-VK_NAMESPACE_END
-
-constexpr uint32_t SCREEN_WIDTH=256;
-constexpr uint32_t SCREEN_HEIGHT=256;
-
-float position_data[4]=
-{
-    0,      //left
-    0,      //top
-    1,      //right
-    1       //bottom
-};
-
-constexpr float tex_coord_data[4]=
-{
-    0,0,
-    1,1
-};
 
 constexpr const os_char *tex_filename[]=
 {
@@ -43,36 +20,45 @@ constexpr const os_char *tex_filename[]=
 
 constexpr const size_t TexCount=sizeof(tex_filename)/sizeof(os_char *);
 
-class TestApp:public VulkanApplicationFramework
+constexpr const float position_data[4]=
+{
+    0,      //left
+    0,      //top
+    1.0f/float(TexCount),      //right
+    1       //bottom
+};
+
+constexpr float tex_coord_data[4]=
+{
+    0,0,
+    1,1
+};
+
+class TestApp:public WorkObject
 {
 private:
-
-    SceneNode           render_root;
-    RenderList *        render_list         =nullptr;
 
     Texture2DArray *    texture             =nullptr;
     Sampler *           sampler             =nullptr;
     Material *          material            =nullptr;
 
     Pipeline *          pipeline            =nullptr;
-    DeviceBuffer *      tex_id_ubo          =nullptr;
-    Primitive *         prim_rectangle      =nullptr;
 
     struct
     {
         MaterialInstance *  mi;
-        Mesh *              mesh;
+        MeshComponent *     component;
     }render_obj[TexCount]{};
 
 private:
 
     bool InitTexture()
     {
-        texture=db->CreateTexture2DArray(   "freepik icons",
-                                            512,512,            ///<纹理尺寸
-                                            TexCount,           ///<纹理层数
-                                            PF_BC1_RGBAUN,      ///<纹理格式
-                                            false);             ///<是否自动产生mipmaps
+        texture=CreateTexture2DArray(   "freepik icons",
+                                        512,512,            ///<纹理尺寸
+                                        TexCount,           ///<纹理层数
+                                        PF_BC1_RGBAUN,      ///<纹理格式
+                                        false);             ///<是否自动产生mipmaps
         
         if(!texture)return(false);
 
@@ -82,7 +68,7 @@ private:
         {
             filename=filesystem::MergeFilename(OS_TEXT("res/image/icon/freepik"),tex_filename[i]);
 
-            if(!db->LoadTexture2DToArray(texture,i,filename))
+            if(!LoadTexture2DArray(texture,i,filename))
                 return(false);
         }
 
@@ -91,17 +77,16 @@ private:
 
     bool InitMaterial()
     {
-        mtl::Material2DCreateConfig cfg(device->GetDevAttr(),"RectTexture2DArray",PrimitiveType::SolidRectangles);
-
-        cfg.coordinate_system=CoordinateSystem2D::ZeroToOne;
-        cfg.local_to_world=true;
+        mtl::Material2DCreateConfig cfg(PrimitiveType::SolidRectangles,
+                                        CoordinateSystem2D::ZeroToOne,
+                                        mtl::WithLocalToWorld::With);
 
         material=db->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
 
         if(!material)
             return(false);
 
-        pipeline=CreatePipeline(material,InlinePipeline::Solid2D,PrimitiveType::SolidRectangles);     //等同上一行，为Framework重载，默认使用swapchain的render target
+        pipeline=CreatePipeline(material,InlinePipeline::Solid2D);     //等同上一行，为Framework重载，默认使用swapchain的render target
 
         if(!pipeline)
             return(false);
@@ -109,7 +94,7 @@ private:
         sampler=db->CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
-                                        mtl::SamplerName::BaseColor,            ///<采样器名称
+                                        mtl::SamplerName::BaseColor,        ///<采样器名称
                                         texture,                            ///<纹理
                                         sampler))                           ///<采样器
             return(false);
@@ -129,53 +114,46 @@ private:
 
     bool InitVBOAndRenderList()
     {
-        PrimitiveCreater rpc(device,material->GetDefaultVIL());
-        
-        rpc.Init("Rectangle",1);
+        //CreateMesh传入MaterialInstance本质要的是VIL和Material
+        //当前Mesh也是需要mi才能渲染。
+        //这里因为所有render_obj的VIL/Material都是一样的，所以可以直接使用render_obj[0].mi
 
-        position_data[2]=1.0f/float(TexCount);
+        Mesh *mesh_rect=CreateMesh( "TextureRect",1,render_obj[0].mi,pipeline,
+                                    {
+                                        {VAN::Position,VF_V4F,position_data},
+                                        {VAN::TexCoord,VF_V4F,tex_coord_data}
+                                    });
 
-        if(!rpc.WriteVAB(VAN::Position,VF_V4F,position_data))return(false);
-        if(!rpc.WriteVAB(VAN::TexCoord,VF_V4F,tex_coord_data))return(false);
+        if(!mesh_rect)
+            return(false);
 
-        prim_rectangle=rpc.Create();
+        CreateComponentInfo cci(GetSceneRoot());
 
         Vector3f offset(1.0f/float(TexCount),0,0);
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mesh=db->CreateMesh(prim_rectangle,render_obj[i].mi,pipeline);
-
-            if(!render_obj[i].mesh)
-                return(false);
-
             offset.x=position_data[2]*float(i);
 
-            render_root.CreateSubNode(translate(offset),render_obj[i].mesh);
+            cci.mat=TranslateMatrix(offset);
+
+            render_obj[i].component=CreateComponent<MeshComponent>(&cci,mesh_rect);
+
+            if(!render_obj[i].component)
+                return(false);
+
+            render_obj[i].component->SetOverrideMaterial(render_obj[i].mi);
         }
-
-        render_root.RefreshMatrix();
-
-        render_list->Expend(&render_root);
 
         return(true);
     }
 
 public:
 
-    ~TestApp()
+    using WorkObject::WorkObject;
+
+    bool Init() override
     {
-        SAFE_CLEAR(prim_rectangle);
-        SAFE_CLEAR(render_list);
-    }
-
-    bool Init()
-    {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH*TexCount,SCREEN_HEIGHT))
-            return(false);
-
-        render_list=new RenderList(device);
-
         if(!InitTexture())
             return(false);
 
@@ -185,32 +163,11 @@ public:
         if(!InitVBOAndRenderList())
             return(false);
 
-        BuildCommandBuffer(render_list);
-
         return(true);
     }
+};//class TestApp:public WorkObject
 
-    void Resize(uint w,uint h)override
-    {
-        VulkanApplicationFramework::Resize(w,h);
-        
-        BuildCommandBuffer(render_list);
-    }
-};//class TestApp:public VulkanApplicationFramework
-
-int main(int,char **)
+int os_main(int,os_char **)
 {
-#ifdef _DEBUG
-    if(!CheckStrideBytesByFormat())
-        return 0xff;
-#endif//
-
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunFramework<TestApp>(OS_TEXT("Draw many rectangle with texture"),256*TexCount,256);
 }

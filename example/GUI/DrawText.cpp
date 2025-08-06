@@ -1,21 +1,18 @@
 ﻿#include<hgl/io/LoadString.h>
 #include<hgl/graph/font/TextRender.h>
-#include"VulkanAppFramework.h"
+#include<hgl/WorkManager.h>
 
 using namespace hgl;
 using namespace hgl::graph;
 
-constexpr uint32_t SCREEN_WIDTH =1280;
-constexpr uint32_t SCREEN_HEIGHT=SCREEN_WIDTH/16*9;
-
-class TestApp:public CameraAppFramework
+class TestApp:public WorkObject
 {
 private:
 
     TextRender *        text_render         =nullptr;
 
     TextPrimitive *     text_primitive      =nullptr;
-    Mesh *        render_obj          =nullptr;
+    Mesh *              render_obj          =nullptr;
 
 public:
 
@@ -79,14 +76,8 @@ public:
     }
 };//class TestApp:public VulkanApplicationFramework
 
-int main(int,char **)
+
+int os_main(int,os_char **)
 {
-    TestApp app;
-
-    if(!app.Init())
-        return(-1);
-
-    while(app.Run());
-
-    return 0;
+    return RunFramework<TestApp>(OS_TEXT("DrawText"),1280,720);
 }
