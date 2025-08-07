@@ -1,50 +1,49 @@
-#ifndef HGL_GRAPH_FONT_PRIMITIVE_INCLUDE
-#define HGL_GRAPH_FONT_PRIMITIVE_INCLUDE
+#pragma once
 
 #include<hgl/graph/VKPrimitive.h>
-namespace hgl
+#include<hgl/type/SortedSet.h>
+
+namespace hgl::graph
 {
-    namespace graph
+    /**
+        * 文本图元
+        */
+    class TextPrimitive:public Primitive
     {
-        /**
-         * 文本图元
-         */
-        class TextPrimitive:public Primitive
-        {
-            VulkanDevice * device;
-            Material *  mtl;
+        VulkanDevice *  device;
+        const VIL *     vil;
 
-            uint        max_count;                                      ///<缓冲区最大容量
+        uint        max_count=0;                                      ///<缓冲区最大容量
+        uint        draw_char_count=0;
 
-            VAB *       vab_position;
-            VAB *       vab_tex_coord;
+        VAB *       vab_position=nullptr;
+        VAB *       vab_tex_coord=nullptr;
 
-        protected:
+    protected:
 
-            friend class TextLayout;
-            friend class TextRender;
+        friend class TextLayout;
+        friend class TextRender;
 
-            SortedSet<u32char> chars_sets;
+        SortedSet<u32char> chars_sets;
 
-            const SortedSet<u32char> &GetCharsSets()const{return chars_sets;}
-            void SetCharsSets(const SortedSet<u32char> &sl){chars_sets=sl;}
-            void ClearCharsSets(){chars_sets.Clear();}
+        const SortedSet<u32char> &GetCharsSets()const{return chars_sets;}
+        void SetCharsSets(const SortedSet<u32char> &sl){chars_sets=sl;}
+        void ClearCharsSets(){chars_sets.Clear();}
 
-        private:
+    public:
 
-            virtual ~TextPrimitive();
+        TextPrimitive(VulkanDevice *dev,const VIL *_vil,const uint32_t mc);
 
-        public:
+        void SetCharCount   (const uint);
 
-            TextPrimitive(VulkanDevice *,Material *,uint mc=1024);
+        bool WriteVertex    (const int16 *fp);
+        bool WriteTexCoord  (const float *fp);
 
-        public:
+    public:
 
-            void SetCharCount   (const uint);
+        const VkDeviceSize GetVertexCount()const override{return draw_char_count;}
 
-            bool WriteVertex    (const int16 *fp);
-            bool WriteTexCoord  (const float *fp);
-        };//class TextPrimitive:public Mesh
-    }//namespace graph
-}//namespace hgl
-#endif//HGL_GRAPH_FONT_PRIMITIVE_INCLUDE
+        VAB *GetPositionVAB()const { return vab_position; }
+        VAB *GetTexCoordVAB()const { return vab_tex_coord; }
+    };//class TextPrimitive:public Primitive
+}//namespace hgl::graph

@@ -138,6 +138,13 @@ IF(WIN32)
     SOURCE_GROUP("Font\\Source\\Windows" FILES ${FONT_SOURCE_OS})
 ENDIF(WIN32)
 
+SET(TEXT_SOURCE ${FONT_MANAGE_SOURCE}
+                ${FONT_SOURCE}
+                ${FONT_SOURCE_OS}
+                ${TILE_FONT_SOURCE}
+                ${FONT_LAYOUT_SOURCE}
+                ${TEXT_RENDERABLE_SOURCE})
+
 SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h
                         Vulkan/VKRenderResource.cpp
                         Vulkan/VKRenderResourceMaterial.cpp)
@@ -406,12 +413,7 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${COMPONENT_FILES}
                                         ${COLLISION_COMPONENT_FILES}
 
-#                                        ${FONT_MANAGE_SOURCE}
-#                                        ${FONT_SOURCE}
-#                                        ${FONT_SOURCE_OS}
-#                                        ${TILE_FONT_SOURCE}
-#                                        ${FONT_LAYOUT_SOURCE}
-#                                        ${TEXT_RENDERABLE_SOURCE}
+                                        ${TEXT_SOURCE}
 
                                         ${VULKAN_RENDER_SOURCE}
                                         ${VULKAN_SURFACE_SOURCE})

@@ -10,10 +10,11 @@ namespace hgl::graph
     class TileFont;
     class TextLayout;
     class TextPrimitive;
+    class RenderFramework;
 
     class TextRender
     {
-        VulkanDevice *      device;
+        RenderFramework *   render_framework;
         RenderResource *    db;
 
         Material *          material;
@@ -29,30 +30,28 @@ namespace hgl::graph
         TextLayout *        tl_engine;
     
         Color4f             color;
-        DeviceBuffer *      ubo_color;
 
         SortedSet<TextPrimitive *> tr_sets;
 
     private:
 
-        friend TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
+        friend TextRender *CreateTextRender(RenderFramework *,FontSource *,RenderPass *,int limit);
 
-        TextRender(VulkanDevice *dev,FontSource *);
+        TextRender(RenderFramework *,FontSource *);
 
         bool InitTileFont(int limit);
         bool InitTextLayoutEngine();
-        bool InitUBO();
-        bool InitMaterial(RenderPass *,DeviceBuffer *);
+        bool InitMaterial(RenderPass *);
 
     public:
 
         ~TextRender();
 
-        bool Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit);
+        bool Init(RenderPass *rp,int limit);
 
     public:
 
-        TextPrimitive *CreatePrimitive();
+        TextPrimitive *CreatePrimitive(int limit=2048);
         TextPrimitive *CreatePrimitive(const U16String &str);
 
         bool Layout(TextPrimitive *tr,const U16String &str);
@@ -81,5 +80,5 @@ namespace hgl::graph
         * 创建一个文本渲染器
         * @param limit 节数限制(-1表示自动)
         */
-    TextRender *CreateTextRender(VulkanDevice *,FontSource *,RenderPass *,DeviceBuffer *,int limit=-1);
+    TextRender *CreateTextRender(RenderFramework *,FontSource *,RenderPass *,int limit=-1);
 }//namespace hgl::graph

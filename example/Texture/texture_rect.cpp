@@ -90,7 +90,7 @@ public:
     using WorkObject::WorkObject;
 
     bool Init() override
-    {            
+    {
         if(!InitMaterial())
             return(false);
 

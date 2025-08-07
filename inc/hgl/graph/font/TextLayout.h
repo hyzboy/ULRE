@@ -5,7 +5,7 @@
 #include<hgl/graph/font/FontSource.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/TileData.h>
-#include<hgl/type/MemBlock.h>
+#include<hgl/type/DataArray.h>
 namespace hgl
 {
     namespace graph
@@ -100,8 +100,8 @@ namespace hgl
 
             int draw_chars_count;                       ///<要绘制字符列表
 
-            SortedSets<u32char> chars_sets;             ///<不重复字符统计缓冲区
-            SortedSets<u32char> clear_chars_sets;       ///<待清除的字符合集
+            SortedSet<u32char> chars_sets;             ///<不重复字符统计缓冲区
+            SortedSet<u32char> clear_chars_sets;       ///<待清除的字符合集
             TileUVFloatMap chars_uv;                    ///<所有要绘制字符的uv
 
             struct CharDrawAttr
@@ -143,8 +143,8 @@ namespace hgl
         protected:
         
             TextPrimitive *text_primitive;
-            MemBlock<int16> vertex;
-            MemBlock<float> tex_coord;
+            DataArray<int16> vertex;
+            DataArray<float> tex_coord;
 
         public:
 
@@ -167,8 +167,8 @@ namespace hgl
 
             virtual bool    Init        ();                                                         ///<初始化排版
 
-            int     SimpleLayout (TextPrimitive *,TileFont *,const UTF16String &);                 ///<简易排版
-            int     SimpleLayout (TextPrimitive *,TileFont *,const UTF32String &);                 ///<简易排版
+            int     SimpleLayout (TextPrimitive *,TileFont *,const U16String &);                 ///<简易排版
+            int     SimpleLayout (TextPrimitive *,TileFont *,const U32String &);                 ///<简易排版
 
 //            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
 //            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版

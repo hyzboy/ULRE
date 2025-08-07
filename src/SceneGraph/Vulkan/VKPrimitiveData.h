@@ -50,7 +50,11 @@ public:
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
 
+            bool            CreateAllVAB    (const uint32_t vc);     //根据VIL创建所有VAB
+
             VAB *           GetVAB          (const int index);
+            VAB *           GetVAB          (const AnsiString &name)const;
+
             VAB *           InitVAB         (const int vab_index,const void *data);
             VABMap *        GetVABMap       (const int vab_index);
 

@@ -59,8 +59,8 @@ namespace hgl
             //遍历所有字符，取得每一个字符的基本绘制信息
             {
                 draw_chars_count=0;
-                chars_sets.ClearData();
-                draw_chars_list.ClearData();
+                chars_sets.Clear();
+                draw_chars_list.Clear();
 
                 const T *cp=str;
                 CharDrawAttr *cda;
@@ -87,21 +87,21 @@ namespace hgl
             {
                 clear_chars_sets=tr->GetCharsSets();                    //获取不再使用的字符合集
 
-                clear_chars_sets.Clear(chars_sets);                     //清除下一步要用的字符合集
+                clear_chars_sets.Delete(chars_sets);                    //清除下一步要用的字符合集
 
                 if(clear_chars_sets.GetCount()>0)                       //可以彻底清除的字符
                 {
-                    tile_font->Unregistry(clear_chars_sets.GetList());
+                    tile_font->Unregistry(clear_chars_sets);
 
-                    clear_chars_sets.ClearData();
+                    clear_chars_sets.Clear();
                 }
             }
 
             //注册不重复字符给tile font系统，获取所有字符的UV
             if(!tile_font->Registry(chars_uv,chars_sets))
             {
-                draw_chars_list.ClearData();
-                chars_sets.ClearData();
+                draw_chars_list.Clear();
+                chars_sets.Clear();
 
                 return(false);
             }
@@ -259,8 +259,8 @@ namespace hgl
             if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
                 return(-3);
 
-            vertex      .SetLength(max_chars*4);
-            tex_coord   .SetLength(max_chars*4);
+            vertex      .SetCount(max_chars*4);
+            tex_coord   .SetCount(max_chars*4);
 
             if(!vertex||!tex_coord)
                 return(-5);
@@ -292,8 +292,8 @@ namespace hgl
             return result;
         }
         
-        int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const UTF16String &str){return this->SimpleLayout<u16char>(tr,tf,str);}
-        int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const UTF32String &str){return this->SimpleLayout<u32char>(tr,tf,str);}
+        int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U16String &str){return this->SimpleLayout<u16char>(tr,tf,str);}
+        int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U32String &str){return this->SimpleLayout<u32char>(tr,tf,str);}
 
         //template<typename T>
         //int TextLayout::SimpleLayout(TileFont *tf,const StringList<String<T>> &sl)

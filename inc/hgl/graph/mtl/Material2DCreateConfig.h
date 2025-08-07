@@ -57,6 +57,22 @@ DEFINE_MATERIAL_FACTORY_CLASS(PureTexture2D,        const Material2DCreateConfig
 DEFINE_MATERIAL_FACTORY_CLASS(RectTexture2D,        Material2DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(RectTexture2DArray,   Material2DCreateConfig);
 
+struct Text2DMaterialCreateConfig:public Material2DCreateConfig
+{
+public:
+
+    Text2DMaterialCreateConfig():Material2DCreateConfig(PrimitiveType::SolidRectangles,CoordinateSystem2D::Ortho,WithLocalToWorld::With)
+    {
+        material_instance=true;        //包含材质实例
+
+        position_format=VAT_IVEC4;
+
+        shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
+    }
+};
+
+DEFINE_MATERIAL_FACTORY_CLASS(Text2D,const Text2DMaterialCreateConfig)
+
 // 为什么有了LoadMaterialFromFile，还需要保留以上Create系列函数？
 
 //  1.LoadMaterialFromFile载的材质，是从文件中加载的。但我们要考虑文件损坏不能加载的情况。

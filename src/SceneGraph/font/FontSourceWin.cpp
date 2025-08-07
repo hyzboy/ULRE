@@ -93,7 +93,7 @@ namespace hgl
             else
                 ggo=GGO_GRAY8_BITMAP;
 
-            buffer.Malloc(fnt.width*fnt.height*4);
+            buffer.Alloc(fnt.width*fnt.height*4);
         }
 
         WinBitmapFont::~WinBitmapFont()
@@ -117,10 +117,10 @@ namespace hgl
 
             if(size<=0)return(false);
 
-            if(size>buffer.length())
-                buffer.SetLength(size);
+            if(size>buffer.GetCount())
+                buffer.SetCount(size);
 
-            GetGlyphOutlineW(hdc,ch,ggo,&gm,DWORD(buffer.length()),buffer.data(),&mat);
+            GetGlyphOutlineW(hdc,ch,ggo,&gm,DWORD(buffer.GetCount()),buffer.data(),&mat);
 
             bmp->metrics_info.w		=hgl_align<uint>(gm.gmBlackBoxX,4);
             bmp->metrics_info.h		=hgl_align<uint>(gm.gmBlackBoxY,4);

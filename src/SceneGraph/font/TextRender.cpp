@@ -4,16 +4,19 @@
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKVertexInputConfig.h>
+#include<hgl/graph/VKRenderResource.h>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/RenderFramework.h>
 #include<hgl/color/Color.h>
 
 namespace hgl
 {
     namespace graph
     {
-        TextRender::TextRender(VulkanDevice *dev,FontSource *fs)
+        TextRender::TextRender(RenderFramework *rf,FontSource *fs)
         {
-            device=dev;
-            db=new RenderResource(device);
+            render_framework=rf;
+            db=new RenderResource(rf->GetDevice());         //独立的资源管理器，不和整体共用
             tl_engine=new TextLayout();
             font_source=fs;
             
@@ -21,15 +24,16 @@ namespace hgl
             material_instance   =nullptr;
             sampler             =nullptr;
             pipeline            =nullptr;
-            tile_font           =nullptr;    
-            ubo_color           =nullptr;
+            tile_font           =nullptr;
+
+            color.Set(1,1,1,1);
         }
 
         TextRender::~TextRender()
         {
             for(TextPrimitive *tr:tr_sets)
             {
-                tile_font->Unregistry(tr->GetCharsSets().GetList());
+                tile_font->Unregistry(tr->GetCharsSets());
                 delete tr;
             }
 
@@ -42,7 +46,7 @@ namespace hgl
 
         bool TextRender::InitTileFont(int limit)
         {
-            tile_font=device->CreateTileFont(font_source,limit);
+            tile_font=render_framework->CreateTileFont(font_source,limit);
             return(true);
         }
 
@@ -67,21 +71,15 @@ namespace hgl
             return tl_engine->Init();
         }
 
-        bool TextRender::InitUBO()
+        bool TextRender::InitMaterial(RenderPass *rp)
         {
-            color.One();
+            mtl::Text2DMaterialCreateConfig mtl_cfg;
 
-            ubo_color=db->CreateUBO(sizeof(Color4f),&color);
+            mtl::MaterialCreateInfo *mci=mtl::CreateText2D(render_framework->GetDevAttr(),&mtl_cfg);
 
-            if(!ubo_color)
-                return(false);
+            if (!mci)return(false);
 
-            return(true);
-        }
-
-        bool TextRender::InitMaterial(RenderPass *rp,DeviceBuffer *ubo_camera_info)
-        {
-            material=db->CreateMaterial(OS_TEXT("res/material/LumTextureRect2D"));
+            material=db->CreateMaterial("Text2D",mci);
 
             //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
             {
@@ -89,42 +87,25 @@ namespace hgl
 
                 vil_config.Add("Position",VF_V4I16);
 
-                material_instance=db->CreateMaterialInstance(material,&vil_config);
+                material_instance=db->CreateMaterialInstance(material,&vil_config,color,sizeof(color));
                 if(!material_instance)return(false);
             }
 
-            pipeline=rp->CreatePipeline(material_instance,InlinePipeline::Solid2D,Prim::SolidRectangles);
+            pipeline=rp->CreatePipeline(material_instance,InlinePipeline::Solid2D);
             if(!pipeline)return(false);
 
             sampler=db->CreateSampler();
-        
-            {
-                MaterialParameters *mp_global=material_instance->GetMP(DescriptorSetType::Global);
-        
-                if(!mp_global)
-                    return(false);
 
-                if(!mp_global->BindUBO("g_camera",ubo_camera_info))return(false);
-
-                mp_global->Update();
-            }
-
-            {
-                MaterialParameters *mp=material_instance->GetMP(DescriptorSetType::PerMaterial);
-        
-                if(!mp)
-                    return(false);
-            
-                if(!mp->BindImageSampler("lum_texture",tile_font->GetTexture(),sampler))return(false);
-                if(!mp->BindUBO("color_material",ubo_color))return(false);
-
-                mp->Update();
-            }
+            if(!material->BindImageSampler(DescriptorSetType::PerMaterial,
+                                           mtl::SamplerName::Text,
+                                           tile_font->GetTexture(),
+                                           sampler))
+                return(false);
 
             return(true);
         }
 
-        bool TextRender::Init(RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
+        bool TextRender::Init(RenderPass *rp,int limit)
         {
             if(!InitTileFont(limit))
                 return(false);
@@ -132,25 +113,22 @@ namespace hgl
             if(!InitTextLayoutEngine())
                 return(false);
 
-            if(!InitUBO())
-                return(false);
-
-            if(!InitMaterial(rp,ubo_camera_info))
+            if(!InitMaterial(rp))
                 return(false);
 
             return(true);
         }
 
-        TextPrimitive *TextRender::CreatePrimitive()
+        TextPrimitive *TextRender::CreatePrimitive(int limit)
         {   
-            TextPrimitive *tr=new TextPrimitive(device,material);
+            TextPrimitive *tr=new TextPrimitive(render_framework->GetDevice(),material_instance->GetVIL(),limit);
 
             tr_sets.Add(tr);
 
             return tr;
         }
 
-        TextPrimitive *TextRender::CreatePrimitive(const UTF16String &str)
+        TextPrimitive *TextRender::CreatePrimitive(const U16String &str)
         {
             TextPrimitive *tr=CreatePrimitive();
 
@@ -160,7 +138,7 @@ namespace hgl
             return tr;
         }
 
-        bool TextRender::Layout(TextPrimitive *tr,const UTF16String &str)
+        bool TextRender::Layout(TextPrimitive *tr,const U16String &str)
         {
             if(!tr)
                 return(false);
@@ -171,9 +149,9 @@ namespace hgl
             return true;
         }
 
-        Renderable *TextRender::CreateRenderable(TextPrimitive *text_primitive)
+        Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
         {
-            return db->CreateRenderable(text_primitive,material_instance,pipeline);
+            return db->CreateMesh(text_primitive,material_instance,pipeline);
         }
 
         void TextRender::Release(TextPrimitive *tr)
@@ -182,7 +160,7 @@ namespace hgl
 
             if(!tr_sets.Delete(tr))return;
 
-            tile_font->Unregistry(tr->GetCharsSets().GetList());
+            tile_font->Unregistry(tr->GetCharsSets());
 
             delete tr;
         }
@@ -209,14 +187,17 @@ namespace hgl
             return AcquireFontSource(fnt);
         }
 
-        TextRender *CreateTextRender(VulkanDevice *dev,FontSource *fs,RenderPass *rp,DeviceBuffer *ubo_camera_info,int limit)
+        TextRender *CreateTextRender(RenderFramework *rf,FontSource *fs,RenderPass *rp,int limit)
         {
-            if(!dev||!rp||!ubo_camera_info)
+            if(!rf)
                 return(nullptr);
 
-            TextRender *text_render=new TextRender(dev,fs);
+            if(!rp)
+                rp=rf->GetDefaultRenderPass();
 
-            if(!text_render->Init(rp,ubo_camera_info,limit))
+            TextRender *text_render=new TextRender(rf,fs);
+
+            if(!text_render->Init(rp,limit))
             {
                 delete text_render;
                 return(nullptr);
