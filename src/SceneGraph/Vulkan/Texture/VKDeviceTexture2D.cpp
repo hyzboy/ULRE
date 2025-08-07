@@ -61,9 +61,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
     if(!tci->image_view)
         tci->image_view=CreateImageView2D(GetVkDevice(),tci->format,tci->extent,tci->target_mipmaps,tci->aspect,tci->image);
 
-    TextureData *tex_data=new TextureData(tci);
-
-    Texture2D *tex=CreateTexture2D(tex_data);
+    Texture2D *tex=CreateTexture2D(new TextureData(tci));
 
     if(!tex)
     {
@@ -77,6 +75,7 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
     if(tci->buffer)
     {
         texture_cmd_buf->Begin();
+
         if(tci->target_mipmaps==tci->origin_mipmaps)
         {
             if(tci->target_mipmaps<=1)      //本身不含mipmaps，但也不要mipmaps
@@ -89,11 +88,12 @@ Texture2D *TextureManager::CreateTexture2D(TextureCreateInfo *tci)
             }
         }
         else
-            if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
-            {
-                CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
-                GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tex_data->miplevel,1);
-            }
+        if(tci->origin_mipmaps<=1)          //本身不含mipmaps数据,又想要mipmaps
+        {
+            CommitTexture2D(tex,tci->buffer,VK_PIPELINE_STAGE_TRANSFER_BIT);
+            GenerateMipmaps(texture_cmd_buf,tex->GetImage(),tex->GetAspect(),tci->extent,tci->target_mipmaps,1);
+        }
+
         texture_cmd_buf->End();
 
         SubmitTexture(*texture_cmd_buf);

@@ -38,9 +38,45 @@ const int PrimitiveData::GetVABIndex(const AnsiString &name) const
     return vil->GetIndex(name);
 }
 
+bool PrimitiveData::CreateAllVAB(const uint32_t vc)
+{
+    if(vc<=0)
+        return(false);
+
+    const uint32_t count=vil->GetVertexAttribCount();
+
+    const VertexInputFormat *vif;
+
+    for(uint32_t i=0;i<count;i++)
+    {
+        if(vab_list[i])continue;
+
+        vif=vil->GetConfig(i);
+
+        vab_list[i]=CreateVAB(i,vif->format,nullptr);
+
+        if(!vab_list[i])
+            return(false);
+    }
+
+    return(true);
+}
+
 VAB *PrimitiveData::GetVAB(const int index)
 {
     if(index<0||index>=vil->GetVertexAttribCount())return(nullptr);
+
+    return vab_list[index];
+}
+
+VAB *PrimitiveData::GetVAB(const AnsiString &name)const
+{
+    if(name.IsEmpty())return(nullptr);
+
+    const int index=vil->GetIndex(name);
+
+    if(index<0||index>=vil->GetVertexAttribCount())
+        return(nullptr);
 
     return vab_list[index];
 }

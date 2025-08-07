@@ -21,8 +21,8 @@ TileFont *RenderFramework::CreateTileFont(FontSource *fs,int limit_count)
 
         if(!sc_module->GetSwapchainSize(&ext))
         {
-            ext.width=1920;
-            ext.height=1080;
+            ext.width=1024;
+            ext.height=1024;
         }
 
         limit_count=(ext.width/height)*(ext.height/height);   //按全屏幕放满不一样的字符为上限

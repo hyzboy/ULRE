@@ -38,7 +38,9 @@ public:
 
     const   AnsiString &    GetName         ()const{ return prim_name; }
 
+    virtual
     const   VkDeviceSize    GetVertexCount  ()const;
+
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
             VAB *           GetVAB          (const int);            

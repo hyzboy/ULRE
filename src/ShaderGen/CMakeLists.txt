@@ -62,6 +62,7 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
                             2d/M_PureTexture2D.cpp
                             2d/M_RectTexture2D.cpp
                             2d/M_RectTexture2DArray.cpp
+                            2d/M_Text.cpp
 )
 
 SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h

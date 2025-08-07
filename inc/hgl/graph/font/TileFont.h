@@ -9,8 +9,6 @@ namespace hgl
 {
     namespace graph
     {
-        using TileUVFloatMap=Map<u32char,RectScope2f>;
-
         using TileResPool=RefObjectPool<u32char,TileObject *>;
 
         /**
@@ -38,7 +36,7 @@ namespace hgl
             virtual ~TileFont();
 
             bool Registry(TileUVFloatMap &,SortedSet<u32char> &chars_sets);                         ///<注册要使用的字符
-            void Unregistry(const ArrayList<u32char> &);                                                 ///<注销要使用的字符
+            void Unregistry(const DataArray<u32char> &);                                            ///<注销要使用的字符
         };//class TileFont
     }//namespace graph
 }//namespace hgl

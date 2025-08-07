@@ -2,53 +2,46 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
+#include"../Vulkan/VKPrimitiveData.h"
 
-namespace hgl
+namespace hgl::graph
 {
-    namespace graph
+    TextPrimitive::TextPrimitive(VulkanDevice *dev,const VIL *_vil,const uint32_t mc):Primitive("TextPrimitive",nullptr)
     {
-        TextPrimitive::TextPrimitive(VulkanDevice *dev,Material *m,uint mc):Primitive(mc)
+        device=dev;
+        vil=_vil;
+
+        max_count=0;
+        draw_char_count=0;
+
+        vab_position=nullptr;
+        vab_tex_coord=nullptr;
+    }
+
+    void TextPrimitive::SetCharCount(const uint cc)
+    {
+        if (cc<=max_count)return;
+
+        if(prim_data)
         {
-            device=dev;
-            mtl=m;
-
-            max_count=0;
-
-            vbo_position=nullptr;
-            vbo_tex_coord=nullptr;
-        }
-
-        TextPrimitive::~TextPrimitive()
-        {
-            SAFE_CLEAR(vbo_tex_coord);
-            SAFE_CLEAR(vbo_position);
-        }
-
-        void TextPrimitive::SetCharCount(const uint cc)
-        {
-            this->vertex_count=cc;
-            if(cc<=max_count)return;
-
-            max_count=power_to_2(cc);
-
+            if(prim_data->GetVertexCount()<cc)
             {
-                if(vbo_position)
-                    delete vbo_position;
-
-                vbo_position    =device->CreateVBO(VF_V4I16,max_count);
-                Set(VAN::Position,vbo_position);
-            }
-
-            {
-                if(vbo_tex_coord)
-                    delete vbo_tex_coord;
-
-                vbo_tex_coord   =device->CreateVBO(VF_V4F,max_count);
-                Set(VAN::TexCoord,vbo_tex_coord);
+                delete prim_data;
+                prim_data=nullptr;
             }
         }
 
-        bool TextPrimitive::WriteVertex    (const int16 *fp){if(!fp)return(false);if(!vbo_position )return(false);return vbo_position  ->Write(fp,vertex_count*4*sizeof(int16));}
-        bool TextPrimitive::WriteTexCoord  (const float *fp){if(!fp)return(false);if(!vbo_tex_coord)return(false);return vbo_tex_coord ->Write(fp,vertex_count*4*sizeof(float));}
-    }//namespace graph
-}//namespace hgl
+        max_count=power_to_2(cc);
+        draw_char_count=cc;
+
+        prim_data=CreatePrimitiveData(device,vil,max_count);
+
+        prim_data->CreateAllVAB(max_count);
+
+        vab_position    =prim_data->GetVAB(VAN::Position);
+        vab_tex_coord   =prim_data->GetVAB(VAN::TexCoord);
+    }
+
+    bool TextPrimitive::WriteVertex    (const int16 *fp){if(!fp)return(false);if(!vab_position )return(false);return vab_position  ->Write(fp,draw_char_count);}
+    bool TextPrimitive::WriteTexCoord  (const float *fp){if(!fp)return(false);if(!vab_tex_coord)return(false);return vab_tex_coord ->Write(fp,draw_char_count);}
+}//namespace hgl::graph

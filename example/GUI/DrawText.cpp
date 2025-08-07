@@ -1,6 +1,7 @@
 ﻿#include<hgl/io/LoadString.h>
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/WorkManager.h>
+#include<hgl/component/MeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -33,7 +34,8 @@ private:
 
         FontSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),12);
 
-        text_render=CreateTextRender(device,fs,device_render_pass,ubo_camera_info,str.Length());
+        text_render=CreateTextRender(GetRenderFramework(),fs,nullptr,str.Length());
+
         if(!text_render)
             return(false);
 
@@ -45,37 +47,23 @@ private:
         if(!render_obj)
             return(false);
 
-        return(true);
+        CreateComponentInfo cci(GetSceneRoot());
+
+        return CreateComponent<MeshComponent>(&cci,render_obj); //创建一个静态网格组件
     }
 
 public:
 
-    bool Init()
-    {
-        if(!VulkanApplicationFramework::Init(SCREEN_WIDTH,SCREEN_HEIGHT))
-            return(false);
+    using WorkObject::WorkObject;
 
+    bool Init() override
+    {
         if(!InitTextRenderable())
             return(false);
 
-        VulkanApplicationFramework::BuildCommandBuffer(render_obj);
-
         return(true);
     }
-
-    void Resize(uint w,uint h)override
-    {
-        VulkanApplicationFramework::Resize(w,h);
-        
-        VulkanApplicationFramework::BuildCommandBuffer(render_obj);
-    }
-
-    void BuildCommandBuffer(uint32_t index)
-    {
-        VulkanApplicationFramework::BuildCommandBuffer(index,render_obj);
-    }
-};//class TestApp:public VulkanApplicationFramework
-
+};//class TestApp:public WorkObject
 
 int os_main(int,os_char **)
 {

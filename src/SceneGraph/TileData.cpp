@@ -23,22 +23,22 @@ namespace hgl
             tile_max_count=tile_rows*tile_cols;
             tile_count=0;
 
+            tile_object_list=new TileObject[tile_max_count];
             to_pool.PreAlloc(tile_max_count);
             {
                 int col=0,row=0;
-                TileObject *to=new TileObject;
+                TileObject *to=tile_object_list;
 
-                for(uint i=0;i<tile_max_count;i++)
+                for(int i=0;i<tile_max_count;i++)
                 {
                     to->col  =col;
                     to->row  =row;
 
-                    to->uv_pixel.Set(col*tile_width,
+                    to->uv_pixel.Set(   col*tile_width,
                                         row*tile_height,
                                         0,
                                         0);
 
-                    ++to;
                     ++col;
 
                     if(col==tile_cols)
@@ -47,7 +47,8 @@ namespace hgl
                         col=0;
                     }
 
-                    to_pool.AppendToIdle(to);
+                    to_pool.AppendToIdle(i);
+                    ++to;
                 }
             }
 
@@ -61,7 +62,8 @@ namespace hgl
         TileData::~TileData()
         {
             SAFE_CLEAR(tile_buffer);
-            SAFE_CLEAR(tile_texture);
+            //SAFE_CLEAR(tile_texture);     //TextureManager会自动管理Texture对象的生命周期，所以不需要在这里删除
+            delete[] tile_object_list;
         }
 
         void TileData::BeginCommit()
@@ -137,16 +139,18 @@ namespace hgl
             if(!commit_ptr)return(nullptr);
             if(!data||!bytes||ctw<=0||cth<=0)
                 return(nullptr);
-                
-            TileObject *obj;
 
-            if(!to_pool.Get(obj))
+            int to_index=-1;
+
+            if(!to_pool.Get(to_index))
                 return(nullptr);
 
-            CommitTile(obj,data,bytes,ctw,cth);
+            TileObject *to=tile_object_list+to_index;
+
+            CommitTile(to,data,bytes,ctw,cth);
 
             tile_count++;
-            return(obj);
+            return(to);
         }
 
         /**
@@ -154,12 +158,12 @@ namespace hgl
          */
         TileObject *TileData::Acquire()
         {
-            TileObject *obj;
+            int to_index=-1;
 
-            if(!to_pool.Get(obj))
+            if(!to_pool.Get(to_index))
                 return(nullptr);
 
-            return obj;
+            return tile_object_list+to_index;
         }
 
         /**
@@ -171,7 +175,9 @@ namespace hgl
         {
             if(!obj)return(false);
 
-            return to_pool.Release(obj);
+            const int to_index=obj->col+obj->row*tile_cols;
+
+            return to_pool.Release(to_index);
         }
 
         /**
@@ -189,7 +195,9 @@ namespace hgl
             if(!obj||!data||!bytes||ctw<=0||cth<=0)
                 return(false);
 
-            if(!to_pool.IsActive(obj))
+            const int to_index=obj->col+obj->row*tile_cols;
+
+            if(!to_pool.IsActive(to_index))
                 return(false);
 
             return CommitTile(obj,data,bytes,ctw,cth);

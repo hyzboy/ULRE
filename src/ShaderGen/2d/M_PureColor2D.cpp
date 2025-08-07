@@ -39,7 +39,6 @@ void main()
             if(!Std2DMaterial::CustomVertexShader(vsc))
                 return(false);
 
-            vsc->AddAssign();
             vsc->SetMain(vs_main);
             return(true);
         }

@@ -32,18 +32,19 @@ namespace hgl
          */
         bool TileFont::Registry(TileUVFloatMap &uv_map,SortedSet<u32char> &chars_sets)
         {
-            ResPoolStats stats;
+            RefPoolStats stats;
 
-            chars_sets.Clear(not_bitmap_chars);                                     //清除所有没有位图的字符
+            chars_sets.Delete(not_bitmap_chars);                                     //清除所有没有位图的字符
 
             to_res.Stats(stats,chars_sets.GetData(),chars_sets.GetCount());
 
             if(stats.not_found>stats.can_free+tile_data->GetFreeCount())         //不存在的字符数量总量>剩余可释放的闲置项+剩余可用的空余tile
                 return(false);
 
-            uv_map.ClearData();
+            uv_map.Clear();
 
-            TileObject *to;
+            RectScope2f null_uv_float;
+            TileObject *to=nullptr;
             FontBitmap *bmp;
 
             if(stats.not_found>0)
@@ -51,7 +52,7 @@ namespace hgl
                 tile_data->BeginCommit();
                 for(const u32char cp:chars_sets)
                 {
-                    if(!not_bitmap_chars.IsMember(cp))
+                    if(!not_bitmap_chars.Contains(cp))
                     if(!to_res.Get(cp,to))
                     {
                         bmp=source->GetCharBitmap(cp);
@@ -71,7 +72,16 @@ namespace hgl
                         }
                     }
 
-                    uv_map.Add(cp,to->uv_float);
+                    if(to)
+                    {
+                        uv_map.Add(cp,to->uv_float);
+                    }
+                    else
+                    {
+                        uv_map.Add(cp,null_uv_float);
+                    }
+
+                    to=nullptr;
                 }
                 tile_data->EndCommit();
             }
@@ -92,15 +102,10 @@ namespace hgl
          * 注销要使用的字符
          * @param ch_list 要注销的字符列表
          */
-        void TileFont::Unregistry(const List<u32char> &ch_list)
+        void TileFont::Unregistry(const DataArray<u32char> &ch_list)
         {
-            const u32char *cp=ch_list.GetData();
-
-            for(int i=0;i<ch_list.GetCount();i++)
-            {
-                to_res.Release(*cp);
-                ++cp;
-            }
+            for(const u32char &ch:ch_list)
+                to_res.Release(ch);
         }
     }//namespace graph
 }//namespace hgl
