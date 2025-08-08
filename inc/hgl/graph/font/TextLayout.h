@@ -19,6 +19,8 @@ namespace hgl::graph
     {
         bool    bold        =false; ///<加粗
         bool    italic      =false; ///<右斜
+        bool    underline   =false; ///<下划线
+        bool    strikeout   =false; ///<删除线
 
         Color4f CharColor;          ///<字符颜色
         Color4f BackgroundColor;    ///<背景颜色
@@ -57,20 +59,19 @@ namespace hgl::graph
     */
     struct TextLayoutAttribute
     {
-        FontSource *    font_source             =nullptr;                                       ///<字符源
         CharLayoutAttr *char_layout_attr        =nullptr;                                       ///<缺省字符排版属性
 
         uint8           text_direction          =0;                                             ///<文本排列方向
         TextAlign       align                   =TextAlign::Left;                               ///<段落对齐
         float           char_gap                =0.0f;                                          ///<字间距
         float           line_gap                =0.1f;                                          ///<行间距(相对于字符高度)
-        float           paragraph_gap           =1.0f;                                          ///<段间距(相对于字符高度)
 
         float           max_width               =0.0f;                                          ///<最大宽度(<=0代表无限制)
         float           max_height              =0.0f;                                          ///<最大高度(<=0代表无限制)
 
         bool            border_symbols_disable  =true;                                          ///<边界符号禁用(如行首禁用逗号)
-//            bool            auto_symbols_convert    =true;                                          ///<自动符号转换(如tm/(r)/(c)等)
+//      bool            disable_break_alpha_word=true;                                          ///<禁用断字(如英文单词不允许断开)
+//      bool            auto_symbols_convert    =true;                                          ///<自动符号转换(如tm/(r)/(c)等)
 
         float           space_size              =0.5f;                                          ///<半角空格尺寸(对应字符高度的系数)
         float           full_space_size         =1.0f;                                          ///<全角空格尺寸(对应字符高度的系数)
@@ -125,11 +126,8 @@ namespace hgl::graph
 
         template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &);                   ///<简易排版
 
-//            template<typename T> int SimpleLayout(TileFont *,const StringList<String<T>> &);                      ///<简易排版
-
     protected:  
 
-        TEXT_COORD_TYPE x,y;
         TEXT_COORD_TYPE char_height;
         TEXT_COORD_TYPE space_size;
         TEXT_COORD_TYPE full_space_size;
@@ -137,7 +135,6 @@ namespace hgl::graph
         TEXT_COORD_TYPE char_gap;
         TEXT_COORD_TYPE line_gap;
         TEXT_COORD_TYPE line_height;
-        TEXT_COORD_TYPE paragraph_gap;
 
     protected:
         
@@ -149,6 +146,9 @@ namespace hgl::graph
 
         TextLayout()
         {
+            font_source=nullptr;
+            hgl_zero(tla);
+
             direction.text_direction=0;
             draw_chars_count=0;
 
@@ -157,16 +157,24 @@ namespace hgl::graph
 
         virtual ~TextLayout()=default;
 
-        void Set                (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla,1);}
+        void SetTLA             (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla,1);}
         void SetFont            (      FontSource * fs)     {if(fs)font_source=fs;}
         void SetTextDirection   (const uint8 &      td)     {tla.text_direction=td;}
         void SetAlign           (const TextAlign &  ta)     {tla.align=ta;}
         void SetMaxWidth        (const float        mw)     {tla.max_width=mw;}
         void SetMaxHeight       (const float        mh)     {tla.max_height=mh;}
 
-    public:
-
         virtual bool    Init        ();                                                             ///<初始化排版
+
+    public: //多次排版
+
+        void BeginLayout(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
+
+        
+
+        void EndLayout();                                   ///<结束排版
+
+    public: //单次排版
 
                 int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &);                 ///<简易排版
                 int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &);                 ///<简易排版

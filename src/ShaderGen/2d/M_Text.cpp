@@ -34,7 +34,6 @@ void main()
     HandoverMI();gl_Position=vec4(vrb,           vec2(0,1));Output.TexCoord=trb;                EmitVertex();
 
     EndPrimitive();
-    HandoverMI();
 })";
 
     constexpr const char fs_main[]=R"(

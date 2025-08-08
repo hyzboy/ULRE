@@ -7,7 +7,7 @@ namespace hgl::graph
 {
     bool TextLayout::Init()
     {
-        if((!tla.font_source&&!font_source)
+        if((!font_source)
           ||!tla.char_layout_attr)
             return(false);
 
@@ -24,12 +24,8 @@ namespace hgl::graph
             splite_line_max_limit   = tla.max_height;
         }
 
-        if(!font_source)
-            font_source=tla.font_source;
-
         const float origin_char_height=font_source->GetCharHeight();
 
-        x=y=0;
         char_height     =ceil(origin_char_height);
         space_size      =ceil(origin_char_height*tla.space_size);
         full_space_size =ceil(origin_char_height*tla.full_space_size);
@@ -37,7 +33,6 @@ namespace hgl::graph
         char_gap        =ceil(origin_char_height*tla.char_gap);
         line_gap        =ceil(origin_char_height*tla.line_gap);
         line_height     =ceil(origin_char_height+line_gap);
-        paragraph_gap   =ceil(origin_char_height*tla.paragraph_gap);
 
         return(true);
     }
@@ -195,7 +190,7 @@ namespace hgl::graph
                                 cda.cla->metrics.h);
 
                 tcp=WriteRect(tcp,cda.uv);
-                    
+
                 left+=cda.cla->metrics.adv_x;
             }
             else
