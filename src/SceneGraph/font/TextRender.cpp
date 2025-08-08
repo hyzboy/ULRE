@@ -62,7 +62,7 @@ namespace hgl
             tla.line_gap=0.1f;
 
             tl_engine->SetFont(tile_font->GetFontSource());
-            tl_engine->Set(&tla);
+            tl_engine->SetTLA(&tla);
             tl_engine->SetTextDirection(0);
             tl_engine->SetAlign(TextAlign::Left);
             tl_engine->SetMaxWidth(0);
