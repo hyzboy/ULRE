@@ -8,7 +8,7 @@ namespace hgl::graph
     bool TextLayout::Init()
     {
         if((!tla.font_source&&!font_source)
-            ||!tla.char_layout_attr)
+          ||!tla.char_layout_attr)
             return(false);
 
         direction.text_direction=tla.text_direction;
@@ -43,8 +43,8 @@ namespace hgl::graph
     }
         
     /**
-        * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
-        */
+    * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
+    */
     template<typename T> 
     bool TextLayout::preprocess(TextPrimitive *tr,TileFont *tile_font,const T *str,const int str_length)
     {
@@ -107,15 +107,9 @@ namespace hgl::graph
         tr->SetCharsSets(chars_sets);                               //注册需要使用的字符合集
 
         //为可绘制字符列表中的字符获取UV
+        for(CharDrawAttr *cda:draw_chars_list)
         {
-            CharDrawAttr **cda=draw_chars_list.GetData();
-
-            for(int i=0;i<str_length;i++)
-            {
-                chars_uv.Get((*cda)->cla->attr->ch,(*cda)->uv);
-
-                ++cda;
-            }
+            chars_uv.Get(cda->cla->attr->ch,cda->uv);
         }
 
         return(true);
@@ -182,55 +176,50 @@ namespace hgl::graph
 
     int TextLayout::sl_h_l2r()
     {
-        const int count=draw_chars_list.GetCount();
-        CharDrawAttr **cda=draw_chars_list.GetData();
-
         int cur_size=0;
         int left=0,top=0;
 
         int16 *tp=vertex;
         float *tcp=tex_coord;
 
-        for(int i=0;i<count;i++)
+        for(CharDrawAttr *cda:draw_chars_list)
         {
-            if((*cda)->cla->visible)
+            if(cda->cla->visible)
             {
                 tp=WriteRect(   tp,
-                                left+(*cda)->cla->metrics.x,
-                                top -(*cda)->cla->metrics.y+font_source->GetCharHeight(),
-                                (*cda)->cla->metrics.w,
-                                (*cda)->cla->metrics.h);
+                                left+cda->cla->metrics.x,
+                                top -cda->cla->metrics.y+font_source->GetCharHeight(),
+                                cda->cla->metrics.w,
+                                cda->cla->metrics.h);
 
-                tcp=WriteRect(tcp,(*cda)->uv);
+                tcp=WriteRect(tcp,cda->uv);
                     
-                left+=(*cda)->cla->metrics.adv_x;
+                left+=cda->cla->metrics.adv_x;
             }
             else
             {
-                if((*cda)->cla->attr->ch==' ')
+                if(cda->cla->attr->ch==' ')
                     left+=space_size;
                 else
-                if((*cda)->cla->attr->ch==U32_FULL_WIDTH_SPACE)
+                if(cda->cla->attr->ch==U32_FULL_WIDTH_SPACE)
                     left+=full_space_size;
                 else
-                if((*cda)->cla->attr->ch=='\t')
+                if(cda->cla->attr->ch=='\t')
                     left+=tab_size;
                 else
-                if((*cda)->cla->attr->ch=='\n')
+                if(cda->cla->attr->ch=='\n')
                 {
                     left=0;
                     top+=font_source->GetCharHeight()+line_gap;
                 }
                 else
                 {
-                    left+=(*cda)->cla->metrics.adv_x;
+                    left+=cda->cla->metrics.adv_x;
                 }
             }
-
-            ++cda;
         }
 
-        return count;
+        return draw_chars_list.GetCount(); //返回绘制的字符数量
     }
 
     int TextLayout::sl_h_r2l(){return 0;}

@@ -163,10 +163,12 @@ namespace hgl::graph
         void SetMaxWidth        (const float        mw)     {tla.max_width=mw;}
         void SetMaxHeight       (const float        mh)     {tla.max_height=mh;}
 
-        virtual bool    Init        ();                                                         ///<初始化排版
+    public:
 
-        int     SimpleLayout (TextPrimitive *,TileFont *,const U16String &);                 ///<简易排版
-        int     SimpleLayout (TextPrimitive *,TileFont *,const U32String &);                 ///<简易排版
+        virtual bool    Init        ();                                                             ///<初始化排版
+
+                int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &);                 ///<简易排版
+                int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &);                 ///<简易排版
 
 //            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
 //            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
