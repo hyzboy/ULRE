@@ -5,6 +5,7 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/TileData.h>
 #include<hgl/type/DataArray.h>
+#include<hgl/type/IndexedList.h>
 
 namespace hgl::graph
 {
@@ -107,8 +108,8 @@ namespace hgl::graph
             const CLA *cla;
             TileUVFloat uv;
         };
-            
-        ObjectList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
+
+        IndexedList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
 
         template<typename T> bool preprocess(TextPrimitive *,TileFont *,const T *,const int);
 
