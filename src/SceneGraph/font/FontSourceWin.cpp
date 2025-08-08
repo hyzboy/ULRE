@@ -23,7 +23,7 @@ namespace hgl
 
                     while(pos--)
                     {
-                        *tp=ClampU8(Linear2sRGB(double(*p)/64.0f)*255.0f);
+                        *tp=((*p>63)?255:(*p)<<2);
 
                         tp++;
                         p++;
