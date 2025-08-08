@@ -61,19 +61,19 @@ namespace hgl::graph
             draw_chars_list.Clear();
 
             const T *cp=str;
-            CharDrawAttr *cda;
+            CharDrawAttr cda;
 
             for(int i=0;i<str_length;i++)
             {
-                cda=new CharDrawAttr;
+                cda.cla=font_source->GetCLA(*cp);
 
-                cda->cla=font_source->GetCLA(*cp);
-
-                if(cda->cla->visible)
+                if(cda.cla->visible)
                 {
                     chars_sets.Add(*cp);              //统计所有不重复字符
                     ++draw_chars_count;
                 }
+
+                cda.uv.Set(0,0,0,0);                //初始化UV
 
                 draw_chars_list.Add(cda);
 
@@ -107,9 +107,10 @@ namespace hgl::graph
         tr->SetCharsSets(chars_sets);                               //注册需要使用的字符合集
 
         //为可绘制字符列表中的字符获取UV
-        for(CharDrawAttr *cda:draw_chars_list)
+        for(CharDrawAttr &cda:draw_chars_list)
         {
-            chars_uv.Get(cda->cla->attr->ch,cda->uv);
+            chars_uv.Get(cda.cla->attr->ch,
+                         cda.uv);
         }
 
         return(true);
@@ -182,39 +183,39 @@ namespace hgl::graph
         int16 *tp=vertex;
         float *tcp=tex_coord;
 
-        for(CharDrawAttr *cda:draw_chars_list)
+        for(const CharDrawAttr &cda:draw_chars_list)
         {
-            if(cda->cla->visible)
+            if(cda.cla->visible)
             {
                 tp=WriteRect(   tp,
-                                left+cda->cla->metrics.x,
-                                top -cda->cla->metrics.y+font_source->GetCharHeight(),
-                                cda->cla->metrics.w,
-                                cda->cla->metrics.h);
+                                left+cda.cla->metrics.x,
+                                top -cda.cla->metrics.y+font_source->GetCharHeight(),
+                                cda.cla->metrics.w,
+                                cda.cla->metrics.h);
 
-                tcp=WriteRect(tcp,cda->uv);
+                tcp=WriteRect(tcp,cda.uv);
                     
-                left+=cda->cla->metrics.adv_x;
+                left+=cda.cla->metrics.adv_x;
             }
             else
             {
-                if(cda->cla->attr->ch==' ')
+                if(cda.cla->attr->ch==' ')
                     left+=space_size;
                 else
-                if(cda->cla->attr->ch==U32_FULL_WIDTH_SPACE)
+                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE)
                     left+=full_space_size;
                 else
-                if(cda->cla->attr->ch=='\t')
+                if(cda.cla->attr->ch=='\t')
                     left+=tab_size;
                 else
-                if(cda->cla->attr->ch=='\n')
+                if(cda.cla->attr->ch=='\n')
                 {
                     left=0;
                     top+=font_source->GetCharHeight()+line_gap;
                 }
                 else
                 {
-                    left+=cda->cla->metrics.adv_x;
+                    left+=cda.cla->metrics.adv_x;
                 }
             }
         }
