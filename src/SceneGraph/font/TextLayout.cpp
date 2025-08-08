@@ -59,6 +59,7 @@ namespace hgl::graph
             draw_chars_count=0;
             chars_sets.Clear();
             draw_chars_list.Clear();
+            draw_chars_list.PreAlloc(str_length);
 
             const T *cp=str;
             CharDrawAttr cda;
