@@ -2,12 +2,13 @@
 
 #include<hgl/graph/VKPrimitive.h>
 #include<hgl/type/SortedSet.h>
+#include<hgl/graph/font/FontSource.h>
 
 namespace hgl::graph
 {
     /**
-        * 文本图元
-        */
+    * 文本图元
+    */
     class TextPrimitive:public Primitive
     {
         VulkanDevice *  device;
@@ -24,10 +25,10 @@ namespace hgl::graph
         friend class TextLayout;
         friend class TextRender;
 
-        SortedSet<u32char> chars_sets;
+        U32CharSet chars_sets;
 
-        const SortedSet<u32char> &GetCharsSets()const{return chars_sets;}
-        void SetCharsSets(const SortedSet<u32char> &sl){chars_sets=sl;}
+        const U32CharSet &GetCharsSets()const{return chars_sets;}
+        void SetCharsSets(const U32CharSet &sl){chars_sets=sl;}
         void ClearCharsSets(){chars_sets.Clear();}
 
     public:
