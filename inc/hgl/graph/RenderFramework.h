@@ -11,6 +11,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/io/event/MouseEvent.h>
+#include<hgl/io/event/WindowEvent.h>
 #include<hgl/component/CreateComponentInfo.h>
 
 VK_NAMESPACE_BEGIN
