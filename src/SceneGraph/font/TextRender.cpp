@@ -13,10 +13,11 @@ namespace hgl
 {
     namespace graph
     {
-        TextRender::TextRender(RenderFramework *rf,FontSource *fs)
+        TextRender::TextRender(VulkanDevice *dev,TileFont *tf,FontSource *fs)
         {
-            render_framework=rf;
-            db=new RenderResource(rf->GetDevice());         //独立的资源管理器，不和整体共用
+            device=dev;
+
+            db=new RenderResource(device);         //独立的资源管理器，不和整体共用
             tl_engine=new TextLayout();
             font_source=fs;
             
@@ -24,7 +25,7 @@ namespace hgl
             material_instance   =nullptr;
             sampler             =nullptr;
             pipeline            =nullptr;
-            tile_font           =nullptr;
+            tile_font           =tf;
 
             color.Set(1,1,1,1);
         }
@@ -42,12 +43,6 @@ namespace hgl
             SAFE_CLEAR(tl_engine);
             SAFE_CLEAR(tile_font);
             SAFE_CLEAR(db);
-        }
-
-        bool TextRender::InitTileFont(int limit)
-        {
-            tile_font=render_framework->CreateTileFont(font_source,limit);
-            return(true);
         }
 
         bool TextRender::InitTextLayoutEngine()
@@ -75,7 +70,7 @@ namespace hgl
         {
             mtl::Text2DMaterialCreateConfig mtl_cfg;
 
-            mtl::MaterialCreateInfo *mci=mtl::CreateText2D(render_framework->GetDevAttr(),&mtl_cfg);
+            mtl::MaterialCreateInfo *mci=mtl::CreateText2D(device->GetDevAttr(),&mtl_cfg);
 
             if (!mci)return(false);
 
@@ -105,11 +100,8 @@ namespace hgl
             return(true);
         }
 
-        bool TextRender::Init(RenderPass *rp,int limit)
+        bool TextRender::Init(RenderPass *rp)
         {
-            if(!InitTileFont(limit))
-                return(false);
-
             if(!InitTextLayoutEngine())
                 return(false);
 
@@ -121,7 +113,7 @@ namespace hgl
 
         TextPrimitive *TextRender::CreatePrimitive(int limit)
         {   
-            TextPrimitive *tr=new TextPrimitive(render_framework->GetDevice(),material_instance->GetVIL(),limit);
+            TextPrimitive *tr=new TextPrimitive(device,material_instance->GetVIL(),limit);
 
             tr_sets.Add(tr);
 
@@ -187,17 +179,27 @@ namespace hgl
             return AcquireFontSource(fnt);
         }
 
-        TextRender *CreateTextRender(RenderFramework *rf,FontSource *fs,RenderPass *rp,int limit)
+        TextRender *RenderFramework::CreateTextRender(FontSource *font_source,const int limit)
         {
-            if(!rf)
+            if(!font_source)
                 return(nullptr);
 
+            TileFont *tile_font=CreateTileFont(font_source,limit);
+
+            RenderPass *rp=GetDefaultRenderPass();
+
             if(!rp)
-                rp=rf->GetDefaultRenderPass();
+                return(nullptr);
 
-            TextRender *text_render=new TextRender(rf,fs);
+            TextRender *text_render=new TextRender(GetDevice(),tile_font,font_source);
 
-            if(!text_render->Init(rp,limit))
+            if(!text_render)
+            {
+                delete tile_font;
+                return(nullptr);
+            }
+
+            if(!text_render->Init(rp))
             {
                 delete text_render;
                 return(nullptr);

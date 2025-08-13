@@ -122,6 +122,11 @@ namespace hgl
             return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr;
         }
 
+        graph::TextRender *CreateTextRender(graph::FontSource *fs,const int limit=1024)
+        {
+            return render_framework?render_framework->CreateTextRender(fs,limit):nullptr;
+        }
+
     public: // Texture 相关
 
         graph::Texture2D *      LoadTexture2D       (const OSString &file_name,bool auto_mipmap=true);
