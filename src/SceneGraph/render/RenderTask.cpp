@@ -34,6 +34,9 @@ namespace hgl::graph
 
         render_target=rt;
 
+        if(!rt)
+            return(false);
+
         if(!render_list)
         {
             render_list=new RenderList(rt->GetDevice());

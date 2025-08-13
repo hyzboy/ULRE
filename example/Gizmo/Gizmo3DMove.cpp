@@ -223,8 +223,6 @@ namespace
                     CurTranslate=GetTransform().AddTranslate(Vector3f(0,0,0));
                 }
 
-                GetRenderFramework()->GetEventDispatcher()->SetExclusiveDispatcher(this); //设置为独占事件分发器
-
                 return io::EventProcResult::Break; // 处理完鼠标按下事件，停止进一步处理
             }
 
@@ -243,7 +241,7 @@ namespace
 
                 CurTranslate=nullptr;
 
-                GetRenderFramework()->GetEventDispatcher()->RemoveExclusiveDispatcher(this); //设置为独占事件分发器
+                GetRenderFramework()->GetEventDispatcher()->RemoveExclusiveDispatcher(this); //移除独占事件分发器
             }
 
             return io::EventProcResult::Continue;
@@ -339,6 +337,8 @@ namespace
                     PickL2W=l2w;        //记录拾取时的变换矩阵
 
                     CurDist=to_center_dist;
+
+                    GetRenderFramework()->GetEventDispatcher()->SetExclusiveDispatcher(this); //设置为独占事件分发器
                 }
                 else
                 {
@@ -347,6 +347,11 @@ namespace
 
                 axis[i].cylinder->SetOverrideMaterial(mi);
                 axis[i].cone->SetOverrideMaterial(mi);
+            }
+
+            if(CurAXIS<0||CurAXIS>=3)
+            {
+                GetRenderFramework()->GetEventDispatcher()->RemoveExclusiveDispatcher(this); //移除独占事件分发器
             }
 
             if(CurTranslate)
