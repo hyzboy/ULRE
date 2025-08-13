@@ -34,7 +34,7 @@ private:
 
         FontSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),12);
 
-        text_render=CreateTextRender(GetRenderFramework(),fs,nullptr,str.Length());
+        text_render=CreateTextRender(fs,str.Length());
 
         if(!text_render)
             return(false);

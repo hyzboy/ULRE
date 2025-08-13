@@ -14,7 +14,8 @@ namespace hgl::graph
 
     class TextRender
     {
-        RenderFramework *   render_framework;
+        VulkanDevice *      device;
+
         RenderResource *    db;
 
         Material *          material;
@@ -35,19 +36,17 @@ namespace hgl::graph
 
     private:
 
-        friend TextRender *CreateTextRender(RenderFramework *,FontSource *,RenderPass *,int limit);
+        friend class RenderFramework;
 
-        TextRender(RenderFramework *,FontSource *);
+        TextRender(VulkanDevice *,TileFont *,FontSource *);
 
-        bool InitTileFont(int limit);
         bool InitTextLayoutEngine();
         bool InitMaterial(RenderPass *);
+        bool Init(RenderPass *rp);
 
     public:
 
         ~TextRender();
-
-        bool Init(RenderPass *rp,int limit);
 
     public:
 
@@ -75,10 +74,4 @@ namespace hgl::graph
         * @param size 字体象素高度
         */
     FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
-
-    /**
-        * 创建一个文本渲染器
-        * @param limit 节数限制(-1表示自动)
-        */
-    TextRender *CreateTextRender(RenderFramework *,FontSource *,RenderPass *,int limit=-1);
 }//namespace hgl::graph

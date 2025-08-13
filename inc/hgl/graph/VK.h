@@ -68,6 +68,7 @@ class TextureCubeArray;
 class Sampler;
 
 class TileData;
+class TextRender;
 
 class DeviceMemory;
 class DeviceBuffer;
