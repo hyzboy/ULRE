@@ -223,6 +223,8 @@ namespace
                     CurTranslate=GetTransform().AddTranslate(Vector3f(0,0,0));
                 }
 
+                GetRenderFramework()->GetEventDispatcher()->SetExclusiveDispatcher(this); //设置为独占事件分发器
+
                 return io::EventProcResult::Break; // 处理完鼠标按下事件，停止进一步处理
             }
 
@@ -240,6 +242,8 @@ namespace
                 SetLocalMatrix(new_l2w); //设置新的变换矩阵
 
                 CurTranslate=nullptr;
+
+                GetRenderFramework()->GetEventDispatcher()->RemoveExclusiveDispatcher(this); //设置为独占事件分发器
             }
 
             return io::EventProcResult::Continue;

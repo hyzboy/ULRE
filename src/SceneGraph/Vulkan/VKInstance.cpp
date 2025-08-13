@@ -104,9 +104,4 @@ const VulkanPhyDevice *VulkanInstance::GetDevice(VkPhysicalDeviceType type)const
 
     return(nullptr);
 }
-
-void VulkanInstance::DestroySurface(VkSurfaceKHR surface)
-{
-    vkDestroySurfaceKHR(inst,surface,nullptr);
-}
 VK_NAMESPACE_END

@@ -80,8 +80,9 @@ VK_NAMESPACE_BEGIN
 
                 operator VkInstance (){return inst;}
 
-        const   ObjectList<VulkanPhyDevice> &GetDeviceList       ()const {return physical_devices;}
-        const   VulkanPhyDevice *            GetDevice           (VkPhysicalDeviceType)const;
+        const   VkInstance                   GetVulkanInstance  ()const{return inst;}
+        const   ObjectList<VulkanPhyDevice> &GetDeviceList      ()const{return physical_devices;}
+        const   VulkanPhyDevice *            GetDevice          (VkPhysicalDeviceType)const;
         
         template<typename T>
         T *GetInstanceProc(const char *name)
@@ -96,8 +97,6 @@ VK_NAMESPACE_BEGIN
 
             return reinterpret_cast<T>(GetDeviceProcAddr(dev,name));
         }
-
-        void DestroySurface(VkSurfaceKHR);
     };//class VulkanInstance
     
             void                            InitVulkanInstanceProperties();

@@ -42,6 +42,7 @@ class RenderFramework;
 
 class VulkanInstance;
 class VulkanPhyDevice;
+class VulkanSurface;
 class VulkanDevice;
 struct VulkanDevAttr;
 class DeviceQueue;

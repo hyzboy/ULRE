@@ -4,6 +4,9 @@
 #include<hgl/type/String.h>
 
 VK_NAMESPACE_BEGIN
+
+using VkQueueFamilyPropertiesList=ArrayList<VkQueueFamilyProperties>;
+
 class VulkanPhyDevice
 {
     VkInstance                          instance=nullptr;
@@ -25,7 +28,8 @@ class VulkanPhyDevice
 
     ArrayList<VkLayerProperties>        layer_properties;
     ArrayList<VkExtensionProperties>    extension_properties;
-    ArrayList<VkQueueFamilyProperties>  queue_family_properties;
+
+    VkQueueFamilyPropertiesList         queue_family_properties;
 
 private:
 
@@ -49,8 +53,8 @@ public:
     VulkanPhyDevice(VkInstance,VkPhysicalDevice);
     ~VulkanPhyDevice()=default;
 
-    operator        VkPhysicalDevice()      {return physical_device;}
-    operator const  VkPhysicalDevice()const {return physical_device;}
+    const VkInstance        GetVulkanInstance()const{return instance;}
+    const VkPhysicalDevice  GetVulkanDevice()const{return physical_device;}
 
     const uint32_t          GetVulkanVersion()const{return properties.apiVersion;}
 
@@ -62,6 +66,8 @@ public:
     const bool              GetLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl)const;
     const uint32_t          GetExtensionVersion(const AnsiString &name)const;
     const bool              CheckExtensionSupport(const AnsiString &name)const;
+
+    const VkQueueFamilyPropertiesList &GetQueueFamilyProperties()const{return queue_family_properties;}
 
     const uint32_t          GetUBORange     ()const{return properties.limits.maxUniformBufferRange;}
     const VkDeviceSize      GetUBOAlign     ()const{return properties.limits.minUniformBufferOffsetAlignment;}
@@ -207,5 +213,12 @@ public:
     }
 
     const bool      SupportDynamicState() const {return dynamic_state;}
+
+public: // Vulkan API
+
+    VkResult CreateDevice(const VkDeviceCreateInfo *create_info,VkDevice *device)const
+    {
+        return vkCreateDevice(physical_device,create_info,nullptr,device);
+    }
 };//class VulkanPhyDevice
 VK_NAMESPACE_END
