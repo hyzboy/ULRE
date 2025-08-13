@@ -8,36 +8,19 @@
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
-
-constexpr uint32_t ERROR_FAMILY_INDEX=UINT32_MAX;
-
 struct VulkanDevAttr
 {
     VulkanInstance *                    instance        =nullptr;
-    const VulkanPhyDevice *           physical_device =nullptr;
+    const VulkanPhyDevice *             physical_device =nullptr;
     
     VkPhysicalDeviceDriverPropertiesKHR driver_properties;
 
-    VkSurfaceKHR                        surface         =VK_NULL_HANDLE;
-    VkSurfaceCapabilitiesKHR            surface_caps;
-
-    uint32_t                            graphics_family     =ERROR_FAMILY_INDEX;
-    uint32_t                            present_family      =ERROR_FAMILY_INDEX;
-    uint32_t                            compute_family      =ERROR_FAMILY_INDEX;
-    uint32_t                            video_decode_family =ERROR_FAMILY_INDEX;
-
-#ifdef VK_ENABLE_BETA_EXTENSIONS
-    uint32_t                            video_encode_family =ERROR_FAMILY_INDEX;
-#endif//VK_ENABLE_BETA_EXTENSIONS
+    VulkanSurface *                     surface=nullptr;
 
     VkQueue                             graphics_queue  =VK_NULL_HANDLE;
     VkQueue                             present_queue   =VK_NULL_HANDLE;
 
     VkSurfaceFormatKHR                  surface_format;
-    ArrayList<VkPresentModeKHR>         present_modes;
-
-    VkSurfaceTransformFlagBitsKHR       preTransform;
-    VkCompositeAlphaFlagBitsKHR         compositeAlpha  =VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
     bool                                uint8_index_type=false;
     bool                                uint32_index_type=false;
@@ -55,18 +38,10 @@ struct VulkanDevAttr
 
 public:
 
-    VulkanDevAttr(VulkanInstance *inst,const VulkanPhyDevice *pd,VkSurfaceKHR s);
+    VulkanDevAttr(VulkanInstance *inst,const VulkanPhyDevice *pd,VulkanSurface *s);
     ~VulkanDevAttr();
 
     int GetMemoryType(uint32_t typeBits,VkMemoryPropertyFlags properties) const;
-
-    void RefreshSurfaceCaps();
-
-private:
-
-    void GetSurfaceFormatList();
-    void GetSurfacePresentMode();
-    void GetQueueFamily();
 
 public:
 

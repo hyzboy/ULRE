@@ -4,6 +4,7 @@
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
+class VulkanSurface;
 
 struct VulkanHardwareRequirement
 {
@@ -248,7 +249,7 @@ protected:
     const PreferColorSpaces *   perfer_color_spaces;
     const PreferFormats *       perfer_depth_formats;
 
-    VkSurfaceKHR surface;
+    VulkanSurface *surface;
 
     VkSurfaceFormatKHR surface_format;
 
@@ -281,7 +282,7 @@ public:
     virtual VulkanDevice *Create();
 };//class VulkanDeviceCreater
 
-inline VulkanDevice *CreateRenderDevice(   VulkanInstance *vi,
+inline VulkanDevice *CreateRenderDevice(VulkanInstance *vi,
                                         Window *win,
                                         const VulkanHardwareRequirement *req=nullptr,
                                         const PreferFormats *       spf_color       =&PreferSDR,

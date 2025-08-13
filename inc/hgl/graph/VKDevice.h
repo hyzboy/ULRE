@@ -48,7 +48,7 @@ public:
     operator    VkDevice                                ()      {return attr->device;}
                 VulkanDevAttr *     GetDevAttr          ()      {return attr;}
 
-                VkSurfaceKHR        GetSurface          ()      {return attr->surface;}
+    const       VulkanSurface *     GetSurface          ()const {return attr->surface;}
                 VkDevice            GetDevice           ()const {return attr->device;}
     const       VulkanPhyDevice *   GetPhyDevice        ()const {return attr->physical_device;}
 

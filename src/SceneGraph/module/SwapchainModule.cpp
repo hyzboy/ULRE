@@ -8,6 +8,7 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKSemaphore.h>
+#include<hgl/graph/VKSurface.h>
 
 VK_NAMESPACE_BEGIN
 namespace
@@ -28,53 +29,41 @@ namespace
 
         uint32_t image_count;
 
-        if(dev_attr->surface_caps.maxImageCount<3)
-            image_count=dev_attr->surface_caps.maxImageCount;
+        const auto &surface_caps=dev_attr->surface->GetCapabilities();
+
+        if(surface_caps.maxImageCount<3)
+            image_count=surface_caps.maxImageCount;
         else
-        if(dev_attr->surface_caps.maxImageCount>3)
+        if(surface_caps.maxImageCount>3)
             image_count=3;
         else
-            image_count=dev_attr->surface_caps.minImageCount;
+            image_count=surface_caps.minImageCount;
 
         swapchain_ci.sType                  =VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapchain_ci.pNext                  =nullptr;
         swapchain_ci.flags                  =0;
-        swapchain_ci.surface                =dev_attr->surface;
+        swapchain_ci.surface                =dev_attr->surface->GetSurface();
         swapchain_ci.minImageCount          =image_count;
         swapchain_ci.imageFormat            =dev_attr->surface_format.format;
         swapchain_ci.imageColorSpace        =dev_attr->surface_format.colorSpace;
-        swapchain_ci.imageExtent            =dev_attr->surface_caps.currentExtent;
+        swapchain_ci.imageExtent            =surface_caps.currentExtent;
         swapchain_ci.imageArrayLayers       =1;
         swapchain_ci.imageUsage             =VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         swapchain_ci.queueFamilyIndexCount  =0;
         swapchain_ci.pQueueFamilyIndices    =nullptr;
-        swapchain_ci.preTransform           =dev_attr->preTransform;
-        swapchain_ci.compositeAlpha         =dev_attr->compositeAlpha;
+        swapchain_ci.preTransform           =dev_attr->surface->GetPreTransform();
+        swapchain_ci.compositeAlpha         =dev_attr->surface->GetCompositeAlpha();
         swapchain_ci.presentMode            =VK_PRESENT_MODE_FIFO_KHR;
         swapchain_ci.clipped                =VK_TRUE;
         swapchain_ci.oldSwapchain           =VK_NULL_HANDLE;
 
-        if(dev_attr->surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+        if(surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
             swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-        if(dev_attr->surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+        if(surface_caps.supportedUsageFlags&VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             swapchain_ci.imageUsage|=VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
-        uint32_t queueFamilyIndices[2]={dev_attr->graphics_family, dev_attr->present_family};
-        if(dev_attr->graphics_family!=dev_attr->present_family)
-        {
-            // If the graphics and present queues are from different queue families,
-            // we either have to explicitly transfer ownership of images between
-            // the queues, or we have to create the swapchain with imageSharingMode
-            // as VK_SHARING_MODE_CONCURRENT
-            swapchain_ci.imageSharingMode=VK_SHARING_MODE_CONCURRENT;
-            swapchain_ci.queueFamilyIndexCount=2;
-            swapchain_ci.pQueueFamilyIndices=queueFamilyIndices;
-        }
-        else
-        {
-            swapchain_ci.imageSharingMode = VkSharingMode(SharingMode::Exclusive);
-        }
+        swapchain_ci.imageSharingMode = VkSharingMode(SharingMode::Exclusive);
 
         VkSwapchainKHR swap_chain;
         VkResult result;
@@ -157,9 +146,11 @@ Swapchain *SwapchainModule::CreateSwapchain()
 
     Swapchain *swapchain=new Swapchain;
 
+    const auto &surface_caps=dev_attr->surface->GetCapabilities();
+
     swapchain->device           =dev_attr->device;
-    swapchain->extent           =dev_attr->surface_caps.currentExtent;
-    swapchain->transform        =dev_attr->surface_caps.currentTransform;
+    swapchain->extent           =surface_caps.currentExtent;
+    swapchain->transform        =surface_caps.currentTransform;
     swapchain->surface_format   =dev_attr->surface_format;
     swapchain->depth_format     =dev_attr->physical_device->GetDepthFormat();
 
@@ -262,9 +253,9 @@ void SwapchainModule::OnResize(const VkExtent2D &extent)
 {
     SAFE_CLEAR(sc_render_target)
 
-    VulkanDevAttr *dev_attr=GetDevAttr();
+    VulkanSurface *surface=GetSurface();
 
-    dev_attr->RefreshSurfaceCaps();
+    surface->RefreshCaps();
 
     CreateSwapchainRenderTarget();
 }

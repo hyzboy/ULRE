@@ -16,10 +16,11 @@ class GraphModule
 public:
     
             RenderFramework *   GetRenderFramework  ()const{return render_framework;}               ///<取得渲染框架
-            VulkanDevice *         GetDevice           ();                                             ///<取得GPU设备
+            VulkanDevice *      GetDevice           ();                                             ///<取得GPU设备
             VkDevice            GetVkDevice         ()const;                                        ///<取得VkDevice
-    const   VulkanPhyDevice * GetPhyDevice   ()const;                                        ///<取得物理设备
-            VulkanDevAttr *GetDevAttr  ()const;                                        ///<取得设备属性
+    const   VulkanPhyDevice *   GetPhyDevice        ()const;                                        ///<取得物理设备
+            VulkanDevAttr *     GetDevAttr          ()const;                                        ///<取得设备属性
+            VulkanSurface *     GetSurface          ()const;                                        ///<取得表面
             VkPipelineCache     GetPipelineCache    ()const;                                        ///<取得PipelineCache
 
 public:

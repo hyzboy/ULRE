@@ -203,11 +203,13 @@ SET(VK_DEVICE_SOURCE    Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceMaterial.cpp
                         Vulkan/VKDeviceFramebuffer.cpp)
 
-SET(VK_PHYSICAL_DEVICE_SOURCE ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
-                            Vulkan/VKPhysicalDevice.cpp
-                            Vulkan/VKProperties.cpp
-                            Vulkan/DebugOutProperties.h
-                            Vulkan/Debug/VKPhysicalDeviceCapsOutput.cpp)
+SET(VK_PHYSICAL_DEVICE_SOURCE   ${SG_INCLUDE_PATH}/VKPhysicalDevice.h
+                                ${SG_INCLUDE_PATH}/VKSurface.h
+                                Vulkan/VKPhysicalDevice.cpp
+                                Vulkan/VKProperties.cpp
+                                Vulkan/DebugOutProperties.h
+                                Vulkan/Debug/VKPhysicalDeviceCapsOutput.cpp
+                                Vulkan/VKSurface.cpp)
 
 SOURCE_GROUP("Vulkan\\Device"                   FILES ${VK_DEVICE_SOURCE})
 SOURCE_GROUP("Vulkan\\Device\\Creater"          FILES ${VK_DEVICE_CREATER_SOURCE})

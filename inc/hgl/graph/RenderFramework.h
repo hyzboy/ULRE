@@ -78,7 +78,7 @@ public:
             VkDevice            GetVkDevice         ()const{return device->GetDevice();}
     const   VulkanPhyDevice *   GetPhyDevice        ()const{return device->GetPhyDevice();}
             VulkanDevAttr *     GetDevAttr          ()const{return device->GetDevAttr();}
-
+            VulkanSurface *     GetSurface          ()const{return device->GetDevAttr()->surface;}
             RenderResource *    GetRenderResource   ()const{return render_resource;}
 
 public:

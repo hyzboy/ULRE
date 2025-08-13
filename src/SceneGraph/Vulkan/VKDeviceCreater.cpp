@@ -7,6 +7,7 @@
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKDeviceCreater.h>
 #include<hgl/graph/VKDevice.h>
+#include<hgl/graph/VKSurface.h>
 
 #include<iostream>
 #include<iomanip>
@@ -19,29 +20,20 @@ void SetShaderCompilerVersion(const VulkanPhyDevice *);
 #ifdef _DEBUG
 DebugUtils *CreateDebugUtils(VkDevice);
 
-void LogSurfaceFormat(const VkSurfaceFormatKHR *surface_format_list,const uint32_t format_count,const uint32_t select)
+void LogSurfaceFormat(const VkSurfaceFormatKHR &sf)
 {
-    const VkSurfaceFormatKHR *sf=surface_format_list;
+    const VulkanFormat *    vf=GetVulkanFormat(sf.format);
+    const VulkanColorSpace *cs=GetVulkanColorSpace(sf.colorSpace);
 
-    std::cout<<"Current physics device support "<<format_count<<" surface format"<<std::endl;
+    std::cout<<std::setw(10)<<vf->name<<", "<<cs->name<<std::endl;
+}
 
-    const VulkanFormat *vf;
-    const VulkanColorSpace *cs;
+void LogSurfaceFormat(const VkSurfaceFormatList &surface_formats_list)
+{
+    std::cout<<"Current physics device support "<<surface_formats_list.GetCount()<<" surface format"<<std::endl;
 
-    for(uint32_t i=0;i<format_count;i++)
-    {
-        vf=GetVulkanFormat(sf->format);
-        cs=GetVulkanColorSpace(sf->colorSpace);
-
-        if(select==i)
-            std::cout<<"  *";
-        else
-            std::cout<<"   ";
-
-        std::cout<<std::setw(3)<<i<<": "<<std::setw(10)<<vf->name<<", "<<cs->name<<std::endl;
-
-        ++sf;
-    }
+    for(auto &sf:surface_formats_list)
+        LogSurfaceFormat(sf);
 }
 #endif//_DEBUG
 
@@ -119,12 +111,9 @@ namespace
 
     void GetDeviceQueue(VulkanDevAttr *attr)
     {
-        vkGetDeviceQueue(attr->device,attr->graphics_family,0,&attr->graphics_queue);
+        vkGetDeviceQueue(attr->device,attr->surface->GetGraphicsFamilyIndex(),0,&attr->graphics_queue);
 
-        if(attr->graphics_family==attr->present_family)
-            attr->present_queue=attr->graphics_queue;
-        else
-            vkGetDeviceQueue(attr->device,attr->present_family,0,&attr->present_queue);
+        attr->present_queue=attr->graphics_queue;
     }
 
     VkCommandPool CreateCommandPool(VkDevice device,uint32_t graphics_family)
@@ -243,7 +232,7 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
     VkDevice device;
 
-    if(vkCreateDevice(*physical_device,&create_info,nullptr,&device)==VK_SUCCESS)
+    if(physical_device->CreateDevice(&create_info,&device)==VK_SUCCESS)
         return device;
 
     return nullptr;
@@ -251,46 +240,45 @@ VkDevice VulkanDeviceCreater::CreateDevice(const uint32_t graphics_family)
 
 void VulkanDeviceCreater::ChooseSurfaceFormat()
 {
-    uint32_t format_count;
+    const VkSurfaceFormatList &surface_formats_list=surface->GetFormats();
 
-    if (vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, surface, &format_count, nullptr) != VK_SUCCESS)
+    if(surface_formats_list.IsEmpty())
         return;
 
-    AutoDeleteArray<VkSurfaceFormatKHR> surface_formats_list(format_count);
+#ifdef _DEBUG
+    LogSurfaceFormat(surface_formats_list);
+#endif//_DEBUG
 
-    if (vkGetPhysicalDeviceSurfaceFormatsKHR(*physical_device, surface, &format_count, surface_formats_list) == VK_SUCCESS)
+    bool sel=false;
     {
         int fmt_index=-1;
         int cs_index=-1;
         int fmt;
         int cs;
-        uint32_t sel=0;
 
-        for(uint32_t i=0;i<format_count;i++)
+        for(auto sf:surface_formats_list)
         {
-            fmt=perfer_color_formats->Find(surface_formats_list[i].format);
-            cs=perfer_color_spaces->Find(surface_formats_list[i].colorSpace);
+            fmt=perfer_color_formats->Find(sf.format);
+            cs=perfer_color_spaces->Find(sf.colorSpace);
 
             if((fmt==fmt_index&&cs>cs_index)||fmt>fmt_index)
             {
-                surface_format=surface_formats_list[i];
+                surface_format=sf;
 
                 fmt_index=fmt;
                 cs_index=cs;
-                sel=i;
+                sel=true;
             }
         }
-
-        #ifdef _DEBUG
-        LogSurfaceFormat(surface_formats_list,format_count,sel);
-        #endif//_DEBUG
-
-        if(fmt_index!=-1)
-            return;
     }
 
-    surface_format.format=PF_RGBA8s;
-    surface_format.colorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    if(!sel)
+    {
+        surface_format.format=PF_RGBA8s;
+        surface_format.colorSpace=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
+
+    LogSurfaceFormat(surface_format);
 }
 
 VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
@@ -299,13 +287,15 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     AutoDelete<VulkanDevAttr> auto_delete(device_attr);
 
-    if(device_attr->graphics_family==ERROR_FAMILY_INDEX)
+    const uint32_t graphics_family=device_attr->surface->GetGraphicsFamilyIndex();
+
+    if(graphics_family==ERROR_FAMILY_INDEX)
         return(nullptr);
 
     SetDeviceExtension(&ext_list,physical_device,require);
     SetDeviceFeatures(&features,physical_device->GetFeatures10(),require);
 
-    device_attr->device=CreateDevice(device_attr->graphics_family);
+    device_attr->device=CreateDevice(graphics_family);
 
     if(!device_attr->device)
         return(nullptr);
@@ -328,7 +318,7 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
     GetDeviceQueue(device_attr);
 
-    device_attr->cmd_pool=CreateCommandPool(device_attr->device,device_attr->graphics_family);
+    device_attr->cmd_pool=CreateCommandPool(device_attr->device,graphics_family);
 
     if(!device_attr->cmd_pool)
         return(nullptr);
@@ -350,9 +340,9 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
 
         if(device_attr->debug_utils)
         {
-            device_attr->debug_utils->SetPhysicalDevice(*physical_device,"Physical Device:"+AnsiString(physical_device->GetDeviceName()));
+            device_attr->debug_utils->SetPhysicalDevice(physical_device->GetVulkanDevice(),"Physical Device:"+AnsiString(physical_device->GetDeviceName()));
             device_attr->debug_utils->SetDevice(device_attr->device,"Device:"+AnsiString(physical_device->GetDeviceName()));
-            device_attr->debug_utils->SetSurfaceKHR(surface,"Surface");
+            device_attr->debug_utils->SetSurfaceKHR(surface->GetSurface(),"Surface");
             device_attr->debug_utils->SetCommandPool(device_attr->cmd_pool,"Main Command Pool");
             device_attr->debug_utils->SetDescriptorPool(device_attr->desc_pool,"Main Descriptor Pool");
             device_attr->debug_utils->SetPipelineCache(device_attr->pipeline_cache,"Main Pipeline Cache");
@@ -486,10 +476,12 @@ VulkanDevice *VulkanDeviceCreater::Create()
     if(!RequirementCheck())
         return(nullptr);
 
-    surface=CreateVulkanSurface(*instance,window);
+    VkSurfaceKHR vk_surface=CreateVulkanSurface(instance->GetVulkanInstance(),window);
 
-    if(!surface)
+    if(!vk_surface)
         return(nullptr);
+
+    surface=new VulkanSurface(physical_device,vk_surface);
 
     extent.width    =window->GetWidth();
     extent.height   =window->GetHeight();
@@ -498,7 +490,8 @@ VulkanDevice *VulkanDeviceCreater::Create()
 
     if(!device)
     {
-        vkDestroySurfaceKHR(*instance,surface,nullptr);
+        delete surface;
+        surface=nullptr;
         return(nullptr);
     }
 
