@@ -19,3 +19,6 @@
 [submodule "CMUtil"]
 	path = CMUtil
 	url = http://git.hyzgame.com:3000/hyzboy/CMUtil.git
+[submodule "CMGUI"]
+	path = CMGUI
+	url = http://git.hyzgame.com:3000/hyzboy/CMGUI
