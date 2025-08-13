@@ -23,6 +23,7 @@ SET(ULRE    CMCore
             CMAssetsManage
             CMSceneGraph
             CMUtil
+            CMGUI
             ULRE.Work
             ULRE.Util
             ULRE.ShaderGen
@@ -33,6 +34,7 @@ SET(ULRE    CMCore
 
 use_cm_module(Core)
 use_cm_module(Util)
+use_cm_module(GUI)
 use_cm_module(Platform)
 use_cm_module(AssetsManage)
 use_cm_module(SceneGraph)
