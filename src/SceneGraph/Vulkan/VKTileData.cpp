@@ -8,54 +8,41 @@ namespace
 
     void AnalyseSize(uint &fw,uint &fh,const uint w,const uint h,const uint count,const uint32_t max_texture_size)
     {
-        uint total,tw,th,t;
+        const uint mw=max_texture_size/w;
+        const uint mh=max_texture_size/h;
 
-        fw=fh=0;
-
-        tw=max_texture_size;
-        while(tw>=w)
+        if(mw*mh<=count)        //最大值都不够，那就算了
         {
-            th=max_texture_size;
-            while(th>=h)
+            fw=max_texture_size;
+            fh=max_texture_size;
+
+            return;
+        }
+
+        const uint total_pixels=w*h*count;
+
+        fw=fh=1;
+
+        while(total_pixels>fw*fh)
+        {
+            if(fw>=max_texture_size)
             {
-                t=(tw/w)*(th/h);
-
-                if(!fw)
-                {
-                    fw=tw;
-                    fh=th;
-
-                    total=t;
-                }
-                else
-                {
-                    if(t==count)
-                    {
-                        //正好，就要这么大的
-
-                        fw=tw;
-                        fh=th;
-
-                        return;
-                    }
-                    else
-                    if(t>count)                //要比要求的最大值大
-                    {
-                        if(t<total)            //找到最接近最大值的
-                        {
-                            //比现在选中的更节省
-                            fw=tw;
-                            fh=th;
-
-                            total=t;
-                        }
-                    }
-                }
-
-                th>>=1;
+                fw=max_texture_size;
             }
 
-            tw>>=1;
+            if(fh>=max_texture_size)
+            {
+                fh=max_texture_size;
+            }
+
+            if(fw>fh)
+            {
+                fh<<=1;
+            }
+            else
+            {
+                fw<<=1;
+            }
         }
     }//void AnalyseSize
 }//namespace
