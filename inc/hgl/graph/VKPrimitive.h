@@ -38,6 +38,8 @@ public:
 
     const   AnsiString &    GetName         ()const{ return prim_name; }
 
+    const   bool            IsValid         ()const{ return prim_data!=nullptr; }///<是否有效
+
     virtual
     const   VkDeviceSize    GetVertexCount  ()const;
 

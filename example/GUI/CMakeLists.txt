@@ -9,6 +9,7 @@
     set_property(TARGET ${name} PROPERTY FOLDER "ULRE/Example/GUI")
 endmacro()
 
-CreateProject(00.control_point_2d control_point_2d.cpp)
-CreateProject(01.align_test align_test.cpp)
-CreateProject(02.TextDrawTest DrawText.cpp)
+#CreateProject(00.control_point_2d   control_point_2d.cpp)
+#CreateProject(01.align_test         align_test.cpp)
+CreateProject(02.TextDrawTest       DrawText.cpp)
+CreateProject(03.DrawRoundrectangle DrawRoundrectangle.cpp)

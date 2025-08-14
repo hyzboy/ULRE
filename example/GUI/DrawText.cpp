@@ -32,15 +32,17 @@ private:
 
         if(str.IsEmpty())return(false);
 
-        FontSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),12);
+        const int unique_char_count=str.UniqueCharCount();
 
-        text_render=CreateTextRender(fs,str.Length());
+        FontSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),24);
+
+        text_render=CreateTextRender(fs,unique_char_count);
 
         if(!text_render)
             return(false);
 
         text_primitive=text_render->CreatePrimitive(str);
-        if(!text_primitive)
+        if(!text_primitive||!text_primitive->IsValid())
             return(false);
 
         render_obj=text_render->CreateMesh(text_primitive);
@@ -67,5 +69,5 @@ public:
 
 int os_main(int,os_char **)
 {
-    return RunFramework<TestApp>(OS_TEXT("DrawText"),1280,720);
+    return RunFramework<TestApp>(OS_TEXT("DrawText"),2560,1440);
 }
