@@ -28,20 +28,28 @@ private:
     {
         U16String str;
         
-        LoadStringFromTextFile(str,OS_TEXT("res/text/DaoDeBible.txt"));
+        LoadStringFromTextFile(str,OS_TEXT("res/text/HardwareRequirement.txt"));
 
         if(str.IsEmpty())return(false);
 
         const int unique_char_count=str.UniqueCharCount();
 
-        FontSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),24);
+        FontSource *fs_ansi=AcquireFontSource(OS_TEXT("Consolas"),24);
+        FontSource *fs_cjk=AcquireFontSource(OS_TEXT("微软雅黑"),24);
+
+        FontSourceMulti *fs=new FontSourceMulti(fs_ansi);
+
+        fs->AddCJK(fs_cjk);
 
         text_render=CreateTextRender(fs,unique_char_count);
 
         if(!text_render)
             return(false);
 
-        text_primitive=text_render->CreatePrimitive(str);
+        text_primitive=text_render->CreatePrimitive();
+
+        text_render->Layout(text_primitive,str);
+
         if(!text_primitive||!text_primitive->IsValid())
             return(false);
 
