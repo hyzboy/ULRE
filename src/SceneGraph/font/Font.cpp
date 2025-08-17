@@ -5,15 +5,15 @@ namespace hgl
 {
     namespace graph
     {
-        Font::Font()
+        Font::Font():Comparator<Font>()
         {
-            memset(this,0,sizeof(Font));
+            hgl_zero(name);
+            width=height=0;
+            bold=italic=anti=false;
         }
         
-        Font::Font(const os_char *n,int w,int h,bool b,bool i,bool aa)
+        Font::Font(const os_char *n,int w,int h,bool b,bool i,bool aa):Comparator<Font>()
         {
-            memset(this,0,sizeof(Font));
-
             hgl::strcpy(name,MAX_FONT_NAME_LENGTH,n);
 
             width=w;
