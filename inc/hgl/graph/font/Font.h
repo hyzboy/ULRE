@@ -9,7 +9,7 @@ namespace hgl::graph
     /**
     * 字体信息
     */
-    struct Font:public ComparatorData<Font>
+    struct Font:public Comparator<Font>
     {
         os_char name[MAX_FONT_NAME_LENGTH];	///<字体名称
 
@@ -25,6 +25,24 @@ namespace hgl::graph
 
         Font();
         Font(const os_char *,int,int,bool b=false,bool i=false,bool=true);
+
+        const int compare(const Font &other)const override
+        {
+            int off;
+
+            off=width-other.width;
+            if(off)return off;
+
+            off=height-other.height;
+            if(off)return off;
+
+            if(bold     !=other.bold    )return bold    ?1:-1;
+            if(italic   !=other.italic  )return italic  ?1:-1;
+            if(anti     !=other.anti    )return anti    ?1:-1;
+
+            off=hgl::strcmp(name,other.name);
+            return off;
+        }
     };//struct Font
 
     using U32CharSet=SortedSet<u32char>;    ///<字符合集
