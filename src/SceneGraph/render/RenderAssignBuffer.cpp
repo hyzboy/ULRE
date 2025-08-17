@@ -12,8 +12,6 @@
 VK_NAMESPACE_BEGIN
 RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)
 {
-    hgl_zero(*this);
-
     device=dev;
 
     material=mtl;
@@ -25,6 +23,10 @@ RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)
     l2w_buffer_max_count=0;
     l2w_buffer=nullptr;
     mi_buffer=nullptr;
+
+    node_count=0;
+    assign_vab=nullptr;
+    assign_buffer=nullptr;
 }
 
 void RenderAssignBuffer::Bind(Material *mtl)const
