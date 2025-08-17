@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.5)
+﻿cmake_minimum_required(VERSION 3.10)
 
 PROJECT(ULRE)
 
@@ -23,6 +23,7 @@ SET(ULRE    CMCore
             CMAssetsManage
             CMSceneGraph
             CMUtil
+            CM2D
 #            CMGUI
             ULRE.Work
             ULRE.Util
@@ -34,6 +35,7 @@ SET(ULRE    CMCore
 
 use_cm_module(Core)
 use_cm_module(Util)
+use_cm_module(2D)
 use_cm_module(GUI)
 use_cm_module(Platform)
 use_cm_module(AssetsManage)

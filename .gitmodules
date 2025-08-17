@@ -22,3 +22,6 @@
 [submodule "CMGUI"]
 	path = CMGUI
 	url = http://git.hyzgame.com:3000/hyzboy/CMGUI
+[submodule "CM2D"]
+	path = CM2D
+	url = http://git.hyzgame.com:3000/hyzboy/CM2D
