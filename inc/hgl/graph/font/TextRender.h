@@ -59,19 +59,4 @@ namespace hgl::graph
 
         void Release(TextPrimitive *);
     };//class TextRender
-
-    /**
-        * 创建一个CJK字体源
-        * @param cf CJK字体名称
-        * @param lf 其它字体名称
-        * @param size 字体象素高度
-        */
-    FontSource *CreateCJKFontSource(const os_char *cf,const os_char *lf,const uint32_t size);
-
-    /**
-        * 创建一个字体源
-        * @param name 字体名称
-        * @param size 字体象素高度
-        */
-    FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
 }//namespace hgl::graph

@@ -76,6 +76,8 @@ namespace hgl::graph
 
         virtual ~FontSource()=default;
 
+    public:
+
         virtual			FontBitmap *GetCharBitmap	(const u32char &)=0;						///<取得字符位图数据
         virtual const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)=0;		///<取得字符绘制信息
                 const	CLA *		GetCLA			(const u32char &);							///<取得字符排版信息
@@ -84,6 +86,8 @@ namespace hgl::graph
         void RefAcquire(void *);																///<引用请求
         void RefRelease(void *);																///<引用释放
         int  RefCount()const{return ref_object.GetCount();}										///<获取引用对象数量
+
+        //virtual void Release()=0;
     };//class FontSource
 
     /**
@@ -104,7 +108,12 @@ namespace hgl::graph
     public:
 
         FontSourceSingle(const Font &f){fnt=f;}
+
+    protected:
+
         virtual ~FontSourceSingle()=default;
+
+    public:
 
                         FontBitmap *GetCharBitmap	(const u32char &ch) override;				///<取得字符位图数据
                 const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;///<取得字符绘制信息
@@ -170,4 +179,21 @@ namespace hgl::graph
         const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;		///<取得字符绘制信息
                 int			GetCharHeight	()const override{return max_char_height;}			///<取得字符高度
     };//class FontSourceMulti:public FontSource
+
+    /**
+    * 创建一个CJK字体源
+    * @param latin_font Latin字体名称
+    * @param cjk_font CJK字体名称
+    * @param size 字体象素高度
+    */
+    FontSource *CreateCJKFontSource(const os_char *latin_font,const os_char *cjk_font,const uint32_t size);
+
+    /**
+    * 创建一个字体源
+    * @param name 字体名称
+    * @param size 字体象素高度
+    */
+    FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
+
+    void ReleaseFontSource(FontSource *fs);
 }//namespace hgl::graph

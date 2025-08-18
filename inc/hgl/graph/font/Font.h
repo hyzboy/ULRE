@@ -25,6 +25,7 @@ namespace hgl::graph
 
         Font();
         Font(const os_char *,int,int,bool b=false,bool i=false,bool=true);
+        Font(const os_char *n,int s):Font(n,0,s,false,false,true){}
 
         const int compare(const Font &other)const override
         {
