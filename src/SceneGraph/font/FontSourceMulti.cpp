@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/font/FontSource.h>
 
 namespace hgl::graph
-{	
+{
     FontSourceMulti::FontSourceMulti(FontSource *fs)
     {
         default_source=fs;
@@ -20,6 +20,12 @@ namespace hgl::graph
     {
         if(default_source)
             default_source->RefRelease(this);
+
+        for(auto &fsp:source_map)
+        {
+            if(fsp->value)
+                fsp->value->RefRelease(this);
+        }
     }
 
     void FontSourceMulti::Add(UnicodeBlock ub,FontSource *fs)

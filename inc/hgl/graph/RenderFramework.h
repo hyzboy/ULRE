@@ -139,6 +139,8 @@ public: // other
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
     TextRender *CreateTextRender(graph::FontSource *fs,const int limit_count=1024);
 
+    TextRender *CreateTextRender(const OSString &latin_font,const OSString &cjk_font,const int size,const int limit_count=1024);
+
 public:
 
     template<typename ...ARGS>
