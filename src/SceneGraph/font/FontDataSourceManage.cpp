@@ -22,6 +22,18 @@ namespace hgl::graph
         return source;
     }
 
+    FontDataSource *AcquireFontDataSource(const os_char *name,const uint32_t size)
+    {
+        Font fnt(name,0,size);
+
+        return AcquireFontDataSource(fnt);
+    }
+
+    void ReleaseFontDataSource(FontDataSource *fs)
+    {
+        if(!fs)return;
+    }
+
     FontSource *CreateCJKFontSource(const os_char *latin_fontname,const os_char *cjk_fontname,const uint32_t size)
     {
         Font latin_fnt(latin_fontname,0,size);
@@ -38,19 +50,5 @@ namespace hgl::graph
         font_source->AddCJK(cjk_fs);
 
         return font_source;
-    }
-
-    FontDataSource *AcquireFontDataSource(const os_char *name,const uint32_t size)
-    {
-        Font fnt(name,0,size);
-
-        return AcquireFontDataSource(fnt);
-    }
-
-    void ReleaseFontSource(FontDataSource *fs)
-    {
-        if(!fs)return;
-
-
     }
 }//namespace hgl::graph

@@ -194,5 +194,5 @@ namespace hgl::graph
     */
     FontDataSource *AcquireFontDataSource(const os_char *name,const uint32_t size);
 
-    void ReleaseFontSource(FontDataSource *fs);
+    void ReleaseFontDataSource(FontDataSource *fs);
 }//namespace hgl::graph
