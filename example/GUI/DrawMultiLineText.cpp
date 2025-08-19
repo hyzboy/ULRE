@@ -34,12 +34,7 @@ private:
 
         const int unique_char_count=str.UniqueCharCount();
 
-        FontDataSource *fs_ansi=AcquireFontDataSource(OS_TEXT("Consolas"),24);
-        FontDataSource *fs_cjk=AcquireFontDataSource(OS_TEXT("微软雅黑"),24);
-
-        FontSource *fs=new FontSource(fs_ansi);
-
-        fs->AddCJK(fs_cjk);
+        FontSource *fs=CreateCJKFontSource(OS_TEXT("Consolas"),OS_TEXT("微软雅黑"),24);
 
         text_render=CreateTextRender(fs,unique_char_count);
 
