@@ -6,7 +6,7 @@
 
 namespace hgl::graph
 {
-    class WinBitmapFont:public FontSourceSingle
+    class WinBitmapFont:public FontBitmapDataSource
     {
         HDC hdc;
         HFONT hfont;    		

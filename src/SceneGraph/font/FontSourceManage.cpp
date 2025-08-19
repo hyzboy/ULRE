@@ -2,13 +2,13 @@
 
 namespace hgl::graph
 {        
-    IFontSource *CreateFontSource(const Font &f);        //各平台独立提供
+    FontDataSource *CreateFontSource(const Font &f);        //各平台独立提供
 
-    static ObjectMap<Font,IFontSource> FontStorage;
+    static ObjectMap<Font,FontDataSource> FontStorage;
 
-    IFontSource *AcquireFontSource(const Font &f)
+    FontDataSource *AcquireFontSource(const Font &f)
     {
-        IFontSource *source;
+        FontDataSource *source;
 
         if(!FontStorage.Get(f,source))
         {
@@ -22,13 +22,13 @@ namespace hgl::graph
         return source;
     }
 
-    IFontSource *CreateCJKFontSource(const os_char *latin_fontname,const os_char *cjk_fontname,const uint32_t size)
+    FontDataSource *CreateCJKFontSource(const os_char *latin_fontname,const os_char *cjk_fontname,const uint32_t size)
     {
         Font latin_fnt(latin_fontname,0,size);
         Font cjk_fnt(cjk_fontname,0,size);
 
-        IFontSource *latin_fs=AcquireFontSource(latin_fnt);
-        IFontSource *cjk_fs=AcquireFontSource(cjk_fnt);
+        FontDataSource *latin_fs=AcquireFontSource(latin_fnt);
+        FontDataSource *cjk_fs=AcquireFontSource(cjk_fnt);
 
         if(!latin_fs||!cjk_fs)
             return(nullptr);
@@ -40,14 +40,14 @@ namespace hgl::graph
         return font_source;
     }
 
-    IFontSource *AcquireFontSource(const os_char *name,const uint32_t size)
+    FontDataSource *AcquireFontSource(const os_char *name,const uint32_t size)
     {
         Font fnt(name,0,size);
 
         return AcquireFontSource(fnt);
     }
 
-    void ReleaseFontSource(IFontSource *fs)
+    void ReleaseFontSource(FontDataSource *fs)
     {
         if(!fs)return;
 

@@ -15,7 +15,7 @@
 
 VK_NAMESPACE_BEGIN
 
-class IFontSource;
+class FontDataSource;
 class TileFont;
 class RenderPassManager;
 class TextureManager;
@@ -136,8 +136,8 @@ public: // other
         return(new RenderList(device));
     }
 
-    TileFont *CreateTileFont(IFontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
-    TextRender *CreateTextRender(graph::IFontSource *fs,const int limit_count=1024);
+    TileFont *CreateTileFont(FontDataSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
+    TextRender *CreateTextRender(graph::FontDataSource *fs,const int limit_count=1024);
 
     TextRender *CreateTextRender(const OSString &latin_font,const OSString &cjk_font,const int size,const int limit_count=1024);
 
