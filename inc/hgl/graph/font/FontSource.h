@@ -184,7 +184,7 @@ namespace hgl::graph
     * @param cjk_font CJK字体名称
     * @param size 字体象素高度
     */
-    FontDataSource *CreateCJKFontSource(const os_char *latin_font,const os_char *cjk_font,const uint32_t size);
+    FontSourceMulti *CreateCJKFontSource(const os_char *latin_font,const os_char *cjk_font,const uint32_t size);
 
     /**
     * 创建一个字体源

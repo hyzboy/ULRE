@@ -11,7 +11,7 @@
 
 namespace hgl::graph
 {
-    TextRender::TextRender(VulkanDevice *dev,TileFont *tf,FontDataSource *fs)
+    TextRender::TextRender(VulkanDevice *dev,TileFont *tf,FontSourceMulti *fs)
     {
         device=dev;
 
@@ -39,6 +39,7 @@ namespace hgl::graph
         tr_sets.Clear();
             
         SAFE_CLEAR(tl_engine);
+        SAFE_CLEAR(font_source);
         SAFE_CLEAR(tile_font);
         SAFE_CLEAR(db);
     }
@@ -155,7 +156,7 @@ namespace hgl::graph
         delete tr;
     }
 
-    TextRender *RenderFramework::CreateTextRender(FontDataSource *font_source,const int limit)
+    TextRender *RenderFramework::CreateTextRender(FontSourceMulti *font_source,const int limit)
     {
         if(!font_source)
             return(nullptr);
@@ -186,7 +187,7 @@ namespace hgl::graph
 
     TextRender *RenderFramework::CreateTextRender(const OSString &latin_font,const OSString &cjk_font,const int font_size,const int limit_count)
     {
-        FontDataSource *fs=CreateCJKFontSource(latin_font,cjk_font,font_size);
+        FontSourceMulti *fs=CreateCJKFontSource(latin_font,cjk_font,font_size);
 
         TextRender *tr=CreateTextRender(fs,limit_count);
 
