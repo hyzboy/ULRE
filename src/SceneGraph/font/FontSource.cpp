@@ -4,7 +4,7 @@ namespace hgl
 {
     namespace graph
     {
-        void FontSource::RefAcquire(void *ptr)
+        void IFontSource::RefAcquire(void *ptr)
         {
             if(!ptr)return;
 
@@ -13,7 +13,7 @@ namespace hgl
             return;
         }
 
-        void FontSource::RefRelease(void *ptr)
+        void IFontSource::RefRelease(void *ptr)
         {
             if(!ptr)return;
 
@@ -35,7 +35,7 @@ namespace hgl
             ObjectMap<u32char,CharAttributes> all_char_attrs;
         }//namespace
 
-        const CLA *FontSource::GetCLA(const u32char &ch)
+        const CLA *IFontSource::GetCLA(const u32char &ch)
         {
             CLA *cla;
 

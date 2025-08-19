@@ -4,7 +4,7 @@
 
 namespace hgl::graph
 {
-    TileFont::TileFont(TileData *td,FontSource *fs)
+    TileFont::TileFont(TileData *td,IFontSource *fs)
     {
         tile_data=td;
 

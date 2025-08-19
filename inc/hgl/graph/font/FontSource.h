@@ -64,7 +64,7 @@ namespace hgl::graph
     /**
     * 文字位图数据源
     */
-    class FontSource
+    class IFontSource
     {
     protected:
 
@@ -74,7 +74,7 @@ namespace hgl::graph
 
     public:
 
-        virtual ~FontSource()=default;
+        virtual ~IFontSource()=default;
 
     public:
 
@@ -88,12 +88,12 @@ namespace hgl::graph
         int  RefCount()const{return ref_object.GetCount();}										///<获取引用对象数量
 
         //virtual void Release()=0;
-    };//class FontSource
+    };//class IFontSource
 
     /**
     * 文字位图单一数据源
     */
-    class FontSourceSingle:public FontSource
+    class FontSourceSingle:public IFontSource
     {
     protected:
 
@@ -118,18 +118,18 @@ namespace hgl::graph
                         FontBitmap *GetCharBitmap	(const u32char &ch) override;				///<取得字符位图数据
                 const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;///<取得字符绘制信息
         virtual			int			GetCharHeight	()const override{return fnt.height;}		///<取得字符高度
-    };//class FontSourceSingle:public FontSource
+    };//class FontSourceSingle:public IFontSource
 
-    FontSource *AcquireFontSource(const Font &f);
+    IFontSource *AcquireFontSource(const Font &f);
 
     /**
     * 文字位图多重数据源
     */
-    class FontSourceMulti:public FontSource
+    class FontSourceMulti:public IFontSource
     {
-        using FontSourcePointer=FontSource *;
+        using FontSourcePointer=IFontSource *;
 
-        FontSource *default_source;
+        IFontSource *default_source;
         Map<UnicodeBlock,FontSourcePointer> source_map;
 
         int max_char_height;
@@ -138,19 +138,19 @@ namespace hgl::graph
 
     protected:
 
-        FontSource *GetFontSource(const u32char &ch);
+        IFontSource *GetFontSource(const u32char &ch);
 
     public:
 
         /**
         * @param dfs 缺省字符数据源
         */
-        FontSourceMulti(FontSource *dfs);
+        FontSourceMulti(IFontSource *dfs);
         virtual ~FontSourceMulti();
 
-        void Add(UnicodeBlock,FontSource *);
+        void Add(UnicodeBlock,IFontSource *);
 
-        void AddCJK(FontSource *chs_fs)
+        void AddCJK(IFontSource *chs_fs)
         {
             Add(UnicodeBlock::cjk_radicals_supplement,chs_fs);
             Add(UnicodeBlock::cjk_symbols_and_punctuation,chs_fs);
@@ -171,14 +171,14 @@ namespace hgl::graph
         }
 
         void Remove(UnicodeBlock);
-        void Remove(FontSource *);
+        void Remove(IFontSource *);
 
     public:
 
                 FontBitmap *GetCharBitmap	(const u32char &ch) override;
         const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;		///<取得字符绘制信息
                 int			GetCharHeight	()const override{return max_char_height;}			///<取得字符高度
-    };//class FontSourceMulti:public FontSource
+    };//class FontSourceMulti:public IFontSource
 
     /**
     * 创建一个CJK字体源
@@ -186,14 +186,14 @@ namespace hgl::graph
     * @param cjk_font CJK字体名称
     * @param size 字体象素高度
     */
-    FontSource *CreateCJKFontSource(const os_char *latin_font,const os_char *cjk_font,const uint32_t size);
+    IFontSource *CreateCJKFontSource(const os_char *latin_font,const os_char *cjk_font,const uint32_t size);
 
     /**
     * 创建一个字体源
     * @param name 字体名称
     * @param size 字体象素高度
     */
-    FontSource *AcquireFontSource(const os_char *name,const uint32_t size);
+    IFontSource *AcquireFontSource(const os_char *name,const uint32_t size);
 
-    void ReleaseFontSource(FontSource *fs);
+    void ReleaseFontSource(IFontSource *fs);
 }//namespace hgl::graph

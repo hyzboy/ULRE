@@ -122,7 +122,7 @@ namespace hgl
             return render_framework?render_framework->CreateMesh(name,vertices_count,mi,pipeline,vad_list):nullptr;
         }
 
-        graph::TextRender *CreateTextRender(graph::FontSource *fs,const int limit=1024)
+        graph::TextRender *CreateTextRender(graph::IFontSource *fs,const int limit=1024)
         {
             return render_framework?render_framework->CreateTextRender(fs,limit):nullptr;
         }

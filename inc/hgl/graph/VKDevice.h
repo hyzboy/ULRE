@@ -19,7 +19,7 @@
 VK_NAMESPACE_BEGIN
 class TileData;
 class TileFont;
-class FontSource;
+class IFontSource;
 class VulkanArrayBuffer;
 class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
@@ -184,6 +184,6 @@ public:
 
     TileData *CreateTileData(const VkFormat video_format,const uint width,const uint height,const uint count);          ///<创建一个Tile数据集
     
-    TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
+    TileFont *CreateTileFont(IFontSource *fs,int limit_count=-1);                                                        ///<创建一个Tile字体
 };//class VulkanDevice
 VK_NAMESPACE_END
