@@ -6,7 +6,7 @@ namespace hgl::graph
 
     static ObjectMap<Font,FontDataSource> FontStorage;
 
-    FontDataSource *AcquireFontSource(const Font &f)
+    FontDataSource *AcquireFontDataSource(const Font &f)
     {
         FontDataSource *source;
 
@@ -27,8 +27,8 @@ namespace hgl::graph
         Font latin_fnt(latin_fontname,0,size);
         Font cjk_fnt(cjk_fontname,0,size);
 
-        FontDataSource *latin_fs=AcquireFontSource(latin_fnt);
-        FontDataSource *cjk_fs=AcquireFontSource(cjk_fnt);
+        FontDataSource *latin_fs=AcquireFontDataSource(latin_fnt);
+        FontDataSource *cjk_fs=AcquireFontDataSource(cjk_fnt);
 
         if(!latin_fs||!cjk_fs)
             return(nullptr);
@@ -40,11 +40,11 @@ namespace hgl::graph
         return font_source;
     }
 
-    FontDataSource *AcquireFontSource(const os_char *name,const uint32_t size)
+    FontDataSource *AcquireFontDataSource(const os_char *name,const uint32_t size)
     {
         Font fnt(name,0,size);
 
-        return AcquireFontSource(fnt);
+        return AcquireFontDataSource(fnt);
     }
 
     void ReleaseFontSource(FontDataSource *fs)

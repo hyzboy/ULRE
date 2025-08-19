@@ -89,7 +89,7 @@ namespace hgl::graph
         }
     }
         
-    FontDataSource *FontSource::GetFontSource(const u32char &ch)
+    FontDataSource *FontSource::GetFontDataSource(const u32char &ch)
     {
         if(hgl::isspace(ch))return(nullptr);	//不能显示的数据或是空格
 
@@ -113,7 +113,7 @@ namespace hgl::graph
 
     FontBitmap *FontSource::GetCharBitmap(const u32char &ch)
     {
-        FontDataSource *s=GetFontSource(ch);
+        FontDataSource *s=GetFontDataSource(ch);
 
         if(!s)
             return(nullptr);
@@ -123,7 +123,7 @@ namespace hgl::graph
         
     const bool FontSource::GetCharMetrics(CharMetricsInfo &cmi,const u32char &ch)
     {
-        FontDataSource *s=GetFontSource(ch);
+        FontDataSource *s=GetFontDataSource(ch);
 
         if(!s)
             return(0);
@@ -133,7 +133,7 @@ namespace hgl::graph
 
     const	CLA *FontSource::GetCLA(const u32char &ch)
     {
-        FontDataSource *s=GetFontSource(ch);
+        FontDataSource *s=GetFontDataSource(ch);
 
         if(!s)
             return(default_source->GetCLA(ch));
