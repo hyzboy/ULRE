@@ -67,7 +67,7 @@ namespace hgl
             }
         }//namespace
 
-        WinBitmapFont::WinBitmapFont(const Font &f):FontSourceSingle(f)
+        WinBitmapFont::WinBitmapFont(const Font &f):FontBitmapDataSource(f)
         {
             hdc=CreateCompatibleDC(0);
 
@@ -141,7 +141,7 @@ namespace hgl
             return(true);
         }
 
-        IFontSource *CreateFontSource(const Font &f)
+        FontDataSource *CreateFontSource(const Font &f)
         {
             return(new WinBitmapFont(f));
         }

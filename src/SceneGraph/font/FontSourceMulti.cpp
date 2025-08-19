@@ -2,7 +2,7 @@
 
 namespace hgl::graph
 {
-    FontSourceMulti::FontSourceMulti(IFontSource *fs)
+    FontSourceMulti::FontSourceMulti(FontDataSource *fs)
     {
         default_source=fs;
 
@@ -28,7 +28,7 @@ namespace hgl::graph
         }
     }
 
-    void FontSourceMulti::Add(UnicodeBlock ub,IFontSource *fs)
+    void FontSourceMulti::Add(UnicodeBlock ub,FontDataSource *fs)
     {
         if(ub<UnicodeBlock::BEGIN_RANGE
             ||ub>UnicodeBlock::END_RANGE
@@ -72,7 +72,7 @@ namespace hgl::graph
         }
     }
 
-    void FontSourceMulti::Remove(IFontSource *fs)
+    void FontSourceMulti::Remove(FontDataSource *fs)
     {
         if(!fs)return;
         if(fs==default_source)return;
@@ -89,7 +89,7 @@ namespace hgl::graph
         }
     }
         
-    IFontSource *FontSourceMulti::GetFontSource(const u32char &ch)
+    FontDataSource *FontSourceMulti::GetFontSource(const u32char &ch)
     {
         if(hgl::isspace(ch))return(nullptr);	//不能显示的数据或是空格
 
@@ -113,7 +113,7 @@ namespace hgl::graph
 
     FontBitmap *FontSourceMulti::GetCharBitmap(const u32char &ch)
     {
-        IFontSource *s=GetFontSource(ch);
+        FontDataSource *s=GetFontSource(ch);
 
         if(!s)
             return(nullptr);
@@ -123,7 +123,7 @@ namespace hgl::graph
         
     const bool FontSourceMulti::GetCharMetrics(CharMetricsInfo &cmi,const u32char &ch)
     {
-        IFontSource *s=GetFontSource(ch);
+        FontDataSource *s=GetFontSource(ch);
 
         if(!s)
             return(0);

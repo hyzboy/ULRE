@@ -4,7 +4,7 @@ namespace hgl
 {
 	namespace graph
 	{
-		FontBitmap *FontSourceSingle::GetCharBitmap(const u32char &ch)
+		FontBitmap *FontBitmapDataSource::GetCharBitmap(const u32char &ch)
 		{
 			if(hgl::isspace(ch))return(nullptr);	//不能显示的数据或是空格
 
@@ -30,7 +30,7 @@ namespace hgl
 			}
 		}
 		
-		const bool FontSourceSingle::GetCharMetrics(CharMetricsInfo &adv_info,const u32char &ch)
+		const bool FontBitmapDataSource::GetCharMetrics(CharMetricsInfo &adv_info,const u32char &ch)
 		{		
             FontBitmap *bmp=GetCharBitmap(ch);
 			

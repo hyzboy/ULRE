@@ -14,7 +14,7 @@ namespace hgl::graph
     */
     class TileFont
     {
-        IFontSource *source;
+        FontDataSource *source;
         TileData *tile_data;
 
         TileResPool to_res;
@@ -23,13 +23,13 @@ namespace hgl::graph
 
     public:
 
-        IFontSource *GetFontSource   (){return source;}
+        FontDataSource *GetFontSource   (){return source;}
         TileData *  GetTileData     (){return tile_data;}
         Texture2D * GetTexture      (){return tile_data->GetTexture();}
 
     public:
 
-        TileFont(TileData *td,IFontSource *fs);
+        TileFont(TileData *td,FontDataSource *fs);
         virtual ~TileFont();
 
         bool Registry(TileUVFloatMap &,U32CharSet &chars_sets);                                 ///<注册要使用的字符
