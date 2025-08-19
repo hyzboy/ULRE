@@ -7,7 +7,7 @@
 namespace hgl::graph
 {
     class FontDataSource;
-    class FontSourceMulti;
+    class FontSource;
     class TileFont;
     class TextLayout;
     class TextPrimitive;
@@ -26,7 +26,7 @@ namespace hgl::graph
 
         Pipeline *          pipeline;
 
-        FontSourceMulti *   font_source;
+        FontSource *        font_source;
 
         TileFont *          tile_font;
         TextLayout *        tl_engine;
@@ -39,7 +39,7 @@ namespace hgl::graph
 
         friend class RenderFramework;
 
-        TextRender(VulkanDevice *,TileFont *,FontSourceMulti *);
+        TextRender(VulkanDevice *,TileFont *,FontSource *);
 
         bool InitTextLayoutEngine();
         bool InitMaterial(RenderPass *);
