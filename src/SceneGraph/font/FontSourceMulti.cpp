@@ -2,7 +2,7 @@
 
 namespace hgl::graph
 {
-    FontSourceMulti::FontSourceMulti(FontDataSource *fs)
+    FontSource::FontSource(FontDataSource *fs)
     {
         default_source=fs;
 
@@ -16,7 +16,7 @@ namespace hgl::graph
             max_char_height=0;
     }
 
-    FontSourceMulti::~FontSourceMulti()
+    FontSource::~FontSource()
     {
         if(default_source)
             default_source->RefRelease(this);
@@ -28,7 +28,7 @@ namespace hgl::graph
         }
     }
 
-    void FontSourceMulti::Add(UnicodeBlock ub,FontDataSource *fs)
+    void FontSource::Add(UnicodeBlock ub,FontDataSource *fs)
     {
         if(ub<UnicodeBlock::BEGIN_RANGE
             ||ub>UnicodeBlock::END_RANGE
@@ -40,7 +40,7 @@ namespace hgl::graph
         source_map.ChangeOrAdd(ub,fs);
     }
 
-    void FontSourceMulti::RefreshMaxCharHeight()
+    void FontSource::RefreshMaxCharHeight()
     {
         max_char_height=0;
 
@@ -56,7 +56,7 @@ namespace hgl::graph
         }
     }
         
-    void FontSourceMulti::Remove(UnicodeBlock ub)
+    void FontSource::Remove(UnicodeBlock ub)
     {
         FontSourcePointer fsp;
 
@@ -72,7 +72,7 @@ namespace hgl::graph
         }
     }
 
-    void FontSourceMulti::Remove(FontDataSource *fs)
+    void FontSource::Remove(FontDataSource *fs)
     {
         if(!fs)return;
         if(fs==default_source)return;
@@ -89,7 +89,7 @@ namespace hgl::graph
         }
     }
         
-    FontDataSource *FontSourceMulti::GetFontSource(const u32char &ch)
+    FontDataSource *FontSource::GetFontSource(const u32char &ch)
     {
         if(hgl::isspace(ch))return(nullptr);	//不能显示的数据或是空格
 
@@ -111,7 +111,7 @@ namespace hgl::graph
         return default_source;
     }
 
-    FontBitmap *FontSourceMulti::GetCharBitmap(const u32char &ch)
+    FontBitmap *FontSource::GetCharBitmap(const u32char &ch)
     {
         FontDataSource *s=GetFontSource(ch);
 
@@ -121,7 +121,7 @@ namespace hgl::graph
         return s->GetCharBitmap(ch);
     }
         
-    const bool FontSourceMulti::GetCharMetrics(CharMetricsInfo &cmi,const u32char &ch)
+    const bool FontSource::GetCharMetrics(CharMetricsInfo &cmi,const u32char &ch)
     {
         FontDataSource *s=GetFontSource(ch);
 
@@ -131,7 +131,7 @@ namespace hgl::graph
         return s->GetCharMetrics(cmi,ch);
     }
 
-    const	CLA *FontSourceMulti::GetCLA(const u32char &ch)
+    const	CLA *FontSource::GetCLA(const u32char &ch)
     {
         FontDataSource *s=GetFontSource(ch);
 

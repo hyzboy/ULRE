@@ -37,7 +37,7 @@ private:
         FontDataSource *fs_ansi=AcquireFontSource(OS_TEXT("Consolas"),24);
         FontDataSource *fs_cjk=AcquireFontSource(OS_TEXT("微软雅黑"),24);
 
-        FontSourceMulti *fs=new FontSourceMulti(fs_ansi);
+        FontSource *fs=new FontSource(fs_ansi);
 
         fs->AddCJK(fs_cjk);
 

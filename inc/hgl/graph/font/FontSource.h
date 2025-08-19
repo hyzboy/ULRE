@@ -121,9 +121,9 @@ namespace hgl::graph
     FontDataSource *AcquireFontSource(const Font &f);
 
     /**
-    * 文字位图多重数据源
+    * 统一字体数据源
     */
-    class FontSourceMulti
+    class FontSource
     {
         using FontSourcePointer=FontDataSource *;
 
@@ -143,8 +143,8 @@ namespace hgl::graph
         /**
         * @param dfs 缺省字符数据源
         */
-        FontSourceMulti(FontDataSource *dfs);
-        virtual ~FontSourceMulti();
+        FontSource(FontDataSource *dfs);
+        virtual ~FontSource();
 
         void Add(UnicodeBlock,FontDataSource *);
 
@@ -177,7 +177,7 @@ namespace hgl::graph
         const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &);		///<取得字符绘制信息
         const	CLA *		GetCLA			(const u32char &);							///<取得字符排版信息
                 int			GetCharHeight	()const{return max_char_height;}			///<取得字符高度
-    };//class FontSourceMulti:public FontDataSource
+    };//class FontSource:public FontDataSource
 
     /**
     * 创建一个CJK字体源
@@ -185,10 +185,10 @@ namespace hgl::graph
     * @param cjk_font CJK字体名称
     * @param size 字体象素高度
     */
-    FontSourceMulti *CreateCJKFontSource(const os_char *latin_font,const os_char *cjk_font,const uint32_t size);
+    FontSource *CreateCJKFontSource(const os_char *latin_font,const os_char *cjk_font,const uint32_t size);
 
     /**
-    * 创建一个字体源
+    * 请求一个字体源
     * @param name 字体名称
     * @param size 字体象素高度
     */

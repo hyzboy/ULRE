@@ -22,7 +22,7 @@ namespace hgl::graph
         return source;
     }
 
-    FontSourceMulti *CreateCJKFontSource(const os_char *latin_fontname,const os_char *cjk_fontname,const uint32_t size)
+    FontSource *CreateCJKFontSource(const os_char *latin_fontname,const os_char *cjk_fontname,const uint32_t size)
     {
         Font latin_fnt(latin_fontname,0,size);
         Font cjk_fnt(cjk_fontname,0,size);
@@ -33,7 +33,7 @@ namespace hgl::graph
         if(!latin_fs||!cjk_fs)
             return(nullptr);
 
-        FontSourceMulti *font_source=new FontSourceMulti(latin_fs);
+        FontSource *font_source=new FontSource(latin_fs);
 
         font_source->AddCJK(cjk_fs);
 

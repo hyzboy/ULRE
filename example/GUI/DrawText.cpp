@@ -36,7 +36,9 @@ private:
 
         FontDataSource *fs=AcquireFontSource(OS_TEXT("微软雅黑"),24);
 
-        text_render=CreateTextRender(fs,unique_char_count);
+        FontSource *fs_cjk=new FontSource(fs);
+
+        text_render=CreateTextRender(fs_cjk,unique_char_count);
 
         if(!text_render)
             return(false);
