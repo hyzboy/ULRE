@@ -4,26 +4,14 @@
 
 namespace hgl::graph
 {
-    TileFont::TileFont(TileData *td,FontDataSource *fs)
+    TileFont::TileFont(TileData *td,FontSourceMulti *fs)
     {
         tile_data=td;
-
-        if(fs)
-        {
-            source=fs;
-            source->RefAcquire(this);
-        }
-        else
-        {
-            source=nullptr;
-        }
+        source=fs;
     }
 
     TileFont::~TileFont()
     {
-        if(source)
-            source->RefRelease(this);
-
         delete tile_data;
     }
         
