@@ -11,7 +11,7 @@
 
 namespace hgl::graph
 {
-    TextRender::TextRender(VulkanDevice *dev,TileFont *tf,FontSource *fs)
+    TextRender::TextRender(VulkanDevice *dev,TileFont *tf,IFontSource *fs)
     {
         device=dev;
 
@@ -155,7 +155,7 @@ namespace hgl::graph
         delete tr;
     }
 
-    TextRender *RenderFramework::CreateTextRender(FontSource *font_source,const int limit)
+    TextRender *RenderFramework::CreateTextRender(IFontSource *font_source,const int limit)
     {
         if(!font_source)
             return(nullptr);
@@ -186,7 +186,7 @@ namespace hgl::graph
 
     TextRender *RenderFramework::CreateTextRender(const OSString &latin_font,const OSString &cjk_font,const int font_size,const int limit_count)
     {
-        FontSource *fs=CreateCJKFontSource(latin_font,cjk_font,font_size);
+        IFontSource *fs=CreateCJKFontSource(latin_font,cjk_font,font_size);
 
         TextRender *tr=CreateTextRender(fs,limit_count);
 
