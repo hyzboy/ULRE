@@ -88,7 +88,7 @@ namespace hgl::graph
     {
     protected:
 
-        FontDataSource *font_source;
+        FontSourceMulti *font_source;
         TextLayoutAttribute tla;
 
     protected:
@@ -158,7 +158,7 @@ namespace hgl::graph
         virtual ~TextLayout()=default;
 
         void SetTLA             (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla,1);}
-        void SetFont            (      FontDataSource * fs)     {if(fs)font_source=fs;}
+        void SetFont            (      FontSourceMulti * fs)     {if(fs)font_source=fs;}
         void SetTextDirection   (const uint8 &      td)     {tla.text_direction=td;}
         void SetAlign           (const TextAlign &  ta)     {tla.align=ta;}
         void SetMaxWidth        (const float        mw)     {tla.max_width=mw;}

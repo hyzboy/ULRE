@@ -123,7 +123,7 @@ namespace hgl::graph
     /**
     * 文字位图多重数据源
     */
-    class FontSourceMulti:public FontDataSource
+    class FontSourceMulti
     {
         using FontSourcePointer=FontDataSource *;
 
@@ -173,9 +173,10 @@ namespace hgl::graph
 
     public:
 
-                FontBitmap *GetCharBitmap	(const u32char &ch) override;
-        const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &)override;		///<取得字符绘制信息
-                int			GetCharHeight	()const override{return max_char_height;}			///<取得字符高度
+                FontBitmap *GetCharBitmap	(const u32char &ch);
+        const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &);		///<取得字符绘制信息
+        const	CLA *		GetCLA			(const u32char &);							///<取得字符排版信息
+                int			GetCharHeight	()const{return max_char_height;}			///<取得字符高度
     };//class FontSourceMulti:public FontDataSource
 
     /**

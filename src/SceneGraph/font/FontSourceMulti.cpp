@@ -130,4 +130,14 @@ namespace hgl::graph
 
         return s->GetCharMetrics(cmi,ch);
     }
+
+    const	CLA *FontSourceMulti::GetCLA(const u32char &ch)
+    {
+        FontDataSource *s=GetFontSource(ch);
+
+        if(!s)
+            return(default_source->GetCLA(ch));
+
+        return s->GetCLA(ch);
+    }
 }//namespace hgl::graph
