@@ -105,14 +105,13 @@ SOURCE_GROUP("Scene Graph\\Render" FILES ${SG_RENDER_SOURCE})
 SET(SCENE_GRAPH_FILES  ${SG_SCENE_SOURCE} ${SG_RENDER_SOURCE})
 
 SET(FONT_MANAGE_SOURCE  ${SG_INCLUDE_PATH}/font/Font.h
-                        ${SG_INCLUDE_PATH}/font/FontManage.h
                         font/Font.cpp)
 
 SET(FONT_SOURCE ${SG_INCLUDE_PATH}/font/FontSource.h
                 font/FontDataSource.cpp
                 font/FontBitmapDataSource.cpp
-                font/FontSourceMulti.cpp
-                font/FontSourceManage.cpp)
+                font/FontDataSourceManage.cpp
+                font/FontSource.cpp)
 
 SET(TILE_FONT_SOURCE    ${SG_INCLUDE_PATH}/font/TileFont.h
                         font/TileFont.cpp)
@@ -132,8 +131,8 @@ SOURCE_GROUP("Font\\Layout"     FILES ${FONT_LAYOUT_SOURCE})
 SOURCE_GROUP("Font\\Render"     FILES ${TEXT_RENDERABLE_SOURCE})
 
 IF(WIN32)
-    SET(FONT_SOURCE_OS  font/FontSourceWin.cpp
-                        font/FontSourceWin.h)
+    SET(FONT_SOURCE_OS  font/FontDataSourceWin.cpp
+                        font/FontDataSourceWin.h)
 
     SOURCE_GROUP("Font\\Source\\Windows" FILES ${FONT_SOURCE_OS})
 ENDIF(WIN32)
