@@ -118,7 +118,7 @@ namespace hgl::graph
         virtual			int			GetCharHeight	()const override{return fnt.height;}		///<取得字符高度
     };//class FontBitmapDataSource:public FontDataSource
 
-    FontDataSource *AcquireFontSource(const Font &f);
+    FontDataSource *AcquireFontDataSource(const Font &f);
 
     /**
     * 统一字体数据源
@@ -136,7 +136,7 @@ namespace hgl::graph
 
     protected:
 
-        FontDataSource *GetFontSource(const u32char &ch);
+        FontDataSource *GetFontDataSource(const u32char &ch);
 
     public:
 
@@ -177,7 +177,7 @@ namespace hgl::graph
         const	bool		GetCharMetrics	(CharMetricsInfo &,const u32char &);		///<取得字符绘制信息
         const	CLA *		GetCLA			(const u32char &);							///<取得字符排版信息
                 int			GetCharHeight	()const{return max_char_height;}			///<取得字符高度
-    };//class FontSource:public FontDataSource
+    };//class FontSource
 
     /**
     * 创建一个CJK字体源
@@ -192,7 +192,7 @@ namespace hgl::graph
     * @param name 字体名称
     * @param size 字体象素高度
     */
-    FontDataSource *AcquireFontSource(const os_char *name,const uint32_t size);
+    FontDataSource *AcquireFontDataSource(const os_char *name,const uint32_t size);
 
     void ReleaseFontSource(FontDataSource *fs);
 }//namespace hgl::graph
