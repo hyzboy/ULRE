@@ -109,8 +109,8 @@ SET(FONT_MANAGE_SOURCE  ${SG_INCLUDE_PATH}/font/Font.h
                         font/Font.cpp)
 
 SET(FONT_SOURCE ${SG_INCLUDE_PATH}/font/FontSource.h
-                font/FontSource.cpp
-                font/FontSourceSingle.cpp
+                font/FontDataSource.cpp
+                font/FontBitmapDataSource.cpp
                 font/FontSourceMulti.cpp
                 font/FontSourceManage.cpp)
 
