@@ -19,11 +19,9 @@ namespace
             return;
         }
 
-        const uint total_pixels=w*h*count;
-
         fw=fh=1;
 
-        while(total_pixels>fw*fh)
+        while(count>(fw/w)*(fh/h))
         {
             if(fw>=max_texture_size)
             {
