@@ -51,15 +51,10 @@ namespace hgl::graph
         cla.BackgroundColor.Zero();
 
         tla.char_layout_attr=&cla;
-        tla.line_gap=0.1f;
 
         tl_engine->SetTLA(&tla);
-        tl_engine->SetTextDirection(0);
-        tl_engine->SetAlign(TextAlign::Left);
-        tl_engine->SetMaxWidth(0);
-        tl_engine->SetMaxHeight(0);
 
-        return tl_engine->Init();
+        return tl_engine->RefreshLayoutAttribute();
     }
 
     bool TextRender::InitMaterial(RenderPass *rp)

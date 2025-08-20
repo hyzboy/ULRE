@@ -5,22 +5,11 @@
 
 namespace hgl::graph
 {
-    bool TextLayout::Init()
+    bool TextLayout::RefreshLayoutAttribute()
     {
         if((!font_source)
           ||!tla.char_layout_attr)
             return(false);
-
-        direction.text_direction=tla.text_direction;
-
-        if(direction.vertical)
-        {
-            splite_line_max_limit   = tla.max_width;
-        }
-        else
-        {
-            splite_line_max_limit   = tla.max_height;
-        }
 
         const float origin_char_height=font_source->GetCharHeight();
 
@@ -180,7 +169,7 @@ namespace hgl::graph
     //    return 0;
     //}
 
-    int TextLayout::sl_h_l2r()
+    int TextLayout::sl_l2r()
     {
         int cur_size=0;
         int left=0,top=0;
@@ -228,9 +217,8 @@ namespace hgl::graph
         return draw_chars_list.GetCount(); //返回绘制的字符数量
     }
 
-    int TextLayout::sl_h_r2l(){return 0;}
-    int TextLayout::sl_v_r2l(){return 0;}
-    int TextLayout::sl_v_l2r(){return 0;}
+    int TextLayout::sl_r2l(){return 0;}
+    int TextLayout::sl_v(){return 0;}
 
     //bool TextLayout::PrepareVBO()
     //{
@@ -276,20 +264,9 @@ namespace hgl::graph
 
         int result;
 
-        if(direction.vertical)
-        {
-            if(direction.right_to_left)
-                result=sl_v_r2l();
-            else
-                result=sl_v_l2r();
-        }
-        else
-        {
-            if(direction.right_to_left)
-                result=sl_h_r2l();
-            else
-                result=sl_h_l2r();
-        }
+        if(tla.text_direction==TextDirection::Vertical)     result=sl_v();else
+        if(tla.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
+                                                            result=sl_l2r();
 
         if(result>0)
         {
