@@ -13,6 +13,7 @@ namespace hgl::graph
     TileFont::~TileFont()
     {
         delete tile_data;
+        delete source;
     }
         
     /**

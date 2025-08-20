@@ -88,17 +88,16 @@ namespace hgl::graph
     {
     protected:
 
-        FontSource *font_source;
-        TextLayoutAttribute tla;
+        FontSource *font_source=nullptr;
+        TextLayoutAttribute tla{};
 
     protected:
 
-        TextDirection direction;
+        TextDirection direction{};
 
-        bool endless;
-        float splite_line_max_limit;
+        float splite_line_max_limit=0;
 
-        int draw_chars_count;                       ///<要绘制字符列表
+        int draw_chars_count=0;                     ///<要绘制字符列表
 
         U32CharSet chars_sets;                      ///<不重复字符统计缓冲区
         U32CharSet clear_chars_sets;                ///<待清除的字符合集
@@ -138,27 +137,16 @@ namespace hgl::graph
 
     protected:
         
-        TextPrimitive *text_primitive;
+        TextPrimitive *text_primitive=nullptr;
         DataArray<int16> vertex;
         DataArray<float> tex_coord;
 
     public:
 
-        TextLayout()
-        {
-            font_source=nullptr;
-            hgl_zero(tla);
-
-            direction.text_direction=0;
-            draw_chars_count=0;
-
-            text_primitive =nullptr;
-        }
-
+        TextLayout(FontSource *fs){font_source=fs;}
         virtual ~TextLayout()=default;
 
         void SetTLA             (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla,1);}
-        void SetFont            (      FontSource * fs)     {if(fs)font_source=fs;}
         void SetTextDirection   (const uint8 &      td)     {tla.text_direction=td;}
         void SetAlign           (const TextAlign &  ta)     {tla.align=ta;}
         void SetMaxWidth        (const float        mw)     {tla.max_width=mw;}
@@ -168,11 +156,11 @@ namespace hgl::graph
 
     public: //多次排版
 
-        void BeginLayout(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
+        bool Begin(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
 
         
 
-        void EndLayout();                                   ///<结束排版
+        void End();                                                     ///<结束排版
 
     public: //单次排版
 

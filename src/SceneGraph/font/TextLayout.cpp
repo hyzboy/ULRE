@@ -15,12 +15,10 @@ namespace hgl::graph
 
         if(direction.vertical)
         {
-            endless                 =(tla.max_width<=0.0f);
             splite_line_max_limit   = tla.max_width;
         }
         else
         {
-            endless                 =(tla.max_height<=0.0f);
             splite_line_max_limit   = tla.max_height;
         }
 
@@ -36,7 +34,23 @@ namespace hgl::graph
 
         return(true);
     }
-        
+
+    bool TextLayout::Begin(TextPrimitive *tr,TileFont *tf,int Estimate)
+    {
+        if(!tr||!tr||Estimate<=0)
+            return(false);
+
+        draw_chars_count=0;
+        chars_sets.Clear();
+        chars_sets.PreAlloc(Estimate);
+        draw_chars_list.Clear();
+        draw_chars_list.PreAlloc(Estimate);
+
+        text_primitive=tr;
+
+        return(true);
+    }
+
     /**
     * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
     */
@@ -141,22 +155,22 @@ namespace hgl::graph
     //        ||!str
     //        ||!(*str))
     //        return(-1);
-
+    //
     //    max_chars=mc;
     //    origin_string=str;
-
+    //
     //    if(preprocess()<=0)
     //        return(-3);
     //                
     //    if(!rc->Init(draw_chars_count))
     //        return(-4);
-
+    //
     //    vertex      =rc->AccessVAD<VB4f>(VAN::Position);
     //    tex_coord   =rc->AccessVAD<VB4f>(VAN::TexCoord);
-
+    //
     //    if(!vertex||!tex_coord)
     //        return(-5);
-
+    //
     //    if(direction.vertical)
     //    {
     //        if(!v_splite_to_lines(tla->max_height))
@@ -167,7 +181,7 @@ namespace hgl::graph
     //        if(!h_splite_to_lines(tla->max_width))
     //            return(-4);
     //    }
-
+    //
     //    return 0;
     //}
 

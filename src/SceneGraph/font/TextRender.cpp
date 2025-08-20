@@ -11,13 +11,12 @@
 
 namespace hgl::graph
 {
-    TextRender::TextRender(VulkanDevice *dev,TileFont *tf,FontSource *fs)
+    TextRender::TextRender(VulkanDevice *dev,TileFont *tf)
     {
         device=dev;
 
         db=new RenderResource(device);         //独立的资源管理器，不和整体共用
-        tl_engine=new TextLayout();
-        font_source=fs;
+        tl_engine=new TextLayout(tf->GetFontSource());
             
         material            =nullptr;
         material_instance   =nullptr;
@@ -39,7 +38,6 @@ namespace hgl::graph
         tr_sets.Clear();
             
         SAFE_CLEAR(tl_engine);
-        SAFE_CLEAR(font_source);
         SAFE_CLEAR(tile_font);
         SAFE_CLEAR(db);
     }
@@ -55,7 +53,6 @@ namespace hgl::graph
         tla.char_layout_attr=&cla;
         tla.line_gap=0.1f;
 
-        tl_engine->SetFont(tile_font->GetFontSource());
         tl_engine->SetTLA(&tla);
         tl_engine->SetTextDirection(0);
         tl_engine->SetAlign(TextAlign::Left);
@@ -168,7 +165,7 @@ namespace hgl::graph
         if(!rp)
             return(nullptr);
 
-        TextRender *text_render=new TextRender(GetDevice(),tile_font,font_source);
+        TextRender *text_render=new TextRender(GetDevice(),tile_font);
 
         if(!text_render)
         {
@@ -178,6 +175,7 @@ namespace hgl::graph
 
         if(!text_render->Init(rp))
         {
+            delete tile_font;
             delete text_render;
             return(nullptr);
         }
@@ -195,6 +193,6 @@ namespace hgl::graph
             return tr;
 
         delete fs;
+        return(nullptr);
     }
 }//namespace hgl::graph
-
