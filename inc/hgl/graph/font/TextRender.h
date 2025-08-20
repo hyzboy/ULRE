@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/color/Color4f.h>
+#include<hgl/graph/font/TextLayout.h>
+#include<hgl/type/Map.h>
 #include<hgl/type/SortedSet.h>
 
 namespace hgl::graph
@@ -28,8 +29,8 @@ namespace hgl::graph
 
         TileFont *          tile_font;
         TextLayout *        tl_engine;
-    
-        Color4f             color;
+
+    private:
 
         SortedSet<TextPrimitive *> tr_sets;
 

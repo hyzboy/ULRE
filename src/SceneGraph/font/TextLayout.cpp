@@ -1,27 +1,29 @@
-﻿#include<hgl/graph/font/TextLayout.h>
+﻿#include"TextLayoutEngine.h"
 #include<hgl/graph/font/TileFont.h>
 #include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/Extent.h>
 
 namespace hgl::graph
 {
-    bool TextLayout::RefreshLayoutAttribute()
+    void TextLayout::Set(const CharLayoutAttribute *c,const TextLayoutAttribute *t)
     {
-        if((!font_source)
-          ||!tla.char_layout_attr)
-            return(false);
+        if(c)
+            hgl_cpy<CharLayoutAttribute>(tda.cla,*c);
 
-        const float origin_char_height=font_source->GetCharHeight();
+        if(t)
+        {
+            const float origin_char_height=font_source->GetCharHeight();
 
-        char_height     =ceil(origin_char_height);
-        space_size      =ceil(origin_char_height*tla.space_size);
-        full_space_size =ceil(origin_char_height*tla.full_space_size);
-        tab_size        =ceil(origin_char_height*tla.tab_size);
-        char_gap        =ceil(origin_char_height*tla.char_gap);
-        line_gap        =ceil(origin_char_height*tla.line_gap);
-        line_height     =ceil(origin_char_height+line_gap);
+            hgl_cpy<TextLayoutAttribute>(tda.tla,*t);
 
-        return(true);
+            tda.char_height     =std::ceil(origin_char_height);
+            tda.space_size      =std::ceil(origin_char_height*tda.space_size);
+            tda.full_space_size =std::ceil(origin_char_height*tda.full_space_size);
+            tda.tab_size        =std::ceil(origin_char_height*tda.tab_size);
+            tda.char_gap        =std::ceil(origin_char_height*tda.char_gap);
+            tda.line_gap        =std::ceil(origin_char_height*tda.line_gap);
+            tda.line_height     =std::ceil(origin_char_height+tda.line_gap);
+        }
     }
 
     bool TextLayout::Begin(TextPrimitive *tr,TileFont *tf,int Estimate)
@@ -194,18 +196,18 @@ namespace hgl::graph
             else
             {
                 if(cda.cla->attr->ch==' ')
-                    left+=space_size;
+                    left+=tda.space_size;
                 else
                 if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE)
-                    left+=full_space_size;
+                    left+=tda.full_space_size;
                 else
                 if(cda.cla->attr->ch=='\t')
-                    left+=tab_size;
+                    left+=tda.tab_size;
                 else
                 if(cda.cla->attr->ch=='\n')
                 {
                     left=0;
-                    top+=font_source->GetCharHeight()+line_gap;
+                    top+=font_source->GetCharHeight()+tda.line_gap;
                 }
                 else
                 {
@@ -264,9 +266,9 @@ namespace hgl::graph
 
         int result;
 
-        if(tla.text_direction==TextDirection::Vertical)     result=sl_v();else
-        if(tla.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
-                                                            result=sl_l2r();
+        if(tda.tla.text_direction==TextDirection::Vertical)     result=sl_v();else
+        if(tda.tla.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
+                                                                result=sl_l2r();
 
         if(result>0)
         {

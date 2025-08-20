@@ -8,6 +8,7 @@
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/color/Color.h>
+#include"TextLayoutEngine.h"
 
 namespace hgl::graph
 {
@@ -23,8 +24,6 @@ namespace hgl::graph
         sampler             =nullptr;
         pipeline            =nullptr;
         tile_font           =tf;
-
-        color.Set(1,1,1,1);
     }
 
     TextRender::~TextRender()
@@ -44,17 +43,15 @@ namespace hgl::graph
 
     bool TextRender::InitTextLayoutEngine()
     {
-        CharLayoutAttr cla;
+        CharLayoutAttribute cla;
         TextLayoutAttribute tla;
 
         cla.CharColor=GetColor4f(COLOR::White,1.0);
         cla.BackgroundColor.Zero();
 
-        tla.char_layout_attr=&cla;
+        tl_engine->Set(&cla,&tla);
 
-        tl_engine->SetTLA(&tla);
-
-        return tl_engine->RefreshLayoutAttribute();
+        return(true);
     }
 
     bool TextRender::InitMaterial(RenderPass *rp)
@@ -72,6 +69,8 @@ namespace hgl::graph
             VILConfig vil_config;
 
             vil_config.Add("Position",VF_V4I16);
+
+            Color4f color(1,1,1,1);
 
             material_instance=db->CreateMaterialInstance(material,&vil_config,&color);
             if(!material_instance)return(false);
