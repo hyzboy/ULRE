@@ -29,11 +29,6 @@ namespace hgl::graph
         return AcquireFontDataSource(fnt);
     }
 
-    void ReleaseFontDataSource(FontDataSource *fs)
-    {
-        if(!fs)return;
-    }
-
     FontSource *CreateFontSource(const os_char *fontname,const uint32_t size)
     {
         Font fnt(fontname,0,size);

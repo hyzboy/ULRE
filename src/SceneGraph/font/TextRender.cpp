@@ -78,7 +78,7 @@ namespace hgl::graph
 
             vil_config.Add("Position",VF_V4I16);
 
-            material_instance=db->CreateMaterialInstance(material,&vil_config,color,sizeof(color));
+            material_instance=db->CreateMaterialInstance(material,&vil_config,&color);
             if(!material_instance)return(false);
         }
 
@@ -118,10 +118,16 @@ namespace hgl::graph
 
     TextPrimitive *TextRender::CreatePrimitive(const U16String &str)
     {
-        TextPrimitive *tr=CreatePrimitive();
+        TextPrimitive *tr=CreatePrimitive(str.Length());
 
-        if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
-            return(tr);
+        if(!tr)
+            return(nullptr);
+
+        if(!Layout(tr,str))
+        {
+            delete tr;
+            return(nullptr);
+        }
 
         return tr;
     }
@@ -129,6 +135,9 @@ namespace hgl::graph
     bool TextRender::Layout(TextPrimitive *tr,const U16String &str)
     {
         if(!tr)
+            return(false);
+
+        if(!tl_engine->Begin(tr,tile_font,str.Length()))
             return(false);
 
         if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)

@@ -111,7 +111,7 @@ namespace hgl::graph
 
         IndexedList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
 
-        template<typename T> bool preprocess(TextPrimitive *,TileFont *,const T *,const int);
+        template<typename T> bool StatChars(TextPrimitive *,TileFont *,const T *,const int);                    ///<统计所有字符
 
     protected:        
 
@@ -158,7 +158,7 @@ namespace hgl::graph
 
         bool Begin(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
 
-        
+        //bool PrepareVBO();
 
         void End();                                                     ///<结束排版
 
