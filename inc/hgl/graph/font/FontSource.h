@@ -180,6 +180,13 @@ namespace hgl::graph
     };//class FontSource
 
     /**
+    * 创建一个字体源
+    * @param fontname 字体名称
+    * @param size 字体象素高度
+    */
+    FontSource *CreateFontSource(const os_char *fontname,const uint32_t size);
+
+    /**
     * 创建一个CJK字体源
     * @param latin_font Latin字体名称
     * @param cjk_font CJK字体名称
