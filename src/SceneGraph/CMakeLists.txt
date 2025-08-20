@@ -117,6 +117,7 @@ SET(TILE_FONT_SOURCE    ${SG_INCLUDE_PATH}/font/TileFont.h
                         font/TileFont.cpp)
 
 SET(FONT_LAYOUT_SOURCE  ${SG_INCLUDE_PATH}/font/TextLayout.h
+                        font/TextLayoutEngine.h
                         font/TextLayout.cpp)
 
 SET(TEXT_RENDERABLE_SOURCE  ${SG_INCLUDE_PATH}/font/TextPrimitive.h

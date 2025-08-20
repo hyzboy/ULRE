@@ -1,11 +1,7 @@
 ﻿#pragma once
 
-#include<hgl/type/StringList.h>
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/graph/PrimitiveCreater.h>
-#include<hgl/graph/TileData.h>
-#include<hgl/type/DataArray.h>
-#include<hgl/type/IndexedList.h>
+#include<hgl/color/Color4f.h>
 
 namespace hgl::graph
 {
@@ -13,18 +9,19 @@ namespace hgl::graph
     class TextPrimitive;
 
     /**
-    * 字符属性，可精确到字也可精确到段落或是全文
+    * 字符排版属性，可精确到字也可精确到段落或是全文
     */
-    struct CharLayoutAttr
+    struct CharLayoutAttribute
     {
-        bool    bold        =false; ///<加粗
-        bool    italic      =false; ///<右斜
-        bool    underline   =false; ///<下划线
-        bool    strikeout   =false; ///<删除线
+        float   weight      =1.0f;  ///<粗细
+        float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
+
+        float   underline   =0.0f; ///<下划线粗细
+        float   strikeout   =0.0f; ///<删除线粗细
 
         Color4f CharColor;          ///<字符颜色
         Color4f BackgroundColor;    ///<背景颜色
-    };//struct CharLayoutAttr
+    };//struct CharLayoutAttribute
        
     /**
     * 文本排列方向
@@ -57,8 +54,6 @@ namespace hgl::graph
     */
     struct TextLayoutAttribute
     {
-        CharLayoutAttr *char_layout_attr        =nullptr;                                       ///<缺省字符排版属性
-
         TextDirection   text_direction          =TextDirection::LeftToRight;                    ///<文本排列方向
         TextAlign       align                   =TextAlign::Left;                               ///<段落对齐
         float           char_gap                =0.0f;                                          ///<字间距
@@ -67,8 +62,8 @@ namespace hgl::graph
         float           max_width               =0.0f;                                          ///<最大宽度(<=0代表无限制)
         float           max_height              =0.0f;                                          ///<最大高度(<=0代表无限制)
 
-        bool            border_symbols_disable  =true;                                          ///<边界符号禁用(如行首禁用逗号)
-//      bool            disable_break_alpha_word=true;                                          ///<禁用断字(如英文单词不允许断开)
+        bool            disable_border_symbols  =true;                                          ///<禁用边界符号(如行首禁用逗号)
+//      bool            disable_break_word      =true;                                          ///<禁用断字(如英文单词不允许断开)
 //      bool            auto_symbols_convert    =true;                                          ///<自动符号转换(如tm/(r)/(c)等)
 
         float           space_size              =0.5f;                                          ///<半角空格尺寸(对应字符高度的系数)
@@ -82,44 +77,10 @@ namespace hgl::graph
         
     using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
 
-    class TextLayout
+    struct TextDrawAttribute:public ComparatorData<TextDrawAttribute>
     {
-    protected:
-
-        FontSource *font_source=nullptr;
-
-    protected:
-
-        int draw_chars_count=0;                     ///<要绘制字符列表
-
-        U32CharSet chars_sets;                      ///<不重复字符统计缓冲区
-        U32CharSet clear_chars_sets;                ///<待清除的字符合集
-        TileUVFloatMap chars_uv;                    ///<所有要绘制字符的uv
-
-        struct CharDrawAttr
-        {
-            const CLA *cla;
-            TileUVFloat uv;
-        };
-
-        IndexedList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
-
-        template<typename T> bool StatChars(TextPrimitive *,TileFont *,const T *,const int);                    ///<统计所有字符
-
-    protected:
-
-        bool h_splite_to_lines(float view_limit);
-        bool v_splite_to_lines(float view_limit);
-            
-        int sl_l2r();
-        int sl_r2l();
-        int sl_v();
-
-        template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &);                   ///<简易排版
-
-    protected:  
-
-        TextLayoutAttribute tla{};
+        CharLayoutAttribute cla;
+        TextLayoutAttribute tla;
 
         TEXT_COORD_TYPE char_height;
         TEXT_COORD_TYPE space_size;
@@ -128,42 +89,5 @@ namespace hgl::graph
         TEXT_COORD_TYPE char_gap;
         TEXT_COORD_TYPE line_gap;
         TEXT_COORD_TYPE line_height;
-
-        friend class TextRender;        //随后去掉
-
-        virtual bool RefreshLayoutAttribute();
-
-    protected:
-        
-        TextPrimitive *text_primitive=nullptr;
-        DataArray<int16> vertex;
-        DataArray<float> tex_coord;
-
-    public:
-
-        TextLayout(FontSource *fs){font_source=fs;}
-        virtual ~TextLayout()=default;
-
-        void SetTLA             (const TLA *          _tla){if(_tla)hgl_cpy(&tla,_tla,1);}
-        void SetTextDirection   (const TextDirection &  td){tla.text_direction=td;}
-        void SetAlign           (const TextAlign &      ta){tla.align=ta;}
-        void SetMaxWidth        (const float            mw){tla.max_width=mw;}
-        void SetMaxHeight       (const float            mh){tla.max_height=mh;}
-
-    public: //多次排版
-
-        bool Begin(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
-
-        //bool PrepareVBO();
-
-        void End();                                                     ///<结束排版
-
-    public: //单次排版
-
-                int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &);                 ///<简易排版
-                int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &);                 ///<简易排版
-
-//            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
-//            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
-    };//class TextLayout
+    };
 }//namespace hgl::graph
