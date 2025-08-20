@@ -29,16 +29,14 @@ namespace hgl::graph
     /**
     * 文本排列方向
     */
-    union TextDirection
+    enum class TextDirection : uint8
     {
-        uint8 text_direction;
+        LeftToRight,    //<横排从左到右
+        RightToLeft,    //<横排从右到左
+        Vertical,       //<竖排从上到下，从右到左
 
-        struct
-        {
-            uint vertical:1;            ///<是否竖排
-            uint right_to_left:1;       ///<是否从右往左
-        };
-    };//union TextDirection
+        //有竖排从下到上的吗？从左到右？
+    };//enum class TextDirection
 
     /**
     * 文本对齐
@@ -61,7 +59,7 @@ namespace hgl::graph
     {
         CharLayoutAttr *char_layout_attr        =nullptr;                                       ///<缺省字符排版属性
 
-        uint8           text_direction          =0;                                             ///<文本排列方向
+        TextDirection   text_direction          =TextDirection::LeftToRight;                    ///<文本排列方向
         TextAlign       align                   =TextAlign::Left;                               ///<段落对齐
         float           char_gap                =0.0f;                                          ///<字间距
         float           line_gap                =0.1f;                                          ///<行间距(相对于字符高度)
@@ -89,13 +87,8 @@ namespace hgl::graph
     protected:
 
         FontSource *font_source=nullptr;
-        TextLayoutAttribute tla{};
 
     protected:
-
-        TextDirection direction{};
-
-        float splite_line_max_limit=0;
 
         int draw_chars_count=0;                     ///<要绘制字符列表
 
@@ -113,19 +106,20 @@ namespace hgl::graph
 
         template<typename T> bool StatChars(TextPrimitive *,TileFont *,const T *,const int);                    ///<统计所有字符
 
-    protected:        
+    protected:
 
         bool h_splite_to_lines(float view_limit);
         bool v_splite_to_lines(float view_limit);
             
-        int sl_h_l2r();
-        int sl_h_r2l();
-        int sl_v_r2l();
-        int sl_v_l2r();
+        int sl_l2r();
+        int sl_r2l();
+        int sl_v();
 
         template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &);                   ///<简易排版
 
     protected:  
+
+        TextLayoutAttribute tla{};
 
         TEXT_COORD_TYPE char_height;
         TEXT_COORD_TYPE space_size;
@@ -134,6 +128,10 @@ namespace hgl::graph
         TEXT_COORD_TYPE char_gap;
         TEXT_COORD_TYPE line_gap;
         TEXT_COORD_TYPE line_height;
+
+        friend class TextRender;        //随后去掉
+
+        virtual bool RefreshLayoutAttribute();
 
     protected:
         
@@ -146,13 +144,11 @@ namespace hgl::graph
         TextLayout(FontSource *fs){font_source=fs;}
         virtual ~TextLayout()=default;
 
-        void SetTLA             (const TLA *        _tla)   {if(_tla)hgl_cpy(&tla,_tla,1);}
-        void SetTextDirection   (const uint8 &      td)     {tla.text_direction=td;}
-        void SetAlign           (const TextAlign &  ta)     {tla.align=ta;}
-        void SetMaxWidth        (const float        mw)     {tla.max_width=mw;}
-        void SetMaxHeight       (const float        mh)     {tla.max_height=mh;}
-
-        virtual bool    Init        ();                                                             ///<初始化排版
+        void SetTLA             (const TLA *          _tla){if(_tla)hgl_cpy(&tla,_tla,1);}
+        void SetTextDirection   (const TextDirection &  td){tla.text_direction=td;}
+        void SetAlign           (const TextAlign &      ta){tla.align=ta;}
+        void SetMaxWidth        (const float            mw){tla.max_width=mw;}
+        void SetMaxHeight       (const float            mh){tla.max_height=mh;}
 
     public: //多次排版
 
