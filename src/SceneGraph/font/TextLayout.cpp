@@ -37,7 +37,7 @@ namespace hgl::graph
 
     bool TextLayout::Begin(TextPrimitive *tr,TileFont *tf,int Estimate)
     {
-        if(!tr||!tr||Estimate<=0)
+        if(!tr||!tf||Estimate<=0)
             return(false);
 
         draw_chars_count=0;
@@ -55,7 +55,7 @@ namespace hgl::graph
     * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
     */
     template<typename T> 
-    bool TextLayout::preprocess(TextPrimitive *tr,TileFont *tile_font,const T *str,const int str_length)
+    bool TextLayout::StatChars(TextPrimitive *tr,TileFont *tile_font,const T *str,const int str_length)
     {
         if(!tr
             ||!tile_font
@@ -65,11 +65,6 @@ namespace hgl::graph
 
         //遍历所有字符，取得每一个字符的基本绘制信息
         {
-            draw_chars_count=0;
-            chars_sets.Clear();
-            draw_chars_list.Clear();
-            draw_chars_list.PreAlloc(str_length);
-
             const T *cp=str;
             CharDrawAttr cda;
 
@@ -79,11 +74,11 @@ namespace hgl::graph
 
                 if(cda.cla->visible)
                 {
-                    chars_sets.Add(*cp);              //统计所有不重复字符
+                    chars_sets.Add(*cp);                //统计所有不重复字符
                     ++draw_chars_count;
                 }
 
-                cda.uv.Set(0,0,0,0);                //初始化UV
+                cda.uv.Set(0,0,0,0);                    //初始化UV
 
                 draw_chars_list.Add(cda);
 
@@ -159,7 +154,7 @@ namespace hgl::graph
     //    max_chars=mc;
     //    origin_string=str;
     //
-    //    if(preprocess()<=0)
+    //    if(StatChars()<=0)
     //        return(-3);
     //                
     //    if(!rc->Init(draw_chars_count))
@@ -237,9 +232,25 @@ namespace hgl::graph
     int TextLayout::sl_v_r2l(){return 0;}
     int TextLayout::sl_v_l2r(){return 0;}
 
+    //bool TextLayout::PrepareVBO()
+    //{
+    //    if(draw_chars_count<=0
+    //        ||!text_primitive
+    //        ||!text_primitive->IsValid())
+    //    {
+    //        return(false);
+    //    }
+
+    //    vertex      .SetCount(max_chars*4);
+    //    tex_coord   .SetCount(max_chars*4);
+
+    //    if(!vertex||!tex_coord)
+    //        return(-5);
+    //}
+
     /**
-        * 简易文本排版。无任何特殊处理，不支持任何转义符，不支持\r\n
-        */
+    * 简易文本排版。无任何特殊处理，不支持\t\n之外任何转义符
+    */
     template<typename T>
     int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const String<T> &str)
     {
@@ -251,7 +262,7 @@ namespace hgl::graph
 
         int max_chars=str.Length();
 
-        if(!preprocess<T>(tr,tf,str.c_str(),max_chars))
+        if(!StatChars<T>(tr,tf,str.c_str(),max_chars))
             return(-2);
 
         if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
