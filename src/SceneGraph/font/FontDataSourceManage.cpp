@@ -34,6 +34,18 @@ namespace hgl::graph
         if(!fs)return;
     }
 
+    FontSource *CreateFontSource(const os_char *fontname,const uint32_t size)
+    {
+        Font fnt(fontname,0,size);
+
+        FontDataSource *fds=AcquireFontDataSource(fnt);
+
+        if(!fds)
+            return(nullptr);
+
+        return(new FontSource(fds));
+    }
+
     FontSource *CreateCJKFontSource(const os_char *latin_fontname,const os_char *cjk_fontname,const uint32_t size)
     {
         Font latin_fnt(latin_fontname,0,size);
