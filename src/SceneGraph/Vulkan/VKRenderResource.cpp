@@ -42,6 +42,18 @@ IndexBuffer *RenderResource::CreateIBO(IndexType index_type,uint32_t count,const
     return(buf);
 }
 
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL *vil)
+{
+    if(!mtl||!vil)return(nullptr);
+
+    MaterialInstance *mi=mtl->CreateMI(vil);
+
+    if(mi)
+        Add(mi);
+
+    return mi;
+}
+
 MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
 {
     if(!mtl)return(nullptr);
@@ -50,6 +62,22 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL
 
     if(mi)
         Add(mi);
+
+    return mi;
+}
+
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const int mi_bytes)
+{
+    if(!mtl||!vil)return(nullptr);
+    if(!mi_data||mi_bytes<=0)return(nullptr);
+
+    MaterialInstance *mi=mtl->CreateMI(vil);
+
+    if(!mi)
+        return nullptr;
+
+    Add(mi);
+    mi->WriteMIData(mi_data,mi_bytes);
 
     return mi;
 }

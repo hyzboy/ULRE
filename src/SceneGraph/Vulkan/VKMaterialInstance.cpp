@@ -1,14 +1,10 @@
 ﻿#include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
-#include<hgl/graph/VKMaterialParameters.h>
-#include<hgl/graph/VKShaderModule.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
 
 VK_NAMESPACE_BEGIN
-MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
+MaterialInstance *Material::CreateMI(const VIL *vil)
 {
-    VIL *vil=CreateVIL(vil_cfg);
-
     if(!vil)return(nullptr);
 
     int mi_id=-1;
@@ -19,6 +15,11 @@ MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
         mi_id=-1;
 
     return(new MaterialInstance(this,vil,mi_id));
+}
+
+MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
+{
+    return CreateMI(CreateVIL(vil_cfg));
 }
 
 void Material::ReleaseMI(int mi_id)
@@ -46,7 +47,7 @@ void MaterialInstance::WriteMIData(const void *data,const uint32 size)
         memcpy(tp,data,size);
 }
 
-MaterialInstance::MaterialInstance(Material *mtl,VIL *v,const int id)
+MaterialInstance::MaterialInstance(Material *mtl,const VIL *v,const int id)
 {
     material=mtl;
 

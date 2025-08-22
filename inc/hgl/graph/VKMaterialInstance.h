@@ -48,7 +48,7 @@ protected:
 
     Material *material;
 
-    VIL *vil;
+    const VIL *vil;
 
     int mi_id;
 
@@ -62,7 +62,7 @@ private:
 
     friend class Material;
 
-    MaterialInstance(Material *,VIL *,const int);
+    MaterialInstance(Material *,const VIL *,const int);
 
 public:
 
