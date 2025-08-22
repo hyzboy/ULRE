@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/font/FontSource.h>
-#include<hgl/color/Color4f.h>
+#include<hgl/color/Color4ub.h>
 
 namespace hgl::graph
 {
@@ -13,15 +13,17 @@ namespace hgl::graph
     */
     struct CharDrawStyle
     {
-        float   weight      =1.0f;  ///<粗细
-        float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
+        Color4ub CharColor;          ///<字符颜色
+        //Color4ub BackgroundColor;    ///<背景颜色
 
-        float   underline   =0.0f; ///<下划线粗细
-        float   strikeout   =0.0f; ///<删除线粗细
+        //float   weight      =1.0f;  ///<粗细
+        //float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
 
-        Color4f CharColor;          ///<字符颜色
-        Color4f BackgroundColor;    ///<背景颜色
+        //float   underline   =0.0f; ///<下划线粗细
+        //float   strikeout   =0.0f; ///<删除线粗细
     };//struct CharDrawStyle
+
+    constexpr const size_t CharDrawStyleBytes=sizeof(CharDrawStyle);
        
     /**
     * 文本排列方向
@@ -81,6 +83,15 @@ namespace hgl::graph
     {
         CharDrawStyle char_draw_style;
         TextLayoutAttribute layout_attr;
+
+        // CharDrawStyle与TextLayoutAttribute的区别在于：
+
+        // CharDrawStyle    是针对单个字符的绘制风格，其所有的属性都将储存于UBO，在Shader中使用。
+        //                  所以每个CharDrawStyle其实都对应了一个TextRender的材质实例(MaterialInstance)。
+        //                  也因此CharDrawStyle的数量是有限制的，因为所有的材质实例属性加起来不能超过一个UBO大小。
+        //                  但其实这个值也还很大的，100来个还是可以支撑的。
+
+        // TextLayoutAttribute 是针对整段文本的排版属性，其所有的值都在CPU阶段进行计算。所以其数量其实是无限制的。
 
         TEXT_COORD_TYPE char_height;
         TEXT_COORD_TYPE space_size;

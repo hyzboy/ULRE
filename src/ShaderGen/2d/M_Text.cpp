@@ -7,8 +7,8 @@
 STD_MTL_NAMESPACE_BEGIN
 namespace
 {
-    constexpr const char mi_codes[]="vec4 TextColor;";      //材质实例代码
-    constexpr const uint32_t mi_bytes=sizeof(Vector4f);     //材质实例数据大小
+    constexpr const char mi_codes[]="uint TextColor;";      //材质实例代码
+    constexpr const uint32_t mi_bytes=sizeof(uint32);     //材质实例数据大小
 
     constexpr const char vs_main[]=R"(
 void main()
@@ -41,10 +41,12 @@ void main()
 {
     MaterialInstance mi=GetMI();
 
+    vec4 TextColor=unpackUnorm4x8(mi.TextColor);
+
     float lum=texture(TextureText,Input.TexCoord).r;
 
-    FragColor=vec4( mi.TextColor.rgb*lum,
-                    mi.TextColor.a);
+    FragColor=vec4( TextColor.rgb*lum,
+                    TextColor.a);
 })";
 
     class MaterialText2D:public Std2DMaterial
