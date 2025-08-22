@@ -35,10 +35,10 @@ namespace hgl::graph
 
     const CLA *FontDataSource::GetCLA(const u32char &ch)
     {
-        CLA *cla;
+        CLA *char_draw_style;
 
-        if(cla_cache.Get(ch,cla))
-            return cla;
+        if(cla_cache.Get(ch,char_draw_style))
+            return char_draw_style;
 
         CharAttributes *attr;
 
@@ -73,27 +73,27 @@ namespace hgl::graph
             all_char_attrs.Add(ch,attr);
         }
 
-        cla=new CLA;
-        cla->attr=attr;
+        char_draw_style=new CLA;
+        char_draw_style->attr=attr;
 
         if(!attr->space)
         {                        
-            if(!GetCharMetrics(cla->metrics,ch))
+            if(!GetCharMetrics(char_draw_style->metrics,ch))
             {
-                cla->visible=false;
-                hgl_zero(cla->metrics);
+                char_draw_style->visible=false;
+                hgl_zero(char_draw_style->metrics);
             }
             else
             {
-                cla->visible=(cla->metrics.w>0&&cla->metrics.h>0);
+                char_draw_style->visible=(char_draw_style->metrics.w>0&&char_draw_style->metrics.h>0);
             }
         }
         else
         {
-            cla->visible=false;
+            char_draw_style->visible=false;
         }
 
-        cla_cache.Add(ch,cla);
-        return cla;
+        cla_cache.Add(ch,char_draw_style);
+        return char_draw_style;
     }
 }//namespace hgl::graph
