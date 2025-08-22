@@ -113,6 +113,7 @@ public:
     void ReleaseMI(int);    ///<释放材质实例
     void *GetMIData(int);   ///<取得指定ID号的材质实例数据访问指针
 
+    MaterialInstance *CreateMI(const VIL *);
     MaterialInstance *CreateMI(const VILConfig *vil_cfg=nullptr);
 };//class Material
 

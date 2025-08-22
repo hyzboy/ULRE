@@ -124,9 +124,19 @@ public: //Material
     Material *          LoadMaterial    (const AnsiString &,mtl::Material2DCreateConfig *);
     Material *          LoadMaterial    (const AnsiString &,mtl::Material3DCreateConfig *);
 
+    MaterialInstance *  CreateMaterialInstance(Material *,const VIL *vil);
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
 
+    MaterialInstance *  CreateMaterialInstance(Material *,const VIL *vil,const void *,const int);
     MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg,const void *,const int);
+
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil,const T *data)
+    {
+        if(!vil)return(nullptr);
+
+        return CreateMaterialInstance(mtl,vil,data,sizeof(T));
+    }
 
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const T *data)
