@@ -17,10 +17,10 @@ namespace hgl::graph
     }
         
     /**
-        * 注册要使用的字符
-        * @param rs 每个字符在纹理中的UV坐标
-        * @param chars_sets 要注册的字符合集
-        */
+    * 注册要使用的字符
+    * @param rs 每个字符在纹理中的UV坐标
+    * @param chars_sets 要注册的字符合集
+    */
     bool TileFont::Registry(TileUVFloatMap &uv_map,U32CharSet &chars_sets)
     {
         RefPoolStats stats;
@@ -90,9 +90,9 @@ namespace hgl::graph
     }
 
     /**
-        * 注销要使用的字符
-        * @param ch_list 要注销的字符列表
-        */
+    * 注销要使用的字符
+    * @param ch_list 要注销的字符列表
+    */
     void TileFont::Unregistry(const DataArray<u32char> &ch_list)
     {
         for(const u32char &ch:ch_list)
