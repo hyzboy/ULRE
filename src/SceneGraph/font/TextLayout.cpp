@@ -5,16 +5,16 @@
 
 namespace hgl::graph
 {
-    void TextLayout::Set(const CharLayoutAttribute *c,const TextLayoutAttribute *t)
+    void TextLayout::Set(const CharDrawStyle *c,const TextLayoutAttribute *t)
     {
         if(c)
-            hgl_cpy<CharLayoutAttribute>(tda.cla,*c);
+            hgl_cpy<CharDrawStyle>(tda.char_draw_style,*c);
 
         if(t)
         {
             const float origin_char_height=font_source->GetCharHeight();
 
-            hgl_cpy<TextLayoutAttribute>(tda.tla,*t);
+            hgl_cpy<TextLayoutAttribute>(tda.layout_attr,*t);
 
             tda.char_height     =std::ceil(origin_char_height);
             tda.space_size      =std::ceil(origin_char_height*tda.space_size);
@@ -118,7 +118,7 @@ namespace hgl::graph
     bool TextLayout::h_splite_to_lines(float view_limit)
     {
         //const int count=cla_list.GetCount();
-        //const CLA **cla=cla_list.GetData();
+        //const CLA **char_draw_style=cla_list.GetData();
 
         //int cur_size=0;
 
@@ -159,12 +159,12 @@ namespace hgl::graph
     //
     //    if(direction.vertical)
     //    {
-    //        if(!v_splite_to_lines(tla->max_height))
+    //        if(!v_splite_to_lines(layout_attr->max_height))
     //            return(-4);
     //    }
     //    else
     //    {
-    //        if(!h_splite_to_lines(tla->max_width))
+    //        if(!h_splite_to_lines(layout_attr->max_width))
     //            return(-4);
     //    }
     //
@@ -266,8 +266,8 @@ namespace hgl::graph
 
         int result;
 
-        if(tda.tla.text_direction==TextDirection::Vertical)     result=sl_v();else
-        if(tda.tla.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
+        if(tda.layout_attr.text_direction==TextDirection::Vertical)     result=sl_v();else
+        if(tda.layout_attr.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
                                                                 result=sl_l2r();
 
         if(result>0)

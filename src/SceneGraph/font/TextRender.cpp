@@ -43,13 +43,13 @@ namespace hgl::graph
 
     bool TextRender::InitTextLayoutEngine()
     {
-        CharLayoutAttribute cla;
-        TextLayoutAttribute tla;
+        CharDrawStyle cla;
+        TextLayoutAttribute layout_attr;
 
         cla.CharColor=GetColor4f(COLOR::White,1.0);
         cla.BackgroundColor.Zero();
 
-        tl_engine->Set(&cla,&tla);
+        tl_engine->Set(&cla,&layout_attr);
 
         return(true);
     }

@@ -41,7 +41,7 @@ namespace hgl::graph
 
     protected:
 
-        TextDrawAttribute tda;
+        TextDrawStyle tda;
 
     protected:
 
@@ -58,7 +58,7 @@ namespace hgl::graph
 
         bool Begin(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
 
-        void Set(const CharLayoutAttribute *,const TextLayoutAttribute *);
+        void Set(const CharDrawStyle *,const TextLayoutAttribute *);
 
         //bool PrepareVBO();
 

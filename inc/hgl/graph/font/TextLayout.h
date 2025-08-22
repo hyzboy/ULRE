@@ -9,9 +9,9 @@ namespace hgl::graph
     class TextPrimitive;
 
     /**
-    * 字符排版属性，可精确到字也可精确到段落或是全文
+    * 字符绘制风格
     */
-    struct CharLayoutAttribute
+    struct CharDrawStyle
     {
         float   weight      =1.0f;  ///<粗细
         float   italic      =0.0f;  ///<倾斜角度(<0左斜,>0右斜)
@@ -21,7 +21,7 @@ namespace hgl::graph
 
         Color4f CharColor;          ///<字符颜色
         Color4f BackgroundColor;    ///<背景颜色
-    };//struct CharLayoutAttribute
+    };//struct CharDrawStyle
        
     /**
     * 文本排列方向
@@ -50,7 +50,7 @@ namespace hgl::graph
     };//enum class TextAlign
 
     /**
-    * 文本排版属性
+    * 段落排版属性
     */
     struct TextLayoutAttribute
     {
@@ -77,10 +77,10 @@ namespace hgl::graph
         
     using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
 
-    struct TextDrawAttribute:public ComparatorData<TextDrawAttribute>
+    struct TextDrawStyle:public ComparatorData<TextDrawStyle>
     {
-        CharLayoutAttribute cla;
-        TextLayoutAttribute tla;
+        CharDrawStyle char_draw_style;
+        TextLayoutAttribute layout_attr;
 
         TEXT_COORD_TYPE char_height;
         TEXT_COORD_TYPE space_size;
