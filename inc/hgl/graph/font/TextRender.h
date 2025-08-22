@@ -4,6 +4,7 @@
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/type/Map.h>
 #include<hgl/type/SortedSet.h>
+#include<hgl/type/String.h>
 
 namespace hgl::graph
 {
@@ -21,7 +22,6 @@ namespace hgl::graph
         RenderResource *    db;
 
         Material *          material;
-        MaterialInstance *  material_instance;
 
         Sampler *           sampler;
 
@@ -32,7 +32,19 @@ namespace hgl::graph
 
     private:
 
-        SortedSet<TextPrimitive *> tr_sets;
+        struct CharStyleMaterial
+        {
+            CharDrawStyle char_style;
+            MaterialInstance *mi;
+        };
+
+        CharStyleMaterial default_char_style_material;                          ///<默认字符风格材质
+
+        Map<AnsiString,CharStyleMaterial> char_style_materials;                 ///<字符风格材质列表
+
+    private:
+
+        SortedSet<TextPrimitive *> tr_sets;         ///<所有的文字绘制几何体
 
     private:
 
@@ -52,6 +64,8 @@ namespace hgl::graph
 
         TextPrimitive *CreatePrimitive(int limit=2048);
         TextPrimitive *CreatePrimitive(const U16String &str);
+
+        bool RegistryStyle(const AnsiString &,const CharDrawStyle &cds);
 
         bool Layout(TextPrimitive *tr,const U16String &str);
 

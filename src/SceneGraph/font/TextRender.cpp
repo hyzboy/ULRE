@@ -20,10 +20,12 @@ namespace hgl::graph
         tl_engine=new TextLayout(tf->GetFontSource());
             
         material            =nullptr;
-        material_instance   =nullptr;
         sampler             =nullptr;
         pipeline            =nullptr;
         tile_font           =tf;
+
+        default_char_style_material.char_style.CharColor.Set(255,255,255,255);
+        default_char_style_material.mi=nullptr;
     }
 
     TextRender::~TextRender()
@@ -43,13 +45,9 @@ namespace hgl::graph
 
     bool TextRender::InitTextLayoutEngine()
     {
-        CharDrawStyle cla;
         TextLayoutAttribute layout_attr;
 
-        cla.CharColor=GetColor4f(COLOR::White,1.0);
-        cla.BackgroundColor.Zero();
-
-        tl_engine->Set(&cla,&layout_attr);
+        tl_engine->Set(&default_char_style_material.char_style,&layout_attr);
 
         return(true);
     }
@@ -70,13 +68,11 @@ namespace hgl::graph
 
             vil_config.Add("Position",VF_V4I16);
 
-            Color4f color(1,1,1,1);
-
-            material_instance=db->CreateMaterialInstance(material,&vil_config,&color);
-            if(!material_instance)return(false);
+            default_char_style_material.mi=db->CreateMaterialInstance(material,&vil_config,&default_char_style_material.char_style);
+            if(!default_char_style_material.mi)return(false);
         }
 
-        pipeline=rp->CreatePipeline(material_instance,InlinePipeline::Solid2D);
+        pipeline=rp->CreatePipeline(default_char_style_material.mi,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
         sampler=db->CreateSampler();
@@ -92,10 +88,10 @@ namespace hgl::graph
 
     bool TextRender::Init(RenderPass *rp)
     {
-        if(!InitTextLayoutEngine())
+        if(!InitMaterial(rp))
             return(false);
 
-        if(!InitMaterial(rp))
+        if(!InitTextLayoutEngine())
             return(false);
 
         return(true);
@@ -103,7 +99,7 @@ namespace hgl::graph
 
     TextPrimitive *TextRender::CreatePrimitive(int limit)
     {   
-        TextPrimitive *tr=new TextPrimitive(device,material_instance->GetVIL(),limit);
+        TextPrimitive *tr=new TextPrimitive(device,default_char_style_material.mi->GetVIL(),limit);
 
         tr_sets.Add(tr);
 
@@ -142,7 +138,7 @@ namespace hgl::graph
 
     Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
     {
-        return db->CreateMesh(text_primitive,material_instance,pipeline);
+        return db->CreateMesh(text_primitive,default_char_style_material.mi,pipeline);
     }
 
     void TextRender::Release(TextPrimitive *tr)
