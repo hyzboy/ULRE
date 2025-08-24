@@ -3,27 +3,36 @@
 #include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/Extent.h>
 
-namespace hgl::graph
+namespace hgl::graph::layout
 {
-    void TextLayout::Set(const CharDrawStyle *c,const TextLayoutAttribute *t)
+    TextLayout::TextLayout(FontSource *fs)
     {
-        if(c)
-            hgl_cpy<CharDrawStyle>(tda.char_draw_style,*c);
+        font_source=fs;
 
-        if(t)
+        if(font_source)
         {
-            const float origin_char_height=font_source->GetCharHeight();
+            ParagraphStyle tla;
 
-            hgl_cpy<TextLayoutAttribute>(tda.layout_attr,*t);
-
-            tda.char_height     =std::ceil(origin_char_height);
-            tda.space_size      =std::ceil(origin_char_height*tda.space_size);
-            tda.full_space_size =std::ceil(origin_char_height*tda.full_space_size);
-            tda.tab_size        =std::ceil(origin_char_height*tda.tab_size);
-            tda.char_gap        =std::ceil(origin_char_height*tda.char_gap);
-            tda.line_gap        =std::ceil(origin_char_height*tda.line_gap);
-            tda.line_height     =std::ceil(origin_char_height+tda.line_gap);
+            Set(&tla); //设置默认的文本排版属性
         }
+    }
+
+    void TextLayout::Set(const ParagraphStyle *t)
+    {
+        if(!t)
+            return;
+
+        const float origin_char_height=font_source->GetCharHeight();
+
+        hgl_cpy<ParagraphStyle>(tda.para_style,*t);
+
+        tda.char_height     =std::ceil(origin_char_height);
+        tda.space_size      =std::ceil(origin_char_height*tda.space_size);
+        tda.full_space_size =std::ceil(origin_char_height*tda.full_space_size);
+        tda.tab_size        =std::ceil(origin_char_height*tda.tab_size);
+        tda.char_gap        =std::ceil(origin_char_height*tda.char_gap);
+        tda.line_gap        =std::ceil(origin_char_height*tda.line_gap);
+        tda.line_height     =std::ceil(origin_char_height+tda.line_gap);
     }
 
     bool TextLayout::Begin(TextPrimitive *tr,TileFont *tf,int Estimate)
@@ -112,29 +121,6 @@ namespace hgl::graph
         return(true);
     }
 
-    /**
-        * 将字符串断成多行，处理标点禁用，以及英文单词禁拆分
-        */
-    bool TextLayout::h_splite_to_lines(float view_limit)
-    {
-        //const int count=cla_list.GetCount();
-        //const CLA **char_draw_style=cla_list.GetData();
-
-        //int cur_size=0;
-
-        //for(int i=0;i<count;i++)
-        //{
-        //}
-
-        return(true);
-    }
-
-    bool TextLayout::v_splite_to_lines(float view_limit)
-    {
-
-        return(true);
-    }
-
     //int TextLayout::Layout(const int mc,const String<T> &str)
     //{
     //    if(mc<=0
@@ -159,12 +145,12 @@ namespace hgl::graph
     //
     //    if(direction.vertical)
     //    {
-    //        if(!v_splite_to_lines(layout_attr->max_height))
+    //        if(!v_splite_to_lines(para_style->max_height))
     //            return(-4);
     //    }
     //    else
     //    {
-    //        if(!h_splite_to_lines(layout_attr->max_width))
+    //        if(!h_splite_to_lines(para_style->max_width))
     //            return(-4);
     //    }
     //
@@ -266,8 +252,8 @@ namespace hgl::graph
 
         int result;
 
-        if(tda.layout_attr.text_direction==TextDirection::Vertical)     result=sl_v();else
-        if(tda.layout_attr.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
+        if(tda.para_style.text_direction==TextDirection::Vertical)     result=sl_v();else
+        if(tda.para_style.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
                                                                 result=sl_l2r();
 
         if(result>0)
@@ -290,4 +276,4 @@ namespace hgl::graph
 
     //int TextLayout::SimpleLayout(TileFont *tf,const UTF16StringList &sl){return this->SimpleLayout<u16char>(tf,sl);}
     //int TextLayout::SimpleLayout(TileFont *tf,const UTF32StringList &sl){return this->SimpleLayout<u32char>(tf,sl);}
-}//namespace hgl::graph
+}//namespace hgl::graph::layout
