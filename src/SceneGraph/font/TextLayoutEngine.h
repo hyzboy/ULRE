@@ -2,7 +2,7 @@
 #include<hgl/graph/TileData.h>
 #include<hgl/type/IndexedList.h>
 
-namespace hgl::graph
+namespace hgl::graph::layout
 {
     class TextLayout
     {
@@ -30,9 +30,6 @@ namespace hgl::graph
 
     protected:
 
-        bool h_splite_to_lines(float view_limit);
-        bool v_splite_to_lines(float view_limit);
-
         int sl_l2r();
         int sl_r2l();
         int sl_v();
@@ -51,14 +48,14 @@ namespace hgl::graph
 
     public:
 
-        TextLayout(FontSource *fs){font_source=fs;}
+        TextLayout(FontSource *);
         virtual ~TextLayout()=default;
 
     public: //多次排版
 
         bool Begin(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
 
-        void Set(const CharDrawStyle *,const TextLayoutAttribute *);
+        void Set(const ParagraphStyle *);
 
         //bool PrepareVBO();
 
@@ -72,5 +69,5 @@ namespace hgl::graph
 //            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
 //            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
     };//class TextLayout
-}//namespace hgl::graph
+}//namespace hgl::graph::layout
 

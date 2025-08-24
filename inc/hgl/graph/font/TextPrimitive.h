@@ -6,6 +6,11 @@
 
 namespace hgl::graph
 {
+    namespace layout
+    {
+        class TextLayout;
+    }//namespace layout
+
     /**
     * 文本图元
     */
@@ -22,7 +27,7 @@ namespace hgl::graph
 
     protected:
 
-        friend class TextLayout;
+        friend class layout::TextLayout;
         friend class TextRender;
 
         U32CharSet chars_sets;

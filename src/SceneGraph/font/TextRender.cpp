@@ -12,12 +12,14 @@
 
 namespace hgl::graph
 {
+    using namespace layout;
+
     TextRender::TextRender(VulkanDevice *dev,TileFont *tf)
     {
         device=dev;
 
         db=new RenderResource(device);         //独立的资源管理器，不和整体共用
-        tl_engine=new TextLayout(tf->GetFontSource());
+        tl_engine=new layout::TextLayout(tf->GetFontSource());
             
         material            =nullptr;
         sampler             =nullptr;
@@ -26,6 +28,7 @@ namespace hgl::graph
 
         default_char_style_material.char_style.CharColor.Set(255,255,255,255);
         default_char_style_material.mi=nullptr;
+        cur_char_style_mi=nullptr;
     }
 
     TextRender::~TextRender()
@@ -37,19 +40,10 @@ namespace hgl::graph
         }
 
         tr_sets.Clear();
-            
+           
         SAFE_CLEAR(tl_engine);
         SAFE_CLEAR(tile_font);
         SAFE_CLEAR(db);
-    }
-
-    bool TextRender::InitTextLayoutEngine()
-    {
-        TextLayoutAttribute layout_attr;
-
-        tl_engine->Set(&default_char_style_material.char_style,&layout_attr);
-
-        return(true);
     }
 
     bool TextRender::InitMaterial(RenderPass *rp)
@@ -70,6 +64,8 @@ namespace hgl::graph
 
             default_char_style_material.mi=db->CreateMaterialInstance(material,&vil_config,&default_char_style_material.char_style);
             if(!default_char_style_material.mi)return(false);
+
+            cur_char_style_mi=default_char_style_material.mi; //设置当前材质实例为默认材质实例
         }
 
         pipeline=rp->CreatePipeline(default_char_style_material.mi,InlinePipeline::Solid2D);
@@ -89,9 +85,6 @@ namespace hgl::graph
     bool TextRender::Init(RenderPass *rp)
     {
         if(!InitMaterial(rp))
-            return(false);
-
-        if(!InitTextLayoutEngine())
             return(false);
 
         return(true);
@@ -138,7 +131,7 @@ namespace hgl::graph
 
     Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
     {
-        return db->CreateMesh(text_primitive,default_char_style_material.mi,pipeline);
+        return db->CreateMesh(text_primitive,cur_char_style_mi,pipeline);
     }
 
     void TextRender::Release(TextPrimitive *tr)
@@ -193,5 +186,42 @@ namespace hgl::graph
 
         delete fs;
         return(nullptr);
+    }
+
+    bool TextRender::RegistryStyle(const AnsiString &style_name,const CharStyle &cds)
+    {
+        if(style_name.IsEmpty())
+            return(false);
+
+        if(char_style_materials.ContainsKey(style_name))
+            return(false);
+
+        CharStyleMaterial csm;
+
+        csm.char_style=cds;
+        csm.mi=db->CreateMaterialInstance(material,default_char_style_material.mi->GetVIL(),&csm.char_style);
+
+        char_style_materials.Add(style_name,csm);
+        return(true);
+    }
+
+    void TextRender::SetStyle(const AnsiString &style_name)
+    {
+        if(!char_style_materials.ContainsKey(style_name))
+            return;
+
+        CharStyleMaterial csm;
+
+        char_style_materials.Get(style_name,csm);
+
+        cur_char_style_mi=csm.mi;
+    }
+
+    void TextRender::SetLayout(const ParagraphStyle *tla)
+    {
+        if(!tla)
+            return;
+
+        tl_engine->Set(tla);
     }
 }//namespace hgl::graph

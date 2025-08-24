@@ -11,9 +11,13 @@ namespace hgl::graph
     class FontDataSource;
     class FontSource;
     class TileFont;
-    class TextLayout;
     class TextPrimitive;
     class RenderFramework;
+
+    namespace layout
+    {
+        class TextLayout;
+    }//namespace layout
 
     class TextRender
     {
@@ -28,19 +32,21 @@ namespace hgl::graph
         Pipeline *          pipeline;
 
         TileFont *          tile_font;
-        TextLayout *        tl_engine;
+        layout::TextLayout *tl_engine;
 
     private:
 
         struct CharStyleMaterial
         {
-            CharDrawStyle char_style;
+            layout::CharStyle char_style;
             MaterialInstance *mi;
         };
 
         CharStyleMaterial default_char_style_material;                          ///<默认字符风格材质
 
         Map<AnsiString,CharStyleMaterial> char_style_materials;                 ///<字符风格材质列表
+
+        MaterialInstance *cur_char_style_mi=nullptr;                            ///<当前字符风格材质
 
     private:
 
@@ -65,7 +71,10 @@ namespace hgl::graph
         TextPrimitive *CreatePrimitive(int limit=2048);
         TextPrimitive *CreatePrimitive(const U16String &str);
 
-        bool RegistryStyle(const AnsiString &,const CharDrawStyle &cds);
+        bool RegistryStyle(const AnsiString &,const layout::CharStyle &cds);
+        void SetStyle(const AnsiString &style_name);
+
+        void SetLayout(const layout::ParagraphStyle *tla);
 
         bool Layout(TextPrimitive *tr,const U16String &str);
 
