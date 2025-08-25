@@ -25,6 +25,8 @@ namespace hgl::graph
             //float   strikeout   =0.0f; ///<删除线粗细
         };//struct CharStyle
 
+        using CharDrawStyleID=uint8;
+
         constexpr const size_t CharDrawStyleBytes=sizeof(CharStyle);
        
         /**

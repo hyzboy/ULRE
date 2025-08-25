@@ -26,9 +26,9 @@ namespace hgl::graph
         pipeline            =nullptr;
         tile_font           =tf;
 
-        default_char_style_material.char_style.CharColor.Set(255,255,255,255);
-        default_char_style_material.mi=nullptr;
-        cur_char_style_mi=nullptr;
+        fixed_style.CharColor=Color4ub(255,255,255,255);
+
+        material_instance=nullptr;
     }
 
     TextRender::~TextRender()
@@ -62,13 +62,11 @@ namespace hgl::graph
 
             vil_config.Add("Position",VF_V4I16);
 
-            default_char_style_material.mi=db->CreateMaterialInstance(material,&vil_config,&default_char_style_material.char_style);
-            if(!default_char_style_material.mi)return(false);
-
-            cur_char_style_mi=default_char_style_material.mi; //设置当前材质实例为默认材质实例
+            material_instance=db->CreateMaterialInstance(material,&vil_config,&fixed_style);
+            if(!material_instance)return(false);
         }
 
-        pipeline=rp->CreatePipeline(default_char_style_material.mi,InlinePipeline::Solid2D);
+        pipeline=rp->CreatePipeline(material_instance,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
         sampler=db->CreateSampler();
@@ -92,7 +90,7 @@ namespace hgl::graph
 
     TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,int limit)
     {   
-        TextPrimitive *tr=new TextPrimitive(device,default_char_style_material.mi->GetVIL(),limit);
+        TextPrimitive *tr=new TextPrimitive(device,material_instance->GetVIL(),limit);
 
         tr_sets.Add(tr);
 
@@ -131,7 +129,7 @@ namespace hgl::graph
 
     Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
     {
-        return db->CreateMesh(text_primitive,cur_char_style_mi,pipeline);
+        return db->CreateMesh(text_primitive,material_instance,pipeline);
     }
 
     void TextRender::Release(TextPrimitive *tr)
@@ -188,33 +186,13 @@ namespace hgl::graph
         return(nullptr);
     }
 
-    bool TextRender::RegistryStyle(const AnsiString &style_name,const CharStyle &cds)
+    void TextRender::SetFixedStyle(const layout::CharStyle &cs)
     {
-        if(style_name.IsEmpty())
-            return(false);
-
-        if(char_style_materials.ContainsKey(style_name))
-            return(false);
-
-        CharStyleMaterial csm;
-
-        csm.char_style=cds;
-        csm.mi=db->CreateMaterialInstance(material,default_char_style_material.mi->GetVIL(),&csm.char_style);
-
-        char_style_materials.Add(style_name,csm);
-        return(true);
-    }
-
-    void TextRender::SetStyle(const AnsiString &style_name)
-    {
-        if(!char_style_materials.ContainsKey(style_name))
+        if(!hgl_cmp(fixed_style,cs))
             return;
 
-        CharStyleMaterial csm;
-
-        char_style_materials.Get(style_name,csm);
-
-        cur_char_style_mi=csm.mi;
+        fixed_style=cs;
+        material_instance->WriteMIData(fixed_style);
     }
 
     void TextRender::SetLayout(const ParagraphStyle *tla)
