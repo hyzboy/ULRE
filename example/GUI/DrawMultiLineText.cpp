@@ -50,6 +50,11 @@ private:
 
         render_obj=text_render->CreateMesh(text_primitive);
 
+        layout::CharStyle cs;
+
+        cs.CharColor=Color4ub(64,173,235,255);
+        text_render->SetFixedStyle(cs);
+
         if(!render_obj)
             return(false);
 

@@ -40,6 +40,7 @@ namespace hgl::graph
         RenderResource *    db;
 
         Material *          material;
+        MaterialInstance *  material_instance;
 
         Sampler *           sampler;
 
@@ -50,18 +51,7 @@ namespace hgl::graph
 
     private:
 
-        struct CharStyleMaterial
-        {
-            int id;
-            layout::CharStyle char_style;
-            MaterialInstance *mi;
-        };
-
-        CharStyleMaterial default_char_style_material;                          ///<默认字符风格材质
-
-        Map<AnsiString,CharStyleMaterial> char_style_materials;                 ///<字符风格材质列表
-
-        MaterialInstance *cur_char_style_mi=nullptr;                            ///<当前字符风格材质
+        layout::CharStyle fixed_style;    ///<固定字符风格
 
     private:
 
@@ -86,8 +76,7 @@ namespace hgl::graph
         TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt=TextPrimitiveType::FixedStyle,int limit=2048);
         TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str);
 
-        bool RegistryStyle(const AnsiString &,const layout::CharStyle &cds);
-        void SetStyle(const AnsiString &style_name);
+        void SetFixedStyle(const layout::CharStyle &);
 
         void SetLayout(const layout::ParagraphStyle *tla);
 
