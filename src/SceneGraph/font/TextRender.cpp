@@ -90,7 +90,7 @@ namespace hgl::graph
         return(true);
     }
 
-    TextPrimitive *TextRender::CreatePrimitive(int limit)
+    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,int limit)
     {   
         TextPrimitive *tr=new TextPrimitive(device,default_char_style_material.mi->GetVIL(),limit);
 
@@ -99,9 +99,9 @@ namespace hgl::graph
         return tr;
     }
 
-    TextPrimitive *TextRender::CreatePrimitive(const U16String &str)
+    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str)
     {
-        TextPrimitive *tr=CreatePrimitive(str.Length());
+        TextPrimitive *tr=CreatePrimitive(tpt,str.Length());
 
         if(!tr)
             return(nullptr);

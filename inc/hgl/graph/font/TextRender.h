@@ -19,6 +19,20 @@ namespace hgl::graph
         class TextLayout;
     }//namespace layout
 
+    enum class TextPrimitiveType:uint8
+    {
+        /**
+        * 固定风格，所有的字符使用同一种风格绘制
+        */
+        FixedStyle=0,
+
+        /**
+        * 每个字符可以不同风格，最大不能超过256种。
+        * 在绘制前，会通过一个格式为R8UI的VertexAttribute传递每个字符的风格ID，所以最多不能超过256种风格。
+        */
+        StylePerChar,
+    };
+
     class TextRender
     {
         VulkanDevice *      device;
@@ -38,6 +52,7 @@ namespace hgl::graph
 
         struct CharStyleMaterial
         {
+            int id;
             layout::CharStyle char_style;
             MaterialInstance *mi;
         };
@@ -68,8 +83,8 @@ namespace hgl::graph
 
     public:
 
-        TextPrimitive *CreatePrimitive(int limit=2048);
-        TextPrimitive *CreatePrimitive(const U16String &str);
+        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt=TextPrimitiveType::FixedStyle,int limit=2048);
+        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str);
 
         bool RegistryStyle(const AnsiString &,const layout::CharStyle &cds);
         void SetStyle(const AnsiString &style_name);
