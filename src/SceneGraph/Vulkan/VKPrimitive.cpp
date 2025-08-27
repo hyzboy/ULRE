@@ -34,10 +34,18 @@ Primitive::Primitive(const AnsiString &pn,PrimitiveData *pd)
 {
     prim_name=pn;
     prim_data=pd;
+
+#ifdef _DEBUG
+    LOG_INFO(" Primitive: "+prim_name);
+#endif//
 }
 
 Primitive::~Primitive()
 {
+#ifdef _DEBUG
+    LOG_INFO("~Primitive: "+prim_name);
+#endif//
+
     SAFE_CLEAR(prim_data);
 }
 
@@ -56,9 +64,23 @@ const int Primitive::GetVABIndex(const AnsiString &name)const
     return prim_data->GetVABIndex(name);
 }
 
-VAB *Primitive::GetVAB(const int vab_index)
+VAB *Primitive::GetVAB(const int vab_index)const
 {
     return prim_data->GetVAB(vab_index);
+}
+
+VkBuffer Primitive::GetVkBuffer(const int index)const
+{
+    VAB *vab=GetVAB(index);
+    if(!vab)return(VK_NULL_HANDLE);
+    return vab->GetBuffer();
+}
+
+VkBuffer Primitive::GetVkBuffer(const AnsiString &name)const
+{
+    VAB *vab=GetVAB(name);
+    if(!vab)return(VK_NULL_HANDLE);
+    return vab->GetBuffer();
 }
 
 const int32_t Primitive::GetVertexOffset()const
@@ -76,7 +98,7 @@ const uint32_t Primitive::GetIndexCount()const
     return prim_data->GetIndexCount();
 }
 
-IndexBuffer *Primitive::GetIBO()
+IndexBuffer *Primitive::GetIBO()const
 {
     return prim_data->GetIBO();
 }
@@ -91,7 +113,7 @@ IBMap *Primitive::GetIBMap()
     return prim_data->GetIBMap();
 }
 
-VertexDataManager *Primitive::GetVDM()
+VertexDataManager *Primitive::GetVDM()const
 {
     return prim_data->GetVDM();
 }

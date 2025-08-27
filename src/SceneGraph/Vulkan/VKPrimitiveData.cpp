@@ -62,7 +62,7 @@ bool PrimitiveData::CreateAllVAB(const uint32_t vc)
     return(true);
 }
 
-VAB *PrimitiveData::GetVAB(const int index)
+VAB *PrimitiveData::GetVAB(const int index)const
 {
     if(index<0||index>=vil->GetVertexAttribCount())return(nullptr);
 

@@ -45,18 +45,23 @@ public:
 
     const   uint32_t        GetVABCount     ()const;
     const   int             GetVABIndex     (const AnsiString &name)const;
-            VAB *           GetVAB          (const int);            
-            VAB *           GetVAB          (const AnsiString &name){return GetVAB(GetVABIndex(name));}
+
+            VAB *           GetVAB          (const int)const;
+            VkBuffer        GetVkBuffer     (const int index)const;
+
+            VAB *           GetVAB          (const AnsiString &name)const{return GetVAB(GetVABIndex(name));}
+            VkBuffer        GetVkBuffer     (const AnsiString &name)const;
+
     const   int32_t         GetVertexOffset ()const;                        ///<取得顶点偏移(注意是顶点不是字节)
             VABMap *        GetVABMap       (const int);                    ///<取得VAB映射器
             VABMap *        GetVABMap       (const AnsiString &name){return GetVABMap(GetVABIndex(name));}
 
     const   uint32_t        GetIndexCount   ()const;
-            IndexBuffer *   GetIBO          ();
+            IndexBuffer *   GetIBO          ()const;
     const   uint32_t        GetFirstIndex   ()const;                        ///<取得第一个索引
             IBMap *         GetIBMap        ();                             ///<取得索引缓冲区映射器
 
-    VertexDataManager *     GetVDM          ();                             ///<取得顶点数据管理器
+    VertexDataManager *     GetVDM          ()const;                        ///<取得顶点数据管理器
 
     const   AABB &          GetBoundingBox  ()const{return bounding_box;}
 };//class Primitive
