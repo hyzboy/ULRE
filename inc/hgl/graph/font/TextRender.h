@@ -39,9 +39,6 @@ namespace hgl::graph
 
         RenderResource *    db;
 
-        Material *          material;
-        MaterialInstance *  material_instance;
-
         Sampler *           sampler;
 
         Pipeline *          pipeline;
@@ -49,13 +46,18 @@ namespace hgl::graph
         TileFont *          tile_font;
         layout::TextLayout *tl_engine;
 
+        layout::ParagraphStyle default_para_style;          ///<默认段落风格
+
+    private:    //fixed style 资源
+
+        layout::CharStyle   fixed_style;                    ///<固定字符风格
+
+        Material *          mtl_fs;                         ///<固定风格材质
+        MaterialInstance *  mi_fs;                          ///<固定风格材质实例
+
     private:
 
-        layout::CharStyle fixed_style;    ///<固定字符风格
-
-    private:
-
-        SortedSet<TextPrimitive *> tr_sets;         ///<所有的文字绘制几何体
+        SortedSet<TextPrimitive *> tr_sets;                 ///<所有的文字绘制几何体
 
     private:
 
@@ -73,14 +75,12 @@ namespace hgl::graph
 
     public:
 
-        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt=TextPrimitiveType::FixedStyle,int limit=2048);
-        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str);
+        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt=TextPrimitiveType::FixedStyle,int limit=2048);                          ///<创建一个文本绘制几何体
+        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str,const layout::ParagraphStyle *ps=nullptr);         ///<创建一个文本绘制几何体，并进行简单排版
 
-        void SetFixedStyle(const layout::CharStyle &);
+        void SetFixedStyle(const layout::CharStyle &);                                                                  ///<设定固定风格模式所用风格
 
-        void SetLayout(const layout::ParagraphStyle *tla);
-
-        bool Layout(TextPrimitive *tr,const U16String &str);
+        bool SimpleLayout(TextPrimitive *tr,const U16String &str,const layout::ParagraphStyle *ps=nullptr);             ///<简单文本排版
 
         Mesh *CreateMesh(TextPrimitive *text_primitive);
 

@@ -43,7 +43,7 @@ private:
 
         text_primitive=text_render->CreatePrimitive();
 
-        text_render->Layout(text_primitive,str);
+        text_render->SimpleLayout(text_primitive,str);
 
         if(!text_primitive||!text_primitive->IsValid())
             return(false);

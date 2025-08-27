@@ -21,14 +21,14 @@ namespace hgl::graph
         db=new RenderResource(device);         //独立的资源管理器，不和整体共用
         tl_engine=new layout::TextLayout(tf->GetFontSource());
             
-        material            =nullptr;
-        sampler             =nullptr;
-        pipeline            =nullptr;
-        tile_font           =tf;
+        mtl_fs      =nullptr;
+        sampler     =nullptr;
+        pipeline    =nullptr;
+        tile_font   =tf;
 
         fixed_style.CharColor=Color4ub(255,255,255,255);
 
-        material_instance=nullptr;
+        mi_fs=nullptr;
     }
 
     TextRender::~TextRender()
@@ -54,7 +54,7 @@ namespace hgl::graph
 
         if (!mci)return(false);
 
-        material=db->CreateMaterial("Text2D",mci);
+        mtl_fs=db->CreateMaterial("Text2D",mci);
 
         //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
         {
@@ -62,16 +62,16 @@ namespace hgl::graph
 
             vil_config.Add("Position",VF_V4I16);
 
-            material_instance=db->CreateMaterialInstance(material,&vil_config,&fixed_style);
-            if(!material_instance)return(false);
+            mi_fs=db->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style);
+            if(!mi_fs)return(false);
         }
 
-        pipeline=rp->CreatePipeline(material_instance,InlinePipeline::Solid2D);
+        pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
         sampler=db->CreateSampler();
 
-        if(!material->BindImageSampler(DescriptorSetType::PerMaterial,
+        if(!mtl_fs->BindImageSampler(   DescriptorSetType::PerMaterial,
                                         mtl::SamplerName::Text,
                                         tile_font->GetTexture(),
                                         sampler))
@@ -90,21 +90,21 @@ namespace hgl::graph
 
     TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,int limit)
     {   
-        TextPrimitive *tr=new TextPrimitive(device,material_instance->GetVIL(),limit);
+        TextPrimitive *tr=new TextPrimitive(device,mi_fs->GetVIL(),limit);
 
         tr_sets.Add(tr);
 
         return tr;
     }
 
-    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str)
+    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str,const layout::ParagraphStyle *ps)
     {
         TextPrimitive *tr=CreatePrimitive(tpt,str.Length());
 
         if(!tr)
             return(nullptr);
 
-        if(!Layout(tr,str))
+        if(!SimpleLayout(tr,str,ps))
         {
             delete tr;
             return(nullptr);
@@ -113,13 +113,22 @@ namespace hgl::graph
         return tr;
     }
 
-    bool TextRender::Layout(TextPrimitive *tr,const U16String &str)
+    bool TextRender::SimpleLayout(TextPrimitive *tr,const U16String &str,const layout::ParagraphStyle *ps)
     {
         if(!tr)
             return(false);
 
         if(!tl_engine->Begin(tr,tile_font,str.Length()))
             return(false);
+
+        if(ps)
+        {
+            tl_engine->Set(ps);
+        }
+        else
+        {
+            tl_engine->Set(&default_para_style);
+        }
 
         if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
             return(false);
@@ -129,7 +138,7 @@ namespace hgl::graph
 
     Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
     {
-        return db->CreateMesh(text_primitive,material_instance,pipeline);
+        return db->CreateMesh(text_primitive,mi_fs,pipeline);
     }
 
     void TextRender::Release(TextPrimitive *tr)
@@ -192,14 +201,6 @@ namespace hgl::graph
             return;
 
         fixed_style=cs;
-        material_instance->WriteMIData(fixed_style);
-    }
-
-    void TextRender::SetLayout(const ParagraphStyle *tla)
-    {
-        if(!tla)
-            return;
-
-        tl_engine->Set(tla);
+        mi_fs->WriteMIData(fixed_style);
     }
 }//namespace hgl::graph
