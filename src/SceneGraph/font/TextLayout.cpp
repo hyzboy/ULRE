@@ -152,18 +152,12 @@ namespace hgl::graph::layout
             }
             else
             {
-                if(cda.cla->attr->ch==' ')
-                    left+=tds.space_size;
-                else
-                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE)
-                    left+=tds.full_space_size;
-                else
-                if(cda.cla->attr->ch=='\t')
-                    left+=tds.tab_size;
-                else
+                if(cda.cla->attr->ch==' ')                  left+=tds.space_size;       else
+                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE) left+=tds.full_space_size;  else
+                if(cda.cla->attr->ch=='\t')                 left+=tds.tab_size;         else
                 if(cda.cla->attr->ch=='\n')
                 {
-                    left=0;
+                    left=tds.start_x;
                     top+=font_source->GetCharHeight()+tds.line_gap;
                 }
                 else

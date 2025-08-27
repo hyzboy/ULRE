@@ -57,8 +57,8 @@ namespace hgl::graph::layout
 
     public: //单次排版
 
-                int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &,const TextDrawStyle &);                 ///<简易排版
-                int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &,const TextDrawStyle &);                 ///<简易排版
+        int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &,const TextDrawStyle &);                 ///<简易排版
+        int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &,const TextDrawStyle &);                 ///<简易排版
 
 //            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
 //            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
