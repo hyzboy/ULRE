@@ -24,8 +24,7 @@ namespace hgl::graph::layout
     /**
     * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
     */
-    template<typename T> 
-    bool TextLayout::StatChars(TextPrimitive *tr,TileFont *tile_font,const T *str,const int str_length)
+    bool TextLayout::StatChars(TextPrimitive *tr,TileFont *tile_font,const u16char *str,const int str_length)
     {
         if(!tr
             ||!tile_font
@@ -35,7 +34,7 @@ namespace hgl::graph::layout
 
         //遍历所有字符，取得每一个字符的基本绘制信息
         {
-            const T *cp=str;
+            const u16char *cp=str;
             CharDrawAttr cda;
 
             for(int i=0;i<str_length;i++)
@@ -192,8 +191,7 @@ namespace hgl::graph::layout
     /**
     * 简易文本排版。无任何特殊处理，不支持\t\n之外任何转义符
     */
-    template<typename T>
-    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const String<T> &str,const TextDrawStyle &tds)
+    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U16String &str,const TextDrawStyle &tds)
     {
         if(!tr)
             return(-1);
@@ -203,7 +201,7 @@ namespace hgl::graph::layout
 
         int max_chars=str.Length();
 
-        if(!StatChars<T>(tr,tf,str.c_str(),max_chars))
+        if(!StatChars(tr,tf,str.c_str(),max_chars))
             return(-2);
 
         if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
@@ -230,15 +228,4 @@ namespace hgl::graph::layout
 
         return result;
     }
-        
-    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U16String &str,const TextDrawStyle &tds){return this->SimpleLayout<u16char>(tr,tf,str,tds);}
-    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U32String &str,const TextDrawStyle &tds){return this->SimpleLayout<u32char>(tr,tf,str,tds);}
-
-    //template<typename T>
-    //int TextLayout::SimpleLayout(TileFont *tf,const StringList<String<T>> &sl)
-    //{
-    //}
-
-    //int TextLayout::SimpleLayout(TileFont *tf,const UTF16StringList &sl){return this->SimpleLayout<u16char>(tf,sl);}
-    //int TextLayout::SimpleLayout(TileFont *tf,const UTF32StringList &sl){return this->SimpleLayout<u32char>(tf,sl);}
 }//namespace hgl::graph::layout
