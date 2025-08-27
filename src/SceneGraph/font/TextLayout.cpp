@@ -5,9 +5,24 @@
 
 namespace hgl::graph::layout
 {
-    bool TextLayout::Begin(TextPrimitive *tr,TileFont *tf,int Estimate)
+    TextLayout::TextLayout(TileFont *tf)
     {
-        if(!tr||!tf||Estimate<=0)
+        tile_font=tf;
+
+        if(tf)
+        {
+            font_source=tf->GetFontSource();
+        }
+        else
+        {
+            font_source=nullptr;
+            //HGL_ERROR(L"TextLayout::TextLayout(): tile_font==nullptr");
+        }
+    }
+
+    bool TextLayout::Begin(TextPrimitive *tr,int Estimate)
+    {
+        if(!tr||Estimate<=0)
             return(false);
 
         draw_chars_count=0;
@@ -17,19 +32,43 @@ namespace hgl::graph::layout
         draw_chars_list.PreAlloc(Estimate);
 
         text_primitive=tr;
+        vertex.Alloc(Estimate*4);
+        tex_coord.Alloc(Estimate*4);
 
+        draw_all_strings.Clear();
+        draw_string_list.Clear();
+
+        return(true);
+    }
+
+    bool TextLayout::AddString(const U16String &str,const TextDrawStyle &style)
+    {
+        if(!text_primitive)
+            return(false);
+
+        if(str.IsEmpty())
+            return(false);
+
+        DrawStringItem item;
+
+        if(draw_all_strings.AddString(item.str,str.c_str(),str.Length())<0)
+            return(false);
+
+        item.style=style;
+
+        draw_string_list.Add(item);
         return(true);
     }
 
     /**
     * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
     */
-    bool TextLayout::StatChars(TextPrimitive *tr,TileFont *tile_font,const u16char *str,const int str_length)
+    bool TextLayout::StatChars(const u16char *str,const int str_length)
     {
-        if(!tr
-            ||!tile_font
-            ||!str||!*str||str_length<=0
-            ||!font_source)
+        if(!text_primitive
+         ||!tile_font
+         ||!str||!*str||str_length<=0
+         ||!font_source)
             return(false);
 
         //遍历所有字符，取得每一个字符的基本绘制信息
@@ -57,7 +96,7 @@ namespace hgl::graph::layout
 
         //释放不再使用的字符
         {
-            clear_chars_sets=tr->GetCharsSets();                    //获取不再使用的字符合集
+            clear_chars_sets=text_primitive->GetCharsSets();        //获取不再使用的字符合集
 
             clear_chars_sets.Delete(chars_sets);                    //清除下一步要用的字符合集
 
@@ -78,7 +117,7 @@ namespace hgl::graph::layout
             return(false);
         }
 
-        tr->SetCharsSets(chars_sets);                               //注册需要使用的字符合集
+        text_primitive->SetCharsSets(chars_sets);                               //注册需要使用的字符合集
 
         //为可绘制字符列表中的字符获取UV
         for(CharDrawAttr &cda:draw_chars_list)
@@ -135,6 +174,8 @@ namespace hgl::graph::layout
         int16 *tp=vertex;
         float *tcp=tex_coord;
 
+        int visible_char_count=0;
+
         for(const CharDrawAttr &cda:draw_chars_list)
         {
             if(cda.cla->visible)
@@ -148,6 +189,8 @@ namespace hgl::graph::layout
                 tcp=WriteRect(tcp,cda.uv);
 
                 left+=cda.cla->metrics.adv_x;
+
+                ++visible_char_count;
             }
             else
             {
@@ -166,7 +209,7 @@ namespace hgl::graph::layout
             }
         }
 
-        return draw_chars_list.GetCount(); //返回绘制的字符数量
+        return visible_char_count; //返回绘制的字符数量
     }
 
     int TextLayout::sl_r2l(const TextDrawStyle &){return 0;}
@@ -188,44 +231,97 @@ namespace hgl::graph::layout
     //        return(-5);
     //}
 
-    /**
-    * 简易文本排版。无任何特殊处理，不支持\t\n之外任何转义符
-    */
-    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U16String &str,const TextDrawStyle &tds)
+    ///**
+    //* 简易文本排版。无任何特殊处理，不支持\t\n之外任何转义符
+    //*/
+    //int TextLayout::SimpleLayout(const U16String &str,const TextDrawStyle &tds)
+    //{
+    //    if(!text_primitive)
+    //        return(-1);
+
+    //    if(str.IsEmpty())
+    //        return(-1);
+
+    //    int max_chars=str.Length();
+
+    //    if(!StatChars(str.c_str(),max_chars))
+    //        return(-2);
+
+    //    if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
+    //        return(-3);
+
+    //    vertex      .SetCount(max_chars*4);
+    //    tex_coord   .SetCount(max_chars*4);
+
+    //    if(!vertex||!tex_coord)
+    //        return(-5);
+
+    //    int result;
+
+    //    if(tds.para_style.text_direction==TextDirection::Vertical)      result=sl_v(tds);else
+    //    if(tds.para_style.text_direction==TextDirection::RightToLeft)   result=sl_r2l(tds);else
+    //                                                                    result=sl_l2r(tds);
+
+    //    if(result>0)
+    //    {
+    //        tr->SetCharCount(result);
+    //        tr->WriteVertex(vertex);
+    //        tr->WriteTexCoord(tex_coord);
+    //    }
+
+    //    return result;
+    //}
+
+    int TextLayout::End()
     {
-        if(!tr)
+        if(!text_primitive)
             return(-1);
 
-        if(!tf||str.IsEmpty())
+        if(draw_all_strings.IsEmpty())
+            return(0);
+
+        const int all_chars_count=draw_all_strings.GetTotalLength();
+
+        if(all_chars_count<=0)
             return(-1);
 
-        int max_chars=str.Length();
+        const u16char *all_chars=draw_all_strings.GetStringData().GetData();
 
-        if(!StatChars(tr,tf,str.c_str(),max_chars))
+        if(!all_chars)      //当然这个不太可能
             return(-2);
 
-        if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
+        if(!StatChars(all_chars,all_chars_count))
             return(-3);
 
-        vertex      .SetCount(max_chars*4);
-        tex_coord   .SetCount(max_chars*4);
+        if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
+            return(-4);
+
+        vertex      .SetCount(draw_chars_count*4);
+        tex_coord   .SetCount(draw_chars_count*4);
 
         if(!vertex||!tex_coord)
             return(-5);
 
-        int result;
+        int total=0;
+        int dc;
 
-        if(tds.para_style.text_direction==TextDirection::Vertical)      result=sl_v(tds);else
-        if(tds.para_style.text_direction==TextDirection::RightToLeft)   result=sl_r2l(tds);else
-                                                                        result=sl_l2r(tds);
-
-        if(result>0)
+        for(const DrawStringItem &dsi:draw_string_list)
         {
-            tr->SetCharCount(result);
-            tr->WriteVertex(vertex);
-            tr->WriteTexCoord(tex_coord);
+            if(dsi.style.para_style.text_direction==TextDirection::Vertical)    dc=sl_v(dsi.style);else
+            if(dsi.style.para_style.text_direction==TextDirection::RightToLeft) dc=sl_r2l(dsi.style);else
+                                                                                dc=sl_l2r(dsi.style);
+
+            total+=dc;
         }
 
-        return result;
+        if(total>0) //理论上total==draw_chars_count，不然就是错误的
+        {
+            text_primitive->SetCharCount(total);
+            text_primitive->WriteVertex(vertex);
+            text_primitive->WriteTexCoord(tex_coord);
+        }
+
+        text_primitive=nullptr;
+        return(total);
     }
 }//namespace hgl::graph::layout
