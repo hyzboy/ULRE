@@ -94,6 +94,8 @@ namespace hgl::graph
 
             // ParagraphStyle 是针对整段文本的排版属性，其所有的值都在CPU阶段进行计算。所以其数量其实是无限制的。
 
+            TEXT_COORD_TYPE start_x,start_y;   //起始位置
+
             TEXT_COORD_TYPE char_height;
             TEXT_COORD_TYPE space_size;
             TEXT_COORD_TYPE full_space_size;

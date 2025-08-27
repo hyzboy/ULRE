@@ -5,36 +5,6 @@
 
 namespace hgl::graph::layout
 {
-    TextLayout::TextLayout(FontSource *fs)
-    {
-        font_source=fs;
-
-        if(font_source)
-        {
-            ParagraphStyle tla;
-
-            Set(&tla); //设置默认的文本排版属性
-        }
-    }
-
-    void TextLayout::Set(const ParagraphStyle *t)
-    {
-        if(!t)
-            return;
-
-        const float origin_char_height=font_source->GetCharHeight();
-
-        hgl_cpy<ParagraphStyle>(tda.para_style,*t);
-
-        tda.char_height     =std::ceil(origin_char_height);
-        tda.space_size      =std::ceil(origin_char_height*tda.space_size);
-        tda.full_space_size =std::ceil(origin_char_height*tda.full_space_size);
-        tda.tab_size        =std::ceil(origin_char_height*tda.tab_size);
-        tda.char_gap        =std::ceil(origin_char_height*tda.char_gap);
-        tda.line_gap        =std::ceil(origin_char_height*tda.line_gap);
-        tda.line_height     =std::ceil(origin_char_height+tda.line_gap);
-    }
-
     bool TextLayout::Begin(TextPrimitive *tr,TileFont *tf,int Estimate)
     {
         if(!tr||!tf||Estimate<=0)
@@ -96,7 +66,7 @@ namespace hgl::graph::layout
             {
                 tile_font->Unregistry(clear_chars_sets);
 
-                clear_chars_sets.Clear();
+                clear_chars_sets.Clear();   
             }
         }
 
@@ -157,10 +127,11 @@ namespace hgl::graph::layout
     //    return 0;
     //}
 
-    int TextLayout::sl_l2r()
+    int TextLayout::sl_l2r(const TextDrawStyle &tds)
     {
         int cur_size=0;
-        int left=0,top=0;
+        int left=tds.start_x;
+        int top =tds.start_y;
 
         int16 *tp=vertex;
         float *tcp=tex_coord;
@@ -182,18 +153,18 @@ namespace hgl::graph::layout
             else
             {
                 if(cda.cla->attr->ch==' ')
-                    left+=tda.space_size;
+                    left+=tds.space_size;
                 else
                 if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE)
-                    left+=tda.full_space_size;
+                    left+=tds.full_space_size;
                 else
                 if(cda.cla->attr->ch=='\t')
-                    left+=tda.tab_size;
+                    left+=tds.tab_size;
                 else
                 if(cda.cla->attr->ch=='\n')
                 {
                     left=0;
-                    top+=font_source->GetCharHeight()+tda.line_gap;
+                    top+=font_source->GetCharHeight()+tds.line_gap;
                 }
                 else
                 {
@@ -205,8 +176,8 @@ namespace hgl::graph::layout
         return draw_chars_list.GetCount(); //返回绘制的字符数量
     }
 
-    int TextLayout::sl_r2l(){return 0;}
-    int TextLayout::sl_v(){return 0;}
+    int TextLayout::sl_r2l(const TextDrawStyle &){return 0;}
+    int TextLayout::sl_v(const TextDrawStyle &){return 0;}
 
     //bool TextLayout::PrepareVBO()
     //{
@@ -228,7 +199,7 @@ namespace hgl::graph::layout
     * 简易文本排版。无任何特殊处理，不支持\t\n之外任何转义符
     */
     template<typename T>
-    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const String<T> &str)
+    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const String<T> &str,const TextDrawStyle &tds)
     {
         if(!tr)
             return(-1);
@@ -252,9 +223,9 @@ namespace hgl::graph::layout
 
         int result;
 
-        if(tda.para_style.text_direction==TextDirection::Vertical)     result=sl_v();else
-        if(tda.para_style.text_direction==TextDirection::RightToLeft)  result=sl_r2l();else
-                                                                result=sl_l2r();
+        if(tds.para_style.text_direction==TextDirection::Vertical)      result=sl_v(tds);else
+        if(tds.para_style.text_direction==TextDirection::RightToLeft)   result=sl_r2l(tds);else
+                                                                        result=sl_l2r(tds);
 
         if(result>0)
         {
@@ -266,8 +237,8 @@ namespace hgl::graph::layout
         return result;
     }
         
-    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U16String &str){return this->SimpleLayout<u16char>(tr,tf,str);}
-    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U32String &str){return this->SimpleLayout<u32char>(tr,tf,str);}
+    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U16String &str,const TextDrawStyle &tds){return this->SimpleLayout<u16char>(tr,tf,str,tds);}
+    int TextLayout::SimpleLayout(TextPrimitive *tr,TileFont *tf,const U32String &str,const TextDrawStyle &tds){return this->SimpleLayout<u32char>(tr,tf,str,tds);}
 
     //template<typename T>
     //int TextLayout::SimpleLayout(TileFont *tf,const StringList<String<T>> &sl)

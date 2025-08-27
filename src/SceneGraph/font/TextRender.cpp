@@ -14,6 +14,25 @@ namespace hgl::graph
 {
     using namespace layout;
 
+    namespace
+    {
+        void SetDrawStyle(TextDrawStyle &tda,const ParagraphStyle *t,const float origin_char_height)
+        {
+            hgl_cpy(tda.para_style,*t);
+
+            tda.start_x=0;
+            tda.start_y=0;
+
+            tda.char_height     =std::ceil(origin_char_height);
+            tda.space_size      =std::ceil(origin_char_height*tda.space_size);
+            tda.full_space_size =std::ceil(origin_char_height*tda.full_space_size);
+            tda.tab_size        =std::ceil(origin_char_height*tda.tab_size);
+            tda.char_gap        =std::ceil(origin_char_height*tda.char_gap);
+            tda.line_gap        =std::ceil(origin_char_height*tda.line_gap);
+            tda.line_height     =std::ceil(origin_char_height+tda.line_gap);
+        }
+    }//namespace
+
     TextRender::TextRender(VulkanDevice *dev,TileFont *tf)
     {
         device=dev;
@@ -28,7 +47,21 @@ namespace hgl::graph
 
         fixed_style.CharColor=Color4ub(255,255,255,255);
 
+        SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
+
         mi_fs=nullptr;
+    }
+
+    void TextRender::SetParagraphStyle(const layout::ParagraphStyle *ps)
+    {
+        if(!ps)
+            return;
+
+        if(hgl_cmp(para_style,*ps))
+            return;
+
+        hgl_cpy(para_style,*ps);
+        SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
     }
 
     TextRender::~TextRender()
@@ -97,14 +130,14 @@ namespace hgl::graph
         return tr;
     }
 
-    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str,const layout::ParagraphStyle *ps)
+    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str)
     {
         TextPrimitive *tr=CreatePrimitive(tpt,str.Length());
 
         if(!tr)
             return(nullptr);
 
-        if(!SimpleLayout(tr,str,ps))
+        if(!SimpleLayout(tr,str))
         {
             delete tr;
             return(nullptr);
@@ -113,7 +146,7 @@ namespace hgl::graph
         return tr;
     }
 
-    bool TextRender::SimpleLayout(TextPrimitive *tr,const U16String &str,const layout::ParagraphStyle *ps)
+    bool TextRender::SimpleLayout(TextPrimitive *tr,const U16String &str)
     {
         if(!tr)
             return(false);
@@ -121,16 +154,7 @@ namespace hgl::graph
         if(!tl_engine->Begin(tr,tile_font,str.Length()))
             return(false);
 
-        if(ps)
-        {
-            tl_engine->Set(ps);
-        }
-        else
-        {
-            tl_engine->Set(&default_para_style);
-        }
-
-        if(tl_engine->SimpleLayout(tr,tile_font,str)<=0)
+        if(tl_engine->SimpleLayout(tr,tile_font,str,text_draw_style)<=0)
             return(false);
 
         return true;

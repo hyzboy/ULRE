@@ -30,15 +30,11 @@ namespace hgl::graph::layout
 
     protected:
 
-        int sl_l2r();
-        int sl_r2l();
-        int sl_v();
+        int sl_l2r(const TextDrawStyle &);
+        int sl_r2l(const TextDrawStyle &);
+        int sl_v(const TextDrawStyle &);
 
-        template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &);                   ///<简易排版
-
-    protected:
-
-        TextDrawStyle tda;
+        template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &,const TextDrawStyle &);                   ///<简易排版
 
     protected:
 
@@ -48,14 +44,12 @@ namespace hgl::graph::layout
 
     public:
 
-        TextLayout(FontSource *);
+        TextLayout(FontSource *fs){font_source=fs;}
         virtual ~TextLayout()=default;
 
     public: //多次排版
 
         bool Begin(TextPrimitive *,TileFont *,int Estimate=1024);       ///<开始排版
-
-        void Set(const ParagraphStyle *);
 
         //bool PrepareVBO();
 
@@ -63,8 +57,8 @@ namespace hgl::graph::layout
 
     public: //单次排版
 
-                int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &);                 ///<简易排版
-                int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &);                 ///<简易排版
+                int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &,const TextDrawStyle &);                 ///<简易排版
+                int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &,const TextDrawStyle &);                 ///<简易排版
 
 //            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
 //            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版

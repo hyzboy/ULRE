@@ -46,7 +46,8 @@ namespace hgl::graph
         TileFont *          tile_font;
         layout::TextLayout *tl_engine;
 
-        layout::ParagraphStyle default_para_style;          ///<默认段落风格
+        layout::ParagraphStyle para_style;                  ///<段落风格
+        layout::TextDrawStyle text_draw_style;              ///<文本绘制风格
 
     private:    //fixed style 资源
 
@@ -75,12 +76,14 @@ namespace hgl::graph
 
     public:
 
-        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt=TextPrimitiveType::FixedStyle,int limit=2048);                          ///<创建一个文本绘制几何体
-        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str,const layout::ParagraphStyle *ps=nullptr);         ///<创建一个文本绘制几何体，并进行简单排版
+        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt=TextPrimitiveType::FixedStyle,int limit=2048);      ///<创建一个文本绘制几何体
+        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str);                              ///<创建一个文本绘制几何体，并进行简单排版
 
-        void SetFixedStyle(const layout::CharStyle &);                                                                  ///<设定固定风格模式所用风格
+        void SetFixedStyle(const layout::CharStyle &);                          ///<设定固定风格模式所用风格
 
-        bool SimpleLayout(TextPrimitive *tr,const U16String &str,const layout::ParagraphStyle *ps=nullptr);             ///<简单文本排版
+        void SetParagraphStyle(const layout::ParagraphStyle *);                 ///<设定段落风格
+
+        bool SimpleLayout(TextPrimitive *tr,const U16String &str);              ///<简单文本排版
 
         Mesh *CreateMesh(TextPrimitive *text_primitive);
 
