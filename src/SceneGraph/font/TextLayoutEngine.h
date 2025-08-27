@@ -1,6 +1,7 @@
 ﻿#include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/TileData.h>
 #include<hgl/type/IndexedList.h>
+#include<hgl/type/ConstStringSet.h>
 
 namespace hgl::graph::layout
 {
@@ -26,7 +27,7 @@ namespace hgl::graph::layout
 
         IndexedList<CharDrawAttr> draw_chars_list; ///<所有字符属性列表
 
-        template<typename T> bool StatChars(TextPrimitive *,TileFont *,const T *,const int);                    ///<统计所有字符
+        bool StatChars(TextPrimitive *,TileFont *,const u16char *,const int);                    ///<统计所有字符
 
     protected:
 
@@ -34,13 +35,16 @@ namespace hgl::graph::layout
         int sl_r2l(const TextDrawStyle &);
         int sl_v(const TextDrawStyle &);
 
-        template<typename T> int SimpleLayout(TextPrimitive *,TileFont *,const String<T> &,const TextDrawStyle &);                   ///<简易排版
-
     protected:
 
         TextPrimitive *text_primitive=nullptr;
         DataArray<int16> vertex;
         DataArray<float> tex_coord;
+        DataArray<uint8> char_style;
+
+    protected:
+
+        
 
     public:
 
@@ -58,10 +62,6 @@ namespace hgl::graph::layout
     public: //单次排版
 
         int     SimpleLayout(TextPrimitive *,TileFont *,const U16String &,const TextDrawStyle &);                 ///<简易排版
-        int     SimpleLayout(TextPrimitive *,TileFont *,const U32String &,const TextDrawStyle &);                 ///<简易排版
-
-//            int     SimpleLayout (TileFont *,const UTF16StringList &);                            ///<简易排版
-//            int     SimpleLayout (TileFont *,const UTF32StringList &);                            ///<简易排版
     };//class TextLayout
 }//namespace hgl::graph::layout
 
