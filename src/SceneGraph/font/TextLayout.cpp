@@ -121,7 +121,7 @@ namespace hgl::graph::layout
         return(true);
     }
 
-    //int TextLayout::Layout(const int mc,const String<T> &str)
+    //int TextLayout::SimpleLayout(const int mc,const String<T> &str)
     //{
     //    if(mc<=0
     //        ||!str
