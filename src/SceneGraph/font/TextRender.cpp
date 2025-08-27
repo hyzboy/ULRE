@@ -38,7 +38,7 @@ namespace hgl::graph
         device=dev;
 
         db=new RenderResource(device);         //独立的资源管理器，不和整体共用
-        tl_engine=new layout::TextLayout(tf->GetFontSource());
+        tl_engine=new layout::TextLayout(tf);
             
         mtl_fs      =nullptr;
         sampler     =nullptr;
@@ -67,10 +67,7 @@ namespace hgl::graph
     TextRender::~TextRender()
     {
         for(TextPrimitive *tr:tr_sets)
-        {
-            tile_font->Unregistry(tr->GetCharsSets());
             delete tr;
-        }
 
         tr_sets.Clear();
            
@@ -151,13 +148,14 @@ namespace hgl::graph
         if(!tr)
             return(false);
 
-        if(!tl_engine->Begin(tr,tile_font,str.Length()))
+        if(!tl_engine->Begin(tr,str.Length()))
             return(false);
 
-        if(tl_engine->SimpleLayout(tr,tile_font,str,text_draw_style)<=0)
-            return(false);
+        const bool result=tl_engine->AddString(str,text_draw_style);
 
-        return true;
+        tl_engine->End();
+
+        return(result);
     }
 
     Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
