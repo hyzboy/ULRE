@@ -33,6 +33,8 @@ public:
     ~MeshDataBuffer();
 
     const int compare(const MeshDataBuffer &pdb)const override;
+
+    bool Update(const Primitive *,const VIL *);
 };//struct MeshDataBuffer
 
 /**
@@ -52,13 +54,7 @@ struct MeshRenderData:public ComparatorData<MeshRenderData>
 
 public:
 
-    MeshRenderData(const uint32_t vc,const uint32_t ic,const int32_t vo=0,const uint32_t fi=0)
-    {
-        vertex_count    =vc;
-        index_count     =ic;
-        vertex_offset   =vo;
-        first_index     =fi;
-    }
+    void Set(const Primitive *);
 };
 
 /**
@@ -72,13 +68,13 @@ class Mesh
     Primitive *         primitive;
 
     MeshDataBuffer * data_buffer;
-    MeshRenderData * render_data;
+    MeshRenderData render_data;
 
 private:
 
     friend Mesh *CreateMesh(Primitive *,MaterialInstance *,Pipeline *);
 
-    Mesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *,MeshRenderData *);
+    Mesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *);
 
 public:
 
@@ -87,7 +83,6 @@ public:
         //需要在这里添加删除pipeline/desc_sets/primitive引用计数的代码
 
         SAFE_CLEAR(data_buffer);
-        SAFE_CLEAR(render_data);
     }
 
             void                UpdatePipeline      (Pipeline *p){pipeline=p;}
@@ -100,7 +95,9 @@ public:
     const   AABB &              GetBoundingBox      ()const{return primitive->GetBoundingBox();}
 
     const   MeshDataBuffer *    GetDataBuffer       ()const{return data_buffer;}
-    const   MeshRenderData *    GetRenderData       ()const{return render_data;}
+    const   MeshRenderData *    GetRenderData       ()const{return &render_data;}
+
+    virtual bool                UpdatePrimitive     ();     ///<更新Primitive,一般用于primitive改变数据后需要通知Mesh的情况
 
 public:
 

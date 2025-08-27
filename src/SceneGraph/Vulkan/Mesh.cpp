@@ -13,8 +13,8 @@ MeshDataBuffer::MeshDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManage
 
     vab_list=hgl_zero_new<VkBuffer>(vab_count);
     vab_offset=hgl_zero_new<VkDeviceSize>(vab_count);
-    ibo=ib;
 
+    ibo=ib;
     vdm=_vdm;
 }
 
@@ -52,16 +52,31 @@ const int MeshDataBuffer::compare(const MeshDataBuffer &pdb)const
     return off;
 }
 
-Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *pdb,MeshRenderData *prd)
+void MeshRenderData::Set(const Primitive *prim)
+{
+    vertex_count    =prim->GetVertexCount();
+    index_count     =prim->GetIndexCount();
+    vertex_offset   =prim->GetVertexOffset();
+    first_index     =prim->GetFirstIndex();
+}
+
+Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *pdb)
 {
     primitive=r;
     pipeline=p;
     mat_inst=mi;
 
     data_buffer=pdb;
-    render_data=prd;
+    render_data.Set(primitive);
 }
- 
+
+bool Mesh::UpdatePrimitive()
+{
+    render_data.Set(primitive);
+
+    return data_buffer->Update(primitive,mat_inst->GetVIL());
+}
+
 Mesh *CreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 {
     if(!prim||!mi||!p)return(nullptr);
@@ -82,7 +97,6 @@ Mesh *CreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
     }
 
     MeshDataBuffer *pdb=new MeshDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
-    MeshRenderData *prd=new MeshRenderData(prim->GetVertexCount(),prim->GetIndexCount(),prim->GetVertexOffset(),prim->GetFirstIndex());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
 
@@ -126,6 +140,27 @@ Mesh *CreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         ++vif;
     }
 
-    return(new Mesh(prim,mi,p,pdb,prd));
+    return(new Mesh(prim,mi,p,pdb));
+}
+
+bool MeshDataBuffer::Update(const Primitive *prim,const VIL *vil)
+{
+    if(!prim||!vil)
+        return(false);
+
+    ibo=prim->GetIBO();
+    vdm=prim->GetVDM();
+
+    const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
+
+    for(uint i=0;i<vab_count;i++)
+    {
+        vab_list[i]=prim->GetVkBuffer(vif->name);
+        vab_offset[i]=0;
+
+        ++vif;
+    }
+
+    return(true);
 }
 VK_NAMESPACE_END
