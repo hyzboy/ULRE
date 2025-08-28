@@ -2,9 +2,17 @@
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/WorkManager.h>
 #include<hgl/component/MeshComponent.h>
+#include<hgl/io/LoadStringList.h>
+#include<random>
 
 using namespace hgl;
 using namespace hgl::graph;
+
+constexpr const uint32_t WINDOW_WIDTH=2560;
+constexpr const uint32_t WINDOW_HEIGHT=1440;
+
+constexpr const uint32_t FONT_SIZE=48;
+constexpr const uint32_t MAX_CHAR_COUNT=1024;
 
 class TestApp:public WorkObject
 {
@@ -26,34 +34,40 @@ private:
 
     bool InitTextRenderable()
     {
-        U16String str;
+        U16StringList str_list;
         
-        LoadStringFromTextFile(str,OS_TEXT("res/text/桃花庵歌.txt"));
+        LoadStringListFromTextFile(str_list,OS_TEXT("res/text/百家姓.txt"));
 
-        if(str.IsEmpty())return(false);
+        if(str_list.IsEmpty())return(false);
 
-        const int unique_char_count=str.UniqueCharCount();
+        FontSource *fs=CreateCJKFontSource(OS_TEXT("Consolas"),OS_TEXT("楷体"),FONT_SIZE);
 
-        FontSource *fs=CreateCJKFontSource(OS_TEXT("Consolas"),OS_TEXT("楷体"),48);
-
-        text_render=CreateTextRender(fs,unique_char_count);
+        text_render=CreateTextRender(fs,MAX_CHAR_COUNT);
 
         if(!text_render)
             return(false);
 
-        text_primitive=text_render->CreatePrimitive();
+        text_primitive=text_render->Begin();
 
-        text_render->SimpleLayout(text_primitive,str);
+        Vector2i start_pos(0,0);
+        std::default_random_engine dre;
+        std::uniform_int_distribution<int> rand_x(0,WINDOW_WIDTH -FONT_SIZE);
+        std::uniform_int_distribution<int> rand_y(0,WINDOW_HEIGHT-FONT_SIZE);
+        
+        for (auto str:str_list)
+        {
+            start_pos.x=rand_x(dre);
+            start_pos.y=rand_y(dre);
+
+            text_render->Layout(start_pos,*str);
+        }
+
+        text_render->End();
 
         if(!text_primitive||!text_primitive->IsValid())
             return(false);
 
         render_obj=text_render->CreateMesh(text_primitive);
-
-        layout::CharStyle cs;
-
-        cs.CharColor=Color4ub(64,173,235,255);
-        text_render->SetFixedStyle(cs);
 
         if(!render_obj)
             return(false);
@@ -78,5 +92,5 @@ public:
 
 int os_main(int,os_char **)
 {
-    return RunFramework<TestApp>(OS_TEXT("DrawText"),2560,1440);
+    return RunFramework<TestApp>(OS_TEXT("DrawText"),WINDOW_WIDTH,WINDOW_HEIGHT);
 }

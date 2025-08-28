@@ -63,20 +63,29 @@ namespace hgl::graph::layout
     /**
     * 预处理所有的字符，获取所有字符的宽高，以及是否标点符号等信息
     */
-    bool TextLayout::StatChars(const u16char *str,const int str_length)
+    bool TextLayout::StatChars()
     {
         if(!text_primitive
          ||!tile_font
-         ||!str||!*str||str_length<=0
          ||!font_source)
             return(false);
 
+        if(draw_all_strings.IsEmpty())
+            return(false);
+
+        const int str_count=draw_all_strings.GetCount();
+
+        if(str_count<=0)
+            return(false);
+
         //遍历所有字符，取得每一个字符的基本绘制信息
+        //for(int i=0;i<str_count;i++)
+        for (auto &csv:draw_all_strings)  //C++11 range-for
         {
-            const u16char *cp=str;
+            const u16char *cp=csv.GetString();
             CharDrawAttr cda;
 
-            for(int i=0;i<str_length;i++)
+            for(int i=0;i<csv.length;i++)
             {
                 cda.cla=font_source->GetCLA(*cp);
 
@@ -165,19 +174,23 @@ namespace hgl::graph::layout
     //    return 0;
     //}
 
-    int TextLayout::sl_l2r(const TextDrawStyle &tds)
+    int TextLayout::sl_l2r(const DrawStringItem &dsi)
     {
         int cur_size=0;
-        int left=tds.start_x;
-        int top =tds.start_y;
+        int left=dsi.style.start_position.x;
+        int top =dsi.style.start_position.y;
 
-        int16 *tp=vertex;
-        float *tcp=tex_coord;
+        int16 *tp=dsi.vertex;
+        float *tcp=dsi.tex_coord;
 
         int visible_char_count=0;
 
-        for(const CharDrawAttr &cda:draw_chars_list)
+        CharDrawAttrIt it_cda=dsi.it;
+
+        for(int i=0;i<dsi.str.length;i++)
         {
+            const CharDrawAttr &cda=*it_cda;
+
             if(cda.cla->visible)
             {
                 tp=WriteRect(   tp,
@@ -194,83 +207,28 @@ namespace hgl::graph::layout
             }
             else
             {
-                if(cda.cla->attr->ch==' ')                  left+=tds.space_size;       else
-                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE) left+=tds.full_space_size;  else
-                if(cda.cla->attr->ch=='\t')                 left+=tds.tab_size;         else
+                if(cda.cla->attr->ch==' ')                  left+=dsi.style.space_size;       else
+                if(cda.cla->attr->ch==U32_FULL_WIDTH_SPACE) left+=dsi.style.full_space_size;  else
+                if(cda.cla->attr->ch=='\t')                 left+=dsi.style.tab_size;         else
                 if(cda.cla->attr->ch=='\n')
                 {
-                    left=tds.start_x;
-                    top+=font_source->GetCharHeight()+tds.line_gap;
+                    left=dsi.style.start_position.x;
+                    top+=font_source->GetCharHeight()+dsi.style.line_gap;
                 }
                 else
                 {
                     left+=cda.cla->metrics.adv_x;
                 }
             }
+
+            ++it_cda;
         }
 
         return visible_char_count; //返回绘制的字符数量
     }
 
-    int TextLayout::sl_r2l(const TextDrawStyle &){return 0;}
-    int TextLayout::sl_v(const TextDrawStyle &){return 0;}
-
-    //bool TextLayout::PrepareVBO()
-    //{
-    //    if(draw_chars_count<=0
-    //        ||!text_primitive
-    //        ||!text_primitive->IsValid())
-    //    {
-    //        return(false);
-    //    }
-
-    //    vertex      .SetCount(max_chars*4);
-    //    tex_coord   .SetCount(max_chars*4);
-
-    //    if(!vertex||!tex_coord)
-    //        return(-5);
-    //}
-
-    ///**
-    //* 简易文本排版。无任何特殊处理，不支持\t\n之外任何转义符
-    //*/
-    //int TextLayout::SimpleLayout(const U16String &str,const TextDrawStyle &tds)
-    //{
-    //    if(!text_primitive)
-    //        return(-1);
-
-    //    if(str.IsEmpty())
-    //        return(-1);
-
-    //    int max_chars=str.Length();
-
-    //    if(!StatChars(str.c_str(),max_chars))
-    //        return(-2);
-
-    //    if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
-    //        return(-3);
-
-    //    vertex      .SetCount(max_chars*4);
-    //    tex_coord   .SetCount(max_chars*4);
-
-    //    if(!vertex||!tex_coord)
-    //        return(-5);
-
-    //    int result;
-
-    //    if(tds.para_style.text_direction==TextDirection::Vertical)      result=sl_v(tds);else
-    //    if(tds.para_style.text_direction==TextDirection::RightToLeft)   result=sl_r2l(tds);else
-    //                                                                    result=sl_l2r(tds);
-
-    //    if(result>0)
-    //    {
-    //        tr->SetCharCount(result);
-    //        tr->WriteVertex(vertex);
-    //        tr->WriteTexCoord(tex_coord);
-    //    }
-
-    //    return result;
-    //}
+    int TextLayout::sl_r2l(const DrawStringItem &){return 0;}
+    int TextLayout::sl_v(const DrawStringItem &){return 0;}
 
     int TextLayout::End()
     {
@@ -280,18 +238,8 @@ namespace hgl::graph::layout
         if(draw_all_strings.IsEmpty())
             return(0);
 
-        const int all_chars_count=draw_all_strings.GetTotalLength();
-
-        if(all_chars_count<=0)
+        if(!StatChars())
             return(-1);
-
-        const u16char *all_chars=draw_all_strings.GetStringData().GetData();
-
-        if(!all_chars)      //当然这个不太可能
-            return(-2);
-
-        if(!StatChars(all_chars,all_chars_count))
-            return(-3);
 
         if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
             return(-4);
@@ -305,11 +253,23 @@ namespace hgl::graph::layout
         int total=0;
         int dc;
 
-        for(const DrawStringItem &dsi:draw_string_list)
+        auto it_cda=draw_chars_list.begin();
+        int16 *vp=vertex;
+        float *tcp=tex_coord;
+
+        for(DrawStringItem &dsi:draw_string_list)
         {
-            if(dsi.style.para_style.text_direction==TextDirection::Vertical)    dc=sl_v(dsi.style);else
-            if(dsi.style.para_style.text_direction==TextDirection::RightToLeft) dc=sl_r2l(dsi.style);else
-                                                                                dc=sl_l2r(dsi.style);
+            dsi.it=it_cda;
+            dsi.vertex=vp;
+            dsi.tex_coord=tcp;
+
+            if(dsi.style.para_style.text_direction==TextDirection::Vertical)    dc=sl_v  (dsi);else
+            if(dsi.style.para_style.text_direction==TextDirection::RightToLeft) dc=sl_r2l(dsi);else
+                                                                                dc=sl_l2r(dsi);
+
+            it_cda+=dsi.str.length;
+            vp+=dc*4;
+            tcp+=dc*4;
 
             total+=dc;
         }

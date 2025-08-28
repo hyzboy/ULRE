@@ -26,15 +26,11 @@ namespace hgl::graph::layout
             TileUVFloat uv;
         };
 
+        using CharDrawAttrIt=IndexedList<CharDrawAttr>::Iterator;
+
         IndexedList<CharDrawAttr> draw_chars_list;  ///<所有字符属性列表
 
-        bool StatChars(const u16char *,const int);  ///<统计所有字符
-
-    protected:
-
-        int sl_l2r(const TextDrawStyle &);
-        int sl_r2l(const TextDrawStyle &);
-        int sl_v(const TextDrawStyle &);
+        bool StatChars();  ///<统计所有字符
 
     protected:
 
@@ -53,9 +49,20 @@ namespace hgl::graph::layout
             ConstStringView<u16char> str;
 
             TextDrawStyle style;
+
+            CharDrawAttrIt it;
+
+            int16 *vertex;
+            float *tex_coord;
         };
 
         ArrayList<DrawStringItem> draw_string_list;   ///<所有绘制字符串列表
+
+    protected:
+
+        int sl_l2r  (const DrawStringItem &);
+        int sl_r2l  (const DrawStringItem &);
+        int sl_v    (const DrawStringItem &);
 
     public:
 

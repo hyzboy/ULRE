@@ -20,8 +20,7 @@ namespace hgl::graph
         {
             hgl_cpy(tda.para_style,*t);
 
-            tda.start_x=0;
-            tda.start_y=0;
+            hgl_zero(tda.start_position);
 
             tda.char_height     =std::ceil(origin_char_height);
             tda.space_size      =std::ceil(origin_char_height*tda.space_size);
@@ -127,7 +126,7 @@ namespace hgl::graph
         return(true);
     }
 
-    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,int limit)
+    TextPrimitive *TextRender::Begin(const TextPrimitiveType &tpt,int limit)
     {   
         TextPrimitive *tr=new TextPrimitive(device,mi_fs->GetVIL(),limit);
 
@@ -138,9 +137,23 @@ namespace hgl::graph
         return tr;
     }
 
+    bool TextRender::Layout(const layout::TEXT_COORD_VEC &start_pos,const U16String &str)
+    {
+        TextDrawStyle tds=text_draw_style;
+
+        tds.start_position=start_pos;
+
+        return tl_engine->AddString(str,tds);
+    }
+
+    void TextRender::End()
+    {
+        tl_engine->End();
+    }
+
     TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str)
     {
-        TextPrimitive *tr=CreatePrimitive(tpt,str.Length());
+        TextPrimitive *tr=Begin(tpt,str.Length());
 
         if(!tr)
             return(nullptr);
