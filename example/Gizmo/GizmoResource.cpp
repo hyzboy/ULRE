@@ -90,7 +90,7 @@ namespace
         {
             color=GetColor4f(gizmo_color[i],1.0);
 
-            gr->mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,nullptr,&color);
+            gr->mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,(VIL *)nullptr,&color);
 
             if(!gr->mi[i])
                 return(false);
