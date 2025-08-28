@@ -36,6 +36,8 @@ namespace hgl::graph
         void SetCharsSets(const U32CharSet &sl){chars_sets=sl;}
         void ClearCharsSets(){chars_sets.Clear();}
 
+        ~TextPrimitive() override {/*单纯用于避免被用户delete*/}
+
     public:
 
         TextPrimitive(VulkanDevice *dev,const VIL *_vil,const uint32_t mc);
