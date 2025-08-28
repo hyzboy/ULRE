@@ -68,7 +68,7 @@ MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL
 
 MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const int mi_bytes)
 {
-    if(!mtl||!vil)return(nullptr);
+    if(!mtl)return(nullptr);
     if(!mi_data||mi_bytes<=0)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil);

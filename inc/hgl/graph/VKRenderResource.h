@@ -133,8 +133,6 @@ public: //Material
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil,const T *data)
     {
-        if(!vil)return(nullptr);
-
         return CreateMaterialInstance(mtl,vil,data,sizeof(T));
     }
 

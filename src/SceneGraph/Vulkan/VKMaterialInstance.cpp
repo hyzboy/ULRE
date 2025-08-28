@@ -5,8 +5,6 @@
 VK_NAMESPACE_BEGIN
 MaterialInstance *Material::CreateMI(const VIL *vil)
 {
-    if(!vil)return(nullptr);
-
     int mi_id=-1;
 
     if(mi_data_manager)
@@ -14,7 +12,7 @@ MaterialInstance *Material::CreateMI(const VIL *vil)
     else 
         mi_id=-1;
 
-    return(new MaterialInstance(this,vil,mi_id));
+    return(new MaterialInstance(this,vil?vil:GetDefaultVIL(),mi_id));
 }
 
 MaterialInstance *Material::CreateMI(const VILConfig *vil_cfg)
