@@ -42,6 +42,7 @@ private:
             return(false);
 
         text_primitive=text_render->CreatePrimitive(TextPrimitiveType::FixedStyle,str);
+
         if(!text_primitive||!text_primitive->IsValid())
             return(false);
 

@@ -80,6 +80,7 @@ namespace hgl::graph
         };//struct ParagraphStyle
         
         using TEXT_COORD_TYPE=int;                      //字符必须坐标对齐显示才能不模糊，所以这里坐标系全部使用整型坐标
+        using TEXT_COORD_VEC=Vector2i;
 
         struct TextDrawStyle:public ComparatorData<TextDrawStyle>
         {
@@ -94,7 +95,7 @@ namespace hgl::graph
 
             // ParagraphStyle 是针对整段文本的排版属性，其所有的值都在CPU阶段进行计算。所以其数量其实是无限制的。
 
-            TEXT_COORD_TYPE start_x,start_y;   //起始位置
+            TEXT_COORD_VEC start_position;   //起始位置
 
             TEXT_COORD_TYPE char_height;
             TEXT_COORD_TYPE space_size;
