@@ -45,11 +45,20 @@ namespace hgl::graph
         pipeline    =nullptr;
         tile_font   =tf;
 
-        fixed_style.CharColor=Color4ub(255,255,255,255);
+        fixed_style.CharColor=GetColor4ub(COLOR::White);
 
         SetDrawStyle(text_draw_style,&para_style,(float)tile_font->GetFontSource()->GetCharHeight());
 
         mi_fs=nullptr;
+    }
+
+    void TextRender::SetFixedStyle(const layout::CharStyle &cs)
+    {
+        if(!hgl_cmp(fixed_style,cs))
+            return;
+
+        fixed_style=cs;
+        mi_fs->WriteMIData(fixed_style);
     }
 
     void TextRender::SetParagraphStyle(const layout::ParagraphStyle *ps)
@@ -123,6 +132,8 @@ namespace hgl::graph
         TextPrimitive *tr=new TextPrimitive(device,mi_fs->GetVIL(),limit);
 
         tr_sets.Add(tr);
+
+        tl_engine->Begin(tr,limit);
 
         return tr;
     }
@@ -215,14 +226,5 @@ namespace hgl::graph
 
         delete fs;
         return(nullptr);
-    }
-
-    void TextRender::SetFixedStyle(const layout::CharStyle &cs)
-    {
-        if(!hgl_cmp(fixed_style,cs))
-            return;
-
-        fixed_style=cs;
-        mi_fs->WriteMIData(fixed_style);
     }
 }//namespace hgl::graph
