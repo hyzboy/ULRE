@@ -54,6 +54,7 @@ namespace hgl
         graph::VulkanDevice *       GetDevice           (){return render_framework->GetDevice();}
         graph::VulkanDevAttr *      GetDevAttr          (){return render_framework->GetDevAttr();}
         graph::TextureManager *     GetTextureManager   (){return render_framework->GetTextureManager();}
+        graph::BufferManager *      GetBufferManager    (){return render_framework->GetBufferManager();}
 
         const VkExtent2D &          GetExtent           (){return renderer->GetExtent();}
 

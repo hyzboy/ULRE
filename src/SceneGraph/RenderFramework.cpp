@@ -5,6 +5,7 @@
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/RenderModule.h>
@@ -130,6 +131,11 @@ bool RenderFramework::Init(uint w,uint h)
     material_manager=module_manager->GetOrCreate<MaterialManager>();
 
     if(!material_manager)
+        return(false);
+
+    buffer_manager=module_manager->GetOrCreate<BufferManager>();
+
+    if(!buffer_manager)
         return(false);
 
     rt_manager=new RenderTargetManager(this,tex_manager,rp_manager);
