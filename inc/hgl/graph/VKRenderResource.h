@@ -3,19 +3,15 @@
 
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKPipeline.h>
-#include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKPrimitive.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKMaterialParameters.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/Mesh.h>
-#include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/type/ObjectManage.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
-#include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
@@ -29,7 +25,7 @@ namespace mtl
 using MaterialID            =int;
 using MaterialInstanceID    =int;
 using BufferID              =int;
-using DescriptorSetID       =int;
+
 using PrimitiveID           =int;
 using MeshID                =int;
 using SamplerID             =int;
@@ -50,7 +46,7 @@ class RenderResource
     
     IDObjectManage<MaterialID,             Material>           rm_material;                ///<材质合集
     IDObjectManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
-    IDObjectManage<DescriptorSetID,        DescriptorSet>      rm_desc_sets;               ///<描述符合集
+
     IDObjectManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
     IDObjectManage<BufferID,               DeviceBuffer>       rm_buffers;                 ///<顶点缓冲区合集
     IDObjectManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
@@ -86,7 +82,7 @@ public: //添加数据到管理器（如果指针为nullptr会返回-1）
 
     MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
     MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
-    DescriptorSetID         Add(DescriptorSet *     ds  ){return rm_desc_sets.Add(ds);}
+
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
     BufferID                Add(DeviceBuffer *      buf ){return rm_buffers.Add(buf);}
     SamplerID               Add(Sampler *           s   ){return rm_samplers.Add(s);}
@@ -155,7 +151,7 @@ public: //Get
 
     Material *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
     MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
-    DescriptorSet *     GetDescSets         (const DescriptorSetID      &id){return rm_desc_sets.Get(id);}
+
     Primitive *         GetPrimitive        (const PrimitiveID          &id){return rm_primitives.Get(id);}
     DeviceBuffer *      GetBuffer           (const BufferID             &id){return rm_buffers.Get(id);}
     Sampler *           GetSampler          (const SamplerID            &id){return rm_samplers.Get(id);}
@@ -165,7 +161,7 @@ public: //Release
 
     void Release(Material *         mtl ){rm_material.Release(mtl);}
     void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
-    void Release(DescriptorSet *    ds  ){rm_desc_sets.Release(ds);}
+
     void Release(Primitive *        p   ){rm_primitives.Release(p);}
     void Release(DeviceBuffer *     buf ){rm_buffers.Release(buf);}
     void Release(Sampler *          s   ){rm_samplers.Release(s);}

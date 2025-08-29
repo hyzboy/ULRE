@@ -17,6 +17,7 @@ VK_NAMESPACE_BEGIN
 
 class FontDataSource;
 class TileFont;
+class FontSource;
 class RenderPassManager;
 class TextureManager;
 class RenderTargetManager;
