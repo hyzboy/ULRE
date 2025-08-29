@@ -9,8 +9,8 @@ namespace
     constexpr const char vs_main[]=R"(
 void main()
 {
-    Output.StartPos = Position;  // 起点位置
-    Output.EndPos = Normal;      // 终点位置（重用Normal属性存储终点）
+    Output.StartPosition = StartPosition;  // 起点位置
+    Output.EndPosition = EndPosition;      // 终点位置（重用Normal属性存储终点）
     Output.Color = Color;        // 颜色
     
     // 传递起点作为几何着色器的输入点
@@ -22,12 +22,12 @@ void main()
 void main()
 {
     // 生成线段的起点
-    gl_Position = camera.vp * vec4(Input[0].StartPos, 1);
+    gl_Position = camera.vp * vec4(Input[0].StartPosition, 1);
     Output.Color = Input[0].Color;
     EmitVertex();
     
     // 生成线段的终点
-    gl_Position = camera.vp * vec4(Input[0].EndPos, 1);
+    gl_Position = camera.vp * vec4(Input[0].EndPosition, 1);
     Output.Color = Input[0].Color;
     EmitVertex();
     
@@ -59,14 +59,14 @@ void main()
                 return(false);
 
             // 输入：起点、终点、颜色
-            vsc->AddInput(VAT_VEC3, VAN::Position);      // 线段起点（使用Position作为起点）
-            vsc->AddInput(VAT_VEC3, VAN::Normal);        // 线段终点（重用Normal属性作为终点）
-            vsc->AddInput(VAT_VEC4, VAN::Color);         // 线段颜色
+            vsc->AddInput(VAT_VEC3, VAN::StartPosition);    // 线段起点
+            vsc->AddInput(VAT_VEC3, VAN::EndPosition);      // 线段终点
+            vsc->AddInput(VAT_VEC4, VAN::Color);            // 线段颜色
 
             // 输出到几何着色器
-            vsc->AddOutput(SVT_VEC3, "StartPos");
-            vsc->AddOutput(SVT_VEC3, "EndPos");
-            vsc->AddOutput(SVT_VEC4, "Color");
+            vsc->AddOutput(SVT_VEC3, VAN::StartPosition);
+            vsc->AddOutput(SVT_VEC3, VAN::EndPosition);
+            vsc->AddOutput(SVT_VEC4, VAN::Color);
 
             vsc->SetMain(vs_main);
             return(true);
@@ -78,7 +78,7 @@ void main()
             gsc->SetGeom(PrimitiveType::Points, PrimitiveType::Lines, 2);
 
             // 输出到片段着色器
-            gsc->AddOutput(SVT_VEC4, "Color");
+            gsc->AddOutput(SVT_VEC4, VAN::Color);
 
             gsc->SetMain(gs_main);
             return(true);
