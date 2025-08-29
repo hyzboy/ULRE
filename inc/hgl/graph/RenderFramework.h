@@ -6,6 +6,7 @@
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/CameraControl.h>
 #include<hgl/graph/Renderer.h>
@@ -164,6 +165,8 @@ public:
         return GetDefaultRenderPass()->CreatePipeline(args...);
     }
 
+public:
+
     template<typename ...ARGS>
     graph::Material *CreateMaterial(ARGS...args)
     {
@@ -181,6 +184,18 @@ public:
     {
         return material_manager->CreateMaterialInstance(args...);
     }
+
+public:
+
+    template<typename ...ARGS>  graph::VAB *CreateVAB(ARGS...args){return buffer_manager->CreateVAB(args...);}
+    template<typename ...ARGS>  graph::DeviceBuffer *CreateUBO(ARGS...args) { return buffer_manager->CreateUBO(args...); }
+    template<typename ...ARGS>  graph::DeviceBuffer *CreateSSBO(ARGS...args) { return buffer_manager->CreateSSBO(args...); }
+    template<typename ...ARGS>  graph::DeviceBuffer *CreateINBO(ARGS...args) { return buffer_manager->CreateINBO(args...); }
+
+    template<typename ...ARGS>  graph::IndexBuffer *CreateIBO(ARGS...args) { return buffer_manager->CreateIBO(args...); }
+    template<typename ...ARGS>  graph::IndexBuffer *CreateIBO8(ARGS...args) { return buffer_manager->CreateIBO8(args...); }
+    template<typename ...ARGS>  graph::IndexBuffer *CreateIBO16(ARGS...args) { return buffer_manager->CreateIBO16(args...); }
+    template<typename ...ARGS>  graph::IndexBuffer *CreateIBO32(ARGS...args) { return buffer_manager->CreateIBO32(args...); }
 
 public:
 

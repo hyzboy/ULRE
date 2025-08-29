@@ -89,75 +89,35 @@ namespace hgl
 
         virtual void Render(double delta_time);
 
+    #define FUNC_FROM_RENDER_FRAMEWORK(return_type,func_name) template<typename ...ARGS>    \
+        return_type func_name(ARGS...args) \
+        {   \
+            return render_framework?render_framework->func_name(args...):nullptr;   \
+        }
+
     public: // Material 相关
 
-        template<typename ...ARGS>
-        graph::Material *CreateMaterial(ARGS...args)
-        {
-            return render_framework?render_framework->CreateMaterial(args...):nullptr;
-        }
-
-        template<typename ...ARGS>
-        graph::Material *LoadMaterial(ARGS...args)
-        {
-            return render_framework?render_framework->LoadMaterial(args...):nullptr;
-        }
-
-        template<typename ...ARGS>
-        graph::MaterialInstance *CreateMaterialInstance(ARGS...args)
-        {
-            return render_framework?render_framework->CreateMaterialInstance(args...):nullptr;
-        }
+        FUNC_FROM_RENDER_FRAMEWORK(graph::Material *,CreateMaterial)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::Material *,LoadMaterial)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::MaterialInstance *,CreateMaterialInstance)
 
     public:
 
-        template<typename ...ARGS>
-        graph::VertexDataManager *CreateVDM(ARGS...args)
-        {
-            return render_framework?render_framework->CreateVDM(args...):nullptr;
-        }
+        FUNC_FROM_RENDER_FRAMEWORK(graph::VertexDataManager *,CreateVDM)
 
     public: // Buffer 相关
 
-        graph::VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateVAB(format, count, data, sm) : nullptr;
-        }
+        FUNC_FROM_RENDER_FRAMEWORK(graph::VAB *,CreateVAB)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::DeviceBuffer *,CreateUBO)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::DeviceBuffer *,CreateSSBO)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::DeviceBuffer *,CreateINBO)
 
-        graph::VAB *CreateVAB(VkFormat format, uint32_t count, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateVAB(format, count, sm) : nullptr;
-        }
+        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO8)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO16)
+        FUNC_FROM_RENDER_FRAMEWORK(graph::IndexBuffer *,CreateIBO32)
 
-        graph::DeviceBuffer *CreateUBO(const AnsiString &buf_name, VkDeviceSize size, void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateUBO(buf_name, size, data, sm) : nullptr;
-        }
-
-        graph::DeviceBuffer *CreateUBO(const AnsiString &buf_name, VkDeviceSize size, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateUBO(buf_name, size, sm) : nullptr;
-        }
-
-        graph::DeviceBuffer *CreateSSBO(const AnsiString &buf_name, VkDeviceSize size, void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateSSBO(buf_name, size, data, sm) : nullptr;
-        }
-
-        graph::DeviceBuffer *CreateSSBO(const AnsiString &buf_name, VkDeviceSize size, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateSSBO(buf_name, size, sm) : nullptr;
-        }
-
-        graph::IndexBuffer *CreateIBO(graph::IndexType index_type, uint32_t count, const void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateIBO(index_type, count, data, sm) : nullptr;
-        }
-
-        graph::IndexBuffer *CreateIBO(graph::IndexType index_type, uint32_t count, graph::SharingMode sm = graph::SharingMode::Exclusive)
-        {
-            return render_framework ? render_framework->GetBufferManager()->CreateIBO(index_type, count, sm) : nullptr;
-        }
+    public: // Primitive, Mesh, Sampler 相关
 
         void Add(graph::Primitive *prim)
         {
