@@ -57,14 +57,14 @@ private:
         {
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_plane_grid=LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
 
             VILConfig vil_config;
 
             vil_config.Add(VAN::Luminance,VF_V1UN8);
        
-            mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
+            mi_plane_grid=CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
             pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D);
@@ -98,7 +98,7 @@ private:
         texture=tex_manager->LoadTexture2D(OS_TEXT("res/image/lena.Tex2D"),true);
         if(!texture)return(false);
 
-        sampler=db->CreateSampler();
+        sampler=CreateSampler();
 
         if(!mi_billboard->GetMaterial()->BindImageSampler(  DescriptorSetType::PerMaterial,     ///<描述符合集
                                                             mtl::SamplerName::BaseColor,        ///<采样器名称
@@ -139,7 +139,7 @@ private:
             if(!pc->WriteVAB(VAN::Position,VF_V3F,position_data))
                 return(false);
 
-            ro_billboard=db->CreateMesh(pc,mi_billboard,pipeline_billboard);
+            ro_billboard=CreateMesh(pc,mi_billboard,pipeline_billboard);
 
             if(!ro_billboard)
                 return(false);
@@ -152,7 +152,7 @@ private:
     {
         CreateComponentInfo cci(GetSceneRoot());
 
-        CreateComponent<MeshComponent>(&cci,db->CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
+        CreateComponent<MeshComponent>(&cci,CreateMesh(prim_plane_grid,mi_plane_grid,pipeline_plane_grid));
         CreateComponent<MeshComponent>(&cci,ro_billboard);
 
         CameraControl *camera_control=GetCameraControl();

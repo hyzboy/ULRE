@@ -16,6 +16,10 @@ namespace hgl
         class Texture2D;
         class Texture2DArray;
         class TextureCube;
+        class Primitive;
+        class PrimitiveCreater;
+        class Sampler;
+        class Texture;
 
         namespace mtl
         {
@@ -95,6 +99,38 @@ namespace hgl
         graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
         {
             return render_framework?render_framework->CreateMaterial(mi_name,mci):nullptr;
+        }
+
+        template<typename T>
+        graph::Material *LoadMaterial(const AnsiString &mtl_name,T *cfg)
+        {
+            return render_framework?render_framework->LoadMaterial(mtl_name,cfg):nullptr;
+        }
+
+        void Add(graph::Primitive *prim)
+        {
+            if(render_framework && db)
+                db->Add(prim);
+        }
+
+        graph::Mesh *CreateMesh(graph::Primitive *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        {
+            return (render_framework && db)?db->CreateMesh(prim,mi,pipeline):nullptr;
+        }
+
+        graph::Mesh *CreateMesh(graph::PrimitiveCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
+        {
+            return (render_framework && db)?db->CreateMesh(pc,mi,pipeline):nullptr;
+        }
+
+        graph::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr)
+        {
+            return db?db->CreateSampler(sci):nullptr;
+        }
+
+        graph::Sampler *CreateSampler(graph::Texture *tex)
+        {
+            return db?db->CreateSampler(tex):nullptr;
         }
 
     #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}

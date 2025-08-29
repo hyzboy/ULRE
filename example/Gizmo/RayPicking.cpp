@@ -63,10 +63,10 @@ private:
         {
             cfg.position_format=VAT_VEC2;
 
-            mtl_plane_grid=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_plane_grid=LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_plane_grid)return(false);
 
-            mi_plane_grid=db->CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
+            mi_plane_grid=CreateMaterialInstance(mtl_plane_grid,&vil_config,&white_color);
             if(!mi_plane_grid)return(false);
 
             pipeline_plane_grid=CreatePipeline(mi_plane_grid,InlinePipeline::Solid3D);
@@ -76,10 +76,10 @@ private:
         {
             cfg.position_format=VAT_VEC3;
 
-            mtl_line=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
+            mtl_line=LoadMaterial("Std3D/VertexLum3D",&cfg);
             if(!mtl_line)return(false);
 
-            mi_line=db->CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
+            mi_line=CreateMaterialInstance(mtl_line,&vil_config,&yellow_color);
             if(!mi_line)return(false);
 
             pipeline_line=CreatePipeline(mi_line,InlinePipeline::Solid3D);
@@ -93,7 +93,7 @@ private:
     
     Mesh *Add(SceneNode *parent_node,Primitive *r,MaterialInstance *mi,Pipeline *p)
     {
-        Mesh *ri=db->CreateMesh(r,mi,p);
+        Mesh *ri=CreateMesh(r,mi,p);
 
         if(!ri)
         {

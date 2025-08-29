@@ -41,7 +41,7 @@ private:
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::Without);
 
-        material=db->LoadMaterial("Std2D/RectTexture2D",&cfg);
+        material=LoadMaterial("Std2D/RectTexture2D",&cfg);
 
         if(!material)
             return(false);
@@ -56,7 +56,7 @@ private:
 
         if(!texture)return(false);
 
-        sampler=db->CreateSampler();
+        sampler=CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
                                         mtl::SamplerName::BaseColor,        ///<采样器名称
@@ -64,7 +64,7 @@ private:
                                         sampler))                           ///<采样器
             return(false);
 
-        material_instance=db->CreateMaterialInstance(material);
+        material_instance=CreateMaterialInstance(material);
 
         return(true);
     }

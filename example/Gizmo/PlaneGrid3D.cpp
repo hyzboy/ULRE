@@ -34,7 +34,7 @@ private:
         cfg.local_to_world=true;
         cfg.position_format=VAT_VEC2;
 
-        material=db->LoadMaterial("Std3D/VertexLum3D",&cfg);
+        material=LoadMaterial("Std3D/VertexLum3D",&cfg);
         if(!material)return(false);
 
         VILConfig vil_config;
@@ -48,7 +48,7 @@ private:
         {
             GridColor=GetColor4f(ce,1.0);
 
-            material_instance[i]=db->CreateMaterialInstance(material,&vil_config,&GridColor);
+            material_instance[i]=CreateMaterialInstance(material,&vil_config,&GridColor);
 
             ce=COLOR((int)ce+1);
         }
@@ -79,7 +79,7 @@ private:
 
     void Add(SceneNode *parent_node,MaterialInstance *mi,const Matrix4f &mat)
     {
-        Mesh *ri=db->CreateMesh(prim_plane_grid,mi,pipeline);
+        Mesh *ri=CreateMesh(prim_plane_grid,mi,pipeline);
 
         if(!ri)
             return;

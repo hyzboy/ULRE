@@ -81,7 +81,7 @@ private:
                                         CoordinateSystem2D::ZeroToOne,
                                         mtl::WithLocalToWorld::With);
 
-        material=db->LoadMaterial("Std2D/RectTexture2DArray",&cfg);
+        material=LoadMaterial("Std2D/RectTexture2DArray",&cfg);
 
         if(!material)
             return(false);
@@ -91,7 +91,7 @@ private:
         if(!pipeline)
             return(false);
 
-        sampler=db->CreateSampler();
+        sampler=CreateSampler();
 
         if(!material->BindImageSampler( DescriptorSetType::PerMaterial,     ///<描述符合集
                                         mtl::SamplerName::BaseColor,        ///<采样器名称
@@ -101,7 +101,7 @@ private:
 
         for(uint32_t i=0;i<TexCount;i++)
         {
-            render_obj[i].mi=db->CreateMaterialInstance(material);
+            render_obj[i].mi=CreateMaterialInstance(material);
 
             if(!render_obj[i].mi)
                 return(false);
