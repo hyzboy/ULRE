@@ -66,6 +66,7 @@ SET(STD_MTL_2D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material2DCreateConfig.h
 )
 
 SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
+                            ${STD_MTL_HEADER_PATH}/TerrainHeightmapMaterial.h
                             3d/Std3DMaterial.h
                             3d/Std3DMaterial.cpp
                             3d/Std3DMaterialLoader.cpp
@@ -77,6 +78,7 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_Billboard.cpp
                             3d/M_Gizmo3D.cpp
                             3d/M_Line3D.cpp
+                            3d/M_TerrainHeightmap.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h

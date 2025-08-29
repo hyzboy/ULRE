@@ -86,6 +86,10 @@ public:
 
 DEFINE_MATERIAL_FACTORY_CLASS(Line3D,Line3DMaterialCreateConfig);
 
+// Forward declaration for terrain material
+struct TerrainHeightmapMaterialCreateConfig;
+DEFINE_MATERIAL_FACTORY_CLASS(TerrainHeightmapMaterial, const TerrainHeightmapMaterialCreateConfig);
+
 /**
  * 从文件加载材质
  * @param mtl_name 材质名称
