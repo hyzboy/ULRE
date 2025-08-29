@@ -28,6 +28,7 @@ namespace
 {
     static RenderFramework *render_framework=nullptr;
     static RenderResource * gizmo_rr=nullptr;
+    static MaterialManager *gizmo_mtl_manager=nullptr;
 
     struct GizmoResource
     {
@@ -90,7 +91,7 @@ namespace
         {
             color=GetColor4f(gizmo_color[i],1.0);
 
-            gr->mi[i]=gizmo_rr->CreateMaterialInstance(gr->mtl,(VIL *)nullptr,&color);
+            gr->mi[i]=gizmo_mtl_manager->CreateMaterialInstance(gr->mtl,(VIL *)nullptr,&color);
 
             if(!gr->mi[i])
                 return(false);
@@ -101,7 +102,7 @@ namespace
 
     bool InitGizmoResource2D()
     {
-        if(!gizmo_rr)
+        if(!gizmo_mtl_manager)
             return(false);
 
         VulkanDevice *device=render_framework->GetDevice();
@@ -119,7 +120,7 @@ namespace
             if(!mci)
                 return(false);
 
-            gizmo_line.mtl=gizmo_rr->CreateMaterial("GizmoLine",mci);
+            gizmo_line.mtl=gizmo_mtl_manager->CreateMaterial("GizmoLine",mci);
             if(!gizmo_line.mtl)
                 return(false);
 
@@ -163,6 +164,8 @@ namespace
         VulkanDevAttr *dev_attr=device->GetDevAttr();
         RenderPass *render_pass=render_framework->GetDefaultRenderPass();
 
+        gizmo_mtl_manager=render_framework->GetMaterialManager();
+
         {
             mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
@@ -174,7 +177,7 @@ namespace
             if(!mci)
                 return(false);
 
-            gizmo_triangle.mtl=gizmo_rr->CreateMaterial("GizmoTriangle",mci);
+            gizmo_triangle.mtl=gizmo_mtl_manager->CreateMaterial("GizmoTriangle",mci);
             if(!gizmo_triangle.mtl)
                 return(false);
 

@@ -5,6 +5,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/module/GraphModuleManager.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/CameraControl.h>
 #include<hgl/graph/Renderer.h>

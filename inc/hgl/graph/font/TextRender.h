@@ -13,6 +13,7 @@ namespace hgl::graph
     class TileFont;
     class TextPrimitive;
     class RenderFramework;
+    class MaterialManager;
 
     namespace layout
     {
@@ -38,6 +39,7 @@ namespace hgl::graph
         VulkanDevice *      device;
 
         RenderResource *    db;
+        MaterialManager *   mtl_manager;
 
         Sampler *           sampler;
 

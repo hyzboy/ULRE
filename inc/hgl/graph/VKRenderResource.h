@@ -8,22 +8,12 @@
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKTexture.h>
-#include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/type/ObjectManage.h>
-#include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN
 
-namespace mtl
-{
-    struct Material2DCreateConfig;
-    struct Material3DCreateConfig;
-}//namespace mtl
-
-using MaterialID            =int;
-using MaterialInstanceID    =int;
 using BufferID              =int;
 
 using PrimitiveID           =int;
