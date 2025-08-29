@@ -155,7 +155,7 @@ public:
 
     graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
     {
-        return render_resource->CreateMaterial(mi_name,mci);
+        return material_manager->CreateMaterial(mi_name,mci);
     }
 
     template<typename T>
@@ -164,19 +164,19 @@ public:
         if(!mtl)
             return(nullptr);
 
-        return render_resource->CreateMaterialInstance(mtl,vil_config,data);
+        return material_manager->CreateMaterialInstance(mtl,vil_config,data);
     }
 
     graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
     {
-        return render_resource->CreateMaterialInstance(mi_name,mci,vil_cfg);
+        return material_manager->CreateMaterialInstance(mi_name,mci,vil_cfg);
     }
 
     graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
     {            
         AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mtl_cfg);
 
-        return render_resource->CreateMaterialInstance(mtl_name,mci,vil_cfg);
+        return material_manager->CreateMaterialInstance(mtl_name,mci,vil_cfg);
     }
 
     SharedPtr<graph::PrimitiveCreater> GetPrimitiveCreater(graph::Material *mtl)
