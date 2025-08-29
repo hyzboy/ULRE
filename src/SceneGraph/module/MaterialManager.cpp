@@ -18,9 +18,6 @@
 
 VK_NAMESPACE_BEGIN
 
-// Forward declaration - function should be defined elsewhere in the system
-extern VertexInput *GetVertexInput(const VIAArray &via);
-
 namespace
 {
     void CreateShaderStageList(ArrayList<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
@@ -137,7 +134,11 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
         ShaderCreateInfoVertex *vert=mci->GetVS();
 
         if(vert)
-            mtl->vertex_input=GetVertexInput(vert->GetInput());
+        {
+            // TODO: GetVertexInput function needs to be implemented or found in the system
+            // mtl->vertex_input=GetVertexInput(vert->GetInput());
+            mtl->vertex_input=nullptr; // Temporary placeholder
+        }
     }
 
     {

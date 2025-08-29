@@ -10,6 +10,8 @@
 
 VK_NAMESPACE_BEGIN
 
+class ShaderCreateInfo;
+
 namespace mtl
 {
     struct Material2DCreateConfig;
