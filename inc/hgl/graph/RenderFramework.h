@@ -161,41 +161,25 @@ public:
         return GetDefaultRenderPass()->CreatePipeline(args...);
     }
 
-    graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
+    template<typename ...ARGS>
+    graph::Material *CreateMaterial(ARGS...args)
     {
-        return material_manager->CreateMaterial(mi_name,mci);
+        return material_manager->CreateMaterial(args...);
     }
 
-    graph::Material *LoadMaterial(const AnsiString &mtl_name,graph::mtl::Material2DCreateConfig *cfg)
+    template<typename ...ARGS>
+    graph::Material *LoadMaterial(ARGS...args)
     {
-        return material_manager->LoadMaterial(mtl_name,cfg);
+        return material_manager->LoadMaterial(args...);
     }
 
-    graph::Material *LoadMaterial(const AnsiString &mtl_name,graph::mtl::Material3DCreateConfig *cfg)
+    template<typename ...ARGS>
+    graph::MaterialInstance *CreateMaterialInstance(ARGS...args)
     {
-        return material_manager->LoadMaterial(mtl_name,cfg);
+        return material_manager->CreateMaterialInstance(args...);
     }
 
-    template<typename T>
-    graph::MaterialInstance *CreateMaterialInstance(graph::Material *mtl,const graph::VILConfig *vil_config=nullptr,const T *data=nullptr)
-    {
-        if(!mtl)
-            return(nullptr);
-
-        return material_manager->CreateMaterialInstance(mtl,vil_config,data);
-    }
-
-    graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci,const graph::VILConfig *vil_cfg=nullptr)
-    {
-        return material_manager->CreateMaterialInstance(mi_name,mci,vil_cfg);
-    }
-
-    graph::MaterialInstance *CreateMaterialInstance(const AnsiString &mtl_name,graph::mtl::MaterialCreateConfig *mtl_cfg,const graph::VILConfig *vil_cfg=nullptr)
-    {            
-        AutoDelete<graph::mtl::MaterialCreateInfo> mci=graph::mtl::CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mtl_cfg);
-
-        return material_manager->CreateMaterialInstance(mtl_name,mci,vil_cfg);
-    }
+public:
 
     SharedPtr<graph::PrimitiveCreater> GetPrimitiveCreater(graph::Material *mtl)
     {

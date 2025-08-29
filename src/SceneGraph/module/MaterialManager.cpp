@@ -192,8 +192,7 @@ namespace mtl
 
 Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)
 {
-    VulkanDevice *device = GetDevice();
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDevAttr(),mtl_name,cfg);
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(GetDevAttr(),mtl_name,cfg);
 
     //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
 
@@ -204,8 +203,7 @@ Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material
 
 Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
 {
-    VulkanDevice *device = GetDevice();
-    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(device->GetDevAttr(),mtl_name,cfg);
+    AutoDelete<mtl::MaterialCreateInfo> mci=mtl::LoadMaterialFromFile(GetDevAttr(),mtl_name,cfg);
 
     //这里直接用这个mtl_name有些不太对，因为同一个材质，也有可能因为不同的cfg会有不同的版本，所以这里不能直接使用mtl_name.目前只是做一个暂时方案
 
@@ -214,9 +212,22 @@ Material *MaterialManager::LoadMaterial(const AnsiString &mtl_name,mtl::Material
     return this->CreateMaterial(hash_name,mci);
 }
 
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl)
+{
+    if(!mtl)return(nullptr);
+
+    MaterialInstance *mi=mtl->CreateMI();
+
+    if(mi)
+        Add(mi);
+
+    return mi;
+}
+
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil)
 {
-    if(!mtl||!vil)return(nullptr);
+    if(!mtl)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil);
 
@@ -241,7 +252,6 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *mi_data,const int mi_bytes)
 {
     if(!mtl)return(nullptr);
-    if(!mi_data||mi_bytes<=0)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil);
 
@@ -249,7 +259,9 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         return nullptr;
 
     Add(mi);
-    mi->WriteMIData(mi_data,mi_bytes);
+
+    if(mi_data&&mi_bytes>0)
+        mi->WriteMIData(mi_data,mi_bytes);
 
     return mi;
 }
@@ -257,7 +269,6 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
 MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *mi_data,const int mi_bytes)
 {
     if(!mtl)return(nullptr);
-    if(!mi_data||mi_bytes<=0)return(nullptr);
 
     MaterialInstance *mi=mtl->CreateMI(vil_cfg);
 
@@ -265,7 +276,9 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(Material *mtl,const VI
         return nullptr;
 
     Add(mi);
-    mi->WriteMIData(mi_data,mi_bytes);
+
+    if(mi_data&&mi_bytes>0)
+        mi->WriteMIData(mi_data,mi_bytes);
 
     return mi;
 }
@@ -278,6 +291,36 @@ MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_
         return(nullptr);
 
     return CreateMaterialInstance(mtl,vil_cfg);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *mci, const VILConfig *vil_cfg,const void *data,const int data_size)
+{
+    Material *mtl=this->CreateMaterial(mtl_name,mci);
+
+    if(!mtl)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl,vil_cfg,data,data_size);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const int data_size)
+{
+    mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
+
+    if(!mci)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl_name,mci,vil_cfg,data,data_size);
+}
+
+MaterialInstance *MaterialManager::CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg,const void *data,const int data_size)
+{
+    mtl::MaterialCreateInfo *mci=CreateMaterialCreateInfo(GetDevAttr(),mtl_name,mcc);
+
+    if(!mci)
+        return(nullptr);
+
+    return CreateMaterialInstance(mtl_name,mci,vil_cfg,data,data_size);
 }
 
 VK_NAMESPACE_END

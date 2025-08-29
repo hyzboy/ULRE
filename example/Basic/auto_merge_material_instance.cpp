@@ -90,7 +90,7 @@ private:
             if(!render_obj[i].mesh)
                 return(false);
 
-            cci.mat=rotate(deg2rad<double>(TRI_ROTATE_ANGLE*i),AxisVector::Z);
+            cci.mat=AxisRotate(deg2rad(TRI_ROTATE_ANGLE*i),AxisVector::Z);
 
             CreateComponent<MeshComponent>(&cci,render_obj[i].mesh);
         }
