@@ -14,7 +14,7 @@ namespace mtl
 {
     struct Material2DCreateConfig;
     struct Material3DCreateConfig;
-    struct MaterialCreateInfo;
+    class MaterialCreateInfo;
 }//namespace mtl
 
 using MaterialID            = int;
@@ -36,7 +36,7 @@ private:
 private:
 
     MaterialManager(RenderFramework *);
-    ~MaterialManager();
+    ~MaterialManager()=default;
 
     friend class GraphModuleManager;
 

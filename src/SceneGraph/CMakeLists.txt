@@ -50,6 +50,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/GraphModuleManager.h
                         ${SGM_HEADER_PATH}/RenderPassManager.h
                         ${SGM_HEADER_PATH}/TextureManager.h
+                        ${SGM_HEADER_PATH}/MaterialManager.h
                         ${SGM_HEADER_PATH}/RenderTargetManager.h
                         
                         ${SGM_HEADER_PATH}/RenderModule.h
@@ -59,6 +60,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_SOURCE_PATH}/GraphModuleManager.cpp
                         ${SGM_SOURCE_PATH}/RenderPassManager.cpp
                         ${SGM_SOURCE_PATH}/TextureManager.cpp
+                        ${SGM_SOURCE_PATH}/MaterialManager.cpp
                         ${SGM_SOURCE_PATH}/RenderTargetManager.cpp
 
                         ${SGM_SOURCE_PATH}/SwapChainModule.cpp
@@ -146,8 +148,7 @@ SET(TEXT_SOURCE ${FONT_MANAGE_SOURCE}
                 ${TEXT_RENDERABLE_SOURCE})
 
 SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h
-                        Vulkan/VKRenderResource.cpp
-                        Vulkan/VKRenderResourceMaterial.cpp)
+                        Vulkan/VKRenderResource.cpp)
 
 SOURCE_GROUP("Vulkan\\RenderResource" FILES ${VK_RR_SOURCE})
 

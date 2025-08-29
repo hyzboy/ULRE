@@ -5,7 +5,7 @@
 #include<hgl/graph/VKShaderModule.h>
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKMaterialDescriptorManager.h>
-#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/VKVertexInput.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
 #include<hgl/shadergen/ShaderDescriptorInfo.h>
 #include<hgl/type/ActiveMemoryBlockManager.h>
@@ -17,10 +17,6 @@
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
-
-// Forward declaration - function should be defined elsewhere in the system
-extern VertexInput *GetVertexInput(const VIAArray &via);
-
 namespace
 {
     void CreateShaderStageList(ArrayList<VkPipelineShaderStageCreateInfo> &shader_stage_list,ShaderModuleMap *shader_maps)
@@ -45,10 +41,6 @@ namespace
 }//namespace
 
 GRAPH_MODULE_CONSTRUCT(MaterialManager)
-{
-}
-
-MaterialManager::~MaterialManager()
 {
 }
 

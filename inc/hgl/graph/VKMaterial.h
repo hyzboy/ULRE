@@ -54,6 +54,7 @@ class Material
 private:
 
     friend class RenderResource;
+    friend class MaterialManager;
 
     Material(const AnsiString &,const mtl::MaterialCreateInfo *);
 

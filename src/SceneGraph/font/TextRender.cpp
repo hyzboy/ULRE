@@ -32,11 +32,11 @@ namespace hgl::graph
         }
     }//namespace
 
-    TextRender::TextRender(VulkanDevice *dev,TileFont *tf)
+    TextRender::TextRender(RenderFramework *rf,TileFont *tf)
     {
-        device=dev;
+        device=rf->GetDevice();
 
-        db=new RenderResource(device);         //独立的资源管理器，不和整体共用
+        db=new RenderResource(device,rf->GetMaterialManager());         //独立的资源管理器，不和整体共用
         tl_engine=new layout::TextLayout(tf);
             
         mtl_fs      =nullptr;
@@ -210,7 +210,7 @@ namespace hgl::graph
         if(!rp)
             return(nullptr);
 
-        TextRender *text_render=new TextRender(GetDevice(),tile_font);
+        TextRender *text_render=new TextRender(this,tile_font);
 
         if(!text_render)
         {
