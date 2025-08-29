@@ -5,6 +5,7 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKShaderModule.h>
+#include<hgl/graph/VKPipeline.h>
 #include<hgl/log/LogInfo.h>
 
 namespace hgl::graph

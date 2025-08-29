@@ -6,11 +6,19 @@
 #include<hgl/graph/LineManager.h>
 #include<hgl/graph/Camera.h>
 #include<hgl/graph/FirstPersonCameraControl.h>
+#include<hgl/graph/VKPipeline.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>
 
 using namespace hgl;
 using namespace hgl::graph;
+
+// 临时定义 InlinePipeline 枚举，如果系统中没有的话
+namespace hgl::graph {
+    enum class InlinePipeline {
+        Solid3D = 0
+    };
+}
 
 class TestApp:public WorkObject
 {
@@ -44,7 +52,7 @@ public:
         CreateTestLines();
 
         // 创建渲染管线
-        line_pipeline = CreatePipeline(line_manager->GetMaterialInstance());
+        line_pipeline = CreatePipeline(line_manager->GetMaterialInstance(), InlinePipeline::Solid3D);
         if (!line_pipeline)
         {
             LOG_ERROR("Failed to create pipeline");
