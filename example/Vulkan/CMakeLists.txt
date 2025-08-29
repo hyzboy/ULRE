@@ -35,6 +35,7 @@ endmacro()
 #CreateProject(14.AutoMaterial auto_material.cpp)
 
 #CreateProject("Texture" Cubemap               Cubemap.cpp)
+CreateProject("Texture" RenderToCubemap       RenderToCubemap.cpp)
 #CreateProject("Texture" EquirectangularMap    EquirectangularMap.cpp)
 #CreateProject("Picking" RayPicking            RayPicking.cpp)
 
