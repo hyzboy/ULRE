@@ -2,6 +2,7 @@
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/WorkManager.h>
 #include<hgl/component/MeshComponent.h>
+#include<hgl/graph/font/TextPrimitive.h>
 #include<hgl/io/LoadStringList.h>
 #include<random>
 

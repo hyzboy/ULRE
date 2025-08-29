@@ -7,6 +7,7 @@
 #include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/color/Color.h>
 #include"TextLayoutEngine.h"
 
@@ -36,7 +37,8 @@ namespace hgl::graph
     {
         device=rf->GetDevice();
 
-        db=new RenderResource(device,rf->GetMaterialManager());         //独立的资源管理器，不和整体共用
+        db=new RenderResource(device);         //独立的资源管理器，不和整体共用
+        mtl_manager=rf->GetMaterialManager();
         tl_engine=new layout::TextLayout(tf);
             
         mtl_fs      =nullptr;
@@ -92,7 +94,7 @@ namespace hgl::graph
 
         if (!mci)return(false);
 
-        mtl_fs=db->CreateMaterial("Text2D",mci);
+        mtl_fs=mtl_manager->CreateMaterial("Text2D",mci);
 
         //文本渲染Position坐标全部是使用整数，这里强制要求Position输入流使用RGBA16I格式
         {
@@ -100,7 +102,7 @@ namespace hgl::graph
 
             vil_config.Add("Position",VF_V4I16);
 
-            mi_fs=db->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style);
+            mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style);
             if(!mi_fs)return(false);
         }
 
