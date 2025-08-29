@@ -29,6 +29,7 @@ endmacro()
 
 #CreateProject("Advanced Rendering" OffscreenRender       OffscreenRender.cpp)
 #CreateProject("Advanced Rendering" RenderToTexture       RenderToTexture.cpp)
+#CreateProject("Advanced Rendering" RenderToTextureSimple RenderToTextureSimple.cpp)
 
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
