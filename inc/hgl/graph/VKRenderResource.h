@@ -120,8 +120,9 @@ public: //Material
 
     const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,const ShaderCreateInfo *);
     
-    Material *          CreateMaterial  (const AnsiString &,const mtl::MaterialCreateInfo *);
-    Material *          LoadMaterial    (const AnsiString &,mtl::Material2DCreateConfig *);
+    Material *          CreateMaterial  (const AnsiString &,const mtl::MaterialCreateInfo *);       ///<基于名称创建一个材质(一般用于程序内嵌材质)
+
+    Material *          LoadMaterial    (const AnsiString &,mtl::Material2DCreateConfig *);         ///<基于资产名称加载一个材质(一般用于从文件加载材质)
     Material *          LoadMaterial    (const AnsiString &,mtl::Material3DCreateConfig *);
 
     MaterialInstance *  CreateMaterialInstance(Material *,const VIL *vil);
