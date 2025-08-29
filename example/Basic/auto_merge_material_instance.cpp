@@ -45,9 +45,9 @@ private:
 
         #ifndef USE_MATERIAL_FILE
             AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);                       //走程序内置材质创建函数
-            material=db->CreateMaterial(mci);
+            material=CreateMaterial("PureColor2D",mci);
         #else
-            material=db->LoadMaterial("Std2D/PureColor2D",&cfg);                                            //走材质文件加载
+            material=LoadMaterial("Std2D/PureColor2D",&cfg);                                            //走材质文件加载
         #endif//USE_MATERIAL_FILE
 
             if(!material)
@@ -55,7 +55,7 @@ private:
 
             for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
             {
-                render_obj[i].mi=db->CreateMaterialInstance(material);
+                render_obj[i].mi=CreateMaterialInstance(material);
 
                 if(!render_obj[i].mi)
                     return(false);
@@ -79,13 +79,13 @@ private:
         if(!prim)
             return(false);
 
-        db->Add(prim);
+        Add(prim);
 
         CreateComponentInfo cci(GetSceneRoot());
         
         for(uint i=0;i<DRAW_OBJECT_COUNT;i++)
         {
-            render_obj[i].mesh=db->CreateMesh(prim,render_obj[i].mi,pipeline);
+            render_obj[i].mesh=CreateMesh(prim,render_obj[i].mi,pipeline);
 
             if(!render_obj[i].mesh)
                 return(false);
