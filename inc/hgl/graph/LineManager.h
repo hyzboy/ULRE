@@ -40,7 +40,6 @@ namespace hgl::graph
         RenderFramework*    render_framework;    // 渲染框架
         Material*           line_material;       // Line3D材质
         MaterialInstance*   material_instance;   // 材质实例
-        Pipeline*           pipeline;            // 渲染管线
         
         Primitive*          primitive;           // 图元对象
         Mesh*               mesh;                // 网格对象
@@ -50,7 +49,7 @@ namespace hgl::graph
     private:
         
         bool CreateMaterial();                   // 创建Line3D材质
-        bool UpdatePrimitive();                 // 更新图元数据
+        bool UpdatePrimitive(Pipeline* pipeline); // 更新图元数据
         void CleanupResources();                 // 清理资源
         
     public:
@@ -80,13 +79,19 @@ namespace hgl::graph
         
         /**
          * 更新网格数据（在添加线段后调用）
+         * @param pipeline 用于渲染的管线
          */
-        bool Update();
+        bool Update(Pipeline* pipeline);
         
         /**
          * 获取用于渲染的网格对象
          */
         Mesh* GetMesh() { return mesh; }
+        
+        /**
+         * 获取材质实例
+         */
+        MaterialInstance* GetMaterialInstance() { return material_instance; }
         
         /**
          * 检查是否有线段数据

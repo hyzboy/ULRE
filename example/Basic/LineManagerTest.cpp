@@ -17,6 +17,7 @@ class TestApp:public WorkObject
 private:
 
     LineManager* line_manager = nullptr;
+    Pipeline* line_pipeline = nullptr;
     MeshComponent* line_component = nullptr;
 
 public:
@@ -42,8 +43,16 @@ public:
         // 添加一些测试线条
         CreateTestLines();
 
+        // 创建渲染管线
+        line_pipeline = CreatePipeline(line_manager->GetMaterialInstance());
+        if (!line_pipeline)
+        {
+            LOG_ERROR("Failed to create pipeline");
+            return false;
+        }
+
         // 更新网格数据
-        if (!line_manager->Update())
+        if (!line_manager->Update(line_pipeline))
         {
             LOG_ERROR("Failed to update LineManager");
             return false;

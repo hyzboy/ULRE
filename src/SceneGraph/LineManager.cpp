@@ -3,6 +3,8 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/PrimitiveCreater.h>
+#include<hgl/graph/VertexAttribDataAccess.h>
+#include<hgl/graph/VKShaderModule.h>
 #include<hgl/log/LogInfo.h>
 
 namespace hgl::graph
@@ -11,7 +13,6 @@ namespace hgl::graph
         : render_framework(rf)
         , line_material(nullptr)
         , material_instance(nullptr)
-        , pipeline(nullptr)
         , primitive(nullptr)
         , mesh(nullptr)
         , need_update(false)
@@ -62,14 +63,6 @@ namespace hgl::graph
             return false;
         }
 
-        // 创建渲染管线
-        pipeline = render_framework->CreatePipeline(line_material, InlinePipeline::Solid3D);
-        if (!pipeline)
-        {
-            LOG_ERROR("Failed to create pipeline");
-            return false;
-        }
-
         return true;
     }
 
@@ -85,8 +78,14 @@ namespace hgl::graph
         need_update = true;
     }
 
-    bool LineManager::Update()
+    bool LineManager::Update(Pipeline* pipeline)
     {
+        if (!pipeline)
+        {
+            LOG_ERROR("Pipeline is null");
+            return false;
+        }
+
         if (!need_update)
             return true;
 
@@ -99,10 +98,10 @@ namespace hgl::graph
             return true;
         }
 
-        return UpdatePrimitive();
+        return UpdatePrimitive(pipeline);
     }
 
-    bool LineManager::UpdatePrimitive()
+    bool LineManager::UpdatePrimitive(Pipeline* pipeline)
     {
         if (!line_material)
         {
@@ -160,10 +159,10 @@ namespace hgl::graph
 
         // 写入顶点属性缓冲区
         bool success = true;
-        success &= pc.WriteVAB(VAN::Position, VF_V3F, start_positions);  // Position用起点
-        success &= pc.WriteVAB(VAN::StartPosition, VF_V3F, start_positions);
-        success &= pc.WriteVAB(VAN::EndPosition, VF_V3F, end_positions);
-        success &= pc.WriteVAB(VAN::Color, VF_V4F, colors);
+        success &= pc.WriteVAB("Position", VK_FORMAT_R32G32B32_SFLOAT, start_positions);  // Position用起点
+        success &= pc.WriteVAB("StartPosition", VK_FORMAT_R32G32B32_SFLOAT, start_positions);
+        success &= pc.WriteVAB("EndPosition", VK_FORMAT_R32G32B32_SFLOAT, end_positions);
+        success &= pc.WriteVAB("Color", VK_FORMAT_R32G32B32A32_SFLOAT, colors);
 
         // 清理临时内存
         delete[] start_positions;
@@ -200,7 +199,6 @@ namespace hgl::graph
     {
         SAFE_CLEAR(mesh);
         SAFE_CLEAR(primitive);
-        SAFE_CLEAR(pipeline);
         SAFE_CLEAR(material_instance);
         SAFE_CLEAR(line_material);
     }
