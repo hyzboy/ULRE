@@ -117,6 +117,48 @@ namespace hgl
             return render_framework?render_framework->CreateVDM(args...):nullptr;
         }
 
+    public: // Buffer 相关
+
+        graph::VAB *CreateVAB(VkFormat format, uint32_t count, const void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateVAB(format, count, data, sm) : nullptr;
+        }
+
+        graph::VAB *CreateVAB(VkFormat format, uint32_t count, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateVAB(format, count, sm) : nullptr;
+        }
+
+        graph::DeviceBuffer *CreateUBO(const AnsiString &buf_name, VkDeviceSize size, void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateUBO(buf_name, size, data, sm) : nullptr;
+        }
+
+        graph::DeviceBuffer *CreateUBO(const AnsiString &buf_name, VkDeviceSize size, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateUBO(buf_name, size, sm) : nullptr;
+        }
+
+        graph::DeviceBuffer *CreateSSBO(const AnsiString &buf_name, VkDeviceSize size, void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateSSBO(buf_name, size, data, sm) : nullptr;
+        }
+
+        graph::DeviceBuffer *CreateSSBO(const AnsiString &buf_name, VkDeviceSize size, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateSSBO(buf_name, size, sm) : nullptr;
+        }
+
+        graph::IndexBuffer *CreateIBO(graph::IndexType index_type, uint32_t count, const void *data, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateIBO(index_type, count, data, sm) : nullptr;
+        }
+
+        graph::IndexBuffer *CreateIBO(graph::IndexType index_type, uint32_t count, graph::SharingMode sm = graph::SharingMode::Exclusive)
+        {
+            return render_framework ? render_framework->GetBufferManager()->CreateIBO(index_type, count, sm) : nullptr;
+        }
+
         void Add(graph::Primitive *prim)
         {
             if(render_framework && db)
