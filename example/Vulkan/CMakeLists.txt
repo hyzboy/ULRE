@@ -17,6 +17,8 @@ endmacro()
 
 #CreateProject("Tile" DrawTile              DrawTile.cpp)
 #CreateProject("Tile" DrawText              DrawText.cpp)
+CreateProject("TileMap" TileMap2D           TileMap2D.cpp)
+CreateProject("TileMap" TileMap3D           TileMap3D.cpp)
 
 #CreateProject("Geometry3D " Geometry3D            Geometry3D.cpp)
 
