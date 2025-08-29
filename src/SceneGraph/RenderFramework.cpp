@@ -138,7 +138,7 @@ bool RenderFramework::Init(uint w,uint h)
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
 
-    render_resource=new RenderResource(device, material_manager);
+    render_resource=new RenderResource(device);
 
     OnChangeDefaultScene(new Scene(this));
 
