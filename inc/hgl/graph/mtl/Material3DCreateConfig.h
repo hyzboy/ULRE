@@ -77,7 +77,7 @@ struct Line3DMaterialCreateConfig:public Material3DCreateConfig
 public:
 
     Line3DMaterialCreateConfig(const WithCamera &wc=WithCamera::With,
-                              const WithLocalToWorld &l2w=WithLocalToWorld::Without)
+                              const WithLocalToWorld &l2w=WithLocalToWorld::With)
         :Material3DCreateConfig(PrimitiveType::Points,wc,l2w)
     {
         shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;

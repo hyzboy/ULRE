@@ -12,6 +12,7 @@ void main()
     Output.StartPos = Position;  // 起点位置
     Output.EndPos = Normal;      // 终点位置（重用Normal属性存储终点）
     Output.Color = Color;        // 颜色
+    Output.l2w_id = Assign.x;    // Local-to-world变换ID
     
     // 传递起点作为几何着色器的输入点
     gl_Position = vec4(Position, 1);
@@ -21,13 +22,15 @@ void main()
     constexpr const char gs_main[]=R"(
 void main()
 {
+    mat4 MVPMatrix = camera.vp * l2w.mats[Input[0].l2w_id];
+    
     // 生成线段的起点
-    gl_Position = camera.vp * vec4(Input[0].StartPos, 1);
+    gl_Position = MVPMatrix * vec4(Input[0].StartPos, 1);
     Output.Color = Input[0].Color;
     EmitVertex();
     
     // 生成线段的终点
-    gl_Position = camera.vp * vec4(Input[0].EndPos, 1);
+    gl_Position = MVPMatrix * vec4(Input[0].EndPos, 1);
     Output.Color = Input[0].Color;
     EmitVertex();
     
@@ -67,6 +70,7 @@ void main()
             vsc->AddOutput(SVT_VEC3, "StartPos");
             vsc->AddOutput(SVT_VEC3, "EndPos");
             vsc->AddOutput(SVT_VEC4, "Color");
+            vsc->AddOutput(SVT_UINT, "l2w_id", Interpolation::Flat);
 
             vsc->SetMain(vs_main);
             return(true);
@@ -98,6 +102,12 @@ MaterialCreateInfo *CreateLine3D(const VulkanDevAttr *dev_attr, Line3DMaterialCr
 {
     if(!cfg)
         return(nullptr);
+
+    if(!dev_attr)
+        return(nullptr);
+
+    // 确保几何着色器阶段被启用
+    cfg->shader_stage_flag_bit |= VK_SHADER_STAGE_GEOMETRY_BIT;
 
     MaterialLine3D line3d(cfg);
 
