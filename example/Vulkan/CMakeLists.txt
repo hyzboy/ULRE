@@ -28,6 +28,7 @@ endmacro()
 #CreateProject("Scene/Sky" Atmosphere            Atmosphere.cpp)
 
 #CreateProject("Advanced Rendering" OffscreenRender       OffscreenRender.cpp)
+#CreateProject("Advanced Rendering" RenderToTexture       RenderToTexture.cpp)
 
 #CreateProject(12.PBRBasic PBRBasic.cpp)
 #CreateProject(12.Deferred Deferred.cpp)
