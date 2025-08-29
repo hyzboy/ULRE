@@ -21,6 +21,7 @@ class FontSource;
 class RenderPassManager;
 class TextureManager;
 class RenderTargetManager;
+class MaterialManager;
 
 class RenderModule;
 
@@ -49,6 +50,7 @@ protected:
 
     TextureManager *        tex_manager         =nullptr;
     RenderTargetManager *   rt_manager          =nullptr;
+    MaterialManager *       material_manager    =nullptr;
 
     SwapchainModule *       sc_module           =nullptr;
 
@@ -89,6 +91,7 @@ public:
     RenderPassManager *     GetRenderPassManager    (){return rp_manager;}
     TextureManager *        GetTextureManager       (){return tex_manager;}
     RenderTargetManager *   GetRenderTargetManager  (){return rt_manager;}
+    MaterialManager *       GetMaterialManager      (){return material_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
     SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}

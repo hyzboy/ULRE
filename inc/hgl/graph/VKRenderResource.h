@@ -16,6 +16,8 @@
 
 VK_NAMESPACE_BEGIN
 
+class MaterialManager;
+
 namespace mtl
 {
     struct Material2DCreateConfig;
@@ -40,13 +42,8 @@ constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT=20;//GetBitOffset((uint32_t)VK
 class RenderResource
 {
     VulkanDevice *device;
+    MaterialManager *material_manager;
     
-    ShaderModuleMapByName shader_module_by_name[VK_SHADER_STAGE_TYPE_COUNT];
-    Map<AnsiString,Material *> material_by_name;
-    
-    IDObjectManage<MaterialID,             Material>           rm_material;                ///<材质合集
-    IDObjectManage<MaterialInstanceID,     MaterialInstance>   rm_material_instance;       ///<材质实例合集
-
     IDObjectManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
     IDObjectManage<BufferID,               DeviceBuffer>       rm_buffers;                 ///<顶点缓冲区合集
     IDObjectManage<SamplerID,              Sampler>            rm_samplers;                ///<采样器合集
@@ -72,16 +69,17 @@ private:
 public:
 
     VulkanDevice *GetDevice(){return device;}
+    MaterialManager *GetMaterialManager(){return material_manager;}
 
 public:
 
-    RenderResource(VulkanDevice *dev):device(dev){}
+    RenderResource(VulkanDevice *dev, MaterialManager *mtl_mgr):device(dev),material_manager(mtl_mgr){}
     virtual ~RenderResource()=default;
 
 public: //添加数据到管理器（如果指针为nullptr会返回-1）
 
-    MaterialID              Add(Material *          mtl ){return rm_material.Add(mtl);}
-    MaterialInstanceID      Add(MaterialInstance *  mi  ){return rm_material_instance.Add(mi);}
+    MaterialID              Add(Material *          mtl ){return material_manager->Add(mtl);}
+    MaterialInstanceID      Add(MaterialInstance *  mi  ){return material_manager->Add(mi);}
 
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
     BufferID                Add(DeviceBuffer *      buf ){return rm_buffers.Add(buf);}
@@ -114,32 +112,59 @@ public: // VAB/VAO
 
 public: //Material
 
-    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,const ShaderCreateInfo *);
+    const ShaderModule *CreateShaderModule(const AnsiString &shader_module_name,const ShaderCreateInfo *sci)
+    {
+        return material_manager->CreateShaderModule(shader_module_name, sci);
+    }
     
-    Material *          CreateMaterial  (const AnsiString &,const mtl::MaterialCreateInfo *);       ///<基于名称创建一个材质(一般用于程序内嵌材质)
+    Material *          CreateMaterial  (const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
+    {
+        return material_manager->CreateMaterial(mtl_name, mci);
+    }       ///<基于名称创建一个材质(一般用于程序内嵌材质)
 
-    Material *          LoadMaterial    (const AnsiString &,mtl::Material2DCreateConfig *);         ///<基于资产名称加载一个材质(一般用于从文件加载材质)
-    Material *          LoadMaterial    (const AnsiString &,mtl::Material3DCreateConfig *);
+    Material *          LoadMaterial    (const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)
+    {
+        return material_manager->LoadMaterial(mtl_name, cfg);
+    }         ///<基于资产名称加载一个材质(一般用于从文件加载材质)
+    Material *          LoadMaterial    (const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
+    {
+        return material_manager->LoadMaterial(mtl_name, cfg);
+    }
 
-    MaterialInstance *  CreateMaterialInstance(Material *,const VIL *vil);
-    MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil)
+    {
+        return material_manager->CreateMaterialInstance(mtl, vil);
+    }
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg=nullptr)
+    {
+        return material_manager->CreateMaterialInstance(mtl, vil_cfg);
+    }
 
-    MaterialInstance *  CreateMaterialInstance(Material *,const VIL *vil,const void *,const int);
-    MaterialInstance *  CreateMaterialInstance(Material *,const VILConfig *vil_cfg,const void *,const int);
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil,const void *data,const int bytes)
+    {
+        return material_manager->CreateMaterialInstance(mtl, vil, data, bytes);
+    }
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *data,const int bytes)
+    {
+        return material_manager->CreateMaterialInstance(mtl, vil_cfg, data, bytes);
+    }
 
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil,const T *data)
     {
-        return CreateMaterialInstance(mtl,vil,data,sizeof(T));
+        return material_manager->CreateMaterialInstance(mtl, vil, data);
     }
 
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const T *data)
     {
-        return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
+        return material_manager->CreateMaterialInstance(mtl, vil_cfg, data);
     }
 
-    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *,const VILConfig *vil_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg=nullptr)
+    {
+        return material_manager->CreateMaterialInstance(mtl_name, mci, vil_cfg);
+    }
 
     Mesh *              CreateMesh(Primitive *r,MaterialInstance *mi,Pipeline *p);
     Mesh *              CreateMesh(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
@@ -149,8 +174,8 @@ public: //Material
 
 public: //Get
 
-    Material *          GetMaterial         (const MaterialID           &id){return rm_material.Get(id);}
-    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return rm_material_instance.Get(id);}
+    Material *          GetMaterial         (const MaterialID           &id){return material_manager->GetMaterial(id);}
+    MaterialInstance *  GetMaterialInstance (const MaterialInstanceID   &id){return material_manager->GetMaterialInstance(id);}
 
     Primitive *         GetPrimitive        (const PrimitiveID          &id){return rm_primitives.Get(id);}
     DeviceBuffer *      GetBuffer           (const BufferID             &id){return rm_buffers.Get(id);}
@@ -159,8 +184,8 @@ public: //Get
 
 public: //Release
 
-    void Release(Material *         mtl ){rm_material.Release(mtl);}
-    void Release(MaterialInstance * mi  ){rm_material_instance.Release(mi);}
+    void Release(Material *         mtl ){material_manager->Release(mtl);}
+    void Release(MaterialInstance * mi  ){material_manager->Release(mi);}
 
     void Release(Primitive *        p   ){rm_primitives.Release(p);}
     void Release(DeviceBuffer *     buf ){rm_buffers.Release(buf);}

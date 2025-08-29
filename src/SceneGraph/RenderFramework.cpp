@@ -4,6 +4,7 @@
 #include<hgl/graph/module/RenderPassManager.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/module/RenderTargetManager.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/RenderModule.h>
@@ -126,13 +127,18 @@ bool RenderFramework::Init(uint w,uint h)
     if(!tex_manager)
         return(false);
 
+    material_manager=module_manager->GetOrCreate<MaterialManager>();
+
+    if(!material_manager)
+        return(false);
+
     rt_manager=new RenderTargetManager(this,tex_manager,rp_manager);
     module_manager->Register(rt_manager);
 
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
 
-    render_resource=new RenderResource(device);
+    render_resource=new RenderResource(device, material_manager);
 
     OnChangeDefaultScene(new Scene(this));
 
