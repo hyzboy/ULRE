@@ -108,6 +108,33 @@ public: // VAB/VAO
     Sampler *           CreateSampler(VkSamplerCreateInfo *sci=nullptr);
     Sampler *           CreateSampler(Texture *);
 
+public: // Material methods (deprecated - use MaterialManager from RenderFramework instead)
+    // These methods provide basic Material functionality for backward compatibility
+    // New code should use MaterialManager directly from RenderFramework
+    
+    Material *          CreateMaterial  (const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci);
+    Material *          LoadMaterial    (const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg);
+    Material *          LoadMaterial    (const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg);
+    
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil = nullptr);
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg = nullptr);
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil,const void *data,const int bytes);
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *data,const int bytes);
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg = nullptr);
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name);  // For examples that load by name
+    
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VIL *vil,const T *data)
+    {
+        return CreateMaterialInstance(mtl, vil, data, sizeof(T));
+    }
+    
+    template<typename T>
+    MaterialInstance *  CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const T *data)
+    {
+        return CreateMaterialInstance(mtl, vil_cfg, data, sizeof(T));
+    }
+
 public: //Get
 
     Primitive *         GetPrimitive        (const PrimitiveID          &id){return rm_primitives.Get(id);}

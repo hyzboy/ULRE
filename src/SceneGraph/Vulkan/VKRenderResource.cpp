@@ -4,6 +4,9 @@
 #include<hgl/graph/VKInlinePipeline.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
+#include<hgl/graph/mtl/Material2DCreateConfig.h>
+#include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/shadergen/MaterialCreateInfo.h>
 
 VK_NAMESPACE_BEGIN
 VAB *RenderResource::CreateVAB(VkFormat format,uint32_t count,const void *data,SharingMode sharing_mode)
@@ -98,4 +101,64 @@ Sampler *RenderResource::CreateSampler(Texture *tex)
 
     return s;    
 }
+
+// Material methods (deprecated - use MaterialManager from RenderFramework instead)
+// These provide backward compatibility for examples using VulkanApplicationFramework
+
+Material *RenderResource::CreateMaterial(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci)
+{
+    // Simple implementation using VulkanDevice directly
+    // TODO: This is a simplified implementation for backward compatibility
+    // Production code should use MaterialManager from RenderFramework
+    return nullptr; // Placeholder - requires complex implementation
+}
+
+Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material2DCreateConfig *cfg)
+{
+    // Placeholder for backward compatibility
+    return nullptr;
+}
+
+Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material3DCreateConfig *cfg)
+{
+    // Placeholder for backward compatibility  
+    return nullptr;
+}
+
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL *vil)
+{
+    // Placeholder for backward compatibility
+    return nullptr;
+}
+
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg)
+{
+    // Placeholder for backward compatibility
+    return nullptr;
+}
+
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VIL *vil,const void *data,const int bytes)
+{
+    // Placeholder for backward compatibility
+    return nullptr;
+}
+
+MaterialInstance *RenderResource::CreateMaterialInstance(Material *mtl,const VILConfig *vil_cfg,const void *data,const int bytes)
+{
+    // Placeholder for backward compatibility
+    return nullptr;
+}
+
+MaterialInstance *RenderResource::CreateMaterialInstance(const AnsiString &mtl_name,const mtl::MaterialCreateInfo *mci,const VILConfig *vil_cfg)
+{
+    // Placeholder for backward compatibility
+    return nullptr;
+}
+
+MaterialInstance *RenderResource::CreateMaterialInstance(const AnsiString &mtl_name)
+{
+    // Placeholder for backward compatibility
+    return nullptr;
+}
+
 VK_NAMESPACE_END
