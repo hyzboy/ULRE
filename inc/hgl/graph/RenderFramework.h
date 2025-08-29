@@ -16,6 +16,13 @@
 
 VK_NAMESPACE_BEGIN
 
+namespace mtl
+{
+    struct Material2DCreateConfig;
+    struct Material3DCreateConfig;
+    class MaterialCreateInfo;
+}//namespace mtl
+
 class FontDataSource;
 class TileFont;
 class FontSource;
@@ -157,6 +164,16 @@ public:
     graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
     {
         return material_manager->CreateMaterial(mi_name,mci);
+    }
+
+    graph::Material *LoadMaterial(const AnsiString &mtl_name,graph::mtl::Material2DCreateConfig *cfg)
+    {
+        return material_manager->LoadMaterial(mtl_name,cfg);
+    }
+
+    graph::Material *LoadMaterial(const AnsiString &mtl_name,graph::mtl::Material3DCreateConfig *cfg)
+    {
+        return material_manager->LoadMaterial(mtl_name,cfg);
     }
 
     template<typename T>

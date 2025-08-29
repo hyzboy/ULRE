@@ -56,7 +56,7 @@ private:
 
     bool InitScene()
     {
-        Mesh *ri=db->CreateMesh(prim_axis,material_instance,pipeline);
+        Mesh *ri=CreateMesh(prim_axis,material_instance,pipeline);
 
         CreateComponentInfo cci(GetSceneRoot());
 
