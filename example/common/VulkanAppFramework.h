@@ -19,6 +19,8 @@
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKRenderResource.h>
+#include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/RenderFramework.h>
 #ifdef _DEBUG
 #include<hgl/graph/VKDeviceAttribute.h>
 #endif//_DEBUG

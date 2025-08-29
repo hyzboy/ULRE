@@ -36,6 +36,7 @@ namespace hgl::graph
     class TextRender
     {
         VulkanDevice *      device;
+        RenderFramework *   render_framework;
 
         RenderResource *    db;
 
