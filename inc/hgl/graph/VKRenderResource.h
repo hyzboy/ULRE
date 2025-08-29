@@ -9,6 +9,7 @@
 #include<hgl/graph/VKSampler.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/VKMaterialInstance.h>
+#include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/type/ObjectManage.h>
 #include<hgl/shadergen/MaterialCreateInfo.h>
@@ -34,7 +35,6 @@ using SamplerID             =int;
 using StaticMeshID          =int;
 
 using ShaderModuleMapByName=ObjectMap<AnsiString,ShaderModule>;
-constexpr const size_t VK_SHADER_STAGE_TYPE_COUNT=20;//GetBitOffset((uint32_t)VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI)+1;
 
 /**
  * 资源管理，用于管理场景内所需的所有数据

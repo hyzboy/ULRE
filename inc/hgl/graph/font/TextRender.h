@@ -68,7 +68,7 @@ namespace hgl::graph
 
         friend class RenderFramework;
 
-        TextRender(VulkanDevice *,TileFont *);
+        TextRender(RenderFramework *,TileFont *);
 
         bool InitTextLayoutEngine();
         bool InitMaterial(RenderPass *);
