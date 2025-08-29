@@ -70,6 +70,22 @@ public:
 
 DEFINE_MATERIAL_FACTORY_CLASS(Billboard2D,BillboardMaterialCreateConfig);
 
+struct Line3DMaterialCreateConfig:public Material3DCreateConfig
+{
+    float       line_width=1.0f;        ///<线条宽度
+
+public:
+
+    Line3DMaterialCreateConfig(const WithCamera &wc=WithCamera::With,
+                              const WithLocalToWorld &l2w=WithLocalToWorld::Without)
+        :Material3DCreateConfig(PrimitiveType::Points,wc,l2w)
+    {
+        shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
+    }
+};
+
+DEFINE_MATERIAL_FACTORY_CLASS(Line3D,Line3DMaterialCreateConfig);
+
 /**
  * 从文件加载材质
  * @param mtl_name 材质名称
