@@ -167,24 +167,5 @@ public: //Release
     void Release(Sampler *          s   ){rm_samplers.Release(s);}
     void Release(Mesh *             r   ){rm_mesh.Release(r);}
 };//class RenderResource
-
-/**
-* 创建一个渲染资源对像<br>
-* 这个函数是临时的，以后会被更好的机制替代
-*/
-template<typename T,typename ...ARGS>
-T *CreateRRObject(RenderResource *rr,ARGS...args)
-{
-    if(!rr)
-        return(nullptr);
-
-    T *obj=T::CreateNewObject(rr,args...);
-
-    if(!obj)
-        return(nullptr);
-
-    rr->Add(obj);
-    return obj;
-}
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DATABASE_INCLUDE
