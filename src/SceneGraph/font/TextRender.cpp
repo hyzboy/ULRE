@@ -102,7 +102,7 @@ namespace hgl::graph
 
             vil_config.Add("Position",VF_V4I16);
 
-            mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style);
+            mi_fs=mtl_manager->CreateMaterialInstance(mtl_fs,&vil_config,&fixed_style,sizeof(fixed_style));
             if(!mi_fs)return(false);
         }
 

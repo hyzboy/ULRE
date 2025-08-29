@@ -93,9 +93,9 @@ private:
     {
         SceneNode *scene_root=GetSceneRoot();       //取得缺省场景根节点
 
-        Add(scene_root,material_instance[0],Matrix4f(1.0f));
-        Add(scene_root,material_instance[1],rotate(HGL_RAD_90,0,1,0));
-        Add(scene_root,material_instance[2],rotate(HGL_RAD_90,1,0,0));
+        Add(scene_root,material_instance[0],Identity4f);
+        Add(scene_root,material_instance[1],AxisRotate(HGL_RAD_90,0,1,0));
+        Add(scene_root,material_instance[2],AxisRotate(HGL_RAD_90,1,0,0));
 
         CameraControl *camera_control=GetCameraControl();
 

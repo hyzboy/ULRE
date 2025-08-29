@@ -88,23 +88,32 @@ namespace hgl
 
         virtual void Render(double delta_time);
 
+    public: // Material 相关
+
+        template<typename ...ARGS>
+        graph::Material *CreateMaterial(ARGS...args)
+        {
+            return render_framework?render_framework->CreateMaterial(args...):nullptr;
+        }
+
+        template<typename ...ARGS>
+        graph::Material *LoadMaterial(ARGS...args)
+        {
+            return render_framework?render_framework->LoadMaterial(args...):nullptr;
+        }
+
+        template<typename ...ARGS>
+        graph::MaterialInstance *CreateMaterialInstance(ARGS...args)
+        {
+            return render_framework?render_framework->CreateMaterialInstance(args...):nullptr;
+        }
+
     public:
 
         template<typename ...ARGS>
         graph::VertexDataManager *CreateVDM(ARGS...args)
         {
             return render_framework?render_framework->CreateVDM(args...):nullptr;
-        }
-
-        graph::Material *CreateMaterial(const AnsiString &mi_name,const graph::mtl::MaterialCreateInfo *mci)
-        {
-            return render_framework?render_framework->CreateMaterial(mi_name,mci):nullptr;
-        }
-
-        template<typename T>
-        graph::Material *LoadMaterial(const AnsiString &mtl_name,T *cfg)
-        {
-            return render_framework?render_framework->LoadMaterial(mtl_name,cfg):nullptr;
         }
 
         void Add(graph::Primitive *prim)
@@ -136,7 +145,6 @@ namespace hgl
     #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}
 
         WO_FUNC_FROM_RENDER_FRAMEWORK(CreatePipeline,graph::Pipeline *)
-        WO_FUNC_FROM_RENDER_FRAMEWORK(CreateMaterialInstance,graph::MaterialInstance *)
         WO_FUNC_FROM_RENDER_FRAMEWORK(GetPrimitiveCreater,SharedPtr<graph::PrimitiveCreater>)
 
     #undef WO_FUNC_FROM_RENDER_FRAMEWORK

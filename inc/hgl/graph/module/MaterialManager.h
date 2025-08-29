@@ -68,8 +68,9 @@ public: //Material
 
 public: //MaterialInstance
 
+    MaterialInstance *  CreateMaterialInstance(Material *);
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil);
-    MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg);
 
     MaterialInstance *  CreateMaterialInstance(Material *, const VIL *vil, const void *, const int);
     MaterialInstance *  CreateMaterialInstance(Material *, const VILConfig *vil_cfg, const void *, const int);
@@ -77,16 +78,29 @@ public: //MaterialInstance
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl, const VIL *vil, const T *data)
     {
-        return CreateMaterialInstance(mtl, vil, data, sizeof(T));
+        return CreateMaterialInstance(mtl,vil,data,sizeof(T));
     }
 
     template<typename T>
     MaterialInstance *  CreateMaterialInstance(Material *mtl, const VILConfig *vil_cfg, const T *data)
     {
-        return CreateMaterialInstance(mtl, vil_cfg, data, sizeof(T));
+        return CreateMaterialInstance(mtl,vil_cfg,data,sizeof(T));
     }
 
     MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *, const VILConfig *vil_cfg=nullptr);
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name, const mtl::MaterialCreateInfo *, const VILConfig *vil_cfg,const void *data,const int data_size);
+
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *,const VILConfig *vil_cfg,const void *data,const int data_size);
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material2DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    {
+        return CreateMaterialInstance(mtl_name,mcc,vil_cfg,nullptr,0);
+    }
+
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *,const VILConfig *vil_cfg,const void *data,const int data_size);
+    MaterialInstance *  CreateMaterialInstance(const AnsiString &mtl_name,mtl::Material3DCreateConfig *mcc,const VILConfig *vil_cfg=nullptr)
+    {
+        return CreateMaterialInstance(mtl_name,mcc,vil_cfg,nullptr,0);
+    }
 
 };//class MaterialManager
 

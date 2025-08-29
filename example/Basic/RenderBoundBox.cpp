@@ -87,7 +87,7 @@ private:
         {
             color=GetColor4f(TestColor[i],1.0);
 
-            md->mi[i]=CreateMaterialInstance(md->material,nullptr,&color);
+            md->mi[i]=CreateMaterialInstance(md->material,(VIL *)nullptr,&color);
 
             if(!md->mi[i])
                 return(false);
