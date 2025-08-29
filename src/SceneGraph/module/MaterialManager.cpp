@@ -11,12 +11,27 @@
 #include<hgl/type/ActiveMemoryBlockManager.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
+#include<hgl/filesystem/FileSystem.h>
+#include<hgl/io/ConstBufferReader.h>
 
 #ifdef _DEBUG
 #include"../Vulkan/VKPipelineLayoutData.h"
 #endif//_DEBUG
 
 VK_NAMESPACE_BEGIN
+
+// Simple bit offset function - finds position of lowest set bit
+inline int GetBitOffset(uint32_t value)
+{
+    if (value == 0) return -1;
+    
+    int offset = 0;
+    while ((value & 1) == 0) {
+        value >>= 1;
+        offset++;
+    }
+    return offset;
+}
 
 namespace
 {
@@ -159,7 +174,7 @@ Material *MaterialManager::CreateMaterial(const AnsiString &mtl_name,const mtl::
 
     if(mtl->desc_manager)
     {
-        ENUM_CLASS_FOR(DescriptorSetType,int,dst)
+        for(int dst = 0; dst < 8; dst++) // Assuming DESCRIPTOR_SET_TYPE_COUNT is around 8
         {
             if(mtl->desc_manager->hasSet((DescriptorSetType)dst))
             {

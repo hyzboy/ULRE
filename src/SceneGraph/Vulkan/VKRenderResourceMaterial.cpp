@@ -42,6 +42,10 @@ namespace
     }
 }//namespace
 
+// The following functions are now delegated to MaterialManager in VKRenderResource.h
+// and implemented in MaterialManager.cpp
+
+/*
 const ShaderModule *RenderResource::CreateShaderModule(const AnsiString &sm_name,const ShaderCreateInfo *sci)
 {
     if(!device)return(nullptr);
@@ -206,4 +210,6 @@ Material *RenderResource::LoadMaterial(const AnsiString &mtl_name,mtl::Material3
 
     return this->CreateMaterial(hash_name,mci);
 }
+*/
+
 VK_NAMESPACE_END
