@@ -61,7 +61,7 @@ void main()
         {
             mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
                                         mi_bytes,                       //材质实例数据大小
-                                        VK_SHADER_STAGE_VERTEX_BIT);    //只在Vertex Shader中使用材质实例最终数据
+                                        (uint32_t)ShaderStage::Vertex);    //只在Vertex Shader中使用材质实例最终数据
 
             return(true);
         }

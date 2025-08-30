@@ -55,7 +55,7 @@ void main()
         {
             mci->SetMaterialInstance(   mi_codes,                       //材质实例glsl代码
                                         mi_bytes,                       //材质实例数据大小
-                                        VK_SHADER_STAGE_FRAGMENT_BIT);  //只在Fragment Shader中使用材质实例最终数据
+                                        (uint32_t)ShaderStage::Fragment);  //只在Fragment Shader中使用材质实例最终数据
 
             return(true);
         }

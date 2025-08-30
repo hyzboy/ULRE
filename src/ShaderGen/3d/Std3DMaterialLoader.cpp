@@ -54,10 +54,10 @@ namespace
             return true;
         }
         
-        template<VkShaderStageFlagBits ss,typename SD,typename SCI>
+        template<ShaderStage ss,typename SD,typename SCI>
         SD *CommonProc(SCI *sc)
         {
-            SD *sd=(SD *)(mfd->shader_data_map[ss]);
+            SD *sd=(SD *)(mfd->shader_data_map[(VkShaderStageFlagBits)ss]);
 
             if(!sd)
                 return (nullptr);
@@ -79,12 +79,12 @@ namespace
             if(!Std3DMaterial::CustomVertexShader(vsc))
                 return (false);
             
-            return CommonProc<VK_SHADER_STAGE_VERTEX_BIT,material_file::VertexShaderData,ShaderCreateInfoVertex>(vsc);
+            return CommonProc<ShaderStage::Vertex,material_file::VertexShaderData,ShaderCreateInfoVertex>(vsc);
         }
 
         bool CustomGeometryShader(ShaderCreateInfoGeometry *gsc) override
         {
-            material_file::GeometryShaderData *sd=CommonProc<VK_SHADER_STAGE_GEOMETRY_BIT,material_file::GeometryShaderData,ShaderCreateInfoGeometry>(gsc);
+            material_file::GeometryShaderData *sd=CommonProc<ShaderStage::Geometry,material_file::GeometryShaderData,ShaderCreateInfoGeometry>(gsc);
 
             if(!sd)
                 return (false);
@@ -96,7 +96,7 @@ namespace
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            return CommonProc<VK_SHADER_STAGE_FRAGMENT_BIT,material_file::FragmentShaderData,ShaderCreateInfoFragment>(fsc);
+            return CommonProc<ShaderStage::Fragment,material_file::FragmentShaderData,ShaderCreateInfoFragment>(fsc);
         }
     }; // class Std3DMaterialLoader:public Std3DMaterial
 } // namespace

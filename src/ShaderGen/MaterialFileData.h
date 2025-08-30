@@ -53,7 +53,7 @@ namespace material_file
 
     struct ShaderData
     {
-        VkShaderStageFlagBits   shader_stage;
+        ShaderStage   shader_stage;
 
         const char *            code;
         uint                    code_length;
@@ -62,7 +62,7 @@ namespace material_file
 
     public:
 
-        ShaderData(VkShaderStageFlagBits ss)
+        ShaderData(ShaderStage ss)
         {
             shader_stage=ss;
 
@@ -72,14 +72,15 @@ namespace material_file
 
         virtual ~ShaderData()=default;
 
-        const VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
+        const ShaderStage GetShaderStage()const{return shader_stage;}
+        const VkShaderStageFlagBits GetVkShaderStage()const{return (VkShaderStageFlagBits)shader_stage;}
     };
 
     struct VertexShaderData:public ShaderData
     {
         SVList output;
 
-        VertexShaderData():ShaderData(VK_SHADER_STAGE_VERTEX_BIT){}
+        VertexShaderData():ShaderData(ShaderStage::Vertex){}
 
     public:
 
@@ -96,7 +97,7 @@ namespace material_file
 
     public:
 
-        GeometryShaderData():ShaderData(VK_SHADER_STAGE_GEOMETRY_BIT){}
+        GeometryShaderData():ShaderData(ShaderStage::Geometry){}
 
     public:
 
@@ -107,12 +108,12 @@ namespace material_file
     {
         VIAList output;
 
-        FragmentShaderData():ShaderData(VK_SHADER_STAGE_FRAGMENT_BIT){}
+        FragmentShaderData():ShaderData(ShaderStage::Fragment){}
 
         void AddOutput(const VIA &via){output.Add(via);}
     };
 
-    using ShaderDataMap=ObjectMap<VkShaderStageFlagBits,ShaderData>;
+    using ShaderDataMap=ObjectMap<ShaderStage,ShaderData>;
 
     struct MaterialFileData
     {

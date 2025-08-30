@@ -77,7 +77,7 @@ void main()
 
         bool CustomFragmentShader(ShaderCreateInfoFragment *fsc) override
         {
-            mci->AddSampler(VK_SHADER_STAGE_FRAGMENT_BIT,DescriptorSetType::PerMaterial,SamplerType::Sampler2D,mtl::SamplerName::Text);
+            mci->AddSampler(ShaderStage::Fragment,DescriptorSetType::PerMaterial,SamplerType::Sampler2D,mtl::SamplerName::Text);
 
             fsc->AddOutput(VAT_VEC4,"FragColor");       //Fragment shader的输出等于最终的RT了，所以这个名称其实随便起。
 
@@ -89,7 +89,7 @@ void main()
         {
             mci->SetMaterialInstance(mi_codes,                       //材质实例glsl代码
                                      mi_bytes,                       //材质实例数据大小
-                                     VK_SHADER_STAGE_FRAGMENT_BIT);  //只在Fragment Shader中使用材质实例最终数据
+                                     (uint32_t)ShaderStage::Fragment);  //只在Fragment Shader中使用材质实例最终数据
 
             return(true);
         }

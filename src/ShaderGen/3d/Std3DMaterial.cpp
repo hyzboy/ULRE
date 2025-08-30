@@ -12,24 +12,24 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     
     if(cfg->camera||cfg->local_to_world||cfg->material_instance)
     {
-        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_LocalToWorld);
+        mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics,SBS_LocalToWorld);
 
         vsc->AddAssign();
     }
 
     if(cfg->camera)
     {
-        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_CameraInfo);
+        mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics,SBS_CameraInfo);
     }
 
     if(cfg->sky)
     {
-        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_SkyInfo);
+        mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics,SBS_SkyInfo);
     }
 
     if(cfg->local_to_world)
     {
-        mci->SetLocalToWorld(VK_SHADER_STAGE_ALL_GRAPHICS);
+        mci->SetLocalToWorld((uint32_t)ShaderStage::AllGraphics);
 
         if(cfg->position_format.vec_size==3)
             vsc->AddFunction(cfg->camera?func::GetPosition3DL2WCamera:func::GetPosition3DL2W);
@@ -56,7 +56,7 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
         vsc->AddFunction(func::GetNormalVS);
     }
 
-    mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_ViewportInfo);
+    mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics,SBS_ViewportInfo);
 
     return(true);
 }
