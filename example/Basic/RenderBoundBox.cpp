@@ -1,14 +1,9 @@
 ﻿#include<hgl/WorkManager.h>
-#include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/PrimitiveCreater.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/RenderList.h>
-#include<hgl/graph/Camera.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>
 

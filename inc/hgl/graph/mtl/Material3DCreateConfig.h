@@ -62,6 +62,19 @@ DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          const Material3DCreateConfig);
 
+
+struct SkyMinimalCreateConfig:public Material3DCreateConfig
+{
+public:
+
+    SkyMinimalCreateConfig(const WithCamera &wc=WithCamera::With)
+        :Material3DCreateConfig(PrimitiveType::Triangles,wc,WithLocalToWorld::With,WithSky::With)
+    {
+    }
+};
+
+DEFINE_MATERIAL_FACTORY_CLASS(SkyMinimal,       const SkyMinimalCreateConfig);
+
 struct BillboardMaterialCreateConfig:public Material3DCreateConfig
 {
     bool        fixed_size;             ///<固定大小(指像素尺寸)

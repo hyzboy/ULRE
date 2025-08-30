@@ -105,7 +105,7 @@ constexpr const ShaderBufferSource SBS_JointInfo=
 */
 constexpr const ShaderBufferSource SBS_SkyInfo=
 {
-    DescriptorSetType::Global,
+    DescriptorSetType::Scene,
 
     "sky",
     "SkyInfo",
@@ -114,9 +114,21 @@ constexpr const ShaderBufferSource SBS_SkyInfo=
     vec4  sun_direction;        // w=0
     vec4  sun_color;            // 线性空间 RGBA
 
+    vec4  base_sky_color;       // 天空基础色
+    vec4  moon_color;
+    vec4  halo_color;
+
     float sun_intensity;        // 光强（可乘入颜色或单独使用）
     float sun_path_azimuth_deg; // 正午方位角（度）
     float max_elevation_deg;    // 正午最大仰角（度）
+    float latitude_deg;         // 纬度（度）
+
+    float longitude_deg;        // 经度（度）
+    float altitude_m;           // 海拔（米）
+    float moon_intensity;       // 月亮强度
+    float halo_intensity;       // 光晕强度
+
+    ivec4 date;                 // year, month, day, padding
 
     // 预留参数（大气散射与曝光等），未来启用：
     // float turbidity;         // 浊度
