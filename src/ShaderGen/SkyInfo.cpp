@@ -91,8 +91,11 @@ void SkyInfo::CalculateCelestialParameters(float time_of_day)
     // 计算太阳角度（简化的太阳轨迹）
     // 0.0 = 午夜（太阳在地平线下），0.5 = 正午（太阳最高点）
     
-    float sun_angle = (time_of_day - 0.5f) * 2.0f * M_PI;  // -π 到 π
-    float elevation = sin(sun_angle) * max_elevation_deg * M_PI / 180.0f;  // 仰角（弧度）
+    // 使用余弦函数：cos(2π*time) 在time=0和time=1时为1，在time=0.5时为-1
+    // 我们要反过来：cos(2π*(time+0.5)) 在time=0时为-1，在time=0.5时为1  
+    float day_progress = (time_of_day + 0.5f) * 2.0f * M_PI;  
+    float elevation_factor = cos(day_progress);  // -1 (midnight) to +1 (noon)
+    float elevation = elevation_factor * max_elevation_deg * M_PI / 180.0f;  // 仰角（弧度）
     float azimuth = sun_path_azimuth_deg * M_PI / 180.0f;  // 方位角（弧度）
     
     // 计算太阳方向向量（从太阳指向场景）

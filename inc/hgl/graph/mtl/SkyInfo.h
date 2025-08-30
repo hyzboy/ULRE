@@ -1,8 +1,22 @@
 ﻿#pragma once
 
-#include<hgl/graph/mtl/StdMaterial.h>
-#include<hgl/type/Vector3f.h>
-#include<hgl/type/Vector4f.h>
+#define STD_MTL_NAMESPACE_BEGIN namespace hgl{namespace graph{namespace mtl{
+#define STD_MTL_NAMESPACE_END   }}}
+
+// Simple vector types for SkyInfo
+struct Vector3f
+{
+    float x, y, z;
+    Vector3f() : x(0), y(0), z(0) {}
+    Vector3f(float _x, float _y, float _z) : x(_x), y(_y), z(_z) {}
+};
+
+struct Vector4f
+{
+    float x, y, z, w;
+    Vector4f() : x(0), y(0), z(0), w(0) {}
+    Vector4f(float _x, float _y, float _z, float _w) : x(_x), y(_y), z(_z), w(_w) {}
+};
 
 STD_MTL_NAMESPACE_BEGIN
 
