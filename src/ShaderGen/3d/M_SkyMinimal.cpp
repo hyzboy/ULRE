@@ -14,34 +14,67 @@ void main()
     gl_Position = GetPosition3D();
 })";
 
-    // Fragment shader: minimal atmosphere + sun/moon disc + halo
-    // Uses interpolated Input.Direction as view direction in local space
     constexpr const char fs_main[] = R"(
-vec3 tonemap_exp2(vec3 x) { return exp2(-x); }
+vec3 getSky(vec3 dir, vec3 to_light)
+{
+    // Zenith factor: 1 at zenith, 0 at horizon
+    float h = clamp(dir.z, 0.0, 1.0);
+
+    // Base gradient (Rayleigh-like), brighter toward zenith
+    vec3 base = sky.base_sky_color.rgb;
+    vec3 grad = base * exp2(-(1.0 - h) * 0.8);
+
+    // Sunward warm scattering region (broader than disc)
+    float cos_t = clamp(dot(dir, to_light), -1.0, 1.0);
+    float sun_rad = radians(sky.sun_ang_deg);
+    // Expand region for glow around sun (e.g., ~6x disc radius)
+    float region = smoothstep(cos(sun_rad * 6.0), 1.0, cos_t);
+
+    // Warmer near horizon; blend with sun proximity and sun intensity
+    float horizon = 1.0 - h;
+    vec3 warmTint = mix(vec3(1.0), vec3(1.0, 0.4, 0.05) * 1.2, clamp(horizon, 0.0, 1.0));
+    vec3 scatterMix = mix(grad, warmTint, region * 0.5 * sky.sun_intensity);
+
+    // Final sky color blends more haze near horizon
+    float atmosphere = sqrt(max(0.0, 1.0 - h));
+    return mix(grad, scatterMix, atmosphere * 0.7);
+}
+
+// Stylized sun (disc + glow)
+vec3 getSun(vec3 dir, vec3 to_light)
+{
+    float cos_t = clamp(dot(dir, to_light), -1.0, 1.0);
+    float sun_rad = radians(sky.sun_ang_deg);
+    float sun_cos = cos(sun_rad);
+
+    float coreN = clamp((cos_t - sun_cos) / max(1e-5, 1.0 - sun_cos), 0.0, 1.0);
+    float h = clamp(dir.z, 0.0, 1.0);
+
+    float hard = pow(coreN, 100.0);
+    hard *= pow(h, 1.0 / 1.65);
+
+    float glow = pow(coreN, 6.0);
+    glow *= pow(h, 0.5);
+
+    float sunMask = clamp(hard + glow, 0.0, 1.0);
+    return sky.sun_color.rgb * sunMask * sky.sun_intensity;
+}
 
 void main()
 {
     // Use interpolated local direction (sphere vertex position normalized)
     vec3 dir = normalize(Input.Direction);
 
-    vec3 sky_color=exp2(-dir.z/sky.base_sky_color.rgb);
+    // Sun / Moon rendering using direction space
+    vec3 to_light = normalize(sky.sun_direction.xyz);
 
-    // Sun / Moon rendering
-    vec3 to_light = normalize(-sky.sun_direction.xyz);
-    float cos_t = clamp(dot(dir, to_light), -1.0, 1.0);
+    // Sky color from adapted function
+    vec3 sky_color = getSky(dir, to_light);
 
-    const float sun_rad = radians(sky.sun_ang_deg);
-    const float sun_cos = cos(sun_rad);
+    // Stylized sun
+    vec3 sun_color = getSun(dir, to_light);
 
-    float core = smoothstep(sun_cos, 1.0, cos_t);
-    float halo = exp2((cos_t - 1.0) * 16.0) * sky.halo_intensity;
-
-    vec3 sun_core = sky.sun_color.rgb * core * sky.sun_intensity;
-    vec3 moon_core = sky.moon_color.rgb * core * sky.moon_intensity;
-
-    vec3 color = sky_color + (sun_core + moon_core) + halo * sky.halo_color.rgb;
-
-    FragColor = vec4(color, 1.0);
+    FragColor = vec4(sky_color+sun_color, 1.0);
 })";
 
     class MaterialSkyMinimal : public Std3DMaterial
