@@ -118,13 +118,20 @@ constexpr const ShaderBufferSource SBS_SkyInfo=
     float sun_path_azimuth_deg; // 正午方位角（度）
     float max_elevation_deg;    // 正午最大仰角（度）
 
+    // 大气散射基础色（用于 exp2(-ray.y/atmosphere_base_colors) 计算）
+    vec3  atmosphere_base_colors; // 替代硬编码的 vec3(0.1, 0.3, 0.6)
+    float sun_angular_size;     // 太阳/月亮的视角大小
+    
+    // 统一的天体参数（太阳/月亮共用）
+    float celestial_halo_intensity; // 光晕强度
+    float celestial_halo_power;     // 光晕衰减指数
+
     // 预留参数（大气散射与曝光等），未来启用：
     // float turbidity;         // 浊度
     // float rayleigh;          // 瑞利散射强度
     // float mie;               // 米氏散射强度
     // float ground_albedo;     // 地表反照率
     // float exposure;          // 曝光
-    // float sun_angular_deg;   // 太阳视半径（度）
     // vec3  sky_tint;          // 天空色倾向
 )"
 };

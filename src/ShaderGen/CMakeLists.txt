@@ -39,7 +39,9 @@ set(STD_MTL_HEADER_PATH  ${ROOT_INCLUDE_PATH}/hgl/graph/mtl)
 SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
+                            ${STD_MTL_HEADER_PATH}/SkyInfo.h
                             ShaderVariableType.cpp
+                            SkyInfo.cpp
                             common/MFCommon.h
                             common/MFGetPosition.h
                             common/MFGetNormal.h

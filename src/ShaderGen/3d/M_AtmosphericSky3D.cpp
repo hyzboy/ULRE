@@ -4,14 +4,16 @@
 STD_MTL_NAMESPACE_BEGIN
 namespace
 {
-    // 大气渲染材质生产器 - 超简易版本
+    // 大气渲染材质生产器 - 改进版本
     // 
     // 功能：
-    // 1. 背景使用 exp2(-ray.y/vec3(.1,.3,.6)) 模拟大气渐变色
-    // 2. 根据 SkyInfo 的 UBO (在shader中叫sky) 画出太阳或月亮
-    //    - 太阳方向：sky.sun_direction
-    //    - 太阳颜色：sky.sun_color 
-    //    - 光强：sky.sun_intensity (夜晚为0时可显示月亮)
+    // 1. 背景使用 exp2(-ray.y/sky.atmosphere_base_colors) 模拟大气渐变色，基础色由SkyInfo传入
+    // 2. 根据 SkyInfo 的 UBO (在shader中叫sky) 画出太阳或月亮，统一使用相同的参数
+    //    - 天体方向：sky.sun_direction
+    //    - 天体颜色：sky.sun_color 
+    //    - 光强：sky.sun_intensity (夜晚为0时显示月亮，>0时显示太阳)
+    //    - 视角大小：sky.sun_angular_size
+    //    - 光晕参数：sky.celestial_halo_intensity, sky.celestial_halo_power
     //
     // 使用方法：
     // 1. 确保 Material3DCreateConfig 中 sky = true
@@ -41,37 +43,36 @@ void main()
 {
     vec3 ray = normalize(Input.RayDirection);
     
-    // 大气渐变背景：使用指定的公式 exp2(-ray.y/vec3(.1,.3,.6)) 模拟渐变色
-    vec3 atmosphere_color = exp2(-ray.y / vec3(0.1, 0.3, 0.6));
+    // 大气渐变背景：使用SkyInfo传入的基础色替代硬编码值
+    vec3 atmosphere_color = exp2(-ray.y / sky.atmosphere_base_colors);
     
     // 根据SkyInfo的UBO（在shader中叫sky）画出太阳或月亮
     vec3 final_color = atmosphere_color;
     
-    // 获取太阳方向（UBO中存储的是从太阳指向场景的方向，所以需要取反）
-    vec3 sun_dir = -normalize(sky.sun_direction.xyz);
+    // 获取太阳/月亮方向（UBO中存储的是从天体指向场景的方向，所以需要取反）
+    vec3 celestial_dir = -normalize(sky.sun_direction.xyz);
     
-    // 计算射线与太阳方向的点积
-    float sun_dot = dot(ray, sun_dir);
+    // 计算射线与天体方向的点积
+    float celestial_dot = dot(ray, celestial_dir);
     
-    // 太阳光盘渲染 - 简单的圆形
-    float sun_angular_size = 0.025; // 太阳的视角大小（约1.4度）
-    float sun_mask = smoothstep(cos(sun_angular_size + 0.005), cos(sun_angular_size), sun_dot);
+    // 天体光盘渲染 - 使用UBO中的视角大小参数
+    float celestial_mask = smoothstep(cos(sky.sun_angular_size + 0.005), cos(sky.sun_angular_size), celestial_dot);
     
-    // 太阳光晕效果
-    float sun_halo = pow(max(sun_dot, 0.0), 32.0) * 0.2;
+    // 天体光晕效果 - 使用UBO中的光晕参数
+    float celestial_halo = pow(max(celestial_dot, 0.0), sky.celestial_halo_power) * sky.celestial_halo_intensity;
     
-    // 根据太阳强度决定是否渲染太阳/月亮
+    // 统一的天体渲染逻辑（太阳/月亮共用）
     if(sky.sun_intensity > 0.0)
     {
-        // 太阳模式：强度大于0时渲染明亮的太阳
-        vec3 sun_contribution = sky.sun_color.rgb * sky.sun_intensity * (sun_mask * 2.0 + sun_halo);
-        final_color += sun_contribution;
+        // 太阳模式：强度大于0时渲染太阳
+        vec3 celestial_contribution = sky.sun_color.rgb * sky.sun_intensity * (celestial_mask * 2.0 + celestial_halo);
+        final_color += celestial_contribution;
     }
     else
     {
-        // 月亮模式：强度为0时可以渲染微弱的月亮（可选）
-        vec3 moon_contribution = vec3(0.8, 0.8, 1.0) * 0.3 * sun_mask;
-        final_color += moon_contribution;
+        // 月亮模式：强度为0时渲染月亮，使用相同的参数但不同的强度
+        vec3 celestial_contribution = sky.sun_color.rgb * 0.3 * (celestial_mask + celestial_halo);
+        final_color += celestial_contribution;
     }
     
     FragColor = vec4(final_color, 1.0);
