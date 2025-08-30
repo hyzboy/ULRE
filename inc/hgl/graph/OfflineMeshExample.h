@@ -2,6 +2,7 @@
 
 #include<hgl/component/OfflineMeshComponent.h>
 #include<hgl/graph/DirectMeshRenderer.h>
+#include<vector>
 
 /**
  * Example usage of OfflineMeshComponent and DirectMeshRenderer
