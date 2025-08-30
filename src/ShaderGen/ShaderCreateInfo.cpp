@@ -123,7 +123,7 @@ void ShaderCreateInfo::SetMaterialInstance(UBODescriptor *ubo,const AnsiString &
     AddUBO(DescriptorSetType::PerMaterial,ubo);
     AddStruct(mtl::MaterialInstanceStruct);
 
-    AddFunction(shader_stage==VK_SHADER_STAGE_VERTEX_BIT?mtl::func::MF_GetMI_VS:mtl::func::MF_GetMI_Other);
+    AddFunction(shader_stage==ShaderStage::Vertex?mtl::func::MF_GetMI_VS:mtl::func::MF_GetMI_Other);
 
     mi_codes=mi;
 }
@@ -144,7 +144,7 @@ bool ShaderCreateInfo::ProcInput(ShaderCreateInfo *last_sc)
     final_shader+="\nlayout(location=0) in ";
     final_shader+=last_output;
 
-    if(shader_stage==VK_SHADER_STAGE_GEOMETRY_BIT)
+    if(shader_stage==ShaderStage::Geometry)
         final_shader+="Input[];\n";
     else
         final_shader+="Input;\n";
@@ -159,7 +159,7 @@ bool ShaderCreateInfo::ProcOutput()
     if(IsEmptyOutput())
         return(true);
 
-    output_struct=GetShaderStageName(shader_stage);
+    output_struct=GetShaderStageName((VkShaderStageFlagBits)shader_stage);
     output_struct+="_Output\n{\n";
 
     GetOutputStrcutString(output_struct);
@@ -370,7 +370,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 #ifdef _DEBUG
 
     //想办法存成文件或是输出行号，以方便出错了调试
-    LOG_INFO(AnsiString(GetShaderStageName(shader_stage))+" shader: \n"+final_shader);
+    LOG_INFO(AnsiString(GetShaderStageName((VkShaderStageFlagBits)shader_stage))+" shader: \n"+final_shader);
 
 #endif//_DEBUG
 
@@ -382,7 +382,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 
 bool ShaderCreateInfo::CompileToSPV()
 {
-    spv_data=CompileShader(shader_stage,final_shader.c_str());
+    spv_data=CompileShader((VkShaderStageFlagBits)shader_stage,final_shader.c_str());
 
     if(!spv_data)
         return(false);

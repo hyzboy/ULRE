@@ -2,7 +2,7 @@
 
 #include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
-#include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VK.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
@@ -21,7 +21,7 @@ class ShaderDescriptorInfo
 {
 protected:
 
-    VkShaderStageFlagBits               stage_flag;
+    ShaderStage                         stage_flag;
 
     AnsiStringList                      struct_list;        //用到的结构列表
 
@@ -35,11 +35,12 @@ protected:
 
 public:
 
-    ShaderDescriptorInfo(VkShaderStageFlagBits);
+    ShaderDescriptorInfo(ShaderStage);
     virtual ~ShaderDescriptorInfo()=default;
 
-    const VkShaderStageFlagBits         GetShaderStage()const { return stage_flag; }
-    const AnsiString                    GetStageName()const { return AnsiString(GetShaderStageName(stage_flag)); }
+    const ShaderStage                   GetShaderStage()const { return stage_flag; }
+    const VkShaderStageFlagBits         GetVkShaderStage()const { return (VkShaderStageFlagBits)stage_flag; }
+    const AnsiString                    GetStageName()const { return AnsiString(GetShaderStageName((VkShaderStageFlagBits)stage_flag)); }
 
 public:
 
@@ -61,7 +62,7 @@ public:
     void SetPushConstant(const AnsiString &name,uint8_t offset,uint8_t size);
 };//class ShaderDescriptorInfo
 
-template<VkShaderStageFlagBits SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderDescriptorInfo
+template<ShaderStage SS,typename IArray,typename I,typename OArray,typename O> class CustomShaderDescriptorInfo:public ShaderDescriptorInfo
 {
     IArray input;
     OArray output;
@@ -85,7 +86,7 @@ public:
     const bool IsEmptyOutput()const{return output.IsEmpty();}
 };//class CustomShaderDescriptorInfo
 
-class VertexShaderDescriptorInfo:public CustomShaderDescriptorInfo<VK_SHADER_STAGE_VERTEX_BIT,VIAArray,VIA,SVArray,ShaderVariable  >
+class VertexShaderDescriptorInfo:public CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable  >
 {
     SubpassInputDescriptorList          subpass_input;
 
@@ -95,15 +96,15 @@ public:
 
 public:
 
-    using CustomShaderDescriptorInfo<VK_SHADER_STAGE_VERTEX_BIT,VIAArray,VIA,SVArray,ShaderVariable>::CustomShaderDescriptorInfo;
+    using CustomShaderDescriptorInfo<ShaderStage::Vertex,VIAArray,VIA,SVArray,ShaderVariable>::CustomShaderDescriptorInfo;
     ~VertexShaderDescriptorInfo()override=default;
 
     bool AddSubpassInput(const AnsiString &name,uint8_t index);
 };//class VertexShaderDescriptorInfo
 
-using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using TessEvalShaderDescriptorInfo=CustomShaderDescriptorInfo<VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,  SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using GeometryShaderDescriptorInfo=CustomShaderDescriptorInfo<VK_SHADER_STAGE_GEOMETRY_BIT,                 SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<VK_SHADER_STAGE_FRAGMENT_BIT,                 SVArray,  ShaderVariable,   VIAArray,   VIA             >;
+using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessellationControl,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using TessEvalShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessellationEvaluation,  SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using GeometryShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Geometry,                 SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Fragment,                 SVArray,  ShaderVariable,   VIAArray,   VIA             >;
 
 }}//namespace hgl::graph

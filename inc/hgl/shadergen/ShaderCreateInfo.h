@@ -22,7 +22,7 @@ class ShaderCreateInfo
 {
 protected:
 
-    VkShaderStageFlagBits shader_stage;                      ///<着色器阶段
+    ShaderStage shader_stage;                      ///<着色器阶段
 
     MaterialDescriptorInfo *mdi;
 
@@ -72,7 +72,8 @@ protected:
 public:
 
     virtual ShaderDescriptorInfo *GetSDI()=0;
-    const VkShaderStageFlagBits GetShaderStage()const{return shader_stage;}
+    const ShaderStage GetShaderStage()const{return shader_stage;}
+    const VkShaderStageFlagBits GetVkShaderStage()const{return (VkShaderStageFlagBits)shader_stage;}
 
 protected:
     

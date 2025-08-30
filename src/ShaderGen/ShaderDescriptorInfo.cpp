@@ -1,7 +1,7 @@
 ﻿#include<hgl/shadergen/ShaderDescriptorInfo.h>
 
 namespace hgl{namespace graph{
-ShaderDescriptorInfo::ShaderDescriptorInfo(VkShaderStageFlagBits flag_bit)
+ShaderDescriptorInfo::ShaderDescriptorInfo(ShaderStage flag_bit)
 {
     stage_flag=flag_bit;
    

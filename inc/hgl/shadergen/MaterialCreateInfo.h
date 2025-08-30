@@ -51,14 +51,14 @@ namespace hgl::graph
 
             const   uint32      GetShaderStage  ()const{return config->shader_stage_flag_bit;}
 
-                    bool        hasShader       (const VkShaderStageFlagBits ss)const{return config->shader_stage_flag_bit&ss;}
+                    bool        hasShader       (const ShaderStage ss)const{return config->shader_stage_flag_bit&(uint32)ss;}
 
-                    bool        hasVertex       ()const{return hasShader(VK_SHADER_STAGE_VERTEX_BIT);}
-        //          bool        hasTessCtrl     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);}
-        //          bool        hasTessEval     ()const{return hasShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);}
-                    bool        hasGeometry     ()const{return hasShader(VK_SHADER_STAGE_GEOMETRY_BIT);}
-                    bool        hasFragment     ()const{return hasShader(VK_SHADER_STAGE_FRAGMENT_BIT);}
-        //          bool        hasCompute      ()const{return hasShader(VK_SHADER_STAGE_COMPUTE_BIT);}
+                    bool        hasVertex       ()const{return hasShader(ShaderStage::Vertex);}
+        //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessellationControl);}
+        //          bool        hasTessEval     ()const{return hasShader(ShaderStage::TessellationEvaluation);}
+                    bool        hasGeometry     ()const{return hasShader(ShaderStage::Geometry);}
+                    bool        hasFragment     ()const{return hasShader(ShaderStage::Fragment);}
+        //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}
 
             ShaderCreateInfoVertex *   GetVS()const{return vert;}
             ShaderCreateInfoGeometry * GetGS()const{return geom;}
@@ -89,12 +89,12 @@ namespace hgl::graph
 
             bool AddStruct(const AnsiString &ubo_typename,const AnsiString &codes);
 
-            bool AddUBO(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
+            bool AddUBO(const ShaderStage flag_bits,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name);
             bool AddUBO(const uint32_t flag_bits,const DescriptorSetType &set_type,const AnsiString &struct_name,const AnsiString &name);
 
             bool AddUBOStruct(const uint32_t flag_bits,const ShaderBufferSource &ss);
 
-            bool AddSampler(const VkShaderStageFlagBits flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
+            bool AddSampler(const ShaderStage flag_bits,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name);
 
             bool CreateShader();
         };//class MaterialCreateInfo

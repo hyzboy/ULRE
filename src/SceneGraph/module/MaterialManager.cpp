@@ -61,7 +61,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
     if(sm_map.Get(sm_name,sm))
         return sm;
 
-    sm=device->CreateShaderModule(sci->GetShaderStage(),sci->GetSPVData(),sci->GetSPVSize());
+    sm=device->CreateShaderModule((VkShaderStageFlagBits)sci->GetShaderStage(),sci->GetSPVData(),sci->GetSPVSize());
 
     if(!sm)
         return(nullptr);
@@ -73,7 +73,7 @@ const ShaderModule *MaterialManager::CreateShaderModule(const AnsiString &sm_nam
             DebugUtils *du=device->GetDebugUtils();
 
             if(du)
-                du->SetShaderModule(*sm,"Shader:"+sm_name+AnsiString(":")+GetShaderStageName(sci->GetShaderStage()));
+                du->SetShaderModule(*sm,"Shader:"+sm_name+AnsiString(":")+GetShaderStageName((VkShaderStageFlagBits)sci->GetShaderStage()));
         }
     #endif//_DEBUG
 
