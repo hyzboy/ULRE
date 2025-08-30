@@ -2,7 +2,6 @@
 
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/mtl/MaterialCreateConfig.h>
-#include<hgl/graph/CoordinateSystem.h>
 #include<hgl/graph/VertexAttrib.h>
 
 STD_MTL_NAMESPACE_BEGIN
@@ -80,7 +79,7 @@ public:
                               const WithLocalToWorld &l2w=WithLocalToWorld::Without)
         :Material3DCreateConfig(PrimitiveType::Points,wc,l2w)
     {
-        shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
+        enableGeometryShader();
     }
 };
 

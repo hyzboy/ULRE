@@ -67,7 +67,7 @@ public:
 
         position_format=VAT_IVEC4;
 
-        shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
+        enableGeometryShader();
     }
 };
 
