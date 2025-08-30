@@ -23,6 +23,12 @@ namespace hgl::graph
 
     namespace mtl
     {
+        enum class WithSky:uint8
+        {
+            Without=0,
+            With
+        };
+
         enum class WithCamera:uint8
         {
             Without=0,

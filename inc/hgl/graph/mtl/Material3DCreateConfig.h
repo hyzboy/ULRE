@@ -10,15 +10,18 @@ struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 {
     bool                camera;                 ///<包含摄像机矩阵信息
 
+    bool                sky;                    ///<是否包含天空信息(主要是太阳光和大气散射相关)
+
     VAType              position_format;        ///<position格式
 
 //    bool                reverse_depth;          ///<使用反向深度
 
 public:
 
-    Material3DCreateConfig(const PrimitiveType &p,
-                           const WithCamera &wc=WithCamera::With,
-                           const WithLocalToWorld &l2w=WithLocalToWorld::With)
+    Material3DCreateConfig(const PrimitiveType &    p,
+                           const WithCamera &       wc  =WithCamera::With,
+                           const WithLocalToWorld & l2w =WithLocalToWorld::With,
+                           const WithSky &          s   =WithSky::Without)
         :MaterialCreateConfig(p,l2w==WithLocalToWorld::With)
     {
         rt_output.color=1;          //输出一个颜色
@@ -26,6 +29,8 @@ public:
         rt_output.stencil=false;    //不输出stencil
 
         camera=(wc==WithCamera::With);
+
+        sky=(s==WithSky::With);
 
         position_format=VAT_VEC3;
 
@@ -39,6 +44,9 @@ public:
         if(off)return off;
 
         off=camera-cfg.camera;
+        if(off)return off;
+
+        off=sky-cfg.sky;
         if(off)return off;
 
         off=position_format.Comp(cfg.position_format);

@@ -4,7 +4,6 @@
 #include<hgl/graph/mtl/UBOCommon.h>
 #include"common/MFGetPosition.h"
 #include"common/MFGetNormal.h"
-#include"common/MFRectPrimitive.h"
 
 STD_MTL_NAMESPACE_BEGIN
 bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
@@ -21,6 +20,11 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
     if(cfg->camera)
     {
         mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_CameraInfo);
+    }
+
+    if(cfg->sky)
+    {
+        mci->AddUBOStruct(VK_SHADER_STAGE_ALL_GRAPHICS,SBS_SkyInfo);
     }
 
     if(cfg->local_to_world)
