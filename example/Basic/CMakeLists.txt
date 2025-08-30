@@ -20,3 +20,4 @@ CreateProject(04_Billboard                      BillboardTest.cpp)
 CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
 
 CreateProject(06_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
+CreateProject(07_TerrainHeightmap               TerrainHeightmap.cpp)
