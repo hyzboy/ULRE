@@ -30,7 +30,7 @@ private:
 
         auto *sky_info=ubo_sky_info->data();
 
-        sky_info->SetTime(12,30,0);           // 正午 12:30
+        sky_info->SetTime(10,30,0);
 
         auto *desc_bind=GetScene()->GetDescriptorBinding();
 
