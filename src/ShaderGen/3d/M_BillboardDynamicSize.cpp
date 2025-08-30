@@ -90,7 +90,7 @@ MaterialCreateInfo *CreateBillboard2DDynamic(const VulkanDevAttr *dev_attr,mtl::
     if(!cfg)
         return(nullptr);
 
-    cfg->shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
+    cfg->enableGeometryShader();
 
     cfg->local_to_world=true;
 

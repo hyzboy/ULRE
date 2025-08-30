@@ -87,7 +87,7 @@ MaterialCreateInfo *CreateRectTexture2D(const VulkanDevAttr *dev_attr,mtl::Mater
     if(!dev_attr||!cfg)
         return(nullptr);
 
-    cfg->shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT;
+    cfg->enableGeometryShader();
 
     MaterialRectTexture2D mvc2d(cfg);
 
