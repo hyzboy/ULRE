@@ -1,16 +1,7 @@
 ﻿#pragma once
 
-namespace hgl
+namespace hgl::graph::mtl::SamplerName 
 {
-    namespace graph
-    {
-        namespace mtl
-        {
-            namespace SamplerName 
-            {
-                constexpr const char BaseColor[] = "TextureBaseColor";
-                constexpr const char Text[] = "TextureText";
-            }//namespace SamplerName
-        }//namespace mtl
-    }//namespace graph
-}//namespace hgl
+    constexpr const char BaseColor[] = "TextureBaseColor";
+    constexpr const char Text[] = "TextureText";
+}//namespace hgl::graph::mtl::SamplerName
