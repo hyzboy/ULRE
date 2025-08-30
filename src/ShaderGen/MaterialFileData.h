@@ -2,7 +2,8 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
 #include<hgl/type/AccumMemoryManager.h>
-#include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VK.h>
+#include<hgl/graph/VKVertexInputAttribute.h>
 #include<hgl/graph/VKSamplerType.h>
 #include<hgl/graph/VKPrimitiveType.h>
 #include<hgl/graph/VKDescriptorSetType.h>
@@ -53,7 +54,7 @@ namespace material_file
 
     struct ShaderData
     {
-        ShaderStage   shader_stage;
+        ShaderStage             shader_stage;
 
         const char *            code;
         uint                    code_length;

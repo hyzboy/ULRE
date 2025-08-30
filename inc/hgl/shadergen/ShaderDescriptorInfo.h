@@ -3,6 +3,7 @@
 #include<hgl/type/Map.h>
 #include<hgl/type/StringList.h>
 #include<hgl/graph/VK.h>
+#include<hgl/graph/VKVertexInputAttribute.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/shadergen/MaterialDescriptorInfo.h>
@@ -102,9 +103,9 @@ public:
     bool AddSubpassInput(const AnsiString &name,uint8_t index);
 };//class VertexShaderDescriptorInfo
 
-using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessellationControl,     SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using TessEvalShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessellationEvaluation,  SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using GeometryShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Geometry,                 SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
-using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Fragment,                 SVArray,  ShaderVariable,   VIAArray,   VIA             >;
+using TessCtrlShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessControl, SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using TessEvalShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::TessEval,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using GeometryShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Geometry,    SVArray,  ShaderVariable,   SVArray,    ShaderVariable  >;
+using FragmentShaderDescriptorInfo=CustomShaderDescriptorInfo<ShaderStage::Fragment,    SVArray,  ShaderVariable,   VIAArray,   VIA             >;
 
 }}//namespace hgl::graph

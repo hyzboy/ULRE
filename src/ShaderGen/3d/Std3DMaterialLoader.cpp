@@ -22,7 +22,7 @@ namespace
             mfd=data;
         }
 
-        ~Std3DMaterialLoader()
+        virtual ~Std3DMaterialLoader()
         {
             delete mfd;
         }
@@ -57,7 +57,7 @@ namespace
         template<ShaderStage ss,typename SD,typename SCI>
         SD *CommonProc(SCI *sc)
         {
-            SD *sd=(SD *)(mfd->shader_data_map[(VkShaderStageFlagBits)ss]);
+            SD *sd=(SD *)(mfd->shader_data_map[ss]);
 
             if(!sd)
                 return (nullptr);

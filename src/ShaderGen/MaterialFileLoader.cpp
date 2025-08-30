@@ -1,7 +1,7 @@
 ﻿#include<hgl/graph/mtl/MaterialCreateConfig.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKShaderStage.h>
+#include<hgl/graph/VKVertexInputAttribute.h>
 #include<hgl/graph/VKSamplerType.h>
 
 #include<hgl/io/TextInputStream.h>
@@ -691,7 +691,7 @@ namespace
 
                     mfd->shader_data_map.Add(sd->GetShaderStage(),sd);
 
-                    mfd->shader_stage_flag_bit|=sd->GetShaderStage();
+                    mfd->shader_stage_flag_bit|=(uint32_t)sd->GetShaderStage();
                 }
                 else
                 {
