@@ -23,12 +23,12 @@ const AnsiString MaterialCreateConfig::ToHashString()
 
     *p='_';++p;
 
-    if(shader_stage_flag_bit&VK_SHADER_STAGE_VERTEX_BIT){*p='V';++p;}
-    if(shader_stage_flag_bit&VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT){*p='T';++p;}     //tc/te有一个就行了
-    if(shader_stage_flag_bit&VK_SHADER_STAGE_GEOMETRY_BIT){*p='G';++p;}
-    if(shader_stage_flag_bit&VK_SHADER_STAGE_FRAGMENT_BIT){*p='F';++p;}
-    if(shader_stage_flag_bit&VK_SHADER_STAGE_COMPUTE_BIT){*p='C';++p;}
-    if(shader_stage_flag_bit&VK_SHADER_STAGE_MESH_BIT_EXT){*p='M';++p;}     //mesh/task有一个就行了
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Vertex){*p='V';++p;}
+    if(shader_stage_flag_bit&(uint32)ShaderStage::TessellationControl){*p='T';++p;}     //tc/te有一个就行了
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Geometry){*p='G';++p;}
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Fragment){*p='F';++p;}
+    if(shader_stage_flag_bit&(uint32)ShaderStage::Compute){*p='C';++p;}
+    if(shader_stage_flag_bit&(uint32)ShaderStage::MeshEXT){*p='M';++p;}     //mesh/task有一个就行了
     *p='_';++p;
 
     *p=0;

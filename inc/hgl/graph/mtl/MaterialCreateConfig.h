@@ -26,14 +26,14 @@ struct MaterialCreateConfig:public Comparator<MaterialCreateConfig>
 
 public:
 
-    const uint32 enableVertexShader     () { return shader_stage_flag_bit|=VK_SHADER_STAGE_VERTEX_BIT; }
-    const uint32 enableGeometryShader   () { return shader_stage_flag_bit|=VK_SHADER_STAGE_GEOMETRY_BIT; }
-    const uint32 enableTesslationShader () { return shader_stage_flag_bit|=VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT|VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; }
-    const uint32 enableFragmentShader   () { return shader_stage_flag_bit|=VK_SHADER_STAGE_FRAGMENT_BIT; }
+    const uint32 enableVertexShader     () { return shader_stage_flag_bit|=(uint32)ShaderStage::Vertex; }
+    const uint32 enableGeometryShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Geometry; }
+    const uint32 enableTesslationShader () { return shader_stage_flag_bit|=(uint32)ShaderStage::TessellationControl|(uint32)ShaderStage::TessellationEvaluation; }
+    const uint32 enableFragmentShader   () { return shader_stage_flag_bit|=(uint32)ShaderStage::Fragment; }
 
-    const uint32 enableVertexFragmentShader() { return shader_stage_flag_bit|=VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT; }
+    const uint32 enableVertexFragmentShader() { return shader_stage_flag_bit|=(uint32)ShaderStage::Vertex|(uint32)ShaderStage::Fragment; }
 
-    const uint32 enableComputeShader    () { return shader_stage_flag_bit|=VK_SHADER_STAGE_COMPUTE_BIT; }
+    const uint32 enableComputeShader    () { return shader_stage_flag_bit|=(uint32)ShaderStage::Compute; }
 
 public:
 

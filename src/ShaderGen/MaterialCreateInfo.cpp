@@ -39,7 +39,7 @@ bool MaterialCreateInfo::AddStruct(const AnsiString &struct_name,const AnsiStrin
     return mdi.AddStruct(struct_name,codes);
 }
 
-bool MaterialCreateInfo::AddUBO(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
+bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetType set_type,const AnsiString &struct_name,const AnsiString &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);
@@ -104,7 +104,7 @@ bool MaterialCreateInfo::AddUBOStruct(const uint32_t flag_bits,const ShaderBuffe
     return AddUBO(flag_bits,ss.set_type,ss.struct_name,ss.name);
 }
 
-bool MaterialCreateInfo::AddSampler(const VkShaderStageFlagBits flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
+bool MaterialCreateInfo::AddSampler(const ShaderStage flag_bit,const DescriptorSetType set_type,const SamplerType &st,const AnsiString &name)
 {
     if(!shader_map.ContainsKey(flag_bit))
         return(false);

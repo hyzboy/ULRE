@@ -3,22 +3,22 @@
 #include<hgl/shadergen/ShaderCreateInfo.h>
 
 namespace hgl{namespace graph{
-class ShaderCreateInfoMap:public ObjectMap<VkShaderStageFlagBits,ShaderCreateInfo>
+class ShaderCreateInfoMap:public ObjectMap<ShaderStage,ShaderCreateInfo>
 {
 public:
 
-    using ObjectMap<VkShaderStageFlagBits,ShaderCreateInfo>::ObjectMap;
+    using ObjectMap<ShaderStage,ShaderCreateInfo>::ObjectMap;
 
     bool Add(ShaderCreateInfo *sc)
     {
         if(!sc)return(false);
 
-        VkShaderStageFlagBits flag=sc->GetShaderStage();
+        ShaderStage flag=sc->GetShaderStage();
 
         if(ContainsKey(flag))
             return(false);
 
-        ObjectMap<VkShaderStageFlagBits,ShaderCreateInfo>::Add(flag,sc);
+        ObjectMap<ShaderStage,ShaderCreateInfo>::Add(flag,sc);
         return(true);
     }
 };
