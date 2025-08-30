@@ -63,6 +63,8 @@ public:
         if(ubo_instance->name().IsEmpty())
             return(false);
 
+        ubo_instance->Update();
+
         return ubo_map.Add(ubo_instance->name(),ubo_instance->ubo());
     }
 

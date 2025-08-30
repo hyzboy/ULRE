@@ -82,7 +82,7 @@ public:
 
     T *data(){return &data_map;}
 
-    void Update()
+    void Update()const
     {
         if(dev_buf)
             dev_buf->Write(&data_map,sizeof(T));

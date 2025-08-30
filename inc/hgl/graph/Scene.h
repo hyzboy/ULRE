@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/SceneNode.h>
-#include<hgl/type/Pool.h>
+#include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/io/event/EventDispatcher.h>
 
 namespace hgl::graph
@@ -21,6 +21,10 @@ namespace hgl::graph
         ObjectList<SceneNode> SceneNodePool;            ///<场景节点池
 
         SceneNode *root_node;                           ///<场景根节点
+
+    protected:
+
+        DescriptorBinding *descriptor_binding=nullptr;  ///<场景通用描述符绑定器
 
     protected:  // event dispatcher
 
@@ -43,18 +47,23 @@ namespace hgl::graph
         {
             render_framework=rf;
 
+            descriptor_binding=new DescriptorBinding(DescriptorSetType::Scene);
+
             root_node=new SceneNode(this);
         }
 
         virtual ~Scene()
         {
             SAFE_CLEAR(root_node);
+            SAFE_CLEAR(descriptor_binding);
         }
 
         io::EventDispatcher &GetEventDispatcher()  ///<获取事件分发器
         {
             return event_dispatcher;
         }
+
+        DescriptorBinding *GetDescriptorBinding()const { return descriptor_binding; }///<获取场景通用描述符绑定器
     };//class Scene
 
     bool RegisterScene(Scene *sw);                      ///<注册场景
