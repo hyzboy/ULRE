@@ -111,33 +111,16 @@ constexpr const ShaderBufferSource SBS_SkyInfo=
     "SkyInfo",
 
     R"(
-    vec4  sun_direction;        // w=0
-    vec4  sun_color;            // 线性空间 RGBA
+    vec4 base_sky_color;       // 天空基础色
+    vec4 sun_direction;        // w=0
+    vec4 sun_color;            // 线性空间 RGBA
+    vec4 halo_color;
+    vec4 moon_color;
 
-    vec4  base_sky_color;       // 天空基础色
-    vec4  moon_color;
-    vec4  halo_color;
-
-    float sun_intensity;        // 光强（可乘入颜色或单独使用）
-    float sun_path_azimuth_deg; // 正午方位角（度）
-    float max_elevation_deg;    // 正午最大仰角（度）
-    float latitude_deg;         // 纬度（度）
-
-    float longitude_deg;        // 经度（度）
-    float altitude_m;           // 海拔（米）
-    float moon_intensity;       // 月亮强度
-    float halo_intensity;       // 光晕强度
-
-    ivec4 date;                 // year, month, day, padding
-
-    // 预留参数（大气散射与曝光等），未来启用：
-    // float turbidity;         // 浊度
-    // float rayleigh;          // 瑞利散射强度
-    // float mie;               // 米氏散射强度
-    // float ground_albedo;     // 地表反照率
-    // float exposure;          // 曝光
-    // float sun_angular_deg;   // 太阳视半径（度）
-    // vec3  sky_tint;          // 天空色倾向
+    float sun_ang_deg;         // 太阳视直径（度），约0.5度，稍微放大一些
+    float sun_intensity;       // 光强，夜晚为0
+    float moon_intensity;      // 月亮强度
+    float halo_intensity;      // 光晕强度
 )"
 };
 STD_MTL_NAMESPACE_END
