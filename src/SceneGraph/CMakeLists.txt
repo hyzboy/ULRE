@@ -91,6 +91,7 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/RenderList.h
                         ${SG_INCLUDE_PATH}/MaterialRenderList.h
                         ${SG_INCLUDE_PATH}/MaterialRenderMap.h
+                        ${SG_INCLUDE_PATH}/InstancedMeshRenderer.h
 #                        ${SG_INCLUDE_PATH}/ShadowPolicy.h
                         ${SG_INCLUDE_PATH}/RenderTask.h
                         ${SG_INCLUDE_PATH}/Renderer.h
@@ -99,6 +100,7 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
                         render/RenderTask.cpp
                         render/RenderList.cpp
                         render/MaterialRenderList.cpp
+                        render/InstancedMeshRenderer.cpp
                         render/RenderAssignBuffer.h
                         render/RenderAssignBuffer.cpp
                         )
@@ -315,10 +317,12 @@ SET(COMPONENT_FILES     ${COMPONENT_INCLUDE_PATH}/Component.h
                         ${COMPONENT_INCLUDE_PATH}/PrimitiveComponent.h
                         ${COMPONENT_INCLUDE_PATH}/RenderComponent.h
                         ${COMPONENT_INCLUDE_PATH}/MeshComponent.h
+                        ${COMPONENT_INCLUDE_PATH}/InstancedMeshComponent.h
                         component/Component.cpp
                         component/ComponentManager.cpp
                         component/SceneComponent.cpp
                         component/MeshComponentManager.cpp
+                        component/InstancedMeshComponent.cpp
 )
 
 SET(COLLISION_COMPONENT_FILES   ${COLLISION_COMPONENT_INCLUDE_PATH}/CollisionComponent.h
