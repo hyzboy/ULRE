@@ -118,6 +118,11 @@ namespace hgl::graph
             cmd->SetDescriptorBinding(camera_control->GetDescriptorBinding());
         }
 
+        if(scene)
+        {
+            cmd->SetDescriptorBinding(scene->GetDescriptorBinding());
+        }
+
         cmd->SetClearColor(0,clear_color);
 
         cmd->BeginRenderPass();
