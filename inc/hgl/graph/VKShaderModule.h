@@ -31,8 +31,8 @@ public:
     const VkShaderStageFlagBits             GetStage        ()const{return stage_create_info->stage;}
 
     const bool                              IsVertex        ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Vertex;}
-    const bool                              IsTessControl   ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::TessellationControl;}
-    const bool                              IsTessEval      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::TessellationEvaluation;}
+    const bool                              IsTessControl   ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::TessControl;}
+    const bool                              IsTessEval      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::TessEval;}
     const bool                              IsGeometry      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Geometry;}
     const bool                              IsFragment      ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Fragment;}
     const bool                              IsCompute       ()const{return stage_create_info->stage==(VkShaderStageFlagBits)ShaderStage::Compute;}

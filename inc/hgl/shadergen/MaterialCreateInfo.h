@@ -54,8 +54,8 @@ namespace hgl::graph
                     bool        hasShader       (const ShaderStage ss)const{return config->shader_stage_flag_bit&(uint32)ss;}
 
                     bool        hasVertex       ()const{return hasShader(ShaderStage::Vertex);}
-        //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessellationControl);}
-        //          bool        hasTessEval     ()const{return hasShader(ShaderStage::TessellationEvaluation);}
+        //          bool        hasTessCtrl     ()const{return hasShader(ShaderStage::TessControl);}
+        //          bool        hasTessEval     ()const{return hasShader(ShaderStage::TessEval);}
                     bool        hasGeometry     ()const{return hasShader(ShaderStage::Geometry);}
                     bool        hasFragment     ()const{return hasShader(ShaderStage::Fragment);}
         //          bool        hasCompute      ()const{return hasShader(ShaderStage::Compute);}

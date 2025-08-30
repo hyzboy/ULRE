@@ -164,15 +164,21 @@ enum class DescriptorType:uint32
 enum class ShaderStage:uint32_t
 {
     Vertex                      = VK_SHADER_STAGE_VERTEX_BIT,
-    TessellationControl         = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
-    TessellationEvaluation      = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+    TessControl                 = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+    TessEval                    = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
     Geometry                    = VK_SHADER_STAGE_GEOMETRY_BIT,
     Fragment                    = VK_SHADER_STAGE_FRAGMENT_BIT,
     Compute                     = VK_SHADER_STAGE_COMPUTE_BIT,
-    Task                        = VK_SHADER_STAGE_TASK_BIT_NV,
-    Mesh                        = VK_SHADER_STAGE_MESH_BIT_NV,
-    MeshEXT                     = VK_SHADER_STAGE_MESH_BIT_EXT,
+    Task                        = VK_SHADER_STAGE_TASK_BIT_EXT,
+    Mesh                        = VK_SHADER_STAGE_MESH_BIT_EXT,
     ClusterCulling              = VK_SHADER_STAGE_CLUSTER_CULLING_BIT_HUAWEI,
+
+    VertexFragment              = Vertex | Fragment,
+    VertexGeometryFragment      = Vertex | Geometry | Fragment,
+    Tessellation                = TessControl | TessEval,
+
+    TaskMesh                    = Task | Mesh,
+    TaskMeshFragment            = Task | Mesh | Fragment,
 
     AllGraphics                 = VK_SHADER_STAGE_ALL_GRAPHICS,
 

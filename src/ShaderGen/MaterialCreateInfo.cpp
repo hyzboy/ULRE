@@ -59,7 +59,7 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
         if(ubo->type!=struct_name)
             return(false);
 
-        ubo->stage_flag|=flag_bit;
+        ubo->stage_flag|=(uint32_t)flag_bit;
 
         return sc->AddUBO(set_type,ubo);
     }
@@ -70,7 +70,7 @@ bool MaterialCreateInfo::AddUBO(const ShaderStage flag_bit,const DescriptorSetTy
         ubo->type=struct_name;
         hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
-        return sc->AddUBO(set_type,mdi.AddUBO(flag_bit,set_type,ubo));
+        return sc->AddUBO(set_type,mdi.AddUBO((uint32_t)flag_bit,set_type,ubo));
     }
 }
 
@@ -82,13 +82,13 @@ bool MaterialCreateInfo::AddUBO(const uint32_t flag_bits,const DescriptorSetType
         return(false);
     
     uint result=0;
-    VkShaderStageFlagBits bit;
+    ShaderStage bit;
 
     for(int i=0;i<shader_map.GetCount();i++)
     {
         shader_map.GetKey(i,bit);
 
-        if(flag_bits&bit)
+        if(flag_bits&(uint32_t)bit)
             if(AddUBO(bit,set_type,struct_name,name))
                 ++result;
     }
@@ -125,7 +125,7 @@ bool MaterialCreateInfo::AddSampler(const ShaderStage flag_bit,const DescriptorS
         if(sampler->type!=st_name)
             return(false);
 
-        sampler->stage_flag|=flag_bit;
+        sampler->stage_flag|=(uint32_t)flag_bit;
 
         return sc->AddSampler(set_type,sampler);
     }
@@ -136,7 +136,7 @@ bool MaterialCreateInfo::AddSampler(const ShaderStage flag_bit,const DescriptorS
         sampler->type=st_name;
         hgl::strcpy(sampler->name,DESCRIPTOR_NAME_MAX_LENGTH,name);
 
-        return sc->AddSampler(set_type,mdi.AddSampler(flag_bit,set_type,sampler));
+        return sc->AddSampler(set_type,mdi.AddSampler((uint32_t)flag_bit,set_type,sampler));
     }
 }
 
@@ -192,7 +192,7 @@ bool MaterialCreateInfo::SetMaterialInstance(const AnsiString &glsl_codes,const 
 
     for(int i=0;i<shader_map.GetCount();i++)
     {
-        if((*it)->key&shader_stage_flag_bits)
+        if(uint32_t((*it)->key)&shader_stage_flag_bits)
         {
             (*it)->value->AddDefine("MI_MAX_COUNT",MI_MAX_COUNT_STRING);
             (*it)->value->SetMaterialInstance(mi_ubo,mi_codes);
@@ -222,7 +222,7 @@ bool MaterialCreateInfo::SetLocalToWorld(const uint32_t shader_stage_flag_bits)
 
     for(auto it:shader_map)
     {
-        if(it->key&shader_stage_flag_bits)
+        if(uint32_t(it->key)&shader_stage_flag_bits)
         {
             it->value->AddDefine("L2W_MAX_COUNT",L2W_MAX_COUNT_STRING);
         }
