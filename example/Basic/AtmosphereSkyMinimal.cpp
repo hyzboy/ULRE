@@ -54,7 +54,12 @@ private:
 
         auto pc=GetPrimitiveCreater(mi_sky_sphere);
 
-        prim_sky_sphere=CreateSphere(pc,64);
+        struct HexSphereCreateInfo hsci;
+
+        hsci.subdivisions=3;
+        hsci.radius=256;
+
+        prim_sky_sphere=CreateHexSphere(pc,&hsci);
 
         return prim_sky_sphere;
     }
@@ -65,8 +70,6 @@ private:
             Mesh *ri=CreateMesh(prim_sky_sphere,mi_sky_sphere,mtl_pipeline);
 
             CreateComponentInfo cci(GetSceneRoot());
-
-            cci.mat=ScaleMatrix(160);
 
             CreateComponent<MeshComponent>(&cci,ri);
         }
