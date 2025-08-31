@@ -201,7 +201,7 @@ namespace hgl::graph
         Primitive *CreateCylinder(PrimitiveCreater *,const CylinderCreateInfo *cci);
 
         // 新增：空心圆柱（管）创建信息
-        struct PipeCreateInfo
+        struct HollowCylinderCreateInfo
         {
             float halfExtend;           // 高度的一半
             float innerRadius;          // 内半径
@@ -216,7 +216,7 @@ namespace hgl::graph
         /**
             * 创建一个空心圆柱（管）(三角形)
             */
-        Primitive *CreatePipe(PrimitiveCreater *pc,const PipeCreateInfo *hcci);
+        Primitive *CreateHollowCylinder(PrimitiveCreater *pc,const HollowCylinderCreateInfo *hcci);
 
         struct ConeCreateInfo
         {
