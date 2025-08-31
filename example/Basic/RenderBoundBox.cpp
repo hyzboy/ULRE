@@ -212,7 +212,7 @@ private:
             hcci.halfExtend    =1.25;      //圆柱一半高度
             hcci.innerRadius   =0.8f;      //内半径
             hcci.outerRadius   =1.25f;     //外半径
-            hcci.numberSlices  =16;        //圆柱底部分割数
+            hcci.numberSlices  =64;        //圆柱底部分割数
 
             rm_hollowc_ylinder=CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5);
         }
@@ -320,7 +320,7 @@ private:
     {
         CameraControl *camera_control=GetCameraControl();
 
-        camera_control->SetPosition(Vector3f(8,8,8));
+        camera_control->SetPosition(Vector3f(-8,-8,8));
         camera_control->SetTarget(Vector3f(0,0,0));
     }
 

@@ -9,3 +9,9 @@ struct TerrainBlock
 };
 
 constexpr const size_t TerrainBlockBytes=sizeof(TerrainBlock);
+
+
+int os_main(int,os_char **)
+{
+    return 0;
+}

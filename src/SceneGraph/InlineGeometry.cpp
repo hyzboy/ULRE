@@ -1630,8 +1630,9 @@ namespace hgl::graph::inline_geometry
             if(vp){ *vp++=x; *vp++=y; *vp++=z; }
             if(np){ *np++=nx; *np++=ny; *np++=nz; }
             if(tp){
-                // default tangent: rotate normal 90deg around Z for walls; for caps nx,ny=0 gives (0,0,0) which is acceptable
-                *tp++ = -ny; *tp++ = nx; *tp++ = 0.0f;
+                // 壁面：切线 = 法线绕Z旋90度；端盖：给稳定切线(1,0,0)
+                if(fabsf(nz) > 0.5f){ *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+                else                 { *tp++ = -ny;  *tp++ =  nx;  *tp++ = 0.0f; }
             }
             if(uvp){ *uvp++=u; *uvp++=v; }
         };
@@ -1643,7 +1644,7 @@ namespace hgl::graph::inline_geometry
             for(uint i=0;i<=slices;i++)
             {
                 float ang = dtheta * float(i);
-                float cx = cos(ang), sy = -sin(ang); // match CreateCylinder convention (y = -sin)
+                float cx = cos(ang), sy = -sin(ang); // 保持与 CreateCylinder 相同的参数化(y=-sin)
                 // wall normal: outward from surface
                 float nx = outer? cx : -cx;
                 float ny = outer? sy : -sy;
@@ -1683,7 +1684,7 @@ namespace hgl::graph::inline_geometry
         IBMap *ib_map = pc->GetIBMap();
         const IndexType it = pc->GetIndexType();
 
-        auto emit_wall_indices = [&](auto *ip, uint base)
+        auto emit_wall_indices = [&](auto *ip, uint base, bool invert)
         {
             for(uint i=0;i<slices;i++)
             {
@@ -1691,8 +1692,16 @@ namespace hgl::graph::inline_geometry
                 uint v1 = base + i*2 + 1;
                 uint v2 = base + (i+1)*2;
                 uint v3 = base + (i+1)*2 + 1;
-                *ip++ = (decltype(*ip))v0; *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v1;
-                *ip++ = (decltype(*ip))v1; *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v3;
+                if(!invert)
+                {   // 外壁：与 Cylinder 一致（正面朝外）
+                    *ip++ = (decltype(*ip))v0; *ip++ = (decltype(*ip))v1; *ip++ = (decltype(*ip))v2;
+                    *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v1; *ip++ = (decltype(*ip))v3;
+                }
+                else
+                {   // 内壁：反向（正面朝内）
+                    *ip++ = (decltype(*ip))v0; *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v1;
+                    *ip++ = (decltype(*ip))v2; *ip++ = (decltype(*ip))v3; *ip++ = (decltype(*ip))v1;
+                }
             }
             return ip;
         };
@@ -1706,14 +1715,13 @@ namespace hgl::graph::inline_geometry
                 uint o1 = base + (i+1)*2;
                 uint i1 = base + (i+1)*2 + 1;
                 if(top)
-                {
-                    *ip++ = (decltype(*ip))o0; *ip++ = (decltype(*ip))o1; *ip++ = (decltype(*ip))i0;
-                    *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))o1; *ip++ = (decltype(*ip))i1;
+                {   // 顶盖：法线+Z，俯视为正面
+                    *ip++ = (decltype(*ip))o0; *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))o1;
+                    *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))i1; *ip++ = (decltype(*ip))o1;
                 }
                 else
-                {
-                    // bottom face normal -Z: maintain CCW seen from -Z
-                    *ip++ = (decltype(*ip))o0; *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))o1;
+                {   // 底盖：法线-Z，从 -Z 看为正面
+                    *ip++ = (decltype(*ip))o0; *ip++ = (decltype(*ip))o1; *ip++ = (decltype(*ip))i0;
                     *ip++ = (decltype(*ip))i0; *ip++ = (decltype(*ip))i1; *ip++ = (decltype(*ip))o1;
                 }
             }
@@ -1724,8 +1732,8 @@ namespace hgl::graph::inline_geometry
         {
             IBTypeMap<uint16> im(ib_map);
             uint16 *ip = im;
-            ip = emit_wall_indices(ip, wall_outer_start);
-            ip = emit_wall_indices(ip, wall_inner_start);
+            ip = emit_wall_indices(ip, wall_outer_start, false);
+            ip = emit_wall_indices(ip, wall_inner_start, true);
             ip = emit_cap_indices(ip, cap_top_start, true);
             ip = emit_cap_indices(ip, cap_bottom_start, false);
         }
@@ -1733,8 +1741,8 @@ namespace hgl::graph::inline_geometry
         {
             IBTypeMap<uint32> im(ib_map);
             uint32 *ip = im;
-            ip = emit_wall_indices(ip, wall_outer_start);
-            ip = emit_wall_indices(ip, wall_inner_start);
+            ip = emit_wall_indices(ip, wall_outer_start, false);
+            ip = emit_wall_indices(ip, wall_inner_start, true);
             ip = emit_cap_indices(ip, cap_top_start, true);
             ip = emit_cap_indices(ip, cap_bottom_start, false);
         }
@@ -1742,8 +1750,8 @@ namespace hgl::graph::inline_geometry
         {
             IBTypeMap<uint8> im(ib_map);
             uint8 *ip = im;
-            ip = emit_wall_indices(ip, wall_outer_start);
-            ip = emit_wall_indices(ip, wall_inner_start);
+            ip = emit_wall_indices(ip, wall_outer_start, false);
+            ip = emit_wall_indices(ip, wall_inner_start, true);
             ip = emit_cap_indices(ip, cap_top_start, true);
             ip = emit_cap_indices(ip, cap_bottom_start, false);
         }
