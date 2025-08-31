@@ -763,8 +763,6 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc)return(nullptr);
 
-        uint i, j;
-
         uint numberParallels = numberSlices / 4;
         uint numberVertices = (numberParallels + 1) * (numberSlices + 1);
         uint numberIndices = numberParallels * numberSlices * 6;
@@ -796,9 +794,9 @@ namespace hgl::graph::inline_geometry
         if(!vp)
             return(nullptr);
 
-        for (i = 0; i < numberParallels + 1; i++)
+        for (uint i = 0; i < numberParallels + 1; i++)
         {
-            for (j = 0; j < numberSlices + 1; j++)
+            for (uint j = 0; j < numberSlices + 1; j++)
             {
                 uint vertexIndex = (i * (numberSlices + 1) + j) * 4;
                 uint normalIndex = (i * (numberSlices + 1) + j) * 3;
@@ -1296,9 +1294,9 @@ namespace hgl::graph::inline_geometry
             indexCounter++;
 
             // Sides
-            for (j = 0; j < numberStacks; j++)
+            for (j = 0; j < numberStacks; ++j)
             {
-                for (i = 0; i < numberSlices; i++)
+                for (i = 0; i < numberSlices; ++i)
                 {
                     *tp = indexCounter;                     ++tp;
                     *tp = indexCounter + numberSlices + 1;  ++tp;
@@ -1612,7 +1610,7 @@ namespace hgl::graph::inline_geometry
         const uint cap_vert_per = (slices + 1) * 2;       // outer+inner per slice step
 
         const uint numberVertices = wall_vert_per_side * 2 + cap_vert_per * 2;
-        const uint numberIndices = (slices * 2 /*two walls*/ + slices * 2 /*two caps*/) * 6; // each slice -> 2 tris -> 6 indices
+        const uint numberIndices = (slices * 2 /*two walls*/ + slices * 2 /*two caps*/) * 6; // each slice -> 2 tris -> 6 indices per triangle
 
         if(!pc->Init("HollowCylinder", numberVertices, numberIndices))
             return nullptr;
@@ -1648,7 +1646,7 @@ namespace hgl::graph::inline_geometry
             for(uint i=0;i<=slices;i++)
             {
                 float ang = dtheta * float(i);
-                float cx = cos(ang), sy = -sin(ang); // 保持与 CreateCylinder 相同的参数化(y=-sin)
+                float cx = cos(ang), sy = -sin(ang); // 保持与 CreateCylinder 相同的参数化
                 // wall normal: outward from surface
                 float nx = outer? cx : -cx;
                 float ny = outer? sy : -sy;
@@ -1763,7 +1761,11 @@ namespace hgl::graph::inline_geometry
 
         Primitive *p = pc->Create();
         if(p)
-            p->SetBoundingBox(Vector3f(-r1,-r1,-he), Vector3f(r1,r1,he));
+        {
+            AABB aabb;
+            aabb.SetMinMax(Vector3f(-r1,-r1,-he), Vector3f(r1,r1,he));
+            p->SetBoundingBox(aabb);
+        }
         return p;
     }
 
@@ -1909,4 +1911,4 @@ namespace hgl::graph::inline_geometry
             p->SetBoundingBox(Vector3f(-R,-R,-R), Vector3f(R,R,R));
         return p;
     }
-}//namespace hgl::graph::inline_geometry
+}
