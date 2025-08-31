@@ -67,7 +67,8 @@ private:
                 *rm_cone=nullptr,
                 *rm_cylinder=nullptr,
                 *rm_torus=nullptr,
-                *rm_box=nullptr;
+                *rm_box=nullptr,
+                *rm_hollowc_ylinder=nullptr;
 
 private:
 
@@ -205,6 +206,17 @@ private:
             rm_torus=CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4);
         }
 
+        {
+            struct HollowCylinderCreateInfo hcci;
+
+            hcci.halfExtend    =1.25;      //圆柱一半高度
+            hcci.innerRadius   =0.8f;      //内半径
+            hcci.outerRadius   =1.25f;     //外半径
+            hcci.numberSlices  =16;        //圆柱底部分割数
+
+            rm_hollowc_ylinder=CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5);
+        }
+
         delete prim_creater;
         return(true);
     }
@@ -257,6 +269,14 @@ private:
 
             rm_sphere->component=CreateComponent<MeshComponent>(&cci,rm_sphere->cdp);
             rm_sphere->component->SetOverrideMaterial(solid.mi[4]);
+        }
+
+        {
+            cci.mat=TranslateMatrix(-5,0,3)*AxisRotate(deg2rad(30),-20,-30,40);
+
+            rm_hollowc_ylinder->component=CreateComponent<MeshComponent>(&cci,rm_hollowc_ylinder->cdp);
+
+            rm_hollowc_ylinder->component->SetOverrideMaterial(solid.mi[5]);
         }
 
         return(true);

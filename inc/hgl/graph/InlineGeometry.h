@@ -200,6 +200,24 @@ namespace hgl::graph
             */
         Primitive *CreateCylinder(PrimitiveCreater *,const CylinderCreateInfo *cci);
 
+        // 新增：空心圆柱（管）创建信息
+        struct HollowCylinderCreateInfo
+        {
+            float halfExtend;           // 高度的一半
+            float innerRadius;          // 内半径
+            float outerRadius;          // 外半径
+            uint  numberSlices;         // 圆切分段数
+
+            // 端面（圆环）纹理平铺：径向与周向平铺次数
+            float cap_radial_tiles = 1.0f;    // 从内圈到外圈的平铺次数
+            float cap_angular_tiles = 1.0f;   // 沿圆周的平铺次数
+        };
+
+        /**
+            * 创建一个空心圆柱（管）(三角形)
+            */
+        Primitive *CreateHollowCylinder(PrimitiveCreater *pc,const HollowCylinderCreateInfo *hcci);
+
         struct ConeCreateInfo
         {
             float   halfExtend,     //高度
