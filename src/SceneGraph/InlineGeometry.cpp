@@ -1534,4 +1534,61 @@ namespace hgl::graph::inline_geometry
 
         return p;
     }
+
+    /**
+    * 创建一个正方形阵列，专门作于渲染地形
+    */
+    Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col)
+    {
+        if(!pc)return(nullptr);
+        if(row<=0||col<=0)return(nullptr);
+        if (row>=255||col>=255)return(nullptr); //顶点坐标使用 uint8
+
+        const uint numberVertices=(row+1)*(col+1);
+        const uint numberIndices=row*col*6;
+
+        if(!pc->Init("SquareArray",numberVertices,numberIndices,IndexType::U16))
+            return(nullptr);
+
+        {
+            VABMap2u8 vertex(pc->GetVABMap(VAN::Position),VF_V2U8);       //顶点坐标使用 uint8
+
+            if(!vertex.IsValid())
+                return(nullptr);
+
+            for(uint i=0;i<=row;i++)
+                for(uint j=0;j<=col;j++)
+                    vertex->Write(j,i);
+        }
+
+        {
+            IBTypeMap<uint16> ib_map(pc->GetIBMap());
+
+            uint16 *tp=ib_map;
+
+            for(uint i=0;i<row;i++)
+                for(uint j=0;j<col;j++)
+                {
+                    const uint16 v0=(i  )*(col+1)+(j  );
+                    const uint16 v1=(i  )*(col+1)+(j+1);
+                    const uint16 v2=(i+1)*(col+1)+(j+1);
+                    const uint16 v3=(i+1)*(col+1)+(j  );
+                    *tp=v0;++tp;
+                    *tp=v2;++tp;
+                    *tp=v1;++tp;
+                    *tp=v0;++tp;
+                    *tp=v3;++tp;
+                    *tp=v2;++tp;
+                }
+        }
+
+        Primitive *p=pc->Create();
+        {
+            AABB aabb;
+            aabb.SetMinMax(Vector3f(0,0,0),Vector3f(col,row,0));
+            p->SetBoundingBox(aabb);
+        }
+
+        return p;
+    }
 }//namespace hgl::graph::inline_geometry

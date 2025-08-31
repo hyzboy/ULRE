@@ -95,13 +95,6 @@ constexpr const ShaderBufferSource SBS_JointInfo=
 
 /**
 * SkyInfo（全局环境/天空信息）
-* - sun_direction: 从太阳指向场景的方向，需归一化，w=0
-* - sun_color:     线性空间 RGBA
-* - sun_intensity: 光强，夜晚为0
-* - sun_path_azimuth_deg: 正午太阳方位角（度），默认 180=南
-* - max_elevation_deg:    正午最大仰角（度）
-* - enabled:       1=启用，0=禁用
-* 预留项以注释保留，后续可启用并接入材质。
 */
 constexpr const ShaderBufferSource SBS_SkyInfo=
 {
