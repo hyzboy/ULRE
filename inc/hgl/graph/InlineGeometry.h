@@ -233,5 +233,7 @@ namespace hgl::graph
             * 创建一个坐标线(线条)
             */
         Primitive *CreateAxis(PrimitiveCreater *pc,const AxisCreateInfo *aci);
+
+        Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col);
     }//namespace inline_geometry
 }//namespace hgl::graph
