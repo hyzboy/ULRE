@@ -1595,7 +1595,7 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
-    Primitive *CreatePipe(PrimitiveCreater *pc,const PipeCreateInfo *hcci)
+    Primitive *CreateHollowCylinder(PrimitiveCreater *pc,const HollowCylinderCreateInfo *hcci)
     {
         if(!pc||!hcci) return nullptr;
 

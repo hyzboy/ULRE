@@ -72,7 +72,7 @@ private:
                 *rm_cylinder=nullptr,
                 *rm_torus=nullptr,
                 *rm_box=nullptr,
-                *rm_pipe=nullptr,
+                *rm_hollow_cylinder=nullptr,
                 *rm_hex_sphere=nullptr;
 
 private:
@@ -212,14 +212,14 @@ private:
         }
 
         {
-            struct PipeCreateInfo hcci;
+            struct HollowCylinderCreateInfo hcci;
 
             hcci.halfExtend    =1.25;      //圆柱一半高度
             hcci.innerRadius   =0.8f;      //内半径
             hcci.outerRadius   =1.25f;     //外半径
             hcci.numberSlices  =64;        //圆柱底部分割数
 
-            rm_pipe=CreateRenderMesh(CreatePipe(prim_creater,&hcci),&solid,5);
+            rm_hollow_cylinder=CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5);
         }
 
         {
@@ -287,9 +287,9 @@ private:
         {
             cci.mat=TranslateMatrix(-5,0,3)*AxisRotate(deg2rad(30),-20,-30,40);
 
-            rm_pipe->component=CreateComponent<MeshComponent>(&cci,rm_pipe->cdp);
+            rm_hollow_cylinder->component=CreateComponent<MeshComponent>(&cci,rm_hollow_cylinder->cdp);
 
-            rm_pipe->component->SetOverrideMaterial(solid.mi[5]);
+            rm_hollow_cylinder->component->SetOverrideMaterial(solid.mi[5]);
         }
 
         {
