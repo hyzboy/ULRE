@@ -225,7 +225,7 @@ private:
         {
             struct HexSphereCreateInfo hsci;
 
-            hsci.subdivisions=2;
+            hsci.subdivisions=3;
 
             rm_hex_sphere=CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6);
         }

@@ -1597,6 +1597,17 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc||!hcci) return nullptr;
 
+        if(hcci->innerRadius<=0)        //如果内半径为0，则退化为实心圆柱
+        {
+            CylinderCreateInfo cci;
+
+            cci.halfExtend=hcci->halfExtend;
+            cci.radius=hcci->outerRadius;
+            cci.numberSlices=hcci->numberSlices;
+
+            return CreateCylinder(pc,&cci);
+        }
+
         const uint slices = (hcci->numberSlices<3)?3:hcci->numberSlices;
         float r_in = hcci->innerRadius;
         float r_out= hcci->outerRadius;
