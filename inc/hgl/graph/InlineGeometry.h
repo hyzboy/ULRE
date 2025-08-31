@@ -201,7 +201,7 @@ namespace hgl::graph
         Primitive *CreateCylinder(PrimitiveCreater *,const CylinderCreateInfo *cci);
 
         // 新增：空心圆柱（管）创建信息
-        struct HollowCylinderCreateInfo
+        struct PipeCreateInfo
         {
             float halfExtend;           // 高度的一半
             float innerRadius;          // 内半径
@@ -216,7 +216,7 @@ namespace hgl::graph
         /**
             * 创建一个空心圆柱（管）(三角形)
             */
-        Primitive *CreateHollowCylinder(PrimitiveCreater *pc,const HollowCylinderCreateInfo *hcci);
+        Primitive *CreatePipe(PrimitiveCreater *pc,const PipeCreateInfo *hcci);
 
         struct ConeCreateInfo
         {
@@ -253,5 +253,15 @@ namespace hgl::graph
         Primitive *CreateAxis(PrimitiveCreater *pc,const AxisCreateInfo *aci);
 
         Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col);
+
+        // 新增：HexSphere（基于二十面体细分的测地球体，输出三角网格）
+        struct HexSphereCreateInfo
+        {
+            uint  subdivisions = 0;   // 细分次数，0=基础二十面体
+            float radius       = 1.0f;
+            Vector2f uv_scale  = {1.0f,1.0f};
+        };
+
+        Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
     }//namespace inline_geometry
 }//namespace hgl::graph

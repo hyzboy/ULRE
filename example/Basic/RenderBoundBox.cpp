@@ -20,7 +20,11 @@ constexpr const COLOR TestColor[]=
     COLOR::BlenderAxisBlue,
 
     COLOR::BananaYellow,
-    COLOR::CherryBlossomPink
+    COLOR::CherryBlossomPink,
+
+    COLOR::SkyBlue,
+    COLOR::GrassGreen,
+    COLOR::BloodRed,
 };
 
 constexpr const size_t COLOR_COUNT=sizeof(TestColor)/sizeof(COLOR);
@@ -68,7 +72,8 @@ private:
                 *rm_cylinder=nullptr,
                 *rm_torus=nullptr,
                 *rm_box=nullptr,
-                *rm_hollowc_ylinder=nullptr;
+                *rm_pipe=nullptr,
+                *rm_hex_sphere=nullptr;
 
 private:
 
@@ -207,14 +212,22 @@ private:
         }
 
         {
-            struct HollowCylinderCreateInfo hcci;
+            struct PipeCreateInfo hcci;
 
             hcci.halfExtend    =1.25;      //圆柱一半高度
             hcci.innerRadius   =0.8f;      //内半径
             hcci.outerRadius   =1.25f;     //外半径
             hcci.numberSlices  =64;        //圆柱底部分割数
 
-            rm_hollowc_ylinder=CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5);
+            rm_pipe=CreateRenderMesh(CreatePipe(prim_creater,&hcci),&solid,5);
+        }
+
+        {
+            struct HexSphereCreateInfo hsci;
+
+            hsci.subdivisions=2;
+
+            rm_hex_sphere=CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6);
         }
 
         delete prim_creater;
@@ -274,9 +287,15 @@ private:
         {
             cci.mat=TranslateMatrix(-5,0,3)*AxisRotate(deg2rad(30),-20,-30,40);
 
-            rm_hollowc_ylinder->component=CreateComponent<MeshComponent>(&cci,rm_hollowc_ylinder->cdp);
+            rm_pipe->component=CreateComponent<MeshComponent>(&cci,rm_pipe->cdp);
 
-            rm_hollowc_ylinder->component->SetOverrideMaterial(solid.mi[5]);
+            rm_pipe->component->SetOverrideMaterial(solid.mi[5]);
+        }
+
+        {
+            cci.mat=TranslateMatrix(0,5,3)*AxisRotate(deg2rad(30),20,-30,-40);
+            rm_hex_sphere->component=CreateComponent<MeshComponent>(&cci,rm_hex_sphere->cdp);
+            rm_hex_sphere->component->SetOverrideMaterial(solid.mi[6]);
         }
 
         return(true);
@@ -320,7 +339,7 @@ private:
     {
         CameraControl *camera_control=GetCameraControl();
 
-        camera_control->SetPosition(Vector3f(-8,-8,8));
+        camera_control->SetPosition(Vector3f(8,8,8));
         camera_control->SetTarget(Vector3f(0,0,0));
     }
 
