@@ -2096,8 +2096,8 @@ namespace hgl::graph::inline_geometry
             {
                 uint v0 = side_start + i * 2;      // 底部
                 uint v1 = side_start + i * 2 + 1;  // 顶部
-                uint v2 = side_start + ((i + 1) % slices) * 2;      // 下一个底部
-                uint v3 = side_start + ((i + 1) % slices) * 2 + 1;  // 下一个顶部
+                uint v2 = side_start + ((i + 1) % (slices + 1)) * 2;      // 下一个底部
+                uint v3 = side_start + ((i + 1) % (slices + 1)) * 2 + 1;  // 下一个顶部
                 
                 // 第一个三角形 (顺时针)
                 *ip++ = (uint16)v0; *ip++ = (uint16)v2; *ip++ = (uint16)v1;
@@ -2112,8 +2112,8 @@ namespace hgl::graph::inline_geometry
                 {
                     uint v0 = bulb_start + j * (slices + 1) + i;
                     uint v1 = bulb_start + (j + 1) * (slices + 1) + i;
-                    uint v2 = bulb_start + j * (slices + 1) + ((i + 1) % slices);
-                    uint v3 = bulb_start + (j + 1) * (slices + 1) + ((i + 1) % slices);
+                    uint v2 = bulb_start + j * (slices + 1) + ((i + 1) % (slices + 1));
+                    uint v3 = bulb_start + (j + 1) * (slices + 1) + ((i + 1) % (slices + 1));
                     
                     // 第一个三角形 (顺时针)
                     *ip++ = (uint16)v0; *ip++ = (uint16)v2; *ip++ = (uint16)v1;
@@ -2124,13 +2124,97 @@ namespace hgl::graph::inline_geometry
         }
         else if(it == IndexType::U32)
         {
-            // 类似的U32实现...
             IBTypeMap<uint32> im(ib_map);
             uint32 *ip = im;
             
-            // 为简洁起见，这里只实现U16版本
-            // 在实际项目中应该实现所有索引类型
-            return nullptr;
+            // 底座底面索引 (扇形)
+            for(uint i = 0; i < slices; i++)
+            {
+                uint center = base_start;
+                uint v1 = base_start + 1 + i;
+                uint v2 = base_start + 1 + ((i + 1) % slices);
+                
+                *ip++ = (uint32)center;
+                *ip++ = (uint32)v2;
+                *ip++ = (uint32)v1;
+            }
+            
+            // 底座侧面索引
+            uint side_start = base_start + 1 + (slices + 1) + (slices + 1);
+            for(uint i = 0; i < slices; i++)
+            {
+                uint v0 = side_start + i * 2;
+                uint v1 = side_start + i * 2 + 1;
+                uint v2 = side_start + ((i + 1) % (slices + 1)) * 2;
+                uint v3 = side_start + ((i + 1) % (slices + 1)) * 2 + 1;
+                
+                *ip++ = (uint32)v0; *ip++ = (uint32)v2; *ip++ = (uint32)v1;
+                *ip++ = (uint32)v1; *ip++ = (uint32)v2; *ip++ = (uint32)v3;
+            }
+            
+            // 灯泡半球面索引
+            for(uint j = 0; j < stacks; j++)
+            {
+                for(uint i = 0; i < slices; i++)
+                {
+                    uint v0 = bulb_start + j * (slices + 1) + i;
+                    uint v1 = bulb_start + (j + 1) * (slices + 1) + i;
+                    uint v2 = bulb_start + j * (slices + 1) + ((i + 1) % (slices + 1));
+                    uint v3 = bulb_start + (j + 1) * (slices + 1) + ((i + 1) % (slices + 1));
+                    
+                    *ip++ = (uint32)v0; *ip++ = (uint32)v2; *ip++ = (uint32)v1;
+                    *ip++ = (uint32)v1; *ip++ = (uint32)v2; *ip++ = (uint32)v3;
+                }
+            }
+        }
+        else if(it == IndexType::U8)
+        {
+            IBTypeMap<uint8> im(ib_map);
+            uint8 *ip = im;
+            
+            // 检查顶点数是否超出uint8范围
+            if(vertex_count > 255) return nullptr;
+            
+            // 底座底面索引 (扇形)
+            for(uint i = 0; i < slices; i++)
+            {
+                uint center = base_start;
+                uint v1 = base_start + 1 + i;
+                uint v2 = base_start + 1 + ((i + 1) % slices);
+                
+                *ip++ = (uint8)center;
+                *ip++ = (uint8)v2;
+                *ip++ = (uint8)v1;
+            }
+            
+            // 底座侧面索引
+            uint side_start = base_start + 1 + (slices + 1) + (slices + 1);
+            for(uint i = 0; i < slices; i++)
+            {
+                uint v0 = side_start + i * 2;
+                uint v1 = side_start + i * 2 + 1;
+                uint v2 = side_start + ((i + 1) % (slices + 1)) * 2;
+                uint v3 = side_start + ((i + 1) % (slices + 1)) * 2 + 1;
+                
+                *ip++ = (uint8)v0; *ip++ = (uint8)v2; *ip++ = (uint8)v1;
+                *ip++ = (uint8)v1; *ip++ = (uint8)v2; *ip++ = (uint8)v3;
+            }
+            
+            // 灯泡半球面索引
+            for(uint j = 0; j < stacks; j++)
+            {
+                for(uint i = 0; i < slices; i++)
+                {
+                    uint v0 = bulb_start + j * (slices + 1) + i;
+                    uint v1 = bulb_start + (j + 1) * (slices + 1) + i;
+                    uint v2 = bulb_start + j * (slices + 1) + ((i + 1) % (slices + 1));
+                    uint v3 = bulb_start + (j + 1) * (slices + 1) + ((i + 1) % (slices + 1));
+                    
+                    *ip++ = (uint8)v0; *ip++ = (uint8)v2; *ip++ = (uint8)v1;
+                    *ip++ = (uint8)v1; *ip++ = (uint8)v2; *ip++ = (uint8)v3;
+                }
+            }
+            }
         }
         else
         {
