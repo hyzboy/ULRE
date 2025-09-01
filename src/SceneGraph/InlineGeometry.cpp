@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <cmath>
+#include <cfloat>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -1947,12 +1948,25 @@ namespace hgl::graph::inline_geometry
     void BuildLocalCoordinateSystem(const Vector3f& extrudeAxis, Vector3f& right, Vector3f& up) {
         Vector3f axis = Normalize(extrudeAxis);
         
-        // 选择一个不与挤压轴平行的向量作为参考
-        Vector3f ref = (fabs(axis.x) < 0.9f) ? Vector3f(1, 0, 0) : Vector3f(0, 1, 0);
-        
-        // 构建正交坐标系
-        right = Normalize(CrossProduct(ref, axis));
-        up = CrossProduct(axis, right);
+        // 为了使结果更直观，对于常见的轴向使用固定的局部坐标系
+        if (fabs(axis.x) > 0.99f) {
+            // X轴挤压：使用Y作为right，Z作为up
+            right = (axis.x > 0) ? Vector3f(0, 1, 0) : Vector3f(0, -1, 0);
+            up = Vector3f(0, 0, 1);
+        } else if (fabs(axis.y) > 0.99f) {
+            // Y轴挤压：使用Z作为right，X作为up
+            right = (axis.y > 0) ? Vector3f(0, 0, 1) : Vector3f(0, 0, -1);
+            up = Vector3f(1, 0, 0);
+        } else if (fabs(axis.z) > 0.99f) {
+            // Z轴挤压：使用X作为right，Y作为up（与世界坐标系一致）
+            right = Vector3f(1, 0, 0);
+            up = Vector3f(0, 1, 0);
+        } else {
+            // 任意轴向：构建正交坐标系
+            Vector3f ref = (fabs(axis.x) < 0.9f) ? Vector3f(1, 0, 0) : Vector3f(0, 1, 0);
+            right = Normalize(CrossProduct(ref, axis));
+            up = CrossProduct(axis, right);
+        }
     }
 
     Primitive *CreateExtrudedPolygon(PrimitiveCreater *pc, const ExtrudedPolygonCreateInfo *epci)
@@ -2224,12 +2238,13 @@ namespace hgl::graph::inline_geometry
     {
         if (segments < 3) segments = 3;
 
-        // 创建圆形顶点
+        // 创建圆形顶点（顺时针顺序，从+X轴开始）
         std::vector<Vector2f> circleVertices(segments);
         float angleStep = 2.0f * M_PI / segments;
 
         for (uint i = 0; i < segments; i++) {
-            float angle = i * angleStep;
+            // 注意：使用负角度来确保顺时针顺序
+            float angle = -(float)i * angleStep;  // 显式转换为float避免精度问题
             circleVertices[i].x = cos(angle) * radius;
             circleVertices[i].y = sin(angle) * radius;
         }

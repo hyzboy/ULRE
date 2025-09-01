@@ -12,6 +12,11 @@
 #include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>
+#include<cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 using namespace hgl;
 using namespace hgl::graph;
