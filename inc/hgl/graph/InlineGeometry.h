@@ -309,5 +309,31 @@ namespace hgl::graph
          * 包括偏移线相交计算和连接处的几何优化。当前版本为基础实现。
          */
         Primitive *CreateWallsFromLines2D(PrimitiveCreater *pc, const WallCreateInfo *wci);
+
+        /**
+         * 便利函数：创建单条水平墙体
+         */
+        inline Primitive *CreateHorizontalWall(PrimitiveCreater *pc, float startX, float startY, 
+                                             float length, float thickness = 0.2f, float height = 3.0f)
+        {
+            Line2D line(startX, startY, startX + length, startY);
+            WallCreateInfo wci;
+            wci.lines = &line; wci.lineCount = 1; 
+            wci.thickness = thickness; wci.height = height;
+            return CreateWallsFromLines2D(pc, &wci);
+        }
+
+        /**
+         * 便利函数：创建单条垂直墙体
+         */
+        inline Primitive *CreateVerticalWall(PrimitiveCreater *pc, float startX, float startY, 
+                                           float length, float thickness = 0.2f, float height = 3.0f)
+        {
+            Line2D line(startX, startY, startX, startY + length);
+            WallCreateInfo wci;
+            wci.lines = &line; wci.lineCount = 1;
+            wci.thickness = thickness; wci.height = height;
+            return CreateWallsFromLines2D(pc, &wci);
+        }
     }//namespace inline_geometry
 }//namespace hgl::graph
