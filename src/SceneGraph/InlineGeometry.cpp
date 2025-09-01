@@ -1481,6 +1481,277 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
+    namespace
+    {
+        template<typename T>
+        void CreateBoneIndices(PrimitiveCreater *pc, const uint numberSlices)
+        {
+            IBTypeMap<T> ib_map(pc->GetIBMap());
+            T *tp = ib_map;
+            uint i;
+
+            T centerIndex = 0;
+            T indexCounter = 1;
+
+            // Bottom cap (start end - larger radius)
+            for (i = 0; i < numberSlices; i++)
+            {
+                *tp = centerIndex;      ++tp;
+                *tp = indexCounter;     ++tp;
+                *tp = indexCounter + 1; ++tp;
+
+                indexCounter++;
+            }
+            indexCounter++;
+
+            // Top cap (end - smaller radius)  
+            centerIndex = indexCounter;
+            indexCounter++;
+
+            for (i = 0; i < numberSlices; i++)
+            {
+                *tp = centerIndex;      ++tp;
+                *tp = indexCounter + 1; ++tp;
+                *tp = indexCounter;     ++tp;
+
+                indexCounter++;
+            }
+            indexCounter++;
+
+            // Sides (tapered)
+            for (i = 0; i < numberSlices; i++)
+            {
+                *tp = indexCounter;     ++tp;
+                *tp = indexCounter + 1; ++tp;
+                *tp = indexCounter + 2; ++tp;
+
+                *tp = indexCounter + 2; ++tp;
+                *tp = indexCounter + 1; ++tp;
+                *tp = indexCounter + 3; ++tp;
+
+                indexCounter += 2;
+            }
+        }
+    }//namespace
+
+    Primitive *CreateBone(PrimitiveCreater *pc, const BoneCreateInfo *bci)
+    {
+        if(!pc || !bci) return nullptr;
+
+        uint numberIndices = bci->numberSlices * 3 * 2 + bci->numberSlices * 6;
+
+        if(numberIndices <= 0)
+            return nullptr;
+
+        uint numberVertices = (bci->numberSlices + 2) * 2 + (bci->numberSlices + 1) * 2;
+
+        if(!pc->Init("Bone", numberVertices, numberIndices))
+            return nullptr;
+
+        float angleStep = (2.0f * HGL_PI) / ((float) bci->numberSlices);
+
+        if (bci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+            return nullptr;
+
+        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
+        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
+        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
+        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
+
+        float *vp = vertex;
+        float *np = normal;
+        float *tp = tangent;
+        float *tcp = tex_coord;
+
+        if(!vp)
+            return nullptr;
+
+        // Bottom center (start - larger radius)
+        *vp =  0.0f;             ++vp;
+        *vp =  0.0f;             ++vp;
+        *vp = -bci->halfExtend;  ++vp;
+
+        if(np)
+        {
+            *np = 0.0f; ++np;
+            *np = 0.0f; ++np;
+            *np =-1.0f; ++np;
+        }
+
+        if(tp)
+        {
+            *tp = 0.0f; ++tp;
+            *tp = 1.0f; ++tp;
+            *tp = 0.0f; ++tp;
+        }
+
+        if(tcp)
+        {
+            *tcp = 0.5f; ++tcp;
+            *tcp = 0.0f; ++tcp;
+        }
+
+        // Bottom ring (start - larger radius)
+        for(uint i = 0; i < bci->numberSlices + 1; i++)
+        {
+            float currentAngle = angleStep * (float)i;
+
+            *vp =  cos(currentAngle) * bci->startRadius; ++vp;
+            *vp = -sin(currentAngle) * bci->startRadius; ++vp;
+            *vp = -bci->halfExtend;                      ++vp;
+
+            if(np)
+            {
+                *np = 0.0f; ++np;
+                *np = 0.0f; ++np;
+                *np =-1.0f; ++np;
+            }
+
+            if(tp)
+            {
+                *tp = sin(currentAngle);    ++tp;
+                *tp = cos(currentAngle);    ++tp;
+                *tp = 0.0f;                 ++tp;
+            }
+
+            if(tcp)
+            {
+                *tcp = 0.5f + 0.5f * cos(currentAngle); ++tcp;
+                *tcp = 0.5f + 0.5f * sin(currentAngle); ++tcp;
+            }
+        }
+
+        // Top center (end - smaller radius)
+        *vp = 0.0f;            ++vp;
+        *vp = 0.0f;            ++vp;
+        *vp = bci->halfExtend; ++vp;
+
+        if(np)
+        {
+            *np = 0.0f;    ++np;
+            *np = 0.0f;    ++np;
+            *np = 1.0f;    ++np;
+        }
+
+        if(tp)
+        {
+            *tp =  0.0f; ++tp;
+            *tp = -1.0f; ++tp;
+            *tp =  0.0f; ++tp;
+        }
+
+        if(tcp)
+        {
+            *tcp = 0.5f; ++tcp;
+            *tcp = 1.0f; ++tcp;
+        }
+
+        // Top ring (end - smaller radius)
+        for(uint i = 0; i < bci->numberSlices + 1; i++)
+        {
+            float currentAngle = angleStep * (float)i;
+
+            *vp =  cos(currentAngle) * bci->endRadius; ++vp;
+            *vp = -sin(currentAngle) * bci->endRadius; ++vp;
+            *vp =  bci->halfExtend;                    ++vp;
+
+            if(np)
+            {
+                *np = 0.0f;    ++np;
+                *np = 0.0f;    ++np;
+                *np = 1.0f;    ++np;
+            }
+
+            if(tp)
+            {
+                *tp = -sin(currentAngle);   ++tp;
+                *tp = -cos(currentAngle);   ++tp;
+                *tp =  0.0f;                ++tp;
+            }
+
+            if(tcp)
+            {
+                *tcp = 0.5f + 0.5f * cos(currentAngle); ++tcp;
+                *tcp = 0.5f + 0.5f * sin(currentAngle); ++tcp;
+            }
+        }
+
+        // Side vertices
+        for(uint i = 0; i < bci->numberSlices + 1; i++)
+        {
+            float currentAngle = angleStep * (float)i;
+            
+            // Bottom side vertex (start radius)
+            *vp =  cos(currentAngle) * bci->startRadius; ++vp;
+            *vp = -sin(currentAngle) * bci->startRadius; ++vp;
+            *vp = -bci->halfExtend;                      ++vp;
+
+            if(np)
+            {
+                *np =  cos(currentAngle); ++np;
+                *np = -sin(currentAngle); ++np;
+                *np =  0.0f;              ++np;
+            }
+
+            if(tp)
+            {
+                *tp = -sin(currentAngle); ++tp;
+                *tp = -cos(currentAngle); ++tp;
+                *tp =  0.0f;              ++tp;
+            }
+
+            if(tcp)
+            {
+                *tcp = (float)i / (float)bci->numberSlices; ++tcp;
+                *tcp = 0.0f;                                 ++tcp;
+            }
+
+            // Top side vertex (end radius)
+            *vp =  cos(currentAngle) * bci->endRadius; ++vp;
+            *vp = -sin(currentAngle) * bci->endRadius; ++vp;
+            *vp =  bci->halfExtend;                    ++vp;
+
+            if(np)
+            {
+                *np =  cos(currentAngle); ++np;
+                *np = -sin(currentAngle); ++np;
+                *np =  0.0f;              ++np;
+            }
+
+            if(tp)
+            {
+                *tp = -sin(currentAngle); ++tp;
+                *tp = -cos(currentAngle); ++tp;
+                *tp =  0.0f;              ++tp;
+            }
+
+            if(tcp)
+            {
+                *tcp = (float)i / (float)bci->numberSlices; ++tcp;
+                *tcp = 1.0f;                                 ++tcp;
+            }
+        }
+
+        // Generate indices
+        {
+            const IndexType index_type = pc->GetIndexType();
+
+            if(index_type == IndexType::U16)CreateBoneIndices<uint16>(pc, bci->numberSlices);else
+            if(index_type == IndexType::U32)CreateBoneIndices<uint32>(pc, bci->numberSlices);else
+            if(index_type == IndexType::U8 )CreateBoneIndices<uint8 >(pc, bci->numberSlices);else
+                return nullptr;
+        }
+
+        Primitive *p = pc->Create();
+
+        // Set bounding box
+        float maxRadius = std::max(bci->startRadius, bci->endRadius);
+        p->SetBoundingBox(Vector3f(-maxRadius, -maxRadius, -bci->halfExtend),
+                         Vector3f( maxRadius,  maxRadius,  bci->halfExtend));
+
+        return p;
+    }
+
     Primitive *CreateBoundingBox(PrimitiveCreater *pc,const BoundingBoxCreateInfo *cci)
     {
         // Points of a cube.

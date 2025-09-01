@@ -254,6 +254,19 @@ namespace hgl::graph
 
         Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col);
 
+        struct BoneCreateInfo
+        {
+            float   halfExtend;     //长度的一半
+            float   startRadius;    //起始端半径（较大）
+            float   endRadius;      //末端半径（较小）
+            uint    numberSlices;   //圆切分精度
+        };//struct BoneCreateInfo
+
+        /**
+            * 创建一个骨头几何体(三角形)，用于表示骨骼段
+            */
+        Primitive *CreateBone(PrimitiveCreater *pc,const BoneCreateInfo *bci);
+
         // 新增：HexSphere（基于二十面体细分的测地球体，输出三角网格）
         struct HexSphereCreateInfo
         {
