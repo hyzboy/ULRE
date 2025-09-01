@@ -1922,4 +1922,452 @@ namespace hgl::graph::inline_geometry
             p->SetBoundingBox(Vector3f(-R,-R,-R), Vector3f(R,R,R));
         return p;
     }
+
+    namespace
+    {
+        template<typename T>
+        void CreateCapsuleIndices(PrimitiveCreater *pc, uint numberSlices, uint numberStacks)
+        {
+            IBTypeMap<T> ib_map(pc->GetIBMap());
+            T *tp = ib_map;
+
+            // 总的索引布局：
+            // 1. 顶半球 (0 到 numberStacks*numberSlices)
+            // 2. 圆柱体侧面 (numberStacks*numberSlices+1 到 (numberStacks+2)*numberSlices)
+            // 3. 底半球 ((numberStacks+2)*numberSlices+1 到 (2*numberStacks+2)*numberSlices)
+
+            uint vertexOffset = 0;
+
+            // 1. 顶半球索引 (Z > halfExtend)
+            for (uint i = 0; i < numberStacks; i++)
+            {
+                for (uint j = 0; j < numberSlices; j++)
+                {
+                    uint current = vertexOffset + i * (numberSlices + 1) + j;
+                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+                    uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
+                    uint nextNext = vertexOffset + (i + 1) * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+
+                    // 第一个三角形 (顺时针为正面)
+                    *tp++ = (T)current;
+                    *tp++ = (T)nextNext;
+                    *tp++ = (T)next;
+
+                    // 第二个三角形
+                    *tp++ = (T)current;
+                    *tp++ = (T)currentNext;
+                    *tp++ = (T)nextNext;
+                }
+            }
+
+            vertexOffset += (numberStacks + 1) * (numberSlices + 1);
+
+            // 2. 圆柱体侧面索引
+            for (uint j = 0; j < numberSlices; j++)
+            {
+                uint current = vertexOffset + j;
+                uint next = vertexOffset + (j + 1) % numberSlices;
+                uint currentNext = vertexOffset + numberSlices + j;
+                uint nextNext = vertexOffset + numberSlices + (j + 1) % numberSlices;
+
+                // 第一个三角形 (顺时针为正面)
+                *tp++ = (T)current;
+                *tp++ = (T)nextNext;
+                *tp++ = (T)next;
+
+                // 第二个三角形
+                *tp++ = (T)current;
+                *tp++ = (T)currentNext;
+                *tp++ = (T)nextNext;
+            }
+
+            vertexOffset += 2 * numberSlices;
+
+            // 3. 底半球索引 (Z < -halfExtend)
+            for (uint i = 0; i < numberStacks; i++)
+            {
+                for (uint j = 0; j < numberSlices; j++)
+                {
+                    uint current = vertexOffset + i * (numberSlices + 1) + j;
+                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+                    uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
+                    uint nextNext = vertexOffset + (i + 1) * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+
+                    // 第一个三角形 (顺时针为正面)
+                    *tp++ = (T)current;
+                    *tp++ = (T)next;
+                    *tp++ = (T)nextNext;
+
+                    // 第二个三角形
+                    *tp++ = (T)current;
+                    *tp++ = (T)nextNext;
+                    *tp++ = (T)currentNext;
+                }
+            }
+        }
+
+        template<typename T>
+        void CreateCapsuleWireframeIndices(PrimitiveCreater *pc, uint numberSlices, uint numberStacks)
+        {
+            IBTypeMap<T> ib_map(pc->GetIBMap());
+            T *tp = ib_map;
+
+            uint vertexOffset = 0;
+
+            // 1. 顶半球线框
+            for (uint i = 0; i < numberStacks; i++)
+            {
+                for (uint j = 0; j < numberSlices; j++)
+                {
+                    uint current = vertexOffset + i * (numberSlices + 1) + j;
+                    uint next = vertexOffset + i * (numberSlices + 1) + ((j + 1) % (numberSlices + 1));
+                    uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
+
+                    // 水平线
+                    if (j < numberSlices)
+                    {
+                        *tp++ = (T)current;
+                        *tp++ = (T)next;
+                    }
+
+                    // 垂直线
+                    *tp++ = (T)current;
+                    *tp++ = (T)currentNext;
+                }
+            }
+
+            vertexOffset += (numberStacks + 1) * (numberSlices + 1);
+
+            // 2. 圆柱体侧面线框
+            for (uint j = 0; j < numberSlices; j++)
+            {
+                uint current = vertexOffset + j;
+                uint next = vertexOffset + ((j + 1) % numberSlices);
+                uint currentNext = vertexOffset + numberSlices + j;
+
+                // 上圆周
+                *tp++ = (T)current;
+                *tp++ = (T)next;
+
+                // 垂直线
+                *tp++ = (T)current;
+                *tp++ = (T)currentNext;
+            }
+
+            vertexOffset += 2 * numberSlices;
+
+            // 3. 底半球线框
+            for (uint i = 0; i < numberStacks; i++)
+            {
+                for (uint j = 0; j < numberSlices; j++)
+                {
+                    uint current = vertexOffset + i * (numberSlices + 1) + j;
+                    uint next = vertexOffset + i * (numberSlices + 1) + ((j + 1) % (numberSlices + 1));
+                    uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
+
+                    // 水平线
+                    if (j < numberSlices)
+                    {
+                        *tp++ = (T)current;
+                        *tp++ = (T)next;
+                    }
+
+                    // 垂直线
+                    *tp++ = (T)current;
+                    *tp++ = (T)currentNext;
+                }
+            }
+        }
+    }
+
+    Primitive *CreateCapsule(PrimitiveCreater *pc, const CapsuleCreateInfo *cci)
+    {
+        if (!pc || !cci) return nullptr;
+        if (cci->numberSlices < 3 || cci->numberStacks < 1) return nullptr;
+
+        // 计算顶点和索引数量
+        // 顶半球: (numberStacks+1) * (numberSlices+1) 个顶点
+        // 圆柱体: 2 * numberSlices 个顶点 (上下各一圈)
+        // 底半球: (numberStacks+1) * (numberSlices+1) 个顶点
+        uint hemisphereVertices = (cci->numberStacks + 1) * (cci->numberSlices + 1);
+        uint cylinderVertices = 2 * cci->numberSlices;
+        uint numberVertices = 2 * hemisphereVertices + cylinderVertices;
+
+        // 索引数量 (每个四边形需要2个三角形，每个三角形3个索引)
+        uint hemisphereIndices = cci->numberStacks * cci->numberSlices * 6;
+        uint cylinderIndices = cci->numberSlices * 6;
+        uint numberIndices = 2 * hemisphereIndices + cylinderIndices;
+
+        if (numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+            return nullptr;
+
+        if (!pc->Init("Capsule", numberVertices, numberIndices))
+            return nullptr;
+
+        VABMapFloat vertex(pc->GetVABMap(VAN::Position), VF_V3F);
+        VABMapFloat normal(pc->GetVABMap(VAN::Normal), VF_V3F);
+        VABMapFloat tangent(pc->GetVABMap(VAN::Tangent), VF_V3F);
+        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord), VF_V2F);
+
+        float *vp = vertex;
+        float *np = normal;
+        float *tp = tangent;
+        float *tcp = tex_coord;
+
+        if (!vp) return nullptr;
+
+        const float angleStep = (2.0f * HGL_PI) / ((float)cci->numberSlices);
+        const float stackStep = HGL_PI / (2.0f * (float)cci->numberStacks); // 90度分为numberStacks步
+
+        // 1. 生成顶半球顶点 (Z >= halfExtend)
+        for (uint i = 0; i <= cci->numberStacks; i++)
+        {
+            float stackAngle = HGL_PI / 2.0f - (float)i * stackStep; // 从90度到0度
+            float y = sin(stackAngle);
+            float xzRadius = cos(stackAngle);
+
+            for (uint j = 0; j <= cci->numberSlices; j++)
+            {
+                float sliceAngle = (float)j * angleStep;
+                float x = xzRadius * cos(sliceAngle);
+                float z = xzRadius * sin(sliceAngle);
+
+                // 位置 (半径缩放，Z偏移到圆柱顶部)
+                *vp++ = x * cci->radius;
+                *vp++ = y * cci->radius;
+                *vp++ = z * cci->radius + cci->halfExtend;
+
+                // 法线
+                if (np)
+                {
+                    *np++ = x;
+                    *np++ = y;
+                    *np++ = z;
+                }
+
+                // 纹理坐标
+                if (tcp)
+                {
+                    *tcp++ = (float)j / (float)cci->numberSlices;
+                    *tcp++ = 1.0f - (float)i / (float)cci->numberStacks;
+                }
+
+                // 切线
+                if (tp)
+                {
+                    *tp++ = -sin(sliceAngle);
+                    *tp++ = 0.0f;
+                    *tp++ = cos(sliceAngle);
+                }
+            }
+        }
+
+        // 2. 生成圆柱体顶点
+        for (uint i = 0; i < 2; i++) // 上下两圈
+        {
+            float zPos = (i == 0) ? cci->halfExtend : -cci->halfExtend;
+            for (uint j = 0; j < cci->numberSlices; j++)
+            {
+                float angle = (float)j * angleStep;
+                float x = cos(angle);
+                float z = sin(angle);
+
+                // 位置
+                *vp++ = x * cci->radius;
+                *vp++ = 0.0f;
+                *vp++ = z * cci->radius;
+
+                // 法线 (指向外侧)
+                if (np)
+                {
+                    *np++ = x;
+                    *np++ = 0.0f;
+                    *np++ = z;
+                }
+
+                // 纹理坐标
+                if (tcp)
+                {
+                    *tcp++ = (float)j / (float)cci->numberSlices;
+                    *tcp++ = (float)i;
+                }
+
+                // 切线
+                if (tp)
+                {
+                    *tp++ = -sin(angle);
+                    *tp++ = 0.0f;
+                    *tp++ = cos(angle);
+                }
+            }
+        }
+
+        // 3. 生成底半球顶点 (Z <= -halfExtend)
+        for (uint i = 0; i <= cci->numberStacks; i++)
+        {
+            float stackAngle = -(float)i * stackStep; // 从0度到-90度
+            float y = sin(stackAngle);
+            float xzRadius = cos(stackAngle);
+
+            for (uint j = 0; j <= cci->numberSlices; j++)
+            {
+                float sliceAngle = (float)j * angleStep;
+                float x = xzRadius * cos(sliceAngle);
+                float z = xzRadius * sin(sliceAngle);
+
+                // 位置 (半径缩放，Z偏移到圆柱底部)
+                *vp++ = x * cci->radius;
+                *vp++ = y * cci->radius;
+                *vp++ = z * cci->radius - cci->halfExtend;
+
+                // 法线
+                if (np)
+                {
+                    *np++ = x;
+                    *np++ = y;
+                    *np++ = z;
+                }
+
+                // 纹理坐标
+                if (tcp)
+                {
+                    *tcp++ = (float)j / (float)cci->numberSlices;
+                    *tcp++ = (float)i / (float)cci->numberStacks;
+                }
+
+                // 切线
+                if (tp)
+                {
+                    *tp++ = -sin(sliceAngle);
+                    *tp++ = 0.0f;
+                    *tp++ = cos(sliceAngle);
+                }
+            }
+        }
+
+        // 生成索引
+        {
+            const IndexType index_type = pc->GetIndexType();
+
+            if (index_type == IndexType::U16) CreateCapsuleIndices<uint16>(pc, cci->numberSlices, cci->numberStacks);
+            else if (index_type == IndexType::U32) CreateCapsuleIndices<uint32>(pc, cci->numberSlices, cci->numberStacks);
+            else if (index_type == IndexType::U8) CreateCapsuleIndices<uint8>(pc, cci->numberSlices, cci->numberStacks);
+            else return nullptr;
+        }
+
+        Primitive *p = pc->Create();
+
+        if (p)
+        {
+            float totalHeight = 2.0f * cci->radius + 2.0f * cci->halfExtend;
+            p->SetBoundingBox(Vector3f(-cci->radius, -cci->radius, -cci->halfExtend - cci->radius),
+                              Vector3f(cci->radius, cci->radius, cci->halfExtend + cci->radius));
+        }
+
+        return p;
+    }
+
+    Primitive *CreateCapsuleWireframe(PrimitiveCreater *pc, const CapsuleCreateInfo *cci)
+    {
+        if (!pc || !cci) return nullptr;
+        if (cci->numberSlices < 3 || cci->numberStacks < 1) return nullptr;
+
+        // 计算顶点数量 (与实体版本相同)
+        uint hemisphereVertices = (cci->numberStacks + 1) * (cci->numberSlices + 1);
+        uint cylinderVertices = 2 * cci->numberSlices;
+        uint numberVertices = 2 * hemisphereVertices + cylinderVertices;
+
+        // 线框索引数量计算
+        // 每个半球: numberStacks * numberSlices 个四边形，每个四边形4条边，但共享边只计算一次
+        // 估算: numberStacks * numberSlices * 2 (水平+垂直线)
+        uint hemisphereLineIndices = cci->numberStacks * cci->numberSlices * 4;
+        uint cylinderLineIndices = cci->numberSlices * 4; // 上圆周 + 垂直线
+        uint numberIndices = 2 * hemisphereLineIndices + cylinderLineIndices;
+
+        if (numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+            return nullptr;
+
+        if (!pc->Init("CapsuleWireframe", numberVertices, numberIndices))
+            return nullptr;
+
+        // 顶点生成与实体版本相同
+        VABMapFloat vertex(pc->GetVABMap(VAN::Position), VF_V3F);
+        float *vp = vertex;
+
+        if (!vp) return nullptr;
+
+        const float angleStep = (2.0f * HGL_PI) / ((float)cci->numberSlices);
+        const float stackStep = HGL_PI / (2.0f * (float)cci->numberStacks);
+
+        // 1. 生成顶半球顶点
+        for (uint i = 0; i <= cci->numberStacks; i++)
+        {
+            float stackAngle = HGL_PI / 2.0f - (float)i * stackStep;
+            float y = sin(stackAngle);
+            float xzRadius = cos(stackAngle);
+
+            for (uint j = 0; j <= cci->numberSlices; j++)
+            {
+                float sliceAngle = (float)j * angleStep;
+                float x = xzRadius * cos(sliceAngle);
+                float z = xzRadius * sin(sliceAngle);
+
+                *vp++ = x * cci->radius;
+                *vp++ = y * cci->radius;
+                *vp++ = z * cci->radius + cci->halfExtend;
+            }
+        }
+
+        // 2. 生成圆柱体顶点
+        for (uint i = 0; i < 2; i++)
+        {
+            float zPos = (i == 0) ? cci->halfExtend : -cci->halfExtend;
+            for (uint j = 0; j < cci->numberSlices; j++)
+            {
+                float angle = (float)j * angleStep;
+                *vp++ = cos(angle) * cci->radius;
+                *vp++ = 0.0f;
+                *vp++ = sin(angle) * cci->radius;
+            }
+        }
+
+        // 3. 生成底半球顶点
+        for (uint i = 0; i <= cci->numberStacks; i++)
+        {
+            float stackAngle = -(float)i * stackStep;
+            float y = sin(stackAngle);
+            float xzRadius = cos(stackAngle);
+
+            for (uint j = 0; j <= cci->numberSlices; j++)
+            {
+                float sliceAngle = (float)j * angleStep;
+                float x = xzRadius * cos(sliceAngle);
+                float z = xzRadius * sin(sliceAngle);
+
+                *vp++ = x * cci->radius;
+                *vp++ = y * cci->radius;
+                *vp++ = z * cci->radius - cci->halfExtend;
+            }
+        }
+
+        // 生成线框索引
+        {
+            const IndexType index_type = pc->GetIndexType();
+
+            if (index_type == IndexType::U16) CreateCapsuleWireframeIndices<uint16>(pc, cci->numberSlices, cci->numberStacks);
+            else if (index_type == IndexType::U32) CreateCapsuleWireframeIndices<uint32>(pc, cci->numberSlices, cci->numberStacks);
+            else if (index_type == IndexType::U8) CreateCapsuleWireframeIndices<uint8>(pc, cci->numberSlices, cci->numberStacks);
+            else return nullptr;
+        }
+
+        Primitive *p = pc->Create();
+
+        if (p)
+        {
+            p->SetBoundingBox(Vector3f(-cci->radius, -cci->radius, -cci->halfExtend - cci->radius),
+                              Vector3f(cci->radius, cci->radius, cci->halfExtend + cci->radius));
+        }
+
+        return p;
+    }
 }

@@ -218,6 +218,24 @@ namespace hgl::graph
             */
         Primitive *CreateHollowCylinder(PrimitiveCreater *pc,const HollowCylinderCreateInfo *hcci);
 
+        struct CapsuleCreateInfo
+        {
+            float   halfExtend;     //圆柱部分高度的一半
+            float   radius;         //半径（圆柱和球帽共用）
+            uint    numberSlices;   //圆切分精度
+            uint    numberStacks;   //球帽层数（半球的纬度分割数）
+        };//struct CapsuleCreateInfo
+
+        /**
+            * 创建一个胶囊体(三角形)
+            */
+        Primitive *CreateCapsule(PrimitiveCreater *pc,const CapsuleCreateInfo *cci);
+
+        /**
+            * 创建一个胶囊体线框(线条)
+            */
+        Primitive *CreateCapsuleWireframe(PrimitiveCreater *pc,const CapsuleCreateInfo *cci);
+
         struct ConeCreateInfo
         {
             float   halfExtend,     //高度
