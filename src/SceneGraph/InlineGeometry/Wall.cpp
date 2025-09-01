@@ -381,6 +381,10 @@ namespace hgl::graph::inline_geometry
         std::vector<uint32_t> finalIndices; finalIndices.reserve((m-(closed?0:1))*18 + 12);
         auto vertIndex = [&](size_t i,int corner)->uint32_t{ return (uint32_t)(i*6 + corner); };
         size_t segCount = closed? m : (m-1);
+
+        // decide if vertical faces need per-face independent vertices
+        bool flatSide = (wci->cornerJoin == WallCreateInfo::CornerJoin::Miter || wci->cornerJoin == WallCreateInfo::CornerJoin::Bevel);
+
         for(size_t i=0;i<segCount;i++)
         {
             size_t ni = (i+1)%m;
@@ -390,14 +394,39 @@ namespace hgl::graph::inline_geometry
             finalIndices.push_back(t0); finalIndices.push_back(t3); finalIndices.push_back(t2);
 
             // Left vertical face
-            uint32_t l0 = vertIndex(i,0), l1 = vertIndex(i,3), l2 = vertIndex(ni,3), l3 = vertIndex(ni,0);
-            finalIndices.push_back(l0); finalIndices.push_back(l1); finalIndices.push_back(l2);
-            finalIndices.push_back(l0); finalIndices.push_back(l2); finalIndices.push_back(l3);
+            uint32_t orig_l0 = vertIndex(i,0), orig_l1 = vertIndex(i,3), orig_l2 = vertIndex(ni,3), orig_l3 = vertIndex(ni,0);
+            if(flatSide)
+            {
+                uint32_t base = (uint32_t)finalVerts.size();
+                // duplicate positions and uvs for a unique quad
+                finalVerts.push_back(finalVerts[orig_l0]); finalVerts.push_back(finalVerts[orig_l1]); finalVerts.push_back(finalVerts[orig_l2]); finalVerts.push_back(finalVerts[orig_l3]);
+                finalUV.push_back(finalUV[orig_l0]); finalUV.push_back(finalUV[orig_l1]); finalUV.push_back(finalUV[orig_l2]); finalUV.push_back(finalUV[orig_l3]);
+                finalIndices.push_back(base+0); finalIndices.push_back(base+1); finalIndices.push_back(base+2);
+                finalIndices.push_back(base+0); finalIndices.push_back(base+2); finalIndices.push_back(base+3);
+            }
+            else
+            {
+                uint32_t l0 = orig_l0, l1 = orig_l1, l2 = orig_l2, l3 = orig_l3;
+                finalIndices.push_back(l0); finalIndices.push_back(l1); finalIndices.push_back(l2);
+                finalIndices.push_back(l0); finalIndices.push_back(l2); finalIndices.push_back(l3);
+            }
 
             // Right vertical face
-            uint32_t r0 = vertIndex(i,1), r1 = vertIndex(ni,1), r2 = vertIndex(ni,2), r3 = vertIndex(i,2);
-            finalIndices.push_back(r0); finalIndices.push_back(r1); finalIndices.push_back(r2);
-            finalIndices.push_back(r0); finalIndices.push_back(r2); finalIndices.push_back(r3);
+            uint32_t orig_r0 = vertIndex(i,1), orig_r1 = vertIndex(ni,1), orig_r2 = vertIndex(ni,2), orig_r3 = vertIndex(i,2);
+            if(flatSide)
+            {
+                uint32_t base = (uint32_t)finalVerts.size();
+                finalVerts.push_back(finalVerts[orig_r0]); finalVerts.push_back(finalVerts[orig_r1]); finalVerts.push_back(finalVerts[orig_r2]); finalVerts.push_back(finalVerts[orig_r3]);
+                finalUV.push_back(finalUV[orig_r0]); finalUV.push_back(finalUV[orig_r1]); finalUV.push_back(finalUV[orig_r2]); finalUV.push_back(finalUV[orig_r3]);
+                finalIndices.push_back(base+0); finalIndices.push_back(base+1); finalIndices.push_back(base+2);
+                finalIndices.push_back(base+0); finalIndices.push_back(base+2); finalIndices.push_back(base+3);
+            }
+            else
+            {
+                uint32_t r0 = orig_r0, r1 = orig_r1, r2 = orig_r2, r3 = orig_r3;
+                finalIndices.push_back(r0); finalIndices.push_back(r1); finalIndices.push_back(r2);
+                finalIndices.push_back(r0); finalIndices.push_back(r2); finalIndices.push_back(r3);
+            }
         }
 
         // caps for open polyline
