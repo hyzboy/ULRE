@@ -263,5 +263,40 @@ namespace hgl::graph
         };
 
         Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
+
+        // 新增：2D轮廓旋转生成3D几何体
+        struct RevolutionCreateInfo
+        {
+            Vector2f*   profile_points;     ///<2D轮廓点数组(X为距离轴的距离，Y为沿轴的高度)
+            uint        profile_count;      ///<轮廓点数量
+            uint        revolution_slices;  ///<旋转分段数量
+            float       start_angle;        ///<起始角度（度）
+            float       sweep_angle;        ///<扫过角度（度），360为完整旋转
+            Vector3f    revolution_axis;    ///<旋转轴方向（默认为Z轴(0,0,1)）
+            Vector3f    revolution_center;  ///<旋转中心点（默认为原点(0,0,0)）
+            bool        close_profile;      ///<是否闭合轮廓（连接首尾点）
+            Vector2f    uv_scale;           ///<UV缩放
+
+        public:
+            RevolutionCreateInfo()
+            {
+                profile_points = nullptr;
+                profile_count = 0;
+                revolution_slices = 16;
+                start_angle = 0.0f;
+                sweep_angle = 360.0f;
+                revolution_axis = Vector3f(0, 0, 1);    // Z轴向上
+                revolution_center = Vector3f(0, 0, 0);
+                close_profile = true;
+                uv_scale = Vector2f(1.0f, 1.0f);
+            }
+        };
+
+        /**
+         * 创建一个由2D轮廓旋转生成的3D几何体
+         * 比如半圆弧旋转成球体，方形轮廓旋转成圆柱体等
+         */
+        Primitive *CreateRevolution(PrimitiveCreater *pc, const RevolutionCreateInfo *rci);
+
     }//namespace inline_geometry
 }//namespace hgl::graph
