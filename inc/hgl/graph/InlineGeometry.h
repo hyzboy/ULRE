@@ -267,16 +267,24 @@ namespace hgl::graph
         // 新增：Star（星形）创建信息
         struct StarCreateInfo
         {
-            float outer_radius = 1.0f;      // 外半径
-            float inner_radius = 0.5f;      // 内半径
-            uint  point_count = 5;          // 角数量（星角个数）
-            float center_height = 0.0f;     // 中心点高度
-            bool  symmetric_back = false;   // 背面是否对称突起
+            float outer_radius = 1.0f;      // 外半径 (星角尖端到中心的距离)
+            float inner_radius = 0.5f;      // 内半径 (星角内凹处到中心的距离)
+            uint  point_count = 5;          // 角数量（星角个数，最小为3）
+            float center_height = 0.0f;     // 中心点高度 (Z坐标值)
+            bool  symmetric_back = false;   // 背面是否对称突起 (false=平底, true=双面星形)
         };
 
         /**
          * 创建一个星形(三角形)
          * 要求：Z轴向上，ClockWise为正面
+         * 
+         * 顶点布局：
+         * - 正面：中心点 + outer_radius处的星角尖端 + inner_radius处的星角内凹
+         * - 背面(可选)：对称的中心点 + 星角尖端 + 星角内凹，通过侧面连接
+         * 
+         * @param pc 图元创建器
+         * @param sci 星形创建参数
+         * @return 创建的图元，失败返回nullptr
          */
         Primitive *CreateStar(PrimitiveCreater *pc,const StarCreateInfo *sci);
     }//namespace inline_geometry

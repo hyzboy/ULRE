@@ -1931,13 +1931,14 @@ namespace hgl::graph::inline_geometry
             IBTypeMap<T> ib_map(pc->GetIBMap());
             T *tp = ib_map;
 
-            // 每个星角包含两个三角形，底面包含 2*point_count 个三角形
-            // 顶面中心到各点的三角形: point_count 个
-            // 如果 symmetric_back 为 true，背面也有同样的结构
+            // 顶点布局：
+            // 正面: [0]=中心, [1..point_count]=外顶点, [point_count+1..2*point_count]=内顶点
+            // 背面(可选): [2*point_count+1]=中心, [2*point_count+2..3*point_count+1]=外顶点, 
+            //           [3*point_count+2..4*point_count+1]=内顶点
 
-            const uint center_front = 0;  // 正面中心点
-            const uint outer_start = 1;   // 外顶点开始位置  
-            const uint inner_start = outer_start + point_count; // 内顶点开始位置
+            const uint center_front = 0;
+            const uint outer_start = 1;
+            const uint inner_start = outer_start + point_count;
             
             uint center_back = 0;
             uint outer_back_start = 0;
@@ -1945,23 +1946,24 @@ namespace hgl::graph::inline_geometry
             
             if(symmetric_back)
             {
-                center_back = inner_start + point_count;  // 背面中心点
-                outer_back_start = center_back + 1;       // 背面外顶点开始
-                inner_back_start = outer_back_start + point_count; // 背面内顶点开始
+                center_back = inner_start + point_count;
+                outer_back_start = center_back + 1;
+                inner_back_start = outer_back_start + point_count;
             }
 
-            // 正面：中心到星角的三角形 (clockwise from outside view)
+            // 正面星形：每个星角由2个三角形组成 (从外顶点到相邻的两个内顶点)
             for(uint i = 0; i < point_count; i++)
             {
                 uint outer_curr = outer_start + i;
                 uint inner_curr = inner_start + i;
                 uint inner_next = inner_start + ((i + 1) % point_count);
 
-                // 外顶点到两个内顶点的三角形 (clockwise)
+                // 第一个三角形：中心 -> 当前内顶点 -> 外顶点 (clockwise)
                 *tp++ = center_front;
                 *tp++ = inner_curr;
                 *tp++ = outer_curr;
 
+                // 第二个三角形：中心 -> 下一个内顶点 -> 当前内顶点 (clockwise)
                 *tp++ = center_front;
                 *tp++ = inner_next;
                 *tp++ = inner_curr;
@@ -1969,7 +1971,7 @@ namespace hgl::graph::inline_geometry
 
             if(!symmetric_back)
             {
-                // 底面：从背面看是逆时针，从正面看里面是顺时针
+                // 平底模式：连接底面顶点形成封闭底面
                 for(uint i = 0; i < point_count; i++)
                 {
                     uint outer_curr = outer_start + i;
@@ -1977,11 +1979,12 @@ namespace hgl::graph::inline_geometry
                     uint outer_next = outer_start + ((i + 1) % point_count);
                     uint inner_next = inner_start + ((i + 1) % point_count);
 
-                    // 底面的两个三角形，保证从里面看是顺时针
+                    // 底面三角形1：外当前 -> 内当前 -> 内下一个 (从底面看clockwise)
                     *tp++ = outer_curr;
                     *tp++ = inner_curr;
                     *tp++ = inner_next;
 
+                    // 底面三角形2：外当前 -> 内下一个 -> 外下一个 (从底面看clockwise)
                     *tp++ = outer_curr;
                     *tp++ = inner_next;
                     *tp++ = outer_next;
@@ -1989,14 +1992,14 @@ namespace hgl::graph::inline_geometry
             }
             else
             {
-                // 背面：对称突起 (从背面看是clockwise)
+                // 对称背面模式：生成背面星形
                 for(uint i = 0; i < point_count; i++)
                 {
                     uint outer_curr = outer_back_start + i;
                     uint inner_curr = inner_back_start + i;
                     uint inner_next = inner_back_start + ((i + 1) % point_count);
 
-                    // 背面星角三角形 (从背面看clockwise)
+                    // 背面星角三角形 (从背面看clockwise，相对正面是逆时针)
                     *tp++ = center_back;
                     *tp++ = outer_curr;
                     *tp++ = inner_curr;
@@ -2006,7 +2009,7 @@ namespace hgl::graph::inline_geometry
                     *tp++ = inner_next;
                 }
 
-                // 连接正面和背面的侧面
+                // 连接正面和背面的侧壁
                 for(uint i = 0; i < point_count; i++)
                 {
                     uint outer_front = outer_start + i;
@@ -2016,7 +2019,7 @@ namespace hgl::graph::inline_geometry
                     uint inner_front_next = inner_start + ((i + 1) % point_count);
                     uint inner_back_next = inner_back_start + ((i + 1) % point_count);
 
-                    // 外顶点侧面 (两个三角形)
+                    // 外顶点之间的四边形侧壁 (分为两个三角形)
                     *tp++ = outer_front;
                     *tp++ = outer_back;
                     *tp++ = inner_front;
@@ -2025,7 +2028,7 @@ namespace hgl::graph::inline_geometry
                     *tp++ = outer_back;
                     *tp++ = inner_back;
 
-                    // 内顶点之间的侧面 (两个三角形)
+                    // 内顶点之间的四边形侧壁 (分为两个三角形)
                     *tp++ = inner_front;
                     *tp++ = inner_back;
                     *tp++ = inner_front_next;
@@ -2041,9 +2044,9 @@ namespace hgl::graph::inline_geometry
     Primitive *CreateStar(PrimitiveCreater *pc, const StarCreateInfo *sci)
     {
         if(!pc || !sci) return nullptr;
-        if(sci->point_count < 3) return nullptr;
+        if(sci->point_count < 3) return nullptr;  // 至少需要3个角
         if(sci->outer_radius <= 0.0f || sci->inner_radius <= 0.0f) return nullptr;
-        if(sci->inner_radius >= sci->outer_radius) return nullptr;
+        if(sci->inner_radius >= sci->outer_radius) return nullptr;  // 内半径必须小于外半径
 
         const uint point_count = sci->point_count;
         uint vertex_count;
@@ -2080,22 +2083,23 @@ namespace hgl::graph::inline_geometry
         if(!vp) return nullptr;
 
         const float angle_step = 2.0f * HGL_PI / (float)point_count;
+        const float half_angle = angle_step * 0.5f;
 
-        // 正面中心点 (Z = center_height)
+        // 正面中心点 (索引0: Z = center_height)
         *vp++ = 0.0f;
         *vp++ = 0.0f;
         *vp++ = sci->center_height;
 
-        if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = 1.0f; }
-        if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
-        if(tcp) { *tcp++ = 0.5f; *tcp++ = 0.5f; }
+        if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = 1.0f; }  // 正面法线向上
+        if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }  // 切线向X正方向
+        if(tcp) { *tcp++ = 0.5f; *tcp++ = 0.5f; }  // 纹理坐标在中心
 
-        // 正面外顶点 (星角尖端)
+        // 正面外顶点 (星角尖端) - 索引 1 到 point_count
         for(uint i = 0; i < point_count; i++)
         {
             float angle = angle_step * (float)i;
             float x = cos(angle) * sci->outer_radius;
-            float y = -sin(angle) * sci->outer_radius; // 负号使得clockwise为正面
+            float y = -sin(angle) * sci->outer_radius; // 负号确保clockwise为正面
             
             *vp++ = x;
             *vp++ = y;
@@ -2105,17 +2109,18 @@ namespace hgl::graph::inline_geometry
             if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
             if(tcp) 
             { 
+                // 纹理坐标从-1到1映射到0到1
                 *tcp++ = (x / sci->outer_radius + 1.0f) * 0.5f;
                 *tcp++ = (y / sci->outer_radius + 1.0f) * 0.5f;
             }
         }
 
-        // 正面内顶点 (星角内凹处)
+        // 正面内顶点 (星角内凹处) - 索引 (point_count+1) 到 (2*point_count)
         for(uint i = 0; i < point_count; i++)
         {
-            float angle = angle_step * (float)i + angle_step * 0.5f; // 偏移半个角度
+            float angle = angle_step * (float)i + half_angle; // 偏移半个角度
             float x = cos(angle) * sci->inner_radius;
-            float y = -sin(angle) * sci->inner_radius; // 负号使得clockwise为正面
+            float y = -sin(angle) * sci->inner_radius; // 负号确保clockwise为正面
             
             *vp++ = x;
             *vp++ = y;
@@ -2132,17 +2137,17 @@ namespace hgl::graph::inline_geometry
 
         if(sci->symmetric_back)
         {
-            // 背面中心点 (Z = 0 或负的center_height)
+            // 背面中心点 (索引 2*point_count+1: Z = -center_height)
             float back_height = -sci->center_height;
             *vp++ = 0.0f;
             *vp++ = 0.0f;
             *vp++ = back_height;
 
-            if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = -1.0f; }
+            if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = -1.0f; }  // 背面法线向下
             if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
             if(tcp) { *tcp++ = 0.5f; *tcp++ = 0.5f; }
 
-            // 背面外顶点
+            // 背面外顶点 - 索引 (2*point_count+2) 到 (3*point_count+1)
             for(uint i = 0; i < point_count; i++)
             {
                 float angle = angle_step * (float)i;
@@ -2162,10 +2167,10 @@ namespace hgl::graph::inline_geometry
                 }
             }
 
-            // 背面内顶点
+            // 背面内顶点 - 索引 (3*point_count+2) 到 (4*point_count+1)
             for(uint i = 0; i < point_count; i++)
             {
-                float angle = angle_step * (float)i + angle_step * 0.5f;
+                float angle = angle_step * (float)i + half_angle;
                 float x = cos(angle) * sci->inner_radius;
                 float y = sin(angle) * sci->inner_radius; // 正号使得从背面看clockwise
                 
@@ -2204,11 +2209,13 @@ namespace hgl::graph::inline_geometry
             float height = sci->center_height;
             if(sci->symmetric_back)
             {
+                // 双面星形的包围盒
                 p->SetBoundingBox(Vector3f(-max_radius, -max_radius, -height),
                                   Vector3f(max_radius, max_radius, height));
             }
             else
             {
+                // 平底星形的包围盒 
                 p->SetBoundingBox(Vector3f(-max_radius, -max_radius, 0.0f),
                                   Vector3f(max_radius, max_radius, height));
             }
