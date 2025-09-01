@@ -30,6 +30,16 @@ namespace hgl::graph::inline_geometry
         return Vector2f(v.x/len, v.y/len);
     }
 
+    // compute triangle normal
+    static Vector3f TriNormal(const Vector3f &A,const Vector3f &B,const Vector3f &C)
+    {
+        Vector3f AB(B.x-A.x, B.y-A.y, B.z-A.z);
+        Vector3f AC(C.x-A.x, C.y-A.y, C.z-A.z);
+        return Vector3f( AB.y*AC.z - AB.z*AC.y,
+                         AB.z*AC.x - AB.x*AC.z,
+                         AB.x*AC.y - AB.y*AC.x );
+    }
+
     Primitive *CreateWallsFromLines2D(PrimitiveCreater *pc, const WallCreateInfo *wci)
     {
         if(!pc || !wci) return nullptr;
@@ -69,7 +79,6 @@ namespace hgl::graph::inline_geometry
             adj[b].push_back(a);
         }
 
-        // find start: vertex with degree 1 if open, else any vertex of segments (closed loop)
         int start = -1;
         for(uint i=0;i<vcount;++i)
         {
@@ -81,7 +90,6 @@ namespace hgl::graph::inline_geometry
 
         if(start==-1) return nullptr;
 
-        // walk to create ordered vertex sequence
         std::vector<uint> seq;
         seq.reserve(segA.size()+1);
         std::vector<char> visited(vcount,0);
@@ -108,11 +116,9 @@ namespace hgl::graph::inline_geometry
         bool closed = false;
         if(!seq.empty()){
             uint first = seq.front(), last = seq.back();
-            // check if last connects to first
             for(uint nb: adj[last]) if(nb==first) { closed=true; break; }
         }
 
-        // compute per-segment directions and normals
         const float halfT = wci->thickness * 0.5f;
         const float halfH = wci->height * 0.5f;
 
@@ -270,10 +276,7 @@ namespace hgl::graph::inline_geometry
             // top L
             finalVerts.push_back(Vector3f(L.x, L.y, halfH));
 
-            // compute u coordinate from accum length: find nearest original segment index and interpolate
-            // We'll map each left/right point to a polyline position using projection to original sequence accum
             float u = 0.0f;
-            // simple approach: project to nearest original vertex accum index
             float minDist = FLT_MAX; size_t bestIdx=0;
             for(size_t vi=0;vi<nverts;++vi)
             {
@@ -284,22 +287,17 @@ namespace hgl::graph::inline_geometry
             }
             u = accum[bestIdx] * wci->uv_u_repeat_per_unit;
 
-            // v is based on height: bottom 0, top uv_tile_v
             float v0 = 0.0f;
             float v1 = wci->uv_tile_v;
 
-            // bottom L
             finalUV.push_back(Vector2f(u, v0));
-            // bottom R
             finalUV.push_back(Vector2f(u, v0));
-            // top R
             finalUV.push_back(Vector2f(u, v1));
-            // top L
             finalUV.push_back(Vector2f(u, v1));
         }
 
         // indices
-        std::vector<uint32_t> finalIndices; finalIndices.reserve((m-(closed?0:1))*24);
+        std::vector<uint32_t> finalIndices; finalIndices.reserve((m-(closed?0:1))*24 + 12);
         auto vertIndex = [&](size_t i, int corner)->uint32_t{ return (uint32_t)(i*4 + corner); };
         size_t segCount = closed? m : (m-1);
         for(size_t i=0;i<segCount;i++)
@@ -320,6 +318,66 @@ namespace hgl::graph::inline_geometry
             uint32_t r0 = vertIndex(i,1), r1 = vertIndex(ni,1), r2 = vertIndex(ni,2), r3 = vertIndex(i,2);
             finalIndices.push_back(r0); finalIndices.push_back(r1); finalIndices.push_back(r2);
             finalIndices.push_back(r0); finalIndices.push_back(r2); finalIndices.push_back(r3);
+        }
+
+        // Add caps for open polyline (start and end)
+        if(!closed)
+        {
+            // start cap (use vertices at i=0)
+            uint32_t b0 = vertIndex(0,0), b1 = vertIndex(0,1), t1 = vertIndex(0,2), t0 = vertIndex(0,3);
+            // two triangles (t0,t1,b1) and (t0,b1,b0)
+            size_t capStartIdx = finalIndices.size();
+            finalIndices.push_back(t0); finalIndices.push_back(t1); finalIndices.push_back(b1);
+            finalIndices.push_back(t0); finalIndices.push_back(b1); finalIndices.push_back(b0);
+
+            // ensure orientation: cap normal should align with -dir[0]
+            if(!dir.empty()){
+                Vector3f N = TriNormal(finalVerts[finalIndices[capStartIdx+0]], finalVerts[finalIndices[capStartIdx+1]], finalVerts[finalIndices[capStartIdx+2]]);
+                Vector3f capDir(-dir[0].x, -dir[0].y, 0.0f);
+                float dot = N.x*capDir.x + N.y*capDir.y + N.z*capDir.z;
+                if(dot < 0.0f)
+                {
+                    // flip both triangles
+                    std::swap(finalIndices[capStartIdx+1], finalIndices[capStartIdx+2]);
+                    std::swap(finalIndices[capStartIdx+4], finalIndices[capStartIdx+5]);
+                }
+            }
+
+            // end cap (use vertices at i=m-1)
+            size_t li = m-1;
+            uint32_t eb0 = vertIndex(li,0), eb1 = vertIndex(li,1), et1 = vertIndex(li,2), et0 = vertIndex(li,3);
+            size_t capEndIdx = finalIndices.size();
+            finalIndices.push_back(et0); finalIndices.push_back(et1); finalIndices.push_back(eb1);
+            finalIndices.push_back(et0); finalIndices.push_back(eb1); finalIndices.push_back(eb0);
+
+            if(!dir.empty()){
+                Vector3f N = TriNormal(finalVerts[finalIndices[capEndIdx+0]], finalVerts[finalIndices[capEndIdx+1]], finalVerts[finalIndices[capEndIdx+2]]);
+                Vector3f capDir(dir.back().x, dir.back().y, 0.0f);
+                float dot = N.x*capDir.x + N.y*capDir.y + N.z*capDir.z;
+                if(dot < 0.0f)
+                {
+                    std::swap(finalIndices[capEndIdx+1], finalIndices[capEndIdx+2]);
+                    std::swap(finalIndices[capEndIdx+4], finalIndices[capEndIdx+5]);
+                }
+            }
+        }
+
+        // fix triangle winding if normal.z < 0 (flip triangle) to ensure top faces are visible
+        for(size_t ti=0; ti+2<finalIndices.size(); ti+=3)
+        {
+            uint32_t ia = finalIndices[ti+0];
+            uint32_t ib = finalIndices[ti+1];
+            uint32_t ic = finalIndices[ti+2];
+            const Vector3f &A = finalVerts[ia];
+            const Vector3f &B = finalVerts[ib];
+            const Vector3f &C = finalVerts[ic];
+
+            Vector3f N = TriNormal(A,B,C);
+            if(N.z < 0.0f)
+            {
+                finalIndices[ti+1] = ic;
+                finalIndices[ti+2] = ib;
+            }
         }
 
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size())) return nullptr;
