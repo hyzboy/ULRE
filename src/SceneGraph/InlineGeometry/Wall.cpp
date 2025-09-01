@@ -227,11 +227,25 @@ namespace hgl::graph::inline_geometry
             }
             else if(wci->cornerJoin == WallCreateInfo::CornerJoin::Bevel)
             {
-                // bevel: keep both segment offsets (two points)
-                vjoin[vi].leftPts.push_back(sPrev.left1);
-                vjoin[vi].leftPts.push_back(sNext.left0);
-                vjoin[vi].rightPts.push_back(sPrev.right1);
-                vjoin[vi].rightPts.push_back(sNext.right0);
+                // bevel: keep both segment offsets (两点)
+                // cross < 0.0f 时，left是内侧，right是外侧，顺序应一致
+                float cross = sPrev.dir.x * sNext.dir.y - sPrev.dir.y * sNext.dir.x;
+                if(cross < 0.0f)
+                {
+                    // left是内侧，right是外侧
+                    vjoin[vi].leftPts.push_back(sPrev.left1);
+                    vjoin[vi].leftPts.push_back(sNext.left0);
+                    vjoin[vi].rightPts.push_back(sPrev.right1);
+                    vjoin[vi].rightPts.push_back(sNext.right0);
+                }
+                else
+                {
+                    // left是外侧，right是内侧
+                    vjoin[vi].leftPts.push_back(sPrev.left1);
+                    vjoin[vi].leftPts.push_back(sNext.left0);
+                    vjoin[vi].rightPts.push_back(sPrev.right1);
+                    vjoin[vi].rightPts.push_back(sNext.right0);
+                }
             }
             else // Round
             {
