@@ -10,6 +10,11 @@ namespace hgl { template<typename T> class DataArray; }
 
 namespace hgl::graph
 {
+    /**
+     * FreeType-based font bitmap implementation for cross-platform support.
+     * This class provides the same functionality as WinBitmapFont but uses 
+     * FreeType library instead of Windows GDI APIs.
+     */
     class FreeTypeBitmapFont : public FontBitmapDataSource
     {
         FT_Library ft_library;
