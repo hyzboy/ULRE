@@ -19,7 +19,10 @@ CreateProject(04_Billboard                      BillboardTest.cpp)
 
 CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
 
-CreateProject(06_ExtrudedPolygonTest		ExtrudedPolygonTest.cpp)
+CreateProject(06_ExtrudedPolygonTest            ExtrudedPolygonTest.cpp)
+CreateProject(07_WallsFromPolyline              WallsFromPolyline.cpp)
 
-CreateProject(06_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
-CreateProject(07_TerrainHeightmap               TerrainHeightmap.cpp)
+
+CreateProject(10_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
+CreateProject(20_TerrainHeightmap               TerrainHeightmap.cpp)
+
