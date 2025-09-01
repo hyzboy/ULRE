@@ -261,7 +261,7 @@ private:
         {
             //螺旋排列
 
-            cci.mat=TranslateMatrix(0,0,i)*AxisZRotate(deg2rad(360.0f*i/rm_count))*TranslateMatrix(3,0,0);
+            cci.mat=AxisZRotate(deg2rad(360.0f*i/rm_count))*TranslateMatrix(3,0,0);
 
             render_mesh[i]->component=CreateComponent<MeshComponent>(&cci,render_mesh[i]->cdp);
             render_mesh[i]->component->SetOverrideMaterial(solid.mi[i%COLOR_COUNT]);
