@@ -263,5 +263,20 @@ namespace hgl::graph
         };
 
         Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
+
+        // 茶壶创建信息
+        struct TeapotCreateInfo
+        {
+            float scale = 1.0f;         // 缩放比例
+            uint  subdivisions = 8;     // 贝塞尔面片细分数，越大越平滑
+            bool  enable_bottom = true; // 是否生成底部
+            Vector2f uv_scale = {1.0f, 1.0f}; // UV缩放
+        };
+
+        /**
+         * 创建一个茶壶几何体(三角形) - 基于经典Utah茶壶
+         */
+        Primitive *CreateTeapot(PrimitiveCreater *pc, const TeapotCreateInfo *tci);
+
     }//namespace inline_geometry
 }//namespace hgl::graph
