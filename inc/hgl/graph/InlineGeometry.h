@@ -263,5 +263,21 @@ namespace hgl::graph
         };
 
         Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
+
+        // 新增：Star（星形）创建信息
+        struct StarCreateInfo
+        {
+            float outer_radius = 1.0f;      // 外半径
+            float inner_radius = 0.5f;      // 内半径
+            uint  point_count = 5;          // 角数量（星角个数）
+            float center_height = 0.0f;     // 中心点高度
+            bool  symmetric_back = false;   // 背面是否对称突起
+        };
+
+        /**
+         * 创建一个星形(三角形)
+         * 要求：Z轴向上，ClockWise为正面
+         */
+        Primitive *CreateStar(PrimitiveCreater *pc,const StarCreateInfo *sci);
     }//namespace inline_geometry
 }//namespace hgl::graph

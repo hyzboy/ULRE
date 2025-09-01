@@ -1922,4 +1922,297 @@ namespace hgl::graph::inline_geometry
             p->SetBoundingBox(Vector3f(-R,-R,-R), Vector3f(R,R,R));
         return p;
     }
+
+    namespace
+    {
+        template<typename T>
+        void CreateStarIndices(PrimitiveCreater *pc, uint point_count, bool symmetric_back)
+        {
+            IBTypeMap<T> ib_map(pc->GetIBMap());
+            T *tp = ib_map;
+
+            // 每个星角包含两个三角形，底面包含 2*point_count 个三角形
+            // 顶面中心到各点的三角形: point_count 个
+            // 如果 symmetric_back 为 true，背面也有同样的结构
+
+            const uint center_front = 0;  // 正面中心点
+            const uint outer_start = 1;   // 外顶点开始位置  
+            const uint inner_start = outer_start + point_count; // 内顶点开始位置
+            
+            uint center_back = 0;
+            uint outer_back_start = 0;
+            uint inner_back_start = 0;
+            
+            if(symmetric_back)
+            {
+                center_back = inner_start + point_count;  // 背面中心点
+                outer_back_start = center_back + 1;       // 背面外顶点开始
+                inner_back_start = outer_back_start + point_count; // 背面内顶点开始
+            }
+
+            // 正面：中心到星角的三角形 (clockwise from outside view)
+            for(uint i = 0; i < point_count; i++)
+            {
+                uint outer_curr = outer_start + i;
+                uint inner_curr = inner_start + i;
+                uint inner_next = inner_start + ((i + 1) % point_count);
+
+                // 外顶点到两个内顶点的三角形 (clockwise)
+                *tp++ = center_front;
+                *tp++ = inner_curr;
+                *tp++ = outer_curr;
+
+                *tp++ = center_front;
+                *tp++ = inner_next;
+                *tp++ = inner_curr;
+            }
+
+            if(!symmetric_back)
+            {
+                // 底面：从背面看是逆时针，从正面看里面是顺时针
+                for(uint i = 0; i < point_count; i++)
+                {
+                    uint outer_curr = outer_start + i;
+                    uint inner_curr = inner_start + i;
+                    uint outer_next = outer_start + ((i + 1) % point_count);
+                    uint inner_next = inner_start + ((i + 1) % point_count);
+
+                    // 底面的两个三角形，保证从里面看是顺时针
+                    *tp++ = outer_curr;
+                    *tp++ = inner_curr;
+                    *tp++ = inner_next;
+
+                    *tp++ = outer_curr;
+                    *tp++ = inner_next;
+                    *tp++ = outer_next;
+                }
+            }
+            else
+            {
+                // 背面：对称突起 (从背面看是clockwise)
+                for(uint i = 0; i < point_count; i++)
+                {
+                    uint outer_curr = outer_back_start + i;
+                    uint inner_curr = inner_back_start + i;
+                    uint inner_next = inner_back_start + ((i + 1) % point_count);
+
+                    // 背面星角三角形 (从背面看clockwise)
+                    *tp++ = center_back;
+                    *tp++ = outer_curr;
+                    *tp++ = inner_curr;
+
+                    *tp++ = center_back;
+                    *tp++ = inner_curr;
+                    *tp++ = inner_next;
+                }
+
+                // 连接正面和背面的侧面
+                for(uint i = 0; i < point_count; i++)
+                {
+                    uint outer_front = outer_start + i;
+                    uint inner_front = inner_start + i;
+                    uint outer_back = outer_back_start + i;
+                    uint inner_back = inner_back_start + i;
+                    uint inner_front_next = inner_start + ((i + 1) % point_count);
+                    uint inner_back_next = inner_back_start + ((i + 1) % point_count);
+
+                    // 外顶点侧面 (两个三角形)
+                    *tp++ = outer_front;
+                    *tp++ = outer_back;
+                    *tp++ = inner_front;
+
+                    *tp++ = inner_front;
+                    *tp++ = outer_back;
+                    *tp++ = inner_back;
+
+                    // 内顶点之间的侧面 (两个三角形)
+                    *tp++ = inner_front;
+                    *tp++ = inner_back;
+                    *tp++ = inner_front_next;
+
+                    *tp++ = inner_front_next;
+                    *tp++ = inner_back;
+                    *tp++ = inner_back_next;
+                }
+            }
+        }
+    }
+
+    Primitive *CreateStar(PrimitiveCreater *pc, const StarCreateInfo *sci)
+    {
+        if(!pc || !sci) return nullptr;
+        if(sci->point_count < 3) return nullptr;
+        if(sci->outer_radius <= 0.0f || sci->inner_radius <= 0.0f) return nullptr;
+        if(sci->inner_radius >= sci->outer_radius) return nullptr;
+
+        const uint point_count = sci->point_count;
+        uint vertex_count;
+        uint index_count;
+
+        if(sci->symmetric_back)
+        {
+            // 对称背面：正面中心+正面外顶点+正面内顶点+背面中心+背面外顶点+背面内顶点
+            vertex_count = 2 + point_count * 4; // 2个中心点 + 4组点(正面外、正面内、背面外、背面内)
+            // 正面三角形 + 背面三角形 + 侧面三角形
+            index_count = point_count * 2 * 3 * 2 + point_count * 4 * 3; // 每个星角2个三角形*2面 + 侧面4个三角形每个角
+        }
+        else
+        {
+            // 平底：正面中心+外顶点+内顶点
+            vertex_count = 1 + point_count * 2; // 1个中心点 + 2组点(外、内)
+            // 正面三角形 + 底面三角形
+            index_count = point_count * 2 * 3 + point_count * 2 * 3; // 正面2个三角形每个角 + 底面2个三角形每个角
+        }
+
+        if(!pc->Init("Star", vertex_count, index_count))
+            return nullptr;
+
+        VABMapFloat vertex(pc->GetVABMap(VAN::Position), VF_V3F);
+        VABMapFloat normal(pc->GetVABMap(VAN::Normal), VF_V3F);
+        VABMapFloat tangent(pc->GetVABMap(VAN::Tangent), VF_V3F);
+        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord), VF_V2F);
+
+        float *vp = vertex;
+        float *np = normal;
+        float *tp = tangent;
+        float *tcp = tex_coord;
+
+        if(!vp) return nullptr;
+
+        const float angle_step = 2.0f * HGL_PI / (float)point_count;
+
+        // 正面中心点 (Z = center_height)
+        *vp++ = 0.0f;
+        *vp++ = 0.0f;
+        *vp++ = sci->center_height;
+
+        if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = 1.0f; }
+        if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+        if(tcp) { *tcp++ = 0.5f; *tcp++ = 0.5f; }
+
+        // 正面外顶点 (星角尖端)
+        for(uint i = 0; i < point_count; i++)
+        {
+            float angle = angle_step * (float)i;
+            float x = cos(angle) * sci->outer_radius;
+            float y = -sin(angle) * sci->outer_radius; // 负号使得clockwise为正面
+            
+            *vp++ = x;
+            *vp++ = y;
+            *vp++ = sci->center_height;
+
+            if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = 1.0f; }
+            if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+            if(tcp) 
+            { 
+                *tcp++ = (x / sci->outer_radius + 1.0f) * 0.5f;
+                *tcp++ = (y / sci->outer_radius + 1.0f) * 0.5f;
+            }
+        }
+
+        // 正面内顶点 (星角内凹处)
+        for(uint i = 0; i < point_count; i++)
+        {
+            float angle = angle_step * (float)i + angle_step * 0.5f; // 偏移半个角度
+            float x = cos(angle) * sci->inner_radius;
+            float y = -sin(angle) * sci->inner_radius; // 负号使得clockwise为正面
+            
+            *vp++ = x;
+            *vp++ = y;
+            *vp++ = sci->center_height;
+
+            if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = 1.0f; }
+            if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+            if(tcp) 
+            { 
+                *tcp++ = (x / sci->outer_radius + 1.0f) * 0.5f;
+                *tcp++ = (y / sci->outer_radius + 1.0f) * 0.5f;
+            }
+        }
+
+        if(sci->symmetric_back)
+        {
+            // 背面中心点 (Z = 0 或负的center_height)
+            float back_height = -sci->center_height;
+            *vp++ = 0.0f;
+            *vp++ = 0.0f;
+            *vp++ = back_height;
+
+            if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = -1.0f; }
+            if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+            if(tcp) { *tcp++ = 0.5f; *tcp++ = 0.5f; }
+
+            // 背面外顶点
+            for(uint i = 0; i < point_count; i++)
+            {
+                float angle = angle_step * (float)i;
+                float x = cos(angle) * sci->outer_radius;
+                float y = sin(angle) * sci->outer_radius; // 正号使得从背面看clockwise
+                
+                *vp++ = x;
+                *vp++ = y;
+                *vp++ = back_height;
+
+                if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = -1.0f; }
+                if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+                if(tcp) 
+                { 
+                    *tcp++ = (x / sci->outer_radius + 1.0f) * 0.5f;
+                    *tcp++ = (y / sci->outer_radius + 1.0f) * 0.5f;
+                }
+            }
+
+            // 背面内顶点
+            for(uint i = 0; i < point_count; i++)
+            {
+                float angle = angle_step * (float)i + angle_step * 0.5f;
+                float x = cos(angle) * sci->inner_radius;
+                float y = sin(angle) * sci->inner_radius; // 正号使得从背面看clockwise
+                
+                *vp++ = x;
+                *vp++ = y;
+                *vp++ = back_height;
+
+                if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = -1.0f; }
+                if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+                if(tcp) 
+                { 
+                    *tcp++ = (x / sci->outer_radius + 1.0f) * 0.5f;
+                    *tcp++ = (y / sci->outer_radius + 1.0f) * 0.5f;
+                }
+            }
+        }
+
+        // 生成索引
+        {
+            const IndexType index_type = pc->GetIndexType();
+
+            if(index_type == IndexType::U16)
+                CreateStarIndices<uint16>(pc, point_count, sci->symmetric_back);
+            else if(index_type == IndexType::U32)
+                CreateStarIndices<uint32>(pc, point_count, sci->symmetric_back);
+            else if(index_type == IndexType::U8)
+                CreateStarIndices<uint8>(pc, point_count, sci->symmetric_back);
+            else
+                return nullptr;
+        }
+
+        Primitive *p = pc->Create();
+        if(p)
+        {
+            float max_radius = sci->outer_radius;
+            float height = sci->center_height;
+            if(sci->symmetric_back)
+            {
+                p->SetBoundingBox(Vector3f(-max_radius, -max_radius, -height),
+                                  Vector3f(max_radius, max_radius, height));
+            }
+            else
+            {
+                p->SetBoundingBox(Vector3f(-max_radius, -max_radius, 0.0f),
+                                  Vector3f(max_radius, max_radius, height));
+            }
+        }
+        return p;
+    }
 }
