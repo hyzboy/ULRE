@@ -341,8 +341,8 @@ namespace hgl::graph::inline_geometry
         size_t m = left_poly.size(); if(m < 2) return nullptr;
 
         // build final 3D vertices and UVs
-        std::vector<Vector3f> finalVerts; finalVerts.reserve(m*4);
-        std::vector<Vector2f> finalUV; finalUV.reserve(m*4);
+        std::vector<Vector3f> finalVerts; finalVerts.reserve(m*6);
+        std::vector<Vector2f> finalUV; finalUV.reserve(m*6);
 
         // precompute accum along base polyline for U mapping (approximate by nearest original vertex)
         std::vector<float> accum(nverts); accum[0]=0.0f; for(size_t i=1;i<nverts;i++) accum[i]=accum[i-1] + segs[i-1].len;
@@ -350,10 +350,15 @@ namespace hgl::graph::inline_geometry
         for(size_t i=0;i<m;i++)
         {
             Vector2f L = left_poly[i]; Vector2f R = right_poly[i];
-            finalVerts.push_back(Vector3f(L.x, L.y, -halfH));
-            finalVerts.push_back(Vector3f(R.x, R.y, -halfH));
-            finalVerts.push_back(Vector3f(R.x, R.y, halfH));
-            finalVerts.push_back(Vector3f(L.x, L.y, halfH));
+            // Side vertices (used for vertical faces) - separate from cap verts
+            finalVerts.push_back(Vector3f(L.x, L.y, -halfH)); // 0 side bottom left
+            finalVerts.push_back(Vector3f(R.x, R.y, -halfH)); // 1 side bottom right
+            finalVerts.push_back(Vector3f(R.x, R.y, halfH));  // 2 side top right
+            finalVerts.push_back(Vector3f(L.x, L.y, halfH));  // 3 side top left
+
+            // Cap (top) vertices - separate instances so normals/uv differ from sides
+            finalVerts.push_back(Vector3f(L.x, L.y, halfH));  // 4 top cap left
+            finalVerts.push_back(Vector3f(R.x, R.y, halfH));  // 5 top cap right
 
             // approximate u by nearest original vertex index
             float minDist = FLT_MAX; size_t bestIdx=0;
@@ -364,29 +369,32 @@ namespace hgl::graph::inline_geometry
                 if(d<minDist){ minDist=d; bestIdx=vi; }
             }
             float u = accum[bestIdx] * wci->uv_u_repeat_per_unit;
+            // UVs for side vertices: bottom/ top share same u. v for side uses 0..uv_tile_v
             float v0 = 0.0f; float v1 = wci->uv_tile_v;
             finalUV.push_back(Vector2f(u,v0)); finalUV.push_back(Vector2f(u,v0)); finalUV.push_back(Vector2f(u,v1)); finalUV.push_back(Vector2f(u,v1));
+
+            // UVs for cap vertices: use u same, v across width (left->0, right->1)
+            finalUV.push_back(Vector2f(u,0.0f)); finalUV.push_back(Vector2f(u,1.0f));
         }
 
         // indices
-        std::vector<uint32_t> finalIndices; finalIndices.reserve((m-(closed?0:1))*24 + 12);
-        auto vertIndex = [&](size_t i,int corner)->uint32_t{ return (uint32_t)(i*4 + corner); };
+        std::vector<uint32_t> finalIndices; finalIndices.reserve((m-(closed?0:1))*18 + 12);
+        auto vertIndex = [&](size_t i,int corner)->uint32_t{ return (uint32_t)(i*6 + corner); };
         size_t segCount = closed? m : (m-1);
         for(size_t i=0;i<segCount;i++)
         {
             size_t ni = (i+1)%m;
-            uint32_t v0 = vertIndex(i,0), v1 = vertIndex(ni,0), v2 = vertIndex(ni,1), v3 = vertIndex(i,1);
-            finalIndices.push_back(v0); finalIndices.push_back(v1); finalIndices.push_back(v2);
-            finalIndices.push_back(v0); finalIndices.push_back(v2); finalIndices.push_back(v3);
-
-            uint32_t t0 = vertIndex(i,3), t1 = vertIndex(ni,3), t2 = vertIndex(ni,2), t3 = vertIndex(i,2);
+            // Top (horizontal) face -> use cap vertices (4,5) to have independent normals/uvs
+            uint32_t t0 = vertIndex(i,4), t1 = vertIndex(ni,4), t2 = vertIndex(ni,5), t3 = vertIndex(i,5);
             finalIndices.push_back(t0); finalIndices.push_back(t2); finalIndices.push_back(t1);
             finalIndices.push_back(t0); finalIndices.push_back(t3); finalIndices.push_back(t2);
 
+            // Left vertical face
             uint32_t l0 = vertIndex(i,0), l1 = vertIndex(i,3), l2 = vertIndex(ni,3), l3 = vertIndex(ni,0);
             finalIndices.push_back(l0); finalIndices.push_back(l1); finalIndices.push_back(l2);
             finalIndices.push_back(l0); finalIndices.push_back(l2); finalIndices.push_back(l3);
 
+            // Right vertical face
             uint32_t r0 = vertIndex(i,1), r1 = vertIndex(ni,1), r2 = vertIndex(ni,2), r3 = vertIndex(i,2);
             finalIndices.push_back(r0); finalIndices.push_back(r1); finalIndices.push_back(r2);
             finalIndices.push_back(r0); finalIndices.push_back(r2); finalIndices.push_back(r3);
@@ -395,12 +403,17 @@ namespace hgl::graph::inline_geometry
         // caps for open polyline
         if(!closed)
         {
-            uint32_t b0 = vertIndex(0,0), b1 = vertIndex(0,1), t1 = vertIndex(0,2), t0 = vertIndex(0,3);
-            finalIndices.push_back(t0); finalIndices.push_back(t1); finalIndices.push_back(b1);
-            finalIndices.push_back(t0); finalIndices.push_back(b1); finalIndices.push_back(b0);
-            size_t li = m-1; uint32_t eb0 = vertIndex(li,0), eb1 = vertIndex(li,1), et1 = vertIndex(li,2), et0 = vertIndex(li,3);
-            finalIndices.push_back(et0); finalIndices.push_back(et1); finalIndices.push_back(eb1);
-            finalIndices.push_back(et0); finalIndices.push_back(eb1); finalIndices.push_back(eb0);
+            // start end - only top cap (no bottom)
+            uint32_t base0 = vertIndex(0,0);
+            uint32_t capL0 = vertIndex(0,4), capR0 = vertIndex(0,5), sR0 = vertIndex(0,2), sL0 = vertIndex(0,3);
+            finalIndices.push_back(capL0); finalIndices.push_back(capR0); finalIndices.push_back(sR0);
+            finalIndices.push_back(capL0); finalIndices.push_back(sR0); finalIndices.push_back(sL0);
+
+            // end end - only top cap
+            size_t li = m-1; uint32_t ebase = vertIndex(li,0);
+            uint32_t capL1 = vertIndex(li,4), capR1 = vertIndex(li,5), sR1 = vertIndex(li,2), sL1 = vertIndex(li,3);
+            finalIndices.push_back(capL1); finalIndices.push_back(capR1); finalIndices.push_back(sR1);
+            finalIndices.push_back(capL1); finalIndices.push_back(sR1); finalIndices.push_back(sL1);
         }
 
         // fix winding
@@ -423,6 +436,14 @@ namespace hgl::graph::inline_geometry
             vertNormals[ic].x += N.x; vertNormals[ic].y += N.y; vertNormals[ic].z += N.z;
         }
         for(size_t i=0;i<vertNormals.size();++i) vertNormals[i]=Normalize3(vertNormals[i]);
+
+        // ensure cap (top) vertices have perfect upward normal
+        for(size_t i=0;i<m;i++)
+        {
+            size_t capL = i*6 + 4; size_t capR = i*6 + 5;
+            if(capL < vertNormals.size()){ vertNormals[capL] = Vector3f(0,0,1); }
+            if(capR < vertNormals.size()){ vertNormals[capR] = Vector3f(0,0,1); }
+        }
 
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size())) return nullptr;
 
