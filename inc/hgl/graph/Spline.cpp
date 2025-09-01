@@ -90,7 +90,7 @@ namespace hgl
         {
             if( _node_type == SplineNode::OPEN_UNIFORM)
                 set_node_to_open_uniform();
-            else if( _node_type == spline::eUNIFORM )
+            else if( _node_type == SplineNode::UNIFORM )
                 set_node_to_uniform();
         }
 
