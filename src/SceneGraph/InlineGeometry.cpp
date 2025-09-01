@@ -1031,6 +1031,196 @@ namespace hgl::graph::inline_geometry
     namespace
     {
         template<typename T>
+        void CreateChainLinkIndices(PrimitiveCreater *pc,uint numberSlices,uint numberStacks)
+        {
+            IBTypeMap<T> ib_map(pc->GetIBMap());
+            T *tp=ib_map;
+
+            // loop counters
+            uint sideCount, faceCount;
+
+            // used to generate the indices
+            uint v0, v1, v2, v3;
+
+            for (sideCount = 0; sideCount < numberSlices; ++sideCount)
+            {
+                for (faceCount = 0; faceCount < numberStacks; ++faceCount)
+                {
+                    // get the number of the vertices for a face of the chain link. They must be < numVertices
+                    v0 =  ((sideCount       * (numberStacks + 1)) +  faceCount);
+                    v1 = (((sideCount + 1)  * (numberStacks + 1)) +  faceCount);
+                    v2 = (((sideCount + 1)  * (numberStacks + 1)) + (faceCount + 1));
+                    v3 =  ((sideCount       * (numberStacks + 1)) + (faceCount + 1));
+
+                    // first triangle of the face, counter clock wise winding
+                    *tp = v0; ++tp;
+                    *tp = v2; ++tp;
+                    *tp = v1; ++tp;
+
+                    // second triangle of the face, counter clock wise winding
+                    *tp = v0; ++tp;
+                    *tp = v3; ++tp;
+                    *tp = v2; ++tp;
+                }
+            }
+        }
+    }//namespace
+
+    Primitive *CreateChainLink(PrimitiveCreater *pc,const ChainLinkCreateInfo *clci)
+    {
+        if(!pc)return(nullptr);
+
+        // s, t = parametric values of the equations, in the range [0,1]
+        float s = 0;
+        float t = 0;
+
+        // sIncr, tIncr are increment values aplied to s and t on each loop iteration to generate the chain link
+        float sIncr;
+        float tIncr;
+
+        // to store precomputed sin and cos values
+        float cos2PIs, sin2PIs, cos2PIt, sin2PIt;
+
+        uint sideCount,faceCount;
+
+        uint numberVertices;
+        uint numberIndices;
+
+        // used later to help us calculating tangents vectors
+        float helpVector[3] = { 0.0f, 1.0f, 0.0f };
+        float helpQuaternion[4];
+        float helpMatrix[16];
+
+        float tubeRadius = (clci->outerRadius - clci->innerRadius) / 2.0f;
+        float centerRadius = clci->outerRadius - tubeRadius;
+
+        numberVertices = (clci->numberStacks + 1) * (clci->numberSlices + 1);
+        numberIndices = clci->numberStacks * clci->numberSlices * 2 * 3; // 2 triangles per face * 3 indices per triangle
+
+        if (clci->numberSlices < 3 || clci->numberStacks < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+            return(nullptr);
+
+        sIncr = 1.0f / (float) clci->numberSlices;
+        tIncr = 1.0f / (float) clci->numberStacks;
+
+        if(!pc->Init("ChainLink",numberVertices,numberIndices))
+            return(nullptr);                
+                
+        VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
+        VABMapFloat normal   (pc->GetVABMap(VAN::Normal),VF_V3F);
+        VABMapFloat tangent  (pc->GetVABMap(VAN::Tangent),VF_V3F);
+        VABMapFloat tex_coord(pc->GetVABMap(VAN::TexCoord),VF_V2F);
+
+        float *vp=vertex;
+        float *np=normal;
+        float *tp=tangent;
+        float *tcp=tex_coord;
+
+        if(!vp)
+            return(nullptr);
+
+        // 椭圆参数
+        float a = clci->length / 2.0f;  // X轴半径
+        float b = clci->width / 2.0f;   // Y轴半径
+
+        // generate vertices and its attributes
+        for (sideCount = 0; sideCount <= clci->numberSlices; ++sideCount, s += sIncr)
+        {
+            // precompute some values for ellipse
+            float angle = 2.0f * HGL_PI * s;
+            cos2PIs = cos(angle);
+            sin2PIs = sin(angle);
+            
+            // 椭圆路径上的点 (Z=0平面上的椭圆)
+            float centerX = a * cos2PIs;
+            float centerY = b * sin2PIs;
+            
+            // 椭圆路径的切线方向 (用于确定管子的朝向)
+            float tangentX = -a * sin2PIs;
+            float tangentY = b * cos2PIs;
+            float tangentLength = sqrt(tangentX * tangentX + tangentY * tangentY);
+            
+            if(tangentLength > 0.0f)
+            {
+                tangentX /= tangentLength;
+                tangentY /= tangentLength;
+            }
+
+            t = 0.0f;
+            for (faceCount = 0; faceCount <= clci->numberStacks; ++faceCount, t += tIncr)
+            {
+                // precompute some values for tube cross-section
+                cos2PIt = cos(2.0f * HGL_PI * t);
+                sin2PIt = sin(2.0f * HGL_PI * t);
+
+                // 计算法线方向 (在与椭圆切线垂直的平面内)
+                float normalX = -tangentY * cos2PIt;
+                float normalY = tangentX * cos2PIt;
+                float normalZ = sin2PIt;
+
+                // generate vertex and stores it in the right position
+                // 位置 = 椭圆路径中心点 + 管子半径 * 法线方向
+                *vp = centerX + tubeRadius * normalX; ++vp;
+                *vp = centerY + tubeRadius * normalY; ++vp;
+                *vp = tubeRadius * normalZ; ++vp;
+
+                if(np)
+                {
+                    // generate normal and stores it in the right position
+                    *np = normalX; ++np;
+                    *np = normalY; ++np;
+                    *np = normalZ; ++np;
+                }
+
+                if(tcp)
+                {
+                    // generate texture coordinates and stores it in the right position
+                    *tcp = s*clci->uv_scale.x; ++tcp;
+                    *tcp = t*clci->uv_scale.y; ++tcp;
+                }
+
+                if(tp)
+                {
+                    // tangent roughly along the ellipse path
+                    *tp = tangentX; ++tp;
+                    *tp = tangentY; ++tp;
+                    *tp = 0.0f; ++tp;
+                }
+            }
+        }
+
+        //索引
+        {
+            const IndexType index_type=pc->GetIndexType();
+
+            if(index_type==IndexType::U16)CreateChainLinkIndices<uint16>(pc,clci->numberSlices,clci->numberStacks);else
+            if(index_type==IndexType::U32)CreateChainLinkIndices<uint32>(pc,clci->numberSlices,clci->numberStacks);else
+            if(index_type==IndexType::U8 )CreateChainLinkIndices<uint8 >(pc,clci->numberSlices,clci->numberStacks);else
+                return(nullptr);
+        }
+
+        Primitive *p=pc->Create();
+
+        {
+            AABB aabb;
+
+            // Calculate bounding box for the chain link
+            float maxX = a + tubeRadius;
+            float maxY = b + tubeRadius;
+            float maxZ = tubeRadius;
+
+            aabb.SetMinMax(Vector3f(-maxX, -maxY, -maxZ),
+                           Vector3f( maxX,  maxY,  maxZ));
+
+            p->SetBoundingBox(aabb);
+        }
+
+        return p;
+    }
+
+    namespace
+    {
+        template<typename T>
         void CreateCylinderIndices(PrimitiveCreater *pc,const uint numberSlices)
         {
             IBTypeMap<T> ib_map(pc->GetIBMap());

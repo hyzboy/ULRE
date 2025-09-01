@@ -188,6 +188,25 @@ namespace hgl::graph
             */
         Primitive *CreateTorus(PrimitiveCreater *pc,const TorusCreateInfo *tci);
 
+        struct ChainLinkCreateInfo
+        {
+            float   innerRadius,        //内半径
+                    outerRadius;        //外半径
+            
+            float   width,              //链环宽度(Y轴方向)
+                    length;             //链环长度(X轴方向)
+
+            uint    numberSlices,       //圆周分段数
+                    numberStacks;       //环截面分段数
+
+            Vector2f uv_scale={1.0,1.0};
+        };//struct ChainLinkCreateInfo
+
+        /**
+            * 创建一个链环(三角形)
+            */
+        Primitive *CreateChainLink(PrimitiveCreater *pc,const ChainLinkCreateInfo *clci);
+
         struct CylinderCreateInfo
         {
             float   halfExtend,     //高度
