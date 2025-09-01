@@ -30,7 +30,7 @@ namespace hgl::graph::inline_geometry
         return Vector2f(v.x/len, v.y/len);
     }
 
-    // compute triangle normal
+    // compute triangle normal (not normalized)
     static Vector3f TriNormal(const Vector3f &A,const Vector3f &B,const Vector3f &C)
     {
         Vector3f AB(B.x-A.x, B.y-A.y, B.z-A.z);
@@ -38,6 +38,14 @@ namespace hgl::graph::inline_geometry
         return Vector3f( AB.y*AC.z - AB.z*AC.y,
                          AB.z*AC.x - AB.x*AC.z,
                          AB.x*AC.y - AB.y*AC.x );
+    }
+
+    // normalize 3f
+    static Vector3f Normalize3(const Vector3f &v)
+    {
+        float len = sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+        if(len <= 1e-8f) return Vector3f(0,0,0);
+        return Vector3f(v.x/len, v.y/len, v.z/len);
     }
 
     Primitive *CreateWallsFromLines2D(PrimitiveCreater *pc, const WallCreateInfo *wci)
@@ -380,6 +388,24 @@ namespace hgl::graph::inline_geometry
             }
         }
 
+        // compute per-vertex normals by accumulating triangle normals
+        std::vector<Vector3f> vertNormals(finalVerts.size(), Vector3f(0,0,0));
+        for(size_t ti=0; ti+2<finalIndices.size(); ti+=3)
+        {
+            uint32_t ia = finalIndices[ti+0];
+            uint32_t ib = finalIndices[ti+1];
+            uint32_t ic = finalIndices[ti+2];
+            Vector3f A = finalVerts[ia];
+            Vector3f B = finalVerts[ib];
+            Vector3f C = finalVerts[ic];
+            Vector3f N = TriNormal(A,B,C);
+            vertNormals[ia].x += N.x; vertNormals[ia].y += N.y; vertNormals[ia].z += N.z;
+            vertNormals[ib].x += N.x; vertNormals[ib].y += N.y; vertNormals[ib].z += N.z;
+            vertNormals[ic].x += N.x; vertNormals[ic].y += N.y; vertNormals[ic].z += N.z;
+        }
+
+        for(size_t i=0;i<vertNormals.size();++i) vertNormals[i] = Normalize3(vertNormals[i]);
+
         if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size())) return nullptr;
 
         VABMapFloat pos_map(pc->GetVABMap(VAN::Position), VF_V3F);
@@ -396,7 +422,7 @@ namespace hgl::graph::inline_geometry
         {
             const auto &v = finalVerts[i];
             if(vp){ *vp++ = v.x; *vp++ = v.y; *vp++ = v.z; }
-            if(np){ *np++ = 0.0f; *np++ = 0.0f; *np++ = (v.z>0)?1.0f:-1.0f; }
+            if(np){ *np++ = vertNormals[i].x; *np++ = vertNormals[i].y; *np++ = vertNormals[i].z; }
             if(tp){ *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
             if(uvp){ *uvp++ = finalUV[i].x; *uvp++ = finalUV[i].y; }
         }
