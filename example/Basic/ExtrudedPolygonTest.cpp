@@ -2,21 +2,11 @@
 // 测试2D多边形挤压为3D多边形功能
 
 #include<hgl/WorkManager.h>
-#include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/VKRenderResource.h>
-#include<hgl/graph/RenderList.h>
-#include<hgl/graph/Camera.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
-#include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>
 #include<cmath>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -24,6 +14,7 @@ using namespace hgl::graph;
 class ExtrudedPolygonTestApp : public WorkObject
 {
 private:
+
     Material *          material            = nullptr;
     Pipeline *          pipeline            = nullptr;
 
@@ -34,6 +25,7 @@ private:
     MaterialInstance *  material_instance   = nullptr;
 
 private:
+
     bool InitMDP()
     {
 
@@ -68,7 +60,8 @@ private:
         prim_circle_cylinder = CreateExtrudedCircle(pc, 0.8f, 1.5f, 16, Vector3f(0, 0, 1));
 
         // 测试3: 三角形挤压
-        Vector2f triangleVertices[3] = {
+        Vector2f triangleVertices[3] =
+        {
             {-0.8f, -0.5f},  // 左下
             { 0.8f, -0.5f},  // 右下
             { 0.0f,  0.8f}   // 顶部
@@ -87,8 +80,10 @@ private:
 
         // 测试4: 五边形挤压
         Vector2f pentagonVertices[5];
-        float angleStep = 2.0f * M_PI / 5;
-        for (int i = 0; i < 5; i++) {
+        float angleStep = 2.0f * HGL_PI / 5.0f;
+
+        for (int i = 0; i < 5; i++)
+        {
             float angle = i * angleStep;
             pentagonVertices[i].x = cos(angle) * 0.7f;
             pentagonVertices[i].y = sin(angle) * 0.7f;
