@@ -78,6 +78,25 @@ namespace hgl::graph::inline_geometry
         // 计算挤压的起始和结束位置
         Vector3f extrudeOffset = forward * epci->extrudeDistance;
 
+        // 计算多边形中心（用于判断侧面法线朝外）
+        Vector3f polygonCenter(0.0f, 0.0f, 0.0f);
+        for (uint i = 0; i < vertexCount; ++i) {
+            const Vector2f &v2d = epci->vertices[i];
+            polygonCenter += right * v2d.x + up * v2d.y;
+        }
+        polygonCenter = polygonCenter * (1.0f / static_cast<float>(vertexCount));
+
+        // 计算输入多边形的2D有向面积以判断顶点顺序（顺时针或逆时针）
+        double area2 = 0.0;
+        for (uint i = 0; i < vertexCount; ++i) {
+            uint j = (i + 1) % vertexCount;
+            const Vector2f &a = epci->vertices[i];
+            const Vector2f &b = epci->vertices[j];
+            area2 += static_cast<double>(a.x) * static_cast<double>(b.y) - static_cast<double>(b.x) * static_cast<double>(a.y);
+        }
+        // area2 > 0 => CCW, area2 < 0 => CW
+        const bool polygonIsClockwise = (area2 < 0.0);
+
         uint vertexIndex = 0;
 
         // 生成侧面顶点
@@ -105,16 +124,20 @@ namespace hgl::graph::inline_geometry
 
                 // 计算侧面法线
                 if (np) {
-                    // 计算边的方向
+                    // 计算边的方向与下一个顶点
                     uint nextIndex = (i + 1) % vertexCount;
-                    Vector2f edge2d = epci->vertices[nextIndex] - v2d;
-                    Vector3f edge3d = right * edge2d.x + up * edge2d.y;
+                    const Vector2f &next2d = epci->vertices[nextIndex];
+                    Vector3f nextV3d = right * next2d.x + up * next2d.y;
+
+                    Vector3f edge3d = nextV3d - v3d;
 
                     // 侧面法线 = edge × extrudeAxis
                     Vector3f sideNormal = glm::normalize(glm::cross(edge3d, forward));
 
-                    // 确保法线指向外侧
-                    if (!epci->clockwiseFront) {
+                    // 确保法线指向外侧：通过与边中点到多边形中心的向量点乘判断
+                    Vector3f midPoint = v3d + edge3d * 0.5f;
+                    Vector3f toCenter = midPoint - polygonCenter;
+                    if (glm::dot(sideNormal, toCenter) < 0.0f) {
                         sideNormal = sideNormal * -1.0f;
                     }
 
@@ -147,10 +170,8 @@ namespace hgl::graph::inline_geometry
                 }
 
                 if (np) {
+                    // 底面法线固定为 -forward（朝下）
                     Vector3f bottomNormal = forward * -1.0f;
-                    if (!epci->clockwiseFront) {
-                        bottomNormal = bottomNormal * -1.0f;
-                    }
                     *np++ = bottomNormal.x;
                     *np++ = bottomNormal.y;
                     *np++ = bottomNormal.z;
@@ -170,10 +191,8 @@ namespace hgl::graph::inline_geometry
                 }
 
                 if (np) {
+                    // 顶面法线固定为 forward（朝上）
                     Vector3f topNormal = forward;
-                    if (!epci->clockwiseFront) {
-                        topNormal = topNormal * -1.0f;
-                    }
                     *np++ = topNormal.x;
                     *np++ = topNormal.y;
                     *np++ = topNormal.z;
@@ -197,14 +216,33 @@ namespace hgl::graph::inline_geometry
                 uint i2 = indexOffset + next * 2;   // 下一个底面顶点
                 uint i3 = indexOffset + next * 2 + 1; // 下一个顶面顶点
 
-                if (epci->clockwiseFront) {
-                    // 第一个三角形 (底面 -> 顶面 -> 下一个底面)
+                // 计算对应的三维顶点位置
+                Vector3f p0 = right * epci->vertices[i].x + up * epci->vertices[i].y;      // bottom current
+                Vector3f p1 = p0 + extrudeOffset;                                         // top current
+                Vector3f p2 = right * epci->vertices[next].x + up * epci->vertices[next].y; // bottom next
+                Vector3f p3 = p2 + extrudeOffset;                                         // top next
+
+                // 计算侧面期望法线（edge × forward）并确保其朝外
+                Vector3f edge = p2 - p0;
+                Vector3f sideNormal = glm::normalize(glm::cross(edge, forward));
+
+                Vector3f midPoint = p0 + edge * 0.5f;
+                Vector3f toCenter = midPoint - polygonCenter;
+                if (glm::dot(sideNormal, toCenter) < 0.0f) sideNormal = sideNormal * -1.0f;
+
+                // 第一个三角形候选 (i0, i1, i2)
+                Vector3f triA_n = glm::normalize(glm::cross(p1 - p0, p2 - p0));
+                if (glm::dot(triA_n, sideNormal) >= 0.0f) {
                     *ip++ = i0; *ip++ = i1; *ip++ = i2;
-                    // 第二个三角形 (下一个底面 -> 顶面 -> 下一个顶面)
+                } else {
+                    *ip++ = i0; *ip++ = i2; *ip++ = i1;
+                }
+
+                // 第二个三角形候选 (i2, i1, i3)
+                Vector3f triB_n = glm::normalize(glm::cross(p1 - p2, p3 - p2));
+                if (glm::dot(triB_n, sideNormal) >= 0.0f) {
                     *ip++ = i2; *ip++ = i1; *ip++ = i3;
                 } else {
-                    // 逆时针顶点顺序
-                    *ip++ = i0; *ip++ = i2; *ip++ = i1;
                     *ip++ = i2; *ip++ = i3; *ip++ = i1;
                 }
             }
@@ -223,7 +261,6 @@ namespace hgl::graph::inline_geometry
             Vector3f triNormal = glm::normalize(glm::cross(b1 - b0, b2 - b0));
 
             Vector3f expectedBottomNormal = forward * -1.0f;
-            if (!epci->clockwiseFront) expectedBottomNormal = expectedBottomNormal * -1.0f;
 
             bool flipBottom = (glm::dot(triNormal, expectedBottomNormal) < 0.0f);
 
@@ -249,7 +286,6 @@ namespace hgl::graph::inline_geometry
             Vector3f triNormalTop = glm::normalize(glm::cross(t1 - t0, t2 - t0));
 
             Vector3f expectedTopNormal = forward;
-            if (!epci->clockwiseFront) expectedTopNormal = expectedTopNormal * -1.0f;
 
             bool flipTop = (glm::dot(triNormalTop, expectedTopNormal) < 0.0f);
 
