@@ -24,14 +24,30 @@ namespace hgl::graph
         error = FT_New_Face(ft_library, reinterpret_cast<const char*>(fnt.name), 0, &ft_face);
         if (error)
         {
-            // If loading as file failed, try to find system font
+            // If loading as file failed, try to find common system fonts
             // This is a simplified approach - a real implementation might use fontconfig
-            std::string font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
-            error = FT_New_Face(ft_library, font_path.c_str(), 0, &ft_face);
+            const char* fallback_fonts[] = {
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/usr/share/fonts/TTF/DejaVuSans.ttf",
+                "/System/Library/Fonts/Arial.ttf", // macOS
+                "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"
+            };
             
-            if (error)
+            bool loaded = false;
+            for (const char* font_path : fallback_fonts)
             {
-                // Failed to load font face
+                error = FT_New_Face(ft_library, font_path, 0, &ft_face);
+                if (!error)
+                {
+                    loaded = true;
+                    break;
+                }
+            }
+            
+            if (!loaded)
+            {
+                // Failed to load any font face
                 FT_Done_FreeType(ft_library);
                 ft_library = nullptr;
                 return;
@@ -42,8 +58,11 @@ namespace hgl::graph
         error = FT_Set_Pixel_Sizes(ft_face, fnt.width, fnt.height);
         if (error)
         {
-            // Failed to set font size
+            // Failed to set font size, but we can continue with default
         }
+
+        // Set up character encoding
+        FT_Select_Charmap(ft_face, FT_ENCODING_UNICODE);
 
         // Allocate buffer for glyph data
         buffer_size = fnt.width * fnt.height * 4;
@@ -117,40 +136,36 @@ namespace hgl::graph
             return false;
 
         // Copy bitmap data
-        if (bitmap.buffer)
+        if (bitmap.buffer && bitmap.width > 0 && bitmap.rows > 0)
         {
             if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY)
             {
                 // 8-bit grayscale
-                for (unsigned int y = 0; y < bitmap.rows; ++y)
+                for (unsigned int y = 0; y < bitmap.rows && y < bmp->metrics_info.h; ++y)
                 {
-                    for (unsigned int x = 0; x < bitmap.width; ++x)
+                    uint8* src_row = bitmap.buffer + y * bitmap.pitch;
+                    uint8* dst_row = bmp->data + y * bmp->metrics_info.w;
+                    
+                    for (unsigned int x = 0; x < bitmap.width && x < bmp->metrics_info.w; ++x)
                     {
-                        if (x < bmp->metrics_info.w && y < bmp->metrics_info.h)
-                        {
-                            int src_idx = y * bitmap.pitch + x;
-                            int dst_idx = y * bmp->metrics_info.w + x;
-                            bmp->data[dst_idx] = bitmap.buffer[src_idx];
-                        }
+                        dst_row[x] = src_row[x];
                     }
                 }
             }
             else if (bitmap.pixel_mode == FT_PIXEL_MODE_MONO)
             {
                 // 1-bit monochrome
-                for (unsigned int y = 0; y < bitmap.rows; ++y)
+                for (unsigned int y = 0; y < bitmap.rows && y < bmp->metrics_info.h; ++y)
                 {
-                    for (unsigned int x = 0; x < bitmap.width; ++x)
+                    uint8* src_row = bitmap.buffer + y * bitmap.pitch;
+                    uint8* dst_row = bmp->data + y * bmp->metrics_info.w;
+                    
+                    for (unsigned int x = 0; x < bitmap.width && x < bmp->metrics_info.w; ++x)
                     {
-                        if (x < bmp->metrics_info.w && y < bmp->metrics_info.h)
-                        {
-                            int src_byte_idx = y * bitmap.pitch + (x >> 3);
-                            int src_bit_idx = 7 - (x & 7);
-                            int dst_idx = y * bmp->metrics_info.w + x;
-                            
-                            uint8 bit = (bitmap.buffer[src_byte_idx] >> src_bit_idx) & 1;
-                            bmp->data[dst_idx] = bit ? 255 : 0;
-                        }
+                        int src_byte_idx = x >> 3;
+                        int src_bit_idx = 7 - (x & 7);
+                        uint8 bit = (src_row[src_byte_idx] >> src_bit_idx) & 1;
+                        dst_row[x] = bit ? 255 : 0;
                     }
                 }
             }
