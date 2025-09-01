@@ -33,6 +33,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     #${SG_INCLUDE_PATH}/Mesh.h
                     #${SG_INCLUDE_PATH}/Spline.h
                     InlineGeometry.cpp
+                    InlineGeometry/ExtrudedPolygon.cpp
                     #Mesh.cpp
 )
 
