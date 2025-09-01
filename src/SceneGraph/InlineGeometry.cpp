@@ -1922,4 +1922,149 @@ namespace hgl::graph::inline_geometry
             p->SetBoundingBox(Vector3f(-R,-R,-R), Vector3f(R,R,R));
         return p;
     }
+
+    Primitive *CreateWallsFromLines2D(PrimitiveCreater *pc, const WallCreateInfo *wci)
+    {
+        if(!pc || !wci || !wci->lines || wci->lineCount == 0)
+            return nullptr;
+
+        if(wci->thickness <= 0.0f || wci->height <= 0.0f)
+            return nullptr;
+
+        const float halfThickness = wci->thickness * 0.5f;
+        const float halfHeight = wci->height * 0.5f;
+
+        // 简单实现：单条线生成一个矩形墙体(cube)
+        if(wci->lineCount == 1)
+        {
+            const Line2D& line = wci->lines[0];
+            
+            // 计算线段方向和长度
+            float dx = line.end.x - line.start.x;
+            float dy = line.end.y - line.start.y;
+            float len = sqrt(dx * dx + dy * dy);
+            
+            if(len < 1e-6f) return nullptr; // 线段太短
+            
+            // 单位方向向量
+            float dirX = dx / len;
+            float dirY = dy / len;
+            
+            // 垂直方向(向左90度旋转)
+            float perpX = -dirY;
+            float perpY = dirX;
+            
+            // 计算墙体四个角点(2D)
+            Vector2f p1(line.start.x + perpX * halfThickness, line.start.y + perpY * halfThickness);
+            Vector2f p2(line.start.x - perpX * halfThickness, line.start.y - perpY * halfThickness);
+            Vector2f p3(line.end.x - perpX * halfThickness, line.end.y - perpY * halfThickness);
+            Vector2f p4(line.end.x + perpX * halfThickness, line.end.y + perpY * halfThickness);
+            
+            // 8个顶点(上下各4个)
+            const uint numberVertices = 8;
+            const uint numberIndices = 36; // 6面 * 2三角形 * 3顶点 = 36
+            
+            if(!pc->Init("WallFromLine", numberVertices, numberIndices))
+                return nullptr;
+            
+            VABMapFloat pos(pc->GetVABMap(VAN::Position), VF_V3F);
+            VABMapFloat nrm(pc->GetVABMap(VAN::Normal), VF_V3F);
+            VABMapFloat tan(pc->GetVABMap(VAN::Tangent), VF_V3F);
+            VABMapFloat uv(pc->GetVABMap(VAN::TexCoord), VF_V2F);
+            
+            float *vp = pos;
+            float *np = nrm;
+            float *tp = tan;
+            float *uvp = uv;
+            
+            auto write_vertex = [&](float x, float y, float z, float nx, float ny, float nz, float u, float v)
+            {
+                if(vp) { *vp++ = x; *vp++ = y; *vp++ = z; }
+                if(np) { *np++ = nx; *np++ = ny; *np++ = nz; }
+                if(tp) {
+                    // 计算切线：对于墙面，切线方向沿着墙的长度方向
+                    if(fabsf(nz) > 0.5f) { // 顶面或底面
+                        *tp++ = dirX; *tp++ = dirY; *tp++ = 0.0f;
+                    } else { // 侧面
+                        *tp++ = 0.0f; *tp++ = 0.0f; *tp++ = 1.0f;
+                    }
+                }
+                if(uvp) { *uvp++ = u; *uvp++ = v; }
+            };
+            
+            // 底面顶点 (z = -halfHeight)
+            write_vertex(p1.x, p1.y, -halfHeight, 0, 0, -1, 0, 0);  // 0
+            write_vertex(p2.x, p2.y, -halfHeight, 0, 0, -1, 1, 0);  // 1
+            write_vertex(p3.x, p3.y, -halfHeight, 0, 0, -1, 1, 1);  // 2
+            write_vertex(p4.x, p4.y, -halfHeight, 0, 0, -1, 0, 1);  // 3
+            
+            // 顶面顶点 (z = +halfHeight)
+            write_vertex(p1.x, p1.y, halfHeight, 0, 0, 1, 0, 0);    // 4
+            write_vertex(p2.x, p2.y, halfHeight, 0, 0, 1, 1, 0);    // 5
+            write_vertex(p3.x, p3.y, halfHeight, 0, 0, 1, 1, 1);    // 6
+            write_vertex(p4.x, p4.y, halfHeight, 0, 0, 1, 0, 1);    // 7
+            
+            // 索引 (ClockWise为正面)
+            IBMap *ib_map = pc->GetIBMap();
+            const IndexType it = pc->GetIndexType();
+            
+            // 定义六个面的索引 (确保ClockWise)
+            uint16 indices[] = {
+                // 底面 (z = -halfHeight, 法线向下，从下方看为顺时针)
+                0, 2, 1,  0, 3, 2,
+                // 顶面 (z = +halfHeight, 法线向上，从上方看为顺时针) 
+                4, 5, 6,  4, 6, 7,
+                // 前面 (y方向)
+                0, 1, 5,  0, 5, 4,
+                // 后面 (-y方向)
+                3, 7, 6,  3, 6, 2,
+                // 左面 (-x方向)
+                1, 2, 6,  1, 6, 5,
+                // 右面 (x方向)
+                0, 4, 7,  0, 7, 3
+            };
+            
+            if(it == IndexType::U16)
+            {
+                IBTypeMap<uint16> im(ib_map);
+                uint16 *ip = im;
+                for(int i = 0; i < 36; i++)
+                    *ip++ = indices[i];
+            }
+            else if(it == IndexType::U32)
+            {
+                IBTypeMap<uint32> im(ib_map);
+                uint32 *ip = im;
+                for(int i = 0; i < 36; i++)
+                    *ip++ = (uint32)indices[i];
+            }
+            else if(it == IndexType::U8)
+            {
+                IBTypeMap<uint8> im(ib_map);
+                uint8 *ip = im;
+                for(int i = 0; i < 36; i++)
+                    *ip++ = (uint8)indices[i];
+            }
+            else return nullptr;
+            
+            Primitive *p = pc->Create();
+            if(p)
+            {
+                // 计算包围盒
+                float minX = std::min({p1.x, p2.x, p3.x, p4.x});
+                float maxX = std::max({p1.x, p2.x, p3.x, p4.x});
+                float minY = std::min({p1.y, p2.y, p3.y, p4.y});
+                float maxY = std::max({p1.y, p2.y, p3.y, p4.y});
+                
+                AABB aabb;
+                aabb.SetMinMax(Vector3f(minX, minY, -halfHeight), Vector3f(maxX, maxY, halfHeight));
+                p->SetBoundingBox(aabb);
+            }
+            return p;
+        }
+        
+        // TODO: 多条线的连接处理将在后续实现
+        // 这里暂时只实现单条线转换为cube的功能
+        return nullptr;
+    }
 }
