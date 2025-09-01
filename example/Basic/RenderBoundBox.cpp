@@ -73,7 +73,8 @@ private:
                 *rm_torus=nullptr,
                 *rm_box=nullptr,
                 *rm_hollow_cylinder=nullptr,
-                *rm_hex_sphere=nullptr;
+                *rm_hex_sphere=nullptr,
+                *rm_light_bulb=nullptr;
 
 private:
 
@@ -230,6 +231,21 @@ private:
             rm_hex_sphere=CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6);
         }
 
+        // 灯泡几何体
+        {
+            struct LightBulbCreateInfo lbci;
+            
+            lbci.bulbRadius    = 0.8f;   // 灯泡球形部分半径
+            lbci.baseRadius    = 0.4f;   // 底座半径
+            lbci.bulbHeight    = 1.0f;   // 灯泡球形部分高度
+            lbci.baseHeight    = 0.6f;   // 底座高度
+            lbci.neckHeight    = 0.2f;   // 颈部高度
+            lbci.numberSlices  = 16;     // 圆周分割数
+            lbci.numberStacks  = 8;      // 灯泡纵向分割数
+
+            rm_light_bulb=CreateRenderMesh(CreateLightBulb(prim_creater,&lbci),&solid,7);
+        }
+
         delete prim_creater;
         return(true);
     }
@@ -296,6 +312,13 @@ private:
             cci.mat=TranslateMatrix(0,5,3)*AxisRotate(deg2rad(30),20,-30,-40);
             rm_hex_sphere->component=CreateComponent<MeshComponent>(&cci,rm_hex_sphere->cdp);
             rm_hex_sphere->component->SetOverrideMaterial(solid.mi[6]);
+        }
+
+        // 灯泡组件 - 放置在场景的一个可见位置
+        {
+            cci.mat=TranslateMatrix(-5,5,4)*AxisRotate(deg2rad(15),10,0,10);
+            rm_light_bulb->component=CreateComponent<MeshComponent>(&cci,rm_light_bulb->cdp);
+            rm_light_bulb->component->SetOverrideMaterial(solid.mi[7]);
         }
 
         return(true);

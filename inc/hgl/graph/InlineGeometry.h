@@ -263,5 +263,23 @@ namespace hgl::graph
         };
 
         Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
+
+        // 灯泡几何体创建信息
+        struct LightBulbCreateInfo
+        {
+            float bulbRadius    = 0.5f;     // 灯泡球形部分半径
+            float baseRadius    = 0.3f;     // 底座半径  
+            float bulbHeight    = 0.6f;     // 灯泡球形部分高度
+            float baseHeight    = 0.4f;     // 底座高度
+            float neckHeight    = 0.1f;     // 颈部高度
+            uint  numberSlices  = 16;       // 圆周分割数
+            uint  numberStacks  = 8;        // 灯泡纵向分割数
+        };
+
+        /**
+         * 创建一个灯泡几何体(三角形)，用于在3D场景编辑器中表示光源
+         */
+        Primitive *CreateLightBulb(PrimitiveCreater *pc,const LightBulbCreateInfo *lbci);
+
     }//namespace inline_geometry
 }//namespace hgl::graph
