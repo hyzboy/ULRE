@@ -1677,6 +1677,10 @@ namespace hgl::graph::inline_geometry
         }
 
         // Side vertices
+        float h = 2.0f * bci->halfExtend;                       // 总高度
+        float r = bci->startRadius - bci->endRadius;            // 半径差  
+        float l = sqrt(h * h + r * r);                          // 斜边长度
+        
         for(uint i = 0; i < bci->numberSlices + 1; i++)
         {
             float currentAngle = angleStep * (float)i;
@@ -1688,9 +1692,10 @@ namespace hgl::graph::inline_geometry
 
             if(np)
             {
-                *np =  cos(currentAngle); ++np;
-                *np = -sin(currentAngle); ++np;
-                *np =  0.0f;              ++np;
+                // 锥形表面法线：向外倾斜
+                *np = h / l *  cos(currentAngle); ++np;
+                *np =-h / l * -sin(currentAngle); ++np;  
+                *np = r / l;                      ++np;
             }
 
             if(tp)
@@ -1713,9 +1718,10 @@ namespace hgl::graph::inline_geometry
 
             if(np)
             {
-                *np =  cos(currentAngle); ++np;
-                *np = -sin(currentAngle); ++np;
-                *np =  0.0f;              ++np;
+                // 锥形表面法线：向外倾斜  
+                *np = h / l *  cos(currentAngle); ++np;
+                *np =-h / l * -sin(currentAngle); ++np;
+                *np = r / l;                      ++np;
             }
 
             if(tp)
