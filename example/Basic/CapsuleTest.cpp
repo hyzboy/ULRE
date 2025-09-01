@@ -12,6 +12,7 @@
 #include<hgl/graph/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>
+#include<hgl/shadergen/StandardMaterial.h>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -37,17 +38,30 @@ private:
         // 实体胶囊
         mtl::Material3DCreateConfig cfg_solid(PrimitiveType::Triangles);
         cfg_solid.local_to_world=true;
-        cfg_solid.position=true;
-        cfg_solid.normal=true;
-        material_instance_solid=CreateMaterialInstance(mtl::inline_material::FlatColor3D,&cfg_solid);
-        pipeline_solid=CreatePipeline(material_instance_solid,InlinePipeline::Solid3D);
+
+        mtl::MaterialCreateInfo *mci_solid = mtl::CreateGizmo3D(GetDevAttr(), &cfg_solid);
+        if (!mci_solid) return false;
+
+        Material *material_solid = CreateMaterial("CapsuleSolid", mci_solid);
+        if (!material_solid) return false;
+
+        Color4f color_solid(0.8f, 0.8f, 0.8f, 1.0f);
+        material_instance_solid = CreateMaterialInstance(material_solid, (VIL*)nullptr, &color_solid);
+        pipeline_solid = CreatePipeline(material_solid, InlinePipeline::Solid3D);
 
         // 线框胶囊
         mtl::Material3DCreateConfig cfg_wireframe(PrimitiveType::Lines);
         cfg_wireframe.local_to_world=true;
-        cfg_wireframe.position=true;
-        material_instance_wireframe=CreateMaterialInstance(mtl::inline_material::VertexColor3D,&cfg_wireframe);
-        pipeline_wireframe=CreatePipeline(material_instance_wireframe,InlinePipeline::Solid3D);
+
+        mtl::MaterialCreateInfo *mci_wireframe = mtl::CreatePureColor3D(GetDevAttr(), &cfg_wireframe);
+        if (!mci_wireframe) return false;
+
+        Material *material_wireframe = CreateMaterial("CapsuleWireframe", mci_wireframe);
+        if (!material_wireframe) return false;
+
+        Color4f color_wireframe(1.0f, 0.5f, 0.0f, 1.0f);
+        material_instance_wireframe = CreateMaterialInstance(material_wireframe, (VIL*)nullptr, &color_wireframe);
+        pipeline_wireframe = CreatePipeline(material_wireframe, InlinePipeline::Solid3D);
 
         return pipeline_solid && pipeline_wireframe;
     }
