@@ -18,6 +18,12 @@ namespace hgl::graph::inline_geometry
                         a.x * b.y - a.y * b.x);
     }
 
+    // 辅助函数：点乘
+    float DotProduct(const Vector3f &a, const Vector3f &b)
+    {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+    }
+
     // 辅助函数：向量标准化
     Vector3f Normalize(const Vector3f& v)
     {
@@ -56,9 +62,8 @@ namespace hgl::graph::inline_geometry
 
     Primitive *CreateExtrudedPolygon(PrimitiveCreater *pc, const ExtrudedPolygonCreateInfo *epci)
     {
-        if (!pc || !epci || !epci->vertices || epci->vertexCount < 3) {
+        if (!pc || !epci || !epci->vertices || epci->vertexCount < 3)
             return nullptr;
-        }
 
         const uint vertexCount = epci->vertexCount;
         const bool generateCaps = epci->generateCaps;
@@ -78,9 +83,8 @@ namespace hgl::graph::inline_geometry
             totalIndices += (vertexCount - 2) * 6;  // 每个面用三角扇形分解：(n-2)个三角形 * 2个面 * 3个索引
         }
 
-        if (!pc->Init("ExtrudedPolygon", totalVertices, totalIndices, IndexType::U32)) {
+        if (!pc->Init("ExtrudedPolygon", totalVertices, totalIndices, IndexType::U32))
             return nullptr;
-        }
 
         VABMapFloat vertex_map(pc->GetVABMap(VAN::Position), VF_V3F);
         VABMapFloat normal_map(pc->GetVABMap(VAN::Normal), VF_V3F);
@@ -101,7 +105,7 @@ namespace hgl::graph::inline_geometry
         uint vertexIndex = 0;
 
         // 生成侧面顶点
-        if (generateSides) {
+        if (generateSides){
             for (uint i = 0; i < vertexCount; i++) {
                 const Vector2f& v2d = epci->vertices[i];
 
@@ -235,8 +239,20 @@ namespace hgl::graph::inline_geometry
         if (generateCaps) {
             // 底面索引（三角扇形）
             uint bottomStart = indexOffset;
+
+            // 采样前三个底面顶点，计算当前三角形法线，与期望底面法线比较决定是否反转索引顺序
+            Vector3f b0 = right * epci->vertices[0].x + up * epci->vertices[0].y;
+            Vector3f b1 = right * epci->vertices[1].x + up * epci->vertices[1].y;
+            Vector3f b2 = right * epci->vertices[2].x + up * epci->vertices[2].y;
+            Vector3f triNormal = Normalize(CrossProduct(b1 - b0, b2 - b0));
+
+            Vector3f expectedBottomNormal = forward * -1.0f;
+            if (!epci->clockwiseFront) expectedBottomNormal = expectedBottomNormal * -1.0f;
+
+            bool flipBottom = (DotProduct(triNormal, expectedBottomNormal) < 0.0f);
+
             for (uint i = 1; i < vertexCount - 1; i++) {
-                if (epci->clockwiseFront) {
+                if (!flipBottom) {
                     *ip++ = bottomStart;
                     *ip++ = bottomStart + i + 1;
                     *ip++ = bottomStart + i;
@@ -249,8 +265,20 @@ namespace hgl::graph::inline_geometry
 
             // 顶面索引（三角扇形）
             uint topStart = indexOffset + vertexCount;
+
+            // 采样前三个顶面顶点
+            Vector3f t0 = (right * epci->vertices[0].x + up * epci->vertices[0].y) + extrudeOffset;
+            Vector3f t1 = (right * epci->vertices[1].x + up * epci->vertices[1].y) + extrudeOffset;
+            Vector3f t2 = (right * epci->vertices[2].x + up * epci->vertices[2].y) + extrudeOffset;
+            Vector3f triNormalTop = Normalize(CrossProduct(t1 - t0, t2 - t0));
+
+            Vector3f expectedTopNormal = forward;
+            if (!epci->clockwiseFront) expectedTopNormal = expectedTopNormal * -1.0f;
+
+            bool flipTop = (DotProduct(triNormalTop, expectedTopNormal) < 0.0f);
+
             for (uint i = 1; i < vertexCount - 1; i++) {
-                if (epci->clockwiseFront) {
+                if (!flipTop) {
                     *ip++ = topStart;
                     *ip++ = topStart + i;
                     *ip++ = topStart + i + 1;
