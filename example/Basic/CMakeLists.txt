@@ -21,3 +21,4 @@ CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
 
 CreateProject(06_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
 CreateProject(07_TerrainHeightmap               TerrainHeightmap.cpp)
+CreateProject(08_CapsuleTest                    CapsuleTest.cpp)

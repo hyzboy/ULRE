@@ -11,6 +11,10 @@
 #include <algorithm>
 #include <cmath>
 
+#ifndef HGL_PI
+#define HGL_PI 3.14159265358979323846f
+#endif
+
 namespace hgl::graph::inline_geometry
 {
     Primitive *CreateRectangle(PrimitiveCreater *pc,const RectangleCreateInfo *rci)
@@ -1931,24 +1935,19 @@ namespace hgl::graph::inline_geometry
             IBTypeMap<T> ib_map(pc->GetIBMap());
             T *tp = ib_map;
 
-            // 总的索引布局：
-            // 1. 顶半球 (0 到 numberStacks*numberSlices)
-            // 2. 圆柱体侧面 (numberStacks*numberSlices+1 到 (numberStacks+2)*numberSlices)
-            // 3. 底半球 ((numberStacks+2)*numberSlices+1 到 (2*numberStacks+2)*numberSlices)
-
             uint vertexOffset = 0;
 
-            // 1. 顶半球索引 (Z > halfExtend)
+            // 1. 顶半球索引
             for (uint i = 0; i < numberStacks; i++)
             {
                 for (uint j = 0; j < numberSlices; j++)
                 {
                     uint current = vertexOffset + i * (numberSlices + 1) + j;
-                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1);
                     uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
-                    uint nextNext = vertexOffset + (i + 1) * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+                    uint nextNext = vertexOffset + (i + 1) * (numberSlices + 1) + (j + 1);
 
-                    // 第一个三角形 (顺时针为正面)
+                    // 第一个三角形 (顺时针为正面，参考sphere实现)
                     *tp++ = (T)current;
                     *tp++ = (T)nextNext;
                     *tp++ = (T)next;
@@ -1966,34 +1965,34 @@ namespace hgl::graph::inline_geometry
             for (uint j = 0; j < numberSlices; j++)
             {
                 uint current = vertexOffset + j;
-                uint next = vertexOffset + (j + 1) % numberSlices;
-                uint currentNext = vertexOffset + numberSlices + j;
-                uint nextNext = vertexOffset + numberSlices + (j + 1) % numberSlices;
+                uint next = vertexOffset + (j + 1);
+                uint currentNext = vertexOffset + (numberSlices + 1) + j;
+                uint nextNext = vertexOffset + (numberSlices + 1) + (j + 1);
 
-                // 第一个三角形 (顺时针为正面)
+                // 第一个三角形 (顺时针为正面，参考cylinder实现)
                 *tp++ = (T)current;
-                *tp++ = (T)nextNext;
                 *tp++ = (T)next;
+                *tp++ = (T)nextNext;
 
                 // 第二个三角形
                 *tp++ = (T)current;
-                *tp++ = (T)currentNext;
                 *tp++ = (T)nextNext;
+                *tp++ = (T)currentNext;
             }
 
-            vertexOffset += 2 * numberSlices;
+            vertexOffset += 2 * (numberSlices + 1);
 
-            // 3. 底半球索引 (Z < -halfExtend)
+            // 3. 底半球索引
             for (uint i = 0; i < numberStacks; i++)
             {
                 for (uint j = 0; j < numberSlices; j++)
                 {
                     uint current = vertexOffset + i * (numberSlices + 1) + j;
-                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1);
                     uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
-                    uint nextNext = vertexOffset + (i + 1) * (numberSlices + 1) + (j + 1) % (numberSlices + 1);
+                    uint nextNext = vertexOffset + (i + 1) * (numberSlices + 1) + (j + 1);
 
-                    // 第一个三角形 (顺时针为正面)
+                    // 第一个三角形 (顺时针为正面，底半球需要相反的绕序)
                     *tp++ = (T)current;
                     *tp++ = (T)next;
                     *tp++ = (T)nextNext;
@@ -2020,15 +2019,12 @@ namespace hgl::graph::inline_geometry
                 for (uint j = 0; j < numberSlices; j++)
                 {
                     uint current = vertexOffset + i * (numberSlices + 1) + j;
-                    uint next = vertexOffset + i * (numberSlices + 1) + ((j + 1) % (numberSlices + 1));
+                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1);
                     uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
 
                     // 水平线
-                    if (j < numberSlices)
-                    {
-                        *tp++ = (T)current;
-                        *tp++ = (T)next;
-                    }
+                    *tp++ = (T)current;
+                    *tp++ = (T)next;
 
                     // 垂直线
                     *tp++ = (T)current;
@@ -2042,8 +2038,8 @@ namespace hgl::graph::inline_geometry
             for (uint j = 0; j < numberSlices; j++)
             {
                 uint current = vertexOffset + j;
-                uint next = vertexOffset + ((j + 1) % numberSlices);
-                uint currentNext = vertexOffset + numberSlices + j;
+                uint next = vertexOffset + (j + 1);
+                uint currentNext = vertexOffset + (numberSlices + 1) + j;
 
                 // 上圆周
                 *tp++ = (T)current;
@@ -2054,7 +2050,7 @@ namespace hgl::graph::inline_geometry
                 *tp++ = (T)currentNext;
             }
 
-            vertexOffset += 2 * numberSlices;
+            vertexOffset += 2 * (numberSlices + 1);
 
             // 3. 底半球线框
             for (uint i = 0; i < numberStacks; i++)
@@ -2062,15 +2058,12 @@ namespace hgl::graph::inline_geometry
                 for (uint j = 0; j < numberSlices; j++)
                 {
                     uint current = vertexOffset + i * (numberSlices + 1) + j;
-                    uint next = vertexOffset + i * (numberSlices + 1) + ((j + 1) % (numberSlices + 1));
+                    uint next = vertexOffset + i * (numberSlices + 1) + (j + 1);
                     uint currentNext = vertexOffset + (i + 1) * (numberSlices + 1) + j;
 
                     // 水平线
-                    if (j < numberSlices)
-                    {
-                        *tp++ = (T)current;
-                        *tp++ = (T)next;
-                    }
+                    *tp++ = (T)current;
+                    *tp++ = (T)next;
 
                     // 垂直线
                     *tp++ = (T)current;
@@ -2085,15 +2078,17 @@ namespace hgl::graph::inline_geometry
         if (!pc || !cci) return nullptr;
         if (cci->numberSlices < 3 || cci->numberStacks < 1) return nullptr;
 
-        // 计算顶点和索引数量
-        // 顶半球: (numberStacks+1) * (numberSlices+1) 个顶点
-        // 圆柱体: 2 * numberSlices 个顶点 (上下各一圈)
-        // 底半球: (numberStacks+1) * (numberSlices+1) 个顶点
+        // 胶囊体结构：顶半球 + 圆柱体 + 底半球
+        // 顶半球：从北极点到赤道，Z从(halfExtend+radius)到halfExtend
+        // 圆柱体：从Z=halfExtend到Z=-halfExtend
+        // 底半球：从赤道到南极点，Z从-halfExtend到-(halfExtend+radius)
+
+        // 计算顶点数量
         uint hemisphereVertices = (cci->numberStacks + 1) * (cci->numberSlices + 1);
-        uint cylinderVertices = 2 * cci->numberSlices;
+        uint cylinderVertices = 2 * (cci->numberSlices + 1); // 上下两圈，考虑纹理坐标需要+1
         uint numberVertices = 2 * hemisphereVertices + cylinderVertices;
 
-        // 索引数量 (每个四边形需要2个三角形，每个三角形3个索引)
+        // 计算索引数量
         uint hemisphereIndices = cci->numberStacks * cci->numberSlices * 6;
         uint cylinderIndices = cci->numberSlices * 6;
         uint numberIndices = 2 * hemisphereIndices + cylinderIndices;
@@ -2117,22 +2112,27 @@ namespace hgl::graph::inline_geometry
         if (!vp) return nullptr;
 
         const float angleStep = (2.0f * HGL_PI) / ((float)cci->numberSlices);
-        const float stackStep = HGL_PI / (2.0f * (float)cci->numberStacks); // 90度分为numberStacks步
+        const float stackStep = (HGL_PI / 2.0f) / ((float)cci->numberStacks); // 90度分为numberStacks步
 
-        // 1. 生成顶半球顶点 (Z >= halfExtend)
+        // 1. 生成顶半球顶点 (从北极到赤道)
         for (uint i = 0; i <= cci->numberStacks; i++)
         {
-            float stackAngle = HGL_PI / 2.0f - (float)i * stackStep; // 从90度到0度
-            float y = sin(stackAngle);
-            float xzRadius = cos(stackAngle);
+            float stackAngle = (HGL_PI / 2.0f) - (float)i * stackStep; // 从90度到0度
+            float sinStack = sin(stackAngle);
+            float cosStack = cos(stackAngle);
 
             for (uint j = 0; j <= cci->numberSlices; j++)
             {
                 float sliceAngle = (float)j * angleStep;
-                float x = xzRadius * cos(sliceAngle);
-                float z = xzRadius * sin(sliceAngle);
+                float sinSlice = sin(sliceAngle);
+                float cosSlice = cos(sliceAngle);
 
-                // 位置 (半径缩放，Z偏移到圆柱顶部)
+                // 球面坐标转换为笛卡尔坐标，参考sphere实现
+                float x = cosStack * cosSlice;
+                float y = cosStack * (-sinSlice); // 注意Y坐标的负号，保持与cylinder一致
+                float z = sinStack;
+
+                // 位置：球心在(0, 0, halfExtend)
                 *vp++ = x * cci->radius;
                 *vp++ = y * cci->radius;
                 *vp++ = z * cci->radius + cci->halfExtend;
@@ -2149,73 +2149,78 @@ namespace hgl::graph::inline_geometry
                 if (tcp)
                 {
                     *tcp++ = (float)j / (float)cci->numberSlices;
-                    *tcp++ = 1.0f - (float)i / (float)cci->numberStacks;
+                    *tcp++ = 0.5f + 0.5f * (float)i / (float)cci->numberStacks; // 上半部分
                 }
 
                 // 切线
                 if (tp)
                 {
-                    *tp++ = -sin(sliceAngle);
+                    *tp++ = sinSlice;
+                    *tp++ = cosSlice;
                     *tp++ = 0.0f;
-                    *tp++ = cos(sliceAngle);
                 }
             }
         }
 
-        // 2. 生成圆柱体顶点
-        for (uint i = 0; i < 2; i++) // 上下两圈
+        // 2. 生成圆柱体顶点 (上下两圈)
+        for (uint i = 0; i < 2; i++) // 0=上圈, 1=下圈
         {
             float zPos = (i == 0) ? cci->halfExtend : -cci->halfExtend;
-            for (uint j = 0; j < cci->numberSlices; j++)
+            
+            for (uint j = 0; j <= cci->numberSlices; j++)
             {
                 float angle = (float)j * angleStep;
                 float x = cos(angle);
-                float z = sin(angle);
+                float y = -sin(angle); // 保持与其他几何体一致的坐标系
 
                 // 位置
                 *vp++ = x * cci->radius;
-                *vp++ = 0.0f;
-                *vp++ = z * cci->radius;
+                *vp++ = y * cci->radius;
+                *vp++ = zPos;
 
-                // 法线 (指向外侧)
+                // 法线 (径向向外)
                 if (np)
                 {
                     *np++ = x;
+                    *np++ = y;
                     *np++ = 0.0f;
-                    *np++ = z;
                 }
 
                 // 纹理坐标
                 if (tcp)
                 {
                     *tcp++ = (float)j / (float)cci->numberSlices;
-                    *tcp++ = (float)i;
+                    *tcp++ = 0.5f + (i == 0 ? -0.25f : 0.25f); // 中间区域
                 }
 
                 // 切线
                 if (tp)
                 {
-                    *tp++ = -sin(angle);
-                    *tp++ = 0.0f;
+                    *tp++ = sin(angle);
                     *tp++ = cos(angle);
+                    *tp++ = 0.0f;
                 }
             }
         }
 
-        // 3. 生成底半球顶点 (Z <= -halfExtend)
+        // 3. 生成底半球顶点 (从赤道到南极)
         for (uint i = 0; i <= cci->numberStacks; i++)
         {
             float stackAngle = -(float)i * stackStep; // 从0度到-90度
-            float y = sin(stackAngle);
-            float xzRadius = cos(stackAngle);
+            float sinStack = sin(stackAngle);
+            float cosStack = cos(stackAngle);
 
             for (uint j = 0; j <= cci->numberSlices; j++)
             {
                 float sliceAngle = (float)j * angleStep;
-                float x = xzRadius * cos(sliceAngle);
-                float z = xzRadius * sin(sliceAngle);
+                float sinSlice = sin(sliceAngle);
+                float cosSlice = cos(sliceAngle);
 
-                // 位置 (半径缩放，Z偏移到圆柱底部)
+                float x = cosStack * cosSlice;
+                float y = cosStack * (-sinSlice);
+                float z = sinStack;
+
+                // 位置：球心在(0, 0, -halfExtend)
                 *vp++ = x * cci->radius;
                 *vp++ = y * cci->radius;
                 *vp++ = z * cci->radius - cci->halfExtend;
@@ -2232,15 +2237,15 @@ namespace hgl::graph::inline_geometry
                 if (tcp)
                 {
                     *tcp++ = (float)j / (float)cci->numberSlices;
-                    *tcp++ = (float)i / (float)cci->numberStacks;
+                    *tcp++ = 0.5f - 0.5f * (float)i / (float)cci->numberStacks; // 下半部分
                 }
 
                 // 切线
                 if (tp)
                 {
-                    *tp++ = -sin(sliceAngle);
+                    *tp++ = sinSlice;
+                    *tp++ = cosSlice;
                     *tp++ = 0.0f;
-                    *tp++ = cos(sliceAngle);
                 }
             }
         }
@@ -2259,7 +2264,6 @@ namespace hgl::graph::inline_geometry
 
         if (p)
         {
-            float totalHeight = 2.0f * cci->radius + 2.0f * cci->halfExtend;
             p->SetBoundingBox(Vector3f(-cci->radius, -cci->radius, -cci->halfExtend - cci->radius),
                               Vector3f(cci->radius, cci->radius, cci->halfExtend + cci->radius));
         }
@@ -2274,13 +2278,11 @@ namespace hgl::graph::inline_geometry
 
         // 计算顶点数量 (与实体版本相同)
         uint hemisphereVertices = (cci->numberStacks + 1) * (cci->numberSlices + 1);
-        uint cylinderVertices = 2 * cci->numberSlices;
+        uint cylinderVertices = 2 * (cci->numberSlices + 1);
         uint numberVertices = 2 * hemisphereVertices + cylinderVertices;
 
         // 线框索引数量计算
-        // 每个半球: numberStacks * numberSlices 个四边形，每个四边形4条边，但共享边只计算一次
-        // 估算: numberStacks * numberSlices * 2 (水平+垂直线)
-        uint hemisphereLineIndices = cci->numberStacks * cci->numberSlices * 4;
+        uint hemisphereLineIndices = cci->numberStacks * cci->numberSlices * 4; // 每个四边形4条边
         uint cylinderLineIndices = cci->numberSlices * 4; // 上圆周 + 垂直线
         uint numberIndices = 2 * hemisphereLineIndices + cylinderLineIndices;
 
@@ -2297,20 +2299,24 @@ namespace hgl::graph::inline_geometry
         if (!vp) return nullptr;
 
         const float angleStep = (2.0f * HGL_PI) / ((float)cci->numberSlices);
-        const float stackStep = HGL_PI / (2.0f * (float)cci->numberStacks);
+        const float stackStep = (HGL_PI / 2.0f) / ((float)cci->numberStacks);
 
         // 1. 生成顶半球顶点
         for (uint i = 0; i <= cci->numberStacks; i++)
         {
-            float stackAngle = HGL_PI / 2.0f - (float)i * stackStep;
-            float y = sin(stackAngle);
-            float xzRadius = cos(stackAngle);
+            float stackAngle = (HGL_PI / 2.0f) - (float)i * stackStep;
+            float sinStack = sin(stackAngle);
+            float cosStack = cos(stackAngle);
 
             for (uint j = 0; j <= cci->numberSlices; j++)
             {
                 float sliceAngle = (float)j * angleStep;
-                float x = xzRadius * cos(sliceAngle);
-                float z = xzRadius * sin(sliceAngle);
+                float sinSlice = sin(sliceAngle);
+                float cosSlice = cos(sliceAngle);
+
+                float x = cosStack * cosSlice;
+                float y = cosStack * (-sinSlice);
+                float z = sinStack;
 
                 *vp++ = x * cci->radius;
                 *vp++ = y * cci->radius;
@@ -2322,12 +2328,16 @@ namespace hgl::graph::inline_geometry
         for (uint i = 0; i < 2; i++)
         {
             float zPos = (i == 0) ? cci->halfExtend : -cci->halfExtend;
-            for (uint j = 0; j < cci->numberSlices; j++)
+            
+            for (uint j = 0; j <= cci->numberSlices; j++)
             {
                 float angle = (float)j * angleStep;
-                *vp++ = cos(angle) * cci->radius;
-                *vp++ = 0.0f;
-                *vp++ = sin(angle) * cci->radius;
+                float x = cos(angle);
+                float y = -sin(angle);
+
+                *vp++ = x * cci->radius;
+                *vp++ = y * cci->radius;
+                *vp++ = zPos;
             }
         }
 
@@ -2335,14 +2345,18 @@ namespace hgl::graph::inline_geometry
         for (uint i = 0; i <= cci->numberStacks; i++)
         {
             float stackAngle = -(float)i * stackStep;
-            float y = sin(stackAngle);
-            float xzRadius = cos(stackAngle);
+            float sinStack = sin(stackAngle);
+            float cosStack = cos(stackAngle);
 
             for (uint j = 0; j <= cci->numberSlices; j++)
             {
                 float sliceAngle = (float)j * angleStep;
-                float x = xzRadius * cos(sliceAngle);
-                float z = xzRadius * sin(sliceAngle);
+                float sinSlice = sin(sliceAngle);
+                float cosSlice = cos(sliceAngle);
+
+                float x = cosStack * cosSlice;
+                float y = cosStack * (-sinSlice);
+                float z = sinStack;
 
                 *vp++ = x * cci->radius;
                 *vp++ = y * cci->radius;
