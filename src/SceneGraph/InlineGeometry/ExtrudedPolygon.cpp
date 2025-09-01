@@ -10,34 +10,10 @@
 
 namespace hgl::graph::inline_geometry
 {
-    // 辅助函数：计算向量叉积
-    Vector3f CrossProduct(const Vector3f& a, const Vector3f& b)
-    {
-        return Vector3f(a.y * b.z - a.z * b.y,
-                        a.z * b.x - a.x * b.z,
-                        a.x * b.y - a.y * b.x);
-    }
-
-    // 辅助函数：点乘
-    float DotProduct(const Vector3f &a, const Vector3f &b)
-    {
-        return a.x * b.x + a.y * b.y + a.z * b.z;
-    }
-
-    // 辅助函数：向量标准化
-    Vector3f Normalize(const Vector3f& v)
-    {
-        float len = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-        if (len > 0.0f) {
-            return Vector3f(v.x / len, v.y / len, v.z / len);
-        }
-        return Vector3f(0, 0, 1);
-    }
-
     // 辅助函数：构建局部坐标系
     void BuildLocalCoordinateSystem(const Vector3f& extrudeAxis, Vector3f& right, Vector3f& up)
     {
-        Vector3f axis = Normalize(extrudeAxis);
+        Vector3f axis = glm::normalize(extrudeAxis);
 
         // 为了使结果更直观，对于常见的轴向使用固定的局部坐标系
         if (fabs(axis.x) > 0.99f) {
@@ -55,8 +31,8 @@ namespace hgl::graph::inline_geometry
         } else {
             // 任意轴向：构建正交坐标系
             Vector3f ref = (fabs(axis.x) < 0.9f) ? Vector3f(1, 0, 0) : Vector3f(0, 1, 0);
-            right = Normalize(CrossProduct(ref, axis));
-            up = CrossProduct(axis, right);
+            right = glm::normalize(glm::cross(ref, axis));
+            up = glm::cross(axis, right);
         }
     }
 
@@ -97,7 +73,7 @@ namespace hgl::graph::inline_geometry
         // 构建局部坐标系
         Vector3f right, up;
         BuildLocalCoordinateSystem(epci->extrudeAxis, right, up);
-        Vector3f forward = Normalize(epci->extrudeAxis);
+        Vector3f forward = glm::normalize(epci->extrudeAxis);
 
         // 计算挤压的起始和结束位置
         Vector3f extrudeOffset = forward * epci->extrudeDistance;
@@ -135,7 +111,7 @@ namespace hgl::graph::inline_geometry
                     Vector3f edge3d = right * edge2d.x + up * edge2d.y;
 
                     // 侧面法线 = edge × extrudeAxis
-                    Vector3f sideNormal = Normalize(CrossProduct(edge3d, forward));
+                    Vector3f sideNormal = glm::normalize(glm::cross(edge3d, forward));
 
                     // 确保法线指向外侧
                     if (!epci->clockwiseFront) {
@@ -244,12 +220,12 @@ namespace hgl::graph::inline_geometry
             Vector3f b0 = right * epci->vertices[0].x + up * epci->vertices[0].y;
             Vector3f b1 = right * epci->vertices[1].x + up * epci->vertices[1].y;
             Vector3f b2 = right * epci->vertices[2].x + up * epci->vertices[2].y;
-            Vector3f triNormal = Normalize(CrossProduct(b1 - b0, b2 - b0));
+            Vector3f triNormal = glm::normalize(glm::cross(b1 - b0, b2 - b0));
 
             Vector3f expectedBottomNormal = forward * -1.0f;
             if (!epci->clockwiseFront) expectedBottomNormal = expectedBottomNormal * -1.0f;
 
-            bool flipBottom = (DotProduct(triNormal, expectedBottomNormal) < 0.0f);
+            bool flipBottom = (glm::dot(triNormal, expectedBottomNormal) < 0.0f);
 
             for (uint i = 1; i < vertexCount - 1; i++) {
                 if (!flipBottom) {
@@ -270,12 +246,12 @@ namespace hgl::graph::inline_geometry
             Vector3f t0 = (right * epci->vertices[0].x + up * epci->vertices[0].y) + extrudeOffset;
             Vector3f t1 = (right * epci->vertices[1].x + up * epci->vertices[1].y) + extrudeOffset;
             Vector3f t2 = (right * epci->vertices[2].x + up * epci->vertices[2].y) + extrudeOffset;
-            Vector3f triNormalTop = Normalize(CrossProduct(t1 - t0, t2 - t0));
+            Vector3f triNormalTop = glm::normalize(glm::cross(t1 - t0, t2 - t0));
 
             Vector3f expectedTopNormal = forward;
             if (!epci->clockwiseFront) expectedTopNormal = expectedTopNormal * -1.0f;
 
-            bool flipTop = (DotProduct(triNormalTop, expectedTopNormal) < 0.0f);
+            bool flipTop = (glm::dot(triNormalTop, expectedTopNormal) < 0.0f);
 
             for (uint i = 1; i < vertexCount - 1; i++) {
                 if (!flipTop) {
