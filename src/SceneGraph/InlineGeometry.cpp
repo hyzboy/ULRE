@@ -2008,48 +2008,51 @@ namespace hgl::graph::inline_geometry
 
                 // 计算法线
                 if(np) {
-                    Vector3f surface_normal;
-                    
                     // 计算沿轮廓的切线方向
-                    Vector2f profile_tangent;
+                    float profile_tangent_x, profile_tangent_y;
                     if(p == 0 && profile_count > 1) {
-                        profile_tangent = rci->profile_points[1] - rci->profile_points[0];
+                        profile_tangent_x = rci->profile_points[1].x - rci->profile_points[0].x;
+                        profile_tangent_y = rci->profile_points[1].y - rci->profile_points[0].y;
                     } else if(p == profile_count - 1 && profile_count > 1) {
-                        profile_tangent = rci->profile_points[p] - rci->profile_points[p-1];
+                        profile_tangent_x = rci->profile_points[p].x - rci->profile_points[p-1].x;
+                        profile_tangent_y = rci->profile_points[p].y - rci->profile_points[p-1].y;
                     } else if(profile_count > 2) {
-                        profile_tangent = (rci->profile_points[p+1] - rci->profile_points[p-1]) * 0.5f;
+                        profile_tangent_x = (rci->profile_points[p+1].x - rci->profile_points[p-1].x) * 0.5f;
+                        profile_tangent_y = (rci->profile_points[p+1].y - rci->profile_points[p-1].y) * 0.5f;
                     } else {
-                        profile_tangent = Vector2f(0, 1); // 默认向上
+                        profile_tangent_x = 0.0f;
+                        profile_tangent_y = 1.0f; // 默认向上
                     }
 
                     // 归一化轮廓切线
-                    float profile_len = sqrt(profile_tangent.x * profile_tangent.x + profile_tangent.y * profile_tangent.y);
+                    float profile_len = sqrt(profile_tangent_x * profile_tangent_x + profile_tangent_y * profile_tangent_y);
                     if(profile_len > 0.001f) {
-                        profile_tangent.x /= profile_len;
-                        profile_tangent.y /= profile_len;
+                        profile_tangent_x /= profile_len;
+                        profile_tangent_y /= profile_len;
                     }
 
                     // 轮廓法线（垂直于轮廓切线）
-                    Vector2f profile_normal(-profile_tangent.y, profile_tangent.x);
+                    float profile_normal_x = -profile_tangent_y;
+                    float profile_normal_y = profile_tangent_x;
 
                     // 转换到3D空间的表面法线
-                    surface_normal.x = profile_normal.x * cos_angle;
-                    surface_normal.y = profile_normal.x * sin_angle;
-                    surface_normal.z = profile_normal.y;
+                    float surface_normal_x = profile_normal_x * cos_angle;
+                    float surface_normal_y = profile_normal_x * sin_angle;
+                    float surface_normal_z = profile_normal_y;
 
                     // 归一化法线
-                    float normal_len = sqrt(surface_normal.x * surface_normal.x + 
-                                          surface_normal.y * surface_normal.y + 
-                                          surface_normal.z * surface_normal.z);
+                    float normal_len = sqrt(surface_normal_x * surface_normal_x + 
+                                          surface_normal_y * surface_normal_y + 
+                                          surface_normal_z * surface_normal_z);
                     if(normal_len > 0.001f) {
-                        surface_normal.x /= normal_len;
-                        surface_normal.y /= normal_len;
-                        surface_normal.z /= normal_len;
+                        surface_normal_x /= normal_len;
+                        surface_normal_y /= normal_len;
+                        surface_normal_z /= normal_len;
                     }
 
-                    *np++ = surface_normal.x;
-                    *np++ = surface_normal.y;
-                    *np++ = surface_normal.z;
+                    *np++ = surface_normal_x;
+                    *np++ = surface_normal_y;
+                    *np++ = surface_normal_z;
                 }
 
                 // 计算纹理坐标
@@ -2207,8 +2210,12 @@ namespace hgl::graph::inline_geometry
                 max_height = std::max(max_height, rci->profile_points[i].y);
             }
 
-            Vector3f min_bound = rci->revolution_center + Vector3f(-max_radius, -max_radius, min_height);
-            Vector3f max_bound = rci->revolution_center + Vector3f(max_radius, max_radius, max_height);
+            Vector3f min_bound(rci->revolution_center.x - max_radius, 
+                               rci->revolution_center.y - max_radius, 
+                               rci->revolution_center.z + min_height);
+            Vector3f max_bound(rci->revolution_center.x + max_radius, 
+                               rci->revolution_center.y + max_radius, 
+                               rci->revolution_center.z + max_height);
             
             p->SetBoundingBox(min_bound, max_bound);
         }

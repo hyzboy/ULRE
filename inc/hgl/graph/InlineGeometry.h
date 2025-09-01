@@ -295,6 +295,22 @@ namespace hgl::graph
         /**
          * 创建一个由2D轮廓旋转生成的3D几何体
          * 比如半圆弧旋转成球体，方形轮廓旋转成圆柱体等
+         * 
+         * @param pc 图元创建器
+         * @param rci 旋转创建信息
+         * @return 创建的图元，失败返回nullptr
+         * 
+         * 使用说明：
+         * - profile_points: 2D轮廓点数组，x为距离旋转轴的距离，y为沿轴的高度
+         * - revolution_slices: 旋转分段数，决定圆形的平滑度
+         * - sweep_angle: 扫过角度，360度为完整旋转，小于360度会生成端面
+         * - revolution_axis: 旋转轴方向，默认为Z轴(0,0,1)
+         * - close_profile: 是否闭合轮廓，影响首尾点是否连接
+         * 
+         * 示例：
+         * 半圆弧 + 360度旋转 = 球体
+         * 矩形轮廓 + 360度旋转 = 圆柱体  
+         * "]"形轮廓 + 360度旋转 = 空心圆柱
          */
         Primitive *CreateRevolution(PrimitiveCreater *pc, const RevolutionCreateInfo *rci);
 
