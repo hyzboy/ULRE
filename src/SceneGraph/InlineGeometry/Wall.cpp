@@ -114,21 +114,44 @@ namespace hgl::graph::inline_geometry
         // build per-segment data
         struct Seg{ Vector2f p0,p1; Vector2f dir; Vector2f nrm; float len; Vector2f left0,right0,left1,right1; };
         std::vector<Seg> segs;
-        segs.reserve(nverts-1);
-        for(size_t i=0;i+1<nverts;++i)
+        segs.reserve(nverts);
+        if(closed)
         {
-            Seg s;
-            s.p0 = verts[ seq[i] ]; s.p1 = verts[ seq[i+1] ];
-            Vector2f d(s.p1.x - s.p0.x, s.p1.y - s.p0.y);
-            float L = sqrt(d.x*d.x + d.y*d.y);
-            if(L<=1e-8f){ s.dir = Vector2f(0,0); s.nrm = Vector2f(0,0); s.len = 0; }
-            else{ s.dir = Vector2f(d.x/L, d.y/L); s.nrm = Vector2f(-s.dir.y, s.dir.x); s.len = L; }
-            s.left0 = Vector2f(s.p0.x + s.nrm.x*halfT, s.p0.y + s.nrm.y*halfT);
-            s.right0 = Vector2f(s.p0.x - s.nrm.x*halfT, s.p0.y - s.nrm.y*halfT);
-            s.left1 = Vector2f(s.p1.x + s.nrm.x*halfT, s.p1.y + s.nrm.y*halfT);
-            s.right1 = Vector2f(s.p1.x - s.nrm.x*halfT, s.p1.y - s.nrm.y*halfT);
-            s.len = L;
-            segs.push_back(s);
+            // include closing segment for closed polyline
+            for(size_t i=0;i<nverts;++i)
+            {
+                size_t ni = (i+1)%nverts;
+                Seg s;
+                s.p0 = verts[ seq[i] ]; s.p1 = verts[ seq[ni] ];
+                Vector2f d(s.p1.x - s.p0.x, s.p1.y - s.p0.y);
+                float L = sqrt(d.x*d.x + d.y*d.y);
+                if(L<=1e-8f){ s.dir = Vector2f(0,0); s.nrm = Vector2f(0,0); s.len = 0; }
+                else{ s.dir = Vector2f(d.x/L, d.y/L); s.nrm = Vector2f(-s.dir.y, s.dir.x); s.len = L; }
+                s.left0 = Vector2f(s.p0.x + s.nrm.x*halfT, s.p0.y + s.nrm.y*halfT);
+                s.right0 = Vector2f(s.p0.x - s.nrm.x*halfT, s.p0.y - s.nrm.y*halfT);
+                s.left1 = Vector2f(s.p1.x + s.nrm.x*halfT, s.p1.y + s.nrm.y*halfT);
+                s.right1 = Vector2f(s.p1.x - s.nrm.x*halfT, s.p1.y - s.nrm.y*halfT);
+                s.len = L;
+                segs.push_back(s);
+            }
+        }
+        else
+        {
+            for(size_t i=0;i+1<nverts;++i)
+            {
+                Seg s;
+                s.p0 = verts[ seq[i] ]; s.p1 = verts[ seq[i+1] ];
+                Vector2f d(s.p1.x - s.p0.x, s.p1.y - s.p0.y);
+                float L = sqrt(d.x*d.x + d.y*d.y);
+                if(L<=1e-8f){ s.dir = Vector2f(0,0); s.nrm = Vector2f(0,0); s.len = 0; }
+                else{ s.dir = Vector2f(d.x/L, d.y/L); s.nrm = Vector2f(-s.dir.y, s.dir.x); s.len = L; }
+                s.left0 = Vector2f(s.p0.x + s.nrm.x*halfT, s.p0.y + s.nrm.y*halfT);
+                s.right0 = Vector2f(s.p0.x - s.nrm.x*halfT, s.p0.y - s.nrm.y*halfT);
+                s.left1 = Vector2f(s.p1.x + s.nrm.x*halfT, s.p1.y + s.nrm.y*halfT);
+                s.right1 = Vector2f(s.p1.x - s.nrm.x*halfT, s.p1.y - s.nrm.y*halfT);
+                s.len = L;
+                segs.push_back(s);
+            }
         }
 
         // per-vertex join handling: for each vertex vi, compute leftPoints and rightPoints arrays
@@ -157,8 +180,10 @@ namespace hgl::graph::inline_geometry
             }
 
             // interior vertex: between seg (vi-1) and seg (vi)
-            Seg &sPrev = segs[vi-1];
-            Seg &sNext = segs[vi];
+            size_t prevSegIndex = (vi==0)? (segs.size()-1) : (vi-1);
+            size_t nextSegIndex = vi % segs.size();
+            Seg &sPrev = segs[prevSegIndex];
+            Seg &sNext = segs[nextSegIndex];
 
             // left side join
             bool left_ok = false;
