@@ -1538,6 +1538,13 @@ namespace hgl::graph::inline_geometry
     {
         if(!pc || !bci) return nullptr;
 
+        // 验证参数合理性
+        if(bci->halfExtend <= 0.0f || bci->startRadius < 0.0f || bci->endRadius < 0.0f)
+            return nullptr;
+            
+        if(bci->numberSlices < 3)
+            return nullptr;
+
         uint numberIndices = bci->numberSlices * 3 * 2 + bci->numberSlices * 6;
 
         if(numberIndices <= 0)
@@ -1550,7 +1557,7 @@ namespace hgl::graph::inline_geometry
 
         float angleStep = (2.0f * HGL_PI) / ((float) bci->numberSlices);
 
-        if (bci->numberSlices < 3 || numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
+        if (numberVertices > GLUS_MAX_VERTICES || numberIndices > GLUS_MAX_INDICES)
             return nullptr;
 
         VABMapFloat vertex   (pc->GetVABMap(VAN::Position),VF_V3F);
