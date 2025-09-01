@@ -570,6 +570,250 @@ namespace hgl::graph::inline_geometry
         return p;
     }
 
+    Primitive *CreateRoundedRectangularCube(PrimitiveCreater *pc,const RoundedRectangularCubeCreateInfo *rrcci)
+    {
+        if(!pc)return(nullptr);
+        if(!rrcci)return(nullptr);
+        
+        if(rrcci->radius<=0||rrcci->round_per<=1)
+        {
+            // 如果没有圆角，回退到普通立方体
+            CubeCreateInfo cci;
+            cci.normal = rrcci->normal;
+            cci.tangent = rrcci->tangent;
+            cci.tex_coord = rrcci->tex_coord;
+            cci.color_type = (CubeCreateInfo::ColorType)rrcci->color_type;
+            if(rrcci->color_type != RoundedRectangularCubeCreateInfo::ColorType::NoColor)
+                cci.color[0] = rrcci->color[0];
+            return CreateCube(pc, &cci);
+        }
+
+        float half_width = rrcci->width * 0.5f;
+        float half_depth = rrcci->depth * 0.5f;
+        float half_height = rrcci->height * 0.5f;
+        float radius = rrcci->radius;
+        
+        // 限制半径不超过宽度和深度的一半
+        if(radius > half_width) radius = half_width;
+        if(radius > half_depth) radius = half_depth;
+        
+        uint32_t round_per = rrcci->round_per;
+        
+        // 计算顶点数量：
+        // 顶面和底面各有 round_per * 4 个圆角顶点
+        // 侧面连接顶点
+        uint32_t vertices_per_layer = round_per * 4;
+        uint32_t total_vertices = vertices_per_layer * 2; // 顶面和底面
+        
+        // 计算索引数量：
+        // 顶面和底面各有 (round_per * 4 - 2) * 3 个索引 (扇形三角化)
+        // 侧面有 round_per * 4 * 2 * 3 个索引 (每个边缘段形成2个三角形)
+        uint32_t indices_per_layer = (vertices_per_layer - 2) * 3;
+        uint32_t side_indices = vertices_per_layer * 2 * 3;
+        uint32_t total_indices = indices_per_layer * 2 + side_indices;
+
+        if(!pc->Init("RoundedRectangularCube", total_vertices, total_indices, IndexType::U16))
+            return(nullptr);
+
+        // 生成顶点位置
+        std::vector<Vector3f> positions;
+        std::vector<Vector3f> normals;
+        std::vector<Vector3f> tangents;
+        std::vector<Vector2f> tex_coords;
+        
+        positions.reserve(total_vertices);
+        if(rrcci->normal) normals.reserve(total_vertices);
+        if(rrcci->tangent) tangents.reserve(total_vertices);
+        if(rrcci->tex_coord) tex_coords.reserve(total_vertices);
+
+        // 生成圆角坐标
+        std::vector<Vector2f> corner_offsets;
+        corner_offsets.reserve(round_per);
+        
+        for(uint32_t i = 0; i < round_per; i++)
+        {
+            float angle = float(i) / float(round_per - 1) * 90.0f;
+            float x = sin(deg2rad(angle)) * radius;
+            float y = cos(deg2rad(angle)) * radius;
+            corner_offsets.push_back(Vector2f(x, y));
+        }
+
+        // 生成顶面和底面顶点
+        for(int layer = 0; layer < 2; layer++)
+        {
+            float z = (layer == 0) ? half_height : -half_height; // 顶面和底面
+            
+            // 四个角的圆角顶点
+            // 右上角 (top-right)
+            for(uint32_t i = 0; i < round_per; i++)
+            {
+                float x = half_width - radius + corner_offsets[i].x;
+                float y = half_depth - radius + corner_offsets[round_per - 1 - i].y;
+                positions.push_back(Vector3f(x, y, z));
+                
+                if(rrcci->normal)
+                    normals.push_back(Vector3f(0, 0, layer == 0 ? 1.0f : -1.0f));
+                
+                if(rrcci->tangent)
+                    tangents.push_back(Vector3f(1, 0, 0));
+                
+                if(rrcci->tex_coord)
+                {
+                    float u = (x + half_width) / rrcci->width;
+                    float v = (y + half_depth) / rrcci->depth;
+                    tex_coords.push_back(Vector2f(u, layer == 0 ? v : 1.0f - v));
+                }
+            }
+            
+            // 右下角 (bottom-right)
+            for(uint32_t i = 0; i < round_per; i++)
+            {
+                float x = half_width - radius + corner_offsets[round_per - 1 - i].x;
+                float y = -half_depth + radius - corner_offsets[round_per - 1 - i].y;
+                positions.push_back(Vector3f(x, y, z));
+                
+                if(rrcci->normal)
+                    normals.push_back(Vector3f(0, 0, layer == 0 ? 1.0f : -1.0f));
+                
+                if(rrcci->tangent)
+                    tangents.push_back(Vector3f(1, 0, 0));
+                
+                if(rrcci->tex_coord)
+                {
+                    float u = (x + half_width) / rrcci->width;
+                    float v = (y + half_depth) / rrcci->depth;
+                    tex_coords.push_back(Vector2f(u, layer == 0 ? v : 1.0f - v));
+                }
+            }
+            
+            // 左下角 (bottom-left)
+            for(uint32_t i = 0; i < round_per; i++)
+            {
+                float x = -half_width + radius - corner_offsets[i].x;
+                float y = -half_depth + radius - corner_offsets[i].y;
+                positions.push_back(Vector3f(x, y, z));
+                
+                if(rrcci->normal)
+                    normals.push_back(Vector3f(0, 0, layer == 0 ? 1.0f : -1.0f));
+                
+                if(rrcci->tangent)
+                    tangents.push_back(Vector3f(1, 0, 0));
+                
+                if(rrcci->tex_coord)
+                {
+                    float u = (x + half_width) / rrcci->width;
+                    float v = (y + half_depth) / rrcci->depth;
+                    tex_coords.push_back(Vector2f(u, layer == 0 ? v : 1.0f - v));
+                }
+            }
+            
+            // 左上角 (top-left)
+            for(uint32_t i = 0; i < round_per; i++)
+            {
+                float x = -half_width + radius - corner_offsets[round_per - 1 - i].x;
+                float y = half_depth - radius + corner_offsets[round_per - 1 - i].y;
+                positions.push_back(Vector3f(x, y, z));
+                
+                if(rrcci->normal)
+                    normals.push_back(Vector3f(0, 0, layer == 0 ? 1.0f : -1.0f));
+                
+                if(rrcci->tangent)
+                    tangents.push_back(Vector3f(1, 0, 0));
+                
+                if(rrcci->tex_coord)
+                {
+                    float u = (x + half_width) / rrcci->width;
+                    float v = (y + half_depth) / rrcci->depth;
+                    tex_coords.push_back(Vector2f(u, layer == 0 ? v : 1.0f - v));
+                }
+            }
+        }
+
+        // 写入顶点数据
+        if(!pc->WriteVAB(VAN::Position, VF_V3F, positions.data()))
+            return(nullptr);
+
+        if(rrcci->normal)
+            if(!pc->WriteVAB(VAN::Normal, VF_V3F, normals.data()))
+                return(nullptr);
+
+        if(rrcci->tangent)
+            if(!pc->WriteVAB(VAN::Tangent, VF_V3F, tangents.data()))
+                return(nullptr);
+
+        if(rrcci->tex_coord)
+            if(!pc->WriteVAB(VAN::TexCoord, VF_V2F, tex_coords.data()))
+                return(nullptr);
+
+        // 生成索引
+        std::vector<uint16_t> indices;
+        indices.reserve(total_indices);
+
+        // 顶面索引 (扇形三角化，顺时针)
+        for(uint32_t i = 1; i < vertices_per_layer - 1; i++)
+        {
+            indices.push_back(0);
+            indices.push_back(i);
+            indices.push_back(i + 1);
+        }
+
+        // 底面索引 (扇形三角化，逆时针以保持正面朝外)
+        uint32_t bottom_start = vertices_per_layer;
+        for(uint32_t i = 1; i < vertices_per_layer - 1; i++)
+        {
+            indices.push_back(bottom_start);
+            indices.push_back(bottom_start + i + 1);
+            indices.push_back(bottom_start + i);
+        }
+
+        // 侧面索引
+        for(uint32_t i = 0; i < vertices_per_layer; i++)
+        {
+            uint32_t next_i = (i + 1) % vertices_per_layer;
+            uint32_t top_i = i;
+            uint32_t top_next = next_i;
+            uint32_t bottom_i = bottom_start + i;
+            uint32_t bottom_next = bottom_start + next_i;
+
+            // 第一个三角形 (顺时针)
+            indices.push_back(top_i);
+            indices.push_back(bottom_i);
+            indices.push_back(top_next);
+
+            // 第二个三角形 (顺时针)
+            indices.push_back(top_next);
+            indices.push_back(bottom_i);
+            indices.push_back(bottom_next);
+        }
+
+        // 写入索引
+        pc->WriteIBO(indices.data());
+
+        // 处理颜色
+        if(rrcci->color_type != RoundedRectangularCubeCreateInfo::ColorType::NoColor)
+        {
+            VABMap4f color(pc->GetVABMap(VAN::Color));
+
+            if(color.IsValid())
+            {
+                if(rrcci->color_type == RoundedRectangularCubeCreateInfo::ColorType::SameColor)
+                    color->RepeatWrite(rrcci->color[0], total_vertices);
+                else if(rrcci->color_type == RoundedRectangularCubeCreateInfo::ColorType::VertexColor)
+                    color->Write(rrcci->color, total_vertices);
+                else
+                    return(nullptr);
+            }
+        }
+
+        Primitive *p = pc->Create();
+
+        // 设置包围盒
+        p->SetBoundingBox(Vector3f(-half_width, -half_depth, -half_height),
+                         Vector3f(half_width, half_depth, half_height));
+
+        return p;
+    }
+
     template<typename T> 
     void CreateSphereIndices(PrimitiveCreater *pc,uint numberParallels,const uint numberSlices)
     {

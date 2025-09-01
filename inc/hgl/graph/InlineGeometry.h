@@ -131,6 +131,54 @@ namespace hgl::graph
             */
         Primitive *CreateCube(PrimitiveCreater *pc,const CubeCreateInfo *cci);
 
+        struct RoundedRectangularCubeCreateInfo
+        {
+            float width;        ///<宽度(X方向)
+            float depth;        ///<深度(Y方向) 
+            float height;       ///<高度(Z方向)
+            float radius;       ///<圆角半径
+            uint32_t round_per; ///<圆角精度(每个角的顶点数)
+
+            bool normal;
+            bool tangent;
+            bool tex_coord;
+
+            enum class ColorType
+            {
+                NoColor=0,      ///<没有颜色
+                SameColor,      ///<一个颜色
+                FaceColor,      ///<每个面一个颜色
+                VertexColor,    ///<每个顶点一个颜色
+
+                ENUM_CLASS_RANGE(NoColor,VertexColor)
+            };
+
+            ColorType color_type;
+            Vector4f color[256];  ///<足够的颜色存储空间
+
+        public:
+
+            RoundedRectangularCubeCreateInfo()
+            {
+                width = 1.0f;
+                depth = 1.0f;
+                height = 1.0f;
+                radius = 0.1f;
+                round_per = 8;
+
+                normal = false;
+                tangent = false;
+                tex_coord = false;
+
+                color_type = ColorType::NoColor;
+            }
+        };//struct RoundedRectangularCubeCreateInfo
+
+        /**
+            * 创建一个圆角立方体(三角形)，在Z轴切面上看是一个实心圆角矩形
+            */
+        Primitive *CreateRoundedRectangularCube(PrimitiveCreater *pc,const RoundedRectangularCubeCreateInfo *rrcci);
+
         struct BoundingBoxCreateInfo
         {
             bool normal;
