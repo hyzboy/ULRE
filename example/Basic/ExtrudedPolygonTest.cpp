@@ -1,4 +1,4 @@
-// ExtrudedPolygonTest.cpp
+﻿// ExtrudedPolygonTest.cpp
 // 测试2D多边形挤压为3D多边形功能
 
 #include<hgl/WorkManager.h>
@@ -36,13 +36,19 @@ private:
 private:
     bool InitMDP()
     {
+
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
-        cfg.local_to_world = true;
-        cfg.depth_test = true;
-        cfg.vertex_color = true;
+        mtl::MaterialCreateInfo *mci=mtl::CreateGizmo3D(GetDevAttr(),&cfg);
 
-        material_instance = CreateMaterialInstance(mtl::inline_material::VertexColor3D, &cfg);
+        if(!mci)
+            return(false);
+
+        material=CreateMaterial("Gizmo3D",mci);
+
+        Color4f color=GetColor4f(COLOR::BlenderAxisRed);
+
+        material_instance = CreateMaterialInstance(material,(VIL *)nullptr,&color);
 
         pipeline = CreatePipeline(material_instance, InlinePipeline::Solid3D);
 
@@ -108,30 +114,38 @@ private:
 
         // 创建矩形立方体网格 (位置: 原点)
         if (prim_rect_cube) {
+
+            cci.mat=TranslateMatrix(-3,0,0);
+
             Mesh *mesh_rect = CreateMesh(prim_rect_cube, material_instance, pipeline);
             auto comp_rect = CreateComponent<MeshComponent>(&cci, mesh_rect);
-            comp_rect->SetPosition(Vector3f(-3, 0, 0));
         }
 
         // 创建圆柱体网格 (位置: 右侧)
         if (prim_circle_cylinder) {
+
+            cci.mat=TranslateMatrix(3,0,0);
+
             Mesh *mesh_cylinder = CreateMesh(prim_circle_cylinder, material_instance, pipeline);
             auto comp_cylinder = CreateComponent<MeshComponent>(&cci, mesh_cylinder);
-            comp_cylinder->SetPosition(Vector3f(3, 0, 0));
         }
 
         // 创建三角形柱网格 (位置: 前方)
         if (prim_triangle) {
+
+            cci.mat=TranslateMatrix(0,3,0);
+
             Mesh *mesh_triangle = CreateMesh(prim_triangle, material_instance, pipeline);
             auto comp_triangle = CreateComponent<MeshComponent>(&cci, mesh_triangle);
-            comp_triangle->SetPosition(Vector3f(0, 3, 0));
         }
 
         // 创建五边形柱网格 (位置: 后方)
         if (prim_pentagon) {
+
+            cci.mat=TranslateMatrix(0,-3,0);
+
             Mesh *mesh_pentagon = CreateMesh(prim_pentagon, material_instance, pipeline);
             auto comp_pentagon = CreateComponent<MeshComponent>(&cci, mesh_pentagon);
-            comp_pentagon->SetPosition(Vector3f(0, -3, 0));
         }
 
         CameraControl *camera_control = GetCameraControl();
@@ -169,7 +183,5 @@ public:
 
 int os_main(int, os_char **)
 {
-    TheWorkManager.CreateWorkObject<ExtrudedPolygonTestApp>();
-
-    return TheWorkManager.Run();
+    return RunFramework<ExtrudedPolygonTestApp>(OS_TEXT("Extruded Polygon"),1280,720);
 }

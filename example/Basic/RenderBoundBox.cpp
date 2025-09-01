@@ -66,14 +66,11 @@ private:
         }
     };
 
-    RenderMesh  *rm_plane=nullptr,
-                *rm_sphere=nullptr,
-                *rm_cone=nullptr,
-                *rm_cylinder=nullptr,
-                *rm_torus=nullptr,
-                *rm_box=nullptr,
-                *rm_hollow_cylinder=nullptr,
-                *rm_hex_sphere=nullptr;
+    RenderMesh *rm_floor=nullptr;           //地板
+    RenderMesh *rm_box=nullptr;             //边框包围盒
+
+    int rm_count=0;
+    RenderMesh *render_mesh[7]={};
 
 private:
 
@@ -171,10 +168,13 @@ private:
         if(!prim_creater)
             return(false);
 
-        rm_plane=CreateRenderMesh(CreatePlaneSqaure(prim_creater),&solid,0);
+        //
+        rm_floor=CreateRenderMesh(CreatePlaneSqaure(prim_creater),&solid,0);
+
+        rm_count=0;
 
         //Sphere
-        rm_sphere=CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1);
+        render_mesh[rm_count++]=CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1);
 
         //Cone
         {
@@ -185,7 +185,7 @@ private:
             cci.numberSlices=64;        //圆锥底部分割数
             cci.numberStacks=4;         //圆锥高度分割数
 
-            rm_cone=CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2);
+            render_mesh[rm_count++]=CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2);
         }
 
         //Cyliner
@@ -196,7 +196,7 @@ private:
             cci.numberSlices=16;        //圆柱底部分割数
             cci.radius      =1.25f;     //圆柱半径
 
-            rm_cylinder=CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,3);
+            render_mesh[rm_count++]=CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,3);
         }
 
         //Torus
@@ -208,7 +208,7 @@ private:
             tci.numberSlices=128;
             tci.numberStacks=16;
 
-            rm_torus=CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4);
+            render_mesh[rm_count++]=CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4);
         }
 
         {
@@ -219,7 +219,7 @@ private:
             hcci.outerRadius   =1.25f;     //外半径
             hcci.numberSlices  =64;        //圆柱底部分割数
 
-            rm_hollow_cylinder=CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5);
+            render_mesh[rm_count++]=CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5);
         }
 
         {
@@ -227,7 +227,7 @@ private:
 
             hsci.subdivisions=3;
 
-            rm_hex_sphere=CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6);
+            render_mesh[rm_count++]=CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6);
         }
 
         delete prim_creater;
@@ -254,48 +254,17 @@ private:
         {
             cci.mat=AxisZRotate(45.0f)*ScaleMatrix(10,10,1);
 
-            rm_plane->component=CreateComponent<MeshComponent>(&cci,rm_plane->cdp);
+            rm_floor->component=CreateComponent<MeshComponent>(&cci,rm_floor->cdp);
         }
 
+        for(int i=0;i<rm_count;i++)
         {
-            cci.mat=TranslateMatrix(0,0,0.2)*AxisYRotate(deg2rad(90.0f));
+            //螺旋排列
 
-            rm_torus->component=CreateComponent<MeshComponent>(&cci,rm_torus->cdp);
-            rm_torus->component->SetOverrideMaterial(solid.mi[1]);
-        }
+            cci.mat=TranslateMatrix(0,0,i)*AxisZRotate(deg2rad(360.0f*i/rm_count))*TranslateMatrix(3,0,0);
 
-        {
-            cci.mat=TranslateMatrix(0,0,1);
-            rm_cone->component=CreateComponent<MeshComponent>(&cci,rm_cone->cdp);
-            rm_cone->component->SetOverrideMaterial(solid.mi[2]);
-        }
-
-        {
-            cci.mat=TranslateMatrix(5,0,3)*AxisRotate(deg2rad(30),20,30,40);
-
-            rm_cylinder->component=CreateComponent<MeshComponent>(&cci,rm_cylinder->cdp);
-            rm_cylinder->component->SetOverrideMaterial(solid.mi[3]);
-        }
-
-        {
-            cci.mat=TranslateMatrix(0,0,4);
-
-            rm_sphere->component=CreateComponent<MeshComponent>(&cci,rm_sphere->cdp);
-            rm_sphere->component->SetOverrideMaterial(solid.mi[4]);
-        }
-
-        {
-            cci.mat=TranslateMatrix(-5,0,3)*AxisRotate(deg2rad(30),-20,-30,40);
-
-            rm_hollow_cylinder->component=CreateComponent<MeshComponent>(&cci,rm_hollow_cylinder->cdp);
-
-            rm_hollow_cylinder->component->SetOverrideMaterial(solid.mi[5]);
-        }
-
-        {
-            cci.mat=TranslateMatrix(0,5,3)*AxisRotate(deg2rad(30),20,-30,-40);
-            rm_hex_sphere->component=CreateComponent<MeshComponent>(&cci,rm_hex_sphere->cdp);
-            rm_hex_sphere->component->SetOverrideMaterial(solid.mi[6]);
+            render_mesh[i]->component=CreateComponent<MeshComponent>(&cci,render_mesh[i]->cdp);
+            render_mesh[i]->component->SetOverrideMaterial(solid.mi[i%COLOR_COUNT]);
         }
 
         return(true);
@@ -351,11 +320,6 @@ public:
     {
         SAFE_CLEAR(rm_box)
 
-        SAFE_CLEAR(rm_torus)
-        SAFE_CLEAR(rm_cylinder)
-        SAFE_CLEAR(rm_cone)
-        SAFE_CLEAR(rm_sphere)
-        SAFE_CLEAR(rm_plane)
 
         SAFE_CLEAR(mesh_vdm)
     }
