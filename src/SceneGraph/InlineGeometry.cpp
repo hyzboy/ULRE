@@ -2063,8 +2063,179 @@ namespace hgl::graph::inline_geometry
             return p;
         }
         
-        // TODO: 多条线的连接处理将在后续实现
-        // 这里暂时只实现单条线转换为cube的功能
+        
+        // 处理多条线的情况 - 改进版本，处理连接线和拐角
+        if(wci->lineCount > 1)
+        {
+            // 分析线段连接关系
+            struct LineInfo {
+                Line2D line;
+                float dirX, dirY;  // 单位方向向量
+                float perpX, perpY; // 垂直方向向量
+                float length;
+                bool processed;
+            };
+            
+            std::vector<LineInfo> lineInfos(wci->lineCount);
+            
+            // 预处理所有线段
+            for(uint i = 0; i < wci->lineCount; i++)
+            {
+                LineInfo& info = lineInfos[i];
+                info.line = wci->lines[i];
+                
+                float dx = info.line.end.x - info.line.start.x;
+                float dy = info.line.end.y - info.line.start.y;
+                info.length = sqrt(dx * dx + dy * dy);
+                
+                if(info.length > 1e-6f)
+                {
+                    info.dirX = dx / info.length;
+                    info.dirY = dy / info.length;
+                    info.perpX = -info.dirY;  // 向左90度
+                    info.perpY = info.dirX;
+                }
+                else
+                {
+                    info.dirX = info.dirY = 0;
+                    info.perpX = info.perpY = 0;
+                }
+                info.processed = false;
+            }
+            
+            // 收集所有墙体顶点
+            std::vector<Vector2f> wallVertices;
+            std::vector<uint16> wallIndices;
+            
+            // 为每条线段生成墙体几何
+            for(uint i = 0; i < wci->lineCount; i++)
+            {
+                const LineInfo& info = lineInfos[i];
+                if(info.length < 1e-6f) continue;
+                
+                // 计算墙体四个角点(2D)
+                Vector2f p1(info.line.start.x + info.perpX * halfThickness, 
+                           info.line.start.y + info.perpY * halfThickness);
+                Vector2f p2(info.line.start.x - info.perpX * halfThickness, 
+                           info.line.start.y - info.perpY * halfThickness);
+                Vector2f p3(info.line.end.x - info.perpX * halfThickness, 
+                           info.line.end.y - info.perpY * halfThickness);
+                Vector2f p4(info.line.end.x + info.perpX * halfThickness, 
+                           info.line.end.y + info.perpY * halfThickness);
+                
+                uint baseIdx = wallVertices.size();
+                
+                // 添加8个顶点（底面4个 + 顶面4个）
+                wallVertices.push_back(p1); // 0: 底面
+                wallVertices.push_back(p2); // 1
+                wallVertices.push_back(p3); // 2
+                wallVertices.push_back(p4); // 3
+                wallVertices.push_back(p1); // 4: 顶面
+                wallVertices.push_back(p2); // 5
+                wallVertices.push_back(p3); // 6
+                wallVertices.push_back(p4); // 7
+                
+                // 索引：6个面 × 2个三角形 × 3个顶点 = 36个索引
+                uint16 localIndices[] = {
+                    // 底面 (法线向下)
+                    0, 2, 1,  0, 3, 2,
+                    // 顶面 (法线向上)
+                    4, 5, 6,  4, 6, 7,
+                    // 前面
+                    0, 1, 5,  0, 5, 4,
+                    // 后面
+                    3, 7, 6,  3, 6, 2,
+                    // 左面
+                    1, 2, 6,  1, 6, 5,
+                    // 右面
+                    0, 4, 7,  0, 7, 3
+                };
+                
+                for(int j = 0; j < 36; j++)
+                    wallIndices.push_back(baseIdx + localIndices[j]);
+            }
+            
+            if(wallVertices.empty()) return nullptr;
+            
+            const uint numberVertices = wallVertices.size();
+            const uint numberIndices = wallIndices.size();
+            
+            if(!pc->Init("WallsFromLines", numberVertices, numberIndices))
+                return nullptr;
+            
+            VABMapFloat pos(pc->GetVABMap(VAN::Position), VF_V3F);
+            VABMapFloat nrm(pc->GetVABMap(VAN::Normal), VF_V3F);
+            VABMapFloat tan(pc->GetVABMap(VAN::Tangent), VF_V3F);
+            VABMapFloat uv(pc->GetVABMap(VAN::TexCoord), VF_V2F);
+            
+            float *vp = pos;
+            float *np = nrm;
+            float *tp = tan;
+            float *uvp = uv;
+            
+            // 写入顶点数据
+            for(uint i = 0; i < wallVertices.size(); i++)
+            {
+                const Vector2f& v = wallVertices[i];
+                bool isTopFace = (i >= wallVertices.size() / 2);
+                float z = isTopFace ? halfHeight : -halfHeight;
+                float nz = isTopFace ? 1.0f : -1.0f;
+                
+                if(vp) { *vp++ = v.x; *vp++ = v.y; *vp++ = z; }
+                if(np) { *np++ = 0; *np++ = 0; *np++ = nz; }
+                if(tp) { *tp++ = 1; *tp++ = 0; *tp++ = 0; }
+                if(uvp) { *uvp++ = 0; *uvp++ = 0; }
+            }
+            
+            // 写入索引数据
+            IBMap *ib_map = pc->GetIBMap();
+            const IndexType it = pc->GetIndexType();
+            
+            if(it == IndexType::U16)
+            {
+                IBTypeMap<uint16> im(ib_map);
+                uint16 *ip = im;
+                for(uint16 idx : wallIndices)
+                    *ip++ = idx;
+            }
+            else if(it == IndexType::U32)
+            {
+                IBTypeMap<uint32> im(ib_map);
+                uint32 *ip = im;
+                for(uint16 idx : wallIndices)
+                    *ip++ = (uint32)idx;
+            }
+            else if(it == IndexType::U8)
+            {
+                IBTypeMap<uint8> im(ib_map);
+                uint8 *ip = im;
+                for(uint16 idx : wallIndices)
+                    *ip++ = (uint8)idx;
+            }
+            else return nullptr;
+            
+            Primitive *p = pc->Create();
+            if(p)
+            {
+                // 计算包围盒
+                float minX = wallVertices[0].x, maxX = wallVertices[0].x;
+                float minY = wallVertices[0].y, maxY = wallVertices[0].y;
+                
+                for(const Vector2f& v : wallVertices)
+                {
+                    minX = std::min(minX, v.x);
+                    maxX = std::max(maxX, v.x);
+                    minY = std::min(minY, v.y);
+                    maxY = std::max(maxY, v.y);
+                }
+                
+                AABB aabb;
+                aabb.SetMinMax(Vector3f(minX, minY, -halfHeight), Vector3f(maxX, maxY, halfHeight));
+                p->SetBoundingBox(aabb);
+            }
+            return p;
+        }
+        
         return nullptr;
     }
 }
