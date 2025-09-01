@@ -140,6 +140,15 @@ IF(WIN32)
                         font/FontDataSourceWin.h)
 
     SOURCE_GROUP("Font\\Source\\Windows" FILES ${FONT_SOURCE_OS})
+ELSE()
+    # Find FreeType for non-Windows platforms
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FREETYPE REQUIRED freetype2)
+    
+    SET(FONT_SOURCE_OS  font/FontDataSourceFreeType.cpp
+                        font/FontDataSourceFreeType.h)
+
+    SOURCE_GROUP("Font\\Source\\FreeType" FILES ${FONT_SOURCE_OS})
 ENDIF(WIN32)
 
 SET(TEXT_SOURCE ${FONT_MANAGE_SOURCE}
@@ -422,3 +431,9 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
 
                                         ${VULKAN_RENDER_SOURCE}
                                         ${VULKAN_SURFACE_SOURCE})
+
+# Link FreeType on non-Windows platforms
+IF(NOT WIN32)
+    target_include_directories(ULRE.SceneGraph PRIVATE ${FREETYPE_INCLUDE_DIRS})
+    target_link_libraries(ULRE.SceneGraph ${FREETYPE_LIBRARIES})
+ENDIF()
