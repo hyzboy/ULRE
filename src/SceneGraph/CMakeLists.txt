@@ -34,6 +34,8 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     #${SG_INCLUDE_PATH}/Spline.h
                     InlineGeometry.cpp
                     InlineGeometry/ExtrudedPolygon.cpp
+                    InlineGeometry/HexSphere.cpp
+                    InlineGeometry/HollowCylinder.cpp
                     #Mesh.cpp
 )
 
