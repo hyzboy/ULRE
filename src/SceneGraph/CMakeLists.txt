@@ -30,12 +30,14 @@ SET(TILE_SOURCE ${SG_INCLUDE_PATH}/TileData.h
 SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 
 SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
+                    ${SG_INCLUDE_PATH}/geometry/Wall.h
                     #${SG_INCLUDE_PATH}/Mesh.h
                     #${SG_INCLUDE_PATH}/Spline.h
                     InlineGeometry.cpp
                     InlineGeometry/ExtrudedPolygon.cpp
                     InlineGeometry/HexSphere.cpp
                     InlineGeometry/HollowCylinder.cpp
+                    InlineGeometry/Wall.cpp
                     #Mesh.cpp
 )
 
