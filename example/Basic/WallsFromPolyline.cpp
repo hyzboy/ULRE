@@ -38,7 +38,7 @@ public:
         material = CreateMaterial("Gizmo3D_Walls", mci);
         if(!material) return false;
 
-        Color4f color = GetColor4f(COLOR::BananaYellow, 1.0f);
+        Color4f color = GetColor4f(COLOR::Gray, 1.0f);
         material_instance = CreateMaterialInstance(material, (VIL *)nullptr, &color);
         if(!material_instance) return false;
 
