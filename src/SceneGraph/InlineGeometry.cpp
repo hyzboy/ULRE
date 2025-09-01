@@ -1922,4 +1922,188 @@ namespace hgl::graph::inline_geometry
             p->SetBoundingBox(Vector3f(-R,-R,-R), Vector3f(R,R,R));
         return p;
     }
+
+    Primitive *CreateCamera(PrimitiveCreater *pc,const CameraCreateInfo *cci)
+    {
+        if(!pc||!cci) return nullptr;
+
+        const float body_size = cci->body_size;
+        const float lens_size = cci->lens_size * body_size;
+        const float lens_depth = cci->lens_depth * body_size;
+        const float half_body = body_size * 0.5f;
+        const float half_lens = lens_size * 0.5f;
+
+        // 相机几何体：主体（立方体）+ 镜头（较小的立方体伸出）
+        // 顶点数：主体8个 + 镜头8个 = 16个顶点
+        // 三角形数：主体12个三角形（6面*2） + 镜头10个三角形（5面*2，背面与主体共享）= 22个三角形 = 66个索引
+        const uint numberVertices = 16;
+        const uint numberIndices = 66;
+
+        if(!pc->Init("Camera", numberVertices, numberIndices))
+            return nullptr;
+
+        VABMapFloat pos   (pc->GetVABMap(VAN::Position), VF_V3F);
+        VABMapFloat nrm   (pc->GetVABMap(VAN::Normal),   VF_V3F);
+        VABMapFloat tan   (pc->GetVABMap(VAN::Tangent),  VF_V3F);
+        VABMapFloat uv    (pc->GetVABMap(VAN::TexCoord), VF_V2F);
+        VABMap4f color    (pc->GetVABMap(VAN::Color));
+
+        float *vp = pos;
+        float *np = nrm;
+        float *tp = tan;
+        float *uvp = uv;
+
+        if(!vp) return nullptr;
+
+        // 主体立方体顶点 (0-7) - 相机朝+Y方向
+        const float body_verts[][3] = {
+            // 后面 (Z = -half_body)
+            {-half_body, -half_body, -half_body}, // 0: 左下后
+            { half_body, -half_body, -half_body}, // 1: 右下后
+            { half_body,  half_body, -half_body}, // 2: 右上后  
+            {-half_body,  half_body, -half_body}, // 3: 左上后
+            // 前面 (Z = +half_body)
+            {-half_body, -half_body,  half_body}, // 4: 左下前
+            { half_body, -half_body,  half_body}, // 5: 右下前
+            { half_body,  half_body,  half_body}, // 6: 右上前
+            {-half_body,  half_body,  half_body}  // 7: 左上前
+        };
+
+        // 镜头立方体顶点 (8-15) - 伸出到+Y方向
+        const float lens_front_y = half_body + lens_depth;
+        const float lens_verts[][3] = {
+            // 后面与主体前面重合 (Y = +half_body)
+            {-half_lens, half_body, -half_lens}, // 8: 左下后
+            { half_lens, half_body, -half_lens}, // 9: 右下后
+            { half_lens, half_body,  half_lens}, // 10: 右上后
+            {-half_lens, half_body,  half_lens}, // 11: 左上后
+            // 前面（镜头前端） (Y = lens_front_y)
+            {-half_lens, lens_front_y, -half_lens}, // 12: 左下前
+            { half_lens, lens_front_y, -half_lens}, // 13: 右下前
+            { half_lens, lens_front_y,  half_lens}, // 14: 右上前
+            {-half_lens, lens_front_y,  half_lens}  // 15: 左上前
+        };
+
+        // 写入主体顶点
+        for(int i = 0; i < 8; i++) {
+            *vp++ = body_verts[i][0];
+            *vp++ = body_verts[i][1]; 
+            *vp++ = body_verts[i][2];
+
+            if(color.IsValid()) {
+                color->Write(cci->body_color);
+            }
+        }
+
+        // 写入镜头顶点
+        for(int i = 0; i < 8; i++) {
+            *vp++ = lens_verts[i][0];
+            *vp++ = lens_verts[i][1];
+            *vp++ = lens_verts[i][2];
+
+            if(color.IsValid()) {
+                color->Write(cci->lens_color);
+            }
+        }
+
+        // 填充法线（简化处理，每个顶点使用其面所在方向的法线）
+        if(np) {
+            // 主体法线 - 按面分组，为简化，每个顶点用对应面的法线
+            const float normals[][3] = {
+                // 后面 (0-3) - 面向-Y
+                {0, -1, 0}, {0, -1, 0}, {0, -1, 0}, {0, -1, 0},
+                // 前面 (4-7) - 面向+Y
+                {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0},
+                // 镜头顶点法线 - 镜头后面(8-11) - 面向+Y
+                {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0},
+                // 镜头前面 (12-15) - 面向+Y
+                {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}
+            };
+            
+            for(int i = 0; i < 16; i++) {
+                *np++ = normals[i][0];
+                *np++ = normals[i][1];
+                *np++ = normals[i][2];
+            }
+        }
+
+        // 填充切线（如果需要）
+        if(tp) {
+            for(int i = 0; i < 16; i++) {
+                *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f;
+            }
+        }
+
+        // 填充UV坐标（如果需要）
+        if(uvp) {
+            for(int i = 0; i < 16; i++) {
+                *uvp++ = 0.0f; *uvp++ = 0.0f;
+            }
+        }
+
+        // 索引 - 三角形面，顺时针为正面
+        IBMap *ib_map = pc->GetIBMap();
+        const IndexType it = pc->GetIndexType();
+
+        // 立方体面的索引（顺时针）
+        const uint16 indices[] = {
+            // 主体立方体的6个面 (12个三角形)
+            // 后面 (法线 -Y) Y=-half_body
+            0, 1, 2,  0, 2, 3,
+            // 前面 (法线 +Y) Y=+half_body
+            4, 6, 5,  4, 7, 6,
+            // 左面 (法线 -X) X=-half_body
+            0, 3, 7,  0, 7, 4,
+            // 右面 (法线 +X) X=+half_body
+            1, 5, 6,  1, 6, 2,
+            // 下面 (法线 -Z) Z=-half_body
+            0, 4, 5,  0, 5, 1,
+            // 上面 (法线 +Z) Z=+half_body
+            3, 2, 6,  3, 6, 7,
+
+            // 镜头立方体的5个面 (10个三角形) - 背面与主体共享
+            // 前面 (法线 +Y) Y=lens_front_y
+            12, 14, 13,  12, 15, 14,
+            // 左面 (法线 -X) X=-half_lens
+            8, 11, 15,  8, 15, 12,
+            // 右面 (法线 +X) X=+half_lens
+            9, 13, 14,  9, 14, 10,
+            // 下面 (法线 -Z) Z=-half_lens
+            8, 12, 13,  8, 13, 9,
+            // 上面 (法线 +Z) Z=+half_lens
+            11, 10, 14,  11, 14, 15
+        };
+
+        if(it == IndexType::U16) {
+            IBTypeMap<uint16> im(ib_map);
+            uint16 *ip = im;
+            for(int i = 0; i < 66; i++) {
+                *ip++ = indices[i];
+            }
+        }
+        else if(it == IndexType::U32) {
+            IBTypeMap<uint32> im(ib_map);
+            uint32 *ip = im;
+            for(int i = 0; i < 66; i++) {
+                *ip++ = (uint32)indices[i];
+            }
+        }
+        else if(it == IndexType::U8) {
+            IBTypeMap<uint8> im(ib_map);
+            uint8 *ip = im;
+            for(int i = 0; i < 66; i++) {
+                *ip++ = (uint8)indices[i];
+            }
+        }
+        else return nullptr;
+
+        Primitive *p = pc->Create();
+        if(p) {
+            // 设置包围盒
+            const float max_extent = hgl::max(half_body, lens_front_y);
+            p->SetBoundingBox(Vector3f(-half_body, -half_body, -half_body), 
+                              Vector3f(half_body, max_extent, half_body));
+        }
+        return p;
+    }
 }

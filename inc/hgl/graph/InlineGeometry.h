@@ -263,5 +263,23 @@ namespace hgl::graph
         };
 
         Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
+
+        struct CameraCreateInfo
+        {
+            float   body_size = 1.0f;       // 相机主体尺寸
+            float   lens_size = 0.3f;       // 镜头尺寸（相对于body_size的比例）
+            float   lens_depth = 0.5f;      // 镜头伸出的深度
+            bool    normal = true;          // 是否生成法线
+            bool    tangent = false;        // 是否生成切线
+            bool    tex_coord = false;      // 是否生成纹理坐标
+            
+            Vector4f body_color = {0.2f, 0.2f, 0.2f, 1.0f};  // 主体颜色
+            Vector4f lens_color = {0.1f, 0.1f, 0.1f, 1.0f};  // 镜头颜色
+        };//struct CameraCreateInfo
+
+        /**
+            * 创建一个摄像机几何体(三角形)
+            */
+        Primitive *CreateCamera(PrimitiveCreater *pc,const CameraCreateInfo *cci);
     }//namespace inline_geometry
 }//namespace hgl::graph
