@@ -227,24 +227,27 @@ namespace hgl::graph::inline_geometry
             }
             else if(wci->cornerJoin == WallCreateInfo::CornerJoin::Bevel)
             {
-                // bevel: keep both segment offsets (两点)
-                // cross < 0.0f 时，left是内侧，right是外侧，顺序应一致
+                // Bevel: 钝角侧为Beval（两个顶点），锐角侧只保留一个顶点（中点）
                 float cross = sPrev.dir.x * sNext.dir.y - sPrev.dir.y * sNext.dir.x;
                 if(cross < 0.0f)
                 {
-                    // left是内侧，right是外侧
+                    // 左侧为钝角，右侧为锐角
+                    // left为Bevel（两个顶点）
                     vjoin[vi].leftPts.push_back(sPrev.left1);
                     vjoin[vi].leftPts.push_back(sNext.left0);
-                    vjoin[vi].rightPts.push_back(sPrev.right1);
-                    vjoin[vi].rightPts.push_back(sNext.right0);
+                    // right只保留一个顶点（中点）
+                    Vector2f right_mid = Vector2f((sPrev.right1.x + sNext.right0.x)*0.5f, (sPrev.right1.y + sNext.right0.y)*0.5f);
+                    vjoin[vi].rightPts.push_back(right_mid);
                 }
                 else
                 {
-                    // left是外侧，right是内侧
-                    vjoin[vi].leftPts.push_back(sPrev.left1);
-                    vjoin[vi].leftPts.push_back(sNext.left0);
+                    // 右侧为钝角，左侧为锐角
+                    // right为Beval（两个顶点）
                     vjoin[vi].rightPts.push_back(sPrev.right1);
                     vjoin[vi].rightPts.push_back(sNext.right0);
+                    // left只保留一个顶点（中点）
+                    Vector2f left_mid = Vector2f((sPrev.left1.x + sNext.left0.x)*0.5f, (sPrev.left1.y + sNext.left0.y)*0.5f);
+                    vjoin[vi].leftPts.push_back(left_mid);
                 }
             }
             else // Round
