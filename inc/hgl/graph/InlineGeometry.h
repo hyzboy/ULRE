@@ -278,6 +278,18 @@ namespace hgl::graph
 
         /**
          * 创建一个灯泡几何体(三角形)，用于在3D场景编辑器中表示光源
+         * 
+         * 灯泡由三部分组成：
+         * - 底座：圆柱形，位于几何体底部，模拟螺纹底座
+         * - 颈部：连接段，连接底座和灯泡主体  
+         * - 灯泡：半球形，位于几何体顶部，模拟玻璃灯泡
+         * 
+         * 坐标系：Z轴向上，几何体居中，底座在负Z方向，灯泡在正Z方向
+         * 朝向：顺时针为正面（从外部观察）
+         * 
+         * @param pc PrimitiveCreater指针，用于创建几何数据
+         * @param lbci 灯泡创建参数，包含尺寸和细分设置
+         * @return 创建的Primitive指针，失败时返回nullptr
          */
         Primitive *CreateLightBulb(PrimitiveCreater *pc,const LightBulbCreateInfo *lbci);
 
