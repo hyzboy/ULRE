@@ -75,5 +75,23 @@ namespace hgl::graph
          * 归一化向量
          */
         Vector3f Normalize(const Vector3f& v);
+
+        /**
+         * 便捷函数：生成多个常见光源的组合可视化
+         * 用于快速预览场景中的照明设置
+         * @param light_mgr 线条管理器
+         * @param center_pos 中心位置
+         * @param scale 整体缩放比例
+         */
+        void GenerateCommonLightingSetup(LineManager* light_mgr, const Vector3f& center_pos, float scale);
+
+        /**
+         * 调试辅助函数：在指定位置绘制简单的坐标轴标记
+         * @param light_mgr 线条管理器
+         * @param position 位置
+         * @param size 坐标轴长度
+         * @param alpha 透明度（0-1）
+         */
+        void GenerateDebugAxisAtPosition(LineManager* light_mgr, const Vector3f& position, float size, float alpha = 1.0f);
     }
 }

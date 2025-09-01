@@ -130,6 +130,14 @@ private:
         spot_light2.coscutoff = 0.9f;  // 更窄的锥角
         
         GenerateSpotLightLines(line_manager, spot_light2, 3.5f, Color4f(1, 0.5f, 1, 1)); // 浅洋红色
+
+        // 7. 演示便捷函数：在远处创建一个标准照明设置
+        GenerateCommonLightingSetup(line_manager, Vector3f(-8, 0, -8), 0.8f);
+
+        // 8. 演示调试辅助函数：在一些关键位置添加坐标轴标记
+        GenerateDebugAxisAtPosition(line_manager, Vector3f(0, 0, 0), 0.5f, 0.7f);  // 原点
+        GenerateDebugAxisAtPosition(line_manager, Vector3f(5, 0, 0), 0.3f, 0.5f);   // X轴上的点
+        GenerateDebugAxisAtPosition(line_manager, Vector3f(0, 5, 0), 0.3f, 0.5f);   // Y轴上的点
     }
 
     void SetupCamera()

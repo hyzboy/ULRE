@@ -320,4 +320,56 @@ namespace hgl::graph::light_viz_generators
         light_mgr->AddLine(Vector3f(position.x, position.y, position.z - marker_size), 
                           Vector3f(position.x, position.y, position.z + marker_size), color);
     }
+
+    void GenerateCommonLightingSetup(LineManager* light_mgr, const Vector3f& center_pos, float scale)
+    {
+        if (!light_mgr) return;
+
+        // 主要点光源（模拟太阳光）
+        PointLight main_light;
+        main_light.position = Vector3f(center_pos.x + scale * 2, center_pos.y + scale * 3, center_pos.z + scale * 1);
+        GeneratePointLightLines(light_mgr, main_light, scale * 1.5f, Color4f(1, 1, 0.8f, 1)); // 暖白色
+
+        // 补充聚光灯（模拟重点照明）
+        SpotLight accent_light;
+        accent_light.position = Vector3f(center_pos.x - scale * 2, center_pos.y + scale * 2, center_pos.z + scale * 2);
+        accent_light.direction = Vector3f(0.3f, -0.6f, -0.4f);
+        accent_light.coscutoff = 0.85f;
+        GenerateSpotLightLines(light_mgr, accent_light, scale * 3, Color4f(0.8f, 0.9f, 1, 1)); // 冷白色
+
+        // 环境面光源（模拟柔光）
+        Vector3f area_pos = Vector3f(center_pos.x, center_pos.y + scale * 4, center_pos.z - scale * 1);
+        Vector3f area_dir = Normalize(Vector3f(0, -0.8f, 0.2f));
+        Vector3f area_up = Normalize(Vector3f(0, 0.2f, 1));
+        GenerateRectLightLines(light_mgr, area_pos, area_dir, area_up, 
+                              scale * 2, scale * 1.5f, Color4f(0.9f, 0.9f, 1, 1)); // 柔和蓝白
+
+        // 摄像机视角参考
+        Vector3f cam_pos = Vector3f(center_pos.x + scale * 4, center_pos.y + scale * 3, center_pos.z + scale * 4);
+        Vector3f cam_dir = Normalize(Vector3f(-1, -0.5f, -1));
+        Vector3f cam_up(0, 1, 0);
+        GenerateCameraFrustumLines(light_mgr, cam_pos, cam_dir, cam_up,
+                                 PI * 0.25f, 16.0f / 9.0f, scale * 0.5f, scale * 8,
+                                 Color4f(0.6f, 0.6f, 0.6f, 1)); // 灰色
+    }
+
+    void GenerateDebugAxisAtPosition(LineManager* light_mgr, const Vector3f& position, float size, float alpha)
+    {
+        if (!light_mgr) return;
+
+        // X轴 - 红色
+        light_mgr->AddLine(position, 
+                          Vector3f(position.x + size, position.y, position.z), 
+                          Color4f(1, 0, 0, alpha));
+        
+        // Y轴 - 绿色
+        light_mgr->AddLine(position, 
+                          Vector3f(position.x, position.y + size, position.z), 
+                          Color4f(0, 1, 0, alpha));
+        
+        // Z轴 - 蓝色
+        light_mgr->AddLine(position, 
+                          Vector3f(position.x, position.y, position.z + size), 
+                          Color4f(0, 0, 1, alpha));
+    }
 }
