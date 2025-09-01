@@ -37,6 +37,22 @@ namespace hgl::graph
             float thickness = 0.1f;            // 墙壁厚度
             float height = 1.0f;               // 墙壁高度
 
+            // 角落连接方式
+            enum class CornerJoin
+            {
+                Miter = 0,
+                Bevel = 1,
+                Round = 2
+            };
+
+            CornerJoin cornerJoin = CornerJoin::Miter; // 默认使用斜接
+            float miterLimit = 4.0f; // 当 miter 长度超过 miterLimit * halfThickness 时退化为 bevel
+            uint roundSegments = 6; // 圆角分段数
+
+            // UV 平铺参数
+            float uv_tile_v = 1.0f;                // 纵向（高度）平铺次数
+            float uv_u_repeat_per_unit = 1.0f;     // 横向沿长度方向的重复次数每单位长度
+
             // 可选参数
             bool generateUV = true;     // 是否生成UV坐标
             bool generateNormals = true; // 是否生成法线

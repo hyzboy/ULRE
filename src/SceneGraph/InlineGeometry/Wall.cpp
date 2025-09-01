@@ -11,202 +11,352 @@
 
 namespace hgl::graph::inline_geometry
 {
+    // helper: line intersection p + t*r and q + u*s. returns true if intersect (not parallel), sets t and u
+    static bool LineLineIntersect(const Vector2f &p, const Vector2f &r, const Vector2f &q, const Vector2f &s, float &t, float &u)
+    {
+        float rxs = r.x * s.y - r.y * s.x;
+        if (fabs(rxs) < 1e-8f) return false;
+        Vector2f qp = Vector2f(q.x - p.x, q.y - p.y);
+        t = (qp.x * s.y - qp.y * s.x) / rxs;
+        u = (qp.x * r.y - qp.y * r.x) / rxs;
+        return true;
+    }
+
+    // normalize safe
+    static Vector2f Normalize2(const Vector2f &v)
+    {
+        float len = sqrt(v.x*v.x + v.y*v.y);
+        if(len <= 1e-8f) return Vector2f(0,0);
+        return Vector2f(v.x/len, v.y/len);
+    }
+
     Primitive *CreateWallsFromLines2D(PrimitiveCreater *pc, const WallCreateInfo *wci)
     {
-        if(!pc || !wci)
-            return nullptr;
+        if(!pc || !wci) return nullptr;
 
-        // Need vertices + either indices or lines (indices in Line2D)
         const Vector2f* verts = wci->vertices;
         uint vcount = wci->vertexCount;
 
-        std::vector<Line2D> inputLines;
+        std::vector<uint> segA, segB;
 
         if(wci->indices && wci->indexCount >= 2 && verts && vcount > 0)
         {
-            // indices are pairs
             for(uint i=0;i+1<wci->indexCount;i+=2)
             {
                 uint a = wci->indices[i];
                 uint b = wci->indices[i+1];
-                if(a < vcount && b < vcount) inputLines.emplace_back(a,b);
+                if(a < vcount && b < vcount){ segA.push_back(a); segB.push_back(b); }
             }
         }
         else if(wci->lines && wci->lineCount > 0 && verts && vcount > 0)
         {
-            // lines are index pairs
             for(uint i=0;i<wci->lineCount;i++)
             {
                 const Line2D &l = wci->lines[i];
-                if(l.a < vcount && l.b < vcount) inputLines.push_back(l);
+                if(l.a < vcount && l.b < vcount){ segA.push_back(l.a); segB.push_back(l.b); }
             }
         }
-        else
+        else return nullptr;
+
+        if(segA.empty()) return nullptr;
+
+        // Build adjacency to order polyline (support open or closed)
+        std::vector<std::vector<uint>> adj(vcount);
+        for(size_t i=0;i<segA.size();++i)
         {
-            return nullptr; // insufficient data
+            uint a = segA[i], b = segB[i];
+            adj[a].push_back(b);
+            adj[b].push_back(a);
         }
 
-        if(inputLines.empty()) return nullptr;
-
-        const float halfThickness = wci->thickness * 0.5f;
-        const float halfHeight = wci->height * 0.5f;
-
-        // single line fast path
-        if(inputLines.size()==1)
+        // find start: vertex with degree 1 if open, else any vertex of segments (closed loop)
+        int start = -1;
+        for(uint i=0;i<vcount;++i)
         {
-            const auto &li = inputLines[0];
-            Vector2f a = verts[li.a];
-            Vector2f b = verts[li.b];
+            if(!adj[i].empty()){
+                if(adj[i].size()==1){ start = (int)i; break; }
+                if(start==-1) start = (int)i;
+            }
+        }
 
-            float dx = b.x - a.x;
-            float dy = b.y - a.y;
-            float len = sqrt(dx*dx+dy*dy);
-            if(len < 1e-6f) return nullptr;
+        if(start==-1) return nullptr;
 
-            float dirX = dx/len, dirY = dy/len;
-            float perpX = -dirY, perpY = dirX;
+        // walk to create ordered vertex sequence
+        std::vector<uint> seq;
+        seq.reserve(segA.size()+1);
+        std::vector<char> visited(vcount,0);
 
-            Vector2f p1(a.x + perpX*halfThickness, a.y + perpY*halfThickness);
-            Vector2f p2(a.x - perpX*halfThickness, a.y - perpY*halfThickness);
-            Vector2f p3(b.x - perpX*halfThickness, b.y - perpY*halfThickness);
-            Vector2f p4(b.x + perpX*halfThickness, b.y + perpY*halfThickness);
+        int curr = start;
+        int prev = -1;
+        while(curr!=-1)
+        {
+            seq.push_back((uint)curr);
+            visited[curr]=1;
 
-            const uint numberVertices = 8;
-            const uint numberIndices = 36;
-
-            if(!pc->Init("WallFromLine", numberVertices, numberIndices)) return nullptr;
-
-            VABMapFloat pos(pc->GetVABMap(VAN::Position), VF_V3F);
-            VABMapFloat nrm(pc->GetVABMap(VAN::Normal), VF_V3F);
-            VABMapFloat tan(pc->GetVABMap(VAN::Tangent), VF_V3F);
-            VABMapFloat uv(pc->GetVABMap(VAN::TexCoord), VF_V2F);
-
-            float *vp = pos;
-            float *np = nrm;
-            float *tp = tan;
-            float *uvp = uv;
-
-            auto write_vertex=[&](const Vector2f &p, float z, float nz, float u, float v)
+            int next = -1;
+            for(uint nb: adj[curr])
             {
-                if(vp) { *vp++ = p.x; *vp++ = p.y; *vp++ = z; }
-                if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = nz; }
-                if(tp) {
-                    if(fabsf(nz)>0.5f){ *tp++ = dirX; *tp++ = dirY; *tp++ = 0.0f; }
-                    else { *tp++ = 0.0f; *tp++ = 0.0f; *tp++ = 1.0f; }
+                if((int)nb==prev) continue;
+                next = (int)nb; break;
+            }
+
+            prev = curr;
+            curr = next;
+            if(curr!=-1 && visited[curr]) break; // closed loop or visited
+        }
+
+        bool closed = false;
+        if(!seq.empty()){
+            uint first = seq.front(), last = seq.back();
+            // check if last connects to first
+            for(uint nb: adj[last]) if(nb==first) { closed=true; break; }
+        }
+
+        // compute per-segment directions and normals
+        const float halfT = wci->thickness * 0.5f;
+        const float halfH = wci->height * 0.5f;
+
+        size_t nverts = seq.size();
+        if(nverts<2) return nullptr;
+
+        std::vector<Vector2f> dir(nverts- (closed?0:1));
+        std::vector<Vector2f> nrm(nverts- (closed?0:1));
+        std::vector<float> segLength(dir.size());
+
+        for(size_t i=0;i<dir.size();++i)
+        {
+            Vector2f a = verts[ seq[i] ];
+            Vector2f b = verts[ seq[i+1] ];
+            Vector2f d(b.x - a.x, b.y - a.y);
+            float len = sqrt(d.x*d.x + d.y*d.y);
+            if(len<=1e-8f){ dir[i]=Vector2f(0,0); nrm[i]=Vector2f(0,0); segLength[i]=0; continue; }
+            d.x/=len; d.y/=len;
+            dir[i]=d;
+            nrm[i]=Vector2f(-d.y, d.x);
+            segLength[i]=len;
+        }
+
+        // accumulate length along polyline (for U coordinate)
+        std::vector<float> accum(nverts);
+        accum[0]=0.0f;
+        for(size_t i=1;i<nverts;i++) accum[i]=accum[i-1] + segLength[i-1];
+
+        // compute joins
+        struct JoinPoint { Vector2f left; Vector2f right; bool left_ok,right_ok; std::vector<Vector2f> round_left; std::vector<Vector2f> round_right; };
+        std::vector<JoinPoint> jp(nverts);
+
+        auto cornerMode = wci->cornerJoin;
+        float miterLimit = wci->miterLimit;
+        uint roundSeg = std::max<uint>(3, wci->roundSegments);
+
+        auto compute_join = [&](size_t vi)
+        {
+            bool hasPrev = (vi>0);
+            bool hasNext = (vi+1< nverts);
+            if(closed){ hasPrev = true; hasNext = true; }
+
+            Vector2f p = verts[ seq[vi] ];
+
+            if(!hasPrev || !hasNext)
+            {
+                Vector2f d = hasNext ? dir[vi] : dir[vi-1];
+                Vector2f n = hasNext ? nrm[vi] : nrm[vi-1];
+                jp[vi].left = Vector2f(p.x + n.x*halfT, p.y + n.y*halfT);
+                jp[vi].right = Vector2f(p.x - n.x*halfT, p.y - n.y*halfT);
+                jp[vi].left_ok = jp[vi].right_ok = true;
+                return;
+            }
+
+            Vector2f d1 = dir[vi-1];
+            Vector2f n1 = nrm[vi-1];
+            Vector2f d2 = dir[vi];
+            Vector2f n2 = nrm[vi];
+
+            Vector2f p1 = Vector2f(p.x + n1.x*halfT, p.y + n1.y*halfT);
+            Vector2f r1 = d1;
+            Vector2f p2 = Vector2f(p.x + n2.x*halfT, p.y + n2.y*halfT);
+            Vector2f r2 = d2;
+
+            float t,u;
+            bool ok_left = LineLineIntersect(p1,r1,p2,r2,t,u);
+            Vector2f left_pt;
+            if(ok_left)
+            {
+                left_pt = Vector2f(p1.x + r1.x*t, p1.y + r1.y*t);
+                float miter_len = sqrt((left_pt.x - p.x)*(left_pt.x - p.x) + (left_pt.y - p.y)*(left_pt.y - p.y));
+                if(miter_len > miterLimit * halfT && cornerMode == WallCreateInfo::CornerJoin::Miter)
+                    ok_left = false;
+            }
+
+            Vector2f q1 = Vector2f(p.x - n1.x*halfT, p.y - n1.y*halfT);
+            Vector2f q2 = Vector2f(p.x - n2.x*halfT, p.y - n2.y*halfT);
+            bool ok_right = LineLineIntersect(q1,r1,q2,r2,t,u);
+            Vector2f right_pt;
+            if(ok_right)
+            {
+                right_pt = Vector2f(q1.x + r1.x*t, q1.y + r1.y*t);
+                float miter_len = sqrt((right_pt.x - p.x)*(right_pt.x - p.x) + (right_pt.y - p.y)*(right_pt.y - p.y));
+                if(miter_len > miterLimit * halfT && cornerMode == WallCreateInfo::CornerJoin::Miter)
+                    ok_right = false;
+            }
+
+            if(ok_left && ok_right && cornerMode == WallCreateInfo::CornerJoin::Miter)
+            {
+                jp[vi].left = left_pt; jp[vi].right = right_pt; jp[vi].left_ok = jp[vi].right_ok = true; return;
+            }
+
+            jp[vi].left = p1; jp[vi].left_ok = true;
+            jp[vi].right = q1; jp[vi].right_ok = true;
+
+            if(cornerMode == WallCreateInfo::CornerJoin::Round)
+            {
+                float a1 = atan2(n1.y, n1.x);
+                float a2 = atan2(n2.y, n2.x);
+                float da = a2 - a1;
+                while(da <= -HGL_PI) da += 2*HGL_PI;
+                while(da > HGL_PI) da -= 2*HGL_PI;
+                int segs = (int)roundSeg;
+                jp[vi].round_left.clear(); jp[vi].round_right.clear();
+                for(int s=0;s<=segs;s++)
+                {
+                    float tseg = (float)s/(float)segs;
+                    float ang = a1 + da * tseg;
+                    jp[vi].round_left.push_back(Vector2f(p.x + cos(ang)*halfT, p.y + sin(ang)*halfT));
                 }
-                if(uvp) { *uvp++ = u; *uvp++ = v; }
-            };
+                a1 += (float)M_PI; a2 += (float)M_PI; da = a2 - a1;
+                while(da <= -HGL_PI) da += 2*HGL_PI;
+                while(da > HGL_PI) da -= 2*HGL_PI;
+                for(int s=0;s<=segs;s++)
+                {
+                    float tseg = (float)s/(float)segs;
+                    float ang = a1 + da * tseg;
+                    jp[vi].round_right.push_back(Vector2f(p.x + cos(ang)*halfT, p.y + sin(ang)*halfT));
+                }
+            }
+        };
 
-            write_vertex(p1,-halfHeight,-1.0f,0,0);
-            write_vertex(p2,-halfHeight,-1.0f,1,0);
-            write_vertex(p3,-halfHeight,-1.0f,1,1);
-            write_vertex(p4,-halfHeight,-1.0f,0,1);
+        for(size_t i=0;i<nverts;++i) compute_join(i);
 
-            write_vertex(p1,halfHeight,1.0f,0,0);
-            write_vertex(p2,halfHeight,1.0f,1,0);
-            write_vertex(p3,halfHeight,1.0f,1,1);
-            write_vertex(p4,halfHeight,1.0f,0,1);
+        std::vector<Vector2f> left_poly, right_poly;
+        left_poly.reserve(nverts*2);
+        right_poly.reserve(nverts*2);
 
-            IBMap *ib_map = pc->GetIBMap();
-            const IndexType it = pc->GetIndexType();
-
-            uint16 indices[] = {0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4, 3,7,6, 3,6,2, 1,2,6, 1,6,5, 0,4,7, 0,7,3};
-
-            if(it==IndexType::U16){ IBTypeMap<uint16> im(ib_map); uint16 *ip=im; for(int i=0;i<36;i++) *ip++=indices[i]; }
-            else if(it==IndexType::U32){ IBTypeMap<uint32> im(ib_map); uint32 *ip=im; for(int i=0;i<36;i++) *ip++=(uint32)indices[i]; }
-            else if(it==IndexType::U8){ IBTypeMap<uint8> im(ib_map); uint8 *ip=im; for(int i=0;i<36;i++) *ip++=(uint8)indices[i]; }
-            else return nullptr;
-
-            Primitive *p = pc->Create();
-            if(p){ AABB aabb; aabb.SetMinMax(Vector3f(std::min({p1.x,p2.x,p3.x,p4.x}), std::min({p1.y,p2.y,p3.y,p4.y}), -halfHeight),
-                                           Vector3f(std::max({p1.x,p2.x,p3.x,p4.x}), std::max({p1.y,p2.y,p3.y,p4.y}), halfHeight)); p->SetBoundingBox(aabb); }
-            return p;
+        for(size_t i=0;i<nverts;++i)
+        {
+            if(!jp[i].round_left.empty()) for(auto &pt: jp[i].round_left) left_poly.push_back(pt); else left_poly.push_back(jp[i].left);
+            if(!jp[i].round_right.empty()) for(auto &pt: jp[i].round_right) right_poly.push_back(pt); else right_poly.push_back(jp[i].right);
         }
 
-        // 多条线：为每条线生成8个顶点（底4 顶4），后续可以在这里合并顶点以处理相交
-        std::vector<Vector2f> vert2d;
-        std::vector<uint32_t> indices;
-        vert2d.reserve(inputLines.size()*8);
-        indices.reserve(inputLines.size()*36);
+        if(left_poly.size() != right_poly.size()) { left_poly.clear(); right_poly.clear(); for(size_t i=0;i<nverts;++i){ left_poly.push_back(jp[i].left); right_poly.push_back(jp[i].right); } }
 
-        for(size_t i=0;i<inputLines.size();++i)
+        size_t m = left_poly.size();
+        if(m < 2) return nullptr;
+
+        // build final verts
+        std::vector<Vector3f> finalVerts; finalVerts.reserve(m*4);
+        // Also build UV array
+        std::vector<Vector2f> finalUV; finalUV.reserve(m*4);
+
+        for(size_t i=0;i<m;i++)
         {
-            const Line2D &l = inputLines[i];
-            Vector2f a = verts[l.a];
-            Vector2f b = verts[l.b];
+            Vector2f L = left_poly[i];
+            Vector2f R = right_poly[i];
+            // bottom L
+            finalVerts.push_back(Vector3f(L.x, L.y, -halfH));
+            // bottom R
+            finalVerts.push_back(Vector3f(R.x, R.y, -halfH));
+            // top R
+            finalVerts.push_back(Vector3f(R.x, R.y, halfH));
+            // top L
+            finalVerts.push_back(Vector3f(L.x, L.y, halfH));
 
-            float dx = b.x - a.x;
-            float dy = b.y - a.y;
-            float len = sqrt(dx*dx+dy*dy);
-            if(len < 1e-6f) continue;
+            // compute u coordinate from accum length: find nearest original segment index and interpolate
+            // We'll map each left/right point to a polyline position using projection to original sequence accum
+            float u = 0.0f;
+            // simple approach: project to nearest original vertex accum index
+            float minDist = FLT_MAX; size_t bestIdx=0;
+            for(size_t vi=0;vi<nverts;++vi)
+            {
+                Vector2f op = verts[ seq[vi] ];
+                float dx = L.x - op.x, dy = L.y - op.y;
+                float d = dx*dx + dy*dy;
+                if(d<minDist){ minDist=d; bestIdx=vi; }
+            }
+            u = accum[bestIdx] * wci->uv_u_repeat_per_unit;
 
-            float dirX = dx/len, dirY = dy/len;
-            float perpX = -dirY, perpY = dirX;
+            // v is based on height: bottom 0, top uv_tile_v
+            float v0 = 0.0f;
+            float v1 = wci->uv_tile_v;
 
-            Vector2f p1(a.x + perpX*halfThickness, a.y + perpY*halfThickness);
-            Vector2f p2(a.x - perpX*halfThickness, a.y - perpY*halfThickness);
-            Vector2f p3(b.x - perpX*halfThickness, b.y - perpY*halfThickness);
-            Vector2f p4(b.x + perpX*halfThickness, b.y + perpY*halfThickness);
-
-            uint32_t base = static_cast<uint32_t>(vert2d.size());
-
-            vert2d.push_back(p1);
-            vert2d.push_back(p2);
-            vert2d.push_back(p3);
-            vert2d.push_back(p4);
-
-            // top
-            vert2d.push_back(p1);
-            vert2d.push_back(p2);
-            vert2d.push_back(p3);
-            vert2d.push_back(p4);
-
-            uint16 localIdx[36] = {0,2,1, 0,3,2, 4,5,6, 4,6,7, 0,1,5, 0,5,4, 3,7,6, 3,6,2, 1,2,6, 1,6,5, 0,4,7, 0,7,3};
-
-            for(int k=0;k<36;k++) indices.push_back(base + localIdx[k]);
+            // bottom L
+            finalUV.push_back(Vector2f(u, v0));
+            // bottom R
+            finalUV.push_back(Vector2f(u, v0));
+            // top R
+            finalUV.push_back(Vector2f(u, v1));
+            // top L
+            finalUV.push_back(Vector2f(u, v1));
         }
 
-        if(vert2d.empty()) return nullptr;
-
-        if(!pc->Init("WallsFromLines", static_cast<uint>(vert2d.size()), static_cast<uint>(indices.size()))) return nullptr;
-
-        VABMapFloat pos(pc->GetVABMap(VAN::Position), VF_V3F);
-        VABMapFloat nrm(pc->GetVABMap(VAN::Normal), VF_V3F);
-        VABMapFloat tan(pc->GetVABMap(VAN::Tangent), VF_V3F);
-        VABMapFloat uv(pc->GetVABMap(VAN::TexCoord), VF_V2F);
-
-        float *vp = pos;
-        float *np = nrm;
-        float *tp = tan;
-        float *uvp = uv;
-
-        for(size_t i=0;i<vert2d.size();++i)
+        // indices
+        std::vector<uint32_t> finalIndices; finalIndices.reserve((m-(closed?0:1))*24);
+        auto vertIndex = [&](size_t i, int corner)->uint32_t{ return (uint32_t)(i*4 + corner); };
+        size_t segCount = closed? m : (m-1);
+        for(size_t i=0;i<segCount;i++)
         {
-            const Vector2f &v = vert2d[i];
-            bool isTop = (i%8)>=4;
-            float z = isTop?halfHeight:-halfHeight;
-            float nz = isTop?1.0f:-1.0f;
+            size_t ni = (i+1)%m;
+            uint32_t v0 = vertIndex(i,0), v1 = vertIndex(ni,0), v2 = vertIndex(ni,1), v3 = vertIndex(i,1);
+            finalIndices.push_back(v0); finalIndices.push_back(v1); finalIndices.push_back(v2);
+            finalIndices.push_back(v0); finalIndices.push_back(v2); finalIndices.push_back(v3);
 
-            if(vp){ *vp++ = v.x; *vp++ = v.y; *vp++ = z; }
-            if(np){ *np++ = 0.0f; *np++ = 0.0f; *np++ = nz; }
-            if(tp){ *tp++ = 0.0f; *tp++ = 0.0f; *tp++ = 1.0f; }
-            if(uvp){ *uvp++ = 0.0f; *uvp++ = 0.0f; }
+            uint32_t t0 = vertIndex(i,3), t1 = vertIndex(ni,3), t2 = vertIndex(ni,2), t3 = vertIndex(i,2);
+            finalIndices.push_back(t0); finalIndices.push_back(t2); finalIndices.push_back(t1);
+            finalIndices.push_back(t0); finalIndices.push_back(t3); finalIndices.push_back(t2);
+
+            uint32_t l0 = vertIndex(i,0), l1 = vertIndex(i,3), l2 = vertIndex(ni,3), l3 = vertIndex(ni,0);
+            finalIndices.push_back(l0); finalIndices.push_back(l1); finalIndices.push_back(l2);
+            finalIndices.push_back(l0); finalIndices.push_back(l2); finalIndices.push_back(l3);
+
+            uint32_t r0 = vertIndex(i,1), r1 = vertIndex(ni,1), r2 = vertIndex(ni,2), r3 = vertIndex(i,2);
+            finalIndices.push_back(r0); finalIndices.push_back(r1); finalIndices.push_back(r2);
+            finalIndices.push_back(r0); finalIndices.push_back(r2); finalIndices.push_back(r3);
+        }
+
+        if(!pc->Init("WallsFromLines", (uint)finalVerts.size(), (uint)finalIndices.size())) return nullptr;
+
+        VABMapFloat pos_map(pc->GetVABMap(VAN::Position), VF_V3F);
+        VABMapFloat nrm_map(pc->GetVABMap(VAN::Normal), VF_V3F);
+        VABMapFloat tan_map(pc->GetVABMap(VAN::Tangent), VF_V3F);
+        VABMapFloat tex_map(pc->GetVABMap(VAN::TexCoord), VF_V2F);
+
+        float *vp = pos_map;
+        float *np = nrm_map;
+        float *tp = tan_map;
+        float *uvp = tex_map;
+
+        for(size_t i=0;i<finalVerts.size();++i)
+        {
+            const auto &v = finalVerts[i];
+            if(vp){ *vp++ = v.x; *vp++ = v.y; *vp++ = v.z; }
+            if(np){ *np++ = 0.0f; *np++ = 0.0f; *np++ = (v.z>0)?1.0f:-1.0f; }
+            if(tp){ *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+            if(uvp){ *uvp++ = finalUV[i].x; *uvp++ = finalUV[i].y; }
         }
 
         IBMap *ib_map = pc->GetIBMap();
-        const IndexType it2 = pc->GetIndexType();
+        const IndexType itype = pc->GetIndexType();
 
-        if(it2==IndexType::U16){ IBTypeMap<uint16> im(ib_map); uint16 *ip=im; for(size_t i=0;i<indices.size();++i) *ip++=(uint16)indices[i]; }
-        else if(it2==IndexType::U32){ IBTypeMap<uint32> im(ib_map); uint32 *ip=im; for(size_t i=0;i<indices.size();++i) *ip++=(uint32)indices[i]; }
-        else if(it2==IndexType::U8){ IBTypeMap<uint8> im(ib_map); uint8 *ip=im; for(size_t i=0;i<indices.size();++i) *ip++=(uint8)indices[i]; }
+        if(itype==IndexType::U16){ IBTypeMap<uint16> im(ib_map); uint16 *ip=im; for(size_t i=0;i<finalIndices.size();++i) *ip++ = (uint16)finalIndices[i]; }
+        else if(itype==IndexType::U32){ IBTypeMap<uint32> im(ib_map); uint32 *ip=im; for(size_t i=0;i<finalIndices.size();++i) *ip++ = (uint32)finalIndices[i]; }
+        else if(itype==IndexType::U8){ IBTypeMap<uint8> im(ib_map); uint8 *ip=im; for(size_t i=0;i<finalIndices.size();++i) *ip++ = (uint8)finalIndices[i]; }
         else return nullptr;
 
         Primitive *p = pc->Create();
         if(p)
         {
-            float minX = vert2d[0].x, maxX = vert2d[0].x, minY = vert2d[0].y, maxY = vert2d[0].y;
-            for(const auto &vv:vert2d){ minX = std::min(minX,vv.x); maxX = std::max(maxX,vv.x); minY = std::min(minY,vv.y); maxY = std::max(maxY,vv.y); }
-            AABB aabb; aabb.SetMinMax(Vector3f(minX,minY,-halfHeight), Vector3f(maxX,maxY,halfHeight)); p->SetBoundingBox(aabb);
+            float minX = finalVerts[0].x, maxX = finalVerts[0].x, minY = finalVerts[0].y, maxY = finalVerts[0].y, minZ = finalVerts[0].z, maxZ = finalVerts[0].z;
+            for(const auto &fv: finalVerts){ minX = std::min(minX,fv.x); maxX = std::max(maxX,fv.x); minY = std::min(minY,fv.y); maxY = std::max(maxY,fv.y); minZ = std::min(minZ,fv.z); maxZ = std::max(maxZ,fv.z); }
+            AABB aabb; aabb.SetMinMax(Vector3f(minX,minY,minZ), Vector3f(maxX,maxY,maxZ)); p->SetBoundingBox(aabb);
         }
 
         return p;

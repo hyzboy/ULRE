@@ -21,6 +21,7 @@ CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
 
 CreateProject(06_ExtrudedPolygonTest            ExtrudedPolygonTest.cpp)
 CreateProject(07_WallsFromPolyline              WallsFromPolyline.cpp)
+CreateProject(08_WallsFromPolyline_Texture      WallsFromPolyline_Texture.cpp)
 
 
 CreateProject(10_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
