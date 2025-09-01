@@ -1539,7 +1539,7 @@ namespace hgl::graph::inline_geometry
     Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col)
     {
         if(!pc)return(nullptr);
-        if(row<=0||col<=0)return(nullptr);
+        if(row==0||col==0)return(nullptr);
         if (row>=255||col>=255)return(nullptr); //顶点坐标使用 uint8
 
         const uint numberVertices=(row+1)*(col+1);
