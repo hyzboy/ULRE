@@ -1534,7 +1534,9 @@ namespace hgl::graph::inline_geometry
     }
 
     /**
-    * 创建一个正方形阵列，专门作于渲染地形
+    * 创建一个正方形阵列，专门作于渲染地形<br>
+    * 在Shader中，只写VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE不需要加VK_DESCRIPTOR_TYPE_SAMPLER或是使用VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+    * 使用texelFetch直接整数坐标取样，不走Sampler采样器，效率更高。
     */
     Primitive *CreateSqaureArray(PrimitiveCreater *pc,const uint row,const uint col)
     {
