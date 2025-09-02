@@ -286,5 +286,29 @@ namespace hgl::graph
          */
         Primitive *CreateCapsule(PrimitiveCreater *pc,const CapsuleCreateInfo *cci);
          
+        // 新增：Tapered 胶囊体创建信息（上/下半球半径可不相同，中间为圆台）
+        struct TaperedCapsuleCreateInfo
+        {
+            float halfHeight;     // 中间部分半高（从 -halfHeight 到 +halfHeight）
+            float bottomRadius;   // 底部（-halfHeight 端）半径
+            float topRadius;      // 顶部（+halfHeight 端）半径
+            uint  numberSlices;   // 圆周分段数
+            uint  numberStacks;   // 半球分段数（每个半球）
+
+            TaperedCapsuleCreateInfo()
+            {
+                halfHeight = 1.0f;
+                bottomRadius = 0.5f;
+                topRadius = 0.5f;
+                numberSlices = 16;
+                numberStacks = 8;
+            }
+        };
+
+        /**
+         * 创建一个可锥缩的胶囊体(三角形)
+         */
+        Primitive *CreateTaperedCapsule(PrimitiveCreater *pc,const TaperedCapsuleCreateInfo *tcci);
+         
     }//namespace inline_geometry
 }//namespace hgl::graph
