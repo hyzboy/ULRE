@@ -263,5 +263,28 @@ namespace hgl::graph
         };
 
         Primitive *CreateHexSphere(PrimitiveCreater *pc,const HexSphereCreateInfo *hsci);
+
+        // 新增：胶囊体创建信息
+        struct CapsuleCreateInfo
+        {
+            float halfHeight;    // 中间圆柱部分的半高（不包含半球）
+            float radius;        // 半球和圆柱半径
+            uint  numberSlices;  // 圆周分段数
+            uint  numberStacks;  // 半球分段数（每个半球）
+
+            CapsuleCreateInfo()
+            {
+                halfHeight = 1.0f;
+                radius = 0.5f;
+                numberSlices = 16;
+                numberStacks = 8;
+            }
+        };
+
+        /**
+         * 创建一个胶囊体(三角形)
+         */
+        Primitive *CreateCapsule(PrimitiveCreater *pc,const CapsuleCreateInfo *cci);
+         
     }//namespace inline_geometry
 }//namespace hgl::graph

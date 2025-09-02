@@ -48,6 +48,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     InlineGeometry/PlaneAndSquare.cpp
                     InlineGeometry/Rectangle.cpp
                     InlineGeometry/SphereDomeTorus.cpp
+                    InlineGeometry/Capsule.cpp
                     InlineGeometry/Wall.cpp
                     InlineGeometry/Revolution.cpp
 )
