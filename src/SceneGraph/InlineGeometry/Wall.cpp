@@ -1,6 +1,5 @@
 #include<hgl/graph/geometry/Wall.h>
 #include<hgl/graph/InlineGeometry.h>
-#include<hgl/graph/VertexAttribDataAccess.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/PrimitiveCreater.h>
 
