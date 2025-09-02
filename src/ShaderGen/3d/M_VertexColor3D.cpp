@@ -36,9 +36,9 @@ void main()
             if(!Std3DMaterial::CustomVertexShader(vsc))
                 return(false);
 
-            vsc->AddInput(VAT_VEC4,VAN::Color);
+            vsc->AddInput(VAT_VEC4,VAN::Color);     //这个是要外部用的输入值，所以用VAN::Color
 
-            vsc->AddOutput(SVT_VEC4,"Color");
+            vsc->AddOutput(SVT_VEC4,"Color");       //这个就是本材质用的传递到下一段shader用的内部变量，所以直接写Color
 
             vsc->SetMain(vs_main);
             return(true);

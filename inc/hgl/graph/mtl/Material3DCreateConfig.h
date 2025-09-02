@@ -106,6 +106,24 @@ public:
 
 DEFINE_MATERIAL_FACTORY_CLASS(Line3D,Line3DMaterialCreateConfig);
 
+struct BasicLitMaterialCreateConfig:public Material3DCreateConfig
+{
+    bool        ibl;                    ///<包含IBL信息
+
+public:
+
+    BasicLitMaterialCreateConfig(const bool use_ibl=false)
+        :Material3DCreateConfig(PrimitiveType::Triangles,
+                                WithCamera::With,
+                                WithLocalToWorld::With,
+                                WithSky::With)
+    {
+        ibl=use_ibl;
+    }
+};
+
+DEFINE_MATERIAL_FACTORY_CLASS(BasicLit,BasicLitMaterialCreateConfig);
+
 /**
  * 从文件加载材质
  * @param mtl_name 材质名称
