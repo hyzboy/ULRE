@@ -227,6 +227,12 @@ private:
             render_mesh.Add(CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6));
         }
 
+        {
+            struct CapsuleCreateInfo cci;
+
+            render_mesh.Add(CreateRenderMesh(CreateCapsule(prim_creater,&cci),&solid,7));
+        }
+
         delete prim_creater;
         return(true);
     }
