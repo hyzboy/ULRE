@@ -36,6 +36,107 @@ namespace hgl::graph::inline_geometry
         }
     }
 
+    // Helper: fill indices for extruded polygon for arbitrary index type
+    template<typename IndexT>
+    void FillExtrudedPolygonIndices(IndexT *ip,
+                                    const ExtrudedPolygonCreateInfo *epci,
+                                    uint vertexCount,
+                                    bool generateSides,
+                                    bool generateCaps,
+                                    const Vector3f &right,
+                                    const Vector3f &up,
+                                    const Vector3f &forward,
+                                    const Vector3f &extrudeOffset,
+                                    const Vector3f &polygonCenter)
+    {
+        uint indexOffset = 0;
+
+        if (generateSides)
+        {
+            for (uint i = 0; i < vertexCount; i++)
+            {
+                uint next = (i + 1) % vertexCount;
+
+                IndexT i0 = (IndexT)(indexOffset + i * 2);
+                IndexT i1 = (IndexT)(indexOffset + i * 2 + 1);
+                IndexT i2 = (IndexT)(indexOffset + next * 2);
+                IndexT i3 = (IndexT)(indexOffset + next * 2 + 1);
+
+                Vector3f p0 = right * epci->vertices[i].x + up * epci->vertices[i].y;
+                Vector3f p1 = p0 + extrudeOffset;
+                Vector3f p2 = right * epci->vertices[next].x + up * epci->vertices[next].y;
+                Vector3f p3 = p2 + extrudeOffset;
+
+                Vector3f edge = p2 - p0;
+                Vector3f sideNormal = glm::normalize(glm::cross(edge, forward));
+                Vector3f midPoint = p0 + edge * 0.5f;
+                Vector3f toCenter = midPoint - polygonCenter;
+                if (glm::dot(sideNormal, toCenter) < 0.0f) sideNormal = sideNormal * -1.0f;
+
+                Vector3f triA_n = glm::normalize(glm::cross(p1 - p0, p2 - p0));
+                if (glm::dot(triA_n, sideNormal) >= 0.0f) {
+                    *ip++ = i0; *ip++ = i1; *ip++ = i2;
+                } else {
+                    *ip++ = i0; *ip++ = i2; *ip++ = i1;
+                }
+
+                Vector3f triB_n = glm::normalize(glm::cross(p1 - p2, p3 - p2));
+                if (glm::dot(triB_n, sideNormal) >= 0.0f) {
+                    *ip++ = i2; *ip++ = i1; *ip++ = i3;
+                } else {
+                    *ip++ = i2; *ip++ = i3; *ip++ = i1;
+                }
+            }
+
+            indexOffset += vertexCount * 2;
+        }
+
+        if (generateCaps)
+        {
+            IndexT bottomStart = (IndexT)indexOffset;
+
+            Vector3f b0 = right * epci->vertices[0].x + up * epci->vertices[0].y;
+            Vector3f b1 = right * epci->vertices[1].x + up * epci->vertices[1].y;
+            Vector3f b2 = right * epci->vertices[2].x + up * epci->vertices[2].y;
+            Vector3f triNormal = glm::normalize(glm::cross(b1 - b0, b2 - b0));
+            Vector3f expectedBottomNormal = forward * -1.0f;
+            bool flipBottom = (glm::dot(triNormal, expectedBottomNormal) < 0.0f);
+
+            for (uint i = 1; i < vertexCount - 1; i++) {
+                if (!flipBottom) {
+                    *ip++ = bottomStart;
+                    *ip++ = bottomStart + (IndexT)(i + 1);
+                    *ip++ = bottomStart + (IndexT)i;
+                } else {
+                    *ip++ = bottomStart;
+                    *ip++ = bottomStart + (IndexT)i;
+                    *ip++ = bottomStart + (IndexT)(i + 1);
+                }
+            }
+
+            IndexT topStart = (IndexT)(indexOffset + vertexCount);
+
+            Vector3f t0 = (right * epci->vertices[0].x + up * epci->vertices[0].y) + extrudeOffset;
+            Vector3f t1 = (right * epci->vertices[1].x + up * epci->vertices[1].y) + extrudeOffset;
+            Vector3f t2 = (right * epci->vertices[2].x + up * epci->vertices[2].y) + extrudeOffset;
+            Vector3f triNormalTop = glm::normalize(glm::cross(t1 - t0, t2 - t0));
+            Vector3f expectedTopNormal = forward;
+            bool flipTop = (glm::dot(triNormalTop, expectedTopNormal) < 0.0f);
+
+            for (uint i = 1; i < vertexCount - 1; i++) {
+                if (!flipTop) {
+                    *ip++ = topStart;
+                    *ip++ = topStart + (IndexT)i;
+                    *ip++ = topStart + (IndexT)(i + 1);
+                } else {
+                    *ip++ = topStart;
+                    *ip++ = topStart + (IndexT)(i + 1);
+                    *ip++ = topStart + (IndexT)i;
+                }
+            }
+        }
+    }
+
     Primitive *CreateExtrudedPolygon(PrimitiveCreater *pc, const ExtrudedPolygonCreateInfo *epci)
     {
         if (!pc || !epci || !epci->vertices || epci->vertexCount < 3)
@@ -200,106 +301,42 @@ namespace hgl::graph::inline_geometry
             }
         }
 
-        // 生成索引
-        IBTypeMap<uint32> ib_map(pc->GetIBMap());
-        uint32 *ip = ib_map;
+        // 生成索引：根据 IndexType 选择对应大小的索引缓冲写入
+        const IndexType index_type = pc->GetIndexType();
 
-        uint indexOffset = 0;
+        // Use the helper template to fill indices for the correct type
+        switch (index_type)
+        {
+            case IndexType::U16:
+            {
+                IBTypeMap<uint16> ib_map(pc->GetIBMap());
+                uint16 *ip = ib_map;
+                if (totalIndices > 0 && ip == nullptr) return nullptr;
 
-        // 生成侧面索引
-        if (generateSides) {
-            for (uint i = 0; i < vertexCount; i++) {
-                uint next = (i + 1) % vertexCount;
-
-                uint i0 = indexOffset + i * 2;      // 当前底面顶点
-                uint i1 = indexOffset + i * 2 + 1;  // 当前顶面顶点
-                uint i2 = indexOffset + next * 2;   // 下一个底面顶点
-                uint i3 = indexOffset + next * 2 + 1; // 下一个顶面顶点
-
-                // 计算对应的三维顶点位置
-                Vector3f p0 = right * epci->vertices[i].x + up * epci->vertices[i].y;      // bottom current
-                Vector3f p1 = p0 + extrudeOffset;                                         // top current
-                Vector3f p2 = right * epci->vertices[next].x + up * epci->vertices[next].y; // bottom next
-                Vector3f p3 = p2 + extrudeOffset;                                         // top next
-
-                // 计算侧面期望法线（edge × forward）并确保其朝外
-                Vector3f edge = p2 - p0;
-                Vector3f sideNormal = glm::normalize(glm::cross(edge, forward));
-
-                Vector3f midPoint = p0 + edge * 0.5f;
-                Vector3f toCenter = midPoint - polygonCenter;
-                if (glm::dot(sideNormal, toCenter) < 0.0f) sideNormal = sideNormal * -1.0f;
-
-                // 第一个三角形候选 (i0, i1, i2)
-                Vector3f triA_n = glm::normalize(glm::cross(p1 - p0, p2 - p0));
-                if (glm::dot(triA_n, sideNormal) >= 0.0f) {
-                    *ip++ = i0; *ip++ = i1; *ip++ = i2;
-                } else {
-                    *ip++ = i0; *ip++ = i2; *ip++ = i1;
-                }
-
-                // 第二个三角形候选 (i2, i1, i3)
-                Vector3f triB_n = glm::normalize(glm::cross(p1 - p2, p3 - p2));
-                if (glm::dot(triB_n, sideNormal) >= 0.0f) {
-                    *ip++ = i2; *ip++ = i1; *ip++ = i3;
-                } else {
-                    *ip++ = i2; *ip++ = i3; *ip++ = i1;
-                }
+                FillExtrudedPolygonIndices(ip, epci, vertexCount, generateSides, generateCaps, right, up, forward, extrudeOffset, polygonCenter);
+                break;
             }
-            indexOffset += vertexCount * 2;
-        }
+            case IndexType::U32:
+            {
+                IBTypeMap<uint32> ib_map(pc->GetIBMap());
+                uint32 *ip = ib_map;
+                if (totalIndices > 0 && ip == nullptr) return nullptr;
 
-        // 生成顶底面索引
-        if (generateCaps) {
-            // 底面索引（三角扇形）
-            uint bottomStart = indexOffset;
-
-            // 采样前三个底面顶点，计算当前三角形法线，与期望底面法线比较决定是否反转索引顺序
-            Vector3f b0 = right * epci->vertices[0].x + up * epci->vertices[0].y;
-            Vector3f b1 = right * epci->vertices[1].x + up * epci->vertices[1].y;
-            Vector3f b2 = right * epci->vertices[2].x + up * epci->vertices[2].y;
-            Vector3f triNormal = glm::normalize(glm::cross(b1 - b0, b2 - b0));
-
-            Vector3f expectedBottomNormal = forward * -1.0f;
-
-            bool flipBottom = (glm::dot(triNormal, expectedBottomNormal) < 0.0f);
-
-            for (uint i = 1; i < vertexCount - 1; i++) {
-                if (!flipBottom) {
-                    *ip++ = bottomStart;
-                    *ip++ = bottomStart + i + 1;
-                    *ip++ = bottomStart + i;
-                } else {
-                    *ip++ = bottomStart;
-                    *ip++ = bottomStart + i;
-                    *ip++ = bottomStart + i + 1;
-                }
+                FillExtrudedPolygonIndices(ip, epci, vertexCount, generateSides, generateCaps, right, up, forward, extrudeOffset, polygonCenter);
+                break;
             }
+            case IndexType::U8:
+            {
+                IBTypeMap<uint8> ib_map(pc->GetIBMap());
+                uint8 *ip = ib_map;
+                if (totalIndices > 0 && ip == nullptr) return nullptr;
 
-            // 顶面索引（三角扇形）
-            uint topStart = indexOffset + vertexCount;
-
-            // 采样前三个顶面顶点
-            Vector3f t0 = (right * epci->vertices[0].x + up * epci->vertices[0].y) + extrudeOffset;
-            Vector3f t1 = (right * epci->vertices[1].x + up * epci->vertices[1].y) + extrudeOffset;
-            Vector3f t2 = (right * epci->vertices[2].x + up * epci->vertices[2].y) + extrudeOffset;
-            Vector3f triNormalTop = glm::normalize(glm::cross(t1 - t0, t2 - t0));
-
-            Vector3f expectedTopNormal = forward;
-
-            bool flipTop = (glm::dot(triNormalTop, expectedTopNormal) < 0.0f);
-
-            for (uint i = 1; i < vertexCount - 1; i++) {
-                if (!flipTop) {
-                    *ip++ = topStart;
-                    *ip++ = topStart + i;
-                    *ip++ = topStart + i + 1;
-                } else {
-                    *ip++ = topStart;
-                    *ip++ = topStart + i + 1;
-                    *ip++ = topStart + i;
-                }
+                FillExtrudedPolygonIndices(ip, epci, vertexCount, generateSides, generateCaps, right, up, forward, extrudeOffset, polygonCenter);
+                break;
             }
+            default:
+                // Unsupported index type
+                return nullptr;
         }
 
         Primitive *p = pc->Create();
