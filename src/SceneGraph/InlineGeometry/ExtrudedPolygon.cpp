@@ -1,6 +1,6 @@
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
-#include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/geometry/ExtrudedPolygon.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include <vector>
