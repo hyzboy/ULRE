@@ -233,6 +233,14 @@ private:
             render_mesh.Add(CreateRenderMesh(CreateCapsule(prim_creater,&cci),&solid,7));
         }
 
+        {
+            TaperedCapsuleCreateInfo tcci;
+
+            tcci.topRadius=0.01;
+
+            render_mesh.Add(CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,8));
+        }
+
         delete prim_creater;
         return(true);
     }
@@ -255,7 +263,7 @@ private:
         CreateComponentInfo cci(GetSceneRoot());
 
         {
-            cci.mat=AxisZRotate(45.0f)*ScaleMatrix(10,10,1);
+            cci.mat=AxisZRotate(45.0f);
 
             rm_floor->component=CreateComponent<MeshComponent>(&cci,rm_floor->cdp);
         }
