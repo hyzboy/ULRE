@@ -292,6 +292,38 @@ namespace hgl::graph
          */
         Primitive *CreateExtrudedPolygon(PrimitiveCreater *pc, const ExtrudedPolygonCreateInfo *epci);
 
+        // 单节链环创建信息（椭圆主圈 + 圆形截面）
+        struct ChainLinkCreateInfo
+        {
+            float major_radius;      // 主圈半径（从中心到截面中心）
+            float minor_radius;      // 截面半径（管半径）
+            uint  numberSlices;      // 主圈分段（相当于 torus 的 numberSlices）
+            uint  numberStacks;      // 截面分段（相当于 torus 的 numberStacks）
+
+            // 主圈非均匀缩放，用于产生椭圆形链环（Y,Z 方向缩放，X 保持为 1.0）
+            float scale_y = 1.0f;
+            float scale_z = 1.0f;
+
+            Vector2f uv_scale = {1.0f, 1.0f};
+
+            ChainLinkCreateInfo()
+            {
+                major_radius = 1.0f;
+                minor_radius = 0.25f;
+                numberSlices = 32;
+                numberStacks = 16;
+                scale_y = 1.0f;
+                scale_z = 1.3f; // 默认拉长为椭圆
+                uv_scale = Vector2f(1.0f, 1.0f);
+            }
+        };
+
+        /**
+         * 创建一个单节链环(三角形)
+         * Z 轴向上，顺时针为正面
+         */
+        Primitive *CreateChainLink(PrimitiveCreater *pc, const ChainLinkCreateInfo *clci);
+
         /**
          * 创建一个由矩形挤压生成的立方体(三角形)，等价于CreateCube但使用挤压算法
          */
