@@ -69,8 +69,7 @@ private:
     RenderMesh *rm_floor=nullptr;           //地板
     RenderMesh *rm_box=nullptr;             //边框包围盒
 
-    int rm_count=0;
-    RenderMesh *render_mesh[7]={};
+    ArrayList<RenderMesh *> render_mesh;
 
 private:
 
@@ -171,10 +170,8 @@ private:
         //
         rm_floor=CreateRenderMesh(CreatePlaneSqaure(prim_creater),&solid,0);
 
-        rm_count=0;
-
         //Sphere
-        render_mesh[rm_count++]=CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1);
+        render_mesh.Add(CreateRenderMesh(CreateSphere(prim_creater,64),&solid,1));
 
         //Cone
         {
@@ -185,7 +182,7 @@ private:
             cci.numberSlices=64;        //圆锥底部分割数
             cci.numberStacks=4;         //圆锥高度分割数
 
-            render_mesh[rm_count++]=CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2);
+            render_mesh.Add(CreateRenderMesh(CreateCone(prim_creater,&cci),&solid,2));
         }
 
         //Cyliner
@@ -196,7 +193,7 @@ private:
             cci.numberSlices=16;        //圆柱底部分割数
             cci.radius      =1.25f;     //圆柱半径
 
-            render_mesh[rm_count++]=CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,3);
+            render_mesh.Add(CreateRenderMesh(CreateCylinder(prim_creater,&cci),&solid,3));
         }
 
         //Torus
@@ -208,7 +205,7 @@ private:
             tci.numberSlices=128;
             tci.numberStacks=16;
 
-            render_mesh[rm_count++]=CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4);
+            render_mesh.Add(CreateRenderMesh(CreateTorus(prim_creater,&tci),&solid,4));
         }
 
         {
@@ -219,7 +216,7 @@ private:
             hcci.outerRadius   =1.25f;     //外半径
             hcci.numberSlices  =64;        //圆柱底部分割数
 
-            render_mesh[rm_count++]=CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5);
+            render_mesh.Add(CreateRenderMesh(CreateHollowCylinder(prim_creater,&hcci),&solid,5));
         }
 
         {
@@ -227,7 +224,7 @@ private:
 
             hsci.subdivisions=3;
 
-            render_mesh[rm_count++]=CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6);
+            render_mesh.Add(CreateRenderMesh(CreateHexSphere(prim_creater,&hsci),&solid,6));
         }
 
         delete prim_creater;
@@ -257,14 +254,19 @@ private:
             rm_floor->component=CreateComponent<MeshComponent>(&cci,rm_floor->cdp);
         }
 
-        for(int i=0;i<rm_count;i++)
-        {
-            //螺旋排列
+        int i=0;
+        const float rm_count=render_mesh.GetCount();
 
+        for(auto rm:render_mesh)
+        {
+            if(!rm)continue;
+            //螺旋排列
             cci.mat=AxisZRotate(deg2rad(360.0f*i/rm_count))*TranslateMatrix(3,0,0);
 
-            render_mesh[i]->component=CreateComponent<MeshComponent>(&cci,render_mesh[i]->cdp);
-            render_mesh[i]->component->SetOverrideMaterial(solid.mi[i%COLOR_COUNT]);
+            rm->component=CreateComponent<MeshComponent>(&cci,rm->cdp);
+            rm->component->SetOverrideMaterial(solid.mi[i%COLOR_COUNT]);
+
+            ++i;
         }
 
         return(true);
