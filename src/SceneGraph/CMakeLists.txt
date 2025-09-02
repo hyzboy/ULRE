@@ -32,6 +32,7 @@ SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     ${SG_INCLUDE_PATH}/geo/Extruded.h
                     ${SG_INCLUDE_PATH}/geo/Wall.h
+                    ${SG_INCLUDE_PATH}/geo/Revolution.h
                     #${SG_INCLUDE_PATH}/Mesh.h
                     #${SG_INCLUDE_PATH}/Spline.h
                     InlineGeometry/AxisBoundingBoxSquareArray.cpp
@@ -48,6 +49,7 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     InlineGeometry/Rectangle.cpp
                     InlineGeometry/SphereDomeTorus.cpp
                     InlineGeometry/Wall.cpp
+                    InlineGeometry/Revolution.cpp
 )
 
 SOURCE_GROUP("Geometry" FILES ${GEOMETRY_FILES})
