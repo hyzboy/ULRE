@@ -86,7 +86,9 @@ SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
                     MaterialCreateConfig.cpp
                     StandardMaterial.cpp
                     MaterialFileData.h
-                    MaterialFileLoader.cpp)
+                    MaterialFileLoader.cpp
+                    GLSLStructSize.cpp
+)
 
 SOURCE_GROUP("Standard Material" FILES ${STD_MTL_SOURCE})
 

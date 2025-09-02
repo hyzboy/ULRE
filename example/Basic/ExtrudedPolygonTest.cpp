@@ -28,7 +28,6 @@ private:
 
     bool InitMDP()
     {
-
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
 
         mtl::MaterialCreateInfo *mci=mtl::CreateGizmo3D(GetDevAttr(),&cfg);
