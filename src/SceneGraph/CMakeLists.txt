@@ -33,12 +33,20 @@ SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
                     ${SG_INCLUDE_PATH}/geometry/Wall.h
                     #${SG_INCLUDE_PATH}/Mesh.h
                     #${SG_INCLUDE_PATH}/Spline.h
-                    InlineGeometry.cpp
+                    InlineGeometry/AxisBoundingBoxSquareArray.cpp
+                    InlineGeometry/Circle.cpp
+                    InlineGeometry/Cone.cpp
+                    InlineGeometry/Cube.cpp
+                    InlineGeometry/Cylinder.cpp
+                    InlineGeometry/CylinderConeTorusIndices.cpp
                     InlineGeometry/ExtrudedPolygon.cpp
                     InlineGeometry/HexSphere.cpp
                     InlineGeometry/HollowCylinder.cpp
+                    InlineGeometry/InlineGeometryCommon.h
+                    InlineGeometry/PlaneAndSquare.cpp
+                    InlineGeometry/Rectangle.cpp
+                    InlineGeometry/SphereDomeTorus.cpp
                     InlineGeometry/Wall.cpp
-                    #Mesh.cpp
 )
 
 SOURCE_GROUP("Geometry" FILES ${GEOMETRY_FILES})
@@ -58,7 +66,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/MaterialManager.h
                         ${SGM_HEADER_PATH}/BufferManager.h
                         ${SGM_HEADER_PATH}/RenderTargetManager.h
-                        
+
                         ${SGM_HEADER_PATH}/RenderModule.h
                         ${SGM_HEADER_PATH}/SwapchainModule.h
 
@@ -72,7 +80,6 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
 
                         ${SGM_SOURCE_PATH}/SwapChainModule.cpp
 )
-
 source_group("Framework\\Module" FILES ${GRAPH_MODULE_FILES})
 
 SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
@@ -203,7 +210,7 @@ SET(VK_DEVICE_CREATER_SOURCE    ${SG_INCLUDE_PATH}/VKDevice.h
                             Vulkan/VKDeviceAttribute.cpp
                             Vulkan/VKDeviceCreater.cpp
                             Vulkan/VKDevice.cpp)
-                        
+
 SET(VK_DEVICE_SOURCE    Vulkan/VKDeviceMemory.cpp
                         Vulkan/VKDeviceBuffer.cpp
                         Vulkan/VKDeviceImage.cpp
@@ -230,7 +237,7 @@ SOURCE_GROUP("Vulkan\\Device\\Texture\\Loader"  FILES ${VK_TEXTURE_LOADER_SOURCE
 
 SET(VK_DESCRIPTOR_SETS_SOURCE   ${SG_INCLUDE_PATH}/VKDescriptorSet.h
                                 Vulkan/VKDescriptorSet.cpp
-                                Vulkan/VKPipelineLayoutData.h                                
+                                Vulkan/VKPipelineLayoutData.h
                                 Vulkan/VKPipelineLayoutData.cpp)
 
 SOURCE_GROUP("Vulkan\\Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})
@@ -360,7 +367,7 @@ IF(UNIX)
     IF(ANDROID)
         SET(VULKAN_SURFACE_SOURCE   Vulkan/platform/AndroidVulkan.cpp)
     ELSE()
-        IF(APPLE)        
+        IF(APPLE)
             if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_OSX_SYSROOT MATCHES ".*iPhone.*")
                 message(STATUS "Targeting iOS")
                 set(VULKAN_SURFACE_SOURCE Vulkan/platform/iOSVulkan.cpp)
