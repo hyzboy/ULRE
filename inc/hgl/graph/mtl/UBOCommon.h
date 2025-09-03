@@ -117,20 +117,4 @@ constexpr const ShaderBufferSource SBS_SkyInfo=
 )"
 };
 
-constexpr const char MaterialBasicLitStruct[] = "MaterialBasicLit";
-
-constexpr const ShaderBufferSource SBS_MaterialBasicLit =
-{
-    DescriptorSetType::PerMaterial,
-    "mtl_basic_lit",
-    "MaterialBasicLitData",
-    R"(
-    vec4 base_color;      // 基础色
-    float metallic;       // 金属度
-    float roughness;      // 粗糙度
-    float fresnel;        // Fresnel系数
-    float ibl_intensity;  // IBL强度
-    float padding[3];     // 对齐填充
-    )"
-};
 STD_MTL_NAMESPACE_END
