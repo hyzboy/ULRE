@@ -42,6 +42,8 @@ namespace hgl::graph::inline_geometry
         if(!vp) return nullptr;
 
         const float angleStep = (2.0f * HGL_PI) / float(slices);
+        const float height = 2.0f * halfH;
+        const float dr = topR - bottomR;
 
         // Side frustum: bottom ring at -halfH, top ring at +halfH.
         for(uint ring=0; ring<2; ++ring)
@@ -52,8 +54,10 @@ namespace hgl::graph::inline_geometry
             for(uint i=0;i<=slices;i++)
             {
                 float a = angleStep * float(i);
-                float x = cos(a) * r;
-                float y = -sin(a) * r; // maintain consistent parameterization
+                float ca = cos(a);
+                float sa = -sin(a); // keep parameterization
+                float x = ca * r;
+                float y = sa * r;
 
                 *vp = x; ++vp;
                 *vp = y; ++vp;
@@ -61,11 +65,14 @@ namespace hgl::graph::inline_geometry
 
                 if(np)
                 {
-                    // normal for frustum side approximated by direction from central axis to the point
-                    float nx = cos(a);
-                    float ny = -sin(a);
-                    float nz = 0.0f;
-                    // for tapered, the actual normal has slight z component, but approximate with radial normal
+                    // compute outward normal for frustum side: proportional to (cos*height, -sin*height, -dr)
+                    float nx = ca * height;
+                    float ny = sa * height;
+                    float nz = -dr;
+
+                    float len = sqrtf(nx*nx + ny*ny + nz*nz);
+                    if(len>0.0f){ nx/=len; ny/=len; nz/=len; }
+
                     *np = nx; ++np;
                     *np = ny; ++np;
                     *np = nz; ++np;
@@ -73,8 +80,9 @@ namespace hgl::graph::inline_geometry
 
                 if(tp)
                 {
-                    *tp = -sin(a); ++tp;
-                    *tp = -cos(a); ++tp;
+                    // tangent along circumference
+                    *tp = -sa; ++tp; // -(-sin)=sin? keep consistent with other files
+                    *tp = -ca; ++tp;
                     *tp = 0.0f; ++tp;
                 }
 
@@ -232,8 +240,8 @@ namespace hgl::graph::inline_geometry
                     uint v2 = row2 + i;
                     uint v3 = row2 + i + 1;
 
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
                 }
             }
         }
@@ -285,8 +293,8 @@ namespace hgl::graph::inline_geometry
                     uint v2 = row2 + i;
                     uint v3 = row2 + i + 1;
 
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
                 }
             }
         }
@@ -338,8 +346,8 @@ namespace hgl::graph::inline_geometry
                     uint8 v2 = row2 + i;
                     uint8 v3 = row2 + i + 1;
 
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
                 }
             }
         }
