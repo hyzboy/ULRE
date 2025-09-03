@@ -230,9 +230,9 @@ namespace hgl::graph::inline_geometry
                     uint v2 = row2 + i;
                     uint v3 = row2 + i + 1;
 
-                    // bottom hemisphere: same winding
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
+                    // bottom hemisphere: reverse winding to match outer face
+                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
                 }
             }
         }
@@ -285,8 +285,8 @@ namespace hgl::graph::inline_geometry
                     uint v2 = row2 + i;
                     uint v3 = row2 + i + 1;
 
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
                 }
             }
         }
@@ -339,8 +339,8 @@ namespace hgl::graph::inline_geometry
                     uint8 v2 = row2 + i;
                     uint8 v3 = row2 + i + 1;
 
-                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v1; ++ip;
-                    *ip = v0; ++ip; *ip = v2; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v1; ++ip; *ip = v3; ++ip;
+                    *ip = v0; ++ip; *ip = v3; ++ip; *ip = v2; ++ip;
                 }
             }
         }
