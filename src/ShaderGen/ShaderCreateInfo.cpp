@@ -326,6 +326,44 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 #define TaskShader          0x40
 #define MeshShader          0x80
 )";
+//#define Float     float
+//#define Float2    vec2
+//#define Float3    vec3
+//#define Float4    vec4
+//
+//#define Integer   int
+//#define Int2      ivec2
+//#define Int3      ivec3
+//#define Int4      ivec4
+//
+//#define UInteger  uint
+//#define Uint2     uvec2
+//#define Uint3     uvec3
+//#define Uint4     uvec4
+//
+//#define Boolean   bool
+//#define Bool2     bvec2
+//#define Bool3     bvec3
+//#define Bool4     bvec4
+//
+//#define Double    double
+//#define Double2   dvec2
+//#define Double3   dvec3
+//#define Double4   dvec4
+//
+//#define Matrix2   mat2
+//#define Matrix3   mat3
+//#define Matrix4   mat4
+//
+//#define Matrix2x3 mat2x3
+//#define Matrix2x4 mat2x4
+//
+//#define Matrix3x2 mat3x2
+//#define Matrix3x4 mat3x4
+//
+//#define Matrix4x2 mat4x2
+//#define Matrix4x3 mat4x3
+//)";
 
     {
         char ss_hex_str[9];
