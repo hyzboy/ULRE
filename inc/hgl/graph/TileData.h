@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include<hgl/type/Pool.h>
+#include<hgl/type/ActiveDataManager.h>
 #include<hgl/graph/BitmapData.h>
 #include<hgl/graph/ImageRegion.h>
 #include<hgl/graph/tile/TileObject.h>
@@ -22,8 +22,7 @@ namespace hgl::graph
 
         Texture2D *tile_texture;                                                                                    ///<TileData所用的纹理对象
 
-        TileObject *tile_object_list;
-        Pool<int> to_pool;                                                                                          ///<Tile对象池
+        ActiveDataManager<TileObject> to_pool;                                                                      ///<Tile对象池
 
         uint tile_width,tile_height;                                                                                ///<Tile的宽和高
         uint tile_bytes;                                                                                            ///<一个tile字节数

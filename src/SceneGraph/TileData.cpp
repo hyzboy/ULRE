@@ -21,21 +21,25 @@ namespace hgl::graph
         tile_max_count=tile_rows*tile_cols;
         tile_count=0;
 
-        tile_object_list=new TileObject[tile_max_count];
-        to_pool.PreAlloc(tile_max_count);
+        to_pool.CreateIdle(tile_max_count);
         {
             int col=0,row=0;
-            TileObject *to=tile_object_list;
+            TileObject to;
+            auto &to_idle_ids=to_pool.GetIdleArray();
 
-            for(int i=0;i<tile_max_count;i++)
+            for(int idle_id:to_idle_ids)
             {
-                to->col  =col;
-                to->row  =row;
+                to.id=idle_id;
 
-                to->uv_pixel.Set(   col*tile_width,
-                                    row*tile_height,
-                                    0,
-                                    0);
+                to.col  =col;
+                to.row  =row;
+
+                to.uv_pixel.Set(col*tile_width,
+                                row*tile_height,
+                                0,
+                                0);
+
+                to_pool.WriteData(to,idle_id);
 
                 ++col;
 
@@ -44,9 +48,6 @@ namespace hgl::graph
                     ++row;
                     col=0;
                 }
-
-                to_pool.AppendToIdle(i);
-                ++to;
             }
         }
 
@@ -61,7 +62,6 @@ namespace hgl::graph
     {
         SAFE_CLEAR(tile_buffer);
         //SAFE_CLEAR(tile_texture);     //TextureManager会自动管理Texture对象的生命周期，所以不需要在这里删除
-        delete[] tile_object_list;
     }
 
     void TileData::BeginCommit()
@@ -140,12 +140,10 @@ namespace hgl::graph
         if(!data||!bytes||ctw<=0||cth<=0)
             return(nullptr);
 
-        int to_index=-1;
+        TileObject *to=to_pool.GetIdle();
 
-        if(!to_pool.Get(to_index))
+        if(!to)
             return(nullptr);
-
-        TileObject *to=tile_object_list+to_index;
 
         CommitTile(to,data,bytes,ctw,cth);
 
@@ -158,12 +156,7 @@ namespace hgl::graph
         */
     TileObject *TileData::Acquire()
     {
-        int to_index=-1;
-
-        if(!to_pool.Get(to_index))
-            return(nullptr);
-
-        return tile_object_list+to_index;
+        return to_pool.GetIdle();
     }
 
     /**
@@ -175,9 +168,7 @@ namespace hgl::graph
     {
         if(!obj)return(false);
 
-        const int to_index=obj->col+obj->row*tile_cols;
-
-        return to_pool.Release(to_index);
+        return to_pool.Release(&(obj->id))>=0;
     }
 
     /**
@@ -195,9 +186,7 @@ namespace hgl::graph
         if(!obj||!data||!bytes||ctw<=0||cth<=0)
             return(false);
 
-        const int to_index=obj->col+obj->row*tile_cols;
-
-        if(!to_pool.IsActive(to_index))
+        if(!to_pool.IsActive(obj->id))
             return(false);
 
         return CommitTile(obj,data,bytes,ctw,cth);
@@ -208,6 +197,6 @@ namespace hgl::graph
     */
     void TileData::Clear()
     {
-        to_pool.ClearActive();
+        to_pool.ReleaseAllActive();
     }
 }//namespace hgl::graph
