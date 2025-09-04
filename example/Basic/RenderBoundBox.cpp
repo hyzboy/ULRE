@@ -236,7 +236,7 @@ private:
         {
             TaperedCapsuleCreateInfo tcci;
 
-            tcci.topRadius=0.01;
+            tcci.topRadius=0.1;
 
             render_mesh.Add(CreateRenderMesh(CreateTaperedCapsule(prim_creater,&tcci),&solid,8));
         }
