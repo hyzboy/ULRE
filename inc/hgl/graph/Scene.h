@@ -2,11 +2,14 @@
 
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
+#include<hgl/graph/Sky.h>
 #include<hgl/io/event/EventDispatcher.h>
 
 namespace hgl::graph
 {
     class RenderFramework;
+
+    using UBOSkyInfo=UBOInstance<SkyInfo>;
 
     /**
     * 场景管理器<Br>
@@ -24,7 +27,9 @@ namespace hgl::graph
 
     protected:
 
-        DescriptorBinding *descriptor_binding=nullptr;  ///<场景通用描述符绑定器
+        DescriptorBinding * descriptor_binding  =nullptr;   ///<场景通用描述符绑定器
+
+        UBOSkyInfo *        ubo_sky_info        =nullptr;   ///<天空信息UBO
 
     protected:  // event dispatcher
 
@@ -43,15 +48,7 @@ namespace hgl::graph
 
     public:
 
-        Scene(RenderFramework *rf)
-        {
-            render_framework=rf;
-
-            descriptor_binding=new DescriptorBinding(DescriptorSetType::Scene);
-
-            root_node=new SceneNode(this);
-        }
-
+        Scene(RenderFramework *rf);
         virtual ~Scene()
         {
             SAFE_CLEAR(root_node);

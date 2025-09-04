@@ -188,6 +188,7 @@ public:
 public:
 
     template<typename ...ARGS>  graph::VAB *CreateVAB(ARGS...args){return buffer_manager->CreateVAB(args...);}
+
     template<typename ...ARGS>  graph::DeviceBuffer *CreateUBO(ARGS...args) { return buffer_manager->CreateUBO(args...); }
     template<typename ...ARGS>  graph::DeviceBuffer *CreateSSBO(ARGS...args) { return buffer_manager->CreateSSBO(args...); }
     template<typename ...ARGS>  graph::DeviceBuffer *CreateINBO(ARGS...args) { return buffer_manager->CreateINBO(args...); }
@@ -196,6 +197,10 @@ public:
     template<typename ...ARGS>  graph::IndexBuffer *CreateIBO8(ARGS...args) { return buffer_manager->CreateIBO8(args...); }
     template<typename ...ARGS>  graph::IndexBuffer *CreateIBO16(ARGS...args) { return buffer_manager->CreateIBO16(args...); }
     template<typename ...ARGS>  graph::IndexBuffer *CreateIBO32(ARGS...args) { return buffer_manager->CreateIBO32(args...); }
+
+    template<typename T,typename ...ARGS> T *CreateUBO(ARGS...args) { return device->CreateUBO<T>(args...); }
+    template<typename T,typename ...ARGS> T *CreateSSBO(ARGS...args) { return device->CreateSSBO<T>(args...); }
+    template<typename T,typename ...ARGS> T *CreateINBO(ARGS...args) { return device->CreateINBO<T>(args...); }
 
 public:
 

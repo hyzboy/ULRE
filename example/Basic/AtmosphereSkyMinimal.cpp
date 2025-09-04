@@ -2,7 +2,6 @@
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/component/MeshComponent.h>
-#include<hgl/graph/Sky.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
 using namespace hgl;
@@ -12,10 +11,6 @@ class TestApp:public WorkObject
 {
 private:
 
-    using UBOSkyInfo=UBOInstance<SkyInfo>;
-
-    UBOSkyInfo *        ubo_sky_info        =nullptr;
-
     Material *          mtl_sky_sphere      =nullptr;
     Pipeline *          mtl_pipeline        =nullptr;
 
@@ -23,19 +18,6 @@ private:
     MaterialInstance *  mi_sky_sphere       =nullptr;
 
 private:
-
-    void InitSky()
-    {
-        ubo_sky_info=GetDevice()->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo);
-
-        auto *sky_info=ubo_sky_info->data();
-
-        sky_info->SetTime(10,30,0);
-
-        auto *desc_bind=GetScene()->GetDescriptorBinding();
-
-        desc_bind->AddUBO(ubo_sky_info);
-    }
 
     bool InitMDP()
     {
@@ -90,8 +72,6 @@ public:
 
     bool Init() override
     {
-        InitSky();
-
         if(!InitMDP())
             return(false);
 
