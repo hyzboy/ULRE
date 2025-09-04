@@ -6,13 +6,13 @@ STD_MTL_NAMESPACE_BEGIN
 namespace
 {
     constexpr const char mi_codes[] = R"(
-        vec4 base_color;
+        uint base_color;
         float metallic;
         float roughness;
         float fresnel;
         float ibl_intensity;
     )";
-    constexpr const uint32_t mi_bytes = sizeof(float) * 8; // 4+1+1+1+1=8 floats
+    constexpr const uint32_t mi_bytes = sizeof(float) * 5;
 
     constexpr const char vs_main[] = R"(
 void main()
@@ -37,13 +37,18 @@ float fresnelSchlick(float cosTheta, float F0)
 
 void main()
 {
-    MaterialBasicLit mi = GetMI();
+    MaterialInstance mi = GetMI();
+
     vec3 normal = normalize(Input.Normal);
     vec3 viewDir = normalize(camera.pos - Input.Position.xyz);
     vec3 lightDir = normalize(sky.sun_direction.xyz);
 
+    vec4 base_color = unpackUnorm4x8(mi.base_color);
+
     // Half-Lambert diffuse
-    vec3 diffuse = mi.base_color.rgb * halfLambert(normal, lightDir);
+    vec3 diffuse = base_color.rgb * halfLambert(normal, lightDir);
+
+    diffuse= max(diffuse, vec3(0.1)); // 保底漫反射，防止全黑
 
     // Blinn-Phong specular
     vec3 halfDir = normalize(lightDir + viewDir);
@@ -54,6 +59,8 @@ void main()
 
     // Directional light color
     vec3 sunColor = sky.sun_color.rgb * sky.sun_intensity;
+
+    sunColor = max(sunColor,vec3(0.1));
 
     // Combine
     vec3 color = diffuse + spec * fresnel;
@@ -102,7 +109,6 @@ void main()
         bool EndCustomShader() override
         {
             mci->SetMaterialInstance(mi_codes, mi_bytes, (uint32_t)ShaderStage::Fragment);
-            mci->AddUBOStruct((uint32_t)ShaderStage::Fragment, SBS_SkyInfo);
             return true;
         }
     };
