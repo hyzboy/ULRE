@@ -12,6 +12,9 @@ using namespace hgl::graph;
 class TestApp:public WorkObject
 {
 private:
+
+    mtl::BasicLitMaterialInstance mi_data;
+
     Material *material = nullptr;
     MaterialInstance *material_instance = nullptr;
     Pipeline *pipeline = nullptr;
@@ -31,15 +34,21 @@ public:
 
     bool Init() override
     {
-        mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
-        mtl::MaterialCreateInfo *mci = mtl::CreateGizmo3D(GetDevAttr(), &cfg);
+        mtl::BasicLitMaterialCreateConfig cfg;
+        mtl::MaterialCreateInfo *mci = mtl::CreateBasicLit(GetDevAttr(), &cfg);
+
         if(!mci) return false;
+
+        mi_data.base_color = GetRGBA(COLOR::FireBrick);
+        mi_data.metallic=0;
+        mi_data.roughness=0.95f;
+        mi_data.fresnel=0.04f;
+        mi_data.ibl_intensity=0.0f;
 
         material = CreateMaterial("Gizmo3D_Walls", mci);
         if(!material) return false;
 
-        Color4f color = GetColor4f(COLOR::Gray, 1.0f);
-        material_instance = CreateMaterialInstance(material, (VIL *)nullptr, &color);
+        material_instance = CreateMaterialInstance(material, (VIL *)nullptr, &mi_data);
         if(!material_instance) return false;
 
         pipeline = CreatePipeline(material, InlinePipeline::Solid3D);

@@ -106,6 +106,17 @@ public:
 
 DEFINE_MATERIAL_FACTORY_CLASS(Line3D,Line3DMaterialCreateConfig);
 
+struct BasicLitMaterialInstance
+{
+    uint32 base_color;      ///<基础颜色
+    float  metallic;        ///<金属度
+    float  roughness;       ///<粗糙度
+    float  fresnel;         ///<菲涅尔反射系数
+    float  ibl_intensity;   ///<IBL强度
+};
+
+constexpr const size_t BasicLitMaterialInstanceBytes=sizeof(BasicLitMaterialInstance);
+
 struct BasicLitMaterialCreateConfig:public Material3DCreateConfig
 {
     bool        ibl;                    ///<包含IBL信息
