@@ -7,6 +7,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/RenderModule.h>
 #include<hgl/graph/VKRenderResource.h>
@@ -131,6 +132,11 @@ bool RenderFramework::Init(uint w,uint h)
     sampler_manager=module_manager->GetOrCreate<SamplerManager>();
 
     if(!sampler_manager)
+        return(false);
+
+    mesh_manager=module_manager->GetOrCreate<MeshManager>();
+
+    if(!mesh_manager)
         return(false);
 
     material_manager=module_manager->GetOrCreate<MaterialManager>();
@@ -292,6 +298,11 @@ graph::Mesh *RenderFramework::CreateMesh(   const AnsiString &name,
     if(!prim)
         return(nullptr);
 
-    return render_resource->CreateMesh(prim,mi,pipeline);
+    // Prefer MeshManager to create and own meshes
+    if(mesh_manager)
+        return mesh_manager->CreateMesh(prim,mi,pipeline);
+
+    // Fallback: create a mesh directly
+    return graph::DirectCreateMesh(prim,mi,pipeline);
 }
 VK_NAMESPACE_END

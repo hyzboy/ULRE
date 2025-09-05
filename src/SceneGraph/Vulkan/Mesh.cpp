@@ -77,7 +77,8 @@ bool Mesh::UpdatePrimitive()
     return data_buffer->Update(primitive,mat_inst->GetVIL());
 }
 
-Mesh *CreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
+Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
+//用Direct这个前缀是为了区别于MeshManager/WorkObject/RenderFramework的::CreateMesh()
 {
     if(!prim||!mi||!p)return(nullptr);
 

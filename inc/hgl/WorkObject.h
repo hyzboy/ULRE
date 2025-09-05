@@ -9,6 +9,8 @@
 #include<hgl/Time.h>
 //#include<iostream>
 #include <hgl/graph/module/SamplerManager.h>
+#include <hgl/graph/Mesh.h>
+#include <hgl/graph/PrimitiveCreater.h>
 
 namespace hgl
 {
@@ -128,12 +130,34 @@ namespace hgl
 
         graph::Mesh *CreateMesh(graph::Primitive *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
-            return (render_framework && db)?db->CreateMesh(prim,mi,pipeline):nullptr;
+            if(!prim)
+                return nullptr;
+
+            if(!render_framework)
+                return nullptr;
+            
+            graph::MeshManager *mm = render_framework->GetMeshManager();
+
+            if(!mm)
+                return nullptr;
+                
+            return mm->CreateMesh(prim,mi,pipeline);
         }
 
         graph::Mesh *CreateMesh(graph::PrimitiveCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
-            return (render_framework && db)?db->CreateMesh(pc,mi,pipeline):nullptr;
+            if(!pc)
+                return nullptr;
+
+            if(!render_framework)
+                return nullptr;
+
+            graph::MeshManager *mm = render_framework->GetMeshManager();
+
+            if(!mm)
+                return nullptr;
+
+            return mm->CreateMesh(pc,mi,pipeline);
         }
 
         graph::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr)

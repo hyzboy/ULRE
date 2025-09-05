@@ -2,7 +2,6 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/font/TextLayout.h>
-#include<hgl/type/Map.h>
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/String.h>
 
@@ -14,6 +13,7 @@ namespace hgl::graph
     class TextPrimitive;
     class RenderFramework;
     class MaterialManager;
+    class MeshManager;
 
     namespace layout
     {
@@ -38,7 +38,7 @@ namespace hgl::graph
     {
         VulkanDevice *      device;
 
-        RenderResource *    db;
+        MeshManager *       mesh_manager;
         MaterialManager *   mtl_manager;
 
         Sampler *           sampler;
