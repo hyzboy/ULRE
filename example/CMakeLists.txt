@@ -1,9 +1,9 @@
 ﻿add_subdirectory(Basic)
 add_subdirectory(Texture)
-
 add_subdirectory(Gizmo)
-
 add_subdirectory(GUI)
+
+add_subdirectory(Environment)
 
 macro(CreateProject name)
     add_executable(${name} ${ARGN})

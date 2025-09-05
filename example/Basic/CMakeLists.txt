@@ -24,6 +24,3 @@ CreateProject(07_WallsFromPolyline              WallsFromPolyline.cpp)
 CreateProject(08_WallsFromPolyline_Texture      WallsFromPolyline_Texture.cpp)
 
 
-CreateProject(10_AtmosphereSkyMinimal           AtmosphereSkyMinimal.cpp)
-CreateProject(20_TerrainHeightmap               TerrainHeightmap.cpp)
-
