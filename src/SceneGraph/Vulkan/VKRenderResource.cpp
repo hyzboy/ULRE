@@ -42,23 +42,4 @@ Mesh *RenderResource::CreateMesh(PrimitiveCreater *pc,MaterialInstance *mi,Pipel
     return(nullptr);
 }
 
-Sampler *RenderResource::CreateSampler(VkSamplerCreateInfo *sci)
-{
-    Sampler *s=device->CreateSampler(sci);
-
-    if(s)
-        Add(s);
-
-    return s;
-}
-
-Sampler *RenderResource::CreateSampler(Texture *tex)
-{
-    Sampler *s=device->CreateSampler(tex);
-
-    if(s)
-        Add(s);
-
-    return s;    
-}
 VK_NAMESPACE_END

@@ -8,6 +8,7 @@
 #include<hgl/graph/Scene.h>
 #include<hgl/Time.h>
 //#include<iostream>
+#include <hgl/graph/module/SamplerManager.h>
 
 namespace hgl
 {
@@ -137,12 +138,12 @@ namespace hgl
 
         graph::Sampler *CreateSampler(VkSamplerCreateInfo *sci=nullptr)
         {
-            return db?db->CreateSampler(sci):nullptr;
+            return render_framework?render_framework->GetSamplerManager()->CreateSampler(sci):nullptr;
         }
 
         graph::Sampler *CreateSampler(graph::Texture *tex)
         {
-            return db?db->CreateSampler(tex):nullptr;
+            return render_framework?render_framework->GetSamplerManager()->CreateSampler(tex):nullptr;
         }
 
     #define WO_FUNC_FROM_RENDER_FRAMEWORK(name,return_type) template<typename ...ARGS> return_type name(ARGS...args){return render_framework?render_framework->name(args...):nullptr;}

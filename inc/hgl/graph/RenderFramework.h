@@ -7,6 +7,7 @@
 #include<hgl/graph/module/GraphModuleManager.h>
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
+#include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/CameraControl.h>
 #include<hgl/graph/Renderer.h>
@@ -41,6 +42,13 @@ class Renderer;
 class CameraComponentManager{/*现阶段测试使用*/};
 class LightComponentManager{/*现阶段测试使用*/};
 
+struct RenderWorkspace
+{
+    Scene *         scene       =nullptr;
+    Camera *        camera      =nullptr;
+    Renderer *      renderer    =nullptr;
+};
+
 class RenderFramework:public io::WindowEvent
 {
     OSString                app_name;
@@ -62,6 +70,7 @@ protected:
     RenderTargetManager *   rt_manager          =nullptr;
     MaterialManager *       material_manager    =nullptr;
     BufferManager *         buffer_manager      =nullptr;
+    SamplerManager *        sampler_manager     =nullptr;
 
     SwapchainModule *       sc_module           =nullptr;
 
@@ -104,6 +113,7 @@ public:
     RenderTargetManager *   GetRenderTargetManager  (){return rt_manager;}
     MaterialManager *       GetMaterialManager      (){return material_manager;}
     BufferManager *         GetBufferManager        (){return buffer_manager;}
+    SamplerManager *        GetSamplerManager       (){return sampler_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
     SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}
