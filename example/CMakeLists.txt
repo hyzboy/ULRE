@@ -2,7 +2,7 @@
 add_subdirectory(Texture)
 add_subdirectory(Gizmo)
 add_subdirectory(GUI)
-
+add_subdirectory(Geometry)
 add_subdirectory(Environment)
 
 macro(CreateProject name)
