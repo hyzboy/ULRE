@@ -52,6 +52,12 @@ namespace inline_material   \
 \
 MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr,cfg_type *); \
 \
+inline MaterialCreateInfo *Create##name(const VulkanDevAttr *dev_attr)  \
+{   \
+    cfg_type cfg;   \
+    return Create##name(dev_attr,&cfg);  \
+}   \
+\
 namespace \
 {   \
     class MaterialFactory##name:public MaterialFactory  \

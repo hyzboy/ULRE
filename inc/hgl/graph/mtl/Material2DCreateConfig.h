@@ -14,7 +14,7 @@ struct Material2DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material2DCreateConfig(const PrimitiveType &p,
+    Material2DCreateConfig(const PrimitiveType &p=PrimitiveType::Lines,
                            const CoordinateSystem2D &cs=CoordinateSystem2D::NDC,
                            const WithLocalToWorld &l2w=WithLocalToWorld::Without)
         :MaterialCreateConfig(p,l2w==WithLocalToWorld::With)
