@@ -4,10 +4,10 @@
 #include<hgl/graph/font/TextLayout.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/Material2DCreateConfig.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/module/MaterialManager.h>
+#include<hgl/graph/module/MeshManager.h>
 #include<hgl/color/Color.h>
 #include"TextLayoutEngine.h"
 
@@ -37,7 +37,7 @@ namespace hgl::graph
     {
         device=rf->GetDevice();
 
-        db=new RenderResource(device);         //独立的资源管理器，不和整体共用
+        mesh_manager=rf->GetMeshManager();
         mtl_manager=rf->GetMaterialManager();
         tl_engine=new layout::TextLayout(tf);
             
@@ -83,7 +83,7 @@ namespace hgl::graph
            
         SAFE_CLEAR(tl_engine);
         SAFE_CLEAR(tile_font);
-        SAFE_CLEAR(db);
+        // render resource removed
     }
 
     bool TextRender::InitMaterial(RenderPass *rp)
@@ -186,7 +186,10 @@ namespace hgl::graph
 
     Mesh *TextRender::CreateMesh(TextPrimitive *text_primitive)
     {
-        return db->CreateMesh(text_primitive,mi_fs,pipeline);
+        if(mesh_manager)
+            return mesh_manager->CreateMesh(text_primitive,mi_fs,pipeline);
+
+        return(nullptr);
     }
 
     void TextRender::Release(TextPrimitive *tr)

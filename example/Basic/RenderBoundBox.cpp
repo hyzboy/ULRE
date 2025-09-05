@@ -143,7 +143,7 @@ private:
         if(!prim)
             return(nullptr);
 
-        Mesh *mesh=graph::CreateMesh(prim,md->mi[color],md->pipeline);
+        Mesh *mesh=CreateMesh(prim,md->mi[color],md->pipeline);
 
         if(!mesh)
             return nullptr;

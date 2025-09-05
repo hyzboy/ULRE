@@ -8,6 +8,7 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SamplerManager.h>
+#include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderList.h>
 #include<hgl/graph/CameraControl.h>
 #include<hgl/graph/Renderer.h>
@@ -71,6 +72,7 @@ protected:
     MaterialManager *       material_manager    =nullptr;
     BufferManager *         buffer_manager      =nullptr;
     SamplerManager *        sampler_manager     =nullptr;
+    MeshManager *           mesh_manager        =nullptr;
 
     SwapchainModule *       sc_module           =nullptr;
 
@@ -114,6 +116,7 @@ public:
     MaterialManager *       GetMaterialManager      (){return material_manager;}
     BufferManager *         GetBufferManager        (){return buffer_manager;}
     SamplerManager *        GetSamplerManager       (){return sampler_manager;}
+    MeshManager *           GetMeshManager          (){return mesh_manager;}
 
     SwapchainModule *       GetSwapchainModule      (){return sc_module;}
     SwapchainRenderTarget * GetSwapchainRenderTarget(){return sc_module?sc_module->GetRenderTarget():nullptr;}

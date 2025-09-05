@@ -72,7 +72,7 @@ class Mesh
 
 private:
 
-    friend Mesh *CreateMesh(Primitive *,MaterialInstance *,Pipeline *);
+    friend Mesh *DirectCreateMesh(Primitive *,MaterialInstance *,Pipeline *);
 
     Mesh(Primitive *,MaterialInstance *,Pipeline *,MeshDataBuffer *);
 
@@ -114,5 +114,5 @@ public:
             }
 };//class Mesh
 
-Mesh *CreateMesh(Primitive *,MaterialInstance *,Pipeline *);
+Mesh *DirectCreateMesh(Primitive *,MaterialInstance *,Pipeline *);
 VK_NAMESPACE_END

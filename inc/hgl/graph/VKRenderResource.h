@@ -27,7 +27,6 @@ class RenderResource
     VulkanDevice *device;
     
     IDObjectManage<PrimitiveID,            Primitive>          rm_primitives;              ///<图元合集
-    IDObjectManage<MeshID,                 Mesh>               rm_mesh;                    ///<渲染实例集合集
 
 private:
 
@@ -43,20 +42,14 @@ public:
 public: //添加数据到管理器（如果指针为nullptr会返回-1）
 
     PrimitiveID             Add(Primitive *         p   ){return rm_primitives.Add(p);}
-    MeshID                  Add(Mesh *              r   ){return rm_mesh.Add(r);}
-
-    Mesh *              CreateMesh(Primitive *r,MaterialInstance *mi,Pipeline *p);
-    Mesh *              CreateMesh(PrimitiveCreater *pc,MaterialInstance *mi,Pipeline *p);
 
 public: //Get
 
     Primitive *         GetPrimitive        (const PrimitiveID          &id){return rm_primitives.Get(id);}
-    Mesh *              GetMesh             (const MeshID               &id){return rm_mesh.Get(id);}
 
 public: //Release
 
-    void Release(Primitive *        p   ){rm_primitives.Release(p);}
-    void Release(Mesh *             r   ){rm_mesh.Release(r);}
+    void Release(Primitive *        p   ){rm_primitives.Release(p);}    
 };//class RenderResource
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_DATABASE_INCLUDE
