@@ -1,6 +1,5 @@
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKDevice.h>
 
 VK_NAMESPACE_BEGIN

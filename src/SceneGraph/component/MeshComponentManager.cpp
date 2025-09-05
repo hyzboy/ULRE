@@ -12,7 +12,7 @@ MeshComponentData::~MeshComponentData()
 
     if(mesh)
     {
-        //mesh->Release();      //外面有RenderResource管理，不需要在这里释放.但未来要考虑是增加Release函数通知这里释放了一次使用权
+        //mesh->Release();      //外面有MeshManager管理，不需要在这里释放.但未来要考虑是增加Release函数通知这里释放了一次使用权
         mesh=nullptr;
     }
 }

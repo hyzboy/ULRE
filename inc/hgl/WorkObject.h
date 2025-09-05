@@ -2,7 +2,6 @@
 
 #include<hgl/type/object/TickObject.h>
 #include<hgl/graph/RenderFramework.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/graph/Scene.h>
@@ -45,8 +44,6 @@ namespace hgl
     protected:
 
         //以下数据均取自RenderFramework
-
-        graph::RenderResource * db      =nullptr;           //暂时的，未来会被更好的机制替代
 
         graph::Scene *          scene   =nullptr;           //场景
         graph::Renderer *       renderer=nullptr;           //渲染器
@@ -124,13 +121,16 @@ namespace hgl
 
         void Add(graph::Primitive *prim)
         {
-            if(render_framework && db)
-                db->Add(prim);
+            if(!prim)return;
+
+            if(!render_framework)return;
+
+            render_framework->GetPrimitiveManager()->Add(prim);
         }
 
         graph::Mesh *CreateMesh(graph::Primitive *prim,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
-            if(!prim)
+            if(!prim||!pipeline)
                 return nullptr;
 
             if(!render_framework)
@@ -146,7 +146,7 @@ namespace hgl
 
         graph::Mesh *CreateMesh(graph::PrimitiveCreater *pc,graph::MaterialInstance *mi,graph::Pipeline *pipeline)
         {
-            if(!pc)
+            if(!pc||!pipeline)
                 return nullptr;
 
             if(!render_framework)

@@ -5,7 +5,6 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/color/Color.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/SceneNode.h>
@@ -27,7 +26,6 @@ void ClearGizmoMoveNode();
 namespace
 {
     static RenderFramework *render_framework=nullptr;
-    static RenderResource * gizmo_rr=nullptr;
     static MaterialManager *gizmo_mtl_manager=nullptr;
 
     struct GizmoResource
@@ -57,16 +55,14 @@ namespace
         {
             prim=p;
 
-            mesh=CreateMesh(prim,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
+            mesh=render_framework->CreateMesh(prim,gizmo_triangle.mi[0],gizmo_triangle.pipeline);
             mcd=new MeshComponentData(mesh);
             cdp=mcd;
         }
 
         void Clear()
         {
-            SAFE_CLEAR(mesh);
             cdp.unref();
-            SAFE_CLEAR(prim)
         }
     };//class GizmoMesh
     
@@ -157,7 +153,7 @@ namespace
 
     bool InitGizmoResource3D()
     {
-        if(!gizmo_rr)
+        if(!render_framework)
             return(false);
 
         VulkanDevice *device=render_framework->GetDevice();
@@ -294,8 +290,6 @@ bool InitGizmoResource(RenderFramework *rf)
 
     render_framework=rf;
 
-    gizmo_rr=render_framework->GetRenderResource();
-
     VulkanDevice *device=render_framework->GetDevice();
 
     if(!InitGizmoResource3D())
@@ -336,7 +330,7 @@ MaterialInstance *GetGizmoMI3D(const GizmoColor &color)
 
 ComponentDataPtr GetGizmoMeshCDP(const GizmoShape &shape)
 {
-    if(!gizmo_rr)
+    if(!render_framework)
         return(nullptr);
 
     RANGE_CHECK_RETURN_NULLPTR(shape)

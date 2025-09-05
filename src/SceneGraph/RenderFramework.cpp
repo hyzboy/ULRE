@@ -7,10 +7,10 @@
 #include<hgl/graph/module/MaterialManager.h>
 #include<hgl/graph/module/BufferManager.h>
 #include<hgl/graph/module/SwapchainModule.h>
+#include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/RenderModule.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/Camera.h>
@@ -64,7 +64,6 @@ RenderFramework::~RenderFramework()
     SAFE_CLEAR(default_camera_control)
     SAFE_CLEAR(default_camera)
     SAFE_CLEAR(default_scene)
-    SAFE_CLEAR(render_resource)
     SAFE_CLEAR(module_manager)
 
     --RENDER_FRAMEWORK_COUNT;
@@ -120,32 +119,30 @@ bool RenderFramework::Init(uint w,uint h)
     module_manager=new GraphModuleManager(this);
 
     rp_manager=module_manager->GetOrCreate<RenderPassManager>();
-
     if(!rp_manager)
         return(false);
 
     tex_manager=module_manager->GetOrCreate<TextureManager>();
-
     if(!tex_manager)
         return(false);
 
     sampler_manager=module_manager->GetOrCreate<SamplerManager>();
-
     if(!sampler_manager)
         return(false);
 
-    mesh_manager=module_manager->GetOrCreate<MeshManager>();
+    primitive_manager=module_manager->GetOrCreate<PrimitiveManager>();
+    if(!primitive_manager)
+        return(false);
 
+    mesh_manager=module_manager->GetOrCreate<MeshManager>();
     if(!mesh_manager)
         return(false);
 
     material_manager=module_manager->GetOrCreate<MaterialManager>();
-
     if(!material_manager)
         return(false);
 
     buffer_manager=module_manager->GetOrCreate<BufferManager>();
-
     if(!buffer_manager)
         return(false);
 
@@ -154,8 +151,6 @@ bool RenderFramework::Init(uint w,uint h)
 
     sc_module=new SwapchainModule(this,tex_manager,rt_manager,rp_manager);
     module_manager->Register(sc_module);
-
-    render_resource=new RenderResource(device);
 
     OnChangeDefaultScene(new Scene(this));
 
@@ -282,7 +277,7 @@ graph::Primitive *RenderFramework::CreatePrimitive( const AnsiString &name,
     auto *prim=pc->Create();
 
     if(prim)
-        render_resource->Add(prim);
+        primitive_manager->Add(prim);
 
     return prim;
 }
@@ -299,10 +294,6 @@ graph::Mesh *RenderFramework::CreateMesh(   const AnsiString &name,
         return(nullptr);
 
     // Prefer MeshManager to create and own meshes
-    if(mesh_manager)
-        return mesh_manager->CreateMesh(prim,mi,pipeline);
-
-    // Fallback: create a mesh directly
-    return graph::DirectCreateMesh(prim,mi,pipeline);
+    return mesh_manager->CreateMesh(prim,mi,pipeline);
 }
 VK_NAMESPACE_END
