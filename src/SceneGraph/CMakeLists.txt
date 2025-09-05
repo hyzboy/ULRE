@@ -93,6 +93,11 @@ SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
 
 source_group("Framework" FILES ${GRAPH_FRAMEWORK_FILES})
 
+SET(ENV_SKY_FILES   ${SG_INCLUDE_PATH}/env/Sky.h
+                    env/Sky.cpp)
+
+SOURCE_GROUP("Scene Graph\\Environment\\Sky" FILES ${ENV_SKY_FILES})
+
 SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/Scene.h
                     ${SG_INCLUDE_PATH}/SceneNodeAttributes.h
                     ${SG_INCLUDE_PATH}/SceneNode.h
@@ -123,7 +128,7 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
 SOURCE_GROUP("Scene Graph\\Scene" FILES ${SG_SCENE_SOURCE})
 SOURCE_GROUP("Scene Graph\\Render" FILES ${SG_RENDER_SOURCE})
 
-SET(SCENE_GRAPH_FILES  ${SG_SCENE_SOURCE} ${SG_RENDER_SOURCE})
+SET(SCENE_GRAPH_FILES  ${SG_SCENE_SOURCE} ${SG_RENDER_SOURCE} ${ENV_SKY_FILES})
 
 SET(FONT_MANAGE_SOURCE  ${SG_INCLUDE_PATH}/font/Font.h
                         font/Font.cpp)

@@ -18,7 +18,7 @@ struct Material3DCreateConfig:public MaterialCreateConfig,public Comparator<Mate
 
 public:
 
-    Material3DCreateConfig(const PrimitiveType &    p,
+    Material3DCreateConfig(const PrimitiveType &    p   =PrimitiveType::Triangles,
                            const WithCamera &       wc  =WithCamera::With,
                            const WithLocalToWorld & l2w =WithLocalToWorld::With,
                            const WithSky &          s   =WithSky::Without)
@@ -61,7 +61,6 @@ DEFINE_MATERIAL_FACTORY_CLASS(PureColor3D,      const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexColor3D,    const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(VertexLuminance3D,const Material3DCreateConfig);
 DEFINE_MATERIAL_FACTORY_CLASS(Gizmo3D,          const Material3DCreateConfig);
-
 
 struct SkyMinimalCreateConfig:public Material3DCreateConfig
 {
