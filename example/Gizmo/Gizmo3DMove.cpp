@@ -23,7 +23,6 @@
 
 #include"GizmoResource.h"
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/Scene.h>

@@ -1,7 +1,6 @@
 ﻿#include<hgl/WorkObject.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/module/SwapchainModule.h>
-#include<hgl/graph/VKRenderResource.h>
 #include<hgl/graph/VKRenderTarget.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/PrimitiveCreater.h>
@@ -26,7 +25,6 @@ namespace hgl
         if(!rf)
         {
             render_framework=nullptr;
-            db=nullptr;
         }
 
         if(!rf||!r)
@@ -36,7 +34,6 @@ namespace hgl
 
         render_framework=rf;
 
-        db=rf->GetRenderResource();
         scene=rf->GetDefaultScene();
         renderer=rf->GetDefaultRenderer();
     }

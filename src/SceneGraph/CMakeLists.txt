@@ -72,6 +72,7 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_HEADER_PATH}/MaterialManager.h
                         ${SGM_HEADER_PATH}/BufferManager.h
                         ${SGM_HEADER_PATH}/RenderTargetManager.h
+                        ${SGM_HEADER_PATH}/PrimitiveManager.h
                         ${SGM_HEADER_PATH}/MeshManager.h
 
                         ${SGM_HEADER_PATH}/RenderModule.h
@@ -85,11 +86,12 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
                         ${SGM_SOURCE_PATH}/MaterialManager.cpp
                         ${SGM_SOURCE_PATH}/BufferManager.cpp
                         ${SGM_SOURCE_PATH}/RenderTargetManager.cpp
+                        ${SGM_SOURCE_PATH}/PrimitiveManager.cpp
                         ${SGM_SOURCE_PATH}/MeshManager.cpp
-
 
                         ${SGM_SOURCE_PATH}/SwapChainModule.cpp
 )
+
 source_group("Framework\\Module" FILES ${GRAPH_MODULE_FILES})
 
 SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
@@ -185,14 +187,10 @@ SET(TEXT_SOURCE ${FONT_MANAGE_SOURCE}
                 ${FONT_LAYOUT_SOURCE}
                 ${TEXT_RENDERABLE_SOURCE})
 
-SET(VK_RR_SOURCE        ${SG_INCLUDE_PATH}/VKRenderResource.h)
-
-SOURCE_GROUP("Vulkan\\RenderResource" FILES ${VK_RR_SOURCE})
-
 SET(VK_RR_MATERIAL_FILES    ${SG_INCLUDE_PATH}/VKMaterialDescriptorManager.h
                             Vulkan/VKMaterialDescriptorManager.cpp)
 
-SOURCE_GROUP("Vulkan\\RenderResource\\Material" FILES   ${VK_RR_MATERIAL_FILES})
+SOURCE_GROUP("Vulkan\\Material" FILES   ${VK_RR_MATERIAL_FILES})
 
 SET(VK_INST_SOURCE      ${SG_INCLUDE_PATH}/VKInstance.h
                         Vulkan/VKInstance.cpp)
@@ -417,8 +415,7 @@ ENDIF(UNIX)
 
 SOURCE_GROUP("Vulkan\\Surface" FILES ${VULKAN_SURFACE_SOURCE})
 
-SET(VULKAN_RENDER_SOURCE    ${VK_RR_SOURCE}
-                            ${VK_RR_MATERIAL_FILES}
+SET(VULKAN_RENDER_SOURCE    ${VK_RR_MATERIAL_FILES}
                             ${VK_INST_SOURCE}
                             ${VK_DEBUG_SOURCE}
                             ${VK_MEMORY_SOURCE}

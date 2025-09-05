@@ -220,8 +220,6 @@ class IndirectDrawBuffer;
 class IndirectDrawIndexedBuffer;
 class IndirectDispatchBuffer;
 
-class RenderResource;
-
 class MeshComponent;
 
 class SceneNode;
