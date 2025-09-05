@@ -74,7 +74,7 @@ namespace hgl::graph
 
         bool InitTextLayoutEngine();
         bool InitMaterial(RenderPass *);
-        bool Init(RenderPass *rp);
+        bool Init(RenderPass *,Sampler *);
 
     public:
 

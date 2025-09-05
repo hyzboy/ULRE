@@ -109,8 +109,6 @@ namespace hgl::graph
         pipeline=rp->CreatePipeline(mi_fs,InlinePipeline::Solid2D);
         if(!pipeline)return(false);
 
-        sampler=db->CreateSampler();
-
         if(!mtl_fs->BindImageSampler(   DescriptorSetType::PerMaterial,
                                         mtl::SamplerName::Text,
                                         tile_font->GetTexture(),
@@ -120,8 +118,10 @@ namespace hgl::graph
         return(true);
     }
 
-    bool TextRender::Init(RenderPass *rp)
+    bool TextRender::Init(RenderPass *rp,Sampler *text_sampler)
     {
+        sampler=text_sampler;
+
         if(!InitMaterial(rp))
             return(false);
 
@@ -220,7 +220,7 @@ namespace hgl::graph
             return(nullptr);
         }
 
-        if(!text_render->Init(rp))
+        if(!text_render->Init(rp,sampler_manager->CreateSampler()))
         {
             delete tile_font;
             delete text_render;

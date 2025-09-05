@@ -128,6 +128,11 @@ bool RenderFramework::Init(uint w,uint h)
     if(!tex_manager)
         return(false);
 
+    sampler_manager=module_manager->GetOrCreate<SamplerManager>();
+
+    if(!sampler_manager)
+        return(false);
+
     material_manager=module_manager->GetOrCreate<MaterialManager>();
 
     if(!material_manager)
