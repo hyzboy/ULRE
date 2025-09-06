@@ -4,7 +4,7 @@
 #include<hgl/filesystem/FileSystem.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/RenderList.h>
-#include<hgl/graph/Camera.h>
+#include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/Ray.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
@@ -96,7 +96,7 @@ private:
 
         if(!ri)
         {
-            LOG_ERROR(OS_TEXT("Create Mesh failed."));
+            LogError(OS_TEXT("Create Mesh failed."));
             return(nullptr);
         }
 

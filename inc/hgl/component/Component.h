@@ -3,6 +3,7 @@
 #include<hgl/type/DataType.h>
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/ArrayList.h>
+#include<hgl/log/ObjectLogger.h>
 
 /**
 *   Component/Data/Manager 体系设计简要说明
@@ -78,6 +79,8 @@ using ComponentDataPtr=SharedPtr<ComponentData>;
 */
 class Component
 {
+    OBJECT_LOGGER
+
     static uint unique_id_count;
 
     uint unique_id;
@@ -147,6 +150,8 @@ using ComponentList=ArrayList<Component *>;
 
 class ComponentManager
 {
+    OBJECT_LOGGER
+
     ComponentSet component_set;
 
 protected:

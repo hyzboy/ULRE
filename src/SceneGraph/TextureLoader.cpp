@@ -232,7 +232,7 @@ namespace hgl
 
             if(!fis)
             {
-                LOG_ERROR(OS_TEXT("[ERROR] open texture file<")+filename+OS_TEXT("> failed."));
+                GLogError(OS_TEXT("[ERROR] open texture file<")+filename+OS_TEXT("> failed."));
                 return(false);
             }
 

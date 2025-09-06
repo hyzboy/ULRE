@@ -1,5 +1,4 @@
-﻿add_subdirectory(Util)
-add_subdirectory(ShaderGen)
+﻿add_subdirectory(ShaderGen)
 add_subdirectory(SceneGraph)
 add_subdirectory(Work)
 #add_subdirectory(Tools)

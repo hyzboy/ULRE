@@ -2,7 +2,7 @@
 
 #include<hgl/graph/RenderTask.h>
 #include<hgl/graph/VKRenderTarget.h>
-#include<hgl/graph/CameraControl.h>
+#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/type/Map.h>
 
 namespace hgl::graph
