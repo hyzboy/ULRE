@@ -71,7 +71,7 @@ namespace hgl::graph
             //所以这里先OnDetachManager掉Component中的Manager属性，然后再执行删除
             c->OnDetachManager(this);
 
-            LOG_INFO(AnsiString("~ComponentManager delete ")+AnsiString::numberOf(c->GetUniqueID()));
+            LogInfo(AnsiString("~ComponentManager delete ")+AnsiString::numberOf(c->GetUniqueID()));
             delete c;
         }
     }

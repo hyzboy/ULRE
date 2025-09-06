@@ -92,7 +92,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
     if(prim->GetVABCount()<input_count)        //小于材质要求的数量？那自然是不行的
     {
-        LOG_ERROR("[FATAL ERROR] input buffer count of Mesh lesser than Material, Material name: "+mtl_name);
+        GLogError("[FATAL ERROR] input buffer count of Mesh lesser than Material, Material name: "+mtl_name);
 
         return(nullptr);
     }
@@ -112,13 +112,13 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
         if(!vab)
         {
-            LOG_ERROR("[FATAL ERROR] not found VAB \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
+            GLogError("[FATAL ERROR] not found VAB \""+AnsiString(vif->name)+"\" in Material: "+mtl_name);
             return(nullptr);
         }
 
         if(vab->GetFormat()!=vif->format)
         {
-            LOG_ERROR(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
+            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
                         AnsiString("\" format can't match Mesh, Material(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
                         AnsiString("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
@@ -128,7 +128,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
 
         if(vab->GetStride()!=vif->stride)
         {
-            LOG_ERROR(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
+            GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
                         AnsiString("\" stride can't match Mesh, Material(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
                         AnsiString("), VAB stride(")+AnsiString::numberOf(vab->GetStride())+

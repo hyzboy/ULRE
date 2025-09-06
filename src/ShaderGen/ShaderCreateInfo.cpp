@@ -408,7 +408,7 @@ bool ShaderCreateInfo::CreateShader(ShaderCreateInfo *last_sc)
 #ifdef _DEBUG
 
     //想办法存成文件或是输出行号，以方便出错了调试
-    LOG_INFO(AnsiString(GetShaderStageName((VkShaderStageFlagBits)shader_stage))+" shader: \n"+final_shader);
+    LogInfo(AnsiString(GetShaderStageName((VkShaderStageFlagBits)shader_stage))+" shader: \n"+final_shader);
 
 #endif//_DEBUG
 

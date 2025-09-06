@@ -1,5 +1,13 @@
 ﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
+SET(CM_CAMERA_SOURCE    ${SG_INCLUDE_PATH}/camera/Camera.h
+                        ${SG_INCLUDE_PATH}/camera/CameraControl.h
+                        ${SG_INCLUDE_PATH}/camera/LookAtCameraControl.h
+                        ${SG_INCLUDE_PATH}/camera/FirstPersonCameraControl.h
+                        camera/Camera.cpp)
+
+SOURCE_GROUP("Camera" FILES ${CM_CAMERA_SOURCE})
+
 SET(SG_TEXTURE_SOURCE   ${SG_INCLUDE_PATH}/TextureLoader.h
                         ${SG_INCLUDE_PATH}/Bitmap2DLoader.h
                         TextureLoader.cpp
@@ -439,6 +447,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
                                         ${SG_PRIMITIVE_SOURCE}
                                         ${GEOMETRY_FILES}
                                         ${LIGHT_FILES}
+
+                                        ${CM_CAMERA_SOURCE}
 
                                         ${GRAPH_MODULE_FILES}
                                         ${GRAPH_FRAMEWORK_FILES}

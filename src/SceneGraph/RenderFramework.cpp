@@ -13,8 +13,8 @@
 #include<hgl/graph/module/RenderModule.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/Scene.h>
-#include<hgl/graph/Camera.h>
-#include<hgl/graph/FirstPersonCameraControl.h>
+#include<hgl/graph/camera/Camera.h>
+#include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/VertexDataManager.h>

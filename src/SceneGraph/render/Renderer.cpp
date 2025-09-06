@@ -2,7 +2,7 @@
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/Camera.h>
+#include<hgl/graph/camera/Camera.h>
 
 namespace hgl::graph
 {

@@ -4,6 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/AABB.h>
 #include<hgl/graph/VK.h>
+#include<hgl/log/ObjectLogger.h>
 
 VK_NAMESPACE_BEGIN
 
@@ -13,6 +14,8 @@ VK_NAMESPACE_BEGIN
  */
 class Primitive
 {
+    OBJECT_LOGGER
+
 protected:
 
     AnsiString      prim_name;

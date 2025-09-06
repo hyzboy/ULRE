@@ -11,7 +11,7 @@
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderList.h>
-#include<hgl/graph/CameraControl.h>
+#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
@@ -279,7 +279,7 @@ public: //Component 相关
 
         if(!manager)
         {
-            //        LOG_ERROR(OS_TEXT("CreateComponent failed, no default manager!"));
+            //        LogError(OS_TEXT("CreateComponent failed, no default manager!"));
             return(nullptr);
         }
 
@@ -287,7 +287,7 @@ public: //Component 相关
 
         if(!c)
         {
-            //        LOG_ERROR(OS_TEXT("CreateComponent failed, create component failed!"));
+            //        LogError(OS_TEXT("CreateComponent failed, create component failed!"));
             return(nullptr);
         }
 

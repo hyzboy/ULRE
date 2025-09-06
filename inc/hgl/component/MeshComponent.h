@@ -25,7 +25,7 @@ public:
         mesh=nullptr;
 
 //        unique_id=++unique_id_count;
-//        LOG_INFO(AnsiString("MeshComponentData():")+AnsiString::numberOf(unique_id));
+//        LogInfo(AnsiString("MeshComponentData():")+AnsiString::numberOf(unique_id));
     }
 
     MeshComponentData(Mesh *m)
@@ -33,7 +33,7 @@ public:
         mesh=m;
 
 //        unique_id=++unique_id_count;
-//        LOG_INFO(AnsiString("MeshComponentData(Mesh *):")+AnsiString::numberOf(unique_id));
+//        LogInfo(AnsiString("MeshComponentData(Mesh *):")+AnsiString::numberOf(unique_id));
     }
 
     virtual ~MeshComponentData();

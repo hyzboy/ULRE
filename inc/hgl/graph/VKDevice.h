@@ -29,6 +29,8 @@ struct CopyBufferToImageInfo;
 
 class VulkanDevice
 {
+    OBJECT_LOGGER
+
     VulkanDevAttr *attr;
 
 private:

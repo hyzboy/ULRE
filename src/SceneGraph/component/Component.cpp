@@ -10,18 +10,20 @@ namespace hgl::graph
     {
         unique_id=++unique_id_count;
 
+        Log.SetLoggerInstanceName(U8String::numberOf(unique_id));
+
         OwnerNode=nullptr;
         Data=cdp;
         Manager=cm;
 
         Manager->AttachComponent(this);
 
-        LOG_INFO(AnsiString("Component::Component ")+AnsiString::numberOf(unique_id)+AnsiString(" ")+ToHexString<char>(this));
+        LogInfo(AnsiString("Component::Component ")+AnsiString::numberOf(unique_id)+AnsiString(" ")+ToHexString<char>(this));
     }
 
     Component::~Component()
     {
-        LOG_INFO(AnsiString("Component::~Component ")+AnsiString::numberOf(unique_id)+AnsiString(" ")+ToHexString<char>(this));
+        LogInfo(AnsiString("Component::~Component ")+AnsiString::numberOf(unique_id)+AnsiString(" ")+ToHexString<char>(this));
 
         if(OwnerNode)
         {
@@ -37,7 +39,7 @@ namespace hgl::graph
     {
         if(!cdp)
         {
-            LOG_ERROR(OS_TEXT("Component::ChangeData: invalid component data pointer."));
+            LogError(OS_TEXT("Component::ChangeData: invalid component data pointer."));
             return(false);
         }
 
@@ -46,7 +48,7 @@ namespace hgl::graph
 
         if(cdp->GetTypeHash()!=GetTypeHash())        //类型不对
         {
-            LOG_ERROR(OS_TEXT("Component::ChangeData: component data type mismatch."));
+            LogError(OS_TEXT("Component::ChangeData: component data type mismatch."));
             return(false);
         }
 

@@ -8,7 +8,7 @@ COMPONENT_NAMESPACE_BEGIN
 
 MeshComponentData::~MeshComponentData()
 {
-//    LOG_INFO(AnsiString("~MeshComponentData():")+AnsiString::numberOf(unique_id));
+//    LogInfo(AnsiString("~MeshComponentData():")+AnsiString::numberOf(unique_id));
 
     if(mesh)
     {
@@ -23,7 +23,7 @@ Component *MeshComponentManager::CreateComponent(ComponentDataPtr cdp)
 
     if(!dynamic_cast<MeshComponentData *>(cdp.get()))
     {
-        //LOG_ERROR(OS_TEXT("MeshComponentManager::CreateMeshComponent: invalid component data type."));
+        //LogError(OS_TEXT("MeshComponentManager::CreateMeshComponent: invalid component data type."));
         return(nullptr);
     }
 

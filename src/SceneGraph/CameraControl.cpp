@@ -1,7 +1,8 @@
-#include<hgl/graph/CameraControl.h>
+#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/Ray.h>
 
 namespace hgl::graph
 {
@@ -20,5 +21,14 @@ namespace hgl::graph
     {
         delete desc_binding_camera;
         delete ubo_camera_info;
+    }
+
+    bool CameraControl::SetMouseRay(Ray *ray,const Vector2i &mouse_coord)
+    {
+        if(!ray||!camera_info||!vi)return(false);
+
+        ray->Set(mouse_coord,camera_info,vi);
+
+        return(true);
     }
 }//namespace hgl::graph

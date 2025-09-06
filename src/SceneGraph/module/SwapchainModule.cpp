@@ -72,7 +72,7 @@ namespace
 
         if(result!=VK_SUCCESS)
         {
-            //LOG_ERROR(OS_TEXT("vkCreateSwapchainKHR failed, result = ")+OSString(result));
+            //LogError(OS_TEXT("vkCreateSwapchainKHR failed, result = ")+OSString(result));
 //            os_err<<"vkCreateSwapchainKHR failed, result="<<result<<std::endl;
 
             return(VK_NULL_HANDLE);

@@ -7,6 +7,7 @@
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/type/StringList.h>
+#include<hgl/log/ObjectLogger.h>
 
 namespace hgl{namespace graph
 {
@@ -20,6 +21,8 @@ struct SamplerDescriptor;
 
 class ShaderCreateInfo
 {
+    OBJECT_LOGGER
+
 protected:
 
     ShaderStage shader_stage;                      ///<着色器阶段
