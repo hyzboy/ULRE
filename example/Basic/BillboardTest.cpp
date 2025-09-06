@@ -11,7 +11,7 @@
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/VKVertexInputConfig.h>
 #include<hgl/graph/module/TextureManager.h>
-#include<hgl/graph/FirstPersonCameraControl.h>
+#include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/component/MeshComponent.h>
 
 using namespace hgl;

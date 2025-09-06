@@ -1,6 +1,5 @@
 #include<hgl/graph/TextureLoader.h>
 #include<hgl/io/FileInputStream.h>
-#include<hgl/log/LogInfo.h>
 
 namespace hgl
 {

@@ -7,7 +7,7 @@
 #include<hgl/graph/VKDescriptorSetType.h>
 #include<hgl/graph/mtl/ShaderVariableType.h>
 #include<hgl/type/StringList.h>
-#include<hgl/log/ObjectLogger.h>
+#include<hgl/log/Log.h>
 
 namespace hgl{namespace graph
 {

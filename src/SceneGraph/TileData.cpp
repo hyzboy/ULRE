@@ -1,5 +1,4 @@
 ﻿#include<hgl/graph/TileData.h>
-#include<hgl/log/LogInfo.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/module/TextureManager.h>

@@ -6,7 +6,6 @@
 #include<hgl/graph/VKShaderModuleMap.h>
 #include<hgl/graph/VKVertexInputLayout.h>
 #include"VKPipelineLayoutData.h"
-#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 

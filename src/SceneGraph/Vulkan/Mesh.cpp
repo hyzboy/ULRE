@@ -4,7 +4,6 @@
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKIndexBuffer.h>
-#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 MeshDataBuffer::MeshDataBuffer(const uint32_t c,IndexBuffer *ib,VertexDataManager *_vdm)

@@ -8,7 +8,7 @@
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKVertexInputConfig.h>
-#include<hgl/graph/FirstPersonCameraControl.h>
+#include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>
 

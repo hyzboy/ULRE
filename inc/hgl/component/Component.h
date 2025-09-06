@@ -3,7 +3,7 @@
 #include<hgl/type/DataType.h>
 #include<hgl/type/SortedSet.h>
 #include<hgl/type/ArrayList.h>
-#include<hgl/log/ObjectLogger.h>
+#include<hgl/log/Log.h>
 
 /**
 *   Component/Data/Manager 体系设计简要说明
