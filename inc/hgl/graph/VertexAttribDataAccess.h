@@ -5,7 +5,7 @@
 #include<hgl/color/Color4f.h>
 #include<hgl/type/RectScope.h>
 #include<hgl/type/String.h>
-#include<hgl/log/ObjectLogger.h>
+#include<hgl/log/Log.h>
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/AABB.h>
 namespace hgl

@@ -36,6 +36,12 @@ namespace hgl
     */
     class WorkObject:public TickObject
     {
+    protected:
+
+        OBJECT_LOGGER
+
+    private:
+
         graph::RenderFramework *render_framework=nullptr;
 
         bool destroy_flag=false;

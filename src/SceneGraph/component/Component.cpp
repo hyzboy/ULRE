@@ -1,6 +1,5 @@
 #include<hgl/component/Component.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/log/LogInfo.h>
 
 namespace hgl::graph
 {
@@ -10,7 +9,7 @@ namespace hgl::graph
     {
         unique_id=++unique_id_count;
 
-        Log.SetLoggerInstanceName(U8String::numberOf(unique_id));
+        Log.SetLoggerInstanceName(OSString::numberOf(unique_id));
 
         OwnerNode=nullptr;
         Data=cdp;

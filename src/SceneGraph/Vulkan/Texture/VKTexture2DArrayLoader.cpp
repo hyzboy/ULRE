@@ -1,6 +1,5 @@
 ﻿#include"VKTextureLoader.h"
 #include<hgl/io/FileInputStream.h>
-#include<hgl/log/LogInfo.h>
 #include<hgl/graph/VKTexture.h>
 #include<hgl/graph/module/TextureManager.h>
 

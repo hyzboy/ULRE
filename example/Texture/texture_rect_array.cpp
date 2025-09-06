@@ -57,7 +57,7 @@ private:
         texture=CreateTexture2DArray(   "freepik icons",
                                         512,512,            ///<纹理尺寸
                                         TexCount,           ///<纹理层数
-                                        PF_BC1_RGBAUN,      ///<纹理格式
+                                     PF_BC7UN,      ///<纹理格式
                                         false);             ///<是否自动产生mipmaps
         
         if(!texture)return(false);

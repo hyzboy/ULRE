@@ -4,7 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/graph/AABB.h>
 #include<hgl/graph/VK.h>
-#include<hgl/log/ObjectLogger.h>
+#include<hgl/log/Log.h>
 
 VK_NAMESPACE_BEGIN
 

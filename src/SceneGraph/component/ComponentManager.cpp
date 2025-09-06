@@ -1,7 +1,6 @@
 ﻿#include<hgl/component/Component.h>
 #include<tsl/robin_map.h>
 #include<hgl/type/String.h>
-#include<hgl/log/LogInfo.h>
 
 namespace hgl::graph
 {

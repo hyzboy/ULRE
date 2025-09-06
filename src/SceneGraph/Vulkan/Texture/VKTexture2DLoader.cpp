@@ -1,6 +1,5 @@
 ﻿#include"VKTextureLoader.h"
 #include<hgl/io/FileInputStream.h>
-#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 template<> void VkTextureLoader<Texture2D,Texture2DLoader>::OnExtent(VkExtent3D &extent)

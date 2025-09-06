@@ -3,8 +3,6 @@
 #include<hgl/component/RenderComponent.h>
 #include<hgl/graph/Mesh.h>
 
-//#include<hgl/log/LogInfo.h>
-
 COMPONENT_NAMESPACE_BEGIN
 
 class MeshComponent;

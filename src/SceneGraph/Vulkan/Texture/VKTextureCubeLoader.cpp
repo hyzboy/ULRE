@@ -1,6 +1,5 @@
 ﻿#include"VKTextureLoader.h"
 #include<hgl/io/FileInputStream.h>
-#include<hgl/log/LogInfo.h>
 
 VK_NAMESPACE_BEGIN
 template<> void VkTextureLoader<TextureCube,TextureCubeLoader>::OnExtent(VkExtent3D &extent)
