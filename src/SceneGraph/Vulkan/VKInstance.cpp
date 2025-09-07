@@ -9,14 +9,14 @@ VulkanDevice *CreateRenderDevice(VkInstance,const VulkanPhyDevice *,Window *);
 
 void CheckInstanceLayer(CharPointerList &layer_list,CreateInstanceLayerInfo *layer_info);
 
-VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
+VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out,CreateInstanceLayerInfo *layer_info)
 {
     ApplicationInfo app_info;
     InstanceCreateInfo inst_info(&app_info);
     CharPointerList ext_list;
     CharPointerList layer_list;
 
-    app_info.pApplicationName   = app_name.c_str();
+    app_info.pApplicationName   = (char *)(app_name.c_str());
     app_info.applicationVersion = 1;
     app_info.pEngineName        = "CMGameEngine/ULRE";
     app_info.engineVersion      = 1;

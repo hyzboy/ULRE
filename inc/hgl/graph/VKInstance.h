@@ -70,7 +70,7 @@ VK_NAMESPACE_BEGIN
 
     private:
 
-        friend VulkanInstance *CreateInstance(const AnsiString &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
+        friend VulkanInstance *CreateInstance(const U8String &app_name,VKDebugOut *out=nullptr,CreateInstanceLayerInfo *cili=nullptr);
 
         VulkanInstance(VkInstance,VKDebugOut *);
 
@@ -106,6 +106,6 @@ VK_NAMESPACE_BEGIN
     const   bool                            GetInstanceLayerVersion(const AnsiString &,uint32_t &spec,uint32_t &impl);
     const   bool                            CheckInstanceExtensionSupport(const AnsiString &);
 
-    VulkanInstance *CreateInstance(const AnsiString &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
+    VulkanInstance *CreateInstance(const U8String &,VKDebugOut *,CreateInstanceLayerInfo *);                            ///<创建一个Vulkan实例
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_INSTANCE_INCLUDE
