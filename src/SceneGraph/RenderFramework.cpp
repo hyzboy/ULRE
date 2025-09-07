@@ -38,7 +38,7 @@ namespace
 {
     static int RENDER_FRAMEWORK_COUNT=0;
 
-    hgl::graph::VulkanInstance *CreateVulkanInstance(const AnsiString &app_name)
+    hgl::graph::VulkanInstance *CreateVulkanInstance(const U8String &app_name)
     {
         CreateInstanceLayerInfo cili;
 
@@ -103,7 +103,9 @@ bool RenderFramework::Init(uint w,uint h)
         return(false);
     }
 
-    inst=CreateVulkanInstance(ToAnsiString(app_name));
+    const U8String u8_app_name=to_u8(app_name.c_str(),app_name.Length());
+
+    inst=CreateVulkanInstance(u8_app_name);
     if(!inst)
         return(false);
     
