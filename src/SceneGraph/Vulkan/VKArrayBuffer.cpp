@@ -50,9 +50,9 @@ namespace hgl
             return vk_ma->GetBuffer();
         }
 
-        uint32 VulkanArrayBuffer::Alloc(const uint32 max_count)            ///<预分配空间
+        uint32 VulkanArrayBuffer::Reserve(const uint32 max_count)            ///<预分配空间
         {
-            if(!coll->Alloc(max_count))
+            if(!coll->Reserve(max_count))
                 return(0);
 
             return coll->GetAllocCount();

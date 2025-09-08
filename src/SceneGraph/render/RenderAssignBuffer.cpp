@@ -129,11 +129,11 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     
     if(!mi_buffer)
     {
-        mi_set.PreAlloc(power_to_2(rn_list.GetCount()));
+        mi_set.Reserve(power_to_2(rn_list.GetCount()));
     }
     else if(rn_list.GetCount()>mi_set.GetAllocCount())
     {
-        mi_set.PreAlloc(power_to_2(rn_list.GetCount()));
+        mi_set.Reserve(power_to_2(rn_list.GetCount()));
         SAFE_CLEAR(mi_buffer);
     }
 
@@ -152,7 +152,7 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     #endif//_DEBUG
     }
 
-    mi_set.PreAlloc(rn_list.GetCount());
+    mi_set.Reserve(rn_list.GetCount());
 
     for(RenderNode &rn:rn_list)
         mi_set.Add(rn.sm_component->GetMaterialInstance());

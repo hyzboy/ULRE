@@ -31,7 +31,7 @@ VulkanInstance *InitVulkanInstance()
     cili.lunarg.standard_validation=true;
     cili.khronos.validation=true;
 
-    return CreateInstance("VulkanTest",nullptr,&cili);
+    return CreateInstance(u8"VulkanTest",nullptr,&cili);
 }
 
 int main(int,char **)

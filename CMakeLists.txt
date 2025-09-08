@@ -30,7 +30,8 @@ SET(ULRE    CMCore
             ULRE.SceneGraph
             ${HGL_MATH_LIB}
             ${RENDER_LIBRARY}
-            ${Vulkan_LIBRARIES})
+            ${Vulkan_LIBRARIES}
+)
 
 use_cm_module(Core)
 use_cm_module(Util)

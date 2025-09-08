@@ -22,7 +22,7 @@ void InitVulkanInstanceProperties()
         uint32_t layer_count;
         vkEnumerateInstanceLayerProperties(&layer_count,nullptr);
 
-        layer_properties.SetCount(layer_count);
+        layer_properties.Resize(layer_count);
         vkEnumerateInstanceLayerProperties(&layer_count,layer_properties.GetData());
 
         debug_out("Instance",layer_properties);
@@ -32,7 +32,7 @@ void InitVulkanInstanceProperties()
         uint32_t prop_count;
         vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,nullptr);
 
-        extension_properties.SetCount(prop_count);
+        extension_properties.Resize(prop_count);
         vkEnumerateInstanceExtensionProperties(nullptr,&prop_count,extension_properties.GetData());
 
         debug_out("Instance",extension_properties);

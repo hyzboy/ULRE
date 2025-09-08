@@ -143,7 +143,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,nullptr);
 
-        layer_properties.SetCount(property_count);
+        layer_properties.Resize(property_count);
         vkEnumerateDeviceLayerProperties(physical_device,&property_count,layer_properties.GetData());
 
         debug_out(debug_front.c_str(),layer_properties);
@@ -154,7 +154,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,nullptr);
 
-        extension_properties.SetCount(exten_count);
+        extension_properties.Resize(exten_count);
         vkEnumerateDeviceExtensionProperties(physical_device,nullptr,&exten_count,extension_properties.GetData());
 
         debug_out(debug_front.c_str(),extension_properties);
@@ -165,7 +165,7 @@ VulkanPhyDevice::VulkanPhyDevice(VkInstance inst,VkPhysicalDevice pd)
 
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,nullptr);
 
-        queue_family_properties.SetCount(family_count);
+        queue_family_properties.Resize(family_count);
         vkGetPhysicalDeviceQueueFamilyProperties(physical_device,&family_count,queue_family_properties.GetData());
 
         debug_queue_family_properties_out(debug_front.c_str(),queue_family_properties);
