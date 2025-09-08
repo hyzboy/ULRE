@@ -91,7 +91,7 @@ namespace hgl::graph
         else
             ggo=GGO_GRAY8_BITMAP;
 
-        buffer.Alloc(fnt.width*fnt.height*4);
+        buffer.Reserve(fnt.width*fnt.height*4);
     }
 
     WinBitmapFont::~WinBitmapFont()
@@ -116,7 +116,7 @@ namespace hgl::graph
         if(size<=0)return(false);
 
         if(size>buffer.GetCount())
-            buffer.SetCount(size);
+            buffer.Resize(size);
 
         GetGlyphOutlineW(hdc,ch,ggo,&gm,DWORD(buffer.GetCount()),buffer.data(),&mat);
 

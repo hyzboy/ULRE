@@ -45,7 +45,7 @@ namespace hgl
 
             DeviceBuffer *  GetBuffer();
 
-            uint32          Alloc(const uint32 max_count);              ///<预分配空间
+            uint32          Reserve(const uint32 max_count);              ///<预分配空间
             void            Clear();
 
             template<typename T>

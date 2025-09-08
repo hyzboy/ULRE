@@ -27,13 +27,13 @@ namespace hgl::graph::layout
 
         draw_chars_count=0;
         chars_sets.Clear();
-        chars_sets.PreAlloc(Estimate);
+        chars_sets.Reserve(Estimate);
         draw_chars_list.Clear();
-        draw_chars_list.PreAlloc(Estimate);
+        draw_chars_list.Reserve(Estimate);
 
         text_primitive=tr;
-        vertex.Alloc(Estimate*4);
-        tex_coord.Alloc(Estimate*4);
+        vertex.Reserve(Estimate*4);
+        tex_coord.Reserve(Estimate*4);
 
         draw_all_strings.Clear();
         draw_string_list.Clear();
@@ -244,8 +244,8 @@ namespace hgl::graph::layout
         if(draw_chars_count<=0)             //可绘制字符为0？？？这是全空格？
             return(-4);
 
-        vertex      .SetCount(draw_chars_count*4);
-        tex_coord   .SetCount(draw_chars_count*4);
+        vertex      .Resize(draw_chars_count*4);
+        tex_coord   .Resize(draw_chars_count*4);
 
         if(!vertex||!tex_coord)
             return(-5);

@@ -24,7 +24,7 @@ namespace
         const ShaderModule *sm;
 
         const int shader_count=shader_maps->GetCount();
-        shader_stage_list.SetCount(shader_count);
+        shader_stage_list.Resize(shader_count);
     
         VkPipelineShaderStageCreateInfo *p=shader_stage_list.GetData();
 

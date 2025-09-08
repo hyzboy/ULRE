@@ -36,7 +36,7 @@ VulkanSurface::VulkanSurface(const VulkanPhyDevice *phy_dev,VkSurfaceKHR sface)
 
         if(vkGetPhysicalDeviceSurfacePresentModesKHR(pd, surface, &count, nullptr) == VK_SUCCESS)
         {
-            present_mode_list.SetCount(count);
+            present_mode_list.Resize(count);
             vkGetPhysicalDeviceSurfacePresentModesKHR(pd, surface, &count, present_mode_list.GetData());
         }
         else
@@ -46,7 +46,7 @@ VulkanSurface::VulkanSurface(const VulkanPhyDevice *phy_dev,VkSurfaceKHR sface)
 
         if(vkGetPhysicalDeviceSurfaceFormatsKHR(pd, surface, &count, nullptr) == VK_SUCCESS)
         {
-            surface_format_list.SetCount(count);
+            surface_format_list.Resize(count);
             vkGetPhysicalDeviceSurfaceFormatsKHR(pd, surface, &count, surface_format_list.GetData());
         }
         else

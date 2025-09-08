@@ -217,7 +217,7 @@ void MaterialRenderList::Stat()
     VkDrawIndexedIndirectCommand *diicp=icb_draw_indexed->MapCmd();
 
     ri_array.Clear();
-    ri_array.Alloc(count);
+    ri_array.Reserve(count);
 
     RenderItem *ri=ri_array.GetData();
     Mesh *ro=rn->sm_component->GetMesh();

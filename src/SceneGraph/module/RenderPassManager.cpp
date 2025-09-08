@@ -7,7 +7,7 @@ void CreateSubpassDependency(ArrayList<VkSubpassDependency> &subpass_dependency_
 {
     if(count<=0)return;
 
-    subpass_dependency_list.SetCount(count);
+    subpass_dependency_list.Resize(count);
     
     VkSubpassDependency *dependency=subpass_dependency_list.GetData();
 
@@ -79,7 +79,7 @@ bool CreateAttachmentDescription(ArrayList<VkAttachmentDescription> &desc_list,c
 
     const uint count=(rbi->HasDepthOrStencil())?image_count+1:image_count;
 
-    desc_list.SetCount(count);
+    desc_list.Resize(count);
 
     VkAttachmentDescription *desc=desc_list.GetData();
 
@@ -129,10 +129,10 @@ bool CreateColorAttachment( ArrayList<VkAttachmentReference> &ref_list,ArrayList
     //    ++cf;
     //}
 
-    ref_list.SetCount(color_format.GetCount());
+    ref_list.Resize(color_format.GetCount());
     VkAttachmentReference *ref=ref_list.GetData();
 
-    desc_list.SetCount(color_format.GetCount());
+    desc_list.Resize(color_format.GetCount());
     VkAttachmentDescription *desc=desc_list.GetData();
 
     for(int i=0;i<color_format.GetCount();i++)
@@ -161,7 +161,7 @@ bool CreateDepthAttachment( ArrayList<VkAttachmentReference> &ref_list,ArrayList
     //    return(false);
 
     {
-        ref_list.SetCount(1);
+        ref_list.Resize(1);
         VkAttachmentReference *ref=ref_list.GetData();
 
         ref->attachment=0;
@@ -169,7 +169,7 @@ bool CreateDepthAttachment( ArrayList<VkAttachmentReference> &ref_list,ArrayList
     }
 
     {
-        desc_list.SetCount(1);
+        desc_list.Resize(1);
         VkAttachmentDescription *desc=desc_list.GetData();
 
         desc->flags             = 0;
@@ -317,7 +317,7 @@ RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,con
     ArrayList<VkSubpassDescription> subpass_desc_list;
     ArrayList<VkSubpassDependency> subpass_dependency_list;
 
-    color_ref_list.SetCount(rbi->GetColorCount());
+    color_ref_list.Resize(rbi->GetColorCount());
     CreateColorAttachmentReference(color_ref_list.GetData(),0,rbi->GetColorCount());
     
     CreateAttachmentDescription(atta_desc_list,rbi);
