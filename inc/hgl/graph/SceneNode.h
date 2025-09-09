@@ -107,7 +107,7 @@ namespace hgl::graph
 
             SceneNode *node=CreateNode();
 
-            node->SetSceneMatrix(GetSceneMatrix());  //复制本地矩阵
+            node->SetTransformState(GetTransformState());  //复制本地矩阵
 
             DuplicationChildNodes(node);    //复制子节点
             DuplicationComponents(node);    //复制组件
