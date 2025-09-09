@@ -17,8 +17,8 @@ namespace hgl
 
             MeshComponent * mesh_component;                 ///<静态网格组件
 
-            uint32          l2w_version;
-            uint32          l2w_index;
+            uint32          transform_version;
+            uint32          transform_index;
 
             Vector3f        world_position;
             float           to_camera_distance;

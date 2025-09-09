@@ -136,8 +136,8 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/DrawNode.h
                         render/RenderTask.cpp
                         render/RenderCollector.cpp
                         render/PipelineMaterialBatch.cpp
-                        render/RenderAssignBuffer.h
-                        render/RenderAssignBuffer.cpp
+                        render/InstanceAssignmentBuffer.h
+                        render/InstanceAssignmentBuffer.cpp
                         )
 
 SOURCE_GROUP("Scene Graph\\Scene" FILES ${SG_SCENE_SOURCE})
