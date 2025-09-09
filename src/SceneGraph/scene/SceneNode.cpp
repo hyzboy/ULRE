@@ -38,12 +38,12 @@ namespace hgl::graph
     */
     void SceneNode::RefreshMatrix()
     {
-        SceneOrient::RefreshMatrix();
+        NodeTransform::RefreshMatrix();
 
-//            if (scene_matrix.IsNewestVersion())       //自己不变，不代表下面不变
+//            if (transform_state.IsNewestVersion())       //自己不变，不代表下面不变
             //return;
 
-        const Matrix4f &l2w=scene_matrix.GetLocalToWorldMatrix();
+        const Matrix4f &l2w=transform_state.GetLocalToWorldMatrix();
 
         for(SceneNode *sub:child_nodes)
         {

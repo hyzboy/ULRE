@@ -2,7 +2,7 @@
 
 #include<hgl/type/ObjectList.h>
 #include<hgl/type/IDName.h>
-#include<hgl/graph/SceneOrient.h>
+#include<hgl/graph/NodeTransform.h>
 #include<hgl/graph/AABB.h>
 #include<hgl/graph/OBB.h>
 #include<hgl/component/Component.h>
@@ -28,10 +28,10 @@ namespace hgl::graph
 
     /**
     * 场景节点数据类<br>
-    * 从场景坐标变换(SceneOrient)类继承，
+    * 从场景坐标变换(NodeTransform)类继承，
     * 每个场景节点中可能包括一个可渲染数据实例，或是完全不包含(用于坐标变换的父节点，或是灯光/摄像机之类)。
     */
-    class SceneNode:public SceneOrient                                                                              ///场景节点类
+    class SceneNode:public NodeTransform                                                                              ///场景节点类
     {
         friend class Scene;
 
@@ -75,10 +75,10 @@ namespace hgl::graph
         SceneNode(const SceneNode &)=delete;
         SceneNode(const SceneNode *)=delete;
 
-        SceneNode():SceneOrient(){}
-        SceneNode(Scene *s):SceneOrient(),main_scene(s){}                                                           ///<从Scene构造
-        SceneNode(Scene *s,const SceneOrient &so):SceneOrient(so),main_scene(s){}                                   ///<从SceneOrient复制构造
-        SceneNode(Scene *s,const Matrix4f &mat):SceneOrient(mat),main_scene(s){}                                    ///<从Matrix4f复制构造
+        SceneNode():NodeTransform(){}
+        SceneNode(Scene *s):NodeTransform(),main_scene(s){}                                                           ///<从Scene构造
+        SceneNode(Scene *s,const NodeTransform &so):NodeTransform(so),main_scene(s){}                                   ///<从NodeTransform复制构造
+        SceneNode(Scene *s,const Matrix4f &mat):NodeTransform(mat),main_scene(s){}                                    ///<从Matrix4f复制构造
 
     public:
 
@@ -125,7 +125,7 @@ namespace hgl::graph
             child_nodes.Clear();
             component_set.Clear();
 
-            SceneOrient::Clear();
+            NodeTransform::Clear();
         }
 
         const bool ChildNodeIsEmpty()const
