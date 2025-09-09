@@ -229,7 +229,7 @@ class RenderCollector;
 struct CameraInfo;
 struct Camera;
 
-class Renderer;
+class SceneRenderer;
 
 enum class SharingMode
 {

@@ -3,7 +3,7 @@
 #include<hgl/type/object/TickObject.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/MaterialLibrary.h>
-#include<hgl/graph/Renderer.h>
+#include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/Time.h>
 //#include<iostream>
@@ -51,8 +51,8 @@ namespace hgl
 
         //以下数据均取自RenderFramework
 
-        graph::Scene *          scene   =nullptr;           //场景
-        graph::Renderer *       renderer=nullptr;           //渲染器
+        graph::Scene *          scene           =nullptr;           //场景
+        graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
 
     public:
 
@@ -62,12 +62,12 @@ namespace hgl
         graph::TextureManager *     GetTextureManager   (){return render_framework->GetTextureManager();}
         graph::BufferManager *      GetBufferManager    (){return render_framework->GetBufferManager();}
 
-        const VkExtent2D &          GetExtent           (){return renderer->GetExtent();}
+        const VkExtent2D &          GetExtent           (){return scene_renderer->GetExtent();}
 
         graph::Scene *              GetScene            (){return scene;}
         graph::SceneNode *          GetSceneRoot        (){return scene->GetRootNode();}
-        graph::Renderer *           GetRenderer         (){return renderer;}
-        graph::Camera *             GetCamera           (){return renderer->GetCamera();}
+        graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
+        graph::Camera *             GetCamera           (){return scene_renderer->GetCamera();}
         graph::CameraControl *      GetCameraControl    (){return render_framework->GetDefaultCameraControl();}
 
         bool                        GetMouseCoord       (Vector2i *mc)const{return render_framework->GetMouseCoord(mc);}
@@ -82,12 +82,12 @@ namespace hgl
 
     public:
 
-        WorkObject(graph::RenderFramework *,graph::Renderer *r=nullptr);
+        WorkObject(graph::RenderFramework *,graph::SceneRenderer *r=nullptr);
         virtual ~WorkObject()=default;
 
         virtual bool Init()=0;
 
-        virtual void OnRendererChange(graph::RenderFramework *rf,graph::Renderer *r);
+        virtual void OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r);
         
         virtual void OnResize(const VkExtent2D &){}
 

@@ -12,9 +12,8 @@
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/camera/CameraControl.h>
-#include<hgl/graph/Renderer.h>
+#include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/PrimitiveCreater.h>
-#include<hgl/graph/mtl/MaterialLibrary.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/component/CreateComponentInfo.h>
 
@@ -39,16 +38,16 @@ class BufferManager;
 class RenderModule;
 
 class Scene;
-class Renderer;
+class SceneRenderer;
 
 class CameraComponentManager{/*现阶段测试使用*/};
 class LightComponentManager{/*现阶段测试使用*/};
 
 struct RenderWorkspace
 {
-    Scene *         scene       =nullptr;
-    Camera *        camera      =nullptr;
-    Renderer *      renderer    =nullptr;
+    Scene *         scene           =nullptr;
+    Camera *        camera          =nullptr;
+    SceneRenderer * scene_renderer  =nullptr;
 };
 
 class RenderFramework:public io::WindowEvent
@@ -86,11 +85,11 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
     Scene *                 default_scene           =nullptr;
     Camera *                default_camera          =nullptr;
     CameraControl *         default_camera_control  =nullptr;
-    Renderer *              default_renderer        =nullptr;
+    SceneRenderer *         default_scene_renderer  =nullptr;
 
     void OnChangeDefaultScene(Scene *);
 
-    void CreateDefaultRenderer();
+    void CreateDefaultSceneRenderer();
 
 protected:  //EventDispatcher
 
@@ -126,9 +125,9 @@ public:
     Scene *                 GetDefaultScene         (){return default_scene;}
     Camera *                GetDefaultCamera        (){return default_camera;}
     CameraControl *         GetDefaultCameraControl (){return default_camera_control;}
-    Renderer *              GetDefaultRenderer      (){return default_renderer;}
+    SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
 
-    RenderPass *            GetDefaultRenderPass    (){return default_renderer->GetRenderPass();}
+    RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}
 
 public:
 

@@ -13,9 +13,9 @@ namespace hgl::graph
     using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
 
     /**
-    * 渲染器
+    * 场景渲染器
     */
-    class Renderer
+    class SceneRenderer
     {
         IRenderTarget *render_target;
         Scene *scene;
@@ -42,8 +42,8 @@ namespace hgl::graph
 
     public:
 
-        Renderer(IRenderTarget *);
-        virtual ~Renderer();
+        SceneRenderer(IRenderTarget *);
+        virtual ~SceneRenderer();
 
         bool SetRenderTarget(IRenderTarget *);
         void SetScene(Scene *);
@@ -53,5 +53,5 @@ namespace hgl::graph
 
         bool RenderFrame();                                                                 ///<重新重成这一帧的CommandList
         bool Submit();                                                                      ///<提交CommandList到GPU
-    };//class Renderer
+    };//class SceneRenderer
 }//namespace hgl::graph

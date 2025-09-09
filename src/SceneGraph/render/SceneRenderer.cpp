@@ -1,4 +1,4 @@
-#include<hgl/graph/Renderer.h>
+#include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
@@ -6,7 +6,7 @@
 
 namespace hgl::graph
 {
-    Renderer::Renderer(IRenderTarget *rt)
+    SceneRenderer::SceneRenderer(IRenderTarget *rt)
     {
         render_target=rt;
         scene=nullptr;
@@ -17,12 +17,12 @@ namespace hgl::graph
         clear_color.Set(0,0,0,1);
     }
 
-    Renderer::~Renderer()
+    SceneRenderer::~SceneRenderer()
     {
         delete render_task;
     }
 
-    bool Renderer::SetRenderTarget(IRenderTarget *rt)
+    bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
     {
         if(render_target==rt)
             return(true);
@@ -43,7 +43,7 @@ namespace hgl::graph
         return(true);
     }
 
-    void Renderer::SetScene(Scene *sw)
+    void SceneRenderer::SetScene(Scene *sw)
     {
         if(scene==sw)
             return;
@@ -61,7 +61,7 @@ namespace hgl::graph
         //}
     }
 
-    void Renderer::SetCameraControl(CameraControl *cc)
+    void SceneRenderer::SetCameraControl(CameraControl *cc)
     {
         if(!scene||!cc)
             return;
@@ -87,7 +87,7 @@ namespace hgl::graph
         render_task->SetCameraInfo(camera_control->GetCameraInfo());
     }
 
-    bool Renderer::RenderFrame()
+    bool SceneRenderer::RenderFrame()
     {
         if(!scene)
             return(false);
@@ -136,7 +136,7 @@ namespace hgl::graph
         return(result);
     }
 
-    bool Renderer::Submit()
+    bool SceneRenderer::Submit()
     {
         if(!render_target)
             return(false);

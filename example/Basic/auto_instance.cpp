@@ -94,7 +94,7 @@ public:
 
     bool Init() override
     {
-        GetRenderer()->SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
+        GetSceneRenderer()->SetClearColor(Color4f(0.2f,0.2f,0.2f,1.0f));
 
         if(!InitMaterial())
             return(false);
