@@ -68,8 +68,8 @@ private:
 
                 MaterialInstance *      mi;
 
-        const   MeshDataBuffer *   pdb;
-        const   MeshRenderData *   prd;
+        const   MeshDataBuffer *        mesh_data_buffer;
+        const   MeshRenderData *        mesh_render_data;
 
     public:
 
@@ -80,8 +80,8 @@ private:
     IndirectDrawIndexedBuffer *icb_draw_indexed;
 
     void ReallocICB();
-    void WriteICB(VkDrawIndirectCommand *,DrawBatch *ri);
-    void WriteICB(VkDrawIndexedIndirectCommand *,DrawBatch *ri);
+    void WriteICB(VkDrawIndirectCommand *,DrawBatch *);
+    void WriteICB(VkDrawIndexedIndirectCommand *,DrawBatch *);
 
     DataArray<DrawBatch> draw_batches;
     uint draw_batches_count;

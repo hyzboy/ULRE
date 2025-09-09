@@ -15,7 +15,7 @@ namespace hgl
         {
             uint            index;                          ///<在PipelineMaterialBatch中的索引
 
-            MeshComponent * sm_component;                   ///<静态网格组件
+            MeshComponent * mesh_component;                 ///<静态网格组件
 
             uint32          l2w_version;
             uint32          l2w_index;

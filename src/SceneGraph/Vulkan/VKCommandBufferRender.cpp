@@ -149,22 +149,22 @@ void RenderCmdBuffer::BindIBO(IndexBuffer *ibo,const VkDeviceSize byte_offset)
                          VkIndexType(ibo->GetType()));
 }
 
-bool RenderCmdBuffer::BindDataBuffer(const MeshDataBuffer *pdb)
+bool RenderCmdBuffer::BindDataBuffer(const MeshDataBuffer *mesh_data_buffer)
 {
-    if(!pdb)
+    if(!mesh_data_buffer)
         return(false);
 
-    if(pdb->vab_count<=0)
+    if(mesh_data_buffer->vab_count<=0)
         return(false);
 
     vkCmdBindVertexBuffers(cmd_buf,
                            0,               //first binding
-                           pdb->vab_count,
-                           pdb->vab_list,
-                           pdb->vab_offset);        //vab byte offsets
+                           mesh_data_buffer->vab_count,
+                           mesh_data_buffer->vab_list,
+                           mesh_data_buffer->vab_offset);        //vab byte offsets
 
-    if(pdb->ibo)
-        BindIBO(pdb->ibo);
+    if(mesh_data_buffer->ibo)
+        BindIBO(mesh_data_buffer->ibo);
 
     return(true);
 }
@@ -193,23 +193,23 @@ void RenderCmdBuffer::DrawIndexedIndirect(  VkBuffer        buffer,
         vkCmdDrawIndexedIndirect(cmd_buf,buffer,offset+i*stride,1,stride);
 }
 
-void RenderCmdBuffer::Draw(const MeshDataBuffer *pdb,const MeshRenderData *prd,const uint32_t instance_count,const uint32_t first_instance)
+void RenderCmdBuffer::Draw(const MeshDataBuffer *mesh_data_buffer,const MeshRenderData *mesh_render_data,const uint32_t instance_count,const uint32_t first_instance)
 {
-    if(!pdb||!prd)
+    if(!mesh_data_buffer||!mesh_render_data)
         return;
 
-    if (pdb->ibo)
+    if (mesh_data_buffer->ibo)
         vkCmdDrawIndexed(   cmd_buf,
-                            prd->index_count,
+                            mesh_render_data->index_count,
                             instance_count,
-                            prd->first_index,
-                            prd->vertex_offset, //这里的vertexOffset是针对所有VAB的
+                            mesh_render_data->first_index,
+                            mesh_render_data->vertex_offset, //这里的vertexOffset是针对所有VAB的
                             first_instance);    //这里的first_instance针对的是instance Rate更新的VAB的起始实例数，不是指instance批量渲染
     else
         vkCmdDraw(          cmd_buf,
-                            prd->vertex_count,
+                            mesh_render_data->vertex_count,
                             instance_count,
-                            prd->vertex_offset,
+                            mesh_render_data->vertex_offset,
                             first_instance);
 }
 

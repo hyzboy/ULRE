@@ -76,7 +76,7 @@ void RenderAssignBuffer::StatL2W(const DrawNodeList &draw_nodes)
 
     for(int i=0;i<draw_nodes.GetCount();i++)
     {
-        *l2wp=rn->sm_component->GetLocalToWorldMatrix();
+        *l2wp=rn->mesh_component->GetLocalToWorldMatrix();
         ++l2wp;
         ++rn;
     }
@@ -100,7 +100,7 @@ void RenderAssignBuffer::UpdateLocalToWorld(const DrawNodePointerList &rnp_list,
 
     for(uint i=0;i<count;i++)
     {
-        l2wp[(*rn)->l2w_index-first]=(*rn)->sm_component->GetLocalToWorldMatrix();
+        l2wp[(*rn)->l2w_index-first]=(*rn)->mesh_component->GetLocalToWorldMatrix();
 
         ++rn;
     }
@@ -115,7 +115,7 @@ void RenderAssignBuffer::UpdateMaterialInstanceData(const DrawNode *rn)
 
     AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map(sizeof(AssignData)*rn->index,sizeof(AssignData)));
 
-    adp->mi=mi_set.Find(rn->sm_component->GetMaterialInstance());
+    adp->mi=mi_set.Find(rn->mesh_component->GetMaterialInstance());
 
     assign_vab->Unmap();
 }
@@ -155,7 +155,7 @@ void RenderAssignBuffer::StatMI(const DrawNodeList &draw_nodes)
     mi_set.Reserve(draw_nodes.GetCount());
 
     for(DrawNode &rn:draw_nodes)
-        mi_set.Add(rn.sm_component->GetMaterialInstance());
+        mi_set.Add(rn.mesh_component->GetMaterialInstance());
 
     if(mi_set.GetCount()>material->GetMIMaxCount())
     {
@@ -223,7 +223,7 @@ void RenderAssignBuffer::WriteNode(const DrawNodeList &draw_nodes)
             rn->l2w_index=i;
 
             adp->l2w=i;
-            adp->mi=mi_set.Find(rn->sm_component->GetMaterialInstance());
+            adp->mi=mi_set.Find(rn->mesh_component->GetMaterialInstance());
             ++adp;
 
             ++rn;

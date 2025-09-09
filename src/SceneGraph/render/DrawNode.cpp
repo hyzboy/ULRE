@@ -26,8 +26,8 @@ const int DrawNode::compare(const DrawNode &other)const
 
     //RectScope2i screen_tile;
 
-    hgl::graph::Mesh *ri_one=other.sm_component->GetMesh();
-    hgl::graph::Mesh *ri_two=sm_component->GetMesh();
+    hgl::graph::Mesh *ri_one=other.mesh_component->GetMesh();
+    hgl::graph::Mesh *ri_two=mesh_component->GetMesh();
 
     auto *prim_one=ri_one->GetPrimitive();
     auto *prim_two=ri_two->GetPrimitive();
@@ -84,15 +84,15 @@ const int DrawNode::compare(const DrawNode &other)const
 
 Mesh *DrawNode::GetMesh()const
 {
-    return sm_component?sm_component->GetMesh():nullptr;
+    return mesh_component?mesh_component->GetMesh():nullptr;
 }
 
 MaterialInstance *DrawNode::GetMaterialInstance()const
 {
-    if(!sm_component)return(nullptr);
-    if(!sm_component->GetMesh())return(nullptr);
+    if(!mesh_component)return(nullptr);
+    if(!mesh_component->GetMesh())return(nullptr);
 
-    return sm_component->GetMaterialInstance();
+    return mesh_component->GetMaterialInstance();
 }
 VK_NAMESPACE_END
 
