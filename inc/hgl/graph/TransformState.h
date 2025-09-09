@@ -35,11 +35,11 @@ namespace hgl
 
         protected:
 
-            Vector3f OriginWorldPosition;       //变换前世界坐标
-            Vector3f FinalWorldPosition;        //变换后世界坐标
+            Vector3f PrevWorldPosition;         //变换前世界坐标
+            Vector3f WorldPosition;             //变换后世界坐标
 
-            Vector3f OriginWorldNormal;         //变换前世界法线
-            Vector3f FinalWorldNormal;          //变换后世界法线
+            Vector3f PrevWorldNormal;           //变换前世界法线
+            Vector3f WorldNormal;               //变换后世界法线
 
         protected:
 
@@ -56,8 +56,8 @@ namespace hgl
             const Vector3f &GetLocalNormal()const{return local_normal;}                                                 ///<取得本地法线
 
             const Matrix4f &GetLocalToWorldMatrix(){return GetNewestVersionData();}                                     ///<取得本地到世界矩阵
-            const Matrix4f &GetInverseLocalToWorldMatrix(){UpdateNewestData();return inverse_local_to_world_matrix;}    ///<取得世界到本地矩阵
-            const Matrix4f &GetInverseTransposeLocalToWorldMatrix()                                                     ///<取得世界到本地矩阵的转置矩阵
+            const Matrix4f &GetWorldToLocalMatrix(){UpdateNewestData();return inverse_local_to_world_matrix;}           ///<取得世界到本地矩阵
+            const Matrix4f &GetNormalMatrix()                                                                           ///<取得世界到本地矩阵的转置矩阵
             {
                 UpdateNewestData();
                 return inverse_transpose_local_to_world_matrix;
@@ -65,8 +65,8 @@ namespace hgl
 
             TransformManager &GetTransform(){return transform_manager;}                                                 ///<取得变换管理器
 
-            const Vector3f &GetWorldPosition()const{return FinalWorldPosition;}                                         ///<取得世界坐标
-            const Vector3f &GetWorldNormal()const { return FinalWorldNormal; }                                          ///<取得世界法线
+            const Vector3f &GetWorldPosition()const{return WorldPosition;}                                              ///<取得世界坐标
+            const Vector3f &GetWorldNormal()const { return WorldNormal; }                                               ///<取得世界法线
 
         public:
 

@@ -64,7 +64,7 @@ void MaterialRenderList::Add(MeshComponent *smc)
 
     rn.sm_component     =smc;
 
-    rn.l2w_version      =smc->GetLocalToWorldMatrixVersion();
+    rn.l2w_version      =smc->GetTransformVersion();
     rn.l2w_index        =0;
 
     rn.world_position   =smc->GetWorldPosition();
@@ -110,7 +110,7 @@ void MaterialRenderList::UpdateLocalToWorld()
 
     for(int i=0;i<node_count;i++)
     {
-        l2w_version=rn->sm_component->GetLocalToWorldMatrixVersion();
+        l2w_version=rn->sm_component->GetTransformVersion();
 
         if(rn->l2w_version!=l2w_version)       //版本不对，需要更新
         {
