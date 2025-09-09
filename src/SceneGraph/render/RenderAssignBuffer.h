@@ -92,7 +92,7 @@ public:
 
     void WriteNode(const DrawNodeList &);
 
-    void UpdateLocalToWorld(const DrawNodePointerList &,const int first,const int last);
+    void UpdateTransformData(const DrawNodePointerList &,const int first,const int last);
     void UpdateMaterialInstanceData(const DrawNode *);
 };//struct RenderAssignBuffer
 VK_NAMESPACE_END

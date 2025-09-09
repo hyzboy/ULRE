@@ -133,7 +133,7 @@ void PipelineMaterialBatch::UpdateTransformData()
 
     if(update_count>0)
     {
-        assign_buffer->UpdateLocalToWorld(transform_dirty_nodes,first,last);
+        assign_buffer->UpdateTransformData(transform_dirty_nodes,first,last);
         transform_dirty_nodes.Clear();
     }
 }

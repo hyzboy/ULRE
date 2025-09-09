@@ -32,7 +32,7 @@ public:
             it->value->Render(rcb);
     }
 
-    void UpdateLocalToWorld()
+    void UpdateTransformData()
     {
         for(auto *it:data_list)
             it->value->UpdateTransformData();
