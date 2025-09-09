@@ -12,15 +12,15 @@
 
 namespace hgl
 {
-    WorkObject::WorkObject(graph::RenderFramework *rf,graph::Renderer *r)
+    WorkObject::WorkObject(graph::RenderFramework *rf,graph::SceneRenderer *r)
     {
         if(!r)
-            renderer=rf->GetDefaultRenderer();
+            scene_renderer=rf->GetDefaultSceneRenderer();
 
-        OnRendererChange(rf,renderer);
+        OnSceneRendererChange(rf,scene_renderer);
     }
 
-    void WorkObject::OnRendererChange(graph::RenderFramework *rf,graph::Renderer *r)
+    void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r)
     {
         if(!rf)
         {
@@ -35,14 +35,14 @@ namespace hgl
         render_framework=rf;
 
         scene=rf->GetDefaultScene();
-        renderer=rf->GetDefaultRenderer();
+        scene_renderer=rf->GetDefaultSceneRenderer();
     }
 
     void WorkObject::Render(double delta_time)
     {
-        if(!renderer)
+        if(!scene_renderer)
         {
-            //std::cerr<<"WorkObject::Render,renderer=nullptr"<<std::endl;
+            //std::cerr<<"WorkObject::Render,scene_renderer=nullptr"<<std::endl;
             return;
         }
 
@@ -50,12 +50,12 @@ namespace hgl
 
         if(render_dirty)
         {
-            renderer->RenderFrame();
+            scene_renderer->RenderFrame();
 
             render_dirty=false;
         }
 
-        renderer->Submit();
+        scene_renderer->Submit();
 
         //std::cout<<"WorkObject::Render End"<<std::endl;
     }

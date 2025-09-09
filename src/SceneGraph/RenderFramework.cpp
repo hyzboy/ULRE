@@ -15,7 +15,7 @@
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/camera/FirstPersonCameraControl.h>
-#include<hgl/graph/Renderer.h>
+#include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/log/Logger.h>
@@ -60,7 +60,7 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
-    SAFE_CLEAR(default_renderer)
+    SAFE_CLEAR(default_render_manager)
     SAFE_CLEAR(default_camera_control)
     SAFE_CLEAR(default_camera)
     SAFE_CLEAR(default_scene)
@@ -158,7 +158,7 @@ bool RenderFramework::Init(uint w,uint h)
 
     default_camera=new Camera();
 
-    CreateDefaultRenderer();
+    CreateDefaultSceneRenderer();
 
     return(true);
 }
@@ -181,14 +181,14 @@ void RenderFramework::OnChangeDefaultScene(Scene *s)
     default_scene=s;
 }
 
-void RenderFramework::CreateDefaultRenderer()
+void RenderFramework::CreateDefaultSceneRenderer()
 {
-    SAFE_CLEAR(default_renderer)
+    SAFE_CLEAR(default_render_manager)
 
     IRenderTarget *rt=GetSwapchainRenderTarget();
 
-    default_renderer=new Renderer(rt);
-    default_renderer->SetScene(default_scene);
+    default_render_manager=new SceneRenderer(rt);
+    default_render_manager->SetScene(default_scene);
 
     if(!default_camera_control)
     {
@@ -209,7 +209,7 @@ void RenderFramework::CreateDefaultRenderer()
         mouse_event=cmc;
     }
 
-    default_renderer->SetCameraControl(default_camera_control);
+    default_render_manager->SetCameraControl(default_camera_control);
 }
 
 void RenderFramework::OnResize(uint w,uint h)
@@ -218,7 +218,7 @@ void RenderFramework::OnResize(uint w,uint h)
 
     sc_module->OnResize(ext);        //其实swapchain_module并不需要传递尺寸数据过去
 
-    CreateDefaultRenderer();
+    CreateDefaultSceneRenderer();
 }
 
 void RenderFramework::OnActive(bool)

@@ -130,8 +130,8 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/DrawNode.h
                         ${SG_INCLUDE_PATH}/MaterialRenderMap.h
 #                        ${SG_INCLUDE_PATH}/ShadowPolicy.h
                         ${SG_INCLUDE_PATH}/RenderTask.h
-                        ${SG_INCLUDE_PATH}/Renderer.h
-                        render/Renderer.cpp
+                        ${SG_INCLUDE_PATH}/SceneRenderer.h
+                        render/SceneRenderer.cpp
                         render/DrawNode.cpp
                         render/RenderTask.cpp
                         render/RenderCollector.cpp
