@@ -18,7 +18,7 @@ namespace hgl
             UpdateVersion();
         }
 
-        void TransformState::Clear()
+        void TransformState::Reset()
         {
             parent_matrix=Identity4f;
             local_matrix=Identity4f;

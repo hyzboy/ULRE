@@ -20,9 +20,9 @@ namespace hgl::graph
         NodeTransform(const Matrix4f &);
         virtual ~NodeTransform()=default;
 
-        virtual void Clear()
+        virtual void Reset()
         {
-            transform_state.Clear();
+            transform_state.Reset();
         }
 
         void SetTransformState (const TransformState &sm){transform_state=sm;}                                                 ///<设置场景矩阵

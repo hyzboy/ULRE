@@ -115,7 +115,7 @@ namespace hgl::graph
             return node;
         }
 
-        void Clear() override
+        void Reset() override
         {
             SetParent(nullptr); //清除父节点
 
@@ -125,7 +125,7 @@ namespace hgl::graph
             child_nodes.Clear();
             component_set.Clear();
 
-            NodeTransform::Clear();
+            NodeTransform::Reset();
         }
 
         const bool ChildNodeIsEmpty()const

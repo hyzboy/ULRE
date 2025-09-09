@@ -50,7 +50,7 @@ namespace hgl
 
         public:
 
-            void Clear();
+            void Reset();
 
             const Matrix4f &GetLocalMatrix()const{return local_matrix;}                                                 ///<取得本地矩阵
             const Vector3f &GetLocalNormal()const{return local_normal;}                                                 ///<取得本地法线
@@ -70,7 +70,7 @@ namespace hgl
 
         public:
 
-            TransformState():VersionData(Identity4f){Clear();}
+            TransformState():VersionData(Identity4f){Reset();}
             TransformState(TransformState &so);
             TransformState(const Matrix4f &mat):VersionData(Identity4f)
             {
