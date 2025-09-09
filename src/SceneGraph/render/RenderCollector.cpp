@@ -19,7 +19,7 @@ namespace hgl
             camera_info=nullptr;
         }
 
-        bool RenderCollector::ExpendNode(SceneNode *sn)
+        bool RenderCollector::ExpandNode(SceneNode *sn)
         {
             if(!sn)return(false);
 
@@ -50,17 +50,17 @@ namespace hgl
             }
 
             for(SceneNode *sub:sn->GetChildNode())
-                ExpendNode(sub);
+                ExpandNode(sub);
 
             return(true);
         }
 
-        bool RenderCollector::Expend(SceneNode *sn)
+        bool RenderCollector::Expand(SceneNode *sn)
         {
             if(!device|!sn)return(false);
 
             mrl_map.Begin(camera_info);
-            ExpendNode(sn);
+            ExpandNode(sn);
             mrl_map.End();
 
             return(true);
