@@ -69,8 +69,8 @@ namespace hgl::graph
             render_collector->SetCameraInfo(camera_info);
 
         //记往不需要，也千万不要手动render_list->Clear，因为那会释放内存。再次使用时重新分配
-        //render_collector->Expend会自己复位所有数据，且并不会释放内存
-        render_collector->Expend(root);
+        //render_collector->Expand会自己复位所有数据，且并不会释放内存
+        render_collector->Expand(root);
 
         return(true);
     }

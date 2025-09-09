@@ -24,7 +24,7 @@ namespace hgl::graph
 
     protected:
 
-        virtual bool ExpendNode(SceneNode *);
+        virtual bool ExpandNode(SceneNode *);
 
     public:
 
@@ -36,7 +36,7 @@ namespace hgl::graph
         virtual ~RenderCollector()=default;
             
         virtual void SetCameraInfo(CameraInfo *ci){camera_info=ci;}             ///<设置相机信息
-        virtual bool Expend(SceneNode *);                                       ///<展开场景树到渲染列表
+        virtual bool Expand(SceneNode *);                                       ///<展开场景树到渲染列表
 
                 bool IsEmpty()const{return !renderable_count;}                  ///<是否是空的
 
