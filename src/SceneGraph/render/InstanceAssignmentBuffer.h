@@ -29,7 +29,7 @@ class MaterialInstance;
 /*
 * 渲染节点额外提供的数据
 */
-class RenderAssignBuffer
+class InstanceAssignmentBuffer
 {
     struct AssignData
     {
@@ -37,7 +37,7 @@ class RenderAssignBuffer
         uint16 mi;
     };
 
-    uint LW2_MAX_COUNT;
+    uint MaxTransformCount;
 
 private:
 
@@ -47,8 +47,8 @@ private:
 
 private:    //LocalToWorld矩阵数据
 
-    uint32 l2w_buffer_max_count;        ///<LocalToWorld矩阵最大数量
-    DeviceBuffer *l2w_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
+    uint32 transform_buffer_max_count;        ///<LocalToWorld矩阵最大数量
+    DeviceBuffer *transform_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
 
     void StatL2W(const DrawNodeList &);
 
@@ -80,8 +80,8 @@ public:
 
 public:
 
-    RenderAssignBuffer(VulkanDevice *dev,Material *);
-    ~RenderAssignBuffer(){Clear();}
+    InstanceAssignmentBuffer(VulkanDevice *dev,Material *);
+    ~InstanceAssignmentBuffer(){Clear();}
 
     //下一代，将MaterialInstanceSets使用提前化，这样不用每一次绘制都重新写入MI DATA，可以提升效率。
     //虽然这样就不自动化了，但我们要的就是不自动化。
@@ -94,5 +94,5 @@ public:
 
     void UpdateTransformData(const DrawNodePointerList &,const int first,const int last);
     void UpdateMaterialInstanceData(const DrawNode *);
-};//struct RenderAssignBuffer
+};//struct InstanceAssignmentBuffer
 VK_NAMESPACE_END

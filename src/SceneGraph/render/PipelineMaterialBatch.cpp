@@ -5,7 +5,7 @@
 #include<hgl/graph/VKVertexInput.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/util/sort/Sort.h>
-#include"RenderAssignBuffer.h"
+#include"InstanceAssignmentBuffer.h"
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/CameraInfo.h>
 #include<hgl/component/MeshComponent.h>
@@ -22,7 +22,7 @@ PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d,bool l2w,const Pipe
     if(rpi.material->hasLocalToWorld()
      ||rpi.material->hasMI())
     {
-        assign_buffer=new RenderAssignBuffer(device,pm_index.material);
+        assign_buffer=new InstanceAssignmentBuffer(device,pm_index.material);
     }
     else
     {
@@ -64,8 +64,8 @@ void PipelineMaterialBatch::Add(MeshComponent *mesh_component)
 
     node.mesh_component   =mesh_component;
 
-    node.l2w_version      =mesh_component->GetTransformVersion();
-    node.l2w_index        =0;
+    node.transform_version=mesh_component->GetTransformVersion();
+    node.transform_index  =0;
 
     node.world_position   =mesh_component->GetWorldPosition();
 
@@ -105,23 +105,23 @@ void PipelineMaterialBatch::UpdateTransformData()
 
     int first=-1,last=-1;
     int update_count=0;
-    uint32 l2w_version=0;
+    uint32 transform_version=0;
     DrawNode *node=draw_nodes.GetData();
 
     for(int i=0;i<node_count;i++)
     {
-        l2w_version=node->mesh_component->GetTransformVersion();
+        transform_version=node->mesh_component->GetTransformVersion();
 
-        if(node->l2w_version!=l2w_version)       //版本不对，需要更新
+        if(node->transform_version!=transform_version)       //版本不对，需要更新
         {
             if(first==-1)
             {
-                first=node->l2w_index;
+                first=node->transform_index;
             }
             
-            last=node->l2w_index;
+            last=node->transform_index;
 
-            node->l2w_version=l2w_version;
+            node->transform_version=transform_version;
 
             transform_dirty_nodes.Add(node);
 
@@ -164,7 +164,6 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_compo
 
 void PipelineMaterialBatch::DrawBatch::Set(Mesh *mesh)
 {
-    mi              =mesh->GetMaterialInstance();
     mesh_data_buffer=mesh->GetDataBuffer();
     mesh_render_data=mesh->GetRenderData();
 }
@@ -286,7 +285,7 @@ void PipelineMaterialBatch::BuildBatches()
 bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 {
     const MeshDataBuffer *  mesh_data_buffer=batch->mesh_data_buffer;
-    const uint              ri_index        =batch->first_instance;
+//    const uint              ri_index        =batch->first_instance;
 
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 

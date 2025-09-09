@@ -60,7 +60,7 @@ RenderFramework::RenderFramework(const OSString &an)
 
 RenderFramework::~RenderFramework()
 {
-    SAFE_CLEAR(default_render_manager)
+    SAFE_CLEAR(default_scene_renderer)
     SAFE_CLEAR(default_camera_control)
     SAFE_CLEAR(default_camera)
     SAFE_CLEAR(default_scene)
@@ -183,12 +183,12 @@ void RenderFramework::OnChangeDefaultScene(Scene *s)
 
 void RenderFramework::CreateDefaultSceneRenderer()
 {
-    SAFE_CLEAR(default_render_manager)
+    SAFE_CLEAR(default_scene_renderer)
 
     IRenderTarget *rt=GetSwapchainRenderTarget();
 
-    default_render_manager=new SceneRenderer(rt);
-    default_render_manager->SetScene(default_scene);
+    default_scene_renderer=new SceneRenderer(rt);
+    default_scene_renderer->SetScene(default_scene);
 
     if(!default_camera_control)
     {
@@ -209,7 +209,7 @@ void RenderFramework::CreateDefaultSceneRenderer()
         mouse_event=cmc;
     }
 
-    default_render_manager->SetCameraControl(default_camera_control);
+    default_scene_renderer->SetCameraControl(default_camera_control);
 }
 
 void RenderFramework::OnResize(uint w,uint h)

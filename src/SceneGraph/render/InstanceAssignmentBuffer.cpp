@@ -1,4 +1,4 @@
-﻿#include"RenderAssignBuffer.h"
+﻿#include"InstanceAssignmentBuffer.h"
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
@@ -10,7 +10,7 @@
 #include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
-RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)
+InstanceAssignmentBuffer::InstanceAssignmentBuffer(VulkanDevice *dev,Material *mtl)
 {
     device=dev;
 
@@ -18,10 +18,10 @@ RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)
 
     mi_data_bytes=mtl->GetMIDataBytes();
 
-    LW2_MAX_COUNT=dev->GetUBORange()/sizeof(Matrix4f);
+    MaxTransformCount=dev->GetUBORange()/sizeof(Matrix4f);
 
-    l2w_buffer_max_count=0;
-    l2w_buffer=nullptr;
+    transform_buffer_max_count=0;
+    transform_buffer=nullptr;
     mi_buffer=nullptr;
 
     node_count=0;
@@ -29,50 +29,50 @@ RenderAssignBuffer::RenderAssignBuffer(VulkanDevice *dev,Material *mtl)
     assign_buffer=nullptr;
 }
 
-void RenderAssignBuffer::Bind(Material *mtl)const
+void InstanceAssignmentBuffer::Bind(Material *mtl)const
 {
     if(!mtl)return;
 
-    mtl->BindUBO(&mtl::SBS_LocalToWorld,     l2w_buffer);
+    mtl->BindUBO(&mtl::SBS_LocalToWorld,     transform_buffer);
     mtl->BindUBO(&mtl::SBS_MaterialInstance, mi_buffer);
 }
 
-void RenderAssignBuffer::Clear()
+void InstanceAssignmentBuffer::Clear()
 {
-    SAFE_CLEAR(l2w_buffer);
+    SAFE_CLEAR(transform_buffer);
     SAFE_CLEAR(mi_buffer);
     SAFE_CLEAR(assign_vab);
 }
 
-void RenderAssignBuffer::StatL2W(const DrawNodeList &draw_nodes)
+void InstanceAssignmentBuffer::StatL2W(const DrawNodeList &draw_nodes)
 {
-    if(!l2w_buffer)
+    if(!transform_buffer)
     {
-        l2w_buffer_max_count=power_to_2(draw_nodes.GetCount());
+        transform_buffer_max_count=power_to_2(draw_nodes.GetCount());
     }
-    else if(draw_nodes.GetCount()>l2w_buffer_max_count)
+    else if(draw_nodes.GetCount()>transform_buffer_max_count)
     {
-        l2w_buffer_max_count=power_to_2(draw_nodes.GetCount());
-        SAFE_CLEAR(l2w_buffer);
+        transform_buffer_max_count=power_to_2(draw_nodes.GetCount());
+        SAFE_CLEAR(transform_buffer);
     }
 
-    if(!l2w_buffer)
+    if(!transform_buffer)
     {
-        l2w_buffer=device->CreateUBO(sizeof(Matrix4f)*l2w_buffer_max_count);
+        transform_buffer=device->CreateUBO(sizeof(Matrix4f)*transform_buffer_max_count);
         
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
         
         if(du)
         {
-            du->SetBuffer(l2w_buffer->GetBuffer(),"UBO:Buffer:LocalToWorld");
-            du->SetDeviceMemory(l2w_buffer->GetVkMemory(),"UBO:Memory:LocalToWorld");
+            du->SetBuffer(transform_buffer->GetBuffer(),"UBO:Buffer:LocalToWorld");
+            du->SetDeviceMemory(transform_buffer->GetVkMemory(),"UBO:Memory:LocalToWorld");
         }
     #endif//_DEBUG
     }
 
     DrawNode *rn=draw_nodes.GetData();
-    Matrix4f *l2wp=(Matrix4f *)(l2w_buffer->DeviceBuffer::Map());
+    Matrix4f *l2wp=(Matrix4f *)(transform_buffer->DeviceBuffer::Map());
 
     for(int i=0;i<draw_nodes.GetCount();i++)
     {
@@ -81,12 +81,12 @@ void RenderAssignBuffer::StatL2W(const DrawNodeList &draw_nodes)
         ++rn;
     }
 
-    l2w_buffer->Unmap();
+    transform_buffer->Unmap();
 }
 
-void RenderAssignBuffer::UpdateTransformData(const DrawNodePointerList &rnp_list,const int first,const int last)
+void InstanceAssignmentBuffer::UpdateTransformData(const DrawNodePointerList &rnp_list,const int first,const int last)
 {
-    if(!l2w_buffer)
+    if(!transform_buffer)
         return;
 
     if(rnp_list.IsEmpty())
@@ -95,20 +95,20 @@ void RenderAssignBuffer::UpdateTransformData(const DrawNodePointerList &rnp_list
     const uint count=rnp_list.GetCount();
 
     DrawNode **rn=rnp_list.GetData();
-    Matrix4f *l2wp=(Matrix4f *)(l2w_buffer->DeviceBuffer::Map(  sizeof(Matrix4f)*first,
+    Matrix4f *l2wp=(Matrix4f *)(transform_buffer->DeviceBuffer::Map(  sizeof(Matrix4f)*first,
                                                                 sizeof(Matrix4f)*(last-first+1)));
 
     for(uint i=0;i<count;i++)
     {
-        l2wp[(*rn)->l2w_index-first]=(*rn)->mesh_component->GetLocalToWorldMatrix();
+        l2wp[(*rn)->transform_index-first]=(*rn)->mesh_component->GetLocalToWorldMatrix();
 
         ++rn;
     }
 
-    l2w_buffer->Unmap();
+    transform_buffer->Unmap();
 }
 
-void RenderAssignBuffer::UpdateMaterialInstanceData(const DrawNode *rn)
+void InstanceAssignmentBuffer::UpdateMaterialInstanceData(const DrawNode *rn)
 {
     if(!rn)
         return;
@@ -120,7 +120,7 @@ void RenderAssignBuffer::UpdateMaterialInstanceData(const DrawNode *rn)
     assign_vab->Unmap();
 }
 
-void RenderAssignBuffer::StatMI(const DrawNodeList &draw_nodes)
+void InstanceAssignmentBuffer::StatMI(const DrawNodeList &draw_nodes)
 {
     mi_set.Clear();
 
@@ -176,7 +176,7 @@ void RenderAssignBuffer::StatMI(const DrawNodeList &draw_nodes)
     }
 }
 
-void RenderAssignBuffer::WriteNode(const DrawNodeList &draw_nodes)
+void InstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
 {
     if(draw_nodes.GetCount()<=0)
         return;
@@ -220,7 +220,7 @@ void RenderAssignBuffer::WriteNode(const DrawNodeList &draw_nodes)
 
         for(uint i=0;i<draw_nodes.GetCount();i++)
         {
-            rn->l2w_index=i;
+            rn->transform_index=i;
 
             adp->l2w=i;
             adp->mi=mi_set.Find(rn->mesh_component->GetMaterialInstance());

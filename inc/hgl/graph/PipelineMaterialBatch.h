@@ -4,7 +4,7 @@
 #include<hgl/graph/VKIndirectCommandBuffer.h>
 
 VK_NAMESPACE_BEGIN
-class RenderAssignBuffer;
+class InstanceAssignmentBuffer;
 class SceneNode;
 struct CameraInfo;
 
@@ -59,14 +59,12 @@ class PipelineMaterialBatch
 
 private:
 
-    RenderAssignBuffer *assign_buffer;
+    InstanceAssignmentBuffer *assign_buffer;
 
     struct DrawBatch
     {
                 uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count;
-
-                MaterialInstance *      mi;
 
         const   MeshDataBuffer *        mesh_data_buffer;
         const   MeshRenderData *        mesh_render_data;
