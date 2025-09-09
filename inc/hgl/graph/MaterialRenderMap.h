@@ -1,8 +1,8 @@
 #pragma once
-#include<hgl/graph/MaterialRenderList.h>
+#include<hgl/graph/PipelineMaterialBatch.h>
 
 VK_NAMESPACE_BEGIN
-class MaterialRenderMap:public ObjectMap<PipelineMaterialIndex,MaterialRenderList>
+class MaterialRenderMap:public ObjectMap<PipelineMaterialIndex,PipelineMaterialBatch>
 {
 public:
 
