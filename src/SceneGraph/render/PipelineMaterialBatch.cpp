@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/MaterialRenderList.h>
+﻿#include<hgl/graph/PipelineMaterialBatch.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -11,7 +11,7 @@
 #include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
-MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi)
+PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi)
 {
     device=d;
     cmd_buf=nullptr;
@@ -44,7 +44,7 @@ MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const PipelineMa
     indirect_draw_count=0;
 }
 
-MaterialRenderList::~MaterialRenderList()
+PipelineMaterialBatch::~PipelineMaterialBatch()
 {
     SAFE_CLEAR(icb_draw_indexed)
     SAFE_CLEAR(icb_draw)
@@ -53,7 +53,7 @@ MaterialRenderList::~MaterialRenderList()
     SAFE_CLEAR(assign_buffer);
 }
 
-void MaterialRenderList::Add(MeshComponent *smc)
+void PipelineMaterialBatch::Add(MeshComponent *smc)
 {
     if(!smc)
         return;
@@ -77,7 +77,7 @@ void MaterialRenderList::Add(MeshComponent *smc)
     rn_list.Add(rn);
 }
 
-void MaterialRenderList::End()
+void PipelineMaterialBatch::End()
 {
     //排序
     Sort(rn_list.GetArray());
@@ -92,7 +92,7 @@ void MaterialRenderList::End()
         assign_buffer->WriteNode(rn_list);
 }
 
-void MaterialRenderList::UpdateLocalToWorld()
+void PipelineMaterialBatch::UpdateLocalToWorld()
 {
     if(!assign_buffer)
         return;
@@ -138,7 +138,7 @@ void MaterialRenderList::UpdateLocalToWorld()
     }
 }
 
-void MaterialRenderList::UpdateMaterialInstance(MeshComponent *smc)
+void PipelineMaterialBatch::UpdateMaterialInstance(MeshComponent *smc)
 {
     if(!smc)return;
 
@@ -162,14 +162,14 @@ void MaterialRenderList::UpdateMaterialInstance(MeshComponent *smc)
     }
 }
 
-void MaterialRenderList::RenderItem::Set(Mesh *ri)
+void PipelineMaterialBatch::RenderItem::Set(Mesh *ri)
 {
     mi      =ri->GetMaterialInstance();
     pdb     =ri->GetDataBuffer();
     prd     =ri->GetRenderData();
 }
 
-void MaterialRenderList::ReallocICB()
+void PipelineMaterialBatch::ReallocICB()
 {
     const uint32_t icb_new_count=power_to_2(rn_list.GetCount());
 
@@ -189,7 +189,7 @@ void MaterialRenderList::ReallocICB()
     icb_draw_indexed=device->CreateIndirectDrawIndexedBuffer(icb_new_count);
 }
 
-void MaterialRenderList::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
+void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
 {
     dicp->vertexCount   =ri->prd->vertex_count;
     dicp->instanceCount =ri->instance_count;
@@ -197,7 +197,7 @@ void MaterialRenderList::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
     dicp->firstInstance =ri->first_instance;
 }
 
-void MaterialRenderList::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderItem *ri)
+void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderItem *ri)
 {
     diicp->indexCount   =ri->prd->index_count;
     diicp->instanceCount=ri->instance_count;
@@ -206,7 +206,7 @@ void MaterialRenderList::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderItem
     diicp->firstInstance=ri->first_instance;
 }
 
-void MaterialRenderList::Stat()
+void PipelineMaterialBatch::Stat()
 {
     const uint count=rn_list.GetCount();
     RenderNode *rn=rn_list.GetData();
@@ -283,7 +283,7 @@ void MaterialRenderList::Stat()
     icb_draw_indexed->Unmap();
 }
 
-bool MaterialRenderList::BindVAB(const RenderItem *ri)
+bool PipelineMaterialBatch::BindVAB(const RenderItem *ri)
 {
     const MeshDataBuffer *  pdb     =ri->pdb;
     const uint              ri_index=ri->first_instance;
@@ -355,7 +355,7 @@ bool MaterialRenderList::BindVAB(const RenderItem *ri)
     return(true);
 }
 
-void MaterialRenderList::ProcIndirectRender()
+void PipelineMaterialBatch::ProcIndirectRender()
 {    
     if(last_data_buffer->ibo)
         icb_draw_indexed->DrawIndexed(*cmd_buf,first_indirect_draw_index,indirect_draw_count);
@@ -366,7 +366,7 @@ void MaterialRenderList::ProcIndirectRender()
     indirect_draw_count=0;
 }
 
-bool MaterialRenderList::Render(RenderItem *ri)
+bool PipelineMaterialBatch::Render(RenderItem *ri)
 {
     if(!last_data_buffer||*(ri->pdb)!=*last_data_buffer)        //换buf了
     {
@@ -401,7 +401,7 @@ bool MaterialRenderList::Render(RenderItem *ri)
     return(true);
 }
 
-void MaterialRenderList::Render(RenderCmdBuffer *rcb)
+void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 {
     if(!rcb)return;
     const uint count=rn_list.GetCount();

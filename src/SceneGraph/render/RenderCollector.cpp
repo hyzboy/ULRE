@@ -1,4 +1,4 @@
-﻿#include<hgl/graph/MaterialRenderList.h>
+﻿#include<hgl/graph/PipelineMaterialBatch.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VK.h>
@@ -35,11 +35,11 @@ namespace hgl
 
                 PipelineMaterialIndex rpi(smc->GetMaterial(),smc->GetPipeline());
                 
-                MaterialRenderList *mrl;
+                PipelineMaterialBatch *mrl;
 
                 if(!mrl_map.Get(rpi,mrl))
                 {
-                    mrl=new MaterialRenderList(device,true,rpi);
+                    mrl=new PipelineMaterialBatch(device,true,rpi);
 
                     mrl_map.Add(rpi,mrl);
                 }
@@ -99,7 +99,7 @@ namespace hgl
             if(!smc->CanRender())return;
 
             PipelineMaterialIndex rli(smc->GetMaterial(),smc->GetPipeline());
-            MaterialRenderList *mrl;
+            PipelineMaterialBatch *mrl;
 
             if(!mrl_map.Get(rli,mrl))        //找到对应的
                 return;

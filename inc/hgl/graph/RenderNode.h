@@ -13,7 +13,7 @@ namespace hgl
 
         struct RenderNode:public Comparator<RenderNode>
         {
-            uint            index;                          ///<在MaterialRenderList中的索引
+            uint            index;                          ///<在PipelineMaterialBatch中的索引
 
             MeshComponent * sm_component;                   ///<静态网格组件
 
@@ -28,7 +28,7 @@ namespace hgl
 
         public:
 
-            //该函数位于MaterialRenderList.cpp
+            //该函数位于PipelineMaterialBatch.cpp
             const int compare(const RenderNode &)const override;
 
         public:

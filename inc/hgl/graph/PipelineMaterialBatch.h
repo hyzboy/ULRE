@@ -44,7 +44,7 @@ public:
 /**
 * 同一材质与管线的渲染列表
 */
-class MaterialRenderList
+class PipelineMaterialBatch
 {
     VulkanDevice *device;
     RenderCmdBuffer *cmd_buf;
@@ -106,8 +106,8 @@ protected:
 
 public:
 
-    MaterialRenderList(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi);
-    ~MaterialRenderList();
+    PipelineMaterialBatch(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi);
+    ~PipelineMaterialBatch();
 
     void Add(MeshComponent *);
 
@@ -121,5 +121,5 @@ public:
 
     void UpdateLocalToWorld();          //刷新所有对象的LocalToWorld矩阵
     void UpdateMaterialInstance(MeshComponent *);
-};//class MaterialRenderList
+};//class PipelineMaterialBatch
 VK_NAMESPACE_END
