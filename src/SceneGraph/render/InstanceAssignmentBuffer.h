@@ -33,8 +33,8 @@ class InstanceAssignmentBuffer
 {
     struct AssignData
     {
-        uint16 l2w;
-        uint16 mi;
+        uint16 transform;
+        uint16 material_instance;
     };
 
     uint MaxTransformCount;
@@ -50,16 +50,16 @@ private:    //LocalToWorld矩阵数据
     uint32 transform_buffer_max_count;        ///<LocalToWorld矩阵最大数量
     DeviceBuffer *transform_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
 
-    void StatL2W(const DrawNodeList &);
+    void StatTransform(const DrawNodeList &);
 
 private:    //材质实例数据
     
     MaterialInstanceSets mi_set;
 
-    uint32_t mi_data_bytes;             ///<单个材质实例数据字节数
-    DeviceBuffer *mi_buffer;            ///<材质实例数据(UBO/SSBO)
+    uint32_t        material_instance_data_bytes;           ///<单个材质实例数据字节数
+    DeviceBuffer *  material_instance_buffer;               ///<材质实例数据(UBO/SSBO)
 
-    void StatMI(const DrawNodeList &);
+    void StatMaterialInstance(const DrawNodeList &);
     
 private:    //分发数据
 

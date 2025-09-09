@@ -131,7 +131,7 @@ namespace hgl::graph
 
         render_target->EndRender();
 
-        build_frame=result;
+        render_state_dirty=result;
 
         return(result);
     }
@@ -141,7 +141,7 @@ namespace hgl::graph
         if(!render_target)
             return(false);
 
-        if(!build_frame)
+        if(!render_state_dirty)
             return(false);
 
         return render_target->Submit();

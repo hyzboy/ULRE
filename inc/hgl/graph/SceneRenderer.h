@@ -29,7 +29,7 @@ namespace hgl::graph
 
         Color4f clear_color;                                                    ///<清屏颜色
 
-        bool build_frame=false;
+        bool render_state_dirty=false;
 
     public:
 
