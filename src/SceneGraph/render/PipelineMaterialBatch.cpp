@@ -32,7 +32,7 @@ PipelineMaterialBatch::PipelineMaterialBatch(VulkanDevice *d,bool l2w,const Pipe
     icb_draw=nullptr;
     icb_draw_indexed=nullptr;
 
-    ri_count=0;
+    draw_batches_count=0;
 
     vab_list=new VABList(pm_index.material->GetVertexInput()->GetCount());
 
@@ -60,7 +60,7 @@ void PipelineMaterialBatch::Add(MeshComponent *smc)
 
     DrawNode rn;
 
-    rn.index            =draw_node_list.GetCount();
+    rn.index            =draw_nodes.GetCount();
 
     rn.sm_component     =smc;
 
@@ -74,95 +74,95 @@ void PipelineMaterialBatch::Add(MeshComponent *smc)
     else
         rn.to_camera_distance=0;
 
-    draw_node_list.Add(rn);
+    draw_nodes.Add(rn);
 }
 
-void PipelineMaterialBatch::End()
+void PipelineMaterialBatch::Finalize()
 {
     //排序
-    Sort(draw_node_list.GetArray());
+    Sort(draw_nodes.GetArray());
 
-    const uint node_count=draw_node_list.GetCount();
+    const uint node_count=draw_nodes.GetCount();
 
     if(node_count<=0)return;
 
-    Stat();
+    BuildBatches();
 
     if(assign_buffer)
-        assign_buffer->WriteNode(draw_node_list);
+        assign_buffer->WriteNode(draw_nodes);
 }
 
-void PipelineMaterialBatch::UpdateLocalToWorld()
+void PipelineMaterialBatch::UpdateTransformData()
 {
     if(!assign_buffer)
         return;
 
-    draw_node_update_l2w_list.Clear();
+    transform_dirty_nodes.Clear();
 
-    const int node_count=draw_node_list.GetCount();
+    const int node_count=draw_nodes.GetCount();
 
     if(node_count<=0)return;
 
     int first=-1,last=-1;
     int update_count=0;
     uint32 l2w_version=0;
-    DrawNode *rn=draw_node_list.GetData();
+    DrawNode *node=draw_nodes.GetData();
 
     for(int i=0;i<node_count;i++)
     {
-        l2w_version=rn->sm_component->GetTransformVersion();
+        l2w_version=node->sm_component->GetTransformVersion();
 
-        if(rn->l2w_version!=l2w_version)       //版本不对，需要更新
+        if(node->l2w_version!=l2w_version)       //版本不对，需要更新
         {
             if(first==-1)
             {
-                first=rn->l2w_index;
+                first=node->l2w_index;
             }
             
-            last=rn->l2w_index;
+            last=node->l2w_index;
 
-            rn->l2w_version=l2w_version;
+            node->l2w_version=l2w_version;
 
-            draw_node_update_l2w_list.Add(rn);
+            transform_dirty_nodes.Add(node);
 
             ++update_count;
         }
 
-        ++rn;
+        ++node;
     }
 
     if(update_count>0)
     {
-        assign_buffer->UpdateLocalToWorld(draw_node_update_l2w_list,first,last);
-        draw_node_update_l2w_list.Clear();
+        assign_buffer->UpdateLocalToWorld(transform_dirty_nodes,first,last);
+        transform_dirty_nodes.Clear();
     }
 }
 
-void PipelineMaterialBatch::UpdateMaterialInstance(MeshComponent *smc)
+void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *smc)
 {
     if(!smc)return;
 
     if(!assign_buffer)
         return;
     
-    const int node_count=draw_node_list.GetCount();
+    const int node_count=draw_nodes.GetCount();
 
     if(node_count<=0)return;
-    DrawNode *rn=draw_node_list.GetData();
+    DrawNode *node=draw_nodes.GetData();
 
     for(int i=0;i<node_count;i++)
     {
-        if(rn->sm_component==smc)
+        if(node->sm_component==smc)
         {
-            assign_buffer->UpdateMaterialInstance(rn);
+            assign_buffer->UpdateMaterialInstanceData(node);
             return;
         }
 
-        ++rn;
+        ++node;
     }
 }
 
-void PipelineMaterialBatch::RenderItem::Set(Mesh *ri)
+void PipelineMaterialBatch::DrawBatch::Set(Mesh *ri)
 {
     mi      =ri->GetMaterialInstance();
     pdb     =ri->GetDataBuffer();
@@ -171,7 +171,7 @@ void PipelineMaterialBatch::RenderItem::Set(Mesh *ri)
 
 void PipelineMaterialBatch::ReallocICB()
 {
-    const uint32_t icb_new_count=power_to_2(draw_node_list.GetCount());
+    const uint32_t icb_new_count=power_to_2(draw_nodes.GetCount());
 
     if(icb_draw)
     {
@@ -189,7 +189,7 @@ void PipelineMaterialBatch::ReallocICB()
     icb_draw_indexed=device->CreateIndirectDrawIndexedBuffer(icb_new_count);
 }
 
-void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
+void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,DrawBatch *ri)
 {
     dicp->vertexCount   =ri->prd->vertex_count;
     dicp->instanceCount =ri->instance_count;
@@ -197,7 +197,7 @@ void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,RenderItem *ri)
     dicp->firstInstance =ri->first_instance;
 }
 
-void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderItem *ri)
+void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,DrawBatch *ri)
 {
     diicp->indexCount   =ri->prd->index_count;
     diicp->instanceCount=ri->instance_count;
@@ -206,87 +206,87 @@ void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderI
     diicp->firstInstance=ri->first_instance;
 }
 
-void PipelineMaterialBatch::Stat()
+void PipelineMaterialBatch::BuildBatches()
 {
-    const uint count=draw_node_list.GetCount();
-    DrawNode *rn=draw_node_list.GetData();
+    const uint count=draw_nodes.GetCount();
+    DrawNode *node=draw_nodes.GetData();
 
     ReallocICB();
 
     VkDrawIndirectCommand *dicp=icb_draw->MapCmd();
     VkDrawIndexedIndirectCommand *diicp=icb_draw_indexed->MapCmd();
 
-    ri_array.Clear();
-    ri_array.Reserve(count);
+    draw_batches.Clear();
+    draw_batches.Reserve(count);
 
-    RenderItem *ri=ri_array.GetData();
-    Mesh *ro=rn->sm_component->GetMesh();
+    DrawBatch *batch=draw_batches.GetData();
+    Mesh *mesh=node->sm_component->GetMesh();
 
-    ri_count=1;
+    draw_batches_count=1;
 
-    ri->first_instance=0;
-    ri->instance_count=1;
-    ri->Set(ro);
+    batch->first_instance=0;
+    batch->instance_count=1;
+    batch->Set(mesh);
 
-    last_data_buffer=ri->pdb;
-    last_vdm        =ri->pdb->vdm;
-    last_render_data=ri->prd;
+    last_data_buffer=batch->pdb;
+    last_vdm        =batch->pdb->vdm;
+    last_render_data=batch->prd;
 
-    ++rn;
+    ++node;
 
     for(uint i=1;i<count;i++)
     {
-        ro=rn->sm_component->GetMesh();
+        mesh=node->sm_component->GetMesh();
 
-        if(*last_data_buffer==*ro->GetDataBuffer())
-            if(*last_render_data==*ro->GetRenderData())
+        if(*last_data_buffer==*mesh->GetDataBuffer())
+            if(*last_render_data==*mesh->GetRenderData())
             {
-                ++ri->instance_count;
-                ++rn;
+                ++batch->instance_count;
+                ++node;
                 continue;
             }
 
-        if(ri->pdb->vdm)
+        if(batch->pdb->vdm)
         {
-            if(ri->pdb->ibo)
-                WriteICB(diicp,ri);
+            if(batch->pdb->ibo)
+                WriteICB(diicp,batch);
             else
-                WriteICB(dicp,ri);
+                WriteICB(dicp,batch);
 
             ++dicp;
             ++diicp;
         }
 
-        ++ri_count;
-        ++ri;
+        ++draw_batches_count;
+        ++batch;
 
-        ri->first_instance=i;
-        ri->instance_count=1;
-        ri->Set(ro);
+        batch->first_instance=i;
+        batch->instance_count=1;
+        batch->Set(mesh);
 
-        last_data_buffer=ri->pdb;
-        last_vdm        =ri->pdb->vdm;
-        last_render_data=ri->prd;
+        last_data_buffer=batch->pdb;
+        last_vdm        =batch->pdb->vdm;
+        last_render_data=batch->prd;
 
-        ++rn;
+        ++node;
     }
 
-    if(ri->pdb->vdm)
+    if(batch->pdb->vdm)
     {
-        if(ri->pdb->ibo)
-            WriteICB(diicp,ri);
+        if(batch->pdb->ibo)
+            WriteICB(diicp,batch);
         else
-            WriteICB(dicp,ri);
+            WriteICB(dicp,batch);
     }
 
     icb_draw->Unmap();
     icb_draw_indexed->Unmap();
 }
 
-bool PipelineMaterialBatch::BindVAB(const RenderItem *ri)
+bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 {
-    const MeshDataBuffer *  pdb     =ri->pdb;
-    const uint              ri_index=ri->first_instance;
+    const MeshDataBuffer *  pdb     =batch->pdb;
+    const uint              ri_index=batch->first_instance;
 
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
@@ -366,36 +366,36 @@ void PipelineMaterialBatch::ProcIndirectRender()
     indirect_draw_count=0;
 }
 
-bool PipelineMaterialBatch::Render(RenderItem *ri)
+bool PipelineMaterialBatch::Draw(DrawBatch *batch)
 {
-    if(!last_data_buffer||*(ri->pdb)!=*last_data_buffer)        //换buf了
+    if(!last_data_buffer||*(batch->pdb)!=*last_data_buffer)        //换buf了
     {
         if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
             ProcIndirectRender();
 
-        last_data_buffer=ri->pdb;
+        last_data_buffer=batch->pdb;
         last_render_data=nullptr;
 
-        if(!BindVAB(ri))
+        if(!BindVAB(batch))
         {
             //这个问题很严重哦
             return(false);
         }
 
-        if(ri->pdb->ibo)
-            cmd_buf->BindIBO(ri->pdb->ibo);
+        if(batch->pdb->ibo)
+            cmd_buf->BindIBO(batch->pdb->ibo);
     }
 
-    if(ri->pdb->vdm)
+    if(batch->pdb->vdm)
     {
         if(indirect_draw_count==0)
-            first_indirect_draw_index=ri->first_instance;
+            first_indirect_draw_index=batch->first_instance;
 
         ++indirect_draw_count;
     }
     else
     {
-        cmd_buf->Draw(ri->pdb,ri->prd,ri->instance_count,ri->first_instance);
+        cmd_buf->Draw(batch->pdb,batch->prd,batch->instance_count,batch->first_instance);
     }
 
     return(true);
@@ -404,11 +404,11 @@ bool PipelineMaterialBatch::Render(RenderItem *ri)
 void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 {
     if(!rcb)return;
-    const uint count=draw_node_list.GetCount();
+    const uint count=draw_nodes.GetCount();
 
     if(count<=0)return;
 
-    if(ri_count<=0)return;
+    if(draw_batches_count<=0)return;
 
     cmd_buf=rcb;
 
@@ -423,11 +423,11 @@ void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 
     cmd_buf->BindDescriptorSets(pm_index.material);
 
-    RenderItem *ri=ri_array.GetData();
-    for(uint i=0;i<ri_count;i++)
+    DrawBatch *batch=draw_batches.GetData();
+    for(uint i=0;i<draw_batches_count;i++)
     {
-        Render(ri);
-        ++ri;
+        Draw(batch);
+        ++batch;
     }
     
     if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了

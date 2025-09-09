@@ -21,7 +21,7 @@ public:
     void End()
     {
         for(auto *it:data_list)
-            it->value->End();
+            it->value->Finalize();
     }
 
     void Render(RenderCmdBuffer *rcb)
@@ -35,7 +35,7 @@ public:
     void UpdateLocalToWorld()
     {
         for(auto *it:data_list)
-            it->value->UpdateLocalToWorld();
+            it->value->UpdateTransformData();
     }
 };//class MaterialRenderMap
 VK_NAMESPACE_END
