@@ -16,9 +16,9 @@ public:
     using Component::Component;
     virtual ~SceneComponent()=default;
 
-    virtual Component *Duplication() override
+    virtual Component *Clone() override
     {
-        SceneComponent *sc=(SceneComponent *)Component::Duplication();
+        SceneComponent *sc=(SceneComponent *)Component::Clone();
 
         if(!sc)
             return(sc);

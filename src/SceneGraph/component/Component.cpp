@@ -55,7 +55,7 @@ namespace hgl::graph
         return(true);
     }
 
-    Component *Component::Duplication()
+    Component *Component::Clone()
     {
         return GetManager()->CreateComponent(Data);
     }

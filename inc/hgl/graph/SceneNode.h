@@ -77,7 +77,7 @@ namespace hgl::graph
 
         SceneNode():NodeTransform(){}
         SceneNode(Scene *s):NodeTransform(),main_scene(s){}                                                           ///<从Scene构造
-        SceneNode(Scene *s,const NodeTransform &so):NodeTransform(so),main_scene(s){}                                   ///<从NodeTransform复制构造
+        SceneNode(Scene *s,const NodeTransform &so):NodeTransform(so),main_scene(s){}                                 ///<从NodeTransform复制构造
         SceneNode(Scene *s,const Matrix4f &mat):NodeTransform(mat),main_scene(s){}                                    ///<从Matrix4f复制构造
 
     public:
@@ -88,19 +88,19 @@ namespace hgl::graph
 
         virtual SceneNode * CreateNode()const{return(new SceneNode(GetScene()));}                                   ///<创建一个同类的节点对象
 
-        virtual void        DuplicationChildNodes(SceneNode *node) const                                            ///<复制子节点到指定节点
+        virtual void        CloneChildren(SceneNode *node) const                                                    ///<复制子节点到指定节点
         {
             for(SceneNode *sn:GetChildNode())
-                node->Add(sn->Duplication());
+                node->AddChild(sn->Clone());
         }
 
-        virtual void        DuplicationComponents(SceneNode *node) const                                            ///<复制组件到指定节点
+        virtual void        CloneComponents(SceneNode *node) const                                                  ///<复制组件到指定节点
         {
             for(Component *c:GetComponents())
-                node->AttachComponent(c->Duplication());
+                node->AttachComponent(c->Clone());
         }
 
-        virtual SceneNode * Duplication() const                                                                     ///<复制一个场景节点
+        virtual SceneNode * Clone() const                                                                           ///<复制一个场景节点
         {
             if(!this)
                 return nullptr;
@@ -109,8 +109,8 @@ namespace hgl::graph
 
             node->SetTransformState(GetTransformState());  //复制本地矩阵
 
-            DuplicationChildNodes(node);    //复制子节点
-            DuplicationComponents(node);    //复制组件
+            CloneChildren(node);    //复制子节点
+            CloneComponents(node);    //复制组件
 
             return node;
         }
@@ -128,12 +128,7 @@ namespace hgl::graph
             NodeTransform::Reset();
         }
 
-        const bool ChildNodeIsEmpty()const
-        {
-            if(child_nodes.GetCount())return(false);
-
-            return(true);
-        }
+        const bool HasChildren()const{return !child_nodes.IsEmpty();}
 
         virtual void        SetParent(SceneNode *sn)
         {
@@ -148,7 +143,7 @@ namespace hgl::graph
                 SceneNode * GetParent()      noexcept{return parent_node;}
         const   SceneNode * GetParent()const noexcept{return parent_node;}
 
-        SceneNode *Add(SceneNode *sn)
+        SceneNode *AddChild(SceneNode *sn)
         {
             if(!sn)
                 return(nullptr);
@@ -164,7 +159,7 @@ namespace hgl::graph
 
     public: //坐标相关方法
 
-        virtual         void        UpdateWorldTransform       () override;                                                ///<刷新世界变换
+        virtual         void        UpdateWorldTransform() override;                                                ///<刷新世界变换
         virtual         void        RefreshBoundingBox  ();                                                         ///<刷新绑定盒
 
         virtual const   AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                         ///<取得本地坐标绑定盒
