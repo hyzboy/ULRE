@@ -53,15 +53,15 @@ class PipelineMaterialBatch
 
     CameraInfo *camera_info;
 
-    DrawNodeList draw_node_list;
+    DrawNodeList draw_nodes;
 
-    DrawNodePointerList draw_node_update_l2w_list;
+    DrawNodePointerList transform_dirty_nodes;
 
 private:
 
     RenderAssignBuffer *assign_buffer;
 
-    struct RenderItem
+    struct DrawBatch
     {
                 uint32_t                first_instance;     ///<第一个绘制实例(和instance渲染无关,对应InstanceRate的VAB)
                 uint32_t                instance_count;
@@ -80,13 +80,13 @@ private:
     IndirectDrawIndexedBuffer *icb_draw_indexed;
 
     void ReallocICB();
-    void WriteICB(VkDrawIndirectCommand *,RenderItem *ri);
-    void WriteICB(VkDrawIndexedIndirectCommand *,RenderItem *ri);
+    void WriteICB(VkDrawIndirectCommand *,DrawBatch *ri);
+    void WriteICB(VkDrawIndexedIndirectCommand *,DrawBatch *ri);
 
-    DataArray<RenderItem> ri_array;
-    uint ri_count;
+    DataArray<DrawBatch> draw_batches;
+    uint draw_batches_count;
 
-    void Stat();
+    void BuildBatches();
 
 protected:
 
@@ -99,10 +99,10 @@ protected:
             int                     first_indirect_draw_index;
             uint                    indirect_draw_count;
 
-    bool BindVAB(const RenderItem *);
+    bool BindVAB(const DrawBatch *);
 
     void ProcIndirectRender();
-    bool Render(RenderItem *);
+    bool Draw(DrawBatch *);
 
 public:
 
@@ -113,13 +113,13 @@ public:
 
     void SetCameraInfo(CameraInfo *ci){camera_info=ci;}
 
-    void Clear(){draw_node_list.Clear();}
+    void Clear(){draw_nodes.Clear();}
 
-    void End();
+    void Finalize();
 
     void Render(RenderCmdBuffer *);
 
-    void UpdateLocalToWorld();          //刷新所有对象的LocalToWorld矩阵
-    void UpdateMaterialInstance(MeshComponent *);
+    void UpdateTransformData();          //刷新所有对象的LocalToWorld矩阵
+    void UpdateMaterialInstanceData(MeshComponent *);
 };//class PipelineMaterialBatch
 VK_NAMESPACE_END

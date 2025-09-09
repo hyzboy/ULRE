@@ -92,7 +92,7 @@ namespace hgl
             mrl_map.UpdateLocalToWorld();
         }
 
-        void RenderCollector::UpdateMaterialInstance(MeshComponent *smc)
+        void RenderCollector::UpdateMaterialInstanceData(MeshComponent *smc)
         {
             if(!smc)return;
 
@@ -104,7 +104,7 @@ namespace hgl
             if(!mrl_map.Get(rli,mrl))        //找到对应的
                 return;
 
-            mrl->UpdateMaterialInstance(smc);
+            mrl->UpdateMaterialInstanceData(smc);
         }
     }//namespace graph
 }//namespace hgl
