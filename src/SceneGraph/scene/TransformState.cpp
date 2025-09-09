@@ -4,7 +4,7 @@ namespace hgl
 {
     namespace graph
     {
-        SceneMatrix::SceneMatrix(SceneMatrix &so):VersionData(so.GetLocalToWorldMatrix())
+        TransformState::TransformState(TransformState &so):VersionData(so.GetLocalToWorldMatrix())
         {
             parent_matrix=so.parent_matrix;
             local_matrix=so.local_matrix;
@@ -18,7 +18,7 @@ namespace hgl
             UpdateVersion();
         }
 
-        void SceneMatrix::Clear()
+        void TransformState::Clear()
         {
             parent_matrix=Identity4f;
             local_matrix=Identity4f;
@@ -28,7 +28,7 @@ namespace hgl
             UpdateVersion();
         }
         
-        void SceneMatrix::MakeNewestData(Matrix4f &local_to_world_matrix)
+        void TransformState::MakeNewestData(Matrix4f &local_to_world_matrix)
         {
             if(local_is_identity)
                 local_to_world_matrix=parent_matrix;
@@ -57,7 +57,7 @@ namespace hgl
             inverse_transpose_local_to_world_matrix=transpose(inverse_local_to_world_matrix);
         }
 
-        void SceneMatrix::Update()
+        void TransformState::Update()
         {
             if(transform_manager.IsEmpty())
             {

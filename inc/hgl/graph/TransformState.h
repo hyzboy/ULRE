@@ -20,7 +20,7 @@ namespace hgl
         * 
         * LocalToWorldMatrix=ParnetMatrix * LocalMatrix * TransformMatrix<br>
         */
-        class SceneMatrix :public VersionData<Matrix4f>
+        class TransformState :public VersionData<Matrix4f>
         {
         protected:
 
@@ -70,9 +70,9 @@ namespace hgl
 
         public:
 
-            SceneMatrix():VersionData(Identity4f){Clear();}
-            SceneMatrix(SceneMatrix &so);
-            SceneMatrix(const Matrix4f &mat):VersionData(Identity4f)
+            TransformState():VersionData(Identity4f){Clear();}
+            TransformState(TransformState &so);
+            TransformState(const Matrix4f &mat):VersionData(Identity4f)
             {
                 SetLocalMatrix(mat);
                 UpdateVersion();
@@ -111,6 +111,6 @@ namespace hgl
             }
 
             virtual void Update();
-        };//class SceneMatrix
+        };//class TransformState
     }//namespace graph
 }//namespace hgl
