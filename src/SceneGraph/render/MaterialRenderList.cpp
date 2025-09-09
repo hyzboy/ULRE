@@ -11,18 +11,18 @@
 #include<hgl/component/MeshComponent.h>
 
 VK_NAMESPACE_BEGIN
-MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipelineIndex &rpi)
+MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi)
 {
     device=d;
     cmd_buf=nullptr;
-    rp_index=rpi;
+    pm_index=rpi;
 
     camera_info=nullptr;
 
     if(rpi.material->hasLocalToWorld()
      ||rpi.material->hasMI())
     {
-        assign_buffer=new RenderAssignBuffer(device,rp_index.material);
+        assign_buffer=new RenderAssignBuffer(device,pm_index.material);
     }
     else
     {
@@ -34,7 +34,7 @@ MaterialRenderList::MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipe
 
     ri_count=0;
 
-    vab_list=new VABList(rp_index.material->GetVertexInput()->GetCount());
+    vab_list=new VABList(pm_index.material->GetVertexInput()->GetCount());
 
     last_data_buffer=nullptr;
     last_vdm=nullptr;
@@ -412,16 +412,16 @@ void MaterialRenderList::Render(RenderCmdBuffer *rcb)
 
     cmd_buf=rcb;
 
-    cmd_buf->BindPipeline(rp_index.pipeline);
+    cmd_buf->BindPipeline(pm_index.pipeline);
 
     last_data_buffer=nullptr;
     last_vdm        =nullptr;
     last_render_data=nullptr;
 
     if(assign_buffer)
-        assign_buffer->Bind(rp_index.material);
+        assign_buffer->Bind(pm_index.material);
 
-    cmd_buf->BindDescriptorSets(rp_index.material);
+    cmd_buf->BindDescriptorSets(pm_index.material);
 
     RenderItem *ri=ri_array.GetData();
     for(uint i=0;i<ri_count;i++)

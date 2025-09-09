@@ -2,7 +2,7 @@
 #include<hgl/graph/MaterialRenderList.h>
 
 VK_NAMESPACE_BEGIN
-class MaterialRenderMap:public ObjectMap<RenderPipelineIndex,MaterialRenderList>
+class MaterialRenderMap:public ObjectMap<PipelineMaterialIndex,MaterialRenderList>
 {
 public:
 

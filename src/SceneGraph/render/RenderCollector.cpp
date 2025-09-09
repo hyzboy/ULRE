@@ -33,7 +33,7 @@ namespace hgl
                 if(!smc||!smc->CanRender())
                     continue;
 
-                RenderPipelineIndex rpi(smc->GetMaterial(),smc->GetPipeline());
+                PipelineMaterialIndex rpi(smc->GetMaterial(),smc->GetPipeline());
                 
                 MaterialRenderList *mrl;
 
@@ -98,7 +98,7 @@ namespace hgl
 
             if(!smc->CanRender())return;
 
-            RenderPipelineIndex rli(smc->GetMaterial(),smc->GetPipeline());
+            PipelineMaterialIndex rli(smc->GetMaterial(),smc->GetPipeline());
             MaterialRenderList *mrl;
 
             if(!mrl_map.Get(rli,mrl))        //找到对应的

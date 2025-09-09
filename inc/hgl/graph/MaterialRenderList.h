@@ -8,14 +8,14 @@ class RenderAssignBuffer;
 class SceneNode;
 struct CameraInfo;
 
-struct RenderPipelineIndex:public Comparator<RenderPipelineIndex>
+struct PipelineMaterialIndex:public Comparator<PipelineMaterialIndex>
 {
     Material *material;
     Pipeline *pipeline;
 
 public:
 
-    const int compare(const RenderPipelineIndex &rli)const override
+    const int compare(const PipelineMaterialIndex &rli)const override
     {
         if(material<rli.material)return(-1);
         if(material>rli.material)return(1);
@@ -28,18 +28,18 @@ public:
 
 public:
 
-    RenderPipelineIndex()
+    PipelineMaterialIndex()
     {
         material=nullptr;
         pipeline=nullptr;
     }
 
-    RenderPipelineIndex(Material *m,Pipeline *p)
+    PipelineMaterialIndex(Material *m,Pipeline *p)
     {
         material=m;
         pipeline=p;
     }
-};//struct RenderPipelineIndex
+};//struct PipelineMaterialIndex
 
 /**
 * 同一材质与管线的渲染列表
@@ -49,7 +49,7 @@ class MaterialRenderList
     VulkanDevice *device;
     RenderCmdBuffer *cmd_buf;
 
-    RenderPipelineIndex rp_index;
+    PipelineMaterialIndex pm_index;
 
     CameraInfo *camera_info;
 
@@ -106,7 +106,7 @@ protected:
 
 public:
 
-    MaterialRenderList(VulkanDevice *d,bool l2w,const RenderPipelineIndex &rpi);
+    MaterialRenderList(VulkanDevice *d,bool l2w,const PipelineMaterialIndex &rpi);
     ~MaterialRenderList();
 
     void Add(MeshComponent *);
