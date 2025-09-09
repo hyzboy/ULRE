@@ -16,13 +16,13 @@ InstanceAssignmentBuffer::InstanceAssignmentBuffer(VulkanDevice *dev,Material *m
 
     material=mtl;
 
-    mi_data_bytes=mtl->GetMIDataBytes();
+    material_instance_data_bytes=mtl->GetMIDataBytes();
 
     MaxTransformCount=dev->GetUBORange()/sizeof(Matrix4f);
 
     transform_buffer_max_count=0;
     transform_buffer=nullptr;
-    mi_buffer=nullptr;
+    material_instance_buffer=nullptr;
 
     node_count=0;
     assign_vab=nullptr;
@@ -34,17 +34,17 @@ void InstanceAssignmentBuffer::Bind(Material *mtl)const
     if(!mtl)return;
 
     mtl->BindUBO(&mtl::SBS_LocalToWorld,     transform_buffer);
-    mtl->BindUBO(&mtl::SBS_MaterialInstance, mi_buffer);
+    mtl->BindUBO(&mtl::SBS_MaterialInstance, material_instance_buffer);
 }
 
 void InstanceAssignmentBuffer::Clear()
 {
     SAFE_CLEAR(transform_buffer);
-    SAFE_CLEAR(mi_buffer);
+    SAFE_CLEAR(material_instance_buffer);
     SAFE_CLEAR(assign_vab);
 }
 
-void InstanceAssignmentBuffer::StatL2W(const DrawNodeList &draw_nodes)
+void InstanceAssignmentBuffer::StatTransform(const DrawNodeList &draw_nodes)
 {
     if(!transform_buffer)
     {
@@ -115,39 +115,39 @@ void InstanceAssignmentBuffer::UpdateMaterialInstanceData(const DrawNode *rn)
 
     AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map(sizeof(AssignData)*rn->index,sizeof(AssignData)));
 
-    adp->mi=mi_set.Find(rn->mesh_component->GetMaterialInstance());
+    adp->material_instance=mi_set.Find(rn->mesh_component->GetMaterialInstance());
 
     assign_vab->Unmap();
 }
 
-void InstanceAssignmentBuffer::StatMI(const DrawNodeList &draw_nodes)
+void InstanceAssignmentBuffer::StatMaterialInstance(const DrawNodeList &draw_nodes)
 {
     mi_set.Clear();
 
-    if(mi_data_bytes<=0)        //没有材质实例数据
+    if(material_instance_data_bytes<=0)        //没有材质实例数据
         return;
     
-    if(!mi_buffer)
+    if(!material_instance_buffer)
     {
         mi_set.Reserve(power_to_2(draw_nodes.GetCount()));
     }
     else if(draw_nodes.GetCount()>mi_set.GetAllocCount())
     {
         mi_set.Reserve(power_to_2(draw_nodes.GetCount()));
-        SAFE_CLEAR(mi_buffer);
+        SAFE_CLEAR(material_instance_buffer);
     }
 
-    if(!mi_buffer)
+    if(!material_instance_buffer)
     {
-        mi_buffer=device->CreateUBO(mi_data_bytes*mi_set.GetAllocCount());
+        material_instance_buffer=device->CreateUBO(material_instance_data_bytes*mi_set.GetAllocCount());
         
     #ifdef _DEBUG
         DebugUtils *du=device->GetDebugUtils();
         
         if(du)
         {
-            du->SetBuffer(mi_buffer->GetBuffer(),"UBO:Buffer:MaterialInstanceData");
-            du->SetDeviceMemory(mi_buffer->GetVkMemory(),"UBO:Memory:MaterialInstanceData");
+            du->SetBuffer(material_instance_buffer->GetBuffer(),"UBO:Buffer:MaterialInstanceData");
+            du->SetDeviceMemory(material_instance_buffer->GetVkMemory(),"UBO:Memory:MaterialInstanceData");
         }
     #endif//_DEBUG
     }
@@ -164,15 +164,15 @@ void InstanceAssignmentBuffer::StatMI(const DrawNodeList &draw_nodes)
 
     //合并材质实例数据
     {
-        uint8 *mip=(uint8 *)(mi_buffer->Map());
+        uint8 *mip=(uint8 *)(material_instance_buffer->Map());
 
         for(MaterialInstance *mi:mi_set)
         {
-            memcpy(mip,mi->GetMIData(),mi_data_bytes);
-            mip+=mi_data_bytes;
+            memcpy(mip,mi->GetMIData(),material_instance_data_bytes);
+            mip+=material_instance_data_bytes;
         }
 
-        mi_buffer->Unmap();
+        material_instance_buffer->Unmap();
     }
 }
 
@@ -181,8 +181,8 @@ void InstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
     if(draw_nodes.GetCount()<=0)
         return;
 
-    StatL2W(draw_nodes);
-    StatMI(draw_nodes);
+    StatTransform(draw_nodes);
+    StatMaterialInstance(draw_nodes);
 
     {
         if(!assign_vab)
@@ -222,8 +222,8 @@ void InstanceAssignmentBuffer::WriteNode(const DrawNodeList &draw_nodes)
         {
             rn->transform_index=i;
 
-            adp->l2w=i;
-            adp->mi=mi_set.Find(rn->mesh_component->GetMaterialInstance());
+            adp->transform=i;
+            adp->material_instance=mi_set.Find(rn->mesh_component->GetMaterialInstance());
             ++adp;
 
             ++rn;
