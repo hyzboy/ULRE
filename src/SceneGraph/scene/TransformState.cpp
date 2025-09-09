@@ -35,22 +35,22 @@ namespace hgl
             else
                 local_to_world_matrix=parent_matrix*local_matrix;
 
-            OriginWorldPosition=TransformPosition(local_to_world_matrix,ZeroVector3f);
-            OriginWorldNormal=TransformNormal(local_to_world_matrix,local_normal);
+            PrevWorldPosition=TransformPosition(local_to_world_matrix,ZeroVector3f);
+            PrevWorldNormal=TransformNormal(local_to_world_matrix,local_normal);
 
             if(transform_manager.IsEmpty())
             {
-                FinalWorldPosition=OriginWorldPosition;
-                FinalWorldNormal=OriginWorldNormal;
+                WorldPosition=PrevWorldPosition;
+                WorldNormal=PrevWorldNormal;
             }
             else
             {
-                transform_manager.GetMatrix(transform_matrix,OriginWorldPosition,OriginWorldNormal);
+                transform_manager.GetMatrix(transform_matrix,PrevWorldPosition,PrevWorldNormal);
 
                 local_to_world_matrix*=transform_matrix;
 
-                FinalWorldPosition=TransformPosition(local_to_world_matrix,ZeroVector3f);
-                FinalWorldNormal=TransformNormal(local_to_world_matrix,local_normal);
+                WorldPosition=TransformPosition(local_to_world_matrix,ZeroVector3f);
+                WorldNormal=TransformNormal(local_to_world_matrix,local_normal);
             }
             
             inverse_local_to_world_matrix          =inverse(local_to_world_matrix);
