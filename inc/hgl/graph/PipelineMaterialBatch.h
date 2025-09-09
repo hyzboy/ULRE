@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/graph/RenderNode.h>
+#include<hgl/graph/DrawNode.h>
 #include<hgl/graph/VKVABList.h>
 #include<hgl/graph/VKIndirectCommandBuffer.h>
 
@@ -53,9 +53,9 @@ class PipelineMaterialBatch
 
     CameraInfo *camera_info;
 
-    RenderNodeList rn_list;
+    DrawNodeList draw_node_list;
 
-    RenderNodePointerList rn_update_l2w_list;
+    DrawNodePointerList draw_node_update_l2w_list;
 
 private:
 
@@ -113,7 +113,7 @@ public:
 
     void SetCameraInfo(CameraInfo *ci){camera_info=ci;}
 
-    void Clear(){rn_list.Clear();}
+    void Clear(){draw_node_list.Clear();}
 
     void End();
 

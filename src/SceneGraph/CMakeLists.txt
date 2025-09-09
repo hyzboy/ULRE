@@ -124,7 +124,7 @@ SET(SG_SCENE_SOURCE ${SG_INCLUDE_PATH}/Scene.h
                     Scene/Scene.cpp
 )
 
-SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
+SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/DrawNode.h
                         ${SG_INCLUDE_PATH}/RenderCollector.h
                         ${SG_INCLUDE_PATH}/PipelineMaterialBatch.h
                         ${SG_INCLUDE_PATH}/MaterialRenderMap.h
@@ -132,7 +132,7 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/RenderNode.h
                         ${SG_INCLUDE_PATH}/RenderTask.h
                         ${SG_INCLUDE_PATH}/Renderer.h
                         render/Renderer.cpp
-                        render/RenderNode.cpp
+                        render/DrawNode.cpp
                         render/RenderTask.cpp
                         render/RenderCollector.cpp
                         render/PipelineMaterialBatch.cpp

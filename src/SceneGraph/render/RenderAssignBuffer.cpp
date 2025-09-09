@@ -3,7 +3,7 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/VKMaterialInstance.h>
 #include<hgl/graph/SceneNode.h>
-#include<hgl/graph/RenderNode.h>
+#include<hgl/graph/DrawNode.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/graph/VKRenderAssign.h>
 #include<hgl/graph/mtl/UBOCommon.h>
@@ -44,15 +44,15 @@ void RenderAssignBuffer::Clear()
     SAFE_CLEAR(assign_vab);
 }
 
-void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
+void RenderAssignBuffer::StatL2W(const DrawNodeList &draw_node_list)
 {
     if(!l2w_buffer)
     {
-        l2w_buffer_max_count=power_to_2(rn_list.GetCount());
+        l2w_buffer_max_count=power_to_2(draw_node_list.GetCount());
     }
-    else if(rn_list.GetCount()>l2w_buffer_max_count)
+    else if(draw_node_list.GetCount()>l2w_buffer_max_count)
     {
-        l2w_buffer_max_count=power_to_2(rn_list.GetCount());
+        l2w_buffer_max_count=power_to_2(draw_node_list.GetCount());
         SAFE_CLEAR(l2w_buffer);
     }
 
@@ -71,10 +71,10 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
     #endif//_DEBUG
     }
 
-    RenderNode *rn=rn_list.GetData();
+    DrawNode *rn=draw_node_list.GetData();
     Matrix4f *l2wp=(Matrix4f *)(l2w_buffer->DeviceBuffer::Map());
 
-    for(int i=0;i<rn_list.GetCount();i++)
+    for(int i=0;i<draw_node_list.GetCount();i++)
     {
         *l2wp=rn->sm_component->GetLocalToWorldMatrix();
         ++l2wp;
@@ -84,7 +84,7 @@ void RenderAssignBuffer::StatL2W(const RenderNodeList &rn_list)
     l2w_buffer->Unmap();
 }
 
-void RenderAssignBuffer::UpdateLocalToWorld(const RenderNodePointerList &rnp_list,const int first,const int last)
+void RenderAssignBuffer::UpdateLocalToWorld(const DrawNodePointerList &rnp_list,const int first,const int last)
 {
     if(!l2w_buffer)
         return;
@@ -94,7 +94,7 @@ void RenderAssignBuffer::UpdateLocalToWorld(const RenderNodePointerList &rnp_lis
 
     const uint count=rnp_list.GetCount();
 
-    RenderNode **rn=rnp_list.GetData();
+    DrawNode **rn=rnp_list.GetData();
     Matrix4f *l2wp=(Matrix4f *)(l2w_buffer->DeviceBuffer::Map(  sizeof(Matrix4f)*first,
                                                                 sizeof(Matrix4f)*(last-first+1)));
 
@@ -108,7 +108,7 @@ void RenderAssignBuffer::UpdateLocalToWorld(const RenderNodePointerList &rnp_lis
     l2w_buffer->Unmap();
 }
 
-void RenderAssignBuffer::UpdateMaterialInstance(const RenderNode *rn)
+void RenderAssignBuffer::UpdateMaterialInstance(const DrawNode *rn)
 {
     if(!rn)
         return;
@@ -120,7 +120,7 @@ void RenderAssignBuffer::UpdateMaterialInstance(const RenderNode *rn)
     assign_vab->Unmap();
 }
 
-void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
+void RenderAssignBuffer::StatMI(const DrawNodeList &draw_node_list)
 {
     mi_set.Clear();
 
@@ -129,11 +129,11 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     
     if(!mi_buffer)
     {
-        mi_set.Reserve(power_to_2(rn_list.GetCount()));
+        mi_set.Reserve(power_to_2(draw_node_list.GetCount()));
     }
-    else if(rn_list.GetCount()>mi_set.GetAllocCount())
+    else if(draw_node_list.GetCount()>mi_set.GetAllocCount())
     {
-        mi_set.Reserve(power_to_2(rn_list.GetCount()));
+        mi_set.Reserve(power_to_2(draw_node_list.GetCount()));
         SAFE_CLEAR(mi_buffer);
     }
 
@@ -152,9 +152,9 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     #endif//_DEBUG
     }
 
-    mi_set.Reserve(rn_list.GetCount());
+    mi_set.Reserve(draw_node_list.GetCount());
 
-    for(RenderNode &rn:rn_list)
+    for(DrawNode &rn:draw_node_list)
         mi_set.Add(rn.sm_component->GetMaterialInstance());
 
     if(mi_set.GetCount()>material->GetMIMaxCount())
@@ -176,22 +176,22 @@ void RenderAssignBuffer::StatMI(const RenderNodeList &rn_list)
     }
 }
 
-void RenderAssignBuffer::WriteNode(const RenderNodeList &rn_list)
+void RenderAssignBuffer::WriteNode(const DrawNodeList &draw_node_list)
 {
-    if(rn_list.GetCount()<=0)
+    if(draw_node_list.GetCount()<=0)
         return;
 
-    StatL2W(rn_list);
-    StatMI(rn_list);
+    StatL2W(draw_node_list);
+    StatMI(draw_node_list);
 
     {
         if(!assign_vab)
         {
-            node_count=power_to_2(rn_list.GetCount());
+            node_count=power_to_2(draw_node_list.GetCount());
         }
-        else if(node_count<rn_list.GetCount())
+        else if(node_count<draw_node_list.GetCount())
         {
-            node_count=power_to_2(rn_list.GetCount());
+            node_count=power_to_2(draw_node_list.GetCount());
             SAFE_CLEAR(assign_vab);
         }
 
@@ -214,11 +214,11 @@ void RenderAssignBuffer::WriteNode(const RenderNodeList &rn_list)
     
     //生成材质实例ID列表
     {
-        RenderNode *rn=rn_list.GetData();
+        DrawNode *rn=draw_node_list.GetData();
 
         AssignData *adp=(AssignData *)(assign_vab->DeviceBuffer::Map());
 
-        for(uint i=0;i<rn_list.GetCount();i++)
+        for(uint i=0;i<draw_node_list.GetCount();i++)
         {
             rn->l2w_index=i;
 

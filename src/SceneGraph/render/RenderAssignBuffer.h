@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include<hgl/graph/RenderNode.h>
+#include<hgl/graph/DrawNode.h>
 
 VK_NAMESPACE_BEGIN
 // ubo_range大致分为三档:
@@ -23,7 +23,7 @@ VK_NAMESPACE_BEGIN
 // 所以 UBO Range为16k时，实例数据不能超过64字节。UBO Range为64k时，实例数据不能超过256字节。
 
 
-struct RenderNode;
+struct DrawNode;
 class MaterialInstance;
 
 /*
@@ -50,7 +50,7 @@ private:    //LocalToWorld矩阵数据
     uint32 l2w_buffer_max_count;        ///<LocalToWorld矩阵最大数量
     DeviceBuffer *l2w_buffer;           ///<LocalToWorld矩阵数据(UBO/SSBO)
 
-    void StatL2W(const RenderNodeList &);
+    void StatL2W(const DrawNodeList &);
 
 private:    //材质实例数据
     
@@ -59,7 +59,7 @@ private:    //材质实例数据
     uint32_t mi_data_bytes;             ///<单个材质实例数据字节数
     DeviceBuffer *mi_buffer;            ///<材质实例数据(UBO/SSBO)
 
-    void StatMI(const RenderNodeList &);
+    void StatMI(const DrawNodeList &);
     
 private:    //分发数据
 
@@ -90,9 +90,9 @@ public:
 
     //同样的LocalToWorld矩阵也可以提前化处理，这样对于静态物体，就只需要写入一次LocalToWorld矩阵了。
 
-    void WriteNode(const RenderNodeList &);
+    void WriteNode(const DrawNodeList &);
 
-    void UpdateLocalToWorld(const RenderNodePointerList &,const int first,const int last);
-    void UpdateMaterialInstance(const RenderNode *);
+    void UpdateLocalToWorld(const DrawNodePointerList &,const int first,const int last);
+    void UpdateMaterialInstance(const DrawNode *);
 };//struct RenderAssignBuffer
 VK_NAMESPACE_END
