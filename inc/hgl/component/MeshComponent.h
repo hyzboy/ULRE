@@ -72,9 +72,9 @@ public:
 
     virtual ~MeshComponent()=default;
 
-    virtual Component *Duplication() override
+    virtual Component *Clone() override
     {
-        MeshComponent *mc=(MeshComponent *)RenderComponent::Duplication();
+        MeshComponent *mc=(MeshComponent *)RenderComponent::Clone();
 
         if(!mc)
             return(mc);

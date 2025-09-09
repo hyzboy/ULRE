@@ -89,7 +89,7 @@ namespace
             return(new GizmoMoveNode);
         }
 
-        void DuplicationComponents(SceneNode *node) const override
+        void CloneComponents(SceneNode *node) const override
         {
             GizmoMoveNode *gmn=(GizmoMoveNode *)node;
 
@@ -98,7 +98,7 @@ namespace
 
             gmn->pick_mi=pick_mi;
 
-        #define DUPLICATION_COMPONENT(c)    gmn->c=(MeshComponent *)(c->Duplication()); \
+        #define DUPLICATION_COMPONENT(c)    gmn->c=(MeshComponent *)(c->Clone()); \
                                             gmn->AttachComponent(gmn->c);
 
             DUPLICATION_COMPONENT(sphere);

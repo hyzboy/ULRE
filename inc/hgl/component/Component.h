@@ -123,7 +123,7 @@ public:
 
 public:
 
-    virtual Component *Duplication();
+    virtual Component *Clone();
 
     //virtual void Update(const double delta_time)=0;
 
