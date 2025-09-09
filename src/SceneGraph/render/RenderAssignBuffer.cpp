@@ -84,7 +84,7 @@ void RenderAssignBuffer::StatL2W(const DrawNodeList &draw_nodes)
     l2w_buffer->Unmap();
 }
 
-void RenderAssignBuffer::UpdateLocalToWorld(const DrawNodePointerList &rnp_list,const int first,const int last)
+void RenderAssignBuffer::UpdateTransformData(const DrawNodePointerList &rnp_list,const int first,const int last)
 {
     if(!l2w_buffer)
         return;

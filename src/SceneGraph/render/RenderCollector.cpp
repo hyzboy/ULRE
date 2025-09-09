@@ -84,12 +84,12 @@ namespace hgl
             mrl_map.Clear();
         }
         
-        void RenderCollector::UpdateLocalToWorld()
+        void RenderCollector::UpdateTransformData()
         {
             if(renderable_count<=0)
                 return;
 
-            mrl_map.UpdateLocalToWorld();
+            mrl_map.UpdateTransformData();
         }
 
         void RenderCollector::UpdateMaterialInstanceData(MeshComponent *smc)
