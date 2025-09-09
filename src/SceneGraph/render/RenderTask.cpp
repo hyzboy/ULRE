@@ -1,5 +1,5 @@
 #include<hgl/graph/RenderTask.h>
-#include<hgl/graph/RenderList.h>
+#include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKRenderTarget.h>
 
@@ -11,14 +11,14 @@ namespace hgl::graph
 
         camera_info=ci;
         render_target=nullptr;
-        render_list=nullptr;
+        render_collector=nullptr;
 
         SetRenderTarget(rt);
     }
 
     RenderTask::~RenderTask()
     {
-        SAFE_CLEAR(render_list)
+        SAFE_CLEAR(render_collector)
     }
 
     bool RenderTask::SetRenderTarget(IRenderTarget *rt)
@@ -37,12 +37,12 @@ namespace hgl::graph
         if(!rt)
             return(false);
 
-        if(!render_list)
+        if(!render_collector)
         {
-            render_list=new RenderList(rt->GetDevice());
+            render_collector=new RenderCollector(rt->GetDevice());
 
             if(camera_info)
-                render_list->SetCameraInfo(camera_info);
+                render_collector->SetCameraInfo(camera_info);
         }
 
         return(true);
@@ -54,7 +54,7 @@ namespace hgl::graph
 
         camera_info=ci;
 
-        render_list->SetCameraInfo(ci);
+        render_collector->SetCameraInfo(ci);
     }
 
     bool RenderTask::RebuildRenderList(SceneNode *root)
@@ -62,25 +62,25 @@ namespace hgl::graph
         if(!root)
             return(false);
 
-        if(!render_list)
+        if(!render_collector)
             return(false);
 
-        if(!render_list->GetCameraInfo()&&camera_info)
-            render_list->SetCameraInfo(camera_info);
+        if(!render_collector->GetCameraInfo()&&camera_info)
+            render_collector->SetCameraInfo(camera_info);
 
         //记往不需要，也千万不要手动render_list->Clear，因为那会释放内存。再次使用时重新分配
-        //render_list->Expend会自己复位所有数据，且并不会释放内存
-        render_list->Expend(root);
+        //render_collector->Expend会自己复位所有数据，且并不会释放内存
+        render_collector->Expend(root);
 
         return(true);
     }
 
     bool RenderTask::IsEmpty()const
     {
-        if(!render_list)
+        if(!render_collector)
             return(true);
 
-        return render_list->IsEmpty();
+        return render_collector->IsEmpty();
     }
 
     bool RenderTask::Render(RenderCmdBuffer *cmd)
@@ -91,13 +91,13 @@ namespace hgl::graph
         if(!render_target)
             return(false);
 
-        if(!render_list)
+        if(!render_collector)
             return(false);
 
-        if(render_list->IsEmpty())
+        if(render_collector->IsEmpty())
             return(false);
 
-        render_list->Render(cmd);
+        render_collector->Render(cmd);
         return(true);
     }
 }//namespace hgl::graph

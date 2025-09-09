@@ -8,10 +8,10 @@
 namespace hgl::graph
 {
     /**
-        * 渲染对象列表<br>
-        * 该类会长期保存使用过的材质信息，避重新分配造成的时间和空间浪费。如需彻底清空列表请使用Clear()函数
-        */
-    class RenderList
+    * 渲染对象收集器<br>
+    * 该类会长期保存使用过的材质信息，避重新分配造成的时间和空间浪费。如需彻底清空列表请使用Clear()函数
+    */
+    class RenderCollector
     {
     protected:  
 
@@ -32,8 +32,8 @@ namespace hgl::graph
 
     public:
 
-        RenderList(VulkanDevice *);
-        virtual ~RenderList()=default;
+        RenderCollector(VulkanDevice *);
+        virtual ~RenderCollector()=default;
             
         virtual void SetCameraInfo(CameraInfo *ci){camera_info=ci;}             ///<设置相机信息
         virtual bool Expend(SceneNode *);                                       ///<展开场景树到渲染列表
@@ -46,5 +46,5 @@ namespace hgl::graph
         virtual void UpdateMaterialInstance(MeshComponent *);                   ///<有对象互换了材质实例
 
         virtual void Clear();                                                   ///<彻底清理
-    };//class RenderList
+    };//class RenderCollector
 }//namespace hgl::graph

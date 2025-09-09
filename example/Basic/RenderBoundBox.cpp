@@ -2,7 +2,7 @@
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/graph/InlineGeometry.h>
 #include<hgl/graph/PrimitiveCreater.h>
-#include<hgl/graph/RenderList.h>
+#include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/color/Color.h>
 #include<hgl/component/MeshComponent.h>

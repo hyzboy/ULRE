@@ -224,7 +224,7 @@ class MeshComponent;
 
 class SceneNode;
 class Scene;
-class RenderList;
+class RenderCollector;
 
 struct CameraInfo;
 struct Camera;
