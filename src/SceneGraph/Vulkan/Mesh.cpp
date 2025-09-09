@@ -23,30 +23,30 @@ MeshDataBuffer::~MeshDataBuffer()
     delete[] vab_list;
 }
 
-const int MeshDataBuffer::compare(const MeshDataBuffer &pdb)const
+const int MeshDataBuffer::compare(const MeshDataBuffer &mesh_data_buffer)const
 {
     ptrdiff_t off;
 
-    if(vdm&&pdb.vdm)
+    if(vdm&&mesh_data_buffer.vdm)
     {
-        off=(ptrdiff_t)vdm-(ptrdiff_t)pdb.vdm;
+        off=(ptrdiff_t)vdm-(ptrdiff_t)mesh_data_buffer.vdm;
         if(off)
             return off;
     }
 
-    off=vab_count-pdb.vab_count;
+    off=vab_count-mesh_data_buffer.vab_count;
     if(off)
         return off;
 
-    off=hgl_cmp(vab_list,pdb.vab_list,vab_count);
+    off=hgl_cmp(vab_list,mesh_data_buffer.vab_list,vab_count);
     if(off)
         return off;
 
-    off=hgl_cmp(vab_offset,pdb.vab_offset,vab_count);
+    off=hgl_cmp(vab_offset,mesh_data_buffer.vab_offset,vab_count);
     if(off)
         return off;
 
-    off=ibo-pdb.ibo;
+    off=ibo-mesh_data_buffer.ibo;
 
     return off;
 }
@@ -59,13 +59,13 @@ void MeshRenderData::Set(const Primitive *prim)
     first_index     =prim->GetFirstIndex();
 }
 
-Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *pdb)
+Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_data_buffer)
 {
     primitive=r;
     pipeline=p;
     mat_inst=mi;
 
-    data_buffer=pdb;
+    data_buffer=mesh_data_buffer;
     render_data.Set(primitive);
 }
 
@@ -96,7 +96,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
         return(nullptr);
     }
 
-    MeshDataBuffer *pdb=new MeshDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
+    MeshDataBuffer *mesh_data_buffer=new MeshDataBuffer(input_count,prim->GetIBO(),prim->GetVDM());
 
     const VertexInputFormat *vif=vil->GetVIFList(VertexInputGroup::Basic);
 
@@ -135,12 +135,12 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             return(nullptr);
         }
 
-        pdb->vab_list[i]=vab->GetBuffer();
-        pdb->vab_offset[i]=0;
+        mesh_data_buffer->vab_list[i]=vab->GetBuffer();
+        mesh_data_buffer->vab_offset[i]=0;
         ++vif;
     }
 
-    return(new Mesh(prim,mi,p,pdb));
+    return(new Mesh(prim,mi,p,mesh_data_buffer));
 }
 
 bool MeshDataBuffer::Update(const Primitive *prim,const VIL *vil)

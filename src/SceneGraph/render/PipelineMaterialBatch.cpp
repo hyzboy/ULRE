@@ -53,28 +53,28 @@ PipelineMaterialBatch::~PipelineMaterialBatch()
     SAFE_CLEAR(assign_buffer);
 }
 
-void PipelineMaterialBatch::Add(MeshComponent *smc)
+void PipelineMaterialBatch::Add(MeshComponent *mesh_component)
 {
-    if(!smc)
+    if(!mesh_component)
         return;
 
-    DrawNode rn;
+    DrawNode node;
 
-    rn.index            =draw_nodes.GetCount();
+    node.index            =draw_nodes.GetCount();
 
-    rn.sm_component     =smc;
+    node.mesh_component   =mesh_component;
 
-    rn.l2w_version      =smc->GetTransformVersion();
-    rn.l2w_index        =0;
+    node.l2w_version      =mesh_component->GetTransformVersion();
+    node.l2w_index        =0;
 
-    rn.world_position   =smc->GetWorldPosition();
+    node.world_position   =mesh_component->GetWorldPosition();
 
     if(camera_info)
-        rn.to_camera_distance=length(camera_info->pos,rn.world_position);
+        node.to_camera_distance=length(camera_info->pos,node.world_position);
     else
-        rn.to_camera_distance=0;
+        node.to_camera_distance=0;
 
-    draw_nodes.Add(rn);
+    draw_nodes.Add(node);
 }
 
 void PipelineMaterialBatch::Finalize()
@@ -110,7 +110,7 @@ void PipelineMaterialBatch::UpdateTransformData()
 
     for(int i=0;i<node_count;i++)
     {
-        l2w_version=node->sm_component->GetTransformVersion();
+        l2w_version=node->mesh_component->GetTransformVersion();
 
         if(node->l2w_version!=l2w_version)       //版本不对，需要更新
         {
@@ -138,9 +138,9 @@ void PipelineMaterialBatch::UpdateTransformData()
     }
 }
 
-void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *smc)
+void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *mesh_component)
 {
-    if(!smc)return;
+    if(!mesh_component)return;
 
     if(!assign_buffer)
         return;
@@ -152,7 +152,7 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *smc)
 
     for(int i=0;i<node_count;i++)
     {
-        if(node->sm_component==smc)
+        if(node->mesh_component==mesh_component)
         {
             assign_buffer->UpdateMaterialInstanceData(node);
             return;
@@ -162,11 +162,11 @@ void PipelineMaterialBatch::UpdateMaterialInstanceData(MeshComponent *smc)
     }
 }
 
-void PipelineMaterialBatch::DrawBatch::Set(Mesh *ri)
+void PipelineMaterialBatch::DrawBatch::Set(Mesh *mesh)
 {
-    mi      =ri->GetMaterialInstance();
-    pdb     =ri->GetDataBuffer();
-    prd     =ri->GetRenderData();
+    mi              =mesh->GetMaterialInstance();
+    mesh_data_buffer=mesh->GetDataBuffer();
+    mesh_render_data=mesh->GetRenderData();
 }
 
 void PipelineMaterialBatch::ReallocICB()
@@ -189,21 +189,21 @@ void PipelineMaterialBatch::ReallocICB()
     icb_draw_indexed=device->CreateIndirectDrawIndexedBuffer(icb_new_count);
 }
 
-void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,DrawBatch *ri)
+void PipelineMaterialBatch::WriteICB(VkDrawIndirectCommand *dicp,DrawBatch *batch)
 {
-    dicp->vertexCount   =ri->prd->vertex_count;
-    dicp->instanceCount =ri->instance_count;
-    dicp->firstVertex   =ri->prd->vertex_offset;
-    dicp->firstInstance =ri->first_instance;
+    dicp->vertexCount   =batch->mesh_render_data->vertex_count;
+    dicp->instanceCount =batch->instance_count;
+    dicp->firstVertex   =batch->mesh_render_data->vertex_offset;
+    dicp->firstInstance =batch->first_instance;
 }
 
-void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,DrawBatch *ri)
+void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,DrawBatch *batch)
 {
-    diicp->indexCount   =ri->prd->index_count;
-    diicp->instanceCount=ri->instance_count;
-    diicp->firstIndex   =ri->prd->first_index;
-    diicp->vertexOffset =ri->prd->vertex_offset;
-    diicp->firstInstance=ri->first_instance;
+    diicp->indexCount   =batch->mesh_render_data->index_count;
+    diicp->instanceCount=batch->instance_count;
+    diicp->firstIndex   =batch->mesh_render_data->first_index;
+    diicp->vertexOffset =batch->mesh_render_data->vertex_offset;
+    diicp->firstInstance=batch->first_instance;
 }
 
 void PipelineMaterialBatch::BuildBatches()
@@ -213,14 +213,14 @@ void PipelineMaterialBatch::BuildBatches()
 
     ReallocICB();
 
-    VkDrawIndirectCommand *dicp=icb_draw->MapCmd();
-    VkDrawIndexedIndirectCommand *diicp=icb_draw_indexed->MapCmd();
+    VkDrawIndirectCommand *         dicp    =icb_draw->MapCmd();
+    VkDrawIndexedIndirectCommand *  diicp   =icb_draw_indexed->MapCmd();
 
     draw_batches.Clear();
     draw_batches.Reserve(count);
 
-    DrawBatch *batch=draw_batches.GetData();
-    Mesh *mesh=node->sm_component->GetMesh();
+    DrawBatch * batch   =draw_batches.GetData();
+    Mesh *      mesh    =node->mesh_component->GetMesh();
 
     draw_batches_count=1;
 
@@ -228,15 +228,15 @@ void PipelineMaterialBatch::BuildBatches()
     batch->instance_count=1;
     batch->Set(mesh);
 
-    last_data_buffer=batch->pdb;
-    last_vdm        =batch->pdb->vdm;
-    last_render_data=batch->prd;
+    last_data_buffer=batch->mesh_data_buffer;
+    last_vdm        =batch->mesh_data_buffer->vdm;
+    last_render_data=batch->mesh_render_data;
 
     ++node;
 
     for(uint i=1;i<count;i++)
     {
-        mesh=node->sm_component->GetMesh();
+        mesh=node->mesh_component->GetMesh();
 
         if(*last_data_buffer==*mesh->GetDataBuffer())
             if(*last_render_data==*mesh->GetRenderData())
@@ -246,9 +246,9 @@ void PipelineMaterialBatch::BuildBatches()
                 continue;
             }
 
-        if(batch->pdb->vdm)
+        if(batch->mesh_data_buffer->vdm)
         {
-            if(batch->pdb->ibo)
+            if(batch->mesh_data_buffer->ibo)
                 WriteICB(diicp,batch);
             else
                 WriteICB(dicp,batch);
@@ -264,16 +264,16 @@ void PipelineMaterialBatch::BuildBatches()
         batch->instance_count=1;
         batch->Set(mesh);
 
-        last_data_buffer=batch->pdb;
-        last_vdm        =batch->pdb->vdm;
-        last_render_data=batch->prd;
+        last_data_buffer=batch->mesh_data_buffer;
+        last_vdm        =batch->mesh_data_buffer->vdm;
+        last_render_data=batch->mesh_render_data;
 
         ++node;
     }
 
-    if(batch->pdb->vdm)
+    if(batch->mesh_data_buffer->vdm)
     {
-        if(batch->pdb->ibo)
+        if(batch->mesh_data_buffer->ibo)
             WriteICB(diicp,batch);
         else
             WriteICB(dicp,batch);
@@ -285,8 +285,8 @@ void PipelineMaterialBatch::BuildBatches()
 
 bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 {
-    const MeshDataBuffer *  pdb     =batch->pdb;
-    const uint              ri_index=batch->first_instance;
+    const MeshDataBuffer *  mesh_data_buffer=batch->mesh_data_buffer;
+    const uint              ri_index        =batch->first_instance;
 
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
 
@@ -299,7 +299,7 @@ bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
-        if(!vab_list->Add(pdb->vab_list,pdb->vab_offset,pdb->vab_count))
+        if(!vab_list->Add(mesh_data_buffer->vab_list,mesh_data_buffer->vab_offset,mesh_data_buffer->vab_count))
         {
             //这个情况很严重哦！
             return(false);
@@ -368,12 +368,12 @@ void PipelineMaterialBatch::ProcIndirectRender()
 
 bool PipelineMaterialBatch::Draw(DrawBatch *batch)
 {
-    if(!last_data_buffer||*(batch->pdb)!=*last_data_buffer)        //换buf了
+    if(!last_data_buffer||*(batch->mesh_data_buffer)!=*last_data_buffer)        //换buf了
     {
         if(indirect_draw_count)                 //如果有间接绘制的数据，赶紧给画了
             ProcIndirectRender();
 
-        last_data_buffer=batch->pdb;
+        last_data_buffer=batch->mesh_data_buffer;
         last_render_data=nullptr;
 
         if(!BindVAB(batch))
@@ -382,11 +382,11 @@ bool PipelineMaterialBatch::Draw(DrawBatch *batch)
             return(false);
         }
 
-        if(batch->pdb->ibo)
-            cmd_buf->BindIBO(batch->pdb->ibo);
+        if(batch->mesh_data_buffer->ibo)
+            cmd_buf->BindIBO(batch->mesh_data_buffer->ibo);
     }
 
-    if(batch->pdb->vdm)
+    if(batch->mesh_data_buffer->vdm)
     {
         if(indirect_draw_count==0)
             first_indirect_draw_index=batch->first_instance;
@@ -395,7 +395,7 @@ bool PipelineMaterialBatch::Draw(DrawBatch *batch)
     }
     else
     {
-        cmd_buf->Draw(batch->pdb,batch->prd,batch->instance_count,batch->first_instance);
+        cmd_buf->Draw(batch->mesh_data_buffer,batch->mesh_render_data,batch->instance_count,batch->first_instance);
     }
 
     return(true);
@@ -424,6 +424,7 @@ void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
     cmd_buf->BindDescriptorSets(pm_index.material);
 
     DrawBatch *batch=draw_batches.GetData();
+
     for(uint i=0;i<draw_batches_count;i++)
     {
         Draw(batch);

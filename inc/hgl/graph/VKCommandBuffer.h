@@ -249,7 +249,7 @@ public: //draw
                                 void DrawIndirect       (VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndirectCommand         )){return DrawIndirect(         buf,0,drawCount,stride);}
                                 void DrawIndexedIndirect(VkBuffer buf,          uint32_t drawCount,uint32_t stride=sizeof(VkDrawIndexedIndirectCommand  )){return DrawIndexedIndirect(  buf,0,drawCount,stride);}
 
-                                void Draw               (const MeshDataBuffer *prb,const MeshRenderData *prd,const uint32_t instance_count=1,const uint32_t first_instance=0);
+                                void Draw               (const MeshDataBuffer *,const MeshRenderData *,const uint32_t instance_count=1,const uint32_t first_instance=0);
 
 public: //dynamic state
 

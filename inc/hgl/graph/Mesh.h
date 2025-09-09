@@ -32,7 +32,7 @@ public:
     MeshDataBuffer(const uint32_t,IndexBuffer *,VertexDataManager *_v=nullptr);
     ~MeshDataBuffer();
 
-    const int compare(const MeshDataBuffer &pdb)const override;
+    const int compare(const MeshDataBuffer &mesh_data_buffer)const override;
 
     bool Update(const Primitive *,const VIL *);
 };//struct MeshDataBuffer
