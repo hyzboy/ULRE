@@ -49,6 +49,6 @@ namespace hgl::graph
 
     public:
 
-        virtual void RefreshMatrix();
+        virtual void UpdateWorldTransform();
     };//class NodeTransform
 }//namespace hgl::graph

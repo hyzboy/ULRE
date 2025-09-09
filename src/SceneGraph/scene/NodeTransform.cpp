@@ -17,7 +17,7 @@ namespace hgl
             transform_state.UpdateNewestData();
         }
 
-        void NodeTransform::RefreshMatrix()
+        void NodeTransform::UpdateWorldTransform()
         {
             transform_state.Update();
         }

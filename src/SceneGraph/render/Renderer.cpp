@@ -97,7 +97,7 @@ namespace hgl::graph
         if(!root)
             return(false);
 
-        root->RefreshMatrix();
+        root->UpdateWorldTransform();
 
         if(camera_control)
         {
