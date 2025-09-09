@@ -12,7 +12,7 @@ VK_NAMESPACE_BEGIN
 *
 *    #define MI_MAX_COUNT ???                //该值由引擎根据 UBORange/sizeof(MaterialInstance) 计算出来
 *
-*    struct MaterialInstance                 //这部分数据，即为材质实例的具体数据，每一个材质实例类负责提供具体数据。由RenderList合并成一整个UBO
+*    struct MaterialInstance                 //这部分数据，即为材质实例的具体数据，每一个材质实例类负责提供具体数据。由RenderCollector合并成一整个UBO
 *    {                                       //该类数据，由DescriptorSetType为PerMaterial的参数构成
 *        vec4 BaseColor;
 *        vec4 Emissive;
@@ -40,7 +40,7 @@ VK_NAMESPACE_BEGIN
 
 /**
 * 材质实例类<br>
-* 材质实例类本质只是提供一个数据区，供RenderList合并成一个大UBO。
+* 材质实例类本质只是提供一个数据区，供RenderCollector合并成一个大UBO。
 */
 class MaterialInstance
 {

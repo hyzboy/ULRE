@@ -106,7 +106,7 @@ namespace hgl::graph
             camera_control->Refresh();
         }
 
-        // 这里内部会将Scene tree展开成RenderList,而RenderList排序是需要CameraInfo的
+        // 这里内部会将Scene tree展开成RenderCollector,而RenderCollector排序是需要CameraInfo的
         render_task->RebuildRenderList(root);
 
         bool result=false;

@@ -10,7 +10,7 @@
 #include<hgl/graph/module/SamplerManager.h>
 #include<hgl/graph/module/PrimitiveManager.h>
 #include<hgl/graph/module/MeshManager.h>
-#include<hgl/graph/RenderList.h>
+#include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/Renderer.h>
 #include<hgl/graph/PrimitiveCreater.h>
@@ -160,10 +160,10 @@ public:
 
 public: // other
 
-    RenderList *CreateRenderList()
-    {
-        return(new RenderList(device));
-    }
+    //RenderCollector *CreateRenderCollector()
+    //{
+    //    return(new RenderCollector(device));
+    //}
 
     TileFont *CreateTileFont(FontSource *fs,int limit_count=-1);                                                     ///<创建只使用一种字符的Tile字符管理对象
     TextRender *CreateTextRender(graph::FontSource *fs,const int limit_count=1024);

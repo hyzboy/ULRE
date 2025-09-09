@@ -1,5 +1,5 @@
 ﻿#include<hgl/graph/MaterialRenderList.h>
-#include<hgl/graph/RenderList.h>
+#include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKCommandBuffer.h>
@@ -11,7 +11,7 @@ namespace hgl
 {
     namespace graph
     {
-        RenderList::RenderList(VulkanDevice *dev)
+        RenderCollector::RenderCollector(VulkanDevice *dev)
         {
             device          =dev;
             renderable_count=0;
@@ -19,7 +19,7 @@ namespace hgl
             camera_info=nullptr;
         }
 
-        bool RenderList::ExpendNode(SceneNode *sn)
+        bool RenderCollector::ExpendNode(SceneNode *sn)
         {
             if(!sn)return(false);
 
@@ -55,7 +55,7 @@ namespace hgl
             return(true);
         }
 
-        bool RenderList::Expend(SceneNode *sn)
+        bool RenderCollector::Expend(SceneNode *sn)
         {
             if(!device|!sn)return(false);
 
@@ -66,7 +66,7 @@ namespace hgl
             return(true);
         }
 
-        bool RenderList::Render(RenderCmdBuffer *cb) 
+        bool RenderCollector::Render(RenderCmdBuffer *cb) 
         {
             if(!cb)
                 return(false);
@@ -79,12 +79,12 @@ namespace hgl
             return(true);
         }
 
-        void RenderList::Clear()
+        void RenderCollector::Clear()
         {
             mrl_map.Clear();
         }
         
-        void RenderList::UpdateLocalToWorld()
+        void RenderCollector::UpdateLocalToWorld()
         {
             if(renderable_count<=0)
                 return;
@@ -92,7 +92,7 @@ namespace hgl
             mrl_map.UpdateLocalToWorld();
         }
 
-        void RenderList::UpdateMaterialInstance(MeshComponent *smc)
+        void RenderCollector::UpdateMaterialInstance(MeshComponent *smc)
         {
             if(!smc)return;
 

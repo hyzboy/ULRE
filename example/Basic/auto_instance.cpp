@@ -1,4 +1,4 @@
-﻿// 该范例主要演示使用RenderList系统绘制多个三角形，并利用RenderList进行排序以及自动合并进行Instance渲染
+﻿// 该范例主要演示使用RenderCollector系统绘制多个三角形，并利用RenderCollector进行排序以及自动合并进行Instance渲染
 
 #include<hgl/WorkManager.h>
 #include<hgl/math/Math.h>

@@ -14,17 +14,17 @@ namespace hgl::graph
     {
         RenderTaskName  task_name;
 
-        IRenderTarget * render_target;
-        RenderList *    render_list;
-        CameraInfo *    camera_info;
+        IRenderTarget *     render_target;
+        RenderCollector *   render_collector;
+        CameraInfo *        camera_info;
 
     public:
 
-        const   RenderTaskName &GetName         ()const;
+        const   RenderTaskName &    GetName         ()const;
 
-                IRenderTarget * GetRenderTarget ()const{return render_target;}
-                RenderList *    GetRenderList   ()const{return render_list;}
-                CameraInfo *    GetCameraInfo   ()const{return camera_info;}
+                IRenderTarget *     GetRenderTarget ()const{return render_target;}
+                RenderCollector *   GetRenderList   ()const{return render_collector;}
+                CameraInfo *        GetCameraInfo   ()const{return camera_info;}
 
     public:
 
