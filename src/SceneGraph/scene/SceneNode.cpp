@@ -36,9 +36,9 @@ namespace hgl::graph
     /**
     * 刷新矩阵变换
     */
-    void SceneNode::RefreshMatrix()
+    void SceneNode::UpdateWorldTransform()
     {
-        NodeTransform::RefreshMatrix();
+        NodeTransform::UpdateWorldTransform();
 
 //            if (transform_state.IsNewestVersion())       //自己不变，不代表下面不变
             //return;
@@ -48,7 +48,7 @@ namespace hgl::graph
         for(SceneNode *sub:child_nodes)
         {
             sub->SetParentMatrix(l2w);
-            sub->RefreshMatrix();
+            sub->UpdateWorldTransform();
         }
 
         for(Component *com:component_set)
@@ -59,7 +59,7 @@ namespace hgl::graph
                 continue;
 
             sc->SetParentMatrix(l2w);
-            sc->RefreshMatrix();
+            sc->UpdateWorldTransform();
         }
     }
 

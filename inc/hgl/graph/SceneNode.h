@@ -164,7 +164,7 @@ namespace hgl::graph
 
     public: //坐标相关方法
 
-        virtual         void        RefreshMatrix       () override;                                                ///<刷新世界变换
+        virtual         void        UpdateWorldTransform       () override;                                                ///<刷新世界变换
         virtual         void        RefreshBoundingBox  ();                                                         ///<刷新绑定盒
 
         virtual const   AABB &      GetLocalBoundingBox ()const{return local_bounding_box;}                         ///<取得本地坐标绑定盒
