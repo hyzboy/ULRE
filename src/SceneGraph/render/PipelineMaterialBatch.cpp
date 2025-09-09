@@ -58,9 +58,9 @@ void PipelineMaterialBatch::Add(MeshComponent *smc)
     if(!smc)
         return;
 
-    RenderNode rn;
+    DrawNode rn;
 
-    rn.index            =rn_list.GetCount();
+    rn.index            =draw_node_list.GetCount();
 
     rn.sm_component     =smc;
 
@@ -74,22 +74,22 @@ void PipelineMaterialBatch::Add(MeshComponent *smc)
     else
         rn.to_camera_distance=0;
 
-    rn_list.Add(rn);
+    draw_node_list.Add(rn);
 }
 
 void PipelineMaterialBatch::End()
 {
     //排序
-    Sort(rn_list.GetArray());
+    Sort(draw_node_list.GetArray());
 
-    const uint node_count=rn_list.GetCount();
+    const uint node_count=draw_node_list.GetCount();
 
     if(node_count<=0)return;
 
     Stat();
 
     if(assign_buffer)
-        assign_buffer->WriteNode(rn_list);
+        assign_buffer->WriteNode(draw_node_list);
 }
 
 void PipelineMaterialBatch::UpdateLocalToWorld()
@@ -97,16 +97,16 @@ void PipelineMaterialBatch::UpdateLocalToWorld()
     if(!assign_buffer)
         return;
 
-    rn_update_l2w_list.Clear();
+    draw_node_update_l2w_list.Clear();
 
-    const int node_count=rn_list.GetCount();
+    const int node_count=draw_node_list.GetCount();
 
     if(node_count<=0)return;
 
     int first=-1,last=-1;
     int update_count=0;
     uint32 l2w_version=0;
-    RenderNode *rn=rn_list.GetData();
+    DrawNode *rn=draw_node_list.GetData();
 
     for(int i=0;i<node_count;i++)
     {
@@ -123,7 +123,7 @@ void PipelineMaterialBatch::UpdateLocalToWorld()
 
             rn->l2w_version=l2w_version;
 
-            rn_update_l2w_list.Add(rn);
+            draw_node_update_l2w_list.Add(rn);
 
             ++update_count;
         }
@@ -133,8 +133,8 @@ void PipelineMaterialBatch::UpdateLocalToWorld()
 
     if(update_count>0)
     {
-        assign_buffer->UpdateLocalToWorld(rn_update_l2w_list,first,last);
-        rn_update_l2w_list.Clear();
+        assign_buffer->UpdateLocalToWorld(draw_node_update_l2w_list,first,last);
+        draw_node_update_l2w_list.Clear();
     }
 }
 
@@ -145,10 +145,10 @@ void PipelineMaterialBatch::UpdateMaterialInstance(MeshComponent *smc)
     if(!assign_buffer)
         return;
     
-    const int node_count=rn_list.GetCount();
+    const int node_count=draw_node_list.GetCount();
 
     if(node_count<=0)return;
-    RenderNode *rn=rn_list.GetData();
+    DrawNode *rn=draw_node_list.GetData();
 
     for(int i=0;i<node_count;i++)
     {
@@ -171,7 +171,7 @@ void PipelineMaterialBatch::RenderItem::Set(Mesh *ri)
 
 void PipelineMaterialBatch::ReallocICB()
 {
-    const uint32_t icb_new_count=power_to_2(rn_list.GetCount());
+    const uint32_t icb_new_count=power_to_2(draw_node_list.GetCount());
 
     if(icb_draw)
     {
@@ -208,8 +208,8 @@ void PipelineMaterialBatch::WriteICB(VkDrawIndexedIndirectCommand *diicp,RenderI
 
 void PipelineMaterialBatch::Stat()
 {
-    const uint count=rn_list.GetCount();
-    RenderNode *rn=rn_list.GetData();
+    const uint count=draw_node_list.GetCount();
+    DrawNode *rn=draw_node_list.GetData();
 
     ReallocICB();
 
@@ -404,7 +404,7 @@ bool PipelineMaterialBatch::Render(RenderItem *ri)
 void PipelineMaterialBatch::Render(RenderCmdBuffer *rcb)
 {
     if(!rcb)return;
-    const uint count=rn_list.GetCount();
+    const uint count=draw_node_list.GetCount();
 
     if(count<=0)return;
 

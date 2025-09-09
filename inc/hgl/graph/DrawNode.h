@@ -11,7 +11,7 @@ namespace hgl
         class MaterialInstance;
         class MeshComponent;
 
-        struct RenderNode:public Comparator<RenderNode>
+        struct DrawNode:public Comparator<DrawNode>
         {
             uint            index;                          ///<在PipelineMaterialBatch中的索引
 
@@ -29,7 +29,7 @@ namespace hgl
         public:
 
             //该函数位于PipelineMaterialBatch.cpp
-            const int compare(const RenderNode &)const override;
+            const int compare(const DrawNode &)const override;
 
         public:
 
@@ -37,13 +37,13 @@ namespace hgl
             MaterialInstance *GetMaterialInstance()const;
         };
 
-        using RenderNodeList=ArrayList<RenderNode>;
-        using RenderNodePointerList=ArrayList<RenderNode *>;
+        using DrawNodeList=ArrayList<DrawNode>;
+        using DrawNodePointerList=ArrayList<DrawNode *>;
 
         using MaterialInstanceSets=SortedSet<MaterialInstance *>;       ///<材质实例集合
     }//namespace graph
 
-    template<> inline const int ItemComparator<graph::RenderNode>::compare(const graph::RenderNode &a,const graph::RenderNode &b)
+    template<> inline const int ItemComparator<graph::DrawNode>::compare(const graph::DrawNode &a,const graph::DrawNode &b)
     {
         return a.compare(b);
     }

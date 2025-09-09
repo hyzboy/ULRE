@@ -1,4 +1,4 @@
-#include<hgl/graph/RenderNode.h>
+#include<hgl/graph/DrawNode.h>
 #include<hgl/graph/VertexDataManager.h>
 #include<hgl/component/MeshComponent.h>
 
@@ -20,7 +20,7 @@ VK_NAMESPACE_BEGIN
 建立一个大的IndirectCommandBuffer，用于存放所有的渲染指令，包括那些不能使用Indirect渲染的。
 这样就可以保证所有的渲染操作就算要切VBO，也不需要切换INDIRECT缓冲区，定位指令也很方便。
 */
-const int RenderNode::compare(const RenderNode &other)const
+const int DrawNode::compare(const DrawNode &other)const
 {
     hgl::int64 off;
 
@@ -82,12 +82,12 @@ const int RenderNode::compare(const RenderNode &other)const
         return -1;
 }
 
-Mesh *RenderNode::GetMesh()const
+Mesh *DrawNode::GetMesh()const
 {
     return sm_component?sm_component->GetMesh():nullptr;
 }
 
-MaterialInstance *RenderNode::GetMaterialInstance()const
+MaterialInstance *DrawNode::GetMaterialInstance()const
 {
     if(!sm_component)return(nullptr);
     if(!sm_component->GetMesh())return(nullptr);
