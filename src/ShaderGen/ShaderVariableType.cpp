@@ -228,7 +228,7 @@ bool ShaderVariableType::ParseTypeString(const char *str)
         if(str[1]=='m'&&str[2]=='a'&&str[3]=='g'&&str[4]=='e')
         {
             int name_len=5;
-            while(iscodechar(str[name_len]))
+            while(is_identifier_char(str[name_len]))
                 ++name_len;
 
             base_type=SVBaseType::Image;
@@ -336,7 +336,7 @@ bool ShaderVariableType::ParseTypeString(const char *str)
     if(hgl::strcmp(str,"sampler",7)==0)
     {
         int name_len=7;
-        while(iscodechar(str[name_len]))
+        while(is_identifier_char(str[name_len]))
             ++name_len;
 
         base_type=SVBaseType::Sampler;
