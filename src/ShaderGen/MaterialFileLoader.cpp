@@ -77,7 +77,7 @@ namespace
         {
             sp=text;
 
-            while(hgl::isalpha(*text))
+            while(hgl::is_alpha(*text))
                 ++text;
 
             shader_stage_flag_bits|=GetShaderStageFlagBits(sp,text-sp);
@@ -94,7 +94,7 @@ namespace
 
         const char *sp=text;
 
-        while(hgl::iscodechar(*text))++text;
+        while(hgl::is_identifier_char(*text))++text;
 
         hgl::strcpy(str,max_len,sp,text-sp);
 
@@ -107,7 +107,7 @@ namespace
 
         const char *sp=text;
 
-        while(hgl::isfilenamechar(*text))++text;
+        while(hgl::is_filename_char(*text))++text;
 
         hgl::strcpy(str,max_len,sp,text-sp);
 
@@ -232,11 +232,11 @@ namespace
 
                 while(sp<ep)
                 {
-                    while(hgl::iscodechar(*text))++text;
+                    while(hgl::is_identifier_char(*text))++text;
 
                     require_list->Add(AnsiString(sp,text-sp));
 
-                    while(!hgl::iscodechar(*text))++text;
+                    while(!hgl::is_identifier_char(*text))++text;
 
                     sp=text;
                 }
@@ -390,7 +390,7 @@ namespace
 
         sp=str;
 
-        while(hgl::iscodechar(*str))++str;
+        while(hgl::is_identifier_char(*str))++str;
 
         hgl::strcpy(via->name,SHADER_RESOURCE_NAME_MAX_LENGTH,sp,str-sp);
 
@@ -421,7 +421,7 @@ namespace
 
         sp=str;
 
-        while(hgl::iscodechar(*str))++str;
+        while(hgl::is_identifier_char(*str))++str;
 
         hgl::strcpy(sv->name,SHADER_RESOURCE_NAME_MAX_LENGTH,sp,str-sp);
 
@@ -522,11 +522,11 @@ namespace
 
                 RANGE_CHECK_RETURN_FALSE(st);
 
-                while(!hgl::iscodechar(*text))++text;
+                while(!hgl::is_identifier_char(*text))++text;
 
                 sp=text;
 
-                while(hgl::iscodechar(*text))++text;
+                while(hgl::is_identifier_char(*text))++text;
 
                 SamplerData sd;
 
@@ -570,7 +570,7 @@ namespace
 
                 const char *sp=text;
 
-                while(hgl::isalpha(*text)||*text=='_')++text;
+                while(hgl::is_alpha(*text)||*text=='_')++text;
 
                 const PrimitiveType ip=ParsePrimitiveType(sp,text-sp);
 
@@ -589,7 +589,7 @@ namespace
 
                 const char *sp=text;
 
-                while(hgl::isalpha(*text)||*text=='_')++text;
+                while(hgl::is_alpha(*text)||*text=='_')++text;
 
                 const PrimitiveType op=ParsePrimitiveType(sp,text-sp);
 

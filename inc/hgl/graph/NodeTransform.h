@@ -25,11 +25,11 @@ namespace hgl::graph
             transform_state.Reset();
         }
 
-        void SetTransformState (const TransformState &sm){transform_state=sm;}                                                 ///<设置场景矩阵
+        void SetTransformState (const TransformState &sm){transform_state=sm;}                                                  ///<设置场景矩阵
 
-        void SetLocalNormal (const Vector3f &nor){transform_state.SetLocalNormal(nor);}                                 ///<设置本地法线
-        void SetLocalMatrix (const Matrix4f &mat){transform_state.SetLocalMatrix(mat);}                                        ///<设置本地矩阵
-        void SetParentMatrix(const Matrix4f &mat){transform_state.SetParentMatrix(mat);}                                   ///<设置上级到世界空间变换矩阵
+        void SetLocalNormal (const Vector3f &nor){transform_state.SetLocalNormal(nor);}                                  ///<设置本地法线
+        void SetLocalMatrix (const Matrix4f &mat){transform_state.SetLocalMatrix(mat);}                                         ///<设置本地矩阵
+        void SetParentMatrix(const Matrix4f &mat){transform_state.SetParentMatrix(mat);}                                    ///<设置上级到世界空间变换矩阵
 
     public:
 

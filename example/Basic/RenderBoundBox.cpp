@@ -334,9 +334,6 @@ public:
 
     ~TestApp()
     {
-        SAFE_CLEAR(rm_box)
-
-
         SAFE_CLEAR(mesh_vdm)
     }
 

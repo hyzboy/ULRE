@@ -4,7 +4,7 @@ namespace hgl::graph
 {
 	FontBitmap *FontBitmapDataSource::GetCharBitmap(const u32char &ch)
 	{
-		if(hgl::isspace(ch))return(nullptr);	//不能显示的数据或是空格
+		if(hgl::is_space(ch))return(nullptr);	//不能显示的数据或是空格
 
 		FontBitmap *bmp;
 			

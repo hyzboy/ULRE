@@ -50,7 +50,7 @@ namespace hgl::graph
                 
             attr->ch=ch;
 
-            attr->space=hgl::isspace(ch);
+            attr->space=hgl::is_space(ch);
 
             if(!attr->space)
             {
