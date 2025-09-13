@@ -95,7 +95,7 @@ namespace hgl
 
             if(!filesystem::GetCurrentPath(cur_path))
                 return(false);
-            glsl_compiler_fullname=filesystem::MergeFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
+            glsl_compiler_fullname=filesystem::JoinPathWithFilename(cur_path,OS_TEXT("GLSLCompiler") HGL_PLUGIN_EXTNAME);
 
             gsi_module=LoadExternalModule(glsl_compiler_fullname);
 

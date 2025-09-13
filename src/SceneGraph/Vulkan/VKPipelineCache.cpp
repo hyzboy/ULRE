@@ -23,7 +23,7 @@ namespace
         sl.Add(OSString::numberOf(pdp.vendorID));
         sl.Add(OSString::numberOf(pdp.deviceID));
 
-        return Combine(sl);
+        return JoinPath(sl);
     }
 
     void LoadPipelineCacheFile(VkPipelineCacheCreateInfo *pcci,const VkPhysicalDeviceProperties &pdp)
@@ -32,7 +32,7 @@ namespace
 
         const OSString pathname=GetUUIDCachePath(pdp);
         const OSString filename=VkUUID2String<os_char>(pdp.pipelineCacheUUID);
-        const OSString fullname=MergeFilename(pathname,filename);
+        const OSString fullname=JoinPathWithFilename(pathname,filename);
 
         if(!FileExist(fullname))
         {
@@ -91,7 +91,7 @@ void SavePipelineCacheData(VkDevice device,VkPipelineCache cache,const VkPhysica
 
     const OSString pathname=GetUUIDCachePath(pdp);
     const OSString filename=VkUUID2String<os_char>(pdp.pipelineCacheUUID);
-    const OSString fullname=MergeFilename(pathname,filename);
+    const OSString fullname=JoinPathWithFilename(pathname,filename);
         
     if(!IsDirectory(pathname))
         if(!MakePath(pathname))
