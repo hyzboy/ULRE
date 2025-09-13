@@ -15,6 +15,4 @@ CreateProject(01_ExtrudedPolygonTest            ExtrudedPolygonTest.cpp)
 CreateProject(02_WallsFromPolyline              WallsFromPolyline.cpp)
 #CreateProject(03_WallsFromPolyline_Texture      WallsFromPolyline_Texture.cpp)
 
-
-
-
+CreateProject(04_WireShapeTest                  WireShapeTest.cpp WireShape.cpp)
