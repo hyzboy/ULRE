@@ -66,7 +66,7 @@ private:
 
         for(uint i=0;i<TexCount;i++)
         {
-            filename=filesystem::MergeFilename(OS_TEXT("res/image/icon/freepik"),tex_filename[i]);
+            filename=filesystem::JoinPathWithFilename(OS_TEXT("res/image/icon/freepik"),tex_filename[i]);
 
             if(!LoadTexture2DArray(texture,i,filename))
                 return(false);

@@ -101,7 +101,7 @@ namespace
         return text-sp;
     }
 
-    int ClipFilename(char *str,const int max_len,const char *text)
+    int GetFilename(char *str,const int max_len,const char *text)
     {
         while(*text==' '||*text=='\t')++text;
 
@@ -152,7 +152,7 @@ namespace
 
             if(hgl::stricmp(text,"File ",5)==0)
             {
-                ClipFilename(ubo_data.filename,sizeof(ubo_data.filename),text+5);
+                GetFilename(ubo_data.filename,sizeof(ubo_data.filename),text+5);
             }
             else
             if(hgl::stricmp(text,"Struct ",7)==0)
@@ -764,9 +764,9 @@ const char *GetUBOCodes(const AccumMemoryManager::Block *block)
 
 MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
 {
-    const OSString mtl_osfn=filesystem::FixFilename(ToOSString(mtl_filename+".mtl"));
+    const OSString mtl_osfn=filesystem::NormalizeFilename(ToOSString(mtl_filename+".mtl"));
 
-    const OSString mtl_os_filename=filesystem::MergeFilename(HGL_SHADER_LIBRARY_FOLDER,mtl_osfn);
+    const OSString mtl_os_filename=filesystem::JoinPathWithFilename(HGL_SHADER_LIBRARY_FOLDER,mtl_osfn);
 
     if(!filesystem::FileExist(mtl_os_filename))
         return nullptr;
@@ -789,19 +789,19 @@ MaterialFileData *LoadMaterialDataFromFile(const AnsiString &mtl_filename)
     if(mfd->ubo_list.GetCount()<=0)
         return mfd;
     
-    const OSString mtl_path=filesystem::ClipPathname(mtl_os_filename,false);
+    const OSString mtl_path=filesystem::GetParentPath(mtl_os_filename,false);
 
     OSString ubo_os_fn;
     OSString ubo_os_full_filename;
 
     for(UBOData &ud:mfd->ubo_list)
     {
-        ubo_os_fn=filesystem::FixFilename(ToOSString(ud.filename));
+        ubo_os_fn=filesystem::NormalizeFilename(ToOSString(ud.filename));
 
         if(ubo_os_fn.GetFirstChar()==HGL_DIRECTORY_SEPARATOR)
-            ubo_os_full_filename=filesystem::MergeFilename(HGL_SHADER_LIBRARY_FOLDER,ubo_os_fn);
+            ubo_os_full_filename=filesystem::JoinPathWithFilename(HGL_SHADER_LIBRARY_FOLDER,ubo_os_fn);
         else
-            ubo_os_full_filename=filesystem::MergeFilename(mtl_path,ubo_os_fn);
+            ubo_os_full_filename=filesystem::JoinPathWithFilename(mtl_path,ubo_os_fn);
 
         ud.block=LoadUBO2Block(ubo_os_full_filename);
 

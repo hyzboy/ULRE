@@ -26,7 +26,7 @@ const AnsiString *LoadShader(const AnsiString &shader_name)
 
     const AnsiString filename=shader_name+".glsl";
 
-    const AnsiString fullname=filesystem::MergeFilename("ShaderLibrary",filename);
+    const AnsiString fullname=filesystem::JoinPathWithFilename("ShaderLibrary",filename);
 
     const OSString os_fn=ToOSString(fullname);
 

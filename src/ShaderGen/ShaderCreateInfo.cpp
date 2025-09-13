@@ -178,7 +178,7 @@ bool ShaderCreateInfo::ProcStruct()
 
     AnsiString codes;
 
-    for(auto &str:struct_list)
+    for(auto str:struct_list)
     {
         if(!mdi->GetStruct(*str,codes))
             return(false);
