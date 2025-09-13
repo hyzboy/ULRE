@@ -22,7 +22,7 @@ constexpr float position_data[VERTEX_COUNT*2]=
 constexpr uint DRAW_OBJECT_COUNT=12;
 constexpr double TRI_ROTATE_ANGLE=360.0f/DRAW_OBJECT_COUNT;
 
-#define USE_MATERIAL_FILE   true        //是否使用材质文件
+//#define USE_MATERIAL_FILE   true        //是否使用材质文件
 
 class TestApp:public WorkObject
 {
@@ -44,7 +44,8 @@ private:
             mtl::Material2DCreateConfig cfg(PrimitiveType::Triangles,CoordinateSystem2D::NDC,mtl::WithLocalToWorld::With);
 
         #ifndef USE_MATERIAL_FILE
-            AutoDelete<mtl::MaterialCreateInfo> mci=mtl::CreatePureColor2D(&cfg);                       //走程序内置材质创建函数
+            mtl::MaterialCreateInfo *mci=mtl::CreatePureColor2D(GetDevAttr(),&cfg);                       //走程序内置材质创建函数
+
             material=CreateMaterial("PureColor2D",mci);
         #else
             material=LoadMaterial("Std2D/PureColor2D",&cfg);                                            //走材质文件加载
@@ -60,7 +61,7 @@ private:
                 if(!render_obj[i].mi)
                     return(false);
 
-                Color4f color=GetColor4f((COLOR)(i+int(COLOR::Blue)),1.0);
+                Color4f color=GetColor4f((COLOR)(i+int(COLOR::Blue)),1.0f);
 
                 render_obj[i].mi->WriteMIData(color);       //设置MaterialInstance的数据
             }

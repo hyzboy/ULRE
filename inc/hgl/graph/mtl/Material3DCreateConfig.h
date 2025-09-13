@@ -89,22 +89,6 @@ public:
 
 DEFINE_MATERIAL_FACTORY_CLASS(Billboard2D,BillboardMaterialCreateConfig);
 
-struct Line3DMaterialCreateConfig:public Material3DCreateConfig
-{
-    float       line_width=1.0f;        ///<线条宽度
-
-public:
-
-    Line3DMaterialCreateConfig(const WithCamera &wc=WithCamera::With,
-                              const WithLocalToWorld &l2w=WithLocalToWorld::Without)
-        :Material3DCreateConfig(PrimitiveType::Points,wc,l2w)
-    {
-        enableGeometryShader();
-    }
-};
-
-DEFINE_MATERIAL_FACTORY_CLASS(Line3D,Line3DMaterialCreateConfig);
-
 struct BasicLitMaterialInstance
 {
     uint32 base_color;      ///<基础颜色
