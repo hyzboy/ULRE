@@ -139,7 +139,7 @@ namespace hgl::graph
         return tr;
     }
 
-    bool TextRender::Layout(const layout::TEXT_COORD_VEC &start_pos,const U16String &str)
+    bool TextRender::Layout(const layout::TEXT_COORD_VEC &start_pos,const U16StringView &str)
     {
         TextDrawStyle tds=text_draw_style;
 
@@ -153,7 +153,7 @@ namespace hgl::graph
         tl_engine->End();
     }
 
-    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str)
+    TextPrimitive *TextRender::CreatePrimitive(const TextPrimitiveType &tpt,const U16StringView&str)
     {
         TextPrimitive *tr=Begin(tpt,str.Length());
 
@@ -169,7 +169,7 @@ namespace hgl::graph
         return tr;
     }
 
-    bool TextRender::SimpleLayout(TextPrimitive *tr,const U16String &str)
+    bool TextRender::SimpleLayout(TextPrimitive *tr,const U16StringView&str)
     {
         if(!tr)
             return(false);

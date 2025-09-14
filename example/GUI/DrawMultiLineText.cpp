@@ -1,9 +1,8 @@
-﻿#include<hgl/io/LoadString.h>
+﻿#include<hgl/type/StringViewList.h>
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/WorkManager.h>
 #include<hgl/component/MeshComponent.h>
 #include<hgl/graph/font/TextPrimitive.h>
-#include<hgl/io/LoadStringList.h>
 #include<random>
 
 using namespace hgl;
@@ -35,9 +34,9 @@ private:
 
     bool InitTextRenderable()
     {
-        U16StringList str_list;
+        U16StringViewList str_list;
         
-        LoadStringListFromTextFile(str_list,OS_TEXT("res/text/百家姓.txt"));
+        LoadStringViewListFromTextFile(str_list,OS_TEXT("res/text/百家姓.txt"));
 
         if(str_list.IsEmpty())return(false);
 
