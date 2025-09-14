@@ -59,7 +59,7 @@ private:
             start_pos.x=rand_x(dre);
             start_pos.y=rand_y(dre);
 
-            text_render->Layout(start_pos,*str);
+            text_render->Layout(start_pos,str);
         }
 
         text_render->End();

@@ -50,9 +50,9 @@ bool ShaderCreateInfo::AddDefine(const AnsiString &m,const AnsiString &v)
 
 bool ShaderCreateInfo::ProcDefine()
 {
-    const uint count=define_macro_list.GetCount();
+    const size_t count=define_macro_list.GetCount();
 
-    if(count<=0)return(true);
+    if(count==0)return(true);
 
     final_shader+="\n";
 
@@ -72,7 +72,7 @@ bool ShaderCreateInfo::ProcDefine()
     AnsiString m;
     AnsiString v;
 
-    for(uint i=0;i<count;i++)
+    for(size_t i=0;i<count;i++)
     {
         m=define_macro_list.GetString(i);
         v=define_value_list.GetString(i);
