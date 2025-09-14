@@ -41,7 +41,7 @@ namespace hgl::graph::layout
         return(true);
     }
 
-    bool TextLayout::AddString(const U16String &str,const TextDrawStyle &style)
+    bool TextLayout::AddString(const U16StringView &str,const TextDrawStyle &style)
     {
         if(!text_primitive)
             return(false);

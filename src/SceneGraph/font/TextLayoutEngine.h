@@ -73,7 +73,7 @@ namespace hgl::graph::layout
 
         bool Begin(TextPrimitive *,int Estimate=1024);                  ///<开始排版
 
-        bool AddString(const U16String &,const TextDrawStyle &);        ///<添加一个要排版的字符串
+        bool AddString(const U16StringView&,const TextDrawStyle &);     ///<添加一个要排版的字符串
 
         int  End();                                                     ///<结束排版
 

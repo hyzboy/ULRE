@@ -64,7 +64,7 @@ namespace hgl::graph
 
     private:
 
-        bool SimpleLayout(TextPrimitive *tr,const U16String &str);              ///<简单文本排版
+        bool SimpleLayout(TextPrimitive *tr,const U16StringView &str);              ///<简单文本排版
 
     private:
 
@@ -87,13 +87,13 @@ namespace hgl::graph
         void SetFixedStyle(const layout::CharStyle &);                                                                  ///<设定固定风格模式所用风格
         void SetParagraphStyle(const layout::ParagraphStyle *);                                                         ///<设定段落风格
 
-        bool Layout(const layout::TEXT_COORD_VEC &start_pos,const U16String &);                                         ///<排版一段文本
+        bool Layout(const layout::TEXT_COORD_VEC &start_pos,const U16StringView&);                                      ///<排版一段文本
 
         void End();                                                                                                     ///<结束排版
 
     public:
 
-        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16String &str);                              ///<创建一个文本几何体，并进行简单排版
+        TextPrimitive *CreatePrimitive(const TextPrimitiveType &tpt,const U16StringView&str);                           ///<创建一个文本几何体，并进行简单排版
 
         Mesh *CreateMesh(TextPrimitive *text_primitive);                                                                ///<创建一个网格对象用于渲染指定的文本几何体
 
