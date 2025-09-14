@@ -47,8 +47,11 @@ void PrimitiveCreater::Clear()
 
 bool PrimitiveCreater::Init(const AnsiString &pname,const uint32_t vertex_count,const uint32_t index_count,IndexType it)
 {
-    if(prim_data)           //已经初始化过了
+    if(prim_data)
+    {
+        Clear();
         return(false);
+    }
 
     if(pname.IsEmpty())return(false);
     if(vertex_count<=0)return(false);
