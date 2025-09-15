@@ -79,8 +79,8 @@ public:
 
 public: //内存相关
 
-    DeviceMemory *CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
-    DeviceMemory *CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    DeviceMemory *  CreateMemory(const VkMemoryRequirements &,const uint32_t properties);
+    DeviceMemory *  CreateMemory(VkImage,const uint32 flag=VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 private: //Buffer相关
 

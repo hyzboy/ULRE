@@ -15,14 +15,14 @@ using VkFormatList=ArrayList<VkFormat>;
  */
 class RenderPass
 {
-    VulkanDevice *device;
+    VulkanDevice *  device;
     VkPipelineCache pipeline_cache;
-    VkRenderPass render_pass;
+    VkRenderPass    render_pass;
 
-    VkFormatList color_formats;
-    VkFormat depth_format;
+    VkFormatList    color_formats;
+    VkFormat        depth_format;
 
-    VkExtent2D granularity;
+    VkExtent2D      granularity;        //FBO尺寸对齐粒度
 
 protected:
 
@@ -42,20 +42,20 @@ public:
 
     operator const VkRenderPass()const{return render_pass;}
 
-    const VkRenderPass      GetVkRenderPass()const{return render_pass;}
+    const VkRenderPass      GetVkRenderPass ()const{return render_pass;}
     const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
 
-    const uint              GetColorCount()const{return color_formats.GetCount();}
-    const VkFormatList &    GetColorFormat()const{return color_formats;}
-    const VkFormat          GetColorFormat(int index)const
+    const uint              GetColorCount   ()const{return color_formats.GetCount();}
+    const VkFormatList &    GetColorFormat  ()const{return color_formats;}
+    const VkFormat          GetColorFormat  (int index)const
     {
         if(index<0||index>=color_formats.GetCount())return VK_FORMAT_UNDEFINED;
 
         return color_formats.GetData()[index];
     }
-    const VkFormat          GetDepthFormat()const{return depth_format;}
+    const VkFormat          GetDepthFormat  ()const{return depth_format;}
 
-    const VkExtent2D &      GetGranularity()const{return granularity;}
+    const VkExtent2D &      GetGranularity  ()const{return granularity;}
 
 public:
 
