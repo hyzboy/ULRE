@@ -53,10 +53,27 @@ const int MeshDataBuffer::compare(const MeshDataBuffer &mesh_data_buffer)const
 
 void MeshRenderData::Set(const Primitive *prim)
 {
-    vertex_count    =prim->GetVertexCount();
-    index_count     =prim->GetIndexCount();
-    vertex_offset   =prim->GetVertexOffset();
-    first_index     =prim->GetFirstIndex();
+    if(!prim)
+    {
+        data_vertex_count = 0;
+        data_index_count = 0;
+        vertex_count = 0;
+        index_count = 0;
+        vertex_offset = 0;
+        first_index = 0;
+        return;
+    }
+
+    // data counts come from primitive (buffer capacity)
+    data_vertex_count = (uint32_t)prim->GetVertexCount();
+    data_index_count  = prim->GetIndexCount();
+
+    // initialize draw counts to data counts by default
+    vertex_count    = data_vertex_count;
+    index_count     = data_index_count;
+
+    vertex_offset   = prim->GetVertexOffset();
+    first_index     = prim->GetFirstIndex();
 }
 
 Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_data_buffer)
@@ -72,6 +89,13 @@ Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_da
 bool Mesh::UpdatePrimitive()
 {
     render_data.Set(primitive);
+
+    // Clamp draw counts if previously set larger than new data counts
+    if(render_data.vertex_count>render_data.data_vertex_count)
+        render_data.vertex_count = render_data.data_vertex_count;
+
+    if(render_data.index_count>render_data.data_index_count)
+        render_data.index_count = render_data.data_index_count;
 
     return data_buffer->Update(primitive,mat_inst->GetVIL());
 }
@@ -120,7 +144,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
                         AnsiString("\" format can't match Mesh, Material(")+mtl_name+
                         AnsiString(") Format(")+GetVulkanFormatName(vif->format)+
-                        AnsiString("), VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
+                        AnsiString(") , VAB Format(")+GetVulkanFormatName(vab->GetFormat())+
                         ")");
             return(nullptr);
         }
@@ -130,7 +154,7 @@ Mesh *DirectCreateMesh(Primitive *prim,MaterialInstance *mi,Pipeline *p)
             GLogError(  "[FATAL ERROR] VAB \""+AnsiString(vif->name)+
                         AnsiString("\" stride can't match Mesh, Material(")+mtl_name+
                         AnsiString(") stride(")+AnsiString::numberOf(vif->stride)+
-                        AnsiString("), VAB stride(")+AnsiString::numberOf(vab->GetStride())+
+                        AnsiString(") , VAB stride(")+AnsiString::numberOf(vab->GetStride())+
                         ")");
             return(nullptr);
         }
@@ -163,4 +187,40 @@ bool MeshDataBuffer::Update(const Primitive *prim,const VIL *vil)
 
     return(true);
 }
+
+// Mesh draw control APIs
+bool Mesh::SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count)
+{
+    // only clamp, do not change offsets
+    if(draw_vertex_count>render_data.data_vertex_count)
+        draw_vertex_count = render_data.data_vertex_count;
+
+    if(draw_index_count>render_data.data_index_count)
+        draw_index_count = render_data.data_index_count;
+
+    render_data.vertex_count = draw_vertex_count;
+    render_data.index_count  = draw_index_count;
+
+    return true;
+}
+
+bool Mesh::SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count)
+{
+    // set offsets
+    render_data.vertex_offset = vertex_offset;
+    render_data.first_index   = first_index;
+
+    // clamp counts to data counts
+    if(draw_vertex_count>render_data.data_vertex_count)
+        draw_vertex_count = render_data.data_vertex_count;
+
+    if(draw_index_count>render_data.data_index_count)
+        draw_index_count = render_data.data_index_count;
+
+    render_data.vertex_count = draw_vertex_count;
+    render_data.index_count  = draw_index_count;
+
+    return true;
+}
+
 VK_NAMESPACE_END
