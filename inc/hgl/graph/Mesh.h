@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/graph/VKPrimitive.h>
-#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialParameters.h>
@@ -49,8 +49,13 @@ struct MeshRenderData:public ComparatorData<MeshRenderData>
     int32_t         vertex_offset;  //注意：这里的offset是相对于vertex的，代表第几个顶点，不是字节偏移
     uint32_t        first_index;
 
+    // draw counts: 表示实际用于绘制的数量（默认等于 data_*）
     uint32_t        vertex_count;
     uint32_t        index_count;
+
+    // data counts: 表示缓冲区中实际包含的数据数量（buffer capacity）
+    uint32_t        data_vertex_count;
+    uint32_t        data_index_count;
 
 public:
 
@@ -97,6 +102,12 @@ public:
     const   MeshDataBuffer *    GetDataBuffer       ()const{return data_buffer;}
     const   MeshRenderData *    GetRenderData       ()const{return &render_data;}
 
+            VAB *               GetVAB              (const int index)const{return primitive->GetVAB(index);}
+            VAB *               GetVAB              (const AnsiString &name)const{return primitive->GetVAB(name);}
+            VABMap *            GetVABMap           (const int vab_index){return primitive->GetVABMap(vab_index);}
+            IndexBuffer *       GetIBO              (){return primitive->GetIBO();}
+            IBMap *             GetIBMap            (){return primitive->GetIBMap();}
+
     virtual bool                UpdatePrimitive     ();     ///<更新Primitive,一般用于primitive改变数据后需要通知Mesh的情况
 
 public:
@@ -112,6 +123,16 @@ public:
                 mat_inst=mi;
                 return(true);
             }
+
+            // 设置绘制数量（vertex/index），若大于数据量会被裁剪至数据量
+            bool                SetDrawCounts(uint32_t draw_vertex_count,uint32_t draw_index_count);
+
+            // 设置绘制范围和数量
+            bool                SetDrawRange(int32_t vertex_offset,uint32_t first_index,uint32_t draw_vertex_count,uint32_t draw_index_count);
+
+            // 取得缓冲区实际数据数量
+            uint32_t            GetDataVertexCount()const{return render_data.data_vertex_count;}
+            uint32_t            GetDataIndexCount()const{return render_data.data_index_count;}
 };//class Mesh
 
 Mesh *DirectCreateMesh(Primitive *,MaterialInstance *,Pipeline *);
