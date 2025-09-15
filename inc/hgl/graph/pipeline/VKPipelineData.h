@@ -78,6 +78,8 @@ public:
     void InitVertexInputState(const VIL *);
     void InitDynamicState();
 
+    void AddDynamicState(VkDynamicState);
+
 public:
 
     bool SetPrim(const PrimitiveType prim,bool prim_restart=false);
