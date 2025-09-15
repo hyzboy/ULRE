@@ -216,4 +216,72 @@ Primitive *PrimitiveCreater::Create()
 
     return primitive;
 }
+
+// -----------------------------------------------------------------------------
+//  新增：直接创建 Primitive 的便捷函数
+// -----------------------------------------------------------------------------
+Primitive *CreatePrimitive(VulkanDevice *device, const VIL *vil, const AnsiString &name, const uint32_t vertex_count, const uint32_t index_count , IndexType it)
+{
+    if(!device || !vil || name.IsEmpty() || vertex_count==0)
+        return nullptr;
+
+    IndexType index_type = IndexType::ERR;
+
+    if(index_count>0)
+    {
+        if(it==IndexType::AUTO)
+        {
+            index_type = device->ChooseIndexType(vertex_count);
+
+            if(!IsIndexType(index_type))
+                return nullptr;
+        }
+        else
+        {
+            if(!device->CheckIndexType(it, vertex_count))
+                return nullptr;
+
+            index_type = it;
+        }
+    }
+
+    // 创建 PrimitiveData（使用 device 分配私有缓冲）
+    PrimitiveData *pd = CreatePrimitiveData(device, vil, vertex_count);
+
+    if(!pd)
+        return nullptr;
+
+    // 创建所有 VAB（内容为空）
+    if(!pd->CreateAllVAB(vertex_count))
+    {
+        delete pd;
+        return nullptr;
+    }
+
+    // 创建 IBO（如果需要）
+    if(index_count>0)
+    {
+        IndexBuffer *ibo = pd->InitIBO(index_count, index_type);
+
+        if(!ibo)
+        {
+            delete pd;
+            return nullptr;
+        }
+    }
+
+    // Unmap just in case
+    pd->UnmapAll();
+
+    Primitive *primitive = new Primitive(name, pd);
+
+    if(!primitive)
+    {
+        delete pd;
+        return nullptr;
+    }
+
+    return primitive;
+}
+
 VK_NAMESPACE_END
