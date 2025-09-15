@@ -69,6 +69,27 @@ SET(LIGHT_FILES ${SG_INCLUDE_PATH}/Light.h
 
 source_group("Light" FILES ${LIGHT_FILES})
 
+SET(PIPELINE_HEADER_PATH   ${SG_INCLUDE_PATH}/pipeline)
+SET(PIPELINE_SOURCE_PATH   Vulkan/pipeline)
+
+SET(PIPELINE_HEADER_FILES   ${PIPELINE_HEADER_PATH}/VKPipeline.h
+                            ${PIPELINE_HEADER_PATH}/VKPipelineData.h
+                            ${PIPELINE_HEADER_PATH}/VKPipelineHash.h
+                            ${PIPELINE_HEADER_PATH}/VKInlinePipeline.h)
+
+SET(PIPELINE_SOURCE_FILES   ${PIPELINE_SOURCE_PATH}/VKPipelineCompare.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineData.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineDataManage.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineDataSaveLoad.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineHash.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipeline.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineCache.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.cpp
+                            ${PIPELINE_SOURCE_PATH}/VKPipelineLayoutData.h)
+
+SOURCE_GROUP("Pipeline\\Header" FILES ${PIPELINE_HEADER_FILES})
+SOURCE_GROUP("Pipeline\\Source" FILES ${PIPELINE_SOURCE_FILES})
+
 SET(SGM_HEADER_PATH ${SG_INCLUDE_PATH}/module)
 SET(SGM_SOURCE_PATH module)
 
@@ -181,7 +202,7 @@ ELSE()
     # Find FreeType for non-Windows platforms
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FREETYPE REQUIRED freetype2)
-    
+
     SET(FONT_SOURCE_OS  font/FontDataSourceFreeType.cpp
                         font/FontDataSourceFreeType.h)
 
@@ -265,9 +286,7 @@ SOURCE_GROUP("Vulkan\\Device\\Texture"          FILES ${VK_DEVICE_TEXTURE_SOURCE
 SOURCE_GROUP("Vulkan\\Device\\Texture\\Loader"  FILES ${VK_TEXTURE_LOADER_SOURCE})
 
 SET(VK_DESCRIPTOR_SETS_SOURCE   ${SG_INCLUDE_PATH}/VKDescriptorSet.h
-                                Vulkan/VKDescriptorSet.cpp
-                                Vulkan/VKPipelineLayoutData.h
-                                Vulkan/VKPipelineLayoutData.cpp)
+                                Vulkan/VKDescriptorSet.cpp)
 
 SOURCE_GROUP("Vulkan\\Descriptor Sets" FILES ${VK_DESCRIPTOR_SETS_SOURCE})
 
@@ -303,7 +322,6 @@ SET(VK_RENDER_CONTEXT_SOURCE    ${SG_INCLUDE_PATH}/VKRenderContext.h
                                 Vulkan/VKRenderContext.cpp)
 
 SET(VK_RENDER_PASS_SOURCE   ${SG_INCLUDE_PATH}/VKFramebuffer.h
-                            ${SG_INCLUDE_PATH}/VKPipeline.h
                             ${SG_INCLUDE_PATH}/VKRenderPass.h
                             ${SG_INCLUDE_PATH}/VKSwapchain.h
                             ${SG_INCLUDE_PATH}/VKSemaphore.h
@@ -312,8 +330,6 @@ SET(VK_RENDER_PASS_SOURCE   ${SG_INCLUDE_PATH}/VKFramebuffer.h
                             Vulkan/VKSemaphore.cpp
                             Vulkan/VKFence.cpp
                             Vulkan/VKFramebuffer.cpp
-                            Vulkan/VKPipeline.cpp
-                            Vulkan/VKPipelineCache.cpp
                             #Vulkan/VKSubpass.cpp
                             Vulkan/VKRenderPass.cpp
                             Vulkan/VKSwapchain.cpp
@@ -435,6 +451,8 @@ SET(VULKAN_RENDER_SOURCE    ${VK_RR_MATERIAL_FILES}
                             ${VK_DESCRIPTOR_SETS_SOURCE}
                             ${VK_SHADER_SOURCE}
                             ${VK_TEXTURE_SOURCE}
+                            ${PIPELINE_HEADER_FILES}
+                            ${PIPELINE_SOURCE_FILES}
                             ${VK_MATERIAL_SOURCE}
                             ${VK_RENDER_PASS_SOURCE}
                             ${VK_RENDER_TARGET_SOURCE}

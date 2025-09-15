@@ -8,6 +8,9 @@
 
 VK_NAMESPACE_BEGIN
 
+// forward declare PrimitiveData to avoid including heavy headers
+class PrimitiveData;
+
 /**
  * 原始图元数据访问接口<br>
  * Primitive的存为是为了屏蔽PrimitiveData的初始化之类的访问接口，以便于更好的管理和使用

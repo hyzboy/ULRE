@@ -1,26 +1,26 @@
 ﻿#include<hgl/graph/VKRenderPass.h>
 #include<hgl/graph/VKDevice.h>
-#include<hgl/graph/VKInlinePipeline.h>
-#include<hgl/graph/VKPipelineData.h>
+#include<hgl/graph/pipeline/VKInlinePipeline.h>
+#include<hgl/graph/pipeline/VKPipelineData.h>
 #include<hgl/graph/VKMaterial.h>
 #include<hgl/graph/VKMaterialInstance.h>
 VK_NAMESPACE_BEGIN
-RenderPass::RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const ArrayList<VkFormat> &cf,VkFormat df)
+RenderPass::RenderPass(VulkanDevice *dev,VkRenderPass rp,const VkFormatList &cf,VkFormat df)
 {
-    device=d;
-    pipeline_cache=pc;
+    device=dev;
+    pipeline_cache=dev->GetPipelineCache();
     render_pass=rp;
     color_formats=cf;
     depth_format=df;
 
-    vkGetRenderAreaGranularity(device,render_pass,&granularity);
+    vkGetRenderAreaGranularity(*device,render_pass,&granularity);
 }
 
 RenderPass::~RenderPass()
 {
     pipeline_list.Clear();
 
-    vkDestroyRenderPass(device,render_pass,nullptr);
+    vkDestroyRenderPass(*device,render_pass,nullptr);
 }
 
 Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,const ShaderStageCreateInfoList &ssci_list,VkPipelineLayout pl,const VIL *vil)
@@ -41,7 +41,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
         pd->pipeline_info.subpass = 0;                   //subpass由于还不知道有什么用，所以暂时写0，待知道功用后，需改进
     }
 
-    if (vkCreateGraphicsPipelines(  device,
+    if (vkCreateGraphicsPipelines(  *device,
         pipeline_cache,
         1,&pd->pipeline_info,
         nullptr,
@@ -53,7 +53,7 @@ Pipeline *RenderPass::CreatePipeline(const AnsiString &name,PipelineData *pd,con
         return(nullptr);
     }
 
-    return(new Pipeline(name,device,graphicsPipeline,vil,pd));
+    return(new Pipeline(name,*device,graphicsPipeline,vil,pd));
 }
 
 Pipeline *RenderPass::CreatePipeline(Material *mtl,const VIL *vil,const PipelineData *cpd,const bool prim_restart)
