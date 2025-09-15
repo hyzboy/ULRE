@@ -108,6 +108,7 @@ private:
         coneRci.revolution_center = Vector3f(0,0,0);
         coneRci.close_profile = true;
         coneRci.uv_scale = Vector2f(1.0f,1.0f);
+        coneRci.normal_smooth_angle = 35.0f; // 锥顶需要拆分法线
 
         prim_cone = CreateRevolution(pc, &coneRci);
 

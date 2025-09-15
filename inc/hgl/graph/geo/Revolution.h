@@ -21,6 +21,7 @@ namespace hgl::graph
             Vector3f    revolution_center;  ///<旋转中心点（默认为原点(0,0,0)）
             bool        close_profile;      ///<是否闭合轮廓（连接首尾点）
             Vector2f    uv_scale;           ///<UV缩放
+            float       normal_smooth_angle;///<平滑阈值 (度)，超过此夹角则拆分法线
 
         public:
             RevolutionCreateInfo()
@@ -34,6 +35,7 @@ namespace hgl::graph
                 revolution_center = Vector3f(0, 0, 0);
                 close_profile = true;
                 uv_scale = Vector2f(1.0f, 1.0f);
+                normal_smooth_angle = 30.0f; // 默认30度阈值
             }
         };
 
