@@ -1,5 +1,6 @@
 #include "DrawLineManager.h"
 #include <cstring>
+#include <hgl/graph/VKRenderTarget.h>
 #include <hgl/graph/PrimitiveCreater.h>
 #include <hgl/graph/VKDevice.h>
 #include <hgl/graph/VKVertexInputLayout.h>
@@ -16,6 +17,13 @@ namespace hgl
 {
     namespace graph
     {
+        constexpr const size_t LINE_COUNT_INCREMENT =       1024;
+        constexpr const size_t POSITION_COMPONENT_COUNT =   6;
+        constexpr const size_t COLOR_COMPONENT_COUNT =      2;
+
+        constexpr const size_t POSITION_COUNT_INCREMENT = LINE_COUNT_INCREMENT * POSITION_COMPONENT_COUNT;
+        constexpr const size_t COLOR_COUNT_INCREMENT    = LINE_COUNT_INCREMENT * COLOR_COMPONENT_COUNT;
+
         DrawLineManager* CreateDrawLineManager(RenderFramework *rf)
         {
             if (!rf)
@@ -49,30 +57,68 @@ namespace hgl
                 return nullptr;
             }
 
-            Pipeline *p = rf->CreatePipeline(mi,InlinePipeline::Solid3D);
+            Pipeline *p = rf->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
 
             DrawLineManager *mgr = new DrawLineManager(mi,p,rf->GetMeshManager());
 
             return mgr;
         }
 
-        DrawLineManager::DrawLineManager(   MaterialInstance * mi,
-                                            Pipeline *p,
-                                            MeshManager *mm)
+        DrawLineManager::LineSegmentBuffer::LineSegmentBuffer(const uint w,hgl::graph::VulkanDevice *dev,MaterialInstance *mi,Pipeline *p)
+        {
+            device = dev;
+            mtl_inst = mi;
+
+            pipeline = p;
+
+            width = w;
+
+            max_count = LINE_COUNT_INCREMENT;
+            count = 0;
+
+            position.reserve(POSITION_COUNT_INCREMENT);
+            color.reserve(COLOR_COUNT_INCREMENT);
+        }
+
+        void DrawLineManager::LineSegmentBuffer::Clear()
+        {
+            SAFE_CLEAR(mesh);
+            SAFE_CLEAR(primitive);
+        }
+
+        DrawLineManager::LineSegmentBuffer::~LineSegmentBuffer()
+        {
+            Clear();
+        }
+
+        bool DrawLineManager::LineSegmentBuffer::RebuildMesh()
+        {
+            Clear();
+
+            AnsiString name = "Line3D(Width:" + AnsiString::numberOf(width) + ")";
+
+            primitive = CreatePrimitive(device,vil,name,max_count * 2);
+
+            if(!primitive)
+                return(false);
+
+            DirectCreateMesh(primitive,)
+
+            return(true);
+        }
+
+        DrawLineManager::DrawLineManager(RenderTarget *rt,MaterialInstance * mi,MeshManager *mm)
         {
             mi_line3d = mi;
-            pipeline = p;
             mesh_manager = mm;
 
-            primitive_creater = new PrimitiveCreater(mm->GetDevice(),mi->GetVIL());
+            RenderPass *rp=rt->GetRenderPass();
 
-            mesh = nullptr;
+            pipeline=rp->
 
-            for(auto &lsb : line_groups)
+            for(uint i = 0;i < MAX_LINE_WIDTH;i++)
             {
-                lsb.position.reserve(1024 * 6);
-                lsb.color.reserve(1024 * 2);
-                lsb.count = 0;
+                line_groups[i].Init(i + 1,mm->GetDevice(),mi->GetVIL());
             }
         }
 
@@ -98,22 +144,26 @@ namespace hgl
 
             LineSegmentBuffer *lsb = &line_groups[width - 1];
 
-            if(lsb->count * 2 >= lsb->color.size())
+            if(lsb->count * COLOR_COMPONENT_COUNT >= lsb->color.size())
             {
-                lsb->position.resize(lsb->position.size() + 1024 * 6);
-                lsb->color.resize(lsb->color.size() + 1024 * 2);
+                lsb->position.  resize(lsb->position.size() + POSITION_COUNT_INCREMENT);
+                lsb->color.     resize(lsb->color   .size() + COLOR_COUNT_INCREMENT);
+
+                if(mesh)
+                {
+                    mesh_manager->Release(mesh);
+                    mesh = nullptr;
+                }
             }
 
-            lsb->position.push_back(from.x);
-            lsb->position.push_back(from.y);
-            lsb->position.push_back(from.z);
+            float *p = lsb->position.data() + lsb->count * POSITION_COMPONENT_COUNT;
+            uint8 *c = lsb->color.data()    + lsb->count * COLOR_COMPONENT_COUNT;
 
-            lsb->position.push_back(to.x);
-            lsb->position.push_back(to.y);
-            lsb->position.push_back(to.z);
+            p[0] = from.x; p[1] = from.y; p[2] = from.z;
+            p[3] = to.x;   p[4] = to.y;   p[5] = to.z;
 
-            lsb->color.push_back(color_index);
-            lsb->color.push_back(color_index);
+            c[0] = color_index;
+            c[1] = color_index;
 
             ++lsb->count;
 
@@ -151,29 +201,45 @@ namespace hgl
             }
 
             VABMapFloat    vab_pos    (primitive_creater->GetVABMap(VAN::Position,VF_V3F));
-            VABMapU8       vab_color  (primitive_creater->GetVABMap(VAN::Color,VF_V1U8));
+            VABMapU8       vab_color  (primitive_creater->GetVABMap(VAN::Color,   VF_V1U8));
 
             float *pp = vab_pos.Map();
             uint8 *cp = vab_color.Map();
 
             for(auto &kv : line_groups)
             {
-                hgl_cpy<float>(pp,kv.position.data(),kv.count * 2);
-                hgl_cpy<uint8>(cp,kv.color.data(),kv.count * 2);
+                hgl_cpy<float>(pp,kv.position.data(),kv.count * POSITION_COMPONENT_COUNT);
+                hgl_cpy<uint8>(cp,kv.color   .data(),kv.count * COLOR_COMPONENT_COUNT);
 
-                pp += kv.count * 2;
-                cp += kv.count * 2;
+                pp += kv.count * POSITION_COMPONENT_COUNT;
+                cp += kv.count * COLOR_COMPONENT_COUNT;
             }
+
+            primitive = primitive_creater->Create();
+            line_dirty = false;
         }
 
-        void DrawLineManager::Draw(RenderCmdBuffer* cmd, DrawCallback draw_callback)
+        bool DrawLineManager::Draw(RenderCmdBuffer *cmd)
         {
-            if (cmd == nullptr || draw_callback == nullptr) return;
+            if (!cmd)
+                return(false);
 
-            std::lock_guard lock(mutex_);
+            UpdateLines();
 
-            // Build temporary per-width LineVertex arrays from segments
-            for (auto& kv : groups_)
+            if(!cmd->Begin())
+                return(false);
+
+            for(size_t i = 0;i < MAX_LINE_WIDTH;i++)
+            {
+                if(line_groups[i].count <= 0)
+                    continue;
+
+                cmd->SetLineWidth(i + 1);
+
+
+            }
+
+            for(auto &lsb:line_groups)
             {
                 uint8_t width = kv.first;
                 auto& segments = kv.second;
@@ -196,7 +262,6 @@ namespace hgl
                     tmp.push_back(lv);
                 }
 
-                draw_callback(cmd, width, tmp.data(), tmp.size());
             }
         }
 
