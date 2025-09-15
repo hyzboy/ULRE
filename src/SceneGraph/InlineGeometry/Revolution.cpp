@@ -3,6 +3,7 @@
 #include<hgl/graph/PrimitiveCreater.h>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 namespace hgl::graph::inline_geometry
 {
@@ -161,7 +162,64 @@ namespace hgl::graph::inline_geometry
         {
             const IndexType index_type = pc->GetIndexType();
 
-            if(index_type == IndexType::U16) {
+            if(index_type == IndexType::U8)
+            {
+                IBTypeMap<uint8_t> ib_map(pc->GetIBMap());
+                uint8_t *indices = ib_map;
+
+                // 侧面三角形
+                for(uint slice = 0; slice < slices; slice++) {
+                    for(uint p = 0; p < profile_count - 1; p++) {
+                        uint8_t i0 = uint8_t(slice * profile_count + p);
+                        uint8_t i1 = uint8_t(slice * profile_count + p + 1);
+                        uint8_t i2 = uint8_t((slice + 1) * profile_count + p);
+                        uint8_t i3 = uint8_t((slice + 1) * profile_count + p + 1);
+
+                        *indices++ = i0;
+                        *indices++ = i2;
+                        *indices++ = i1;
+
+                        *indices++ = i1;
+                        *indices++ = i2;
+                        *indices++ = i3;
+                    }
+
+                    // 如果轮廓闭合，连接最后一个点到第一个点
+                    if(rci->close_profile && profile_count > 2) {
+                        uint8_t i0 = uint8_t(slice * profile_count + (profile_count - 1));
+                        uint8_t i1 = uint8_t(slice * profile_count + 0);
+                        uint8_t i2 = uint8_t((slice + 1) * profile_count + (profile_count - 1));
+                        uint8_t i3 = uint8_t((slice + 1) * profile_count + 0);
+
+                        *indices++ = i0;
+                        *indices++ = i2;
+                        *indices++ = i1;
+
+                        *indices++ = i1;
+                        *indices++ = i2;
+                        *indices++ = i3;
+                    }
+                }
+
+                // 端面（如果不是完整旋转）
+                if(!is_full_revolution && profile_count > 2) {
+                    // 起始端面
+                    for(uint p = 1; p < profile_count - 1; p++) {
+                        *indices++ = 0;
+                        *indices++ = uint8_t(p);
+                        *indices++ = uint8_t(p + 1);
+                    }
+
+                    // 结束端面
+                    uint end_offset = slices * profile_count;
+                    for(uint p = 1; p < profile_count - 1; p++) {
+                        *indices++ = uint8_t(end_offset);
+                        *indices++ = uint8_t(end_offset + p + 1);
+                        *indices++ = uint8_t(end_offset + p);
+                    }
+                }
+            }
+            else if(index_type == IndexType::U16) {
                 IBTypeMap<uint16> ib_map(pc->GetIBMap());
                 uint16 *indices = ib_map;
 
