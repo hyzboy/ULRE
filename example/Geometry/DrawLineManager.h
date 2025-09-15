@@ -36,46 +36,60 @@ namespace hgl::graph
     constexpr const size_t MAX_LINE_WIDTH = 16;
 
     class DrawLineManager
-    {        
+    {
         struct LineSegmentBuffer
         {
+            VulkanDevice *device;
+            MaterialInstance *mtl_inst;
+            Pipeline *pipeline;
+
+            uint width;
+
             std::vector<float> position;
             std::vector<uint8> color;
 
-            uint32 count;
+            uint32 max_count;       // 当前缓冲区可容纳的最大线段数量
+            uint32 count;           // 当前线段数量
+
+            Primitive *primitive;
+            Mesh *mesh;
+
+        public:
+
+            LineSegmentBuffer(const uint w,VulkanDevice *,MaterialInstance *,Pipeline *p);
+            ~LineSegmentBuffer();
+
+            void Clear();
+            bool RebuildMesh();
         };
 
     private:
 
         Color4f color_palette[256] = {};
 
-        bool color_dirty = false;
+        bool color_dirty = true;
 
     private:
 
         LineSegmentBuffer line_groups[MAX_LINE_WIDTH];      //直接以宽度为访问索引
 
-        bool line_dirty = false;
+        bool line_dirty = true;
 
     private:    
 
-        hgl::graph::MaterialInstance *mi_line3d = nullptr;
-        hgl::graph::Pipeline *pipeline = nullptr;
-        hgl::graph::MeshManager *mesh_manager = nullptr;
+        RenderTarget *      render_target       = nullptr;
+        MaterialInstance *  mi_line3d           = nullptr;
+        Pipeline *          pipeline            = nullptr;
+        MeshManager *       mesh_manager        = nullptr;
 
-        VkFormat PositionFormat;
-
-        PrimitiveCreater *primitive_creater = nullptr;
-
-        hgl::graph::Mesh *mesh = nullptr;
 
         void UpdateLines();
 
     public:
 
-        DrawLineManager(hgl::graph::MaterialInstance *material_instance,
-                        hgl::graph::Pipeline *pipeline,
-                        hgl::graph::MeshManager *mesh_manager);
+        DrawLineManager(RenderTarget *rt,
+                        MaterialInstance *mi,
+                        MeshManager *mm);
 
         ~DrawLineManager() { ClearLines(); }
 
@@ -92,9 +106,7 @@ namespace hgl::graph
         bool AddLine(const Vector3f& from, const Vector3f& to, const uint8_t color_index, uint8_t width = 1);
         void ClearLines();
 
-        using DrawCallback = void(*)(RenderCmdBuffer* cmd, uint8_t width, const void* vertex_data, size_t vertex_count);
-
-        void Draw(RenderCmdBuffer* cmd, DrawCallback draw_callback);
+        bool Draw(RenderCmdBuffer *);
 
         size_t GetLineCount() const;
 
