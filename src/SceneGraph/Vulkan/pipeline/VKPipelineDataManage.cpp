@@ -21,6 +21,12 @@ namespace
         }
 
         {
+            pd = new PipelineData(1);
+            pd->AddDynamicState(VK_DYNAMIC_STATE_LINE_WIDTH);
+            inline_pipeline_data.Add(InlinePipeline::DynamicLineWidth3D,pd);
+        }
+
+        {
             pd=new PipelineData(1);
             pd->OpenBlend(0);
             pd->SetColorBlend(0,VK_BLEND_OP_ADD,VK_BLEND_FACTOR_SRC_ALPHA,VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);

@@ -12,6 +12,8 @@ enum class InlinePipeline
     Solid2D,
     Alpha2D,
 
+    DynamicLineWidth3D,     //动态线宽3D线条
+
     Sky,
 
     ENUM_CLASS_RANGE(Solid3D,Alpha2D)

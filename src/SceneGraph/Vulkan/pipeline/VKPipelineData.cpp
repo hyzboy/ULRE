@@ -398,6 +398,16 @@ void PipelineData::InitDynamicState()
     pipeline_info.pDynamicState      = &dynamic_state;
 }
 
+void PipelineData::AddDynamicState(VkDynamicState ds)
+{
+    for(uint32_t i = 0;i < dynamic_state.dynamicStateCount;i++)
+        if(dynamic_state_enables[i] == ds)
+            return;
+
+    dynamic_state_enables[dynamic_state.dynamicStateCount] = ds;
+    ++dynamic_state.dynamicStateCount;
+}
+
 bool PipelineData::SetColorWriteMask(uint index,bool r,bool g,bool b,bool a)
 {
     if(index>=color_blend->attachmentCount)
