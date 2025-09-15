@@ -78,4 +78,11 @@ public: //创建可渲染对象
 
             Primitive *     Create();                                                                                       ///<创建一个可渲染对象，并清除创建器数据
 };//class PrimitiveCreater
+
+Primitive *CreatePrimitive(         VulkanDevice *  device,
+                            const   VIL *           vil,
+                            const   AnsiString &    name,
+                            const   uint32_t        vertex_count,
+                            const   uint32_t        index_count = 0,
+                                    IndexType       it          = IndexType::AUTO);
 VK_NAMESPACE_END
