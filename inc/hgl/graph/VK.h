@@ -185,6 +185,34 @@ enum class ShaderStage:uint32_t
     ENUM_CLASS_RANGE(Vertex,ClusterCulling)
 };
 
+enum class DynamicState:uint32_t
+{
+    Viewport                    = VK_DYNAMIC_STATE_VIEWPORT,
+    Scissor                     = VK_DYNAMIC_STATE_SCISSOR,
+    LineWidth                   = VK_DYNAMIC_STATE_LINE_WIDTH,
+    DepthBias                   = VK_DYNAMIC_STATE_DEPTH_BIAS,
+    BlendConstants              = VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+    DepthBounds                 = VK_DYNAMIC_STATE_DEPTH_BOUNDS,
+    StencilCompareMask          = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+    StencilWriteMask            = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
+    StencilReference            = VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+
+    CullMode                    = VK_DYNAMIC_STATE_CULL_MODE_EXT,
+    FrontFace                   = VK_DYNAMIC_STATE_FRONT_FACE_EXT,
+    PrimitiveTopology           = VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT,
+
+    DepthTestEnable             = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT,
+    DepthWriteEnable            = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT,
+    DepthCompareOp              = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT,
+
+    RasterizerDiscard           = VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT,
+    PrimitiveRestart            = VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT,
+
+    LineStipple                 = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT,
+
+    ENUM_CLASS_RANGE(Viewport,LineStipple)
+};
+
 struct VertexInputAttribute;
 
 class ShaderResource;

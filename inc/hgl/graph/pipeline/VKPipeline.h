@@ -2,8 +2,8 @@
 #define HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKPipelineData.h>
-#include<hgl/graph/VKInlinePipeline.h>
+#include<hgl/graph/pipeline/VKPipelineData.h>
+#include<hgl/graph/pipeline/VKInlinePipeline.h>
 #include<hgl/io/DataOutputStream.h>
 VK_NAMESPACE_BEGIN
 class Pipeline
@@ -53,4 +53,3 @@ public:
 };//class GraphicsPipeline
 VK_NAMESPACE_END
 #endif//HGL_GRAPH_VULKAN_PIPELINE_INCLUDE
- 

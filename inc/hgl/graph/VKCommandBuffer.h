@@ -2,7 +2,7 @@
 
 #include<hgl/graph/VK.h>
 #include<hgl/graph/VKVABList.h>
-#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/graph/VKDescriptorSet.h>
 #include<hgl/graph/Mesh.h>
 #include<hgl/color/Color4f.h>
@@ -110,6 +110,11 @@ public:
 
         cv->depthStencil.depth=d;
         cv->depthStencil.stencil=s;
+    }
+
+    void SetLineWidth(float w)
+    {
+        vkCmdSetLineWidth(cmd_buf,w);
     }
 
     //以上设定在Begin开始后即不可改变

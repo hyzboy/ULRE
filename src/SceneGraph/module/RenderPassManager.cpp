@@ -286,7 +286,7 @@ RenderPass *RenderPassManager::CreateRenderPass(const ArrayList<VkAttachmentDesc
     if(vkCreateRenderPass(GetVkDevice(),&rp_info,nullptr,&render_pass)!=VK_SUCCESS)
         return(nullptr);
 
-    return(new RenderPass(GetVkDevice(),GetPipelineCache(),render_pass,rbi->GetColorFormatList(),depth_format));
+    return(new RenderPass(GetDevice(),render_pass,rbi->GetColorFormatList(),depth_format));
 }
 
 RenderPass *RenderPassManager::AcquireRenderPass(const RenderbufferInfo *rbi,const uint subpass_count)

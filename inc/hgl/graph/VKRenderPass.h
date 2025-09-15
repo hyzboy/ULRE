@@ -1,10 +1,13 @@
-﻿#ifndef HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
-#define HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
+﻿#pragma once
 
 #include<hgl/graph/VK.h>
-#include<hgl/graph/VKPipeline.h>
+#include<hgl/graph/pipeline/VKPipeline.h>
 #include<hgl/type/ObjectList.h>
+
 VK_NAMESPACE_BEGIN
+
+using VkFormatList=ArrayList<VkFormat>;
+
 /**
  * RenderPass功能封装<br>
  * RenderPass在创建时，需要指定输入的color imageview与depth imageview象素格式，
@@ -12,11 +15,11 @@ VK_NAMESPACE_BEGIN
  */
 class RenderPass
 {
-    VkDevice device;
+    VulkanDevice *device;
     VkPipelineCache pipeline_cache;
     VkRenderPass render_pass;
 
-    ArrayList<VkFormat> color_formats;
+    VkFormatList color_formats;
     VkFormat depth_format;
 
     VkExtent2D granularity;
@@ -31,7 +34,7 @@ private:
 
     friend class RenderPassManager;
 
-    RenderPass(VkDevice d,VkPipelineCache pc,VkRenderPass rp,const ArrayList<VkFormat> &cf,VkFormat df);
+    RenderPass(VulkanDevice *,VkRenderPass rp,const VkFormatList &cf,VkFormat df);
 
 public:
 
@@ -39,11 +42,11 @@ public:
 
     operator const VkRenderPass()const{return render_pass;}
 
-    const   VkRenderPass    GetVkRenderPass()const{return render_pass;}
-    const   VkPipelineCache GetPipelineCache()const{return pipeline_cache;}
+    const VkRenderPass      GetVkRenderPass()const{return render_pass;}
+    const VkPipelineCache   GetPipelineCache()const{return pipeline_cache;}
 
     const uint              GetColorCount()const{return color_formats.GetCount();}
-    const ArrayList<VkFormat> &  GetColorFormat()const{return color_formats;}
+    const VkFormatList &    GetColorFormat()const{return color_formats;}
     const VkFormat          GetColorFormat(int index)const
     {
         if(index<0||index>=color_formats.GetCount())return VK_FORMAT_UNDEFINED;
@@ -67,4 +70,3 @@ public:
     Pipeline *CreatePipeline(MaterialInstance *,    const OSString &,       const bool prim_restart=false);
 };//class RenderPass
 VK_NAMESPACE_END
-#endif//HGL_GRAPH_VULKAN_RENDER_PASS_INCLUDE
