@@ -41,6 +41,21 @@ namespace hgl::graph::inline_geometry
             if(profile_count > 2) {
                 numberIndices += (profile_count - 2) * 6; // 每个端面2个三角形扇
             }
+        } else {
+            // 完整旋转时，如果轮廓首尾处的半径不为0，则需要在轴向两端生成圆盘封口
+            // 判断是否需要为起点和终点添加封口
+            const float eps = 1e-6f;
+            bool need_bottom_cap = fabsf(rci->profile_points[0].x) > eps && profile_count >= 1;
+            bool need_top_cap = fabsf(rci->profile_points[profile_count-1].x) > eps && profile_count >= 1;
+
+            if(need_bottom_cap) {
+                numberVertices += 1; // 一个中心顶点
+                numberIndices += slices * 3; // 每个slice一个三角形
+            }
+            if(need_top_cap) {
+                numberVertices += 1;
+                numberIndices += slices * 3;
+            }
         }
 
         if(!pc->Init("Revolution", numberVertices, numberIndices))
@@ -158,6 +173,48 @@ namespace hgl::graph::inline_geometry
             }
         }
 
+        // 如果为完整旋转且需要封口，附加中心顶点
+        const float eps = 1e-6f;
+        bool need_bottom_cap = is_full_revolution && (fabsf(rci->profile_points[0].x) > eps);
+        bool need_top_cap = is_full_revolution && (fabsf(rci->profile_points[profile_count-1].x) > eps);
+
+        int bottom_center_index = -1;
+        int top_center_index = -1;
+
+        if(need_bottom_cap || need_top_cap) {
+            // 记录当前顶点数（已写入的顶点）
+            uint written_vertices = profile_count * (slices + 1);
+
+            if(need_bottom_cap) {
+                // bottom center position (axis at profile_points[0].y)
+                float bx = rci->revolution_center.x;
+                float by = rci->revolution_center.y;
+                float bz = rci->revolution_center.z + rci->profile_points[0].y;
+
+                *vp++ = bx; *vp++ = by; *vp++ = bz;
+                if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = -1.0f; }
+                if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+                if(tcp) { *tcp++ = 0.0f; *tcp++ = 0.0f; }
+
+                bottom_center_index = (int)written_vertices;
+                written_vertices++;
+            }
+
+            if(need_top_cap) {
+                float tx = rci->revolution_center.x;
+                float ty = rci->revolution_center.y;
+                float tz = rci->revolution_center.z + rci->profile_points[profile_count-1].y;
+
+                *vp++ = tx; *vp++ = ty; *vp++ = tz;
+                if(np) { *np++ = 0.0f; *np++ = 0.0f; *np++ = 1.0f; }
+                if(tp) { *tp++ = 1.0f; *tp++ = 0.0f; *tp++ = 0.0f; }
+                if(tcp) { *tcp++ = 0.0f; *tcp++ = 0.0f; }
+
+                top_center_index = (int)written_vertices;
+                written_vertices++;
+            }
+        }
+
         // 生成索引
         {
             const IndexType index_type = pc->GetIndexType();
@@ -201,7 +258,31 @@ namespace hgl::graph::inline_geometry
                     }
                 }
 
-                // 端面（如果不是完整旋转）
+                // 完整旋转时的封口（圆盘）
+                if(need_bottom_cap) {
+                    const int p_idx = 0; // profile index for bottom
+                    for(uint i = 0; i < slices; i++) {
+                        uint8_t ring0 = uint8_t(i * profile_count + p_idx);
+                        uint8_t ring1 = uint8_t(((i + 1) % slices) * profile_count + p_idx);
+                        *indices++ = uint8_t(bottom_center_index);
+                        *indices++ = ring0;
+                        *indices++ = ring1;
+                    }
+                }
+
+                if(need_top_cap) {
+                    const int p_idx = profile_count - 1;
+                    for(uint i = 0; i < slices; i++) {
+                        uint8_t ring0 = uint8_t(i * profile_count + p_idx);
+                        uint8_t ring1 = uint8_t(((i + 1) % slices) * profile_count + p_idx);
+                        // top cap normal faces +Z, so order center, ring1, ring0 to maintain winding
+                        *indices++ = uint8_t(top_center_index);
+                        *indices++ = ring1;
+                        *indices++ = ring0;
+                    }
+                }
+
+                // 非完整旋转的端面（按照轮廓多边形填充）
                 if(!is_full_revolution && profile_count > 2) {
                     // 起始端面
                     for(uint p = 1; p < profile_count - 1; p++) {
@@ -259,16 +340,35 @@ namespace hgl::graph::inline_geometry
                     }
                 }
 
-                // 端面（如果不是完整旋转）
+                if(need_bottom_cap) {
+                    const int p_idx = 0;
+                    for(uint i = 0; i < slices; i++) {
+                        uint16 ring0 = uint16(i * profile_count + p_idx);
+                        uint16 ring1 = uint16(((i + 1) % slices) * profile_count + p_idx);
+                        *indices++ = uint16(bottom_center_index);
+                        *indices++ = ring0;
+                        *indices++ = ring1;
+                    }
+                }
+
+                if(need_top_cap) {
+                    const int p_idx = profile_count - 1;
+                    for(uint i = 0; i < slices; i++) {
+                        uint16 ring0 = uint16(i * profile_count + p_idx);
+                        uint16 ring1 = uint16(((i + 1) % slices) * profile_count + p_idx);
+                        *indices++ = uint16(top_center_index);
+                        *indices++ = ring1;
+                        *indices++ = ring0;
+                    }
+                }
+
                 if(!is_full_revolution && profile_count > 2) {
-                    // 起始端面
                     for(uint p = 1; p < profile_count - 1; p++) {
                         *indices++ = 0;
                         *indices++ = p;
                         *indices++ = p + 1;
                     }
 
-                    // 结束端面
                     uint end_offset = slices * profile_count;
                     for(uint p = 1; p < profile_count - 1; p++) {
                         *indices++ = end_offset;
@@ -311,6 +411,28 @@ namespace hgl::graph::inline_geometry
                         *indices++ = i1;
                         *indices++ = i2;
                         *indices++ = i3;
+                    }
+                }
+
+                if(need_bottom_cap) {
+                    const int p_idx = 0;
+                    for(uint i = 0; i < slices; i++) {
+                        uint32 ring0 = uint32(i * profile_count + p_idx);
+                        uint32 ring1 = uint32(((i + 1) % slices) * profile_count + p_idx);
+                        *indices++ = uint32(bottom_center_index);
+                        *indices++ = ring0;
+                        *indices++ = ring1;
+                    }
+                }
+
+                if(need_top_cap) {
+                    const int p_idx = profile_count - 1;
+                    for(uint i = 0; i < slices; i++) {
+                        uint32 ring0 = uint32(i * profile_count + p_idx);
+                        uint32 ring1 = uint32(((i + 1) % slices) * profile_count + p_idx);
+                        *indices++ = uint32(top_center_index);
+                        *indices++ = ring1;
+                        *indices++ = ring0;
                     }
                 }
 
