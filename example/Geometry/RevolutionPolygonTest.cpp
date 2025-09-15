@@ -106,7 +106,7 @@ private:
         coneRci.start_angle = 0.0f;
         coneRci.sweep_angle = 360.0f;
         coneRci.revolution_center = Vector3f(0,0,0);
-        coneRci.close_profile = false;
+        coneRci.close_profile = true;
         coneRci.uv_scale = Vector2f(1.0f,1.0f);
 
         prim_cone = CreateRevolution(pc, &coneRci);

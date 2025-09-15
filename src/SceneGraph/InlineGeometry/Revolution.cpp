@@ -36,7 +36,7 @@ namespace hgl::graph::inline_geometry
             numberIndices += slices * 6;
         }
 
-        // 如果不是完整旋转，需要添加端面
+        // 如果不是完整旋转，需要添加端面（按照轮廓多边形填充）
         if(!is_full_revolution) {
             if(profile_count > 2) {
                 numberIndices += (profile_count - 2) * 6; // 每个端面2个三角形扇
@@ -264,9 +264,10 @@ namespace hgl::graph::inline_geometry
                     for(uint i = 0; i < slices; i++) {
                         uint8_t ring0 = uint8_t(i * profile_count + p_idx);
                         uint8_t ring1 = uint8_t(((i + 1) % slices) * profile_count + p_idx);
+                        // flip winding: center, ring1, ring0
                         *indices++ = uint8_t(bottom_center_index);
-                        *indices++ = ring0;
                         *indices++ = ring1;
+                        *indices++ = ring0;
                     }
                 }
 
@@ -275,10 +276,10 @@ namespace hgl::graph::inline_geometry
                     for(uint i = 0; i < slices; i++) {
                         uint8_t ring0 = uint8_t(i * profile_count + p_idx);
                         uint8_t ring1 = uint8_t(((i + 1) % slices) * profile_count + p_idx);
-                        // top cap normal faces +Z, so order center, ring1, ring0 to maintain winding
+                        // flip winding: center, ring0, ring1
                         *indices++ = uint8_t(top_center_index);
-                        *indices++ = ring1;
                         *indices++ = ring0;
+                        *indices++ = ring1;
                     }
                 }
 
@@ -346,8 +347,8 @@ namespace hgl::graph::inline_geometry
                         uint16 ring0 = uint16(i * profile_count + p_idx);
                         uint16 ring1 = uint16(((i + 1) % slices) * profile_count + p_idx);
                         *indices++ = uint16(bottom_center_index);
-                        *indices++ = ring0;
                         *indices++ = ring1;
+                        *indices++ = ring0;
                     }
                 }
 
@@ -357,8 +358,8 @@ namespace hgl::graph::inline_geometry
                         uint16 ring0 = uint16(i * profile_count + p_idx);
                         uint16 ring1 = uint16(((i + 1) % slices) * profile_count + p_idx);
                         *indices++ = uint16(top_center_index);
-                        *indices++ = ring1;
                         *indices++ = ring0;
+                        *indices++ = ring1;
                     }
                 }
 
@@ -420,8 +421,8 @@ namespace hgl::graph::inline_geometry
                         uint32 ring0 = uint32(i * profile_count + p_idx);
                         uint32 ring1 = uint32(((i + 1) % slices) * profile_count + p_idx);
                         *indices++ = uint32(bottom_center_index);
-                        *indices++ = ring0;
                         *indices++ = ring1;
+                        *indices++ = ring0;
                     }
                 }
 
@@ -431,8 +432,8 @@ namespace hgl::graph::inline_geometry
                         uint32 ring0 = uint32(i * profile_count + p_idx);
                         uint32 ring1 = uint32(((i + 1) % slices) * profile_count + p_idx);
                         *indices++ = uint32(top_center_index);
-                        *indices++ = ring1;
                         *indices++ = ring0;
+                        *indices++ = ring1;
                     }
                 }
 
