@@ -46,10 +46,10 @@ namespace hgl
 
             virtual ~VertexAttribDataAccess()=default;
 
-            void SetData(T *_data)
+            void SetData(void *_data)
             {
-                data    =_data;
-                data_end=_data+count*C;
+                data    =(T *)_data;
+                data_end=data+count*C;
             }
 
             const bool IsValid()const
@@ -57,7 +57,7 @@ namespace hgl
                 return data;
             }
 
-            void Write(const T *ptr)
+            void Write(const void *ptr)
             {
                 if(!ptr)return;
 
