@@ -359,8 +359,10 @@ SET(VK_CMD_BUFFER_SOURCE    ${SG_INCLUDE_PATH}/VKCommandBuffer.h
 
 SOURCE_GROUP("Vulkan\\Command Buffer" FILES ${VK_CMD_BUFFER_SOURCE})
 
-SET(VK_MESH_SOURCE    ${SG_INCLUDE_PATH}/Mesh.h
-                            Vulkan/Mesh.cpp)
+SET(VK_MESH_SOURCE  ${SG_INCLUDE_PATH}/MeshDataBuffer.h
+                    ${SG_INCLUDE_PATH}/MeshRenderData.h
+                    ${SG_INCLUDE_PATH}/Mesh.h
+                    Vulkan/Mesh.cpp)
 
 SOURCE_GROUP("Vulkan\\Mesh" FILES ${VK_MESH_SOURCE})
 
