@@ -80,30 +80,35 @@ void LineWidthBatch::Expand(uint c)
 
         if(!backup)
         {
-            // Fallback to previous behavior if no shared backup provided
-            // (should not happen per new requirement)
+            // Fallback: abort expansion
+            count = old_count;
             return;
         }
 
-        if(position && color && vertex_count>0)
+        if(vab_position && vab_color && vertex_count>0)
         {
+            // Ensure shared backup has enough capacity (only grows)
             backup->EnsureCapacity(vertex_count);
-            backup->positions.clear();
-            backup->colors.clear();
 
-            for(uint32_t i=0;i<vertex_count;i++)
+            // Resize storage to hold vertex_count entries
+            backup->positions.resize(vertex_count);
+            backup->colors.resize(vertex_count);
+
+            // Bulk read using VABFormatMap::Read; must succeed
+            bool pos_ok = vab_position->Read(backup->positions.data(), vertex_count);
+            if(!pos_ok)
             {
-                float *p = position->Get(i);
-                if(p)
-                    backup->positions.emplace_back(p[0],p[1],p[2]);
-                else
-                    backup->positions.emplace_back(Vector3f(0,0,0));
+                // cannot safely backup, abort expansion
+                count = old_count;
+                return;
+            }
 
-                uint8_t *cp = color->Get(i);
-                if(cp)
-                    backup->colors.push_back(*cp);
-                else
-                    backup->colors.push_back(0);
+            bool col_ok = vab_color->Read(backup->colors.data(), vertex_count);
+            if(!col_ok)
+            {
+                // cannot safely backup, abort expansion
+                count = old_count;
+                return;
             }
         }
 
@@ -118,13 +123,24 @@ void LineWidthBatch::Expand(uint c)
             return;
         }
 
-        // Restore backed up data into new buffers
-        if(!backup->Empty() && position && color)
+        // Restore backed up data into new buffers (bulk write)
+        if(!backup->Empty() && vab_position && vab_color)
         {
-            for(size_t i=0;i<backup->positions.size();++i)
+            // Bulk write using VABFormatMap::Write; must succeed
+            bool pos_write_ok = vab_position->Write(backup->positions.data(), static_cast<uint32_t>(backup->positions.size()));
+            if(!pos_write_ok)
             {
-                position->Write(backup->positions[i]);
-                color->Write(backup->colors[i]);
+                // cannot restore safely, abort
+                count = old_count;
+                return;
+            }
+
+            bool col_write_ok = vab_color->Write(backup->colors.data(), static_cast<uint32_t>(backup->colors.size()));
+            if(!col_write_ok)
+            {
+                // cannot restore safely, abort
+                count = old_count;
+                return;
             }
 
             if(mesh)
