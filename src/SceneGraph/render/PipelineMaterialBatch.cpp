@@ -284,7 +284,6 @@ void PipelineMaterialBatch::BuildBatches()
 
 bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 {
-    const MeshDataBuffer *  mesh_data_buffer=batch->mesh_data_buffer;
 //    const uint              ri_index        =batch->first_instance;
 
     //binding号都是在VertexInput::CreateVIL时连续紧密排列生成的，所以bind时first_binding写0就行了。
@@ -298,7 +297,7 @@ bool PipelineMaterialBatch::BindVAB(const DrawBatch *batch)
 
     //Basic组，它所有的VAB信息均来自于Primitive，由vid参数传递进来
     {
-        if(!vab_list->Add(mesh_data_buffer->vab_list,mesh_data_buffer->vab_offset,mesh_data_buffer->vab_count))
+        if(!vab_list->Add(batch->mesh_data_buffer))
         {
             //这个情况很严重哦！
             return(false);

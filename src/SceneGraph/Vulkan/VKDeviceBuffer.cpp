@@ -29,7 +29,7 @@ bool VulkanDevice::CreateBuffer(DeviceBufferData *buf,VkBufferUsageFlags buf_usa
 
     vkGetBufferMemoryRequirements(attr->device,buf->buffer,&mem_reqs);
 
-    DeviceMemory *dm=CreateMemory(mem_reqs,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT        //CPU端可以Map
+    DeviceMemory *dm=CreateMemory(mem_reqs,  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT        //CPU端可以Map(主要用于Persistent map)
                                             |VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);     //CPU端无需Flush,即可被GPU访问
                                                                                         //注：这个模式并非最佳效能，但是在开发时最为方便
                                                                                         //Device Local模式仅支持GPU访问，是性能最佳，考虑在一些极端情况下使用
