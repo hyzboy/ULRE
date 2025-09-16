@@ -65,7 +65,7 @@ void LineWidthBatch::AddCount(uint c)
 
     count+=c;
 
-    if(count >= max_count)
+    if(count > max_count)
     {
         max_count+=LINE_COUNT_INCREMENT;
 
@@ -87,7 +87,7 @@ void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8_t col
     color->Write(color_index);
     color->Write(color_index);
 
-    mesh->SetDrawCounts(count);
+    mesh->SetDrawCounts(count*2);
 }
 
 void LineWidthBatch::AddLine(const DataArray<LineSegmentDescriptor> &lsi_list)
@@ -106,7 +106,7 @@ void LineWidthBatch::AddLine(const DataArray<LineSegmentDescriptor> &lsi_list)
         color->Write(lsi.color);
     }
 
-    mesh->SetDrawCounts(count);
+    mesh->SetDrawCounts(count*2);
 }
 
 void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
