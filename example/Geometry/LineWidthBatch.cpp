@@ -146,6 +146,22 @@ void LineWidthBatch::Expand(uint c)
             if(mesh)
                 mesh->SetDrawCounts(old_count*2);
 
+            // Move access pointers to the end of existing data so subsequent writes append
+            // old_count lines => old_count*2 vertices
+            const uint32_t vertex_end = old_count * 2;
+
+            if(position)
+            {
+                // position is VB3f* (VertexAttribDataAccess3)
+                position->Seek(vertex_end);
+            }
+
+            if(color)
+            {
+                // color is VB1u8* (VertexAttribDataAccess1)
+                color->Seek(vertex_end);
+            }
+
             // Clear contents but do not reduce capacity
             backup->positions.clear();
             backup->colors.clear();

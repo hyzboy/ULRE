@@ -111,6 +111,48 @@ namespace hgl
             }
 
             /**
+            * 移动访问指针到 start_access（若 Begin 设置了 start_access）或 data 的指定偏移处
+            * @param offset 目标元素索引（以元素为单位）
+            * @return 成功返回 true，失败返回 false
+            */
+            bool Seek(uint32_t offset)
+            {
+                if(!data)
+                {
+                    GLogHint(OS_TEXT("VertexAttribDataAccess::Seek() data==nullptr"));
+                    return(false);
+                }
+
+                if(offset>=count)
+                {
+                    GLogHint(OS_TEXT("VertexAttribDataAccess::Seek() out,offset:")+OSString::numberOf(offset));
+                    return(false);
+                }
+
+                if(start_access)
+                {
+                    // relative to start_access
+                    T *target = start_access + (offset * C);
+                    if(target>=data && target<=data_end)
+                    {
+                        access = target;
+                        return true;
+                    }
+                    else
+                    {
+                        GLogHint(OS_TEXT("VertexAttribDataAccess::Seek() target out of range"));
+                        return(false);
+                    }
+                }
+                else
+                {
+                    // absolute from data
+                    access = data + (offset * C);
+                    return true;
+                }
+            }
+
+            /**
             * 写入指定数量的数据
             * @param vp 数据指针
             * @param number 数据数量
