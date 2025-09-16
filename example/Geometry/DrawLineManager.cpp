@@ -1,4 +1,4 @@
-#include "DrawLineManager.h"
+﻿#include "DrawLineManager.h"
 #include <cstring>
 #include <hgl/graph/VKRenderTarget.h>
 #include <hgl/graph/PrimitiveCreater.h>
@@ -17,6 +17,17 @@ namespace hgl
 {
     namespace graph
     {
+
+        constexpr const ShaderBufferSource SBS_ColorPattle=
+        {
+            DescriptorSetType::PerMaterial,
+
+            "color_pattle",
+            "ColorPattle",
+
+            "vec4 color[256]"
+        };
+
         constexpr const size_t LINE_COUNT_INCREMENT =       1024;
         constexpr const size_t POSITION_COMPONENT_COUNT =   6;
         constexpr const size_t COLOR_COMPONENT_COUNT =      2;
@@ -59,12 +70,14 @@ namespace hgl
 
             Pipeline *p = rf->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
 
-            DrawLineManager *mgr = new DrawLineManager(mi,p,rf->GetMeshManager());
+            UBOLineColorPattle *lcp=rf->CreateUBO<UBOLineColorPattle>(&SBS_ColorPattle);
+
+            DrawLineManager *mgr = new DrawLineManager(mi,p,lcp,rf->GetMeshManager());
 
             return mgr;
         }
 
-        DrawLineManager::LineSegmentBuffer::LineSegmentBuffer(const uint w,hgl::graph::VulkanDevice *dev,MaterialInstance *mi,Pipeline *p)
+        void DrawLineManager::LineSegmentBuffer::Init(const uint w,hgl::graph::VulkanDevice *dev,MaterialInstance *mi,Pipeline *p)
         {
             device = dev;
             mtl_inst = mi;
@@ -73,15 +86,15 @@ namespace hgl
 
             width = w;
 
-            max_count = LINE_COUNT_INCREMENT;
+            max_count = 0;
             count = 0;
-
-            position.reserve(POSITION_COUNT_INCREMENT);
-            color.reserve(COLOR_COUNT_INCREMENT);
         }
 
         void DrawLineManager::LineSegmentBuffer::Clear()
         {
+            SAFE_CLEAR(vab_position)
+            SAFE_CLEAR(vab_color)
+            SAFE_CLEAR(vab_list)
             SAFE_CLEAR(mesh);
             SAFE_CLEAR(primitive);
         }
@@ -97,43 +110,111 @@ namespace hgl
 
             AnsiString name = "Line3D(Width:" + AnsiString::numberOf(width) + ")";
 
-            primitive = CreatePrimitive(device,vil,name,max_count * 2);
+            primitive = CreatePrimitive(device,mtl_inst->GetVIL(),name,max_count * 2);
 
             if(!primitive)
                 return(false);
 
-            DirectCreateMesh(primitive,)
+            mesh=DirectCreateMesh(primitive,mtl_inst,pipeline);
+
+            {
+                vab_list->Restart();
+                vab_list->Add(mesh->GetDataBuffer());
+            }
+
+            vab_position=new VABMap3f(primitive->GetVABMap(VAN::Position));
+            vab_color=new VABMap1u8(primitive->GetVABMap(VAN::Color));
+
+            position=vab_position->Map();
+            color=vab_color->Map();
 
             return(true);
         }
 
-        DrawLineManager::DrawLineManager(RenderTarget *rt,MaterialInstance * mi,MeshManager *mm)
+        void DrawLineManager::LineSegmentBuffer::AddCount(uint c)
+        {
+            if(count<=0)return;
+
+            count+=c;
+
+            if(count >= max_count)
+            {
+                max_count+=LINE_COUNT_INCREMENT;
+
+                Clear();
+                RebuildMesh();
+            }
+        }
+
+        void DrawLineManager::LineSegmentBuffer::AddLine(const Vector3f &from,const Vector3f &to,uint8_t color_index)
+        {
+            AddCount(1);
+
+            position->Write(from);
+            position->Write(to);
+
+            color->Write(color_index);
+            color->Write(color_index);
+
+            mesh->SetDrawCounts(count);
+
+            dirty = true;
+        }
+
+        void DrawLineManager::LineSegmentBuffer::AddLine(const DataArray<LineSegmentInfo> &lsi_list)
+        {
+            AddCount(lsi_list.GetCount());
+
+            for(auto &lsi:lsi_list)
+            {
+                position->Write(lsi.from);
+                position->Write(lsi.to);
+
+                color->Write(lsi.color);
+                color->Write(lsi.color);
+            }
+
+            mesh->SetDrawCounts(count);            
+        }
+
+        void DrawLineManager::LineSegmentBuffer::Update()
+        {
+            if(count<=0||!dirty)
+                return;
+
+            RebuildMesh();
+        }
+
+        void DrawLineManager::LineSegmentBuffer::Draw(RenderCmdBuffer *cmd)
+        {
+            cmd->BindVAB(vab_list);
+
+            cmd->Draw(mesh->GetDataBuffer(),mesh->GetRenderData());
+        }
+
+        DrawLineManager::DrawLineManager(MaterialInstance *mi,Pipeline *p,UBOLineColorPattle *lcp,MeshManager *mm)
         {
             mi_line3d = mi;
+            pipeline=p;
+            ubo_color=lcp;
             mesh_manager = mm;
-
-            RenderPass *rp=rt->GetRenderPass();
-
-            pipeline=rp->
 
             for(uint i = 0;i < MAX_LINE_WIDTH;i++)
             {
-                line_groups[i].Init(i + 1,mm->GetDevice(),mi->GetVIL());
+                line_groups[i].Init(i + 1,mm->GetDevice(),mi,pipeline);
             }
         }
 
         DrawLineManager::~DrawLineManager()
         {
-            delete primitive_creater;
+            delete ubo_color;
         }
 
         void DrawLineManager::SetColor(const int index, const Color4f& c)
         {
             if (index < 0 || index >= 256) return;
 
-            color_palette[index] = c;
-
-            color_dirty = true;
+            ubo_color->Write(&c,index*sizeof(Color4f),sizeof(Color4f));
         }
 
         bool DrawLineManager::AddLine(const Vector3f& from, const Vector3f& to, const uint8_t color_index, uint8_t width)
@@ -142,32 +223,19 @@ namespace hgl
               ||width > MAX_LINE_WIDTH)
                 return(false);
 
-            LineSegmentBuffer *lsb = &line_groups[width - 1];
+            line_groups[width-1].AddLine(from,to,color_index);
+        }
 
-            if(lsb->count * COLOR_COMPONENT_COUNT >= lsb->color.size())
-            {
-                lsb->position.  resize(lsb->position.size() + POSITION_COUNT_INCREMENT);
-                lsb->color.     resize(lsb->color   .size() + COLOR_COUNT_INCREMENT);
+        bool DrawLineManager::AddLine(const uint8_t width,const DataArray<LineSegmentInfo> &lsi_list)
+        {
+            if(width==0
+               ||width>MAX_LINE_WIDTH)
+                return(false);
 
-                if(mesh)
-                {
-                    mesh_manager->Release(mesh);
-                    mesh = nullptr;
-                }
-            }
+            if(lsi_list.IsEmpty())
+                return(false);
 
-            float *p = lsb->position.data() + lsb->count * POSITION_COMPONENT_COUNT;
-            uint8 *c = lsb->color.data()    + lsb->count * COLOR_COMPONENT_COUNT;
-
-            p[0] = from.x; p[1] = from.y; p[2] = from.z;
-            p[3] = to.x;   p[4] = to.y;   p[5] = to.z;
-
-            c[0] = color_index;
-            c[1] = color_index;
-
-            ++lsb->count;
-
-            line_dirty = true;
+            line_groups[width-1].AddLine(lsi_list);
         }
 
         void DrawLineManager::ClearLines()
@@ -176,47 +244,6 @@ namespace hgl
                 lsb.count = 0;
 
             line_dirty = true;
-        }
-
-        void DrawLineManager::UpdateLines()
-        {
-            if (!line_dirty)
-                return;
-
-            if(mesh)
-            {
-                mesh_manager->Release(mesh);
-                mesh = nullptr;
-            }
-
-            uint32_t count = 0;
-
-            for(auto &kv : line_groups)
-                count += kv.count;
-
-            if(!primitive_creater->Init("Line3D",count * 2,0,IndexType::U32))
-            {
-                line_dirty = false;
-                return;
-            }
-
-            VABMapFloat    vab_pos    (primitive_creater->GetVABMap(VAN::Position,VF_V3F));
-            VABMapU8       vab_color  (primitive_creater->GetVABMap(VAN::Color,   VF_V1U8));
-
-            float *pp = vab_pos.Map();
-            uint8 *cp = vab_color.Map();
-
-            for(auto &kv : line_groups)
-            {
-                hgl_cpy<float>(pp,kv.position.data(),kv.count * POSITION_COMPONENT_COUNT);
-                hgl_cpy<uint8>(cp,kv.color   .data(),kv.count * COLOR_COMPONENT_COUNT);
-
-                pp += kv.count * POSITION_COMPONENT_COUNT;
-                cp += kv.count * COLOR_COMPONENT_COUNT;
-            }
-
-            primitive = primitive_creater->Create();
-            line_dirty = false;
         }
 
         bool DrawLineManager::Draw(RenderCmdBuffer *cmd)
@@ -229,6 +256,11 @@ namespace hgl
             if(!cmd->Begin())
                 return(false);
 
+            mi_line3d->GetMaterial()->BindUBO(&SBS_ColorPattle,ubo_color->ubo());
+
+            cmd->BindPipeline(pipeline);
+            cmd->BindDescriptorSets(mi_line3d->GetMaterial());
+
             for(size_t i = 0;i < MAX_LINE_WIDTH;i++)
             {
                 if(line_groups[i].count <= 0)
@@ -236,7 +268,7 @@ namespace hgl
 
                 cmd->SetLineWidth(i + 1);
 
-
+                line_groups[i].Draw(cmd);
             }
 
             for(auto &lsb:line_groups)
