@@ -217,6 +217,10 @@ public:
 
     void BindIBO(IndexBuffer *,const VkDeviceSize byte_offset=0);
 
+    /**
+    * 直接绑定Mesh的VBO/IBO。
+    * 有点像是BindVAB+BindIBO,适用于完全使用Mesh数据.
+    */
     bool BindDataBuffer(const MeshDataBuffer *);
 
     void SetViewport        (uint32_t first,uint32_t count,const VkViewport *vp)    {vkCmdSetViewport(cmd_buf,first,count,vp);}

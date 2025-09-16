@@ -179,7 +179,7 @@ namespace hgl::graph
 
     void DrawLineManager::LineSegmentBuffer::Draw(RenderCmdBuffer *cmd)
     {
-        cmd->BindVAB(&(mesh->GetVABList()));
+        cmd->BindDataBuffer(mesh->GetDataBuffer());
 
         cmd->Draw(mesh->GetDataBuffer(),mesh->GetRenderData());
     }
