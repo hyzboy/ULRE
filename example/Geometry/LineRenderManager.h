@@ -30,6 +30,8 @@ namespace hgl::graph
 {
     class LineRenderManager
     {
+        VulkanDevice *device;
+
     private:
 
         UBOLineColorPalette *ubo_color;
@@ -42,18 +44,14 @@ namespace hgl::graph
 
     private:    
 
-        MaterialInstance *  line_material_instance   = nullptr;
-        Pipeline *          pipeline            = nullptr;
-        MeshManager *       mesh_manager        = nullptr;
+        MaterialInstance *  mi_line   = nullptr;
+        Pipeline *          pipeline  = nullptr;
 
         void UpdateLines();
 
     public:
 
-        LineRenderManager(MaterialInstance *mi,
-                        Pipeline *p,
-                        UBOLineColorPalette *lcp,
-                        MeshManager *mm);
+        LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp);
 
         ~LineRenderManager();
 
