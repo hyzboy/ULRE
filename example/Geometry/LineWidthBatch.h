@@ -5,6 +5,7 @@
 #include <hgl/type/DataArray.h>
 #include <hgl/graph/VKVertexAttribBuffer.h>
 #include <hgl/graph/VKBuffer.h>
+#include "SharedLineBackup.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -36,11 +37,15 @@ class LineWidthBatch
     VB3f *      position    =nullptr;   // 每条线段2个顶点，每个顶点3个float
     VB1u8 *     color       =nullptr;   // 每条线段2个顶点，每个顶点4个uint8
 
+    SharedLineBackup *shared_backup = nullptr; // optional shared backup
+
 public:
 
     ~LineWidthBatch();
 
-    void Init(const uint w,VulkanDevice *,MaterialInstance *,Pipeline *p);
+
+    void Init(const uint w,VulkanDevice *,MaterialInstance *,Pipeline *p,SharedLineBackup *sb);
+
     void Clear();
     bool RebuildMesh();
     void Expand(uint);

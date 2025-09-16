@@ -16,6 +16,7 @@
 #include<hgl/graph/VKCommandBuffer.h>
 
 #include "LineWidthBatch.h"
+#include "SharedLineBackup.h"
 
 namespace hgl::graph
 {
@@ -50,6 +51,8 @@ namespace hgl::graph
         void UpdateLines();
 
     public:
+
+        SharedLineBackup *shared_backup = nullptr; // shared backup used by LineWidthBatch
 
         LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp);
 
