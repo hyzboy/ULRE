@@ -70,21 +70,21 @@ namespace hgl::graph
 
         UBOLineColorPalette *lcp=rf->CreateUBO<UBOLineColorPalette>(&SBS_ColorPattle);
 
-        LineRenderManager *mgr = new LineRenderManager(mi,p,lcp,rf->GetMeshManager());
+        LineRenderManager *mgr = new LineRenderManager(rf->GetDevice(),mi,p,lcp);
 
         return mgr;
     }
 
-    LineRenderManager::LineRenderManager(MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp,MeshManager *mm)
+    LineRenderManager::LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp)
     {
-        line_material_instance = mi;
+        device = dev;
+        mi_line = mi;
         pipeline=p;
         ubo_color=lcp;
-        mesh_manager = mm;
 
         for(uint i = 0;i < MAX_LINE_WIDTH;i++)
         {
-            line_groups[i].Init(i + 1,mm->GetDevice(),mi,pipeline);
+            line_groups[i].Init(i + 1,device,mi,pipeline);
         }
 
         total_line_count = 0;
@@ -143,10 +143,10 @@ namespace hgl::graph
         if(total_line_count==0)
             return(true);
 
-        line_material_instance->GetMaterial()->BindUBO(&SBS_ColorPattle,ubo_color->ubo());
+        mi_line->GetMaterial()->BindUBO(&SBS_ColorPattle,ubo_color->ubo());
 
         cmd->BindPipeline(pipeline);
-        cmd->BindDescriptorSets(line_material_instance->GetMaterial());
+        cmd->BindDescriptorSets(mi_line->GetMaterial());
 
         for(size_t i = 0;i < MAX_LINE_WIDTH;i++)
         {
