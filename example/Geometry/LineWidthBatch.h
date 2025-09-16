@@ -23,7 +23,7 @@ class LineWidthBatch
     MaterialInstance *  mtl_inst=nullptr;
     Pipeline *          pipeline=nullptr;
 
-    uint        width       =0;
+    uint        line_width  =0;
 
     uint32_t    max_count   =0;     // 当前缓冲区可容纳的最大线段数量
     uint32_t    count       =0;     // 当前线段数量
@@ -43,7 +43,7 @@ public:
     void Init(const uint w,VulkanDevice *,MaterialInstance *,Pipeline *p);
     void Clear();
     bool RebuildMesh();
-    void AddCount(uint);
+    void Expand(uint);
 
     void AddLine(const Vector3f &from,const Vector3f &to,uint8_t color_index);
     void AddLine(const DataArray<LineSegmentDescriptor> &);
