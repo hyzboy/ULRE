@@ -3,6 +3,8 @@
 #include <hgl/graph/PrimitiveCreater.h>
 #include <hgl/graph/module/MeshManager.h>
 #include <hgl/graph/VKMaterial.h>
+#include <vector>
+#include "SharedLineBackup.h"
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -16,7 +18,7 @@ LineWidthBatch::~LineWidthBatch()
     Clear();
 }
 
-void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pipeline *p)
+void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,SharedLineBackup *sb)
 {
     device = dev;
     mtl_inst = mi;
@@ -27,6 +29,8 @@ void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pi
 
     max_count = 0;
     count = 0;
+
+    shared_backup = sb;
 }
 
 void LineWidthBatch::Clear()
@@ -63,14 +67,73 @@ void LineWidthBatch::Expand(uint c)
 {
     if(c<=0)return;
 
+    const uint32_t old_count = count;
+
     count+=c;
 
     if(count > max_count)
     {
+        // Shared backup must exist; use it exclusively
+        SharedLineBackup *backup = shared_backup;
+
+        const uint32_t vertex_count = old_count * 2;
+
+        if(!backup)
+        {
+            // Fallback to previous behavior if no shared backup provided
+            // (should not happen per new requirement)
+            return;
+        }
+
+        if(position && color && vertex_count>0)
+        {
+            backup->EnsureCapacity(vertex_count);
+            backup->positions.clear();
+            backup->colors.clear();
+
+            for(uint32_t i=0;i<vertex_count;i++)
+            {
+                float *p = position->Get(i);
+                if(p)
+                    backup->positions.emplace_back(p[0],p[1],p[2]);
+                else
+                    backup->positions.emplace_back(Vector3f(0,0,0));
+
+                uint8_t *cp = color->Get(i);
+                if(cp)
+                    backup->colors.push_back(*cp);
+                else
+                    backup->colors.push_back(0);
+            }
+        }
+
         max_count+=LINE_COUNT_INCREMENT;
 
+        // Recreate buffers
         Clear();
-        RebuildMesh();
+        if(!RebuildMesh())
+        {
+            // failed to rebuild, restore count
+            count = old_count;
+            return;
+        }
+
+        // Restore backed up data into new buffers
+        if(!backup->Empty() && position && color)
+        {
+            for(size_t i=0;i<backup->positions.size();++i)
+            {
+                position->Write(backup->positions[i]);
+                color->Write(backup->colors[i]);
+            }
+
+            if(mesh)
+                mesh->SetDrawCounts(old_count*2);
+
+            // Clear contents but do not reduce capacity
+            backup->positions.clear();
+            backup->colors.clear();
+        }
     }
 }
 

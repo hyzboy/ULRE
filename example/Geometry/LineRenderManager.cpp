@@ -13,6 +13,7 @@
 #include <hgl/graph/module/MeshManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/RenderFramework.h>
+#include "SharedLineBackup.h"
 
 namespace hgl::graph
 {
@@ -82,9 +83,13 @@ namespace hgl::graph
         pipeline=p;
         ubo_color=lcp;
 
+        // allocate shared backup once for all batches
+        shared_backup = new SharedLineBackup();
+
         for(uint i = 0;i < MAX_LINE_WIDTH;i++)
         {
-            line_groups[i].Init(i + 1,device,mi,pipeline);
+            // pass shared backup pointer to each LineWidthBatch
+            line_groups[i].Init(i + 1,device,mi,pipeline,shared_backup);
         }
 
         total_line_count = 0;
@@ -93,6 +98,7 @@ namespace hgl::graph
     LineRenderManager::~LineRenderManager()
     {
         delete ubo_color;
+        delete shared_backup;
     }
 
     void LineRenderManager::SetColor(const int index, const Color4f& c)
