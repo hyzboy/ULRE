@@ -23,7 +23,7 @@ void LineWidthBatch::Init(const uint w,VulkanDevice *dev,MaterialInstance *mi,Pi
 
     pipeline = p;
 
-    width = w;
+    line_width = w;
 
     max_count = 0;
     count = 0;
@@ -41,7 +41,7 @@ bool LineWidthBatch::RebuildMesh()
 {
     Clear();
 
-    AnsiString name = "Line3D(Width:" + AnsiString::numberOf(width) + ")";
+    AnsiString name = "Line3D(Width:" + AnsiString::numberOf(line_width) + ")";
 
     primitive = CreatePrimitive(device,mtl_inst->GetVIL(),name,max_count * 2);
 
@@ -59,7 +59,7 @@ bool LineWidthBatch::RebuildMesh()
     return(true);
 }
 
-void LineWidthBatch::AddCount(uint c)
+void LineWidthBatch::Expand(uint c)
 {
     if(c<=0)return;
 
@@ -76,7 +76,7 @@ void LineWidthBatch::AddCount(uint c)
 
 void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8_t color_index)
 {
-    AddCount(1);
+    Expand(1);
 
     if(!position)
         return;
@@ -92,7 +92,7 @@ void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8_t col
 
 void LineWidthBatch::AddLine(const DataArray<LineSegmentDescriptor> &lsi_list)
 {
-    AddCount(lsi_list.GetCount());
+    Expand(lsi_list.GetCount());
 
     if(!position)
         return;
