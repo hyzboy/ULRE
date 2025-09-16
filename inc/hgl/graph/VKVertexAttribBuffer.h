@@ -212,6 +212,33 @@ public:
     {
         return map_ptr;
     }
+
+    // Bulk write raw element data (element count, not bytes)
+    // Uses VKBufferMap::Write which will copy to mapped memory if available, otherwise call DeviceBuffer::Write
+    bool Write(const void *data,const uint32_t element_count)
+    {
+        if(!vab_map||!data||element_count==0)
+            return(false);
+
+        return vab_map->Write(data,element_count);
+    }
+
+    // Bulk read raw element data into dst (element count, not bytes)
+    // Attempts to map the buffer and memcpy out; returns false if mapping not available
+    bool Read(void *dst,const uint32_t element_count)
+    {
+        if(!vab_map||!dst||element_count==0)
+            return(false);
+
+        void *map_ptr_raw = vab_map->Map();
+        if(!map_ptr_raw)
+            return(false);
+
+        const uint32_t stride = vab_map->GetStride();
+        memcpy(dst,map_ptr_raw,static_cast<size_t>(stride) * element_count);
+        return(true);
+    }
+
 };//template<typename T> class VABFormatMap
 
 typedef VABFormatMap<VB1i8>   VABMap1i8 ,VABMap1b;
@@ -246,8 +273,13 @@ typedef VABFormatMap<VB2sf16> VABMap2sf16;
 typedef VABFormatMap<VB2uf16> VABMap2uf16;
 typedef VABFormatMap<VB2hf>   VABMap2hf;
 
+//        typedef VABFormatMap<VB3i8>   VABMap3i8   ,VABMap3b;
+//        typedef VABFormatMap<VB3i16>  VABMap3i16  ,VABMap3s;
 typedef VABFormatMap<VB3i32>  VABMap3i32,VABMap3i;
+//        typedef VABFormatMap<VB3u8>   VABMap3u8   ,VABMap3ub;
+//        typedef VABFormatMap<VB3u16>  VABMap3u16  ,VABMap3us;
 typedef VABFormatMap<VB3u32>  VABMap3u32,VABMap3ui;
+
 typedef VABFormatMap<VB3f>    VABMap3f;
 typedef VABFormatMap<VB3d>    VABMap3d;
 
