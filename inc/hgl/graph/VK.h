@@ -38,6 +38,14 @@ using BindingMapArray   =BindingMap[VK_DESCRIPTOR_TYPE_RANGE_SIZE];
 class DescriptorBinding;
 
 class GraphModule;
+class BufferManager;
+class RenderPassManager;
+class PrimitiveManager;
+class MaterialManager;
+class MeshManager;
+class RenderTargetManager;
+class TextureManager;
+
 class RenderFramework;
 
 class VulkanInstance;
