@@ -9,6 +9,7 @@
 #include<hgl/graph/VertexAttrib.h>
 #include<hgl/graph/MeshDataBuffer.h>
 #include<hgl/graph/MeshRenderData.h>
+#include<hgl/graph/VKVABList.h>
 
 VK_NAMESPACE_BEGIN
 /**
@@ -21,8 +22,10 @@ class Mesh
     MaterialInstance *  mat_inst;
     Primitive *         primitive;
 
-    MeshDataBuffer * data_buffer;
-    MeshRenderData render_data;
+    MeshDataBuffer *    data_buffer;
+    MeshRenderData      render_data;
+
+    VABList             vab_list;    //这个只是个引用，不负责释放
 
 private:
 
@@ -50,6 +53,8 @@ public:
 
     const   MeshDataBuffer *    GetDataBuffer       ()const{return data_buffer;}
     const   MeshRenderData *    GetRenderData       ()const{return &render_data;}
+
+    const   VABList &           GetVABList          ()const{return vab_list;}
 
             VAB *               GetVAB              (const int index)const{return primitive->GetVAB(index);}
             VAB *               GetVAB              (const AnsiString &name)const{return primitive->GetVAB(name);}

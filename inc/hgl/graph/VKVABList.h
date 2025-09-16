@@ -24,6 +24,11 @@ public:
         write_count=0;
     }
 
+    VABList(const MeshDataBuffer *mdb):VABList(mdb->vab_count)
+    {
+        Add(mdb);
+    }
+
     ~VABList()
     {
         delete[] vab_offset;
