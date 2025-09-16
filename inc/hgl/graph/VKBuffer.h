@@ -82,6 +82,14 @@ public:
 
     T *data(){return &data_map;}
 
+    bool Write(const void *data,const uint32_t offset,const uint32_t size)
+    {
+        if(!dev_buf)
+            return(false);
+
+        return dev_buf->Write(data,offset,size);
+    }
+
     void Update()const
     {
         if(dev_buf)
