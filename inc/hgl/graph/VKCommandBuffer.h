@@ -200,7 +200,7 @@ public:
         vkCmdBindVertexBuffers(cmd_buf,first,count,vab,offsets);
     }
 
-    bool BindVAB(VABList *vab_list)
+    bool BindVAB(const VABList *vab_list)
     {
         if(!vab_list)return(false);
 

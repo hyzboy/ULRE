@@ -46,7 +46,6 @@ namespace hgl::graph
 
             Primitive * primitive   =nullptr;
             Mesh *      mesh        =nullptr;
-            VABList *   vab_list    =nullptr;
             VABMap3f *  vab_position=nullptr;
             VABMap1u8 * vab_color   =nullptr;
 
@@ -67,7 +66,7 @@ namespace hgl::graph
             void AddLine(const Vector3f &from,const Vector3f &to,uint8_t color_index);
             void AddLine(const DataArray<LineSegmentInfo> &);
 
-            void Update();
+            uint32_t Update();
 
             void Draw(RenderCmdBuffer *);
         };
@@ -80,7 +79,7 @@ namespace hgl::graph
 
         LineSegmentBuffer line_groups[MAX_LINE_WIDTH];      //直接以宽度为访问索引
 
-        bool line_dirty = true;
+        uint32_t total_line_count=0;
 
     private:    
 
@@ -114,6 +113,6 @@ namespace hgl::graph
         void CreatePrimitives(const AnsiString& name_prefix,
             const std::function<void(hgl::graph::Primitive*)>& on_create);
 
-        bool Update();
+        void Update();
     };
 }

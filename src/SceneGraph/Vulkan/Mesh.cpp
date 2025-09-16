@@ -76,7 +76,7 @@ void MeshRenderData::Set(const Primitive *prim)
     first_index     = prim->GetFirstIndex();
 }
 
-Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_data_buffer)
+Mesh::Mesh(Primitive *r,MaterialInstance *mi,Pipeline *p,MeshDataBuffer *mesh_data_buffer):vab_list(mesh_data_buffer)
 {
     primitive=r;
     pipeline=p;
