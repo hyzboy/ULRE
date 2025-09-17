@@ -123,6 +123,14 @@ SET(GRAPH_MODULE_FILES  ${SGM_HEADER_PATH}/GraphModule.h
 
 source_group("Framework\\Module" FILES ${GRAPH_MODULE_FILES})
 
+SET(SG_LINE_RENDER_MANAGER  ${SG_INCLUDE_PATH}/geo/line/SharedLineBackup.h
+                            ${SG_INCLUDE_PATH}/geo/line/LineWidthBatch.h
+                            ${SG_INCLUDE_PATH}/geo/line/LineRenderManager.h
+                            render/line/LineWidthBatch.cpp
+                            render/line/LineRenderManager.cpp)
+
+SOURCE_GROUP("Framework\\LineRenderManager" FILES ${SG_LINE_RENDER_MANAGER})
+
 SET(GRAPH_FRAMEWORK_FILES   ${SG_INCLUDE_PATH}/RenderFramework.h
                             RenderFramework.cpp
                             CameraControl.cpp)
@@ -472,6 +480,8 @@ add_cm_library(ULRE.SceneGraph "ULRE"   ${SCENE_GRAPH_FILES}
 
                                         ${GRAPH_MODULE_FILES}
                                         ${GRAPH_FRAMEWORK_FILES}
+
+                                        ${SG_LINE_RENDER_MANAGER}
 
                                         ${SG_TEXTURE_SOURCE}
                                         ${TILE_SOURCE}

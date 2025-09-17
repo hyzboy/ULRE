@@ -17,4 +17,4 @@ CreateProject(02_RevolutionPolygonTest          RevolutionPolygonTest.cpp)
 CreateProject(03_WallsFromPolyline              WallsFromPolyline.cpp)
 #CreateProject(03_WallsFromPolyline_Texture      WallsFromPolyline_Texture.cpp)
 
-CreateProject(04_WireShapeTest                  WireShapeTest.cpp WireShape.cpp LineRenderManager.cpp LineWidthBatch.cpp LineRenderManager.h LineWidthBatch.h)
+CreateProject(04_LineRenderTest                 LineRenderTest.cpp)

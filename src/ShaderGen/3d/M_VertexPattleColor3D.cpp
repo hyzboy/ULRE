@@ -50,7 +50,6 @@ void main()
 
             mci->AddUBOStruct((uint32_t)ShaderStage::Vertex,SBS_ColorPattle);
 
-
             vsc->AddInput(VAT_UINT,"Color",VK_VERTEX_INPUT_RATE_VERTEX,VertexInputGroup::Basic); //输入的R8UI顶点属性
 
             vsc->AddOutput(SVT_VEC4,"Color");

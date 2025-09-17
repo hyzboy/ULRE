@@ -15,8 +15,7 @@
 #include<hgl/graph/VKVertexAttribBuffer.h>
 #include<hgl/graph/VKCommandBuffer.h>
 
-#include "LineWidthBatch.h"
-#include "SharedLineBackup.h"
+#include <hgl/graph/geo/line/LineWidthBatch.h>
 
 namespace hgl::graph
 {
@@ -25,10 +24,7 @@ namespace hgl::graph
     using LineColorPalette=Color4f[256];
 
     using UBOLineColorPalette=UBOInstance<LineColorPalette>;
-}
 
-namespace hgl::graph
-{
     class LineRenderManager
     {
         VulkanDevice *device;
@@ -47,8 +43,6 @@ namespace hgl::graph
 
         MaterialInstance *  mi_line   = nullptr;
         Pipeline *          pipeline  = nullptr;
-
-        void UpdateLines();
 
     public:
 

@@ -1,5 +1,4 @@
-﻿#include "LineRenderManager.h"
-#include "LineWidthBatch.h"
+﻿#include <hgl/graph/geo/line/LineRenderManager.h>
 #include <cstring>
 #include <hgl/graph/VKRenderTarget.h>
 #include <hgl/graph/PrimitiveCreater.h>
@@ -9,13 +8,12 @@
 #include <hgl/graph/module/MaterialManager.h>
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/graph/VKMaterial.h>
-#include<hgl/graph/VKVertexInputConfig.h>
+#include <hgl/graph/VKVertexInputConfig.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/MeshManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/RenderFramework.h>
 #include <hgl/graph/mtl/UBOCommon.h>
-#include "SharedLineBackup.h"
 
 namespace hgl::graph
 {

@@ -1,10 +1,9 @@
-#include "LineWidthBatch.h"
+#include <hgl/graph/geo/line/LineWidthBatch.h>
 #include <hgl/graph/VKDevice.h>
 #include <hgl/graph/PrimitiveCreater.h>
 #include <hgl/graph/module/MeshManager.h>
 #include <hgl/graph/VKMaterial.h>
 #include <vector>
-#include "SharedLineBackup.h"
 
 using namespace hgl;
 using namespace hgl::graph;
