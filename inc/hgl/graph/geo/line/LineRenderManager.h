@@ -22,6 +22,8 @@ namespace hgl::graph
     {
         VulkanDevice *device;
 
+        bool support_wide_lines;
+
     private:
 
         UBOLineColorPalette *ubo_color;

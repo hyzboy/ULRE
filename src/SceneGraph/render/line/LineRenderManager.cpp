@@ -64,7 +64,12 @@ namespace hgl::graph
 
         VulkanDevAttr *dev_attr = rf->GetDevAttr();
 
-        Pipeline *p = rp->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
+        Pipeline *p;
+
+        if(dev_attr->wide_lines)
+            p = rp->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
+        else
+            p = rp->CreatePipeline(mi,InlinePipeline::Solid3D);
 
         UBOLineColorPalette *lcp=rf->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);
 
@@ -75,6 +80,8 @@ namespace hgl::graph
 
     LineRenderManager::LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp)
     {
+        support_wide_lines = dev->GetDevAttr()->wide_lines;
+
         device = dev;
         mi_line = mi;
         pipeline=p;
@@ -83,10 +90,17 @@ namespace hgl::graph
         // allocate shared backup once for all batches
         shared_backup = new SharedLineBackup();
 
-        for(uint i = 0;i < MAX_LINE_WIDTH;i++)
+        if(support_wide_lines)
         {
-            // pass shared backup pointer to each LineWidthBatch
-            line_groups[i].Init(i + 1,device,mi,pipeline,shared_backup);
+            for(uint i = 0;i < MAX_LINE_WIDTH;i++)
+            {
+                // pass shared backup pointer to each LineWidthBatch
+                line_groups[i].Init(i + 1,device,mi,pipeline,shared_backup);
+            }
+        }
+        else
+        {
+            line_groups[0].Init(0,device,mi,pipeline,shared_backup);
         }
 
         total_line_count = 0;
@@ -110,7 +124,11 @@ namespace hgl::graph
             ||width > MAX_LINE_WIDTH)
             return(false);
 
-        line_groups[width-1].AddLine(from,to,color_index);
+        if(support_wide_lines)
+            line_groups[width-1].AddLine(from,to,color_index);
+        else
+            line_groups[0].AddLine(from,to,color_index);
+
         ++total_line_count;
         return(true);
     }
@@ -124,7 +142,11 @@ namespace hgl::graph
         if(lsi_list.IsEmpty())
             return(false);
 
-        line_groups[width-1].AddLine(lsi_list);
+        if(support_wide_lines)
+            line_groups[width-1].AddLine(lsi_list);
+        else
+            line_groups[0].AddLine(lsi_list);
+
         total_line_count += lsi_list.GetCount();
         return(true);
     }
@@ -150,14 +172,21 @@ namespace hgl::graph
         cmd->BindPipeline(pipeline);
         cmd->BindDescriptorSets(mi_line->GetMaterial());
 
-        for(size_t i = 0;i < MAX_LINE_WIDTH;i++)
+        if(support_wide_lines)
         {
-            if(line_groups[i].GetCount() <= 0)
-                continue;
+            for(size_t i = 0;i < MAX_LINE_WIDTH;i++)
+            {
+                if(line_groups[i].GetCount() <= 0)
+                    continue;
 
-            cmd->SetLineWidth(i + 1);
+                cmd->SetLineWidth(i + 1);
 
-            line_groups[i].Draw(cmd);
+                line_groups[i].Draw(cmd);
+            }
+        }
+        else
+        {
+            line_groups[0].Draw(cmd);
         }
 
         return(true);
