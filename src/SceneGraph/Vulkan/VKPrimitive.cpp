@@ -35,16 +35,12 @@ Primitive::Primitive(const AnsiString &pn,PrimitiveData *pd)
     prim_name=pn;
     prim_data=pd;
 
-#ifdef _DEBUG
-    LogInfo(" Primitive: "+prim_name);
-#endif//
+    LogVerbose(" Primitive: "+prim_name);
 }
 
 Primitive::~Primitive()
 {
-#ifdef _DEBUG
-    LogInfo("~Primitive: "+prim_name);
-#endif//
+    LogVerbose("~Primitive: "+prim_name);
 
     SAFE_CLEAR(prim_data);
 }
