@@ -1,5 +1,5 @@
 #include<hgl/WorkManager.h>
-#include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/component/MeshComponent.h>
 #include<hgl/graph/mtl/UBOCommon.h>

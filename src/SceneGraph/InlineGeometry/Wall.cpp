@@ -1,5 +1,5 @@
 #include<hgl/graph/geo/Wall.h>
-#include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/PrimitiveCreater.h>
 
