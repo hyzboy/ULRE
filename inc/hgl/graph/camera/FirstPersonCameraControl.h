@@ -27,23 +27,23 @@ namespace hgl::graph
 
         // CN: 相机局部基向量
         // EN: Local camera basis vectors
-        Vector3f front;     ///< CN: 前向（归一化） EN: forward direction (normalized)
+        Vector3f forward;   ///< CN: 前向（归一化） EN: forward direction (normalized)
         Vector3f right;     ///< CN: 右向（归一化） EN: right direction (normalized)
         Vector3f up;        ///< CN: 上向（归一化） EN: up direction (normalized)
 
-        // CN: 摄像机位置到目标点的分量距离
-        // EN: Per-component distance from camera position to look target
-        Vector3f target_distance;          ///< CN: 沿前向各分量的距离 EN: distance from camera to target along front vector components
+        // CN: 摄像机位置到目标点的距离（标量）
+        // EN: Distance from camera position to look target along the forward vector
+        float distance_to_target;          ///< CN: 沿前向的距离 EN: distance from camera to target along forward vector
 
         Vector3f target;            ///< CN: 世界空间中的目标点 EN: target point in world space
 
         // CN: 输入轴反转标志（+1 或 -1）
         // EN: Axis inversion signs: +1 or -1 per axis to invert mouse axes
-        Vector2f invert_sign;       ///< CN: x/y 反转符号（1 或 -1） EN: x/y inversion sign for input (1 or -1)
+        Vector2f input_invert_sign;       ///< CN: x/y 反转符号（1 或 -1） EN: x/y inversion sign for input (1 or -1)
 
         // CN: 旋转灵敏度（以每像素度为单位）
         // EN: Rotation sensitivity expressed in degrees per pixel of mouse movement
-        float rotation_sensitivity;  ///< CN: 度/像素 EN: degrees per pixel
+        float rotation_sensitivity_deg_per_pixel;  ///< CN: 度/像素 EN: degrees per pixel
 
     public:
 
@@ -65,7 +65,7 @@ namespace hgl::graph
         // EN: Simple settings struct to facilitate UI/config system read/write
         struct Settings
         {
-            float rotation_sensitivity; // degrees per pixel
+            float rotation_sensitivity_deg_per_pixel; // degrees per pixel
             bool invert_x;
             bool invert_y;
         };
@@ -74,18 +74,18 @@ namespace hgl::graph
         {
             target=Vector3f(0.0f);
             up=Vector3f(0,0,1);
-            target_distance=Vector3f(0,0,0);
+            distance_to_target=0.0f;
 
             // initialize orientation (radians)
             pitch=0;
             yaw  =deg2rad(-90.0f);
             roll =0;
 
-            invert_sign.x=-1;
-            invert_sign.y=1;
+            input_invert_sign.x=-1;
+            input_invert_sign.y=1;
 
             // default: ~0.2 degrees per pixel (previous default was 0.002 radians/pixel)
-            rotation_sensitivity = 0.2f; // degrees per pixel
+            rotation_sensitivity_deg_per_pixel = 0.2f; // degrees per pixel
 
             UpdateCameraVector();
         }
@@ -95,43 +95,43 @@ namespace hgl::graph
         // EN: Configure axis inversion for input: pass true to invert that axis
         void SetInvertAxis(bool invert_x,bool invert_y)
         {
-            invert_sign.x = invert_x ? -1.0f : 1.0f;
-            invert_sign.y = invert_y ? -1.0f : 1.0f;
+            input_invert_sign.x = invert_x ? -1.0f : 1.0f;
+            input_invert_sign.y = invert_y ? -1.0f : 1.0f;
         }
 
         // CN: 获取当前轴反转设置
         // EN: Get current axis inversion settings
         void GetInvertAxis(bool &out_invert_x,bool &out_invert_y)const
         {
-            out_invert_x = (invert_sign.x < 0.0f);
-            out_invert_y = (invert_sign.y < 0.0f);
+            out_invert_x = (input_invert_sign.x < 0.0f);
+            out_invert_y = (input_invert_sign.y < 0.0f);
         }
 
         // CN: 设置旋转灵敏度（度/像素）
         // EN: Set rotation sensitivity (degrees per pixel)
         void SetRotationSensitivity(float s)
         {
-            rotation_sensitivity = s;
+            rotation_sensitivity_deg_per_pixel = s;
         }
 
         // CN: 获取旋转灵敏度（度/像素）
         // EN: Get rotation sensitivity (degrees per pixel)
-        float GetRotationSensitivity()const{return rotation_sensitivity;}
+        float GetRotationSensitivity()const{return rotation_sensitivity_deg_per_pixel;}
 
         // CN: 将当前设置填充到 Settings 结构，供 UI/配置系统使用
         // EN: Fill provided Settings struct with current values for UI/config use
         void FillSettings(Settings &s)const
         {
-            s.rotation_sensitivity = rotation_sensitivity;
-            s.invert_x = (invert_sign.x < 0.0f);
-            s.invert_y = (invert_sign.y < 0.0f);
+            s.rotation_sensitivity_deg_per_pixel = rotation_sensitivity_deg_per_pixel;
+            s.invert_x = (input_invert_sign.x < 0.0f);
+            s.invert_y = (input_invert_sign.y < 0.0f);
         }
 
         // CN: 从 Settings 结构加载设置，供 UI/配置系统使用
         // EN: Load settings from Settings struct (for UI/config systems)
         void ApplySettings(const Settings &s)
         {
-            rotation_sensitivity = s.rotation_sensitivity;
+            rotation_sensitivity_deg_per_pixel = s.rotation_sensitivity_deg_per_pixel;
             SetInvertAxis(s.invert_x, s.invert_y);
         }
 
@@ -139,29 +139,41 @@ namespace hgl::graph
         {
             if(!camera) return;
 
-            front   =normalize(t-camera->pos);
-            right   =normalize(cross(front,camera->world_up));
-            up      =normalize(cross(right,front)); 
+            // Compute direction to target and initial forward
+            Vector3f dir = t - camera->pos;
+            float len = length(dir);
+
+            if(len <= 1e-6f)
+            {
+                // target coincides with camera position
+                forward = Vector3f(1,0,0);
+                distance_to_target = 0.0f;
+            }
+            else
+            {
+                forward = dir / len; // normalized direction
+                 // compute Euler from forward
+                 pitch   = asin(forward.z);
+                 yaw     = atan2(forward.y, forward.x);
+
+                 // ensure forward vector matches yaw/pitch
+                 UpdateCameraVector();
+
+                 // scalar distance along forward
+                 distance_to_target = dot(t - camera->pos, forward);
+             }
+
+            right   =normalize(cross(forward,camera->world_up));
+            up      =normalize(cross(right,forward));
 
             camera->view_line=normalize(camera->pos-t);
-
-            pitch   =asin(front.z);
-            yaw     =atan2(front.y, front.x); // fixed: use atan2(y,x) to match PolarToVector
-
-            UpdateCameraVector();
-
-            // avoid division by zero: only compute component-wise distance when front is non-zero
-            target_distance = Vector3f(0.0f);
-            if(fabs(front.x) > 1e-6f) target_distance.x = (t.x - camera->pos.x) / front.x;
-            if(fabs(front.y) > 1e-6f) target_distance.y = (t.y - camera->pos.y) / front.y;
-            if(fabs(front.z) > 1e-6f) target_distance.z = (t.z - camera->pos.z) / front.z;
         }
 
         void Refresh() override
         {
             if(!camera || !camera_info) return;
 
-            target=camera->pos+front*target_distance;
+            target=camera->pos+forward*distance_to_target;
 
             camera_info->view       =LookAtMatrix(camera->pos,target,camera->world_up);
 
@@ -179,24 +191,24 @@ namespace hgl::graph
             // Compute forward vector directly from yaw (azimuth) and pitch (elevation).
             // This avoids depending on external PolarToVector and gives stable behavior near the poles.
             const float cp = cosf(pitch);
-            front.x = cp * cosf(yaw);
-            front.y = cp * sinf(yaw);
-            front.z = sinf(pitch);
+            forward.x = cp * cosf(yaw);
+            forward.y = cp * sinf(yaw);
+            forward.z = sinf(pitch);
 
-            right   =normalize(cross(front,camera->world_up));
-            up      =normalize(cross(right,front));
+            right   =normalize(cross(forward,camera->world_up));
+            up      =normalize(cross(right,forward));
         }
 
         void Forward(float move_step)
         {
             if(!camera) return;
-            camera->pos+=front*move_step;
+            camera->pos+=forward*move_step;
         }
 
         void Backward(float move_step)
         {
             if(!camera) return;
-            camera->pos-=front*move_step;
+            camera->pos-=forward*move_step;
         }
 
         void Left(float move_step)
@@ -221,11 +233,11 @@ namespace hgl::graph
             constexpr float bottom_limit   =deg2rad(-89.0f);
 
             // axis is mouse delta in pixels (after scaling in caller).
-            // rotation_sensitivity is degrees/pixel, convert to radians when applying.
-            const float sens_rad = deg2rad(rotation_sensitivity);
+            // rotation_sensitivity_deg_per_pixel is degrees/pixel, convert to radians when applying.
+            const float sens_rad = deg2rad(rotation_sensitivity_deg_per_pixel);
 
-            yaw     -= axis.x * invert_sign.x * sens_rad;
-            pitch   -= axis.y * invert_sign.y * sens_rad;
+            yaw     -= axis.x * input_invert_sign.x * sens_rad;
+            pitch   -= axis.y * input_invert_sign.y * sens_rad;
 
             // Normalize yaw to [-pi,pi] robustly
             const float PI = 3.14159265358979323846f;
