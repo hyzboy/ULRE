@@ -38,28 +38,29 @@ public:
         line_mgr->SetColor(6,Color4f(1,1,1,1)); // white
         line_mgr->SetColor(7,Color4f(0.5f,0.5f,0.5f,1)); // gray
 
-        // Add some test lines of different widths
-        line_mgr->AddLine(Vector3f(-2,0,0),Vector3f(2,0,0),0,1); // red, width 1
-        line_mgr->AddLine(Vector3f(0,-2,0),Vector3f(0,2,0),1,3); // green, width 3
-        line_mgr->AddLine(Vector3f(0,0,-2),Vector3f(0,0,2),2,5); // blue, width 5
+        // Create concentric layers for widths 1..6; each layer is a ring of radial spokes
+        const int spokes = 24;            // number of spokes per layer
+        const float inner_radius = 0.5f;  // start of each spoke from center
+        const float base_radius = 2.0f;   // base radius for the innermost layer
+        const float radius_step = 0.8f;   // how much each layer's radius increases
+        const float z_step = 0.5f;       // z offset between layers so they don't overlap exactly
 
-        // Additional lines: diagonals and offsets
-        line_mgr->AddLine(Vector3f(-2,-2,0),Vector3f(2,2,0),3,2); // yellow
-        line_mgr->AddLine(Vector3f(-2,2,0),Vector3f(2,-2,0),4,2); // cyan
-        line_mgr->AddLine(Vector3f(-3,0,1),Vector3f(3,0,1),5,4); // magenta
-        line_mgr->AddLine(Vector3f(0,-3,1),Vector3f(0,3,1),6,4); // white
-
-        // Radial spokes around origin to stress different widths/colors
-        const int spokes = 24;
-        const float radius = 3.5f;
-        for(int i = 0;i < spokes;++i)
+        for(int width = 1; width <= 16; ++width)
         {
-            float angle = (2.0f * 3.14159265358979323846f) * (float(i) / float(spokes));
-            Vector3f from(std::cos(angle) * 0.5f,std::sin(angle) * 0.5f,0.0f);
-            Vector3f to(std::cos(angle) * radius,std::sin(angle) * radius,0.0f);
-            uint8_t color_index = uint8_t(i % 8); // cycle through the palette we set up
-            uint8_t width = uint8_t(1 + (i % 6)); // widths 1..6
-            line_mgr->AddLine(from,to,color_index,width);
+            float radius = base_radius ;
+            float z = -(width - 1) * z_step; // layer height
+            uint8_t color_index = uint8_t((width - 1) % 8);
+            uint8_t w = uint8_t(width);
+
+            for(int i = 0; i < spokes; ++i)
+            {
+                float angle = (2.0f * 3.14159265358979323846f) * (float(i) / float(spokes));
+
+                Vector3f from(std::cos(angle) * inner_radius, std::sin(angle) * inner_radius, z);
+                Vector3f to  (std::cos(angle) * radius,       std::sin(angle) * radius,       z);
+
+                line_mgr->AddLine(from, to, color_index, w);
+            }
         }
 
         // Position the camera so lines are visible
