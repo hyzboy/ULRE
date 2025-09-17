@@ -187,7 +187,7 @@ void RenderFramework::CreateDefaultSceneRenderer()
 
     IRenderTarget *rt=GetSwapchainRenderTarget();
 
-    default_scene_renderer=new SceneRenderer(rt);
+    default_scene_renderer=new SceneRenderer(this,rt);
     default_scene_renderer->SetScene(default_scene);
 
     if(!default_camera_control)

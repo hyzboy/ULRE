@@ -95,7 +95,7 @@ namespace hgl::graph
             return(false);
 
         if(render_collector->IsEmpty())
-            return(false);
+            return(true);       //空的仅是不画不代表错误
 
         render_collector->Render(cmd);
         return(true);
