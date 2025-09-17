@@ -58,7 +58,7 @@ namespace hgl
         graph::Scene *          scene           =nullptr;           //场景
         graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
 
-        virtual void OnChangeCameraControl();
+        virtual void OnChangeCameraControl(graph::CameraControl *);
         virtual void OnCreateCameraControl();
 
     public:
@@ -93,7 +93,7 @@ namespace hgl
     public:
 
         WorkObject(graph::RenderFramework *,graph::SceneRenderer *r=nullptr);
-        virtual ~WorkObject()=default;
+        virtual ~WorkObject();
 
         virtual bool Init()=0;
 

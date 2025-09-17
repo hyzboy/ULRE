@@ -88,9 +88,6 @@ namespace hgl::graph
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
     {
-        if(!scene||!cc)
-            return;
-
         //if(camera)
         //{
         //    if(scene)
@@ -101,13 +98,14 @@ namespace hgl::graph
 
         camera_control=cc;
 
-        if(render_target)
+        if(camera_control&&render_target)
             camera_control->SetViewport(render_target->GetViewportInfo());
 
         if(scene)
             scene->SetCameraControl(camera_control);
 
-        camera_control->SetCamera(camera,ubo_camera_info->data());
+        if(camera_control)
+            camera_control->SetCamera(camera,ubo_camera_info->data());
 
         //if(camera)
         //{
@@ -142,13 +140,6 @@ namespace hgl::graph
             return(false);
 
         root->UpdateWorldTransform();
-
-        if(camera_control)
-        {
-            camera_control->SetViewport(render_target->GetViewportInfo());
-
-            camera_control->Refresh();
-        }
 
         // 这里内部会将Scene tree展开成RenderCollector,而RenderCollector排序是需要CameraInfo的
         render_task->RebuildRenderList(root);

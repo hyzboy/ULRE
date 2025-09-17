@@ -23,14 +23,38 @@ namespace hgl
         OnCreateCameraControl();
     }
 
-    void WorkObject::OnChangeCameraControl()
+    WorkObject::~WorkObject()
     {
-        GetRenderFramework()->AddChildDispatcher(camera_control);
+        if(camera_control)
+        {
+            GetRenderFramework()->RemoveChildDispatcher(camera_control);
+            delete camera_control;
+        }
+    }
 
-        camera_control->SetViewport(GetViewportInfo());
+    void WorkObject::OnChangeCameraControl(graph::CameraControl *new_cc)
+    {
+        if(camera_control)
+        {
+            GetRenderFramework()->RemoveChildDispatcher(camera_control);
 
-        if(scene_renderer)
-        scene_renderer->SetCameraControl(camera_control);
+            delete camera_control;
+
+            if(scene_renderer)
+                scene_renderer->SetCameraControl(nullptr);
+        }
+
+        camera_control=new_cc;
+
+        if(camera_control)
+        {        
+            GetRenderFramework()->AddChildDispatcher(camera_control);
+
+            camera_control->SetViewport(GetViewportInfo());
+
+            if(scene_renderer)
+                scene_renderer->SetCameraControl(camera_control);
+        }
     }
 
     void WorkObject::OnCreateCameraControl()
@@ -40,23 +64,10 @@ namespace hgl
         auto ckc = new graph::CameraKeyboardControl(fpcc);
         auto cmc = new graph::CameraMouseControl(fpcc);
 
-        if(!camera_control)
-        {
-            GetRenderFramework()->RemoveChildDispatcher(camera_control);
-        }
-
         fpcc->AddChildDispatcher(ckc);
         fpcc->AddChildDispatcher(cmc);
 
-        camera_control = fpcc;
-
-        OnChangeCameraControl();
-    }
-
-    void WorkObject::Tick(double delta)
-    {
-        if(scene_renderer)
-            scene_renderer->Tick(delta);
+        OnChangeCameraControl(fpcc);
     }
 
     void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r)
@@ -75,6 +86,12 @@ namespace hgl
 
         scene=rf->GetDefaultScene();
         scene_renderer=rf->GetDefaultSceneRenderer();
+    }
+
+    void WorkObject::Tick(double delta)
+    {
+        if(scene_renderer)
+            scene_renderer->Tick(delta);
     }
 
     void WorkObject::Render(double delta_time)
