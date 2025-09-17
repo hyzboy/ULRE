@@ -63,8 +63,6 @@ PipelineData::PipelineData(const PipelineData *pd)
         pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
         pipeline_info.basePipelineIndex = -1;
     }
-    
-    InitDynamicState();
 }
 
 PipelineData::PipelineData(const uint32_t color_attachment_count)
