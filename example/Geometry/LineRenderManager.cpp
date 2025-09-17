@@ -9,24 +9,16 @@
 #include <hgl/graph/module/MaterialManager.h>
 #include <hgl/graph/mtl/Material3DCreateConfig.h>
 #include <hgl/graph/VKMaterial.h>
+#include<hgl/graph/VKVertexInputConfig.h>
 #include <hgl/graph/module/PrimitiveManager.h>
 #include <hgl/graph/module/MeshManager.h>
 #include <hgl/graph/module/BufferManager.h>
 #include <hgl/graph/RenderFramework.h>
+#include <hgl/graph/mtl/UBOCommon.h>
 #include "SharedLineBackup.h"
 
 namespace hgl::graph
 {
-    constexpr const ShaderBufferSource SBS_ColorPattle=
-    {
-        DescriptorSetType::PerMaterial,
-
-        "color_pattle",
-        "ColorPattle",
-
-        "vec4 color[256]"
-    };
-
     constexpr const size_t LINE_COUNT_INCREMENT =       1024;
     constexpr const size_t POSITION_COMPONENT_COUNT =   6;
     constexpr const size_t COLOR_COMPONENT_COUNT =      2;
@@ -45,7 +37,7 @@ namespace hgl::graph
                                         mtl::WithLocalToWorld::Without,
                                         mtl::WithSky::Without);
 
-        auto *mci = mtl::CreatePureColor3D(rf->GetDevAttr(), &cfg);
+        auto *mci = mtl::CreateVertexPattleColor3D(rf->GetDevAttr(), &cfg);
 
         if (mci == nullptr)
             return nullptr;
@@ -58,7 +50,11 @@ namespace hgl::graph
             return nullptr;
         }
 
-        MaterialInstance *mi = rf->CreateMaterialInstance(mat);
+        VILConfig vil_config;
+
+        vil_config.Add(VAN::Color,VF_V1U8);
+
+        MaterialInstance *mi = rf->CreateMaterialInstance(mat,&vil_config);
 
         if (mi == nullptr)
         {
@@ -69,7 +65,7 @@ namespace hgl::graph
 
         Pipeline *p = rf->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
 
-        UBOLineColorPalette *lcp=rf->CreateUBO<UBOLineColorPalette>(&SBS_ColorPattle);
+        UBOLineColorPalette *lcp=rf->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);
 
         LineRenderManager *mgr = new LineRenderManager(rf->GetDevice(),mi,p,lcp);
 
@@ -149,7 +145,7 @@ namespace hgl::graph
         if(total_line_count==0)
             return(true);
 
-        mi_line->GetMaterial()->BindUBO(&SBS_ColorPattle,ubo_color->ubo());
+        mi_line->GetMaterial()->BindUBO(&mtl::SBS_ColorPattle,ubo_color->ubo());
 
         cmd->BindPipeline(pipeline);
         cmd->BindDescriptorSets(mi_line->GetMaterial());
