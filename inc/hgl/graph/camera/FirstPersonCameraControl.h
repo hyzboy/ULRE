@@ -9,6 +9,7 @@
 #include<hgl/io/event/KeyboardEvent.h>
 #include<hgl/io/event/MouseEvent.h>
 #include<hgl/Time.h>
+#include <cmath>
 
 namespace hgl::graph
 {
@@ -40,9 +41,9 @@ namespace hgl::graph
         // EN: Axis inversion signs: +1 or -1 per axis to invert mouse axes
         Vector2f invert_sign;       ///< CN: x/y 反转符号（1 或 -1） EN: x/y inversion sign for input (1 or -1)
 
-        // CN: 旋转灵敏度（以每像素弧度为单位）
-        // EN: Rotation sensitivity expressed in radians per pixel of mouse movement
-        float rotation_sensitivity;  ///< CN: 弧度/像素 EN: radians per pixel
+        // CN: 旋转灵敏度（以每像素度为单位）
+        // EN: Rotation sensitivity expressed in degrees per pixel of mouse movement
+        float rotation_sensitivity;  ///< CN: 度/像素 EN: degrees per pixel
 
     public:
 
@@ -64,7 +65,7 @@ namespace hgl::graph
         // EN: Simple settings struct to facilitate UI/config system read/write
         struct Settings
         {
-            float rotation_sensitivity; // radians per pixel
+            float rotation_sensitivity; // degrees per pixel
             bool invert_x;
             bool invert_y;
         };
@@ -83,7 +84,8 @@ namespace hgl::graph
             invert_sign.x=-1;
             invert_sign.y=1;
 
-            rotation_sensitivity = 0.002f; // default radians per pixel
+            // default: ~0.2 degrees per pixel (previous default was 0.002 radians/pixel)
+            rotation_sensitivity = 0.2f; // degrees per pixel
 
             UpdateCameraVector();
         }
@@ -105,15 +107,15 @@ namespace hgl::graph
             out_invert_y = (invert_sign.y < 0.0f);
         }
 
-        // CN: 设置旋转灵敏度（弧度/像素）
-        // EN: Set rotation sensitivity (radians per pixel)
+        // CN: 设置旋转灵敏度（度/像素）
+        // EN: Set rotation sensitivity (degrees per pixel)
         void SetRotationSensitivity(float s)
         {
             rotation_sensitivity = s;
         }
 
-        // CN: 获取旋转灵敏度
-        // EN: Get rotation sensitivity
+        // CN: 获取旋转灵敏度（度/像素）
+        // EN: Get rotation sensitivity (degrees per pixel)
         float GetRotationSensitivity()const{return rotation_sensitivity;}
 
         // CN: 将当前设置填充到 Settings 结构，供 UI/配置系统使用
@@ -144,7 +146,7 @@ namespace hgl::graph
             camera->view_line=normalize(camera->pos-t);
 
             pitch   =asin(front.z);
-            yaw     =atan2(front.x,front.y);
+            yaw     =atan2(front.y, front.x); // fixed: use atan2(y,x) to match PolarToVector
 
             UpdateCameraVector();
 
@@ -174,7 +176,12 @@ namespace hgl::graph
         {
             if(!camera) return;
 
-            front   =PolarToVector(yaw,pitch);
+            // Compute forward vector directly from yaw (azimuth) and pitch (elevation).
+            // This avoids depending on external PolarToVector and gives stable behavior near the poles.
+            const float cp = cosf(pitch);
+            front.x = cp * cosf(yaw);
+            front.y = cp * sinf(yaw);
+            front.z = sinf(pitch);
 
             right   =normalize(cross(front,camera->world_up));
             up      =normalize(cross(right,front));
@@ -206,19 +213,30 @@ namespace hgl::graph
 
     public: // rotation
 
-        // CN: 根据输入增量旋转（axis.x / axis.y 单位为像素）。应用灵敏度（弧度/像素）。
-        // EN: Rotate by input delta (axis.x, axis.y are in pixels). Applies sensitivity (radians/pixel).
+        // CN: 根据输入增量旋转（axis.x / axis.y 单位为像素）。应用灵敏度（度/像素）。
+        // EN: Rotate by input delta (axis.x, axis.y are in pixels). Applies sensitivity (degrees/pixel).
         void Rotate(const Vector2f &axis)
         {
-            constexpr double top_limit      =deg2rad( 89.0f);
-            constexpr double bottom_limit   =deg2rad(-89.0f);
+            constexpr float top_limit      =deg2rad( 89.0f);
+            constexpr float bottom_limit   =deg2rad(-89.0f);
 
-            // axis is mouse delta in pixels (after scaling in caller). Apply sensitivity in radians/pixel.
-            yaw     -= axis.x * invert_sign.x * rotation_sensitivity;
-            pitch   -= axis.y * invert_sign.y * rotation_sensitivity;
+            // axis is mouse delta in pixels (after scaling in caller).
+            // rotation_sensitivity is degrees/pixel, convert to radians when applying.
+            const float sens_rad = deg2rad(rotation_sensitivity);
 
-            if(pitch>top_limit      )pitch=top_limit;
-            if(pitch<bottom_limit   )pitch=bottom_limit;
+            yaw     -= axis.x * invert_sign.x * sens_rad;
+            pitch   -= axis.y * invert_sign.y * sens_rad;
+
+            // Normalize yaw to [-pi,pi] robustly
+            const float PI = 3.14159265358979323846f;
+            // Use fmod to keep yaw bounded, then shift to [-PI,PI]
+            yaw = fmodf(yaw, 2.0f * PI);
+            if(yaw > PI) yaw -= 2.0f * PI;
+            else if(yaw < -PI) yaw += 2.0f * PI;
+
+            // Clamp pitch to avoid flipping at the poles
+            if(pitch>top_limit) pitch=top_limit;
+            if(pitch<bottom_limit) pitch=bottom_limit;
             
             UpdateCameraVector();
         }
@@ -300,10 +318,10 @@ namespace hgl::graph
 
             bool left =HasPressed(io::MouseButton::Left);
             bool right=HasPressed(io::MouseButton::Right);
-        
+
             Vector2f pos=mouse_coord;
             Vector2f gap=pos-mouse_last_pos;
-        
+
             if(left)
             {
                 gap/=-5.0f;
