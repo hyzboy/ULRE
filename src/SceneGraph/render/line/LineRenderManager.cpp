@@ -62,6 +62,8 @@ namespace hgl::graph
 
         RenderPass *rp = rt->GetRenderPass();
 
+        VulkanDevAttr *dev_attr = rf->GetDevAttr();
+
         Pipeline *p = rp->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
 
         UBOLineColorPalette *lcp=rf->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);

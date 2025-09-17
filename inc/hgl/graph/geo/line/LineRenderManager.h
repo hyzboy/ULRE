@@ -37,9 +37,9 @@ namespace hgl::graph
         MaterialInstance *  mi_line   = nullptr;
         Pipeline *          pipeline  = nullptr;
 
-    public:
+        SharedLineBackup *  shared_backup = nullptr; // shared backup used by LineWidthBatch
 
-        SharedLineBackup *shared_backup = nullptr; // shared backup used by LineWidthBatch
+    public:
 
         LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp);
 

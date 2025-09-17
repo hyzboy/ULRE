@@ -9,7 +9,7 @@ namespace hgl::graph
     struct SharedLineBackup
     {
         DataArray<Vector3f> positions;
-        DataArray<uint8_t>  colors;
+        DataArray<uint8>  colors;
 
         size_t max_reserved = 0;
 
