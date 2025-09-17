@@ -10,7 +10,7 @@ bool Std3DMaterial::CustomVertexShader(ShaderCreateInfoVertex *vsc)
 {
     vsc->AddInput(cfg->position_format,VAN::Position);
     
-    if(cfg->camera||cfg->local_to_world||cfg->material_instance)
+    if(cfg->local_to_world||cfg->material_instance)
     {
         mci->AddUBOStruct((uint32_t)ShaderStage::AllGraphics,SBS_LocalToWorld);
 
