@@ -162,6 +162,8 @@ public:
     const VkBool32  SupportU32Index             ()const{return features.fullDrawIndexUint32;}
     const VkBool32  SupportU8Index              ()const{return support_u8_index;}
 
+    const VkBool32  SupportWideLines            ()const{return features.wideLines;}
+
     // support != open, so please don't direct use GetFeatures().
     // open any features in CreateDevice()&SetDeviceFeatures() functions.
     const bool      SupportMDI                  ()const

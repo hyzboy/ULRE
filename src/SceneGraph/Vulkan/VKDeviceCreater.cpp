@@ -314,6 +314,12 @@ VulkanDevice *VulkanDeviceCreater::CreateRenderDevice()
         device_attr->uint32_index_type=true;
     }
 
+    if(physical_device->SupportWideLines()
+        || require.wideLines >= VulkanHardwareRequirement::SupportLevel::Want)
+    {
+        device_attr->wide_lines = true;
+    }
+
     device_attr->surface_format=surface_format;
 
     GetDeviceQueue(device_attr);

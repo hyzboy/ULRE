@@ -15,15 +15,16 @@ struct VulkanDevAttr
     
     VkPhysicalDeviceDriverPropertiesKHR driver_properties;
 
-    VulkanSurface *                     surface=nullptr;
+    VulkanSurface *                     surface         =nullptr;
 
     VkQueue                             graphics_queue  =VK_NULL_HANDLE;
     VkQueue                             present_queue   =VK_NULL_HANDLE;
 
     VkSurfaceFormatKHR                  surface_format;
 
-    bool                                uint8_index_type=false;
-    bool                                uint32_index_type=false;
+    bool                                uint8_index_type    =false;
+    bool                                uint32_index_type   =false;
+    bool                                wide_lines          =false;
 
     VkDevice                            device          =VK_NULL_HANDLE;
     VkCommandPool                       cmd_pool        =VK_NULL_HANDLE;
