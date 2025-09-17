@@ -140,22 +140,6 @@ bool MaterialCreateInfo::AddSampler(const ShaderStage flag_bit,const DescriptorS
     }
 }
 
-namespace
-{
-    UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits)
-    {
-        UBODescriptor *ubo=new UBODescriptor;
-
-        ubo->type=sbs.struct_name;
-
-        hgl::strcpy(ubo->name,DESCRIPTOR_NAME_MAX_LENGTH,sbs.name);
-
-        ubo->stage_flag=flag_bits;
-
-        return ubo;
-    }
-}//namespace
-
 /**
 * 设置材质实例代码与数据长度
 * @param glsl_codes     材质实例GLSL代码
