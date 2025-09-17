@@ -15,6 +15,8 @@ namespace hgl
 {
     namespace graph
     {
+        class CameraControl;
+
         class Texture2D;
         class Texture2DArray;
         class TextureCube;
@@ -51,8 +53,13 @@ namespace hgl
 
         //以下数据均取自RenderFramework
 
+        graph::CameraControl *  camera_control = nullptr;           //相机控制器
+
         graph::Scene *          scene           =nullptr;           //场景
         graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
+
+        virtual void OnChangeCameraControl();
+        virtual void OnCreateCameraControl();
 
     public:
 
@@ -67,10 +74,13 @@ namespace hgl
         graph::Scene *              GetScene            (){return scene;}
         graph::SceneNode *          GetSceneRoot        (){return scene->GetRootNode();}
         graph::SceneRenderer *      GetSceneRenderer    (){return scene_renderer;}
-        graph::Camera *             GetCamera           (){return scene_renderer->GetCamera();}
-        graph::CameraControl *      GetCameraControl    (){return render_framework->GetDefaultCameraControl();}
 
-        bool                        GetMouseCoord       (Vector2i *mc)const{return render_framework->GetMouseCoord(mc);}
+        const graph::ViewportInfo * GetViewportInfo     ()const {return scene_renderer->GetViewportInfo();}
+        graph::Camera *             GetCamera           ()      {return scene_renderer->GetCamera();}
+        const graph::CameraInfo *   GetCameraInfo       ()const {return camera_control->GetCameraInfo();}
+        graph::CameraControl *      GetCameraControl    ()      {return camera_control;}
+
+        const Vector2i &            GetMouseCoord       ()const{return render_framework->GetMouseCoord();}
 
     public:
 
@@ -91,7 +101,7 @@ namespace hgl
         
         virtual void OnResize(const VkExtent2D &){}
 
-        virtual void Tick(double){}
+        virtual void Tick(double);
 
         virtual void Render(double delta_time);
 

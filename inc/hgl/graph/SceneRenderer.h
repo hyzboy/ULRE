@@ -21,7 +21,10 @@ namespace hgl::graph
         IRenderTarget * render_target = nullptr;
         Scene *         scene = nullptr;
 
-        CameraControl * camera_control = nullptr;
+        Camera *            camera = nullptr;
+        UBOCameraInfo *     ubo_camera_info = nullptr;
+        DescriptorBinding * camera_desc_binding = nullptr;
+        CameraControl *     camera_control = nullptr;
 
         //RenderTaskNameMap static_render_task_list;                              ///<静态渲染任务列表
         //RenderTaskNameMap dynamic_render_task_list;                             ///<动态渲染任务列表
@@ -42,10 +45,13 @@ namespace hgl::graph
 
                 RenderPass *GetRenderPass   (){return render_target->GetRenderPass();}      ///<取得当前渲染器RenderPass
 
+        const   ViewportInfo *GetViewportInfo()const{return render_target->GetViewportInfo();}///<取得当前渲染器视口信息
+
         const   VkExtent2D &GetExtent       ()const{return render_target->GetExtent();}     ///<取得当前渲染器画面尺寸
 
                 Scene *     GetScene        ()const{return scene;}                          ///<获取场景世界
-                Camera *    GetCamera       ()const{return camera_control->GetCamera();}                         ///<获取当前相机
+                Camera *    GetCamera       ()const{return camera;}                         ///<获取当前相机
+        const   CameraInfo *GetCameraInfo   ()const{return ubo_camera_info->data();}        ///<获取当前相机信息
 
                 LineRenderManager *GetLineRenderManager()const{ return line_render_manager; }   ///<取得线条渲染管理器
 
@@ -59,6 +65,8 @@ namespace hgl::graph
         void SetCameraControl(CameraControl *);
 
         void SetClearColor(const Color4f &c){clear_color=c;}
+
+        void Tick(double);
 
         bool BeginRender();
         bool RenderFrame();                                                                 ///<重新重成这一帧的CommandList

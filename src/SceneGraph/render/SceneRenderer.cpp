@@ -4,6 +4,8 @@
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 
 namespace hgl::graph
 {
@@ -13,6 +15,12 @@ namespace hgl::graph
     {
         render_target=rt;
         scene=nullptr;
+        camera = new Camera();
+
+        ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
+        camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
+        camera_desc_binding->AddUBO(ubo_camera_info);
+
         camera_control=nullptr;
 
         render_task=new RenderTask("DefaultRenderTask",rt);
@@ -26,6 +34,11 @@ namespace hgl::graph
     {
         SAFE_CLEAR(line_render_manager)
         delete render_task;
+
+        SAFE_CLEAR(camera_control);
+        delete camera_desc_binding;
+        delete ubo_camera_info;
+        delete camera;
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
@@ -44,6 +57,9 @@ namespace hgl::graph
 
         render_target=rt;
 
+        if(camera_control)
+            camera_control->SetViewport(render_target->GetViewportInfo());
+
         render_task->SetRenderTarget(rt);
 
         return(true);
@@ -60,6 +76,9 @@ namespace hgl::graph
         //}
 
         scene=sw;
+
+        if(camera_control)
+            scene->SetCameraControl(camera_control);
 
         //if(scene)
         //{
@@ -82,6 +101,14 @@ namespace hgl::graph
 
         camera_control=cc;
 
+        if(render_target)
+            camera_control->SetViewport(render_target->GetViewportInfo());
+
+        if(scene)
+            scene->SetCameraControl(camera_control);
+
+        camera_control->SetCamera(camera,ubo_camera_info->data());
+
         //if(camera)
         //{
         //    if(scene)
@@ -90,7 +117,18 @@ namespace hgl::graph
         //    camera->Join(this);
         //}
 
-        render_task->SetCameraInfo(camera_control->GetCameraInfo());
+        render_task->SetCameraInfo(ubo_camera_info->data());
+    }
+
+    void SceneRenderer::Tick(double delta)
+    {
+        if(camera_control)
+        {
+            camera_control->Refresh();
+
+            if(ubo_camera_info)
+                ubo_camera_info->Update();
+        }
     }
     
     bool SceneRenderer::RenderFrame()
@@ -119,10 +157,7 @@ namespace hgl::graph
 
         RenderCmdBuffer *cmd = render_target->BeginRender();
 
-        if(camera_control)
-        {
-            cmd->SetDescriptorBinding(camera_control->GetDescriptorBinding());
-        }
+        cmd->SetDescriptorBinding(camera_desc_binding);
 
         if(scene)
         {

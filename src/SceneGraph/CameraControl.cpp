@@ -6,21 +6,18 @@
 
 namespace hgl::graph
 {
-    CameraControl::CameraControl(ViewportInfo *v,Camera *c,UBOCameraInfo *ci)
+    void CameraControl::ZoomFOV(int adjust)
     {
-        vi=v;
-        camera=c;
-        ubo_camera_info=ci;
-        camera_info=ubo_camera_info->data();
+        if(!camera)
+            return;
 
-        desc_binding_camera=new DescriptorBinding(DescriptorSetType::Camera);
-        desc_binding_camera->AddUBO(ubo_camera_info);
-    }
+        constexpr float MinFOV = 10;
+        constexpr float MaxFOV = 180;
 
-    CameraControl::~CameraControl()
-    {
-        delete desc_binding_camera;
-        delete ubo_camera_info;
+        camera->Yfov += float(adjust) / 10.0f;
+
+        if(adjust < 0 && camera->Yfov < MinFOV)camera->Yfov = MinFOV;else
+        if(adjust > 0 && camera->Yfov > MaxFOV)camera->Yfov = MaxFOV;
     }
 
     bool CameraControl::SetMouseRay(Ray *ray,const Vector2i &mouse_coord)

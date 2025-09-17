@@ -70,7 +70,7 @@ namespace hgl::graph
             bool invert_y;
         };
 
-        FirstPersonCameraControl(ViewportInfo *v,Camera *c,UBOCameraInfo *ci);
+        FirstPersonCameraControl();
         virtual ~FirstPersonCameraControl()=default;
             
         // CN: 配置输入轴是否反转（传 true 则反转）

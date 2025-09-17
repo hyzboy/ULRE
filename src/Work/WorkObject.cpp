@@ -7,6 +7,8 @@
 #include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/module/TextureManager.h>
 #include<hgl/graph/font/TextRender.h>
+#include<hgl/graph/camera/CameraControl.h>
+#include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -18,6 +20,43 @@ namespace hgl
             scene_renderer=rf->GetDefaultSceneRenderer();
 
         OnSceneRendererChange(rf,scene_renderer);
+        OnCreateCameraControl();
+    }
+
+    void WorkObject::OnChangeCameraControl()
+    {
+        GetRenderFramework()->AddChildDispatcher(camera_control);
+
+        camera_control->SetViewport(GetViewportInfo());
+
+        if(scene_renderer)
+        scene_renderer->SetCameraControl(camera_control);
+    }
+
+    void WorkObject::OnCreateCameraControl()
+    {
+        auto fpcc = new graph::FirstPersonCameraControl();
+
+        auto ckc = new graph::CameraKeyboardControl(fpcc);
+        auto cmc = new graph::CameraMouseControl(fpcc);
+
+        if(!camera_control)
+        {
+            GetRenderFramework()->RemoveChildDispatcher(camera_control);
+        }
+
+        fpcc->AddChildDispatcher(ckc);
+        fpcc->AddChildDispatcher(cmc);
+
+        camera_control = fpcc;
+
+        OnChangeCameraControl();
+    }
+
+    void WorkObject::Tick(double delta)
+    {
+        if(scene_renderer)
+            scene_renderer->Tick(delta);
     }
 
     void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r)

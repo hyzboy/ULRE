@@ -14,7 +14,6 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/camera/Camera.h>
-#include<hgl/graph/camera/FirstPersonCameraControl.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 #include<hgl/graph/VertexDataManager.h>
@@ -61,8 +60,6 @@ RenderFramework::RenderFramework(const OSString &an)
 RenderFramework::~RenderFramework()
 {
     SAFE_CLEAR(default_scene_renderer)
-    SAFE_CLEAR(default_camera_control)
-    SAFE_CLEAR(default_camera)
     SAFE_CLEAR(default_scene)
     SAFE_CLEAR(module_manager)
 
@@ -74,6 +71,22 @@ RenderFramework::~RenderFramework()
         STD_MTL_NAMESPACE::ClearMaterialFactory();
         CloseShaderCompiler();
     }
+}
+
+io::EventProcResult RenderFramework::OnEvent(const io::EventHeader &header,const uint64 data)
+{
+    if(header.type == io::InputEventSource::Mouse)
+    {
+        if(io::MouseEventID(header.id) == io::MouseEventID::Move)
+        {
+            const io::MouseEventData *med=(const io::MouseEventData *)&data;
+
+            mouse_coord.x=med->x;
+            mouse_coord.y=med->y;
+        }        
+    }
+
+    return io::WindowEvent::OnEvent(header,data);
 }
 
 bool RenderFramework::Init(uint w,uint h)
@@ -156,8 +169,6 @@ bool RenderFramework::Init(uint w,uint h)
 
     OnChangeDefaultScene(new Scene(this));
 
-    default_camera=new Camera();
-
     CreateDefaultSceneRenderer();
 
     return(true);
@@ -189,27 +200,6 @@ void RenderFramework::CreateDefaultSceneRenderer()
 
     default_scene_renderer=new SceneRenderer(this,rt);
     default_scene_renderer->SetScene(default_scene);
-
-    if(!default_camera_control)
-    {
-        auto ubo_camera_info=device->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
-
-        auto fpcc=new FirstPersonCameraControl(rt->GetViewportInfo(),default_camera,ubo_camera_info);
-
-        auto ckc=new CameraKeyboardControl(fpcc);
-        auto cmc=new CameraMouseControl(fpcc);
-
-        this->AddChildDispatcher(fpcc);
-
-        fpcc->AddChildDispatcher(ckc);
-        fpcc->AddChildDispatcher(cmc);
-
-        default_camera_control=fpcc;
-
-        mouse_event=cmc;
-    }
-
-    default_scene_renderer->SetCameraControl(default_camera_control);
 }
 
 void RenderFramework::OnResize(uint w,uint h)
@@ -231,12 +221,6 @@ void RenderFramework::OnClose()
 
 void RenderFramework::Tick()
 {
-    if(default_camera_control)
-    {
-        //没有Tick CameraKeyboardControl，所以键盘操作失效了
-
-        default_camera_control->Refresh();
-    }
 }
 
 graph::VertexDataManager *RenderFramework::CreateVDM(const graph::VIL *vil,const VkDeviceSize vertices_number,VkDeviceSize indices_number,const IndexType type)
