@@ -3,7 +3,14 @@
 #include<hgl/graph/mtl/StdMaterial.h>
 #include<hgl/graph/mtl/ShaderBufferSource.h>
 
+VK_NAMESPACE_BEGIN
+struct UBODescriptor;
+VK_NAMESPACE_END
+
 STD_MTL_NAMESPACE_BEGIN
+
+UBODescriptor *CreateUBODescriptor(const ShaderBufferSource &sbs,const uint32_t flag_bits);
+
 constexpr const ShaderBufferSource SBS_ViewportInfo=
 {
     DescriptorSetType::RenderTarget,
@@ -63,6 +70,16 @@ constexpr const ShaderBufferSource SBS_LocalToWorld=
     R"(
     mat4 mats[L2W_MAX_COUNT];
 )"
+};
+
+constexpr const ShaderBufferSource SBS_ColorPattle =
+{
+    DescriptorSetType::PerMaterial,
+
+    "color_pattle",
+    "ColorPattle",
+
+    "vec4 color[256];"
 };
 
 // UBO必须严格指定数组的大小
