@@ -1,12 +1,5 @@
 ﻿#pragma once
 
-#include <cstdint>
-#include <vector>
-#include <unordered_map>
-#include <mutex>
-#include <functional>
-#include <array>
-
 #include<hgl/math/Math.h>
 #include<hgl/math/Vector.h>
 #include<hgl/color/Color4f.h>
@@ -37,7 +30,7 @@ namespace hgl::graph
 
         LineWidthBatch line_groups[MAX_LINE_WIDTH];      //直接以宽度为访问索引
 
-        uint32_t total_line_count=0;
+        uint32 total_line_count=0;
 
     private:    
 
@@ -55,14 +48,14 @@ namespace hgl::graph
         void SetColor(const int index, const Color4f& c);
 
         // Now specify colors by an index into the internal palette
-        bool AddLine(const Vector3f& from, const Vector3f& to, const uint8_t color_index, uint8_t width = 1);
+        bool AddLine(const Vector3f& from, const Vector3f& to, const uint8 color_index, uint8 width = 1);
 
-        bool AddLine(const uint8_t width,const DataArray<LineSegmentDescriptor> &);
+        bool AddLine(const uint8 width,const DataArray<LineSegmentDescriptor> &);
         void ClearLines();
 
         bool Draw(RenderCmdBuffer *);
 
-        size_t GetLineCount() const {return total_line_count;}
+        uint32 GetLineCount() const {return total_line_count;}
 
         void Update();
     };
