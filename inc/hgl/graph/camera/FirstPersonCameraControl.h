@@ -12,21 +12,37 @@
 
 namespace hgl::graph
 {
+    /**
+     * CN: 第一人称摄像机控制类
+     * EN: First-person camera controller
+     */
     class FirstPersonCameraControl:public CameraControl
     {
-        float pitch;        ///<抬头角度(绕X轴旋转角度(X轴左右))
-        float yaw;          ///<左右角度(绕Z轴旋转角度(Z轴向上))
-        float roll;         ///<歪头角度(绕Y轴旋转角度(Y轴向前))
+        // CN: 欧拉角（以弧度存储）
+        // EN: Euler angles (stored in radians)
+        float pitch;        ///< CN: 绕X轴旋转（俯仰） EN: rotation about the X axis (elevation)
+        float yaw;          ///< CN: 绕Z轴旋转（方位，Z轴向上） EN: rotation about the Z axis (azimuth, Z is up)
+        float roll;         ///< CN: 绕Y轴旋转（横滚） EN: rotation about the Y axis (bank)
 
-        Vector3f front;
-        Vector3f right;
-        Vector3f up;
+        // CN: 相机局部基向量
+        // EN: Local camera basis vectors
+        Vector3f front;     ///< CN: 前向（归一化） EN: forward direction (normalized)
+        Vector3f right;     ///< CN: 右向（归一化） EN: right direction (normalized)
+        Vector3f up;        ///< CN: 上向（归一化） EN: up direction (normalized)
 
-        Vector3f distance;          ///<相机到观察点的距离
+        // CN: 摄像机位置到目标点的分量距离
+        // EN: Per-component distance from camera position to look target
+        Vector3f target_distance;          ///< CN: 沿前向各分量的距离 EN: distance from camera to target along front vector components
 
-        Vector3f target;            ///<目标点坐标
+        Vector3f target;            ///< CN: 世界空间中的目标点 EN: target point in world space
 
-        Vector2f ReverseDirection;  ///<是否反转方向
+        // CN: 输入轴反转标志（+1 或 -1）
+        // EN: Axis inversion signs: +1 or -1 per axis to invert mouse axes
+        Vector2f invert_sign;       ///< CN: x/y 反转符号（1 或 -1） EN: x/y inversion sign for input (1 or -1)
+
+        // CN: 旋转灵敏度（以每像素弧度为单位）
+        // EN: Rotation sensitivity expressed in radians per pixel of mouse movement
+        float rotation_sensitivity;  ///< CN: 弧度/像素 EN: radians per pixel
 
     public:
 
@@ -44,27 +60,77 @@ namespace hgl::graph
 
     public:
 
+        // CN: 简单的设置结构，便于UI/配置系统读取/写入
+        // EN: Simple settings struct to facilitate UI/config system read/write
+        struct Settings
+        {
+            float rotation_sensitivity; // radians per pixel
+            bool invert_x;
+            bool invert_y;
+        };
+
         FirstPersonCameraControl(ViewportInfo *v,Camera *c,UBOCameraInfo *ci):CameraControl(v,c,ci)
         {
             target=Vector3f(0.0f);
             up=Vector3f(0,0,1);
-            distance=Vector3f(0,0,0);
+            target_distance=Vector3f(0,0,0);
 
+            // initialize orientation (radians)
             pitch=0;
             yaw  =deg2rad(-90.0f);
             roll =0;
 
-            ReverseDirection.x=-1;
-            ReverseDirection.y=1;
+            invert_sign.x=-1;
+            invert_sign.y=1;
+
+            rotation_sensitivity = 0.002f; // default radians per pixel
 
             UpdateCameraVector();
         }
         virtual ~FirstPersonCameraControl()=default;
             
-        void SetReserveDirection(bool x,bool y)
+        // CN: 配置输入轴是否反转（传 true 则反转）
+        // EN: Configure axis inversion for input: pass true to invert that axis
+        void SetInvertAxis(bool invert_x,bool invert_y)
         {
-            ReverseDirection.x=x?-1:1;
-            ReverseDirection.y=y?-1:1;
+            invert_sign.x = invert_x ? -1.0f : 1.0f;
+            invert_sign.y = invert_y ? -1.0f : 1.0f;
+        }
+
+        // CN: 获取当前轴反转设置
+        // EN: Get current axis inversion settings
+        void GetInvertAxis(bool &out_invert_x,bool &out_invert_y)const
+        {
+            out_invert_x = (invert_sign.x < 0.0f);
+            out_invert_y = (invert_sign.y < 0.0f);
+        }
+
+        // CN: 设置旋转灵敏度（弧度/像素）
+        // EN: Set rotation sensitivity (radians per pixel)
+        void SetRotationSensitivity(float s)
+        {
+            rotation_sensitivity = s;
+        }
+
+        // CN: 获取旋转灵敏度
+        // EN: Get rotation sensitivity
+        float GetRotationSensitivity()const{return rotation_sensitivity;}
+
+        // CN: 将当前设置填充到 Settings 结构，供 UI/配置系统使用
+        // EN: Fill provided Settings struct with current values for UI/config use
+        void FillSettings(Settings &s)const
+        {
+            s.rotation_sensitivity = rotation_sensitivity;
+            s.invert_x = (invert_sign.x < 0.0f);
+            s.invert_y = (invert_sign.y < 0.0f);
+        }
+
+        // CN: 从 Settings 结构加载设置，供 UI/配置系统使用
+        // EN: Load settings from Settings struct (for UI/config systems)
+        void ApplySettings(const Settings &s)
+        {
+            rotation_sensitivity = s.rotation_sensitivity;
+            SetInvertAxis(s.invert_x, s.invert_y);
         }
 
         void SetTarget(const Vector3f &t) override
@@ -83,17 +149,17 @@ namespace hgl::graph
             UpdateCameraVector();
 
             // avoid division by zero: only compute component-wise distance when front is non-zero
-            distance = Vector3f(0.0f);
-            if(fabs(front.x) > 1e-6f) distance.x = (t.x - camera->pos.x) / front.x;
-            if(fabs(front.y) > 1e-6f) distance.y = (t.y - camera->pos.y) / front.y;
-            if(fabs(front.z) > 1e-6f) distance.z = (t.z - camera->pos.z) / front.z;
+            target_distance = Vector3f(0.0f);
+            if(fabs(front.x) > 1e-6f) target_distance.x = (t.x - camera->pos.x) / front.x;
+            if(fabs(front.y) > 1e-6f) target_distance.y = (t.y - camera->pos.y) / front.y;
+            if(fabs(front.z) > 1e-6f) target_distance.z = (t.z - camera->pos.z) / front.z;
         }
 
         void Refresh() override
         {
             if(!camera || !camera_info) return;
 
-            target=camera->pos+front*distance;
+            target=camera->pos+front*target_distance;
 
             camera_info->view       =LookAtMatrix(camera->pos,target,camera->world_up);
 
@@ -102,7 +168,7 @@ namespace hgl::graph
             if(ubo_camera_info) ubo_camera_info->Update();
         }
 
-    public: //移动
+    public: // movement
             
         void UpdateCameraVector()
         {
@@ -138,15 +204,18 @@ namespace hgl::graph
             camera->pos+=right*move_step;
         }
 
-    public: //旋转
+    public: // rotation
 
+        // CN: 根据输入增量旋转（axis.x / axis.y 单位为像素）。应用灵敏度（弧度/像素）。
+        // EN: Rotate by input delta (axis.x, axis.y are in pixels). Applies sensitivity (radians/pixel).
         void Rotate(const Vector2f &axis)
         {
             constexpr double top_limit      =deg2rad( 89.0f);
             constexpr double bottom_limit   =deg2rad(-89.0f);
 
-            yaw     -=axis.x*ReverseDirection.x/180.0f;
-            pitch   -=axis.y*ReverseDirection.y/180.0f;
+            // axis is mouse delta in pixels (after scaling in caller). Apply sensitivity in radians/pixel.
+            yaw     -= axis.x * invert_sign.x * rotation_sensitivity;
+            pitch   -= axis.y * invert_sign.y * rotation_sensitivity;
 
             if(pitch>top_limit      )pitch=top_limit;
             if(pitch<bottom_limit   )pitch=bottom_limit;
