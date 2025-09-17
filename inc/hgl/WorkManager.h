@@ -35,6 +35,8 @@ namespace hgl
         virtual ~WorkManager()
         {
             render_framework->RemoveChildDispatcher(this);
+            if(cur_work_object)
+                OnChangeWorkObject(cur_work_object, nullptr);
             SAFE_CLEAR(cur_work_object);
         }
 
@@ -47,6 +49,9 @@ namespace hgl
                 void Tick   (WorkObject *wo);
         virtual void Render (WorkObject *wo);
                 void Run    (WorkObject *wo);
+
+        // Called when the current active WorkObject changes. Default does nothing.
+        virtual void OnChangeWorkObject(WorkObject *old_work,WorkObject *new_work);
     };//class WorkManager
 
     class SwapchainWorkManager:public WorkManager
