@@ -5,7 +5,7 @@
 #include <hgl/type/DataArray.h>
 #include <hgl/graph/VKVertexAttribBuffer.h>
 #include <hgl/graph/VKBuffer.h>
-#include "SharedLineBackup.h"
+#include <hgl/graph/geo/line/SharedLineBackup.h>
 
 using namespace hgl;
 using namespace hgl::graph;
