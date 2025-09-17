@@ -1,5 +1,4 @@
 ﻿#include <hgl/graph/geo/line/LineRenderManager.h>
-#include <cstring>
 #include <hgl/graph/VKRenderTarget.h>
 #include <hgl/graph/PrimitiveCreater.h>
 #include <hgl/graph/VKDevice.h>
@@ -102,7 +101,7 @@ namespace hgl::graph
         ubo_color->Write(&c,index*sizeof(Color4f),sizeof(Color4f));
     }
 
-    bool LineRenderManager::AddLine(const Vector3f& from, const Vector3f& to, const uint8_t color_index, uint8_t width)
+    bool LineRenderManager::AddLine(const Vector3f& from, const Vector3f& to, const uint8_t color_index, uint8 width)
     {
         if (width == 0
             ||width > MAX_LINE_WIDTH)
@@ -113,7 +112,7 @@ namespace hgl::graph
         return(true);
     }
 
-    bool LineRenderManager::AddLine(const uint8_t width,const DataArray<LineSegmentDescriptor> &lsi_list)
+    bool LineRenderManager::AddLine(const uint8 width,const DataArray<LineSegmentDescriptor> &lsi_list)
     {
         if(width==0
             ||width>MAX_LINE_WIDTH)

@@ -3,7 +3,6 @@
 #include <hgl/graph/PrimitiveCreater.h>
 #include <hgl/graph/module/MeshManager.h>
 #include <hgl/graph/VKMaterial.h>
-#include <vector>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -89,12 +88,8 @@ void LineWidthBatch::Expand(uint c)
             // Ensure shared backup has enough capacity (only grows)
             backup->EnsureCapacity(vertex_count);
 
-            // Resize storage to hold vertex_count entries
-            backup->positions.resize(vertex_count);
-            backup->colors.resize(vertex_count);
-
             // Bulk read using VABFormatMap::Read; must succeed
-            bool pos_ok = vab_position->Read(backup->positions.data(), vertex_count);
+            bool pos_ok = vab_position->Read(backup->positions.GetData(), vertex_count);
             if(!pos_ok)
             {
                 // cannot safely backup, abort expansion
@@ -102,7 +97,7 @@ void LineWidthBatch::Expand(uint c)
                 return;
             }
 
-            bool col_ok = vab_color->Read(backup->colors.data(), vertex_count);
+            bool col_ok = vab_color->Read(backup->colors.GetData(), vertex_count);
             if(!col_ok)
             {
                 // cannot safely backup, abort expansion
@@ -123,10 +118,10 @@ void LineWidthBatch::Expand(uint c)
         }
 
         // Restore backed up data into new buffers (bulk write)
-        if(!backup->Empty() && vab_position && vab_color)
+        if(!backup->IsEmpty() && vab_position && vab_color)
         {
             // Bulk write using VABFormatMap::Write; must succeed
-            bool pos_write_ok = vab_position->Write(backup->positions.data(), static_cast<uint32_t>(backup->positions.size()));
+            bool pos_write_ok = vab_position->Write(backup->positions.GetData(), static_cast<uint32_t>(backup->positions.GetCount()));
             if(!pos_write_ok)
             {
                 // cannot restore safely, abort
@@ -134,7 +129,7 @@ void LineWidthBatch::Expand(uint c)
                 return;
             }
 
-            bool col_write_ok = vab_color->Write(backup->colors.data(), static_cast<uint32_t>(backup->colors.size()));
+            bool col_write_ok = vab_color->Write(backup->colors.GetData(), static_cast<uint32_t>(backup->colors.GetCount()));
             if(!col_write_ok)
             {
                 // cannot restore safely, abort
@@ -162,13 +157,12 @@ void LineWidthBatch::Expand(uint c)
             }
 
             // Clear contents but do not reduce capacity
-            backup->positions.clear();
-            backup->colors.clear();
+            backup->Clear();
         }
     }
 }
 
-void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8_t color_index)
+void LineWidthBatch::AddLine(const Vector3f &from,const Vector3f &to,uint8 color_index)
 {
     Expand(1);
 

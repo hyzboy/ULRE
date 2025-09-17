@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <hgl/math/Vector.h>
 #include <hgl/type/DataArray.h>
 #include <hgl/graph/VKVertexAttribBuffer.h>
@@ -24,10 +23,10 @@ class LineWidthBatch
     MaterialInstance *  mtl_inst=nullptr;
     Pipeline *          pipeline=nullptr;
 
-    uint        line_width  =0;
+    uint32      line_width  =0;
 
-    uint32_t    max_count   =0;     // 当前缓冲区可容纳的最大线段数量
-    uint32_t    count       =0;     // 当前线段数量
+    uint32      max_count   =0;     // 当前缓冲区可容纳的最大线段数量
+    uint32      count       =0;     // 当前线段数量
 
     Primitive * primitive   =nullptr;
     Mesh *      mesh        =nullptr;
@@ -50,12 +49,12 @@ public:
     bool RebuildMesh();
     void Expand(uint);
 
-    void AddLine(const Vector3f &from,const Vector3f &to,uint8_t color_index);
+    void AddLine(const Vector3f &from,const Vector3f &to,uint8 color_index);
     void AddLine(const DataArray<LineSegmentDescriptor> &);
 
     void Draw(RenderCmdBuffer *);
 
     // expose count for manager usage
-    uint32_t GetCount() const { return count; }
-    void SetCount(uint32_t v) { count = v; }
+    uint32 GetCount() const { return count; }
+    void SetCount(uint32 v) { count = v; }
 };
