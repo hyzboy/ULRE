@@ -1,6 +1,7 @@
 #pragma once
 
 #include<hgl/graph/camera/CameraControl.h>
+#include<hgl/math/Matrix.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <cmath>
@@ -28,9 +29,9 @@ namespace hgl::graph
             camera->view_line  = camera->pos - target;
             camera_info->view  = glm::lookAtRH(camera->pos, target, camera->world_up);
 
-            direction               = normalized(camera->view_line);
-            right                   = normalized(cross(camera->world_up, direction));
-            up                      = normalized(cross(right,            direction));
+            direction          = normalized(camera->view_line);
+            right              = normalized(cross(camera->world_up, direction));
+            up                 = normalized(cross(right,            direction));
 
             RefreshCameraInfo(camera_info, vi, camera);
 
@@ -67,20 +68,10 @@ namespace hgl::graph
             Vector3f a = axis;
             normalize(a);
 
-            // Use glm::rotate on a mat4 then convert to mat3
-            const float rad = glm::radians(static_cast<float>(ang));
-            glm::mat3 rot = glm::mat3(glm::rotate(glm::mat4(1.0f), rad, Vector3f(a.x,a.y,a.z)));
+            // Use helper that returns a 3x3 rotation matrix (degrees)
+            Matrix3f rot = hgl::AxisRotate3Deg(static_cast<float>(ang), Vector3f(a.x,a.y,a.z));
 
-//             Rodrigues' rotation formula applied to (target - camera->pos)
-            const double c = cos(rad);
-            const double s = sin(rad);
-
-            Vector3f rel = target - camera->pos;
-            Vector3f k = a; // normalized axis
-
-            Vector3f rotated = rel * float(c) + cross(k, rel) * float(s) + k * (dot(k, rel) * float(1.0 - c));
-
-            target = camera->pos + rotated;
+            target = camera->pos + rot * (target - camera->pos);
         }
 
         /**
@@ -95,20 +86,9 @@ namespace hgl::graph
             Vector3f a = axis;
             normalize(a);
 
-            const float rad = glm::radians(static_cast<float>(ang));
-            glm::mat3 rot = glm::mat3(glm::rotate(glm::mat4(1.0f), rad, Vector3f(a.x,a.y,a.z)));
+            Matrix3f rot = hgl::AxisRotate3Deg(static_cast<float>(ang), Vector3f(a.x,a.y,a.z));
 
             camera->pos = target + rot * (camera->pos - target);
-
-//             const double c = cos(rad);
-//             const double s = sin(rad);
-//
-//             Vector3f rel = camera->pos - target;
-//             Vector3f k = a;
-//
-//             Vector3f rotated = rel * float(c) + cross(k, rel) * float(s) + k * (dot(k, rel) * float(1.0 - c));
-//
-//             camera->pos = target + rotated;
         }
 
     public: //距离
