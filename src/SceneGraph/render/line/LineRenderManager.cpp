@@ -23,7 +23,7 @@ namespace hgl::graph
     constexpr const size_t POSITION_COUNT_INCREMENT = LINE_COUNT_INCREMENT * POSITION_COMPONENT_COUNT;
     constexpr const size_t COLOR_COUNT_INCREMENT    = LINE_COUNT_INCREMENT * COLOR_COMPONENT_COUNT;
 
-    LineRenderManager* CreateLineRenderManager(RenderFramework *rf)
+    LineRenderManager* CreateLineRenderManager(RenderFramework *rf,IRenderTarget *rt)
     {
         if (!rf)
             return(nullptr);
@@ -60,7 +60,9 @@ namespace hgl::graph
             return nullptr;
         }
 
-        Pipeline *p = rf->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
+        RenderPass *rp = rt->GetRenderPass();
+
+        Pipeline *p = rp->CreatePipeline(mi,InlinePipeline::DynamicLineWidth3D);
 
         UBOLineColorPalette *lcp=rf->CreateUBO<UBOLineColorPalette>(&mtl::SBS_ColorPattle);
 
@@ -90,7 +92,6 @@ namespace hgl::graph
 
     LineRenderManager::~LineRenderManager()
     {
-        delete ubo_color;
         delete shared_backup;
     }
 

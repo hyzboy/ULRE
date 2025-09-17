@@ -3,10 +3,13 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/camera/Camera.h>
+#include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph
 {
-    SceneRenderer::SceneRenderer(IRenderTarget *rt)
+    LineRenderManager *CreateLineRenderManager(RenderFramework *rf,IRenderTarget *);
+
+    SceneRenderer::SceneRenderer(RenderFramework *rf,IRenderTarget *rt)
     {
         render_target=rt;
         scene=nullptr;
@@ -15,10 +18,13 @@ namespace hgl::graph
         render_task=new RenderTask("DefaultRenderTask",rt);
 
         clear_color.Set(0,0,0,1);
+
+        line_render_manager = CreateLineRenderManager(rf,rt);
     }
 
     SceneRenderer::~SceneRenderer()
     {
+        SAFE_CLEAR(line_render_manager)
         delete render_task;
     }
 
@@ -86,13 +92,13 @@ namespace hgl::graph
 
         render_task->SetCameraInfo(camera_control->GetCameraInfo());
     }
-
+    
     bool SceneRenderer::RenderFrame()
     {
         if(!scene)
             return(false);
 
-        SceneNode *root=scene->GetRootNode();
+        SceneNode *root = scene->GetRootNode();
 
         if(!root)
             return(false);
@@ -109,9 +115,9 @@ namespace hgl::graph
         // 这里内部会将Scene tree展开成RenderCollector,而RenderCollector排序是需要CameraInfo的
         render_task->RebuildRenderList(root);
 
-        bool result=false;
+        bool result = false;
 
-        graph::RenderCmdBuffer *cmd=render_target->BeginRender();
+        RenderCmdBuffer *cmd = render_target->BeginRender();
 
         if(camera_control)
         {
@@ -126,12 +132,16 @@ namespace hgl::graph
         cmd->SetClearColor(0,clear_color);
 
         cmd->BeginRenderPass();
-            result=render_task->Render(cmd);
+
+        result=render_task->Render(cmd);
+
+        line_render_manager->Draw(cmd);
+
         cmd->EndRenderPass();
 
         render_target->EndRender();
 
-        render_state_dirty=result;
+        render_state_dirty = result;
 
         return(result);
     }
