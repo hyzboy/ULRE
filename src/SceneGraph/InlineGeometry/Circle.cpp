@@ -67,8 +67,9 @@ namespace hgl::graph::inline_geometry
         }
         else
         {
-            edge = cci->field_count;
-            vertex_count = cci->field_count;
+            // mirror 2D: need one extra vertex to close the loop
+            edge = cci->field_count + 1;
+            vertex_count = cci->field_count + 1;
         }
 
         bool has_index = pc->hasIndex();
@@ -142,7 +143,8 @@ namespace hgl::graph::inline_geometry
         if(!vertex.IsValid())
             return(nullptr);
 
-        for(uint i = 0;i < cci->field_count + 1;i++)
+        // write exactly vertex_count vertices (no duplicate)
+        for(uint i = 0;i < cci->field_count;i++)
         {
             float ang = float(i) / float(cci->field_count) * 360.0f;
 
