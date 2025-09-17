@@ -147,8 +147,11 @@ private:
 
         CameraControl *camera_control=GetCameraControl();
 
-        camera_control->SetPosition(Vector3f(32,32,32));
-        camera_control->SetTarget(Vector3f(0,0,0));
+        if(camera_control)
+        {
+            camera_control->SetPosition(Vector3f(32,32,32));
+            camera_control->SetTarget(Vector3f(0,0,0));
+        }
 
         return(true);
     }
@@ -176,12 +179,11 @@ public:
         return(true);
     }
 
-    void Tick(double) override
+    void Tick(double delta) override
     {
-        Vector2i mouse_position;
+        WorkObject::Tick(delta);
 
-        if(!GetMouseCoord(&mouse_position))
-            return;
+        const Vector2i mouse_position=GetMouseCoord();
 
         CameraControl *camera_control=GetCameraControl();
 

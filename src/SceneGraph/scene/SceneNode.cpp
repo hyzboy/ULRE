@@ -13,7 +13,7 @@ namespace hgl::graph
 
     CameraControl *SceneNode::GetCameraControl()const
     {
-        return main_scene?main_scene->GetRenderFramework()->GetDefaultCameraControl():nullptr;
+        return main_scene?main_scene->GetCameraControl():nullptr;
     }
 
     //void SceneNode::SetRenderable(Mesh *ri)

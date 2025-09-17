@@ -2,7 +2,7 @@
 
 namespace hgl::graph
 {
-    FirstPersonCameraControl::FirstPersonCameraControl(ViewportInfo *v,Camera *c,UBOCameraInfo *ci):CameraControl(v,c,ci)
+    FirstPersonCameraControl::FirstPersonCameraControl()
     {
         target=Vector3f(0.0f);
         up=Vector3f(0,0,1);
@@ -65,8 +65,6 @@ namespace hgl::graph
         camera_info->view       =LookAtMatrix(camera->pos,target,camera->world_up);
 
         RefreshCameraInfo(camera_info,vi,camera);
-
-        if(ubo_camera_info) ubo_camera_info->Update();
     }
 
     void FirstPersonCameraControl::UpdateCameraVector()

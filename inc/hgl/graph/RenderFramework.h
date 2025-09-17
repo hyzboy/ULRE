@@ -45,13 +45,6 @@ class SceneRenderer;
 class CameraComponentManager{/*现阶段测试使用*/};
 class LightComponentManager{/*现阶段测试使用*/};
 
-struct RenderWorkspace
-{
-    Scene *         scene           =nullptr;
-    Camera *        camera          =nullptr;
-    SceneRenderer * scene_renderer  =nullptr;
-};
-
 class RenderFramework:public io::WindowEvent
 {
     OSString                app_name;
@@ -85,8 +78,6 @@ protected:
 protected:  //RenderContext,未来合并成一个RenderContext结构
 
     Scene *                 default_scene           =nullptr;
-    Camera *                default_camera          =nullptr;
-    CameraControl *         default_camera_control  =nullptr;
     SceneRenderer *         default_scene_renderer  =nullptr;
 
     void OnChangeDefaultScene(Scene *);
@@ -95,7 +86,9 @@ protected:  //RenderContext,未来合并成一个RenderContext结构
 
 protected:  //EventDispatcher
 
-    io::MouseEvent *mouse_event=nullptr;
+    Vector2i mouse_coord;
+
+    virtual io::EventProcResult OnEvent(const io::EventHeader &header,const uint64 data) override;
 
 public:
 
@@ -125,8 +118,6 @@ public:
 public:
 
     Scene *                 GetDefaultScene         (){return default_scene;}
-    Camera *                GetDefaultCamera        (){return default_camera;}
-    CameraControl *         GetDefaultCameraControl (){return default_camera_control;}
     SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
 
     RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}
@@ -135,14 +126,7 @@ public:
 
 public:
 
-    bool GetMouseCoord(Vector2i *mc)const
-    {
-        if(!mouse_event||!mc)
-            return(false);
-
-        *mc=mouse_event->GetMouseCoord();
-        return(true);
-    }
+    const Vector2i &GetMouseCoord()const{ return mouse_coord; }
 
 public:
 

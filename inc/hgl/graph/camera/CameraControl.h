@@ -17,12 +17,9 @@ namespace hgl::graph
     {
     protected:
 
-        ViewportInfo *vi;
-        Camera *camera;
-
-        UBOCameraInfo *ubo_camera_info;
-        CameraInfo *camera_info;
-        DescriptorBinding *desc_binding_camera;
+        const   ViewportInfo *  vi = nullptr;
+                Camera *        camera = nullptr;
+                CameraInfo *    camera_info = nullptr;
 
     public:
 
@@ -30,18 +27,18 @@ namespace hgl::graph
 
     public:
 
-        CameraControl(ViewportInfo *v,Camera *c,UBOCameraInfo *ci);
+        CameraControl()=default;
+        virtual ~CameraControl()=default;
 
-        virtual ~CameraControl();
-
-        void SetViewport(ViewportInfo *i)
+        void SetViewport(const ViewportInfo *i)
         {
             vi=i;
         }
 
-        void SetCamera(Camera *c)
+        void SetCamera(Camera *c,CameraInfo *ci)
         {
             camera=c;
+            camera_info=ci;
         }
 
         void SetPosition(const Vector3f &p)
@@ -52,22 +49,11 @@ namespace hgl::graph
 
         virtual void SetTarget(const Vector3f &t)=0;
 
-        void ZoomFOV(int adjust)
-        {
-            constexpr float MinFOV=10;
-            constexpr float MaxFOV=180;
+        void ZoomFOV(int adjust);
 
-            camera->Yfov+=float(adjust)/10.0f;
-
-            if(adjust<0&&camera->Yfov<MinFOV)camera->Yfov=MinFOV;else
-            if(adjust>0&&camera->Yfov>MaxFOV)camera->Yfov=MaxFOV;
-        }
-
-        ViewportInfo *      GetViewportInfo     (){return vi;}
-        Camera *            GetCamera           (){return camera;}
-        CameraInfo *        GetCameraInfo       (){return camera_info;}
-
-        DescriptorBinding * GetDescriptorBinding(){return desc_binding_camera;}
+        const   ViewportInfo *  GetViewportInfo ()const{return vi;}
+                Camera *        GetCamera       ()const{return camera;}
+                CameraInfo *    GetCameraInfo   ()const{return camera_info;}
 
         virtual void Refresh()=0;
 
@@ -75,9 +61,6 @@ namespace hgl::graph
 
         bool SetMouseRay(Ray *,const Vector2i &);
 
-        /**
-        * 本地坐标到观察坐标
-        */
         const Vector3f LocalToViewSpace(const Matrix4f &l2w,const Vector3f &local_pos)const
         {
             if(!vi||!camera_info)return(Vector3f(0,0,0));

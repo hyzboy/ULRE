@@ -25,6 +25,8 @@ namespace hgl::graph
 
         SceneNode *root_node;                           ///<场景根节点
 
+        CameraControl *camera_control = nullptr;        ///<相机控制器
+
     protected:
 
         DescriptorBinding * descriptor_binding  =nullptr;   ///<场景通用描述符绑定器
@@ -41,10 +43,9 @@ namespace hgl::graph
 
                 SceneNode * GetRootNode (){return root_node;}                   ///<获取场景根节点
 
-        RenderFramework *   GetRenderFramework()const
-        {
-            return render_framework;
-        }
+        RenderFramework *   GetRenderFramework()const{return render_framework;}
+
+        CameraControl *     GetCameraControl()const{return camera_control;}
 
     public:
 
@@ -53,6 +54,11 @@ namespace hgl::graph
         {
             SAFE_CLEAR(root_node);
             SAFE_CLEAR(descriptor_binding);
+        }
+
+        void SetCameraControl(CameraControl *cc)
+        {
+            camera_control=cc;
         }
 
         io::EventDispatcher &GetEventDispatcher()  ///<获取事件分发器
