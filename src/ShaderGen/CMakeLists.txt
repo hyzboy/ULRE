@@ -40,6 +40,7 @@ SET(SHADERGEN_COMMON_FILES  ${STD_MTL_HEADER_PATH}/UBOCommon.h
                             ${STD_MTL_HEADER_PATH}/SamplerName.h
                             ${STD_MTL_HEADER_PATH}/ShaderVariableType.h
                             ShaderVariableType.cpp
+                            common/UBOCommon.cpp
                             common/MFCommon.h
                             common/MFGetPosition.h
                             common/MFGetNormal.h
@@ -78,6 +79,7 @@ SET(STD_MTL_3D_SOURCE_FILES	${STD_MTL_HEADER_PATH}/Material3DCreateConfig.h
                             3d/M_Gizmo3D.cpp
                             3d/M_SkyMinimal.cpp
                             3d/M_BasicLit.cpp
+                            3d/M_VertexPattleColor3D.cpp
 )
 
 SET(STD_MTL_SOURCE  ${STD_MTL_HEADER_PATH}/MaterialCreateConfig.h
