@@ -1,6 +1,9 @@
 #pragma once
 
 #include<hgl/graph/camera/CameraControl.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <cmath>
 namespace hgl::graph
 {
     class LookAtCameraControl:public CameraControl
@@ -20,19 +23,21 @@ namespace hgl::graph
 
         void Refresh() override
         {
-            if(!camera)return;
+            if(!camera || !camera_info || !vi) return;
 
-            camera->info.view_line  =camera->pos-target;
-            camera->info.view       =glm::lookAtRH(camera->pos,target,camera->world_up);
+            camera->view_line  = camera->pos - target;
+            camera_info->view  = glm::lookAtRH(camera->pos, target, camera->world_up);
 
-            direction               =normalized(camera->view_line);
-            right                   =normalized(cross(camera->world_up, direction));
-            up                      =normalized(cross(right,            direction));
+            direction               = normalized(camera->view_line);
+            right                   = normalized(cross(camera->world_up, direction));
+            up                      = normalized(cross(right,            direction));
 
-            camera->RefreshCameraInfo();
+            RefreshCameraInfo(camera_info, vi, camera);
+
+            if(ubo_camera_info) ubo_camera_info->Update();
         }
 
-        void SetTarget(const Vector3f &t)
+        void SetTarget(const Vector3f &t) override
         {
             target=t;
         }
@@ -45,6 +50,7 @@ namespace hgl::graph
             */
         void Move(const Vector3f &move_dist)
         {
+            if(!camera) return;
             camera->pos+=move_dist;
             target+=move_dist;
         }
@@ -56,11 +62,25 @@ namespace hgl::graph
             */
         void Rotate(double ang,const Vector3f &axis)
         {
-            normalize(axis);
+            if(!camera) return;
 
-            const Matrix3f mat=rotate(deg2rad(ang),axis);
+            Vector3f a = axis;
+            normalize(a);
 
-            target=camera->pos+mat*(target-camera->pos);
+            // Use glm::rotate on a mat4 then convert to mat3
+            const float rad = glm::radians(static_cast<float>(ang));
+            glm::mat3 rot = glm::mat3(glm::rotate(glm::mat4(1.0f), rad, Vector3f(a.x,a.y,a.z)));
+
+//             Rodrigues' rotation formula applied to (target - camera->pos)
+            const double c = cos(rad);
+            const double s = sin(rad);
+
+            Vector3f rel = target - camera->pos;
+            Vector3f k = a; // normalized axis
+
+            Vector3f rotated = rel * float(c) + cross(k, rel) * float(s) + k * (dot(k, rel) * float(1.0 - c));
+
+            target = camera->pos + rotated;
         }
 
         /**
@@ -70,16 +90,30 @@ namespace hgl::graph
             */
         void WrapRotate(double ang,const Vector3f &axis)
         {
-            normalize(axis);
+            if(!camera) return;
 
-            const Matrix3f mat=rotate(deg2rad(ang),axis);
+            Vector3f a = axis;
+            normalize(a);
 
-            camera->pos=target+mat*(camera->pos-target);
+            const float rad = glm::radians(static_cast<float>(ang));
+            glm::mat3 rot = glm::mat3(glm::rotate(glm::mat4(1.0f), rad, Vector3f(a.x,a.y,a.z)));
+
+            camera->pos = target + rot * (camera->pos - target);
+
+//             const double c = cos(rad);
+//             const double s = sin(rad);
+//
+//             Vector3f rel = camera->pos - target;
+//             Vector3f k = a;
+//
+//             Vector3f rotated = rel * float(c) + cross(k, rel) * float(s) + k * (dot(k, rel) * float(1.0 - c));
+//
+//             camera->pos = target + rotated;
         }
 
     public: //距离
 
-        const float GetDistance()const{return length(camera->pos-target);}                      ///<获取视线长度(摄像机到目标点)
+        const float GetDistance()const{return camera?length(camera->pos-target):0.0f;}                      ///<获取视线长度(摄像机到目标点)
 
         /**
             * 调整距离
@@ -87,7 +121,8 @@ namespace hgl::graph
             */
         void Distance(float rate)                                                               ///<调整距离
         {
-            if(rate==1.0)return;
+            if(!camera) return;
+            if(rate==1.0f)return;
 
             camera->pos=target+(camera->pos-target)*rate;
         }
