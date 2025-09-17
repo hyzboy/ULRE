@@ -4,6 +4,21 @@
 
 namespace hgl
 {
+    void WorkManager::OnChangeWorkObject(WorkObject *old_work,WorkObject *new_work)
+    {
+        cur_work_object = new_work;
+
+        if(cur_work_object)
+        {
+            // Notify change of active work object
+            cur_work_object->OnSceneRendererChange(render_framework,render_framework->GetDefaultSceneRenderer());
+        }
+        else
+        {
+
+        }
+    }
+
     void WorkManager::Tick(WorkObject *wo)
     {
         double delta_time=cur_time-last_update_time;
@@ -58,11 +73,12 @@ namespace hgl
     {
         if(!wo)return;
 
+        OnChangeWorkObject(nullptr,wo);
+
+        if(!cur_work_object)
+            return;
+
         last_update_time=last_render_time=0;
-
-        cur_work_object=wo;
-
-        wo->OnSceneRendererChange(render_framework,render_framework->GetDefaultSceneRenderer());
 
         Window *win=render_framework->GetWindow();
         graph::VulkanDevice *dev=render_framework->GetDevice();
