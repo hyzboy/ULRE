@@ -111,6 +111,8 @@ public:
 
         fullDrawIndexUint8=SupportLevel::Want;
         fullDrawIndexUint32=SupportLevel::Want;
+
+        wideLines = SupportLevel::Want;
     }
 };
 
