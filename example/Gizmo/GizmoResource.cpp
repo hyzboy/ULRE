@@ -6,7 +6,7 @@
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/color/Color.h>
-#include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/component/MeshComponent.h>

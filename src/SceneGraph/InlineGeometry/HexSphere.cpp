@@ -1,7 +1,7 @@
 // sphere、cylinear、cone、tours code from McNopper,website: https://github.com/McNopper/GLUS
 // GL to VK: swap Y/Z of position/normal/tangent/index
 
-#include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include <unordered_map>

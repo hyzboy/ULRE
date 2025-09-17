@@ -37,7 +37,7 @@ SET(TILE_SOURCE ${SG_INCLUDE_PATH}/TileData.h
 
 SOURCE_GROUP("Tile" FILES ${TILE_SOURCE})
 
-SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/InlineGeometry.h
+SET(GEOMETRY_FILES  ${SG_INCLUDE_PATH}/geo/InlineGeometry.h
                     ${SG_INCLUDE_PATH}/geo/Extruded.h
                     ${SG_INCLUDE_PATH}/geo/Wall.h
                     ${SG_INCLUDE_PATH}/geo/Revolution.h

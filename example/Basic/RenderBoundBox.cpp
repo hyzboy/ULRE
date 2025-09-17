@@ -1,6 +1,6 @@
 ﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VertexDataManager.h>
-#include<hgl/graph/InlineGeometry.h>
+#include<hgl/graph/geo/InlineGeometry.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/mtl/Material3DCreateConfig.h>
