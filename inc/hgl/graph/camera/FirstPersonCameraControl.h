@@ -69,6 +69,8 @@ namespace hgl::graph
 
         void SetTarget(const Vector3f &t) override
         {
+            if(!camera) return;
+
             front   =normalize(t-camera->pos);
             right   =normalize(cross(front,camera->world_up));
             up      =normalize(cross(right,front)); 
@@ -80,24 +82,32 @@ namespace hgl::graph
 
             UpdateCameraVector();
 
-            distance=(t-camera->pos)/front;
+            // avoid division by zero: only compute component-wise distance when front is non-zero
+            distance = Vector3f(0.0f);
+            if(fabs(front.x) > 1e-6f) distance.x = (t.x - camera->pos.x) / front.x;
+            if(fabs(front.y) > 1e-6f) distance.y = (t.y - camera->pos.y) / front.y;
+            if(fabs(front.z) > 1e-6f) distance.z = (t.z - camera->pos.z) / front.z;
         }
 
         void Refresh() override
         {
+            if(!camera || !camera_info) return;
+
             target=camera->pos+front*distance;
 
             camera_info->view       =LookAtMatrix(camera->pos,target,camera->world_up);
 
             RefreshCameraInfo(camera_info,vi,camera);
 
-            ubo_camera_info->Update();
+            if(ubo_camera_info) ubo_camera_info->Update();
         }
 
     public: //移动
             
         void UpdateCameraVector()
         {
+            if(!camera) return;
+
             front   =PolarToVector(yaw,pitch);
 
             right   =normalize(cross(front,camera->world_up));
@@ -106,21 +116,25 @@ namespace hgl::graph
 
         void Forward(float move_step)
         {
+            if(!camera) return;
             camera->pos+=front*move_step;
         }
 
         void Backward(float move_step)
         {
+            if(!camera) return;
             camera->pos-=front*move_step;
         }
 
         void Left(float move_step)
         {
+            if(!camera) return;
             camera->pos-=right*move_step;
         }
 
         void Right(float move_step)
         {
+            if(!camera) return;
             camera->pos+=right*move_step;
         }
 
@@ -142,6 +156,7 @@ namespace hgl::graph
 
         void Move(const Vector3f &delta)
         {
+            if(!camera) return;
             camera->pos+=delta;
         }
     };//class FirstPersonCameraControl:public CameraControl
@@ -172,18 +187,11 @@ namespace hgl::graph
 
         bool Update() override
         {
-            if(HasPressed(io::KeyboardButton::W     ))camera->Forward   (move_speed);else
-            if(HasPressed(io::KeyboardButton::S     ))camera->Backward  (move_speed);else
-            if(HasPressed(io::KeyboardButton::A     ))camera->Left      (move_speed);else
-            if(HasPressed(io::KeyboardButton::D     ))camera->Right     (move_speed);else
-            //if(HasPressed(io::KeyboardButton::R     ))camera->Up        (move_speed);else
-            //if(HasPressed(io::KeyboardButton::F     ))camera->Down      (move_speed);else
-
-            //if(HasPressed(io::KeyboardButton::Left  ))camera->HoriRotate( move_speed);else
-            //if(HasPressed(io::KeyboardButton::Right ))camera->HoriRotate(-move_speed);else
-            //if(HasPressed(io::KeyboardButton::Up    ))camera->VertRotate( move_speed);else
-            //if(HasPressed(io::KeyboardButton::Down  ))camera->VertRotate(-move_speed);else
-                return(true);
+            // allow multiple keys to be processed simultaneously (remove else-if chain)
+            if(HasPressed(io::KeyboardButton::W     )) { if(camera) camera->Forward   (move_speed); }
+            if(HasPressed(io::KeyboardButton::S     )) { if(camera) camera->Backward  (move_speed); }
+            if(HasPressed(io::KeyboardButton::A     )) { if(camera) camera->Left      (move_speed); }
+            if(HasPressed(io::KeyboardButton::D     )) { if(camera) camera->Right     (move_speed); }
 
             return(true);
         }
@@ -211,9 +219,8 @@ namespace hgl::graph
     
         io::EventProcResult OnWheel(const Vector2i &mouse_coord) override
         {
-            if(mouse_coord.y==0)return(io::EventProcResult::Continue);
-
-            camera->Forward(float(mouse_coord.y)/100.0f);
+            if(mouse_coord.y==0) return(io::EventProcResult::Continue);
+            if(camera) camera->Forward(float(mouse_coord.y)/100.0f);
 
             return(io::EventProcResult::Break);
         }
@@ -232,14 +239,14 @@ namespace hgl::graph
             {
                 gap/=-5.0f;
 
-                camera->Rotate(gap);
+                if(camera) camera->Rotate(gap);
             }
             else
             if(right)
             {
                 gap/=10.0f;
 
-                camera->Move(Vector3f(gap.x,0,gap.y));
+                if(camera) camera->Move(Vector3f(gap.x,0,gap.y));
             }
 
             last_time=cur_time;
