@@ -1,7 +1,6 @@
 #include<hgl/WorkManager.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
-#include<iostream>
 #include<cmath>
 
 using namespace hgl;
@@ -15,20 +14,17 @@ class WireShapeTestApp:public WorkObject
     LineRenderManager *line_mgr = nullptr;
 
 public:
-    using WorkObject::WorkObject;
 
-    ~WireShapeTestApp()
-    {
-        SAFE_CLEAR(line_mgr);
-    }
+    using WorkObject::WorkObject;
 
     bool Init() override
     {
         // Create LineRenderManager via helper
-        line_mgr = hgl::graph::CreateLineRenderManager(GetRenderFramework());
+        line_mgr = GetRenderFramework()->GetLineRenderManager();
+
         if(!line_mgr)
         {
-            std::cerr << "Failed to create LineRenderManager" << std::endl;
+            LogError("WireShapeTestApp::Init: Failed to get LineRenderManager from RenderFramework\n");
             return(false);
         }
 
@@ -75,52 +71,6 @@ public:
         }
 
         return true;
-    }
-
-    // Render only draws the line manager into the swapchain render target for this simple test.
-    void Render(double) override
-    {
-        if(!line_mgr)
-            return;
-
-        RenderFramework *rf = GetRenderFramework();
-        if(!rf)
-            return;
-
-        SwapchainRenderTarget *srt = rf->GetSwapchainRenderTarget();
-        if(!srt)
-            return;
-
-        // Acquire next image and begin render for current frame
-        if(!srt->NextFrame())
-        {
-            // Could not acquire next image
-            return;
-        }
-
-        RenderCmdBuffer *cmd = srt->BeginRender();
-        if(!cmd)
-            return;
-
-        // Optionally bind camera/scene descriptor bindings if needed
-        CameraControl *cc = GetCameraControl();
-        if(cc)
-        {
-            cmd->SetDescriptorBinding(cc->GetDescriptorBinding());
-        }
-
-        // Clear color default
-        cmd->SetClearColor(0,Color4f(0,0,0,1));
-
-        cmd->BeginRenderPass();
-        // Draw lines
-        line_mgr->Draw(cmd);
-        cmd->EndRenderPass();
-
-        srt->EndRender();
-
-        // Submit and present
-        srt->Submit();
     }
 };
 

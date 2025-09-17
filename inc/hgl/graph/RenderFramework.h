@@ -37,6 +37,8 @@ class BufferManager;
 
 class RenderModule;
 
+class LineRenderManager;
+
 class Scene;
 class SceneRenderer;
 
@@ -128,6 +130,8 @@ public:
     SceneRenderer *         GetDefaultSceneRenderer (){return default_scene_renderer;}
 
     RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}
+
+    LineRenderManager *     GetLineRenderManager    (){return default_scene_renderer->GetLineRenderManager();}
 
 public:
 
