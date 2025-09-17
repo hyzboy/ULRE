@@ -1,5 +1,4 @@
-﻿#ifndef HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
-#define HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
+﻿#pragma once
 
 #include<hgl/color/Color3f.h>
 #include<hgl/color/Color4f.h>
@@ -8,7 +7,6 @@
 #include<hgl/log/Log.h>
 #include<hgl/graph/VKFormat.h>
 #include<hgl/graph/AABB.h>
-
 
 namespace hgl
 {
@@ -19,6 +17,10 @@ namespace hgl
         */
         template<typename T,int C> class VertexAttribDataAccess
         {
+        protected:
+
+            OBJECT_LOGGER
+
         protected:
 
             T *         data;                                                                       ///<符合当前类型的地址
@@ -73,7 +75,10 @@ namespace hgl
             {
                 if(!data||offset>=count)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess::Get() out,start:")+OSString::numberOf(offset));
+                    if(offset == 0 && access == data)
+                        return(access);
+
+                    LogWarning(OS_TEXT("VertexAttribDataAccess::Get() out,start:")+OSString::numberOf(offset));
                     return(nullptr);
                 }
 
@@ -89,7 +94,10 @@ namespace hgl
             {
                 if(access)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,start:")+OSString::numberOf(offset));
+                    if(offset == 0 && access == data)
+                        return(access);
+
+                    LogWarning(OS_TEXT("VertexAttribDataAccess::Begin() access!=0,start:")+OSString::numberOf(offset));
                     return(nullptr);
                 }
 
@@ -119,13 +127,13 @@ namespace hgl
             {
                 if(!data)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess::Seek() data==nullptr"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess::Seek() data==nullptr"));
                     return(false);
                 }
 
                 if(offset>=count)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess::Seek() out,offset:")+OSString::numberOf(offset));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess::Seek() out,offset:")+OSString::numberOf(offset));
                     return(false);
                 }
 
@@ -140,7 +148,7 @@ namespace hgl
                     }
                     else
                     {
-                        GLogHint(OS_TEXT("VertexAttribDataAccess::Seek() target out of range"));
+                        LogWarning(OS_TEXT("VertexAttribDataAccess::Seek() target out of range"));
                         return(false);
                     }
                 }
@@ -161,7 +169,7 @@ namespace hgl
             {
                 if(!this->access||this->access+C*number>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess::Write(const T *,number) out,number:")+OSString::numberOf(number));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess::Write(const T *,number) out,number:")+OSString::numberOf(number));
                     return(false);
                 }
 
@@ -234,7 +242,7 @@ namespace hgl
             {
                 if(!this->access||this->access+1>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess1::Write(const T) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess1::Write(const T) out"));
                     return(false);
                 }
 
@@ -251,7 +259,7 @@ namespace hgl
             {
                 if(!this->access||this->access+count>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess1::Write(const T,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess1::Write(const T,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -324,7 +332,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::Write(const T ,const T) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(const T ,const T) out"));
                     return(false);
                 }
 
@@ -338,7 +346,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::Write(T *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(T *) out"));
                     return(false);
                 }
 
@@ -352,7 +360,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::Write(T *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(T *) out"));
                     return(false);
                 }
 
@@ -370,7 +378,7 @@ namespace hgl
             {
                 if(!this->access||this->access+2>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::Write(vec2 &) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::Write(vec2 &) out"));
                     return(false);
                 }
 
@@ -390,7 +398,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<1)>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess1::Write(const Vector2f &,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess1::Write(const Vector2f &,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -407,7 +415,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::WriteLine(T,T,T,T) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::WriteLine(T,T,T,T) out"));
                     return(false);
                 }
 
@@ -424,7 +432,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::WriteLine(vec2,vec2) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::WriteLine(vec2,vec2) out"));
                     return(false);
                 }
 
@@ -444,7 +452,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2,vec2,vec2) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2,vec2,vec2) out"));
                     return(false);
                 }
 
@@ -468,7 +476,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2 *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::WriteTriangle(vec2 *) out"));
                     return(false);
                 }
 
@@ -496,7 +504,7 @@ namespace hgl
                 if(WriteTriangle(lt,rb,rt))
                     return(true);
 
-                GLogHint(OS_TEXT("VertexAttribDataAccess2::WriteQuad(vec2 &,vec2 &,vec2 &,vec2 &) error"));
+                LogWarning(OS_TEXT("VertexAttribDataAccess2::WriteQuad(vec2 &,vec2 &,vec2 &,vec2 &) error"));
                 return(false);
             }
 
@@ -528,7 +536,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::WriteRectFan(RectScope2 *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::WriteRectFan(RectScope2 *) out"));
                     return(false);
                 }
 
@@ -552,7 +560,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess2::WriteRectTriangleStrip(RectScope2 *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess2::WriteRectTriangleStrip(RectScope2 *) out"));
                     return(false);
                 }
 
@@ -638,7 +646,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::Write(T,T,T) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(T,T,T) out"));
                     return(false);
                 }
 
@@ -653,7 +661,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::Write(T *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(T *) out"));
                     return(false);
                 }
 
@@ -669,7 +677,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::Write(vec3 &) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(vec3 &) out"));
                     return(false);
                 }
 
@@ -690,7 +698,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -714,7 +722,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count*3)>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(const Vector3f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -734,7 +742,7 @@ namespace hgl
             {
                 if(!this->access||this->access+3>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::Write(color3f &) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::Write(color3f &) out"));
                     return(false);
                 }
 
@@ -749,7 +757,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::WriteLine(T,T,T,T,T,T) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
                 }
 
@@ -768,7 +776,7 @@ namespace hgl
             {
                 if(!this->access||this->access+6>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::WriteLine(vec3,vec3) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::WriteLine(vec3,vec3) out"));
                     return(false);
                 }
 
@@ -790,7 +798,7 @@ namespace hgl
             {
                 if(!this->access||this->access+9>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3,vec3,vec3) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
                 }
 
@@ -817,7 +825,7 @@ namespace hgl
             {
                 if(!this->access||this->access+9>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3 *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess3::WriteTriangle(vec3 *) out"));
                     return(false);
                 }
 
@@ -908,7 +916,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::Write(T,T,T,T) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(T,T,T,T) out"));
                     return(false);
                 }
 
@@ -924,7 +932,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::Write(T *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(T *) out"));
                     return(false);
                 }
 
@@ -941,7 +949,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
                     return(false);
                 }
 
@@ -957,7 +965,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(color4 &) out"));
                     return(false);
                 }
 
@@ -975,7 +983,7 @@ namespace hgl
 
                 if(!this->access||this->access+(4*count)>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::Write(color4 &,count) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(color4 &,count) out"));
                     return(false);
                 }
 
@@ -1000,7 +1008,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -1025,7 +1033,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(count<<2)>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::Write(const Vector4f,")+OSString::numberOf(count)+OS_TEXT(") out"));
                     return(false);
                 }
 
@@ -1046,7 +1054,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::WriteLine(T,T,T,T,T,T) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::WriteLine(T,T,T,T,T,T) out"));
                     return(false);
                 }
 
@@ -1067,7 +1075,7 @@ namespace hgl
             {
                 if(!this->access||this->access+8>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::WriteLine(vec3,vec3) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::WriteLine(vec3,vec3) out"));
                     return(false);
                 }
 
@@ -1091,7 +1099,7 @@ namespace hgl
             {
                 if(!this->access||this->access+12>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3,vec3,vec3) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3,vec3,vec3) out"));
                     return(false);
                 }
 
@@ -1121,7 +1129,7 @@ namespace hgl
             {
                 if(!this->access||this->access+12>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3 *) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::WriteTriangle(vec3 *) out"));
                     return(false);
                 }
 
@@ -1153,7 +1161,7 @@ namespace hgl
             {
                 if(!this->access||this->access+4>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 ) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 ) out"));
                     return(false);
                 }
 
@@ -1173,7 +1181,7 @@ namespace hgl
             {
                 if(!this->access||this->access+(4*count)>this->data_end)
                 {
-                    GLogHint(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 *,count) out"));
+                    LogWarning(OS_TEXT("VertexAttribDataAccess4::WriteRectangle2D(RectScope2 *,count) out"));
                     return(false);
                 }
 
@@ -1254,4 +1262,3 @@ namespace hgl
         typedef VertexAttribDataAccess4<half_float,PF_RGBA16F >  VB4hf;             //half float
     }//namespace graph
 }//namespace hgl
-#endif//HGL_GRAPH_VERTEX_ATTRIB_DATA_ACCESS_INCLUDE
