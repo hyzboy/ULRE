@@ -31,7 +31,7 @@ namespace hgl::graph
     * 从场景坐标变换(NodeTransform)类继承，
     * 每个场景节点中可能包括一个可渲染数据实例，或是完全不包含(用于坐标变换的父节点，或是灯光/摄像机之类)。
     */
-    class SceneNode:public NodeTransform                                                                              ///场景节点类
+    class SceneNode:public NodeTransform                                                                            ///场景节点类
     {
         friend class Scene;
 
@@ -63,7 +63,6 @@ namespace hgl::graph
 
         Scene *             GetScene()const{ return main_scene; }                                                   ///<取得主场景
         RenderFramework *   GetRenderFramework()const;                                                              ///<取得渲染框架
-        CameraControl *     GetCameraControl()const;                                                                ///<取得默认摄像机控制器
 
         const SceneNodeID &     GetNodeID   ()const { return node_id; }                                             ///<取得节点ID
         const SceneNodeName &   GetNodeName ()const { return node_name; }                                           ///<取得节点名称

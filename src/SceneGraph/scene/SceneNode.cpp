@@ -11,12 +11,6 @@ namespace hgl::graph
         return main_scene?main_scene->GetRenderFramework():nullptr;
     }
 
-    CameraControl *SceneNode::GetCameraControl()const
-    {
-        // Scene 已移除摄像机逻辑，这里不再通过 Scene 获取，返回 nullptr
-        return nullptr;
-    }
-
     //void SceneNode::SetRenderable(Mesh *ri)
     //{
     //    render_obj=ri;

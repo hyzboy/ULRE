@@ -80,7 +80,7 @@ namespace hgl
         const graph::CameraInfo *   GetCameraInfo       ()const {return camera_control->GetCameraInfo();}
         graph::CameraControl *      GetCameraControl    ()      {return camera_control;}
 
-        const Vector2i &            GetMouseCoord       ()const{return render_framework->GetMouseCoord();}
+        const Vector2i &            GetMouseCoord       ()const {return render_framework->GetMouseCoord();}
 
     public:
 
