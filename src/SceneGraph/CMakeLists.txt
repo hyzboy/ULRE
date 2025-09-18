@@ -1,13 +1,11 @@
 ﻿set(SG_INCLUDE_PATH     ${ROOT_INCLUDE_PATH}/hgl/graph)
 
 SET(CM_CAMERA_SOURCE    ${SG_INCLUDE_PATH}/camera/Camera.h
-                        ${SG_INCLUDE_PATH}/camera/FrameCamera.h
                         ${SG_INCLUDE_PATH}/camera/CameraControl.h
                         ${SG_INCLUDE_PATH}/camera/LookAtCameraControl.h
                         ${SG_INCLUDE_PATH}/camera/FirstPersonCameraControl.h
                         ${SG_INCLUDE_PATH}/camera/ViewModelCameraControl.h
                         camera/Camera.cpp
-                        camera/FrameCamera.cpp
                         camera/FirstPersonCameraControl.cpp)
 
 SOURCE_GROUP("Camera" FILES ${CM_CAMERA_SOURCE})
