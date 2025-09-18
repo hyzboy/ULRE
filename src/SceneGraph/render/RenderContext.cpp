@@ -7,11 +7,11 @@ namespace hgl::graph
 {
     extern LineRenderManager *CreateLineRenderManager(RenderFramework *,IRenderTarget *); // forward factory
 
-    // ---------------- RenderContext ----------------
     RenderContext::RenderContext(RenderFramework *rf,IRenderTarget *rt)
     {
         this->rf = rf;
         render_target = rt;
+        viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
         if(rf)
         {
@@ -37,6 +37,7 @@ namespace hgl::graph
         camera_control = nullptr; // not owner
         scene = nullptr;
         render_target = nullptr;
+        viewport_info = nullptr;
     }
 
     void RenderContext::SetRenderTarget(IRenderTarget *rt)
@@ -45,9 +46,10 @@ namespace hgl::graph
             return;
 
         render_target = rt;
+        viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
-        if(camera_control && render_target)
-            camera_control->SetViewport(render_target->GetViewportInfo());
+        if(camera_control && viewport_info)
+            camera_control->SetViewport(viewport_info);
 
         if(render_target)
         {
@@ -70,19 +72,19 @@ namespace hgl::graph
 
         if(camera_control)
         {
-            if(render_target)
-                camera_control->SetViewport(render_target->GetViewportInfo());
+            if(viewport_info)
+                camera_control->SetViewport(viewport_info);
 
-            camera_control->SetCamera(GetCamera(),GetCameraInfo());
+            camera_control->SetCamera(&camera, ubo_camera_info ? ubo_camera_info->data() : nullptr);
         }
     }
 
     void RenderContext::Tick(double)
     {
-        if(camera_control && ubo_camera_info && render_target)
+        if(camera_control && ubo_camera_info)
         {
             camera_control->Refresh();
-            UpdateCameraUBO();
+            ubo_camera_info->Update();
         }
     }
 
