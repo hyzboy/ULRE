@@ -56,35 +56,5 @@ namespace hgl::graph
                 CameraInfo *    GetCameraInfo   ()const{return camera_info;}
 
         virtual void Refresh()=0;
-
-    public:
-
-        bool SetMouseRay(Ray *,const Vector2i &);
-
-        const Vector3f LocalToViewSpace(const Matrix4f &l2w,const Vector3f &local_pos)const
-        {
-            if(!vi||!camera_info)return(Vector3f(0,0,0));
-
-            const Vector4f clip_pos=camera_info->LocalToViewSpace(l2w,local_pos);
-
-            if(clip_pos.w==0.0f)
-                return(Vector3f(0,0,0));
-
-            return Vector3f(clip_pos.x/clip_pos.w,clip_pos.y/clip_pos.w,clip_pos.z/clip_pos.w);
-        }
-
-        const Vector2i WorldPositionToScreen(const Vector3f &wp)const                       ///<世界坐标转换为屏幕坐标
-        {
-            if(!vi||!camera_info)return(Vector2i(0,0));
-
-            return ProjectToScreen(wp,camera_info->view,camera_info->projection,vi->GetViewportWidth(),vi->GetViewportHeight());
-        }
-
-        const Vector3f ScreenPositionToWorld(const Vector2i &sp)const                       ///<屏幕坐标转换为世界坐标
-        {
-            if(!vi||!camera_info)return(Vector3f(0,0,0));
-
-            return UnProjectToWorld(sp,camera_info->view,camera_info->projection,vi->GetViewportWidth(),vi->GetViewportHeight());
-        }
     };//class CameraControl
 }//namespace hgl::graph
