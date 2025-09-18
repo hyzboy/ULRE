@@ -33,17 +33,6 @@ namespace hgl
         }
     }
 
-    void WorkObject::BindSceneAndCameraControl()
-    {
-        if(!camera_control)
-            return;
-
-        camera_control->SetViewport(GetViewportInfo());
-
-        if(scene_renderer)
-            scene_renderer->SetCameraControl(camera_control);
-    }
-
     void WorkObject::OnChangeCameraControl(graph::CameraControl *new_cc)
     {
         if(camera_control)
@@ -62,7 +51,8 @@ namespace hgl
         {        
             GetRenderFramework()->AddChildDispatcher(camera_control);
 
-            BindSceneAndCameraControl();
+            if(scene_renderer)
+                scene_renderer->SetCameraControl(camera_control);
         }
     }
 
@@ -105,7 +95,8 @@ namespace hgl
         scene=rf->GetDefaultScene();
         scene_renderer=rf->GetDefaultSceneRenderer();
 
-        BindSceneAndCameraControl();
+        if(camera_control)
+            scene_renderer->SetCameraControl(camera_control);
     }
 
     void WorkObject::Tick(double delta)
