@@ -165,6 +165,7 @@ SET(SG_RENDER_SOURCE    ${SG_INCLUDE_PATH}/DrawNode.h
                         ${SG_INCLUDE_PATH}/RenderTask.h
                         ${SG_INCLUDE_PATH}/RenderContext.h
                         ${SG_INCLUDE_PATH}/SceneRenderer.h
+                        render/RenderContext.cpp
                         render/SceneRenderer.cpp
                         render/DrawNode.cpp
                         render/RenderTask.cpp
