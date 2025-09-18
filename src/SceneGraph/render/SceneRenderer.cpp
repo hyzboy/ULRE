@@ -16,10 +16,7 @@ namespace hgl::graph
         render_target=rt;
         scene=nullptr;
 
-        camera = new Camera();                                 // 新建摄像机
-        ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
-        camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
-        camera_desc_binding->AddUBO(ubo_camera_info);
+        frame_camera=new FrameCamera(rf);
 
         camera_control=nullptr;
 
@@ -35,9 +32,7 @@ namespace hgl::graph
     {
         SAFE_CLEAR(render_task);
         SAFE_CLEAR(line_render_manager);
-        SAFE_CLEAR(camera_desc_binding);
-        SAFE_CLEAR(ubo_camera_info);
-        delete camera; camera=nullptr;
+        SAFE_CLEAR(frame_camera);
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
@@ -46,6 +41,9 @@ namespace hgl::graph
             return(true);
 
         render_target=rt;
+
+        if(frame_camera)
+            frame_camera->SetViewportInfo(render_target?render_target->GetViewportInfo():nullptr);
 
         if(camera_control && render_target)
             camera_control->SetViewport(render_target->GetViewportInfo());
@@ -69,8 +67,6 @@ namespace hgl::graph
             return;
 
         scene=sw;
-
-        // 不再把camera_control传回Scene，Scene已经移除摄像机逻辑
     }
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
@@ -83,11 +79,12 @@ namespace hgl::graph
 
         camera_control=cc;
 
-        if(camera_control)
+        if(camera_control && frame_camera)
         {
             if(render_target)
                 camera_control->SetViewport(render_target->GetViewportInfo());
-            camera_control->SetCamera(camera,ubo_camera_info->data());
+
+            camera_control->SetCamera(frame_camera->GetCamera(),frame_camera->GetCameraInfo());
         }
 
         render_task->SetCameraInfo(GetCameraInfo());
@@ -95,15 +92,14 @@ namespace hgl::graph
 
     void SceneRenderer::Tick(double delta)
     {
-        // 摄像机更新
-        if(camera_control)
+        if(camera_control && frame_camera)
         {
             camera_control->Refresh();
-            ubo_camera_info->Update();
+            frame_camera->UpdateUBO();
         }
 
         if(scene)
-            scene->Tick(delta);   // Scene 现在不再更新摄像机，仅做自身逻辑
+            scene->Tick(delta);
     }
     
     bool SceneRenderer::RenderFrame()
@@ -118,16 +114,14 @@ namespace hgl::graph
 
         root->UpdateWorldTransform();
 
-        // 这里内部会将Scene tree展开成RenderCollector,而RenderCollector排序是需要CameraInfo的
         render_task->RebuildRenderList(root);
 
         bool result = false;
 
         RenderCmdBuffer *cmd = render_target->BeginRender();
 
-        // 先绑定摄像机，再绑定场景
-        if(camera_desc_binding)
-            cmd->SetDescriptorBinding(camera_desc_binding);
+        if(frame_camera)
+            cmd->SetDescriptorBinding(frame_camera->GetDescriptorBinding());
         scene->BindDescriptor(cmd);
 
         cmd->SetClearColor(0,clear_color);
