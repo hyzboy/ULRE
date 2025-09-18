@@ -51,7 +51,7 @@ class PipelineMaterialBatch
 
     PipelineMaterialIndex pm_index;
 
-    CameraInfo *camera_info;
+    const CameraInfo *camera_info;
 
     DrawNodeList draw_nodes;
 
@@ -109,7 +109,7 @@ public:
 
     void Add(MeshComponent *);
 
-    void SetCameraInfo(CameraInfo *ci){camera_info=ci;}
+    void SetCameraInfo(const CameraInfo *ci){camera_info=ci;}
 
     void Clear(){draw_nodes.Clear();}
 

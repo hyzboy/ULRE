@@ -3,6 +3,7 @@
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/Sky.h>
+#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/io/event/EventDispatcher.h>
 
 namespace hgl::graph
@@ -27,13 +28,21 @@ namespace hgl::graph
 
         SceneNode *root_node;                           ///<场景根节点
 
-        CameraControl *camera_control = nullptr;        ///<相机控制器
+    protected:  // 相机
+
+        Camera *            camera              = nullptr;
+        UBOCameraInfo *     ubo_camera_info     = nullptr;
+        DescriptorBinding * camera_desc_binding = nullptr;
+
+        CameraControl *     camera_control      = nullptr;
+
+    protected:  // 线段渲染
 
         LineRenderManager * line_render_manager =nullptr;
 
     protected:
 
-        DescriptorBinding * descriptor_binding  =nullptr;   ///<场景通用描述符绑定器
+        DescriptorBinding * scene_desc_binding  =nullptr;   ///<场景通用描述符绑定器
 
         UBOSkyInfo *        ubo_sky_info        =nullptr;   ///<天空信息UBO
 
@@ -49,6 +58,8 @@ namespace hgl::graph
 
         RenderFramework *   GetRenderFramework()const{return render_framework;}
 
+        Camera *            GetCamera       ()const{return camera;}
+        CameraInfo *        GetCameraInfo   ()const{return ubo_camera_info->data();}
         CameraControl *     GetCameraControl()const{return camera_control;}
 
         LineRenderManager * GetLineRenderManager()const{return line_render_manager;}///<获取线段渲染管理器
@@ -60,7 +71,16 @@ namespace hgl::graph
 
         void SetCameraControl(CameraControl *cc)
         {
+            if(camera_control==cc)
+                return;
+
+            if(camera_control)
+                camera_control->SetCamera(nullptr,nullptr);
+
             camera_control=cc;
+
+            if(camera_control)
+                camera_control->SetCamera(camera,GetCameraInfo());
         }
 
         io::EventDispatcher &GetEventDispatcher()  ///<获取事件分发器
@@ -68,7 +88,9 @@ namespace hgl::graph
             return event_dispatcher;
         }
 
-        DescriptorBinding *GetDescriptorBinding()const { return descriptor_binding; }///<获取场景通用描述符绑定器
+        virtual void BindDescriptor(RenderCmdBuffer *);
+
+        virtual void Tick(double);
     };//class Scene
 
     bool RegisterScene(Scene *sw);                      ///<注册场景

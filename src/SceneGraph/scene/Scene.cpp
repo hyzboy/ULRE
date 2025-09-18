@@ -50,7 +50,7 @@ namespace hgl::graph
     {
         render_framework=rf;
 
-        descriptor_binding=new DescriptorBinding(DescriptorSetType::Scene);
+        scene_desc_binding=new DescriptorBinding(DescriptorSetType::Scene);
 
         {
             ubo_sky_info=rf->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo);
@@ -67,9 +67,19 @@ namespace hgl::graph
             //    second=local_tm.tm_sec;
             //}
 
-            ubo_sky_info->data()->SetTime(10,0,0);  //早上10点
+            {
+                ubo_sky_info->data()->SetTime(10,0,0);  //早上10点
 
-            descriptor_binding->AddUBO(ubo_sky_info);
+                scene_desc_binding->AddUBO(ubo_sky_info);
+            }
+
+            {
+                camera = new Camera();
+
+                ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
+                camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
+                camera_desc_binding->AddUBO(ubo_camera_info);
+            }
 
             line_render_manager=CreateLineRenderManager(rf,rf->GetSwapchainRenderTarget());       //先用默认的RenderTarget，未来可能会需要动态切RenderTarget。到时候再说了。
         }
@@ -79,8 +89,28 @@ namespace hgl::graph
 
     Scene::~Scene()
     {
+        SAFE_CLEAR(camera_desc_binding);
+        SAFE_CLEAR(ubo_camera_info);
+        delete camera;
+
         SAFE_CLEAR(line_render_manager);
         SAFE_CLEAR(root_node);
-        SAFE_CLEAR(descriptor_binding);
+        SAFE_CLEAR(scene_desc_binding);
+    }
+
+    void Scene::Tick(double)
+    {
+        if(camera_control)
+        {
+            camera_control->Refresh();
+
+            ubo_camera_info->Update();
+        }
+    }
+
+    void Scene::BindDescriptor(RenderCmdBuffer *cmd)
+    {
+        cmd->SetDescriptorBinding(camera_desc_binding);
+        cmd->SetDescriptorBinding(scene_desc_binding);
     }
 }//namespace hgl::graph

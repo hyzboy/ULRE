@@ -48,7 +48,7 @@ namespace hgl::graph
         return(true);
     }
 
-    void RenderTask::SetCameraInfo(CameraInfo *ci)
+    void RenderTask::SetCameraInfo(const CameraInfo *ci)
     {
         if(camera_info==ci)return;
 
