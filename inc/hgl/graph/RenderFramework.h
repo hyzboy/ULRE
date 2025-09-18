@@ -40,6 +40,7 @@ class RenderModule;
 
 class Scene;
 class SceneRenderer;
+class LineRenderManager; // forward
 
 class CameraComponentManager{/*现阶段测试使用*/};
 class LightComponentManager{/*现阶段测试使用*/};
@@ -121,7 +122,7 @@ public:
 
     RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}
 
-    LineRenderManager *     GetLineRenderManager    (){return default_scene->GetLineRenderManager();}
+    LineRenderManager *     GetLineRenderManager    (){return default_scene_renderer?default_scene_renderer->GetLineRenderManager():nullptr;}
 
 public:
 
@@ -236,8 +237,8 @@ public: // Primitive, Mesh
                             const std::initializer_list<graph::VertexAttribDataPtr> &vad_list);
 
 
-    Mesh *CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(r,mi,p);}
-    Mesh *CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(pc,mi,p);}
+    Mesh *CreateMesh(Primitive *r, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(r,mi,p);}    
+    Mesh *CreateMesh(PrimitiveCreater *pc, MaterialInstance *mi, Pipeline *p){return mesh_manager->CreateMesh(pc,mi,p);}    
 
 public: // ComponentManager
 

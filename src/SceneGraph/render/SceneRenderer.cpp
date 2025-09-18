@@ -5,9 +5,12 @@
 #include<hgl/graph/camera/Camera.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
+#include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph
 {
+    extern LineRenderManager *CreateLineRenderManager(RenderFramework *,IRenderTarget *); // forward factory
+
     SceneRenderer::SceneRenderer(RenderFramework *rf,IRenderTarget *rt)
     {
         render_target=rt;
@@ -17,12 +20,16 @@ namespace hgl::graph
 
         render_task=new RenderTask("DefaultRenderTask",rt);
 
+        if(rf && rt)
+            line_render_manager=CreateLineRenderManager(rf,rt);
+
         clear_color.Set(0,0,0,1);
     }
 
     SceneRenderer::~SceneRenderer()
     {
         delete render_task;
+        delete line_render_manager;
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
@@ -37,6 +44,16 @@ namespace hgl::graph
 
         render_task->SetRenderTarget(rt);
 
+        // 线段渲染管理器需要重新创建以适应新的 RenderPass
+        // 简单实现: 删除旧的重新创建
+        // (可优化为检测 rp 是否变化再处理)
+        // 需要 scene 的 RenderFramework
+        if(scene)
+        {
+            delete line_render_manager;
+            line_render_manager=CreateLineRenderManager(scene->GetRenderFramework(),rt);
+        }
+
         return(true);
     }
 
@@ -47,8 +64,11 @@ namespace hgl::graph
 
         scene=sw;
 
-        if(camera_control)
+        if(camera_control && scene)
             scene->SetCameraControl(camera_control);
+
+        if(scene && !line_render_manager && render_target)
+            line_render_manager=CreateLineRenderManager(scene->GetRenderFramework(),render_target);
     }
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
@@ -66,7 +86,8 @@ namespace hgl::graph
 
     void SceneRenderer::Tick(double delta)
     {
-        scene->Tick(delta);
+        if(scene)
+            scene->Tick(delta);
     }
     
     bool SceneRenderer::RenderFrame()
@@ -96,7 +117,8 @@ namespace hgl::graph
 
         result=render_task->Render(cmd);
 
-        scene->RenderLines(cmd);
+        if(line_render_manager)
+            line_render_manager->Draw(cmd);
 
         cmd->EndRenderPass();
 

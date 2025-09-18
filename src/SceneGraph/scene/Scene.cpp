@@ -80,8 +80,6 @@ namespace hgl::graph
                 camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
                 camera_desc_binding->AddUBO(ubo_camera_info);
             }
-
-            line_render_manager=CreateLineRenderManager(rf,rf->GetSwapchainRenderTarget());       //先用默认的RenderTarget，未来可能会需要动态切RenderTarget。到时候再说了。
         }
 
         root_node=new SceneNode(this);
@@ -93,7 +91,6 @@ namespace hgl::graph
         SAFE_CLEAR(ubo_camera_info);
         delete camera;
 
-        SAFE_CLEAR(line_render_manager);
         SAFE_CLEAR(root_node);
         SAFE_CLEAR(scene_desc_binding);
     }
@@ -112,10 +109,5 @@ namespace hgl::graph
     {
         cmd->SetDescriptorBinding(camera_desc_binding);
         cmd->SetDescriptorBinding(scene_desc_binding);
-    }
-
-    void Scene::RenderLines(RenderCmdBuffer *cmd)
-    {
-        line_render_manager->Draw(cmd);
     }
 }//namespace hgl::graph

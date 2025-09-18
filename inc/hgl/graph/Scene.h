@@ -10,8 +10,6 @@ namespace hgl::graph
 {
     class RenderFramework;
 
-    class LineRenderManager;
-
     using UBOSkyInfo=UBOInstance<SkyInfo>;
 
     /**
@@ -36,10 +34,6 @@ namespace hgl::graph
 
         CameraControl *     camera_control      = nullptr;
 
-    protected:  // 线段渲染
-
-        LineRenderManager * line_render_manager =nullptr;
-
     protected:
 
         DescriptorBinding * scene_desc_binding  =nullptr;   ///<场景通用描述符绑定器
@@ -61,8 +55,6 @@ namespace hgl::graph
         Camera *            GetCamera       ()const{return camera;}
         CameraInfo *        GetCameraInfo   ()const{return ubo_camera_info->data();}
         CameraControl *     GetCameraControl()const{return camera_control;}
-
-        LineRenderManager * GetLineRenderManager()const{return line_render_manager;}///<获取线段渲染管理器
 
     public:
 
@@ -89,8 +81,6 @@ namespace hgl::graph
         }
 
         virtual void BindDescriptor(RenderCmdBuffer *);
-
-        virtual void RenderLines(RenderCmdBuffer *);
 
         virtual void Tick(double);
     };//class Scene
