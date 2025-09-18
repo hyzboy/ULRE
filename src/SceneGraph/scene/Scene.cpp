@@ -54,32 +54,8 @@ namespace hgl::graph
 
         {
             ubo_sky_info=rf->CreateUBO<UBOSkyInfo>(&mtl::SBS_SkyInfo);
-
-            //float hour;
-            //float minute;
-            //float second;
-            //{
-            //    const auto now=std::chrono::system_clock::now();
-            //    const auto tt=std::chrono::system_clock::to_time_t(now);
-            //    const auto local_tm=*localtime(&tt);
-            //    hour=local_tm.tm_hour;
-            //    minute=local_tm.tm_min;
-            //    second=local_tm.tm_sec;
-            //}
-
-            {
-                ubo_sky_info->data()->SetTime(10,0,0);  //早上10点
-
-                scene_desc_binding->AddUBO(ubo_sky_info);
-            }
-
-            {
-                camera = new Camera();
-
-                ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
-                camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
-                camera_desc_binding->AddUBO(ubo_camera_info);
-            }
+            ubo_sky_info->data()->SetTime(10,0,0);  //早上10点
+            scene_desc_binding->AddUBO(ubo_sky_info);
         }
 
         root_node=new SceneNode(this);
@@ -87,27 +63,12 @@ namespace hgl::graph
 
     Scene::~Scene()
     {
-        SAFE_CLEAR(camera_desc_binding);
-        SAFE_CLEAR(ubo_camera_info);
-        delete camera;
-
         SAFE_CLEAR(root_node);
         SAFE_CLEAR(scene_desc_binding);
     }
 
-    void Scene::Tick(double)
-    {
-        if(camera_control)
-        {
-            camera_control->Refresh();
-
-            ubo_camera_info->Update();
-        }
-    }
-
     void Scene::BindDescriptor(RenderCmdBuffer *cmd)
     {
-        cmd->SetDescriptorBinding(camera_desc_binding);
         cmd->SetDescriptorBinding(scene_desc_binding);
     }
 }//namespace hgl::graph

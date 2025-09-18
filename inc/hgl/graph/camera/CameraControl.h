@@ -9,8 +9,6 @@ namespace hgl::graph
 {
     struct Ray;
 
-    using UBOCameraInfo=UBOInstance<CameraInfo>;
-
     HGL_DEFINE_IDNAME(CameraControlIDName,   char)
 
     class CameraControl:public io::WindowEvent

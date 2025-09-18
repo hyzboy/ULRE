@@ -3,7 +3,6 @@
 #include<hgl/graph/SceneNode.h>
 #include<hgl/graph/VKDescriptorBindingManage.h>
 #include<hgl/graph/Sky.h>
-#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/io/event/EventDispatcher.h>
 
 namespace hgl::graph
@@ -26,17 +25,9 @@ namespace hgl::graph
 
         SceneNode *root_node;                           ///<场景根节点
 
-    protected:  // 相机
-
-        Camera *            camera              = nullptr;
-        UBOCameraInfo *     ubo_camera_info     = nullptr;
-        DescriptorBinding * camera_desc_binding = nullptr;
-
-        CameraControl *     camera_control      = nullptr;
-
     protected:
 
-        DescriptorBinding * scene_desc_binding  =nullptr;   ///<场景通用描述符绑定器
+        DescriptorBinding * scene_desc_binding  =nullptr;   ///<场景通用描述符绑定器(仅包含与场景相关的公用UBO，如天空等)
 
         UBOSkyInfo *        ubo_sky_info        =nullptr;   ///<天空信息UBO
 
@@ -52,37 +43,21 @@ namespace hgl::graph
 
         RenderFramework *   GetRenderFramework()const{return render_framework;}
 
-        Camera *            GetCamera       ()const{return camera;}
-        CameraInfo *        GetCameraInfo   ()const{return ubo_camera_info->data();}
-        CameraControl *     GetCameraControl()const{return camera_control;}
-
     public:
 
         Scene(RenderFramework *rf);
         virtual ~Scene();
-
-        void SetCameraControl(CameraControl *cc)
-        {
-            if(camera_control==cc)
-                return;
-
-            if(camera_control)
-                camera_control->SetCamera(nullptr,nullptr);
-
-            camera_control=cc;
-
-            if(camera_control)
-                camera_control->SetCamera(camera,GetCameraInfo());
-        }
 
         io::EventDispatcher &GetEventDispatcher()  ///<获取事件分发器
         {
             return event_dispatcher;
         }
 
+        // 仅绑定场景级描述符（不再包含摄像机相关）
         virtual void BindDescriptor(RenderCmdBuffer *);
 
-        virtual void Tick(double);
+        // 场景自身逐帧更新（摄像机更新已移至 SceneRenderer）
+        virtual void Tick(double){}
     };//class Scene
 
     bool RegisterScene(Scene *sw);                      ///<注册场景
