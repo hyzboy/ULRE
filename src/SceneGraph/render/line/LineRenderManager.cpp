@@ -78,8 +78,42 @@ namespace hgl::graph
         return mgr;
     }
 
-    void LineRenderManager::SetRenderTarget(IRenderTarget *)
+    void LineRenderManager::SetRenderTarget(IRenderTarget *rt)
     {
+        if(!rt || !mi_line)
+            return;
+
+        RenderPass *rp = rt->GetRenderPass();
+        if(!rp)
+            return;
+
+        // 若新的 RenderPass 与旧的 Pipeline 使用的 render pass 相同，可直接返回
+        // (无法直接比较，只能简单重建；若底层具备等价性判断，可在此添加判断)
+
+        // 重新创建 pipeline
+        Pipeline *new_pipeline = nullptr;
+        if(support_wide_lines)
+            new_pipeline = rp->CreatePipeline(mi_line,InlinePipeline::DynamicLineWidth3D);
+        else
+            new_pipeline = rp->CreatePipeline(mi_line,InlinePipeline::Solid3D);
+
+        if(!new_pipeline)
+            return; // 保持旧 pipeline 继续工作
+
+        pipeline = new_pipeline;
+
+        // 更新所有 LineWidthBatch 使用的新 pipeline
+        if(support_wide_lines)
+        {
+            for(size_t i=0;i<MAX_LINE_WIDTH;i++)
+            {
+                line_groups[i].UpdatePipeline(pipeline);
+            }
+        }
+        else
+        {
+            line_groups[0].UpdatePipeline(pipeline);
+        }
     }
 
     LineRenderManager::LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp)

@@ -57,4 +57,7 @@ public:
     // expose count for manager usage
     uint32 GetCount() const { return count; }
     void SetCount(uint32 v) { count = v; }
+
+    // 新增：更新 Pipeline（RenderTarget 改变后重建的 Pipeline）
+    void UpdatePipeline(Pipeline *p);
 };
