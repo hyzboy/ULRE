@@ -2,14 +2,18 @@
 
 #include<hgl/graph/RenderTask.h>
 #include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/type/Map.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
+#include<hgl/graph/camera/CameraControl.h>
 
 namespace hgl::graph
 {
     class Scene;
-    class CameraControl;
+    struct Camera;                 // forward declare Camera
+
+    using UBOCameraInfo = UBOInstance<CameraInfo>;
 
     using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
 
@@ -21,7 +25,11 @@ namespace hgl::graph
         IRenderTarget *     render_target       = nullptr;
         Scene *             scene               = nullptr;
 
-        CameraControl *     camera_control      = nullptr;
+        // 摄像机相关（从 Scene 迁移）
+        Camera *              camera              = nullptr;
+        UBOCameraInfo *       ubo_camera_info     = nullptr;   ///< 摄像机UBO
+        DescriptorBinding *   camera_desc_binding = nullptr;   ///< 摄像机描述符绑定
+        CameraControl *       camera_control      = nullptr;   ///< 摄像机控制
 
         RenderTask *        render_task         = nullptr;                      ///<当前渲染任务
 
@@ -42,8 +50,9 @@ namespace hgl::graph
         const   VkExtent2D &        GetExtent           ()const {return render_target->GetExtent();}                    ///<取得当前渲染器画面尺寸
 
                 Scene *             GetScene            ()const {return scene;}                                         ///<获取场景世界
-                Camera *            GetCamera           ()const {return scene?scene->GetCamera():nullptr;}              ///<获取当前相机
-        const   CameraInfo *        GetCameraInfo       ()const {return scene?scene->GetCameraInfo():nullptr;}          ///<获取当前相机信息
+                Camera *            GetCamera           ()const {return camera;}                                        ///<获取当前相机
+        const   CameraInfo *        GetCameraInfo       ()const {return ubo_camera_info?ubo_camera_info->data():nullptr;}///<获取当前相机信息
+                CameraControl *     GetCameraControl    ()const {return camera_control;}                                 ///<获取相机控制器
 
                 LineRenderManager * GetLineRenderManager()const {return line_render_manager;}                           ///<取得线条渲染管理器
 

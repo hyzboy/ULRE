@@ -13,13 +13,14 @@ namespace hgl::graph
 
     CameraControl *SceneNode::GetCameraControl()const
     {
-        return main_scene?main_scene->GetCameraControl():nullptr;
+        // Scene 已移除摄像机逻辑，这里不再通过 Scene 获取，返回 nullptr
+        return nullptr;
     }
 
     //void SceneNode::SetRenderable(Mesh *ri)
     //{
     //    render_obj=ri;
-
+    //
     //    if(render_obj)
     //    {
     //        SetBoundingBox(render_obj->GetBoundingBox());
@@ -27,7 +28,7 @@ namespace hgl::graph
     //    else
     //    {
     //        bounding_box.SetZero();
-
+    //
     //        //WorldBoundingBox=
     //            local_bounding_box=bounding_box;
     //    }
