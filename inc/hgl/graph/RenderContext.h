@@ -1,80 +1,46 @@
 #pragma once
 
-#include<hgl/graph/camera/Camera.h>
+#include<hgl/graph/VKRenderTarget.h>
+#include<hgl/graph/camera/FrameCamera.h>
+#include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/Ray.h>
+#include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph
 {
+    /** 渲染上下文，聚合与单帧渲染相关资源(可持续扩展) */
     class RenderContext
     {
-        const ViewportInfo *  vi          = nullptr;
-        const Camera *        camera      = nullptr;
-        const CameraInfo *    camera_info = nullptr;
-
-        uint64          frame_count = 0;    //帧计数器
-
-        double          time        = 0;    //当前时间(单位秒)
-
-    private:
-
-        friend class SceneRenderer;
-
-        void SetViewportInfo(const ViewportInfo *v){ vi = v; }
-        void SetCamera(const Camera *c,const CameraInfo *ci){ camera = c;camera_info = ci; }
+        RenderFramework *rf = nullptr;
+        IRenderTarget *render_target = nullptr;    ///< 当前渲染目标(用于viewport信息)
+        Scene *scene = nullptr;    ///< 场景指针(不负责释放)
+        FrameCamera *frame_camera = nullptr;    ///< 摄像机数据封装
+        CameraControl *camera_control = nullptr;    ///< 摄像机控制(策略指针,不负责释放)
+        LineRenderManager *line_render_mgr = nullptr;    ///< 线段渲染管理器
 
     public:
 
-        const ViewportInfo *GetViewportInfo ()const{ return vi; }
-        const Camera *      GetCamera       ()const{ return camera; }
-        const CameraInfo *  GetCameraInfo   ()const{ return camera_info; }
+        RenderContext(RenderFramework *rf,IRenderTarget *rt);
+        ~RenderContext();
 
-        uint64              GetFrameCount   ()const{ return frame_count; }
-        double              GetTime         ()const{ return time; }
+        void            SetRenderTarget(IRenderTarget *rt);
+        void            SetScene(Scene *s){ scene = s; }
+        void            SetCameraControl(CameraControl *cc);
 
-    public:
+        // 每帧更新
+        void            Tick(double delta);
 
-        RenderContext()=default;
-        ~RenderContext()=default;
+        // 绑定描述符：摄像机 + 场景
+        void            BindDescriptor(RenderCmdBuffer *cmd);
 
-        void NextFrame(double delta)
-        {
-            ++frame_count;
-            time+=delta;
-        }
-
-        bool SetMouseRay(Ray *ray,const Vector2i &mouse_coord)
-        {
-            if(!ray || !camera_info || !vi)return(false);
-
-            ray->Set(mouse_coord,camera_info,vi);
-
-            return(true);
-        }
-
-        const Vector3f LocalToViewSpace(const Matrix4f &l2w,const Vector3f &local_pos)const
-        {
-            if(!vi || !camera_info)return(Vector3f(0,0,0));
-
-            const Vector4f clip_pos = camera_info->LocalToViewSpace(l2w,local_pos);
-
-            if(clip_pos.w == 0.0f)
-                return(Vector3f(0,0,0));
-
-            return Vector3f(clip_pos.x / clip_pos.w,clip_pos.y / clip_pos.w,clip_pos.z / clip_pos.w);
-        }
-
-        const Vector2i WorldPositionToScreen(const Vector3f &wp)const                       ///<世界坐标转换为屏幕坐标
-        {
-            if(!vi || !camera_info)return(Vector2i(0,0));
-
-            return ProjectToScreen(wp,camera_info->view,camera_info->projection,vi->GetViewportWidth(),vi->GetViewportHeight());
-        }
-
-        const Vector3f ScreenPositionToWorld(const Vector2i &sp)const                       ///<屏幕坐标转换为世界坐标
-        {
-            if(!vi || !camera_info)return(Vector3f(0,0,0));
-
-            return UnProjectToWorld(sp,camera_info->view,camera_info->projection,vi->GetViewportWidth(),vi->GetViewportHeight());
-        }
+        // 访问器
+        Scene *GetScene()const{ return scene; }
+        FrameCamera *GetFrameCamera()const{ return frame_camera; }
+        Camera *GetCamera()const{ return frame_camera ? frame_camera->GetCamera() : nullptr; }
+        const CameraInfo *GetCameraInfo()const{ return frame_camera ? frame_camera->GetCameraInfo() : nullptr; }
+        CameraControl *GetCameraControl()const{ return camera_control; }
+        LineRenderManager *GetLineRenderManager()const{ return line_render_mgr; }
+        const ViewportInfo *GetViewportInfo()const{ return render_target ? render_target->GetViewportInfo() : nullptr; }
+        const VkExtent2D &GetExtent()const{ return render_target->GetExtent(); }
     };//class RenderContext
 }//namesapce hgl::graph

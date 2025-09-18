@@ -5,13 +5,13 @@
 #include<hgl/graph/VKBuffer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/type/Map.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
-#include<hgl/graph/camera/CameraControl.h>
-#include<hgl/graph/camera/FrameCamera.h>
+#include<hgl/graph/RenderContext.h>
 
 namespace hgl::graph
 {
     class Scene;
+    class RenderContext;    // forward
+    class RenderCmdBuffer;  // forward
 
     using RenderTaskNameMap=Map<RenderTaskName,RenderTask *>;
 
@@ -20,36 +20,27 @@ namespace hgl::graph
     */
     class SceneRenderer
     {
-        IRenderTarget *     render_target       = nullptr;
-        Scene *             scene               = nullptr;
+        IRenderTarget * render_target = nullptr;   ///< 当前渲染目标(便捷缓存)
+        RenderContext * render_context = nullptr;  ///< 渲染上下文
 
-        FrameCamera *       frame_camera        = nullptr;   ///< 当前帧摄像机包装
-        CameraControl *     camera_control      = nullptr;   ///< 摄像机控制
-
-        RenderTask *        render_task         = nullptr;   ///< 当前渲染任务
-
-        LineRenderManager * line_render_manager = nullptr;   ///< 线段渲染管理器(移出Scene)
+        RenderTask *    render_task = nullptr;     ///< 当前渲染任务
 
     protected:
-
-        Color4f clear_color;                                                    ///<清屏颜色
-
-        bool render_state_dirty=false;
+        Color4f clear_color;                       ///< 清屏颜色
+        bool    render_state_dirty=false;
 
     public:
-
                 RenderPass *        GetRenderPass       ()      {return render_target->GetRenderPass();}
-        const   ViewportInfo *      GetViewportInfo     ()const {return render_target->GetViewportInfo();}
-        const   VkExtent2D &        GetExtent           ()const {return render_target->GetExtent();}
+        const   ViewportInfo *      GetViewportInfo     ()const {return render_context?render_context->GetViewportInfo():nullptr;}
+        const   VkExtent2D &        GetExtent           ()const {return render_context->GetExtent();}
 
-                Scene *             GetScene            ()const {return scene;}
-                Camera *            GetCamera           ()const {return frame_camera?frame_camera->GetCamera():nullptr;}
-        const   CameraInfo *        GetCameraInfo       ()const {return frame_camera?frame_camera->GetCameraInfo():nullptr;}
-                CameraControl *     GetCameraControl    ()const {return camera_control;}
-                LineRenderManager * GetLineRenderManager()const {return line_render_manager;}
+                Scene *             GetScene            ()const {return render_context?render_context->GetScene():nullptr;}
+                Camera *            GetCamera           ()const {return render_context?render_context->GetCamera():nullptr;}
+        const   CameraInfo *        GetCameraInfo       ()const {return render_context?render_context->GetCameraInfo():nullptr;}
+                CameraControl *     GetCameraControl    ()const {return render_context?render_context->GetCameraControl():nullptr;}
+                LineRenderManager * GetLineRenderManager()const {return render_context?render_context->GetLineRenderManager():nullptr;}
 
     public:
-
         SceneRenderer(RenderFramework *,IRenderTarget *);
         virtual ~SceneRenderer();
 

@@ -9,30 +9,18 @@
 
 namespace hgl::graph
 {
-    extern LineRenderManager *CreateLineRenderManager(RenderFramework *,IRenderTarget *); // forward factory
-
     SceneRenderer::SceneRenderer(RenderFramework *rf,IRenderTarget *rt)
     {
         render_target=rt;
-        scene=nullptr;
-
-        frame_camera=new FrameCamera(rf);
-
-        camera_control=nullptr;
-
+        render_context=new RenderContext(rf,rt);
         render_task=new RenderTask("DefaultRenderTask",rt);
-
-        if(rf && rt)
-            line_render_manager=CreateLineRenderManager(rf,rt);
-
         clear_color.Set(0,0,0,1);
     }
 
     SceneRenderer::~SceneRenderer()
     {
         SAFE_CLEAR(render_task);
-        SAFE_CLEAR(line_render_manager);
-        SAFE_CLEAR(frame_camera);
+        SAFE_CLEAR(render_context);
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
@@ -42,112 +30,71 @@ namespace hgl::graph
 
         render_target=rt;
 
-        if(frame_camera)
-            frame_camera->SetViewportInfo(render_target?render_target->GetViewportInfo():nullptr);
-
-        if(camera_control && render_target)
-            camera_control->SetViewport(render_target->GetViewportInfo());
+        if(render_context)
+            render_context->SetRenderTarget(rt);
 
         render_task->SetRenderTarget(rt);
-
-        if(render_target)
-        {
-            if(!line_render_manager)
-                line_render_manager=CreateLineRenderManager(scene->GetRenderFramework(),rt);
-            else
-                line_render_manager->SetRenderTarget(rt);
-        }
-
         return(true);
     }
 
     void SceneRenderer::SetScene(Scene *sw)
     {
-        if(scene==sw)
-            return;
-
-        scene=sw;
+        if(!render_context)return;
+        render_context->SetScene(sw);
     }
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
     {
-        if(camera_control==cc)
-            return;
-
-        if(camera_control)
-            camera_control->SetCamera(nullptr,nullptr);
-
-        camera_control=cc;
-
-        if(camera_control && frame_camera)
-        {
-            if(render_target)
-                camera_control->SetViewport(render_target->GetViewportInfo());
-
-            camera_control->SetCamera(frame_camera->GetCamera(),frame_camera->GetCameraInfo());
-        }
-
+        if(!render_context)return;
+        render_context->SetCameraControl(cc);
         render_task->SetCameraInfo(GetCameraInfo());
     }
 
     void SceneRenderer::Tick(double delta)
     {
-        if(camera_control && frame_camera)
-        {
-            camera_control->Refresh();
-            frame_camera->UpdateUBO();
-        }
+        if(render_context)
+            render_context->Tick(delta);
 
-        if(scene)
-            scene->Tick(delta);
+        if(GetScene())
+            GetScene()->Tick(delta);
     }
     
     bool SceneRenderer::RenderFrame()
     {
-        if(!scene)
+        if(!GetScene())
             return(false);
 
-        SceneNode *root = scene->GetRootNode();
-
+        SceneNode *root = GetScene()->GetRootNode();
         if(!root)
             return(false);
 
         root->UpdateWorldTransform();
-
         render_task->RebuildRenderList(root);
 
         bool result = false;
 
         RenderCmdBuffer *cmd = render_target->BeginRender();
 
-        if(frame_camera)
-            cmd->SetDescriptorBinding(frame_camera->GetDescriptorBinding());
-        scene->BindDescriptor(cmd);
+        render_context->BindDescriptor(cmd);
 
         cmd->SetClearColor(0,clear_color);
-
         cmd->BeginRenderPass();
 
         result=render_task->Render(cmd);
 
-        if(line_render_manager)
-            line_render_manager->Draw(cmd);
+        if(GetLineRenderManager())
+            GetLineRenderManager()->Draw(cmd);
 
         cmd->EndRenderPass();
-
         render_target->EndRender();
 
         render_state_dirty = result;
-
-        return(result);
+        return result;
     }
 
     bool SceneRenderer::Submit()
     {
-        if(!render_target)
-            return(false);
-
-        if(!render_state_dirty)
+        if(!render_target||!render_state_dirty)
             return(false);
 
         return render_target->Submit();

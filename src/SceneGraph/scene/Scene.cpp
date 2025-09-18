@@ -66,9 +66,4 @@ namespace hgl::graph
         SAFE_CLEAR(root_node);
         SAFE_CLEAR(scene_desc_binding);
     }
-
-    void Scene::BindDescriptor(RenderCmdBuffer *cmd)
-    {
-        cmd->SetDescriptorBinding(scene_desc_binding);
-    }
 }//namespace hgl::graph

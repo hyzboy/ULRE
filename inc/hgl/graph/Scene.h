@@ -43,6 +43,8 @@ namespace hgl::graph
 
         RenderFramework *   GetRenderFramework()const{return render_framework;}
 
+        DescriptorBinding * GetDescriptorBinding()const{return scene_desc_binding;}  ///<获取场景描述符绑定器
+
     public:
 
         Scene(RenderFramework *rf);
@@ -52,9 +54,6 @@ namespace hgl::graph
         {
             return event_dispatcher;
         }
-
-        // 仅绑定场景级描述符（不再包含摄像机相关）
-        virtual void BindDescriptor(RenderCmdBuffer *);
 
         // 场景自身逐帧更新（摄像机更新已移至 SceneRenderer）
         virtual void Tick(double){}
