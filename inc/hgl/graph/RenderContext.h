@@ -16,19 +16,36 @@ namespace hgl::graph
     /** 渲染上下文，聚合与单帧渲染相关资源(可持续扩展) */
     class RenderContext
     {
-        RenderFramework *rf = nullptr;
-        IRenderTarget *render_target = nullptr;    ///< 当前渲染目标
-        const ViewportInfo *viewport_info = nullptr; ///< 缓存视口(避免多次调用render_target->GetViewportInfo)
-        Scene *scene = nullptr;                    ///< 场景指针(不负责释放)
-        CameraControl *camera_control = nullptr;   ///< 摄像机控制(策略指针,不负责释放)
-        LineRenderManager *line_render_mgr = nullptr;    ///< 线段渲染管理器
+                RenderFramework *   rf                  = nullptr;
+                IRenderTarget *     render_target       = nullptr;  ///< 当前渲染目标
+        const   ViewportInfo *      viewport_info       = nullptr;  ///< 缓存视口
+                Scene *             scene               = nullptr;  ///< 场景指针(不负责释放)
+                CameraControl *     camera_control      = nullptr;  ///< 摄像机控制(策略指针,不负责释放)
+                LineRenderManager * line_render_mgr     = nullptr;  ///< 线段渲染管理器
 
-        Camera              camera;                 ///< 摄像机数据(值类型)
-        UBOCameraInfo *     ubo_camera_info = nullptr;   ///< 摄像机信息UBO
-        DescriptorBinding * camera_desc_binding = nullptr;   ///< 摄像机描述符绑定(DescriptorSetType::Camera)
+                Camera              camera;                         ///< 摄像机数据(值类型)
+                UBOCameraInfo *     ubo_camera_info     = nullptr;  ///< 摄像机信息UBO
+                DescriptorBinding * camera_desc_binding = nullptr;  ///< 摄像机描述符绑定(DescriptorSetType::Camera)
 
     public:
 
+        const   ViewportInfo *      GetViewportInfo     ()const { return viewport_info; }
+        const   VkExtent2D &        GetExtent           ()const { return render_target->GetExtent(); }
+
+                Camera *            GetCamera           ()      { return &camera; }
+        const   Camera *            GetCamera           ()const { return &camera; }
+
+                CameraInfo *        GetCameraInfo       ()      { return ubo_camera_info ? ubo_camera_info->data() : nullptr; }
+        const   CameraInfo *        GetCameraInfo       ()const { return ubo_camera_info ? ubo_camera_info->data() : nullptr; }
+                CameraControl *     GetCameraControl    ()const { return camera_control; }
+
+                Scene *             GetScene            ()const { return scene; }
+                LineRenderManager * GetLineRenderManager()const { return line_render_mgr; }
+
+    public:
+        // =============================================================
+        // 生命周期 Lifecycle
+        // =============================================================
         RenderContext(RenderFramework *rf,IRenderTarget *rt);
         ~RenderContext();
 
@@ -36,18 +53,17 @@ namespace hgl::graph
         void SetScene(Scene *s){ scene = s; }
         void SetCameraControl(CameraControl *cc);
 
-        // 每帧更新
+    public:
+
         void Tick(double delta);
 
-        // 绑定描述符：摄像机 + 场景
-        void BindDescriptor(RenderCmdBuffer *cmd);
+        void BindDescriptor(RenderCmdBuffer *cmd);   ///< 绑定描述符：摄像机 + 场景
 
-        Camera *GetCamera(){ return &camera; }
-        const Camera *GetCamera() const { return &camera; }
+    public:
 
-        CameraInfo *GetCameraInfo(){ return ubo_camera_info?ubo_camera_info->data():nullptr; }
-        const CameraInfo *GetCameraInfo() const { return ubo_camera_info?ubo_camera_info->data():nullptr; }
-
+        // =============================================================
+        // 摄像机计算/工具 Camera Utility Helpers
+        // =============================================================
         bool SetMouseRay(Ray *ray,const Vector2i &mouse_coord)
         {
             if(!ray || !ubo_camera_info || !viewport_info) return false;
@@ -74,12 +90,5 @@ namespace hgl::graph
             if(!viewport_info || !ubo_camera_info) return {};
             return UnProjectToWorld(sp,ubo_camera_info->data()->view,ubo_camera_info->data()->projection,viewport_info->GetViewportWidth(),viewport_info->GetViewportHeight());
         }
-
-        // 访问器
-        Scene *GetScene()const{ return scene; }
-        CameraControl *GetCameraControl()const{ return camera_control; }
-        LineRenderManager *GetLineRenderManager()const{ return line_render_mgr; }
-        const ViewportInfo *GetViewportInfo()const{ return viewport_info; }
-        const VkExtent2D &GetExtent()const{ return render_target->GetExtent(); }
     };//class RenderContext
 }//namesapce hgl::graph
