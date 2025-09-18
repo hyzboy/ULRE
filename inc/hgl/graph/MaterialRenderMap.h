@@ -9,7 +9,7 @@ public:
     MaterialRenderMap()=default;
     virtual ~MaterialRenderMap()=default;
 
-    void Begin(CameraInfo *ci)
+    void Begin(const CameraInfo *ci)
     {
         for(auto *it:data_list)
         {

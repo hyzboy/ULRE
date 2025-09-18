@@ -16,7 +16,7 @@ namespace hgl::graph
 
         IRenderTarget *     render_target;
         RenderCollector *   render_collector;
-        CameraInfo *        camera_info;
+        const CameraInfo *  camera_info;
 
     public:
 
@@ -24,7 +24,7 @@ namespace hgl::graph
 
                 IRenderTarget *     GetRenderTarget     ()const{return render_target;}
                 RenderCollector *   GetRenderCollector  ()const{return render_collector;}
-                CameraInfo *        GetCameraInfo       ()const{return camera_info;}
+        const   CameraInfo *        GetCameraInfo       ()const{return camera_info;}
 
     public:
 
@@ -33,7 +33,7 @@ namespace hgl::graph
         virtual ~RenderTask();
 
         bool SetRenderTarget(IRenderTarget *);
-        void SetCameraInfo(CameraInfo *);
+        void SetCameraInfo(const CameraInfo *);
 
         bool RebuildRenderList(SceneNode *);
 

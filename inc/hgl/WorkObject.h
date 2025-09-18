@@ -58,8 +58,10 @@ namespace hgl
         graph::Scene *          scene           =nullptr;           //场景
         graph::SceneRenderer *  scene_renderer  =nullptr;           //渲染器
 
+        void BindSceneAndCameraControl();
+
         virtual void OnChangeCameraControl(graph::CameraControl *);
-        virtual void OnCreateCameraControl();
+        virtual void CreateCameraControl();
 
     public:
 

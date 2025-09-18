@@ -13,11 +13,6 @@ namespace hgl::graph
     {
         render_target=rt;
         scene=nullptr;
-        camera = new Camera();
-
-        ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
-        camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
-        camera_desc_binding->AddUBO(ubo_camera_info);
 
         camera_control=nullptr;
 
@@ -31,11 +26,6 @@ namespace hgl::graph
     SceneRenderer::~SceneRenderer()
     {
         delete render_task;
-
-        SAFE_CLEAR(camera_control);
-        delete camera_desc_binding;
-        delete ubo_camera_info;
-        delete camera;
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
@@ -115,9 +105,6 @@ namespace hgl::graph
         if(scene)
             scene->SetCameraControl(camera_control);
 
-        if(camera_control)
-            camera_control->SetCamera(camera,ubo_camera_info->data());
-
         //if(camera)
         //{
         //    if(scene)
@@ -126,18 +113,12 @@ namespace hgl::graph
         //    camera->Join(this);
         //}
 
-        render_task->SetCameraInfo(ubo_camera_info->data());
+        render_task->SetCameraInfo(GetCameraInfo());
     }
 
     void SceneRenderer::Tick(double delta)
     {
-        if(camera_control)
-        {
-            camera_control->Refresh();
-
-            if(ubo_camera_info)
-                ubo_camera_info->Update();
-        }
+        scene->Tick(delta);
     }
     
     bool SceneRenderer::RenderFrame()
@@ -159,12 +140,7 @@ namespace hgl::graph
 
         RenderCmdBuffer *cmd = render_target->BeginRender();
 
-        cmd->SetDescriptorBinding(camera_desc_binding);
-
-        if(scene)
-        {
-            cmd->SetDescriptorBinding(scene->GetDescriptorBinding());
-        }
+        scene->BindDescriptor(cmd);
 
         cmd->SetClearColor(0,clear_color);
 

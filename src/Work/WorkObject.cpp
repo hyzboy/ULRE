@@ -9,6 +9,7 @@
 #include<hgl/graph/font/TextRender.h>
 #include<hgl/graph/camera/CameraControl.h>
 #include<hgl/graph/camera/FirstPersonCameraControl.h>
+#include<hgl/graph/camera/ViewModelCameraControl.h>
 #include<hgl/Time.h>
 //#include<iostream>
 
@@ -20,7 +21,7 @@ namespace hgl
             scene_renderer=rf->GetDefaultSceneRenderer();
 
         OnSceneRendererChange(rf,scene_renderer);
-        OnCreateCameraControl();
+        CreateCameraControl();
     }
 
     WorkObject::~WorkObject()
@@ -30,6 +31,17 @@ namespace hgl
             GetRenderFramework()->RemoveChildDispatcher(camera_control);
             delete camera_control;
         }
+    }
+
+    void WorkObject::BindSceneAndCameraControl()
+    {
+        if(!camera_control)
+            return;
+
+        camera_control->SetViewport(GetViewportInfo());
+
+        if(scene_renderer)
+            scene_renderer->SetCameraControl(camera_control);
     }
 
     void WorkObject::OnChangeCameraControl(graph::CameraControl *new_cc)
@@ -50,24 +62,30 @@ namespace hgl
         {        
             GetRenderFramework()->AddChildDispatcher(camera_control);
 
-            camera_control->SetViewport(GetViewportInfo());
-
-            if(scene_renderer)
-                scene_renderer->SetCameraControl(camera_control);
+            BindSceneAndCameraControl();
         }
     }
 
-    void WorkObject::OnCreateCameraControl()
+    void WorkObject::CreateCameraControl()
     {
-        auto fpcc = new graph::FirstPersonCameraControl();
+        {
+            auto fpcc = new graph::FirstPersonCameraControl();
 
-        auto ckc = new graph::CameraKeyboardControl(fpcc);
-        auto cmc = new graph::CameraMouseControl(fpcc);
+            auto ckc = new graph::CameraKeyboardControl(fpcc);
+            auto cmc = new graph::CameraMouseControl(fpcc);
 
-        fpcc->AddChildDispatcher(ckc);
-        fpcc->AddChildDispatcher(cmc);
+            fpcc->AddChildDispatcher(ckc);
+            fpcc->AddChildDispatcher(cmc);
 
-        OnChangeCameraControl(fpcc);
+            OnChangeCameraControl(fpcc);
+        }
+
+        //{
+        //    auto vmcc = new graph::ViewModelCameraControl(GetViewportInfo(), GetCamera(), GetCameraInfo());
+        //    auto cmc = new graph::CameraMouseControl(vmcc);
+        //    vmcc->AddChildDispatcher(cmc);
+        //    OnChangeCameraControl(vmcc);
+        //}
     }
 
     void WorkObject::OnSceneRendererChange(graph::RenderFramework *rf,graph::SceneRenderer *r)
@@ -86,6 +104,8 @@ namespace hgl
 
         scene=rf->GetDefaultScene();
         scene_renderer=rf->GetDefaultSceneRenderer();
+
+        BindSceneAndCameraControl();
     }
 
     void WorkObject::Tick(double delta)
