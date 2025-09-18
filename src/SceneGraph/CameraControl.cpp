@@ -19,13 +19,4 @@ namespace hgl::graph
         if(adjust < 0 && camera->Yfov < MinFOV)camera->Yfov = MinFOV;else
         if(adjust > 0 && camera->Yfov > MaxFOV)camera->Yfov = MaxFOV;
     }
-
-    bool CameraControl::SetMouseRay(Ray *ray,const Vector2i &mouse_coord)
-    {
-        if(!ray||!camera_info||!vi)return(false);
-
-        ray->Set(mouse_coord,camera_info,vi);
-
-        return(true);
-    }
 }//namespace hgl::graph
