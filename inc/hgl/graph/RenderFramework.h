@@ -12,6 +12,7 @@
 #include<hgl/graph/module/MeshManager.h>
 #include<hgl/graph/RenderCollector.h>
 #include<hgl/graph/camera/CameraControl.h>
+#include<hgl/graph/Scene.h>
 #include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/PrimitiveCreater.h>
 #include<hgl/io/event/MouseEvent.h>
@@ -36,8 +37,6 @@ class MaterialManager;
 class BufferManager;
 
 class RenderModule;
-
-class LineRenderManager;
 
 class Scene;
 class SceneRenderer;
@@ -122,7 +121,7 @@ public:
 
     RenderPass *            GetDefaultRenderPass    (){return default_scene_renderer->GetRenderPass();}
 
-    LineRenderManager *     GetLineRenderManager    (){return default_scene_renderer->GetLineRenderManager();}
+    LineRenderManager *     GetLineRenderManager    (){return default_scene->GetLineRenderManager();}
 
 public:
 

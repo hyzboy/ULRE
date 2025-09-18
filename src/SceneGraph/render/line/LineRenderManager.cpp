@@ -78,6 +78,10 @@ namespace hgl::graph
         return mgr;
     }
 
+    void LineRenderManager::SetRenderTarget(IRenderTarget *)
+    {
+    }
+
     LineRenderManager::LineRenderManager(VulkanDevice *dev,MaterialInstance *mi,Pipeline *p,UBOLineColorPalette *lcp)
     {
         support_wide_lines = dev->GetDevAttr()->wide_lines;

@@ -1,4 +1,4 @@
-#include<hgl/graph/SceneRenderer.h>
+﻿#include<hgl/graph/SceneRenderer.h>
 #include<hgl/graph/Scene.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
@@ -9,8 +9,6 @@
 
 namespace hgl::graph
 {
-    LineRenderManager *CreateLineRenderManager(RenderFramework *rf,IRenderTarget *);
-
     SceneRenderer::SceneRenderer(RenderFramework *rf,IRenderTarget *rt)
     {
         render_target=rt;
@@ -27,12 +25,11 @@ namespace hgl::graph
 
         clear_color.Set(0,0,0,1);
 
-        line_render_manager = CreateLineRenderManager(rf,rt);
+        line_render_manager=nullptr;
     }
 
     SceneRenderer::~SceneRenderer()
     {
-        SAFE_CLEAR(line_render_manager)
         delete render_task;
 
         SAFE_CLEAR(camera_control);
@@ -60,6 +57,9 @@ namespace hgl::graph
         if(camera_control)
             camera_control->SetViewport(render_target->GetViewportInfo());
 
+        if(render_target&&line_render_manager)
+            line_render_manager->SetRenderTarget(render_target);
+
         render_task->SetRenderTarget(rt);
 
         return(true);
@@ -79,6 +79,17 @@ namespace hgl::graph
 
         if(camera_control)
             scene->SetCameraControl(camera_control);
+
+        if(scene)
+        {
+            line_render_manager=scene->GetLineRenderManager();
+
+            line_render_manager->SetRenderTarget(render_target);
+        }
+        else
+        {
+            line_render_manager=nullptr;
+        }
 
         //if(scene)
         //{
@@ -161,7 +172,8 @@ namespace hgl::graph
 
         result=render_task->Render(cmd);
 
-        line_render_manager->Draw(cmd);
+        if(line_render_manager)
+            line_render_manager->Draw(cmd);
 
         cmd->EndRenderPass();
 

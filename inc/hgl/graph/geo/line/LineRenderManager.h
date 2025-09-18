@@ -47,6 +47,8 @@ namespace hgl::graph
 
         ~LineRenderManager();
 
+        void SetRenderTarget(IRenderTarget *);
+
         void SetColor(const int index, const Color4f& c);
 
         // Now specify colors by an index into the internal palette
@@ -58,7 +60,5 @@ namespace hgl::graph
         bool Draw(RenderCmdBuffer *);
 
         uint32 GetLineCount() const {return total_line_count;}
-
-        void Update();
     };
 }
