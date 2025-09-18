@@ -113,4 +113,9 @@ namespace hgl::graph
         cmd->SetDescriptorBinding(camera_desc_binding);
         cmd->SetDescriptorBinding(scene_desc_binding);
     }
+
+    void Scene::RenderLines(RenderCmdBuffer *cmd)
+    {
+        line_render_manager->Draw(cmd);
+    }
 }//namespace hgl::graph

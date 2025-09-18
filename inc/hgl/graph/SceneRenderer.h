@@ -21,16 +21,12 @@ namespace hgl::graph
         IRenderTarget * render_target = nullptr;
         Scene *         scene = nullptr;
 
-        CameraControl *     camera_control = nullptr;
+        CameraControl * camera_control = nullptr;
 
         //RenderTaskNameMap static_render_task_list;                              ///<静态渲染任务列表
         //RenderTaskNameMap dynamic_render_task_list;                             ///<动态渲染任务列表
 
         RenderTask *    render_task=nullptr;                                      ///<当前渲染任务
-
-    protected: //线条渲染管理纯只是画线条，并不是资源管理器,所以和上面的放开
-
-        LineRenderManager *line_render_manager = nullptr;
 
     protected:
 
@@ -50,7 +46,7 @@ namespace hgl::graph
                 Camera *    GetCamera       ()const{return scene->GetCamera();}             ///<获取当前相机
         const   CameraInfo *GetCameraInfo   ()const{return scene->GetCameraInfo();}         ///<获取当前相机信息
 
-                LineRenderManager *GetLineRenderManager()const{ return line_render_manager; }   ///<取得线条渲染管理器
+                LineRenderManager *GetLineRenderManager()const{ return scene->GetLineRenderManager(); }   ///<取得线条渲染管理器
 
     public:
 

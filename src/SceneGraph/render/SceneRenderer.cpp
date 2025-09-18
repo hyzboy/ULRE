@@ -3,7 +3,6 @@
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/VKDevice.h>
 #include<hgl/graph/camera/Camera.h>
-#include<hgl/graph/geo/line/LineRenderManager.h>
 #include<hgl/graph/RenderFramework.h>
 #include<hgl/graph/mtl/UBOCommon.h>
 
@@ -19,8 +18,6 @@ namespace hgl::graph
         render_task=new RenderTask("DefaultRenderTask",rt);
 
         clear_color.Set(0,0,0,1);
-
-        line_render_manager=nullptr;
     }
 
     SceneRenderer::~SceneRenderer()
@@ -47,9 +44,6 @@ namespace hgl::graph
         if(camera_control)
             camera_control->SetViewport(render_target->GetViewportInfo());
 
-        if(render_target&&line_render_manager)
-            line_render_manager->SetRenderTarget(render_target);
-
         render_task->SetRenderTarget(rt);
 
         return(true);
@@ -60,43 +54,14 @@ namespace hgl::graph
         if(scene==sw)
             return;
 
-        //if(scene)
-        //{
-        //    scene->Unjoin(this);
-        //}
-
         scene=sw;
 
         if(camera_control)
             scene->SetCameraControl(camera_control);
-
-        if(scene)
-        {
-            line_render_manager=scene->GetLineRenderManager();
-
-            line_render_manager->SetRenderTarget(render_target);
-        }
-        else
-        {
-            line_render_manager=nullptr;
-        }
-
-        //if(scene)
-        //{
-        //    scene->Join(this);
-        //}
     }
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
     {
-        //if(camera)
-        //{
-        //    if(scene)
-        //        camera->Unjoin(scene);
-
-        //    camera->Unjoin(this);
-        //}
-
         camera_control=cc;
 
         if(camera_control&&render_target)
@@ -104,14 +69,6 @@ namespace hgl::graph
 
         if(scene)
             scene->SetCameraControl(camera_control);
-
-        //if(camera)
-        //{
-        //    if(scene)
-        //        camera->Unjoin(scene);
-
-        //    camera->Join(this);
-        //}
 
         render_task->SetCameraInfo(GetCameraInfo());
     }
@@ -148,8 +105,7 @@ namespace hgl::graph
 
         result=render_task->Render(cmd);
 
-        if(line_render_manager)
-            line_render_manager->Draw(cmd);
+        scene->RenderLines(cmd);
 
         cmd->EndRenderPass();
 
