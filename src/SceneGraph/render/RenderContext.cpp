@@ -1,5 +1,7 @@
 #include<hgl/graph/RenderContext.h>
 #include<hgl/graph/Scene.h>
+#include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/mtl/UBOCommon.h>
 
 namespace hgl::graph
 {
@@ -10,19 +12,28 @@ namespace hgl::graph
     {
         this->rf = rf;
         render_target = rt;
-        frame_camera = new FrameCamera(rf);
+
+        if(rf)
+        {
+            ubo_camera_info = rf->CreateUBO<UBOCameraInfo>(&mtl::SBS_CameraInfo);
+            if(ubo_camera_info)
+            {
+                camera_desc_binding = new DescriptorBinding(DescriptorSetType::Camera);
+                if(camera_desc_binding)
+                    camera_desc_binding->AddUBO(ubo_camera_info);
+            }
+        }
 
         if(rf && rt)
             line_render_mgr = CreateLineRenderManager(rf,rt);
-
-        if(frame_camera && rt)
-            frame_camera->SetViewportInfo(rt->GetViewportInfo());
     }
 
     RenderContext::~RenderContext()
     {
         SAFE_CLEAR(line_render_mgr);
-        SAFE_CLEAR(frame_camera);
+        SAFE_CLEAR(camera_desc_binding);
+        SAFE_CLEAR(ubo_camera_info);
+
         camera_control = nullptr; // not owner
         scene = nullptr;
         render_target = nullptr;
@@ -34,9 +45,6 @@ namespace hgl::graph
             return;
 
         render_target = rt;
-
-        if(frame_camera)
-            frame_camera->SetViewportInfo(render_target ? render_target->GetViewportInfo() : nullptr);
 
         if(camera_control && render_target)
             camera_control->SetViewport(render_target->GetViewportInfo());
@@ -60,28 +68,28 @@ namespace hgl::graph
 
         camera_control = cc;
 
-        if(camera_control && frame_camera)
+        if(camera_control)
         {
             if(render_target)
                 camera_control->SetViewport(render_target->GetViewportInfo());
 
-            camera_control->SetCamera(frame_camera->GetCamera(),frame_camera->GetCameraInfo());
+            camera_control->SetCamera(GetCamera(),GetCameraInfo());
         }
     }
 
     void RenderContext::Tick(double)
     {
-        if(camera_control && frame_camera)
+        if(camera_control && ubo_camera_info && render_target)
         {
             camera_control->Refresh();
-            frame_camera->UpdateUBO();
+            UpdateCameraUBO();
         }
     }
 
     void RenderContext::BindDescriptor(RenderCmdBuffer *cmd)
     {
-        if(frame_camera)
-            cmd->SetDescriptorBinding(frame_camera->GetDescriptorBinding());
+        if(camera_desc_binding)
+            cmd->SetDescriptorBinding(camera_desc_binding);
 
         if(scene)
             cmd->SetDescriptorBinding(scene->GetDescriptorBinding());
