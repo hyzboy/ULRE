@@ -90,6 +90,8 @@ namespace hgl::graph
 
         virtual void BindDescriptor(RenderCmdBuffer *);
 
+        virtual void RenderLines(RenderCmdBuffer *);
+
         virtual void Tick(double);
     };//class Scene
 
