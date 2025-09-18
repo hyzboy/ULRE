@@ -30,15 +30,6 @@ namespace hgl::graph
         if(render_target==rt)
             return(true);
 
-        if(render_target)
-        {
-            if(render_target->GetDevice()!=rt->GetDevice())
-            {
-                //换Device是不允许的，当然这一般也不可能
-                return(false);
-            }
-        }
-
         render_target=rt;
 
         if(camera_control)

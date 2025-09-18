@@ -23,15 +23,6 @@ namespace hgl::graph
 
     bool RenderTask::SetRenderTarget(IRenderTarget *rt)
     {
-        if(render_target)
-        {
-            if(render_target->GetDevice()!=rt->GetDevice())
-            {
-                //换Device是不允许的，当然这一般也不可能
-                return(false);
-            }
-        }
-
         render_target=rt;
 
         if(!rt)

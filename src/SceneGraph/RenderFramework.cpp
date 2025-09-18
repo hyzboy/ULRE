@@ -194,12 +194,17 @@ void RenderFramework::OnChangeDefaultScene(Scene *s)
 
 void RenderFramework::CreateDefaultSceneRenderer()
 {
-    SAFE_CLEAR(default_scene_renderer)
+    IRenderTarget *rt = GetSwapchainRenderTarget();
 
-    IRenderTarget *rt=GetSwapchainRenderTarget();
-
-    default_scene_renderer=new SceneRenderer(this,rt);
-    default_scene_renderer->SetScene(default_scene);
+    if(!default_scene_renderer)
+    {
+        default_scene_renderer=new SceneRenderer(this,rt);
+        default_scene_renderer->SetScene(default_scene);
+    }
+    else
+    {
+        default_scene_renderer->SetRenderTarget(rt);
+    }
 }
 
 void RenderFramework::OnResize(uint w,uint h)
