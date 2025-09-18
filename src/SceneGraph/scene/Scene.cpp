@@ -1,11 +1,14 @@
 ﻿#include<hgl/graph/Scene.h>
 #include<hgl/type/Map.h>
 #include<hgl/graph/RenderFramework.h>
+#include<hgl/graph/VKRenderTargetSwapchain.h>
 #include<hgl/graph/mtl/UBOCommon.h>
-#include<chrono>
+#include<hgl/graph/geo/line/LineRenderManager.h>
 
 namespace hgl::graph
 {
+    LineRenderManager *CreateLineRenderManager(RenderFramework *rf,IRenderTarget *);
+
     namespace
     {
         Map<U8String,Scene *> scene_world_map;///<场景列表
@@ -67,8 +70,17 @@ namespace hgl::graph
             ubo_sky_info->data()->SetTime(10,0,0);  //早上10点
 
             descriptor_binding->AddUBO(ubo_sky_info);
+
+            line_render_manager=CreateLineRenderManager(rf,rf->GetSwapchainRenderTarget());       //先用默认的RenderTarget，未来可能会需要动态切RenderTarget。到时候再说了。
         }
 
         root_node=new SceneNode(this);
+    }
+
+    Scene::~Scene()
+    {
+        SAFE_CLEAR(line_render_manager);
+        SAFE_CLEAR(root_node);
+        SAFE_CLEAR(descriptor_binding);
     }
 }//namespace hgl::graph

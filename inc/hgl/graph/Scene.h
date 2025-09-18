@@ -9,6 +9,8 @@ namespace hgl::graph
 {
     class RenderFramework;
 
+    class LineRenderManager;
+
     using UBOSkyInfo=UBOInstance<SkyInfo>;
 
     /**
@@ -26,6 +28,8 @@ namespace hgl::graph
         SceneNode *root_node;                           ///<场景根节点
 
         CameraControl *camera_control = nullptr;        ///<相机控制器
+
+        LineRenderManager * line_render_manager =nullptr;
 
     protected:
 
@@ -47,14 +51,12 @@ namespace hgl::graph
 
         CameraControl *     GetCameraControl()const{return camera_control;}
 
+        LineRenderManager * GetLineRenderManager()const{return line_render_manager;}///<获取线段渲染管理器
+
     public:
 
         Scene(RenderFramework *rf);
-        virtual ~Scene()
-        {
-            SAFE_CLEAR(root_node);
-            SAFE_CLEAR(descriptor_binding);
-        }
+        virtual ~Scene();
 
         void SetCameraControl(CameraControl *cc)
         {

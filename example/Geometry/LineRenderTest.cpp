@@ -1,4 +1,4 @@
-#include<hgl/WorkManager.h>
+﻿#include<hgl/WorkManager.h>
 #include<hgl/graph/VKCommandBuffer.h>
 #include<hgl/graph/geo/line/LineRenderManager.h>
 #include<cmath>
@@ -48,7 +48,7 @@ public:
         for(int width = 1; width <= 16; ++width)
         {
             float radius = base_radius ;
-            float z = -(width - 1) * z_step; // layer height
+            float z = (width%2?1:-1)*(width - 1) * z_step; // layer height
             uint8_t color_index = uint8_t((width - 1) % 8);
             uint8_t w = uint8_t(width);
 
