@@ -206,3 +206,10 @@ void LineWidthBatch::Draw(RenderCmdBuffer *cmd)
 
     cmd->Draw(mesh->GetDataBuffer(),mesh->GetRenderData());
 }
+
+void LineWidthBatch::UpdatePipeline(Pipeline *p)
+{
+    pipeline = p;
+    if(mesh)
+        mesh->UpdatePipeline(p);
+}

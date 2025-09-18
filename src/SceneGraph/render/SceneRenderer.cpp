@@ -28,8 +28,8 @@ namespace hgl::graph
 
     SceneRenderer::~SceneRenderer()
     {
-        delete render_task;
-        delete line_render_manager;
+        SAFE_CLEAR(render_task);
+        SAFE_CLEAR(line_render_manager);
     }
 
     bool SceneRenderer::SetRenderTarget(IRenderTarget *rt)
@@ -44,14 +44,12 @@ namespace hgl::graph
 
         render_task->SetRenderTarget(rt);
 
-        // 线段渲染管理器需要重新创建以适应新的 RenderPass
-        // 简单实现: 删除旧的重新创建
-        // (可优化为检测 rp 是否变化再处理)
-        // 需要 scene 的 RenderFramework
-        if(scene)
+        if(render_target)
         {
-            delete line_render_manager;
-            line_render_manager=CreateLineRenderManager(scene->GetRenderFramework(),rt);
+            if(!line_render_manager)
+                line_render_manager=CreateLineRenderManager(scene->GetRenderFramework(),rt);
+            else
+                line_render_manager->SetRenderTarget(rt);
         }
 
         return(true);
@@ -66,9 +64,6 @@ namespace hgl::graph
 
         if(camera_control && scene)
             scene->SetCameraControl(camera_control);
-
-        if(scene && !line_render_manager && render_target)
-            line_render_manager=CreateLineRenderManager(scene->GetRenderFramework(),render_target);
     }
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
