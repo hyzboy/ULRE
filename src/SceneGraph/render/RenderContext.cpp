@@ -51,9 +51,6 @@ namespace hgl::graph
 
     void RenderContext::SetRenderTarget(IRenderTarget *rt)
     {
-        if(render_target == rt)
-            return;
-
         render_target = rt;
         viewport_info = rt ? rt->GetViewportInfo() : nullptr;
 
