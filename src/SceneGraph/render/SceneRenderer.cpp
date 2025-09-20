@@ -39,7 +39,17 @@ namespace hgl::graph
     void SceneRenderer::SetScene(Scene *sw)
     {
         if(!render_context)return;
+
+        Scene *old_scene = render_context->GetScene();
+
+        if(old_scene)
+        {
+            RemoveChildDispatcher(old_scene->GetEventDispatcher());
+        }
+
         render_context->SetScene(sw);
+
+        AddChildDispatcher(sw->GetEventDispatcher());
     }
 
     void SceneRenderer::SetCameraControl(CameraControl *cc)
