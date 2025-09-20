@@ -19,5 +19,7 @@ CreateProject(04_Billboard                      BillboardTest.cpp)
 
 CreateProject(05_RenderBoundBox                 RenderBoundBox.cpp)
 
-#CreateProject(06_RenderToTexture                RenderToTexture.cpp)
+CreateProject(06_FBXModelTest                   FBXModelTest.cpp)
+
+#CreateProject(07_RenderToTexture                RenderToTexture.cpp)
 
