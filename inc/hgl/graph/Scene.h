@@ -21,8 +21,6 @@ namespace hgl::graph
 
         U8String SceneName;                             ///<场景名称
 
-        ObjectList<SceneNode> SceneNodePool;            ///<场景节点池
-
         SceneNode *root_node;                           ///<场景根节点
 
     protected:
@@ -50,13 +48,24 @@ namespace hgl::graph
         Scene(RenderFramework *rf);
         virtual ~Scene();
 
-        io::EventDispatcher &GetEventDispatcher()  ///<获取事件分发器
+        io::EventDispatcher *GetEventDispatcher(){return &event_dispatcher;}                        ///<获取事件分发器
+
+        template<typename T,typename ...ARGS>
+        T *CreateNode(ARGS...args)
         {
-            return event_dispatcher;
+            T *sn=new T(args...);
+
+            if(!sn)
+                return(nullptr);
+
+            if(!root_node)
+                root_node=sn;
+
+            sn->OnChangeScene(this);
+            return sn;
         }
 
-        // 场景自身逐帧更新（摄像机更新已移至 SceneRenderer）
-        virtual void Tick(double){}
+        virtual void Tick(double){}                                                                 // 场景自身逐帧更新
     };//class Scene
 
     bool RegisterScene(Scene *sw);                      ///<注册场景
