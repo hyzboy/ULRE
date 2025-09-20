@@ -20,6 +20,7 @@
 #include<memory>
 #include<map>
 #include<cstring>
+#include<cstdio>
 
 using namespace hgl;
 using namespace hgl::graph;
@@ -334,6 +335,18 @@ public:
         return parser.parseGLTF(document);
     }
     
+    bool LoadFromFile(const std::string& filename) {
+        // TODO: 实现完整的文件加载和JSON解析
+        // 这里需要添加：
+        // 1. 文件读取功能
+        // 2. 完整的JSON解析器（建议使用jsoncpp或类似库）
+        // 3. Base64解码支持（用于内嵌数据）
+        // 4. 外部文件引用支持（.bin文件和纹理文件）
+        
+        LOG_INFO("Real file loading not implemented yet, using test data");
+        return LoadTestData();
+    }
+    
     bool InitializeRenderResources() {
         // 创建默认材质
         mtl::Material3DCreateConfig cfg(PrimitiveType::Triangles);
@@ -359,7 +372,44 @@ public:
         return pipeline != nullptr;
     }
     
-    Primitive* CreatePrimitiveFromGLTF(const GLTFPrimitive& gltf_primitive) {
+    void CalculateBoundingBox(SceneNode* node, const GLTFPrimitive& gltf_primitive) {
+        // 从GLTF accessor数据计算包围盒
+        auto pos_it = gltf_primitive.attributes.find("POSITION");
+        if (pos_it == gltf_primitive.attributes.end()) {
+            return;
+        }
+        
+        const GLTFAccessor& pos_accessor = document.accessors[pos_it->second];
+        
+        if (pos_accessor.min.size() >= 3 && pos_accessor.max.size() >= 3) {
+            Vector3f min_point(pos_accessor.min[0], pos_accessor.min[1], pos_accessor.min[2]);
+            Vector3f max_point(pos_accessor.max[0], pos_accessor.max[1], pos_accessor.max[2]);
+            
+            AABB bounding_box;
+            bounding_box.SetMinMax(min_point, max_point);
+            node->SetBoundingBox(bounding_box);
+        }
+    }
+    
+    MaterialInstance* CreateMaterialFromGLTF(const GLTFMaterial& gltf_material) {
+        // TODO: 未来实现完整的材质转换
+        // 当前返回默认材质
+        
+        // 示例：如何使用GLTF材质数据
+        const auto& pbr = gltf_material.pbrMetallicRoughness;
+        Color4f base_color(
+            pbr.baseColorFactor[0],
+            pbr.baseColorFactor[1], 
+            pbr.baseColorFactor[2],
+            pbr.baseColorFactor[3]
+        );
+        
+        // 未来可以根据metallicFactor和roughnessFactor创建PBR材质
+        // float metallic = pbr.metallicFactor;
+        // float roughness = pbr.roughnessFactor;
+        
+        return framework->CreateMaterialInstance(default_material, (VIL*)nullptr, &base_color);
+    }
         // 从GLTF primitive创建引擎Primitive
         // 每个GLTF primitive对应一个独立的引擎Primitive/Mesh
         
@@ -452,6 +502,9 @@ public:
                 std::string primitive_name = gltf_mesh.name + "_Primitive_" + std::to_string(i);
                 primitive_node->SetNodeName(primitive_name.c_str());
                 
+                // 计算包围盒
+                CalculateBoundingBox(primitive_node, gltf_primitive);
+                
                 // 创建MeshComponent
                 CreateComponentInfo cci(primitive_node);
                 framework->CreateComponent<MeshComponent>(&cci, mesh);
@@ -474,7 +527,35 @@ public:
         return scene_node;
     }
     
-    bool BuildSceneHierarchy(Scene* scene, SceneNode* root_node) {
+    void PrintSceneHierarchy(uint32_t node_index, int depth = 0) {
+        if (node_index >= document.nodes.size()) {
+            return;
+        }
+        
+        const GLTFNode& gltf_node = document.nodes[node_index];
+        
+        // 创建缩进
+        std::string indent(depth * 2, ' ');
+        
+        char buffer[512];
+        sprintf(buffer, "%s- Node[%u]: %s", indent.c_str(), node_index, gltf_node.name.c_str());
+        LOG_INFO(buffer);
+        
+        if (gltf_node.mesh != UINT32_MAX) {
+            sprintf(buffer, "%s  Mesh[%u]: %s", indent.c_str(), gltf_node.mesh, 
+                    document.meshes[gltf_node.mesh].name.c_str());
+            LOG_INFO(buffer);
+            
+            const GLTFMesh& mesh = document.meshes[gltf_node.mesh];
+            sprintf(buffer, "%s    Primitives: %zu", indent.c_str(), mesh.primitives.size());
+            LOG_INFO(buffer);
+        }
+        
+        // 递归打印子节点
+        for (uint32_t child_index : gltf_node.children) {
+            PrintSceneHierarchy(child_index, depth + 1);
+        }
+    }
         if (document.scenes.empty()) {
             LOG_ERROR("No scenes found in GLTF document");
             return false;
@@ -482,15 +563,37 @@ public:
         
         const GLTFScene& gltf_scene = document.scenes[document.scene];
         
+        LOG_INFO("Building GLTF scene hierarchy:");
+        LOG_INFO(("  Scene: " + gltf_scene.name).c_str());
+        
+        char buffer[256];
+        sprintf(buffer, "  Root nodes: %zu", gltf_scene.nodes.size());
+        LOG_INFO(buffer);
+        
+        sprintf(buffer, "  Total nodes: %zu", document.nodes.size());
+        LOG_INFO(buffer);
+        
+        sprintf(buffer, "  Total meshes: %zu", document.meshes.size());
+        LOG_INFO(buffer);
+        
+        // 打印详细的层次结构
+        LOG_INFO("GLTF Scene Hierarchy:");
+        for (uint32_t node_index : gltf_scene.nodes) {
+            PrintSceneHierarchy(node_index);
+        }
+        
         // 为场景中的每个根节点创建SceneNode
         for (uint32_t node_index : gltf_scene.nodes) {
             SceneNode* scene_node = CreateSceneNodeFromGLTF(node_index, scene);
             if (scene_node) {
                 root_node->Add(scene_node);
                 created_nodes.push_back(scene_node);
+                LOG_INFO(("  Added root node: " + document.nodes[node_index].name).c_str());
             }
         }
         
+        sprintf(buffer, "Scene hierarchy build complete. Created %zu nodes.", created_nodes.size());
+        LOG_INFO(buffer);
         return true;
     }
 };
@@ -517,10 +620,13 @@ public:
             return false;
         }
         
-        // 加载测试数据
-        if (!gltf_loader->LoadTestData()) {
-            LOG_ERROR("Failed to load GLTF test data");
-            return false;
+        // 尝试加载GLTF文件，如果失败则使用测试数据
+        if (!gltf_loader->LoadFromFile("triangle.gltf")) {
+            LOG_INFO("Using built-in test data instead of file");
+            if (!gltf_loader->LoadTestData()) {
+                LOG_ERROR("Failed to load GLTF test data");
+                return false;
+            }
         }
         
         // 构建场景层次结构
