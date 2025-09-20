@@ -190,7 +190,7 @@ public:
         const CameraInfo *ci=camera_control->GetCameraInfo();
         const ViewportInfo *vi=camera_control->GetViewportInfo();
 
-        ray.Set(mouse_position,ci,vi);                       //设置射线查询的屏幕坐标点
+        ray.SetFromViewportPoint(mouse_position,ci,vi->GetViewport());                       //设置射线查询的屏幕坐标点
 
         const Vector3f pos=ray.ClosestPoint(Vector3f(0,0,0));   //求射线上与点(0,0,0)最近的点的坐标
 
