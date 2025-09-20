@@ -13,7 +13,7 @@ void main()
 {
     MaterialInstance mi=GetMI();
 
-    Output.BillboardSize=mi.BillboardSize/viewport.canvas_resolution;
+    Output.BillboardSize=vec2(mi.BillboardSize)/vec2(viewport.canvas_resolution);
 
     gl_Position=GetPosition3D();
     gl_Position/=gl_Position.w;
